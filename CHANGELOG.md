@@ -282,6 +282,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Xbox: title pages gain the web's secondary actions under Play: Add to / Remove from watchlist and Add to Playlist.
 - Linux phone client: MPRIS now-playing controls (title, poster, position, play, pause and seek) for the shell and lock screen.
 - Fire TV: playback reports the device's real capabilities (HEVC Main 10 up to 4K at 60 fps, HDR10 and HLG, 6 channels, Dolby Digital passthrough), Settings > Player has the Force direct video and Force direct audio switches (off by default, sent only when on), and a 422 colour-format answer shows the server's message with no retry.
 - Xbox: the profile picker and the nav rail show the profile's avatar plate (the account's preset or custom avatar, else the preset picked by hashing the profile id), as on the web.
@@ -455,6 +456,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Sailfish OS: layouts follow the web mobile app more closely (nav pill with the web icons, watch-state dots and progress on cards, library counts and natural title order, film detail, Preferences list, profile picker, playlists tab, calendar views), and the page background uses the web surface colour in both themes.
 - Linux phone client: library cards are drawn 24 at a time so long lists open quickly.
 - Linux phone client: web-exact sizes for calendar, detail, drawers, profiles and preferences; the web library order.
 - Xbox: the system now-playing card (SystemMediaTransportControls) shows the title's poster, and its Next button skips to the queued episode at any time.
