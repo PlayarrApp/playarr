@@ -62,6 +62,10 @@ if (only.includes("screens")) {
 const expSrc = reference ? join(out, "expected.json") : expectedFile;
 const expected = existsSync(expSrc) ? JSON.parse(readFileSync(expSrc, "utf8")) : {};
 expected.dpad ??= {}; expected.playback ??= {};
+// A scored run without the web expected file would write expected: null for every result and overwrite a good dpad.json/playback.json.
+if (!reference && ((only.includes("dpad") && !Object.keys(expected.dpad).length) || (only.includes("playback") && !Object.keys(expected.playback).length))) {
+  throw new Error(`no expected values for dpad/playback in ${expSrc}: pass --expected <web expected.json> (or --reference) before scoring`);
+}
 const stamp = { suite: suite.version, checked_at: new Date().toISOString() };
 if (only.includes("dpad")) {
   await driver.setTheme("dark");
