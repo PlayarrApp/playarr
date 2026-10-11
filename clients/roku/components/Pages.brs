@@ -654,6 +654,36 @@ function calendarTwo(value as Integer) as String
     return value.ToStr()
 end function
 
+' "All day" when the release has no time of day (web), else HH:MM.
+function calendarTimeText(entry as Object) as String
+    if entry.release_at = invalid or entry.release_at = "" then return "All day"
+    return calendarTime(calendarEntryDate(entry))
+end function
+
+' Web order within a day: releases without a time first, then by time.
+function calendarDayList(list as Object) as Object
+    allDay = []
+    timed = []
+    for each e in list
+        if e.release_at = invalid or e.release_at = "" then allDay.Push(e) else timed.Push(e)
+    end for
+    timed.SortBy("release_at")
+    for each e in timed
+        allDay.Push(e)
+    end for
+    return allDay
+end function
+
+' Meta row of a calendar entry (web .calendar-entry-meta): time, release type, kind, then the status chip. Returns the end x.
+function calendarMetaRow(parent as Object, x as Float, y as Float, entry as Object, size as Integer) as Float
+    cx = x
+    for each part in [calendarTimeText(entry), calendarReleaseLabel(entry), calendarKindLabel(entry)]
+        probe = pgLabel(parent, cx, y, 0, size + 6, part, size, 400, "inkMuted")
+        cx = cx + probe.boundingRect().width + 12
+    end for
+    return cx + calendarBadge(parent, cx, y, size + 7, calendarStatusText(entry), size)
+end function
+
 function calendarTime(dt as Object) as String
     return calendarTwo(dt.GetHours()) + ":" + calendarTwo(dt.GetMinutes())
 end function
@@ -703,7 +733,7 @@ sub renderCalendar()
         end for
     else if m.calendarView <> "month" and m.calendarPlaceFirst = true
         for i = 0 to m.pageItems.Count() - 1
-            if m.pageItems[i].action = "entry"
+            if m.pageItems[i].action = "calToday"
                 m.pageFocusIdx = i
                 exit for
             end if
@@ -805,7 +835,13 @@ sub renderCalendarAgenda(entries as Object)
     end if
     pgButton(m.pageHead, x, btnY, 58, "+  Add to watchlist", "secondary", "calWatch", selected, 24)
 
-    ' Right: the agenda, grouped by day.
+    ' Right: the agenda, grouped by day; within a day the releases without a time come first, then by time (web order).
+    for each e in entries
+        key = "1" + JsonString(e.release_at)
+        if e.release_at = invalid or e.release_at = "" then key = "0"
+        e.sortKey = JsonString(e.date) + key
+    end for
+    entries.SortBy("sortKey")
     ay = 240.0
     lastDay = ""
     for each entry in entries
@@ -824,15 +860,7 @@ sub renderCalendarAgenda(entries as Object)
         pgArtwork(m.pageBody, 802.4, ay + 19.8, 40, 60, art)
         pgLabel(m.pageBody, 856.8, ay + 9, 900, 28, entry.title, 19, 600, "ink")
         pgLabel(m.pageBody, 856.8, ay + 40, 900, 28, calendarEntrySubtitle(entry), 19, 400, "inkSoft")
-        meta = calendarTime(edt)
-        mx = 856.8
-        pgLabel(m.pageBody, mx, ay + 71, 60, 19, meta, 13, 400, "inkMuted")
-        rel = calendarReleaseLabel(entry)
-        pgLabel(m.pageBody, mx + 45.6, ay + 71, 120, 19, rel, 13, 400, "inkMuted")
-        kindX = mx + 45.6 + 12 + rel.Len() * 6.2
-        pgLabel(m.pageBody, kindX, ay + 71, 120, 19, calendarKindLabel(entry), 13, 400, "inkMuted")
-        st = calendarStatusText(entry)
-        calendarBadge(m.pageBody, kindX + 12 + calendarKindLabel(entry).Len() * 6.4, ay + 71, 19.2, st, 13)
+        calendarMetaRow(m.pageBody, 856.8, ay + 71, entry, 13)
         pgFocusable(786.4, ay, 1048.8, 99.6, 14, "entry", entry.id, true)
         ay = ay + 114
     end for
@@ -930,7 +958,7 @@ sub renderCalendarWeek(entries as Object)
         list = byDay[day]
         y = 216.0
         if list <> invalid
-            for each entry in list
+            for each entry in calendarDayList(list)
                 pgRound(m.pageBody, x, y, 440, 106, 14, "surfaceStrong")
                 role = "inkMuted"
                 if entry.has_file = true then role = "success"
@@ -941,10 +969,7 @@ sub renderCalendarWeek(entries as Object)
                 pgArtwork(m.pageBody, x + 16, y + 13, 54, 80, art)
                 pgLabel(m.pageBody, x + 84, y + 8, 340, 26, entry.title, 19, 600, "ink", { maxLines: 1 })
                 pgLabel(m.pageBody, x + 84, y + 38, 340, 24, calendarEntrySubtitle(entry), 15, 400, "inkSoft", { maxLines: 1 })
-                edt = calendarEntryDate(entry)
-                pgLabel(m.pageBody, x + 84, y + 72, 60, 18, calendarTime(edt), 12, 400, "inkMuted")
-                st = calendarStatusText(entry)
-                calendarBadge(m.pageBody, x + 140, y + 71, 19.2, st, 12)
+                calendarMetaRow(m.pageBody, x + 84, y + 72, entry, 12)
                 pgFocusable(x, y, 440, 106, 14, "entry", entry.id, true)
                 m.pageItems[m.pageItems.Count() - 1].sx = true
                 y = y + 120
