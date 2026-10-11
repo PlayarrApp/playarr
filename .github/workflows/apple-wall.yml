@@ -103,7 +103,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 355
     permissions:
       actions: write # dispatch of the successor run
@@ -213,7 +213,7 @@ jobs:
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:playarr-ci-wall
+          tags: tag:ci
           hostname: ci-wall-${{ matrix.device }}-${{ github.run_id }}
           args: --accept-routes=false --accept-dns=false
           use-cache: "true"

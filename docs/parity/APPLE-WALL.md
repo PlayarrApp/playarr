@@ -30,7 +30,7 @@ on tvOS and macOS, Calendar, Settings, Profiles); with the driver, `dpad.json` a
 
 ## Streaming and handover
 
-- The node is `tag:playarr-ci-wall`, hostname `ci-wall-<device>-<run id>`, created ephemeral by a Tailscale OAuth client
+- The node is `tag:ci`, hostname `ci-wall-<device>-<run id>`, created ephemeral by a Tailscale OAuth client
   (repository secrets `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`). The tailnet policy must let the tag accept connections only
   from the wall host on the VNC ports and reach nothing else (proposal kept with the owner's runbook).
 - VNC ports: Apple TV 5904, iPhone 5911, iPad 5913, macOS 5915 (each with a health text on the next port). Passwords are
