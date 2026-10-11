@@ -615,6 +615,11 @@ function resolveLegacyInitialApiBaseUrl(): string {
   // runtime config).
   if (IS_PACKAGED_TV) return "http://localhost:8484";
 
+  // A saved sign-in knows its own server. Without this, a hosted page (one that serves no API itself) with a
+  // saved session but no stored base address would send sign-in and token calls to its own origin (405).
+  const savedServer = readActiveProfileMarker()?.apiBaseUrl;
+  if (savedServer) return savedServer;
+
   return window.location.origin;
 }
 

@@ -151,6 +151,25 @@ describe("resolveInitialApiBaseUrl -- rollout invariant (no KnownServerGroup eve
   });
 });
 
+describe("resolveInitialApiBaseUrl -- saved sign-in without a stored base address", () => {
+  it("uses the saved profile's DNS-named server instead of this page's own origin", () => {
+    stubWindowLocation("https://app.example.com/movies");
+    vi.stubGlobal("window", { ...window, localStorage });
+    const server = "https://v4-203-0-114-7.relay.playarr.app:8484";
+    localStorage.setItem(
+      "playarr.activeProfile.v1",
+      JSON.stringify({ profileKey: "p", apiBaseUrl: server, userId: "u" })
+    );
+    expect(resolveInitialApiBaseUrl()).toBe(server);
+  });
+
+  it("still falls back to the page's origin with no saved sign-in", () => {
+    stubWindowLocation("https://app.example.com/movies");
+    vi.stubGlobal("window", { ...window, localStorage });
+    expect(resolveInitialApiBaseUrl()).toBe("https://app.example.com");
+  });
+});
+
 describe("resolveInitialApiBaseUrl -- group-aware (§7.3)", () => {
   it("prefers a remembered group's lastGoodUrl over a legacy stored apiBaseUrl", () => {
     stubWindowLocation("https://media.example.com/login");
