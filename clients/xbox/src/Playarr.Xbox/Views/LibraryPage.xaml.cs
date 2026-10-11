@@ -30,6 +30,7 @@ namespace Playarr.Xbox.Views
     {
         private readonly LibraryViewModel _viewModel;
         private bool _focusFirst;
+        private Guid? _restoreId;
         private IReadOnlyList<Work>? _renderedWorks;
         private readonly Dictionary<Guid, Work> _worksById = new Dictionary<Guid, Work>();
 
@@ -54,6 +55,8 @@ namespace Playarr.Xbox.Views
 
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             _focusFirst = true;
+            // Back from a title lands on the card that was focused, as the web does.
+            _restoreId = e.NavigationMode == NavigationMode.Back ? FocusClaim.Recall(MemoryKey()) : null;
             Render();
         }
 
@@ -107,10 +110,34 @@ namespace Playarr.Xbox.Views
             if (_focusFirst && !isLoading && !hasError && _viewModel.Works.Count > 0)
             {
                 _focusFirst = false;
-                CardFocus.FocusFirstWhenReady(WorksGridView);
+                CardFocus.FocusWhenReady(WorksGridView, RestoreOrFirst);
             }
 
             RenderLetterRail();
+        }
+
+        private string MemoryKey() => "library:" + _viewModel.SelectedKind;
+
+        private Control? RestoreOrFirst()
+        {
+            if (_restoreId is { } id)
+            {
+                foreach (var item in WorksGridView.Items)
+                {
+                    if (item is FrameworkElement { Tag: Guid tag } && tag == id)
+                    {
+                        WorksGridView.ScrollIntoView(item);
+                        if (WorksGridView.ContainerFromItem(item) is Control container)
+                        {
+                            return container;
+                        }
+
+                        return null;
+                    }
+                }
+            }
+
+            return WorksGridView.ContainerFromIndex(0) as Control;
         }
 
         private void WorksGridView_GotFocus(object sender, RoutedEventArgs e)
@@ -118,6 +145,7 @@ namespace Playarr.Xbox.Views
             if (e.OriginalSource is GridViewItem { Content: FrameworkElement { Tag: Guid id } }
                 && _worksById.TryGetValue(id, out var work))
             {
+                FocusClaim.Remember(MemoryKey(), id);
                 ShowFocused(work);
             }
         }

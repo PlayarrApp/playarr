@@ -28,6 +28,7 @@ namespace Playarr.Xbox.Views
     {
         private readonly HomeViewModel _viewModel;
         private bool _focusFirst;
+        private Guid? _restoreId;
         private IReadOnlyList<HomeRail>? _renderedRails;
 
         public HomePage()
@@ -58,6 +59,8 @@ namespace Playarr.Xbox.Views
             base.OnNavigatedTo(e);
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             _focusFirst = true;
+            // Back from a title lands on the card that was focused, as the web does.
+            _restoreId = e.NavigationMode == NavigationMode.Back ? FocusClaim.Recall("home") : null;
             Render();
         }
 
@@ -116,7 +119,7 @@ namespace Playarr.Xbox.Views
                 // Render rebuilds the rails on every notification: keep asking until a card really holds focus.
                 var firstList = (ListView)((StackPanel)RailsPanel.Children[0]).Children[1];
                 _focusFirst = false;
-                CardFocus.FocusFirstWhenReady(firstList);
+                FocusClaim.Start(RailsPanel, () => RestoreOrFirst(firstList));
             }
         }
 
@@ -155,6 +158,29 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        private Control? RestoreOrFirst(ListView firstList)
+        {
+            if (_restoreId is { } id)
+            {
+                foreach (var section in RailsPanel.Children)
+                {
+                    if (section is StackPanel { Children: { Count: > 1 } kids } && kids[1] is ListView list)
+                    {
+                        foreach (var item in list.Items)
+                        {
+                            if (item is FrameworkElement { Tag: Guid tag } && tag == id)
+                            {
+                                list.ScrollIntoView(item);
+                                return list.ContainerFromItem(item) as Control;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return firstList.ContainerFromIndex(0) as Control;
+        }
+
         private bool IsInRails(DependencyObject node)
         {
             for (var current = node; current != null; current = Windows.UI.Xaml.Media.VisualTreeHelper.GetParent(current))
@@ -191,6 +217,7 @@ namespace Playarr.Xbox.Views
             {
                 if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: Guid id } })
                 {
+                    FocusClaim.Remember("home", id);
                     Detail.Show(rail.Items.FirstOrDefault(w => w.Id == id), withKind: true);
                 }
             };

@@ -14,6 +14,13 @@ namespace Playarr.Xbox.Views
     /// </summary>
     internal static class FocusClaim
     {
+        private static readonly System.Collections.Generic.Dictionary<string, Guid> Last = new System.Collections.Generic.Dictionary<string, Guid>();
+
+        /// <summary>Remembers the title focused on a page so Back can put focus there again.</summary>
+        public static void Remember(string page, Guid id) => Last[page] = id;
+
+        public static Guid? Recall(string page) => Last.TryGetValue(page, out var id) ? id : (Guid?)null;
+
         private static DispatcherTimer? _active;
 
         public static void Start(DependencyObject scope, Func<Control?> target)

@@ -453,6 +453,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Xbox: Back from a title returns focus to the card that was focused on Home or the library, as the web does.
 - Android phone: the profile avatar moves into the bottom navigation as on the web phone layout, the library header title uses the 21.6 px phone title and its actions sit flush with the content grid, Home cards use the 8.8 px label with the small detail line hanging below, and debug parity captures can hide the system bars.
 - Fire TV: on the film page the Cast and Crew tracks start where the web's do (Chapters 351 px, each person track 284 px).
 - Xbox: the player's controls follow the web's set and layout: previous and next, play/pause, the time, mute, audio and subtitles, queue, the quality chip and playback info.
