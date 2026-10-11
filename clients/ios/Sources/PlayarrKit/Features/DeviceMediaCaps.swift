@@ -75,10 +75,13 @@ public struct DeviceMediaCaps: Equatable, Sendable {
         var hevc = false
         var channels: Int?
         #if canImport(AVFoundation)
+        // `availableHDRModes` does not exist on macOS: the Mac reports no HDR modes until it reads the display's EDR.
+        #if !os(macOS)
         let available = AVPlayer.availableHDRModes
         if available.contains(.hdr10) { modes.insert("hdr10") }
         if available.contains(.hlg) { modes.insert("hlg") }
         if available.contains(.dolbyVision) { modes.insert("dolby_vision") }
+        #endif
         #if os(iOS) || os(tvOS)
         channels = AVAudioSession.sharedInstance().maximumOutputNumberOfChannels
         #endif
