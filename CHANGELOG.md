@@ -438,6 +438,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: a focused media card takes the web's pink glow ring (3 px ring and 20 px glow, brand ink in dark, strong brand in light); the calendar week columns start at the web's top edge.
 - Fire TV: the calendar agenda follows the web: status pills (Available, Upcoming, Missing, Not tracked), the details panel with the synopsis, meta line, pills and Open and watchlist actions, the web's card width, day heading and card spacing; date-only releases show "All day". The profile picker's selected avatar gets the web's focus ring colour.
 - Fire TV client: the release calendar has the week and month views, the filters drawer (view, type, status, monitored only) and the calendar link drawer with its QR code; entry cards, the details and the period picker follow the web.
 - Fire TV client: Movies, Series and Music have the Filters drawer (list, screen and cover views, sort and order, audio and subtitle language filters); a film's page has the Playback settings drawer (quality, audio, subtitles) and plays at the saved quality.
