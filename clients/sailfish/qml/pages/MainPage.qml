@@ -7,6 +7,7 @@ PlayarrPage {
     id: page
     property string section: "home"
 
+    function actions(work) { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: work }) }
     function open(work) { pageStack.push(Qt.resolvedUrl("DetailPage.qml"), { work: work }) }
 
     Loader {
@@ -20,6 +21,7 @@ PlayarrPage {
               : "LibraryView.qml"
         onLoaded: {
             item.opened.connect(page.open)
+            if (item.held) item.held.connect(page.actions)
             if (item.goHome) item.goHome.connect(function () { page.section = "home" })
             if (item.kind !== undefined) item.kind = page.section === "movies" ? "movie" : page.section === "series" ? "series" : "artist"
             if (item.title !== undefined) item.title = page.section === "movies" ? qsTr("Movies") : page.section === "series" ? qsTr("Series") : qsTr("Music")

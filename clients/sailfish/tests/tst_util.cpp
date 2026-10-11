@@ -85,6 +85,18 @@ int main()
     CHECK(days.at(0).toMap().value("date").toString(), QString("2026-10-10"));
     CHECK(days.at(0).toMap().value("entries").toList().at(0).toMap().value("title").toString(), QString("Y"));
     CHECK(days.at(1).toMap().value("entries").toList().at(0).toMap().value("title").toString(), QString("A"));
+    const QDate t(2026, 10, 11); // a Sunday
+    QVariantMap w0 = CalendarLogic::rangeFor("week", 0, t, QLocale::c());
+    CHECK(w0.value("start").toString(), QString("2026-10-05"));
+    CHECK(w0.value("end").toString(), QString("2026-10-11"));
+    CHECK(w0.value("label").toString(), QString("5 \u2013 11 Oct"));
+    QVariantMap m0 = CalendarLogic::rangeFor("month", 0, t, QLocale::c());
+    CHECK(m0.value("start").toString(), QString("2026-09-28"));
+    CHECK(m0.value("end").toString(), QString("2026-11-01"));
+    CHECK(m0.value("label").toString(), QString("Oct 2026"));
+    CHECK(CalendarLogic::weeks(m0.value("start").toString(), m0.value("end").toString()).size(), 5);
+    CHECK(CalendarLogic::rangeFor("month", 1, t, QLocale::c()).value("start").toString(), QString("2026-10-26"));
+    CHECK(CalendarLogic::rangeFor("agenda", 0, t, QLocale::c()).value("end").toString(), QString("2026-11-09"));
     QVariantMap ep; ep["season_number"] = 3; ep["episode_number"] = 3;
     CHECK(CalendarLogic::episodeCode(ep), QString("S03E03"));
     CHECK(CalendarLogic::episodeCode(QVariantMap()), QString());

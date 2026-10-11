@@ -10,3 +10,6 @@ WorkGrid 1.0 WorkGrid.qml
 MenuRow 1.0 MenuRow.qml
 EdgeFade 1.0 EdgeFade.qml
 PageTitle 1.0 PageTitle.qml
+WorkRow 1.0 WorkRow.qml
+ChipRow 1.0 ChipRow.qml
+ActionRow 1.0 ActionRow.qml

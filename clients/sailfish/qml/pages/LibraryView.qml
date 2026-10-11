@@ -13,6 +13,8 @@ Item {
     property int generation: 0
     signal opened(var work)
     signal goHome()
+    signal held(var work)
+    property string viewMode: Api.setting("lib.view", "screen")
 
     function reload() {
         generation++
@@ -25,7 +27,12 @@ Item {
         if (busy || (total >= 0 && works.length >= total)) return
         busy = true
         var gen = generation
-        Api.request("GET", "/api/v1/catalog?kind=" + kind + "&available_only=true&limit=50&offset=" + works.length, null,
+        var q = "/api/v1/catalog?kind=" + kind + "&available_only=true&limit=50&offset=" + works.length
+              + "&sort=" + Api.setting("lib.sort", "title") + "&order=" + Api.setting("lib.order", "asc")
+        var al = Api.setting("lib.audio", ""), sl = Api.setting("lib.subs", "")
+        if (al) q += "&audio_lang=" + al
+        if (sl) q += "&subtitle_lang=" + sl
+        Api.request("GET", q, null,
                     function (status, data) {
             if (gen !== generation) return
             busy = false
@@ -36,6 +43,17 @@ Item {
     }
     Component.onCompleted: reload()
 
+    MouseArea {
+        id: filterBtn
+        anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter }
+        width: 44 * Tokens.u; height: width
+        onClicked: {
+            var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
+            p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
+        }
+        Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: "transparent"; border.width: 1; border.color: Tokens.lineStrong; opacity: filterBtn.pressed ? 0.5 : 1 }
+        Icon { anchors.centerIn: parent; source: "image://theme/icon-m-menu?" + Tokens.ink; sourceSize: Qt.size(24 * Tokens.u, 24 * Tokens.u) }
+    }
     PageTitle {
         id: heading
         y: 12 * Tokens.u
@@ -45,10 +63,12 @@ Item {
     WorkGrid {
         anchors { top: heading.bottom; topMargin: 6 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
         works: root.works
+        mode: root.viewMode
         busy: root.busy
         done: root.total >= 0 && root.works.length >= root.total
         bottomMargin: 100 * Tokens.u
         onOpened: root.opened(work)
+        onHeld: root.held(work)
         onLoadMore: root.more()
     }
     ViewPlaceholder {

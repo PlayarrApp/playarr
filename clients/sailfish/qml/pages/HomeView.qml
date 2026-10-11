@@ -6,6 +6,7 @@ import "../components"
 SilicaFlickable {
     id: root
     signal opened(var work)
+    signal held(var work)
     property var rails: []
     property bool busy: true
     property bool failed: false
@@ -63,6 +64,7 @@ SilicaFlickable {
                 title: modelData.title
                 items: modelData.items
                 onOpened: root.opened(work)
+                onHeld: root.held(work)
             }
         }
     }

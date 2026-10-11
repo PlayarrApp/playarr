@@ -8,6 +8,7 @@ Column {
     property string title
     property var items: []
     signal opened(var work)
+    signal held(var work)
     width: parent ? parent.width : 0
     spacing: 14 * Tokens.u
     visible: items.length > 0
@@ -34,6 +35,7 @@ Column {
             delegate: WorkCard {
                 work: modelData
                 onOpened: root.opened(work)
+                onHeld: root.held(work)
             }
         }
         EdgeFade { target: list; horizontal: true }

@@ -7,6 +7,7 @@ MouseArea {
     id: root
     property var work
     property real cardWidth: 173 * Tokens.u
+    property bool poster: false
     signal opened(var work)
     signal held(var work)
     width: cardWidth
@@ -22,7 +23,8 @@ MouseArea {
         id: art
         work: root.work
         width: parent.width
-        height: Math.round(width * 9 / 16)
+        kinds: root.poster ? ["poster", "backdrop"] : ["backdrop", "thumb", "poster"]
+        height: Math.round(width * (root.poster ? 3 / 2 : 9 / 16))
         opacity: root.pressed ? 0.7 : 1
     }
     Column {
