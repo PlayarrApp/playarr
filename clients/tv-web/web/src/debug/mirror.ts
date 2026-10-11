@@ -9,7 +9,8 @@ import { focusInfo, visibleText } from "./mirrorSnapshot";
 const MIRROR_SENTINEL = "PLAYARR_DEBUG_MIRROR_SENTINEL";
 const TOKEN_KEY = "playarr.debugMirrorToken";
 const INTERVAL_MS = 2000;
-const TARGET_WIDTH = 640;
+// Full TV viewport width (1280): the frame is the picture the parity suite scores, so no downscale. Override with ?mirrorWidth=.
+const TARGET_WIDTH = Number(new URLSearchParams(window.location.search).get("mirrorWidth")) || 1280;
 
 function readToken(): string | null {
   try {
@@ -49,6 +50,18 @@ function routeWithQuery(): string {
 }
 
 // Facts that decide the TV layout (stage zoom, artwork size, theme, the width and height media queries).
+// The last few key events the page saw (key, keyCode, repeat, ms since the previous one): shows how the TV delivers a long press.
+const keyLog: string[] = [];
+let lastKeyAt = 0;
+for (const type of ["keydown", "keyup"] as const) {
+  window.addEventListener(type, (e) => {
+    const now = Date.now();
+    keyLog.push(`${type} ${e.key}/${e.keyCode}${e.repeat ? " rep" : ""} +${lastKeyAt ? now - lastKeyAt : 0}`);
+    lastKeyAt = now;
+    if (keyLog.length > 12) keyLog.shift();
+  }, true);
+}
+
 function layoutEnv(): Record<string, unknown> {
   const root = document.documentElement;
   const mq = (q: string) => window.matchMedia(q).matches;
@@ -66,6 +79,7 @@ function layoutEnv(): Record<string, unknown> {
         ? { t: Math.round(v.currentTime * 10) / 10, ready: v.readyState, net: v.networkState, paused: v.paused, err: v.error ? `${v.error.code} ${v.error.message}`.slice(0, 120) : null, w: v.videoWidth, h: v.videoHeight, src: v.currentSrc ? v.currentSrc.replace(/^(\w+:\/\/[^/]*\/[^?]{0,60}).*$/, "$1").replace(/[0-9a-f]{8}-[0-9a-f-]{27}/g, "<id>") : "", buffered: v.buffered.length ? Math.round(v.buffered.end(v.buffered.length - 1)) : 0 }
         : null;
     })(),
+    keys: keyLog.slice(),
     mq: { w1100: mq("(max-width: 1100px)"), h700: mq("(max-height: 700px)"), w760: mq("(max-width: 760px)"), w920: mq("(max-width: 920px)") },
   };
 }
@@ -150,7 +164,7 @@ export function startDebugMirror(): void {
             return true;
           },
           pixelRatio: scale,
-          quality: 0.6,
+          quality: 0.92,
           width: stageW,
           height: stageH,
           backgroundColor: bg,

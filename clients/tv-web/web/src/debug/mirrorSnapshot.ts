@@ -3,6 +3,8 @@
 export interface FocusInfo {
   selector: string;
   text: string;
+  /** aria-label when present: what the parity suite compares for the focused item. */
+  label: string | null;
   bbox: { x: number; y: number; w: number; h: number } | null;
 }
 
@@ -33,6 +35,7 @@ export function focusInfo(doc: Document = document): FocusInfo | null {
   return {
     selector: selectorFor(el),
     text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 200),
+    label: el.getAttribute("aria-label"),
     bbox: { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) },
   };
 }
