@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Owner bug 2026-10-10 (row 1.9980): "the menu items get cropped on the left" on Settings. For every vertical menu list
+// Row 1.10085 adds the right side for the Settings list. Owner bug 2026-10-10 (row 1.9980): "the menu items get cropped on the left" on Settings. For every vertical menu list
 // (the Settings section list, and the Downloads, Requests and Watchlist row lists), the focused item's full glow extent must sit
 // inside the scroller's clip rect, its text must not be clipped on the left, and the item's left edge must line up with the
 // page content gutter (the panel padding, +-1px, for the row lists). Also asserts #445's top fade under the page header still works.
@@ -87,7 +87,7 @@ const measure = ([itemSel, active]) => {
     const panel = el.closest(".tv-downloads-panel");
     let gutter = null;
     if (panel) { const pr = panel.getBoundingClientRect(); const room = parseFloat(getComputedStyle(panel).getPropertyValue("--list-glow-room")) || 0; gutter = pr.left + room + parseFloat(getComputedStyle(panel).paddingRight); }
-    out.push({ idx, tag: el.className, itemLeft: r.left, textLeft, clipLeft: Math.max(clip.left, railRight), clipTop: clip.top, clipBottom: clip.bottom, glowLeft: r.left - L, glow: L, lift: new DOMMatrix(cs.transform === "none" ? undefined : cs.transform).m42, gutter, scrollerClass: sc.className });
+    out.push({ idx, tag: el.className, itemLeft: r.left, textLeft, clipLeft: Math.max(clip.left, railRight), clipRight: clip.right, itemRight: r.right, clipTop: clip.top, clipBottom: clip.bottom, glowLeft: r.left - L, glow: L, lift: new DOMMatrix(cs.transform === "none" ? undefined : cs.transform).m42, gutter, scrollerClass: sc.className });
   }
   return { count: items.length, out };
 };
@@ -135,6 +135,8 @@ for (const theme of ["light", "dark"]) {
         const tag = `${label} item ${o.idx}/${m.count}`;
         check(`${tag}: full glow (${o.glow.toFixed(0)}px) inside the clip rect`, o.glowLeft >= o.clipLeft - 0.5, `glowLeft=${o.glowLeft} clipLeft=${o.clipLeft} scroller=${o.scrollerClass}`);
         if (route === "/settings") check(`${tag}: focus uses the shared card treatment (glow ${o.glow.toFixed(0)}px, lift ${o.lift}px)`, o.glow >= 40 && o.lift < 0, "plain outline, no card glow or lift");
+        // The right side too (the scroller's overflow clips the glow there as well): row 1.10085.
+        if (route === "/settings") check(`${tag}: full glow (${o.glow.toFixed(0)}px) inside the clip rect on the right`, o.itemRight + o.glow <= o.clipRight + 0.5, `itemRight=${o.itemRight} glow=${o.glow} clipRight=${o.clipRight}`);
         check(`${tag}: text not clipped on the left`, o.textLeft >= o.clipLeft, `textLeft=${o.textLeft} clipLeft=${o.clipLeft}`);
         if (o.gutter !== null) check(`${tag}: left edge on the page content gutter`, Math.abs(o.itemLeft - o.gutter) <= 1, `itemLeft=${o.itemLeft} gutter=${o.gutter}`);
       }

@@ -957,8 +957,8 @@ body[data-input-mode="pointer"] :focus:not(:focus-visible) {
   width: 100%;
   height: 100%;
   display: grid;
-  /* The list column never shrinks below the rail clearance plus room for a full option label. */
-  grid-template-columns: minmax(calc(var(--tv-nav-clearance) + 320px), 35fr) minmax(0, 65fr);
+  /* The list column never shrinks below the rail clearance plus room for a full option label and the focused option's 48px glow. */
+  grid-template-columns: minmax(calc(var(--tv-nav-clearance) + 352px), 35fr) minmax(0, 65fr);
 }
 
 .settings-options-panel {
@@ -1001,12 +1001,14 @@ body[data-input-mode="pointer"] :focus:not(:focus-visible) {
 }
 
 .settings-options-list {
+  /* The focused option's card glow reaches 48px on every side; the scroller clips it, so the right side keeps that room. */
+  --settings-glow-room: 48px;
   box-sizing: border-box;
   min-height: 100%;
   margin: 0;
   padding:
     var(--library-rail-top)
-    clamp(18px, calc(2 * var(--vw)), 38px)
+    max(clamp(18px, calc(2 * var(--vw)), 38px), var(--settings-glow-room))
     clamp(118px, calc(14 * var(--viewport-unit)), 156px)
     max(clamp(102px, calc(8 * var(--vw)), 160px), var(--tv-nav-clearance));
   list-style: none;
@@ -3736,7 +3738,7 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   }
 
   .settings-workspace-track {
-    grid-template-columns: minmax(calc(var(--tv-nav-clearance) + 320px), 34fr) minmax(0, 66fr);
+    grid-template-columns: minmax(calc(var(--tv-nav-clearance) + 352px), 34fr) minmax(0, 66fr);
   }
 }
 
@@ -10556,13 +10558,13 @@ body[data-input-mode="remote"] :is(
    label (see .settings-workspace-track), so the panel gives up that space instead of overlapping the list. */
 @media (min-width: 761px) {
   .tv-library-grid-panel.settings-detail-panel {
-    width: min(65%, calc(100% - var(--tv-nav-clearance) - 320px));
+    width: min(65%, calc(100% - var(--tv-nav-clearance) - 352px));
   }
 }
 
 @media (min-width: 761px) and (max-width: 1100px), (min-width: 761px) and (max-height: 700px) {
   .tv-library-grid-panel.settings-detail-panel {
-    width: min(66%, calc(100% - var(--tv-nav-clearance) - 320px));
+    width: min(66%, calc(100% - var(--tv-nav-clearance) - 352px));
   }
 }
 

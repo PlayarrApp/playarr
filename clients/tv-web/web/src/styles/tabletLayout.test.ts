@@ -22,9 +22,9 @@ describe("tablet widths: content clears the navigation rail", () => {
   });
 
   it("keeps the settings list label-wide and the detail panel out of it", () => {
-    expect(css).toContain("minmax(calc(var(--tv-nav-clearance) + 320px), 35fr)");
-    expect(css).toContain("minmax(calc(var(--tv-nav-clearance) + 320px), 34fr)");
-    expect(css).toMatch(/\.tv-library-grid-panel\.settings-detail-panel\s*\{\s*width:\s*min\(65%, calc\(100% - var\(--tv-nav-clearance\) - 320px\)\)/);
+    expect(css).toContain("minmax(calc(var(--tv-nav-clearance) + 352px), 35fr)");
+    expect(css).toContain("minmax(calc(var(--tv-nav-clearance) + 352px), 34fr)");
+    expect(css).toMatch(/\.tv-library-grid-panel\.settings-detail-panel\s*\{\s*width:\s*min\(65%, calc\(100% - var\(--tv-nav-clearance\) - 352px\)\)/);
   });
 
   it("hides the clock between the phone and wide-tablet breakpoints, where it collides with long titles", () => {
