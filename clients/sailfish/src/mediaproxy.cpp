@@ -93,7 +93,7 @@ void MediaProxy::handle(QTcpSocket *sock, const QByteArray &head)
         nr.setRawHeader("Authorization", bearer);
     if (!req.range.isEmpty())
         nr.setRawHeader("Range", req.range);
-    nr.setRawHeader("X-Playarr-Client-Platform", "web");
+    nr.setRawHeader("X-Playarr-Client-Platform", "sailfish");
     nr.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
     QNetworkReply *reply = req.method == "HEAD" ? m_nam->head(nr) : m_nam->get(nr);
     reply->setReadBufferSize(kMaxBuffered);

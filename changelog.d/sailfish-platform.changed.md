@@ -1,0 +1,1 @@
+- Sailfish OS: the client now identifies as `sailfish` to the link broker and the server instead of the `web` compatibility identity.

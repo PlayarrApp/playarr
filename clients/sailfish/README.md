@@ -9,9 +9,9 @@ profile picker with the shared alien and other preset avatars, Home rails with "
 Music grids with infinite scroll, title detail (seasons, episodes, albums), search, theme and sign-out settings, and
 playback with resume and server progress reporting (direct and HLS).
 
-Not yet: calendar, downloads, watchlist, requests, player menus (audio, subtitles, quality), PIN prompts, scroll-edge
-fades, and the "sailfish" platform identity. Until the broker allow-list and the server enum accept `sailfish` the app
-sends the `web` compatibility identity (one constant, `kPlatform` in `src/api.cpp`), as the Roku client does.
+Milestone 2 added the player menus, PIN prompt, scroll fades, calendar (month, week, agenda), watchlist, requests,
+downloads with offline playback, library Filters and title Actions. The client identifies as `sailfish` (one constant,
+`kPlatform` in `src/api.cpp`).
 
 ## Layout
 

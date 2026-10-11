@@ -13,8 +13,8 @@
 #include <QUrlQuery>
 
 namespace {
-// Compatibility identity until the server and broker accept "sailfish" (same approach as the Roku client).
-const char kPlatform[] = "web";
+// Client platform identity sent to the hosted link broker and the server.
+const char kPlatform[] = "sailfish";
 const char kHosted[] = "https://playarr.app";
 const char kGrant[] = "urn:ietf:params:oauth:grant-type:device_code";
 
