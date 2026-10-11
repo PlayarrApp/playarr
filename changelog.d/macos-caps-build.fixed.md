@@ -1,1 +1,0 @@
-- The macOS build compiles again: device HDR modes are read on iOS and tvOS only.

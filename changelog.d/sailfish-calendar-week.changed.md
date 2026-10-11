@@ -1,1 +1,0 @@
-- Sailfish calendar week view lays the days out as side-by-side columns like the web, and the title actions page matches the web fonts and spacing.

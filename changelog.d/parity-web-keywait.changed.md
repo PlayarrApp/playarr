@@ -1,1 +1,0 @@
-- The web parity driver waits for the key handler after Home settles, so web D-pad references stop losing the first key.

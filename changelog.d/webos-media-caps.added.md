@@ -1,1 +1,0 @@
-- webOS shell reports HDR10 and Dolby Vision from the TV configuration, because Chromium 94 has no dynamic-range media query (shared media caps stay in the web code).

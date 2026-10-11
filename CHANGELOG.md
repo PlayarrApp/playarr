@@ -14,6 +14,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - The macOS build compiles again: device HDR modes are read on iOS and tvOS only.
+- Cancelling a Sailfish download clears its notification, and a finished download whose file was deleted outside the app reverts to not downloaded.
+- Sailfish requests sent from QML no longer lose their JSON body when the value arrives wrapped, which had made download tickets fail with 400.
+- The macOS build compiles again: device HDR modes are read on iOS and tvOS only.
 - Xbox: LEFT from content lands on the nav item level with the focused card, as the web does.
 - Fire TV: LEFT from content lands on the nav item level with the focused card, as the web does (not always on the current page's item); playback declares a 25 Mbps maximum bitrate so very high-bitrate originals are converted instead of sent raw.
 - webOS package repeats its CSS font weights with extra specificity so the webOS TV Simulator's forced weight 400 no longer flattens bold text.
@@ -286,6 +289,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Sailfish OS: the playback request reports the device's real caps (8-bit H.264 up to 1080p60, stereo, no HDR, no passthrough), adds "Force direct video" and "Force direct audio" under Player > Advanced (default off, sent only when on), and shows the server's 422 `unsupported_colour_format` message without retrying.
+- Sailfish OS: now-playing through MPRIS (title, artwork, position, duration, Play, Pause, Stop and Seek from the media controls), download notifications with progress, percent and size plus Pause, Resume and Cancel actions over a small D-Bus service, a download options page with quality and keep-until (also used to edit an existing download), and keep-until rules checked on the local copies.
+- Samsung Tizen native client: offline downloads. Pick a quality and keep-until from the film Download button; the Downloads page lists active, downloaded and needs-attention items with Pause, Resume, Cancel, Play offline, Edit keep-until and Delete.
+- webOS shell reports HDR10 and Dolby Vision from the TV configuration, because Chromium 94 has no dynamic-range media query (shared media caps stay in the web code).
 - Samsung Tizen native client: reports the TV's real decoder capabilities to the playback negotiation, adds Settings > Player > Advanced "Force direct video" and "Force direct audio" switches (off by default), and shows the server's 422 refusal message without retrying.
 - Sailfish OS: the playback request reports the device's real caps (8-bit H.264 up to 1080p60, stereo, no HDR, no passthrough), adds "Force direct video" and "Force direct audio" under Player > Advanced (default off, sent only when on), and shows the server's 422 `unsupported_colour_format` message without retrying.
 - Sailfish OS: now-playing through MPRIS (title, artwork, position, duration, Play, Pause, Stop and Seek from the media controls), download notifications with progress, percent and size plus Pause, Resume and Cancel actions over a small D-Bus service, a download options page with quality and keep-until (also used to edit an existing download), and keep-until rules checked on the local copies.
@@ -466,6 +473,11 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The web parity driver waits for the key handler after Home settles, so web D-pad references stop losing the first key.
+- Sailfish calendar week view lays the days out as side-by-side columns like the web, and the title actions page matches the web fonts and spacing.
+- Sailfish series detail matches the web episode-card geometry, and an expired keep-until rule now deletes the local download.
+- Sailfish series detail uses each episode's own still, lays the actions over the backdrop and matches the web spacing.
+- Sailfish OS: layouts follow the web mobile app more closely (nav pill with the web icons, watch-state dots and progress on cards, library counts and natural title order, film detail, Preferences list, profile picker, playlists tab, calendar views), and the page background uses the web surface colour in both themes.
 - Linux phone client: letter jump rail on library pages, closer spacing on Home, Search and detail pages, episode rail opens on the next-up episode.
 - Linux phone client: reports Full HD as its decode limit when only software decoders exist, search shows the first result's art, detail pages highlight their tab.
 - Parity drivers treat the Resume and Open labels of one title as the same focused item.
@@ -2779,6 +2791,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- tvOS (debug builds only): the app writes its current route and focused item label to parity-state.json in its Documents folder for the shared parity suite driver.
 - Parity driver labels Home cards by text when they carry no aria-label.
 - Xbox: a parity suite driver (scripts/parity/xbox/driver.mjs) and an off-by-default trace hook in the app (screen, panel, focused label, playback) so the shared suite's D-pad and playback checks run on the Windows build.
 - Shared parity suite driver for the Samsung Tizen emulator and the LG webOS simulator, plus the webOS documented exceptions in docs/parity/DEVICES.md.

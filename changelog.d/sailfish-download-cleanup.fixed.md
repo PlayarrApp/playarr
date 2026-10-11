@@ -1,1 +1,0 @@
-- Cancelling a Sailfish download clears its notification, and a finished download whose file was deleted outside the app reverts to not downloaded.

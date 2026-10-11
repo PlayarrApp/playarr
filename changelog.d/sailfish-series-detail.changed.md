@@ -1,1 +1,0 @@
-- Sailfish series detail matches the web episode-card geometry, and an expired keep-until rule now deletes the local download.

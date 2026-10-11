@@ -1,1 +1,0 @@
-- Sailfish series detail uses each episode's own still, lays the actions over the backdrop and matches the web spacing.
