@@ -16,6 +16,9 @@ public struct PlayableItem: Identifiable, Equatable, Sendable {
     public let preferredAudioLanguageCode: String?
     public let preferredSubtitleLanguageCode: String?
     public let httpHeaders: [String: String]
+    /// Shown on the system now-playing surface (episode line, poster); nil shows the title alone.
+    public let subtitle: String?
+    public let artworkURL: URL?
 
     public init(
         id: UUID,
@@ -24,7 +27,9 @@ public struct PlayableItem: Identifiable, Equatable, Sendable {
         startPositionSeconds: Double = 0,
         preferredAudioLanguageCode: String? = nil,
         preferredSubtitleLanguageCode: String? = nil,
-        httpHeaders: [String: String] = [:]
+        httpHeaders: [String: String] = [:],
+        subtitle: String? = nil,
+        artworkURL: URL? = nil
     ) {
         self.id = id
         self.streamURL = streamURL
@@ -33,6 +38,8 @@ public struct PlayableItem: Identifiable, Equatable, Sendable {
         self.preferredAudioLanguageCode = preferredAudioLanguageCode
         self.preferredSubtitleLanguageCode = preferredSubtitleLanguageCode
         self.httpHeaders = httpHeaders
+        self.subtitle = subtitle
+        self.artworkURL = artworkURL
     }
 }
 
@@ -169,6 +176,8 @@ public final class AVPlayerEngine: NSObject, PlayerEngine {
     /// `true` between `play()` and `pause()`/`stop()`, so a buffer refill after a
     /// seek while paused does not report the player as playing.
     @ObservationIgnored private var wantsToPlay = false
+    /// The system now-playing entry and its remote buttons (main actor only).
+    @ObservationIgnored private var nowPlayingStorage: NowPlayingBridge?
 
     @ObservationIgnored private let stateSubject = PassthroughSubject<PlayerPlaybackState, Never>()
     @ObservationIgnored private let timeSubject = PassthroughSubject<Double, Never>()
@@ -218,6 +227,7 @@ public final class AVPlayerEngine: NSObject, PlayerEngine {
         }
 
         updateState(.readyToPlay)
+        await beginNowPlaying(item)
     }
 
     public func play() {
@@ -240,6 +250,7 @@ public final class AVPlayerEngine: NSObject, PlayerEngine {
         currentItem = nil
         currentTime = 0
         updateState(.idle)
+        Task { @MainActor in self.nowPlayingStorage?.end() }
     }
 
     public func seek(to seconds: Double) async {
@@ -288,6 +299,7 @@ public final class AVPlayerEngine: NSObject, PlayerEngine {
             Task { @MainActor in
                 self.currentTime = seconds
                 self.timeSubject.send(seconds)
+                self.updateNowPlaying()
             }
         }
     }
@@ -379,5 +391,23 @@ public final class AVPlayerEngine: NSObject, PlayerEngine {
     private func updateState(_ newState: PlayerPlaybackState) {
         state = newState
         stateSubject.send(newState)
+        Task { @MainActor in self.updateNowPlaying() }
+    }
+
+    @MainActor private func beginNowPlaying(_ item: PlayableItem) {
+        let bridge = nowPlayingStorage ?? NowPlayingBridge()
+        nowPlayingStorage = bridge
+        bridge.begin(
+            title: item.title, subtitle: item.subtitle, artworkURL: item.artworkURL, headers: item.httpHeaders, duration: duration,
+            handlers: .init(
+                play: { [weak self] in self?.play() },
+                pause: { [weak self] in self?.pause() },
+                seek: { [weak self] seconds in Task { await self?.seek(to: seconds) } }
+            )
+        )
+    }
+
+    @MainActor private func updateNowPlaying() {
+        nowPlayingStorage?.update(position: currentTime, duration: duration, isPlaying: state == .playing, rate: rate)
     }
 }
