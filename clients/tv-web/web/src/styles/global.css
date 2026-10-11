@@ -11107,6 +11107,100 @@ body[data-input-mode="remote"] .circle-focus-host[data-remote-active] .circle-fo
   border-color: var(--ink);
 }
 
+/* Downloads: series, then season, then episode. Every level is the same row; depth only indents it. */
+.tv-download-group {
+  display: grid;
+  gap: 0.6rem;
+  list-style: none;
+}
+
+.tv-download-children {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  margin-left: clamp(14px, calc(1.6 * var(--vw)), 28px);
+  padding-left: clamp(10px, calc(1 * var(--vw)), 18px);
+  border-left: 2px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  list-style: none;
+}
+
+.tv-download-group-toggle {
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+}
+
+.tv-download-group-toggle:focus-visible {
+  outline: 0;
+}
+
+.tv-download-group-caret {
+  display: inline-block;
+  width: 1.1em;
+  color: var(--ink-muted);
+}
+
+.tv-download-row-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tv-download-row-actions button:disabled:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.tv-downloads-notify {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0 0.75rem;
+  color: var(--ink-muted);
+  font-size: clamp(0.55rem, calc(0.6 * var(--vw)), 0.75rem);
+}
+
+.tv-downloads-notify button {
+  height: clamp(34px, calc(2.8 * var(--vw)), 44px);
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.tv-download-row-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Phones: the controls drop under the text and wrap, so five buttons never run off the edge. */
+@media (max-width: 760px),
+  (max-width: 920px) and (max-height: 500px) and (pointer: coarse) {
+  .tv-download-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .tv-download-row-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .tv-download-row-actions button {
+    height: 44px;
+    min-width: 44px;
+  }
+
+  .tv-download-children {
+    margin-left: 6px;
+    padding-left: 8px;
+  }
+}
+
 /* Phones keep the letter jump rail on the right edge, as TV web has it (owner, 11 Oct 2026). It is fixed between the
    page header and the bottom nav, its 27 letters share that height (an index strip, not 44px targets), and it is as
    wide as the page gutter, so the cards (whose width comes from the shared --card-pad-right) are never covered. */

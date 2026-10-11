@@ -60,6 +60,10 @@ export interface DownloadRecord {
   serverUrl: string;
   title: string;
   subtitle: string | null;
+  /** The series an episode belongs to, with its numbers: lets the Downloads page group series, season, episode. Absent on older records and on movies. */
+  seriesTitle?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
   qualityId: string;
   qualityLabel: string;
   container: string;

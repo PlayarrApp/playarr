@@ -154,6 +154,17 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  // The download notification's Pause, Resume and Cancel buttons are handled by the open page.
+  if (event.notification.tag === "playarr-downloads" && ["pause", "resume", "cancel"].includes(event.action)) {
+    event.waitUntil(
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+        for (const client of clients) {
+          client.postMessage({ type: "playarr-download-action", action: event.action });
+        }
+      })
+    );
+    return;
+  }
   const link = event.notification.data?.link || appUrl("settings");
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {

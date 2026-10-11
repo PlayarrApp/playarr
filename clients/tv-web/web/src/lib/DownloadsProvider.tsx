@@ -34,6 +34,8 @@ import {
 } from "./downloadsDb";
 import { useLanguage } from "./i18n/LanguageProvider";
 import { leafSubtitle, playableLeaves } from "./playableLeaves";
+import { isRunning } from "./downloadGroups";
+import { useDownloadNotificationOptIn, useDownloadNotifications } from "./downloadNotifications";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { useToast } from "./toast";
 
@@ -98,6 +100,9 @@ export interface DownloadLeafInput {
   mediaFileId: string;
   title: string;
   subtitle?: string | null;
+  seriesTitle?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
   runtimeMs: number;
 }
 
@@ -142,6 +147,12 @@ interface DownloadsContextValue {
   retry: (id: string) => Promise<void>;
   /** Cancels an in-progress download or deletes a finished one -- full cleanup either way. */
   remove: (id: string) => Promise<void>;
+  /** Stops a queued, preparing or running download, keeping the bytes already fetched. */
+  pause: (id: string) => void;
+  /** Continues a paused download from the bytes it already holds. */
+  resume: (id: string) => void;
+  /** The opt-in system notification that tracks downloads (permission is asked only when the user turns it on). */
+  notifications: ReturnType<typeof useDownloadNotificationOptIn>;
   updateKeepUntil: (id: string, keepUntil: DownloadKeepUntilPolicy) => Promise<void>;
   /**
    * A completed local download's playable source, as a `blob:` URL --
@@ -376,7 +387,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
                   });
                   refreshStorageUsage();
                 } else if (status === "canceled") {
-                  patchRecord(id, { status: "canceled", errorMessage: null });
+                  // A pause aborts the run too; it keeps its own "paused" status.
+                  const current = downloadsRef.current.find((candidate) => candidate.id === id);
+                  if (current?.status !== "paused") patchRecord(id, { status: "canceled", errorMessage: null });
                 } else {
                   patchRecord(id, { status: "failed", errorMessage: errorMessage ?? null });
                 }
@@ -410,7 +423,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           .getDownload(id)
           .then((ticket) => {
             const record = downloadsRef.current.find((candidate) => candidate.id === id);
-            if (!record) return;
+            if (!record || record.status === "paused") return;
             if (ticket.status === "queued" || ticket.status === "processing") {
               patchRecord(id, {
                 status: ticketToLocalStatus(ticket),
@@ -637,6 +650,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         serverUrl: apiBaseUrl,
         title: params.title,
         subtitle: params.subtitle ?? null,
+        ...(params.seriesTitle !== undefined ? { seriesTitle: params.seriesTitle } : {}),
+        ...(params.seasonNumber !== undefined ? { seasonNumber: params.seasonNumber } : {}),
+        ...(params.episodeNumber !== undefined ? { episodeNumber: params.episodeNumber } : {}),
         qualityId: ticket.quality_id,
         qualityLabel: params.qualityLabel,
         container: ticket.container,
@@ -701,6 +717,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         mediaFileId: record.mediaFileId,
         title: record.title,
         subtitle: record.subtitle,
+        seriesTitle: record.seriesTitle,
+        seasonNumber: record.seasonNumber,
+        episodeNumber: record.episodeNumber,
         runtimeMs: record.runtimeMs,
         qualityId: record.qualityId,
         qualityLabel: record.qualityLabel,
@@ -708,6 +727,35 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       });
     },
     [enqueue, remove]
+  );
+
+  const pause = useCallback(
+    (id: string) => {
+      const record = downloadsRef.current.find((candidate) => candidate.id === id);
+      if (!record) return;
+      if (record.status !== "queued" && record.status !== "processing" && record.status !== "downloading") return;
+      clearPoll(id);
+      pendingQueueRef.current = pendingQueueRef.current.filter((candidate) => candidate !== id);
+      // Status first: the aborted run reports "canceled", which must not replace it.
+      patchRecord(id, { status: "paused", errorMessage: null });
+      abortDownload(id);
+    },
+    [clearPoll, patchRecord]
+  );
+
+  const resume = useCallback(
+    (id: string) => {
+      const record = downloadsRef.current.find((candidate) => candidate.id === id);
+      if (!record || record.status !== "paused") return;
+      // Bytes already fetched: continue the file. Otherwise the ticket may still be preparing: ask the server again.
+      if (record.storage !== null || record.bytesDownloaded > 0) {
+        beginFetch(id);
+      } else {
+        patchRecord(id, { status: "processing", errorMessage: null });
+        pollTicket(id);
+      }
+    },
+    [beginFetch, patchRecord, pollTicket]
   );
 
   const updateKeepUntil = useCallback(
@@ -863,6 +911,16 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const activeSummary = useMemo(() => activeSummaryFor(downloads), [downloads]);
 
+  const notifications = useDownloadNotificationOptIn();
+  useDownloadNotifications(downloads, notifications.enabled, t, {
+    pauseAll: () => downloadsRef.current.filter(isRunning).forEach((record) => pause(record.id)),
+    resumeAll: () => downloadsRef.current.filter((record) => record.status === "paused").forEach((record) => resume(record.id)),
+    cancelAll: () =>
+      downloadsRef.current
+        .filter((record) => isRunning(record) || record.status === "paused")
+        .forEach((record) => void remove(record.id)),
+  });
+
   const value = useMemo<DownloadsContextValue>(
     () => ({
       downloads,
@@ -873,6 +931,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       enqueue,
       retry,
       remove,
+      pause,
+      resume,
+      notifications,
       updateKeepUntil,
       getLocalPlaybackSource,
       queueWatchMutation,
@@ -887,8 +948,11 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       downloads,
       enqueue,
       getLocalPlaybackSource,
+      notifications,
+      pause,
       queueWatchMutation,
       remove,
+      resume,
       retry,
       storageSupported,
       storageUsage,
