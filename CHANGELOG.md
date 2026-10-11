@@ -294,6 +294,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Xbox wall workflow: builds the UWP app on a hosted Windows runner and runs the parity screens (dark, light), D-pad and playback as parallel jobs, signed in fresh as Device Test; the app's parity trace now reports the pairing code so a test can approve it.
 - Samsung Tizen native client: series episode downloads. Long-press an episode to download that episode or the whole season (quality and keep-until), at most two transfers at a time; the Downloads page groups by series and season.
 - Sailfish OS: the playback request reports the device's real caps (8-bit H.264 up to 1080p60, stereo, no HDR, no passthrough), adds "Force direct video" and "Force direct audio" under Player > Advanced (default off, sent only when on), and shows the server's 422 `unsupported_colour_format` message without retrying.
 - Sailfish OS: now-playing through MPRIS (title, artwork, position, duration, Play, Pause, Stop and Seek from the media controls), download notifications with progress, percent and size plus Pause, Resume and Cancel actions over a small D-Bus service, a download options page with quality and keep-until (also used to edit an existing download), and keep-until rules checked on the local copies.

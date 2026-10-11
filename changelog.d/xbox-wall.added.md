@@ -1,1 +1,0 @@
-- Xbox wall workflow: builds the UWP app on a hosted Windows runner and runs the parity screens (dark, light), D-pad and playback as parallel jobs, signed in fresh as Device Test; the app's parity trace now reports the pairing code so a test can approve it.
