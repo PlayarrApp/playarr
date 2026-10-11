@@ -1,0 +1,249 @@
+name: Apple wall
+
+# The Apple devices of the device wall on GitHub-hosted macOS runners (replaces the owner's MacBook while it is away):
+# builds the apps, runs the parity captures, uploads them as artifacts, and (stream=true) streams the simulators over VNC on a
+# tagged, ephemeral tailnet node. Hosted jobs stop after 6 h, so a streaming run starts its successor before it ends.
+#
+# NOTE: a long-running stream on hosted runners pushes GitHub's terms (Actions are meant for building and testing); the repo owner
+# has decided to use it. Never self-hosted. See docs/parity/DEVICES.md (Hosted Apple wall) for the set-up and the switch-over.
+#
+# Safety (public repository): only workflow_dispatch and schedule, both on the default branch; no pull_request trigger, so forks
+# never get a secret. Scripts that see a secret come from the default branch checkout (`trusted/`); the ref under test (`src/`)
+# is only built, and every secret is passed to the one step that needs it.
+
+run-name: Apple wall [${{ inputs.devices || 'scheduled' }}]
+
+on:
+  workflow_dispatch:
+    inputs:
+      devices:
+        description: Comma-separated devices (tvos, iphone, ipad, macos)
+        type: string
+        default: tvos,iphone,ipad,macos
+      ref:
+        description: Branch, tag or SHA of the apps to build (default - the default branch)
+        type: string
+        default: ""
+      capture:
+        description: Run the parity captures and upload them
+        type: boolean
+        default: true
+      stream:
+        description: Join the tailnet and stream the simulators over VNC until the run ends
+        type: boolean
+        default: false
+      chain:
+        description: While streaming, start the next run before this one ends
+        type: boolean
+        default: true
+      length:
+        description: Minutes this run lasts, at most 345 (default - 345 minus a per-device offset, so handovers do not coincide)
+        type: string
+        default: ""
+  # Watchdog: only acts when the repository variable APPLE_WALL_SCHEDULE is "true" (set by the switch-over); starts a streaming
+  # run for every device that has none running.
+  schedule:
+    - cron: "17,47 * * * *"
+
+permissions:
+  contents: read
+
+env:
+  LEAD_MINUTES: "25" # the successor starts this long before the end of a run
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    outputs:
+      any: ${{ steps.plan.outputs.any }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          DEVICES: ${{ inputs.devices }}
+          LENGTH: ${{ inputs.length }}
+          ENABLED: ${{ vars.APPLE_WALL_SCHEDULE }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          declare -A off=([tvos]=0 [iphone]=30 [ipad]=60 [macos]=90) vnc=([tvos]=TVOS [iphone]=IPHONE [ipad]=IPAD [macos]=MACOS)
+          if [[ $EVENT == schedule ]]; then
+            if [[ $ENABLED == true ]]; then
+              live=$(gh run list -R "$GITHUB_REPOSITORY" -w apple-wall.yml -L 100 --json status,displayTitle \
+                -q '.[] | select(.status != "completed") | .displayTitle')
+              for d in tvos iphone ipad macos; do
+                if grep -Eq "\[([a-z,]*,)?$d(,[a-z,]*)?\]" <<<"$live"; then continue; fi
+                gh workflow run apple-wall.yml -R "$GITHUB_REPOSITORY" --ref "$DEFAULT_BRANCH" \
+                  -f devices="$d" -f stream=true -f chain=true -f length="$((345 - off[$d]))"
+                echo "watchdog started $d"
+              done
+            fi
+            echo 'any=false' >> "$GITHUB_OUTPUT"; echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          items=()
+          for d in ${DEVICES//,/ }; do
+            [[ -n ${off[$d]:-} ]] || { echo "::error::unknown device $d"; exit 1; }
+            len=${LENGTH:-$((345 - off[$d]))}
+            [[ $len =~ ^[0-9]+$ && $len -ge 1 && $len -le 345 ]] || { echo "::error::length must be 1 to 345 minutes"; exit 1; }
+            items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len}")
+          done
+          echo "any=true" >> "$GITHUB_OUTPUT"
+          echo "matrix={\"include\":[$(IFS=,; echo "${items[*]}")]}" >> "$GITHUB_OUTPUT"
+
+  wall:
+    name: ${{ matrix.device }}
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: macos-15
+    timeout-minutes: 355
+    permissions:
+      actions: write # dispatch of the successor run
+      contents: read
+    env:
+      DEVICE: ${{ matrix.device }}
+      TRUSTED: ${{ github.workspace }}/trusted
+      SRC: ${{ github.workspace }}/src
+      HAVE_TS: ${{ secrets.TS_OAUTH_SECRET != '' && secrets.TS_OAUTH_CLIENT_ID != '' }}
+    steps:
+      - name: Note the start time
+        run: |
+          echo "START=$(date +%s)" >> "$GITHUB_ENV"
+          echo "WORK=$RUNNER_TEMP/wall" >> "$GITHUB_ENV"
+
+      - name: Check out the default branch (scripts that see secrets)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+
+      - name: Check out the ref under test
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.event.repository.default_branch }}
+          path: src
+          persist-credentials: false
+
+      - name: Record the toolchain
+        run: |
+          xcodebuild -version; swift --version; sw_vers
+          xcrun simctl list runtimes | grep -E 'iOS|tvOS' || true
+
+      - name: Build the app
+        timeout-minutes: 60
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" build "$DEVICE"
+
+      - name: Start the simulator, sign in and launch
+        timeout-minutes: 15
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
+
+      - name: Parity captures
+        id: capture
+        if: github.event_name != 'workflow_dispatch' || inputs.capture
+        timeout-minutes: 30
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          OUT: ${{ runner.temp }}/capture
+          REF: ${{ inputs.ref || github.event.repository.default_branch }}
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" capture "$DEVICE"
+
+      # The shared suite (scripts/parity, docs/parity/SUITE.md) takes over from the interim captures above once an Apple driver
+      # exists in the default branch: D-pad checks and playback results (dpad.json, playback.json) join the artifact.
+      - name: Parity suite (when the Apple driver exists)
+        id: suite
+        if: steps.capture.outcome == 'success'
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+        run: |
+          driver="$TRUSTED/scripts/parity/drivers/apple-sim.mjs"
+          if [[ -f $TRUSTED/scripts/parity/suite-run.mjs && -f $driver ]]; then
+            cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+            node suite-run.mjs --driver "$driver" --out "${{ runner.temp }}/capture" --via keys
+          else
+            echo "::notice::no Apple suite driver in the default branch yet: interim route captures only (D-pad and playback not run)"
+          fi
+
+      - name: Upload the captures
+        if: steps.capture.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apple-wall-${{ matrix.device }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/capture
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: VNC server self-test (loopback, no tailnet)
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.stream) }}
+        timeout-minutes: 5
+        env:
+          STREAM_BIND: 127.0.0.1
+          PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] || 'selftest1' }}
+        run: |
+          export DEADLINE=$(( $(date +%s) + 40 ))
+          bash "$TRUSTED/scripts/apple-wall/wall.sh" stream "$DEVICE" &
+          pid=$!
+          port=$(case $DEVICE in tvos) echo 5905;; iphone) echo 5912;; ipad) echo 5914;; macos) echo 5916;; esac)
+          sleep 25
+          curl -fsS "http://127.0.0.1:$port/" | tee "$RUNNER_TEMP/vnc-health.txt"
+          grep -Eq 'frames=[1-9]|device ' "$RUNNER_TEMP/vnc-health.txt"
+          wait $pid
+
+      - name: Join the tailnet (ephemeral, tagged node)
+        id: ts
+        if: github.event_name == 'workflow_dispatch' && inputs.stream && env.HAVE_TS == 'true'
+        continue-on-error: true
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:playarr-ci-wall
+          hostname: ci-wall-${{ matrix.device }}-${{ github.run_id }}
+          args: --accept-routes=false --accept-dns=false
+          use-cache: "true"
+
+      - name: Stream over VNC until the end of the run
+        if: steps.ts.outcome == 'success'
+        timeout-minutes: 350
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] }}
+          GH_TOKEN: ${{ github.token }}
+          LENGTH: ${{ matrix.length }}
+          CHAIN: ${{ github.event_name == 'schedule' || inputs.chain }}
+          REF_INPUT: ${{ inputs.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          export STREAM_BIND; STREAM_BIND=$(tailscale ip -4 | head -1)
+          export DEADLINE=$(( START + LENGTH * 60 ))
+          if [[ $CHAIN == true ]]; then
+            export DISPATCH_AT=$(( DEADLINE - LEAD_MINUTES * 60 ))
+            export CHAIN_CMD="gh workflow run apple-wall.yml -R $GITHUB_REPOSITORY --ref $DEFAULT_BRANCH -f devices=$DEVICE -f stream=true -f capture=false -f chain=true -f length=345 ${REF_INPUT:+-f ref=\"\$REF_INPUT\"}"
+          fi
+          bash "$TRUSTED/scripts/apple-wall/wall.sh" stream "$DEVICE"
+
+      - name: Delete the simulator
+        if: always()
+        run: |
+          [[ -f $WORK/state.env ]] && . "$WORK/state.env" || true
+          [[ -z ${UDID:-} ]] || xcrun simctl delete "$UDID" || true
+          pkill -x PlayarrMac || true
