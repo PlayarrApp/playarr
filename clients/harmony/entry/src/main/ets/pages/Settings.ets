@@ -16,7 +16,7 @@ import type { NavRailItem } from '../design/components/NavRail';
 import { PlayarrLogo } from '../design/components/PlayarrLogo';
 import { Clock } from '../design/components/Clock';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
-import { SelectField } from '../design/components/SelectField';
+import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
 import type { AudioLanguage } from '../core/AudioLanguages';
 import { AUDIO_LANGUAGES, normaliseAudioLanguage, audioLanguageLabel } from '../core/AudioLanguages';
 import { getPlayerPreferences, updatePlayerPreferences } from '../data/ProfileRepository';
@@ -44,11 +44,6 @@ const SECTIONS: SettingsSection[] = [
   { id: SERVER, number: '05', title: 'Server connection' },
 ];
 const AUDIO_CHOICES: Choice[] = AUDIO_LANGUAGES.map((language: AudioLanguage): Choice => ({ value: language.value, label: language.label }));
-const THEME_CHOICES: Choice[] = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-];
 
 // Web `.settings-option`: 480x92 rows from (154, 162); number at +32/+24, title at +92, arrow at +432.
 const LIST_TOP: number = 162;

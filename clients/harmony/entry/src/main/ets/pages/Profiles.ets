@@ -54,11 +54,12 @@ import type { RgbaColor } from '../core/Tokens';
 
 import { listProfiles, verifyPin } from '../data/ProfileRepository';
 
-import { getSessionManager, getServerDirectory } from '../AppContainer';
+import { getSessionManager, getServerDirectory, saveThemeChoice } from '../AppContainer';
 import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 import { ROUTES } from '../navigation/Routes';
 
-import { activeColors, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
+import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
+import { activeColors, setThemeModeSetting, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS } from '../design/Motion';
@@ -96,6 +97,10 @@ const TV_CHOICE_GAP: number = 42;
 const TV_ACTION_HEIGHT: number = 44;
 const TV_ACTION_ICON: number = 18;
 const TV_ACTION_TEXT: number = 10.752;
+// Web `.theme-select` on the profile picker: 144 wide at (1551, 50).
+const THEME_SELECT_LEFT: number = 1551;
+const THEME_SELECT_TOP: number = 50;
+const THEME_SELECT_WIDTH: number = 144;
 const TV_ADD_START: string = '#3d202a';
 const TV_ADD_END: string = '#a82655';
 const TOUCH_AVATAR_DIAMETER: number = 104;
@@ -324,6 +329,18 @@ struct Profiles {
     Stack({ alignContent: Alignment.Top }) {
       PlayarrLogo({ logoSize: tv(TvGeometry.logoSize) })
         .position({ x: tv(TvGeometry.logoLeft), y: tv(TvGeometry.logoTop) })
+      // Web's top-right theme control (the language select needs the Language setting, which is not built here).
+      SelectField({
+        options: THEME_CHOICES,
+        value: this.themeSetting,
+        selectWidth: THEME_SELECT_WIDTH,
+        onChange: (value: string): void => {
+          setThemeModeSetting(value as ThemeModeSetting);
+          saveThemeChoice(value as ThemeModeSetting);
+        },
+      })
+        .position({ x: tv(THEME_SELECT_LEFT), y: tv(THEME_SELECT_TOP) })
+        .zIndex(2)
       Column() {
       Text('Profiles')
         .fontSize(tv(10.368))

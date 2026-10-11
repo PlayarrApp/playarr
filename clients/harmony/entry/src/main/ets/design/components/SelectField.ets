@@ -11,6 +11,13 @@ import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
 import type { Choice } from './ChoiceSegments';
 
+/** The colour theme choices, shared by Settings > Appearance and the profile picker's theme select. */
+export const THEME_CHOICES: Choice[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
 const MIN_HEIGHT: number = 56;
 const GAP: number = 11.52;
 const PADDING_V: number = 10.56;
