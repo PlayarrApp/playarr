@@ -109,6 +109,9 @@ namespace Playarr.Xbox.Views
             }
 
             PlayButton.IsEnabled = _viewModel.CanPlay;
+            PlayLabel.Text = _viewModel.ResumePositionMs is { } resumeMs
+                ? "Resume from " + TimeSpan.FromMilliseconds(resumeMs).ToString(resumeMs >= 3600000 ? @"h\:mm\:ss" : @"m\:ss")
+                : "Play";
 
             SeriesPanel.Visibility = _viewModel.IsSeries ? Visibility.Visible : Visibility.Collapsed;
             EpisodeTitleText.Visibility = Visibility.Collapsed;
@@ -311,6 +314,7 @@ namespace Playarr.Xbox.Views
                 // of this screen's scope as requested.
                 var parameter = new PlayerNavigationParameter(
                     mediaFileId.Value,
+                    resumePositionMs: _viewModel.ResumePositionMs,
                     title: _viewModel.Title,
                     workId: _viewModel.WorkId,
                     upNext: _viewModel.UpNextQueue);

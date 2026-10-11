@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Playarr.Core.Models;
@@ -50,6 +51,7 @@ namespace Playarr.Xbox.ViewModels
         private readonly Guid _workId;
 
         private WorkDetail? _detail;
+        private Dictionary<Guid, WatchProgress> _progress = new Dictionary<Guid, WatchProgress>();
         private bool _isLoading;
         private string? _errorMessage;
         private int _selectedSeasonIndex = -1;
@@ -124,6 +126,10 @@ namespace Playarr.Xbox.ViewModels
         /// </summary>
         public Guid? PlayableMediaFileId => IsSeries ? SelectedEpisode?.MediaFileId : _detail?.MediaFileId;
 
+        /// <summary>Where to resume the playable file: its part-watched position, or null to start from the beginning.</summary>
+        public long? ResumePositionMs =>
+            PlayableMediaFileId is { } id && _progress.TryGetValue(id, out var p) && p.State == WatchState.InProgress && p.PositionMs > 0 ? p.PositionMs : (long?)null;
+
         public bool CanPlay => PlayableMediaFileId.HasValue;
 
         /// <summary>The work whose similar titles the end-of-playback screen suggests.</summary>
@@ -173,6 +179,15 @@ namespace Playarr.Xbox.ViewModels
             try
             {
                 _detail = await _environment.ApiClient.GetWorkAsync(_workId);
+                try
+                {
+                    _progress = (await _environment.ApiClient.ListWatchProgressAsync()).GroupBy(p => p.MediaFileId).ToDictionary(g => g.Key, g => g.First());
+                }
+                catch (Exception)
+                {
+                    // Resume points are an extra: without them the title plays from the start.
+                }
+
                 SelectDefaultSeasonAndEpisode();
             }
             catch (ApiException error)
@@ -200,6 +215,28 @@ namespace Playarr.Xbox.ViewModels
         {
             if (Seasons.Count == 0)
             {
+                return;
+            }
+
+            // Web: a series opens on the next item to play: the episode part-watched most recently, else the one after
+            // the last finished episode, else the first. Its season is selected.
+            var ordered = Seasons.SelectMany((season, si) => season.Episodes.Select(e => (si, e))).Where(x => x.e.MediaFileId.HasValue).ToList();
+            WatchProgress? Of((int si, EpisodeDetail e) x) => _progress.TryGetValue(x.e.MediaFileId!.Value, out var p) ? p : null;
+            var resume = ordered.Where(x => Of(x)?.State == WatchState.InProgress).OrderByDescending(x => Of(x)!.UpdatedAt ?? DateTimeOffset.MinValue).Cast<(int si, EpisodeDetail e)?>().FirstOrDefault();
+            if (resume == null)
+            {
+                var lastWatched = ordered.Where(x => Of(x)?.State == WatchState.Watched).OrderByDescending(x => Of(x)!.UpdatedAt ?? DateTimeOffset.MinValue).Cast<(int si, EpisodeDetail e)?>().FirstOrDefault();
+                if (lastWatched != null)
+                {
+                    var at = ordered.FindIndex(x => ReferenceEquals(x.e, lastWatched.Value.e));
+                    resume = at >= 0 && at + 1 < ordered.Count ? ordered[at + 1] : lastWatched;
+                }
+            }
+
+            if (resume != null)
+            {
+                SelectedSeasonIndex = resume.Value.si;
+                SelectedEpisode = resume.Value.e;
                 return;
             }
 

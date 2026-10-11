@@ -1,0 +1,1 @@
+- Xbox: a title's Play button resumes from the saved position ("Resume from 1:23") and a series opens on the next item to play (the episode part-watched most recently, else the one after the last finished), as on the web.
