@@ -43,7 +43,7 @@ elif dev == "iphone":
     t = next(d for d in types if d["name"] == "iPhone 16")
     r = sorted([x for x in runtimes if ".iOS-" in x["identifier"]], key=ver)[-1]
 else:  # the iPad sim must be iOS 18 (iPadOS 26 rotation fails on the landscape wall build); newest as fallback
-    t = next(d for d in types if d["name"].startswith("iPad Air 13-inch"))
+    t = next(d for d in types if d["name"] == "iPad Air 13-inch (M2)")  # the M4 type needs iOS 26
     ios = sorted([x for x in runtimes if ".iOS-" in x["identifier"]], key=ver)
     r = next((x for x in reversed(ios) if ver(x)[0] == 18), None)
     if r is None: sys.exit("no iOS 18 runtime on this runner (iPadOS 26 does not rotate): iPad skipped")
@@ -133,13 +133,13 @@ capture)
       id=${pair%%:*}; route=${pair#*:}
       ACCESS_TOKEN=$ACCESS_TOKEN launch "$theme" "$route"
       sleep 14
-      shot "$OUT/$theme/$id.png" || { log "no frame for $theme/$id"; rm -rf "$OUT"; exit 1; }
-      [[ $(stat -f %z "$OUT/$theme/$id.png") -gt 20000 ]] || { log "$theme/$id looks empty"; rm -rf "$OUT"; exit 1; }
+      shot "$OUT/$theme/$id.png" || { log "no frame for $theme/$id"; rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"; exit 1; }
+      [[ $(stat -f %z "$OUT/$theme/$id.png") -gt 20000 ]] || { log "$theme/$id looks empty"; rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"; exit 1; }
       log "captured $theme/$id"
     done
-    [[ $(stat -f %z "$OUT/$theme/home.png") -gt 150000 ]] || { log "$theme/home.png is too plain: an error or signed-out screen"; rm -rf "$OUT"; exit 1; }
+    [[ $(stat -f %z "$OUT/$theme/home.png") -gt 150000 ]] || { log "$theme/home.png is too plain: an error or signed-out screen"; rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"; exit 1; }
     # An app stuck on one screen (sign-in, error) gives identical frames: publish nothing then.
-    [[ $(shasum "$OUT/$theme"/*.png | awk '{print $1}' | sort -u | wc -l) -ge 3 ]] || { log "$theme frames are nearly identical: not signed in or stuck"; rm -rf "$OUT"; exit 1; }
+    [[ $(shasum "$OUT/$theme"/*.png | awk '{print $1}' | sort -u | wc -l) -ge 3 ]] || { log "$theme frames are nearly identical: not signed in or stuck"; rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"; exit 1; }
   done
   printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
     "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$OUT/build.json"

@@ -35,6 +35,7 @@ profiles = profiles if isinstance(profiles, list) else profiles.get("profiles", 
 wanted = next((p for p in profiles if p.get("display_name") == "Device Test"), None)
 if wanted is None:
     sys.exit("profile 'Device Test' not found on the account")
+print("login: user_id match=%s is_current=%s pin_locked=%s" % (wanted["id"] == login.get("user_id"), wanted.get("is_current"), wanted.get("pin_locked")), file=sys.stderr)
 if wanted["id"] != login.get("user_id"):
     login = call("/api/v1/auth/login", dict(device, profile_user_id=wanted["id"]), token=login["access_token"], what="profile switch")
 print(login["access_token"])
