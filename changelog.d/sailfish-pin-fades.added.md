@@ -1,1 +1,0 @@
-- Sailfish OS: PIN prompt for PIN-locked profiles in the profile picker (unlock with the stored device credential, wrong-PIN and rate-limit messages) and the web's scroll-edge fades on Home, rails, grids, detail and settings.

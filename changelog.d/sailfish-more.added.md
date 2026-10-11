@@ -1,1 +1,0 @@
-- Sailfish OS: calendar agenda, watchlist, requests and downloads (server tickets plus resumable offline copies with offline playback), with a loopback media proxy so the platform player can play authenticated HLS and direct streams.
