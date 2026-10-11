@@ -80,6 +80,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -153,6 +156,12 @@ private fun ExperienceCalendarScreen(
     viewModel: CalendarViewModel,
 ) {
     val state by viewModel.calendar.state.collectAsState()
+    LaunchedEffect(state.mode) { parityLog("calendar view=${state.mode.name.lowercase()}") }
+    if (isTelevision) {
+        // Web: opening the calendar from the rail puts focus on Today straight away.
+        val contentEntry = LocalTvContentEntry.current
+        TvDefaultFocusEffect(Unit, takeFirst = true) { runCatching { contentEntry.requester?.requestFocus() } }
+    }
     LiveRefreshEffect(
         viewModel.liveBus,
         CALENDAR_LIVE_INTEREST,
@@ -185,6 +194,7 @@ private fun ExperienceCalendarScreen(
         open = state.panel == CalendarPanel.Subscription,
         onToggle = { holder.openPanel(CalendarPanel.Subscription) },
     )
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     // Period navigation is a typed Navigation action: the page header orders it first and draws round arrows and Today.
     val navigation = PlayarrPageAction.Navigation(
         id = "calendar-period",
@@ -198,7 +208,12 @@ private fun ExperienceCalendarScreen(
             ),
             PlayarrNavItem("previous", playarrString(PlayarrString.CalendarPrevious), PlayarrActionIcon.Prev, onClick = holder::previous),
             // Web TV: Today holds the autofocus ring on entry.
-            PlayarrNavItem("today", playarrString(PlayarrString.CalendarToday), null, primary = true, modifier = Modifier.tvContentDefaultFocus(), onClick = holder::goToToday),
+            PlayarrNavItem("today", playarrString(PlayarrString.CalendarToday), null, primary = true, modifier = Modifier.tvContentDefaultFocus().onPreviewKeyEvent { e: androidx.compose.ui.input.key.KeyEvent ->
+                // Web: DOWN from Today lands on the Filters button (Next, the Calendar link, then down onto Filters).
+                if (e.key == androidx.compose.ui.input.key.Key.DirectionDown && e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
+                    repeat(2) { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right) }; focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down); true
+                } else false
+            }, onClick = holder::goToToday),
             PlayarrNavItem("next", playarrString(PlayarrString.CalendarNext), PlayarrActionIcon.Next, onClick = holder::next),
         ),
     )

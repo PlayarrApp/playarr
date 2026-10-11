@@ -146,9 +146,11 @@ internal fun PlayarrFiltersSheet(
     closeLabel: String,
     onClose: () -> Unit,
     footer: (@Composable RowScope.() -> Unit)? = null,
+    initialFocus: FocusRequester? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     PlayarrSheetFrame(
+        initialFocus = initialFocus,
         titleContent = { if (playarrTvDrawer()) Text(title, modifier = Modifier.semantics { heading() }) else Text(title, color = WebInk, fontSize = 22.4.sp, lineHeight = 33.6.sp, fontWeight = FontWeight(590), modifier = Modifier.semantics { heading() }) },
         kicker = kicker,
         closeLabel = closeLabel,
@@ -193,6 +195,7 @@ internal fun PlayarrPanel(
 
 @Composable
 private fun PlayarrSheetFrame(
+    initialFocus: FocusRequester? = null,
     titleContent: (@Composable () -> Unit)?,
     kicker: String?,
     closeLabel: String,
@@ -204,7 +207,7 @@ private fun PlayarrSheetFrame(
     val focus = remember { FocusRequester() }
     val dismiss = if (dismissible) onClose else ({})
     if (io.playarr.shared.designsystem.page.LocalPlayarrFormFactor.current == io.playarr.shared.designsystem.page.PlayarrFormFactor.Tv) {
-        PlayarrTvDrawer(titleContent, kicker, closeLabel, onClose, dismissible, footer, focus, content)
+        PlayarrTvDrawer(titleContent, kicker, closeLabel, onClose, dismissible, footer, focus, content, initialFocus)
         return
     }
     Dialog(
@@ -252,7 +255,7 @@ private fun PlayarrSheetFrame(
             }
         }
     }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) { runCatching { (initialFocus ?: focus).requestFocus() } }
 }
 
 /** True on the television layout, where the shared drawer and its controls take the web TV metrics. */
@@ -275,6 +278,7 @@ private fun PlayarrTvDrawer(
     footer: (@Composable RowScope.() -> Unit)?,
     focus: FocusRequester,
     content: @Composable ColumnScope.() -> Unit,
+    initialFocus: FocusRequester? = null,
 ) {
     val dismiss = if (dismissible) onClose else ({})
     Dialog(
@@ -338,7 +342,7 @@ private fun PlayarrTvDrawer(
             }
         }
     }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) { runCatching { (initialFocus ?: focus).requestFocus() } }
 }
 
 @Composable
@@ -477,6 +481,10 @@ internal var parityClock: java.time.Instant? = null
 /** Debug builds: the route the app opens on (`parity_route` launch extra), for D-pad-only parity captures. */
 internal var parityRoute: String? = null
 
+/** Debug builds with `parity_route`: state the device-parity suite driver reads back with `logcat -s PlayarrParity` (where the app is, in web terms). */
+internal fun parityLog(message: String) {
+    if (parityRoute != null) android.util.Log.i("PlayarrParity", message)
+}
 /** Debug builds: a media file id to play on launch (`parity_route=player/<id>`), as the other clients' parity drivers do. */
 internal var parityPlay: String? = null
 

@@ -492,6 +492,7 @@ internal enum class PlayarrString(
         "ライブラリが更新されると、利用可能な{{collection}}がここに表示されます。",
     ),
     LibraryFilters("Filters", "ตัวกรอง", "フィルター"),
+    LibraryOpenWork("Open {{title}}", "เปิด {{title}}", "{{title}}を開く"),
     LibraryCloseFilters("Close filters", "ปิดตัวกรอง", "フィルターを閉じる"),
     LibraryAudioLanguage("Audio language", "ภาษาเสียง", "音声の言語"),
     LibrarySubtitleLanguage("Subtitle language", "ภาษาคำบรรยาย", "字幕の言語"),

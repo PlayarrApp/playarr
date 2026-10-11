@@ -1469,6 +1469,7 @@ internal fun PlayarrExperience(
     val entry by navController.currentBackStackEntryAsState()
     val currentRoute = entry?.destination?.route.orEmpty().substringBefore('?')
     var detailSectionRoute by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentRoute, detailSectionRoute) { parityLog("route=$currentRoute section=${detailSectionRoute.orEmpty()}") }
     // Detail pages highlight the section they belong to (Series for a series, etc.), as the web rail does.
     val activeNavRoute = if (currentRoute.startsWith("experience-detail")) detailSectionRoute ?: currentRoute else currentRoute
     val token by viewModel.accessToken.collectAsState()
@@ -2362,6 +2363,11 @@ private fun ExperienceNavHost(
             }
         }
         composable("experience-player/{mediaFileId}") { entry ->
+            // Debug parity runs open the player on a media file id directly: seed the queue the detail page would have built.
+            val routedId = entry.arguments?.getString("mediaFileId").orEmpty()
+            LaunchedEffect(routedId) {
+                if (parityRoute != null && playbackQueue.currentItem == null && routedId.isNotBlank()) viewModel.startPlayback(routedId, emptyList())
+            }
             ExperiencePlayerScreen(
                 mediaFileId = entry.arguments?.getString("mediaFileId").orEmpty(),
                 serverUrl = serverUrl,
@@ -2760,8 +2766,8 @@ private fun ExperienceHomeScreen(
                     val tvRails = remember { TvRails(homeScope, TvRails.Vertical.ClosestX) }
                     tvRails.sizes = current.value.map { it.works.size }
                     tvRails.columnState = railsState
-                    val navEntry = LocalTvNavEntry.current
-                    tvRails.onLeftEdge = { navEntry?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false }
+                    // Web: LEFT from the first card reaches the rail item nearest the card (geometric), not the current page's item.
+                    tvRails.onLeftEdge = { false }
                     // Nothing sits above the first rail (Customise Home now lives in Settings), so UP at the top edge stays put.
                     tvRails.onUpEdge = { false }
                     if (isTelevision) {
@@ -3198,6 +3204,8 @@ internal fun ExperienceLandscapeCard(
     webTvStyle: Boolean = false,
     /** With [webTvStyle]: the library grid card (`.tv-title-card`: lift 6.6, art scale 1.04, title only) instead of the home card. */
     webTvLibrary: Boolean = false,
+    /** Accessibility label of the whole card (web aria-label); null keeps the merged texts. */
+    contentLabel: String? = null,
 ) {
     val resolvedSubtitle = displaySubtitle ?: work.playarrKindYearLabel()
     var focused by remember { mutableStateOf(false) }
@@ -3229,7 +3237,8 @@ internal fun ExperienceLandscapeCard(
             .combinedClickable(
                 onClick = { onSelected(); onClick() },
                 onLongClick = onContext,
-            ),
+            )
+            .then(if (contentLabel != null) Modifier.semantics { contentDescription = contentLabel } else Modifier),
     ) {
     // The lift is applied here, inside the focus target, so focus search keeps the unlifted bounds.
     Column(Modifier.fillMaxWidth().then(if (webTvStyle) Modifier.mediaCardLift(focused, PlayarrCardMotions.Home) else Modifier)) {
@@ -3451,6 +3460,7 @@ internal fun LibraryResults(
             verticalArrangement = Arrangement.spacedBy(if (isTelevision) 27.dp else 24.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
+                val openLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title)
                 ExperienceLandscapeCard(
                     work = work,
                     serverUrl = serverUrl,
@@ -3459,7 +3469,9 @@ internal fun LibraryResults(
                     selected = work.id == selectedId,
                     onSelected = { onSelected(work) },
                     onClick = { onOpen(work) },
-                    modifier = (if (grid != null) Modifier.tvGridItem(grid, index) else Modifier).fillMaxWidth(),
+                    modifier = (if (grid != null) Modifier.tvGridItem(grid, index) else Modifier).fillMaxWidth()
+                        ,
+                    contentLabel = if (isTelevision) openLabel else null, // web: aria-label "Open <title>"
                     progress = progressByWork[work.id],
                     onContext = { onContext(work) },
                     showUnwatched = progressLoaded,
@@ -3779,10 +3791,10 @@ private fun ExperienceLibraryScreen(
             val tvGrid = remember(kind) { TvGrid(libraryScope) }
             val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
             val letterFocus = remember { FocusRequester() }
-            val libraryNavEntry = LocalTvNavEntry.current
-            tvGrid.onLeftEdge = { libraryNavEntry?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false }
+            tvGrid.onLeftEdge = { false } // geometric, as web (see Home)
             tvGrid.onRightEdge = { runCatching { letterFocus.requestFocus() }.getOrDefault(false) }
             var filtersOpen by remember { mutableStateOf(false) }
+            LaunchedEffect(filtersOpen) { parityLog("panel=${if (filtersOpen) "filters" else ""}") }
             val viewMode = library.view
             // Web: one artwork size for every poster and thumbnail, set in Settings > Appearance (not per library).
             val artworkSize = LocalPlayarrDisplayPreferences.current.artworkSize
@@ -4725,6 +4737,7 @@ private fun MediaContextDialog(
             downloadCandidates = candidates
         }
     }
+    val firstAction = remember { FocusRequester() }
     run {
         // Web `MediaContextMenu` drawer (the phone drawer uses the same rows): "Title actions", the title, then 68 dp rows with a crimson glyph.
         PlayarrFiltersSheet(
@@ -4732,6 +4745,7 @@ private fun MediaContextDialog(
             kicker = playarrString(PlayarrString.ContextTitleActions),
             closeLabel = playarrString(PlayarrString.CommonClose),
             onClose = onDismiss,
+            initialFocus = firstAction, // web: the drawer opens on its first action
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 // Web `play`: resolve the title's playable leaves, prefer the one with progress, else the first.
@@ -4743,10 +4757,10 @@ private fun MediaContextDialog(
                             resolvingPlay = false
                             (leaves.firstOrNull { it.mediaFileId == preferredMediaFileId } ?: leaves.firstOrNull())?.let { onPlay(it.mediaFileId) }
                         }
-                    }, enabled = !resolvingPlay)
+                    }, enabled = !resolvingPlay, modifier = Modifier.focusRequester(firstAction))
                 }
                 // Web lists no Open row (OK on the card opens the title); kept only when there is nothing to play.
-                if (onPlay == null) TvDrawerActionRow("\u25B6", playarrString(PlayarrString.ContextOpen), onOpen)
+                if (onPlay == null) TvDrawerActionRow("\u25B6", playarrString(PlayarrString.ContextOpen), onOpen, modifier = Modifier.focusRequester(firstAction))
                 if (canDownload) {
                     TvDrawerActionRow("\u21E9", playarrString(if (resolvingDownload) PlayarrString.ContextResolving else PlayarrString.ContextDownload), download, enabled = !resolvingDownload)
                 }
@@ -4803,7 +4817,7 @@ private fun TvLibrarySkeleton(loadingLabel: String) {
 
 /** Web drawer action row: 68 dp, 14 dp radius, `--surface-soft`, a 19.52 px crimson glyph in a 42 dp slot, a bold 19.2 px label; focus is the ring. */
 @Composable
-private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit, enabled: Boolean = true) {
+private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit, enabled: Boolean = true, modifier: Modifier = Modifier) {
     var focused by remember { mutableStateOf(false) }
     val tv = playarrTvDrawer()
     Surface(
@@ -4812,7 +4826,7 @@ private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit,
         shape = RoundedCornerShape(14.dp),
         color = WebSurfaceSoft,
         contentColor = WebInk,
-        modifier = Modifier.fillMaxWidth().height(68.dp).webFocusRing(focused, radius = 14.dp, offset = 0.dp).onFocusChanged { focused = it.isFocused },
+        modifier = modifier.fillMaxWidth().height(68.dp).webFocusRing(focused, radius = 14.dp, offset = 0.dp).onFocusChanged { focused = it.isFocused },
     ) {
         Row(Modifier.padding(start = 18.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(glyph, color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp))
@@ -5273,6 +5287,7 @@ private fun ExperienceDetailScreen(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.heroBackdrop(isTelevision, 0.55f, 0.48f),
                         heroStyle = true,
+                        artWidth = 1920, // web WorkDetail: the backdrop is requested at 1920
                     )
                     Box(Modifier.fillMaxSize().heroScrim(isTelevision))
         }
@@ -5541,6 +5556,7 @@ private fun ExperienceVideoDetailContent(
             contentScale = ContentScale.Crop,
             modifier = Modifier.heroBackdrop(isTelevision, 0.55f, 0.48f),
             heroStyle = true,
+            artWidth = 1920,
         )
         Box(
             Modifier.fillMaxSize().heroScrim(isTelevision),
@@ -8857,8 +8873,10 @@ private fun ExperiencePlayerScreen(
     }
     LaunchedEffect(state, activeMediaFileId) {
         if (state !is ExperienceLoad.Ready) return@LaunchedEffect
+        var tick = 0
         while (true) {
             timeline = viewModel.timelineSnapshot()
+            if (++tick % 4 == 0) parityLog("player positionMs=${timeline.positionMs}")
             kotlinx.coroutines.delay(250)
         }
     }
@@ -9358,14 +9376,16 @@ internal fun AuthenticatedArtwork(
     /** Overrides the hero opacity (the phone key art is drawn at 0.42 in the light theme). */
     artAlpha: Float? = null,
     artAlignment: androidx.compose.ui.Alignment = androidx.compose.ui.Alignment.Center,
+    /** Web `artWidth`: the requested width for every kind (the title detail backdrop asks for 1920); null uses the card default per kind. */
+    artWidth: Int? = null,
 ) {
     val context = LocalContext.current
     val serverAccess = rememberPlayarrWorkServerAccess(work.id, serverUrl, accessToken)
     // Per kind: the server artwork endpoint (cached, authenticated), then the provider URL; a
     // failed load moves on to the next candidate instead of leaving the hero/tile empty.
-    val candidateGroups = remember(work.id, work.images, kinds, serverAccess?.serverUrl) {
+    val candidateGroups = remember(work.id, work.images, kinds, serverAccess?.serverUrl, artWidth) {
         serverAccess?.let { access ->
-            kinds.distinct().map { playarrArtworkCandidates(work.id, work.images, listOf(it), access.serverUrl) }
+            kinds.distinct().map { playarrArtworkCandidates(work.id, work.images, listOf(it), access.serverUrl) { kind -> artWidth ?: playarrDefaultArtworkWidth(kind) } }
         }.orEmpty()
     }
     val candidates = remember(candidateGroups) { candidateGroups.flatten().distinct() }

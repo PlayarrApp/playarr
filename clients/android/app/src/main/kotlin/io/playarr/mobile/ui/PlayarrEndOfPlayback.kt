@@ -177,6 +177,8 @@ internal fun playarrArtworkCandidates(
     images: List<io.playarr.shared.data.model.ImageAsset>,
     kinds: List<io.playarr.shared.data.model.ImageKind>,
     serverUrl: String,
+    /** Sizes the request like web (`?width=`, snapped up by the server): null keeps the full-size source. */
+    width: ((io.playarr.shared.data.model.ImageKind) -> Int)? = null,
 ): List<String> = kinds.distinct().flatMap { kind ->
     val image = images.firstOrNull { it.kind == kind && it.url.isNotBlank() } ?: return@flatMap emptyList()
     val wireKind = when (kind) {
@@ -187,7 +189,7 @@ internal fun playarrArtworkCandidates(
         io.playarr.shared.data.model.ImageKind.Thumb -> "thumb"
     }
     listOf(
-        "${serverUrl.trimEnd('/')}/api/v1/artwork/work/${workId.asUrlPathSegment()}/$wireKind",
+        "${serverUrl.trimEnd('/')}/api/v1/artwork/work/${workId.asUrlPathSegment()}/$wireKind" + (width?.let { "?width=${it(kind)}" } ?: ""),
         resolveArtworkUrl(serverUrl, image.url),
     )
 }.distinct()
@@ -243,3 +245,10 @@ internal fun playarrPrewarmUsable(
     resumeMs: Long,
     hasLaunchSettings: Boolean,
 ): Boolean = !hasLaunchSettings && prewarmedMediaFileId == mediaFileId && prewarmedResumeMs == resumeMs
+
+/** Web `defaultArtworkWidth`: the card-sized width each artwork kind is requested at (the server snaps it up to 160/240/360/540/780/1280/1920). */
+internal fun playarrDefaultArtworkWidth(kind: io.playarr.shared.data.model.ImageKind): Int = when (kind) {
+    io.playarr.shared.data.model.ImageKind.Poster -> 360
+    io.playarr.shared.data.model.ImageKind.Banner, io.playarr.shared.data.model.ImageKind.Backdrop -> 780
+    io.playarr.shared.data.model.ImageKind.Logo, io.playarr.shared.data.model.ImageKind.Thumb -> 540
+}

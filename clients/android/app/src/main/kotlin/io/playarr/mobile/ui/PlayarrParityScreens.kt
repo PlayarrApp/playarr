@@ -26,6 +26,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
@@ -2428,6 +2430,8 @@ private fun ProfileChoice(
     // Web `.circle-focus-host`: the focused profile shows the card glow (brand ring and glow) on the circle itself.
     val avatarSource = remember { MutableInteractionSource() }
     val avatarFocused by avatarSource.collectIsFocusedAsState()
+    val settingsFocus = remember { FocusRequester() }
+    val settingsLabel = playarrString(PlayarrString.ProfilesSettingsFor, "name" to profile.displayName)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -2443,6 +2447,8 @@ private fun ProfileChoice(
             color = Color.Transparent,
             modifier = Modifier
                 .then(if (avatarFocus != null) Modifier.focusRequester(avatarFocus) else Modifier)
+                // Web: DOWN from the selected profile reaches its first action, the settings button.
+                .then(if (selected) Modifier.focusProperties { down = settingsFocus } else Modifier)
                 .size(avatarSize)
                 .semantics { contentDescription = avatarDescription }
                 // Order matters: the scale and the ring come before the shadow, which clips everything after it.
@@ -2543,7 +2549,8 @@ private fun ProfileChoice(
                     shape = CircleShape,
                     color = WebSurfaceStrong.copy(alpha = 0.64f),
                     border = BorderStroke(1.dp, WebInkMuted.copy(alpha = 0.35f)),
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier.size(44.dp).focusRequester(settingsFocus).focusProperties { down = FocusRequester.Cancel } // web: nothing below the actions
+                        .semantics { contentDescription = settingsLabel },
                 ) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         ProfilesSettingsIcon(ProfilesBrandRose)
