@@ -343,6 +343,11 @@ private struct TVProductionShell<Stage: View>: View {
                 .environment(\.openRoute) { path.append($0) }
                 .disabled(actionsWork != nil) // the actions drawer is modal
                 .onChange(of: tab) { _, _ in path = [] }
+                #if DEBUG && os(tvOS)
+                .onChange(of: tab) { _, new in TVParityState.setRoute(tab: new, path: []) }
+                .onChange(of: path) { _, new in TVParityState.setRoute(tab: tab, path: new) }
+                .onAppear { TVParityState.start(); TVParityState.setRoute(tab: tab, path: path) }
+                #endif
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .environment(\.setShellChromeHidden) { chromeHidden = $0 }
                 .padding(.leading, -navColumn)

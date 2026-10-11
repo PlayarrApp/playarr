@@ -435,3 +435,60 @@ struct TVNotYetOnTVView: View {
         }
     }
 }
+
+#if DEBUG && os(tvOS)
+import Foundation
+import UIKit
+
+/// Debug-only state for the shared parity suite's driver (docs/parity/SUITE.md): the current route in web terms and the
+/// focused item's label, written as JSON to `parity-state.json` in the app's Documents folder after every focus or route
+/// change. A driver reads it with `xcrun simctl get_app_container <udid> <bundle> data`. Compiled out of release builds.
+@MainActor
+enum TVParityState {
+    private static var route = "/"
+    private static var started = false
+
+    /// The suite's web routes: `/`, `/movies`, `/series`, `/music`, `/search`, `/calendar`, `/settings`, a title
+    /// `/movies/<id>` or `/series/<id>`, a playlist `/playlists/<id>`.
+    static func setRoute(tab: TVNavTab, path: [TVRoute]) {
+        switch path.last {
+        case .work(let work):
+            route = "/\(work.kind == .series ? "series" : "movies")/\(work.id.uuidString.lowercased())"
+        case .playlist(let id, _):
+            route = "/playlists/\(id.uuidString.lowercased())"
+        case nil:
+            route = tab == .home ? "/" : "/\(tab.rawValue)"
+        }
+        write()
+    }
+
+    static func start() {
+        guard !started else { return }
+        started = true
+        NotificationCenter.default.addObserver(forName: UIFocusSystem.didUpdateNotification, object: nil, queue: .main) { _ in
+            Task { @MainActor in write() }
+        }
+        write()
+    }
+
+    private static func label(of item: UIFocusItem?) -> String? {
+        var view = item as? UIView
+        while let v = view {
+            if let text = v.accessibilityLabel, !text.isEmpty { return text }
+            if let text = (v as? UILabel)?.text, !text.isEmpty { return text }
+            view = v.superview
+        }
+        return nil
+    }
+
+    private static func write() {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow) ?? scenes.first?.windows.first
+        let focused = window.flatMap { UIFocusSystem.focusSystem(for: $0)?.focusedItem }
+        let state: [String: Any] = ["route": route, "focused": label(of: focused) as Any, "at": Date().timeIntervalSince1970]
+        guard let data = try? JSONSerialization.data(withJSONObject: state),
+              let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        try? data.write(to: dir.appendingPathComponent("parity-state.json"), options: .atomic)
+    }
+}
+#endif
