@@ -1,1 +1,0 @@
-- The Apple wall's web reference step takes the same --only list as the device run, so dpad and playback can be dispatched as parallel jobs.

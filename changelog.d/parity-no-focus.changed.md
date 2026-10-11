@@ -1,1 +1,0 @@
-- Parity drivers rely on the app's own Home focus once the rails settle; a programmatic focus made the first D-pad key unreliable.

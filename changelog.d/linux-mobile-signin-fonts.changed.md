@@ -1,1 +1,0 @@
-- Linux phone client: one token refresh at a time with the new pair flushed to disk before use, and text drawn unhinted with grayscale anti-aliasing as the browser does.

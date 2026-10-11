@@ -479,6 +479,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Linux phone client: one token refresh at a time with the new pair flushed to disk before use, and text drawn unhinted with grayscale anti-aliasing as the browser does.
+- Parity drivers rely on the app's own Home focus once the rails settle; a programmatic focus made the first D-pad key unreliable.
+- VIDAA: a long press of OK from the TV's remote service (delivered as an instant burst of repeats) now registers as a real hold, so the actions panel opens (VIDAA only).
 - Sailfish Home builds On deck as the web does (resume-plan lead episodes, episode titles and stills, plan-only series), series detail follows the resume plan, and the alphabet rail jumps reliably.
 - Samsung Tizen native client: light-theme focus rings follow the theme, film detail uses the real chapters embedded in the file, series detail shows episode stills with the number overlay, and the action rows follow the overview height.
 - Sailfish Downloads groups episodes by series and season with shared controls at each level, adds a Filters panel and press-and-hold episode downloads, and the movie and series grids get the alphabet rail.
@@ -2800,6 +2803,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- The Apple wall's web reference step takes the same --only list as the device run, so dpad and playback can be dispatched as parallel jobs.
 - tvOS (debug builds only): the app writes its current route and focused item label to parity-state.json in its Documents folder for the shared parity suite driver.
 - Parity driver labels Home cards by text when they carry no aria-label.
 - Xbox: a parity suite driver (scripts/parity/xbox/driver.mjs) and an off-by-default trace hook in the app (screen, panel, focused label, playback) so the shared suite's D-pad and playback checks run on the Windows build.

@@ -1,1 +1,0 @@
-- VIDAA: a long press of OK from the TV's remote service (delivered as an instant burst of repeats) now registers as a real hold, so the actions panel opens (VIDAA only).
