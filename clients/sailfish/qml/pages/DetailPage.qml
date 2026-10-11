@@ -37,7 +37,7 @@ PlayarrPage {
 
     // Asks the server for a download ticket of the original file; the Downloads tab shows its progress.
     function requestDownload() {
-        pageStack.push(Qt.resolvedUrl("DownloadPage.qml"), { mediaFileId: detail.media_file_id, title: work.title })
+        pageStack.push(Qt.resolvedUrl("DownloadPage.qml"), { mediaFileId: detail.media_file_id, title: work.title, info: { kind: "movie" } })
     }
     function play(id, title) {
         var p = progress[id]
@@ -313,7 +313,7 @@ PlayarrPage {
                     }
                 }
             }
-            Item { width: 1; height: 0 }
+            Item { width: 1; height: 13.7 * Tokens.u }
             Repeater {
                 model: seasons
                 Column {
@@ -351,6 +351,10 @@ PlayarrPage {
                                 enabled: !!modelData.media_file_id
                                 opacity: enabled ? 1 : 0.4
                                 onClicked: page.play(modelData.media_file_id, work.title + " \u00B7 " + (modelData.episode.title || ""))
+                                // Press and hold: download this episode (grouped by series and season in the Downloads tab).
+                                onPressAndHold: pageStack.push(Qt.resolvedUrl("DownloadPage.qml"), {
+                                    mediaFileId: modelData.media_file_id, title: work.title + " \u00B7 " + (modelData.episode.title || ""),
+                                    info: { kind: "episode", series: work.title, season: seasonCol.sdata.season.season_number, episode: modelData.episode.episode_number } })
                                 property var pr: page.progress[modelData.media_file_id]
                                 Rectangle {
                                     id: thumb

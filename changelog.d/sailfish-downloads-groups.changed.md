@@ -1,0 +1,1 @@
+- Sailfish Downloads groups episodes by series and season with shared controls at each level, adds a Filters panel and press-and-hold episode downloads, and the movie and series grids get the alphabet rail.

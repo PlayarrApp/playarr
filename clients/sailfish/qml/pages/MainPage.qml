@@ -18,6 +18,7 @@ PlayarrPage {
         })
     }
     function openFirst(kind) { firstWork(kind, open) }
+    function loaderItem() { return loader.item }   // for the PLAYARR_STEPS smoke scripts
     function actionsFirst(kind) { firstWork(kind, actions) }
     function actions(work) { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: work }) }
     function open(work) { pageStack.push(Qt.resolvedUrl("DetailPage.qml"), { work: work }) }

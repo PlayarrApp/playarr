@@ -75,6 +75,7 @@ Item {
         font.pixelSize: 10.2 * Tokens.u
     }
     WorkGrid {
+        id: grid
         anchors { top: count.bottom; topMargin: 3 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
         works: root.works
         mode: root.viewMode
@@ -84,6 +85,43 @@ Item {
         onOpened: root.opened(work)
         onHeld: root.held(work)
         onLoadMore: root.more()
+    }
+    // Alphabet rail (web #860): jump to the first title at or after a letter; loads further pages until one is found.
+    readonly property bool railOn: Api.setting("lib.sort", "title") === "title" && (kind === "movie" || kind === "series")
+    property string activeLetter: "#"
+    property string jumping: ""
+    readonly property var alphabet: ["#", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+    function letterOf(w) { var c = String((w.sort_title && w.sort_title.length) ? w.sort_title : w.title).trim().charAt(0).toUpperCase(); return /^[A-Z]$/.test(c) ? c : "#" }
+    function jumpTo(letter) {
+        var desc = Api.setting("lib.order", "asc") === "desc"
+        var order = desc ? alphabet.slice().reverse() : alphabet, target = order.indexOf(letter)
+        for (var i = 0; i < works.length; ++i) {
+            if (order.indexOf(letterOf(works[i])) >= target) { jumping = ""; grid.positionViewAtIndex(i, GridView.Beginning); return }
+        }
+        if (total < 0 || works.length < total) { jumping = letter; more() } else jumping = ""
+    }
+    onWorksChanged: if (jumping !== "") jumpTo(jumping)
+    Connections {
+        target: grid
+        onContentYChanged: {
+            var i = grid.indexAt(10, grid.contentY + 10)
+            if (i >= 0 && i < root.works.length) root.activeLetter = root.letterOf(root.works[i])
+        }
+    }
+    Column {
+        visible: root.railOn
+        anchors { right: parent.right; rightMargin: -4.9 * Tokens.u; top: parent.top; topMargin: 87 * Tokens.u }
+        Repeater {
+            model: root.alphabet
+            MouseArea {
+                width: 26 * Tokens.u; height: 19 * Tokens.u
+                onClicked: root.jumpTo(modelData)
+                Rectangle { anchors.centerIn: parent; width: 15.5 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
+                            color: Tokens.dark ? "#d4d1d4" : Tokens.ink }
+                Label { anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.6 * Tokens.u
+                        color: root.activeLetter === modelData ? (Tokens.dark ? "#1b181b" : "#ffffff") : Tokens.inkSoft }
+            }
+        }
     }
     ViewPlaceholder {
         enabled: !root.busy && root.total === 0

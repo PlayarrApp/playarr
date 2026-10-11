@@ -43,7 +43,7 @@ PlayarrPage {
     }
     function download() {
         if (!detail || !detail.media_file_id) { note = qsTr("Open the title to pick an episode"); return }
-        pageStack.push(Qt.resolvedUrl("DownloadPage.qml"), { mediaFileId: detail.media_file_id, title: work.title })
+        pageStack.push(Qt.resolvedUrl("DownloadPage.qml"), { mediaFileId: detail.media_file_id, title: work.title, info: { kind: work.kind === "artist" ? "artist" : "movie" } })
     }
     function addTo(pl) {
         Api.request("POST", "/api/v1/playlists/" + pl.id + "/items", { work_id: work.id }, function (st) {

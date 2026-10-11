@@ -8,6 +8,7 @@ PlayarrPage {
     id: page
     property string mediaFileId
     property string title
+    property var info: ({})                 // { kind: movie|episode, series, season, episode } kept so the list can group
     property var edit: null                 // existing ticket to edit, or null for a new download
     property var options: []
     property string quality: "original"
@@ -37,13 +38,13 @@ PlayarrPage {
             busy = false
             console.log("download ticket request", st, quality)
             if (st !== 200 && st !== 201) { note = st === 403 ? qsTr("Downloads are not allowed") : qsTr("Download failed"); return }
-            Api.setSetting("dlmeta-" + t.id, JSON.stringify({ title: title, keepUntil: p }))
+            Api.setSetting("dlmeta-" + t.id, JSON.stringify({ title: title, keepUntil: p, kind: info.kind || "movie", series: info.series, season: info.season, episode: info.episode }))
             if (old) { Downloads.remove(old.id); Api.request("DELETE", "/api/v1/downloads/" + old.id, null, null) }
             pageStack.pop()
         })
     }
     Component.onCompleted: {
-        if (edit) { var m = meta(); quality = edit.quality_id; if (m.keepUntil) { keepType = m.keepUntil.type; if (m.keepUntil.amount) { amount = m.keepUntil.amount; unit = m.keepUntil.unit } } }
+        if (edit) { var m = meta(); info = { kind: m.kind, series: m.series, season: m.season, episode: m.episode }; quality = edit.quality_id; if (m.keepUntil) { keepType = m.keepUntil.type; if (m.keepUntil.amount) { amount = m.keepUntil.amount; unit = m.keepUntil.unit } } }
         Api.request("GET", "/api/v1/media/" + mediaFileId + "/download-options", null, function (st, d) {
             if (st === 200 && d) options = d.options
         })
