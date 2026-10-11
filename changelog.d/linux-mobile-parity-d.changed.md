@@ -1,0 +1,1 @@
+- Linux phone client: letter jump rail on library pages, closer spacing on Home, Search and detail pages, episode rail opens on the next-up episode.

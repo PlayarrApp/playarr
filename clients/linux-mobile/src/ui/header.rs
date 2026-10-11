@@ -28,7 +28,9 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .css_classes(["pa-hbtn", "round"])
         .valign(gtk4::Align::Start)
         .build();
-    back.set_child(Some(&icons::image("back", 18, Tone::Soft)));
+    back.set_child(Some(
+        &gtk4::Label::builder().label("←").css_classes(["pa-back-arrow"]).build(),
+    ));
     {
         let app = app.clone();
         back.connect_clicked(move |_| app.go_back());

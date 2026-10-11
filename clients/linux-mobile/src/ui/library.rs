@@ -15,6 +15,22 @@ const PAGE: usize = 200;
 /// Cards drawn per step; the rest of a page waits until the list is scrolled to its end.
 const CHUNK: usize = 24;
 
+const ALPHABET: &str = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/// The rail bucket of a title: its first letter without a leading article, `#` for digits and symbols.
+fn letter_of(title: &str) -> char {
+    let t = title.trim().to_lowercase();
+    let t = ["the ", "a ", "an "]
+        .iter()
+        .find_map(|a| t.strip_prefix(a))
+        .unwrap_or(&t);
+    t.chars()
+        .next()
+        .map(|c| c.to_ascii_uppercase())
+        .filter(|c| c.is_ascii_uppercase())
+        .unwrap_or('#')
+}
+
 pub fn grid() -> gtk4::Box {
     gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
@@ -98,6 +114,13 @@ struct Lib {
     buffer: RefCell<std::collections::VecDeque<crate::model::Work>>,
     /// Titles the server has handed over so far (the next page's offset).
     fetched: Cell<usize>,
+    /// Alphabet bucket of every title fetched so far, in list order (for the letter rail).
+    letters: RefCell<Vec<char>>,
+    scroll: gtk4::ScrolledWindow,
+    rail: gtk4::Box,
+    /// Pushes the cards down by the height of the titles a letter jump skipped.
+    spacer: RefCell<Option<gtk4::Box>>,
+    pending_letter: Cell<Option<char>>,
 }
 
 impl Lib {
@@ -106,6 +129,8 @@ impl Lib {
         self.loaded.set(0);
         self.fetched.set(0);
         self.buffer.borrow_mut().clear();
+        self.letters.borrow_mut().clear();
+        self.spacer.replace(None);
         self.total.set(usize::MAX);
         self.busy.set(false);
         while let Some(c) = self.flow.first_child() {
@@ -154,7 +179,11 @@ impl Lib {
         if !self.buffer.borrow().is_empty() {
             return self.render_chunk();
         }
-        if self.fetched.get() >= self.total.get() {
+        self.fetch_page();
+    }
+
+    fn fetch_page(self: &Rc<Self>) {
+        if self.busy.get() || self.fetched.get() >= self.total.get() {
             return;
         }
         self.busy.set(true);
@@ -194,12 +223,94 @@ impl Lib {
                         if let Some(t) = p.total {
                             me.head.set_subtitle(&format!("{} {}", group_digits(t), me.noun));
                         }
+                        me.letters
+                            .borrow_mut()
+                            .extend(p.items.iter().map(|w| letter_of(&w.title)));
                         me.buffer.borrow_mut().extend(p.items);
-                        me.render_chunk();
+                        match me.pending_letter.take() {
+                            Some(l) => me.jump(l),
+                            None => me.render_chunk(),
+                        }
                     }
                 }
             },
         );
+    }
+
+    fn rank(&self, c: char) -> usize {
+        let i = ALPHABET.find(c).unwrap_or(0);
+        if self.query.borrow().descending {
+            ALPHABET.len() - 1 - i
+        } else {
+            i
+        }
+    }
+
+    /// Scrolls to the first title at or after `letter`, fetching pages until one is found. Titles skipped on the
+    /// way are not drawn: a spacer stands in for them.
+    fn jump(self: &Rc<Self>, letter: char) {
+        let target = self.rank(letter);
+        let found = self.letters.borrow().iter().position(|c| self.rank(*c) >= target);
+        let Some(idx) = found else {
+            if self.fetched.get() < self.total.get() {
+                self.pending_letter.set(Some(letter));
+                self.fetch_page();
+                return;
+            }
+            return;
+        };
+        let drawn = self.loaded.get();
+        let y = if idx < drawn {
+            let skipped = self.spacer.borrow().as_ref().map(|s| s.height_request()).unwrap_or(0);
+            let pitch = self.pitch();
+            skipped + ((idx - self.skipped_cards()) as f64 * pitch) as i32
+        } else {
+            while let Some(c) = self.flow.first_child() {
+                self.flow.remove(&c);
+            }
+            let pitch = self.pitch();
+            let spacer = gtk4::Box::builder()
+                .height_request((idx as f64 * pitch) as i32 - 24)
+                .build();
+            self.flow.append(&spacer);
+            self.spacer.replace(Some(spacer));
+            for _ in drawn..idx {
+                self.buffer.borrow_mut().pop_front();
+            }
+            self.loaded.set(idx);
+            self.render_chunk();
+            (idx as f64 * pitch) as i32
+        };
+        self.scroll.vadjustment().set_value((y + 100) as f64);
+        self.mark_letter(letter);
+    }
+
+    fn skipped_cards(&self) -> usize {
+        0
+    }
+
+    /// Card height plus the gap between cards.
+    fn pitch(&self) -> f64 {
+        let h = self
+            .flow
+            .first_child()
+            .filter(|c| c.height() > 0 && c.is::<gtk4::Button>())
+            .map(|c| c.height());
+        h.map(|h| h as f64 + 24.0).unwrap_or(257.0)
+    }
+
+    fn mark_letter(&self, letter: char) {
+        let mut child = self.rail.first_child();
+        while let Some(c) = child {
+            if let Some(l) = c.downcast_ref::<gtk4::Button>() {
+                if l.label().and_then(|t| t.chars().next()) == Some(letter) {
+                    l.add_css_class("active");
+                } else {
+                    l.remove_css_class("active");
+                }
+            }
+            child = c.next_sibling();
+        }
     }
 
     /// Filters panel: sort, order, availability and genre.
@@ -358,7 +469,21 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
     let filters = head.action.clone();
     filters.set_visible(true);
 
+    let rail = gtk4::Box::builder()
+        .orientation(gtk4::Orientation::Vertical)
+        .homogeneous(true)
+        .halign(gtk4::Align::End)
+        .valign(gtk4::Align::Fill)
+        .width_request(16)
+        .margin_top(87)
+        .margin_bottom(88)
+        .build();
     let lib = Rc::new(Lib {
+        scroll: scroll.clone(),
+        rail: rail.clone(),
+        spacer: RefCell::new(None),
+        letters: RefCell::default(),
+        pending_letter: Cell::new(None),
         app,
         client,
         imgs,
@@ -394,10 +519,31 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
             }
         });
     }
+    for c in ALPHABET.chars() {
+        let b = gtk4::Button::builder()
+            .label(c.to_string())
+            .css_classes(["pa-letter"])
+            .build();
+        let lib = lib.clone();
+        b.connect_clicked(move |_| lib.jump(c));
+        rail.append(&b);
+    }
+    lib.mark_letter('#');
+    {
+        // The highlighted letter follows the list.
+        let lib = lib.clone();
+        scroll.vadjustment().connect_value_changed(move |a| {
+            let idx = (((a.value() - 100.0).max(0.0)) / lib.pitch()) as usize;
+            if let Some(c) = lib.letters.borrow().get(idx) {
+                lib.mark_letter(*c);
+            }
+        });
+    }
     lib.reset();
     let root = gtk4::Overlay::builder().child(&backdrop).build();
     root.add_overlay(&wash);
     root.add_overlay(&scroll);
+    root.add_overlay(&rail);
     if kind == "movie" {
         // Capture hook: open the filters sheet.
         let lib = lib.clone();

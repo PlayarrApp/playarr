@@ -151,10 +151,10 @@ button.pa-pref:hover { background: alpha(@pa_surface_strong, 0.5); }
 .pa-pref-title { font-size: 15px; font-weight: 610; color: @pa_ink; }
 .pa-pref-desc { font-size: 11px; color: @pa_muted; }
 .pa-key-art.soft { opacity: 0.22; }
-.pa-search:focus-within { outline: 3px solid @pa_ink; outline-offset: -1px; }
+.pa-search:focus-within { outline: 3px solid @pa_ink; outline-offset: 2px; }
 
 /* Detail, measured from the web (360 px viewport) */
-.pa-display { font-size: 36px; font-weight: 560; letter-spacing: -1px; }
+.pa-display { font-size: 36px; font-weight: 560; letter-spacing: -2.6px; }
 .pa-kicker { font-size: 10.56px; }
 .pa-meta { font-size: 10.24px; }
 .pa-overview { font-size: 11.52px; }
@@ -199,3 +199,8 @@ button.pa-row { background: @pa_soft; border: none; border-radius: 14px; min-hei
 button.pa-pill.small { font-size: 7.68px; padding: 0 20px; }
 .pa-mark { min-width: 30px; min-height: 30px; padding: 8px; }
 dropdown.pa-dropdown > button { background: @pa_bg; border: 1px solid @pa_line; border-radius: 12px; font-size: 11.52px; font-weight: 720; }
+
+/* Letter rail (web phone: 16 px column of 27 letters, 8.96 px bold) */
+button.pa-letter { background: transparent; border: none; box-shadow: none; padding: 0; min-width: 16px; min-height: 0; font-size: 8.96px; font-weight: 700; color: @pa_muted; border-radius: 999px; }
+button.pa-letter.active { background: alpha(@pa_ink, 0.85); color: @pa_bg; }
+.pa-back-arrow { font-size: 14px; color: @pa_ink_soft; }

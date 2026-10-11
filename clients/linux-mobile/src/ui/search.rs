@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
-    let page = gtk4::Box::new(gtk4::Orientation::Vertical, 14);
+    let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     page.set_margin_bottom(110);
     let head = Rc::new(header::build(&app, "Search", "filters"));
     page.append(&head.widget);
@@ -17,6 +17,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .css_classes(["pa-search"])
         .margin_start(16)
         .margin_end(16)
+        .margin_top(7)
         .build();
     let status = gtk4::Label::builder()
         .label("Search movies, series and music.")
@@ -25,6 +26,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .xalign(0.0)
         .build();
     let flow = library::grid();
+    flow.set_spacing(11);
+    flow.set_margin_top(17);
     page.append(&entry);
     page.append(&status);
     page.append(&flow);

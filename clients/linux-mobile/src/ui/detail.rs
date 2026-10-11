@@ -527,13 +527,23 @@ fn season_rail(
         }
         row.append(&b);
     }
-    col.append(
-        &gtk4::ScrolledWindow::builder()
-            .child(&row)
-            .vscrollbar_policy(gtk4::PolicyType::Never)
-            .propagate_natural_height(true)
-            .build(),
-    );
+    let rail = gtk4::ScrolledWindow::builder()
+        .child(&row)
+        .vscrollbar_policy(gtk4::PolicyType::Never)
+        .propagate_natural_height(true)
+        .build();
+    // The rail opens with the next-up episode first, as the web does.
+    if let Some(i) = season
+        .episodes
+        .iter()
+        .position(|e| focus == Some(e.episode.id.as_str()))
+    {
+        let adj = rail.hadjustment();
+        gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(600), move || {
+            adj.set_value(i as f64 * (EP_W + 12) as f64)
+        });
+    }
+    col.append(&rail);
     col.set_margin_bottom(37);
     col
 }
