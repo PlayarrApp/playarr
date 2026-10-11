@@ -46,6 +46,14 @@ internal static class Ui
     }
 
     /// <summary>The theme's hairline colour family (dark: light grey, light: warm ink) at the given alpha.</summary>
+    /// <summary>Web .tv-filter-drawer: the strong surface at 94 % over the page, with a wide soft shadow falling to its left (box-shadow -32px 0 90px).</summary>
+    public static View DrawerPanel(PlayarrTheme t)
+    {
+        var p = Box(1560, 0, 360, 1080, new Rgba(t.SurfaceStrong.R, t.SurfaceStrong.G, t.SurfaceStrong.B, 0.94f));
+        p.BoxShadow = new Shadow(90, new Color(40 / 255f, 26 / 255f, 24 / 255f, 0.24f), new Vector2(-32, 0), new Vector2(0, 0));
+        return p;
+    }
+
     public static Color LineA(PlayarrTheme t, float alpha) => new(t.Line.R, t.Line.G, t.Line.B, alpha);
 
     public static void Restart(this global::Tizen.NUI.Timer t) { t.Stop(); t.Start(); }

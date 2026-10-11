@@ -16,11 +16,11 @@ internal sealed class ActionsDrawer
     {
         var t = env.Theme; _close = close;
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
-        var panel = Ui.Box(1560, 0, 360, 1080, t.Surface);
+        var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
         Root.Add(panel);
         Root.Add(Ui.Text("Title actions", 1606, 55, 9.6f, 800, t.InkMuted, 200, 14.4f, upper: true, spacing: 0.8f));
-        Root.Add(Ui.Text(card.Title, 1606, 78, 36.9f, 600, t.Ink, 215, 56.8f, multiline: true, spacing: -1.5f, maxLines: 2));
+        Root.Add(Ui.Text(card.Title, 1606, 74, 36.9f, 600, t.Ink, 215, 56.8f, multiline: true, spacing: -1.5f, maxLines: 2));
         var x = Ui.Box(1826, 55, 48, 48, t.SurfaceSoft, 24);
         x.Add(Ui.Icon("close", 17, 17, 14, t.Ink));
         var xr = Ring.Make(48, 48, 24, new Rgba(1, 1, 1)); xr.Show(false); x.Add(xr);
@@ -37,7 +37,7 @@ internal sealed class ActionsDrawer
         };
         for (var i = 0; i < actions.Length; i++)
         {
-            var y = 218 + i * 82f; var a = actions[i];
+            var y = 222 + i * 81.5f; var a = actions[i];
             var b = Ui.Box(1606, y, 268, 68, t.SurfaceSoft, 12);
             b.Add(Ui.Text(a.Glyph, 20, 21, 20, 400, t.Brand, 24, 26));
             b.Add(Ui.Text(a.Text, 60, 19, 20, 700, t.Ink, 200, 30));

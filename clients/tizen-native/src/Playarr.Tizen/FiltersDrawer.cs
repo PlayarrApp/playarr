@@ -19,7 +19,7 @@ internal sealed class FiltersDrawer
     {
         var t = env.Theme; _close = close;
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
-        var panel = Ui.Box(1560, 0, 360, 1080, t.Surface);
+        var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
         Root.Add(panel);
         Root.Add(Ui.Text(kicker, 1606, 54, 9.6f, 800, t.InkMuted, 250, 14.4f, upper: true, spacing: 0.67f));

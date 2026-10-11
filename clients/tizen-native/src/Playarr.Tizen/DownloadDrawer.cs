@@ -27,7 +27,7 @@ internal sealed class DownloadDrawer
         var t = env.Theme; _close = close;
         _keep = Math.Max(0, Array.FindIndex(Keeps, k => k.Type == current.Type && k.Amount == current.Amount && k.Unit == current.Unit));
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
-        var panel = Ui.Box(1560, 0, 360, 1080, t.Surface);
+        var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
         Root.Add(panel);
         Root.Add(Ui.Text("Offline download", 1606, 54, 9.6f, 800, t.InkMuted, 250, 14.4f, upper: true, spacing: 0.67f));

@@ -12,6 +12,8 @@ internal sealed class SeriesDetailScreen : IPage
 
     private sealed class Rail { public View Row = new(); public float Scroll; public List<int> Items = new(); }
 
+    /// <summary>Web puts the cast heading 37.7 px lower than one more season rail would be (measured at 1920x1080).</summary>
+    private const float CastGap = 37.7f;
     private readonly AppEnv _env;
     private readonly PlayarrTheme _t;
     private readonly Guid _id;
@@ -162,10 +164,10 @@ internal sealed class SeriesDetailScreen : IPage
             SynchronizationContextHolder.Post(() =>
             {
                 var rail = _seasonCount;
-                new PeopleRail(_env, _stack, cast, rail * RailPitch, _focus, () => _stack.PositionY, _ =>
+                new PeopleRail(_env, _stack, cast, rail * RailPitch + CastGap, _focus, () => _stack.PositionY, _ =>
                 {
                     _activeRail = rail;
-                    _stack.PositionY = FocusedHeadingY - rail * RailPitch;
+                    _stack.PositionY = FocusedHeadingY - rail * RailPitch - CastGap;
                 });
             });
         }
