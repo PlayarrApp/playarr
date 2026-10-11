@@ -65,6 +65,8 @@ namespace Playarr.Core.Networking
 
         Task<IList<AvailableProfile>> ListProfilesAsync(CancellationToken cancellationToken = default);
 
+        Task<ProfileAvatarSettingResponse> GetProfileAvatarAsync(CancellationToken cancellationToken = default);
+
         Task<IList<WatchProgress>> ListWatchProgressAsync(CancellationToken cancellationToken = default);
 
         Task<WatchlistResponse> GetWatchlistAsync(CancellationToken cancellationToken = default);
@@ -313,6 +315,8 @@ namespace Playarr.Core.Networking
             GetAsync<WatchProgress>(
                 $"/api/v1/playback/{mediaFileId:D}/progress", null, authenticated: true, cancellationToken);
 
+        public Task<ProfileAvatarSettingResponse> GetProfileAvatarAsync(CancellationToken cancellationToken = default) =>
+            GetAsync<ProfileAvatarSettingResponse>("/api/v1/users/me/profile-avatar", null, authenticated: true, cancellationToken);
         public Task<WatchlistResponse> GetWatchlistAsync(CancellationToken cancellationToken = default) =>
             GetAsync<WatchlistResponse>("/api/v1/watchlist", null, authenticated: true, cancellationToken);
 

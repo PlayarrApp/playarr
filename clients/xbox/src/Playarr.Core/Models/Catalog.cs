@@ -367,6 +367,19 @@ namespace Playarr.Core.Models
         [JsonProperty("is_current")] public bool IsCurrent { get; set; }
     }
 
+    /// <summary>The account's profile avatar preference: a preset id, or a resized JPEG data URL.</summary>
+    public sealed class ProfileAvatarPreference
+    {
+        [JsonProperty("kind")] public string Kind { get; set; } = string.Empty;
+
+        [JsonProperty("value")] public string Value { get; set; } = string.Empty;
+    }
+
+    public sealed class ProfileAvatarSettingResponse
+    {
+        [JsonProperty("preference")] public ProfileAvatarPreference? Preference { get; set; }
+    }
+
     /// <summary>One server-computed Home rail (<c>GET /api/v1/home/rails</c>); empty rails are omitted, titles localised.</summary>
     public sealed class HomeRail
     {

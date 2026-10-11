@@ -226,6 +226,7 @@
     <Compile Include="Views\CatalogTileFactory.cs" />
     <Compile Include="Views\ShellChrome.cs" />
     <Compile Include="Views\Ui.cs" />
+    <Compile Include="Views\Avatars.cs" />
     <Compile Include="Views\FocusClaim.cs" />
     <Compile Include="Views\Drawer.cs" />
     <Compile Include="Views\CardActions.cs" />
@@ -331,6 +332,12 @@
     <Content Include="Assets\SplashScreen.png" />
     <EmbeddedResource Include="Properties\Default.rd.xml" />
     <!-- The web's fonts (docs/parity/fonts, SIL OFL 1.1; licence texts alongside). -->
+    <Content Include="Assets\Avatars\astronaut.png" />
+    <Content Include="Assets\Avatars\cat.png" />
+    <Content Include="Assets\Avatars\dinosaur.png" />
+    <Content Include="Assets\Avatars\robot.png" />
+    <Content Include="Assets\Avatars\pirate.png" />
+    <Content Include="Assets\Avatars\alien.png" />
     <Content Include="Assets\Fonts\NunitoSans.ttc" />
     <Content Include="Assets\Fonts\JetBrainsMono.ttc" />
     <Content Include="Assets\Fonts\OFL-NunitoSans.txt" />

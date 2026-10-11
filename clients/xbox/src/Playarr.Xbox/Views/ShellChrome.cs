@@ -31,6 +31,8 @@ namespace Playarr.Xbox.Views
         private readonly TextBlock _time = new TextBlock { FontSize = 18, FontWeight = FontWeights.Bold };
         private readonly TextBlock _date = new TextBlock { FontSize = 12.5, FontWeight = FontWeights.SemiBold, CharacterSpacing = 60, VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _profileName = new TextBlock { FontSize = 10.5, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center };
+        private Border _avatar = null!;
+        private bool _avatarLoaded;
         private readonly DispatcherTimer _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
 
         public ShellChrome(Frame frame)
@@ -86,7 +88,7 @@ namespace Playarr.Xbox.Views
                 Item("", "Calendar", typeof(CalendarPage), null)));
             _chrome.Children.Add(groups);
 
-            var avatar = new Border
+            _avatar = new Border
             {
                 Width = 24,
                 Height = 24,
@@ -94,6 +96,7 @@ namespace Playarr.Xbox.Views
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
                 HorizontalAlignment = HorizontalAlignment.Center,
             };
+            var avatar = _avatar;
             var profileContent = new StackPanel { Spacing = 6 };
             profileContent.Children.Add(avatar);
             profileContent.Children.Add(_profileName);
@@ -195,6 +198,11 @@ namespace Playarr.Xbox.Views
                 && e.SourcePageType != typeof(ProfilesPage)
                 && e.SourcePageType != typeof(PlayerPage);
             _chrome.Visibility = shell ? Visibility.Visible : Visibility.Collapsed;
+            if (shell && !_avatarLoaded)
+            {
+                _avatarLoaded = true;
+                LoadAvatar();
+            }
             _profileName.Text = string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName;
 
             var kind = e.Parameter as WorkKind?;
@@ -204,6 +212,18 @@ namespace Playarr.Xbox.Views
                 button.Background = current
                     ? (Brush)Application.Current.Resources["PlayarrSurfaceSoft"]
                     : new SolidColorBrush(Colors.Transparent);
+            }
+        }
+
+        private async void LoadAvatar()
+        {
+            if (await Avatars.CurrentAsync() is { } source)
+            {
+                _avatar.Background = new ImageBrush { ImageSource = source, Stretch = Stretch.UniformToFill };
+            }
+            else
+            {
+                _avatarLoaded = false;
             }
         }
 

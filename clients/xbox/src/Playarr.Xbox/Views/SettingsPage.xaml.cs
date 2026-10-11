@@ -129,6 +129,7 @@ namespace Playarr.Xbox.Views
         private void SignOutButton_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.SignOut();
+            Avatars.Reset();
             App.Navigation.Navigate(typeof(LoginPage));
         }
     }

@@ -92,6 +92,16 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        /// <summary>The web picker shows the profile's avatar plate, not an initial; the letter stays until it loads.</summary>
+        private static async void ApplyAvatar(Border avatar)
+        {
+            if (await Avatars.CurrentAsync() is { } source)
+            {
+                avatar.Child = null;
+                avatar.Background = new Windows.UI.Xaml.Media.ImageBrush { ImageSource = source, Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
+            }
+        }
+
         private Button BuildProfileTile(AvailableProfile profile)
         {
             var initial = string.IsNullOrEmpty(profile.DisplayName)
@@ -122,6 +132,11 @@ namespace Playarr.Xbox.Views
                     VerticalAlignment = VerticalAlignment.Center,
                 },
             };
+
+            if (profile.IsCurrent)
+            {
+                ApplyAvatar(avatar);
+            }
 
             var nameRow = new StackPanel
             {
