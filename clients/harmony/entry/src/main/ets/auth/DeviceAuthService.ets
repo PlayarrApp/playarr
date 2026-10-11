@@ -77,9 +77,9 @@ interface DeviceTokenPollRequest {
   device_code: string;
 }
 
-/** Flip to true once the broker's allow-list accepts the HarmonyOS identities (web PR 749 deployed); until then
- * the broker gets the `web` compatibility identity, as Roku does. */
-const USE_HARMONY_BROKER_IDENTITY: boolean = false;
+/** The broker's allow-list accepts the HarmonyOS identities (web 749 and server 760 are live), so the broker gets the
+ * device's own identity: the TV wire name on TV, `harmony-phone` on a phone. Set to false to fall back to `web`. */
+const USE_HARMONY_BROKER_IDENTITY: boolean = true;
 const HOSTED_POLL_MS_MIN: number = 1000;
 
 export type DeviceAuthOutcomeKind = 'success' | 'access_denied' | 'expired' | 'cancelled' | 'request_failed';
