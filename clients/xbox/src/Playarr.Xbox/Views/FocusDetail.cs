@@ -35,16 +35,7 @@ namespace Playarr.Xbox.Views
             {
                 Width = 960,
                 HorizontalAlignment = HorizontalAlignment.Left,
-                Fill = new LinearGradientBrush
-                {
-                    StartPoint = new Windows.Foundation.Point(0, 0),
-                    EndPoint = new Windows.Foundation.Point(1, 0),
-                    GradientStops =
-                    {
-                        new GradientStop { Color = Windows.UI.Color.FromArgb(0x99, 0x15, 0x13, 0x15), Offset = 0 },
-                        new GradientStop { Color = Windows.UI.Color.FromArgb(0xFF, 0x15, 0x13, 0x15), Offset = 1 },
-                    },
-                },
+                Fill = Theme.LeftFade(),
             });
             _panel = new StackPanel
             {

@@ -29,14 +29,7 @@
             HorizontalAlignment="Left"
             Stretch="UniformToFill"
             Opacity="0.35" />
-        <Rectangle Width="960" HorizontalAlignment="Left">
-            <Rectangle.Fill>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                    <GradientStop Color="#99151315" Offset="0" />
-                    <GradientStop Color="#FF151315" Offset="1" />
-                </LinearGradientBrush>
-            </Rectangle.Fill>
-        </Rectangle>
+        <Rectangle x:Name="BackdropFade" Width="960" HorizontalAlignment="Left" />
 
         <Button
             x:Name="BackButton"
@@ -103,7 +96,7 @@
                 Background="{StaticResource PlayarrSurfaceStrong}"
                 BorderBrush="{StaticResource PlayarrLine}"
                 BorderThickness="1"
-                FocusVisualPrimaryBrush="White"
+                FocusVisualPrimaryBrush="{StaticResource PlayarrFocusRing}"
                 FocusVisualPrimaryThickness="3"
                 FocusVisualSecondaryThickness="0"
                 Click="PlayButton_Click">

@@ -178,7 +178,7 @@ namespace Playarr.Xbox.Views
             {
                 Width = TileWidth,
                 Height = TileHeight,
-                Background = new SolidColorBrush(Colors.DimGray),
+                Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
                 CornerRadius = new CornerRadius(4),
             };
 

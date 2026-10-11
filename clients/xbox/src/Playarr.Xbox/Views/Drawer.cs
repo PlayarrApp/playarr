@@ -138,7 +138,7 @@ namespace Playarr.Xbox.Views
                         FontWeight = FontWeights.SemiBold,
                         Foreground = isSelected ? Ui.Res("PlayarrSurfaceStrong") : Ui.Res("PlayarrInkSoft"),
                     },
-                    FocusVisualPrimaryBrush = new SolidColorBrush(Colors.White),
+                    FocusVisualPrimaryBrush = Theme.FocusRing,
                     FocusVisualPrimaryThickness = new Thickness(3),
                     FocusVisualSecondaryThickness = new Thickness(0),
                 };
@@ -169,7 +169,7 @@ namespace Playarr.Xbox.Views
                 BorderBrush = Ui.Res("PlayarrLine"),
                 BorderThickness = new Thickness(1),
                 Content = content,
-                FocusVisualPrimaryBrush = new SolidColorBrush(Colors.White),
+                FocusVisualPrimaryBrush = Theme.FocusRing,
                 FocusVisualPrimaryThickness = new Thickness(3),
                 FocusVisualSecondaryThickness = new Thickness(0),
             };

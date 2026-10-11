@@ -39,7 +39,8 @@
         <StackPanel Margin="228,57,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
             <TextBlock Text="Preferences" Style="{StaticResource PlayarrPageTitle}" />
             <TextBlock
-                Text="SERVER CONNECTION"
+                x:Name="SectionText"
+                Text="APPEARANCE"
                 FontSize="11"
                 FontWeight="Bold"
                 CharacterSpacing="120"
@@ -48,6 +49,7 @@
         </StackPanel>
 
         <Button
+            x:Name="AppearanceTab"
             Width="480"
             Height="92"
             Margin="154,162,0,0"
@@ -57,7 +59,28 @@
             HorizontalContentAlignment="Stretch"
             CornerRadius="0"
             BorderThickness="0"
-            Background="{StaticResource PlayarrSurfaceSoft}">
+            Background="Transparent"
+            Click="AppearanceTab_Click">
+            <Grid>
+                <TextBlock Text="01" FontSize="10" FontWeight="Bold" Margin="0,-22,0,0" VerticalAlignment="Center" />
+                <TextBlock Text="Appearance" FontSize="30" Margin="60,0,0,0" VerticalAlignment="Center" />
+                <TextBlock Text="&#x2192;" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+        </Button>
+
+        <Button
+            x:Name="ServerTab"
+            Width="480"
+            Height="92"
+            Margin="154,254,0,0"
+            Padding="32,0,32,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            HorizontalContentAlignment="Stretch"
+            CornerRadius="0"
+            BorderThickness="0"
+            Background="Transparent"
+            Click="ServerTab_Click">
             <Grid>
                 <TextBlock Text="05" FontSize="10" FontWeight="Bold" Margin="0,-22,0,0" VerticalAlignment="Center" />
                 <TextBlock Text="Server connection" FontSize="30" Margin="60,0,0,0" VerticalAlignment="Center" />
@@ -65,7 +88,11 @@
             </Grid>
         </Button>
 
-    <ScrollViewer Margin="774,200,0,0" Padding="0,0,106,48" VerticalScrollBarVisibility="Hidden">
+    <ScrollViewer x:Name="AppearanceSection" Margin="774,200,0,0" Padding="0,0,106,48" VerticalScrollBarVisibility="Hidden">
+        <StackPanel x:Name="AppearancePanel" Width="1040" HorizontalAlignment="Left" Spacing="8" />
+    </ScrollViewer>
+
+    <ScrollViewer x:Name="ServerSection" Visibility="Collapsed" Margin="774,200,0,0" Padding="0,0,106,48" VerticalScrollBarVisibility="Hidden">
         <StackPanel MaxWidth="1040" HorizontalAlignment="Left" Spacing="32">
 
             <StackPanel Spacing="8">

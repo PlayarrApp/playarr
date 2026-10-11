@@ -22,7 +22,7 @@ namespace Playarr.Xbox.Views
     public sealed partial class CalendarPage : Page
     {
         private static readonly CultureInfo Uk = CultureInfo.GetCultureInfo("en-GB");
-        private static readonly Color Available = Color.FromArgb(0xFF, 0x8A, 0xC5, 0xA5); // dark --success
+        private static Color Available => Theme.Success;
         private static readonly Color Absent = Color.FromArgb(0xFF, 0xCF, 0x31, 0x57);    // --brand
 
         private readonly Grid _root;
@@ -185,7 +185,7 @@ namespace Playarr.Xbox.Views
             {
                 Width = width,
                 Height = height,
-                BorderBrush = isToday ? new SolidColorBrush(Colors.White) : (Brush)Application.Current.Resources["PlayarrLine"],
+                BorderBrush = isToday ? Theme.FocusRing : (Brush)Application.Current.Resources["PlayarrLine"],
                 BorderThickness = new Thickness(isToday ? 2 : 0.5),
                 Background = day.Month == _anchor.Month ? null : new SolidColorBrush(Color.FromArgb(0x30, 0, 0, 0)),
                 Padding = new Thickness(10, 8, 10, 8),
@@ -273,7 +273,7 @@ namespace Playarr.Xbox.Views
                 heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 14, FontWeights.SemiBold, "PlayarrInk"));
                 if (day == DateTime.Today)
                 {
-                    heading.Children.Add(Ui.StatusPill("TODAY", Colors.White));
+                    heading.Children.Add(Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color));
                 }
 
                 list.Children.Add(heading);
@@ -343,7 +343,7 @@ namespace Playarr.Xbox.Views
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceStrong"],
                 BorderBrush = (Brush)Application.Current.Resources["PlayarrLine"],
                 BorderThickness = new Thickness(1),
-                FocusVisualPrimaryBrush = new SolidColorBrush(Colors.White),
+                FocusVisualPrimaryBrush = Theme.FocusRing,
                 FocusVisualPrimaryThickness = new Thickness(2),
                 FocusVisualSecondaryThickness = new Thickness(0),
             };
@@ -402,9 +402,9 @@ namespace Playarr.Xbox.Views
         private static FrameworkElement TonePill(CalendarEntry entry) => CalendarRules.Tone(entry, DateTime.Today) switch
         {
             CalendarTone.Available => Ui.StatusPill("Available", Available),
-            CalendarTone.Upcoming => Ui.StatusPill("Upcoming", Color.FromArgb(0xFF, 0xEA, 0xA6, 0xB6)),
-            CalendarTone.Missing => Ui.StatusPill("Missing", Color.FromArgb(0xFF, 0xEA, 0xA6, 0xB6)),
-            _ => Ui.StatusPill("Not tracked", Color.FromArgb(0xFF, 0xC2, 0xB5, 0xBB)),
+            CalendarTone.Upcoming => Ui.StatusPill("Upcoming", Theme.BrandInk),
+            CalendarTone.Missing => Ui.StatusPill("Missing", Theme.BrandInk),
+            _ => Ui.StatusPill("Not tracked", Theme.InkMuted),
         };
 
         private static string Code(CalendarEntry entry)

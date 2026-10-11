@@ -178,7 +178,7 @@ namespace Playarr.Xbox.Views
                 Background = new SolidColorBrush(Colors.Transparent),
                 BorderThickness = new Thickness(0),
                 Foreground = (Brush)Application.Current.Resources["PlayarrInk"],
-                FocusVisualPrimaryBrush = new SolidColorBrush(Colors.White),
+                FocusVisualPrimaryBrush = Theme.FocusRing,
                 FocusVisualPrimaryThickness = new Thickness(2),
                 FocusVisualSecondaryThickness = new Thickness(0),
                 IsTabStop = page != null,

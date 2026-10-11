@@ -37,7 +37,7 @@
             Background="{StaticResource PlayarrSurface}"
             BorderBrush="{StaticResource PlayarrLine}"
             BorderThickness="1"
-            FocusVisualPrimaryBrush="White"
+            FocusVisualPrimaryBrush="{StaticResource PlayarrFocusRing}"
             FocusVisualPrimaryThickness="3"
             FocusVisualSecondaryThickness="0"
             Click="FiltersButton_Click">

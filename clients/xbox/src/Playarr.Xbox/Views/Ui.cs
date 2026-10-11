@@ -73,7 +73,7 @@ namespace Playarr.Xbox.Views
                 BorderBrush = Res("PlayarrLineStrong"),
                 BorderThickness = new Thickness(1),
                 Content = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14 },
-                FocusVisualPrimaryBrush = new SolidColorBrush(Colors.White),
+                FocusVisualPrimaryBrush = Theme.FocusRing,
                 FocusVisualPrimaryThickness = new Thickness(3),
                 FocusVisualSecondaryThickness = new Thickness(0),
             };
@@ -94,7 +94,7 @@ namespace Playarr.Xbox.Views
                 BorderBrush = Res("PlayarrLineStrong"),
                 BorderThickness = new Thickness(1),
                 Content = Text(text, 12, FontWeights.SemiBold, "PlayarrInk"),
-                FocusVisualPrimaryBrush = new SolidColorBrush(Colors.White),
+                FocusVisualPrimaryBrush = Theme.FocusRing,
                 FocusVisualPrimaryThickness = new Thickness(3),
                 FocusVisualSecondaryThickness = new Thickness(0),
             };

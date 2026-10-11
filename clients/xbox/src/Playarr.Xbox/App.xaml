@@ -26,6 +26,7 @@
             <SolidColorBrush x:Key="PlayarrLineStrong" Color="#3BDFDCDD" />
             <SolidColorBrush x:Key="PlayarrBrand" Color="#CF3157" />
             <SolidColorBrush x:Key="PlayarrBrandInk" Color="#EAA6B6" />
+            <SolidColorBrush x:Key="PlayarrFocusRing" Color="#FFFFFF" />
 
             <FontFamily x:Key="PlayarrFont">ms-appx:///Assets/Fonts/NunitoSans.ttc#Nunito Sans</FontFamily>
             <FontFamily x:Key="PlayarrMonoFont">ms-appx:///Assets/Fonts/JetBrainsMono.ttc#JetBrains Mono</FontFamily>

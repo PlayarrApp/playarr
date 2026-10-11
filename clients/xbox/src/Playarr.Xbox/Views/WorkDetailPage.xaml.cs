@@ -41,6 +41,7 @@ namespace Playarr.Xbox.Views
         public WorkDetailPage()
         {
             InitializeComponent();
+            BackdropFade.Fill = Theme.LeftFade();
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)

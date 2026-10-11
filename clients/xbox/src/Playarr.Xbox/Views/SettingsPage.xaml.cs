@@ -25,6 +25,39 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             _viewModel = new SettingsViewModel(App.Environment);
             ServerAddressBox.Text = _viewModel.ServerConnection.ServerAddress;
+            ShowSection(appearance: true);
+        }
+
+        private void AppearanceTab_Click(object sender, RoutedEventArgs e) => ShowSection(appearance: true);
+
+        private void ServerTab_Click(object sender, RoutedEventArgs e) => ShowSection(appearance: false);
+
+        /// <summary>The web's numbered section list: the open section is filled and its controls show on the right.</summary>
+        private void ShowSection(bool appearance)
+        {
+            AppearanceSection.Visibility = appearance ? Visibility.Visible : Visibility.Collapsed;
+            ServerSection.Visibility = appearance ? Visibility.Collapsed : Visibility.Visible;
+            SectionText.Text = appearance ? "APPEARANCE" : "SERVER CONNECTION";
+            AppearanceTab.Background = appearance ? Ui.Res("PlayarrSurfaceSoft") : new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent);
+            ServerTab.Background = appearance ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent) : Ui.Res("PlayarrSurfaceSoft");
+            if (appearance)
+            {
+                RenderAppearance();
+            }
+        }
+
+        /// <summary>Colour theme as on the web (System, Light, Dark); the choice applies at once and is kept.</summary>
+        private void RenderAppearance()
+        {
+            AppearancePanel.Children.Clear();
+            var choices = new[] { Theme.System, Theme.Light, Theme.Dark };
+            var selected = System.Array.IndexOf(choices, Theme.Choice);
+            AppearancePanel.Children.Add(Drawer.Segmented("Colour theme", new[] { "System", "Light", "Dark" }, selected < 0 ? 0 : selected, i =>
+            {
+                Theme.Set(choices[i]);
+                // Rebuild this page so the controls it built in code pick the new tokens up.
+                App.Navigation.NavigateReplacingCurrent(typeof(SettingsPage), null!);
+            }));
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
