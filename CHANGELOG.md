@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The macOS build compiles again: device HDR modes are read on iOS and tvOS only.
+- Xbox: LEFT from content lands on the nav item level with the focused card, as the web does.
 - Fire TV: LEFT from content lands on the nav item level with the focused card, as the web does (not always on the current page's item); playback declares a 25 Mbps maximum bitrate so very high-bitrate originals are converted instead of sent raw.
 - webOS package repeats its CSS font weights with extra specificity so the webOS TV Simulator's forced weight 400 no longer flattens bold text.
 - macOS: every nav tab can be clicked and hovered (only the active tab was enabled), and a drawer opens with its close button focused as on tvOS; the debug remote gained targets, hover and rclick commands (57.10025).
@@ -464,6 +466,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Linux phone client: reports Full HD as its decode limit when only software decoders exist, search shows the first result's art, detail pages highlight their tab.
 - Parity drivers treat the Resume and Open labels of one title as the same focused item.
 - Fire TV: release and debug builds stop with a clear message when the vendored Shaka player is missing (run scripts/setup-shaka.sh), so no build ships unable to play HLS titles.
 - Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.
