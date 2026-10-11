@@ -59,6 +59,16 @@ namespace Playarr.Core.Networking
 
         Task<IList<WatchProgress>> ListWatchProgressAsync(CancellationToken cancellationToken = default);
 
+        Task<WatchlistResponse> GetWatchlistAsync(CancellationToken cancellationToken = default);
+
+        Task RemoveFromWatchlistAsync(string titleKey, CancellationToken cancellationToken = default);
+
+        Task<IList<RequestView>> ListRequestsAsync(CancellationToken cancellationToken = default);
+
+        Task<IList<PlaylistInfo>> ListPlaylistsAsync(CancellationToken cancellationToken = default);
+
+        Task<IList<PlaylistItem>> ListPlaylistItemsAsync(Guid playlistId, CancellationToken cancellationToken = default);
+
         Task<WatchProgress> GetWatchProgressAsync(Guid mediaFileId, CancellationToken cancellationToken = default);
 
         Task<WatchProgress> UpdateWatchProgressAsync(
@@ -234,6 +244,63 @@ namespace Playarr.Core.Networking
         public Task<WatchProgress> GetWatchProgressAsync(Guid mediaFileId, CancellationToken cancellationToken = default) =>
             GetAsync<WatchProgress>(
                 $"/api/v1/playback/{mediaFileId:D}/progress", null, authenticated: true, cancellationToken);
+
+        public Task<WatchlistResponse> GetWatchlistAsync(CancellationToken cancellationToken = default) =>
+            GetAsync<WatchlistResponse>("/api/v1/watchlist", null, authenticated: true, cancellationToken);
+
+        public async Task RemoveFromWatchlistAsync(string titleKey, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await SendEmptyOnceAsync(HttpMethod.Delete, "/api/v1/watchlist/" + Uri.EscapeDataString(titleKey), false, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ApiException error) when (error.Kind == ApiErrorKind.Unauthorized && _tokens != null)
+            {
+                await SendEmptyOnceAsync(HttpMethod.Delete, "/api/v1/watchlist/" + Uri.EscapeDataString(titleKey), true, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        public Task<IList<RequestView>> ListRequestsAsync(CancellationToken cancellationToken = default) =>
+            GetAsync<IList<RequestView>>("/api/v1/requests", null, authenticated: true, cancellationToken);
+
+        public Task<IList<PlaylistInfo>> ListPlaylistsAsync(CancellationToken cancellationToken = default) =>
+            GetAsync<IList<PlaylistInfo>>("/api/v1/playlists", null, authenticated: true, cancellationToken);
+
+        public Task<IList<PlaylistItem>> ListPlaylistItemsAsync(Guid playlistId, CancellationToken cancellationToken = default) =>
+            GetAsync<IList<PlaylistItem>>($"/api/v1/playlists/{playlistId:D}/items", null, authenticated: true, cancellationToken);
+
+        /// <summary>A request whose success carries no body (204), such as removing a watchlist entry.</summary>
+        private async Task SendEmptyOnceAsync(HttpMethod method, string path, bool forceRefresh, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(method, BuildUri(path, null));
+            request.Headers.TryAddWithoutValidation(ClientPlatformHeader, _configuration.ClientPlatform.WireName());
+            request.Headers.TryAddWithoutValidation(ClientVersionHeader, _configuration.ClientVersion);
+            if (_tokens != null)
+            {
+                var token = await _tokens.GetAccessTokenAsync(forceRefresh, cancellationToken).ConfigureAwait(false);
+                request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {token}");
+            }
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception transport) when (transport is HttpRequestException or OperationCanceledException
+                                              && !cancellationToken.IsCancellationRequested)
+            {
+                throw new ApiException(ApiErrorKind.Transport, "the request could not be sent", innerException: transport);
+            }
+
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    var payload = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    throw ApiException.ForStatus(response.StatusCode, JsonCoding.Deserialize<ApiErrorBody>(payload));
+                }
+            }
+        }
 
         public Task<WatchProgress> UpdateWatchProgressAsync(
             Guid mediaFileId,

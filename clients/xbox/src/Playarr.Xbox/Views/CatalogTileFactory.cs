@@ -48,8 +48,8 @@ namespace Playarr.Xbox.Views
         private const double TileWidth = 180;
         private const double TileHeight = 270;
 
-        private const double CardWidth = 328;
-        private const double CardHeight = 184;
+        internal const double CardWidth = 328;
+        internal const double CardHeight = 184;
 
         private static Style? _cardContainerStyle;
 

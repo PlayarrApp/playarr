@@ -15,6 +15,42 @@ namespace Playarr.Xbox.Views
         public static TextBlock Text(string text, double size, FontWeight weight, string brushKey, Thickness margin = default) =>
             new TextBlock { Text = text, FontSize = size, FontWeight = weight, Foreground = Res(brushKey), Margin = margin };
 
+        /// <summary>The web page header: round Back button, title and an optional pink count line, at the shell content edge.</summary>
+        public static void PageHeader(Panel host, string title, string? subtitle, Action back)
+        {
+            host.Children.Add(BackButton(back));
+            var titles = new StackPanel { Margin = new Thickness(228, 57, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            titles.Children.Add(new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"] });
+            if (!string.IsNullOrEmpty(subtitle))
+            {
+                titles.Children.Add(new TextBlock { Text = subtitle!.ToUpperInvariant(), FontSize = 11, FontWeight = FontWeights.Bold, CharacterSpacing = 120, Foreground = Res("PlayarrBrandInk"), Margin = new Thickness(0, 6, 0, 0) });
+            }
+
+            host.Children.Add(titles);
+        }
+
+        /// <summary>The web's empty state: a round icon and a title with its explanation, centred in the content area.</summary>
+        public static FrameworkElement EmptyState(string glyph, string title, string description)
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 36, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(412, 0, 0, 0) };
+            row.Children.Add(new Border
+            {
+                Width = 82,
+                Height = 82,
+                CornerRadius = new CornerRadius(41),
+                BorderBrush = Res("PlayarrLine"),
+                BorderThickness = new Thickness(1),
+                Child = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 26, Foreground = Res("PlayarrBrand"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            });
+            var text = new StackPanel { Spacing = 10, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 340 };
+            text.Children.Add(Text(title, 17, FontWeights.SemiBold, "PlayarrInk"));
+            var body = Text(description, 11, FontWeights.Normal, "PlayarrInkSoft");
+            body.TextWrapping = TextWrapping.WrapWholeWords;
+            text.Children.Add(body);
+            row.Children.Add(text);
+            return row;
+        }
+
         /// <summary>The page header's round Back button at the shell content edge.</summary>
         public static Button BackButton(Action onClick)
         {

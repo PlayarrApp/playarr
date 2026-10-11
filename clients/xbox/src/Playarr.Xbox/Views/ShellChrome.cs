@@ -73,16 +73,16 @@ namespace Playarr.Xbox.Views
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(RailLeft, 118, 0, 0),
             };
-            groups.Children.Add(Group(Item("", "Downloads", null, null), Item("", "Search", typeof(SearchPage), null)));
+            groups.Children.Add(Group(Item("", "Downloads", typeof(DownloadsPage), null), Item("", "Search", typeof(SearchPage), null)));
             groups.Children.Add(Group(
                 Item("", "Home", typeof(HomePage), null),
                 Item("", "Series", typeof(LibraryPage), WorkKind.Series),
                 Item("", "Movies", typeof(LibraryPage), WorkKind.Movie),
                 Item("", "Music", typeof(LibraryPage), WorkKind.Artist)));
             groups.Children.Add(Group(
-                Item("", "Playlists", null, null),
-                Item("", "Watchlist", null, null),
-                Item("", "Requests", null, null),
+                Item("", "Playlists", typeof(PlaylistsPage), null),
+                Item("", "Watchlist", typeof(WatchlistPage), null),
+                Item("", "Requests", typeof(RequestsPage), null),
                 Item("", "Calendar", typeof(CalendarPage), null)));
             _chrome.Children.Add(groups);
 
@@ -178,8 +178,6 @@ namespace Playarr.Xbox.Views
                 FocusVisualPrimaryBrush = new SolidColorBrush(Colors.White),
                 FocusVisualPrimaryThickness = new Thickness(2),
                 FocusVisualSecondaryThickness = new Thickness(0),
-                // shortcut: pages without an Xbox screen yet (Downloads, Playlists, Watchlist, Requests)
-                // keep their place in the rail but do nothing; wire them as their screens land.
                 IsTabStop = page != null,
             };
             if (page != null)

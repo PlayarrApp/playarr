@@ -270,6 +270,41 @@
     <Compile Include="Views\CalendarPage.xaml.cs">
       <DependentUpon>CalendarPage.xaml</DependentUpon>
     </Compile>
+    <Page Include="Views\WatchlistPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="Views\WatchlistPage.xaml.cs">
+      <DependentUpon>WatchlistPage.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Views\RequestsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="Views\RequestsPage.xaml.cs">
+      <DependentUpon>RequestsPage.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Views\PlaylistsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="Views\PlaylistsPage.xaml.cs">
+      <DependentUpon>PlaylistsPage.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Views\PlaylistPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="Views\PlaylistPage.xaml.cs">
+      <DependentUpon>PlaylistPage.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Views\DownloadsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="Views\DownloadsPage.xaml.cs">
+      <DependentUpon>DownloadsPage.xaml</DependentUpon>
+    </Compile>
     <Page Include="Views\SettingsPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
