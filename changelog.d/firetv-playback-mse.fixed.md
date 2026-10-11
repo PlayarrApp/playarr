@@ -1,0 +1,1 @@
+- Fire TV: HLS playback now starts on the Vega player. Shaka's media source needs the video surface mounted before it attaches, text display and blob URLs are set up for Vega, and a failing sidecar subtitle no longer leaves a loaded title paused.

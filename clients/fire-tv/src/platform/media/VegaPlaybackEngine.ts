@@ -45,6 +45,7 @@ import type {
 import {CAPABILITIES} from '../capabilities';
 import {
   configureShakaForHls,
+  configureTextDisplayer,
   createShakaPlayer,
   registerAuthRequestFilter,
   resolveShakaNamespace,
@@ -494,6 +495,9 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
       }
       this.videoPlayer = player;
       this.attachPlayerListeners(player, generation);
+      // Shaka's attach() resolves only once the MediaSource opens, which needs the video surface mounted: publish the player
+      // now so the screen renders it (getVideoPlayer() is not React state), otherwise attach() waits forever.
+      this.setState({});
 
       if (isHlsMimeType(source.mimeType)) {
         // Shaka's own `load(uri, startTime, mimeType)` (called inside
@@ -546,13 +550,14 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
     }
 
     const shakaPlayer = createShakaPlayer(shaka);
-    await shakaPlayer.attach(player);
+    await shakaPlayer.attach(player, false);
     if (generation !== this.loadGeneration || this.destroyed) {
       await shakaPlayer.destroy().catch(() => undefined);
       return;
     }
 
     configureShakaForHls(shakaPlayer);
+    configureTextDisplayer(shakaPlayer, shaka, player);
     registerAuthRequestFilter(
       shakaPlayer,
       shaka,

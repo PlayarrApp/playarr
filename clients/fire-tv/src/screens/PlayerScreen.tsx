@@ -281,20 +281,25 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
         writeActivePlayerSession(userId, {mediaFileId, startPositionSeconds, title: launchOptions.title});
         return engine.load({url: client.resolveUrl(info.url), mimeType: info.mime_type, startPositionSeconds});
       })
+      // Start first: a sidecar subtitle that never resolves or fails must not leave a loaded title paused.
+      .then(() => engine.play())
       .then(async () => {
         if (info.subtitle_tracks.length === 0) return;
-        await engine.addExternalSubtitleTracks(
-          info.subtitle_tracks.map((track) => ({
-            id: track.id,
-            url: client.resolveUrl(track.url),
-            label: track.label,
-            language: track.language ?? undefined,
-            forced: track.forced,
-          }))
-        );
-        await engine.selectSubtitleTrack(info.selected_subtitle_track_id ?? null);
+        try {
+          await engine.addExternalSubtitleTracks(
+            info.subtitle_tracks.map((track) => ({
+              id: track.id,
+              url: client.resolveUrl(track.url),
+              label: track.label,
+              language: track.language ?? undefined,
+              forced: track.forced,
+            }))
+          );
+          await engine.selectSubtitleTrack(info.selected_subtitle_track_id ?? null);
+        } catch {
+          // Subtitles are optional; playback carries on without them.
+        }
       })
-      .then(() => engine.play())
       .catch(() => {
         // A rejected load()/play() already lands in engine.getState().error
         // via VegaPlaybackEngine's own reportFatalError -- this catch

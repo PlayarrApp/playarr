@@ -83,3 +83,23 @@ describe('registerAuthRequestFilter', () => {
     expect(() => registerAuthRequestFilter(player, shaka, () => 'token-123', () => null)).not.toThrow();
   });
 });
+
+describe('installBlobUrlFallback', () => {
+  it('builds the blob:/// form VideoPlayer.src reads when React Native cannot', () => {
+    const original = (globalThis as {URL?: unknown}).URL;
+    (globalThis as {URL?: unknown}).URL = {
+      createObjectURL: () => {
+        throw new Error('Cannot create URL for blob!');
+      },
+    };
+    try {
+      const {installBlobUrlFallback} = require('./shakaAdapter');
+      installBlobUrlFallback();
+      const url = (globalThis as {URL: {createObjectURL: (b: unknown) => string}}).URL.createObjectURL({data: {blobId: '7', offset: 0}, size: 0});
+      expect(url).toBe('blob:///7?offset=0&size=0');
+      expect(() => (globalThis as {URL: {createObjectURL: (b: unknown) => string}}).URL.createObjectURL({})).toThrow('Cannot create URL');
+    } finally {
+      (globalThis as {URL?: unknown}).URL = original;
+    }
+  });
+});

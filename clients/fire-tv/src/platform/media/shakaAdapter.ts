@@ -93,6 +93,7 @@ export interface ShakaNamespace {
   Player: new () => ShakaPlayerLike;
   net: {NetworkingEngine: {RequestType: ShakaRequestTypeEnum}};
   polyfill?: {installAll: () => void};
+  text?: {SimpleTextDisplayer: new (mediaElement: unknown, label?: string) => unknown};
 }
 
 /**
@@ -108,6 +109,8 @@ export function resolveShakaNamespace(): ShakaNamespace | undefined {
   // `scripts/setup-shaka.sh` generates src/vendor/shaka (git-ignored): Amazon's polyfills plus the patched Shaka build,
   // which installs itself as globalThis.shaka. Metro treats a require inside try/catch as optional, so a checkout that
   // never ran the script still bundles and simply reports Shaka as unavailable.
+  // Before the require: Shaka keeps a reference to URL.createObjectURL as it loads.
+  installBlobUrlFallback();
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     require('../../vendor/shaka');
@@ -115,6 +118,37 @@ export function resolveShakaNamespace(): ShakaNamespace | undefined {
     console.warn('[shakaAdapter] Shaka Player for Vega is not installed (run scripts/setup-shaka.sh)', error);
   }
   return (globalThis as {shaka?: ShakaNamespace}).shaka;
+}
+
+/**
+ * Shaka's default text displayer factory probes `"track" in document.createElement("track")`; Amazon's document polyfill
+ * returns nothing for it, so that throws a TypeError from inside `load()` and every title reports "cannot be played".
+ * Name the displayer that does work on Vega (it uses `VideoPlayer.addTextTrack`) instead of letting Shaka probe.
+ */
+export function configureTextDisplayer(player: ShakaPlayerLike, shaka: ShakaNamespace, mediaElement: unknown): void {
+  const SimpleTextDisplayer = shaka.text?.SimpleTextDisplayer;
+  if (!SimpleTextDisplayer) return;
+  player.configure({textDisplayFactory: () => new SimpleTextDisplayer(mediaElement, 'Shaka Player TextTrack')});
+}
+
+/**
+ * React Native's `URL.createObjectURL` throws "Cannot create URL for blob!" here because the blob module reports no URL
+ * scheme on Vega, yet `VideoPlayer.src` only needs `blob:///<id>?offset=&size=` (that is how it finds the MediaSource, see
+ * its `set src`). Build that form ourselves, from the same `data` fields React Native would use.
+ */
+export function installBlobUrlFallback(): void {
+  const URLCtor = (globalThis as unknown as {URL?: {createObjectURL?: (blob: unknown) => string}}).URL;
+  if (!URLCtor?.createObjectURL) return;
+  const original = URLCtor.createObjectURL.bind(URLCtor);
+  URLCtor.createObjectURL = (blob: unknown) => {
+    try {
+      return original(blob);
+    } catch (error) {
+      const {data, size} = blob as {data?: {blobId?: string; offset?: number}; size?: number};
+      if (data?.blobId === undefined) throw error;
+      return `blob:///${data.blobId}?offset=${data.offset ?? 0}&size=${size ?? 0}`;
+    }
+  };
 }
 
 /** `new shaka.Player()`, pulled out to its own one-line function purely so `VegaPlaybackEngine.ts` never spells out `new shaka.Player()` itself -- every other Shaka call in this app goes through a named function in this file for the same reason: one place to update if the real Vega fork's construction sequence ever turns out to differ (e.g. requiring an options object). */
