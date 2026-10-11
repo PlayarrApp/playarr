@@ -36,7 +36,7 @@ export function mockRuntimeMinutes(id) {
 
 const removedWatchlist = new Set();
 
-export async function startServer({ distDir, port = 0, movies = 1746, series = 944, artists = 120, searchLimit = 60, onDeck = 0, detailDelayMs = 0, progressDelayMs = 0, calendarDelayMs = 0, calendarPerDay = 4, resumePlanDelayMs = -1, railsDelayMs = 0, seasons = 0, seasonEpisodes = 14, canDownload = false, playlists = 0, playlistItems = 0, nestedPlaylists = false, folders = false, watchlist = 0, listDelayMs = 0, latencyMs = 0, resyncAfterMs = -1, lagAverageSeconds = null, calendarOverviews = false, languagesDelayMs = 0, serverGroup = false }) {
+export async function startServer({ distDir, port = 0, movies = 1746, series = 944, artists = 120, searchLimit = 60, onDeck = 0, detailDelayMs = 0, progressDelayMs = 0, calendarDelayMs = 0, calendarPerDay = 4, resumePlanDelayMs = -1, railsDelayMs = 0, seasons = 0, seasonEpisodes = 14, canDownload = false, playlists = 0, playlistItems = 0, nestedPlaylists = false, folders = false, watchlist = 0, listDelayMs = 0, latencyMs = 0, resyncAfterMs = -1, lagAverageSeconds = null, calendarOverviews = false, languagesDelayMs = 0, serverGroup = false, artistAlbums = 0, castCount = 0, resumeEpisodeIndex = 0, episodeOverviews = false }) {
   /** Detail answer delay in ms; a test can change it while the server runs (`setDetailDelay`). */
   let detailDelay = detailDelayMs;
   const catalogue = buildCatalogue({ movies, series, artists });
@@ -126,10 +126,13 @@ export async function startServer({ distDir, port = 0, movies = 1746, series = 9
       const episode = { id: `e-${work.id}`, season_id: season.id, episode_number: 3, title: "A Slowly Loaded Episode", overview: "Hero description that arrives late.", images: [], availability: "available", monitored: true };
       const body = {
         work,
-        children: work.kind === "movie" ? "Movie" : { Series: seasons > 0
+        children: work.kind === "movie" ? "Movie" : work.kind === "artist" && artistAlbums > 0 ? { Artist: Array.from({ length: artistAlbums }, (_, ai) => ({
+              album: { id: `al${ai}-${work.id}`, artist_work_id: work.id, album_type: "studio", availability: "available", monitored: true, images: [], release_date: `${2000 + ai}-01-01`, title: ai % 2 === 0 ? `Album ${ai + 1}` : `A Considerably Longer Album Title Number ${ai + 1} That Wraps Across Lines` },
+              tracks: Array.from({ length: 6 }, (_, ti) => ({ track: { id: `t${ai}-${ti}-${work.id}`, album_id: `al${ai}-${work.id}`, availability: "available", disc_number: 1, track_number: ti + 1, title: `Track ${ti + 1}`, duration_seconds: 200 + ti }, media_file_id: `mft${ai}-${ti}-${work.id}`, runtime_ms: 200_000 })),
+            })) } : { Series: seasons > 0
           ? Array.from({ length: seasons }, (_, si) => {
               const sn = { ...season, id: `s${si}-${work.id}`, season_number: si + 1 };
-              return { season: sn, episodes: Array.from({ length: seasonEpisodes }, (_, ei) => ({ episode: { ...episode, id: `e${si}-${ei}-${work.id}`, season_id: sn.id, episode_number: ei + 1, title: `Episode ${ei + 1}` }, media_file_id: `mf${si}-${ei}-${work.id}` })) };
+              return { season: sn, episodes: Array.from({ length: seasonEpisodes }, (_, ei) => ({ episode: { ...episode, id: `e${si}-${ei}-${work.id}`, season_id: sn.id, episode_number: ei + 1, title: `Episode ${ei + 1}`, ...(episodeOverviews ? { overview: `Episode ${ei + 1} synopsis. `.repeat(2 + ei * 3) } : {}) }, media_file_id: `mf${si}-${ei}-${work.id}` })) };
             })
           : [{ season, episodes: [{ episode, media_file_id: `mf-${work.id}` }] }] },
         available_on: [],
@@ -138,6 +141,9 @@ export async function startServer({ distDir, port = 0, movies = 1746, series = 9
       };
       if (detailDelay > 0) return void setTimeout(() => json(res, body), detailDelay);
       return json(res, body);
+    }
+    if (castCount > 0 && /^\/api\/v1\/catalog\/[^/]+\/credits$/.test(p)) {
+      return json(res, { cast: Array.from({ length: castCount }, (_, i) => ({ id: `c${i}`, character: `Character ${i + 1}`, person: { id: `p${i}`, name: `Person ${i + 1}`, headshot_url: null } })), crew: [] });
     }
     // The per-work availability-lag statistic: no samples by default (a library series nothing has been imported
     // for yet), or a mean of `lagAverageSeconds`.
@@ -150,7 +156,7 @@ export async function startServer({ distDir, port = 0, movies = 1746, series = 9
     // Optional: a series resume plan (a "Resume" button on the detail page), delivered after `resumePlanDelayMs`.
     const planMatch = resumePlanDelayMs >= 0 ? p.match(/^\/api\/v1\/catalog\/([^/]+)\/resume-plan$/) : null;
     if (planMatch && byId.has(planMatch[1])) {
-      const option = { duration_ms: 2_400_000, episode_id: `e0-0-${planMatch[1]}`, episode_number: 1, kind: "next_in_series", label: "S01E01", media_file_id: `mf0-0-${planMatch[1]}`, position_ms: 0, progress_percent: 0, season_number: 1, title: "Episode 1" };
+      const option = { duration_ms: 2_400_000, episode_id: `e0-${resumeEpisodeIndex}-${planMatch[1]}`, episode_number: resumeEpisodeIndex + 1, kind: "next_in_series", label: `S01E0${resumeEpisodeIndex + 1}`, media_file_id: `mf0-${resumeEpisodeIndex}-${planMatch[1]}`, position_ms: 0, progress_percent: 0, season_number: 1, title: `Episode ${resumeEpisodeIndex + 1}` };
       const body = { action: "resume", ask_reasons: [], needs_choice: false, options: [option], reason: "next_in_order", series_work_id: planMatch[1], target: option };
       if (resumePlanDelayMs > 0) return void setTimeout(() => json(res, body), resumePlanDelayMs);
       return json(res, body);

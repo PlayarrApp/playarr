@@ -67,7 +67,7 @@ export function LayoutHarnessPage() {
       header={{
         title: params.get("title") ?? "Title",
         detail: params.get("detail") ?? undefined,
-        mobileShow: params.get("mobileShow") === "detail" ? "detail" : undefined,
+        mobileShow: params.get("mobileShow") === "title" ? "title" : undefined,
         back: { label: back ?? "Back", to: "/" },
         actions,
       }}

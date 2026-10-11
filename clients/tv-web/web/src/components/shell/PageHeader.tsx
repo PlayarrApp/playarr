@@ -14,8 +14,8 @@ export interface PageHeaderProps {
    * style (`.page-subtitle`, owner rule 2026-10-10); there is no other subtitle size or weight.
    */
   detail?: ReactNode;
-  /** Phones show either the page title or the detail, never both (Settings: the list shows the title, a section the detail). */
-  mobileShow?: "title" | "detail";
+  /** `"title"`: phones hide the subtitle (Settings' section list). Sub-pages keep title and subtitle like every page. */
+  mobileShow?: "title";
   /** Back control: where it goes, and its accessible label. Home is the default destination. */
   back?: BackProps;
   /**

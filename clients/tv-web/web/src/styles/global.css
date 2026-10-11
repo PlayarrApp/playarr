@@ -5194,6 +5194,12 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   color: var(--ink-muted);
 }
 
+/* Until the series' resume plan settles, the selected episode is only a placeholder: its text stays unpainted (the
+   same node, so no remount) rather than flashing and then swapping to the next-up episode's. */
+.tv-detail-copy.is-resolving :is(.tv-detail-kicker, h2:not(.tv-detail-title), .tv-detail-meta, .tv-detail-synopsis) {
+  visibility: hidden;
+}
+
 .tv-home-feature > p:not(.tv-provider),
 .tv-preview-overview,
 .tv-detail-synopsis {
@@ -6697,8 +6703,19 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   color: inherit;
 }
 
-.tv-media-track-scroll .tv-person-card {
-  flex-basis: clamp(104px, calc(8.2 * var(--vw)), 152px);
+/* One cast rail spacing on every layout (the TV web values): the phone's content-track gap and card width left the
+   circles far apart. */
+.tv-cast-track {
+  --tv-cast-gap: clamp(14px, calc(1.3 * var(--vw)), 26px);
+  --tv-cast-card-basis: clamp(104px, calc(8.2 * var(--vw)), 152px);
+}
+
+.tv-cast-track .tv-media-track-scroll {
+  gap: var(--tv-cast-gap);
+}
+
+.tv-cast-track .tv-media-track-scroll .tv-person-card {
+  flex-basis: var(--tv-cast-card-basis);
 }
 
 .tv-person-card .tv-person-art {
@@ -8698,6 +8715,12 @@ html.is-native-scroll-root .profile-auth-scroll {
     -webkit-line-clamp: 3;
   }
 
+  /* A series page's synopsis follows the selected episode, so it keeps three lines of room: the buttons and rails below
+     never move when the next-up episode (a longer or shorter text) replaces the first one. */
+  .tv-detail-synopsis.is-episodic {
+    min-height: calc(3 * 1.45em);
+  }
+
   .tv-home-rails,
   .tv-playlists.is-playlist-detail > .tv-rail-surface {
     top: 43%;
@@ -8911,7 +8934,8 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
     position: fixed;
     width: min(100%, 430px);
     min-width: 0;
-    padding: calc(var(--mobile-top-inset) + 18px) 20px
+    /* The close button's top inset equals its right inset (20px) unless a device notch needs more. */
+    padding: max(20px, env(safe-area-inset-top)) 20px
       calc(24px + env(safe-area-inset-bottom));
   }
 
@@ -9024,6 +9048,21 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
     overflow-y: visible;
   }
 
+  /* The cover art leads the page (the details follow it, inside the browser), so the backdrop takes no flow height and
+     the art starts right under the header. */
+  .tv-music-detail > .tv-key-art {
+    margin-bottom: calc(-1 * min(calc(58 * var(--viewport-unit)), 520px));
+  }
+
+  .tv-music-detail > .tv-music-browser {
+    margin-top: calc(var(--mobile-top-inset) + 56px);
+  }
+
+  .tv-music-browser > .tv-detail-copy {
+    margin-top: 8px;
+    padding-top: 0;
+  }
+
   .tv-music-album-flow {
     height: 290px;
     min-height: 290px;
@@ -9112,19 +9151,27 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
     display: none;
   }
 
-  .tv-search-rail-surface {
-    top: 38%;
+  /* Results (and the empty prompt) start directly under the field and paint no panel of their own, so the stage
+     background shows through like every other page (the frosted rail panel is the TV layout). */
+  :root[data-theme] .tv-search-rail-surface {
+    top: calc(var(--mobile-top-inset) + 140px);
     right: 0;
     bottom: 0;
     width: 100%;
-    height: 62%;
-    background: linear-gradient(180deg, transparent, var(--surface) 10%);
+    height: auto;
+    background: none;
+  }
+
+  .tv-search-rail-surface .tv-empty-state.is-rail {
+    min-height: 0;
+    justify-content: flex-start;
+    padding: 0;
   }
 
   .tv-search-results {
-    padding: 30px var(--mobile-page-gutter)
+    padding: 16px var(--mobile-page-gutter)
       calc(var(--mobile-nav-height) + 24px);
-    scroll-padding-block: 30px calc(var(--mobile-nav-height) + 24px);
+    scroll-padding-block: 16px calc(var(--mobile-nav-height) + 24px);
   }
 
   .tv-search-results-grid {
@@ -10411,11 +10458,6 @@ body[data-input-mode="remote"] :is(
 }
 
 @media (max-width: 760px) {
-
-  /* Keep the drawer's close control clear of the floating avatar and bottom nav. */
-  .tv-filter-drawer > header {
-    padding-right: 60px;
-  }
 
   .tv-filter-drawer {
     padding-bottom: 110px;

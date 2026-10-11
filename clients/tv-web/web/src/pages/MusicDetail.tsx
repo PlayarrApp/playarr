@@ -45,6 +45,7 @@ import {
   type NavigationOrigin,
 } from "../lib/navigationLayer";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { horizontalSwipeStep, type TouchPoint } from "../lib/touchGestures";
 import {
   getJoinedWorkSources,
@@ -479,6 +480,8 @@ export function MusicDetailPage() {
   const { activePlayerSession, startPlayerSession } =
     useOutletContext<AppShellOutletContext>();
   const { t } = useLanguage();
+  // Phones stack the cover art first and the details beneath it, so switching album never moves the art.
+  const isPhone = useMediaQuery("(max-width: 760px)");
   const client = useApiClient();
   const liveWorkScope = useMemo(
     () => ({ areas: ["catalog", "progress"] as const, keys: workId ? [workId] : [] }),
@@ -820,37 +823,8 @@ export function MusicDetailPage() {
     />
   ) : null;
 
-  return (
-    <PageLayout
-      pageId="music-detail"
-      className="tv-detail tv-music-detail"
-      ariaLabel={work.title}
-      backdrop={{
-        artKey: hasArtistBackdrop ? `${work.id}:backdrop` : selectedAlbum?.album.id ?? work.id,
-        art: (
-          <CachedArtworkImage
-            work={work}
-            kinds={["backdrop"]}
-            alt=""
-            className="tv-music-detail-backdrop"
-            fallback={albumBackdrop}
-          />
-        ),
-      }}
-      header={{
-        variant: "detail",
-        title: t("shell.nav.music"),
-        detail: work.title,
-        back: {
-          label: t("pages.musicDetail.backToMusic"),
-          onBack: () => {
-            if (parentNavigationOrigin) navigate(-1);
-            else navigate(backTo);
-          },
-        },
-      }}
-    >
-      <aside className="tv-detail-copy" key={`music-copy-${selectedTrack?.track.id ?? work.id}`}>
+  const copy = (
+    <aside className="tv-detail-copy" key={`music-copy-${selectedTrack?.track.id ?? work.id}`}>
         <p className="tv-detail-kicker">
           {selectedAlbum
             ? selectedAlbum.album.album_type.replace(/_/g, " ")
@@ -881,7 +855,40 @@ export function MusicDetailPage() {
         <p className="tv-detail-synopsis">
           {work.overview ?? t("pages.musicDetail.overviewFallback")}
         </p>
-      </aside>
+    </aside>
+  );
+
+  return (
+    <PageLayout
+      pageId="music-detail"
+      className="tv-detail tv-music-detail"
+      ariaLabel={work.title}
+      backdrop={{
+        artKey: hasArtistBackdrop ? `${work.id}:backdrop` : selectedAlbum?.album.id ?? work.id,
+        art: (
+          <CachedArtworkImage
+            work={work}
+            kinds={["backdrop"]}
+            alt=""
+            className="tv-music-detail-backdrop"
+            fallback={albumBackdrop}
+          />
+        ),
+      }}
+      header={{
+        variant: "detail",
+        title: t("shell.nav.music"),
+        detail: work.title,
+        back: {
+          label: t("pages.musicDetail.backToMusic"),
+          onBack: () => {
+            if (parentNavigationOrigin) navigate(-1);
+            else navigate(backTo);
+          },
+        },
+      }}
+    >
+      {isPhone ? null : copy}
 
       {albums.length > 0 ? (
         <TvRailSurface
@@ -907,6 +914,7 @@ export function MusicDetailPage() {
             id="inline-music-player-host"
             className="tv-inline-music-player-host"
           />
+          {isPhone ? copy : null}
           {selectedAlbum ? (
             <AlbumTrackList
               key={selectedAlbum.album.id}

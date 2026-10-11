@@ -614,6 +614,7 @@ function MoviePeopleTrack({
       itemsKey={credits.map((credit) => credit.id).join(":")}
       dataTrackId={`people:${groupKey}`}
       spacing={spacing}
+      className="tv-cast-track"
     >
       {credits.map((credit) => {
         const subtitle =
@@ -1698,11 +1699,13 @@ export function WorkDetailPage() {
                 ];
               })
           );
+  // Before the selection effect has run (the first render, or a plan that has just settled) the next-up episode is the
+  // fallback, not the first one: otherwise the copy paints the first episode and then jumps to the next-up one.
   const selectedSeason =
-    seasons.find((season) => season.season.season_number === selectedSeasonNumber) ?? seasons[0];
+    seasons.find((season) => season.season.season_number === (selectedSeasonNumber ?? nextUp?.seasonNumber)) ?? seasons[0];
   const episodes = selectedSeason ? playableEpisodes(selectedSeason) : [];
   const selectedEpisode =
-    episodes.find((episode) => episode.episode.id === selectedEpisodeId) ?? episodes[0];
+    episodes.find((episode) => episode.episode.id === (selectedEpisodeId ?? nextUp?.episodeId)) ?? episodes[0];
   const playMediaFileId =
     work.kind === "movie" ? movieMediaFileId : selectedEpisode?.media_file_id ?? null;
   const activeProgress = playMediaFileId ? progressByMedia.get(playMediaFileId) : undefined;
@@ -1832,7 +1835,10 @@ export function WorkDetailPage() {
         },
       }}
     >
-      <aside className="tv-detail-copy" key={`copy-${work.id}`}>
+      <aside
+        className={`tv-detail-copy${resumePlanPending ? " is-resolving" : ""}`}
+        key={`copy-${work.id}`}
+      >
         <p className="tv-detail-kicker">
           {episodic && selectedEpisode ? (
             <>
@@ -1869,7 +1875,7 @@ export function WorkDetailPage() {
           ))}
         </div>
         {work.kind === "series" ? <AvailabilityLagNote workId={work.id} /> : null}
-        <p className="tv-detail-synopsis">
+        <p className={`tv-detail-synopsis${episodic ? " is-episodic" : ""}`}>
           {activeOverview ??
             (episodic
               ? t("pages.workDetail.noEpisodeSynopsis")
@@ -2101,6 +2107,9 @@ export function WorkDetailPage() {
               onChooseServer={setPendingServerPlayback}
               defaultFocusReady={defaultFocusReady}
               onSelect={(seasonNumber, episodeId) => {
+                // Initial default focus lands on the first tile while the resume plan is pending. That is not a
+                // choice: recording it pinned the first episode and ignored the next-up one when the plan settled.
+                if (!nextUpReady) return;
                 userSelectionRef.current = { workId: work.id, episodeId };
                 setSelectedSeasonNumber(seasonNumber);
                 setSelectedEpisodeId(episodeId);

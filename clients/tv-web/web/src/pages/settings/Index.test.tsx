@@ -139,7 +139,7 @@ describe("SettingsIndexPage", () => {
       /\.settings-index-route \.settings-detail-panel,\s*\.settings-detail-route \.settings-options-panel\s*\{[^}]*display:\s*none/s
     );
     expect(css).toMatch(
-      /\.page-header\[data-mobile-show="title"\] > \.page-header-title-block > \.page-header-detail,\s*\.page-header\[data-mobile-show="detail"\] h1\s*\{[^}]*display:\s*none/s
+      /\.page-header\[data-mobile-show="title"\] > \.page-header-title-block > \.page-header-detail\s*\{[^}]*display:\s*none/s
     );
     expect(css).toMatch(
       /\.settings-index-route \.settings-option-copy small,\s*\.settings-index-route \.settings-option-arrow\s*\{[^}]*display:\s*block/s

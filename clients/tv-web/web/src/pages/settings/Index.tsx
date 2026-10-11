@@ -239,7 +239,7 @@ export function SettingsIndexPage() {
         back: { label: t("settings.sectionLayout.backLink"), onBack: leaveSettings },
         backProps: { "data-tv-focus-default": true },
         detail: activeSection.title,
-        mobileShow: isSettingsIndex ? "title" : "detail",
+        mobileShow: isSettingsIndex ? "title" : undefined,
       }}
     >
       <div className="settings-workspace">

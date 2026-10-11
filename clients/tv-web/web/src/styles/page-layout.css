@@ -342,9 +342,6 @@
   .tv-library-heading {
     left: calc(5 * var(--vw));
   }
-  .tv-library-heading > .page-header-title-block > span {
-    display: none;
-  }
 }
 
 
@@ -361,9 +358,6 @@
     font-size: 1.35rem;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .tv-library-heading > .page-header-title-block > span {
-    display: none;
   }
   .tv-page-back {
     width: 44px;
@@ -545,7 +539,7 @@ body[data-input-mode="remote"] .action-pill {
  * Shell action column (owner ruling, 8 October 2026, Q1b): every page's side-panel and action pills (Filters, Create,
  * Calendar link, ...) live in one column owned by the app shell, at the right edge where the 30 September
  * `.tv-filter-launcher` sat (commit 54224f36), stacked vertically with Filters last. Pages never position them.
- * On phones, as on 30 September, the column becomes a row left of the profile avatar.
+ * On phones the column becomes a row at the right page gutter (the profile avatar sits in the bottom nav).
  */
 .shell-action-column {
   position: absolute;
@@ -571,7 +565,7 @@ body[data-input-mode="remote"] .action-pill {
 @media (max-width: 760px) {
   .shell-action-column {
     top: var(--mobile-top-inset, 14px);
-    right: 66px;
+    right: var(--mobile-page-gutter, 16px); /* flush with the content grid's right edge */
     width: auto;
   }
 
@@ -799,14 +793,8 @@ body[data-input-mode="remote"] .action-pill {
 
 @media (max-width: 760px),
   (max-width: 920px) and (max-height: 500px) and (pointer: coarse) {
-  .page-header[data-mobile-show="title"] > .page-header-title-block > .page-header-detail,
-  .page-header[data-mobile-show="detail"] h1 {
+  .page-header[data-mobile-show="title"] > .page-header-title-block > .page-header-detail {
     display: none;
-  }
-
-  .page-header[data-mobile-show="detail"] > .page-header-title-block > .page-header-detail {
-    max-width: calc(calc(100 * var(--vw)) - 150px);
-    display: block;
   }
 }
 
