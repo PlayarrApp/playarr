@@ -1,1 +1,0 @@
-- Linux phone client: Flatpak manifest, Alpine APKBUILD, desktop entry, metainfo and icon.

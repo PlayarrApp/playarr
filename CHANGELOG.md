@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Starting the same title from several devices of one account no longer fails with `no_transcode_capacity`: devices at the same start position share one on-demand transcode (the process stops when the last viewer leaves), a video-copy remux takes a quarter of a transcode slot, and a full node answers 503 with `Retry-After` while the web and Android players retry with back-off.
 - Apple TV: series pages show episode stills and place the season rails at the web height; the parity routes draw the production Home and nav.
 - On-demand HLS audio is folded onto 5.1, stereo or mono before AAC encoding: a DTS 5.1(side) or 7.1 source produced AAC with channel configuration 0, which Android TV failed to decode after the transcode fallback and Chrome rejected (20.260).
 - Fire TV: fixed a render loop in the nav rail that froze the remote on Home; a direction key with nothing focused lands on the page default (the selected Home card) before the rail; the profile list retries silently after a network blip; balanced titles stop after a few layout passes (18.462).
@@ -278,6 +279,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Linux phone client: title detail (film and series with seasons and episodes), settings, and playback with resume and progress reporting.
+- Linux phone client: tabbed shell with Home rails (On deck first), movie and series grids with infinite scroll, and search.
+- Linux phone client: Flatpak manifest, Alpine APKBUILD, desktop entry, metainfo and icon.
 - Linux phone client scaffold (clients/linux-mobile, GTK4 and libadwaita): hosted-link QR sign-in, profile picker, theme tokens, Nunito Sans, CI job.
 - Playarr for Mac: a macOS app built from the Apple TV sources and PlayarrKit, showing the TV layout in a resizable 16:9 window with keyboard, mouse and hover control (57.10024). Its build and unit tests run on hosted macOS for pull requests that touch it.
 - Apple TV: the library Filters drawer has the web View choice (list, screen, cover) and audio and subtitle language filters; entering a library grid lands on the first (or last focused) title; open drawers are modal.
@@ -2712,6 +2716,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Shared device parity suite (scripts/parity/suite.json, suite-run.mjs, web reference driver, validator test) and docs/parity/SUITE.md and DEVICES.md.
 - Parity: the live web capture waits for skeleton loaders to clear before the screenshot.
 - Web: `nav-list-rows-e2e` checks row heights with 1, 2 and 10 watchlist items at 1920 and 1280 (1.9967).
 - Web: `nav-cold-start-e2e` loads Watchlist cold against a server that answers every read after 1 s and checks the nav is never blank, its skeleton tiles are inert, and no tile moves (1.9970).
