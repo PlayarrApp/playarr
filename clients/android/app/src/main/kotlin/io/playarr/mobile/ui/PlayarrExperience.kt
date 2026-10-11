@@ -2303,7 +2303,10 @@ private fun ExperienceNavHost(
     playerViewModel: ExperiencePlayerViewModel,
 ) {
     val playbackQueue by viewModel.playbackQueue.collectAsState()
-    NavHost(navController, startDestination = initialRoute, modifier = Modifier.fillMaxSize()) {
+    // Debug parity launches on a detail route sit on top of Home, as web's history does, so BACK returns to Home.
+    val detailOnHome = parityRoute != null && initialRoute.startsWith("experience-detail")
+    if (detailOnHome) LaunchedEffect(Unit) { navController.navigate(initialRoute) }
+    NavHost(navController, startDestination = if (detailOnHome) "home" else initialRoute, modifier = Modifier.fillMaxSize()) {
         composable("home") {
             ExperienceOnlineGate(isOnline, isTelevision, "home") {
                 ExperienceHomeScreen(serverUrl, accessToken, isTelevision, canDownload == true, navController, viewModel)
