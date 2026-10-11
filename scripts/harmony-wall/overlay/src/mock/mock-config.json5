@@ -1,0 +1,5 @@
+{
+  // Preview-only (never committed): TV device type, persistent Asset Store.
+  "@ohos.deviceInfo": { "source": "src/mock/deviceinfo.mock.ets" },
+  "@ohos.security.asset": { "source": "src/mock/asset.mock.ets" }
+}

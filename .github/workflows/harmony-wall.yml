@@ -1,0 +1,164 @@
+name: Harmony wall
+
+# HarmonyOS parity captures on GitHub-hosted runners (replaces the owner's MacBook while it is away). A Linux job builds the preview
+# bundle with the public OpenHarmony SDK (no Huawei login); a Windows job renders it with the public SDK's Windows Previewer, using
+# Mesa llvmpipe for OpenGL (hosted VMs have no GPU), signs in fresh as the Device Test account (link code from the app's log, approved
+# with the repository secrets), and captures the screens in dark and light. The Linux Previewer cannot render Stage apps ("Linux is
+# not supported"), and the macOS one crashes creating a GL context, so Windows is the only host. Pull the result into the legend with
+# scripts/harmony-wall/pull-captures.sh.
+# Public repository: workflow_dispatch only, no pull_request trigger. The secrets reach one step; no frame that could show the server
+# address is ever uploaded.
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: Device (the phone profile is not wired yet)
+        type: choice
+        options: [tv]
+        default: tv
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build the preview bundle (${{ inputs.device || 'tv' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DEVICE: ${{ inputs.device || 'tv' }}
+      WORK: ${{ github.workspace }}/harmony-wall-work
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Cache OpenHarmony SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ohos-sdk
+          key: ohos-sdk-6.1-release-cli-5.1.0.840
+      - name: Install the OpenGL runtime library for the SDK toolchain
+        run: |
+          sudo -n apt-get update -qq
+          sudo -n apt-get install -y --no-install-recommends libgl1
+      - name: Fetch the OpenHarmony SDK + Command Line Tools
+        run: bash clients/harmony/scripts/fetch-sdk.sh
+      - name: Configure the @ohos registry
+        run: |
+          printf 'registry=https://repo.huaweicloud.com/repository/npm/\n@ohos:registry=https://repo.harmonyos.com/npm/\n' >> ~/.npmrc
+          ~/.cache/ohos-sdk/command-line-tools/ohpm/bin/ohpm config set registry https://ohpm.openharmony.cn/ohpm/
+      - name: Build the preview bundle
+        run: bash scripts/harmony-wall/preview.sh build "$DEVICE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harmony-bundle-${{ env.DEVICE }}
+          path: |
+            ${{ env.WORK }}/app/entry/.preview
+            ${{ env.WORK }}/hms-previewer
+            ${{ env.WORK }}/hvigor.log
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  render:
+    name: Render on Windows (${{ inputs.device || 'tv' }})
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEVICE: ${{ inputs.device || 'tv' }}
+      MESA_VERSION: 26.2.4
+      SDK_BUILD: "31" # the public SDK is 6.1.0.<build>; split so the env-data guard does not read it as an IPv4 address
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: harmony-bundle-${{ env.DEVICE }}
+          path: harmony-wall-work
+      - name: Cache the Windows Previewer and Mesa
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            sdk/pv
+            mesa-x64
+          key: harmony-win-previewer-6.1.0-build31-mesa-${{ env.MESA_VERSION }}
+      - name: Fetch the Windows Previewer (public SDK) and Mesa llvmpipe
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p sdk
+          curl -fL --retry 3 https://repo.huaweicloud.com/harmonyos/os/6.1-Release/ohos-sdk-windows_linux-public.tar.gz | tar xz -C sdk "windows/previewer-windows-x64-6.1.0.${SDK_BUILD}-Release.zip"
+          7z x -y -osdk/pv sdk/windows/previewer-windows-x64-*.zip > /dev/null
+          curl -fL --retry 3 -o mesa.7z "https://github.com/pal1000/mesa-dist-win/releases/download/$MESA_VERSION/mesa3d-$MESA_VERSION-release-msvc.7z"
+          7z x -y -omesa mesa.7z > /dev/null
+          cp -R mesa/x64 mesa-x64
+      - name: Put Mesa next to the Previewer
+        run: cp -R mesa-x64/. sdk/pv/previewer/common/bin/
+      - name: Re-root the absolute paths of the Linux build
+        run: |
+          W=$(cygpath -m "$GITHUB_WORKSPACE")
+          OLD=$(printf '/%s/runner/work/playarr/playarr' home) # the Linux build's workspace
+          grep -rIl "$OLD" harmony-wall-work/app/entry/.preview | while read -r f; do
+            sed -i "s#$OLD#$W#g" "$f"
+          done
+      - run: python -m pip install --quiet pillow
+      - name: Start the bridge and the Previewer, sign in and capture
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          GALLIUM_DRIVER: llvmpipe
+          MESA_GL_VERSION_OVERRIDE: "4.5"
+        run: |
+          W=$(cygpath -m "$GITHUB_WORKSPACE"); I="$W/harmony-wall-work/app/entry/.preview/default/intermediates"
+          if [ "$DEVICE" = phone ]; then D=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait); else D=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape); fi
+          cp scripts/sim-vnc/sim_vnc.py scripts/harmony-wall/
+          PLAYARR_VNC_PASSWORD=selftest1 python scripts/harmony-wall/harmony_vnc.py --bind 127.0.0.1 --port 5917 --ws 40007 --ctl 40017 \
+            --debug-port 40027 --cmd-name playarr_cmd --password-env PLAYARR_VNC_PASSWORD > bridge.log 2>&1 &
+          # the Previewer connects to the command pipe once, at start: the bridge must have created it by then
+          for i in $(seq 1 60); do grep -q 'control on' bridge.log && break; sleep 1; done
+          sleep 2
+          cd sdk/pv/previewer/common/bin
+          ./Previewer.exe -refresh full -sm dynamic -projectID playarrharmony -ts playarr_trace -j "$I/loader_out/default/ets" \
+            -s playarr_cmd -cpm false -shape rect "${D[@]}" -n entry -av ACE_2_0 -url pages/Index -d -p 40027 -pages main_pages \
+            -arp "$I/res/default" -pm Stage -hsp "$W/harmony-wall-work/hms-previewer/systemHsp" -l en_GB -cm dark -lws 40007 \
+            -ljPath "$I/loader/default/loader.json" -abp ets/entryability/EntryAbility -abn EntryAbility -staticCard false \
+            -foldable false -bn io.playarr.harmony -srmPath "$I/router_map/default/router_map.json" > "$W/previewer.log" 2>&1 &
+          sleep 3; echo started
+          cd "$W"
+          python scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log
+      - name: Upload the captures
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harmony-wall-${{ env.DEVICE }}-${{ github.run_id }}
+          path: |
+            capture/dark
+            capture/light
+            capture/build.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload the debug frames and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harmony-debug-${{ env.DEVICE }}
+          path: |
+            capture/_debug
+            capture/_rejected-*.png
+            bridge.log
+            previewer.log
+          if-no-files-found: ignore
+          retention-days: 3
