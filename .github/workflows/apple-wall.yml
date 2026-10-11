@@ -291,17 +291,28 @@ jobs:
           use-cache: "true"
 
       # Streams showed "A server with the specified hostname could not be found" after the join: look at the resolver.
-      - name: Network check after the join
+      # tailscaled leaves MagicDNS as the system resolver even with --accept-dns=false, and it cannot resolve
+      # the public server name, so the simulators lose their server. Put the runner's own resolvers back, then check.
+      - name: Repair DNS after the join
         if: steps.ts.outcome == 'success'
         continue-on-error: true
         env:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
         run: |
           host=$(python3 -c 'import os, urllib.parse as u; print(u.urlparse(os.environ["SERVER_URL"]).hostname)')
-          if dscacheutil -q host -a name "$host" | grep -q ip_address; then echo "system resolver: ok"; else echo "system resolver: FAIL"; fi
+          check() { dscacheutil -q host -a name "$host" | grep -q ip_address; }
+          if check; then echo "system resolver: ok"; exit 0; fi
+          echo "system resolver: FAIL, repairing"
+          sudo tailscale set --accept-dns=false || true
+          sudo killall -HUP mDNSResponder || true; sleep 2
+          if ! check; then
+            # every network service back to its DHCP resolvers (no hard-coded addresses)
+            networksetup -listallnetworkservices | tail -n +2 | grep -v '^\*' | while read -r svc; do sudo networksetup -setdnsservers "$svc" Empty || true; done
+            sudo dscacheutil -flushcache || true; sudo killall -HUP mDNSResponder || true; sleep 3
+          fi
+          if check; then echo "system resolver: ok after repair"; else echo "system resolver: STILL FAIL"; fi
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$SERVER_URL/" || true); echo "server reachable by curl: HTTP $code"
-          scutil --dns | grep -E 'resolver #|nameserver\[|flags|if_index' | head -24
-          route -n get default | grep -E 'interface|gateway' || true
+          scutil --dns | grep -E 'resolver #|nameserver\[' | head -12
 
       - name: Stream over VNC until the end of the run
         if: steps.ts.outcome == 'success'
