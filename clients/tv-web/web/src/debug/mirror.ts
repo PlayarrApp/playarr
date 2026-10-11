@@ -128,7 +128,9 @@ export function startDebugMirror(): void {
       }
       image = await withTimeout(
         toJpeg(document.body, {
-          fontEmbedCSS: fontCss,
+          // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
+          // native scrollbars the TV does not show: hide them in the rendered copy.
+          fontEmbedCSS: `${fontCss}\n*::-webkit-scrollbar{display:none}*{scrollbar-width:none}`,
           // Cross-origin media (posters, video) would stall or taint the render: leave it out.
           filter: (node) => {
             // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far
