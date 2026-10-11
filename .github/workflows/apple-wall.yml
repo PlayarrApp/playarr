@@ -43,7 +43,8 @@ on:
   # Watchdog: only acts when the repository variable APPLE_WALL_SCHEDULE is "true" (set by the switch-over); starts a streaming
   # run for every device that has none running.
   schedule:
-    - cron: "17,47 * * * *"
+    - cron: "17,47 * * * *" # watchdog for streaming runs (APPLE_WALL_SCHEDULE)
+    - cron: "5 */3 * * *" # test-only captures, no stream (APPLE_WALL_TESTS)
 
 permissions:
   contents: read
@@ -69,10 +70,19 @@ jobs:
           DEVICES: ${{ inputs.devices }}
           LENGTH: ${{ inputs.length }}
           ENABLED: ${{ vars.APPLE_WALL_SCHEDULE }}
+          TESTS: ${{ vars.APPLE_WALL_TESTS }}
+          CRON: ${{ github.event.schedule }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           declare -A off=([tvos]=0 [iphone]=30 [ipad]=60 [macos]=90) vnc=([tvos]=TVOS [iphone]=IPHONE [ipad]=IPAD [macos]=MACOS)
+          if [[ $EVENT == schedule && $CRON == "5 */3 * * *" ]]; then
+            # test-only: capture all four devices, never stream, and only while APPLE_WALL_TESTS is "true"
+            if [[ $TESTS != true ]]; then echo 'any=false' >> "$GITHUB_OUTPUT"; echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"; exit 0; fi
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[{"device":"tvos","vnc":"TVOS","length":1},{"device":"iphone","vnc":"IPHONE","length":1},{"device":"ipad","vnc":"IPAD","length":1},{"device":"macos","vnc":"MACOS","length":1}]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [[ $EVENT == schedule ]]; then
             if [[ $ENABLED == true ]]; then
               live=$(gh run list -R "$GITHUB_REPOSITORY" -w apple-wall.yml -L 100 --json status,displayTitle \
@@ -137,6 +147,25 @@ jobs:
         run: |
           xcodebuild -version; swift --version; sw_vers
           xcrun simctl list runtimes | grep -E 'iOS|tvOS' || true
+
+      # The iPad wall build needs an iOS 18 simulator (iPadOS 26 does not rotate); the runner image only has 26.
+      - name: Cache the iOS 18 simulator runtime
+        if: matrix.device == 'ipad'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ios18
+          key: ios-sim-runtime-18.5-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install the iOS 18 simulator runtime
+        if: matrix.device == 'ipad'
+        timeout-minutes: 40
+        run: |
+          set -euo pipefail
+          t0=$(date +%s); dir="$RUNNER_TEMP/ios18"; mkdir -p "$dir"
+          if ! ls "$dir"/*.dmg >/dev/null 2>&1; then xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir"; fi
+          xcodebuild -importPlatform "$(ls "$dir"/*.dmg | head -1)"
+          xcrun simctl list runtimes | grep 'iOS 18' || { echo "::error::iOS 18 runtime missing after import"; exit 1; }
+          echo "runtime ready in $(( $(date +%s) - t0 )) s"
 
       - name: Build the app
         timeout-minutes: 60
