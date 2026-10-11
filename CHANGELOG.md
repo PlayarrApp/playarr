@@ -2761,6 +2761,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Documentation
 
+- Added a media-server bug and performance test plan (166 cases, sample-media manifest) under docs/testing, parked on the board.
 - Reconcile the task board with the merged PRs of 9 October 2026: statuses, owners, new rows for the owner's requests (rows 9895, 9896).
 - Parity testing matrix: dropped the admin web app row, made the Xbox client device-only, and limited the Browser column to the web client.
 - App Store review notes and iOS release docs no longer ask for a demo server or review account: Playarr is bring-your-own-server and provides no servers.
