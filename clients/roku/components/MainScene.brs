@@ -346,7 +346,10 @@ sub init()
     m.refreshToken = m.session.refreshToken
     m.deviceId = m.session.deviceId
     publishArtAuthHeaders()
-    m.profileLabel.text = m.session.profileName
+    m.profileLabel.text = FirstWord(m.session.profileName)
+    ' The build label under the tile reads like web's (major.minor.0).
+    ai = CreateObject("roAppInfo")
+    m.top.findNode("userVersion").text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
     m.profileId = m.session.profileId
     if m.profileId = invalid then m.profileId = ""
     m.avatarKind = ""
@@ -902,7 +905,7 @@ sub handleApiFailure(action as String, result as Object)
     ' Product surfaces stay in-shell on API failure — never a fullscreen
     ' status wall mid-navigation (that is not how Playarr looks).
     if action = "browseCatalog" or action = "browseCatalogMore"
-        if m.browseCountLabel <> invalid then m.browseCountLabel.text = "UNAVAILABLE"
+        if m.browseCountLabel <> invalid then setBrowseCount("UNAVAILABLE")
         showOnly("browse")
         m.top.screenState = "browse"
         m.browseGrid.SetFocus(true)
@@ -1312,6 +1315,8 @@ sub applyAppTheme()
         if bg <> invalid then ThemeSetRole(bg, "surfaceStrong")
     end for
     ThemeSetRole(m.top.findNode("userPillBg"), "surfaceStrong")
+    ThemeSetRole(m.top.findNode("profilesKicker"), "brandInk")
+    ThemeSetRole(m.top.findNode("searchPreviewKind"), "brandInk")
     for i = 0 to m.navHighlights.Count() - 1
         ThemeSetRole(m.navHighlights[i], "ink")
         ThemeSetRole(m.navIcons[i], "ink")
@@ -1937,7 +1942,14 @@ sub acceptProfileAvatar(data as Dynamic)
     if m.settingsPanel = "avatar" then settingsRefresh()
 end sub
 
-' The identity chip's avatar (bottom left of every shell page).
+' Web's profile tile shows the first name only (shortProfileName).
+function FirstWord(name as String) as String
+    parts = name.Trim().Split(" ")
+    if parts.Count() = 0 or parts[0] = "" then return name
+    return parts[0]
+end function
+
+' The identity tile's avatar (bottom of the dock on every shell page).
 sub applyShellAvatar()
     if m.userAvatar = invalid then return
     if m.avatarKind = "custom" and m.avatarCustomUri <> ""
@@ -2255,7 +2267,7 @@ end sub
 
 sub enterLibrary(profileName as String)
     SaveProfileName(profileName)
-    m.profileLabel.text = profileName
+    m.profileLabel.text = FirstWord(profileName)
     m.items = []
     m.totalItems = invalid
     ' Stay in the library shell while the catalogue loads (no fullscreen status).
@@ -2341,7 +2353,7 @@ sub openBrowse(kind as String, label as String)
     renderBrowseAlphabetFocus()
     ' Stay inside the browse shell while fetching (no fullscreen Loading UI).
     setBrowseTitle(label)
-    if m.browseCountLabel <> invalid then m.browseCountLabel.text = "…"
+    if m.browseCountLabel <> invalid then setBrowseCount("…")
     m.browseItems = []
     buildGridContent(m.browseGrid, m.browseItems, browseCardScale())
     showOnly("browse")
@@ -2365,7 +2377,7 @@ end sub
 sub acceptBrowseCatalog(data as Object, append as Boolean)
     if data = invalid or data.items = invalid
         ' Stay in browse shell (no fullscreen Loading / status wall).
-        if m.browseCountLabel <> invalid then m.browseCountLabel.text = "UNAVAILABLE"
+        if m.browseCountLabel <> invalid then setBrowseCount("UNAVAILABLE")
         showOnly("browse")
         m.top.screenState = "browse"
         m.browseGrid.SetFocus(true)
@@ -2406,10 +2418,8 @@ sub rebuildBrowseContent()
         if m.browseTotal <> invalid then total = Int(m.browseTotal)
         noun = "TITLES"
         if m.browseKind = "artist" then noun = "ARTISTS"
-        m.browseCountLabel.text = UCase(formatCountWithCommas(total) + " " + noun)
-        titleRight = 226.6 + m.browseTitle.textWidth
-        m.browseCountLabel.translation = [titleRight + 46, 73]
-        m.browseDivider.translation = [titleRight + 22, 57]
+        setBrowseCount(UCase(formatCountWithCommas(total) + " " + noun))
+        m.browseDivider.visible = false
     end if
     ' A pending letter jump (see jumpToBrowseLetter) means the target
     ' wasn't loaded yet when it was requested -- now that another page has
@@ -2417,6 +2427,11 @@ sub rebuildBrowseContent()
     if m.browseAlphabetPendingLetter <> invalid
         jumpToBrowseLetter(m.browseAlphabetPendingLetter)
     end if
+end sub
+
+' Web's library heading: the count is a brand-ink subtitle under the title.
+sub setBrowseCount(text as String)
+    m.browseCountLabel.spec = { text: text, size: 12, weight: 800, tracking: 0.983, role: "brandInk", upper: true, width: 500, lineHeight: 16.7, maxLines: 1 }
 end sub
 
 function formatCountWithCommas(n as Dynamic) as String
@@ -2739,7 +2754,7 @@ sub updateBrowsePreview(work as Object)
     if work.genres <> invalid and work.genres.Count() > 0
         kicker = UCase(work.genres[0])
     end if
-    m.browsePreviewKind.spec = { text: kicker, size: 12, weight: 800, tracking: 0.983, role: "brand", upper: true }
+    m.browsePreviewKind.spec = { text: kicker, size: 12, weight: 800, tracking: 0.983, role: "brandInk", upper: true }
     m.browsePreviewTitle.spec = { text: work.title, size: 69, weight: 560, tracking: -4.977, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
     year = ""
     ' Web uses added_at year, not release_date.
@@ -3590,7 +3605,7 @@ end function
 
 sub enterHome(profileName as String)
     SaveProfileName(profileName)
-    m.profileLabel.text = profileName
+    m.profileLabel.text = FirstWord(profileName)
     loadProfileAvatar()
     m.currentProfileName = profileName
     m.homeContinueEntries = []
@@ -4424,7 +4439,8 @@ sub layoutNavDock()
             visibleGroups = visibleGroups + 1
         end if
     end for
-    y = (1080 - totalH) / 2
+    ' Web's first group starts at y 120 whatever the other groups hold.
+    y = 120
     for g = 0 to groupRanges.Count() - 1
         range = groupRanges[g]
         if g = 0 then y = y + itemStep
@@ -4737,7 +4753,7 @@ sub showDetail(detail as Object)
     ' concurrently the way tv-web's own two independent effects do.
     m.detailChapters.visible = false
     m.detailSimilar.visible = false
-    m.detailContent.translation = [881.6, 422.9]
+    m.detailContent.translation = [881.6, detailContentTop()]
     m.detailEpisodeActive = false
     layoutDetailRails()
     if m.currentMediaFileId <> ""
@@ -4856,7 +4872,7 @@ sub setDetailFocusIndex(newIndex as Integer)
     scrollY = 0
     if newIndex > 0 and newIndex < slots.Count() then scrollY = slots[newIndex].translation[1] - m.detailRailBase
     if scrollY < 0 then scrollY = 0
-    m.detailContent.translation = [881.6, 422.9 - scrollY]
+    m.detailContent.translation = [881.6, detailContentTop() - scrollY]
     ' Rails scrolled above the top edge must not bleed into view.
     for i = 0 to slots.Count() - 1
         if scrollY > 0 and i <> newIndex
@@ -4903,6 +4919,12 @@ end function
 ' episodes (one ~315px row per season, two visible), then Chapters, then
 ' Similar Titles, each ~330px, 20px apart. Called whenever a rail's
 ' visibility or size changes.
+' Web's series page starts its season rails 52 px higher than the movie page's Chapters rail.
+function detailContentTop() as Float
+    if m.detailGroupKind = "series" then return 370.9
+    return 422.9
+end function
+
 sub layoutDetailRails()
     y = 0
     hideDetailRailHeads()
@@ -4942,7 +4964,7 @@ sub layoutDetailRails()
         return
     end if
     if m.detailEpisodes.visible
-        m.detailEpisodes.translation = [0, 59]
+        m.detailEpisodes.translation = [0, 69]
         updateSeasonHeads()
         visibleRows = m.detailSeasons.Count()
         if visibleRows > 2 then visibleRows = 2
@@ -5563,7 +5585,7 @@ sub buildEpisodeContent(groups as Object, kind as String)
     end for
     rowHeights = []
     for i = 1 to groups.Count()
-        rowHeights.Push(320)
+        rowHeights.Push(314)
     end for
     m.detailEpisodes.rowHeights = rowHeights
     m.detailEpisodes.rowItemSize = [[268, 190]]
@@ -6360,14 +6382,9 @@ sub showOnly(name as String)
     m.profilesGroup.visible = name = "profiles"
     m.settingsGroup.visible = name = "settings"
     m.pageGroup.visible = name = "page"
-    ' The shell clock sits further right on page-shell screens (web .app-clock follows the page header).
-    if name = "page" or name = "detail" or name = "browse"
-        m.clockTime.translation = [557, 68]
-        m.clockDate.translation = [612, 75]
-    else
-        m.clockTime.translation = [481, 68]
-        m.clockDate.translation = [535, 75]
-    end if
+    ' Web .app-clock is at the same place on every screen.
+    m.clockTime.translation = [474, 68]
+    m.clockDate.translation = [529, 75]
     m.libraryGroup.visible = name = "library"
     m.homeGroup.visible = name = "home"
     m.browseGroup.visible = name = "browse"
@@ -6927,10 +6944,10 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if work.kind = "site" then heading = "Sites"
     if work.kind = "artist" then heading = "Music"
     m.detailHeaderTitle.spec = { text: heading, size: 34, weight: 600, tracking: -1.512, role: "ink" }
-    titleRight = 226.6 + m.detailHeaderTitle.textWidth
-    m.detailHeaderDivider.translation = [titleRight + 22, 57]
-    m.detailHeaderChip.translation = [titleRight + 47, 72]
-    m.detailHeaderChip.spec = { text: work.title, size: 11, weight: 700, tracking: 0.5, role: "inkMuted", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
+    ' Web puts the title under the heading as a brand-ink subtitle (no divider).
+    m.detailHeaderDivider.visible = false
+    m.detailHeaderChip.translation = [226.6, 112]
+    m.detailHeaderChip.spec = { text: work.title, size: 12, weight: 800, tracking: 0.983, role: "brandInk", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
     ' Kicker: the first genre, like the library preview.
     kicker = UCase(work.kind)
     if work.genres <> invalid and work.genres.Count() > 0 then kicker = UCase(work.genres[0])
@@ -7052,7 +7069,7 @@ sub updateSeasonHeads()
             count = group.episodes.Count()
             word = " episodes"
             if count = 1 then word = " episode"
-            setDetailRailHead(slot, slot * 315.0 - 12, "Season " + group.season.season_number.ToStr(), count.ToStr() + word)
+            setDetailRailHead(slot, slot * 314.3 - 12, "Season " + group.season.season_number.ToStr(), count.ToStr() + word)
         end if
     end for
 end sub

@@ -28,20 +28,22 @@ function ThemeTokens(mode as String) as Object
             surfaceStrong: &hFFFFFFFF
             surfaceSoft: &hDFDCDDFF
             ink: &h382621FF
-            inkSoft: &h675961FF
-            inkMuted: &hA5969EFF
+            inkSoft: &h443A40FF
+            inkMuted: &h4D4248FF
             ' --accent, --accent-soft, --on-accent
-            accent: &h675961FF
+            accent: &h4D4248FF
             accentSoft: &hC5B8BDFF
             onAccent: &hFFFFFFFF
             ' --danger, --success
-            danger: &hA8464CFF
-            success: &h347559FF
+            danger: &h722F34FF
+            success: &h224C3AFF
             ' --line rgba(56,38,33,.14), --line-strong rgba(56,38,33,.28)
             line: &h38262124
             lineStrong: &h38262147
             ' Brand red (.tv-provider kicker, unwatched dot, player accent): the same in both themes.
             brand: &hCF3157FF
+            ' --brand-ink: text in the brand hue (kickers, eyebrows), WCAG AAA.
+            brandInk: &h821E36FF
             ' Focus ring: ink in light, literal white in dark (owner ruling).
             focusRing: &h382621FF
             ' Right-hand content panel of the page shell (--surface blended with --surface-soft).
@@ -68,17 +70,18 @@ function ThemeTokens(mode as String) as Object
         surfaceStrong: &h211D21FF
         surfaceSoft: &h312A30FF
         ink: &hF4F0F1FF
-        inkSoft: &hC5B8BDFF
-        inkMuted: &h887A82FF
+        inkSoft: &hCDC1C6FF
+        inkMuted: &hC2B5BBFF
         accent: &hDFDCDDFF
         accentSoft: &h675961FF
         onAccent: &h211D21FF
-        danger: &hEE9297FF
-        success: &h7FC09DFF
+        danger: &hF1A4A8FF
+        success: &h8AC5A5FF
         ' --line rgba(223,220,221,.11), --line-strong rgba(223,220,221,.23)
         line: &hDFDCDD1C
         lineStrong: &hDFDCDD3B
         brand: &hCF3157FF
+        brandInk: &hEAA6B6FF
         focusRing: &hFFFFFFFF
         panel: &h282227FF
         statusTint: &h5B7FD13D

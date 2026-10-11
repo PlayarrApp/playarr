@@ -1,0 +1,1 @@
+- Roku follows the web's refreshed palette (ink-soft, ink-muted, brand-ink, danger, success), shows the profile tile and build label at the foot of the dock, puts the page subtitle under the heading, keeps the clock fixed, titles grid cards below the art after recycling, and lays series rails out as the web does.

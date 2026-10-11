@@ -663,7 +663,7 @@ class RokuDeviceBugfixTests(unittest.TestCase):
         self.assertNotIn("m.detailContent.AppendChild(m.detailActions)", MAIN)
         self.assertNotIn('rowLabelOffset="[[0,-30]]"', SCENE)
         self.assertIn("sub layoutDetailRails()", MAIN)
-        self.assertIn("m.detailContent.translation = [881.6, 422.9 - scrollY]", MAIN)
+        self.assertIn("m.detailContent.translation = [881.6, detailContentTop() - scrollY]", MAIN)
         self.assertIn('"/api/v1/artwork/episode/"', MAIN)
         self.assertIn("layoutDetailHeader(work, detail)", MAIN)
 

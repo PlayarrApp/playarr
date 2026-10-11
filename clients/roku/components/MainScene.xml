@@ -261,7 +261,7 @@
       <StageScrims id="browseScrims" />
       <!-- Web .tv-library-heading: back is dock Home; h1 + "1,730 TITLES". -->
       <TrackedText id="browseTitle" translation="[226.6,56.2]" />
-      <Label id="browseCountLabel" translation="[372,73]" width="500" height="20" scale="[0.35,0.35]" color="0x887A82FF" />
+      <TrackedText id="browseCountLabel" translation="[226.6,112]" />
       <TrackedText id="browsePreviewKind" translation="[153.6,259.2]" />
       <TrackedText id="browsePreviewTitle" translation="[153.6,288.5]" />
       <TrackedText id="browsePreviewMeta" translation="[153.6,454.9]" />
@@ -644,21 +644,21 @@
         <Label id="navLabel9" translation="[31,401]" width="100" height="12" text="Calendar" horizAlign="center" numLines="1" scale="[0.28,0.28]" scaleRotateCenter="[50,6]" color="0x887A82FF" />
       </Group>
 
-      <!-- .app-user-identity (143.5 x 48.2 pill at 58.5,997.3) and the build label under it. -->
-      <Group id="userIdentity" translation="[58,997]">
-        <Poster id="userPillBg" translation="[0,0]" width="144" height="48" uri="pkg:/images/nav-user-pill.png" />
+      <!-- .app-user-identity: a one-item nav group at the foot of the dock (78 x 80 at 42,952): avatar, first name and the build label under it. -->
+      <Group id="userIdentity" translation="[42,952]">
+        <Poster id="userPillBg" translation="[0,0]" width="78" height="80" uri="pkg:/images/nav-group-1.png" />
         <Group id="userFocusRing" visible="false">
-          <Rectangle translation="[-3,-3]" width="150" height="2" color="0xFFFFFFFF" />
-          <Rectangle translation="[-3,49]" width="150" height="2" color="0xFFFFFFFF" />
-          <Rectangle translation="[-3,-3]" width="2" height="54" color="0xFFFFFFFF" />
-          <Rectangle translation="[145,-3]" width="2" height="54" color="0xFFFFFFFF" />
+          <Rectangle translation="[-3,-3]" width="84" height="2" color="0xFFFFFFFF" />
+          <Rectangle translation="[-3,81]" width="84" height="2" color="0xFFFFFFFF" />
+          <Rectangle translation="[-3,-3]" width="2" height="86" color="0xFFFFFFFF" />
+          <Rectangle translation="[79,-3]" width="2" height="86" color="0xFFFFFFFF" />
         </Group>
-        <Poster id="userAvatar" translation="[7,7]" width="34" height="34" />
-        <MaskGroup id="userAvatarCustomMask" translation="[7,7]" maskUri="pkg:/images/avatar-mask.png" maskSize="[34,34]" visible="false">
-          <Poster id="userAvatarCustom" translation="[0,0]" width="34" height="34" loadDisplayMode="scaleToZoom" />
+        <Poster id="userAvatar" translation="[29,22]" width="20" height="20" />
+        <MaskGroup id="userAvatarCustomMask" translation="[29,22]" maskUri="pkg:/images/avatar-mask.png" maskSize="[20,20]" visible="false">
+          <Poster id="userAvatarCustom" translation="[0,0]" width="20" height="20" loadDisplayMode="scaleToZoom" />
         </MaskGroup>
-        <Label id="profileLabel" translation="[52,14]" width="320" height="28" numLines="1" scale="[0.35,0.35]" color="0xC5B8BDFF" />
-        <Label id="userVersion" translation="[8,53]" width="200" height="12" numLines="1" scale="[0.25,0.25]" color="0x887A82FF" />
+        <Label id="profileLabel" translation="[-11,48]" width="100" height="12" horizAlign="center" numLines="1" scale="[0.28,0.28]" scaleRotateCenter="[50,6]" color="0xC5B8BDFF" />
+        <Label id="userVersion" translation="[-11,83]" width="100" height="12" horizAlign="center" numLines="1" scale="[0.25,0.25]" scaleRotateCenter="[50,6]" color="0xC5B8BDFF" />
       </Group>
     </Group>
 

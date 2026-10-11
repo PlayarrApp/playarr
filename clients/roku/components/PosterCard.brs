@@ -35,8 +35,6 @@ sub onContentChanged()
     content = m.top.itemContent
     if content = invalid then return
     circle = content.shape <> invalid and content.shape = "circle"
-    m.titleY = 133
-    if circle then m.titleY = 118
     m.title.text = content.title
     ' cardScale/showKind: MarkupGrid/RowList only ever bind the itemContent
     ' field on each item instance, there is no path for a screen to set an
@@ -47,6 +45,9 @@ sub onContentChanged()
     if content.cardScale <> invalid then cardScale = content.cardScale
     m.cardScaleValue = cardScale
     layoutCard(cardScale)
+    ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
+    m.titleY = m.cardTitleY
+    if circle then m.titleY = 118
     showKind = true
     if content.showKind <> invalid then showKind = content.showKind
     m.kind.visible = showKind
@@ -242,6 +243,7 @@ sub layoutCard(cardScale as Float)
     titleGap = 9.9
     if cardScale > 1 then titleGap = 11.5
     m.titleY = artH + titleGap
+    m.cardTitleY = m.titleY
     m.title.translation = [0, m.titleY]
     m.title.width = artW
     m.kind.translation = [0, artH + titleGap + 19.5]
