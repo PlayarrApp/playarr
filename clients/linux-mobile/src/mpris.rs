@@ -46,6 +46,8 @@ pub enum Cmd {
     Seek(i64),
     /// Absolute position in microseconds.
     SetPosition(i64),
+    Next,
+    Previous,
 }
 
 pub type Control = Rc<dyn Fn(Cmd)>;
@@ -58,6 +60,8 @@ struct State {
     length_us: i64,
     control: Option<Control>,
     position: Option<Rc<dyn Fn() -> i64>>,
+    can_next: bool,
+    can_previous: bool,
 }
 
 /// Handle to the registered MPRIS service; cheap to clone.
@@ -128,6 +132,8 @@ impl Mpris {
                             "Pause" => Some(Cmd::Pause),
                             "PlayPause" => Some(Cmd::PlayPause),
                             "Stop" => Some(Cmd::Stop),
+                            "Next" => Some(Cmd::Next),
+                            "Previous" => Some(Cmd::Previous),
                             "Seek" => params.child_value(0).get::<i64>().map(Cmd::Seek),
                             "SetPosition" => params.child_value(1).get::<i64>().map(Cmd::SetPosition),
                             _ => None,
@@ -201,6 +207,16 @@ impl Mpris {
         ]);
     }
 
+    /// Whether the queue has a next and a previous entry (episodes of a series, tracks of an album).
+    pub fn set_queue_nav(&self, next: bool, previous: bool) {
+        {
+            let mut s = self.state.borrow_mut();
+            s.can_next = next;
+            s.can_previous = previous;
+        }
+        self.changed(&["CanGoNext", "CanGoPrevious"]);
+    }
+
     pub fn set_status(&self, status: &'static str) {
         self.state.borrow_mut().status = status;
         self.changed(&["PlaybackStatus"]);
@@ -241,7 +257,9 @@ fn property(s: &State, interface: &str, prop: &str) -> Variant {
         "PlaybackStatus" => s.status.to_variant(),
         "LoopStatus" => "None".to_variant(),
         "Rate" | "MinimumRate" | "MaximumRate" | "Volume" => 1.0f64.to_variant(),
-        "Shuffle" | "CanGoNext" | "CanGoPrevious" => false.to_variant(),
+        "CanGoNext" => (active && s.can_next).to_variant(),
+        "CanGoPrevious" => (active && s.can_previous).to_variant(),
+        "Shuffle" => false.to_variant(),
         "Metadata" => {
             if active {
                 metadata(&s.title, s.art_url.as_deref(), s.length_us).to_variant()
@@ -279,6 +297,20 @@ mod tests {
             property(&s, PLAYER, "PlaybackStatus").get::<String>().as_deref(),
             Some("Stopped")
         );
+    }
+
+    #[test]
+    fn next_and_previous_follow_the_queue() {
+        let mut s = State {
+            status: "Playing",
+            control: Some(Rc::new(|_| {})),
+            can_next: true,
+            ..Default::default()
+        };
+        assert_eq!(property(&s, PLAYER, "CanGoNext").get::<bool>(), Some(true));
+        assert_eq!(property(&s, PLAYER, "CanGoPrevious").get::<bool>(), Some(false));
+        s.control = None;
+        assert_eq!(property(&s, PLAYER, "CanGoNext").get::<bool>(), Some(false));
     }
 
     #[test]

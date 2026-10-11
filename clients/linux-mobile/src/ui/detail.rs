@@ -429,6 +429,19 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     let seasons = &l.detail.children.seasons;
     gap(&body, 28);
     let mut focus_index = 0;
+    // Next and Previous (on the lock screen or a headset) walk the episodes in order.
+    let queue: Vec<(String, String)> = seasons
+        .iter()
+        .flat_map(|s| {
+            let (n, title) = (s.season.season_number, title.clone());
+            s.episodes.iter().filter_map(move |e| {
+                Some((
+                    e.media_file_id.clone()?,
+                    format!("{title} S{n}E{}", e.episode.episode_number),
+                ))
+            })
+        })
+        .collect();
     for (i, season) in seasons.iter().enumerate() {
         if focus_ep.as_ref().map(|(s, _)| s.season.season_number) == Some(season.season.season_number) {
             focus_index = i;
@@ -440,6 +453,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             season,
             &title,
             l.focus.as_ref().map(|f| f.1.as_str()),
+            &queue,
             play.clone(),
         ));
     }
@@ -452,6 +466,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
 }
 
 /// "Season 1 / 24 episodes" and a rail of episode cards (16:9 thumb, number over the corner, S01 · E02 caption).
+#[allow(clippy::too_many_arguments)]
 fn season_rail(
     app: &Rc<App>,
     imgs: &Images,
@@ -459,8 +474,10 @@ fn season_rail(
     season: &SeasonDetail,
     series_title: &str,
     focus: Option<&str>,
+    queue: &[(String, String)],
     play: impl Fn(String, i64, String) + Clone + 'static,
 ) -> gtk4::Box {
+    let queue = queue.to_vec();
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     let n = season.season.season_number;
     col.append(
@@ -479,7 +496,8 @@ fn season_rail(
             .label(format!("{} episodes", season.episodes.len()))
             .css_classes(["pa-season-count"])
             .xalign(0.0)
-            .margin_bottom(18)
+            .margin_top(8)
+            .margin_bottom(17)
             .build(),
     );
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
@@ -513,7 +531,7 @@ fn season_rail(
         );
         let card = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         card.append(&frame);
-        let cap = gtk4::Box::builder().spacing(8).margin_top(9).build();
+        let cap = gtk4::Box::builder().spacing(8).margin_top(14).build();
         cap.append(
             &gtk4::Label::builder()
                 .label(format!("S{:02} · E{:02}", n, e.episode.episode_number))
@@ -544,7 +562,11 @@ fn season_rail(
                 format!("{series_title} S{n}E{}", e.episode.episode_number),
             );
             let dl_file = file.clone();
-            b.connect_clicked(move |_| play(file.clone(), 0, label.clone()));
+            let queue = queue.clone();
+            b.connect_clicked(move |_| {
+                super::player::set_queue(queue.clone());
+                play(file.clone(), 0, label.clone())
+            });
             // Hold an episode to download it (the web card has no download control).
             let press = gtk4::GestureLongPress::new();
             let (app, file, ep) = (app.clone(), dl_file, e.clone());
@@ -583,7 +605,7 @@ fn season_rail(
         });
     }
     col.append(&rail);
-    col.set_margin_bottom(37);
+    col.set_margin_bottom(35);
     col
 }
 
@@ -614,6 +636,11 @@ fn albums(
                 .margin_top(8)
                 .build(),
         );
+        let queue: Vec<(String, String)> = a
+            .tracks
+            .iter()
+            .filter_map(|t| Some((t.media_file_id.clone()?, format!("{} - {}", artist, t.track.title))))
+            .collect();
         for t in &a.tracks {
             let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
             row.append(
@@ -646,7 +673,11 @@ fn albums(
                 .build();
             if let Some(file) = t.media_file_id.clone() {
                 let (play, label) = (play.clone(), format!("{} - {}", artist, t.track.title));
-                b.connect_clicked(move |_| play(file.clone(), 0, label.clone()));
+                let queue = queue.clone();
+                b.connect_clicked(move |_| {
+                    super::player::set_queue(queue.clone());
+                    play(file.clone(), 0, label.clone())
+                });
             }
             col.append(&b);
         }

@@ -1,0 +1,1 @@
+- Linux phone client: lock-screen Next and Previous move through a series' episodes or an album's tracks.

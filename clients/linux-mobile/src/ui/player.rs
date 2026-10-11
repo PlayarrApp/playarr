@@ -9,6 +9,25 @@ use std::cell::Cell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+thread_local! {
+    /// What plays after and before the current title: the episodes of a series or the tracks of an album.
+    static QUEUE: std::cell::RefCell<Vec<(String, String)>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Sets the play queue as (media file id, title) pairs, in order.
+pub fn set_queue(items: Vec<(String, String)>) {
+    QUEUE.with(|q| *q.borrow_mut() = items);
+}
+
+/// The queue entry `step` away from `file`, if there is one.
+fn queue_step(file: &str, step: i64) -> Option<(String, String)> {
+    QUEUE.with(|q| {
+        let q = q.borrow();
+        let i = q.iter().position(|(f, _)| f == file)? as i64 + step;
+        usize::try_from(i).ok().and_then(|i| q.get(i).cloned())
+    })
+}
+
 pub struct PlayRequest {
     pub media_file_id: String,
     pub start_ms: i64,
@@ -298,6 +317,7 @@ fn start_pipeline(
     // System media controls (MPRIS): title, poster, position and play, pause and seek from outside the app.
     {
         let control: crate::mpris::Control = {
+            let art_id = req.art_work_id.clone();
             let (toggle, playing, player, app) = (toggle.clone(), playing.clone(), player.clone(), app.clone());
             Rc::new(move |c| {
                 use crate::mpris::Cmd;
@@ -307,6 +327,19 @@ fn start_pipeline(
                     Cmd::PlayPause => toggle.emit_clicked(),
                     Cmd::Stop => {
                         app.nav.pop();
+                    }
+                    Cmd::Next | Cmd::Previous => {
+                        let step = if c == Cmd::Next { 1 } else { -1 };
+                        if let Some((file, title)) = queue_step(&player.file, step) {
+                            app.nav.pop();
+                            app.play(PlayRequest {
+                                media_file_id: file,
+                                start_ms: 0,
+                                title,
+                                art_work_id: art_id.clone(),
+                                local_file: None,
+                            });
+                        }
                     }
                     Cmd::Seek(us) => {
                         let target = (player.position_ms() + us / 1000 - player.offset_ms).max(0);
@@ -327,6 +360,10 @@ fn start_pipeline(
             })
         };
         let pos_player = player.clone();
+        let (next, previous) = (
+            queue_step(&req.media_file_id, 1).is_some(),
+            queue_step(&req.media_file_id, -1).is_some(),
+        );
         app.mpris.set_playing(
             &req.title,
             None,
@@ -334,6 +371,7 @@ fn start_pipeline(
             control,
             Rc::new(move || pos_player.position_ms() * 1000),
         );
+        app.mpris.set_queue_nav(next, previous);
         if let Some(id) = req.art_work_id.clone() {
             let (mpris, c) = (app.mpris.clone(), player.client.clone());
             bg(

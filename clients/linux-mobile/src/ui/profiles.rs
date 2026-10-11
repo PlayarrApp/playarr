@@ -73,7 +73,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         &gtk4::Label::builder()
             .label("Who’s watching?")
             .css_classes(["pa-who"])
-            .margin_top(7)
+            .margin_top(2)
             .build(),
     );
     root.append(&heading);
@@ -81,7 +81,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     let tiles = gtk4::Box::builder()
         .spacing(22)
         .halign(gtk4::Align::Center)
-        .margin_top(36)
+        .margin_top(31)
         .build();
     root.append(&tiles);
     let status = gtk4::Label::builder()
@@ -145,7 +145,7 @@ fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>, fr
     };
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
     col.set_halign(gtk4::Align::Center);
-    let av = avatar_widget(&preset, 144);
+    let av = avatar_widget(&preset, 156);
     if p.is_current {
         av.add_css_class("current");
     }
@@ -205,7 +205,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
     );
     col.append(
         &gtk4::Label::builder()
-            .label("Add another profile")
+            .label("ADD ANOTHER PROFILE")
             .css_classes(["pa-tiny"])
             .build(),
     );
