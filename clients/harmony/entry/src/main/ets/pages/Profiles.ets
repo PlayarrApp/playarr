@@ -446,6 +446,22 @@ struct Profiles {
 
   build() {
     NavDestination() {
+      // `activeColors()` is not tracked by ArkUI, so a theme change rebuilds the picker (keyed by the theme),
+      // as Settings does; without it the picker stays in the old theme after Settings or the saved theme loads.
+      Stack() {
+        ForEach([this.themeSetting], (_theme: string) => {
+          this.pageBody()
+        }, (theme: string): string => theme)
+      }
+      .width('100%')
+      .height('100%')
+    }
+    .hideTitleBar(true)
+    .backgroundColor(toResourceColor(activeColors().bg))
+  }
+
+  @Builder
+  private pageBody(): void {
       Stack() {
         if (isTvMetrics() && this.viewState === ProfilesViewState.Ready && this.profiles.length > 0) {
           this.tvPicker()
@@ -676,9 +692,8 @@ struct Profiles {
       }
       .width('100%')
       .height('100%')
-    }
-    .hideTitleBar(true)
-    .backgroundColor(toResourceColor(activeColors().bg))
+      // On the rebuilt Stack: the NavDestination's own background does not repaint on a theme change.
+      .backgroundColor(toResourceColor(activeColors().bg))
   }
 }
 
