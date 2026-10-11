@@ -16,6 +16,10 @@ import type { NavRailItem } from '../design/components/NavRail';
 import { PlayarrLogo } from '../design/components/PlayarrLogo';
 import { Clock } from '../design/components/Clock';
 import { PosterCard } from '../design/components/PosterCard';
+import { ActionTile } from '../design/components/ActionTile';
+import { Drawer } from '../design/components/Drawer';
+import { ChoiceSegments } from '../design/components/ChoiceSegments';
+import { searchTypeChoices, workMatchesType } from '../core/SearchTypes';
 import { BRAND_PINK } from '../core/Tokens';
 
 import { getCatalogKinds, listWatchProgress, searchCatalog } from '../data/CatalogRepository';
@@ -131,6 +135,10 @@ export struct SearchScreen {
   @State private query: string = '';
   @State private results: Work[] = [];
   @State private searched: boolean = false;
+  /** Web's Type filter (Filters drawer): 'all' or a work kind. */
+  @State private mediaType: string = 'all';
+  @State private availableKinds: string[] = [];
+  @State private filtersOpen: boolean = false;
   @State private navItems: NavRailItem[] = [];
   @State private watchIndex: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private watchLoaded: boolean = false;
@@ -162,6 +170,7 @@ export struct SearchScreen {
 
   private async loadNav(): Promise<void> {
     const kinds = await getCatalogKinds();
+    this.availableKinds = kinds.kind === 'ok' ? kinds.value : [];
     this.navItems = buildNavRailItems(kinds.kind === 'ok' ? kinds.value : []);
   }
 
@@ -187,6 +196,11 @@ export struct SearchScreen {
     }
     this.results = result.kind === 'ok' ? result.value.items : [];
     this.searched = true;
+  }
+
+  /** The results that pass the Type filter. */
+  private shownResults(): Work[] {
+    return this.results.filter((work: Work): boolean => workMatchesType(work.kind, this.mediaType));
   }
 
   private openDetail(workId: string): void {
@@ -218,9 +232,21 @@ export struct SearchScreen {
   }
 
   @Builder
+  private filtersBody(): void {
+    ChoiceSegments({
+      heading: 'Type',
+      choices: searchTypeChoices(this.availableKinds),
+      selected: this.mediaType,
+      onChoose: (value: string): void => {
+        this.mediaType = value;
+      },
+    })
+  }
+
+  @Builder
   private resultsGrid(): void {
     Grid() {
-      ForEach(this.results, (work: Work) => {
+      ForEach(this.shownResults(), (work: Work) => {
         GridItem() {
           SearchResultCard({
             work: work,
@@ -247,7 +273,7 @@ export struct SearchScreen {
   build() {
     NavDestination() {
       Stack() {
-        if (this.results.length > 0) {
+        if (this.shownResults().length > 0) {
           this.resultsGrid()
         } else {
           this.emptyState(this.searched ? 'No matching titles or playlists.' : 'Start typing to search.')
@@ -322,6 +348,26 @@ export struct SearchScreen {
         .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
         .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(FORM_TOP) })
+        ActionTile({
+          icon: $r('app.media.action_filters'),
+          label: 'Filters',
+          slot: 0,
+          onActivate: (): void => {
+            this.filtersOpen = true;
+          },
+        })
+        if (this.filtersOpen) {
+          Drawer({
+            kicker: 'Search controls',
+            title: 'Filters',
+            onClose: (): void => {
+              this.filtersOpen = false;
+            },
+            body: (): void => {
+              this.filtersBody();
+            },
+          })
+        }
         Text('Find any available movie, series, artist or playlist.')
           .fontSize(tv(PROMPT_SIZE))
           .fontColor(toResourceColor(activeColors().inkSoft))
