@@ -17,6 +17,7 @@ import { PlayarrLogo } from '../design/components/PlayarrLogo';
 import { Clock } from '../design/components/Clock';
 import { PosterCard } from '../design/components/PosterCard';
 import { FeatureCopy } from '../design/components/FeatureCopy';
+import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { resultCountLabel } from '../core/CountFormat';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
@@ -107,6 +108,8 @@ struct SearchResultCard {
   onSelect: (workId: string) => void = () => {};
   /** The card took focus: the preview panel follows it (web `selectedId`). */
   onFocused: (workId: string) => void = () => {};
+  /** Holding OK on the card (web's long-press menu). */
+  onLongPress: (work: Work) => void = () => {};
 
   @State private artwork: image.PixelMap | undefined = undefined;
 
@@ -143,6 +146,11 @@ struct SearchResultCard {
           this.onFocused(this.work.id);
         }
       },
+      onLongPress: () => {
+        if (this.work !== undefined) {
+          this.onLongPress(this.work);
+        }
+      },
     })
   }
 }
@@ -160,6 +168,8 @@ export struct SearchScreen {
   @State private mediaType: string = 'all';
   @State private availableKinds: string[] = [];
   @State private filtersOpen: boolean = false;
+  /** The title whose long-press actions are open, or undefined. */
+  @State private actionsWork: Work | undefined = undefined;
   /** The result whose details the left panel shows: the focused card, else the first (web `selectedWork`). */
   @State private selectedId: string = '';
   @State private navItems: NavRailItem[] = [];
@@ -301,6 +311,9 @@ export struct SearchScreen {
             onFocused: (workId: string) => {
               this.selectedId = workId;
             },
+            onLongPress: (pressed: Work) => {
+              this.actionsWork = pressed;
+            },
           })
         }
       }, (work: Work): string => work.id)
@@ -412,7 +425,21 @@ export struct SearchScreen {
             this.filtersOpen = true;
           },
         })
-        if (this.filtersOpen) {
+        if (this.actionsWork !== undefined) {
+          TitleActionsDrawer({
+            workId: this.actionsWork.id,
+            workTitle: this.actionsWork.title,
+            onClose: (): void => {
+              this.actionsWork = undefined;
+            },
+            onPlay: (workId: string): void => {
+              this.openDetail(workId);
+            },
+            onWatchedChanged: (): void => {
+              this.loadWatchProgress();
+            },
+          })
+        } else if (this.filtersOpen) {
           Drawer({
             kicker: 'Search controls',
             title: 'Filters',
