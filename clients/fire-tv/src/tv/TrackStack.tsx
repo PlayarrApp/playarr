@@ -22,6 +22,19 @@ const CARD_W = 268;
 const CARD_H = 150.8;
 const CARD_PITCH = 293;
 const TRACK_PITCH = 314.8;
+// Measured on the web film page: Chapters to Cast is 351 px, and each cast or crew track is 284.2 px tall.
+const CHAPTERS_PITCH = 351;
+const PERSON_TRACK_PITCH = 284.2;
+/** The distance from a track's heading to the next track's heading. */
+export function trackPitch(track: Pick<Track, 'id' | 'items'>): number {
+  return isPersonTrack(track as Track) ? PERSON_TRACK_PITCH : track.id === 'chapters' ? CHAPTERS_PITCH : TRACK_PITCH;
+}
+/** Where track `index` starts, below `restY`. */
+export function trackY(tracks: readonly Pick<Track, 'id' | 'items'>[], restY: number, index: number): number {
+  let y = restY;
+  for (let i = 0; i < index; i += 1) y += trackPitch(tracks[i]!);
+  return y;
+}
 // Cast and crew (web .tv-person-card at 1920): a 103.7 px circle centred in a 152 px cell, cells 176.9 px apart.
 const PERSON_CELL = 152;
 const PERSON_SIZE = 103.7;
@@ -71,7 +84,7 @@ export function TrackStack(props: TrackStackProps): React.ReactElement {
   const {colour} = useTheme();
   const {tracks, restY, focus} = props;
   // Vertical position of the stack: the focused track's heading sits at FOCUS_Y; with no focus in the stack it rests.
-  const shiftTarget = focus ? FOCUS_Y - (restY + focus.track * TRACK_PITCH) : 0;
+  const shiftTarget = focus ? FOCUS_Y - trackY(tracks, restY, focus.track) : 0;
   const shift = useRef(new Animated.Value(shiftTarget)).current;
   useEffect(() => {
     Animated.timing(shift, {toValue: shiftTarget, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false}).start();
@@ -105,7 +118,7 @@ export function TrackStack(props: TrackStackProps): React.ReactElement {
       <Box x={TRACK_VIEW_X} y={0} w={TRACK_VIEW_W} h={1080} style={{overflow: 'hidden'}} pointerEvents="box-none">
         <Animated.View style={{position: 'absolute', left: 0, top: shift, width: u(TRACK_VIEW_W), height: u(1080)}} pointerEvents="box-none">
           {tracks.map((track, trackIndex) => {
-            const y = restY + trackIndex * TRACK_PITCH;
+            const y = trackY(tracks, restY, trackIndex);
             const offset = offsets[track.id] ?? 0;
             const pitch = isPersonTrack(track) ? PERSON_PITCH : CARD_PITCH;
             const first = Math.max(0, Math.floor(offset / pitch) - 1);

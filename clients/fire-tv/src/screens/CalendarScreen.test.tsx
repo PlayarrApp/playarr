@@ -50,7 +50,13 @@ const response = {
 };
 
 describe('CalendarScreen', () => {
-  afterEach(() => jest.restoreAllMocks());
+  // The Today pill takes focus again 400 ms after the first load; let that timer fire here, not in the next test file's worker.
+  afterEach(async () => {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 450));
+    });
+    jest.restoreAllMocks();
+  });
 
   it('lists a release with its state and shows no source banner or source names', async () => {
     jest.spyOn(global, 'fetch').mockImplementation(async () => new Response(JSON.stringify(response), {status: 200, headers: {'Content-Type': 'application/json'}}));
