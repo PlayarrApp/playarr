@@ -470,7 +470,7 @@ sub beginHostedLink()
         method: "POST"
         path: ""
         url: AppConfig().hostedLinkOrigin + "/api/link/code"
-        body: { client_platform: "web" }
+        body: { client_platform: AppConfig().clientPlatform }
         accessToken: ""
     })
 end sub
@@ -2771,7 +2771,7 @@ sub onBrowseKeyArtTimer()
     m.browseKeyArt.loadWidth = 1038
     m.browseKeyArt.loadHeight = 1191
     m.browseKeyArt.uri = uri
-    if Instr(1, uri, "style=stage") > 0 then m.browseKeyArt.opacity = 1 else m.browseKeyArt.opacity = 0.4
+    if Instr(1, uri, "style=stage") > 0 then m.browseKeyArt.opacity = 0.15 else m.browseKeyArt.opacity = 0.4
     m.browseKeyArt.visible = true
     m.browseKeyArtFade.visible = true
 end sub

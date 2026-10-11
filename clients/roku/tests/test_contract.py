@@ -52,8 +52,8 @@ class ApiContractTests(unittest.TestCase):
         self.assertRegex(MAIN, r'code = "slow_down"')
 
     def test_roku_identity_is_centralised_and_documented(self) -> None:
-        self.assertIn('clientPlatform: "web"', CONFIG)
-        self.assertIn("Compatibility identity", CONFIG)
+        self.assertIn('clientPlatform: "roku"', CONFIG)
+        self.assertNotIn('client_platform: "web"', MAIN)
         self.assertIn('"X-Playarr-Client-Platform"', CONFIG)
 
 

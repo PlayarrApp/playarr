@@ -2,9 +2,8 @@ function AppConfig() as Object
     return {
         clientName: "Playarr for Roku"
         clientVersion: "0.1.0"
-        ' Compatibility identity until Playarr Server's closed ClientPlatform enum
-        ' gains tv-roku. Keep this value aligned with backend/openapi.
-        clientPlatform: "web"
+        ' The server's ClientPlatform enum and the hosted link broker accept "roku". Keep this value aligned with backend/openapi.
+        clientPlatform: "roku"
         catalogPageSize: 50
         libraryPageSize: 200
         maxBitrateBps: 20000000
