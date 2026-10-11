@@ -6562,7 +6562,7 @@ internal fun SeriesEpisodeBrowser(
         modifier = modifier
             .then(
                 if (isTelevision) {
-                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp, top = 348.dp)
+                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp, top = 357.dp)
                 } else {
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
@@ -6598,8 +6598,6 @@ internal fun SeriesEpisodeBrowser(
                         "number" to season.season.seasonNumber,
                     ),
                     count = playarrString(PlayarrString.DetailEpisodeCount, "count" to season.episodes.size),
-                    candidates = if (canDownload) candidates else emptyList(),
-                    onDownloadAll = onDownload,
                 )
             } else SectionHeaderRow(
                 season.season.title ?: playarrString(
@@ -6613,7 +6611,7 @@ internal fun SeriesEpisodeBrowser(
             val seasonIndex = seasons.indexOf(season)
             LazyRow(
                 state = if (isTelevision) tvRails.rowState(seasonIndex) else androidx.compose.foundation.lazy.rememberLazyListState(),
-                modifier = if (isTelevision) Modifier.padding(top = 17.3.dp) else Modifier,
+                modifier = if (isTelevision) Modifier.padding(top = 18.3.dp) else Modifier,
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp else 12.dp),
                 contentPadding = if (isTelevision) PaddingValues(start = 4.dp, top = 18.dp, end = 24.dp) else PaddingValues(vertical = 6.dp),
             ) {
@@ -6676,34 +6674,16 @@ private fun EpisodeDetailCard(
     WebEpisodeDetailCard(episode, seasonNumber, work, progress, serverUrl, accessToken, selected, onSelect, onPlay, modifier)
 }
 
-/** Web season heading: 17.664 px / 610 title, count line, and the 46 dp Download button at x 1828. */
+/** Web season heading: 17.664 px / 610 title and the count line; whole-season download lives in the card actions, as web. */
 @Composable
 private fun WebSeasonHeading(
     title: String,
     count: String,
-    candidates: List<DownloadCandidate>,
-    onDownloadAll: (List<DownloadCandidate>) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().height(46.dp).padding(end = 46.dp)) {
+    Row(Modifier.fillMaxWidth().height(46.dp)) {
         Column(Modifier.weight(1f)) {
             Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp)
             Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
-        }
-        if (candidates.isNotEmpty()) {
-            val description = playarrString(PlayarrString.ContextDownloadCount, "count" to candidates.size)
-            var focused by remember { mutableStateOf(false) }
-            Box(
-                Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .onFocusChanged { focused = it.isFocused }
-                    .webFocusRing(focused, offset = 0.dp)
-                    .clickable { onDownloadAll(candidates) }
-                    .semantics { contentDescription = description },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(PlayarrWebIcons.Downloads, contentDescription = null, tint = if (focused) WebInk else WebInkMuted, modifier = Modifier.size(25.3.dp))
-            }
         }
     }
 }
@@ -8814,10 +8794,9 @@ private fun ExperiencePlayerScreen(
     LaunchedEffect(state, activeMediaFileId) {
         val pauseAt = parityPauseAtMs ?: return@LaunchedEffect
         if (state !is ExperienceLoad.Ready) return@LaunchedEffect
-        // Parity captures: wait for the first frames, then pause and seek, so the presented frame is the one at [pauseAt].
-        while (viewModel.timelineSnapshot().positionMs <= 0L) kotlinx.coroutines.delay(100)
+        // Parity captures: wait until playback has advanced past the first frame, then pause in place (a seek re-buffers).
+        while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(100)
         viewModel.player.pause()
-        viewModel.seekToSourcePosition(pauseAt)
     }
     LaunchedEffect(state, activeMediaFileId) {
         if (state !is ExperienceLoad.Ready) return@LaunchedEffect

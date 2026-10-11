@@ -193,4 +193,13 @@ class CalendarApiTest {
         .setResponseCode(200)
         .setHeader("Content-Type", "application/json")
         .setBody(body)
+
+    @Test
+    fun `a midnight UTC release is all-day while a real instant keeps its time`() {
+        fun entry(releaseAt: String) = json.decodeFromString<io.playarr.shared.data.model.CalendarEntry>(
+            """{"id":"e","media_kind":"episode","release_type":"air","title":"T","date":"2026-10-05","release_at":"$releaseAt"}""",
+        )
+        assertNull(entry("2026-10-05T00:00:00Z").releaseAt)
+        assertEquals(Instant.parse("2026-10-05T01:00:00Z"), entry("2026-10-05T01:00:00Z").releaseAt)
+    }
 }

@@ -998,7 +998,7 @@ internal fun CalendarWeek(
     modifier: Modifier,
 ) {
     // Web TV week: 438 dp day columns 19 dp apart, the agenda's entry cards and day headings.
-    val columnWidth = if (isTelevision) 438.dp else 296.dp
+    val columnWidth = if (isTelevision) 440.dp else 296.dp
     val skeletonDays = remember(groups) { if (groups.isEmpty()) 7 else groups.size }
     val dayItems = remember(groups, zone) { groups.map { groupSeriesEpisodes(it.entries, zone) } }
     val counts = remember(dayItems) { dayItems.map { it.size } }
@@ -1012,7 +1012,7 @@ internal fun CalendarWeek(
     Box(modifier.calendarEdgeFades(track.horizontalEdges())) {
         Row(
             Modifier.fillMaxSize().horizontalScroll(track).padding(end = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 19.dp else 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             if (loading) {
                 repeat(skeletonDays) { index ->
@@ -1028,8 +1028,8 @@ internal fun CalendarWeek(
                         Modifier.width(columnWidth).fillMaxHeight()
                             .calendarEdgeFades(scroll.verticalEdges())
                             .verticalScroll(scroll)
-                            .padding(top = 4.dp, bottom = 48.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (isTelevision) 13.dp else CalendarRowSpacing),
+                            .padding(top = if (isTelevision) 53.dp else 4.dp, bottom = 48.dp), // web: columns start at y 174, below the toolbar row
+                        verticalArrangement = Arrangement.spacedBy(if (isTelevision) 6.dp else CalendarRowSpacing),
                     ) {
                         if (isTelevision) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1059,7 +1059,10 @@ internal fun CalendarWeek(
                                         }
                                         .calendarFocusReveal()
                                 if (isTelevision) {
-                                    PhoneCalendarEntry(item, selected = item.key == selectedKey, zone = zone, onClick = { onSelect(item) }, modifier = rowModifier)
+                                    // Web: 6 px under the day heading, 14 px between entries (the 6 above plus 8 here).
+                                    Box(Modifier.padding(bottom = 8.dp)) {
+                                        PhoneCalendarEntry(item, selected = item.key == selectedKey, zone = zone, onClick = { onSelect(item) }, modifier = rowModifier)
+                                    }
                                 } else {
                                     CalendarItemRow(
                                         item, selected = item.key == selectedKey, isTelevision = isTelevision, zone = zone, wrapTitle = true,

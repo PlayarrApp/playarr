@@ -85,7 +85,7 @@ internal fun calendarGridRows(window: CalendarWindow): List<List<LocalDate>> = w
 internal data class CalendarDayGroup(val date: LocalDate, val entries: List<CalendarEntry>)
 
 private val calendarEntryOrder = compareBy<CalendarEntry>(
-    { it.releaseAt == null },
+    { it.releaseAt != null }, // all-day entries first, as web
     { it.releaseAt },
     { it.title.lowercase() },
     { it.seasonNumber ?: 0L },

@@ -33,8 +33,8 @@ data class CalendarEntry(
     val episodeNumber: Long? = null,
     /** UTC calendar day of the release. */
     @Serializable(with = LocalDateIsoSerializer::class) val date: LocalDate,
-    /** Exact release instant when the source provides one; null for all-day entries. */
-    @Serializable(with = InstantIsoSerializer::class) val releaseAt: Instant? = null,
+    /** Exact release instant when the source provides one; null for all-day entries (a midnight-UTC date-only release). */
+    @Serializable(with = ReleaseInstantSerializer::class) val releaseAt: Instant? = null,
     val monitored: Boolean = false,
     val hasFile: Boolean = false,
     /** Absolute external artwork URL; never an instance-local path. */

@@ -7,6 +7,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.nullable
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
@@ -27,6 +28,24 @@ object InstantIsoSerializer : KSerializer<Instant> {
 
     override fun deserialize(decoder: Decoder): Instant =
         Instant.parse(decoder.decodeString())
+}
+
+/**
+ * A calendar release instant. Midnight UTC is how the server stores a date-only release: a date, not a moment, so it
+ * reads as all-day (null) and never shows a time of day, as the web client does.
+ */
+object ReleaseInstantSerializer : KSerializer<Instant?> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("io.playarr.shared.data.model.ReleaseInstant", PrimitiveKind.STRING).nullable
+
+    override fun serialize(encoder: Encoder, value: Instant?) {
+        if (value == null) encoder.encodeNull() else encoder.encodeString(DateTimeFormatter.ISO_INSTANT.format(value))
+    }
+
+    override fun deserialize(decoder: Decoder): Instant? {
+        if (!decoder.decodeNotNullMark()) return decoder.decodeNull()
+        return Instant.parse(decoder.decodeString()).takeUnless { it.toEpochMilli() % 86_400_000L == 0L }
+    }
 }
 
 /**

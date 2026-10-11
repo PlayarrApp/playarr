@@ -121,7 +121,7 @@ class PlayarrCalendarLogicTest {
             fillEmptyDays = false,
         )
         assertEquals(listOf(d("2026-10-05"), d("2026-10-06")), groups.map { it.date })
-        assertEquals(listOf("timed", "a1", "a2"), groups[0].entries.map { it.id })
+        assertEquals(listOf("a1", "a2", "timed"), groups[0].entries.map { it.id }) // all-day first, as web
         assertEquals(4, groups.sumOf { it.entries.size })
     }
 
