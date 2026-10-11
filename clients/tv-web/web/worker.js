@@ -48,6 +48,13 @@ const LINK_CLIENT_PLATFORMS = new Set([
   "tv-tizen",
   "tv-vidaa",
   "tv-roku",
+  "harmony-tv",
+  "harmony-mobile",
+  "harmony-phone",
+  "roku",
+  "linux-phone",
+  "sailfish",
+  "tizen-native",
   "tv-fire",
   "xbox",
 ]);
