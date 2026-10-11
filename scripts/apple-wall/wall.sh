@@ -162,7 +162,7 @@ capture)
   : "${OUT:?}" "${REF:?}"
   ACCESS_TOKEN=$(token)
   rm -rf "$OUT"; mkdir -p "$OUT"
-  for theme in dark light; do
+  for theme in ${THEMES:-dark light}; do
     mkdir -p "$OUT/$theme"; restart_sim # the runner swaps hard: a fresh simulator per theme keeps SimLaunchHost alive
     bad=
     for pair in $SCREENS; do
@@ -184,7 +184,7 @@ capture)
     if [[ -n $bad ]]; then
       log "theme $theme rejected: $bad"
       # Dark is the base: without it nothing is published. A missing light theme only drops the light set.
-      if [[ $theme == dark ]]; then rejected; exit 1; fi
+      if [[ $theme == dark || ${THEMES:-dark light} != *" "* ]]; then rejected; exit 1; fi
       rm -rf "$OUT/$theme"
     fi
   done

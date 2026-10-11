@@ -73,6 +73,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           DEVICES: ${{ inputs.devices }}
           LENGTH: ${{ inputs.length }}
+          STREAM: ${{ inputs.stream }}
           ENABLED: ${{ vars.APPLE_WALL_SCHEDULE }}
           TESTS: ${{ vars.APPLE_WALL_TESTS }}
           CRON: ${{ github.event.schedule }}
@@ -84,7 +85,7 @@ jobs:
             # test-only: capture all four devices, never stream, and only while APPLE_WALL_TESTS is "true"
             if [[ $TESTS != true ]]; then echo 'any=false' >> "$GITHUB_OUTPUT"; echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"; exit 0; fi
             echo "any=true" >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[{"device":"tvos","vnc":"TVOS","length":1},{"device":"iphone","vnc":"IPHONE","length":1},{"device":"ipad","vnc":"IPAD","length":1},{"device":"macos","vnc":"MACOS","length":1}]}' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[{"device":"tvos","vnc":"TVOS","length":1,"themes":"dark","slug":"dark"},{"device":"tvos","vnc":"TVOS","length":1,"themes":"light","slug":"light"},{"device":"iphone","vnc":"IPHONE","length":1,"themes":"dark","slug":"dark"},{"device":"iphone","vnc":"IPHONE","length":1,"themes":"light","slug":"light"},{"device":"ipad","vnc":"IPAD","length":1,"themes":"dark","slug":"dark"},{"device":"ipad","vnc":"IPAD","length":1,"themes":"light","slug":"light"},{"device":"macos","vnc":"MACOS","length":1,"themes":"dark","slug":"dark"},{"device":"macos","vnc":"MACOS","length":1,"themes":"light","slug":"light"}]}' >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [[ $EVENT == schedule ]]; then
@@ -105,13 +106,17 @@ jobs:
             [[ -n ${off[$d]:-} ]] || { echo "::error::unknown device $d"; exit 1; }
             len=${LENGTH:-$((345 - off[$d]))}
             [[ $len =~ ^[0-9]+$ && $len -ge 1 && $len -le 345 ]] || { echo "::error::length must be 1 to 345 minutes"; exit 1; }
-            items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len}")
+            if [[ $STREAM == true ]]; then # a stream shows one app: both themes in one job
+              items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len,\"themes\":\"dark light\",\"slug\":\"all\"}")
+            else # capture-only: a job per theme, in parallel
+              for t in dark light; do items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len,\"themes\":\"$t\",\"slug\":\"$t\"}"); done
+            fi
           done
           echo "any=true" >> "$GITHUB_OUTPUT"
           echo "matrix={\"include\":[$(IFS=,; echo "${items[*]}")]}" >> "$GITHUB_OUTPUT"
 
   wall:
-    name: ${{ matrix.device }}
+    name: ${{ matrix.device }} ${{ matrix.slug }}
     needs: plan
     if: needs.plan.outputs.any == 'true'
     strategy:
@@ -124,6 +129,7 @@ jobs:
       contents: read
     env:
       DEVICE: ${{ matrix.device }}
+      THEMES: ${{ matrix.themes }}
       TRUSTED: ${{ github.workspace }}/trusted
       SRC: ${{ github.workspace }}/src
       HAVE_TS: ${{ secrets.TS_OAUTH_SECRET != '' && secrets.TS_OAUTH_CLIENT_ID != '' }}
@@ -170,6 +176,14 @@ jobs:
           xcodebuild -importPlatform "$(ls "$dir"/*.dmg | head -1)"
           xcrun simctl list runtimes | grep 'iOS 18' || { echo "::error::iOS 18 runtime missing after import"; exit 1; }
           echo "runtime ready in $(( $(date +%s) - t0 )) s"
+
+      # Compiled output is cached per device: later runs only rebuild what changed.
+      - name: Cache the build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/wall/dd
+          key: apple-wall-dd-${{ matrix.device }}-${{ hashFiles('src/clients/apple-tv/**/*.swift', 'src/clients/ios/**/*.swift', 'src/clients/*/project.yml') }}
+          restore-keys: apple-wall-dd-${{ matrix.device }}-
 
       - name: Build the app
         timeout-minutes: 60
@@ -242,7 +256,7 @@ jobs:
         if: always() && steps.capture.outcome == 'failure'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: wallfail-${{ matrix.device }}-${{ github.run_id }}
+          name: wallfail-${{ matrix.device }}-${{ matrix.slug }}-${{ github.run_id }}
           path: ${{ runner.temp }}/wall/failed
           if-no-files-found: ignore
           retention-days: 3
@@ -251,7 +265,7 @@ jobs:
         if: steps.capture.outcome == 'success' || steps.suite.outcome == 'success' || steps.suite.outcome == 'failure'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: apple-wall-${{ matrix.device }}-${{ github.run_id }}
+          name: apple-wall-${{ matrix.device }}-${{ matrix.slug }}-${{ github.run_id }}
           path: ${{ runner.temp }}/capture
           if-no-files-found: error
           retention-days: 14
