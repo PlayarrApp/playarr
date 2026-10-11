@@ -83,7 +83,10 @@ namespace Playarr.Xbox.ViewModels
             }
 
             ServerError = null;
-            BeginPairing();
+            _pairingCancellation?.Cancel();
+            var cancellation = new CancellationTokenSource();
+            _pairingCancellation = cancellation;
+            _ = _environment.StartManualPairingAsync(cancellation.Token);
         }
 
         /// <summary>

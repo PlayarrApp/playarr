@@ -15,21 +15,61 @@
         is a plain x:Name'd element pushed to from code-behind's Render();
         there is no {x:Bind} and no IValueConverter anywhere in this project.
     -->
+    <!-- Web TV /login/qr (embedded DeviceLogin): kicker, heading, description, a 240 px QR tile, the code and the countdown. -->
     <Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Hidden">
         <StackPanel
             x:Name="ContentPanel"
-            MaxWidth="720"
+            Width="620"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Spacing="24">
+            Margin="0,40"
+            Spacing="0">
 
+            <TextBlock Text="WELCOME HOME" FontSize="12" FontWeight="Bold" CharacterSpacing="120" Foreground="{StaticResource PlayarrBrandInk}" HorizontalAlignment="Center" />
+            <TextBlock Text="Sign in to Playarr" Style="{StaticResource PlayarrPageTitle}" FontSize="44" HorizontalAlignment="Center" Margin="0,14,0,0" />
             <TextBlock
-                Text="Playarr for Xbox"
-                Style="{StaticResource TitleTextBlockStyle}"
-                HorizontalAlignment="Center" />
+                x:Name="DescriptionText"
+                Text="Scan the QR code with your phone or another browser to sign in on this device."
+                Foreground="{StaticResource PlayarrInkSoft}"
+                FontSize="16"
+                TextAlignment="Center"
+                TextWrapping="WrapWholeWords"
+                Margin="0,14,0,0" />
 
-            <!-- Server-address entry. Visible when signed out, or after a pairing failure. -->
-            <StackPanel x:Name="ServerPanel" Spacing="12">
+            <!-- QR pairing: the code is requested as soon as the page opens, no address is typed. -->
+            <StackPanel x:Name="PairingPanel" Spacing="20" Margin="0,32,0,0" HorizontalAlignment="Center">
+                <Border
+                    x:Name="QrHost"
+                    Width="240"
+                    Height="240"
+                    CornerRadius="18"
+                    Background="White"
+                    HorizontalAlignment="Center" />
+                <StackPanel x:Name="DeviceCodePanel" Spacing="8" HorizontalAlignment="Center">
+                    <TextBlock Text="Scan the QR code, or visit" Foreground="{StaticResource PlayarrInkSoft}" FontSize="16" HorizontalAlignment="Center" />
+                    <TextBlock x:Name="VerificationUriText" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="and enter this code" Foreground="{StaticResource PlayarrInkSoft}" FontSize="16" HorizontalAlignment="Center" />
+                    <TextBlock
+                        x:Name="UserCodeText"
+                        FontSize="56"
+                        FontWeight="Bold"
+                        CharacterSpacing="140"
+                        FontFamily="{StaticResource PlayarrMonoFont}"
+                        HorizontalAlignment="Center" />
+                    <TextBlock x:Name="PairingStatusText" Foreground="{StaticResource PlayarrInkSoft}" FontSize="14" HorizontalAlignment="Center" />
+                    <TextBlock
+                        x:Name="CountdownText"
+                        Foreground="{StaticResource PlayarrInkSoft}"
+                        FontSize="14"
+                        FontWeight="Bold"
+                        FontFamily="{StaticResource PlayarrMonoFont}"
+                        HorizontalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Manual fallback: only when the viewer asks for it. -->
+            <StackPanel x:Name="ServerPanel" Spacing="12" Margin="0,32,0,0" Visibility="Collapsed">
                 <TextBlock Text="Playarr server address" Style="{StaticResource BodyTextBlockStyle}" />
                 <TextBox
                     x:Name="ServerAddressBox"
@@ -46,58 +86,31 @@
                     Click="ConnectButton_Click" />
             </StackPanel>
 
-            <!-- Pairing progress / device-code display. Visible only while StartPairingAsync is in flight. -->
-            <StackPanel x:Name="PairingPanel" Spacing="16" Visibility="Collapsed">
-                <ProgressRing x:Name="PairingProgressRing" IsActive="False" HorizontalAlignment="Center" />
-                <TextBlock
-                    x:Name="PairingStatusText"
-                    Style="{StaticResource BodyTextBlockStyle}"
-                    HorizontalAlignment="Center" />
-
-                <StackPanel x:Name="DeviceCodePanel" Spacing="8" Visibility="Collapsed">
-                    <TextBlock
-                        Text="On your phone or computer, go to:"
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource BodyTextBlockStyle}" />
-                    <TextBlock
-                        x:Name="VerificationUriText"
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock
-                        Text="and enter this code:"
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource BodyTextBlockStyle}" />
-                    <TextBlock
-                        x:Name="UserCodeText"
-                        HorizontalAlignment="Center"
-                        FontSize="64"
-                        FontWeight="Bold"
-                        FontFamily="Consolas" />
-                    <!--
-                        Future enhancement: render VerificationUriComplete as a QR
-                        code image instead of / alongside this text — no QR-image
-                        library is referenced by this project yet, so this is
-                        deliberately text-only for now.
-                    -->
-                    <TextBlock
-                        x:Name="VerificationUriCompleteText"
-                        HorizontalAlignment="Center"
-                        Opacity="0.7"
-                        Style="{StaticResource CaptionTextBlockStyle}" />
-                </StackPanel>
-
-                <Button
-                    x:Name="CancelPairingButton"
-                    Content="Cancel"
-                    HorizontalAlignment="Center"
-                    Click="CancelPairingButton_Click" />
-            </StackPanel>
-
             <TextBlock
                 x:Name="FailureText"
                 Foreground="{ThemeResource SystemControlErrorTextForegroundBrush}"
                 HorizontalAlignment="Center"
+                Margin="0,20,0,0"
                 Visibility="Collapsed" />
+
+            <Button
+                x:Name="RetryButton"
+                Content="Try again"
+                HorizontalAlignment="Center"
+                Margin="0,16,0,0"
+                Visibility="Collapsed"
+                Click="RetryButton_Click" />
+
+            <Button
+                x:Name="ModeButton"
+                Content="Sign in manually"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Height="50"
+                CornerRadius="25"
+                Margin="0,28,0,0"
+                Click="ModeButton_Click" />
         </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Page>

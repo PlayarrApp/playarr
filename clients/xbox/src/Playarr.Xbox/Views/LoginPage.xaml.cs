@@ -1,4 +1,11 @@
+using System;
 using System.ComponentModel;
+using Windows.Foundation;
+using Windows.UI;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Shapes;
+using Playarr.Core.Auth;
+using Playarr.Core.Models;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
@@ -77,7 +84,12 @@ namespace Playarr.Xbox.Views
     /// </remarks>
     public sealed partial class LoginPage : Page
     {
+        private const int QrModulePixels = 6;
         private readonly LoginViewModel _viewModel;
+        private readonly DispatcherTimer _countdown = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        private DeviceCodeResponse? _shownCode;
+        private DateTimeOffset _shownAt;
+        private bool _manual;
 
         // Named "ToProfiles" rather than "ToHome": the Screens phase (task
         // #5) inserted Views/ProfilesPage as the real post-sign-in
@@ -91,17 +103,26 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             _viewModel = new LoginViewModel(App.Environment);
             ServerAddressBox.Text = _viewModel.ServerAddress;
+            _countdown.Tick += (s, e) => RenderCountdown();
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            _countdown.Start();
+            if (_viewModel.PairingState.Kind == PairingStateKind.SignedOut)
+            {
+                // QR sign-in starts on its own: the server address is delivered by the pairing, never typed.
+                _viewModel.BeginPairing();
+            }
+
             Render();
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
+            _countdown.Stop();
             _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
             base.OnNavigatedFrom(e);
         }
@@ -121,42 +142,34 @@ namespace Playarr.Xbox.Views
                 : Visibility.Visible;
 
             var state = _viewModel.PairingState;
-
-            var showServerPanel = state.Kind == PairingStateKind.SignedOut || state.Kind == PairingStateKind.Failed;
-            ServerPanel.Visibility = showServerPanel ? Visibility.Visible : Visibility.Collapsed;
-            ConnectButton.Content = state.Kind == PairingStateKind.Failed ? "Try pairing again" : "Connect";
-
-            var showPairingPanel =
-                state.Kind == PairingStateKind.RequestingCode || state.Kind == PairingStateKind.AwaitingApproval;
-            PairingPanel.Visibility = showPairingPanel ? Visibility.Visible : Visibility.Collapsed;
-
-            FailureText.Visibility = state.Kind == PairingStateKind.Failed ? Visibility.Visible : Visibility.Collapsed;
+            var pairing = state.Kind == PairingStateKind.RequestingCode || state.Kind == PairingStateKind.AwaitingApproval;
+            ServerPanel.Visibility = _manual && !pairing ? Visibility.Visible : Visibility.Collapsed;
+            ModeButton.Content = _manual ? "Sign in with QR code" : "Sign in manually";
+            PairingPanel.Visibility = pairing ? Visibility.Visible : Visibility.Collapsed;
+            var failed = state.Kind == PairingStateKind.Failed;
+            FailureText.Visibility = failed ? Visibility.Visible : Visibility.Collapsed;
+            RetryButton.Visibility = failed && !_manual ? Visibility.Visible : Visibility.Collapsed;
+            FailureText.Text = state.FailureMessage ?? string.Empty;
 
             switch (state.Kind)
             {
-                case PairingStateKind.RequestingCode:
-                    PairingProgressRing.IsActive = true;
-                    PairingStatusText.Text = "Requesting a pairing code…";
-                    DeviceCodePanel.Visibility = Visibility.Collapsed;
-                    break;
-
                 case PairingStateKind.AwaitingApproval:
-                    PairingProgressRing.IsActive = true;
-                    PairingStatusText.Text = "Waiting for approval…";
-                    DeviceCodePanel.Visibility = Visibility.Visible;
-                    VerificationUriText.Text = state.PendingCode?.VerificationUri ?? string.Empty;
-                    UserCodeText.Text = state.PendingCode?.UserCode ?? string.Empty;
-                    VerificationUriCompleteText.Text = state.PendingCode?.VerificationUriComplete ?? string.Empty;
-                    break;
+                    var code = state.PendingCode!;
+                    DeviceCodePanel.Opacity = 1;
+                    VerificationUriText.Text = code.VerificationUri;
+                    UserCodeText.Text = code.UserCode;
+                    PairingStatusText.Text = "Waiting for approval\u2026";
+                    if (!ReferenceEquals(code, _shownCode))
+                    {
+                        _shownCode = code;
+                        _shownAt = DateTimeOffset.UtcNow;
+                        DrawQr(code.VerificationUriComplete);
+                    }
 
-                case PairingStateKind.Failed:
-                    PairingProgressRing.IsActive = false;
-                    FailureText.Text = state.FailureMessage ?? "Playarr couldn't complete device pairing.";
+                    RenderCountdown();
                     break;
 
                 case PairingStateKind.SignedIn:
-                    PairingProgressRing.IsActive = false;
-                    PairingStatusText.Text = "Paired.";
                     if (!_hasNavigatedToProfiles)
                     {
                         _hasNavigatedToProfiles = true;
@@ -165,11 +178,71 @@ namespace Playarr.Xbox.Views
 
                     break;
 
-                case PairingStateKind.SignedOut:
                 default:
-                    PairingProgressRing.IsActive = false;
+                    // Requesting a (fresh) code: keep the layout, blank the code, never show an error.
+                    _shownCode = null;
+                    QrHost.Child = null;
+                    DeviceCodePanel.Opacity = 0;
                     break;
             }
+        }
+
+        private void RenderCountdown()
+        {
+            if (_shownCode == null)
+            {
+                return;
+            }
+
+            var left = Math.Max(0, (int)(_shownCode.ExpiresIn - (DateTimeOffset.UtcNow - _shownAt).TotalSeconds));
+            CountdownText.Text = $"Code refreshes in {left / 60}:{left % 60:00}";
+        }
+
+        /// <summary>Black modules on the white tile, drawn as one geometry: 240 px tile, 12 px edge like the web.</summary>
+        private void DrawQr(string text)
+        {
+            var modules = QrMatrix.Encode(text);
+            var size = modules.GetLength(0);
+            var group = new GeometryGroup();
+            for (var y = 0; y < size; y++)
+            {
+                for (var x = 0; x < size; x++)
+                {
+                    if (modules[y, x])
+                    {
+                        group.Children.Add(new RectangleGeometry { Rect = new Rect(x * QrModulePixels, y * QrModulePixels, QrModulePixels, QrModulePixels) });
+                    }
+                }
+            }
+
+            QrHost.Child = new Viewbox
+            {
+                Margin = new Thickness(12),
+                Child = new Path
+                {
+                    Data = group,
+                    Fill = new SolidColorBrush(Colors.Black),
+                    Width = size * QrModulePixels,
+                    Height = size * QrModulePixels,
+                },
+            };
+        }
+
+        private void RetryButton_Click(object sender, RoutedEventArgs e) => _viewModel.BeginPairing();
+
+        private void ModeButton_Click(object sender, RoutedEventArgs e)
+        {
+            _manual = !_manual;
+            if (_manual)
+            {
+                _viewModel.CancelPairing();
+            }
+            else
+            {
+                _viewModel.BeginPairing();
+            }
+
+            Render();
         }
 
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
@@ -177,7 +250,5 @@ namespace Playarr.Xbox.Views
             _viewModel.ServerAddress = ServerAddressBox.Text;
             _viewModel.Connect();
         }
-
-        private void CancelPairingButton_Click(object sender, RoutedEventArgs e) => _viewModel.CancelPairing();
     }
 }

@@ -1,0 +1,1 @@
+- Xbox: signing in shows a QR code and pairing code from the hosted link service, as on the web, with no server address to type; the code renews silently when it expires or the network blips, and "Sign in manually" keeps the typed-address fallback.

@@ -149,6 +149,88 @@ namespace Playarr.Xbox
         }
 
         /// <summary>
+        /// QR sign-in, the default: the hosted link service issues a code, the viewer approves it on a phone against
+        /// their server, and the claim delivers the server address and device code, so nothing is typed here. An
+        /// expired code or a network blip silently renews the QR (see <see cref="QrPairingFlow"/>).
+        /// </summary>
+        public async Task StartPairingAsync(CancellationToken cancellationToken = default)
+        {
+            PairingState = PairingState.RequestingCode;
+            var hosted = new HostedLinkClient();
+            var flow = new QrPairingFlow(
+                ct => hosted.RequestCodeAsync(ClientPlatform.Xbox, ct),
+                hosted.PollAsync,
+                (claim, ct) =>
+                {
+                    // The token poll goes to the server the phone chose.
+                    if (Uri.TryCreate(claim.ServerUrl, UriKind.Absolute, out var url) && url != ServerUrl)
+                    {
+                        AdoptWorkingServerUrl(url);
+                        _deviceFlowClient = new DeviceFlowClient(url, clientPlatform: ClientPlatform.Xbox);
+                    }
+
+                    return Task.CompletedTask;
+                },
+                PollServerOnceAsync);
+            try
+            {
+                QrPairingUpdate? last = null;
+                await flow.RunAsync(
+                    update =>
+                    {
+                        last = update;
+                        switch (update.Kind)
+                        {
+                            case QrPairingUpdateKind.Requesting:
+                                PairingState = PairingState.RequestingCode;
+                                break;
+                            case QrPairingUpdateKind.ShowCode:
+                                PairingState = PairingState.AwaitingApproval(update.Code!);
+                                break;
+                        }
+                    },
+                    cancellationToken).ConfigureAwait(false);
+
+                if (last?.Kind == QrPairingUpdateKind.Declined)
+                {
+                    PairingState = PairingState.Failed("The pairing request was denied.");
+                    return;
+                }
+
+                var token = last!.Token!;
+                await _tokenStore.StoreSessionAsync(
+                    new StoredAuthSession(token.AccessToken, token.RefreshToken, token.TokenType, DateTimeOffset.UtcNow.AddSeconds(token.ExpiresIn)),
+                    cancellationToken).ConfigureAwait(false);
+                await _serverGroupStore.RecordSuccessAsync(TrimTrailingSlash(ServerUrl), DateTimeOffset.UtcNow, cancellationToken).ConfigureAwait(false);
+                PairingState = PairingState.SignedIn;
+            }
+            catch (OperationCanceledException)
+            {
+                PairingState = PairingState.SignedOut;
+            }
+        }
+
+        private async Task<ServerPoll> PollServerOnceAsync(HostedLinkClaim claim, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var token = await _deviceFlowClient.RequestTokenAsync(claim.ServerDeviceCode, cancellationToken).ConfigureAwait(false);
+                return new ServerPoll { Status = ServerPollStatus.Approved, Token = token };
+            }
+            catch (DeviceFlowException error)
+            {
+                switch (error.Code)
+                {
+                    case DeviceFlowErrorCode.AuthorizationPending: return new ServerPoll { Status = ServerPollStatus.Pending };
+                    case DeviceFlowErrorCode.SlowDown: return new ServerPoll { Status = ServerPollStatus.SlowDown };
+                    case DeviceFlowErrorCode.ExpiredToken: return new ServerPoll { Status = ServerPollStatus.Expired };
+                    case DeviceFlowErrorCode.AccessDenied: return new ServerPoll { Status = ServerPollStatus.Denied };
+                    default: return new ServerPoll { Status = ServerPollStatus.Failed };
+                }
+            }
+        }
+
+        /// <summary>
         /// Requests a device code, retrying across every address this
         /// install has ever remembered for its current server group
         /// (<see cref="KnownServerGroup.CandidateUrls"/>: last-good first)
@@ -160,7 +242,7 @@ namespace Playarr.Xbox
         /// address that's actually reachable, not whichever one happened to
         /// be configured before this attempt.
         /// </summary>
-        public async Task StartPairingAsync(CancellationToken cancellationToken = default)
+        public async Task StartManualPairingAsync(CancellationToken cancellationToken = default)
         {
             PairingState = PairingState.RequestingCode;
 

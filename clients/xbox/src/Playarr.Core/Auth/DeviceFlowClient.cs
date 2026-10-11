@@ -202,7 +202,7 @@ namespace Playarr.Core.Auth
             }
         }
 
-        private async Task<TokenResponse> RequestTokenAsync(
+        public async Task<TokenResponse> RequestTokenAsync(
             string deviceCode,
             CancellationToken cancellationToken)
         {

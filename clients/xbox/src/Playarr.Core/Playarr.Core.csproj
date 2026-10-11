@@ -45,6 +45,8 @@
       wire contract here is small and fully attributed either way.
     -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- Pure C# QR encoder (netstandard2.0, no System.Drawing): the pairing screen draws the module matrix itself. -->
+    <PackageReference Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
 
 </Project>
