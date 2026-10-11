@@ -32,6 +32,10 @@ on:
         description: Join the tailnet and stream the simulators over VNC until the run ends
         type: boolean
         default: false
+      suite_args:
+        description: Extra suite-run arguments for the Apple driver step (test runs; default - screens and D-pad checks)
+        type: string
+        default: ""
       chain:
         description: While streaming, start the next run before this one ends
         type: boolean
@@ -194,21 +198,45 @@ jobs:
 
       # The shared suite (scripts/parity, docs/parity/SUITE.md) takes over from the interim captures above once an Apple driver
       # exists in the default branch: D-pad checks and playback results (dpad.json, playback.json) join the artifact.
-      - name: Parity suite (when the Apple driver exists)
+      # Fresh web reference in the same minute (real sign-in through the UI, dark and light), for the pixel diff and the D-pad
+      # expectations. Written to $RUNNER_TEMP/web, where the suite looks for expected.json.
+      - name: Web reference (fresh sign-in)
+        id: webref
+        if: env.DEVICE == 'tvos'
+        continue-on-error: true
+        timeout-minutes: 25
+        env:
+          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+        run: |
+          cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          node suite-run.mjs --driver ./drivers/web.mjs --reference --out "${{ runner.temp }}/web" --only screens,dpad
+
+      # The shared suite (scripts/parity, docs/parity/SUITE.md) through the Apple driver: the 15 screens in both themes (written
+      # over the interim captures above), the D-pad checks against the web reference, playback (not yet).
+      - name: Parity suite (Apple driver)
         id: suite
-        if: steps.capture.outcome == 'success'
+        if: env.DEVICE == 'tvos'
+        continue-on-error: true
+        timeout-minutes: 60
         env:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          DRIVER_TRACE: "1"
         run: |
-          driver="$TRUSTED/scripts/parity/drivers/apple-sim.mjs"
-          if [[ -f $TRUSTED/scripts/parity/suite-run.mjs && -f $driver ]]; then
-            cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
-            node suite-run.mjs --driver "$driver" --out "${{ runner.temp }}/capture" --via keys
-          else
-            echo "::notice::no Apple suite driver in the default branch yet: interim route captures only (D-pad and playback not run)"
-          fi
+          cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          node suite-run.mjs --driver ./drivers/apple-sim.mjs --out "${{ runner.temp }}/capture" --via keys ${{ inputs.suite_args || '--only screens,dpad' }}
+
+      - name: Upload the web reference
+        if: steps.webref.outcome != 'skipped'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apple-wall-webref-${{ matrix.device }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/web
+          if-no-files-found: ignore
 
       - name: Upload the rejected frames (diagnosis only; the puller ignores this name)
         if: always() && steps.capture.outcome == 'failure'
@@ -220,7 +248,7 @@ jobs:
           retention-days: 3
 
       - name: Upload the captures
-        if: steps.capture.outcome == 'success'
+        if: steps.capture.outcome == 'success' || steps.suite.outcome == 'success' || steps.suite.outcome == 'failure'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: apple-wall-${{ matrix.device }}-${{ github.run_id }}

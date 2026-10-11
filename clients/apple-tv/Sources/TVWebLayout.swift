@@ -476,6 +476,10 @@ struct TVDrawer<Content: View>: View {
         #endif
         .onExitCommand(perform: onClose)
         .task { closeFocused = true }
+        #if DEBUG && os(tvOS)
+        .onAppear { TVParityState.setPanel(title) }
+        .onDisappear { TVParityState.setPanel(nil) }
+        #endif
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         .ignoresSafeArea()
     }
@@ -578,6 +582,9 @@ struct TVCardButton<Label: View>: View {
             label()
         }
         .focused($focused)
+        #if DEBUG && os(tvOS)
+        .onChange(of: focused) { _, now in TVParityState.setFocus(work.title, now) }
+        #endif
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.65).onEnded { _ in
             longPressed = true
             openActions(work)
@@ -592,6 +599,27 @@ struct TVCardButton<Label: View>: View {
         }
     }
 }
+
+extension View {
+    /// Debug-only: names the focused control for the parity driver (see `TVParityState.setFocus`). Apply inside a button's label.
+    @ViewBuilder func parityFocusTag(_ title: String) -> some View {
+        #if DEBUG && os(tvOS)
+        modifier(TVParityFocusTag(title: title))
+        #else
+        self
+        #endif
+    }
+}
+
+#if DEBUG && os(tvOS)
+private struct TVParityFocusTag: ViewModifier {
+    let title: String
+    @Environment(\.isFocused) private var isFocused
+    func body(content: Content) -> some View {
+        content.onChange(of: isFocused) { _, now in TVParityState.setFocus(title, now) }
+    }
+}
+#endif
 
 /// One action row (web `.media-context-actions` button): 268 x 68, brand glyph and a bold label, control focus ring.
 struct TVActionRow: View {
@@ -615,6 +643,7 @@ struct TVActionRow: View {
             .padding(.leading, 18)
             .frame(width: 268, height: 68)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
+            .parityFocusTag(label)
         }
         .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
         .focusEffectDisabled()

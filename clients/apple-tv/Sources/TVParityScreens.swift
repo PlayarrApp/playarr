@@ -52,6 +52,13 @@ extension TVParityLaunch {
 
     static var isLive: Bool { route != nil }
 
+    /// `-PlayarrPlayFile <media file id>`: plays that file at once (suite playback cases a and b); the player reports to parity-state.json.
+    static var playFile: UUID? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let idx = args.firstIndex(of: "-PlayarrPlayFile"), args.indices.contains(idx + 1) else { return nil }
+        return UUID(uuidString: args[idx + 1])
+    }
+
     /// `home-scrolled:<cards>:<scrollLeft>`: Home with the first rail moved right by `cards` focus steps and its track
     /// scrolled `scrollLeft` points (the web capture's own offset, so both sit at the same position).
     static var homeScroll: (cards: Int, offset: CGFloat)? {
@@ -445,19 +452,55 @@ import UIKit
 /// change. A driver reads it with `xcrun simctl get_app_container <udid> <bundle> data`. Compiled out of release builds.
 @MainActor
 enum TVParityState {
-    private static var route = "/"
+    private static var base = "/"
+    private static var query: [String: String] = [:]
     private static var started = false
+
+    /// The route in web terms: the base path plus the suite's query items (`view` on the Calendar, `panel=filters`).
+    private static var route: String {
+        base + (query.isEmpty ? "" : "?" + query.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"))
+    }
+
+    private static var tag: String?
+    private static var playback: [String: Any]?
+
+    /// The player's state for the driver's playback cases: `playing`, `buffering` or `failed`, and the position.
+    static func setPlayback(playing: Bool, position: Double, failed: String?) {
+        playback = ["state": failed != nil ? "failed" : playing ? "playing" : "buffering", "position": position, "detail": failed ?? ""]
+        write()
+    }
+
+    /// The focused card or nav tile's title, set by the tile itself: SwiftUI's focus item is not a view, so the
+    /// accessibility tree cannot name it reliably.
+    static func setFocus(_ title: String, _ focused: Bool) {
+        if focused { tag = title } else if tag == title { tag = nil }
+        write()
+    }
+
+    static func setCalendarView(_ mode: String?) { query["view"] = mode; write() }
+
+    /// An open drawer: `filters` for the Filters drawer, `actions` for any other.
+    static func setPanel(_ title: String?) {
+        query["panel"] = title.map { $0.lowercased() == "filters" ? "filters" : "actions" }
+        write()
+    }
+
+    static func setProfiles(_ open: Bool) {
+        base = open ? "/profiles" : base
+        write()
+    }
 
     /// The suite's web routes: `/`, `/movies`, `/series`, `/music`, `/search`, `/calendar`, `/settings`, a title
     /// `/movies/<id>` or `/series/<id>`, a playlist `/playlists/<id>`.
     static func setRoute(tab: TVNavTab, path: [TVRoute]) {
+        query = tab == .calendar && path.isEmpty ? query.filter { $0.key == "view" } : [:]
         switch path.last {
         case .work(let work):
-            route = "/\(work.kind == .series ? "series" : "movies")/\(work.id.uuidString.lowercased())"
+            base = "/\(work.kind == .series ? "series" : "movies")/\(work.id.uuidString.lowercased())"
         case .playlist(let id, _):
-            route = "/playlists/\(id.uuidString.lowercased())"
+            base = "/playlists/\(id.uuidString.lowercased())"
         case nil:
-            route = tab == .home ? "/" : "/\(tab.rawValue)"
+            base = tab == .home ? "/" : "/\(tab.rawValue)"
         }
         write()
     }
@@ -471,7 +514,32 @@ enum TVParityState {
         write()
     }
 
-    private static func label(of item: UIFocusItem?) -> String? {
+    /// The label of the focused item. SwiftUI's focus item is not a view, so match its frame against the accessibility
+    /// elements of the window (the one with the best overlap and a label), then fall back to the view tree.
+    private static func label(of item: UIFocusItem?, in window: UIWindow?) -> String? {
+        guard let item else { return nil }
+        if let text = (item as? NSObject)?.accessibilityLabel, !text.isEmpty { return text }
+        if let window, let space = item.focusItemContainer?.coordinateSpace {
+            let frame = space.convert(item.frame, to: window.screen.coordinateSpace)
+            var best: (score: CGFloat, text: String)?
+            func visit(_ node: Any, _ depth: Int) {
+                guard depth < 40, let object = node as? NSObject else { return }
+                if let text = object.accessibilityLabel, !text.isEmpty {
+                    let box = object.accessibilityFrame.intersection(frame)
+                    if !box.isNull, box.width > 0, box.height > 0 {
+                        let union = object.accessibilityFrame.union(frame)
+                        let score = (box.width * box.height) / max(1, union.width * union.height)
+                        if score > (best?.score ?? 0.2) { best = (score, text) }
+                    }
+                }
+                if let elements = object.accessibilityElements { elements.forEach { visit($0, depth + 1) } }
+                let count = object.accessibilityElementCount()
+                if count != NSNotFound, count > 0 { for index in 0..<min(count, 400) { if let element = object.accessibilityElement(at: index) { visit(element, depth + 1) } } }
+                if let view = object as? UIView { view.subviews.forEach { visit($0, depth + 1) } }
+            }
+            visit(window, 0)
+            if let best { return best.text }
+        }
         var view = item as? UIView
         while let v = view {
             if let text = v.accessibilityLabel, !text.isEmpty { return text }
@@ -485,7 +553,8 @@ enum TVParityState {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow) ?? scenes.first?.windows.first
         let focused = window.flatMap { UIFocusSystem.focusSystem(for: $0)?.focusedItem }
-        let state: [String: Any] = ["route": route, "focused": label(of: focused) as Any, "at": Date().timeIntervalSince1970]
+        let state: [String: Any] = ["route": route, "focused": (tag ?? label(of: focused, in: window)) as Any, "item": focused.map { String(String(describing: $0).prefix(160)) } as Any,
+                                    "at": Date().timeIntervalSince1970, "playback": playback as Any]
         guard let data = try? JSONSerialization.data(withJSONObject: state),
               let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         try? data.write(to: dir.appendingPathComponent("parity-state.json"), options: .atomic)

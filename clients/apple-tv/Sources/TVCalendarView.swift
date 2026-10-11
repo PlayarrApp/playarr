@@ -21,6 +21,10 @@ struct TVCalendarView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea()
+        #if DEBUG && os(tvOS)
+        .onChange(of: viewModel?.mode) { _, mode in TVParityState.setCalendarView(mode?.rawValue) }
+        .onChange(of: panel) { _, p in TVParityState.setPanel(p == .filters ? "filters" : nil) }
+        #endif
         .task(id: environment.serverURL) {
             // Parity captures freeze the clock and the zone (the web reference does the same); users get their own.
             let model = CalendarViewModel(

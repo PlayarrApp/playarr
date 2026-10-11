@@ -54,7 +54,9 @@ struct TVRootView: View {
         ZStack {
             TVStageBackground()
 
-            if TVParityLaunch.livePlayer != nil {
+            if let file = TVParityLaunch.playFile {
+                TVPlayerView(mediaFileID: file, title: "Parity playback", apiClient: environment.apiClient)
+            } else if TVParityLaunch.livePlayer != nil {
                 TVParityLivePlayerView()
             } else if TVParityLaunch.route == "profiles" {
                 TVProfilesView(onLinkTV: {}, onManual: {})
@@ -347,6 +349,7 @@ private struct TVProductionShell<Stage: View>: View {
                 .onChange(of: tab) { _, new in TVParityState.setRoute(tab: new, path: []) }
                 .onChange(of: path) { _, new in TVParityState.setRoute(tab: tab, path: new) }
                 .onAppear { TVParityState.start(); TVParityState.setRoute(tab: tab, path: path) }
+                .onChange(of: showProfiles) { _, open in if open { TVParityState.setProfiles(true) } else { TVParityState.setRoute(tab: tab, path: path) } }
                 #endif
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .environment(\.setShellChromeHidden) { chromeHidden = $0 }

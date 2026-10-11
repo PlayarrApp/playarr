@@ -26,6 +26,8 @@ if (!opt("driver")) throw new Error("--driver <module> is required");
 const driver = await (await import(pathToFileURL(resolve(opt("driver"))).href)).createDriver({ out, args });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+// Labels differ in wording per platform ("open x", "x movie · 2003", "x"): same item when one holds the other.
+const sameItem = (a, b) => { const t = (s) => s.replace(/^open /, ""); return !!a && !!b && (a === b || t(a).includes(t(b)) || t(b).includes(t(a))); };
 
 async function press(keys) {
   for (const { key, long } of expandKeys(keys)) await driver.key(key, { long });
@@ -75,7 +77,7 @@ if (only.includes("dpad")) {
     } catch (e) { console.log(`ERR dpad ${d.id}: ${e.message.split("\n")[0]}`); }
     if (reference) expected.dpad[d.id] = actual;
     const want = expected.dpad[d.id];
-    results.push({ id: d.id, pass: !!actual && actual === want, expected: want ?? null, actual });
+    results.push({ id: d.id, pass: sameItem(actual, want), expected: want ?? null, actual });
     console.log(`${results.at(-1).pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual}${actual === want ? "" : ` (expected ${want})`}`);
   }
   mkdirSync(out, { recursive: true });

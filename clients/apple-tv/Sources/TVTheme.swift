@@ -534,6 +534,8 @@ enum TVNavTab: String, CaseIterable, Identifiable {
 /// Focus identity shared between floating nav and main stage.
 enum TVShellFocus: Hashable {
     case nav(TVNavTab)
+    /// The profile tile at the foot of the nav: part of the nav, so Up from it walks the tabs (web).
+    case navProfile
     case stage
 }
 
@@ -629,6 +631,7 @@ struct TVFloatingNav: View {
                 .modifier(TVNavItemFocusFill())
             }
             .buttonStyle(TVFocusableCardButtonStyle())
+            .focused(externalFocus, equals: .navProfile)
             .accessibilityLabel("Profile \(profile.name)")
             .padding(DesignTokens.Shell.navGroupPadding)
             .background(
@@ -647,8 +650,10 @@ struct TVFloatingNav: View {
     }
 
     private var navHasFocus: Bool {
-        if case .nav = externalFocus.wrappedValue { return true }
-        return false
+        switch externalFocus.wrappedValue {
+        case .nav, .navProfile: return true
+        default: return false
+        }
     }
 
     @ViewBuilder
@@ -690,6 +695,9 @@ struct TVFloatingNav: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .accessibilityLabel(tab.title)
         .focused(externalFocus, equals: .nav(tab))
+        #if DEBUG && os(tvOS)
+        .onChange(of: isFocused) { _, now in TVParityState.setFocus(tab.title, now) }
+        #endif
         // not .focusable: on a Button it adds a second, inert focus target. While focus is outside the nav only the
         // active tab can take it, so Left from the page lands on the active tab (web), not the nearest one.
         #if os(macOS)

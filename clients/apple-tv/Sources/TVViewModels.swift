@@ -291,6 +291,7 @@ final class TVPlayerViewModel {
                 Task { @MainActor in
                     guard let self else { return }
                     self.position = seconds
+                    self.reportParity()
                     // A transcode playlist grows while it plays: keep the server's duration until the stream knows its own.
                     let reported = self.engine.duration
                     if self.duration <= 0, reported.isFinite, reported > 0 { self.duration = reported }
@@ -300,6 +301,7 @@ final class TVPlayerViewModel {
 
     private func handle(_ playback: PlayerPlaybackState) {
         isPlaying = playback == .playing
+        reportParity()
         switch playback {
         case .ended:
             endOfPlayback.mediaEnded()
@@ -309,6 +311,16 @@ final class TVPlayerViewModel {
         case .playing: endOfPlayback.playbackResumed()
         default: break
         }
+    }
+
+    private func reportParity() {
+        #if DEBUG && os(tvOS)
+        if TVParityLaunch.playFile != nil {
+            var failed: String?
+            if case .failed(let message) = state { failed = message }
+            TVParityState.setPlayback(playing: isPlaying, position: position, failed: failed)
+        }
+        #endif
     }
 
     /// Polls the stream URL until it answers (at most about 20 s); any non-404 answer ends the wait.
@@ -374,8 +386,10 @@ final class TVPlayerViewModel {
             // 422 unsupported_colour_format: the server's message, and no retry (a retry changes nothing).
             canRetryFailure = !error.isUnsupportedColourFormat
             state = .failed(error.displayMessage)
+            reportParity()
         } catch {
             state = .failed(error.localizedDescription)
+            reportParity()
         }
     }
 

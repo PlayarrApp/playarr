@@ -1,0 +1,1 @@
+- tvOS (debug builds only): the app writes its current route and focused item label to parity-state.json in its Documents folder for the shared parity suite driver.
