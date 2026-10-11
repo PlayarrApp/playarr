@@ -45,11 +45,14 @@ reference is web mobile at the device's own size. The legend dir is the client's
 These are engine or simulator effects of the webOS TV 23 Simulator, not Playarr code. The webOS score is reported with
 this note.
 
-- **Forced font weight.** The simulator injects `* { font-weight: 400 !important }` (Electron `insertCSS`), so bold
+- **Forced font weight.** (Worked around in the webOS build by repeating each author weight with extra specificity.) The simulator injects `* { font-weight: 400 !important }` (Electron `insertCSS`), so bold
   text renders lighter than on web. An app rule cannot restore the per-element weights against an `!important` universal
   rule. Not verified on a real TV.
 - **Date comma.** Chromium 94's ICU (CLDR) formats the en-GB clock date as "SUN, 11 OCTOBER", web (Chromium 120) as
   "SUN 11 OCTOBER".
+- **Image resampling.** Chromium 94 scales and filters card artwork slightly differently from Chromium 120, so every
+  poster edge differs by a pixel or less. This is most of the remaining 2 to 3% on image-heavy screens (movies, series,
+  music).
 - **On-screen keyboard.** A focused text field opens the platform keyboard; the suite captures search with it dismissed.
 
 ## Mobile (gated by 17.10022; reference: web mobile at the device's size)

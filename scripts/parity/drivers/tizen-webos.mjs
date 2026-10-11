@@ -113,7 +113,7 @@ export async function createDriver() {
         if (long) await sleep(900);
         await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c });
       }
-      await sleep(device === "webos" ? 750 : 350); // the simulator drops presses that come faster than it renders
+      await sleep(device === "webos" ? 1000 : 350); // the simulator drops presses that come faster than it renders
     },
     async location() { return (await ev("location.hash.replace(/^#/, '')")) ?? null; },
     async focused() {

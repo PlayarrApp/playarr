@@ -17,7 +17,7 @@ const packageJson = JSON.parse(readFileSync(new URL("./package.json", import.met
 // resolve once installed on the TV.
 export default defineConfig({
   base: "./",
-  plugins: [legacyTvCssPlugin(), react()],
+  plugins: [legacyTvCssPlugin({ pinWeights: true }), react()],
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
     __PLAYARR_PLATFORM__: JSON.stringify("tv-webos"),

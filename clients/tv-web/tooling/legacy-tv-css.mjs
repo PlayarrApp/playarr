@@ -339,13 +339,65 @@ export function addLegacyTvCssFallbacks(css, from = undefined) {
   return root.toString();
 }
 
-export function legacyTvCssPlugin() {
+// Adds two ids of specificity (`:not(#_):not(#__)`) to the last compound of a selector, before a trailing pseudo-element.
+function withExtraId(selector) {
+  const match = selector.match(/(::[\w-]+(?:\([^)]*\))?)\s*$/);
+  const ids = ":not(#_):not(#__)";
+  return match ? `${selector.slice(0, match.index)}${ids}${match[1]}` : `${selector}${ids}`;
+}
+
+const WEIGHT_IN_FONT = /^\s*(?:(?:italic|oblique|normal|small-caps)\s+)*(\d{3}|bold|bolder|lighter)\b/i;
+// Elements whose weight comes from the user-agent stylesheet.
+const BOLD_BY_DEFAULT = "h1,h2,h3,h4,h5,h6,b,strong,th,optgroup";
+
+/**
+ * The webOS TV Simulator injects `* { font-weight: 400 !important }`, which flattens every weight. An
+ * `!important` rule with more id specificity wins over it, so the stylesheet repeats its own weights that way:
+ * inherit everywhere, bold for the user-agent bold elements, then every author font-weight again, in source order.
+ * Every author selector gains the same two ids and the baseline rules one, so (baselines repeated per file never beat an author weight) the relative cascade between author rules is unchanged. A real TV
+ * resolves the same weights as before.
+ */
+export function pinFontWeights(css, from = undefined) {
+  const root = postcss.parse(css, { from });
+  const repeats = [];
+  root.walkRules((rule) => {
+    if (rule.parent?.type === "atrule" && /keyframes|font-face/i.test(rule.parent.name)) return;
+    const weights = [];
+    rule.each((node) => {
+      if (node.type !== "decl") return;
+      if (node.prop === "font-weight") weights.push(node.value.replace(/\s*!important\s*$/i, ""));
+      else if (node.prop === "font") {
+        const m = node.value.match(WEIGHT_IN_FONT);
+        if (m) weights.push(m[1]);
+      }
+    });
+    if (weights.length === 0) return;
+    repeats.push({ rule, value: weights.at(-1) });
+  });
+  if (repeats.length === 0) return css;
+  for (const { rule, value } of repeats) {
+    rule.after(
+      postcss.rule({
+        selectors: rule.selectors.map(withExtraId),
+        nodes: [postcss.decl({ prop: "font-weight", value, important: true })],
+      })
+    );
+  }
+  root.prepend(
+    postcss.rule({ selector: `*:not(#_)`, nodes: [postcss.decl({ prop: "font-weight", value: "inherit", important: true })] }),
+    postcss.rule({ selectors: BOLD_BY_DEFAULT.split(",").map((tag) => `${tag}:not(#_)`), nodes: [postcss.decl({ prop: "font-weight", value: "bold", important: true })] })
+  );
+  return root.toString();
+}
+
+export function legacyTvCssPlugin({ pinWeights = false } = {}) {
   return {
     name: "playarr-legacy-tv-css",
     enforce: "pre",
     transform(code, id) {
       if (!id.split("?", 1)[0].endsWith(".css")) return null;
-      return { code: addLegacyTvCssFallbacks(code, id), map: null };
+      const css = addLegacyTvCssFallbacks(code, id);
+      return { code: pinWeights ? pinFontWeights(css, id) : css, map: null };
     },
   };
 }

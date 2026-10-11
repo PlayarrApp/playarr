@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addLegacyTvCssFallbacks, colorMixToChannels, legacyTvCssPlugin, rewriteHasSelector } from "./legacy-tv-css.mjs";
+import { addLegacyTvCssFallbacks, colorMixToChannels, legacyTvCssPlugin, pinFontWeights, rewriteHasSelector } from "./legacy-tv-css.mjs";
 
 test("expands inset while preserving the modern shorthand", () => {
   const css = addLegacyTvCssFallbacks(".overlay { position: fixed; inset: 0 auto 2rem; }");
@@ -89,4 +89,14 @@ test("rewriteHasSelector handles selector lists inside :has()", () => {
   assert.match(rewriteHasSelector(".content:has(.list,.section)", definitions), /^\.content\[data-lc-has~="h[0-9a-z]+"\]$/);
   assert.deepEqual([...definitions.values()], [{ anchor: ".content", relative: ".list,.section" }]);
   assert.equal(rewriteHasSelector(".a:has(.b:has(.c))"), undefined);
+});
+
+test("pinFontWeights repeats author weights with one more id and restores inheritance and user-agent bold", () => {
+  const css = pinFontWeights(`.a { font-weight: 700; } .b::after { font: 600 1rem/1 x; } @media (min-width: 1px) { .c, .d { font-weight: 500; } }`);
+  assert.match(css, /\*:not\(#_\)\s*{\s*font-weight: inherit !important/);
+  assert.match(css, /h1:not\(#_\), h2:not\(#_\)[^{]*{\s*font-weight: bold !important/);
+  assert.match(css, /\.a:not\(#_\):not\(#__\)\s*{\s*font-weight: 700 !important/);
+  assert.match(css, /\.b:not\(#_\):not\(#__\)::after\s*{\s*font-weight: 600 !important/);
+  assert.match(css, /\.c:not\(#_\):not\(#__\), \.d:not\(#_\):not\(#__\)\s*{\s*font-weight: 500 !important/);
+  assert.equal(pinFontWeights(".a { color: red; }"), ".a { color: red; }");
 });
