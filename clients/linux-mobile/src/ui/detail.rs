@@ -317,13 +317,31 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                 start_ms: start,
                 title: label,
                 art_work_id: Some(art_id.clone()),
+                local_file: None,
             });
         }
     };
     let row1 = gtk4::Box::builder().spacing(8).build();
     let download = action_pill("downloads", "Download", 104, false, true);
-    download.set_sensitive(false);
-    download.set_tooltip_text(Some("Offline downloads are not available in this app yet."));
+    match l.detail.media_file_id.clone().filter(|_| !series) {
+        Some(file) => {
+            let (app, work) = (app.clone(), w.clone());
+            download.connect_clicked(move |_| {
+                super::downloads::prompt(
+                    &app,
+                    super::downloads::Spec {
+                        media_file_id: file.clone(),
+                        work_id: work.id.clone(),
+                        title: work.title.clone(),
+                        series_title: None,
+                        season: None,
+                        episode: None,
+                    },
+                )
+            });
+        }
+        None => download.set_sensitive(false),
+    }
     if series {
         if let Some((file, pos, label)) = &l.resume {
             let b = action_pill("play", "Resume", 32, true, false);
@@ -416,6 +434,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             focus_index = i;
         }
         body.append(&season_rail(
+            app,
             imgs,
             &w.id,
             season,
@@ -434,6 +453,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
 
 /// "Season 1 / 24 episodes" and a rail of episode cards (16:9 thumb, number over the corner, S01 · E02 caption).
 fn season_rail(
+    app: &Rc<App>,
     imgs: &Images,
     series_id: &str,
     season: &SeasonDetail,
@@ -523,7 +543,26 @@ fn season_rail(
                 play.clone(),
                 format!("{series_title} S{n}E{}", e.episode.episode_number),
             );
+            let dl_file = file.clone();
             b.connect_clicked(move |_| play(file.clone(), 0, label.clone()));
+            // Hold an episode to download it (the web card has no download control).
+            let press = gtk4::GestureLongPress::new();
+            let (app, file, ep) = (app.clone(), dl_file, e.clone());
+            let (series_id, series_title) = (series_id.to_string(), series_title.to_string());
+            press.connect_pressed(move |_, _, _| {
+                super::downloads::prompt(
+                    &app,
+                    super::downloads::Spec {
+                        media_file_id: file.clone(),
+                        work_id: series_id.clone(),
+                        title: ep.episode.title.clone().unwrap_or_default(),
+                        series_title: Some(series_title.clone()),
+                        season: Some(n),
+                        episode: Some(ep.episode.episode_number),
+                    },
+                )
+            });
+            b.add_controller(press);
         }
         row.append(&b);
     }

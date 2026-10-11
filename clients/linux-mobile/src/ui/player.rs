@@ -15,6 +15,8 @@ pub struct PlayRequest {
     pub title: String,
     /// Work whose poster shows in the system's media controls.
     pub art_work_id: Option<String>,
+    /// A downloaded file to play instead of streaming from the server.
+    pub local_file: Option<std::path::PathBuf>,
 }
 
 /// Report progress at most this often while playing.
@@ -106,8 +108,21 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
     let c = client.clone();
     let proxy_port = app.proxy_port();
     let weak = root_weak(&root);
+    let offline = req.local_file.is_some();
     bg(
-        move || c.playback(&file, start),
+        move || {
+            if offline {
+                // Offline: no server call; the pipeline reads the file itself.
+                Ok(crate::model::PlaybackInfo {
+                    url: String::new(),
+                    mode: "direct".into(),
+                    duration_ms: 0,
+                    source_offset_ms: 0,
+                })
+            } else {
+                c.playback(&file, start)
+            }
+        },
         move |res| match res {
             Err(e) => status.set_label(&e.to_string()),
             Ok(info) => match start_pipeline(&weak, &top_bar, &app, client, &req, info, proxy_port) {
@@ -133,7 +148,10 @@ fn start_pipeline(
     proxy_port: Option<u16>,
 ) -> Result<(), String> {
     let root = root.upgrade().ok_or("closed")?;
-    let port = proxy_port.ok_or("Playback proxy is not running.")?;
+    let port = match (&req.local_file, proxy_port) {
+        (Some(_), p) => p.unwrap_or(0),
+        (None, p) => p.ok_or("Playback proxy is not running.")?,
+    };
     let sink = gst::ElementFactory::make("gtk4paintablesink")
         .build()
         .map_err(|_| "Video output missing: install the GStreamer GTK4 plugin (gst-plugins-rs-gtk4).".to_string())?;
@@ -148,7 +166,10 @@ fn start_pipeline(
             pipeline.set_property("audio-sink", &s);
         }
     }
-    let local = crate::proxy::local_url(port, &info.url);
+    let local = match &req.local_file {
+        Some(f) => glib::filename_to_uri(f, None).map_err(|e| e.to_string())?.to_string(),
+        None => crate::proxy::local_url(port, &info.url),
+    };
     pipeline.set_property("uri", &local);
 
     let direct = info.mode == "direct";

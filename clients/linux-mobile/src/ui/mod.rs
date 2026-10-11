@@ -3,6 +3,7 @@ pub mod actions;
 pub mod calendar;
 pub mod cards;
 pub mod detail;
+pub mod downloads;
 pub mod header;
 pub mod home;
 pub mod images;
@@ -93,6 +94,7 @@ impl App {
         self.client.replace(Some(client.clone()));
         let app = self.clone();
         cards::set_actions_handler(move |w| actions::show(&app, w));
+        downloads::init(self, client.clone());
         let imgs = images::Images::new(client.clone());
         let (me, c2) = (self.clone(), client.clone());
         bg(
@@ -330,11 +332,13 @@ impl App {
                 store::update_settings(|s| s.theme = arg.into());
                 crate::theme::apply(arg);
             }
+            "dl" => downloads::control(self, arg),
             "play" if !arg.is_empty() => self.play(player::PlayRequest {
                 media_file_id: arg.into(),
                 start_ms: 0,
                 title: String::new(),
                 art_work_id: None,
+                local_file: None,
             }),
             "profiles" => self.push_profiles(client),
             "settings" => self.push_settings(client),
@@ -369,6 +373,7 @@ impl App {
                                             start_ms: 0,
                                             title,
                                             art_work_id: None,
+                                            local_file: None,
                                         });
                                     }
                                 },

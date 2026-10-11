@@ -93,6 +93,8 @@ impl CatalogQuery {
 #[derive(Clone)]
 pub struct Client {
     agent: ureq::Agent,
+    /// For file downloads: no limit on the whole transfer, only on waiting for the server.
+    stream_agent: ureq::Agent,
     session: Arc<Mutex<Session>>,
     /// Only one refresh runs at a time; the others wait and reuse its result.
     refresh_lock: Arc<Mutex<()>>,
@@ -102,6 +104,14 @@ impl Client {
     pub fn new(session: Session) -> Self {
         Client {
             agent: agent(),
+            stream_agent: ureq::Agent::config_builder()
+                .http_status_as_error(false)
+                .timeout_global(None)
+                .timeout_recv_response(Some(Duration::from_secs(60)))
+                .timeout_recv_body(Some(Duration::from_secs(60)))
+                .user_agent(concat!("playarr-linux-mobile/", env!("CARGO_PKG_VERSION")))
+                .build()
+                .into(),
             session: Arc::new(Mutex::new(session)),
             refresh_lock: Arc::default(),
         }
@@ -138,8 +148,12 @@ impl Client {
             let url = self.url(path);
             let resp = match (method, body) {
                 ("GET", _) => {
-                    let mut rb = self
-                        .agent
+                    let agent = if path.ends_with("/file") {
+                        &self.stream_agent
+                    } else {
+                        &self.agent
+                    };
+                    let mut rb = agent
                         .get(&url)
                         .header("Authorization", &auth)
                         .header("X-Playarr-Client-Platform", SERVER_PLATFORM);
@@ -272,6 +286,42 @@ impl Client {
     pub fn set_avatar_preset(&self, id: &str) -> Result<()> {
         let body = serde_json::json!({ "preference": { "kind": "preset", "value": id } });
         self.send("PUT", "/api/v1/users/me/profile-avatar", Some(&body), None)?;
+        Ok(())
+    }
+    /// A JSON GET for modules outside the UI.
+    pub fn get_json<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
+        self.get(path)
+    }
+    /// Quality options for downloading a media file.
+    pub fn download_options(&self, media_file_id: &str) -> Result<serde_json::Value> {
+        self.get(&format!("/api/v1/media/{media_file_id}/download-options"))
+    }
+    /// Cuts a download ticket; returns its id.
+    pub fn create_download_ticket(&self, media_file_id: &str, quality_id: &str) -> Result<String> {
+        let body = serde_json::json!({ "media_file_id": media_file_id, "quality_id": quality_id });
+        let v: serde_json::Value = self
+            .send("POST", "/api/v1/downloads", Some(&body), None)?
+            .body_mut()
+            .read_json()
+            .map_err(|e| ApiError::Decode(e.to_string()))?;
+        v.get("id")
+            .and_then(|i| i.as_str())
+            .map(str::to_string)
+            .ok_or_else(|| ApiError::Decode("no ticket id".into()))
+    }
+    /// Tells the server the file is stored on the device so it can drop its staged copy (best effort).
+    pub fn complete_download_ticket(&self, ticket: &str) -> Result<()> {
+        self.send(
+            "POST",
+            &format!("/api/v1/downloads/{ticket}/complete"),
+            Some(&serde_json::json!({})),
+            None,
+        )?;
+        Ok(())
+    }
+    /// Deletes a ticket server-side (best effort when canceling or deleting).
+    pub fn delete_download_ticket(&self, ticket: &str) -> Result<()> {
+        self.send("DELETE", &format!("/api/v1/downloads/{ticket}"), None, None)?;
         Ok(())
     }
     pub fn playlists(&self) -> Result<Vec<Playlist>> {

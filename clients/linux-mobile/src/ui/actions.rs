@@ -54,6 +54,7 @@ pub fn show(app: &Rc<App>, work: &Work) {
                             start_ms: start,
                             title,
                             art_work_id: Some(art_id),
+                            local_file: None,
                         });
                     }
                 },
@@ -62,10 +63,36 @@ pub fn show(app: &Rc<App>, work: &Work) {
     }
     col.append(&play);
 
-    // Offline downloads need a storage and licence story first; say so rather than pretend.
     let dl = row("downloads", "Download", Tone::Brand);
-    dl.set_sensitive(false);
-    dl.set_tooltip_text(Some("Offline downloads are not available in this app yet."));
+    if work.kind == "movie" {
+        let (app, client, work) = (app.clone(), client.clone(), work.clone());
+        dl.connect_clicked(move |_| {
+            app.close_panel();
+            let (app, work, c) = (app.clone(), work.clone(), client.clone());
+            let id = work.id.clone();
+            bg(
+                move || c.work(&id).ok().and_then(|d| d.media_file_id),
+                move |file| {
+                    if let Some(f) = file {
+                        super::downloads::prompt(
+                            &app,
+                            super::downloads::Spec {
+                                media_file_id: f,
+                                work_id: work.id.clone(),
+                                title: work.title.clone(),
+                                series_title: None,
+                                season: None,
+                                episode: None,
+                            },
+                        );
+                    }
+                },
+            );
+        });
+    } else {
+        dl.set_sensitive(false);
+        dl.set_tooltip_text(Some("Hold an episode on the series page to download it."));
+    }
     col.append(&dl);
 
     let add = row("add", "Add to Playlist", Tone::Brand);

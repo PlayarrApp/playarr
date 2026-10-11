@@ -12,14 +12,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
     let pages = gtk4::Stack::builder().vexpand(true).build();
     let lib = |kind: &'static str, title: &str| library::build(app.clone(), client.clone(), imgs.clone(), kind, title);
     let tabs: Vec<(&str, gtk4::Widget)> = vec![
-        (
-            "downloads",
-            simple::notice(
-                &app,
-                "Downloads",
-                "Offline downloads are not available in this app yet.",
-            ),
-        ),
+        ("downloads", super::downloads::page(&app, client.clone())),
         ("search", search::build(app.clone(), client.clone(), imgs.clone())),
         ("home", home::build(app.clone(), client.clone(), imgs.clone())),
         ("series", lib("series", "Series")),

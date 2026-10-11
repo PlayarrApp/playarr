@@ -2,6 +2,7 @@
 mod api;
 mod avatar;
 mod caps;
+mod downloads;
 mod icons;
 mod link;
 mod model;
