@@ -45,7 +45,7 @@ import { PlayarrClient } from '../net/PlayarrClient';
 import { ApiResult, ApiOk, ApiNetworkFailure } from '../net/ApiResult';
 
 import { deviceCodeUrl, tokenUrl, hostedLinkCodeUrl, hostedLinkClaimUrl } from '../core/Endpoints.ts';
-import { parseHostedCode, parseHostedClaim, HostedLinkClaim } from '../core/HostedLink.ts';
+import { parseHostedCode, parseHostedClaim, hostedLinkPlatformFor, HostedLinkClaim } from '../core/HostedLink.ts';
 import { buildHeaders, buildJsonBodyHeaders } from '../core/Headers.ts';
 import { clientVersion } from '../core/AppConfig.ts';
 import { sendHttpRequest } from '../net/HttpTransport';
@@ -77,9 +77,9 @@ interface DeviceTokenPollRequest {
   device_code: string;
 }
 
-/** The hosted broker's session platform. Its allow-list has no HarmonyOS entry yet, so like Roku this uses the
- * `web` compatibility identity (shortcut: switch to the TV wire name once the broker accepts it). */
-const HOSTED_LINK_PLATFORM: string = 'web';
+/** Flip to true once the broker's allow-list accepts the HarmonyOS identities (web PR 749 deployed); until then
+ * the broker gets the `web` compatibility identity, as Roku does. */
+const USE_HARMONY_BROKER_IDENTITY: boolean = false;
 const HOSTED_POLL_MS_MIN: number = 1000;
 
 export type DeviceAuthOutcomeKind = 'success' | 'access_denied' | 'expired' | 'cancelled' | 'request_failed';
@@ -181,6 +181,15 @@ function extractServersParam(verificationUriComplete: string): string {
     }
   }
   return '';
+}
+
+/** The session platform the hosted broker is told: HarmonyOS TV or phone by device profile, once enabled. */
+function hostedLinkPlatform(): string {
+  const profile = AppStorage.get<DeviceProfile>(DEVICE_PROFILE_STORAGE_KEY);
+  if (profile === undefined) {
+    return 'web';
+  }
+  return hostedLinkPlatformFor(USE_HARMONY_BROKER_IDENTITY, profile.inputMode === 'dpad', profile.platformWireName);
 }
 
 export class DeviceAuthService {
@@ -361,9 +370,9 @@ export class DeviceAuthService {
   private async requestHostedLink(): Promise<DeviceCodeResponse | null> {
     const response = await sendHttpRequest(hostedLinkCodeUrl(), {
       method: 'POST',
-      headers: buildJsonBodyHeaders(HOSTED_LINK_PLATFORM, clientVersion, null),
+      headers: buildJsonBodyHeaders(hostedLinkPlatform(), clientVersion, null),
       dataType: 'string',
-      body: JSON.stringify({ client_platform: HOSTED_LINK_PLATFORM }),
+      body: JSON.stringify({ client_platform: hostedLinkPlatform() }),
     });
     if (response.status < 200 || response.status >= 300) {
       return null;
@@ -395,7 +404,7 @@ export class DeviceAuthService {
       }
       const response = await sendHttpRequest(hostedLinkClaimUrl(code.device_code), {
         method: 'GET',
-        headers: buildHeaders(HOSTED_LINK_PLATFORM, clientVersion, null),
+        headers: buildHeaders(hostedLinkPlatform(), clientVersion, null),
         dataType: 'string',
       });
       if (cancelled) {

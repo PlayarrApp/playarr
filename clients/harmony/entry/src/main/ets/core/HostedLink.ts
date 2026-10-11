@@ -59,3 +59,14 @@ export function parseHostedClaim(bodyText: string): HostedLinkClaim | null {
   }
   return { serverUrl: wire.server_url, serverDeviceCode: wire.server_device_code, serverUrls: urls };
 }
+
+/**
+ * The broker session platform: `web` (compatibility) until the allow-list takes HarmonyOS, then the device's own TV
+ * wire name (`core/DeviceProfile.ts`, which owns that literal) or `harmony-phone`.
+ */
+export function hostedLinkPlatformFor(useHarmonyIdentity: boolean, isTv: boolean, tvWireName: string): string {
+  if (!useHarmonyIdentity) {
+    return "web";
+  }
+  return isTv ? tvWireName : "harmony-phone";
+}

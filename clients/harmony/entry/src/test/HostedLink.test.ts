@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { parseHostedClaim, parseHostedCode } from "../main/ets/core/HostedLink";
+import { hostedLinkPlatformFor, parseHostedClaim, parseHostedCode } from "../main/ets/core/HostedLink";
 import { hostedLinkClaimUrl, hostedLinkCodeUrl } from "../main/ets/core/Endpoints";
 
 test("broker urls", () => {
@@ -23,4 +23,11 @@ test("claim parses, drops non-string urls, bad shape is null", () => {
   assert.deepEqual(parseHostedClaim('{"server_url":"https://s","server_device_code":"k","server_urls":["https://s",3]}'),
     { serverUrl: "https://s", serverDeviceCode: "k", serverUrls: ["https://s"] });
   assert.equal(parseHostedClaim('{"server_url":"https://s","server_device_code":"k"}'), null);
+});
+
+test("broker platform stays web until enabled, then follows the form factor", () => {
+  assert.equal(hostedLinkPlatformFor(false, true, "tv-wire"), "web");
+  assert.equal(hostedLinkPlatformFor(false, false, "tv-wire"), "web");
+  assert.equal(hostedLinkPlatformFor(true, true, "tv-wire"), "tv-wire");
+  assert.equal(hostedLinkPlatformFor(true, false, "tv-wire"), "harmony-phone");
 });
