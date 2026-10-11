@@ -106,7 +106,7 @@ namespace Playarr.Xbox.Views
             if (work != null && !ReferenceEquals(_backdropWork, work))
             {
                 _backdropWork = work;
-                Artwork.Load(BackdropImage, work, 1280, ImageKind.Backdrop);
+                Artwork.Load(BackdropImage, work, 1280, new[] { ImageKind.Backdrop }, requestWidth: 1280);
             }
 
             PlayButton.IsEnabled = _viewModel.CanPlay;
@@ -223,7 +223,7 @@ namespace Playarr.Xbox.Views
                 // The server's cached, resized episode still (the source URL may sit behind a private scheme).
                 var still = new Image { Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
                 art.Children.Add(still);
-                Artwork.LoadEpisode(still, series, episode, 540);
+                Artwork.LoadEpisode(still, series, episode, 268);
             }
 
             art.Children.Add(new TextBlock

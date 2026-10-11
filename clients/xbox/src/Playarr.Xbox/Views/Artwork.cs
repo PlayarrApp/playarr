@@ -21,28 +21,47 @@ namespace Playarr.Xbox.Views
         private static readonly SemaphoreSlim Gate = new SemaphoreSlim(6);
         private static readonly ConcurrentDictionary<string, byte[]> Cache = new ConcurrentDictionary<string, byte[]>();
 
-        /// <summary>Loads <paramref name="work"/>'s first available kind of art into <paramref name="image"/>.</summary>
-        public static async void Load(Image image, Work work, int width, params ImageKind[] kinds)
+        /// <summary>
+        /// The width the web requests for a kind (<c>defaultArtworkWidth</c> in lib/artwork.tsx); the server snaps it to
+        /// its own set of sizes.
+        /// </summary>
+        public static int WebWidth(ImageKind kind) => kind switch
+        {
+            ImageKind.Poster => 360,
+            ImageKind.Thumb => 540,
+            ImageKind.Logo => 540,
+            ImageKind.Banner => 780,
+            ImageKind.Backdrop => 780,
+            _ => 540,
+        };
+
+        /// <summary>
+        /// Loads <paramref name="work"/>'s first available kind of art into <paramref name="image"/>: requested at the
+        /// web's width for that kind (or <paramref name="requestWidth"/>, the web's 1280 for hero backdrops) and decoded
+        /// at exactly <paramref name="displayWidth"/> device pixels, so the decoder does the one resample and the
+        /// compositor draws it 1:1 with the same cover crop (UniformToFill) as the web's object-fit.
+        /// </summary>
+        public static async void Load(Image image, Work work, int displayWidth, ImageKind[] kinds, int? requestWidth = null)
         {
             image.Source = null;
             foreach (var kind in kinds)
             {
                 if (work.Image(kind) is { } asset)
                 {
-                    await SetAsync(image, work.Id, kind, width, Version(asset.Url), (int)Math.Min(width, 1920)).ConfigureAwait(true);
+                    await SetAsync(image, work.Id, kind, requestWidth ?? WebWidth(kind), Version(asset.Url), displayWidth).ConfigureAwait(true);
                     return;
                 }
             }
         }
 
-        /// <summary>An episode's still, for the On deck card of a series.</summary>
-        public static async void LoadEpisode(Image image, Work series, Episode episode, int width)
+        /// <summary>An episode's still: requested like a web thumb (540), decoded at the display width.</summary>
+        public static async void LoadEpisode(Image image, Work series, Episode episode, int displayWidth)
         {
             image.Source = null;
             var asset = episode.Images.Count > 0 ? episode.Images[0] : null;
             if (asset != null)
             {
-                await SetAsync(image, series.Id, ImageKind.Thumb, width, Version(asset.Url), width, episode.Id).ConfigureAwait(true);
+                await SetAsync(image, series.Id, ImageKind.Thumb, WebWidth(ImageKind.Thumb), Version(asset.Url), displayWidth, episode.Id).ConfigureAwait(true);
             }
         }
 

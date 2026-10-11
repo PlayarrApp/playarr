@@ -135,11 +135,11 @@ namespace Playarr.Xbox.Views
                 art.Children.Add(image);
                 if (episode != null)
                 {
-                    Artwork.LoadEpisode(image, work, episode, 540);
+                    Artwork.LoadEpisode(image, work, episode, (int)CardWidth);
                 }
                 else
                 {
-                    Artwork.Load(image, work, 540, ImageKind.Thumb, ImageKind.Backdrop);
+                    Artwork.Load(image, work, (int)CardWidth, new[] { ImageKind.Thumb, ImageKind.Backdrop });
                 }
             }
 

@@ -111,7 +111,7 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
-            Artwork.Load(_backdrop, work, 780, ImageKind.Backdrop);
+            Artwork.Load(_backdrop, work, 960, new[] { ImageKind.Backdrop }, requestWidth: 1280);
             var eyebrow = new List<string>();
             if (withKind)
             {
