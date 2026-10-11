@@ -40,7 +40,8 @@ internal sealed class AppEnv
 
     public string? CurrentAvatar { get; private set; }
     public string Profile { get; set; } = "Profile";
-    public PlayarrTheme Theme { get; set; }
+    private PlayarrTheme _theme = PlayarrTheme.Dark;
+    public PlayarrTheme Theme { get => _theme; set { _theme = value; PlayarrTheme.Current = value; } }
 
     public string Abs(string url) => Api.ResolveUrl(url)?.ToString() ?? url;
 

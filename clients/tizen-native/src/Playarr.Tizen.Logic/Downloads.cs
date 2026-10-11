@@ -166,6 +166,8 @@ public sealed class DownloadStore(string directory)
 public sealed class DownloadEngine(IDownloadsApi api, DownloadStore store)
 {
     private readonly object _gate = new();
+    // a season is many tickets: only two transfers run at once, the rest wait as Queued
+    private readonly SemaphoreSlim _slots = new(2, 2);
     private readonly List<DownloadRecord> _all = store.Load();
     private readonly Dictionary<string, CancellationTokenSource> _running = new();
     public event Action? Changed;
@@ -196,10 +198,15 @@ public sealed class DownloadEngine(IDownloadsApi api, DownloadStore store)
         lock (_gate) { if (_running.ContainsKey(r.Id)) return; _running[r.Id] = cts; }
         _ = Task.Run(async () =>
         {
-            try { await RunAsync(r, cts.Token).ConfigureAwait(false); }
+            var held = false;
+            try
+            {
+                await _slots.WaitAsync(cts.Token).ConfigureAwait(false); held = true;
+                await RunAsync(r, cts.Token).ConfigureAwait(false);
+            }
             catch (OperationCanceledException) { }
             catch (Exception e) { r.State = DownloadState.Failed; r.Error = e.Message; }
-            finally { lock (_gate) _running.Remove(r.Id); Persist(); }
+            finally { if (held) _slots.Release(); lock (_gate) _running.Remove(r.Id); Persist(); }
         });
     }
 

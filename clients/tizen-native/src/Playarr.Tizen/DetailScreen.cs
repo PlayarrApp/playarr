@@ -62,8 +62,7 @@ internal sealed class DetailScreen : IPage
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
         BuildHeader(w);
         BuildCopy(w, detail);
-        BuildChapters(detail);
-        _ = LoadCastAsync(detail);
+        _ = LoadChaptersThenCastAsync(detail);
         if (_focus.Items.Count > 0) _focus.Set(PlayIndex);
     }
 
@@ -89,9 +88,10 @@ internal sealed class DetailScreen : IPage
         if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
         meta.AddRange(w.Genres.Take(3));
         _content.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 27, 10.56f, 400, _t.InkMuted, 700, 15.84f));
-        Ui.Paragraph(_content, w.Overview ?? "", 153.6f, bas + 64.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
+        var ovLines = Ui.Paragraph(_content, w.Overview ?? "", 153.6f, bas + 64.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
 
-        var y1 = bas + 203.8f; var y2 = y1 + 76f;
+        // the action rows follow the overview: 5 lines put them at +203.8 (web), each line fewer lifts them by one line height
+        var y1 = bas + 203.8f - (5 - Math.Max(1, ovLines)) * 20.325f; var y2 = y1 + 76f;
         var resume = _progress is { State: WatchState.InProgress } p ? "Resume from " + DetailModel.Clock(p.PositionMs) : "Play";
         AddButton("Download", "⇩", 153.6f, y1, 142, primary: false, label: "download", select: () => OpenDownload(w));
         AddButton("Playback", "☷", 311.6f, y1, 142, primary: false, label: "playback settings", select: () => Toast("Playback settings are not available in this app yet."));
@@ -123,9 +123,29 @@ internal sealed class DetailScreen : IPage
         });
     }
 
-    private void BuildChapters(WorkDetail d)
+    /// <summary>Real chapters embedded in the file when it has any (web uses them as is), else the generated ones; then the cast rail below.</summary>
+    private async Task LoadChaptersThenCastAsync(WorkDetail d)
     {
-        var chapters = DetailModel.GeneratedChapters(d.RuntimeMs ?? 0);
+        IReadOnlyList<Chapter>? real = null;
+        try
+        {
+            if (d.MediaFileId is { } f)
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Get, _env.Api.ResolveUrl($"/api/v1/media/{f:D}/chapters"));
+                foreach (var h in await _env.Api.GetPlaybackRequestHeadersAsync()) req.Headers.TryAddWithoutValidation(h.Key, h.Value);
+                using var res = await new HttpClient().SendAsync(req);
+                if (res.IsSuccessStatusCode) real = DetailModel.ParseChapters(await res.Content.ReadAsStringAsync());
+            }
+        }
+        catch (Exception e) { Dbg.Log("CHAPTERS failed: " + e.Message); }
+        var done = new TaskCompletionSource();
+        SynchronizationContextHolder.Post(() => { try { BuildChapters(d, real is { Count: > 0 } ? real : DetailModel.GeneratedChapters(d.RuntimeMs ?? 0)); } finally { done.SetResult(); } });
+        await done.Task;
+        await LoadCastAsync(d);
+    }
+
+    private void BuildChapters(WorkDetail d, IReadOnlyList<Chapter> chapters)
+    {
         if (chapters.Count == 0 || d.MediaFileId is not { } file) return;
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         var stack = _stack = new View { PositionX = -ClipX };
@@ -142,7 +162,8 @@ internal sealed class DetailScreen : IPage
             var art = Ui.Box(0, 0, 268, 150.8f, _t.SurfaceSoft, 13.44f);
             art.ClippingMode = ClippingModeType.ClipChildren;
             _ = SetThumbAsync(art, file, c.StartMs);
-            art.Add(Ui.Text((c.Index + 1).ToString("00"), 268 - 35.5f, 150.8f - 8 - 28.8f, 19.2f, 600, new Rgba(1, 1, 1), 28, 28.8f));
+            art.Add(Ui.Gradient(0, 0, 268, 150.8f, false, (0, new Rgba(0, 0, 0, 0.05f)), (1, new Rgba(0, 0, 0, 0.48f))));
+            art.Add(Ui.Text((c.Index + 1).ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
             box.Add(art);
             box.Add(Ui.Text(DetailModel.Clock(c.StartMs), 0, 165.3f, 8.832f, 700, _t.InkMuted, 40, 13.248f));
             var tt = Ui.Text(c.Title, 25.8f, 162.3f, 11.52f, 700, _t.Ink, 242, 17.28f, spacing: -0.17f);
@@ -180,7 +201,7 @@ internal sealed class DetailScreen : IPage
     {
         var path = await _images.GetAsync($"/api/v1/media/{file:D}/thumbnail?position_ms={positionMs}");
         if (path is null) return;
-        SynchronizationContextHolder.Post(() => art.Add(new ImageView(path) { Size = new Size(268, 150.8f) }));
+        SynchronizationContextHolder.Post(() => { var img = Ui.Remote(path, 268, 150.8f); art.Add(img); img.LowerToBottom(); });
     }
 
     private void ScrollChapters(int index)
@@ -198,7 +219,7 @@ internal sealed class DetailScreen : IPage
     private void OpenDownload(Work w)
     {
         if (_file is not { } file || _dl is not null) return;
-        _dl = new DownloadDrawer(_env, "Download", [], KeepUntil.Forever, (_, _) => { }, CloseDownload, loading: "Loading download options…");
+        _dl = new DownloadDrawer(_env, "Download", [], KeepUntil.Forever, (_, _, _) => { }, CloseDownload, loading: "Loading download options…");
         _root.Add(_dl.Root);
         _ = Task.Run(async () =>
         {
@@ -209,7 +230,7 @@ internal sealed class DetailScreen : IPage
                 {
                     if (_dl is null) return;
                     CloseDownload();
-                    _dl = new DownloadDrawer(_env, w.Title, options, KeepUntil.Forever, (q, keep) => StartDownload(w, file, container, q ?? options[0], keep), CloseDownload);
+                    _dl = new DownloadDrawer(_env, w.Title, options, KeepUntil.Forever, (q, keep, _) => StartDownload(w, file, container, q ?? options[0], keep), CloseDownload);
                     _root.Add(_dl.Root);
                 });
             }

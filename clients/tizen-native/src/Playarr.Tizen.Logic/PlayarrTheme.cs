@@ -27,5 +27,8 @@ public sealed record PlayarrTheme(
         Brand: Rgba.Hex(0xcf3157), BrandInk: Rgba.Hex(0x821e36), Accent: Rgba.Hex(0x4d4248), OnAccent: Rgba.Hex(0xffffff),
         Danger: Rgba.Hex(0x722f34), Scrim: Rgba.Of(0, 0, 0, 0.5f), ShadowTint: Rgba.Of(56, 38, 33, 1f));
 
+    /// <summary>The theme the screens are built with (set by the app); focus rings follow it.</summary>
+    public static PlayarrTheme Current { get; set; } = Dark;
+
     public static PlayarrTheme ByName(string? name) => name == "light" ? Light : Dark;
 }

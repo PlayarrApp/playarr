@@ -55,7 +55,7 @@ internal sealed class MediaCard
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
         Art.PositionY = focused ? _lift : 0;
         Art.BoxShadow = focused ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
-        _ring?.Show(focused && _t.Name != "dark");
+        if (_ring is not null) { _ring.Show(focused && _t.Name != "dark"); if (focused) _ring.RaiseToTop(); } // the poster loads later and would otherwise sit on top of the ring
         Title.TextColor = focused ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
     }
 
@@ -111,7 +111,7 @@ internal sealed class KeyArt
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
                 var dark = _t.Name == "dark";
                 var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f);
-                img.Opacity = dark ? 0.07f : 0.07f; // web (measured at 1920x1080): the art is only a ghost in both themes
+                img.Opacity = dark ? 0.07f : 0.035f; // web (measured at 1920x1080): the art is only a ghost in both themes
                 Root.Add(img);
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
                 Root.Add(Ui.Gradient(-20 + 1038.3f * 0.72f, 0, 1038.3f * 0.28f, 1080, true, (0, clear), (1, s)));

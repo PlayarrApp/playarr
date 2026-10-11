@@ -66,4 +66,29 @@ public class DownloadTests
         Assert.Equal("mkv", c); Assert.Equal(2, o.Count); Assert.True(o[1].Estimate); Assert.Null(o[1].Bytes);
         Assert.Equal(DownloadState.Processing, DownloadTicket.Parse("""{"id":"x","status":"processing","container":"mp4"}""").State);
     }
+
+    private sealed class SlowApi : IDownloadsApi
+    {
+        public int Now, Max;
+        private int _n;
+        public Task<DownloadTicket> CreateAsync(Guid f, string q, CancellationToken ct = default) => Task.FromResult(new DownloadTicket("t" + Interlocked.Increment(ref _n), DownloadState.Ready, "mp4", 10, null));
+        public Task<DownloadTicket> GetAsync(string id, CancellationToken ct = default) => Task.FromResult(new DownloadTicket(id, DownloadState.Ready, "mp4", 10, null));
+        public Task CancelAsync(string id, CancellationToken ct = default) => Task.CompletedTask;
+        public async Task<HttpResponseMessage> FileAsync(string id, long from, CancellationToken ct = default)
+        {
+            var now = Interlocked.Increment(ref Now); lock (this) Max = Math.Max(Max, now);
+            await Task.Delay(150, ct); Interlocked.Decrement(ref Now);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[10]) };
+        }
+    }
+
+    [Fact]
+    public async Task A_season_of_tickets_runs_two_transfers_at_a_time()
+    {
+        var api = new SlowApi(); var engine = new DownloadEngine(api, new DownloadStore(Directory.CreateTempSubdirectory().FullName));
+        for (var i = 0; i < 5; i++) await engine.StartAsync(new DownloadRecord { Title = "Test Episode " + i }, Guid.NewGuid(), KeepUntil.Forever);
+        await WaitAsync(() => engine.Records.All(r => r.State == DownloadState.Ready));
+        Assert.All(engine.Records, r => Assert.Equal(DownloadState.Ready, r.State));
+        Assert.Equal(2, api.Max);
+    }
 }

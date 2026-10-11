@@ -53,4 +53,4 @@ Not supported on this platform, by design of the Tizen TV profile:
   third-party .NET app can publish to, so title, artwork and transport controls are only on the player itself and the remote's
   media keys.
 - **Background transfers**: the app has no background service on the TV profile.
-- Series episode downloads are not wired yet (films only); the keep-until presets are Forever, 1 week or 30 days after watched.
+- Season downloads create one ticket per episode and run two at a time; the keep-until presets are Forever, 1 week or 30 days after watched.

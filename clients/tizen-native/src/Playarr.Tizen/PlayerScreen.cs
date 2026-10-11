@@ -66,7 +66,7 @@ internal sealed class PlayerScreen : IPage
         var play = Ui.Box(147.6f, 958, 64, 64, new Rgba(1, 1, 1, 0.14f), 32);
         _playIcon = Ui.Icon("pause", 22, 22, 20, white);
         play.Add(_playIcon);
-        var playRing = Ring.Make(64, 64, 32, white); playRing.Show(false); play.Add(playRing);
+        var playRing = Ring.Make(64, 64, 32, white, themed: false); playRing.Show(false); play.Add(playRing);
         _controls.Add(play);
         _focus.Items.Add(new Focusable { Rect = () => new Box(147.6f, 958, 64, 64), Label = "pause", Select = TogglePause, Style = f => playRing.Show(f) });
         AddIcon("next", 247.2f, 980, "next", dim: true);
@@ -97,7 +97,7 @@ internal sealed class PlayerScreen : IPage
         box.BorderlineWidth = 1; box.BorderlineColor = new Color(1, 1, 1, 0.28f);
         box.Add(Ui.Icon(icon, text is null ? 14 : 23.2f, text is null ? 14 : 14, text is null ? 20 : 20, new Rgba(1, 1, 1)));
         if (text is not null) box.Add(Ui.Text(text, 52, 13, 11.2f, 700, new Rgba(1, 1, 1), 70, 22, spacing: 0.22f));
-        var ring = Ring.Make(w, 48, 24, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
+        var ring = Ring.Make(w, 48, 24, new Rgba(1, 1, 1), themed: false); ring.Show(false); box.Add(ring);
         _controls.Add(box);
         _focus.Items.Add(new Focusable { Rect = () => new Box(x, 37.8f, w, 48), Label = label, Select = select, Style = f => ring.Show(f) });
     }
@@ -105,7 +105,7 @@ internal sealed class PlayerScreen : IPage
     private void AddIcon(string icon, float x, float y, string label, bool dim)
     {
         _controls.Add(Ui.Icon(icon, x, y, 20, new Rgba(1, 1, 1, dim ? 0.4f : 0.8f)));
-        var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1)); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
+        var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1), themed: false); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
         _controls.Add(ring);
         _focus.Items.Add(new Focusable { Rect = () => new Box(x - 8, y - 8, 36, 36), Label = label, Select = () => { }, Style = f => ring.Show(f) });
     }
@@ -200,7 +200,7 @@ internal sealed class PlayerScreen : IPage
         Ui.Paragraph(box, message, 40, 60, 20, 600, new Rgba(1, 1, 1), 720, 30, 0, 3);
         var close = Ui.Box(40, 136, 120, 44, new Rgba(1, 1, 1, 0.14f), 22);
         close.Add(Ui.Text("Close", 0, 12, 13, 700, new Rgba(1, 1, 1), 120, 20, HorizontalAlignment.Center));
-        var ring = Ring.Make(120, 44, 22, new Rgba(1, 1, 1)); close.Add(ring);
+        var ring = Ring.Make(120, 44, 22, new Rgba(1, 1, 1), themed: false); close.Add(ring);
         box.Add(close);
         _root.Add(box);
     }

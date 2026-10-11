@@ -18,6 +18,21 @@ public static class DetailModel
             .Select(i => new Chapter(i, $"Chapter {i + 1:00}", i * interval, Math.Min(runtimeMs, i * interval + interval))).ToList();
     }
 
+    /// <summary>GET /api/v1/media/{id}/chapters: [{index, title, start_ms, end_ms}]; a missing title shows the clock (web: chapter.title ?? formatClock).</summary>
+    public static IReadOnlyList<Chapter> ParseChapters(string json)
+    {
+        try
+        {
+            var a = Newtonsoft.Json.Linq.JArray.Parse(json);
+            return a.Select((c, i) =>
+            {
+                var start = (long?)c["start_ms"] ?? 0;
+                return new Chapter((int?)c["index"] ?? i, (string?)c["title"] is { Length: > 0 } t ? t : Clock(start), start, (long?)c["end_ms"] ?? start);
+            }).ToList();
+        }
+        catch (Exception) { return Array.Empty<Chapter>(); }
+    }
+
     public static string Clock(long ms)
     {
         var total = Math.Max(0, ms / 1000);

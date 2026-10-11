@@ -77,10 +77,11 @@ internal sealed class DownloadsScreen : IPage
         _list.Add(Ui.Text(heading, 153.6f, y + 8, 9.6f, 800, _t.InkMuted, 400, 14.4f, upper: true, spacing: 0.67f));
         y += 40;
         if (rows.Count == 0 && empty.Length > 0) { _list.Add(Ui.Text(empty, 153.6f, y + 8, 14, 400, _t.InkMuted, 900, 21)); return y + 56; }
-        string? lastSeries = null;
+        string? lastSeries = null; int? lastSeason = null;
         foreach (var r in rows)
         {
-            if (r.SeriesTitle is { } s && s != lastSeries) { lastSeries = s; _list.Add(Ui.Text($"{s}", 153.6f, y + 6, 15, 700, _t.InkSoft, 900, 22)); y += 32; }
+            if (r.SeriesTitle is { } s && s != lastSeries) { lastSeries = s; lastSeason = null; _list.Add(Ui.Text($"{s}", 153.6f, y + 6, 15, 700, _t.InkSoft, 900, 22)); y += 32; }
+            if (r.SeriesTitle is not null && r.Season is { } sn && sn != lastSeason) { lastSeason = sn; _list.Add(Ui.Text($"Season {sn}", 173.6f, y + 4, 12, 700, _t.InkMuted, 400, 18)); y += 26; }
             Row(r, y); y += RowH;
         }
         return y + 16;
@@ -144,7 +145,7 @@ internal sealed class DownloadsScreen : IPage
 
     private void OpenEdit(DownloadRecord r)
     {
-        _drawer = new DownloadDrawer(_env, r.Title, null, r.Keep, (_, keep) => { _env.Downloads.EditKeep(r.Id, keep); CloseDrawer(); Build(); }, CloseDrawer);
+        _drawer = new DownloadDrawer(_env, r.Title, null, r.Keep, (_, keep, _) => { _env.Downloads.EditKeep(r.Id, keep); CloseDrawer(); Build(); }, CloseDrawer);
         _root.Add(_drawer.Root);
     }
 

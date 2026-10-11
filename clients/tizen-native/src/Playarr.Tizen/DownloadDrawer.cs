@@ -17,11 +17,12 @@ internal sealed class DownloadDrawer
     private readonly Action _close;
     private int _quality;
     private int _keep;
+    private int _scope;
     public View Root { get; } = new();
     public string? FocusedLabel => _focus.Item?.Label;
 
     /// <param name="qualities">null when only the keep-until is edited.</param>
-    public DownloadDrawer(AppEnv env, string title, IReadOnlyList<DownloadQuality>? qualities, KeepUntil current, Action<DownloadQuality?, KeepUntil> confirm, Action close, string? loading = null)
+    public DownloadDrawer(AppEnv env, string title, IReadOnlyList<DownloadQuality>? qualities, KeepUntil current, Action<DownloadQuality?, KeepUntil, int> confirm, Action close, string? loading = null, string[]? scopes = null)
     {
         var t = env.Theme; _close = close;
         _keep = Math.Max(0, Array.FindIndex(Keeps, k => k.Type == current.Type && k.Amount == current.Amount && k.Unit == current.Unit));
@@ -39,7 +40,31 @@ internal sealed class DownloadDrawer
 
         var y = 150f;
         if (loading is not null) Root.Add(Ui.Text(loading, 1606, y, 14, 400, t.InkMuted, 268, 21));
-        const float Pitch = 50, RowH = 44, ViewTop = 178, ViewH = 450;
+        if (scopes is not null)
+        {
+            Root.Add(Ui.Text("Download", 1606, y, 9.6f, 800, t.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f)); y += 28;
+            var smarks = new List<(View Box, TextLabel Text)>();
+            for (var i = 0; i < scopes.Length; i++)
+            {
+                var idx = i; var yy = y;
+                var b = Ui.Box(1606, yy, 268, 44, i == 0 ? t.Ink : t.SurfaceSoft, 12);
+                b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(t, 0.15f);
+                var tl = Ui.Text(scopes[i], 16, 13, 12, 700, i == 0 ? t.OnAccent : t.InkMuted, 240, 18);
+                b.Add(tl);
+                var ring = Ring.Make(268, 44, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
+                Root.Add(b); smarks.Add((b, tl));
+                _focus.Items.Add(new Focusable { Rect = () => new Box(1606, yy, 268, 44), Label = $"scope {scopes[i]}".ToLowerInvariant(), Style = f => ring.Show(f), Select = () =>
+                {
+                    _scope = idx;
+                    for (var k = 0; k < smarks.Count; k++) { smarks[k].Box.BackgroundColor = Ui.C(k == idx ? t.Ink : t.SurfaceSoft); smarks[k].Text.TextColor = Ui.C(k == idx ? t.OnAccent : t.InkMuted); }
+                } });
+                y += 50;
+            }
+            y += 12;
+        }
+        float viewTopBase = y;
+        const float Pitch = 50, RowH = 44, ViewH = 450;
+        var ViewTop = viewTopBase + 28;
         if (qualities is not null)
         {
             Root.Add(Ui.Text("Quality", 1606, y, 9.6f, 800, t.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f));
@@ -95,8 +120,8 @@ internal sealed class DownloadDrawer
         }
         y += 16;
         Button(t, 1606, y, 128, "Cancel", "cancel", false, _close);
-        Button(t, 1746, y, 128, qualities is null ? "Save" : "Download", qualities is null ? "save" : "download", true, () => confirm(qualities is null ? null : qualities.Count == 0 ? null : qualities[_quality], Keeps[_keep]));
-        _focus.Set(qualities is { Count: > 0 } ? 1 : 0);
+        Button(t, 1746, y, 128, qualities is null ? "Save" : "Download", qualities is null ? "save" : "download", true, () => confirm(qualities is null ? null : qualities.Count == 0 ? null : qualities[_quality], Keeps[_keep], _scope));
+        _focus.Set(scopes is not null ? 1 : qualities is { Count: > 0 } ? 1 : 0);
     }
 
     private void Button(PlayarrTheme t, float x, float y, float w, string text, string label, bool primary, Action select)

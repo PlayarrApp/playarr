@@ -24,6 +24,7 @@ internal sealed class SeriesDetailScreen : IPage
     private readonly AuthImage _images;
     private readonly List<Rail> _rails = new();
     private readonly List<(int Rail, int Col, EpisodeDetail Ep, SeasonDetail Season)> _episodes = new();
+    private readonly Dictionary<int, (int, int, EpisodeDetail, SeasonDetail)> _episodeByFocus = new();
     private WorkDetail? _detail;
     private IReadOnlyDictionary<Guid, WatchProgress> _progress = new Dictionary<Guid, WatchProgress>();
     private int _activeRail, _seasonCount;
@@ -32,7 +33,7 @@ internal sealed class SeriesDetailScreen : IPage
     public bool IsReady => _focus.Items.Count > 0;
     public View Root => _root;
     public string Route => $"/series/{_id}";
-    public string? FocusedLabel => _focus.Item?.Label;
+    public string? FocusedLabel => _dl?.FocusedLabel ?? _focus.Item?.Label;
     public float FocusCentreY => _focus.CurrentRect is { Height: > 0 } r ? r.CentreY : 540;
 
     public SeriesDetailScreen(AppEnv env, Guid id)
@@ -110,8 +111,11 @@ internal sealed class SeriesDetailScreen : IPage
             var box = new View { PositionX = x, Size = new Size(268, 200) };
             var art = Ui.Box(0, 0, 268, 150.8f, _t.SurfaceSoft, 13.44f);
             art.ClippingMode = ClippingModeType.ClipChildren;
-            if (ep.MediaFileId is { } f) _ = SetThumbAsync(art, f);
-            art.Add(Ui.Text(ep.Episode.EpisodeNumber.ToString("00"), 268 - 35.5f, 150.8f - 8 - 28.8f, 19.2f, 600, new Rgba(1, 1, 1), 28, 28.8f));
+            // web: the episode's own still when the catalog has one, else the media-file frame (cover crop); a 135deg black wash and the number sit on top
+            var still = ep.Episode.Images.Any(i => i.Kind == ImageKind.Thumb) ? $"/api/v1/artwork/episode/{_detail!.Work.Id:D}/{ep.Episode.Id:D}/thumb?w=540" : null;
+            if (still is not null || ep.MediaFileId is not null) _ = SetThumbAsync(art, still, ep.MediaFileId);
+            art.Add(Ui.Gradient(0, 0, 268, 150.8f, false, (0, new Rgba(0, 0, 0, 0.05f)), (1, new Rgba(0, 0, 0, 0.48f))));
+            art.Add(Ui.Text(ep.Episode.EpisodeNumber.ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
             var unseen = ep.MediaFileId is { } mf && (!_progress.TryGetValue(mf, out var pr) || pr.State == WatchState.Unwatched);
             var inProgress = ep.MediaFileId is { } mf2 && _progress.TryGetValue(mf2, out var pr2) && pr2.State == WatchState.InProgress ? pr2 : null;
             if (inProgress is not null)
@@ -126,13 +130,14 @@ internal sealed class SeriesDetailScreen : IPage
                 dot.BorderlineWidth = 2; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
                 box.Add(dot);
             }
-            var code = $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}";
+            var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
             box.Add(Ui.Text(code, 0, 165.3f, 8.832f, 700, _t.InkMuted, 46, 13.248f));
             var tt = Ui.Text(ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}", 45.8f, 162.3f, 11.52f, 700, _t.Ink, 222, 17.28f, spacing: -0.17f);
             box.Add(tt);
             rail.Row.Add(box);
             var railIdx = si; var col = ci; var epc = ep; var seasonc = season;
             _episodes.Add((si, ci, ep, season));
+            _episodeByFocus[_focus.Items.Count] = (si, ci, ep, season);
             _focus.Items.Add(new Focusable
             {
                 Rect = () => new Box(x - rail.Scroll, FocusedHeadingY - (_activeRail - railIdx) * RailPitch + 80.7f, 268, 150.8f),
@@ -184,7 +189,7 @@ internal sealed class SeriesDetailScreen : IPage
     {
         foreach (var c in _copy.Children.ToArray()) { _copy.Remove(c); c.Dispose(); }
         var w = _detail!.Work;
-        var code = $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}";
+        var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
         _copy.Add(Ui.Text(code, 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(_copy, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
         var bas = 303.5f + 62.208f * lines;
@@ -193,15 +198,17 @@ internal sealed class SeriesDetailScreen : IPage
         if (ep.RuntimeMs is > 0) meta.Add(DetailModel.Runtime(ep.RuntimeMs.Value));
         if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
         if (ep.Episode.AirDate is { Length: > 0 } air && DateTime.TryParse(air, out var d)) meta.Add("Aired  " + d.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
-        meta.AddRange(w.Genres.Take(1));
+        meta.AddRange(w.Genres.Take(3));
         _copy.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 73f, 10.56f, 400, _t.InkMuted, 700, 15.84f));
         Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 110.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 3);
         var yb = bas + 183.4f;
         var hasProgress = ep.MediaFileId is { } f && _progress.TryGetValue(f, out var pr) && pr.State == WatchState.InProgress;
         Pill(_copy, hasProgress ? "Resume" : "Start", "▶", 153.6f, yb, 156, true);
-        Pill(_copy, "Ask again", "↺", 325.6f, yb, 142, false);
-        Pill(_copy, "Add to watchlist", "+", 483.6f, yb, 142, false);
-        Pill(_copy, "Add to Playlist", "+", 641.6f, yb, 142, false);
+        var px = 325.6f;
+        // web: "Ask again" only while the resume plan is something other than a plain start
+        if (hasProgress) { Pill(_copy, "Ask again", "↺", px, yb, 142, false); px += 158; }
+        Pill(_copy, "Add to watchlist", "+", px, yb, 142, false);
+        Pill(_copy, "Add to Playlist", "+", px + 158, yb, 142, false);
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
     }
 
@@ -216,11 +223,12 @@ internal sealed class SeriesDetailScreen : IPage
         parent.Add(box);
     }
 
-    private async Task SetThumbAsync(View art, Guid file)
+    private async Task SetThumbAsync(View art, string? stillPath, Guid? file)
     {
-        var path = await _images.GetAsync($"/api/v1/media/{file:D}/thumbnail");
+        var path = stillPath is null ? null : await _images.GetAsync(stillPath);
+        if (path is null && file is { } f) path = await _images.GetAsync($"/api/v1/media/{f:D}/thumbnail");
         if (path is null) return;
-        SynchronizationContextHolder.Post(() => art.Add(new ImageView(path) { Size = new Size(268, 150.8f) }));
+        SynchronizationContextHolder.Post(() => { var img = Ui.Remote(path, 268, 150.8f); art.Add(img); img.LowerToBottom(); });
     }
 
     private void PlayEpisode(EpisodeDetail ep)
@@ -230,8 +238,62 @@ internal sealed class SeriesDetailScreen : IPage
         _env.Navigate($"/player/{f}" + (resume > 0 ? $"?t={resume}" : ""));
     }
 
+    private DownloadDrawer? _dl;
+
+    /// <summary>Long press on an episode: pick scope (this episode or the whole season), quality and keep-until; one ticket per episode.</summary>
+    private void OpenDownload()
+    {
+        if (_dl is not null || _detail is null) return;
+        var cur = _focus.Current;
+        var hit = _episodeByFocus.TryGetValue(cur, out var found) ? found : ((int, int, EpisodeDetail, SeasonDetail)?)null;
+        if (hit is null || hit.Value.Item3.MediaFileId is not { } file) return;
+        var (_, _, episode, season) = hit.Value;
+        var w = _detail.Work;
+        _dl = new DownloadDrawer(_env, w.Title, [], KeepUntil.Forever, (_, _, _) => { }, CloseDownload, loading: "Loading download options…");
+        _root.Add(_dl.Root);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var (container, options) = await _env.DownloadsServer.OptionsAsync(file);
+                SynchronizationContextHolder.Post(() =>
+                {
+                    if (_dl is null) return;
+                    CloseDownload();
+                    _dl = new DownloadDrawer(_env, w.Title, options, KeepUntil.Forever, (q, keep, scope) => StartDownloads(w, season, episode, scope, container, q ?? options[0], keep), CloseDownload,
+                        scopes: ["This episode", "Whole season"]);
+                    _root.Add(_dl.Root);
+                });
+            }
+            catch (Exception e) { Dbg.Log("DOWNLOAD options failed: " + e.Message); SynchronizationContextHolder.Post(CloseDownload); }
+        });
+    }
+
+    private void StartDownloads(Work w, SeasonDetail season, EpisodeDetail picked, int scope, string container, DownloadQuality q, KeepUntil keep)
+    {
+        CloseDownload();
+        var episodes = scope == 1 ? season.Episodes.Where(e => e.MediaFileId is not null).ToList() : [picked];
+        _ = Task.Run(async () =>
+        {
+            foreach (var e in episodes)
+            {
+                var rec = new DownloadRecord
+                {
+                    WorkId = w.Id.ToString("D"), Title = e.Episode.Title ?? $"Episode {e.Episode.EpisodeNumber}", SeriesTitle = w.Title, Season = season.Season.SeasonNumber, Episode = e.Episode.EpisodeNumber,
+                    QualityId = q.Id, QualityLabel = q.Label, Container = container, TotalBytes = q.Estimate ? null : q.Bytes, RuntimeMs = e.RuntimeMs ?? 0,
+                };
+                try { await _env.Downloads.StartAsync(rec, e.MediaFileId!.Value, keep); }
+                catch (Exception ex) { Dbg.Log("DOWNLOAD start failed: " + ex.Message); }
+            }
+        });
+    }
+
+    private void CloseDownload() { if (_dl is null) return; _root.Remove(_dl.Root); _dl.Root.Dispose(); _dl = null; }
+
     public bool OnKey(RemoteKey key)
     {
+        if (_dl is not null) return _dl.OnKey(key);
+        if (key == RemoteKey.SelectLong) { OpenDownload(); return true; }
         if (key is RemoteKey.Up or RemoteKey.Down or RemoteKey.Left or RemoteKey.Right) _keyArt.Arm();
         switch (key)
         {

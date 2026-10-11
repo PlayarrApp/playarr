@@ -1,0 +1,1 @@
+- Samsung Tizen native client: series episode downloads. Long-press an episode to download that episode or the whole season (quality and keep-until), at most two transfers at a time; the Downloads page groups by series and season.

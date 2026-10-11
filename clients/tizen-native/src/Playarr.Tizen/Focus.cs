@@ -53,9 +53,9 @@ internal sealed class FocusSet
 internal static class Ring
 {
     /// <summary>The web focus ring: 3 px in the theme ring colour, 2 px outside the control, following its radius.</summary>
-    public static View Make(float w, float h, float radius, Rgba color) => new View
+    public static View Make(float w, float h, float radius, Rgba color, bool themed = true) => new View
     {
         PositionX = -5, PositionY = -5, Size = new Size(w + 10, h + 10), CornerRadius = radius + 5,
-        BorderlineWidth = 3, BorderlineColor = Ui.C(color), BorderlineOffset = -1,
+        BorderlineWidth = 3, BorderlineColor = Ui.C(themed && PlayarrTheme.Current.Name == "light" ? PlayarrTheme.Current.Ink : color), BorderlineOffset = -1,
     };
 }
