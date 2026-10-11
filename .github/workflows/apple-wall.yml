@@ -210,6 +210,15 @@ jobs:
             echo "::notice::no Apple suite driver in the default branch yet: interim route captures only (D-pad and playback not run)"
           fi
 
+      - name: Upload the rejected frames (diagnosis only; the puller ignores this name)
+        if: always() && steps.capture.outcome == 'failure'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wallfail-${{ matrix.device }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/wall/failed
+          if-no-files-found: ignore
+          retention-days: 3
+
       - name: Upload the captures
         if: steps.capture.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

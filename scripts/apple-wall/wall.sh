@@ -56,6 +56,12 @@ token() { # a fresh access token for the Device Test profile, masked in the log
   echo "::add-mask::$t"; printf '%s' "$t"
 }
 
+rejected() { # keep the frames and the app's recent log for diagnosis (the log has no credentials)
+  rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"
+  if [[ $KIND == macos ]]; then cp "$WORK/app.log" "$WORK/failed/app.log" 2>/dev/null || true
+  else xcrun simctl spawn "$UDID" log show --last 5m --style compact --predicate 'subsystem CONTAINS "playarr" OR processImagePath CONTAINS "Playarr"' 2>/dev/null | tail -n 400 > "$WORK/failed/app.log" || true; fi
+}
+
 shot() { # <file.png|jpg>: one frame of the device, never the desktop
   local f=$1 raw="$WORK/raw.$$.png"
   case $DEVICE in
@@ -133,13 +139,13 @@ capture)
       id=${pair%%:*}; route=${pair#*:}
       ACCESS_TOKEN=$ACCESS_TOKEN launch "$theme" "$route"
       sleep 14
-      shot "$OUT/$theme/$id.png" || { log "no frame for $theme/$id"; rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"; exit 1; }
-      [[ $(stat -f %z "$OUT/$theme/$id.png") -gt 20000 ]] || { log "$theme/$id looks empty"; rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"; exit 1; }
+      shot "$OUT/$theme/$id.png" || { log "no frame for $theme/$id"; rejected; exit 1; }
+      [[ $(stat -f %z "$OUT/$theme/$id.png") -gt 20000 ]] || { log "$theme/$id looks empty"; rejected; exit 1; }
       log "captured $theme/$id"
     done
-    [[ $(stat -f %z "$OUT/$theme/home.png") -gt 150000 ]] || { log "$theme/home.png is too plain: an error or signed-out screen"; rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"; exit 1; }
+    [[ $(stat -f %z "$OUT/$theme/home.png") -gt 150000 ]] || { log "$theme/home.png is too plain: an error or signed-out screen"; rejected; exit 1; }
     # An app stuck on one screen (sign-in, error) gives identical frames: publish nothing then.
-    [[ $(shasum "$OUT/$theme"/*.png | awk '{print $1}' | sort -u | wc -l) -ge 3 ]] || { log "$theme frames are nearly identical: not signed in or stuck"; rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"; exit 1; }
+    [[ $(shasum "$OUT/$theme"/*.png | awk '{print $1}' | sort -u | wc -l) -ge 3 ]] || { log "$theme frames are nearly identical: not signed in or stuck"; rejected; exit 1; }
   done
   printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
     "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$OUT/build.json"
