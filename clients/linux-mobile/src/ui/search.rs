@@ -21,10 +21,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .css_classes(["pa-muted"])
         .build();
     let flow = library::grid();
-    if let Ok(q) = std::env::var("PLAYARR_SEARCH") {
-        // Capture scripts pre-fill a query.
-        entry.set_text(&q);
-    }
     page.append(&entry);
     page.append(&status);
     page.append(&flow);
@@ -34,6 +30,13 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .css_classes(["pa-page"])
         .build();
 
+    {
+        // Capture hook: pre-fill a query.
+        let entry = entry.clone();
+        app.hooks
+            .borrow_mut()
+            .insert("search", Rc::new(move |q: &str| entry.set_text(q)));
+    }
     let seq = Rc::new(Cell::new(0u32));
     entry.connect_search_changed(move |e| {
         let q = e.text().trim().to_string();

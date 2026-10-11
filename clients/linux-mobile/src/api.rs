@@ -58,6 +58,36 @@ pub fn urlenc(s: &str) -> String {
     o
 }
 
+/// Library browse filters, mapped onto `GET /api/v1/catalog`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CatalogQuery {
+    pub kind: String,
+    /// `title` or `date_added`.
+    pub sort: String,
+    pub genre: Option<String>,
+    pub available_only: bool,
+}
+
+impl CatalogQuery {
+    pub fn query_string(&self) -> String {
+        let mut q = format!(
+            "kind={}&sort={}",
+            self.kind,
+            if self.sort.is_empty() { "title" } else { &self.sort }
+        );
+        if self.sort == "date_added" {
+            q.push_str("&order=desc");
+        }
+        if let Some(g) = &self.genre {
+            q.push_str(&format!("&genre={}", urlenc(g)));
+        }
+        if self.available_only {
+            q.push_str("&available_only=true");
+        }
+        q
+    }
+}
+
 #[derive(Clone)]
 pub struct Client {
     agent: ureq::Agent,
@@ -193,9 +223,36 @@ impl Client {
         Ok(self.get::<HomeRails>("/api/v1/home/rails")?.rails)
     }
     pub fn catalog(&self, kind: &str, offset: usize, limit: usize, sort: &str) -> Result<CatalogPage> {
+        let q = CatalogQuery {
+            kind: kind.into(),
+            sort: sort.into(),
+            ..Default::default()
+        };
+        self.catalog_filtered(&q, offset, limit)
+    }
+    pub fn catalog_filtered(&self, q: &CatalogQuery, offset: usize, limit: usize) -> Result<CatalogPage> {
         self.get(&format!(
-            "/api/v1/catalog?kind={kind}&limit={limit}&offset={offset}&sort={sort}"
+            "/api/v1/catalog?{}&limit={limit}&offset={offset}",
+            q.query_string()
         ))
+    }
+    pub fn calendar(&self, start: &str, end: &str) -> Result<Vec<CalendarEntry>> {
+        Ok(self
+            .get::<CalendarResponse>(&format!("/api/v1/calendar?start={start}&end={end}"))?
+            .entries)
+    }
+    pub fn playlists(&self) -> Result<Vec<Playlist>> {
+        self.get("/api/v1/playlists")
+    }
+    pub fn add_to_playlist(&self, playlist_id: &str, work_id: &str) -> Result<()> {
+        let body = serde_json::json!({ "work_id": work_id });
+        self.send(
+            "POST",
+            &format!("/api/v1/playlists/{playlist_id}/items"),
+            Some(&body),
+            None,
+        )?;
+        Ok(())
     }
     pub fn search(&self, q: &str) -> Result<Vec<Work>> {
         Ok(self
@@ -219,9 +276,20 @@ impl Client {
     }
     pub fn playback(&self, media_file_id: &str, start_ms: i64) -> Result<PlaybackInfo> {
         // The GStreamer HLS/MP4 pipeline plays H.264/AAC in MP4 or TS; the server transcodes anything else.
-        self.get(&format!(
+        let path = format!(
             "/api/v1/playback/{media_file_id}?containers=mp4,mov&video_codecs=h264&audio_codecs=aac,mp3&start_position_ms={start_ms}"
-        ))
+        );
+        // The server answers 503 while every transcode slot is busy; wait and retry a few times.
+        let mut tries = 0;
+        loop {
+            match self.get(&path) {
+                Err(ApiError::Http(503)) if tries < 6 => {
+                    tries += 1;
+                    std::thread::sleep(Duration::from_secs(3));
+                }
+                other => return other,
+            }
+        }
     }
     pub fn report_progress(
         &self,
@@ -257,6 +325,28 @@ mod tests {
     fn urlenc_escapes() {
         assert_eq!(urlenc("a b&c"), "a%20b%26c");
         assert_eq!(urlenc("Zoë"), "Zo%C3%AB");
+    }
+
+    #[test]
+    fn catalog_query_string() {
+        let q = CatalogQuery {
+            kind: "movie".into(),
+            sort: "date_added".into(),
+            genre: Some("Sci Fi".into()),
+            available_only: true,
+        };
+        assert_eq!(
+            q.query_string(),
+            "kind=movie&sort=date_added&order=desc&genre=Sci%20Fi&available_only=true"
+        );
+        assert_eq!(
+            CatalogQuery {
+                kind: "series".into(),
+                ..Default::default()
+            }
+            .query_string(),
+            "kind=series&sort=title"
+        );
     }
 
     #[test]

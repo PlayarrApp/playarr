@@ -151,7 +151,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded) {
         b.connect_clicked(move |_| play(file.clone(), pos, t.clone()));
         buttons.append(&b);
     }
-    if l.detail.work.kind != "series" {
+    if l.detail.work.kind == "movie" {
         if let Some(file) = l.detail.media_file_id.clone() {
             let label = if l.resume.is_some() { "Start over" } else { "Play" };
             let class = if l.resume.is_some() {
@@ -185,10 +185,77 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded) {
         );
     }
 
+    if !l.detail.children.albums.is_empty() {
+        body.append(&albums(&l.detail.children.albums, &title, play.clone()));
+    }
     let seasons = &l.detail.children.seasons;
     if !seasons.is_empty() {
         body.append(&episodes(seasons, &title, play));
     }
+}
+
+fn albums(
+    albums: &[crate::model::AlbumDetail],
+    artist: &str,
+    play: impl Fn(String, i64, String) + Clone + 'static,
+) -> gtk4::Box {
+    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+    col.set_margin_top(8);
+    for a in albums {
+        let year = a
+            .album
+            .release_date
+            .as_deref()
+            .and_then(|d| d.get(..4))
+            .map(|y| format!(" ({y})"))
+            .unwrap_or_default();
+        col.append(
+            &gtk4::Label::builder()
+                .label(format!("{}{year}", a.album.title))
+                .css_classes(["pa-h2"])
+                .xalign(0.0)
+                .wrap(true)
+                .margin_top(8)
+                .build(),
+        );
+        for t in &a.tracks {
+            let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
+            row.append(
+                &gtk4::Label::builder()
+                    .label(t.track.track_number.to_string())
+                    .css_classes(["pa-ep-num"])
+                    .build(),
+            );
+            row.append(
+                &gtk4::Label::builder()
+                    .label(&t.track.title)
+                    .css_classes(["pa-card-title"])
+                    .xalign(0.0)
+                    .hexpand(true)
+                    .wrap(true)
+                    .build(),
+            );
+            if let Some(sec) = t.track.duration_seconds {
+                row.append(
+                    &gtk4::Label::builder()
+                        .label(fmt_clock(sec as i64 * 1000))
+                        .css_classes(["pa-card-meta"])
+                        .build(),
+                );
+            }
+            let b = gtk4::Button::builder()
+                .child(&row)
+                .css_classes(["pa-episode"])
+                .sensitive(t.media_file_id.is_some())
+                .build();
+            if let Some(file) = t.media_file_id.clone() {
+                let (play, label) = (play.clone(), format!("{} - {}", artist, t.track.title));
+                b.connect_clicked(move |_| play(file.clone(), 0, label.clone()));
+            }
+            col.append(&b);
+        }
+    }
+    col
 }
 
 fn episodes(

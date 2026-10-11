@@ -36,7 +36,31 @@ playback goes through a loopback proxy in the app process (`src/proxy.rs`).
 `data/fonts/` holds Nunito Sans (SIL OFL, see `OFL-NunitoSans.txt`) converted from the web app's woff2. Packages
 install it under the system font directory so fontconfig finds it.
 
+## Screens
+
+Sign-in, profile picker, Home (On deck first, then the server rails), Movies, Series and Music grids with infinite
+scroll and a filters sheet (sort, availability, genre), release calendar (agenda, week, month), search, title
+detail (film, series with seasons and episodes, artist with albums and tracks), a long-press actions sheet (play,
+details, add to playlist), settings (theme, account), and the player (resume, scrubber, progress reporting every ten
+seconds and on exit). Offline downloads are not available yet and the sheet says so.
+
+## Debug and capture hooks
+
+Environment variables for development and the parity capture scripts; none changes behaviour when unset.
+
+| Variable | Effect |
+|---|---|
+| `PLAYARR_BROKER` | Link broker origin (default the hosted broker). |
+| `PLAYARR_BROKER_PLATFORM` | Broker identity override while a broker does not know `linux-phone` yet. |
+| `PLAYARR_AUDIO_SINK` | GStreamer audio sink element, for example `fakesink` on a machine without sound. |
+| `PLAYARR_ROUTE` | Skip the picker and open `home`, `movies`, `series`, `music`, `search`, `calendar`, `film`, `series-detail`, `player`, `profiles`, `settings`, `filters` or `actions`. |
+| `PLAYARR_SEARCH`, `PLAYARR_CAL_VIEW`, `PLAYARR_AUTO_FILTERS`, `PLAYARR_KEEP_CONTROLS` | Pre-fill the search, pick the calendar view, open the filters sheet, pin the player controls. |
+
+## Packaging
+
+`packaging/flatpak/` builds a Flatpak (GNOME 50 runtime, and GStreamer's GTK4 sink from gst-plugins-rs);
+`packaging/alpine/APKBUILD` builds the Alpine and postmarketOS package.
+
 ## Scope
 
-Milestone 1: sign-in, profile picker, Home rails, library grids, title detail, search, settings, playback with
-resume and progress reporting. Offline downloads and the calendar are out of scope for now.
+Offline downloads, the requests and household screens and casting are not part of this client yet.

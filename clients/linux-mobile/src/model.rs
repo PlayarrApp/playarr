@@ -123,10 +123,79 @@ pub struct SeasonDetail {
     pub episodes: Vec<EpisodeDetail>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct Album {
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub release_date: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Track {
+    pub id: String,
+    pub title: String,
+    pub track_number: i32,
+    #[serde(default)]
+    pub disc_number: i32,
+    #[serde(default)]
+    pub duration_seconds: Option<i32>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TrackDetail {
+    pub track: Track,
+    #[serde(default)]
+    pub media_file_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AlbumDetail {
+    pub album: Album,
+    #[serde(default)]
+    pub tracks: Vec<TrackDetail>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Playlist {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub is_system: bool,
+    #[serde(default)]
+    pub media_type: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CalendarEntry {
+    pub id: String,
+    pub date: String,
+    pub title: String,
+    #[serde(default)]
+    pub subtitle: Option<String>,
+    #[serde(default)]
+    pub media_kind: String,
+    #[serde(default)]
+    pub has_file: bool,
+    #[serde(default)]
+    pub work_id: Option<String>,
+    #[serde(default)]
+    pub season_number: Option<i64>,
+    #[serde(default)]
+    pub episode_number: Option<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CalendarResponse {
+    #[serde(default)]
+    pub entries: Vec<CalendarEntry>,
+}
+
 /// `WorkChildrenSchema` is `"Movie"` or `{"Series": [...]}` (or artist/author variants we ignore).
 #[derive(Debug, Clone, Default)]
 pub struct Children {
     pub seasons: Vec<SeasonDetail>,
+    pub albums: Vec<AlbumDetail>,
 }
 
 impl<'de> Deserialize<'de> for Children {
@@ -136,7 +205,11 @@ impl<'de> Deserialize<'de> for Children {
             .get("Series")
             .and_then(|s| serde_json::from_value(s.clone()).ok())
             .unwrap_or_default();
-        Ok(Children { seasons })
+        let albums = v
+            .get("Artist")
+            .and_then(|s| serde_json::from_value(s.clone()).ok())
+            .unwrap_or_default();
+        Ok(Children { seasons, albums })
     }
 }
 

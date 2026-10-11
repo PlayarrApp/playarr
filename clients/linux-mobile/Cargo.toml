@@ -13,7 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 gtk4 = { version = "0.11", features = ["v4_10"] }
-libadwaita = { version = "0.9", features = ["v1_4"] }
+libadwaita = { version = "0.9", features = ["v1_5"] }
 gstreamer = "0.25"
 ureq = { version = "3", features = ["json"] }
 serde = { version = "1", features = ["derive"] }

@@ -1,4 +1,6 @@
 //! GTK/libadwaita user interface. Pages: link (sign-in), profiles, then the signed-in shell.
+pub mod actions;
+pub mod calendar;
 pub mod cards;
 pub mod detail;
 pub mod home;
@@ -29,6 +31,7 @@ pub fn bg<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static, done: im
 }
 
 type TabSelector = Rc<dyn Fn(&str)>;
+type Hooks = RefCell<std::collections::HashMap<&'static str, TabSelector>>;
 
 pub struct App {
     pub window: adw::ApplicationWindow,
@@ -38,6 +41,8 @@ pub struct App {
     pub proxy: RefCell<Option<crate::proxy::Proxy>>,
     /// Switches the shell tab by name (set by the shell).
     pub select_tab: RefCell<Option<TabSelector>>,
+    /// Debug hooks registered by pages (search text, calendar view, filters sheet) for the capture scripts.
+    pub hooks: Hooks,
 }
 
 impl App {
@@ -52,7 +57,9 @@ impl App {
     /// Entry after launch: a saved session goes to the profile picker, otherwise the link page.
     pub fn start(self: &Rc<Self>) {
         match store::load_session() {
-            Some(s) if std::env::var("PLAYARR_ROUTE").is_ok() => self.enter(Client::new(s)),
+            Some(s) if std::env::var("PLAYARR_ROUTE").is_ok() || std::env::var("PLAYARR_CONTROL").is_ok() => {
+                self.enter(Client::new(s))
+            }
             Some(s) => self.signed_in(Client::new(s)),
             None => self.show_link(),
         }
@@ -73,6 +80,8 @@ impl App {
     /// The signed-in shell: tab pages in a navigation view that detail pages push onto.
     pub fn enter(self: &Rc<Self>, client: Client) {
         self.client.replace(Some(client.clone()));
+        let app = self.clone();
+        cards::set_actions_handler(move |w| actions::show(&app, w));
         let imgs = images::Images::new(client.clone());
         let (me, c2) = (self.clone(), client.clone());
         bg(
@@ -87,6 +96,7 @@ impl App {
                 if let Ok(route) = std::env::var("PLAYARR_ROUTE") {
                     me.route(&route);
                 }
+                me.watch_control();
             },
         );
     }
@@ -149,25 +159,68 @@ impl App {
         self.push_bare(&req.title.clone(), &player::build(self.clone(), client, req));
     }
 
-    /// Opens a screen straight away: `home`, `movies`, `series`, `search`, `film`, `series-detail`, `player`,
-    /// `profiles`, `settings`. Used by the parity capture scripts through `PLAYARR_ROUTE`.
+    fn hook(&self, name: &str, arg: &str) {
+        let f = self.hooks.borrow().get(name).cloned();
+        if let Some(f) = f {
+            f(arg);
+        }
+    }
+
+    /// Opens a screen straight away (`name` or `name:argument`): `home`, `movies`, `series`, `music`,
+    /// `search:<text>`, `calendar-agenda|week|month`, `film`, `series-detail`, `player`, `profiles`, `settings`,
+    /// `filters`, `actions`, `theme:dark|light|system`. Used by the parity capture scripts through `PLAYARR_ROUTE` and `PLAYARR_CONTROL`.
     pub fn route(self: &Rc<Self>, route: &str) {
         let Some(client) = self.client.borrow().clone() else {
             return;
         };
-        let select = self.select_tab.borrow().clone();
-        match route {
-            "home" | "movies" | "series" | "search" => {
-                if let Some(f) = select {
-                    f(route)
-                }
+        while self.nav.navigation_stack().n_items() > 1 {
+            self.nav.pop();
+        }
+        let (name, arg) = route.split_once(':').unwrap_or((route, ""));
+        let select = |tab: &str| {
+            if let Some(f) = self.select_tab.borrow().clone() {
+                f(tab)
+            }
+        };
+        match name {
+            "home" | "movies" | "series" | "music" => select(name),
+            "search" => {
+                select("search");
+                self.hook("search", arg);
+            }
+            "calendar-agenda" | "calendar-week" | "calendar-month" => {
+                select("calendar");
+                self.hook("calendar-view", name.trim_start_matches("calendar-"));
+            }
+            "filters" => {
+                select("movies");
+                self.hook("filters", "");
+            }
+            "actions" => {
+                let (me, c) = (self.clone(), client.clone());
+                bg(
+                    move || {
+                        c.catalog("movie", 0, 1, "title")
+                            .ok()
+                            .and_then(|p| p.items.into_iter().next())
+                    },
+                    move |w| {
+                        if let Some(w) = w {
+                            actions::show(&me, &w);
+                        }
+                    },
+                );
+            }
+            "theme" => {
+                store::save_settings(&store::Settings { theme: arg.into() });
+                crate::theme::apply(arg);
             }
             "profiles" => self.push_profiles(client),
             "settings" => self.push_settings(client),
             "film" | "series-detail" | "player" => {
-                let kind = if route == "series-detail" { "series" } else { "movie" };
+                let kind = if name == "series-detail" { "series" } else { "movie" };
                 let (me, c) = (self.clone(), client.clone());
-                let route = route.to_string();
+                let route = name.to_string();
                 bg(
                     move || {
                         c.catalog(kind, 0, 1, "title")
@@ -201,6 +254,21 @@ impl App {
         }
     }
 
+    /// With `PLAYARR_CONTROL=<file>`, a route written to the file is opened and the file removed.
+    fn watch_control(self: &Rc<Self>) {
+        let Ok(path) = std::env::var("PLAYARR_CONTROL") else {
+            return;
+        };
+        let me = self.clone();
+        glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
+            if let Ok(text) = std::fs::read_to_string(&path) {
+                let _ = std::fs::remove_file(&path);
+                me.route(text.trim());
+            }
+            glib::ControlFlow::Continue
+        });
+    }
+
     pub fn sign_out(self: &Rc<Self>) {
         store::clear_session();
         self.show_link();
@@ -223,6 +291,7 @@ pub fn build_window(app: &adw::Application) {
         client: RefCell::new(None),
         proxy: RefCell::new(None),
         select_tab: RefCell::new(None),
+        hooks: RefCell::default(),
     });
     state.start();
     window.present();

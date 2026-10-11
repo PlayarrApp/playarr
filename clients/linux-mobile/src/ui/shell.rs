@@ -1,6 +1,6 @@
 //! Signed-in shell: tab pages with the floating bottom navigation pill.
 use super::images::Images;
-use super::{home, library, profiles, search, App};
+use super::{calendar, home, library, profiles, search, App};
 use crate::api::Client;
 use crate::avatar;
 use gtk4::prelude::*;
@@ -8,7 +8,8 @@ use std::rc::Rc;
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>) -> gtk4::Widget {
     let pages = gtk4::Stack::builder().vexpand(true).build();
-    let tabs: [(&str, &str, gtk4::Widget); 4] = [
+    let lib = |kind: &'static str, title: &str| library::build(app.clone(), client.clone(), imgs.clone(), kind, title);
+    let tabs: [(&str, &str, gtk4::Widget); 6] = [
         (
             "search",
             "system-search-symbolic",
@@ -20,19 +21,17 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
             home::build(app.clone(), client.clone(), imgs.clone()),
         ),
         (
-            "movies",
-            "video-x-generic-symbolic",
-            library::build(app.clone(), client.clone(), imgs.clone(), "movie", "Movies"),
+            "calendar",
+            "x-office-calendar-symbolic",
+            calendar::build(app.clone(), client.clone()),
         ),
-        (
-            "series",
-            "video-display-symbolic",
-            library::build(app.clone(), client.clone(), imgs.clone(), "series", "Series"),
-        ),
+        ("movies", "video-x-generic-symbolic", lib("movie", "Movies")),
+        ("series", "video-display-symbolic", lib("series", "Series")),
+        ("music", "audio-x-generic-symbolic", lib("artist", "Music")),
     ];
     let nav = gtk4::Box::builder()
         .css_classes(["pa-nav"])
-        .spacing(4)
+        .spacing(2)
         .halign(gtk4::Align::Center)
         .valign(gtk4::Align::End)
         .margin_bottom(14)
