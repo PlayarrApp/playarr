@@ -7007,9 +7007,9 @@ sub updateSeasonHeads()
     end for
 end sub
 
-' Web AvailabilityLagNote: "Usually available about N days after release", or "No availability data yet".
+' Web AvailabilityLagNote: "Usually available about N days after release"; nothing at all without samples (row 9917).
 sub acceptDetailLag(data as Dynamic)
-    text = "No availability data yet"
+    text = ""
     if data <> invalid and data.average_seconds <> invalid
         seconds = data.average_seconds
         if seconds >= 86400

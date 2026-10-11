@@ -701,3 +701,7 @@ class RokuDeviceBugfixTests(unittest.TestCase):
         self.assertIn('pageBegin("Calendar", 0)', pages)
         self.assertIn('dialog.buttons = ["Month", "Week", "Agenda"]', pages)
 
+    def test_series_page_shows_no_lag_line_without_samples(self) -> None:
+        self.assertNotIn("No availability data yet\"\n", MAIN)
+        self.assertIn('text = ""', MAIN[MAIN.index("sub acceptDetailLag"):][:200])
+
