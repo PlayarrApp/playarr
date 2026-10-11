@@ -42,11 +42,13 @@ on:
     - cron: '17 2 * * *'
 
 concurrency:
-  # PRs share one group per PR number and are cancelled by newer pushes. Every
-  # push to main gets its own group (keyed by SHA): with a shared per-ref group
-  # GitHub cancels the older *pending* run even when cancel-in-progress is
-  # false, which left main commits without a completed CI run (and no deploy).
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  # PRs share one group per PR number and are cancelled by newer pushes. Pushes to main share ONE group, with
+  # cancel-in-progress off: GitHub then lets a running main run finish and keeps only the NEWEST pending one, so the
+  # latest main is always tested and deployed. Per-SHA groups (the earlier setup) let every merge queue its own full
+  # run: on 11 Oct 2026 the queue held 30+ stale main runs (about 60 cancelled by hand), starving PR runs and the merge
+  # train. A skipped intermediate commit is covered by the next run, which tests a tree containing it. Scheduled and
+  # manual runs keep their own per-SHA group so a push never supersedes them.
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref == 'refs/heads/main' && 'main') || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
