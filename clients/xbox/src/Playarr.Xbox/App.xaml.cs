@@ -69,7 +69,19 @@ namespace Playarr.Xbox
                 rootFrame.NavigationFailed += OnNavigationFailed;
                 RootFrame = rootFrame;
                 Navigation = new NavigationService(rootFrame);
-                Window.Current.Content = new ShellChrome(rootFrame).Root;
+                // One codebase for the console and the desktop window: the app is laid out at the web TV size (1920x1080)
+                // and a Viewbox scales that layout to the window, as the web scales its TV layout. A pointer, the keyboard
+                // and the gamepad all work on the same tree; the top strip is the draggable title bar.
+                var design = new Grid { Width = 1920, Height = 1080 };
+                design.Children.Add(new ShellChrome(rootFrame).Root);
+                var titleStrip = new Windows.UI.Xaml.Controls.Border { Height = 32, VerticalAlignment = VerticalAlignment.Top, Background = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent) };
+                design.Children.Add(titleStrip);
+                Window.Current.Content = new Grid
+                {
+                    Background = (Windows.UI.Xaml.Media.Brush)Resources["PlayarrBg"],
+                    Children = { new Windows.UI.Xaml.Controls.Viewbox { Stretch = Windows.UI.Xaml.Media.Stretch.Uniform, Child = design } },
+                };
+                Windows.UI.ViewManagement.ApplicationView.GetForCurrentView().SetPreferredMinSize(new Windows.Foundation.Size(640, 360));
 
                 // Windows desktop: open at the web TV layout size (1920x1080) with the content drawn under the
                 // title bar, so the device-wall tile shows the app 1:1. Ignored on Xbox, which is always full screen.
@@ -80,6 +92,7 @@ namespace Playarr.Xbox
                 var titleBar = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView().TitleBar;
                 titleBar.ButtonBackgroundColor = Windows.UI.Colors.Transparent;
                 titleBar.ButtonInactiveBackgroundColor = Windows.UI.Colors.Transparent;
+                Window.Current.SetTitleBar(titleStrip);
 
                 SystemNavigationManager.GetForCurrentView().BackRequested += OnBackRequested;
 
