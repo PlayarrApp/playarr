@@ -30,6 +30,8 @@ ApplicationWindow {
     Component { id: profilesPage; ProfilesPage {} }
     Component { id: mainPage; MainPage {} }
 
+    DownloadNotices {}
+
     Connections {
         target: Api
         // The signed-in profile was removed or its refresh token revoked.

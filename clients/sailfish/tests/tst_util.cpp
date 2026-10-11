@@ -41,6 +41,18 @@ int main()
     CHECK(q.contains("force_transcode=true"), true);
     CHECK(q.contains("audio_stream_index=2"), true);
     CHECK(q.contains("ignore_saved_preferences=true"), true);
+    CHECK(PlaybackLogic::query(QVariantMap()).contains("max_bit_depth=8"), true);   // video caps declared
+    CHECK(PlaybackLogic::query(QVariantMap()).contains("hdr=&"), true);             // no HDR: the server tone-maps
+    CHECK(PlaybackLogic::query(QVariantMap()).contains("max_channels=2"), true);    // audio caps declared
+    CHECK(PlaybackLogic::query(QVariantMap()).contains("force_direct"), false);     // force flags default off
+    QVariantMap fo; fo["forceDirectVideo"] = true;
+    CHECK(PlaybackLogic::query(fo).contains("force_direct_video=true"), true);
+    CHECK(PlaybackLogic::query(fo).contains("force_direct_audio"), false);
+    fo["forceDirectAudio"] = true;
+    CHECK(PlaybackLogic::query(fo).contains("force_direct_audio=true"), true);
+    QVariantMap e422; e422["error"] = "unsupported_colour_format"; e422["message"] = "Cannot convert.";
+    CHECK(PlaybackLogic::negotiationMessage(422, e422), QString("Cannot convert."));
+    CHECK(PlaybackLogic::negotiationMessage(503, e422), QString());
     CHECK(PlaybackLogic::retryDelayMs(0), 1000);
     CHECK(PlaybackLogic::retryDelayMs(2), 4000);
     CHECK(PlaybackLogic::retryDelayMs(3), -1);
@@ -124,6 +136,15 @@ int main()
     CHECK(DownloadLogic::safeName("A/B: C?", "6a5e2c3e-2b9a", "mkv"), QString("A_B_ C_ [6a5e2c3e].mkv"));
     CHECK(DownloadLogic::safeName("", "abcdefghij", ""), QString("download [abcdefgh].bin"));
     CHECK(DownloadLogic::safeName("x", "id", "../mp4"), QString("x [id].mp4"));
+    CHECK(DownloadLogic::keepExpired("forever", "", 0, "", 0, 9e15), false);
+    const qint64 jan1 = QDateTime::fromString("2026-01-01", Qt::ISODate).toMSecsSinceEpoch();
+    CHECK(DownloadLogic::keepExpired("date", "2026-01-01T10:00:00Z", 0, "", 0, jan1 + 3600 * 1000), false);   // still that day
+    CHECK(DownloadLogic::keepExpired("date", "2026-01-01", 0, "", 0, jan1 + 86400000LL + 1), true);
+    CHECK(DownloadLogic::keepExpired("after-watched", "", 3, "days", 0, jan1 + 9e12), false);               // not watched yet
+    CHECK(DownloadLogic::keepExpired("after-watched", "", 3, "days", jan1, jan1 + 2 * 86400000LL), false);
+    CHECK(DownloadLogic::keepExpired("after-watched", "", 3, "days", jan1, jan1 + 3 * 86400000LL), true);
+    CHECK(DownloadLogic::keepExpired("after-watched", "", 1, "weeks", jan1, jan1 + 6 * 86400000LL), false);
+    CHECK(DownloadLogic::keepExpired("after-watched", "", 1, "weeks", jan1, jan1 + 7 * 86400000LL), true);
     CHECK(DownloadLogic::resumeRange(0), QByteArray());
     CHECK(DownloadLogic::resumeRange(1048576), QByteArray("bytes=1048576-"));
 

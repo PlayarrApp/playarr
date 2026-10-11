@@ -35,22 +35,14 @@ PlayarrPage {
     }
     readonly property var targetProgress: target && progress[target.id] && progress[target.id].state === "part_watched" ? progress[target.id] : null
 
-    property string downloadNote: ""
     // Asks the server for a download ticket of the original file; the Downloads tab shows its progress.
     function requestDownload() {
-        Api.request("POST", "/api/v1/downloads", { media_file_id: detail.media_file_id, quality_id: "original" }, function (status, ticket) {
-            if (status === 200 || status === 201) {
-                Api.setSetting("dltitle-" + ticket.id, work.title)
-                downloadNote = qsTr("Requested: see Downloads")
-            } else {
-                downloadNote = status === 403 ? qsTr("Downloads are not allowed") : qsTr("Download failed")
-            }
-        })
+        pageStack.push(Qt.resolvedUrl("DownloadPage.qml"), { mediaFileId: detail.media_file_id, title: work.title })
     }
     function play(id, title) {
         var p = progress[id]
         pageStack.push(Qt.resolvedUrl("PlayerPage.qml"), {
-            mediaFileId: id, title: title,
+            mediaFileId: id, title: title, workId: work.id,
             startMs: p && p.state === "part_watched" ? p.position_ms : 0 })
     }
     function load() {
@@ -204,7 +196,7 @@ PlayarrPage {
                 visible: !!page.target
                 PillButton {
                     visible: !!detail && !!detail.media_file_id
-                    text: page.downloadNote !== "" ? page.downloadNote : "\u21E9  " + qsTr("Download")
+                    text: "\u21E9  " + qsTr("Download")
                     implicitWidth: 106 * Tokens.u
                     fontSize: 9.5 * Tokens.u
                     onClicked: page.requestDownload()

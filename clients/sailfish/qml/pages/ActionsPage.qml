@@ -35,7 +35,7 @@ PlayarrPage {
         if (detail && detail.media_file_id) {
             Api.request("GET", "/api/v1/playback/" + detail.media_file_id + "/progress", null, function (st, p) {
                 var start = (st === 200 && p && p.state === "part_watched") ? p.position_ms : 0
-                pageStack.replace(Qt.resolvedUrl("PlayerPage.qml"), { mediaFileId: detail.media_file_id, title: work.title, startMs: start })
+                pageStack.replace(Qt.resolvedUrl("PlayerPage.qml"), { mediaFileId: detail.media_file_id, title: work.title, startMs: start, workId: work.id })
             })
         } else {
             pageStack.replace(Qt.resolvedUrl("DetailPage.qml"), { work: work })
@@ -43,10 +43,7 @@ PlayarrPage {
     }
     function download() {
         if (!detail || !detail.media_file_id) { note = qsTr("Open the title to pick an episode"); return }
-        Api.request("POST", "/api/v1/downloads", { media_file_id: detail.media_file_id, quality_id: "original" }, function (st, t) {
-            if (st === 200 || st === 201) { Api.setSetting("dltitle-" + t.id, work.title); note = qsTr("Requested: see Downloads") }
-            else note = st === 403 ? qsTr("Downloads are not allowed") : qsTr("Download failed")
-        })
+        pageStack.push(Qt.resolvedUrl("DownloadPage.qml"), { mediaFileId: detail.media_file_id, title: work.title })
     }
     function addTo(pl) {
         Api.request("POST", "/api/v1/playlists/" + pl.id + "/items", { work_id: work.id }, function (st) {

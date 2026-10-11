@@ -54,6 +54,8 @@ public:
     Q_INVOKABLE void requestText(const QString &path, const QJSValue &cb);
     Q_INVOKABLE QVariant setting(const QString &key, const QVariant &fallback) const;
     Q_INVOKABLE void setSetting(const QString &key, const QVariant &value);
+    // Saves a server URL (artwork) into the app cache and returns file://<path> to cb(status, url); for system UIs that cannot send the token.
+    Q_INVOKABLE void fetchToCache(const QString &url, const QString &name, const QJSValue &cb);
     Q_INVOKABLE QString url(const QString &path) const;
     // Server artwork URL for a Work/Episode image list (kinds tried in order); empty when none.
     Q_INVOKABLE QString artwork(const QString &workId, const QVariantList &images, const QStringList &kinds, bool hero) const;

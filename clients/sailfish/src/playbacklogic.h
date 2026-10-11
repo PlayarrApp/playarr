@@ -14,7 +14,19 @@ inline QString query(const QVariantMap &o)
     q << QStringLiteral("containers=mp4,mkv,m3u8,mp3,flac,m4a,ogg,wav")
       << QStringLiteral("video_codecs=h264")
       << QStringLiteral("audio_codecs=aac,mp3,flac,vorbis,opus")
-      << QStringLiteral("max_bitrate_bps=20000000");
+      << QStringLiteral("max_bitrate_bps=20000000")
+      // Real caps of the Sailfish media stack (docs/parity CLIENT-NOTES): 8-bit H.264 up to 1080p60, stereo, no HDR
+      // or Dolby Vision and no passthrough. `hdr=` is sent empty with a bit depth so the server tone-maps.
+      << QStringLiteral("hdr=")
+      << QStringLiteral("max_bit_depth=8")
+      << QStringLiteral("max_width=1920")
+      << QStringLiteral("max_height=1080")
+      << QStringLiteral("max_fps=60")
+      << QStringLiteral("max_channels=2");
+    if (o.value(QStringLiteral("forceDirectVideo")).toBool())
+        q << QStringLiteral("force_direct_video=true");
+    if (o.value(QStringLiteral("forceDirectAudio")).toBool())
+        q << QStringLiteral("force_direct_audio=true");
     if (o.value(QStringLiteral("startMs")).toLongLong() > 0)
         q << QStringLiteral("start_position_ms=%1").arg(o.value(QStringLiteral("startMs")).toLongLong());
     if (!o.value(QStringLiteral("profile")).toString().isEmpty())
@@ -132,6 +144,15 @@ inline QString pickSubtitle(const QVariantList &tracks, const QString &mode, con
         if (v.toMap().value(QStringLiteral("is_default")).toBool())
             return v.toMap().value(QStringLiteral("id")).toString();
     return eligible.first().toMap().value(QStringLiteral("id")).toString();
+}
+
+// Message to show for a failed negotiation, or "" for the generic one. 422 unsupported_colour_format carries the
+// server's own text and is final: no retry (unlike 503, which is a capacity wait).
+inline QString negotiationMessage(int status, const QVariantMap &body)
+{
+    if (status == 422 && body.value(QStringLiteral("error")).toString() == QLatin1String("unsupported_colour_format"))
+        return body.value(QStringLiteral("message")).toString();
+    return QString();
 }
 
 } // namespace PlaybackLogic

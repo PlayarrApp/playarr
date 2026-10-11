@@ -71,6 +71,20 @@ PlayarrPage {
                            { id: "de", label: "Deutsch" }, { id: "fr", label: "Français" }, { id: "es", label: "Español" } ]
                 onPicked: { Api.setSetting("subtitleLanguage", id); value2 = id }
             }
+            // advanced player settings
+            Label { x: Tokens.pad; visible: page.section === "player"; text: qsTr("ADVANCED"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u; font.letterSpacing: 1.5 * Tokens.u }
+            Repeater {
+                model: page.section === "player" ? [ { key: "forceDirectVideo", label: qsTr("Force direct video") }, { key: "forceDirectAudio", label: qsTr("Force direct audio") } ] : []
+                Row {
+                    id: forceRow
+                    x: Tokens.pad
+                    spacing: 10 * Tokens.u
+                    property bool on: Api.setting(modelData.key, false) === true || Api.setting(modelData.key, false) === "true"
+                    Label { width: 150 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: modelData.label; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 12 * Tokens.u }
+                    PillButton { text: qsTr("Off"); primary: !forceRow.on; implicitWidth: 64 * Tokens.u; onClicked: { Api.setSetting(modelData.key, false); forceRow.on = false } }
+                    PillButton { text: qsTr("On"); primary: forceRow.on; implicitWidth: 64 * Tokens.u; onClicked: { Api.setSetting(modelData.key, true); forceRow.on = true } }
+                }
+            }
             // server
             Column {
                 x: Tokens.pad; width: parent.width - 2 * Tokens.pad; spacing: 8 * Tokens.u; visible: page.section === "server"

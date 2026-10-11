@@ -9,6 +9,7 @@ Page {
     property string mediaFileId
     property string title
     property int startMs: 0
+    property string workId: ""           // for the now-playing artwork
     property string localPath: ""         // offline copy: no negotiation, no server reporting
 
     property var info: null
@@ -18,6 +19,7 @@ Page {
     property bool closing: false
     property bool pendingSeek: false
     property alias engine: player        // for smoke scripts (pause to hold the controls)
+    property string nowPlayingArt: ""
     property bool menuOpen: false
     property string notice: ""             // "Waiting for transcode capacity"
     // Server-side choices that survive renegotiation.
@@ -57,7 +59,9 @@ Page {
         attempt = attempt || 0
         error = ""
         var q = Playback.query({ startMs: fromMs, profile: profile, forceTranscode: forceTranscode,
-                                 audioStreamIndex: audioIndex, ignoreSaved: ignoreSaved })
+                                 audioStreamIndex: audioIndex, ignoreSaved: ignoreSaved,
+                                 forceDirectVideo: Api.setting("forceDirectVideo", false) === true || Api.setting("forceDirectVideo", false) === "true",
+                                 forceDirectAudio: Api.setting("forceDirectAudio", false) === true || Api.setting("forceDirectAudio", false) === "true" })
         Api.request("GET", "/api/v1/playback/" + mediaFileId + "?" + q, null, function (status, data) {
             if (closing) return
             if (status === 503 && Playback.retryDelayMs(attempt) > 0) {
@@ -69,7 +73,11 @@ Page {
                 return
             }
             page.notice = ""
-            if (status !== 200 || !data) { error = qsTr("Playback is not available for this title."); return }
+            if (status !== 200 || !data) {
+                // 422 unsupported_colour_format: show the server's message, no retry.
+                error = Playback.negotiationMessage(status, data || {}) || qsTr("Playback is not available for this title.")
+                return
+            }
             var first = !info
             info = data
             console.log("playback mode", data.mode, data.mime_type, "dur", data.duration_ms, "offset", data.source_offset_ms, "path", String(data.url).split("?")[0])
@@ -148,6 +156,7 @@ Page {
     }
 
     Component.onCompleted: {
+        if (workId !== "") Api.fetchToCache(Api.artworkOf(workId, "poster"), "now-playing.jpg", function (st, u) { if (st === 200) nowPlayingArt = u })
         if (localPath === "") { open(startMs); return }
         info = { mode: "local", duration_ms: 0, session_id: "", audio_tracks: [], subtitle_tracks: [], quality_options: [] }
         pendingSeek = startMs > 0
@@ -303,6 +312,15 @@ Page {
             }
         }
     }
+
+    // System media controls (MPRIS). Absent in the desktop smoke run, where the module does not exist.
+    Loader {
+        id: npLoader
+        active: !!page.info
+        source: "../components/NowPlaying.qml"
+        onLoaded: { item.host = page; item.artUrl = page.nowPlayingArt }
+    }
+    Connections { target: page; onNowPlayingArtChanged: if (npLoader.item) npLoader.item.artUrl = page.nowPlayingArt }
 
     // Audio / subtitles / quality sheet.
     Rectangle {

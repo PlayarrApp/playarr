@@ -2,6 +2,7 @@
 #include "api.h"
 #include "downloadlogic.h"
 
+#include <QDateTime>
 #include <QDir>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -81,6 +82,11 @@ QVariantList Downloads::items() const
     return out;
 }
 
+bool Downloads::keepExpired(const QString &type, const QString &dateIso, int amount, const QString &unit, double watchedAtMs) const
+{
+    return DownloadLogic::keepExpired(type, dateIso, amount, unit, qint64(watchedAtMs), QDateTime::currentMSecsSinceEpoch());
+}
+
 QString Downloads::pathOf(const QString &ticketId) const
 {
     for (const Item &it : m_items)
@@ -105,6 +111,15 @@ void Downloads::fetch(const QString &ticketId, const QString &title, const QStri
     it.path = dir() + QLatin1Char('/') + DownloadLogic::safeName(title, ticketId, container);
     m_items.append(it);
     start(m_items.last());
+}
+
+void Downloads::announce(const Item &it, bool force)
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (!force && now - m_lastAnnounce.value(it.ticketId) < 1000)
+        return;
+    m_lastAnnounce[it.ticketId] = now;
+    emit progress(it.ticketId, it.title, it.state, double(it.received), double(it.size));
 }
 
 void Downloads::start(Item &it)
@@ -133,10 +148,12 @@ void Downloads::start(Item &it)
                 const QByteArray b = reply->readAll();
                 x.file->write(b);
                 x.received += b.size();
+                announce(x, false);
             }
         emit changed();
     });
     connect(reply, &QNetworkReply::finished, this, [this, id]() { finishedReply(id); });
+    announce(it, true);
     save();
     emit changed();
 }
@@ -177,10 +194,18 @@ void Downloads::finishedReply(const QString &id)
             QFile::remove(it.path);
             it.received = 0;
         }
+        announce(it, true);
         save();
         emit changed();
         return;
     }
+}
+
+void Downloads::resume(const QString &ticketId)
+{
+    for (Item &it : m_items)
+        if (it.ticketId == ticketId && !it.reply && it.state != QLatin1String("done"))
+            start(it);
 }
 
 void Downloads::pause(const QString &ticketId)
@@ -189,6 +214,7 @@ void Downloads::pause(const QString &ticketId)
         if (it.ticketId == ticketId && it.reply) {
             it.state = QStringLiteral("paused");
             it.reply->abort();
+            announce(it, true);
         }
 }
 

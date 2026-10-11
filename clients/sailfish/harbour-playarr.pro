@@ -1,11 +1,11 @@
 TARGET = harbour-playarr
 CONFIG += sailfishapp
-QT += network
+QT += network dbus
 
 DEFINES += APP_VERSION=\\\"0.1.0\\\"
 
 SOURCES += src/main.cpp src/api.cpp src/mediaproxy.cpp src/downloads.cpp
-HEADERS += src/api.h src/mediaproxy.h src/downloads.h src/downloadlogic.h src/util.h src/playback.h src/playbacklogic.h src/calendar.h src/calendarlogic.h
+HEADERS += src/api.h src/mediaproxy.h src/downloads.h src/downloadlogic.h src/downloadsdbus.h src/util.h src/playback.h src/playbacklogic.h src/calendar.h src/calendarlogic.h
 
 OTHER_FILES += qml/*.qml qml/pages/*.qml qml/components/* rpm/harbour-playarr.spec harbour-playarr.desktop
 

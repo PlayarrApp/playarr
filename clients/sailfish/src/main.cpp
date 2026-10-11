@@ -17,6 +17,8 @@
 #include "playback.h"
 #include "calendar.h"
 #include "downloads.h"
+#include "downloadsdbus.h"
+#include <QDBusConnection>
 
 // QML Image/Video requests to the signed-in server get the bearer token and an on-disk artwork cache.
 class AuthNam : public QNetworkAccessManager
@@ -64,6 +66,9 @@ int main(int argc, char *argv[])
     Playback playback;
     Calendar calendar;
     Downloads downloads(&api);
+    new DownloadsAdaptor(&downloads);
+    QDBusConnection::sessionBus().registerService(QStringLiteral("com.playarr.app"));
+    QDBusConnection::sessionBus().registerObject(QStringLiteral("/downloads"), &downloads, QDBusConnection::ExportAdaptors);
     QScopedPointer<QQuickView> view(SailfishApp::createView());
     api.setEngine(view->engine());
     QString base = SailfishApp::pathTo(QString()).toString(); // no trailing slash on some releases

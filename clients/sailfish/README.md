@@ -13,6 +13,21 @@ Milestone 2 added the player menus, PIN prompt, scroll fades, calendar (month, w
 downloads with offline playback, library Filters and title Actions. The client identifies as `sailfish` (one constant,
 `kPlatform` in `src/api.cpp`).
 
+## Platform integration
+
+- **Device caps:** the playback request declares what the Sailfish media stack can do (8-bit H.264 up to 1080p60,
+  stereo, no HDR or Dolby Vision, no passthrough; `hdr=` is sent empty so the server tone-maps). Player > Advanced has
+  "Force direct video" and "Force direct audio" (default off, stored on the device, sent only when on). A 422
+  `unsupported_colour_format` answer shows the server's message and does not retry.
+- **Now playing:** an MPRIS player (`Amber.Mpris`) shows title, artwork, position and duration in the system media
+  controls, with Play, Pause, Stop and Seek. Next and Previous are not offered.
+- **Download notifications:** a Nemo notification per download with progress, percent and size, and paused, complete
+  and failed states. Pause, Resume and Cancel are remote actions on a small D-Bus service
+  (`com.playarr.app`, `/downloads`, `com.playarr.Downloads`) that exists while the app runs.
+- **Downloads:** server tickets with a quality choice from the server's download options and a keep-until rule
+  (forever, a date, or N days or weeks after watched, as on web), resumable copies in `~/Videos/Playarr`, offline
+  playback, and edit (a new quality replaces the ticket). Not yet: grouping TV downloads by series and season.
+
 ## Layout
 
 | Path | What |

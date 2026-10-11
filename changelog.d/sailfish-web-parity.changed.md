@@ -1,0 +1,1 @@
+- Sailfish OS: layouts follow the web mobile app more closely (nav pill with the web icons, watch-state dots and progress on cards, library counts and natural title order, film detail, Preferences list, profile picker, playlists tab, calendar views), and the page background uses the web surface colour in both themes.

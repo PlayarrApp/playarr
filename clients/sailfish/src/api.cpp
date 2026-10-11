@@ -2,6 +2,9 @@
 #include "util.h"
 
 #include <QBuffer>
+#include <QDir>
+#include <QFile>
+#include <QStandardPaths>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QJSEngine>
@@ -216,6 +219,38 @@ void Api::requestText(const QString &path, const QJSValue &cb)
         return;
     }
     send(r);
+}
+
+void Api::fetchToCache(const QString &urlStr, const QString &name, const QJSValue &cb)
+{
+    Req r;
+    r.cb = cb;
+    const QUrl u(urlStr);
+    if (u.isEmpty() || Util::originOf(u) != Util::originOf(QUrl(serverUrl()))) {
+        finish(r, 0, QVariant());
+        return;
+    }
+    QNetworkRequest req(u);
+    req.setRawHeader("Authorization", bearerFor(u));
+    QNetworkReply *reply = m_nam.get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, r, name]() {
+        reply->deleteLater();
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (status != 200) {
+            finish(r, status, QVariant());
+            return;
+        }
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+        QDir().mkpath(dir);
+        QFile f(dir + QLatin1Char('/') + name);
+        if (f.open(QIODevice::WriteOnly)) {
+            f.write(reply->readAll());
+            f.close();
+            finish(r, 200, QVariant(QUrl::fromLocalFile(f.fileName()).toString()));
+        } else {
+            finish(r, 0, QVariant());
+        }
+    });
 }
 
 QVariant Api::setting(const QString &key, const QVariant &fallback) const

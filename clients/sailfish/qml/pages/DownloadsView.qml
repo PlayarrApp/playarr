@@ -18,7 +18,7 @@ Item {
     }
     function titleOf(t) {
         var l = localFor(t.id)
-        return (l && l.title) || Api.setting("dltitle-" + t.id, "") || qsTr("Download %1").arg(t.id.substr(0, 8))
+        return (l && l.title) || (JSON.parse(Api.setting("dlmeta-" + t.id, "{}")).title) || Api.setting("dltitle-" + t.id, "") || qsTr("Download %1").arg(t.id.substr(0, 8))
     }
     function mb(n) { return n > 0 ? (n / 1048576).toFixed(n > 10485760 ? 0 : 1) + " MB" : "" }
     function statusText(t) {
@@ -63,22 +63,22 @@ Item {
             property bool done: !!local && local.state === "done"
             x: Tokens.pad
             width: list.width - 2 * Tokens.pad
-            height: 96 * Tokens.u
+            height: 118 * Tokens.u
             Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line }
             Rectangle {   // progress of the local copy
                 visible: !!row.local && row.local.state !== "done" && row.local.size > 0
-                x: 14 * Tokens.u; anchors.bottom: parent.bottom; anchors.bottomMargin: 8 * Tokens.u; height: 3 * Tokens.u; radius: 2
+                x: 14 * Tokens.u; anchors.bottom: parent.bottom; anchors.bottomMargin: 4 * Tokens.u; height: 3 * Tokens.u; radius: 2
                 width: visible ? (parent.width - 28 * Tokens.u) * Math.min(1, row.local.received / row.local.size) : 0
                 color: Tokens.brandPink
             }
             Column {
-                anchors { left: parent.left; leftMargin: 16 * Tokens.u; right: actions.left; rightMargin: 8 * Tokens.u; verticalCenter: parent.verticalCenter }
+                anchors { left: parent.left; leftMargin: 16 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; top: parent.top; topMargin: 12 * Tokens.u }
                 Label { width: parent.width; text: root.titleOf(modelData); elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u }
                 Label { width: parent.width; text: root.statusText(modelData); elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
             }
             Row {
                 id: actions
-                anchors { right: parent.right; rightMargin: 10 * Tokens.u; verticalCenter: parent.verticalCenter }
+                anchors { right: parent.right; rightMargin: 10 * Tokens.u; bottom: parent.bottom; bottomMargin: 12 * Tokens.u }
                 spacing: 6 * Tokens.u
                 PillButton {
                     visible: row.done || (modelData.status === "ready" && (!row.local || row.local.state === "paused" || row.local.state === "failed"))
