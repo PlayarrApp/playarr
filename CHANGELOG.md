@@ -466,6 +466,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Linux phone client: letter jump rail on library pages, closer spacing on Home, Search and detail pages, episode rail opens on the next-up episode.
 - Linux phone client: reports Full HD as its decode limit when only software decoders exist, search shows the first result's art, detail pages highlight their tab.
 - Parity drivers treat the Resume and Open labels of one title as the same focused item.
 - Fire TV: release and debug builds stop with a clear message when the vendored Shaka player is missing (run scripts/setup-shaka.sh), so no build ships unable to play HLS titles.
