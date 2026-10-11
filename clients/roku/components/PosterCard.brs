@@ -126,8 +126,13 @@ sub onContentChanged()
         m.kind.horizAlign = "left"
         m.kind.width = 815
         m.kind.translation = [0, 152]
-        m.poster.loadWidth = Int(440 * cardScale)
-        m.poster.loadHeight = Int(248 * cardScale)
+        ' The server serves 780 px (backdrop) or 540 px (poster) wide art; decode it at the card's own size so the stick resamples once.
+        m.poster.loadWidth = Int(220 * cardScale + 0.5)
+        if Instr(1, content.hdPosterUrl, "w=540") > 0
+            m.poster.loadHeight = Int(330 * cardScale + 0.5)
+        else
+            m.poster.loadHeight = Int(124 * cardScale + 0.5)
+        end if
         m.posterUri = content.hdPosterUrl
         m.posterRetries = 0
         m.retryTimer.control = "stop"

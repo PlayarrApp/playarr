@@ -14,8 +14,7 @@ sub drawerOpen(kicker as String, title as String, items as Object, returnTo as S
     m.drawerIndex = 0
     m.drawerReturn = returnTo
     m.drawerOpen = true
-    ' Dims the page behind the panel in either theme.
-    pgRect(g, 0, 0, 1920, 1080, "bg", 110)
+    ' Web draws the drawer over the page with no scrim: the page behind keeps its full strength.
     pgRect(g, 1560, 0, 360, 1080, "panel")
     pgLabel(g, 1606, 56, 190, 16, UCase(kicker), 11, 700, "inkMuted")
     pgLabel(g, 1606, 82, 200, 110, title, 36, 600, "ink", { wrap: true, maxLines: 2 })

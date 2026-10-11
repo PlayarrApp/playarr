@@ -3383,12 +3383,19 @@ end function
 ' Card art in web's 16:9 title cards is the work's backdrop (the fixture and
 ' real catalogues both carry one); the poster is only the fallback.
 function cardArtworkUrl(work as Object) as String
+    ' The same variant web draws on a card (lib/artwork.tsx defaultArtworkWidth: backdrop 780, poster 540).
     if work.images <> invalid
         for each image in work.images
-            if image.kind = "backdrop" then return resolveImageUrl(work, image)
+            if image.kind = "backdrop" then return withArtworkWidth(resolveImageUrl(work, image), 780)
         end for
     end if
-    return artworkUrl(work)
+    return withArtworkWidth(artworkUrl(work), 540)
+end function
+
+function withArtworkWidth(url as String, width as Integer) as String
+    if url = "" then return url
+    if Instr(1, url, "?") > 0 then return url + "&w=" + width.ToStr()
+    return url + "?w=" + width.ToStr()
 end function
 
 function artworkUrl(work as Object) as String
