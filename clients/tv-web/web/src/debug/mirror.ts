@@ -40,6 +40,36 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   });
 }
 
+// Path plus the page's own query (a calendar view, say), without the launch parameters or the token.
+function routeWithQuery(): string {
+  const q = new URLSearchParams(window.location.search);
+  for (const k of ["mirrorToken", "platform", "r"]) q.delete(k);
+  const qs = q.toString();
+  return window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
+}
+
+// Facts that decide the TV layout (stage zoom, artwork size, theme, the width and height media queries).
+function layoutEnv(): Record<string, unknown> {
+  const root = document.documentElement;
+  const mq = (q: string) => window.matchMedia(q).matches;
+  return {
+    zoom: root.style.getPropertyValue("zoom"),
+    vw: root.style.getPropertyValue("--vw"),
+    viewportUnit: root.style.getPropertyValue("--viewport-unit"),
+    artwork: root.dataset.artworkSize ?? null,
+    theme: root.dataset.theme ?? null,
+    platform: root.dataset.platform ?? null,
+    fontPx: window.getComputedStyle(root).fontSize,
+    video: (() => {
+      const v = document.querySelector("video");
+      return v
+        ? { t: Math.round(v.currentTime * 10) / 10, ready: v.readyState, net: v.networkState, paused: v.paused, err: v.error ? `${v.error.code} ${v.error.message}`.slice(0, 120) : null, w: v.videoWidth, h: v.videoHeight, src: v.currentSrc ? v.currentSrc.replace(/^(\w+:\/\/[^/]*\/[^?]{0,60}).*$/, "$1").replace(/[0-9a-f]{8}-[0-9a-f-]{27}/g, "<id>") : "", buffered: v.buffered.length ? Math.round(v.buffered.end(v.buffered.length - 1)) : 0 }
+        : null;
+    })(),
+    mq: { w1100: mq("(max-width: 1100px)"), h700: mq("(max-height: 700px)"), w760: mq("(max-width: 760px)"), w920: mq("(max-width: 920px)") },
+  };
+}
+
 export function startDebugMirror(): void {
   const token = readToken();
   if (!token) return;
@@ -79,7 +109,12 @@ export function startDebugMirror(): void {
     let captureError: string | null = null;
     try {
       const { toJpeg, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
-      const scale = Math.min(1, TARGET_WIDTH / Math.max(1, window.innerWidth));
+      // The TV stage scale (tvStageScale.ts) zooms <html>, which html-to-image does not see (it clones
+      // <body> with computed styles in stage units): render the stage size, not the zoomed viewport.
+      const zoom = parseFloat(document.documentElement.style.getPropertyValue("zoom")) || 1;
+      const stageW = Math.round(window.innerWidth / zoom);
+      const stageH = Math.round(window.innerHeight / zoom);
+      const scale = Math.min(1, TARGET_WIDTH / Math.max(1, stageW));
       const bg = window.getComputedStyle(document.body).backgroundColor || "#000";
       // The browser itself renders the SVG foreignObject, so modern CSS (color-mix and so on) is drawn faithfully.
       if (fontCss === null) {
@@ -96,6 +131,12 @@ export function startDebugMirror(): void {
           fontEmbedCSS: fontCss,
           // Cross-origin media (posters, video) would stall or taint the render: leave it out.
           filter: (node) => {
+            // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far
+            // less time to render, and nothing visible moves because earlier siblings stay put.
+            if (node instanceof HTMLElement && node !== document.body) {
+              const r = node.getBoundingClientRect();
+              if (r.width > 0 && r.height > 0 && (r.left >= stageW || r.top >= stageH)) return false;
+            }
             if (node instanceof HTMLVideoElement) return false;
             if (node instanceof HTMLImageElement && node.src && !node.src.startsWith("data:")) {
               try {
@@ -108,13 +149,13 @@ export function startDebugMirror(): void {
           },
           pixelRatio: scale,
           quality: 0.6,
-          width: window.innerWidth,
-          height: window.innerHeight,
+          width: stageW,
+          height: stageH,
           backgroundColor: bg,
           cacheBust: false,
           imagePlaceholder: "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
         }),
-        15000,
+        60000,
         "html-to-image render",
       );
     } catch (err) {
@@ -128,7 +169,8 @@ export function startDebugMirror(): void {
       captureMs: Date.now() - started,
       viewport: { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio || 1 },
       screen: { w: window.screen.width, h: window.screen.height },
-      route: window.location.pathname + window.location.hash,
+      env: layoutEnv(),
+      route: routeWithQuery(),
       focus: focusInfo(),
       text: visibleText(),
       userAgent: navigator.userAgent,
