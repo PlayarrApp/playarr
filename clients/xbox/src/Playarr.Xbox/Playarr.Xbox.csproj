@@ -187,6 +187,7 @@
     <Compile Include="Services\PasswordVaultTokenStore.cs" />
     <Compile Include="Services\LocalSettingsKnownServerGroupStore.cs" />
     <Compile Include="Services\XboxModelDetector.cs" />
+    <Compile Include="Services\DeviceCapsProvider.cs" />
 
     <Compile Include="ViewModels\ViewModelBase.cs" />
     <Compile Include="ViewModels\LoginViewModel.cs" />

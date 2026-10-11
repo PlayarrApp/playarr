@@ -233,6 +233,23 @@ namespace Playarr.Core.Playback
                 ["profile"] = ProfileName,
             };
 
+        /// <summary>The negotiation parameters plus the device's media capabilities (HDR, bit depth, channels, force flags).</summary>
+        public IReadOnlyDictionary<string, string> ToQueryParameters(DeviceCaps caps)
+        {
+            var query = new Dictionary<string, string>();
+            foreach (var pair in ToQueryParameters())
+            {
+                query[pair.Key] = pair.Value;
+            }
+
+            foreach (var pair in caps.ToQueryParameters())
+            {
+                query[pair.Key] = pair.Value;
+            }
+
+            return query;
+        }
+
         public bool SupportsVideoCodec(string codec) =>
             VideoCodecs.Contains(codec, StringComparer.OrdinalIgnoreCase);
 

@@ -25,25 +25,54 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             _viewModel = new SettingsViewModel(App.Environment);
             ServerAddressBox.Text = _viewModel.ServerConnection.ServerAddress;
-            ShowSection(appearance: true);
+            ShowSection(0);
         }
 
-        private void AppearanceTab_Click(object sender, RoutedEventArgs e) => ShowSection(appearance: true);
+        private void AppearanceTab_Click(object sender, RoutedEventArgs e) => ShowSection(0);
 
-        private void ServerTab_Click(object sender, RoutedEventArgs e) => ShowSection(appearance: false);
+        private void PlayerTab_Click(object sender, RoutedEventArgs e) => ShowSection(1);
+
+        private void ServerTab_Click(object sender, RoutedEventArgs e) => ShowSection(2);
 
         /// <summary>The web's numbered section list: the open section is filled and its controls show on the right.</summary>
-        private void ShowSection(bool appearance)
+        private void ShowSection(int section)
         {
-            AppearanceSection.Visibility = appearance ? Visibility.Visible : Visibility.Collapsed;
-            ServerSection.Visibility = appearance ? Visibility.Collapsed : Visibility.Visible;
-            SectionText.Text = appearance ? "APPEARANCE" : "SERVER CONNECTION";
-            AppearanceTab.Background = appearance ? Ui.Res("PlayarrSurfaceSoft") : new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent);
-            ServerTab.Background = appearance ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent) : Ui.Res("PlayarrSurfaceSoft");
-            if (appearance)
+            AppearanceSection.Visibility = section == 0 ? Visibility.Visible : Visibility.Collapsed;
+            PlayerSection.Visibility = section == 1 ? Visibility.Visible : Visibility.Collapsed;
+            ServerSection.Visibility = section == 2 ? Visibility.Visible : Visibility.Collapsed;
+            SectionText.Text = section == 0 ? "APPEARANCE" : section == 1 ? "PLAYER" : "SERVER CONNECTION";
+            var none = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent);
+            AppearanceTab.Background = section == 0 ? Ui.Res("PlayarrSurfaceSoft") : none;
+            PlayerTab.Background = section == 1 ? Ui.Res("PlayarrSurfaceSoft") : none;
+            ServerTab.Background = section == 2 ? Ui.Res("PlayarrSurfaceSoft") : none;
+            if (section == 0)
             {
                 RenderAppearance();
             }
+            else if (section == 1)
+            {
+                RenderPlayer();
+            }
+        }
+
+        /// <summary>Settings > Player > Advanced: Force direct video and Force direct audio, per axis, Off by default (web strings).</summary>
+        private void RenderPlayer()
+        {
+            PlayerPanel.Children.Clear();
+            PlayerPanel.Children.Add(Ui.Text("ADVANCED", 9, Windows.UI.Text.FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 14)));
+            PlayerPanel.Children.Add(ForceToggle("Force direct video", "Always send the original picture, even when the device may not support its codec, bit depth or HDR format.",
+                Services.DeviceCapsProvider.ForceDirectVideo, on => Services.DeviceCapsProvider.ForceDirectVideo = on));
+            PlayerPanel.Children.Add(ForceToggle("Force direct audio", "Always send the original audio, even when the device may not support its codec or channel count.",
+                Services.DeviceCapsProvider.ForceDirectAudio, on => Services.DeviceCapsProvider.ForceDirectAudio = on));
+        }
+
+        private StackPanel ForceToggle(string title, string description, bool isOn, System.Action<bool> set)
+        {
+            var group = Drawer.Segmented(title, new[] { "Off", "On" }, isOn ? 1 : 0, i => { set(i == 1); RenderPlayer(); });
+            var note = Ui.Text(description, 11, Windows.UI.Text.FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, -14, 0, 24));
+            note.TextWrapping = TextWrapping.WrapWholeWords;
+            group.Children.Add(note);
+            return group;
         }
 
         /// <summary>Colour theme as on the web (System, Light, Dark); the choice applies at once and is kept.</summary>

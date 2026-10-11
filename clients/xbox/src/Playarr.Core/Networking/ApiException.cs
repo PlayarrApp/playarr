@@ -76,6 +76,12 @@ namespace Playarr.Core.Networking
             }
         }
 
+        /// <summary>
+        /// False for a 422: the server refused this title for this device (for example an unsupported colour format), so
+        /// asking again cannot help and the player shows the message without a retry.
+        /// </summary>
+        public bool IsRetryable => Kind != ApiErrorKind.UnprocessableEntity;
+
         public static ApiException ForStatus(HttpStatusCode status, ApiErrorBody? body)
         {
             var kind = status switch

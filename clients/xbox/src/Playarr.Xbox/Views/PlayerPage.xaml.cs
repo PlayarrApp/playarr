@@ -350,6 +350,7 @@ namespace Playarr.Xbox.Views
             TracksButton.Visibility = isLoading || isFailed ? Visibility.Collapsed : Visibility.Visible;
 
             ErrorText.Text = _viewModel.ErrorMessage ?? "Playback failed.";
+            RetryButton.Visibility = _viewModel.CanRetry ? Visibility.Visible : Visibility.Collapsed;
 
 
             RenderTrackLists();

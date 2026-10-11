@@ -142,6 +142,9 @@ namespace Playarr.Xbox.ViewModels
         /// <summary>Display title, for the on-screen overlay. May be empty.</summary>
         public string Title { get; }
 
+        /// <summary>False when the failure cannot be fixed by asking again (a 422 from the negotiation).</summary>
+        public bool CanRetry { get; private set; } = true;
+
         public PlayerLoadState LoadState
         {
             get => _loadState;
@@ -321,7 +324,7 @@ namespace Playarr.Xbox.ViewModels
         /// <summary>Re-runs <see cref="LoadAsync"/> after a failed negotiation.</summary>
         public void Retry()
         {
-            if (LoadState != PlayerLoadState.Failed)
+            if (LoadState != PlayerLoadState.Failed || !CanRetry)
             {
                 return;
             }
@@ -504,7 +507,7 @@ namespace Playarr.Xbox.ViewModels
                 }
 
                 var info = await _environment.ApiClient
-                    .GetPlaybackInfoAsync(_mediaFileId, profile)
+                    .GetPlaybackInfoAsync(_mediaFileId, profile, default, Services.DeviceCapsProvider.Current(profile))
                     .ConfigureAwait(false);
 
                 PlaybackInfo = info;
@@ -534,6 +537,9 @@ namespace Playarr.Xbox.ViewModels
             catch (ApiException apiError)
             {
                 LoadState = PlayerLoadState.Failed;
+                // A 422 (for example unsupported_colour_format) is the server's final word for this title and device:
+                // show its message and offer no retry.
+                CanRetry = apiError.IsRetryable;
                 ErrorMessage = apiError.DisplayMessage;
             }
             catch (Exception error)

@@ -99,7 +99,8 @@ namespace Playarr.Core.Networking
         Task<PlaybackInfoResponse> GetPlaybackInfoAsync(
             Guid mediaFileId,
             XboxPlaybackProfile profile,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            DeviceCaps? caps = null);
 
         /// <summary>
         /// The <c>Authorization</c> header a media element must send when
@@ -416,10 +417,11 @@ namespace Playarr.Core.Networking
         public Task<PlaybackInfoResponse> GetPlaybackInfoAsync(
             Guid mediaFileId,
             XboxPlaybackProfile profile,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            DeviceCaps? caps = null)
         {
             var query = new Dictionary<string, string>();
-            foreach (var pair in profile.ToQueryParameters())
+            foreach (var pair in caps == null ? profile.ToQueryParameters() : profile.ToQueryParameters(caps))
             {
                 query[pair.Key] = pair.Value;
             }
