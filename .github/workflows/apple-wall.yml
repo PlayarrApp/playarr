@@ -182,6 +182,7 @@ jobs:
       - name: Parity captures
         id: capture
         if: github.event_name != 'workflow_dispatch' || inputs.capture
+        continue-on-error: true # a rejected capture must not stop the stream
         timeout-minutes: 30
         env:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}

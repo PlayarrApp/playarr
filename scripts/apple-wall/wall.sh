@@ -148,6 +148,8 @@ capture)
 stream)
   : "${STREAM_BIND:?}" "${PLAYARR_VNC_PASSWORD:?}" "${DEADLINE:?}"
   frame="$WORK/frame.jpg"; health="$WORK/health.txt"
+  # Streams show the app's own saved session on Home, whatever state a capture left it in (macOS has no saved session).
+  if [[ $KIND != macos ]]; then ACCESS_TOKEN= launch dark; sleep 20; fi
   if [[ $DEVICE == tvos || $DEVICE == iphone ]]; then
     python3 "$TRUSTED/scripts/sim-vnc/sim_vnc.py" --udid "$UDID" --bind "$STREAM_BIND" --port "$PORT" --source simctl --no-keys --fps 5 \
       --metrics-file "$health" > "$WORK/vnc.log" 2>&1 &
