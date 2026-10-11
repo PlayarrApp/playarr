@@ -111,11 +111,9 @@ import { Spacing, Radii } from '../core/Tokens';
 import { Stage } from '../design/components/Stage';
 import { MediaRail } from '../design/components/MediaRail';
 import type { MediaRailItem } from '../design/components/MediaRail';
-import { NavRail } from '../design/components/NavRail';
 import type { NavRailItem } from '../design/components/NavRail';
-import { HOME_NAV_ID, buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../navigation/NavItems';
-import { PlayarrLogo } from '../design/components/PlayarrLogo';
-import { Clock } from '../design/components/Clock';
+import { HOME_NAV_ID, buildNavRailItems, navigateFromRail } from '../navigation/NavItems';
+import { PageShell } from '../design/components/PageShell';
 import { NavPill } from '../design/components/NavPill';
 import type { NavPillItem } from '../design/components/NavPill';
 import { PosterCard } from '../design/components/PosterCard';
@@ -927,41 +925,31 @@ export struct Home {
    * `Stack`, matching `pages/DesignGallery.ets`'s own "Stage + NavRail"
    * demo composition exactly. */
   @Builder
-  private tvContent(): void {
+  private tvStage(): void {
+    Stage({
+      keyArt: heroKeyArtFor(this.hero),
+      kicker: heroKickerFor(this.hero),
+      title: heroTitleFor(this.hero),
+      metaLines: heroMetaLinesFor(this.hero),
+      synopsis: this.hero !== undefined ? this.hero.overview : '',
+      // Arrow wrapper keeps `this` = Home; a bare method reference runs with Stage as `this`.
+      railsSlot: (): void => {
+        this.tvRailsSlot();
+      },
+    })
+  }
 
-    Stack() {
-      Stage({
-        keyArt: heroKeyArtFor(this.hero),
-        kicker: heroKickerFor(this.hero),
-        title: heroTitleFor(this.hero),
-        metaLines: heroMetaLinesFor(this.hero),
-        synopsis: this.hero !== undefined ? this.hero.overview : '',
-        // Arrow wrapper keeps `this` = Home; a bare method reference runs with Stage as `this`.
-        railsSlot: (): void => {
-          this.tvRailsSlot();
-        },
-      })
-      NavRail({
-        items: this.navItems,
-        primaryItems: buildPrimaryNavItems(),
-          secondaryItems: buildSecondaryNavItems(),
-        selectedId: HOME_NAV_ID,
-        onSelect: ((id: string): void => {
-      this.handleNavSelect(id);
-    }),
-      })
-      // Web TV shell chrome: the logo above the rail and the clock row.
-      PlayarrLogo({ logoSize: tv(TvGeometry.logoSize) })
-        .position({ x: tv(TvGeometry.logoLeft), y: tv(TvGeometry.logoTop) })
-      Row() {
-        Clock()
-      }
-      .height(tv(TvGeometry.utilityRowHeight))
-      .alignItems(VerticalAlign.Center)
-      .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
-    }
-    .width('100%')
-    .height('100%')
+  /** TV: the shared page shell (rail, logo, clock; Home has no header) around the `Stage` (hero + rails). */
+  @Builder
+  private tvContent(): void {
+    PageShell({
+      title: '',
+      showHeader: false,
+      selectedId: HOME_NAV_ID,
+      content: (): void => {
+        this.tvStage();
+      },
+    })
   }
 
   /** Touch: the scrollable rails column with `NavPill` floating at the

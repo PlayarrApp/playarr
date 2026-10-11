@@ -36,8 +36,13 @@ export struct PageShell {
   @Prop kicker: string = '';
   /** The nav id of this page, which the rail marks as the current one; empty selects none. */
   @Prop selectedId: string = '';
+  /** False for a page with no header (Home): the rail, logo and clock only. */
+  @Prop showHeader: boolean = true;
 
+  /** The page's own content, laid out in 1920x1080 coordinates, below the chrome. */
   @BuilderParam content: () => void = this.emptyContent;
+  /** The page's extra header controls (Calendar's range, previous, Today and next), above the content. */
+  @BuilderParam controls: () => void = this.emptyContent;
 
   @Builder
   private emptyContent(): void {}
@@ -81,29 +86,32 @@ export struct PageShell {
       .height(tv(TvGeometry.utilityRowHeight))
       .alignItems(VerticalAlign.Center)
       .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
-      Row({ space: tv(HEADER_GAP) }) {
-        Text('←')
-          .fontSize(tv(BACK_GLYPH_SIZE))
-          .fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(activeColors().inkSoft))
-          .textAlign(TextAlign.Center)
-          .width(tv(HEADER_SIZE))
-          .height(tv(HEADER_SIZE))
-          .borderRadius(tv(HEADER_SIZE / 2))
-          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-          .focusable(true)
-          .onClick(() => {
-            popRoute(getNavStack());
-          })
-        Text(this.title)
-          .fontSize(tv(TITLE_SIZE))
-          .fontWeight(FontWeight.Medium)
-          .letterSpacing(tv(TITLE_LETTER_SPACING))
-          .fontColor(toResourceColor(activeColors().ink))
+      if (this.showHeader) {
+        Row({ space: tv(HEADER_GAP) }) {
+          Text('←')
+            .fontSize(tv(BACK_GLYPH_SIZE))
+            .fontWeight(FontWeight.Bold)
+            .fontColor(toResourceColor(activeColors().inkSoft))
+            .textAlign(TextAlign.Center)
+            .width(tv(HEADER_SIZE))
+            .height(tv(HEADER_SIZE))
+            .borderRadius(tv(HEADER_SIZE / 2))
+            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+            .focusable(true)
+            .onClick(() => {
+              popRoute(getNavStack());
+            })
+          Text(this.title)
+            .fontSize(tv(TITLE_SIZE))
+            .fontWeight(FontWeight.Medium)
+            .letterSpacing(tv(TITLE_LETTER_SPACING))
+            .fontColor(toResourceColor(activeColors().ink))
+        }
+        .height(tv(HEADER_SIZE))
+        .alignItems(VerticalAlign.Center)
+        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
       }
-      .height(tv(HEADER_SIZE))
-      .alignItems(VerticalAlign.Center)
-      .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
+      this.controls()
       if (this.kicker.length > 0) {
         Text(this.kicker)
           .fontSize(tv(KICKER_SIZE))

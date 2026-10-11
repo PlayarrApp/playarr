@@ -21,7 +21,7 @@
 // from an object-literal value using regex alone) -- see inline notes on
 // the specific rules where the ambiguity is real.
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { walkFiles } from '../lib/walk.mjs';
 
@@ -483,6 +483,29 @@ function checkPagesIsolation(harmonyDir, errors) {
   }
 }
 
+/**
+ * Every relative import must name a file that exists (`x`, `x.ets`, `x.ts` or `x/index.ets`). The ArkTS compiler
+ * would reject a missing module; this keeps the offline check from passing a page that imports one (a component
+ * that exists on another branch, a mistyped path).
+ */
+function checkRelativeImportsResolve(harmonyDir, errors) {
+  const importPattern = /(?:import|export)\s[^'"]*?from\s+['"](\.{1,2}\/[^'"]+)['"]|import\s+['"](\.{1,2}\/[^'"]+)['"]/g;
+  for (const filePath of collectArkTsSourceFiles(harmonyDir)) {
+    const text = readFileSync(filePath, 'utf8');
+    const rel = toPosixRelative(harmonyDir, filePath);
+    importPattern.lastIndex = 0;
+    let match;
+    while ((match = importPattern.exec(text)) !== null) {
+      const spec = match[1] || match[2];
+      const target = path.resolve(path.dirname(filePath), spec);
+      const candidates = [target, target + '.ets', target + '.ts', path.join(target, 'index.ets')];
+      if (!candidates.some((candidate) => existsSync(candidate) && statSync(candidate).isFile())) {
+        errors.push(`${rel}: import '${spec}' does not resolve to a file`);
+      }
+    }
+  }
+}
+
 export function checkArkTs(harmonyDir) {
   const errors = [];
 
@@ -516,6 +539,7 @@ export function checkArkTs(harmonyDir) {
   });
 
   checkPagesIsolation(harmonyDir, errors);
+  checkRelativeImportsResolve(harmonyDir, errors);
 
   return { ok: errors.length === 0, errors };
 }

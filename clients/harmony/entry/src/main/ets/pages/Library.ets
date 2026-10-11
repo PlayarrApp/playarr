@@ -113,15 +113,11 @@ import { FOCUS_LIFT, effectiveFocusPercent, DEFAULT_ACTIVE_RAIL_FACTOR } from '.
 import { PosterCard } from '../design/components/PosterCard';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 import { Stage } from '../design/components/Stage';
-import { NavRail } from '../design/components/NavRail';
-import type { NavRailItem } from '../design/components/NavRail';
-import { PlayarrLogo } from '../design/components/PlayarrLogo';
-import { Clock } from '../design/components/Clock';
-import { buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../navigation/NavItems';
 import { titleCountLabel } from '../core/CountFormat';
 import { AlphabetRail } from '../design/components/AlphabetRail';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
+import { PageShell } from '../design/components/PageShell';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import type { Choice } from '../design/components/ChoiceSegments';
@@ -455,7 +451,6 @@ export struct Library {
   @State private total: number = -1;
   /** The TV hero: the focused title, the first one until a card takes focus (web `.tv-library-preview`). */
   @State private hero: Work | undefined = undefined;
-  @State private navItems: NavRailItem[] = [];
   /** The A-Z rail's current letter: the hero's (web `activeLetter`). */
   @State private activeLetter: string = '#';
   /** The Filters drawer (web `?panel=filters`). */
@@ -477,7 +472,6 @@ export struct Library {
 
   aboutToAppear(): void {
     this.loadPage(0);
-    this.loadNav();
     this.loadWatchProgress();
   }
 
@@ -538,16 +532,6 @@ export struct Library {
   private loadedLetters(): string[] {
     return this.items.map((work: Work): string => workLetter(work.sort_title, work.title));
   }
-
-  private async loadNav(): Promise<void> {
-    const kinds = await getCatalogKinds();
-    this.navItems = buildNavRailItems(kinds.kind === 'ok' ? kinds.value : []);
-  }
-
-  private handleNavSelect(id: string): void {
-    navigateFromRail(id, this.kind);
-  }
-
 
   private availableGridWidthVp(): number {
     const measured = this.measuredWidthVp > 0
@@ -892,120 +876,73 @@ export struct Library {
   /** Web TV library: shell rail, logo and clock, round Back with the title and count, the focused
    * title's copy on the left and the landscape grid on the right. */
   @Builder
-  private tvLayout(): void {
-    Stack() {
-      Stage({
-        keyArt: '',
-        kicker: this.hero !== undefined && this.hero.genres.length > 0 ? this.hero.genres[0] : '',
-        title: this.hero !== undefined ? this.hero.title : '',
-        metaLines: this.hero !== undefined ? heroMetaLines(this.hero) : [],
-        synopsis: this.hero !== undefined && this.hero.overview !== null ? this.hero.overview : '',
-        scrollRails: false,
-        railsSlot: (): void => {
-          this.tvGrid();
+  private tvContent(): void {
+    Stage({
+      keyArt: '',
+      kicker: this.hero !== undefined && this.hero.genres.length > 0 ? this.hero.genres[0] : '',
+      title: this.hero !== undefined ? this.hero.title : '',
+      metaLines: this.hero !== undefined ? heroMetaLines(this.hero) : [],
+      synopsis: this.hero !== undefined && this.hero.overview !== null ? this.hero.overview : '',
+      scrollRails: false,
+      railsSlot: (): void => {
+        this.tvGrid();
+      },
+    })
+    ActionTile({
+      icon: $r('app.media.action_filters'),
+      label: 'Filters',
+      slot: 0,
+      onActivate: (): void => {
+        this.filtersOpen = true;
+      },
+    })
+    if (this.sort === 'title') {
+      AlphabetRail({
+        letters: alphabetFor(this.order),
+        activeLetter: this.activeLetter,
+        onJump: (letter: string): void => {
+          this.jumpToLetter(letter);
         },
       })
-      // NavRail reads `items` once (plain field), so it is created after the kinds arrive.
-      if (this.navItems.length > 0) {
-        NavRail({
-          items: this.navItems,
-          primaryItems: buildPrimaryNavItems(),
-          secondaryItems: buildSecondaryNavItems(),
-          selectedId: this.kind,
-          onSelect: (id: string): void => {
-            this.handleNavSelect(id);
-          },
-        })
-      }
-      PlayarrLogo({ logoSize: tv(TvGeometry.logoSize) })
-        .position({ x: tv(TvGeometry.logoLeft), y: tv(TvGeometry.logoTop) })
-      Row() {
-        Clock()
-      }
-      .height(tv(TvGeometry.utilityRowHeight))
-      .alignItems(VerticalAlign.Center)
-      .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
-      ActionTile({
-        icon: $r('app.media.action_filters'),
-        label: 'Filters',
-        slot: 0,
-        onActivate: (): void => {
-          this.filtersOpen = true;
-        },
-      })
-      if (this.sort === 'title') {
-        AlphabetRail({
-          letters: alphabetFor(this.order),
-          activeLetter: this.activeLetter,
-          onJump: (letter: string): void => {
-            this.jumpToLetter(letter);
-          },
-        })
-      }
-      Row({ space: tv(TV_HEADER_GAP) }) {
-        Text('←')
-          .fontSize(tv(TV_BACK_GLYPH_SIZE))
-          .fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(activeColors().inkSoft))
-          .textAlign(TextAlign.Center)
-          .width(tv(TV_BACK_SIZE))
-          .height(tv(TV_BACK_SIZE))
-          .borderRadius(tv(TV_BACK_SIZE / 2))
-          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, TV_BACK_BG_ALPHA))
-          .focusable(true)
-          .onClick(() => {
-            popRoute(getNavStack());
-          })
-        Column({ space: tv(TV_TITLE_SUBTITLE_GAP) }) {
-          Text(libraryKindTitle(this.kind))
-            .fontSize(tv(TV_TITLE_SIZE))
-            .fontWeight(FontWeight.Medium)
-            .letterSpacing(tv(TV_TITLE_LETTER_SPACING))
-            .fontColor(toResourceColor(activeColors().ink))
-            .height(tv(TV_BACK_SIZE))
-          if (this.total >= 0) {
-            Text(titleCountLabel(this.total))
-              .fontSize(tv(TV_SUBTITLE_SIZE))
-              .fontWeight(FontWeight.Bolder)
-              .letterSpacing(tv(TV_SUBTITLE_LETTER_SPACING))
-              .textCase(TextCase.UpperCase)
-              .fontColor(TV_SUBTITLE_COLOR)
-          }
-        }
-        .alignItems(HorizontalAlign.Start)
-      }
-      .alignItems(VerticalAlign.Top)
-      .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
-      if (this.actionsWork !== undefined) {
-        TitleActionsDrawer({
-          workId: this.actionsWork.id,
-          workTitle: this.actionsWork.title,
-          onClose: (): void => {
-            this.actionsWork = undefined;
-          },
-          onPlay: (workId: string): void => {
-            this.openDetail(workId);
-          },
-          onWatchedChanged: (): void => {
-            this.loadWatchProgress();
-          },
-        })
-      } else if (this.filtersOpen) {
-        Drawer({
-          kicker: 'Library controls',
-          title: 'Filters',
-          onClose: (): void => {
-            this.filtersOpen = false;
-          },
-          body: (): void => {
-            this.filtersBody();
-          },
-        })
-      }
     }
-    .width('100%')
-    .height('100%')
-    .backgroundColor(toResourceColor(activeColors().bg))
+    if (this.actionsWork !== undefined) {
+      TitleActionsDrawer({
+        workId: this.actionsWork.id,
+        workTitle: this.actionsWork.title,
+        onClose: (): void => {
+          this.actionsWork = undefined;
+        },
+        onPlay: (workId: string): void => {
+          this.openDetail(workId);
+        },
+        onWatchedChanged: (): void => {
+          this.loadWatchProgress();
+        },
+      })
+    } else if (this.filtersOpen) {
+      Drawer({
+        kicker: 'Library controls',
+        title: 'Filters',
+        onClose: (): void => {
+          this.filtersOpen = false;
+        },
+        body: (): void => {
+          this.filtersBody();
+        },
+      })
+    }
+  }
+
+  @Builder
+  private tvLayout(): void {
+    PageShell({
+      title: libraryKindTitle(this.kind),
+      kicker: this.total >= 0 ? titleCountLabel(this.total) : '',
+      selectedId: this.kind,
+      content: (): void => {
+        this.tvContent();
+      },
+    })
   }
 
   @Builder
@@ -1031,21 +968,10 @@ export struct Library {
   }
 }
 
-// Web `.tv-library-heading`: round Back (50, surfaceStrong at 0.7), title 33.6/580, pink count 12.288/820.
 const JUMP_MAX_ATTEMPTS: number = 200;
 const JUMP_WAIT_MS: number = 100;
 const JUMP_SCROLL_DELAY_MS: number = 50;
 
-const TV_BACK_SIZE: number = 50;
-const TV_BACK_GLYPH_SIZE: number = 17.28;
-const TV_BACK_BG_ALPHA: number = 0.7;
-const TV_HEADER_GAP: number = 23;
-const TV_TITLE_SIZE: number = 33.6;
-const TV_TITLE_LETTER_SPACING: number = -1.512;
-const TV_TITLE_SUBTITLE_GAP: number = 6;
-const TV_SUBTITLE_SIZE: number = 12.288;
-const TV_SUBTITLE_LETTER_SPACING: number = 0.983;
-const TV_SUBTITLE_COLOR: string = 'rgba(234, 166, 182, 1)';
 
 /** Web library hero meta: "2003  Action · Crime" (year, then genres). */
 function heroMetaLines(work: Work): string[] {
