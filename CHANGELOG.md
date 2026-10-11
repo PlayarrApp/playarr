@@ -13,6 +13,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Library: on phones the list view no longer scrolls past its last row into blank space; the spacer under unmounted rows now uses the real row pitch (a 120px floor over-sized it).
+- Parity suite: a scored dpad or playback run without web expected values now stops with an error instead of overwriting dpad.json or playback.json with null results.
+- Sign-in safety: a network error or server error while refreshing the session no longer signs the device out (Core and Samsung Tizen native); only a server rejection of the refresh token does, and the Tizen session file is flushed to disk before the rotated pair is used.
 - Xbox parity driver waits for a page to load after select, so D-pad checks that follow an open compare like for like.
 - Xbox: LEFT from content lands on the nav item level with the focused card, as the web does.
 - The macOS build compiles again: device HDR modes are read on iOS and tvOS only.
@@ -291,6 +294,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Samsung Tizen native client: series episode downloads. Long-press an episode to download that episode or the whole season (quality and keep-until), at most two transfers at a time; the Downloads page groups by series and season.
 - Sailfish OS: the playback request reports the device's real caps (8-bit H.264 up to 1080p60, stereo, no HDR, no passthrough), adds "Force direct video" and "Force direct audio" under Player > Advanced (default off, sent only when on), and shows the server's 422 `unsupported_colour_format` message without retrying.
 - Sailfish OS: now-playing through MPRIS (title, artwork, position, duration, Play, Pause, Stop and Seek from the media controls), download notifications with progress, percent and size plus Pause, Resume and Cancel actions over a small D-Bus service, a download options page with quality and keep-until (also used to edit an existing download), and keep-until rules checked on the local copies.
 - Samsung Tizen native client: offline downloads. Pick a quality and keep-until from the film Download button; the Downloads page lists active, downloaded and needs-attention items with Pause, Resume, Cancel, Play offline, Edit keep-until and Delete.
@@ -475,6 +479,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Sailfish Home builds On deck as the web does (resume-plan lead episodes, episode titles and stills, plan-only series), series detail follows the resume plan, and the alphabet rail jumps reliably.
+- Samsung Tizen native client: light-theme focus rings follow the theme, film detail uses the real chapters embedded in the file, series detail shows episode stills with the number overlay, and the action rows follow the overview height.
 - Sailfish Downloads groups episodes by series and season with shared controls at each level, adds a Filters panel and press-and-hold episode downloads, and the movie and series grids get the alphabet rail.
 - The web parity driver waits for the key handler after Home settles, so web D-pad references stop losing the first key.
 - Sailfish calendar week view lays the days out as side-by-side columns like the web, and the title actions page matches the web fonts and spacing.

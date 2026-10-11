@@ -1,1 +1,0 @@
-- Samsung Tizen native client: light-theme focus rings follow the theme, film detail uses the real chapters embedded in the file, series detail shows episode stills with the number overlay, and the action rows follow the overview height.

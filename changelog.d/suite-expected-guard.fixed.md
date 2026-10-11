@@ -1,1 +1,0 @@
-- Parity suite: a scored dpad or playback run without web expected values now stops with an error instead of overwriting dpad.json or playback.json with null results.
