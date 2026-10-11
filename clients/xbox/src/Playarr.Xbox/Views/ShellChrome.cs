@@ -36,7 +36,9 @@ namespace Playarr.Xbox.Views
         public ShellChrome(Frame frame)
         {
             _frame = frame;
-            Root = new Grid();
+            // The remote's D-pad is a gamepad on Xbox, but a keyboard (and the device-wall tests) must move focus the
+            // same way: arrow keys move focus spatially across the nav rail, rails and grids, not only inside a list.
+            Root = new Grid { XYFocusKeyboardNavigation = Windows.UI.Xaml.Input.XYFocusKeyboardNavigationMode.Enabled };
             Root.Children.Add(frame);
             Root.Children.Add(_chrome);
             Build();

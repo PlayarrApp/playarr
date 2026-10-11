@@ -31,6 +31,23 @@ namespace Playarr.Xbox.Views
         {
             InitializeComponent();
             _viewModel = new HomeViewModel(App.Environment);
+            // The rails' scroller would swallow Up/Down to scroll; D-pad Up/Down must move focus to the card above or below.
+            RailsScroll.PreviewKeyDown += RailsScroll_PreviewKeyDown;
+        }
+
+        private void RailsScroll_PreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        {
+            var direction = e.Key switch
+            {
+                Windows.System.VirtualKey.Down or Windows.System.VirtualKey.GamepadDPadDown => Windows.UI.Xaml.Input.FocusNavigationDirection.Down,
+                Windows.System.VirtualKey.Up or Windows.System.VirtualKey.GamepadDPadUp => Windows.UI.Xaml.Input.FocusNavigationDirection.Up,
+                _ => Windows.UI.Xaml.Input.FocusNavigationDirection.None,
+            };
+            if (direction != Windows.UI.Xaml.Input.FocusNavigationDirection.None)
+            {
+                Windows.UI.Xaml.Input.FocusManager.TryMoveFocus(direction);
+                e.Handled = true;
+            }
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)

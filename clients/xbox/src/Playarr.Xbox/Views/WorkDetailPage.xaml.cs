@@ -113,6 +113,35 @@ namespace Playarr.Xbox.Views
                 RenderSeasonRails();
                 ShowEpisode(_viewModel.SelectedEpisode);
             }
+
+            if (_focusPrimary && !_viewModel.IsLoading && work != null)
+            {
+                _focusPrimary = false;
+                // The web puts focus on the primary action: Play for a title, the next-up episode for a series.
+                FocusClaim.Start(this, () => _viewModel.IsSeries ? NextUpEpisodeContainer() : (PlayButton.IsEnabled ? PlayButton : null));
+            }
+        }
+
+        private bool _focusPrimary = true;
+
+        private Control? NextUpEpisodeContainer()
+        {
+            var target = _viewModel.SelectedEpisode;
+            foreach (var section in SeriesPanel.Children)
+            {
+                if (section is StackPanel { Children: { Count: > 0 } kids } && kids[kids.Count - 1] is ListView list)
+                {
+                    foreach (var item in list.Items)
+                    {
+                        if (item is FrameworkElement { Tag: EpisodeDetail episode } && ReferenceEquals(episode, target) && list.ContainerFromItem(item) is Control container)
+                        {
+                            return container;
+                        }
+                    }
+                }
+            }
+
+            return null;
         }
 
         /// <summary>Web series page: one rail per season of 268x151 episode thumbnails with the number overlaid.</summary>

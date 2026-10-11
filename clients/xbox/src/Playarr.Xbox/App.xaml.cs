@@ -82,6 +82,15 @@ namespace Playarr.Xbox
                 titleBar.ButtonInactiveBackgroundColor = Windows.UI.Colors.Transparent;
 
                 SystemNavigationManager.GetForCurrentView().BackRequested += OnBackRequested;
+
+                // A keyboard has no Back button: Escape and the browser Back key do what the gamepad B button does.
+                Window.Current.CoreWindow.KeyDown += (s, args) =>
+                {
+                    if (args.VirtualKey == Windows.System.VirtualKey.Escape || args.VirtualKey == Windows.System.VirtualKey.GoBack)
+                    {
+                        args.Handled = HandleBack();
+                    }
+                };
             }
 
             if (!e.PrelaunchActivated)
@@ -117,26 +126,29 @@ namespace Playarr.Xbox
         /// intercept Back when this app has something to unwind; otherwise
         /// hand it back to the platform.
         /// </summary>
-        private void OnBackRequested(object sender, BackRequestedEventArgs e)
+        private void OnBackRequested(object sender, BackRequestedEventArgs e) => e.Handled = HandleBack();
+
+        /// <summary>One level per press: an open drawer, then a player panel, then the page. False when there is nothing to unwind.</summary>
+        private bool HandleBack()
         {
             // An open drawer closes first, one level per press (owner rule).
             if (Views.Drawer.TryCloseCurrent())
             {
-                e.Handled = true;
-                return;
+                return true;
             }
 
             if (RootFrame is { Content: Views.PlayerPage player } && player.TryHandleBack())
             {
-                e.Handled = true;
-                return;
+                return true;
             }
 
             if (Navigation.CanGoBack)
             {
-                e.Handled = true;
                 Navigation.GoBack();
+                return true;
             }
+
+            return false;
 
             // Else: leave e.Handled false. Xbox's shell treats an unclaimed
             // Back at the root as "back out of the app" -- exactly the
