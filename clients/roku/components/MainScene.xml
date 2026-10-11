@@ -762,6 +762,7 @@
   <script type="text/brightscript" uri="pkg:/source/Config.brs" />
   <script type="text/brightscript" uri="pkg:/source/Storage.brs" />
   <script type="text/brightscript" uri="pkg:/source/Api.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DeviceCaps.brs" />
   <script type="text/brightscript" uri="pkg:/source/PairingPrefs.brs" />
   <script type="text/brightscript" uri="pkg:/components/Pages.brs" />
   <script type="text/brightscript" uri="pkg:/components/Drawer.brs" />

@@ -90,6 +90,8 @@ sub init()
     ' Sites (index 4) starts disabled until catalog/kinds proves access.
     m.navEnabled = [true, true, true, true, false, true, true, true, true, true]
     m.qualityPref = LoadQualityPreference()
+    m.forceDirectVideo = LoadForceDirect("video")
+    m.forceDirectAudio = LoadForceDirect("audio")
     m.subtitlePref = LoadSubtitlePreference()
     m.householdTicks = 0
     pagesInit()
@@ -762,6 +764,10 @@ sub onApiResult(event as Object)
         acceptDetailPlaylists(result.data)
     else if action = "detailWatchlistAdd" or action = "detailWatchlistRemove" or action = "detailPlaylistAdd"
         loadDetailWatchlist()
+    else if action = "selfCaps"
+        wasAdmin = m.isAdmin = true
+        m.isAdmin = result.data <> invalid and result.data.is_admin = true
+        if m.isAdmin <> wasAdmin and m.top.screenState = "page" and m.pageKind = "settings" then renderSettings()
     else if action = "actionDetail"
         acceptActionDetail(result.data)
     else if action = "actionProgress"
@@ -789,6 +795,8 @@ sub onApiResult(event as Object)
 end sub
 
 sub handleApiFailure(action as String, result as Object)
+    ' Best-effort lookups never interrupt the page.
+    if action = "selfCaps" then return
     if action = "householdStatus" or action = "householdAsk" then return
     if action = "resumePlan"
         acceptResumePlan(invalid)
@@ -939,6 +947,25 @@ sub handleApiFailure(action as String, result as Object)
         showOnly("detail")
         m.top.screenState = "detail"
         m.detailActions.SetFocus(true)
+        ' Say why playback did not start (web humanNegotiationMessage): the server's own message for a colour format it cannot convert
+        ' (422 unsupported_colour_format), a plain line for a busy or missing title. Never retried.
+        message = "Playback couldn't start. Try again in a moment."
+        if result.status = 422 and result.data <> invalid and result.data.error = "unsupported_colour_format"
+            message = "This title's colour format can't be converted for this device."
+            if result.data.message <> invalid and result.data.message <> "" then message = result.data.message
+        else if result.status = 503
+            message = "The server is busy with other playback. Try again in a moment."
+        else if result.status = 404
+            message = "This title is no longer available on the server."
+        else if result.status = 0
+            message = "Can't reach the server. Check your connection and try again."
+        end if
+        dialog = CreateObject("roSGNode", "Dialog")
+        dialog.title = "Can't play this title"
+        dialog.message = [message]
+        dialog.buttons = ["OK"]
+        dialog.ObserveField("buttonSelected", "onPlaybackRefusedClosed")
+        m.top.dialog = dialog
         return
     end if
 
@@ -1519,13 +1546,9 @@ sub applyProfilesChrome()
     theme = ResolvePairingTheme(m.themePreference)
     lang = ResolvePairingLanguage(m.languagePreference)
     isLight = theme = "light"
-    if m.profilesAuthBg <> invalid
-        if isLight
-            m.profilesAuthBg.uri = "pkg:/images/pairing-auth-bg-light.png"
-        else
-            m.profilesAuthBg.uri = "pkg:/images/pairing-auth-bg.png"
-        end if
-    end if
+    ' The web profile picker sits on the flat page background (measured: 21 19 21 away from the avatars in dark); only the
+    ' pairing screen carries the radial wash.
+    if m.profilesAuthBg <> invalid then m.profilesAuthBg.visible = false
     tokens = ThemeTokens(theme)
     ink = tokens.ink
     inkSoft = tokens.inkSoft
@@ -1624,21 +1647,21 @@ sub updateProfileActionsLayout()
         end for
     end if
 
-    itemWidth = 280
-    spacing = 32
+    itemWidth = 246
+    spacing = 40
     rowX = 0
-    rowY = 300
+    rowY = 365
     if m.profilesRow <> invalid and m.profilesRow.translation <> invalid
         rowX = m.profilesRow.translation[0]
         rowY = m.profilesRow.translation[1]
     end if
     centerX = rowX + targetIndex * (itemWidth + spacing) + Int(itemWidth / 2)
     actionsW = 232 ' 48 gear + 12 gap + 172 pill
-    x = centerX - Int(actionsW / 2)
+    x = centerX - 77
     if x < 40 then x = 40
     if x > 1920 - actionsW - 40 then x = 1920 - actionsW - 40
     ' Sit just under name/status (circle+labels ~ 328px from row top).
-    y = rowY + 340
+    y = rowY + 339
     if y > 980 then y = 980
     m.profileActionsGroup.translation = [x, y]
     m.profileActionsGroup.opacity = 1
@@ -1748,13 +1771,13 @@ sub buildProfileAvatarContent(profiles as Object)
 
     ' Equal item boxes 280×360 (240 circle + ring pad + labels). Gap 32.
     ' Circles centre on a shared baseline; focus scales from circle centre.
-    itemWidth = 280
-    spacing = 32
+    itemWidth = 246
+    spacing = 40
     count = list.Count()
     rowWidth = count * itemWidth + (count - 1) * spacing
     x = 960 - Int(rowWidth / 2)
     if x < 40 then x = 40
-    m.profilesRow.translation = [x, 300]
+    m.profilesRow.translation = [x, 365]
     m.profilesRow.rowItemSize = [[itemWidth, 360]]
     m.profilesRow.rowItemSpacing = [[spacing, 0]]
     m.profilesRow.rowHeights = [360]
@@ -2302,7 +2325,7 @@ sub openBrowse(kind as String, label as String)
     m.browseTotal = invalid
     m.browseSort = "title"
     m.browseOrder = "asc"
-    m.browseArtworkSize = "medium"
+    m.browseArtworkSize = m.artworkSizePref
     applyBrowseArtworkSize()
     m.browseAlphabetMode = false
     m.browseFiltersButtonFocused = false
@@ -3538,11 +3561,12 @@ function createHomeRail(contentTarget as Object) as Object
     ' landscape thumbnail, 220x124 art + 220x165 total card, 24px gap) --
     ' see PosterCard.xml's header comment for the full measurement notes.
     ' The viewport starts 96 px left of the track so scrolled cards continue into the gutter, where the scroll fade covers them.
-    row.itemSize = [1134, 185]
+    row.itemSize = [1134, 250]
     ' RowList rounds item geometry to whole pixels: a 220 box on a 244 pitch (web 243.8) with the art drawn 218.9 wide.
-    row.rowItemSize = [[220, 165]]
-    row.rowItemSpacing = [[24, 0]]
-    row.rowHeights = [185]
+    ' Web Home cards are 327 x 184 art on a 352 px pitch (measured on the live web: rects of the card images).
+    row.rowItemSize = [[327, 250]]
+    row.rowItemSpacing = [[25, 0]]
+    row.rowHeights = [250]
     row.showRowLabel = false
     row.focusXOffset = [96]
     row.rowFocusAnimationStyle = "floatingFocus"
@@ -3551,7 +3575,7 @@ function createHomeRail(contentTarget as Object) as Object
     ' focus-ring bitmap, which would otherwise draw an unwanted white
     ' outline with no basis in tv-web's actual CSS.
     row.focusBitmapBlendColor = &h00000000
-    row.translation = [-96, 64.9]
+    row.translation = [-96, 41.1]
     group.AppendChild(row)
 
     contentTarget.AppendChild(group)
@@ -3999,10 +4023,10 @@ sub finishHomeLoad()
         setRailTitle(rail, railIndex = 0)
         isActiveRail = false
         if railIndex = 0 then isActiveRail = true
-        buildRailContent(rail.row, rail.works, isActiveRail)
+        buildRailContent(rail.row, rail.works, isActiveRail, 1.4864)
         m.visibleRails.Push({ row: rail.row, works: rail.works, first: 0, col: 0, last: 0, jumping: -1, rightAligned: false })
-        ' Rails sit 319 px apart (web .tv-home-rail rhythm).
-        y += 319
+        ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards).
+        y += 366
         railIndex = railIndex + 1
     end for
 
@@ -4106,7 +4130,7 @@ sub homeRailTrack(row as Object, idx as Integer)
             else
                 d = idx - rail.last
                 while d > 0
-                    if rail.col < 3
+                    if rail.col < 2
                         rail.col = rail.col + 1
                     else
                         rail.first = rail.first + 1
@@ -4127,7 +4151,7 @@ sub homeRailTrack(row as Object, idx as Integer)
                 ' further right than the whole-card step the RowList takes, moving left it lines up with the track start.
                 shift = 0.0
                 if rail.rightAligned = true and rail.first > 0 then shift = 33.9
-                rail.row.translation = [-96 + shift, 64.9]
+                rail.row.translation = [-96 + shift, 41.1]
             end if
             rail.last = idx
             return
@@ -4241,7 +4265,7 @@ sub scrollHomeToFocusedRail()
     ' would yank all of Home's rail content to the screen's top-left corner.
     ' Web Home scrolls so the focused rail sits where the first rail sits (rails are 318.4 px apart).
     scrollOffset = 0
-    if m.homeFocusIndex > 0 then scrollOffset = m.homeFocusIndex * 318.4
+    if m.homeFocusIndex > 0 then scrollOffset = m.homeFocusIndex * 366
     m.homeContent.translation = [881.6, 422.9 - scrollOffset]
 end sub
 
@@ -5680,7 +5704,10 @@ sub requestPlayback(mediaFileId as String)
     m.currentMediaFileId = mediaFileId
     config = AppConfig()
     path = "/api/v1/playback/" + UrlEncode(mediaFileId)
-    path += "?containers=mp4%2Cmkv%2Cm3u8&video_codecs=h264&audio_codecs=aac%2Cac3%2Ceac3"
+    path += "?containers=mp4%2Cmkv%2Cm3u8&audio_codecs=aac%2Cac3%2Ceac3"
+    ' The device's real codecs, HDR, bit depth, size and audio output, and the two Advanced force flags (CLIENT-NOTES.md).
+    if m.deviceCaps = invalid then m.deviceCaps = DeviceMediaCaps()
+    path += DeviceCapsQuery(m.deviceCaps, m.forceDirectVideo = true, m.forceDirectAudio = true)
     path += "&max_bitrate_bps=" + QualityMaxBitrate(m.qualityPref, config.maxBitrateBps).ToStr()
     ' Play opens the player directly: black stage, title, small spinner. No
     ' interstitial or fullscreen status page while the session negotiates.
@@ -6834,6 +6861,11 @@ sub acceptDetailPlaylists(data as Dynamic)
     end if
     dialog.ObserveField("buttonSelected", "onDetailPlaylistChosen")
     m.top.dialog = dialog
+end sub
+
+sub onPlaybackRefusedClosed(event as Object)
+    if m.top.dialog <> invalid then m.top.dialog.close = true
+    m.detailActions.SetFocus(true)
 end sub
 
 sub onDetailPlaylistChosen(event as Object)

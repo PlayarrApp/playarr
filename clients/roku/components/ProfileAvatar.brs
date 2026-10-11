@@ -40,9 +40,9 @@ sub onFocusChanged()
     effective = m.top.focusPercent * m.top.activeRailFactor
     m.focusRing.opacity = effective
     if m.circleGroup = invalid then return
-    scale = 1 + (effective * 0.05)
+    scale = 1 + (effective * 0.09)
     m.circleGroup.scale = [scale, scale]
     ' Subtle lift (web translateY(-8px)) without shifting RowList slot.
-    lift = Int(-8 * effective)
-    m.circleGroup.translation = [20, 16 + lift]
+    lift = Int(-10 * effective)
+    m.circleGroup.translation = [0, 16 + lift]
 end sub

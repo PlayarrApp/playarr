@@ -629,7 +629,7 @@ class RokuDeviceBugfixTests(unittest.TestCase):
         self.assertTrue((ROOT / "images" / "stage-key-art-fade.png").is_file())
         self.assertIn('translation="[881.6,422.9]"', stage)
         # Rails are 319px apart (web) and use the server's home rails.
-        self.assertIn("y += 319", MAIN)
+        self.assertIn("y += 366", MAIN)
         self.assertIn('"homeRails", "GET", "/api/v1/home/rails"', MAIN)
         self.assertNotIn("takeUnusedWorks(m.homeMovies", MAIN)
         # Home shows every server rail from a RowList pool and On deck resolves episodes, artists and watch progress.
@@ -704,4 +704,23 @@ class RokuDeviceBugfixTests(unittest.TestCase):
     def test_series_page_shows_no_lag_line_without_samples(self) -> None:
         self.assertNotIn("No availability data yet\"\n", MAIN)
         self.assertIn('text = ""', MAIN[MAIN.index("sub acceptDetailLag"):][:200])
+
+    def test_device_caps_and_force_flags_reach_the_playback_query(self) -> None:
+        caps = (ROOT / "source" / "DeviceCaps.brs").read_text(encoding="utf-8")
+        for field in ("hdr=", "max_bit_depth=", "max_channels=", "force_direct_video=true", "force_direct_audio=true"):
+            self.assertIn(field, caps)
+        self.assertIn("DeviceCapsQuery(m.deviceCaps, m.forceDirectVideo = true, m.forceDirectAudio = true)", MAIN)
+        self.assertNotIn("video_codecs=h264", MAIN)
+        settings = (ROOT / "components" / "Settings.brs").read_text(encoding="utf-8")
+        self.assertIn('"Force direct video"', settings)
+        self.assertIn('"Force direct audio"', settings)
+        prefs = (ROOT / "source" / "PairingPrefs.brs").read_text(encoding="utf-8")
+        self.assertIn('"force_direct_" + axis', prefs)
+        self.assertIn("m.forceDirectVideo = LoadForceDirect(\"video\")", MAIN)
+
+    def test_unsupported_colour_format_shows_the_message_without_retry(self) -> None:
+        self.assertIn('result.data.error = "unsupported_colour_format"', MAIN)
+        self.assertIn("This title's colour format can't be converted for this device.", MAIN)
+        self.assertIn("onPlaybackRefusedClosed", MAIN)
+        self.assertIn("The server is busy with other playback", MAIN)
 

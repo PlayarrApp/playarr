@@ -181,3 +181,18 @@ function QualityMaxBitrate(choice as String, fallback as Integer) as Integer
     if parts[1] = "High" then index = 2
     return rates[index] * 1000000
 end function
+
+' Advanced player settings (web "Force direct video" / "Force direct audio"): off by default, kept per device, read on every negotiation.
+function LoadForceDirect(axis as String) as Boolean
+    return PairingPrefsRegistry().Read("force_direct_" + axis) = "true"
+end function
+
+sub SaveForceDirect(axis as String, value as Boolean)
+    section = PairingPrefsRegistry()
+    if value
+        section.Write("force_direct_" + axis, "true")
+    else
+        section.Write("force_direct_" + axis, "false")
+    end if
+    section.Flush()
+end sub

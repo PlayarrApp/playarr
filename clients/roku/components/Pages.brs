@@ -27,6 +27,7 @@ sub pagesInit()
     m.calendarKinds = []
     m.pageScrollY = 0
     m.settingsPanel = "appearance"
+    m.artworkSizePref = "medium"
 end sub
 
 ' ---------------------------------------------------------------------------
@@ -410,6 +411,7 @@ sub openPage(kind as String)
         renderCustomise()
         sendApi("railPrefs", "GET", "/api/v1/home/rails/preferences?lang=en", invalid, true)
     else if kind = "settings"
+        sendApi("selfCaps", "GET", "/api/v1/users/me/capabilities", invalid, true)
         m.settingsPanel = "appearance"
         renderSettings()
         pageSettingsFocusDefault()

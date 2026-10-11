@@ -6,7 +6,7 @@
 ' to another client (invite, phone remote, data export), as the web does on devices without a file picker.
 
 function settingsSections() as Object
-    return [
+    all = [
         { id: "appearance", title: "Appearance", detail: "Choose this device’s theme and home screen artwork." }
         { id: "avatar", title: "Profile avatar", detail: "Choose how your profile appears on this account." }
         { id: "language", title: "Language", detail: "Follow this device or keep a language fixed." }
@@ -19,6 +19,12 @@ function settingsSections() as Object
         { id: "data", title: "Your data", detail: "Export your watch progress, playlists and preferences." }
         { id: "home", title: "Customise Home", detail: "Choose which Home rails show and in what order." }
     ]
+    ' Request latency is admin-only on the web (settings/Index.tsx ADMIN_ONLY_SECTIONS): hidden until the account is known to be one.
+    sections = []
+    for each section in all
+        if section.id <> "latency" or m.isAdmin = true then sections.Push(section)
+    end for
+    return sections
 end function
 
 function settingsSectionIndexOf(id as String) as Integer
@@ -116,12 +122,40 @@ end sub
 
 sub panelAppearance()
     pgHeading(210, "Colour theme")
-    pgSegmented(773.8, 265.8, 50, ["System", "Light", "Dark"], PairingThemeIndex(m.themePreference), "theme")
-    pgRect(m.pageBody, 773.8, 346, 995, 1, "line")
-    pgHeading(377.3, "Home screen artwork")
-    pgHint(422.5, "Show portrait covers instead of wide media thumbnails on the home screen.")
-    pgSegmented(773.8, 459, 50, ["Thumbnails"], 0, "artwork")
-    pgHint(528, "Portrait covers are not available on Roku yet; thumbnails are used.", 12)
+    pgSegmentedWide(773.8, 266, 56, ["System", "Light", "Dark"], PairingThemeIndex(m.themePreference), "theme")
+    pgRect(m.pageBody, 773.8, 352, 1042, 1, "line")
+    pgHeading(382, "Home screen artwork")
+    pgHint(426.5, "Show portrait covers instead of wide media thumbnails on the home screen.")
+    ' Portrait covers are not available on Roku yet (the cards are 16:9): the choice stays on Thumbnails and says so.
+    pgSegmentedWide(773.8, 465, 56, ["Thumbnails", "Covers"], 0, "artwork")
+    pgRect(m.pageBody, 773.8, 551, 1042, 1, "line")
+    pgHeading(581, "Artwork size")
+    pgHint(626, "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
+    sizes = ["small", "medium", "large"]
+    active = 1
+    for i = 0 to 2
+        if sizes[i] = m.artworkSizePref then active = i
+    end for
+    pgSegmentedWide(773.8, 665, 56, ["Small", "Medium", "Large"], active, "artSize")
+end sub
+
+' Web segmented control (.segmented-control): equal cells across the panel width, the chosen one filled with the ink colour.
+sub pgSegmentedWide(x as Float, y as Float, h as Float, labels as Object, activeIdx as Integer, action as String)
+    n = labels.Count()
+    gap = 4.0
+    w = (1042 - gap * (n - 1)) / n
+    for i = 0 to n - 1
+        cx = x + i * (w + gap)
+        if i = activeIdx
+            pgRound(m.pageBody, cx, y, w, h, 14, "ink")
+            pgLabel(m.pageBody, cx, y, w, h, labels[i], 13, 700, "bg", { horizAlign: "center", vertAlign: "center" })
+        else
+            pgRound(m.pageBody, cx, y, w, h, 14, "surfaceSoft", 120)
+            pgRound(m.pageBody, cx, y, w, h, 14, "line", -1, true)
+            pgLabel(m.pageBody, cx, y, w, h, labels[i], 13, 700, "inkMuted", { horizAlign: "center", vertAlign: "center" })
+        end if
+        pgFocusable(cx, y, w, h, 14, action, i, true)
+    end for
 end sub
 
 sub panelAvatar()
@@ -231,6 +265,20 @@ sub panelPlayer()
         pgLabel(m.pageBody, x + 440, y, 40, 62, codes[i], 9, 700, "brand", { vertAlign: "center", mono: true })
         pgFocusable(x, y, 491.5, 62, 12, "audio", codes[i], true)
     end for
+    ' Advanced (web Settings > Player > Advanced): per-axis overrides, off by default, read on every negotiation.
+    y0 = 1015.4 + Int((codes.Count() + 1) / 2) * 74 + 36
+    pgHeading(y0, "Advanced")
+    pgHint(y0 + 45, "Override what Playarr decides for this device. Leave both off unless playback is wrong: forcing a format the device cannot show gives a black screen, wrong colours or silence.", 12)
+    pgLabel(m.pageBody, 773.8, y0 + 120, 600, 28, "Force direct video", 19, 700, "ink")
+    pgHint(y0 + 150, "Always send the original picture, even when the device may not support its codec, bit depth or HDR format.", 12)
+    forceV = 0
+    if m.forceDirectVideo = true then forceV = 1
+    pgSegmented(1650, y0 + 125, 50, ["Off", "On"], forceV, "forceVideo")
+    pgLabel(m.pageBody, 773.8, y0 + 210, 600, 28, "Force direct audio", 19, 700, "ink")
+    pgHint(y0 + 240, "Always send the original audio, even when the device may not support its codec or channel count.", 12)
+    forceA = 0
+    if m.forceDirectAudio = true then forceA = 1
+    pgSegmented(1650, y0 + 215, 50, ["Off", "On"], forceA, "forceAudio")
 end sub
 
 sub panelServer()
@@ -317,6 +365,17 @@ sub settingsAction(item as Object)
     if a = "theme"
         options = ["system", "light", "dark"]
         setThemePreference(options[item.data])
+    else if a = "artSize"
+        sizes = ["small", "medium", "large"]
+        m.artworkSizePref = sizes[item.data]
+    else if a = "artwork"
+        ' Thumbnails is the only artwork mode on Roku; Covers keeps it.
+    else if a = "forceVideo"
+        m.forceDirectVideo = item.data = 1
+        SaveForceDirect("video", m.forceDirectVideo)
+    else if a = "forceAudio"
+        m.forceDirectAudio = item.data = 1
+        SaveForceDirect("audio", m.forceDirectAudio)
     else if a = "language"
         openPairingLanguagePicker()
         return
