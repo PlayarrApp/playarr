@@ -250,7 +250,7 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
           hostname: ci-wall-${{ matrix.device }}-${{ github.run_id }}
-          args: --accept-routes=false --accept-dns=false
+          args: --accept-dns=false
           use-cache: "true"
 
       - name: Stream over VNC until the end of the run
