@@ -201,7 +201,11 @@ stream)
     python3 "$TRUSTED/scripts/sim-vnc/sim_vnc.py" --udid "$UDID" --bind "$STREAM_BIND" --port "$PORT" --source simctl --no-keys --fps 5 \
       --metrics-file "$health" > "$WORK/vnc.log" 2>&1 &
   else
-    echo "starting" > "$health"; shot "$frame"
+    echo "starting" > "$health"
+    # macOS: the app may not be running (a rejected capture leaves it closed): launch it, then wait for its first snapshot
+    [[ $KIND == macos ]] && { ACCESS_TOKEN=$(token) launch dark || true; sleep 20; }
+    for _ in $(seq 1 12); do shot "$frame" && break; sleep 5; done
+    [[ -s $frame ]] || { log "no first frame"; exit 1; }
     python3 "$TRUSTED/scripts/sim-vnc/sim_vnc.py" --bind "$STREAM_BIND" --port "$PORT" --frame-file "$frame" --fps 2 --no-keys \
       --metrics-file "$health" > "$WORK/vnc.log" 2>&1 &
   fi
@@ -210,7 +214,7 @@ stream)
   dispatched=0; last_launch=$(date +%s)
   while kill -0 $VNC 2>/dev/null && [[ $(date +%s) -lt $DEADLINE ]]; do
     if [[ $DEVICE == ipad || $DEVICE == macos ]]; then
-      tmp="$WORK/frame.tmp.jpg"; shot "$tmp" && mv "$tmp" "$frame"
+      tmp="$WORK/frame.tmp.jpg"; if shot "$tmp"; then mv "$tmp" "$frame"; fi
     fi
     { echo "time $(date -u +%FT%TZ)"; echo "device $DEVICE"; } > "$health.tmp"; mv "$health.tmp" "$health"
     # Chain: start the successor run early so it is up before this one ends (6 h cap per hosted job).
