@@ -7,6 +7,7 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadRequest
 import io.playarr.shared.data.model.CreateDownloadTicketRequest
 import io.playarr.shared.data.model.DownloadQualityOption
+import io.playarr.shared.data.model.DownloadStatus
 import io.playarr.shared.data.model.WatchState
 import io.playarr.shared.data.remote.PlayarrApi
 import io.playarr.shared.data.remote.PlayarrServerAccessResolver
@@ -25,6 +26,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -170,6 +172,8 @@ class DefaultDownloadRepository @Inject constructor(
             val uri = Uri.parse(downloadTicketFileUrl(serverAccess.serverUrl, ticket.id))
             val request = DownloadRequest.Builder(candidate.mediaFileId, uri)
                 .setCustomCacheKey(candidate.mediaFileId)
+                // The notification names the title without a database read.
+                .setData(candidate.title.toByteArray(StandardCharsets.UTF_8))
                 .build()
 
             dao.upsert(
@@ -191,7 +195,22 @@ class DefaultDownloadRepository @Inject constructor(
                     addedAtEpochMillis = now,
                 ),
             )
-            serviceStarter.addDownload(request)
+            // The sheet must not wait for the server to build the file: wait in the repository's own scope.
+            repositoryScope.launch {
+                // A converted quality is built server-side first and its file answers 409 until the ticket is ready.
+                var status = ticket.status
+                var polls = 0
+                while ((status == DownloadStatus.Queued || status == DownloadStatus.Processing) && polls++ < TICKET_MAX_POLLS) {
+                    delay(TICKET_POLL_MS)
+                    if (dao.get(candidate.mediaFileId) == null) break // cancelled while it was being prepared
+                    status = runCatching { api.getDownloadTicket(ticket.id).status }.getOrDefault(status)
+                }
+                if (status != DownloadStatus.Ready) {
+                    dao.delete(candidate.mediaFileId)
+                    return@launch
+                }
+                serviceStarter.addDownload(request)
+            }
         }
     }
 
@@ -281,6 +300,8 @@ class DefaultDownloadRepository @Inject constructor(
     private companion object {
         /** Any nonzero `Download.stopReason` means "not progressing"; this app only ever sets this one reason (a user-initiated pause). */
         const val STOP_REASON_PAUSED_BY_USER = 1
+        const val TICKET_POLL_MS = 2_000L
+        const val TICKET_MAX_POLLS = 450
     }
 }
 

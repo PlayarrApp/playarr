@@ -2798,7 +2798,7 @@ private fun ExperienceHomeScreen(
                             top = if (isTelevision) 389.9.dp else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
                             bottom = if (isTelevision) 120.dp else 98.dp,
                         ),
-                        verticalArrangement = Arrangement.spacedBy(if (isTelevision) 52.8.dp else 51.2.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (isTelevision) 52.8.dp else 54.7.dp),
                     ) {
                         itemsIndexed(current.value, key = { _, rail -> rail.key }) { railIndex, rail ->
                             ExperienceMediaRail(
@@ -5510,7 +5510,18 @@ private fun ExperienceVideoDetailContent(
     val movieLaunchSettings = moviePlaybackOptions?.let { resolvePlayarrPlaybackLaunchSettings(it, playerDefaults) }
     var playbackSettingsOpen by remember(mediaFileId) { mutableStateOf(false) }
 
+    // Web waits for the resume plan before opening on its target; the plan arrives after first composition here, so follow
+    // it until the viewer picks an episode themselves.
+    var userPicked by rememberSaveable(detail.work.id, initialMediaFileId) { mutableStateOf(false) }
+    LaunchedEffect(nextUp) {
+        if (!userPicked && initialEpisode == null && nextUp != null) {
+            selectedSeasonNumber = nextUp.first
+            selectedEpisodeId = nextUp.second
+        }
+    }
+
     fun selectEpisode(episode: EpisodeDetail, seasonNumber: Int) {
+        userPicked = true
         selectedSeasonNumber = seasonNumber
         selectedEpisodeId = episode.episode.id
     }
@@ -5803,6 +5814,7 @@ private fun PhoneVideoDetailBody(
                             }) else null,
                         ) {
                             items(season.episodes, key = { it.episode.id }) { ep ->
+                                val episodeTitle = ep.episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to ep.episode.episodeNumber)
                                 EpisodeDetailCard(
                                     episode = ep,
                                     seasonNumber = season.season.seasonNumber,
@@ -5817,6 +5829,10 @@ private fun PhoneVideoDetailBody(
                                         onSelectEpisode(ep, season.season.seasonNumber)
                                         ep.mediaFileId?.let { onPlay(it, null, null) }
                                     },
+                                    // Web's episode menu offers Download; a long press downloads this one episode.
+                                    onLongPress = if (canDownload && ep.mediaFileId != null) ({
+                                        onDownload(listOf(DownloadCandidate(ep.mediaFileId!!, work.id, episodeTitle, work.title, posterUrl, "episode")))
+                                    }) else null,
                                 )
                             }
                         }
@@ -6656,9 +6672,10 @@ private fun EpisodeDetailCard(
     onSelect: () -> Unit,
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongPress: (() -> Unit)? = null,
 ) {
     if (!isTelevision) {
-        PhoneEpisodeCard(episode, seasonNumber, work, progress, serverUrl, accessToken, onSelect, onPlay)
+        PhoneEpisodeCard(episode, seasonNumber, work, progress, serverUrl, accessToken, onSelect, onPlay, onLongPress)
         return
     }
     WebEpisodeDetailCard(episode, seasonNumber, work, progress, serverUrl, accessToken, selected, onSelect, onPlay, modifier)
@@ -6782,11 +6799,12 @@ private fun PhoneEpisodeCard(
     accessToken: String?,
     onSelect: () -> Unit,
     onPlay: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
 ) {
     val available = episode.mediaFileId != null
     val code = "S${seasonNumber.toString().padStart(2, '0')} · E${episode.episode.episodeNumber.toString().padStart(2, '0')}"
     val title = episode.episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episode.episodeNumber)
-    Column(Modifier.width(179.4.dp).clickable(enabled = available) { onSelect(); onPlay() }) {
+    Column(Modifier.width(179.4.dp).combinedClickable(enabled = available, onLongClick = onLongPress, onClick = { onSelect(); onPlay() })) {
         PhoneEpisodeArt(
             badge = {
                 Text(

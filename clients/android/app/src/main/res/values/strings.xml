@@ -2,5 +2,13 @@
     <string name="app_name">Playarr</string>
     <string name="download_channel_name">Downloads</string>
     <string name="download_channel_description">Progress for media saved for offline playback</string>
+    <string name="download_notification_completed">Download complete</string>
+    <string name="download_notification_failed">Download failed</string>
+    <string name="download_notification_paused">Paused at %1$d%%</string>
+    <string name="download_notification_progress">%1$d%% (%2$s of %3$s)</string>
+    <string name="download_notification_many">%1$d downloads</string>
+    <string name="download_action_pause">Pause</string>
+    <string name="download_action_resume">Resume</string>
+    <string name="download_action_cancel">Cancel</string>
     <string name="download_notification_title">Downloading for offline playback</string>
 </resources>

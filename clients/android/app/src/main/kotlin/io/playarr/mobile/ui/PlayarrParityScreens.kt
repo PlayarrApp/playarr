@@ -3221,7 +3221,7 @@ internal fun ExperienceParitySettingsScreen(
     }
     PlayarrPageLayout(
         pageId = PlayarrPageId.Settings,
-        header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), onBack = { if (!wideScreen && picked != null) picked = null else onBack() }, subtitle = if (showIndex) null else playarrString(section.label).uppercase(LocalPlayarrLanguage.current.locale), largeTitle = showIndex, backActive = showIndex),
+        header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), onBack = { if (!wideScreen && picked != null) picked = null else onBack() }, subtitle = if (showIndex) null else playarrString(section.label).uppercase(LocalPlayarrLanguage.current.locale), largeTitle = showIndex),
         body = if (!showIndex) PlayarrPageBody.Panel else PlayarrPageBody.Bleed,
     ) {
     if (showIndex) {
@@ -4663,7 +4663,7 @@ private fun PhoneSettingsIndex(onOpen: (SettingsSection) -> Unit) {
     Box(Modifier.fillMaxSize().background(WebSurface)) {
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 60.dp, bottom = 116.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 83.4.dp, bottom = 116.dp),
         ) {
             itemsIndexed(phoneSettingsIndex, key = { _, row -> row.first.name }) { index, (candidate, description) ->
                 val active = index == 0
