@@ -724,3 +724,13 @@ class RokuDeviceBugfixTests(unittest.TestCase):
         self.assertIn("onPlaybackRefusedClosed", MAIN)
         self.assertIn("The server is busy with other playback", MAIN)
 
+    def test_refresh_is_serialised_persisted_first_and_never_loops(self) -> None:
+        storage = (ROOT / "source" / "Storage.brs").read_text(encoding="utf-8")
+        self.assertIn("if m.refreshInFlight = true then return", MAIN)
+        self.assertIn('if action = "refresh" then m.refreshInFlight = false', MAIN)
+        self.assertIn("request.retried <> true", MAIN)
+        self.assertIn('SessionRegistry().Read("refresh_token") = refreshToken', storage)
+        # The new pair is saved before the new access token is published or used.
+        accept = MAIN[MAIN.index("sub acceptTokenResponse"):][:400]
+        self.assertLess(accept.index("SaveTokens("), accept.index("publishArtAuthHeaders()"))
+

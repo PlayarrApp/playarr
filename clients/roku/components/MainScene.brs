@@ -639,9 +639,11 @@ sub onApiResult(event as Object)
     request = m.activeRequest
     m.requestBusy = false
     m.apiTask = invalid
+    if action = "refresh" then m.refreshInFlight = false
 
     if not result.ok
-        if result.status = 401 and action <> "refresh" and request.accessToken <> "" and m.refreshToken <> ""
+        if result.status = 401 and action <> "refresh" and request.accessToken <> "" and m.refreshToken <> "" and request.retried <> true
+            request.retried = true
             m.retryRequest = request
             refreshSession()
             return
@@ -1049,6 +1051,10 @@ sub refreshSession()
         beginPairing()
         return
     end if
+    ' One refresh in flight at a time: a second request with the same refresh token after the first rotated it is a reuse, and the
+    ' server then revokes the whole family and signs the device out.
+    if m.refreshInFlight = true then return
+    m.refreshInFlight = true
     ' Stay off the fullscreen status wall for session restore; profiles shell
     ' appears as soon as the refresh succeeds (loadProfiles is in-shell).
     sendApi("refresh", "POST", "/api/v1/auth/refresh", {

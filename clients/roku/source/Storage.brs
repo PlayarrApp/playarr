@@ -67,12 +67,17 @@ sub SaveServerAddresses(addresses as Object)
     section.Flush()
 end sub
 
+' The rotated pair is written and flushed as one section before the caller uses the new access token, then read back: a channel killed
+' between the server rotating the token and this save would present a retired token on the next start and be signed out.
 sub SaveTokens(accessToken as String, refreshToken as String, deviceId as String)
-    section = SessionRegistry()
-    section.Write("access_token", accessToken)
-    section.Write("refresh_token", refreshToken)
-    section.Write("device_id", deviceId)
-    section.Flush()
+    for attempt = 1 to 3
+        section = SessionRegistry()
+        section.Write("access_token", accessToken)
+        section.Write("refresh_token", refreshToken)
+        section.Write("device_id", deviceId)
+        section.Flush()
+        if SessionRegistry().Read("refresh_token") = refreshToken then exit for
+    end for
 end sub
 
 ' Remembers that the viewer typed their own server address (instead of using
