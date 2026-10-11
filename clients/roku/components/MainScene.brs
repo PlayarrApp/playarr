@@ -4251,6 +4251,11 @@ function moveHomeFocus(delta as Integer) as Boolean
     newRail.row.SetFocus(true)
     if desired = 0 and m.homeLeftProxy <> invalid then m.homeLeftProxy.SetFocus(true)
     scrollHomeToFocusedRail()
+    ' A rail that already sat on the chosen index raises no focus event: show the card's hero and report it here.
+    if desired >= 0 and desired < newRail.works.Count()
+        updateHeroFromWork(newRail.works[desired])
+        parityEmit("focus", parityWorkLabel(newRail.works[desired]))
+    end if
     return true
 end function
 
