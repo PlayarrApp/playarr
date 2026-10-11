@@ -1,7 +1,7 @@
-//! Search tab: type to search the catalogue.
-use super::cards::poster_card;
+//! Search tab: header with the result count, a pill search field, then the matching titles as cards.
+use super::cards::{card, CardOpts};
 use super::images::Images;
-use super::{bg, library, App};
+use super::{bg, header, library, App};
 use crate::api::Client;
 use gtk4::prelude::*;
 use std::cell::Cell;
@@ -9,16 +9,20 @@ use std::rc::Rc;
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 14);
-    page.set_margin_top(20);
     page.set_margin_bottom(110);
+    let head = Rc::new(header::build(&app, "Search", "filters"));
+    page.append(&head.widget);
     let entry = gtk4::SearchEntry::builder()
-        .placeholder_text("Search titles")
+        .placeholder_text("Search")
+        .css_classes(["pa-search"])
         .margin_start(16)
         .margin_end(16)
         .build();
     let status = gtk4::Label::builder()
-        .label("Search movies and series.")
+        .label("Search movies, series and music.")
         .css_classes(["pa-muted"])
+        .margin_start(16)
+        .xalign(0.0)
         .build();
     let flow = library::grid();
     page.append(&entry);
@@ -45,20 +49,22 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         while let Some(child) = flow.first_child() {
             flow.remove(&child);
         }
+        head.set_subtitle("");
         if q.chars().count() < 2 {
-            status.set_label("Search movies and series.");
+            status.set_label("Search movies, series and music.");
             status.set_visible(true);
             return;
         }
         status.set_label("Searching…");
         status.set_visible(true);
-        let (c, seq, flow, status, imgs, app) = (
+        let (c, seq, flow, status, imgs, app, head) = (
             client.clone(),
             seq.clone(),
             flow.clone(),
             status.clone(),
             imgs.clone(),
             app.clone(),
+            head.clone(),
         );
         bg(
             move || c.search(&q),
@@ -71,9 +77,15 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
                     Ok(items) if items.is_empty() => status.set_label("No matches."),
                     Ok(items) => {
                         status.set_visible(false);
-                        for w in &items {
+                        head.set_subtitle(&format!("{} results", library::group_digits(items.len() as i64)));
+                        for (i, w) in items.iter().enumerate() {
                             let a = app.clone();
-                            flow.append(&poster_card(&imgs, w, move |w| a.open_work(w)));
+                            let opts = CardOpts {
+                                meta: Some(w.meta_line().to_uppercase()),
+                                selected: i == 0,
+                                ..Default::default()
+                            };
+                            flow.append(&card(&imgs, w, opts, move |w| a.open_work(w)));
                         }
                     }
                 }

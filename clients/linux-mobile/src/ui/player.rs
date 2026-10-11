@@ -77,25 +77,18 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
     root.set_child(Some(&status));
 
     let back = gtk4::Button::builder()
-        .icon_name("go-previous-symbolic")
         .css_classes(["pa-round"])
-        .halign(gtk4::Align::Start)
+        .halign(gtk4::Align::End)
         .build();
-    let title = gtk4::Label::builder()
-        .label(&req.title)
-        .xalign(0.0)
-        .hexpand(true)
-        .ellipsize(gtk4::pango::EllipsizeMode::End)
-        .valign(gtk4::Align::Center)
-        .build();
+    back.set_child(Some(&crate::icons::image("close", 20, crate::icons::Tone::Ink)));
     let top = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
         .spacing(10)
         .valign(gtk4::Align::Start)
+        .halign(gtk4::Align::End)
         .css_classes(["pa-player-top"])
         .build();
     top.append(&back);
-    top.append(&title);
     root.add_overlay(&top);
     let top_bar = top.clone();
     {
@@ -173,12 +166,18 @@ fn start_pipeline(
         .build();
     root.set_child(Some(&picture));
 
-    // Controls: centre play/pause, bottom scrubber.
+    // Controls as the web's phone player: scrubber, time, then skip back, play/pause and skip forward.
     let toggle = gtk4::Button::builder()
         .icon_name("media-playback-pause-symbolic")
         .css_classes(["pa-round", "big"])
-        .halign(gtk4::Align::Center)
-        .valign(gtk4::Align::Center)
+        .build();
+    let skip_back = gtk4::Button::builder()
+        .icon_name("media-seek-backward-symbolic")
+        .css_classes(["pa-round"])
+        .build();
+    let skip_fwd = gtk4::Button::builder()
+        .icon_name("media-seek-forward-symbolic")
+        .css_classes(["pa-round"])
         .build();
     let scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.001);
     scale.set_hexpand(true);
@@ -190,20 +189,42 @@ fn start_pipeline(
         .label("0:00")
         .css_classes(["pa-player-time"])
         .build();
+    let times = gtk4::Box::builder().spacing(6).halign(gtk4::Align::Center).build();
+    times.append(&pos_label);
+    times.append(
+        &gtk4::Label::builder()
+            .label("/")
+            .css_classes(["pa-player-time"])
+            .build(),
+    );
+    times.append(&dur_label);
+    let buttons = gtk4::Box::builder().spacing(18).halign(gtk4::Align::Center).build();
+    buttons.append(&skip_back);
+    buttons.append(&toggle);
+    buttons.append(&skip_fwd);
     let bottom = gtk4::Box::builder()
-        .orientation(gtk4::Orientation::Horizontal)
+        .orientation(gtk4::Orientation::Vertical)
         .spacing(10)
         .valign(gtk4::Align::End)
         .css_classes(["pa-player-scrim"])
         .build();
-    bottom.append(&pos_label);
     bottom.append(&scale);
-    bottom.append(&dur_label);
-    root.add_overlay(&toggle);
+    bottom.append(&times);
+    bottom.append(&buttons);
     root.add_overlay(&bottom);
+    for (b, delta) in [(&skip_back, -10_000i64), (&skip_fwd, 10_000)] {
+        let player = player.clone();
+        b.connect_clicked(move |_| {
+            let target = (player.position_ms() + delta - player.offset_ms).max(0);
+            let _ = player.pipeline.seek_simple(
+                gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT,
+                gst::ClockTime::from_mseconds(target as u64),
+            );
+        });
+    }
 
     // Tap the picture to show or hide the controls.
-    let controls: Vec<gtk4::Widget> = vec![toggle.clone().upcast(), bottom.clone().upcast(), top.clone().upcast()];
+    let controls: Vec<gtk4::Widget> = vec![bottom.clone().upcast(), top.clone().upcast()];
     let shown_until = Rc::new(Cell::new(Instant::now() + Duration::from_secs(4)));
     let tap = gtk4::GestureClick::new();
     {

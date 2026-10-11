@@ -3,6 +3,7 @@ pub mod actions;
 pub mod calendar;
 pub mod cards;
 pub mod detail;
+pub mod header;
 pub mod home;
 pub mod images;
 pub mod library;
@@ -12,12 +13,14 @@ pub mod profiles;
 pub mod search;
 pub mod settings;
 pub mod shell;
+pub mod simple;
 
 use crate::api::Client;
 use crate::store;
 use gtk4::prelude::*;
 use gtk4::{gio, glib};
 use libadwaita as adw;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -43,6 +46,13 @@ pub struct App {
     pub select_tab: RefCell<Option<TabSelector>>,
     /// Debug hooks registered by pages (search text, calendar view, filters sheet) for the capture scripts.
     pub hooks: Hooks,
+    /// The sheet currently shown, so a capture route can dismiss it.
+    /// Full-window layer above the pages, where side panels (filters, actions) open.
+    pub layer: gtk4::Overlay,
+    pub panel: RefCell<Option<gtk4::Widget>>,
+    pub nav_bar: RefCell<Option<gtk4::Widget>>,
+    /// Watch state per work id (from the progress list) for the unseen dot.
+    pub watch: RefCell<std::collections::HashMap<String, String>>,
 }
 
 impl App {
@@ -85,14 +95,24 @@ impl App {
         let imgs = images::Images::new(client.clone());
         let (me, c2) = (self.clone(), client.clone());
         bg(
-            move || c2.avatar_preset(),
-            move |preset| {
-                let root = adw::NavigationPage::builder()
-                    .title("Playarr")
-                    .child(&shell::build(me.clone(), client, imgs, preset))
-                    .build();
+            move || (c2.avatar_preset(), c2.all_progress().unwrap_or_default()),
+            move |(preset, progress)| {
+                me.watch
+                    .replace(progress.into_iter().map(|p| (p.work_id, p.state)).collect());
+                let (pages, nav_bar) = shell::build(me.clone(), client, imgs, preset);
+                let root = adw::NavigationPage::builder().title("Playarr").child(&pages).build();
                 me.nav.replace(&[root]);
                 me.show("shell", &me.nav);
+                me.layer.add_overlay(&nav_bar);
+                me.nav_bar.replace(Some(nav_bar));
+                // The player is full screen: hide the navigation while it is the visible page.
+                let m2 = me.clone();
+                me.nav.connect_visible_page_notify(move |n| {
+                    let player = n.visible_page().and_then(|p| p.tag()).as_deref() == Some("player");
+                    if let Some(b) = m2.nav_bar.borrow().as_ref() {
+                        b.set_visible(!player);
+                    }
+                });
                 if let Ok(route) = std::env::var("PLAYARR_ROUTE") {
                     me.route(&route);
                 }
@@ -125,11 +145,11 @@ impl App {
     }
 
     pub fn push_profiles(self: &Rc<Self>, client: Client) {
-        self.push_page("Profiles", &profiles::build(self.clone(), client, true));
+        self.push_bare("Profiles", &profiles::build(self.clone(), client, true));
     }
 
     pub fn push_settings(self: &Rc<Self>, client: Client) {
-        self.push_page("Settings", &settings::build(self.clone(), client));
+        self.push_bare("Settings", &settings::build(self.clone(), client));
     }
 
     pub fn open_work(self: &Rc<Self>, work: &crate::model::Work) {
@@ -142,7 +162,7 @@ impl App {
             images::Images::new(client),
             work.id.clone(),
         );
-        self.push_page(&work.title, &page);
+        self.push_bare(&work.title, &page);
     }
 
     pub fn proxy_port(&self) -> Option<u16> {
@@ -156,7 +176,79 @@ impl App {
         if self.proxy.borrow().is_none() {
             self.proxy.replace(crate::proxy::Proxy::start(client.clone()).ok());
         }
-        self.push_bare(&req.title.clone(), &player::build(self.clone(), client, req));
+        let page = adw::NavigationPage::builder()
+            .title(&req.title)
+            .tag("player")
+            .child(&player::build(self.clone(), client, req))
+            .build();
+        self.nav.push(&page);
+    }
+
+    /// Opens a full-window side panel like the web's drawers: small kicker, title, round close button, then `body`.
+    pub fn present_panel(self: &Rc<Self>, kicker: &str, title: &str, body: &impl IsA<gtk4::Widget>) {
+        self.close_panel();
+        let panel = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .css_classes(["pa-panel"])
+            .build();
+        let head = gtk4::Box::builder()
+            .spacing(10)
+            .margin_top(18)
+            .margin_start(16)
+            .margin_end(16)
+            .margin_bottom(14)
+            .build();
+        let block = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .hexpand(true)
+            .spacing(2)
+            .valign(gtk4::Align::Center)
+            .build();
+        block.append(
+            &gtk4::Label::builder()
+                .label(kicker.to_uppercase())
+                .css_classes(["pa-panel-kicker"])
+                .xalign(0.0)
+                .build(),
+        );
+        block.append(
+            &gtk4::Label::builder()
+                .label(title)
+                .css_classes(["pa-panel-title"])
+                .xalign(0.0)
+                .ellipsize(gtk4::pango::EllipsizeMode::End)
+                .build(),
+        );
+        let close = gtk4::Button::builder()
+            .css_classes(["pa-close"])
+            .valign(gtk4::Align::Start)
+            .build();
+        close.set_child(Some(&crate::icons::image("close", 16, crate::icons::Tone::OnAccent)));
+        let me = self.clone();
+        close.connect_clicked(move |_| me.close_panel());
+        head.append(&block);
+        head.append(&close);
+        panel.append(&head);
+        panel.append(
+            &gtk4::ScrolledWindow::builder()
+                .child(body)
+                .vexpand(true)
+                .hscrollbar_policy(gtk4::PolicyType::Never)
+                .build(),
+        );
+        self.layer.add_overlay(&panel);
+        // The navigation stays on top of the panel, as on the web.
+        if let Some(nb) = self.nav_bar.borrow().as_ref() {
+            self.layer.remove_overlay(nb);
+            self.layer.add_overlay(nb);
+        }
+        self.panel.replace(Some(panel.upcast()));
+    }
+
+    pub fn close_panel(&self) {
+        if let Some(p) = self.panel.take() {
+            self.layer.remove_overlay(&p);
+        }
     }
 
     fn hook(&self, name: &str, arg: &str) {
@@ -173,6 +265,7 @@ impl App {
         let Some(client) = self.client.borrow().clone() else {
             return;
         };
+        self.close_panel();
         while self.nav.navigation_stack().n_items() > 1 {
             self.nav.pop();
         }
@@ -269,6 +362,21 @@ impl App {
         });
     }
 
+    /// The web's red dot: a title with no watch progress yet.
+    pub fn is_unseen(&self, w: &crate::model::Work) -> bool {
+        matches!(w.kind.as_str(), "movie" | "series")
+            && self.watch.borrow().get(&w.id).map(|s| s == "unseen").unwrap_or(true)
+    }
+
+    /// Header back control: pop a pushed page, otherwise return to Home.
+    pub fn go_back(self: &Rc<Self>) {
+        if self.nav.navigation_stack().n_items() > 1 {
+            self.nav.pop();
+        } else if let Some(f) = self.select_tab.borrow().clone() {
+            f("home");
+        }
+    }
+
     pub fn sign_out(self: &Rc<Self>) {
         store::clear_session();
         self.show_link();
@@ -277,12 +385,13 @@ impl App {
 
 pub fn build_window(app: &adw::Application) {
     let stack = gtk4::Stack::builder().build();
+    let layer = gtk4::Overlay::builder().child(&stack).build();
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Playarr")
         .default_width(360)
         .default_height(720)
-        .content(&stack)
+        .content(&layer)
         .build();
     let state = Rc::new(App {
         window: window.clone(),
@@ -292,6 +401,10 @@ pub fn build_window(app: &adw::Application) {
         proxy: RefCell::new(None),
         select_tab: RefCell::new(None),
         hooks: RefCell::default(),
+        layer,
+        panel: RefCell::new(None),
+        nav_bar: RefCell::new(None),
+        watch: RefCell::default(),
     });
     state.start();
     window.present();

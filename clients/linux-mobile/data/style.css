@@ -17,21 +17,24 @@ button.pa-plain { background: transparent; border: none; box-shadow: none; paddi
 button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avatar { outline: 3px solid @pa_ink; outline-offset: 3px; }
 
 /* Cards and rails */
-.pa-poster { border-radius: 10px; background: linear-gradient(145deg, @pa_soft, @pa_surface); }
-.pa-poster-initial { font-size: 34px; font-weight: 300; color: @pa_muted; }
+.pa-art { border-radius: 8px; background: @pa_soft; }
+.pa-art-title { font-size: 9.28px; color: @pa_muted; }
+.pa-cap-title { font-size: 8.8px; font-weight: 610; color: @pa_ink; }
+.pa-cap-meta { font-size: 6.88px; color: @pa_muted; }
+.pa-unseen { min-width: 9px; min-height: 9px; border-radius: 999px; background: @pa_brand; border: 1.5px solid #f4f0f1; }
+frame.selected, aspectframe.selected { }
 .pa-card-title { font-size: 14px; font-weight: 600; color: @pa_ink; }
 .pa-card-meta { font-size: 12px; color: @pa_muted; }
 button.pa-card, button.pa-card:hover, button.pa-card:active { background: transparent; border: none; box-shadow: none; padding: 0; min-height: 0; min-width: 0; }
-button.pa-card:focus-visible .pa-poster { outline: 3px solid @pa_ink; outline-offset: 2px; }
-.pa-rail-title { font-size: 22px; font-weight: 400; color: @pa_ink; }
+button.pa-card:focus-visible .pa-rail-title { font-size: 22px; font-weight: 400; color: @pa_ink; }
 .pa-progress { min-height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.25); }
 .pa-progress progress { background: @pa_brand; min-height: 4px; border-radius: 2px; }
 
-/* Floating bottom navigation pill */
-.pa-nav { background: alpha(@pa_surface_strong, 0.94); border-radius: 26px; border: 1px solid @pa_line; padding: 6px 6px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45); }
-.pa-nav button { background: transparent; color: @pa_ink_soft; border: none; box-shadow: none; border-radius: 18px; min-width: 38px; min-height: 44px; padding: 0 4px; }
-.pa-nav button.active { background: @pa_accent; color: @pa_on_accent; }
-.pa-nav button image { -gtk-icon-size: 20px; }
+/* Floating bottom navigation (web: 340 x 58, radius 20, 42 x 46 tiles) */
+.pa-nav { background: alpha(@pa_surface_strong, 0.88); border-radius: 20px; border: 1px solid @pa_line; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35); padding: 6px 5px; }
+.pa-nav viewport { background: transparent; }
+button.pa-navbtn { background: transparent; border: none; box-shadow: none; border-radius: 16px; min-width: 42px; min-height: 46px; padding: 0; }
+button.pa-navbtn.active { background: @pa_ink; }
 .pa-pagehead { font-size: 30px; font-weight: 300; color: @pa_ink; }
 
 /* Detail */
@@ -74,3 +77,76 @@ button.pa-cell.selected { background: @pa_accent; color: @pa_on_accent; }
 .pa-chip-btn { background: transparent; color: @pa_ink_soft; border: 1px solid @pa_line; border-radius: 999px; box-shadow: none; padding: 4px 12px; }
 .pa-chip-btn:checked { background: @pa_accent; color: @pa_on_accent; }
 button.pa-entry, button.pa-entry:hover { background: @pa_surface; padding: 8px 12px; border-radius: 10px; }
+
+/* Web page header (mobile): round back button, 21.6px title, tinted subtitle, square action button */
+.pa-h1 { font-size: 21.6px; font-weight: 580; color: @pa_ink; }
+.pa-subtitle { font-size: 10.56px; font-weight: 820; color: @pa_brand_ink; letter-spacing: 1px; }
+button.pa-hbtn { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; box-shadow: none; padding: 0; min-width: 44px; min-height: 44px; }
+button.pa-hbtn.round { border-radius: 999px; }
+button.pa-hbtn.square { border-radius: 14px; }
+
+/* Home key art and search field */
+.pa-key-art { opacity: 0.38; filter: grayscale(1); }
+.pa-key-wash { background: linear-gradient(to bottom, alpha(@pa_bg, 0.15), @pa_bg); }
+scrolledwindow.pa-transparent, scrolledwindow.pa-transparent viewport { background: transparent; }
+.pa-rail-title { font-size: 16px; font-weight: 610; }
+.pa-search { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; min-height: 44px; padding: 0 14px; box-shadow: none; color: @pa_ink; }
+.pa-search text { color: @pa_ink; }
+
+/* Calendar (web mobile) */
+button.pa-pill, .pa-pill { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; box-shadow: none; min-height: 44px; padding: 0 18px; color: @pa_ink_soft; font-weight: 610; font-size: 12px; }
+button.pa-pill.round { min-width: 44px; padding: 0; }
+button.pa-pill.selected { outline: 3px solid @pa_ink; outline-offset: -1px; }
+.pa-pill-label { font-weight: 610; font-size: 12px; color: @pa_ink_soft; }
+.pa-day-title { font-size: 16px; font-weight: 610; color: @pa_ink; }
+.pa-today-chip { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: @pa_ink_soft; border: 1px solid @pa_ink_soft; border-radius: 999px; padding: 2px 8px; }
+.pa-entry-title { font-size: 14px; font-weight: 610; color: @pa_ink; }
+.pa-entry-sub { font-size: 12.5px; color: @pa_ink_soft; }
+.pa-entry-meta { font-size: 10px; color: @pa_muted; }
+.pa-thumb { border-radius: 4px; background: @pa_soft; }
+.pa-chip-status { font-size: 9.5px; font-weight: 700; border-radius: 999px; padding: 1px 9px; border: 1px solid @pa_line; }
+.pa-chip-status.ok { color: @pa_ink; border-color: #8ac5a5; background: alpha(#8ac5a5, 0.18); }
+.pa-chip-status.soon { color: @pa_ink; border-color: @pa_brand; background: alpha(@pa_brand, 0.22); }
+.pa-chip-status.gone { color: @pa_ink_soft; border-color: @pa_brand_ink; background: alpha(@pa_brand_ink, 0.18); }
+.pa-dot.have { background: #8ac5a5; }
+.pa-dot.missing { background: @pa_brand_ink; }
+
+/* Detail */
+.pa-kicker { font-size: 10.5px; font-weight: 820; letter-spacing: 1.5px; color: @pa_brand_ink; }
+.pa-display { font-size: 31px; font-weight: 400; letter-spacing: -1px; color: @pa_ink; }
+.pa-meta { font-size: 11px; color: @pa_ink_soft; }
+.pa-meta.strong { font-weight: 700; color: @pa_ink; }
+.pa-overview { font-size: 12.5px; color: @pa_ink_soft; }
+button.pa-action { background: alpha(@pa_surface_strong, 0.7); border: none; border-radius: 999px; min-height: 44px; padding: 0 20px; box-shadow: none; }
+button.pa-action.primary { background: @pa_ink; }
+.pa-action-label { font-size: 11px; font-weight: 700; color: @pa_ink; }
+button.pa-action.primary .pa-action-label { color: @pa_bg; }
+.pa-season-title { font-size: 19px; font-weight: 610; color: @pa_ink; }
+.pa-ep-badge { font-size: 15px; font-weight: 500; color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+.pa-ep-code { font-size: 9px; font-weight: 700; color: @pa_ink_soft; }
+.pa-ep-name { font-size: 10px; font-weight: 610; color: @pa_ink; }
+
+/* Side panels (web drawers) */
+.pa-panel { background: @pa_surface; }
+.pa-panel-kicker { font-size: 8.5px; font-weight: 700; letter-spacing: 1.2px; color: @pa_muted; }
+.pa-panel-title { font-size: 21px; font-weight: 580; color: @pa_ink; }
+button.pa-close { background: @pa_ink; border-radius: 999px; min-width: 44px; min-height: 44px; padding: 0; border: none; box-shadow: none; }
+.pa-section-label { font-size: 8.5px; font-weight: 700; letter-spacing: 1.2px; color: @pa_muted; margin-top: 8px; }
+.pa-seg-tile { background: transparent; border: 1px solid @pa_line; border-radius: 12px; min-height: 52px; box-shadow: none; color: @pa_ink_soft; font-weight: 610; font-size: 12px; }
+.pa-seg-tile:checked { background: @pa_ink; color: @pa_bg; border-color: @pa_ink; }
+button.pa-row { background: alpha(@pa_surface_strong, 0.8); border: 1px solid @pa_line; border-radius: 12px; min-height: 52px; box-shadow: none; padding: 0 14px; color: @pa_ink; font-size: 14px; }
+button.pa-row.focus { outline: 2px solid @pa_ink; outline-offset: -1px; }
+
+/* Profiles */
+.pa-mark { background: @pa_brand; border-radius: 999px; min-width: 38px; min-height: 38px; padding: 10px; }
+.pa-add-circle { background: radial-gradient(circle at 35% 30%, alpha(@pa_brand, 0.55), alpha(@pa_brand, 0.95)); border-radius: 999px; }
+.pa-add-circle image { margin: auto; }
+.pa-avatar.current { border-radius: 999px; box-shadow: 0 0 0 3px alpha(@pa_brand_ink, 0.9), 0 0 24px alpha(@pa_brand, 0.5); }
+.pa-tiny { font-size: 8px; letter-spacing: 1px; font-weight: 700; color: @pa_muted; }
+dropdown.pa-dropdown > button { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 8px; min-height: 44px; box-shadow: none; color: @pa_ink; }
+
+/* Preferences list */
+button.pa-pref { background: transparent; border: none; border-radius: 0; box-shadow: none; padding: 18px 16px; border-top: 1px solid @pa_line; }
+button.pa-pref:hover { background: alpha(@pa_surface_strong, 0.5); }
+.pa-pref-title { font-size: 15px; font-weight: 610; color: @pa_ink; }
+.pa-pref-desc { font-size: 11px; color: @pa_muted; }

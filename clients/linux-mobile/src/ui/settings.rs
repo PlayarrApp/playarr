@@ -1,68 +1,203 @@
-//! Settings basics: theme, account, about.
-use super::App;
+//! Preferences: a numbered list of sections like the web, each opening a side panel.
+use super::{bg, header, App};
 use crate::api::Client;
-use crate::{store, theme};
+use crate::icons::{self, Tone};
+use crate::{avatar, store, theme};
 use gtk4::prelude::*;
-use libadwaita as adw;
-use libadwaita::prelude::*;
 use std::rc::Rc;
 
 const THEMES: [(&str, &str); 3] = [("dark", "Dark"), ("light", "Light"), ("system", "Follow system")];
 
-pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
-    let page = adw::PreferencesPage::new();
-
-    let look = adw::PreferencesGroup::builder().title("Appearance").build();
-    let names: Vec<&str> = THEMES.iter().map(|t| t.1).collect();
-    let row = adw::ComboRow::builder()
-        .title("Theme")
-        .model(&gtk4::StringList::new(&names))
-        .build();
-    let current = store::load_settings().theme;
-    row.set_selected(THEMES.iter().position(|t| t.0 == current).unwrap_or(0) as u32);
-    row.connect_selected_notify(|r| {
-        let theme_name = THEMES[r.selected() as usize].0;
-        store::save_settings(&store::Settings {
-            theme: theme_name.into(),
-        });
-        theme::apply(theme_name);
-    });
-    look.add(&row);
-    page.add(&look);
-
-    let account = adw::PreferencesGroup::builder().title("Account").build();
-    account.add(
-        &adw::ActionRow::builder()
-            .title("Server")
-            .subtitle(client.base())
-            .subtitle_selectable(true)
+fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
+    let row = gtk4::Box::builder().spacing(14).build();
+    row.append(
+        &gtk4::Label::builder()
+            .label(format!("{n:02}"))
+            .css_classes(["pa-tiny"])
+            .valign(gtk4::Align::Start)
+            .margin_top(6)
             .build(),
     );
-    let out = adw::ActionRow::builder().title("Sign out").activatable(true).build();
-    out.add_prefix(&gtk4::Image::from_icon_name("system-log-out-symbolic"));
+    let col = gtk4::Box::builder()
+        .orientation(gtk4::Orientation::Vertical)
+        .spacing(3)
+        .hexpand(true)
+        .build();
+    col.append(
+        &gtk4::Label::builder()
+            .label(title)
+            .css_classes(["pa-pref-title"])
+            .xalign(0.0)
+            .build(),
+    );
+    col.append(
+        &gtk4::Label::builder()
+            .label(desc)
+            .css_classes(["pa-pref-desc"])
+            .xalign(0.0)
+            .wrap(true)
+            .build(),
+    );
+    row.append(&col);
+    row.append(
+        &gtk4::Label::builder()
+            .label("→")
+            .css_classes(["pa-muted"])
+            .valign(gtk4::Align::Center)
+            .build(),
+    );
+    gtk4::Button::builder().child(&row).css_classes(["pa-pref"]).build()
+}
+
+pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
+    let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    page.set_margin_bottom(110);
+    let head = header::build(&app, "Preferences", "filters");
+    head.action.set_visible(false);
+    page.append(&head.widget);
+    let list = gtk4::Box::builder()
+        .orientation(gtk4::Orientation::Vertical)
+        .margin_top(14)
+        .build();
+    page.append(&list);
+
+    let appearance = section_row(1, "Appearance", "Choose this device's theme and home screen layout");
     {
         let app = app.clone();
-        out.connect_activated(move |_| {
-            app.nav.pop_to_page(
-                &app.nav
-                    .navigation_stack()
-                    .item(0)
-                    .and_downcast::<adw::NavigationPage>()
-                    .unwrap(),
+        appearance.connect_clicked(move |_| {
+            let col = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+            col.set_margin_start(16);
+            col.set_margin_end(16);
+            col.append(
+                &gtk4::Label::builder()
+                    .label("THEME")
+                    .css_classes(["pa-section-label"])
+                    .xalign(0.0)
+                    .build(),
             );
-            app.sign_out();
+            let row = gtk4::Box::builder().spacing(10).homogeneous(true).build();
+            let current = store::load_settings().theme;
+            let mut group: Option<gtk4::ToggleButton> = None;
+            for (id, label) in THEMES {
+                let b = gtk4::ToggleButton::builder()
+                    .label(label)
+                    .css_classes(["pa-seg-tile"])
+                    .active(id == current)
+                    .build();
+                if let Some(g) = &group {
+                    b.set_group(Some(g));
+                } else {
+                    group = Some(b.clone());
+                }
+                b.connect_toggled(move |b| {
+                    if b.is_active() {
+                        store::save_settings(&store::Settings { theme: id.into() });
+                        theme::apply(id);
+                    }
+                });
+                row.append(&b);
+            }
+            col.append(&row);
+            app.present_panel("Preferences", "Appearance", &col);
         });
     }
-    account.add(&out);
-    page.add(&account);
+    list.append(&appearance);
 
-    let about = adw::PreferencesGroup::builder().title("About").build();
-    about.add(
-        &adw::ActionRow::builder()
-            .title("Playarr for Linux phones")
-            .subtitle(env!("CARGO_PKG_VERSION"))
-            .build(),
+    let avatar_row = section_row(2, "Profile avatar", "Choose how your profile appears on this device");
+    {
+        let (app, client) = (app.clone(), client.clone());
+        avatar_row.connect_clicked(move |_| {
+            let grid = gtk4::FlowBox::builder()
+                .selection_mode(gtk4::SelectionMode::None)
+                .max_children_per_line(3)
+                .min_children_per_line(3)
+                .row_spacing(12)
+                .column_spacing(12)
+                .margin_start(16)
+                .margin_end(16)
+                .build();
+            for id in avatar::PRESETS {
+                let b = gtk4::Button::builder()
+                    .css_classes(["pa-plain"])
+                    .child(&super::profiles::avatar_widget(id, 88))
+                    .build();
+                let (client, app) = (client.clone(), app.clone());
+                b.connect_clicked(move |_| {
+                    let c = client.clone();
+                    app.close_panel();
+                    bg(move || c.set_avatar_preset(id), |_| {});
+                });
+                grid.append(&b);
+            }
+            app.present_panel("Preferences", "Profile avatar", &grid);
+        });
+    }
+    list.append(&avatar_row);
+
+    list.append(&section_row(
+        3,
+        "Language",
+        "Follow this device or keep a language fixed",
+    ));
+    list.append(&section_row(
+        4,
+        "Player",
+        "Choose how Playarr should start quality, subtitles and audio",
+    ));
+
+    let server = section_row(
+        5,
+        "Server connection",
+        "Combine libraries from multiple servers in one view",
     );
-    page.add(&about);
-    page.upcast()
+    {
+        let (app, client) = (app.clone(), client.clone());
+        server.connect_clicked(move |_| {
+            let col = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+            col.set_margin_start(16);
+            col.set_margin_end(16);
+            col.append(
+                &gtk4::Label::builder()
+                    .label("SERVER")
+                    .css_classes(["pa-section-label"])
+                    .xalign(0.0)
+                    .build(),
+            );
+            col.append(
+                &gtk4::Label::builder()
+                    .label(client.base())
+                    .css_classes(["pa-body"])
+                    .selectable(true)
+                    .wrap(true)
+                    .xalign(0.0)
+                    .build(),
+            );
+            let out = gtk4::Button::builder()
+                .label("Sign out")
+                .css_classes(["pa-secondary"])
+                .halign(gtk4::Align::Start)
+                .margin_top(12)
+                .build();
+            let app2 = app.clone();
+            out.connect_clicked(move |_| {
+                app2.close_panel();
+                app2.sign_out();
+            });
+            col.append(&out);
+            app.present_panel("Preferences", "Server connection", &col);
+        });
+    }
+    list.append(&server);
+    list.append(&section_row(
+        6,
+        "About",
+        &format!("Playarr for Linux phones {}", env!("CARGO_PKG_VERSION")),
+    ));
+    let _ = (icons::markup("home"), Tone::Soft);
+    gtk4::ScrolledWindow::builder()
+        .child(&page)
+        .hscrollbar_policy(gtk4::PolicyType::Never)
+        .css_classes(["pa-page"])
+        .build()
+        .upcast()
 }

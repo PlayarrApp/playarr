@@ -65,6 +65,7 @@ pub struct CatalogQuery {
     pub sort: String,
     pub genre: Option<String>,
     pub available_only: bool,
+    pub descending: bool,
 }
 
 impl CatalogQuery {
@@ -74,8 +75,12 @@ impl CatalogQuery {
             self.kind,
             if self.sort.is_empty() { "title" } else { &self.sort }
         );
-        if self.sort == "date_added" {
-            q.push_str("&order=desc");
+        if self.sort == "date_added" && !self.descending || self.sort != "date_added" && self.descending {
+            // Date added defaults to newest first, titles to A-Z; the Order tiles flip either default.
+        }
+        let newest_first = self.sort == "date_added";
+        if newest_first != self.descending {
+            q.push_str(if self.descending { "&order=desc" } else { "&order=asc" });
         }
         if let Some(g) = &self.genre {
             q.push_str(&format!("&genre={}", urlenc(g)));
@@ -240,6 +245,16 @@ impl Client {
             .get::<CalendarResponse>(&format!("/api/v1/calendar?start={start}&end={end}"))?
             .entries)
     }
+    pub fn add_to_watchlist(&self, w: &Work) -> Result<()> {
+        let body = serde_json::json!({ "kind": w.kind, "title": w.title, "work_id": w.id, "year": w.year().and_then(|y| y.parse::<i32>().ok()) });
+        self.send("POST", "/api/v1/watchlist", Some(&body), None)?;
+        Ok(())
+    }
+    pub fn set_avatar_preset(&self, id: &str) -> Result<()> {
+        let body = serde_json::json!({ "preference": { "kind": "preset", "value": id } });
+        self.send("PUT", "/api/v1/users/me/profile-avatar", Some(&body), None)?;
+        Ok(())
+    }
     pub fn playlists(&self) -> Result<Vec<Playlist>> {
         self.get("/api/v1/playlists")
     }
@@ -333,10 +348,11 @@ mod tests {
             sort: "date_added".into(),
             genre: Some("Sci Fi".into()),
             available_only: true,
+            descending: false,
         };
         assert_eq!(
             q.query_string(),
-            "kind=movie&sort=date_added&order=desc&genre=Sci%20Fi&available_only=true"
+            "kind=movie&sort=date_added&order=asc&genre=Sci%20Fi&available_only=true"
         );
         assert_eq!(
             CatalogQuery {

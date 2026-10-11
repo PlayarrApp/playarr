@@ -1,62 +1,38 @@
-//! Title actions sheet (long-press a card): play, open details, add to a playlist.
+//! Title actions panel (long-press a card): play, download (not yet), add to playlist, mark watched or unwatched.
 use super::{bg, App};
+use crate::icons::{self, Tone};
 use crate::model::Work;
 use gtk4::prelude::*;
-use libadwaita as adw;
-use libadwaita::prelude::*;
 use std::rc::Rc;
 
-fn row(icon: &str, label: &str) -> gtk4::Button {
-    let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 14);
-    content.append(&gtk4::Image::from_icon_name(icon));
+fn row(icon: &str, label: &str, tone: Tone) -> gtk4::Button {
+    let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 16);
+    content.append(&icons::image(icon, 16, tone));
     content.append(&gtk4::Label::builder().label(label).xalign(0.0).hexpand(true).build());
-    gtk4::Button::builder()
-        .child(&content)
-        .css_classes(["pa-sheet-row"])
-        .build()
+    gtk4::Button::builder().child(&content).css_classes(["pa-row"]).build()
 }
 
 pub fn show(app: &Rc<App>, work: &Work) {
     let Some(client) = app.client.borrow().clone() else {
         return;
     };
-    let dialog = adw::Dialog::builder()
-        .title(&work.title)
-        .presentation_mode(adw::DialogPresentationMode::BottomSheet)
-        .build();
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
     col.set_margin_start(16);
     col.set_margin_end(16);
-    col.set_margin_top(8);
-    col.set_margin_bottom(20);
-    col.append(
-        &gtk4::Label::builder()
-            .label(&work.title)
-            .css_classes(["pa-h2"])
-            .xalign(0.0)
-            .wrap(true)
-            .build(),
-    );
-    col.append(
-        &gtk4::Label::builder()
-            .label(work.meta_line())
-            .css_classes(["pa-muted"])
-            .xalign(0.0)
-            .build(),
-    );
+    col.set_margin_bottom(24);
 
-    let play = row("media-playback-start-symbolic", "Play");
+    let play = row("play", "Play", Tone::Brand);
+    play.add_css_class("focus");
     {
-        let (app, dialog, id, title, kind, client) = (
+        let (app, id, title, kind, client) = (
             app.clone(),
-            dialog.clone(),
             work.id.clone(),
             work.title.clone(),
             work.kind.clone(),
             client.clone(),
         );
         play.connect_clicked(move |_| {
-            dialog.close();
+            app.close_panel();
             let (app, client, id, title) = (app.clone(), client.clone(), id.clone(), title.clone());
             let is_series = kind == "series";
             bg(
@@ -84,17 +60,13 @@ pub fn show(app: &Rc<App>, work: &Work) {
     }
     col.append(&play);
 
-    let details = row("view-more-symbolic", "Open details");
-    {
-        let (app, dialog, work) = (app.clone(), dialog.clone(), work.clone());
-        details.connect_clicked(move |_| {
-            dialog.close();
-            app.open_work(&work);
-        });
-    }
-    col.append(&details);
+    // Offline downloads need a storage and licence story first; say so rather than pretend.
+    let dl = row("downloads", "Download", Tone::Brand);
+    dl.set_sensitive(false);
+    dl.set_tooltip_text(Some("Offline downloads are not available in this app yet."));
+    col.append(&dl);
 
-    let add = row("list-add-symbolic", "Add to playlist");
+    let add = row("add", "Add to Playlist", Tone::Brand);
     let lists = gtk4::Box::new(gtk4::Orientation::Vertical, 6);
     lists.set_visible(false);
     {
@@ -147,11 +119,29 @@ pub fn show(app: &Rc<App>, work: &Work) {
     col.append(&add);
     col.append(&lists);
 
-    // Offline downloads need a storage and licence story first; say so rather than pretend.
-    let dl = row("folder-download-symbolic", "Download (not yet available)");
-    dl.set_sensitive(false);
-    col.append(&dl);
-
-    dialog.set_child(Some(&col));
-    dialog.present(Some(&app.window));
+    if work.kind == "movie" {
+        for (label, icon, watched) in [
+            ("Mark as Watched", "check", true),
+            ("Mark as Unwatched", "close", false),
+        ] {
+            let b = row(icon, label, Tone::Brand);
+            let (app, client, id) = (app.clone(), client.clone(), work.id.clone());
+            b.connect_clicked(move |_| {
+                app.close_panel();
+                let (c, id) = (client.clone(), id.clone());
+                bg(
+                    move || {
+                        let d = c.work(&id).ok()?;
+                        let file = d.media_file_id?;
+                        let dur = d.runtime_ms.unwrap_or(0).max(1);
+                        c.report_progress(&file, if watched { dur } else { 0 }, dur, watched)
+                            .ok()
+                    },
+                    |_| {},
+                );
+            });
+            col.append(&b);
+        }
+    }
+    app.present_panel("Title actions", &work.title, &col);
 }

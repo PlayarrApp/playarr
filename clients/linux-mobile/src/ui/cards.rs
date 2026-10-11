@@ -1,9 +1,8 @@
-//! Poster and wide cards shared by Home rails, library grids and search.
+//! The one title card: 16:9 art with a caption, as the web's mobile layout draws it (328 wide on a 360 phone).
 use super::images::Images;
 use crate::api::Client;
 use crate::model::Work;
 use gtk4::prelude::*;
-use libadwaita as adw;
 
 type ActionsHandler = Box<dyn Fn(&Work)>;
 
@@ -16,83 +15,127 @@ pub fn set_actions_handler(f: impl Fn(&Work) + 'static) {
     ACTIONS.with(|a| *a.borrow_mut() = Some(Box::new(f)));
 }
 
-pub const POSTER_W: i32 = 94;
-pub const POSTER_H: i32 = 141;
-pub const WIDE_W: i32 = 280;
-pub const WIDE_H: i32 = 158;
+/// Art ratio of the web card (328 x 185).
+pub const ART_H: i32 = 185;
+pub const RAIL_W: i32 = 328;
 
-fn art(imgs: &Images, work: &Work, kinds: &[&str], width: u32, w: i32, h: i32) -> (gtk4::Widget, gtk4::Overlay) {
+pub struct CardOpts<'a> {
+    /// Fixed card width (rails); `None` fills the parent (grids).
+    pub width: Option<i32>,
+    /// Second caption line, for example `Movie · 2008`.
+    pub meta: Option<String>,
+    /// Watch progress bar over the bottom edge of the art.
+    pub progress: Option<f64>,
+    /// Pink focus ring, as the web draws the first card of a page.
+    pub selected: bool,
+    /// Red "unseen" dot at the art's top-right corner.
+    pub unseen: bool,
+    pub kinds: &'a [&'a str],
+}
+
+impl Default for CardOpts<'_> {
+    fn default() -> Self {
+        CardOpts {
+            width: None,
+            meta: None,
+            progress: None,
+            selected: false,
+            unseen: false,
+            kinds: &["backdrop", "thumb", "poster"],
+        }
+    }
+}
+
+pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + 'static) -> gtk4::Button {
     let pic = gtk4::Picture::builder()
         .content_fit(gtk4::ContentFit::Cover)
         .can_shrink(true)
         .build();
-    pic.set_size_request(w, h);
-    let frame = gtk4::Overlay::builder()
+    let overlay = gtk4::Overlay::builder()
         .child(&pic)
         .overflow(gtk4::Overflow::Hidden)
-        .css_classes(["pa-poster"])
+        .css_classes(["pa-art"])
         .build();
-    frame.set_size_request(w, h);
-    match kinds.iter().find(|k| work.has_image(k)) {
-        Some(kind) => imgs.load(Client::artwork_path(&work.id, kind, width), &pic),
-        None => {
-            let initial = work
-                .title
-                .chars()
-                .next()
-                .map(|c| c.to_uppercase().to_string())
-                .unwrap_or_default();
-            frame.add_overlay(
-                &gtk4::Label::builder()
-                    .label(&initial)
-                    .css_classes(["pa-poster-initial"])
-                    .build(),
-            );
-        }
+    match o.kinds.iter().find(|k| work.has_image(k)) {
+        Some(kind) => imgs.load(Client::artwork_path(&work.id, kind, 780), &pic),
+        None => overlay.add_overlay(
+            &gtk4::Label::builder()
+                .label(&work.title)
+                .css_classes(["pa-art-title"])
+                .wrap(true)
+                .justify(gtk4::Justification::Center)
+                .margin_start(12)
+                .margin_end(12)
+                .build(),
+        ),
     }
-    // A picture reports its image size as natural size; clamp it so every card is exactly w by h.
-    let wide = adw::Clamp::builder()
-        .orientation(gtk4::Orientation::Horizontal)
-        .maximum_size(w)
-        .tightening_threshold(w)
-        .child(&frame)
-        .build();
-    let both = adw::Clamp::builder()
+    if let Some(p) = o.progress {
+        overlay.add_overlay(
+            &gtk4::ProgressBar::builder()
+                .fraction(p.clamp(0.0, 1.0))
+                .valign(gtk4::Align::End)
+                .css_classes(["pa-progress"])
+                .build(),
+        );
+    }
+    if o.unseen {
+        overlay.add_overlay(
+            &gtk4::Box::builder()
+                .css_classes(["pa-unseen"])
+                .halign(gtk4::Align::End)
+                .valign(gtk4::Align::Start)
+                .margin_top(7)
+                .margin_end(7)
+                .build(),
+        );
+    }
+    // A fixed art height (the web's 16:9 at card width); AspectFrame reported no height inside a button.
+    overlay.set_size_request(-1, ART_H);
+    let frame = overlay.clone();
+    if o.selected {
+        frame.add_css_class("selected");
+    }
+    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    col.append(&frame);
+    let caption = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .maximum_size(h)
-        .tightening_threshold(h)
-        .child(&wide)
+        .spacing(3)
+        .margin_top(11)
+        .margin_bottom(12)
         .build();
-    (both.upcast(), frame)
-}
-
-fn labels(col: &gtk4::Box, work: &Work, width: i32, extra_meta: Option<&str>) {
-    let title = gtk4::Label::builder()
-        .label(&work.title)
-        .css_classes(["pa-card-title"])
-        .xalign(0.0)
-        .ellipsize(gtk4::pango::EllipsizeMode::End)
-        .max_width_chars(1)
-        .width_request(width)
-        .build();
-    let meta = extra_meta.map(str::to_string).unwrap_or_else(|| work.meta_line());
-    let meta = gtk4::Label::builder()
-        .label(&meta)
-        .css_classes(["pa-card-meta"])
-        .xalign(0.0)
-        .ellipsize(gtk4::pango::EllipsizeMode::End)
-        .max_width_chars(1)
-        .width_request(width)
-        .build();
-    col.append(&title);
-    col.append(&meta);
-}
-
-fn wrap(col: &gtk4::Box, work: &Work, on_open: impl Fn(&Work) + 'static) -> gtk4::Button {
+    caption.append(
+        &gtk4::Label::builder()
+            .label(&work.title)
+            .css_classes(["pa-cap-title"])
+            .xalign(0.0)
+            .ellipsize(gtk4::pango::EllipsizeMode::End)
+            .max_width_chars(1)
+            .hexpand(true)
+            .build(),
+    );
+    if let Some(m) = &o.meta {
+        caption.append(
+            &gtk4::Label::builder()
+                .label(m)
+                .css_classes(["pa-cap-meta"])
+                .xalign(0.0)
+                .ellipsize(gtk4::pango::EllipsizeMode::End)
+                .max_width_chars(1)
+                .build(),
+        );
+    }
+    col.append(&caption);
+    if let Some(w) = o.width {
+        col.set_size_request(w, -1);
+    }
     let b = gtk4::Button::builder()
-        .child(col)
+        .child(&col)
         .css_classes(["pa-card"])
-        .halign(gtk4::Align::Start)
+        .halign(if o.width.is_some() {
+            gtk4::Align::Start
+        } else {
+            gtk4::Align::Fill
+        })
         .valign(gtk4::Align::Start)
         .build();
     let w = work.clone();
@@ -110,34 +153,4 @@ fn wrap(col: &gtk4::Box, work: &Work, on_open: impl Fn(&Work) + 'static) -> gtk4
     });
     b.add_controller(press);
     b
-}
-
-pub fn poster_card(imgs: &Images, work: &Work, on_open: impl Fn(&Work) + 'static) -> gtk4::Button {
-    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
-    col.append(&art(imgs, work, &["poster", "thumb", "backdrop"], 360, POSTER_W, POSTER_H).0);
-    labels(&col, work, POSTER_W, None);
-    wrap(&col, work, on_open)
-}
-
-/// Landscape card (On deck): backdrop art with an optional progress bar over the bottom edge.
-pub fn wide_card(
-    imgs: &Images,
-    work: &Work,
-    meta: &str,
-    progress: Option<f64>,
-    on_open: impl Fn(&Work) + 'static,
-) -> gtk4::Button {
-    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
-    let (widget, frame) = art(imgs, work, &["backdrop", "thumb", "poster"], 780, WIDE_W, WIDE_H);
-    if let Some(p) = progress {
-        let bar = gtk4::ProgressBar::builder()
-            .fraction(p.clamp(0.0, 1.0))
-            .valign(gtk4::Align::End)
-            .css_classes(["pa-progress"])
-            .build();
-        frame.add_overlay(&bar);
-    }
-    col.append(&widget);
-    labels(&col, work, WIDE_W, Some(meta));
-    wrap(&col, work, on_open)
 }

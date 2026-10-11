@@ -100,6 +100,10 @@ pub struct Episode {
     pub overview: Option<String>,
     #[serde(default)]
     pub runtime_minutes: Option<i32>,
+    #[serde(default)]
+    pub air_date: Option<String>,
+    #[serde(default)]
+    pub images: Vec<Image>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -183,6 +187,10 @@ pub struct CalendarEntry {
     pub season_number: Option<i64>,
     #[serde(default)]
     pub episode_number: Option<i64>,
+    #[serde(default)]
+    pub release_at: Option<String>,
+    #[serde(default)]
+    pub release_type: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

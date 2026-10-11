@@ -1,6 +1,8 @@
 //! Release calendar: agenda, week and month views over `GET /api/v1/calendar`.
-use super::{bg, App};
+use super::images::Images;
+use super::{bg, header, App};
 use crate::api::Client;
+use crate::icons::{self, Tone};
 use crate::model::CalendarEntry;
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
@@ -117,30 +119,92 @@ enum View {
 struct Cal {
     app: Rc<App>,
     client: Client,
+    imgs: Images,
     view: Cell<View>,
     /// Agenda: today. Week: its Monday. Month: the 1st.
     anchor: Cell<Date>,
     selected: Cell<Option<Date>>,
-    nav_label: gtk4::Label,
-    nav_row: gtk4::Box,
+    range_label: gtk4::Label,
     body: gtk4::Box,
     generation: Cell<u32>,
     entries: RefCell<Vec<CalendarEntry>>,
 }
 
-fn entry_widget(app: &Rc<App>, e: &CalendarEntry) -> gtk4::Button {
-    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 2);
+/// "15:00" in local time for an ISO timestamp, or "All day".
+fn time_label(release_at: Option<&str>) -> String {
+    release_at
+        .and_then(|t| gtk4::glib::DateTime::from_iso8601(t, None).ok())
+        .and_then(|d| d.to_local().ok())
+        .and_then(|d| d.format("%H:%M").ok())
+        .map(|s| s.to_string())
+        .filter(|s| s != "00:00")
+        .unwrap_or_else(|| "All day".into())
+}
+
+fn kind_label(kind: &str) -> &'static str {
+    match kind {
+        "episode" => "Episodes",
+        "movie" => "Movies",
+        "album" => "Albums",
+        "book" => "Books",
+        _ => "Titles",
+    }
+}
+
+fn release_label(kind: &str) -> &'static str {
+    match kind {
+        "air" => "Airs",
+        "cinema" => "In cinemas",
+        "digital" => "Digital",
+        "physical" => "Physical",
+        _ => "Releases",
+    }
+}
+
+/// Availability chip: have it, upcoming, or missing (aired without a file).
+fn status_chip(e: &CalendarEntry, today_date: Date) -> (&'static str, &'static str) {
+    if e.has_file {
+        ("Available", "ok")
+    } else if parse(&e.date).map(|d| d > today_date).unwrap_or(false) {
+        ("Upcoming", "soon")
+    } else {
+        ("Missing", "gone")
+    }
+}
+
+fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry) -> gtk4::Button {
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
+    let thumb = gtk4::Picture::builder()
+        .content_fit(gtk4::ContentFit::Cover)
+        .can_shrink(true)
+        .build();
+    let frame = gtk4::Overlay::builder()
+        .child(&thumb)
+        .overflow(gtk4::Overflow::Hidden)
+        .css_classes(["pa-thumb"])
+        .valign(gtk4::Align::Center)
+        .build();
+    frame.set_size_request(40, 60);
+    if let Some(id) = &e.work_id {
+        imgs.load(Client::artwork_path(id, "poster", 160), &thumb);
+    }
+    row.append(&frame);
+    let col = gtk4::Box::builder()
+        .orientation(gtk4::Orientation::Vertical)
+        .spacing(3)
+        .hexpand(true)
+        .build();
     col.append(
         &gtk4::Label::builder()
             .label(&e.title)
-            .css_classes(["pa-card-title"])
+            .css_classes(["pa-entry-title"])
             .xalign(0.0)
             .wrap(true)
             .build(),
     );
     let mut sub = Vec::new();
     if let (Some(s), Some(n)) = (e.season_number, e.episode_number) {
-        sub.push(format!("S{s}E{n}"));
+        sub.push(format!("S{s:02}E{n:02}"));
     }
     if let Some(t) = e.subtitle.as_deref().filter(|t| !t.is_empty()) {
         sub.push(t.to_string());
@@ -149,37 +213,58 @@ fn entry_widget(app: &Rc<App>, e: &CalendarEntry) -> gtk4::Button {
         col.append(
             &gtk4::Label::builder()
                 .label(sub.join(" · "))
-                .css_classes(["pa-card-meta"])
+                .css_classes(["pa-entry-sub"])
                 .xalign(0.0)
                 .wrap(true)
                 .build(),
         );
     }
+    let meta = gtk4::Box::builder().spacing(8).build();
+    for t in [
+        time_label(e.release_at.as_deref()),
+        release_label(&e.release_type).to_string(),
+        kind_label(&e.media_kind).to_string(),
+    ] {
+        meta.append(&gtk4::Label::builder().label(t).css_classes(["pa-entry-meta"]).build());
+    }
+    let (text, class) = status_chip(e, today());
+    meta.append(
+        &gtk4::Label::builder()
+            .label(text)
+            .css_classes(["pa-chip-status", class])
+            .build(),
+    );
+    col.append(&meta);
+    row.append(&col);
     // The left border shows availability (we have it) versus not, never which library it belongs to.
-    let class = if e.has_file { "have" } else { "missing" };
+    let have = if e.has_file { "have" } else { "missing" };
     let b = gtk4::Button::builder()
-        .child(&col)
-        .css_classes(["pa-card", "pa-entry", class])
+        .child(&row)
+        .css_classes(["pa-card", "pa-entry", have])
         .hexpand(true)
         .halign(gtk4::Align::Fill)
         .build();
     if let Some(id) = e.work_id.clone() {
-        let app = app.clone();
-        let title = e.title.clone();
+        let (app, imgs, title) = (app.clone(), imgs.clone(), e.title.clone());
         b.connect_clicked(move |_| {
             if let Some(client) = app.client.borrow().clone() {
-                let page = super::detail::build(
-                    app.clone(),
-                    client.clone(),
-                    super::images::Images::new(client),
-                    id.clone(),
-                );
-                app.push_page(&title, &page);
+                let page = super::detail::build(app.clone(), client, imgs.clone(), id.clone());
+                app.push_bare(&title, &page);
             }
         });
     } else {
         b.set_sensitive(false);
     }
+    b
+}
+
+fn pill(label: &str) -> gtk4::Button {
+    gtk4::Button::builder().label(label).css_classes(["pa-pill"]).build()
+}
+
+fn round_icon(name: &str) -> gtk4::Button {
+    let b = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
+    b.set_child(Some(&icons::image(name, 18, Tone::Soft)));
     b
 }
 
@@ -203,10 +288,11 @@ impl Cal {
         self.generation.set(self.generation.get() + 1);
         let gen = self.generation.get();
         let (from, to) = self.range();
-        self.nav_row.set_visible(self.view.get() != View::Agenda);
-        self.nav_label.set_label(&match self.view.get() {
-            View::Month => format!("{} {}", MONTHS[from.m as usize - 1], from.y),
-            _ => format!("{} – {}", day_label(from), day_label(to)),
+        let short = |d: Date| format!("{} {}", d.d, &MONTHS[d.m as usize - 1][..3]);
+        self.range_label.set_label(&match self.view.get() {
+            View::Month => format!("{} {}", &MONTHS[from.m as usize - 1][..3], from.y),
+            View::Week if from.m == to.m => format!("{} – {}", from.d, short(to)),
+            _ => format!("{} – {}", short(from), short(to)),
         });
         while let Some(c) = self.body.first_child() {
             self.body.remove(&c);
@@ -256,18 +342,40 @@ impl Cal {
     }
 
     fn day_section(&self, dt: Date, entries: &[CalendarEntry], empty_text: Option<&str>) {
-        let head = gtk4::Label::builder()
-            .label(day_label(dt).to_uppercase())
-            .css_classes(["pa-day"])
-            .xalign(0.0)
-            .margin_top(10)
-            .build();
+        let head = gtk4::Box::builder().spacing(10).margin_top(14).build();
+        let name = format!(
+            "{} {} {}",
+            [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ][weekday(dt) as usize],
+            dt.d,
+            MONTHS[dt.m as usize - 1]
+        );
+        head.append(
+            &gtk4::Label::builder()
+                .label(name)
+                .css_classes(["pa-day-title"])
+                .xalign(0.0)
+                .build(),
+        );
         if dt == today() {
-            head.add_css_class("pa-today");
+            head.append(
+                &gtk4::Label::builder()
+                    .label("TODAY")
+                    .css_classes(["pa-today-chip"])
+                    .valign(gtk4::Align::Center)
+                    .build(),
+            );
         }
         self.body.append(&head);
         for e in entries {
-            self.body.append(&entry_widget(&self.app, e));
+            self.body.append(&entry_widget(&self.app, &self.imgs, e));
         }
         if entries.is_empty() {
             if let Some(t) = empty_text {
@@ -315,11 +423,14 @@ impl Cal {
         let grid = gtk4::Grid::builder()
             .column_homogeneous(true)
             .row_spacing(2)
-            .halign(gtk4::Align::Center)
+            .hexpand(true)
             .build();
         for (i, n) in DAYS.iter().enumerate() {
             grid.attach(
-                &gtk4::Label::builder().label(*n).css_classes(["pa-muted"]).build(),
+                &gtk4::Label::builder()
+                    .label(n.to_uppercase())
+                    .css_classes(["pa-day"])
+                    .build(),
                 i as i32,
                 0,
                 1,
@@ -347,10 +458,11 @@ impl Cal {
                 b.add_css_class("selected");
             }
             overlay.set_child(Some(&b));
-            if days.contains_key(&d) {
+            if let Some(es) = days.get(&d) {
+                let have = es.iter().any(|e| e.has_file);
                 overlay.add_overlay(
                     &gtk4::Box::builder()
-                        .css_classes(["pa-dot"])
+                        .css_classes(["pa-dot", if have { "have" } else { "missing" }])
                         .halign(gtk4::Align::Center)
                         .valign(gtk4::Align::End)
                         .margin_bottom(5)
@@ -391,6 +503,7 @@ impl Cal {
         let a = self.anchor.get();
         self.anchor.set(match self.view.get() {
             View::Week => add_days(a, 7 * dir),
+            View::Agenda => add_days(a, 30 * dir),
             View::Month => {
                 let m0 = a.y * 12 + a.m as i32 - 1 + dir as i32;
                 Date {
@@ -399,82 +512,109 @@ impl Cal {
                     d: 1,
                 }
             }
-            View::Agenda => a,
         });
         self.selected.set(None);
         self.refresh();
     }
+
+    /// The calendar controls sheet (the header's filter button): which view to show.
+    fn show_controls(self: &Rc<Self>) {
+        let col = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+        col.set_margin_start(16);
+        col.set_margin_end(16);
+        col.set_margin_bottom(24);
+        col.append(
+            &gtk4::Label::builder()
+                .label("VIEW")
+                .css_classes(["pa-section-label"])
+                .xalign(0.0)
+                .build(),
+        );
+        let row = gtk4::Box::builder().spacing(10).homogeneous(true).build();
+        let agenda = gtk4::ToggleButton::builder()
+            .label("Agenda")
+            .css_classes(["pa-seg-tile"])
+            .active(self.view.get() == View::Agenda)
+            .build();
+        let week = gtk4::ToggleButton::builder()
+            .label("Week")
+            .css_classes(["pa-seg-tile"])
+            .group(&agenda)
+            .active(self.view.get() == View::Week)
+            .build();
+        let month = gtk4::ToggleButton::builder()
+            .label("Month")
+            .css_classes(["pa-seg-tile"])
+            .group(&agenda)
+            .active(self.view.get() == View::Month)
+            .build();
+        for (b, v) in [(&agenda, View::Agenda), (&week, View::Week), (&month, View::Month)] {
+            row.append(b);
+            let me = self.clone();
+            b.connect_toggled(move |b| {
+                if b.is_active() && me.view.get() != v {
+                    me.set_view(v);
+                    me.app.close_panel();
+                }
+            });
+        }
+        col.append(&row);
+        self.app.present_panel("Library controls", "Calendar", &col);
+    }
 }
 
-pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
+pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
-    page.set_margin_top(20);
     page.set_margin_bottom(110);
-    page.set_margin_start(16);
-    page.set_margin_end(16);
-    page.append(
-        &gtk4::Label::builder()
-            .label("Calendar")
-            .css_classes(["pa-pagehead"])
-            .xalign(0.0)
-            .build(),
-    );
+    let head = header::build(&app, "Calendar", "filters");
+    head.action.set_visible(true);
+    page.append(&head.widget);
 
-    let seg = gtk4::Box::builder()
-        .css_classes(["pa-seg", "linked"])
-        .halign(gtk4::Align::Start)
-        .build();
-    let agenda = gtk4::ToggleButton::builder().label("Agenda").active(true).build();
-    let week = gtk4::ToggleButton::builder().label("Week").group(&agenda).build();
-    let month = gtk4::ToggleButton::builder().label("Month").group(&agenda).build();
-    for b in [&agenda, &week, &month] {
-        seg.append(b);
-    }
-    page.append(&seg);
+    let content = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+    content.set_margin_start(16);
+    content.set_margin_end(16);
+    page.append(&content);
 
-    let nav_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
-    let prev = gtk4::Button::builder()
-        .icon_name("go-previous-symbolic")
-        .css_classes(["pa-secondary"])
-        .build();
-    let next = gtk4::Button::builder()
-        .icon_name("go-next-symbolic")
-        .css_classes(["pa-secondary"])
-        .build();
-    let nav_label = gtk4::Label::builder().css_classes(["pa-body"]).hexpand(true).build();
-    nav_row.append(&prev);
-    nav_row.append(&nav_label);
-    nav_row.append(&next);
-    page.append(&nav_row);
+    let controls = gtk4::Box::builder().spacing(8).build();
+    let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
+    let range = gtk4::Box::builder().css_classes(["pa-pill"]).hexpand(true).build();
+    range.append(&range_label);
+    range_label.set_hexpand(true);
+    let prev = round_icon("back");
+    let today_btn = pill("Today");
+    today_btn.add_css_class("selected");
+    let next = round_icon("back");
+    // The forward arrow reuses the back glyph, flipped.
+    next.set_child(Some(&gtk4::Image::from_icon_name("go-next-symbolic")));
+    controls.append(&range);
+    controls.append(&prev);
+    controls.append(&today_btn);
+    controls.append(&next);
+    content.append(&controls);
 
     let body = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
-    page.append(&body);
+    content.append(&body);
     let scroll = gtk4::ScrolledWindow::builder()
         .child(&page)
         .hscrollbar_policy(gtk4::PolicyType::Never)
         .css_classes(["pa-page"])
         .build();
 
-    let t = today();
     let cal = Rc::new(Cal {
-        app,
+        app: app.clone(),
         client,
+        imgs,
         view: Cell::new(View::Agenda),
-        anchor: Cell::new(t),
+        anchor: Cell::new(today()),
         selected: Cell::new(None),
-        nav_label,
-        nav_row,
+        range_label,
         body,
         generation: Cell::new(0),
         entries: RefCell::default(),
     });
-    for (b, v) in [(&agenda, View::Agenda), (&week, View::Week), (&month, View::Month)] {
+    {
         let cal = cal.clone();
-        b.connect_toggled(move |b| {
-            if b.is_active() {
-                cal.set_view(v);
-            }
-        });
+        head.action.connect_clicked(move |_| cal.show_controls());
     }
     {
         let cal = cal.clone();
@@ -484,15 +624,24 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         let cal = cal.clone();
         next.connect_clicked(move |_| cal.step(1));
     }
+    {
+        let cal = cal.clone();
+        today_btn.connect_clicked(move |_| {
+            let v = cal.view.get();
+            cal.set_view(v);
+        });
+    }
     // Capture hook: switch the view.
     {
-        let (agenda, week, month) = (agenda.clone(), week.clone(), month.clone());
-        cal.app.hooks.borrow_mut().insert(
+        let cal = cal.clone();
+        app.hooks.borrow_mut().insert(
             "calendar-view",
-            Rc::new(move |v: &str| match v {
-                "week" => week.set_active(true),
-                "month" => month.set_active(true),
-                _ => agenda.set_active(true),
+            Rc::new(move |v: &str| {
+                cal.set_view(match v {
+                    "week" => View::Week,
+                    "month" => View::Month,
+                    _ => View::Agenda,
+                })
             }),
         );
     }
@@ -503,6 +652,29 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn chip_states() {
+        let mut e = CalendarEntry {
+            id: "1".into(),
+            date: "2026-10-12".into(),
+            title: "t".into(),
+            subtitle: None,
+            media_kind: String::new(),
+            has_file: false,
+            work_id: None,
+            season_number: None,
+            episode_number: None,
+            release_at: None,
+            release_type: String::new(),
+        };
+        let t = Date { y: 2026, m: 10, d: 11 };
+        assert_eq!(status_chip(&e, t).0, "Upcoming");
+        e.date = "2026-10-11".into();
+        assert_eq!(status_chip(&e, t).0, "Missing");
+        e.has_file = true;
+        assert_eq!(status_chip(&e, t).0, "Available");
+    }
 
     #[test]
     fn civil_round_trip_and_weekday() {

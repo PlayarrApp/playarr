@@ -1,7 +1,8 @@
 //! Title detail for films and series: hero art, meta, resume, seasons and episodes.
 use super::images::Images;
-use super::{bg, App};
+use super::{bg, header, App};
 use crate::api::Client;
+use crate::icons::{self, Tone};
 use crate::model::{ResumeOption, SeasonDetail, WorkDetail};
 use crate::ui::player::PlayRequest;
 use gtk4::prelude::*;
@@ -41,20 +42,45 @@ fn fetch(c: &Client, id: &str) -> Result<Loaded, crate::api::ApiError> {
 }
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk4::Widget {
+    let root = gtk4::Overlay::new();
+    // Key art behind everything, dimmed and washed into the page.
+    let art = gtk4::Picture::builder()
+        .content_fit(gtk4::ContentFit::Cover)
+        .css_classes(["pa-key-art"])
+        .valign(gtk4::Align::Start)
+        .build();
+    art.set_size_request(-1, 330);
+    let wash = gtk4::Box::builder()
+        .css_classes(["pa-key-wash"])
+        .valign(gtk4::Align::Start)
+        .build();
+    wash.set_size_request(-1, 330);
+    root.set_child(Some(&art));
+    root.add_overlay(&wash);
+
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 14);
     page.set_margin_bottom(32);
     let status = gtk4::Label::builder()
         .label("Loading…")
         .css_classes(["pa-muted"])
-        .margin_top(40)
+        .margin_top(160)
         .build();
     page.append(&status);
     let scroll = gtk4::ScrolledWindow::builder()
         .child(&page)
         .hscrollbar_policy(gtk4::PolicyType::Never)
-        .css_classes(["pa-page"])
+        .css_classes(["pa-page", "pa-transparent"])
         .build();
+    root.add_overlay(&scroll);
+
+    // Header: round back button, section name, the title in small caps.
+    let head = header::build(&app, "", "filters");
+    head.action.set_visible(false);
+    root.add_overlay(&head.widget);
+    head.widget.set_valign(gtk4::Align::Start);
+
     let id = work_id.clone();
+    let art2 = art.clone();
     bg(
         move || fetch(&client, &id),
         move |res| {
@@ -65,69 +91,115 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
                         .label(e.to_string())
                         .css_classes(["pa-error"])
                         .wrap(true)
-                        .margin_top(40)
+                        .margin_top(160)
                         .margin_start(16)
                         .margin_end(16)
                         .build(),
                 ),
-                Ok(l) => fill(&app, &imgs, &page, l),
+                Ok(l) => {
+                    let w = &l.detail.work;
+                    if let Some(kind) = ["backdrop", "poster"].iter().find(|k| w.has_image(k)) {
+                        imgs.load(Client::artwork_path(&w.id, kind, 1280), &art2);
+                    }
+                    head.set_section(match w.kind.as_str() {
+                        "series" => "Series",
+                        "artist" => "Music",
+                        _ => "Movies",
+                    });
+                    head.set_subtitle(&w.title);
+                    fill(&app, &imgs, &page, l);
+                }
             }
         },
     );
-    scroll.upcast()
+    root.upcast()
+}
+
+fn action_pill(icon: &str, label: &str, primary: bool) -> gtk4::Button {
+    let row = gtk4::Box::builder().spacing(8).halign(gtk4::Align::Center).build();
+    let tone = if primary { Tone::OnAccent } else { Tone::Brand };
+    row.append(&icons::image(icon, 12, tone));
+    row.append(
+        &gtk4::Label::builder()
+            .label(label)
+            .css_classes(["pa-action-label"])
+            .wrap(true)
+            .justify(gtk4::Justification::Center)
+            .build(),
+    );
+    gtk4::Button::builder()
+        .child(&row)
+        .css_classes(if primary {
+            vec!["pa-action", "primary"]
+        } else {
+            vec!["pa-action"]
+        })
+        .build()
 }
 
 fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded) {
     let w = &l.detail.work;
-    // Hero: backdrop with a fade into the page.
-    let hero = gtk4::Overlay::builder()
-        .css_classes(["pa-hero"])
-        .overflow(gtk4::Overflow::Hidden)
-        .build();
-    hero.set_size_request(-1, 210);
-    let pic = gtk4::Picture::builder()
-        .content_fit(gtk4::ContentFit::Cover)
-        .can_shrink(true)
-        .build();
-    if let Some(kind) = ["backdrop", "poster"].iter().find(|k| w.has_image(k)) {
-        imgs.load(Client::artwork_path(&w.id, kind, 780), &pic);
-    }
-    hero.set_child(Some(&pic));
-    hero.add_overlay(&gtk4::Box::builder().css_classes(["pa-hero-fade"]).build());
-    page.append(&hero);
-
-    let body = gtk4::Box::new(gtk4::Orientation::Vertical, 12);
+    let body = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
     body.set_margin_start(16);
     body.set_margin_end(16);
+    body.set_margin_top(300);
     page.append(&body);
+    if let Some(g) = w.genres.first() {
+        body.append(
+            &gtk4::Label::builder()
+                .label(g.to_uppercase())
+                .css_classes(["pa-kicker"])
+                .xalign(0.0)
+                .build(),
+        );
+    }
     body.append(
         &gtk4::Label::builder()
             .label(&w.title)
-            .css_classes(["pa-detail-title"])
+            .css_classes(["pa-display"])
             .wrap(true)
             .xalign(0.0)
             .build(),
     );
     let mut meta = vec![w.kind_label().to_string()];
+    if let Some(m) = l.detail.runtime_ms.filter(|m| *m > 0) {
+        meta.push(format!("{}h {:02}m", m / 3_600_000, (m / 60_000) % 60));
+    }
     if let Some(y) = w.year() {
         meta.push(y.to_string());
     }
-    if let Some(m) = l.detail.runtime_ms.filter(|m| *m > 0) {
-        meta.push(format!("{} min", m / 60000));
+    meta.extend(w.genres.iter().take(3).cloned());
+    let meta_box = gtk4::FlowBox::builder()
+        .selection_mode(gtk4::SelectionMode::None)
+        .column_spacing(10)
+        .row_spacing(2)
+        .homogeneous(false)
+        .max_children_per_line(8)
+        .build();
+    for (i, m) in meta.iter().enumerate() {
+        meta_box.append(
+            &gtk4::Label::builder()
+                .label(m)
+                .css_classes(if i == 0 {
+                    vec!["pa-meta", "strong"]
+                } else {
+                    vec!["pa-meta"]
+                })
+                .build(),
+        );
     }
-    body.append(
-        &gtk4::Label::builder()
-            .label(meta.join(" · "))
-            .css_classes(["pa-muted"])
-            .xalign(0.0)
-            .build(),
-    );
-    if !w.genres.is_empty() {
-        let chips = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
-        for g in w.genres.iter().take(4) {
-            chips.append(&gtk4::Label::builder().label(g).css_classes(["pa-chip"]).build());
-        }
-        body.append(&chips);
+    body.append(&meta_box);
+    if let Some(o) = &w.overview {
+        body.append(
+            &gtk4::Label::builder()
+                .label(o)
+                .css_classes(["pa-overview"])
+                .wrap(true)
+                .lines(3)
+                .ellipsize(gtk4::pango::EllipsizeMode::End)
+                .xalign(0.0)
+                .build(),
+        );
     }
 
     let title = w.title.clone();
@@ -141,58 +213,182 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded) {
             });
         }
     };
-    let buttons = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
+    let pills = gtk4::FlowBox::builder()
+        .selection_mode(gtk4::SelectionMode::None)
+        .column_spacing(8)
+        .row_spacing(8)
+        .max_children_per_line(3)
+        .min_children_per_line(2)
+        .homogeneous(false)
+        .margin_top(6)
+        .build();
+    let download = action_pill("downloads", "Download", false);
+    download.set_sensitive(false);
+    download.set_tooltip_text(Some("Offline downloads are not available in this app yet."));
+    pills.append(&download);
     if let Some((file, pos, label)) = &l.resume {
-        let b = gtk4::Button::builder()
-            .label(format!("Resume {label}"))
-            .css_classes(["pa-primary"])
-            .build();
+        let b = action_pill("play", &format!("Resume from {label}"), true);
         let (file, pos, play, t) = (file.clone(), *pos, play.clone(), title.clone());
         b.connect_clicked(move |_| play(file.clone(), pos, t.clone()));
-        buttons.append(&b);
+        pills.append(&b);
     }
-    if l.detail.work.kind == "movie" {
+    if w.kind == "movie" {
         if let Some(file) = l.detail.media_file_id.clone() {
-            let label = if l.resume.is_some() { "Start over" } else { "Play" };
-            let class = if l.resume.is_some() {
-                "pa-secondary"
-            } else {
-                "pa-primary"
-            };
-            let b = gtk4::Button::builder().label(label).css_classes([class]).build();
+            let b = action_pill(
+                "play",
+                if l.resume.is_some() { "Start over" } else { "Play" },
+                l.resume.is_none(),
+            );
             let (play, t) = (play.clone(), title.clone());
             b.connect_clicked(move |_| play(file.clone(), 0, t.clone()));
-            buttons.append(&b);
-        } else {
-            body.append(
-                &gtk4::Label::builder()
-                    .label("Not available to play yet.")
-                    .css_classes(["pa-muted"])
-                    .xalign(0.0)
-                    .build(),
-            );
+            pills.append(&b);
         }
     }
-    body.append(&buttons);
-    if let Some(o) = &w.overview {
-        body.append(
-            &gtk4::Label::builder()
-                .label(o)
-                .css_classes(["pa-overview"])
-                .wrap(true)
-                .xalign(0.0)
-                .build(),
-        );
+    let watch = action_pill("add", "Add to watchlist", false);
+    {
+        let (app, work) = (app.clone(), w.clone());
+        watch.connect_clicked(move |b| {
+            let Some(client) = app.client.borrow().clone() else {
+                return;
+            };
+            b.set_sensitive(false);
+            let (work, b) = (work.clone(), b.clone());
+            bg(
+                move || client.add_to_watchlist(&work),
+                move |r| {
+                    b.set_tooltip_text(Some(if r.is_ok() {
+                        "Added to your watchlist"
+                    } else {
+                        "Could not add"
+                    }))
+                },
+            );
+        });
     }
+    pills.append(&watch);
+    let playlist = action_pill("add", "Add to Playlist", false);
+    {
+        let (app, work) = (app.clone(), w.clone());
+        playlist.connect_clicked(move |_| super::actions::show(&app, &work));
+    }
+    pills.append(&playlist);
+    body.append(&pills);
 
     if !l.detail.children.albums.is_empty() {
         body.append(&albums(&l.detail.children.albums, &title, play.clone()));
     }
     let seasons = &l.detail.children.seasons;
     if !seasons.is_empty() {
-        body.append(&episodes(seasons, &title, play));
+        for season in seasons {
+            body.append(&season_rail(imgs, &w.id, season, &title, play.clone()));
+        }
     }
 }
+
+/// "Season 1 / 24 episodes" and a rail of episode cards (16:9 thumb, number over the corner, S01 · E02 caption).
+fn season_rail(
+    imgs: &Images,
+    series_id: &str,
+    season: &SeasonDetail,
+    series_title: &str,
+    play: impl Fn(String, i64, String) + Clone + 'static,
+) -> gtk4::Box {
+    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
+    col.set_margin_top(28);
+    let n = season.season.season_number;
+    col.append(
+        &gtk4::Label::builder()
+            .label(if n == 0 {
+                "Specials".to_string()
+            } else {
+                format!("Season {n}")
+            })
+            .css_classes(["pa-season-title"])
+            .xalign(0.0)
+            .build(),
+    );
+    col.append(
+        &gtk4::Label::builder()
+            .label(format!("{} episodes", season.episodes.len()))
+            .css_classes(["pa-muted"])
+            .xalign(0.0)
+            .margin_bottom(10)
+            .build(),
+    );
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
+    for e in &season.episodes {
+        let pic = gtk4::Picture::builder()
+            .content_fit(gtk4::ContentFit::Cover)
+            .can_shrink(true)
+            .build();
+        let frame = gtk4::Overlay::builder()
+            .child(&pic)
+            .overflow(gtk4::Overflow::Hidden)
+            .css_classes(["pa-art"])
+            .build();
+        frame.set_size_request(EP_W, EP_H);
+        imgs.load(
+            format!("/api/v1/artwork/episode/{series_id}/{}/thumb?w=540", e.episode.id),
+            &pic,
+        );
+        frame.add_overlay(
+            &gtk4::Label::builder()
+                .label(format!("{:02}", e.episode.episode_number))
+                .css_classes(["pa-ep-badge"])
+                .halign(gtk4::Align::End)
+                .valign(gtk4::Align::End)
+                .margin_end(10)
+                .margin_bottom(6)
+                .build(),
+        );
+        let card = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        card.append(&frame);
+        let cap = gtk4::Box::builder().spacing(8).margin_top(9).build();
+        cap.append(
+            &gtk4::Label::builder()
+                .label(format!("S{:02} · E{:02}", n, e.episode.episode_number))
+                .css_classes(["pa-ep-code"])
+                .build(),
+        );
+        cap.append(
+            &gtk4::Label::builder()
+                .label(e.episode.title.clone().unwrap_or_default())
+                .css_classes(["pa-ep-name"])
+                .xalign(0.0)
+                .ellipsize(gtk4::pango::EllipsizeMode::End)
+                .max_width_chars(1)
+                .hexpand(true)
+                .build(),
+        );
+        card.append(&cap);
+        card.set_size_request(EP_W, -1);
+        let b = gtk4::Button::builder()
+            .child(&card)
+            .css_classes(["pa-card"])
+            .sensitive(e.media_file_id.is_some())
+            .valign(gtk4::Align::Start)
+            .build();
+        if let Some(file) = e.media_file_id.clone() {
+            let (play, label) = (
+                play.clone(),
+                format!("{series_title} S{n}E{}", e.episode.episode_number),
+            );
+            b.connect_clicked(move |_| play(file.clone(), 0, label.clone()));
+        }
+        row.append(&b);
+    }
+    col.append(
+        &gtk4::ScrolledWindow::builder()
+            .child(&row)
+            .vscrollbar_policy(gtk4::PolicyType::Never)
+            .propagate_natural_height(true)
+            .build(),
+    );
+    col
+}
+
+const EP_W: i32 = 187;
+const EP_H: i32 = 105;
 
 fn albums(
     albums: &[crate::model::AlbumDetail],
@@ -255,105 +451,6 @@ fn albums(
             col.append(&b);
         }
     }
-    col
-}
-
-fn episodes(
-    seasons: &[SeasonDetail],
-    series_title: &str,
-    play: impl Fn(String, i64, String) + Clone + 'static,
-) -> gtk4::Box {
-    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
-    col.set_margin_top(8);
-    let names: Vec<String> = seasons
-        .iter()
-        .map(|s| {
-            if s.season.season_number == 0 {
-                "Specials".into()
-            } else {
-                format!("Season {}", s.season.season_number)
-            }
-        })
-        .collect();
-    let refs: Vec<&str> = names.iter().map(String::as_str).collect();
-    let pick = gtk4::DropDown::from_strings(&refs);
-    // Open on the first season that has something playable.
-    pick.set_selected(
-        seasons
-            .iter()
-            .position(|s| s.episodes.iter().any(|e| e.media_file_id.is_some()))
-            .unwrap_or(0) as u32,
-    );
-    col.append(&pick);
-    let list = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
-    col.append(&list);
-    let seasons: Rc<Vec<SeasonDetail>> = Rc::new(seasons.to_vec());
-    let series_title = series_title.to_string();
-    let render = {
-        let (list, seasons) = (list.clone(), seasons.clone());
-        move |idx: usize| {
-            while let Some(c) = list.first_child() {
-                list.remove(&c);
-            }
-            let Some(season) = seasons.get(idx) else { return };
-            for e in &season.episodes {
-                let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
-                row.append(
-                    &gtk4::Label::builder()
-                        .label(e.episode.episode_number.to_string())
-                        .css_classes(["pa-ep-num"])
-                        .build(),
-                );
-                let text = gtk4::Box::new(gtk4::Orientation::Vertical, 2);
-                text.set_hexpand(true);
-                text.append(
-                    &gtk4::Label::builder()
-                        .label(
-                            e.episode
-                                .title
-                                .clone()
-                                .unwrap_or_else(|| format!("Episode {}", e.episode.episode_number)),
-                        )
-                        .css_classes(["pa-card-title"])
-                        .xalign(0.0)
-                        .wrap(true)
-                        .build(),
-                );
-                let sub = match (e.episode.runtime_minutes, e.media_file_id.is_some()) {
-                    (_, false) => "Not available yet".to_string(),
-                    (Some(m), true) => format!("{m} min"),
-                    (None, true) => "Play".to_string(),
-                };
-                text.append(
-                    &gtk4::Label::builder()
-                        .label(sub)
-                        .css_classes(["pa-card-meta"])
-                        .xalign(0.0)
-                        .build(),
-                );
-                row.append(&text);
-                row.append(&gtk4::Image::from_icon_name("media-playback-start-symbolic"));
-                let b = gtk4::Button::builder()
-                    .child(&row)
-                    .css_classes(["pa-episode"])
-                    .sensitive(e.media_file_id.is_some())
-                    .build();
-                if let Some(file) = e.media_file_id.clone() {
-                    let (play, label) = (
-                        play.clone(),
-                        format!(
-                            "{series_title} S{}E{}",
-                            season.season.season_number, e.episode.episode_number
-                        ),
-                    );
-                    b.connect_clicked(move |_| play(file.clone(), 0, label.clone()));
-                }
-                list.append(&b);
-            }
-        }
-    };
-    render(pick.selected() as usize);
-    pick.connect_selected_notify(move |p| render(p.selected() as usize));
     col
 }
 

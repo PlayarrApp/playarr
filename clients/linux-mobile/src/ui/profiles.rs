@@ -1,8 +1,9 @@
-//! "Who's watching" picker with the shared preset avatars.
+//! "Who's watching": theme control, the big title, the shared preset avatars and the settings and sign-out pills.
 use super::{bg, App};
 use crate::api::Client;
-use crate::avatar;
+use crate::icons::{self, Tone};
 use crate::model::Profile;
+use crate::{avatar, store, theme};
 use gtk4::prelude::*;
 use std::rc::Rc;
 
@@ -15,70 +16,103 @@ pub fn avatar_widget(preset: &str, size: i32) -> gtk4::Image {
     img
 }
 
+const THEMES: [(&str, &str); 3] = [("dark", "Dark"), ("light", "Light"), ("system", "Auto")];
+
 pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
-    let root = gtk4::Box::new(gtk4::Orientation::Vertical, 18);
+    let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     root.add_css_class("pa-page");
-    root.set_margin_top(36);
-    root.set_margin_start(24);
-    root.set_margin_end(24);
-    root.set_margin_bottom(24);
+
+    // Top bar: brand mark, theme chooser.
+    let top = gtk4::Box::builder()
+        .spacing(10)
+        .margin_top(14)
+        .margin_start(16)
+        .margin_end(16)
+        .build();
+    let mark = gtk4::Box::builder()
+        .css_classes(["pa-mark"])
+        .hexpand(true)
+        .halign(gtk4::Align::Start)
+        .build();
+    mark.append(&icons::image("play", 18, Tone::OnAccent));
+    top.append(&mark);
+    let names: Vec<&str> = THEMES.iter().map(|t| t.1).collect();
+    let theme_pick = gtk4::DropDown::from_strings(&names);
+    theme_pick.add_css_class("pa-dropdown");
+    let current = store::load_settings().theme;
+    theme_pick.set_selected(THEMES.iter().position(|t| t.0 == current).unwrap_or(0) as u32);
+    theme_pick.connect_selected_notify(|d| {
+        let name = THEMES[d.selected() as usize].0;
+        store::save_settings(&store::Settings { theme: name.into() });
+        theme::apply(name);
+    });
+    top.append(&theme_pick);
+    root.append(&top);
+
+    root.append(
+        &gtk4::Label::builder()
+            .label("PROFILES")
+            .css_classes(["pa-kicker"])
+            .margin_top(26)
+            .margin_start(16)
+            .xalign(0.0)
+            .build(),
+    );
     root.append(
         &gtk4::Label::builder()
             .label("Who’s watching?")
-            .css_classes(["pa-title"])
+            .css_classes(["pa-display"])
+            .margin_start(16)
+            .xalign(0.0)
             .build(),
     );
-    let grid = gtk4::FlowBox::builder()
-        .selection_mode(gtk4::SelectionMode::None)
-        .max_children_per_line(3)
-        .min_children_per_line(1)
-        .row_spacing(18)
-        .column_spacing(18)
-        .homogeneous(true)
-        .halign(gtk4::Align::Center)
-        .valign(gtk4::Align::Start)
+
+    let tiles = gtk4::Box::builder()
+        .spacing(16)
+        .margin_start(16)
+        .margin_end(16)
+        .margin_top(26)
         .build();
-    root.append(&grid);
+    root.append(&tiles);
     let status = gtk4::Label::builder()
         .label("Loading profiles…")
         .css_classes(["pa-muted"])
+        .margin_start(16)
+        .xalign(0.0)
+        .margin_top(12)
         .build();
     root.append(&status);
+
+    let actions = gtk4::Box::builder().spacing(10).margin_start(16).margin_top(24).build();
+    let settings = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
+    settings.set_child(Some(&icons::image("settings", 18, Tone::Brand)));
+    {
+        let (app, client) = (app.clone(), client.clone());
+        settings.connect_clicked(move |_| app.push_settings(client.clone()));
+    }
     let sign_out = gtk4::Button::builder()
+        .css_classes(["pa-pill"])
         .label("Sign out")
-        .css_classes(["pa-secondary"])
-        .halign(gtk4::Align::Center)
-        .margin_top(12)
         .build();
     {
         let app = app.clone();
         sign_out.connect_clicked(move |_| app.sign_out());
     }
-    if from_shell {
-        let settings = gtk4::Button::builder()
-            .label("Settings")
-            .css_classes(["pa-secondary"])
-            .halign(gtk4::Align::Center)
-            .build();
-        let (app, client) = (app.clone(), client.clone());
-        settings.connect_clicked(move |_| app.push_settings(client.clone()));
-        root.append(&settings);
-    }
-    root.append(&sign_out);
+    actions.append(&settings);
+    actions.append(&sign_out);
+    root.append(&actions);
 
     let c = client.clone();
     bg(
-        move || {
-            let profiles = c.profiles();
-            (profiles, c.avatar_preset())
-        },
+        move || (c.profiles(), c.avatar_preset()),
         move |(profiles, my_preset)| match profiles {
             Err(e) => status.set_label(&e.to_string()),
             Ok(profiles) => {
                 status.set_visible(false);
                 for p in profiles {
-                    grid.append(&tile(&app, &client, &p, my_preset.as_deref(), from_shell));
+                    tiles.append(&tile(&app, &client, &p, my_preset.as_deref(), from_shell));
                 }
+                tiles.append(&add_tile(&app));
             }
         },
     );
@@ -97,7 +131,11 @@ fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>, fr
     };
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
     col.set_halign(gtk4::Align::Center);
-    col.append(&avatar_widget(&preset, 104));
+    let av = avatar_widget(&preset, 150);
+    if p.is_current {
+        av.add_css_class("current");
+    }
+    col.append(&av);
     col.append(
         &gtk4::Label::builder()
             .label(&p.display_name)
@@ -106,13 +144,19 @@ fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>, fr
             .max_width_chars(14)
             .build(),
     );
+    if p.is_current {
+        col.append(
+            &gtk4::Label::builder()
+                .label("WATCHING NOW")
+                .css_classes(["pa-tiny"])
+                .build(),
+        );
+    }
     let b = gtk4::Button::builder()
         .child(&col)
         .css_classes(["pa-plain", "pa-profile"])
+        .valign(gtk4::Align::Start)
         .build();
-    if p.is_current {
-        b.add_css_class("selected");
-    }
     let (app, client, current) = (app.clone(), client.clone(), p.is_current);
     b.connect_clicked(move |_| {
         if current && from_shell {
@@ -124,5 +168,36 @@ fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>, fr
             app.show_link();
         }
     });
+    b
+}
+
+fn add_tile(app: &Rc<App>) -> gtk4::Button {
+    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+    let circle = gtk4::Box::builder()
+        .css_classes(["pa-add-circle"])
+        .halign(gtk4::Align::Center)
+        .build();
+    circle.set_size_request(132, 132);
+    circle.append(&icons::image("add", 28, Tone::Ink));
+    col.append(&circle);
+    col.append(
+        &gtk4::Label::builder()
+            .label("Sign in")
+            .css_classes(["pa-profile-name"])
+            .build(),
+    );
+    col.append(
+        &gtk4::Label::builder()
+            .label("ADD ANOTHER PROFILE")
+            .css_classes(["pa-tiny"])
+            .build(),
+    );
+    let b = gtk4::Button::builder()
+        .child(&col)
+        .css_classes(["pa-plain", "pa-profile"])
+        .valign(gtk4::Align::Start)
+        .build();
+    let app = app.clone();
+    b.connect_clicked(move |_| app.show_link());
     b
 }

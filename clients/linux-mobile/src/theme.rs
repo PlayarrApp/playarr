@@ -85,10 +85,14 @@ pub fn apply(theme: &str) {
             );
             let provider2 = provider.clone();
             // "system" follows the desktop, so reload when libadwaita flips its dark state.
-            mgr.connect_dark_notify(move |m| provider2.load_from_data(&css(m.is_dark())));
+            mgr.connect_dark_notify(move |m| {
+                provider2.load_from_data(&css(m.is_dark()));
+                crate::icons::refresh();
+            });
             *p = Some(provider);
         }
         p.as_ref().unwrap().load_from_data(&css(mgr.is_dark()));
+        crate::icons::refresh();
     });
 }
 
