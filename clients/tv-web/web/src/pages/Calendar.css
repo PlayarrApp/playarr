@@ -531,7 +531,7 @@
 @media (max-width: 760px) {
   .calendar-view-agenda .calendar-header-fixed {
     position: fixed;
-    top: calc(var(--mobile-top-inset) + 54px);
+    top: var(--calendar-nav-top, calc(var(--mobile-top-inset) + 54px));
     right: var(--mobile-page-gutter);
     left: var(--mobile-page-gutter);
     z-index: var(--z-actions);
@@ -558,7 +558,7 @@
 
   .tv-title-grid:has(> .calendar-agenda-content) {
     /* Below the fixed navigation row. */
-    --library-rail-top: calc(var(--mobile-top-inset) + 106px);
+    --library-rail-top: calc(var(--calendar-nav-top, calc(var(--mobile-top-inset) + 54px)) + var(--page-control-height, 44px) + 8px);
     --agenda-glow-room: 0.75rem;
     scroll-padding-bottom: calc(var(--mobile-nav-height) + 24px);
   }

@@ -814,6 +814,25 @@ export function CalendarPage() {
   const filters = useMemo(() => parseCalendarFilters(new URLSearchParams(filterKey)), [filterKey]);
   const urlState = useMemo(() => parseCalendarUrl(new URLSearchParams(searchKey)), [searchKey]);
   const view: CalendarView = urlState.view ?? defaultView;
+  // Phone agenda: the fixed navigation row hangs 8px under the measured page header (never a hard-coded offset), and the
+  // list starts below the row. Both are CSS variables on the root, kept current by a ResizeObserver on the header.
+  useLayoutEffect(() => {
+    if (!isPhoneWidth || view !== "agenda") return undefined;
+    const root = document.documentElement;
+    const header = document.querySelector<HTMLElement>('[data-page-id="calendar"] > header');
+    if (!header) return undefined;
+    const measure = () => {
+      const top = Math.round(header.getBoundingClientRect().bottom) + 8;
+      root.style.setProperty("--calendar-nav-top", `${top}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--calendar-nav-top");
+    };
+  }, [isPhoneWidth, view]);
   const anchor: Day = anchorForView(view, urlState.date ?? today);
   const stepperRef = useRef<ReturnType<typeof createAnchorStepper> | null>(null);
   stepperRef.current ??= createAnchorStepper();

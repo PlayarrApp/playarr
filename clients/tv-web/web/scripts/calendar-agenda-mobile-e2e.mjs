@@ -46,6 +46,7 @@ async function open(page, url, theme) {
     localStorage.setItem("playarr.activeProfile.v1", JSON.stringify({ profileKey: "p", apiBaseUrl: base, userId }));
     localStorage.setItem("playarr-theme", theme);
   }, { base, userId: USER_ID, theme });
+  page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
   await page.goto(url);
   await page.waitForSelector(".calendar-entry", { timeout: 15000 });
   await page.waitForFunction(() => !document.querySelector(".calendar-scroll .skeleton, .tv-library-grid-panel .skeleton"));
@@ -93,7 +94,8 @@ for (const theme of ["light", "dark"]) {
     g.scrollTop = 2000;
     window.scrollTo(0, 2000);
   });
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => getComputedStyle(document.querySelector(".calendar-agenda-fade"), "::after").opacity === "1", null, { timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(300);
   await shot("agenda-scrolled");
   const after = await page.evaluate(() => {
     const r = document.querySelector(".calendar-nav-inline")?.getBoundingClientRect();
@@ -125,6 +127,17 @@ for (const theme of ["light", "dark"]) {
   // 1.10040
   check(`${label}: 1.10040 the sticky day heading has no opaque background`, after.bgColor === "rgba(0, 0, 0, 0)" && (after.bgImage === "none" || !/rgb\(/.test(after.bgImage.replace(/rgba\([^)]*,\s*0\)/g, ""))), JSON.stringify({ bg: after.bgColor, img: after.bgImage }));
   check(`${label}: 1.10040 a soft fade sits under the sticky heading`, after.fadeOpacity === "1" && /gradient/.test(after.fadeBg ?? "") && /rgba?\(0, 0, 0, 0\)\s*\)?$/.test(after.fadeBg) && after.fadeH > after.headH, JSON.stringify({ h: after.fadeH, headH: after.headH, bg: after.fadeBg }));
+  // A taller page header (wrapped title, larger text): the nav row follows the measured header bottom and the list starts below it.
+  await page.evaluate(() => { const g = document.querySelector(".tv-title-grid"); g.style.scrollBehavior = "auto"; g.scrollTop = 0; });
+  await page.addStyleTag({ content: ".calendar-page .page-header { min-height: 120px !important; height: 120px !important; }" });
+  await page.waitForTimeout(400);
+  const tall = await page.evaluate(() => {
+    const h = document.querySelector('[data-page-id="calendar"] .page-header').getBoundingClientRect();
+    const n = document.querySelector(".calendar-header-fixed").getBoundingClientRect();
+    const firstHead = document.querySelector(".calendar-agenda-content .calendar-day > h3").getBoundingClientRect();
+    return { headerBottom: h.bottom, navTop: n.top, navBottom: n.bottom, firstHeadTop: firstHead.top };
+  });
+  check(`${label}: 1.10041 with a taller header the nav row sits 8px under it and the list starts below the row`, tall.headerBottom > 100 && Math.abs(tall.navTop - (tall.headerBottom + 8)) <= 1.5 && tall.firstHeadTop >= tall.navBottom - 1, JSON.stringify(tall));
   await context.close();
 }
 await browser.close();
