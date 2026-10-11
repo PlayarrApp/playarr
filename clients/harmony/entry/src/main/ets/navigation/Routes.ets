@@ -78,6 +78,9 @@ export const ROUTE_SEARCH: string = 'Search';
 /** `pages/Settings.ets`. The settings workspace. No navigation parameters. */
 export const ROUTE_SETTINGS: string = 'Settings';
 
+/** `pages/Watchlist.ets`. The viewer's watchlist. No navigation parameters. */
+export const ROUTE_WATCHLIST: string = 'Watchlist';
+
 /**
  * Every route name a page may push, replace or pop by, keyed the same way
  * `router_map.json` names them. Import this object rather than any of the
@@ -96,6 +99,7 @@ export class RouteNames {
   readonly Player: string = ROUTE_PLAYER;
   readonly Calendar: string = ROUTE_CALENDAR;
   readonly Search: string = ROUTE_SEARCH;
+  readonly Watchlist: string = ROUTE_WATCHLIST;
   readonly Settings: string = ROUTE_SETTINGS;
 }
 

@@ -13,6 +13,7 @@ import { getNavStack, popRoute, pushRoute, replaceRoute } from './NavStack';
 export const HOME_NAV_ID: string = 'home';
 export const CALENDAR_NAV_ID: string = 'calendar';
 export const SEARCH_NAV_ID: string = 'search';
+export const WATCHLIST_NAV_ID: string = 'watchlist';
 
 const PLACEHOLDER_NAV_ICON: ResourceStr = $r('app.media.playarr_logo');
 
@@ -40,6 +41,9 @@ export function navIconFor(id: string): ResourceStr {
   }
   if (id === CALENDAR_NAV_ID) {
     return $r('app.media.nav_calendar');
+  }
+  if (id === WATCHLIST_NAV_ID) {
+    return $r('app.media.nav_watchlist');
   }
   if (id === SEARCH_NAV_ID) {
     return $r('app.media.nav_search');
@@ -77,7 +81,10 @@ export function buildNavRailItems(kinds: WorkKind[]): NavRailItem[] {
 
 /** Web's Playlists/Watchlist/Requests/Calendar group: only the screens this client has so far. */
 export function buildSecondaryNavItems(): NavRailItem[] {
-  return [{ id: CALENDAR_NAV_ID, icon: navIconFor(CALENDAR_NAV_ID), label: 'Calendar' }];
+  return [
+    { id: WATCHLIST_NAV_ID, icon: navIconFor(WATCHLIST_NAV_ID), label: 'Watchlist' },
+    { id: CALENDAR_NAV_ID, icon: navIconFor(CALENDAR_NAV_ID), label: 'Calendar' },
+  ];
 }
 
 /** Web's Downloads/Search group, above the library group: only the screens this client has so far. */
@@ -103,8 +110,8 @@ export function navigateFromRail(id: string, currentId: string): void {
     return;
   }
   const fromHome = currentId === HOME_NAV_ID;
-  if (id === CALENDAR_NAV_ID || id === SEARCH_NAV_ID) {
-    const route = id === CALENDAR_NAV_ID ? ROUTES.Calendar : ROUTES.Search;
+  if (id === CALENDAR_NAV_ID || id === SEARCH_NAV_ID || id === WATCHLIST_NAV_ID) {
+    const route = id === CALENDAR_NAV_ID ? ROUTES.Calendar : (id === SEARCH_NAV_ID ? ROUTES.Search : ROUTES.Watchlist);
     if (fromHome) {
       pushRoute(getNavStack(), route);
     } else {

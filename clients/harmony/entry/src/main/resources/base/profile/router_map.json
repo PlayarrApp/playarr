@@ -67,6 +67,12 @@
       "data": {}
     },
     {
+      "name": "Watchlist",
+      "pageSourceFile": "src/main/ets/pages/Watchlist.ets",
+      "buildFunction": "WatchlistBuilder",
+      "data": {}
+    },
+    {
       "name": "Settings",
       "pageSourceFile": "src/main/ets/pages/Settings.ets",
       "buildFunction": "SettingsBuilder",

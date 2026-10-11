@@ -4,6 +4,7 @@ import { getPlayarrClient } from '../AppContainer';
 import { ApiResult } from '../net/ApiResult';
 import { discoverResolveUrl, watchlistItemUrl, watchlistUrl } from '../core/Endpoints.ts';
 import { TitleSnapshot } from '../core/Types/Calendar.ts';
+import { WatchlistResponse } from '../core/Types/Watchlist.ts';
 
 export interface TitleRef {
   title_key: string;
@@ -23,4 +24,9 @@ export function resolveTitle(snapshot: TitleSnapshot): Promise<ApiResult<Resolve
 
 export function removeFromWatchlist(titleKey: string): Promise<ApiResult<Object>> {
   return getPlayarrClient().deleteJson<Object>(watchlistItemUrl(titleKey));
+}
+
+/** `GET /api/v1/watchlist`: the viewer's watchlist (web `loadWatchlist`). */
+export function listWatchlist(): Promise<ApiResult<WatchlistResponse>> {
+  return getPlayarrClient().getJson<WatchlistResponse>(watchlistUrl());
 }
