@@ -323,6 +323,51 @@ pub const HLS_SEGMENT_SECONDS: u32 = 4;
 const AAC_CHANNEL_LAYOUTS_FILTER: &str = "aformat=channel_layouts=5.1|stereo|mono";
 const DEFAULT_FFMPEG_THREADS: usize = 2;
 
+/// Admission permits one on-demand slot is worth. A full video re-encode
+/// takes a whole slot; a video-copy remux (audio-only encode) takes a
+/// quarter, so several devices remuxing one title do not exhaust the node.
+const PERMITS_PER_SLOT: u32 = 4;
+const FULL_TRANSCODE_PERMITS: u32 = PERMITS_PER_SLOT;
+const VIDEO_COPY_PERMITS: u32 = 1;
+
+tokio::task_local! {
+    /// Set by [`with_borrowed_admission`]: spawns inside the scope may exceed the node's limit.
+    static BORROW_ADMISSION: bool;
+}
+
+/// Runs `future` so that any transcode it spawns on a full node borrows one slot over the limit instead of being
+/// refused. For a viewer who is already admitted (they hold a link to a running transcode) and renegotiates: a
+/// seek, an audio or a quality switch must never fail for capacity. The borrowed permits are forgotten again when
+/// that transcode ends, so each admitted viewer holds at most one borrowed slot at a time.
+pub async fn with_borrowed_admission<F: std::future::Future>(future: F) -> F::Output {
+    BORROW_ADMISSION.scope(true, future).await
+}
+
+/// An admission slot held for a transcode's lifetime. A borrowed slot holds no permit: it is admitted over the
+/// limit and never touches the semaphore, so the pool cannot grow.
+#[derive(Debug)]
+struct Slot {
+    #[allow(dead_code)] // held only for its Drop, which returns the permits
+    permit: Option<OwnedSemaphorePermit>,
+}
+
+/// How long a viewer who just stopped their transcode still counts as admitted.
+const ADMISSION_GRACE: Duration = Duration::from_secs(30);
+
+/// What a running on-demand transcode produces. Two playback requests with
+/// the same key can read the same HLS output, so the second one attaches to
+/// the running ffmpeg instead of spawning its own. The user is part of the
+/// key: sharing never crosses accounts.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SharedTranscodeKey {
+    pub user_id: Uuid,
+    pub media_file_id: Uuid,
+    pub profile: String,
+    pub audio_stream_index: Option<u32>,
+    pub start_position_ms: u64,
+    pub video_copy: bool,
+}
+
 /// Builds the ffmpeg argv for transcoding `input_path` into an HLS
 /// rendition under `output_dir`, per `profile`. Pure (no I/O, no process
 /// spawning) so it's unit-testable without an ffmpeg binary on `PATH` —
@@ -710,6 +755,16 @@ pub struct TranscodeOrchestrator {
     /// duplicate negotiation) expires the superseded process instead of
     /// leaving it running until its idle TTL.
     playback_transcodes: Mutex<HashMap<Uuid, Uuid>>,
+    /// Running transcodes another playback session may attach to. The
+    /// reference count is the number of `playback_transcodes` entries that
+    /// point at a transcode; the process stops when the last one leaves.
+    shared_transcodes: Mutex<HashMap<SharedTranscodeKey, Uuid>>,
+    /// One lock per key while a first request finds, spawns and registers, so racing requests attach instead of
+    /// each spawning. See [`Self::share_guard`].
+    inflight: Mutex<HashMap<SharedTranscodeKey, Arc<Mutex<()>>>>,
+    /// Viewers whose running transcode was just stopped by their own stop event (clients stop the old session
+    /// before renegotiating a seek or switch): they still count as admitted for [`ADMISSION_GRACE`].
+    recently_released: std::sync::Mutex<HashMap<(Uuid, Uuid, Uuid), std::time::Instant>>,
     /// See the module docs' "other bridge" section and
     /// [`Self::with_tdarr_notify`]. `None` (the default) means "don't
     /// notify Tdarr" — correct both when Tdarr isn't configured for this
@@ -722,7 +777,7 @@ struct ActiveChild {
     // Holds the admission slot for the lifetime of the tracked process.
     // Completed children remain tracked until session TTL cleanup so their
     // generated HLS output remains available to existing playback sessions.
-    slot: Option<OwnedSemaphorePermit>,
+    slot: Option<Slot>,
 }
 
 impl TranscodeOrchestrator {
@@ -738,10 +793,13 @@ impl TranscodeOrchestrator {
             ffmpeg_binary: "ffmpeg".to_string(),
             output_root: std::env::temp_dir().join("playarr-transcode"),
             session_ttl: Duration::from_secs(60),
-            transcode_slots: Arc::new(Semaphore::new(1)),
+            transcode_slots: Arc::new(Semaphore::new(PERMITS_PER_SLOT as usize)),
             ffmpeg_threads: DEFAULT_FFMPEG_THREADS,
             active_children: Mutex::new(HashMap::new()),
             playback_transcodes: Mutex::new(HashMap::new()),
+            shared_transcodes: Mutex::new(HashMap::new()),
+            inflight: Mutex::new(HashMap::new()),
+            recently_released: std::sync::Mutex::new(HashMap::new()),
             tdarr_notify: None,
         }
     }
@@ -773,7 +831,7 @@ impl TranscodeOrchestrator {
 
     pub fn with_max_concurrent_sessions(mut self, max: usize) -> Self {
         let max = max.max(1);
-        self.transcode_slots = Arc::new(Semaphore::new(max));
+        self.transcode_slots = Arc::new(Semaphore::new(max * PERMITS_PER_SLOT as usize));
         self
     }
 
@@ -890,7 +948,7 @@ impl TranscodeOrchestrator {
         start_position_ms: u64,
         audio_stream_index: Option<u32>,
     ) -> Result<TranscodeSession, TranscodeError> {
-        let slot = self.reserve_capacity().await?;
+        let slot = self.reserve_capacity(FULL_TRANSCODE_PERMITS).await?;
         self.spawn_on_demand(
             Uuid::new_v4(),
             media_file,
@@ -916,7 +974,7 @@ impl TranscodeOrchestrator {
         audio_stream_index: Option<u32>,
         video: VideoCopy,
     ) -> Result<TranscodeSession, TranscodeError> {
-        let slot = self.reserve_capacity().await?;
+        let slot = self.reserve_capacity(VIDEO_COPY_PERMITS).await?;
         self.spawn_on_demand(
             Uuid::new_v4(),
             media_file,
@@ -1002,7 +1060,13 @@ impl TranscodeOrchestrator {
         F: FnOnce(PathBuf) -> Fut,
         Fut: std::future::Future<Output = Result<(), String>>,
     {
-        let slot = self.reserve_capacity().await?;
+        let slot = self
+            .reserve_capacity(if video_copy.is_some() {
+                VIDEO_COPY_PERMITS
+            } else {
+                FULL_TRANSCODE_PERMITS
+            })
+            .await?;
         let session_id = Uuid::new_v4();
         let path = self.external_audio_path(session_id);
         tokio::fs::create_dir_all(&self.output_root).await?;
@@ -1038,14 +1102,19 @@ impl TranscodeOrchestrator {
             .join(format!("{session_id}.external-audio"))
     }
 
-    async fn reserve_capacity(&self) -> Result<OwnedSemaphorePermit, TranscodeError> {
+    async fn reserve_capacity(&self, permits: u32) -> Result<Slot, TranscodeError> {
         // Release permits for children that exited naturally before trying
         // the non-blocking admission check.
         self.reap_finished_children().await;
-        self.transcode_slots
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| TranscodeError::NoCapacity)
+        if let Ok(permit) = self.transcode_slots.clone().try_acquire_many_owned(permits) {
+            return Ok(Slot {
+                permit: Some(permit),
+            });
+        }
+        if BORROW_ADMISSION.try_with(|borrow| *borrow).unwrap_or(false) {
+            return Ok(Slot { permit: None });
+        }
+        Err(TranscodeError::NoCapacity)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1059,7 +1128,7 @@ impl TranscodeOrchestrator {
         audio_stream_index: Option<u32>,
         external: Option<&ExternalAudio>,
         video_copy: Option<VideoCopy>,
-        slot: OwnedSemaphorePermit,
+        slot: Slot,
     ) -> Result<TranscodeSession, TranscodeError> {
         let target_profile = TranscodeTargetProfile::resolve(profile);
         let output_dir = self.output_root.join(session_id.to_string());
@@ -1215,6 +1284,10 @@ impl TranscodeOrchestrator {
             .lock()
             .await
             .retain(|_, transcode_session_id| *transcode_session_id != session_id);
+        self.shared_transcodes
+            .lock()
+            .await
+            .retain(|_, transcode_session_id| *transcode_session_id != session_id);
 
         // HLS output is session-scoped and has no value once the process is
         // stopped. Ignore a missing directory (the process may have failed
@@ -1291,7 +1364,8 @@ impl TranscodeOrchestrator {
     /// Associates a user-facing playback session with its live ffmpeg
     /// session. If the playback session already pointed at another
     /// transcode (quality replacement or duplicate negotiation), the old
-    /// process is stopped before this call returns.
+    /// process is stopped before this call returns, unless another playback
+    /// session still shares it.
     pub async fn associate_playback_session(
         &self,
         playback_session_id: Uuid,
@@ -1302,17 +1376,110 @@ impl TranscodeOrchestrator {
             .lock()
             .await
             .insert(playback_session_id, transcode_session_id);
-
-        if let Some(superseded) = superseded.filter(|id| *id != transcode_session_id) {
-            self.expire_session(superseded).await?;
-        }
-
-        Ok(())
+        self.expire_if_unreferenced(superseded.filter(|id| *id != transcode_session_id))
+            .await
     }
 
-    /// Stops the on-demand transcode, if any, that belongs to a
-    /// user-facing playback session. Direct-play and durable-rendition
-    /// sessions have no association and are therefore harmless no-ops.
+    /// Registers a freshly spawned transcode so later requests with the same
+    /// key can attach to it.
+    pub async fn register_shared_transcode(&self, key: SharedTranscodeKey, session_id: Uuid) {
+        self.shared_transcodes.lock().await.insert(key, session_id);
+    }
+
+    /// Records that a viewer's running transcode was stopped by their own stop event.
+    pub fn note_admitted_release(&self, user_id: Uuid, device_id: Uuid, media_file_id: Uuid) {
+        let mut released = self.recently_released.lock().unwrap();
+        let now = std::time::Instant::now();
+        released.retain(|_, at| now.duration_since(*at) <= ADMISSION_GRACE);
+        released.insert((user_id, device_id, media_file_id), now);
+    }
+
+    /// True once (and forgets the entry) if the viewer released a transcode within [`ADMISSION_GRACE`].
+    pub fn take_admission_grace(
+        &self,
+        user_id: Uuid,
+        device_id: Uuid,
+        media_file_id: Uuid,
+    ) -> bool {
+        let mut released = self.recently_released.lock().unwrap();
+        let now = std::time::Instant::now();
+        released.retain(|_, at| now.duration_since(*at) <= ADMISSION_GRACE);
+        released
+            .remove(&(user_id, device_id, media_file_id))
+            .is_some()
+    }
+
+    /// True while `playback_session_id` is linked to a running transcode: the viewer is admitted.
+    pub async fn is_admitted(&self, playback_session_id: Uuid) -> bool {
+        self.playback_transcodes
+            .lock()
+            .await
+            .contains_key(&playback_session_id)
+    }
+
+    /// Serialises the find, spawn and register steps for one key, so racing first requests attach to the first
+    /// one's transcode instead of each spawning their own. Hold the guard until the transcode is registered.
+    pub async fn share_guard(&self, key: &SharedTranscodeKey) -> tokio::sync::OwnedMutexGuard<()> {
+        let lock = {
+            let mut inflight = self.inflight.lock().await;
+            let lock = inflight.entry(key.clone()).or_default().clone();
+            // Drop entries nobody holds or waits on (the map and this clone are the only references).
+            inflight.retain(|other, lock| other == key || Arc::strong_count(lock) > 1);
+            lock
+        };
+        lock.lock_owned().await
+    }
+
+    /// Finds a running transcode on this node that matches `key`, sliding
+    /// its idle deadline. The caller links its playback session with
+    /// [`Self::associate_playback_session`]. Costs no admission permit: the
+    /// process already holds one.
+    ///
+    /// shortcut: if the last viewer of that transcode leaves between this
+    /// call and the association, the new viewer gets a 404 playlist and the
+    /// client's normal retry renegotiates; upgrade when that shows in logs.
+    pub async fn find_shared_transcode(
+        &self,
+        key: &SharedTranscodeKey,
+    ) -> Result<Option<TranscodeSession>, TranscodeError> {
+        let Some(session_id) = self.shared_transcodes.lock().await.get(key).copied() else {
+            return Ok(None);
+        };
+        let owned_here = self.active_children.lock().await.contains_key(&session_id);
+        let session = if owned_here {
+            self.lookup_session(session_id).await?
+        } else {
+            None
+        };
+        if session.is_none() {
+            self.shared_transcodes.lock().await.remove(key);
+        }
+        Ok(session)
+    }
+
+    async fn expire_if_unreferenced(
+        &self,
+        transcode_session_id: Option<Uuid>,
+    ) -> Result<(), TranscodeError> {
+        let Some(id) = transcode_session_id else {
+            return Ok(());
+        };
+        let still_used = self
+            .playback_transcodes
+            .lock()
+            .await
+            .values()
+            .any(|linked| *linked == id);
+        if still_used {
+            return Ok(());
+        }
+        self.expire_session(id).await
+    }
+
+    /// Detaches a user-facing playback session from its on-demand
+    /// transcode, stopping the process when no other playback session
+    /// shares it. Direct-play and durable-rendition sessions have no
+    /// association and are therefore harmless no-ops.
     pub async fn expire_playback_session(
         &self,
         playback_session_id: Uuid,
@@ -1322,12 +1489,7 @@ impl TranscodeOrchestrator {
             .lock()
             .await
             .remove(&playback_session_id);
-
-        if let Some(transcode_session_id) = transcode_session_id {
-            self.expire_session(transcode_session_id).await?;
-        }
-
-        Ok(())
+        self.expire_if_unreferenced(transcode_session_id).await
     }
 
     fn session_cache_key(session_id: Uuid) -> String {
@@ -2505,7 +2667,10 @@ mod tests {
                 .await
                 .expect_err("missing executable must fail to spawn");
             assert!(matches!(error, TranscodeError::Io(_)));
-            assert!(orchestrator.reserve_capacity().await.is_ok());
+            assert!(orchestrator
+                .reserve_capacity(FULL_TRANSCODE_PERMITS)
+                .await
+                .is_ok());
         }
 
         #[tokio::test]
@@ -2525,7 +2690,7 @@ mod tests {
                     let barrier = barrier.clone();
                     tokio::spawn(async move {
                         barrier.wait().await;
-                        orchestrator.reserve_capacity().await
+                        orchestrator.reserve_capacity(FULL_TRANSCODE_PERMITS).await
                     })
                 })
                 .collect::<Vec<_>>();
@@ -2543,7 +2708,10 @@ mod tests {
                 1
             );
             drop(permits);
-            assert!(orchestrator.reserve_capacity().await.is_ok());
+            assert!(orchestrator
+                .reserve_capacity(FULL_TRANSCODE_PERMITS)
+                .await
+                .is_ok());
         }
 
         #[cfg(unix)]
@@ -2583,6 +2751,205 @@ mod tests {
                 .expect("cleanup returns the permit");
             orchestrator.expire_session(second.id).await.unwrap();
             assert_eq!(counter.get(), 0);
+        }
+
+        #[cfg(unix)]
+        async fn sleeper_orchestrator(slots: usize) -> TranscodeOrchestrator {
+            let root = unique_tmp_dir();
+            let sleeper = sleeping_ffmpeg(&root).await;
+            TranscodeOrchestrator::new(
+                Arc::new(FakeRenditionRepo::default()),
+                Arc::new(InMemory::new()),
+                ActiveSessionCounter::new(),
+            )
+            .with_ffmpeg_binary(sleeper.to_string_lossy().into_owned())
+            .with_output_root(root.join("output"))
+            .with_max_concurrent_sessions(slots)
+        }
+
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn video_copy_takes_a_quarter_of_a_slot() {
+            let orchestrator = sleeper_orchestrator(1).await;
+            let media_file = sample_media_file();
+            let copy = VideoCopy { hevc: false };
+            let mut sessions = Vec::new();
+            for _ in 0..PERMITS_PER_SLOT {
+                sessions.push(
+                    orchestrator
+                        .spawn_video_copy_at_with_audio(&media_file, "p", "n", 0, None, copy)
+                        .await
+                        .expect("a remux costs a quarter slot"),
+                );
+            }
+            assert!(matches!(
+                orchestrator
+                    .spawn_video_copy_at_with_audio(&media_file, "p", "n", 0, None, copy)
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+            // One quarter freed is still not enough for a full re-encode.
+            orchestrator.expire_session(sessions[0].id).await.unwrap();
+            assert!(matches!(
+                orchestrator
+                    .spawn_on_demand_transcode(&media_file, "p", "n")
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+            for session in &sessions[1..] {
+                orchestrator.expire_session(session.id).await.unwrap();
+            }
+            let full = orchestrator
+                .spawn_on_demand_transcode(&media_file, "p", "n")
+                .await
+                .expect("an empty node takes a full re-encode");
+            // A running full re-encode leaves no room for a remux.
+            assert!(matches!(
+                orchestrator
+                    .spawn_video_copy_at_with_audio(&media_file, "p", "n", 0, None, copy)
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+            orchestrator.expire_session(full.id).await.unwrap();
+        }
+
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn borrowed_slot_never_changes_the_permit_pool() {
+            let orchestrator = sleeper_orchestrator(1).await;
+            let media_file = sample_media_file();
+            let first = orchestrator
+                .spawn_on_demand_transcode(&media_file, "p", "n")
+                .await
+                .unwrap();
+            let borrowed = with_borrowed_admission(orchestrator.spawn_on_demand_transcode(
+                &media_file,
+                "q",
+                "n",
+            ))
+            .await
+            .expect("an admitted viewer may borrow one slot over the limit");
+            assert_eq!(orchestrator.active_session_count(), 2);
+
+            // Without the scope the full node still refuses.
+            assert!(matches!(
+                orchestrator
+                    .spawn_on_demand_transcode(&media_file, "r", "n")
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+
+            // Ending the borrowed one frees nothing (it held no permits): the first still holds the slot.
+            orchestrator.expire_session(borrowed.id).await.unwrap();
+            assert!(matches!(
+                orchestrator
+                    .spawn_on_demand_transcode(&media_file, "r", "n")
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+            orchestrator.expire_session(first.id).await.unwrap();
+            let again = orchestrator
+                .spawn_on_demand_transcode(&media_file, "r", "n")
+                .await
+                .unwrap();
+            assert!(matches!(
+                orchestrator
+                    .spawn_on_demand_transcode(&media_file, "s", "n")
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+            orchestrator.expire_session(again.id).await.unwrap();
+            // The pool is exactly what it started as: borrowing never grows it.
+            assert_eq!(
+                orchestrator.transcode_slots.available_permits(),
+                PERMITS_PER_SLOT as usize
+            );
+        }
+
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn second_playback_session_attaches_and_the_last_one_stops_the_process() {
+            let orchestrator = sleeper_orchestrator(1).await;
+            let media_file = sample_media_file();
+            let key = SharedTranscodeKey {
+                user_id: Uuid::new_v4(),
+                media_file_id: media_file.id,
+                profile: "p".to_string(),
+                audio_stream_index: None,
+                start_position_ms: 5_000,
+                video_copy: false,
+            };
+            let (first_playback, second_playback) = (Uuid::new_v4(), Uuid::new_v4());
+            let session = orchestrator
+                .spawn_on_demand_transcode_at(&media_file, "p", "n", 5_000)
+                .await
+                .unwrap();
+            orchestrator
+                .register_shared_transcode(key.clone(), session.id)
+                .await;
+            orchestrator
+                .associate_playback_session(first_playback, session.id)
+                .await
+                .unwrap();
+
+            // The node is full, yet a second device attaches without a permit.
+            let attached = orchestrator
+                .find_shared_transcode(&key)
+                .await
+                .unwrap()
+                .expect("a matching live transcode is shared");
+            assert_eq!(attached.id, session.id);
+            orchestrator
+                .associate_playback_session(second_playback, attached.id)
+                .await
+                .unwrap();
+            assert_eq!(orchestrator.active_session_count(), 1);
+
+            // A different start position or account never attaches.
+            let other_start = SharedTranscodeKey {
+                start_position_ms: 0,
+                ..key.clone()
+            };
+            let other_user = SharedTranscodeKey {
+                user_id: Uuid::new_v4(),
+                ..key.clone()
+            };
+            for other in [other_start, other_user] {
+                assert!(orchestrator
+                    .find_shared_transcode(&other)
+                    .await
+                    .unwrap()
+                    .is_none());
+            }
+
+            // The first viewer leaving keeps the process for the second.
+            orchestrator
+                .expire_playback_session(first_playback)
+                .await
+                .unwrap();
+            assert!(orchestrator
+                .lookup_session(session.id)
+                .await
+                .unwrap()
+                .is_some());
+            assert_eq!(orchestrator.active_session_count(), 1);
+
+            // The last viewer leaving stops it and frees the key.
+            orchestrator
+                .expire_playback_session(second_playback)
+                .await
+                .unwrap();
+            assert!(orchestrator
+                .lookup_session(session.id)
+                .await
+                .unwrap()
+                .is_none());
+            assert_eq!(orchestrator.active_session_count(), 0);
+            assert!(orchestrator
+                .find_shared_transcode(&key)
+                .await
+                .unwrap()
+                .is_none());
         }
 
         #[cfg(unix)]

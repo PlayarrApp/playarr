@@ -75,6 +75,43 @@ export function sessionCloseForEngineState(
 /** Silent re-tries of a failed first negotiation (1 s, 2 s, 4 s) before the error view appears. */
 export const MAX_NEGOTIATION_AUTO_RETRIES = 3;
 
+/**
+ * A full node answers 503 `no_transcode_capacity`. A slot frees as soon as another device stops or the idle reaper
+ * runs (up to about 75 s), so wait longer than for other server errors: 2 s, 4 s, 8 s, then 10 s steps, ten times.
+ */
+export const MAX_CAPACITY_RETRIES = 10;
+
+export function isCapacityError(err: unknown): boolean {
+  if (!err || typeof err !== "object" || !("status" in err) || err.status !== 503) return false;
+  const body = "body" in err ? err.body : undefined;
+  return Boolean(body && typeof body === "object" && "error" in body && body.error === "no_transcode_capacity");
+}
+
+export function capacityRetryDelayMs(attempt: number): number {
+  return Math.min(10_000, 2000 * 2 ** Math.max(0, attempt));
+}
+
+/**
+ * Runs `attempt`, and while the node answers with a capacity refusal waits (capacityRetryDelayMs) and runs it again,
+ * up to MAX_CAPACITY_RETRIES times. For seeks and quality or audio switches, which stay on their switching state
+ * meanwhile. Stops quietly (undefined) once `isCurrent` is false, so a newer switch supersedes the wait.
+ */
+export async function retryOnCapacityRefusal<T>(
+  attempt: () => Promise<T>,
+  isCurrent: () => boolean,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+): Promise<T | undefined> {
+  for (let tries = 0; ; tries += 1) {
+    try {
+      return await attempt();
+    } catch (err) {
+      if (!isCapacityError(err) || tries >= MAX_CAPACITY_RETRIES) throw err;
+      await sleep(capacityRetryDelayMs(tries));
+      if (!isCurrent()) return undefined;
+    }
+  }
+}
+
 /** True for failures worth retrying silently: the network dropped, or the server timed out or failed. */
 export function isTransientNegotiationError(err: unknown): boolean {
   if (err && typeof err === "object" && "status" in err && typeof err.status === "number") {
@@ -105,6 +142,7 @@ export function humanNegotiationMessage(err: unknown, fallback: string): string 
       ? "Can't reach the server. Check your connection and try again."
       : fallback;
   }
+  if (isCapacityError(err)) return "The server is busy with other playback. Try again in a moment.";
   if (status === 404) return "This title is no longer available on the server.";
   if (status === 408 || status === 429 || status >= 500) {
     return "The server had a problem starting this title. Try again in a moment.";

@@ -1,0 +1,1 @@
+- Starting the same title from several devices of one account no longer fails with `no_transcode_capacity`: devices at the same start position share one on-demand transcode (the process stops when the last viewer leaves), a video-copy remux takes a quarter of a transcode slot, and a full node answers 503 with `Retry-After` while the web and Android players retry with back-off.

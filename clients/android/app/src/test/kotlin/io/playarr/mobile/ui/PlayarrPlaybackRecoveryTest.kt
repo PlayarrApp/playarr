@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.domain.model.PlayarrError
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -21,6 +22,42 @@ class PlayarrPlaybackRecoveryTest {
         assertEquals(3_000L, playarrAutoRetryDelayMs(1))
         assertEquals(6_000L, playarrAutoRetryDelayMs(2))
         assertNull(playarrAutoRetryDelayMs(3))
+    }
+
+    @Test
+    fun `a full node is retried for longer than other errors`() {
+        assertEquals(2_000L, playarrCapacityRetryDelayMs(0))
+        assertEquals(8_000L, playarrCapacityRetryDelayMs(2))
+        assertEquals(10_000L, playarrCapacityRetryDelayMs(9))
+        assertNull(playarrCapacityRetryDelayMs(10))
+        assertTrue(playarrCapacityRetryDelayMs(9)!! > PLAYER_AUTO_RETRY_DELAYS_MS.last())
+    }
+
+    @Test
+    fun `only a 503 with Retry-After counts as a capacity refusal`() {
+        fun http(code: Int, retryAfter: String?): PlayarrError {
+            val builder = okhttp3.Response.Builder()
+                .request(okhttp3.Request.Builder().url("http://localhost/").build())
+                .protocol(okhttp3.Protocol.HTTP_1_1)
+                .code(code)
+                .message("x")
+            if (retryAfter != null) builder.header("Retry-After", retryAfter)
+            val body = okhttp3.ResponseBody.create(null, "{}")
+            return PlayarrError.Http(code, retrofit2.HttpException(retrofit2.Response.error<Any>(body, builder.build())))
+        }
+        assertTrue(isTranscodeCapacityError(http(503, "5")))
+        assertFalse(isTranscodeCapacityError(http(503, null)))
+        assertFalse(isTranscodeCapacityError(http(500, "5")))
+        assertFalse(isTranscodeCapacityError(PlayarrError.Unknown(RuntimeException())))
+    }
+
+    @Test
+    fun `start, switch and session recovery all retry a capacity refusal`() {
+        val experience = source("PlayarrExperience.kt")
+        // One call in play() and one in switchNegotiatedPlayback(), which also serves seeks and the
+        // recovery of a dropped on-demand session (404 playlist).
+        assertEquals(2, Regex("scheduleCapacityRetry\\(mediaFileId, result\\.error\\)").findAll(experience).count())
+        assertTrue(experience.contains("recoverExpiredHlsSession(currentError.message)"))
     }
 
     @Test

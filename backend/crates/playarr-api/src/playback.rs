@@ -731,7 +731,7 @@ const DUPLICATE_SESSION_WINDOW: chrono::Duration = chrono::Duration::seconds(10)
 /// about to replace (see `start_analytics_session`, which closes the
 /// bookkeeping afterwards). Called before admission so the replaced
 /// transcode's node-local slot is available to its own replacement.
-async fn release_replaced_transcodes(state: &AppState, seed: &SessionSeed) {
+async fn release_replaced_transcodes(state: &AppState, seed: &SessionSeed) -> bool {
     let replaced: Vec<Uuid> = state
         .session_registry
         .list_all()
@@ -744,6 +744,15 @@ async fn release_replaced_transcodes(state: &AppState, seed: &SessionSeed) {
         })
         .map(|existing| existing.id)
         .collect();
+    // An already admitted viewer (linked to a running transcode) renegotiating must never be refused for capacity.
+    let mut admitted = false;
+    for old_id in &replaced {
+        admitted |= state.transcode.is_admitted(*old_id).await;
+    }
+    admitted |=
+        state
+            .transcode
+            .take_admission_grace(seed.user_id, seed.device_id, seed.media_file_id);
     for old_id in replaced {
         if let Err(err) = state.transcode.expire_playback_session(old_id).await {
             tracing::warn!(
@@ -753,6 +762,7 @@ async fn release_replaced_transcodes(state: &AppState, seed: &SessionSeed) {
             );
         }
     }
+    admitted
 }
 
 /// Writes `session`'s start through `AnalyticsCollector::on_session_start`,
@@ -1314,7 +1324,7 @@ pub(crate) async fn negotiate_playback(
     // title and device *before* admission, otherwise the old one keeps the
     // node-local slot and the replacement is refused with
     // `no_transcode_capacity` until the idle reaper catches up.
-    release_replaced_transcodes(state, &seed).await;
+    let admitted = release_replaced_transcodes(state, &seed).await;
     let source_offset_ms = if duration_ms > 0 {
         query.start_position_ms.min(duration_ms.saturating_sub(1))
     } else {
@@ -1362,61 +1372,100 @@ pub(crate) async fn negotiate_playback(
             }
         }
     };
-    let transcode_session = match selected_dub {
-        Some(dub) => {
-            // Playarr fetches the dub itself and hands ffmpeg a local file, so
-            // the Dubarr API key never appears in ffmpeg's argument list.
-            let client = dub.client();
-            let track = dub.track.clone();
-            let fetch = |path: std::path::PathBuf| async move {
-                client
-                    .download_to_file(&track, &path)
-                    .await
-                    .map(|_| ())
-                    .map_err(|error| error.to_string())
-            };
-            let fetched = match video_copy {
-                Some(video) => {
-                    state
-                        .transcode
-                        .spawn_video_copy_with_fetched_audio(
-                            &media_file,
-                            &profile,
-                            &state.node_id,
-                            source_offset_ms,
-                            video,
-                            fetch,
-                        )
-                        .await
-                }
-                None => {
-                    state
-                        .transcode
-                        .spawn_on_demand_transcode_with_fetched_audio(
-                            &media_file,
-                            &profile,
-                            &state.node_id,
-                            source_offset_ms,
-                            fetch,
-                        )
-                        .await
-                }
-            };
-            match fetched {
-                Ok(session) => session,
-                Err(playarr_transcode::TranscodeError::ExternalAudio(error)) => {
-                    tracing::warn!(
-                        media_file_id = %media_file_id,
-                        %error,
-                        "dub track download failed; playing the source audio instead"
-                    );
-                    source_audio_transcode().await?
-                }
-                Err(error) => return Err(error.into()),
-            }
-        }
-        None => source_audio_transcode().await?,
+    // Devices of one account starting the same title from the same position
+    // read one HLS output instead of each spawning an ffmpeg (a dub track is
+    // fetched per session, so it never shares).
+    let share_key = selected_dub
+        .is_none()
+        .then(|| playarr_transcode::SharedTranscodeKey {
+            user_id: seed.user_id,
+            media_file_id,
+            profile: profile.to_string(),
+            audio_stream_index: selected_audio_stream_index,
+            start_position_ms: source_offset_ms,
+            video_copy: video_copy.is_some(),
+        });
+    // Held across find, spawn and register, so racing first requests attach to one transcode.
+    let share_guard = match &share_key {
+        Some(key) => Some(state.transcode.share_guard(key).await),
+        None => None,
     };
+    let shared = match &share_key {
+        Some(key) => state.transcode.find_shared_transcode(key).await?,
+        None => None,
+    };
+    let spawned_fresh = shared.is_none();
+    let spawn = async {
+        match selected_dub {
+            Some(dub) => {
+                // Playarr fetches the dub itself and hands ffmpeg a local file, so
+                // the Dubarr API key never appears in ffmpeg's argument list.
+                let client = dub.client();
+                let track = dub.track.clone();
+                let fetch = |path: std::path::PathBuf| async move {
+                    client
+                        .download_to_file(&track, &path)
+                        .await
+                        .map(|_| ())
+                        .map_err(|error| error.to_string())
+                };
+                let fetched = match video_copy {
+                    Some(video) => {
+                        state
+                            .transcode
+                            .spawn_video_copy_with_fetched_audio(
+                                &media_file,
+                                &profile,
+                                &state.node_id,
+                                source_offset_ms,
+                                video,
+                                fetch,
+                            )
+                            .await
+                    }
+                    None => {
+                        state
+                            .transcode
+                            .spawn_on_demand_transcode_with_fetched_audio(
+                                &media_file,
+                                &profile,
+                                &state.node_id,
+                                source_offset_ms,
+                                fetch,
+                            )
+                            .await
+                    }
+                };
+                match fetched {
+                    Ok(session) => Ok(session),
+                    Err(playarr_transcode::TranscodeError::ExternalAudio(error)) => {
+                        tracing::warn!(
+                            media_file_id = %media_file_id,
+                            %error,
+                            "dub track download failed; playing the source audio instead"
+                        );
+                        source_audio_transcode().await.map_err(ApiError::from)
+                    }
+                    Err(error) => Err(ApiError::from(error)),
+                }
+            }
+            None => source_audio_transcode().await.map_err(ApiError::from),
+        }
+    };
+    let transcode_session = if let Some(shared) = shared {
+        shared
+    } else if admitted {
+        playarr_transcode::with_borrowed_admission(spawn).await?
+    } else {
+        spawn.await?
+    };
+    if let (true, Some(key)) = (spawned_fresh, share_key) {
+        state
+            .transcode
+            .register_shared_transcode(key, transcode_session.id)
+            .await;
+    }
+    drop(share_guard);
     if video_copy.is_some() {
         tracing::info!(
             media_file_id = %media_file_id,
@@ -1890,6 +1939,17 @@ async fn forward_negotiation_to_peer(
                 remember_playback_session_route(state, rewritten.session_id, peer_node_id, user_id);
                 return Ok(Json(rewritten));
             }
+            // The peer answered: a full node is not an unreachable one, so tell the client to retry
+            // (503 plus Retry-After) instead of trying other addresses or reporting no peer.
+            Err(playarr_peer_sync::PeerClientError::Status { status, body, .. })
+                if status == reqwest::StatusCode::SERVICE_UNAVAILABLE
+                    && serde_json::from_str::<serde_json::Value>(&body)
+                        .is_ok_and(|json| json["error"] == "no_transcode_capacity") =>
+            {
+                return Err(ApiError::no_transcode_capacity(
+                    "the serving node has no on-demand transcode capacity",
+                ));
+            }
             Err(err) => {
                 tracing::warn!(
                     peer_node_id = %peer_node_id,
@@ -2278,11 +2338,23 @@ async fn apply_playback_event(
     };
     if let Some(reason) = stop_reason {
         let mut analytics_result = Ok(());
-        if let Some(final_state) = state.session_registry.get(session_id) {
+        let ended = state.session_registry.get(session_id);
+        if let Some(final_state) = &ended {
             analytics_result = state
                 .analytics
-                .on_session_end(session_id, &final_state, reason)
+                .on_session_end(session_id, final_state, reason)
                 .await;
+        }
+        // Clients stop the old session before renegotiating a seek or switch, so remember who just let go of a
+        // running transcode: their renegotiation is still an admitted viewer's (see release_replaced_transcodes).
+        if state.transcode.is_admitted(session_id).await {
+            if let Some(ended) = &ended {
+                state.transcode.note_admitted_release(
+                    ended.user_id,
+                    ended.device_id,
+                    ended.media_file_id,
+                );
+            }
         }
         let transcode_result = state.transcode.expire_playback_session(session_id).await;
 
@@ -3380,6 +3452,248 @@ mod tests {
             );
             assert_eq!(state.app.transcode.active_session_count(), 1);
         }
+    }
+
+    /// Two devices of one account starting the same title at the same
+    /// position share one ffmpeg, so the node's single slot serves both; the
+    /// process stops only when the last of them leaves.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn devices_of_one_account_share_a_running_transcode() {
+        let (router, state) =
+            crate::test_support::test_state_with_ffmpeg(&sleeping_ffmpeg_binary(), 1).await;
+        let mut file = media_file();
+        file.container = "mp4".to_string();
+        file.codec = "h264".to_string();
+        let id = file.id;
+        let source_instance_id = file.source_instance_id;
+        state.media_files.insert(file);
+        let user_id = Uuid::new_v4();
+        seed_streaming_user_with_library_allow(&state, user_id, vec![source_instance_id]).await;
+        let uri = format!(
+            "/api/v1/playback/{id}?containers=mp4&video_codecs=h264&force_transcode=true&profile=h264-480p-2mbps"
+        );
+        let mut infos = Vec::new();
+        for _ in 0..3 {
+            let token = mint_access_token(&state, user_id);
+            let response = router
+                .clone()
+                .oneshot(get_with_connect_info(&uri, &token))
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let info: PlaybackInfoResponse = serde_json::from_slice(
+                &axum::body::to_bytes(response.into_body(), usize::MAX)
+                    .await
+                    .unwrap(),
+            )
+            .unwrap();
+            infos.push((token, info));
+        }
+        assert_eq!(infos[0].1.url, infos[1].1.url);
+        assert_eq!(infos[0].1.url, infos[2].1.url);
+        assert_ne!(infos[0].1.session_id, infos[1].1.session_id);
+        assert_eq!(state.app.transcode.active_session_count(), 1);
+
+        for (index, (token, info)) in infos.iter().enumerate() {
+            let stop = router
+                .clone()
+                .oneshot(post_with_connect_info(
+                    format!("/api/v1/playback/sessions/{}/events", info.session_id),
+                    token,
+                    serde_json::json!({"kind": "stop", "position_ms": 0, "reason": "user_stopped"}),
+                ))
+                .await
+                .unwrap();
+            assert_eq!(stop.status(), StatusCode::NO_CONTENT);
+            let expected = if index < 2 { 1 } else { 0 };
+            assert_eq!(state.app.transcode.active_session_count(), expected);
+        }
+    }
+
+    /// A seek, audio or quality switch by a viewer who is already admitted must never be refused for capacity,
+    /// even while another device still shares their old transcode and the node's only slot is taken.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn admitted_viewer_seeking_on_a_shared_transcode_is_not_refused() {
+        let (router, state) =
+            crate::test_support::test_state_with_ffmpeg(&sleeping_ffmpeg_binary(), 1).await;
+        let mut file = media_file();
+        file.container = "mp4".to_string();
+        file.codec = "h264".to_string();
+        let id = file.id;
+        let source_instance_id = file.source_instance_id;
+        state.media_files.insert(file);
+        let user_id = Uuid::new_v4();
+        seed_streaming_user_with_library_allow(&state, user_id, vec![source_instance_id]).await;
+        let (token_a, token_b) = (
+            mint_access_token(&state, user_id),
+            mint_access_token(&state, user_id),
+        );
+        let uri = |start: u64| {
+            format!(
+                "/api/v1/playback/{id}?containers=mp4&video_codecs=h264&force_transcode=true&profile=h264-480p-2mbps&start_position_ms={start}"
+            )
+        };
+        let mut session_a = Uuid::nil();
+        for token in [&token_a, &token_b] {
+            let response = router
+                .clone()
+                .oneshot(get_with_connect_info(uri(0), token))
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            if session_a.is_nil() {
+                let info: PlaybackInfoResponse = serde_json::from_slice(
+                    &axum::body::to_bytes(response.into_body(), usize::MAX)
+                        .await
+                        .unwrap(),
+                )
+                .unwrap();
+                session_a = info.session_id;
+            }
+        }
+        assert_eq!(state.app.transcode.active_session_count(), 1);
+
+        // Clients stop the old session before renegotiating a seek: A does exactly that.
+        let stop = router
+            .clone()
+            .oneshot(post_with_connect_info(
+                format!("/api/v1/playback/sessions/{}/events", session_a),
+                &token_a,
+                serde_json::json!({"kind": "stop", "reason": "user_stopped", "position_ms": 0}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(stop.status(), StatusCode::NO_CONTENT);
+        // A seeks to 60 s: B still shares the old transcode, so A's new one borrows a slot.
+        let seek = router
+            .clone()
+            .oneshot(get_with_connect_info(uri(60_000), &token_a))
+            .await
+            .unwrap();
+        assert_eq!(seek.status(), StatusCode::OK);
+        assert_eq!(state.app.transcode.active_session_count(), 2);
+
+        // A viewer with no running transcode of their own is still refused on the now over-full node.
+        let other = mint_access_token(&state, user_id);
+        let refused = router
+            .oneshot(get_with_connect_info(uri(120_000), &other))
+            .await
+            .unwrap();
+        assert_eq!(refused.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    /// Racing first requests for one title and position must attach to a single spawn.
+    #[cfg(unix)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn racing_first_requests_spawn_one_transcode() {
+        for slots in [1, 2] {
+            let (router, state) =
+                crate::test_support::test_state_with_ffmpeg(&sleeping_ffmpeg_binary(), slots).await;
+            let mut file = media_file();
+            file.container = "mp4".to_string();
+            file.codec = "h264".to_string();
+            let id = file.id;
+            let source_instance_id = file.source_instance_id;
+            state.media_files.insert(file);
+            let user_id = Uuid::new_v4();
+            seed_streaming_user_with_library_allow(&state, user_id, vec![source_instance_id]).await;
+            let uri = format!(
+                "/api/v1/playback/{id}?containers=mp4&video_codecs=h264&force_transcode=true&profile=h264-480p-2mbps"
+            );
+            let requests = (0..3).map(|_| {
+                let token = mint_access_token(&state, user_id);
+                router.clone().oneshot(get_with_connect_info(&uri, &token))
+            });
+            let responses = futures::future::join_all(requests.map(tokio::spawn)).await;
+            for response in responses {
+                assert_eq!(
+                    response.unwrap().unwrap().status(),
+                    StatusCode::OK,
+                    "slots={slots}"
+                );
+            }
+            assert_eq!(
+                state.app.transcode.active_session_count(),
+                1,
+                "slots={slots}"
+            );
+        }
+    }
+
+    /// A peer that is full is reachable: its 503 must reach the client as a capacity refusal with Retry-After.
+    #[tokio::test]
+    async fn peer_capacity_refusal_is_forwarded_with_retry_after() {
+        let (_router, state) = test_state().await;
+        let server = MockServer::start().await;
+        let peer_id = Uuid::new_v4();
+        let peer_key = SigningKey::from_bytes(&[43u8; 32]);
+        seed_signed_peer(&state, peer_id, &peer_key, server.uri()).await;
+        Mock::given(method("POST"))
+            .and(path("/api/v1/peer/playback-info"))
+            .respond_with(ResponseTemplate::new(503).set_body_json(serde_json::json!({
+                "error": "no_transcode_capacity",
+                "message": "no on-demand transcode capacity available on this node"
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let query: PlaybackQuery = serde_json::from_value(serde_json::json!({})).unwrap();
+        let error = forward_negotiation_to_peer(
+            &state.app,
+            peer_id,
+            DeliveryMode::Proxy,
+            PeerPlaybackTarget::MediaFile {
+                media_file_id: Uuid::new_v4(),
+            },
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            ClientPlatform::Web,
+            "1.0.0".to_string(),
+            &query,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error.body.error, "no_transcode_capacity");
+        let response = axum::response::IntoResponse::into_response(error);
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(response.headers().get("retry-after").unwrap(), "5");
+    }
+
+    /// Another account cannot attach to the transcode, so a full node still
+    /// refuses it, and the refusal tells the client when to retry.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn full_node_answers_503_with_retry_after() {
+        let (router, state) =
+            crate::test_support::test_state_with_ffmpeg(&sleeping_ffmpeg_binary(), 1).await;
+        let mut file = media_file();
+        file.container = "mp4".to_string();
+        file.codec = "h264".to_string();
+        let id = file.id;
+        let source_instance_id = file.source_instance_id;
+        state.media_files.insert(file);
+        let uri = format!(
+            "/api/v1/playback/{id}?containers=mp4&video_codecs=h264&force_transcode=true&profile=h264-480p-2mbps"
+        );
+        let mut statuses = Vec::new();
+        let mut retry_after = None;
+        for _ in 0..2 {
+            let user_id = Uuid::new_v4();
+            seed_streaming_user_with_library_allow(&state, user_id, vec![source_instance_id]).await;
+            let token = mint_access_token(&state, user_id);
+            let response = router
+                .clone()
+                .oneshot(get_with_connect_info(&uri, &token))
+                .await
+                .unwrap();
+            statuses.push(response.status());
+            retry_after = response.headers().get("retry-after").cloned();
+        }
+        assert_eq!(statuses, [StatusCode::OK, StatusCode::SERVICE_UNAVAILABLE]);
+        assert_eq!(retry_after.unwrap(), "5");
     }
 
     #[tokio::test]

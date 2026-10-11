@@ -80,6 +80,15 @@ impl ApiError {
     /// unknown to the group, it's just not reachable *right now* on any
     /// member, which a client should render as "not currently available on
     /// any server" rather than a confusing not-found.
+    /// A full node: 503 `no_transcode_capacity`, which `into_response` sends with `Retry-After`.
+    pub fn no_transcode_capacity(message: impl Into<String>) -> Self {
+        Self::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "no_transcode_capacity",
+            message,
+        )
+    }
+
     pub fn no_peer_available(message: impl Into<String>) -> Self {
         Self::new(
             StatusCode::SERVICE_UNAVAILABLE,
@@ -91,7 +100,11 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (self.status, Json(self.body)).into_response()
+        // A full node frees a slot within seconds as clients stop or the idle
+        // reaper runs, so tell clients when to come back.
+        let retry_after = (self.body.error == "no_transcode_capacity")
+            .then_some([(axum::http::header::RETRY_AFTER, "5")]);
+        (self.status, retry_after, Json(self.body)).into_response()
     }
 }
 
@@ -117,9 +130,7 @@ impl From<playarr_transcode::TranscodeError> for ApiError {
     fn from(err: playarr_transcode::TranscodeError) -> Self {
         use playarr_transcode::TranscodeError;
         match err {
-            TranscodeError::NoCapacity => Self::new(
-                StatusCode::SERVICE_UNAVAILABLE,
-                "no_transcode_capacity",
+            TranscodeError::NoCapacity => Self::no_transcode_capacity(
                 "no on-demand transcode capacity available on this node",
             ),
             TranscodeError::Db(playarr_db::DbError::NotFound) => {

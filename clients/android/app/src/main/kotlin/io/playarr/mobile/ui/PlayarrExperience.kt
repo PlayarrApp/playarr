@@ -251,6 +251,7 @@ import io.playarr.shared.data.model.wireName
 import io.playarr.shared.data.remote.PlayarrApi
 import io.playarr.shared.data.remote.PlayarrServerAccess
 import io.playarr.shared.data.remote.PlayarrServerAccessResolver
+import io.playarr.shared.domain.model.PlayarrError
 import io.playarr.shared.domain.model.PlayarrResult
 import io.playarr.shared.domain.usecase.BrowseLibraryUseCase
 import io.playarr.shared.domain.usecase.GetPlaybackInfoUseCase
@@ -7901,6 +7902,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
     /** True once this media actually played; until then closing must not write progress (see PlayarrProgressGuard). */
     private var playbackReached = false
     private var autoRetryAttempts = 0
+    private var capacityRetryAttempts = 0
     private var stallJob: Job? = null
     private var retryJob: Job? = null
     private val _notice = MutableStateFlow<PlayarrString?>(null)
@@ -8118,11 +8120,33 @@ internal class ExperiencePlayerViewModel @Inject constructor(
                     )
                     ExperienceLoad.Ready(Unit)
                 }
-                is PlayarrResult.Failure -> ExperienceLoad.Failed(
-                    result.error.userMessageForExperience(PlayarrString.ErrorSubjectMedia),
-                )
+                is PlayarrResult.Failure ->
+                    if (scheduleCapacityRetry(mediaFileId, result.error) {
+                            play(mediaFileId, activeDefaults, resumePosition, launchSettings, force = true)
+                        }
+                    ) {
+                        ExperienceLoad.Loading
+                    } else {
+                        ExperienceLoad.Failed(result.error.userMessageForExperience(PlayarrString.ErrorSubjectMedia))
+                    }
             }
+            if (_state.value is ExperienceLoad.Ready<*>) capacityRetryAttempts = 0
         }
+    }
+
+    /** A full node refuses with 503 and Retry-After: stay on the loading state and ask again with backoff. */
+    private fun scheduleCapacityRetry(mediaFileId: String, error: PlayarrError, retry: () -> Unit): Boolean {
+        if (!isTranscodeCapacityError(error)) return false
+        val delayMs = playarrCapacityRetryDelayMs(capacityRetryAttempts) ?: return false
+        capacityRetryAttempts += 1
+        Log.i(PLAYBACK_STATS_TAG, "event=capacity_retry attempt=$capacityRetryAttempts delay_ms=$delayMs")
+        retryJob?.cancel()
+        retryJob = viewModelScope.launch {
+            delay(delayMs)
+            if (activeMediaFileId != mediaFileId) return@launch
+            retry()
+        }
+        return true
     }
 
     private data class PlayarrPrewarmed(
@@ -8313,11 +8337,28 @@ internal class ExperiencePlayerViewModel @Inject constructor(
                         preferredSubtitleId,
                     )
                     _state.value = ExperienceLoad.Ready(Unit)
+                    capacityRetryAttempts = 0
                 }
                 is PlayarrResult.Failure -> {
-                    val message = result.error.userMessageForExperience(PlayarrString.ErrorSubjectMedia)
-                    _controls.value = _controls.value.copy(switching = false)
-                    _state.value = ExperienceLoad.Failed(message)
+                    // A seek, quality or audio switch, or the recovery of a dropped session, that meets a full
+                    // node keeps the switching state and asks again with backoff.
+                    val retrying = scheduleCapacityRetry(mediaFileId, result.error) {
+                        switchNegotiatedPlayback(
+                            profile = profile,
+                            forceTranscode = forceTranscode,
+                            audioStreamIndex = audioStreamIndex,
+                            ignoreSavedPreferences = ignoreSavedPreferences,
+                            requestedSourcePositionMs = sourcePosition,
+                            stopReason = stopReason,
+                            errorMessage = errorMessage,
+                            shouldPlayOverride = shouldPlay,
+                        )
+                    }
+                    if (!retrying) {
+                        val message = result.error.userMessageForExperience(PlayarrString.ErrorSubjectMedia)
+                        _controls.value = _controls.value.copy(switching = false)
+                        _state.value = ExperienceLoad.Failed(message)
+                    }
                 }
             }
         }
@@ -8478,6 +8519,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         stallJob?.cancel()
         retryJob?.cancel()
         autoRetryAttempts = 0
+        capacityRetryAttempts = 0
         val saved = persistProgress(ensureCompletion = true)
         closeActiveSession(PlaybackStopReason.UserStopped)
         player.pause()

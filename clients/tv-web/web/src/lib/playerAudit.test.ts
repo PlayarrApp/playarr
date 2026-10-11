@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   humanNegotiationMessage,
+  capacityRetryDelayMs,
+  isCapacityError,
   isTransientNegotiationError,
+  MAX_CAPACITY_RETRIES,
+  retryOnCapacityRefusal,
   MAX_NEGOTIATION_AUTO_RETRIES,
   reconnectDelayMs,
 } from "./playbackReconnect";
@@ -24,6 +28,56 @@ describe("negotiation error handling", () => {
   it("backs off 1 s, 2 s, 4 s across three silent retries", () => {
     expect(MAX_NEGOTIATION_AUTO_RETRIES).toBe(3);
     expect([0, 1, 2].map(reconnectDelayMs)).toEqual([1000, 2000, 4000]);
+  });
+
+  it("waits longer when the node is full of transcodes", () => {
+    const full = { status: 503, body: { error: "no_transcode_capacity" } };
+    expect(isCapacityError(full)).toBe(true);
+    expect(isCapacityError({ status: 503, body: { error: "no_peer_available" } })).toBe(false);
+    expect(isCapacityError({ status: 500, body: { error: "no_transcode_capacity" } })).toBe(false);
+    expect(isTransientNegotiationError(full)).toBe(true);
+    expect([0, 1, 2, 3, 9].map(capacityRetryDelayMs)).toEqual([2000, 4000, 8000, 10000, 10000]);
+    expect(MAX_CAPACITY_RETRIES).toBeGreaterThan(MAX_NEGOTIATION_AUTO_RETRIES);
+    expect(humanNegotiationMessage(full, "API request failed: 503")).toMatch(/busy/);
+  });
+
+  it("retries a switch on a capacity refusal with the same backoff, and stops once superseded", async () => {
+    const full = { status: 503, body: { error: "no_transcode_capacity" } };
+    const waits: number[] = [];
+    const sleep = async (ms: number) => void waits.push(ms);
+    let calls = 0;
+    const result = await retryOnCapacityRefusal(
+      async () => {
+        calls += 1;
+        if (calls < 4) throw full;
+        return "ok";
+      },
+      () => true,
+      sleep
+    );
+    expect(result).toBe("ok");
+    expect(waits).toEqual([2000, 4000, 8000]);
+
+    // Another error is not retried.
+    await expect(
+      retryOnCapacityRefusal(async () => Promise.reject({ status: 500 }), () => true, sleep)
+    ).rejects.toEqual({ status: 500 });
+    // A refusal that never clears gives up after MAX_CAPACITY_RETRIES waits.
+    waits.length = 0;
+    await expect(retryOnCapacityRefusal(async () => Promise.reject(full), () => true, sleep)).rejects.toBe(full);
+    expect(waits).toHaveLength(MAX_CAPACITY_RETRIES);
+    // A newer switch supersedes the wait.
+    let attempts = 0;
+    const superseded = await retryOnCapacityRefusal(
+      async () => {
+        attempts += 1;
+        throw full;
+      },
+      () => false,
+      sleep
+    );
+    expect(superseded).toBeUndefined();
+    expect(attempts).toBe(1);
   });
 
   it("never shows raw exception text", () => {

@@ -43,7 +43,11 @@ import {
   canReconnect,
   DECODE_FALLBACK_PROFILE,
   humanNegotiationMessage,
+  capacityRetryDelayMs,
+  isCapacityError,
+  retryOnCapacityRefusal,
   isTransientNegotiationError,
+  MAX_CAPACITY_RETRIES,
   MAX_NEGOTIATION_AUTO_RETRIES,
   isRecoverableConnectionError,
   isUnhandledEngineError,
@@ -794,11 +798,15 @@ export function usePlaybackEngine(
           !forbidden &&
           !reconnectingRef.current &&
           isTransientNegotiationError(err) &&
-          negotiationAutoRetryRef.current < MAX_NEGOTIATION_AUTO_RETRIES
+          negotiationAutoRetryRef.current <
+            (isCapacityError(err) ? MAX_CAPACITY_RETRIES : MAX_NEGOTIATION_AUTO_RETRIES)
         ) {
           // Stay on the player (spinner) and try again with back-off; the
-          // stored request parameters resume at the same position.
-          const delay = reconnectDelayMs(negotiationAutoRetryRef.current);
+          // stored request parameters resume at the same position. A full
+          // node waits longer: a slot frees when another device stops.
+          const delay = isCapacityError(err)
+            ? capacityRetryDelayMs(negotiationAutoRetryRef.current)
+            : reconnectDelayMs(negotiationAutoRetryRef.current);
           negotiationAutoRetryRef.current += 1;
           reconnectTimerRef.current = setTimeout(() => {
             reconnectTimerRef.current = null;
@@ -1278,7 +1286,10 @@ export function usePlaybackEngine(
         .then(() => closeCurrentSession)
         .then(() => {
           if (qualitySwitchRequestRef.current !== requestId) return undefined;
-          return client.getPlaybackInfo(mediaFileId, negotiationRequestRef.current);
+          return retryOnCapacityRefusal(
+            () => client.getPlaybackInfo(mediaFileId, negotiationRequestRef.current),
+            () => qualitySwitchRequestRef.current === requestId
+          );
         })
         .then((info) => {
           if (!info) return;
@@ -1378,7 +1389,10 @@ export function usePlaybackEngine(
         .then(() => closeCurrentSession)
         .then(() => {
           if (qualitySwitchRequestRef.current !== requestId) return undefined;
-          return client.getPlaybackInfo(mediaFileId, request);
+          return retryOnCapacityRefusal(
+            () => client.getPlaybackInfo(mediaFileId, request),
+            () => qualitySwitchRequestRef.current === requestId
+          );
         })
         .then((info) => {
           if (!info) return;
@@ -1529,7 +1543,10 @@ export function usePlaybackEngine(
         .then(() => closeCurrentSession)
         .then(() => {
           if (qualitySwitchRequestRef.current !== requestId) return undefined;
-          return client.getPlaybackInfo(mediaFileId, request);
+          return retryOnCapacityRefusal(
+            () => client.getPlaybackInfo(mediaFileId, request),
+            () => qualitySwitchRequestRef.current === requestId
+          );
         })
         .then((info) => {
           if (!info) return;
