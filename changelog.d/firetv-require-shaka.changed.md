@@ -1,1 +1,0 @@
-- Fire TV: release and debug builds stop with a clear message when the vendored Shaka player is missing (run scripts/setup-shaka.sh), so no build ships unable to play HLS titles.

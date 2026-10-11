@@ -1,1 +1,0 @@
-- Fire TV: LEFT from content lands on the nav item level with the focused card, as the web does (not always on the current page's item); playback declares a 25 Mbps maximum bitrate so very high-bitrate originals are converted instead of sent raw.

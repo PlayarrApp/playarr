@@ -1,1 +1,0 @@
-- webOS package repeats its CSS font weights with extra specificity so the webOS TV Simulator's forced weight 400 no longer flattens bold text.

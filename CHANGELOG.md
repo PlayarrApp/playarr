@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV: LEFT from content lands on the nav item level with the focused card, as the web does (not always on the current page's item); playback declares a 25 Mbps maximum bitrate so very high-bitrate originals are converted instead of sent raw.
+- webOS package repeats its CSS font weights with extra specificity so the webOS TV Simulator's forced weight 400 no longer flattens bold text.
 - macOS: every nav tab can be clicked and hovered (only the active tab was enabled), and a drawer opens with its close button focused as on tvOS; the debug remote gained targets, hover and rclick commands (57.10025).
 - macOS: the production Home no longer sits 32 pt too high with a strip at the bottom (the stage coordinate space replaces the window's global space on the Mac, 57.10025).
 - Xbox: arrow keys and the D-pad move focus spatially across the nav rail, Home rails and grids (Up and Down on Home no longer scroll instead of moving focus), detail pages focus Play or the next-up episode, and Escape or the Back key goes back one level.
@@ -282,6 +284,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Samsung Tizen native client: reports the TV's real decoder capabilities to the playback negotiation, adds Settings > Player > Advanced "Force direct video" and "Force direct audio" switches (off by default), and shows the server's 422 refusal message without retrying.
 - Sailfish OS: the playback request reports the device's real caps (8-bit H.264 up to 1080p60, stereo, no HDR, no passthrough), adds "Force direct video" and "Force direct audio" under Player > Advanced (default off, sent only when on), and shows the server's 422 `unsupported_colour_format` message without retrying.
 - Sailfish OS: now-playing through MPRIS (title, artwork, position, duration, Play, Pause, Stop and Seek from the media controls), download notifications with progress, percent and size plus Pause, Resume and Cancel actions over a small D-Bus service, a download options page with quality and keep-until (also used to edit an existing download), and keep-until rules checked on the local copies.
 - Apple clients (iOS, iPadOS, tvOS, macOS): playback shows on the system now-playing surface with the title, position, duration and play state, and the Play, Pause, skip and scrub buttons control the player (artwork and next/previous are not wired yet).
@@ -461,6 +464,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: release and debug builds stop with a clear message when the vendored Shaka player is missing (run scripts/setup-shaka.sh), so no build ships unable to play HLS titles.
 - Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.
 - Android phone: the Calendar uses the web phone design: one toolbar row (period, previous, Today, next), agenda without a details panel, week days as columns of the shared entry cards, and en-GB day headings.
 - Android phone: Home rail cards are 173 dp wide as on the web phone layout, so the next card peeks at the right edge.

@@ -1,1 +1,0 @@
-- Samsung Tizen native client: reports the TV's real decoder capabilities to the playback negotiation, adds Settings > Player > Advanced "Force direct video" and "Force direct audio" switches (off by default), and shows the server's 422 refusal message without retrying.
