@@ -18,6 +18,7 @@ import {
   PLAYARR_CLIENT_PLATFORM,
 } from "./lib/clientPlatform";
 import { installTvStageScale } from "./lib/tvStageScale";
+import { installVidaaLongPress } from "./lib/vidaaLongPress";
 import { installScrollEdgeFades } from "./lib/scrollEdgeFade";
 import {
   bootstrapParityMode,
@@ -63,6 +64,11 @@ installScrollEdgeFades();
 // Smart-TV browsers report assorted viewports and cannot scroll: fit the 1920x1080 TV stage to them.
 if (IS_VIDAA || IS_WEBOS || IS_TIZEN) {
   installTvStageScale();
+}
+
+// VIDAA's remote service sends a long press of OK as an instant burst: make it a real hold (VIDAA only).
+if (IS_VIDAA) {
+  installVidaaLongPress();
 }
 
 // Product TV cross-engine assets: identical text/media, live layout (no solidify).
