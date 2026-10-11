@@ -1961,6 +1961,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Performance
 
+- Fire TV: Home and the calendar no longer re-render every card on each focus move (memoised rails, windowed Home cards, memoised agenda rows and month chips), so focus keeps up with the remote; the Home feature title balances without breaking inside a word.
 - Peer sync: a peer's availability snapshot that has not changed no longer reads its 50,000 stored fingerprints (1.3 to 3.8 s on a loaded server). Each peer's stored snapshot carries a marker (row count and digest, migration 0084) that is checked with two index lookups, and is forgotten before a replacement starts writing and recorded in its last chunk.
 - Peer sync push: the sender leaves its unchanged inventory (about 26 MB for 50,000 files) out of the minute-by-minute push once the receiver has said it holds it, and repeats it in full every ten minutes. Older peers keep receiving the rows; the new fields are optional on the wire.
 - Language index: the indexer stores each pass's results with one batched write per 200 files (and the arr sync and indexer writes go through the shared write queue) instead of one transaction and commit sync per file.
