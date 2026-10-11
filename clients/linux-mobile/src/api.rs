@@ -70,18 +70,13 @@ pub struct CatalogQuery {
 
 impl CatalogQuery {
     pub fn query_string(&self) -> String {
+        // The web always sends the order explicitly (title, ascending by default).
         let mut q = format!(
-            "kind={}&sort={}",
+            "kind={}&sort={}&order={}",
             self.kind,
-            if self.sort.is_empty() { "title" } else { &self.sort }
+            if self.sort.is_empty() { "title" } else { &self.sort },
+            if self.descending { "desc" } else { "asc" }
         );
-        if self.sort == "date_added" && !self.descending || self.sort != "date_added" && self.descending {
-            // Date added defaults to newest first, titles to A-Z; the Order tiles flip either default.
-        }
-        let newest_first = self.sort == "date_added";
-        if newest_first != self.descending {
-            q.push_str(if self.descending { "&order=desc" } else { "&order=asc" });
-        }
         if let Some(g) = &self.genre {
             q.push_str(&format!("&genre={}", urlenc(g)));
         }
@@ -230,6 +225,7 @@ impl Client {
         let q = CatalogQuery {
             kind: kind.into(),
             sort: sort.into(),
+            available_only: true,
             ..Default::default()
         };
         self.catalog_filtered(&q, offset, limit)
@@ -270,7 +266,10 @@ impl Client {
     }
     pub fn search(&self, q: &str) -> Result<Vec<Work>> {
         Ok(self
-            .get::<SearchResults>(&format!("/api/v1/catalog/search?q={}&limit=40", urlenc(q)))?
+            .get::<SearchResults>(&format!(
+                "/api/v1/catalog/search?q={}&limit=60&available_only=true",
+                urlenc(q)
+            ))?
             .items)
     }
     pub fn work(&self, id: &str) -> Result<WorkDetail> {
@@ -360,7 +359,7 @@ mod tests {
                 ..Default::default()
             }
             .query_string(),
-            "kind=series&sort=title"
+            "kind=series&sort=title&order=asc"
         );
     }
 

@@ -28,6 +28,13 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     page.append(&entry);
     page.append(&status);
     page.append(&flow);
+    // Like the web, the field is focused when the page opens.
+    {
+        let entry = entry.clone();
+        entry.connect_map(|e| {
+            e.grab_focus();
+        });
+    }
     let scroll = gtk4::ScrolledWindow::builder()
         .child(&page)
         .hscrollbar_policy(gtk4::PolicyType::Never)

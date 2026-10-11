@@ -22,7 +22,7 @@ button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avata
 .pa-cap-title { font-size: 8.8px; font-weight: 610; color: @pa_ink; }
 .pa-cap-meta { font-size: 6.88px; color: @pa_muted; }
 .pa-unseen { min-width: 9px; min-height: 9px; border-radius: 999px; background: @pa_brand; border: 1.5px solid #f4f0f1; }
-frame.selected, aspectframe.selected { }
+.pa-art.selected { box-shadow: 0 0 0 3px alpha(@pa_brand_ink, 0.9), 0 0 26px alpha(@pa_brand, 0.45); }
 .pa-card-title { font-size: 14px; font-weight: 600; color: @pa_ink; }
 .pa-card-meta { font-size: 12px; color: @pa_muted; }
 button.pa-card, button.pa-card:hover, button.pa-card:active { background: transparent; border: none; box-shadow: none; padding: 0; min-height: 0; min-width: 0; }
@@ -90,7 +90,7 @@ button.pa-hbtn.square { border-radius: 14px; }
 .pa-key-wash { background: linear-gradient(to bottom, alpha(@pa_bg, 0.15), @pa_bg); }
 scrolledwindow.pa-transparent, scrolledwindow.pa-transparent viewport { background: transparent; }
 .pa-rail-title { font-size: 16px; font-weight: 610; }
-.pa-search { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; min-height: 44px; padding: 0 14px; box-shadow: none; color: @pa_ink; }
+.pa-search { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; min-height: 58px; padding: 0 14px; box-shadow: none; color: @pa_ink; }
 .pa-search text { color: @pa_ink; }
 
 /* Calendar (web mobile) */
@@ -146,7 +146,57 @@ button.pa-row.focus { outline: 2px solid @pa_ink; outline-offset: -1px; }
 dropdown.pa-dropdown > button { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 8px; min-height: 44px; box-shadow: none; color: @pa_ink; }
 
 /* Preferences list */
-button.pa-pref { background: transparent; border: none; border-radius: 0; box-shadow: none; padding: 18px 16px; border-top: 1px solid @pa_line; }
+button.pa-pref { background: transparent; border: none; border-radius: 12px; box-shadow: none; padding: 0 18px; min-height: 88px; }
+button.pa-pref:first-child { background: @pa_soft; }
 button.pa-pref:hover { background: alpha(@pa_surface_strong, 0.5); }
 .pa-pref-title { font-size: 15px; font-weight: 610; color: @pa_ink; }
 .pa-pref-desc { font-size: 11px; color: @pa_muted; }
+.pa-key-art.soft { opacity: 0.22; }
+.pa-search:focus-within { outline: 3px solid @pa_ink; outline-offset: -1px; }
+
+/* Detail, measured from the web (360 px viewport) */
+.pa-display { font-size: 36px; font-weight: 560; letter-spacing: -1px; }
+.pa-kicker { font-size: 10.56px; }
+.pa-meta { font-size: 10.24px; }
+.pa-overview { font-size: 11.52px; }
+.pa-ep-heading { font-size: 14.4px; font-weight: 570; color: @pa_ink; }
+.pa-action-label-s { font-size: 8px; font-weight: 700; color: @pa_ink; }
+button.pa-action.primary .pa-action-label-s { color: @pa_bg; }
+.pa-action-label { font-size: 11.2px; }
+.pa-season-title { font-size: 16px; font-weight: 610; }
+.pa-season-count { font-size: 10.56px; color: @pa_muted; }
+.pa-ep-badge { font-size: 12.8px; font-weight: 560; }
+.pa-ep-code { font-size: 9.92px; font-weight: 700; color: @pa_ink; }
+.pa-ep-name { font-size: 12.48px; font-weight: 610; }
+
+/* Calendar, measured from the web */
+button.pa-pill, .pa-pill { background: @pa_surface; font-size: 11.52px; font-weight: 720; color: @pa_ink_soft; }
+.pa-pill-label { font-size: 11.52px; font-weight: 720; color: @pa_ink_soft; }
+.pa-day-title { font-size: 14.4px; font-weight: 640; }
+.pa-today-chip { font-size: 11.2px; font-weight: 640; letter-spacing: 0; padding: 0 12px; min-height: 22px; text-transform: none; }
+.pa-entry-title { font-size: 16px; font-weight: 640; }
+.pa-entry-sub { font-size: 16px; font-weight: 400; color: @pa_ink_soft; }
+.pa-entry-meta { font-size: 12.8px; color: @pa_muted; }
+.pa-chip-status { font-size: 10.24px; font-weight: 750; padding: 0 12px; min-height: 22px; }
+button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding: 16px; border-radius: 12px; min-height: 93px; }
+.pa-thumb { border-radius: 6px; }
+
+/* Drawers, measured from the web */
+.pa-panel { background: alpha(@pa_surface_strong, 0.94); }
+.pa-panel-kicker { font-size: 7.04px; font-weight: 720; letter-spacing: 0.8px; color: @pa_muted; }
+.pa-panel-title { font-size: 22.4px; font-weight: 590; }
+button.pa-close { min-width: 46px; min-height: 46px; }
+button.pa-close.soft { background: @pa_soft; min-width: 44px; min-height: 44px; }
+.pa-section-label { font-size: 7.04px; font-weight: 720; letter-spacing: 0.8px; margin-top: 22px; margin-bottom: 12px; }
+.pa-seg-tile { min-height: 48px; background: alpha(@pa_soft, 0.64); border: none; border-radius: 12px; font-size: 11.52px; font-weight: 680; color: @pa_muted; }
+.pa-seg-tile:checked { background: @pa_ink; color: @pa_bg; }
+button.pa-row { background: @pa_soft; border: none; border-radius: 14px; min-height: 68px; padding: 0 18px; font-size: 16px; font-weight: 700; }
+
+/* Profiles, measured from the web */
+.pa-kicker-s { font-size: 7.36px; font-weight: 820; letter-spacing: 1px; color: @pa_brand_ink; }
+.pa-who { font-size: 39.6px; font-weight: 500; color: @pa_ink; letter-spacing: -1px; }
+.pa-profile-name { font-size: 13.12px; font-weight: 680; color: @pa_ink; }
+.pa-tiny { font-size: 6.72px; font-weight: 690; color: @pa_muted; letter-spacing: 0.6px; }
+button.pa-pill.small { font-size: 7.68px; padding: 0 20px; }
+.pa-mark { min-width: 30px; min-height: 30px; padding: 8px; }
+dropdown.pa-dropdown > button { background: @pa_bg; border: 1px solid @pa_line; border-radius: 12px; font-size: 11.52px; font-weight: 720; }

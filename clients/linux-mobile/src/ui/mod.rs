@@ -185,7 +185,14 @@ impl App {
     }
 
     /// Opens a full-window side panel like the web's drawers: small kicker, title, round close button, then `body`.
-    pub fn present_panel(self: &Rc<Self>, kicker: &str, title: &str, body: &impl IsA<gtk4::Widget>) {
+    /// `close_primary` draws the close button white (Filters) instead of soft (title actions).
+    pub fn present_panel(
+        self: &Rc<Self>,
+        kicker: &str,
+        title: &str,
+        body: &impl IsA<gtk4::Widget>,
+        close_primary: bool,
+    ) {
         self.close_panel();
         let panel = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
@@ -193,16 +200,16 @@ impl App {
             .build();
         let head = gtk4::Box::builder()
             .spacing(10)
-            .margin_top(18)
-            .margin_start(16)
-            .margin_end(16)
-            .margin_bottom(14)
+            .margin_top(20)
+            .margin_start(20)
+            .margin_end(20)
+            .margin_bottom(22)
             .build();
         let block = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
             .hexpand(true)
             .spacing(2)
-            .valign(gtk4::Align::Center)
+            .valign(gtk4::Align::Start)
             .build();
         block.append(
             &gtk4::Label::builder()
@@ -220,15 +227,29 @@ impl App {
                 .build(),
         );
         let close = gtk4::Button::builder()
-            .css_classes(["pa-close"])
+            .css_classes(if close_primary {
+                vec!["pa-close"]
+            } else {
+                vec!["pa-close", "soft"]
+            })
             .valign(gtk4::Align::Start)
             .build();
-        close.set_child(Some(&crate::icons::image("close", 16, crate::icons::Tone::OnAccent)));
+        close.set_child(Some(&crate::icons::image(
+            "close",
+            14,
+            if close_primary {
+                crate::icons::Tone::OnAccent
+            } else {
+                crate::icons::Tone::Ink
+            },
+        )));
         let me = self.clone();
         close.connect_clicked(move |_| me.close_panel());
         head.append(&block);
         head.append(&close);
         panel.append(&head);
+        body.set_margin_start(20);
+        body.set_margin_end(20);
         panel.append(
             &gtk4::ScrolledWindow::builder()
                 .child(body)
@@ -293,9 +314,9 @@ impl App {
                 let (me, c) = (self.clone(), client.clone());
                 bg(
                     move || {
-                        c.catalog("movie", 0, 1, "title")
+                        c.catalog("movie", 0, 200, "title")
                             .ok()
-                            .and_then(|p| p.items.into_iter().next())
+                            .and_then(|p| p.items.into_iter().min_by_key(|w| library::natural_key(&w.title)))
                     },
                     move |w| {
                         if let Some(w) = w {
@@ -316,9 +337,9 @@ impl App {
                 let route = name.to_string();
                 bg(
                     move || {
-                        c.catalog(kind, 0, 1, "title")
+                        c.catalog(kind, 0, 200, "title")
                             .ok()
-                            .and_then(|p| p.items.into_iter().next())
+                            .and_then(|p| p.items.into_iter().min_by_key(|w| library::natural_key(&w.title)))
                     },
                     move |w| {
                         let Some(w) = w else { return };

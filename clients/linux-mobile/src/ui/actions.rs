@@ -143,5 +143,5 @@ pub fn show(app: &Rc<App>, work: &Work) {
             col.append(&b);
         }
     }
-    app.present_panel("Title actions", &work.title, &col);
+    app.present_panel("Title actions", &work.title, &col, false);
 }

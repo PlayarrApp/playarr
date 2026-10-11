@@ -22,23 +22,26 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     root.add_css_class("pa-page");
 
-    // Top bar: brand mark, theme chooser.
+    // Top bar: brand mark at the left, theme chooser (and the language chooser, not wired) at the right.
     let top = gtk4::Box::builder()
-        .spacing(10)
+        .spacing(8)
         .margin_top(14)
-        .margin_start(16)
-        .margin_end(16)
+        .margin_start(21)
+        .margin_end(14)
+        .height_request(48)
         .build();
     let mark = gtk4::Box::builder()
         .css_classes(["pa-mark"])
         .hexpand(true)
         .halign(gtk4::Align::Start)
+        .valign(gtk4::Align::Center)
         .build();
-    mark.append(&icons::image("play", 18, Tone::OnAccent));
+    mark.append(&icons::image("play", 14, Tone::OnAccent));
     top.append(&mark);
     let names: Vec<&str> = THEMES.iter().map(|t| t.1).collect();
     let theme_pick = gtk4::DropDown::from_strings(&names);
     theme_pick.add_css_class("pa-dropdown");
+    theme_pick.set_size_request(112, 48);
     let current = store::load_settings().theme;
     theme_pick.set_selected(THEMES.iter().position(|t| t.0 == current).unwrap_or(0) as u32);
     theme_pick.connect_selected_notify(|d| {
@@ -47,51 +50,62 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         theme::apply(name);
     });
     top.append(&theme_pick);
+    let lang = gtk4::DropDown::from_strings(&["Auto"]);
+    lang.add_css_class("pa-dropdown");
+    lang.set_size_request(112, 48);
+    lang.set_sensitive(false);
+    lang.set_tooltip_text(Some("The app follows this device's language."));
+    top.append(&lang);
     root.append(&top);
 
-    root.append(
+    let heading = gtk4::Box::builder()
+        .orientation(gtk4::Orientation::Vertical)
+        .halign(gtk4::Align::Center)
+        .margin_top(10)
+        .build();
+    heading.append(
         &gtk4::Label::builder()
             .label("PROFILES")
-            .css_classes(["pa-kicker"])
-            .margin_top(26)
-            .margin_start(16)
-            .xalign(0.0)
+            .css_classes(["pa-kicker-s"])
             .build(),
     );
-    root.append(
+    heading.append(
         &gtk4::Label::builder()
             .label("Who’s watching?")
-            .css_classes(["pa-display"])
-            .margin_start(16)
-            .xalign(0.0)
+            .css_classes(["pa-who"])
+            .margin_top(7)
             .build(),
     );
+    root.append(&heading);
 
     let tiles = gtk4::Box::builder()
-        .spacing(16)
-        .margin_start(16)
-        .margin_end(16)
-        .margin_top(26)
+        .spacing(22)
+        .halign(gtk4::Align::Center)
+        .margin_top(36)
         .build();
     root.append(&tiles);
     let status = gtk4::Label::builder()
         .label("Loading profiles…")
         .css_classes(["pa-muted"])
-        .margin_start(16)
-        .xalign(0.0)
         .margin_top(12)
         .build();
     root.append(&status);
 
-    let actions = gtk4::Box::builder().spacing(10).margin_start(16).margin_top(24).build();
+    // Settings and sign out sit under the current profile.
+    let actions = gtk4::Box::builder()
+        .spacing(9)
+        .halign(gtk4::Align::Start)
+        .margin_start(25)
+        .margin_top(24)
+        .build();
     let settings = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
-    settings.set_child(Some(&icons::image("settings", 18, Tone::Brand)));
+    settings.set_child(Some(&icons::image("settings", 16, Tone::Brand)));
     {
         let (app, client) = (app.clone(), client.clone());
         settings.connect_clicked(move |_| app.push_settings(client.clone()));
     }
     let sign_out = gtk4::Button::builder()
-        .css_classes(["pa-pill"])
+        .css_classes(["pa-pill", "small"])
         .label("Sign out")
         .build();
     {
@@ -131,7 +145,7 @@ fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>, fr
     };
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
     col.set_halign(gtk4::Align::Center);
-    let av = avatar_widget(&preset, 150);
+    let av = avatar_widget(&preset, 144);
     if p.is_current {
         av.add_css_class("current");
     }
@@ -177,7 +191,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .css_classes(["pa-add-circle"])
         .halign(gtk4::Align::Center)
         .build();
-    circle.set_size_request(132, 132);
+    circle.set_size_request(144, 144);
     circle.append(&icons::image("add", 28, Tone::Ink));
     col.append(&circle);
     col.append(
@@ -188,7 +202,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
     );
     col.append(
         &gtk4::Label::builder()
-            .label("ADD ANOTHER PROFILE")
+            .label("Add another profile")
             .css_classes(["pa-tiny"])
             .build(),
     );

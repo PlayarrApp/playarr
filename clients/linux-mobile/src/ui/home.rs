@@ -28,7 +28,7 @@ fn rail_row(children: impl IntoIterator<Item = gtk4::Button>) -> gtk4::ScrolledW
 }
 
 fn section(title: &str, row: &gtk4::ScrolledWindow) -> gtk4::Box {
-    let b = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+    let b = gtk4::Box::new(gtk4::Orientation::Vertical, 18);
     b.append(
         &gtk4::Label::builder()
             .label(title)
@@ -42,7 +42,7 @@ fn section(title: &str, row: &gtk4::ScrolledWindow) -> gtk4::Box {
 }
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
-    let page = gtk4::Box::new(gtk4::Orientation::Vertical, 52);
+    let page = gtk4::Box::new(gtk4::Orientation::Vertical, 50);
     page.set_margin_top(92);
     page.set_margin_bottom(110);
     // The backdrop of the first title, dimmed and washed into the page colour, sits behind the rails.

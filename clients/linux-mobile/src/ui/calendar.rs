@@ -173,7 +173,7 @@ fn status_chip(e: &CalendarEntry, today_date: Date) -> (&'static str, &'static s
 }
 
 fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry) -> gtk4::Button {
-    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 14);
     let thumb = gtk4::Picture::builder()
         .content_fit(gtk4::ContentFit::Cover)
         .can_shrink(true)
@@ -191,15 +191,17 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry) -> gtk4::Button
     row.append(&frame);
     let col = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .spacing(3)
+        .spacing(2)
         .hexpand(true)
+        .valign(gtk4::Align::Center)
         .build();
     col.append(
         &gtk4::Label::builder()
             .label(&e.title)
             .css_classes(["pa-entry-title"])
             .xalign(0.0)
-            .wrap(true)
+            .ellipsize(gtk4::pango::EllipsizeMode::End)
+            .max_width_chars(1)
             .build(),
     );
     let mut sub = Vec::new();
@@ -215,11 +217,12 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry) -> gtk4::Button
                 .label(sub.join(" · "))
                 .css_classes(["pa-entry-sub"])
                 .xalign(0.0)
-                .wrap(true)
+                .ellipsize(gtk4::pango::EllipsizeMode::End)
+                .max_width_chars(1)
                 .build(),
         );
     }
-    let meta = gtk4::Box::builder().spacing(8).build();
+    let meta = gtk4::Box::builder().spacing(12).build();
     for t in [
         time_label(e.release_at.as_deref()),
         release_label(&e.release_type).to_string(),
@@ -342,7 +345,11 @@ impl Cal {
     }
 
     fn day_section(&self, dt: Date, entries: &[CalendarEntry], empty_text: Option<&str>) {
-        let head = gtk4::Box::builder().spacing(10).margin_top(14).build();
+        let head = gtk4::Box::builder()
+            .spacing(9)
+            .height_request(44)
+            .margin_bottom(0)
+            .build();
         let name = format!(
             "{} {} {}",
             [
@@ -362,24 +369,31 @@ impl Cal {
                 .label(name)
                 .css_classes(["pa-day-title"])
                 .xalign(0.0)
+                .valign(gtk4::Align::Center)
                 .build(),
         );
         if dt == today() {
             head.append(
                 &gtk4::Label::builder()
-                    .label("TODAY")
+                    .label("Today")
                     .css_classes(["pa-today-chip"])
                     .valign(gtk4::Align::Center)
                     .build(),
             );
         }
-        self.body.append(&head);
+        let sec = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(13)
+            .margin_bottom(19)
+            .build();
+        head.set_margin_bottom(0);
+        sec.append(&head);
         for e in entries {
-            self.body.append(&entry_widget(&self.app, &self.imgs, e));
+            sec.append(&entry_widget(&self.app, &self.imgs, e));
         }
         if entries.is_empty() {
             if let Some(t) = empty_text {
-                self.body.append(
+                sec.append(
                     &gtk4::Label::builder()
                         .label(t)
                         .css_classes(["pa-muted"])
@@ -388,6 +402,7 @@ impl Cal {
                 );
             }
         }
+        self.body.append(&sec);
     }
 
     fn render(self: &Rc<Self>) {
@@ -559,7 +574,7 @@ impl Cal {
             });
         }
         col.append(&row);
-        self.app.present_panel("Library controls", "Calendar", &col);
+        self.app.present_panel("Library controls", "Calendar", &col, true);
     }
 }
 
@@ -568,18 +583,22 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     page.set_margin_bottom(110);
     let head = header::build(&app, "Calendar", "filters");
     head.action.set_visible(true);
+    head.extra.set_visible(true);
     page.append(&head.widget);
 
-    let content = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+    let content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     content.set_margin_start(16);
     content.set_margin_end(16);
     page.append(&content);
 
-    let controls = gtk4::Box::builder().spacing(8).build();
+    let controls = gtk4::Box::builder()
+        .spacing(8)
+        .halign(gtk4::Align::End)
+        .margin_top(5)
+        .build();
     let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
-    let range = gtk4::Box::builder().css_classes(["pa-pill"]).hexpand(true).build();
+    let range = gtk4::Box::builder().css_classes(["pa-pill"]).build();
     range.append(&range_label);
-    range_label.set_hexpand(true);
     let prev = round_icon("back");
     let today_btn = pill("Today");
     today_btn.add_css_class("selected");
@@ -592,8 +611,19 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     controls.append(&next);
     content.append(&controls);
 
-    let body = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
-    content.append(&body);
+    // The web lays the days out 510 px wide inside a 360 px page and clips the overflow; so does this.
+    let body = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    body.set_size_request(510, -1);
+    body.set_halign(gtk4::Align::Start);
+    let days_view = gtk4::ScrolledWindow::builder()
+        .child(&body)
+        .hscrollbar_policy(gtk4::PolicyType::External)
+        .vscrollbar_policy(gtk4::PolicyType::Never)
+        .kinetic_scrolling(false)
+        .propagate_natural_height(true)
+        .margin_top(8)
+        .build();
+    content.append(&days_view);
     let scroll = gtk4::ScrolledWindow::builder()
         .child(&page)
         .hscrollbar_policy(gtk4::PolicyType::Never)

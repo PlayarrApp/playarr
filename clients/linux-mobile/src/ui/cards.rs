@@ -101,7 +101,7 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         .orientation(gtk4::Orientation::Vertical)
         .spacing(3)
         .margin_top(11)
-        .margin_bottom(12)
+        .margin_bottom(0)
         .build();
     caption.append(
         &gtk4::Label::builder()

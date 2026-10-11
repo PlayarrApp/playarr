@@ -9,6 +9,8 @@ pub struct Header {
     pub title: gtk4::Label,
     pub subtitle: gtk4::Label,
     pub action: gtk4::Button,
+    /// A second action button left of `action` (the calendar's bell); hidden until a page shows it.
+    pub extra: gtk4::Button,
 }
 
 /// `action_icon` names the right-hand button's icon (for example `filters`); the button stays hidden until `action`
@@ -34,7 +36,7 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
     let block = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
         .hexpand(true)
-        .spacing(2)
+        .spacing(0)
         .build();
     let h1 = gtk4::Label::builder()
         .label(title)
@@ -47,6 +49,8 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .xalign(0.0)
         .visible(false)
         .build();
+    h1.set_height_request(44);
+    subtitle.set_margin_top(6);
     block.append(&h1);
     block.append(&subtitle);
     let action = gtk4::Button::builder()
@@ -55,14 +59,22 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .visible(false)
         .build();
     action.set_child(Some(&icons::image(action_icon, 18, Tone::Soft)));
+    let extra = gtk4::Button::builder()
+        .css_classes(["pa-hbtn", "square"])
+        .valign(gtk4::Align::Start)
+        .visible(false)
+        .build();
+    extra.set_child(Some(&icons::image("bell", 18, Tone::Soft)));
     row.append(&back);
     row.append(&block);
+    row.append(&extra);
     row.append(&action);
     Header {
         widget: row,
         title: h1,
         subtitle,
         action,
+        extra,
     }
 }
 

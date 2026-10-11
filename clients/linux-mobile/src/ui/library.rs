@@ -10,7 +10,8 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::rc::Rc;
 
-const PAGE: usize = 30;
+/// The web asks for 200 titles at a time.
+const PAGE: usize = 200;
 
 pub fn grid() -> gtk4::Box {
     gtk4::Box::builder()
@@ -39,12 +40,49 @@ pub fn group_digits(n: i64) -> String {
     }
 }
 
+/// Sort key: lower case, leading "the/a/an" dropped, digit runs compared as numbers.
+pub fn natural_key(title: &str) -> Vec<(u8, u64, String)> {
+    let t = title.to_lowercase();
+    let t = ["the ", "a ", "an "]
+        .iter()
+        .find_map(|a| t.strip_prefix(a))
+        .unwrap_or(&t)
+        .to_string();
+    let mut out = Vec::new();
+    let mut chars = t.chars().peekable();
+    while let Some(&c) = chars.peek() {
+        if c.is_ascii_digit() {
+            let mut n = String::new();
+            while let Some(&d) = chars.peek() {
+                if !d.is_ascii_digit() {
+                    break;
+                }
+                n.push(d);
+                chars.next();
+            }
+            out.push((0, n.parse().unwrap_or(0), String::new()));
+        } else {
+            let mut w = String::new();
+            while let Some(&d) = chars.peek() {
+                if d.is_ascii_digit() {
+                    break;
+                }
+                w.push(d);
+                chars.next();
+            }
+            out.push((1, 0, w));
+        }
+    }
+    out
+}
+
 struct Lib {
     app: Rc<App>,
     client: Client,
     imgs: Images,
     flow: gtk4::Box,
     head: header::Header,
+    backdrop: gtk4::Picture,
     noun: &'static str,
     status: gtk4::Label,
     query: RefCell<CatalogQuery>,
@@ -91,8 +129,15 @@ impl Lib {
                 me.busy.set(false);
                 match res {
                     Err(e) => me.status.set_label(&e.to_string()),
-                    Ok(p) => {
+                    Ok(mut p) => {
                         let n = p.items.len();
+                        if me.query.borrow().sort != "date_added" {
+                            // Like the web: numbers sort by value ("9 Bullets" before "10 Cloverfield Lane"), articles ignored.
+                            p.items.sort_by_key(|w| natural_key(&w.title));
+                            if me.query.borrow().descending {
+                                p.items.reverse();
+                            }
+                        }
                         me.loaded.set(offset + n);
                         me.total.set(if n == 0 {
                             offset + n
@@ -106,6 +151,11 @@ impl Lib {
                             me.genres.borrow_mut().extend(w.genres.iter().cloned());
                             let a = me.app.clone();
                             let first = me.flow.first_child().is_none();
+                            if first {
+                                if let Some(k) = ["backdrop", "poster"].iter().find(|k| w.has_image(k)) {
+                                    me.imgs.load(Client::artwork_path(&w.id, k, 780), &me.backdrop);
+                                }
+                            }
                             let opts = CardOpts {
                                 selected: first,
                                 unseen: me.app.is_unseen(w),
@@ -242,7 +292,7 @@ impl Lib {
             });
         }
         col.append(&apply);
-        self.app.present_panel("Library controls", "Filters", &col);
+        self.app.present_panel("Library controls", "Filters", &col, true);
     }
 }
 
@@ -269,6 +319,18 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         "series" => "titles",
         _ => "artists",
     };
+    let backdrop = gtk4::Picture::builder()
+        .content_fit(gtk4::ContentFit::Cover)
+        .css_classes(["pa-key-art", "soft"])
+        .valign(gtk4::Align::Start)
+        .build();
+    backdrop.set_size_request(-1, 385);
+    let wash = gtk4::Box::builder()
+        .css_classes(["pa-key-wash"])
+        .valign(gtk4::Align::Start)
+        .build();
+    wash.set_size_request(-1, 385);
+    scroll.add_css_class("pa-transparent");
     let filters = head.action.clone();
     filters.set_visible(true);
 
@@ -278,11 +340,14 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         imgs,
         flow,
         head,
+        backdrop: backdrop.clone(),
         noun,
         status,
         query: RefCell::new(CatalogQuery {
             kind: kind.into(),
             sort: "title".into(),
+            // The web lists what can be played by default.
+            available_only: true,
             ..Default::default()
         }),
         loaded: Cell::new(0),
@@ -304,6 +369,9 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         });
     }
     lib.reset();
+    let root = gtk4::Overlay::builder().child(&backdrop).build();
+    root.add_overlay(&wash);
+    root.add_overlay(&scroll);
     if kind == "movie" {
         // Capture hook: open the filters sheet.
         let lib = lib.clone();
@@ -313,5 +381,40 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
             .borrow_mut()
             .insert("filters", Rc::new(move |_| lib.show_filters()));
     }
-    scroll.upcast()
+    root.upcast()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn natural_order_matches_the_web() {
+        let mut v = vec![
+            "10 Cloverfield Lane",
+            "The 5th Wave",
+            "2 Fast 2 Furious",
+            "9 Bullets",
+            "6 Underground",
+            "12 Strong",
+        ];
+        v.sort_by_key(|t| natural_key(t));
+        assert_eq!(
+            v,
+            [
+                "2 Fast 2 Furious",
+                "The 5th Wave",
+                "6 Underground",
+                "9 Bullets",
+                "10 Cloverfield Lane",
+                "12 Strong"
+            ]
+        );
+    }
+
+    #[test]
+    fn digit_grouping() {
+        assert_eq!(group_digits(1754), "1,754");
+        assert_eq!(group_digits(35), "35");
+    }
 }

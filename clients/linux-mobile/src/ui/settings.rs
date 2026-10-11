@@ -98,7 +98,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
                 row.append(&b);
             }
             col.append(&row);
-            app.present_panel("Preferences", "Appearance", &col);
+            app.present_panel("Preferences", "Appearance", &col, true);
         });
     }
     list.append(&appearance);
@@ -129,7 +129,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
                 });
                 grid.append(&b);
             }
-            app.present_panel("Preferences", "Profile avatar", &grid);
+            app.present_panel("Preferences", "Profile avatar", &grid, true);
         });
     }
     list.append(&avatar_row);
@@ -184,7 +184,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
                 app2.sign_out();
             });
             col.append(&out);
-            app.present_panel("Preferences", "Server connection", &col);
+            app.present_panel("Preferences", "Server connection", &col, true);
         });
     }
     list.append(&server);
