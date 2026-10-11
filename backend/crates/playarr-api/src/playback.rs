@@ -267,6 +267,45 @@ impl From<&PlaybackQuery> for ClientCapabilities {
     }
 }
 
+/// Tdarr knows nothing of Dolby Vision RPUs, so for a profile 5 source only this node's own
+/// on-demand output (made with libplacebo) may be reused; a Tdarr encode would have wrong colours.
+fn rendition_fits_source(
+    source: Option<&playarr_transcode::video::SourceVideo>,
+    rendition: &playarr_model::Rendition,
+) -> bool {
+    !source.is_some_and(|s| s.requires_rpu())
+        || rendition.produced_by == playarr_model::ProducedBy::OnDemand
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ColourGate {
+    Proceed,
+    /// The title is copied for a device that renders it; a saved quality must not force a transcode.
+    DropSavedQuality,
+    Refuse,
+}
+
+/// Decides a profile 5 source: a transcode (planned, or forced by a quality choice) needs the RPU
+/// path (`rpu_ready`); without it the viewer is refused, unless the transcode only comes from a
+/// saved quality choice on a device that can take the copy.
+fn colour_gate(
+    plan: Option<playarr_transcode::video::VideoPlan>,
+    force_transcode: bool,
+    explicit_force: bool,
+    rpu_ready: bool,
+) -> ColourGate {
+    let planned = plan == Some(playarr_transcode::video::VideoPlan::Transcode);
+    if !(planned || force_transcode) || rpu_ready {
+        return ColourGate::Proceed;
+    }
+    let copy_possible = matches!(plan, Some(playarr_transcode::video::VideoPlan::Copy { .. }));
+    if copy_possible && !explicit_force {
+        ColourGate::DropSavedQuality
+    } else {
+        ColourGate::Refuse
+    }
+}
+
 const DEFAULT_PROFILE: &str = "h264-720p-4mbps";
 /// Default when the picture must be re-encoded for a device that can show 1080p: keep a Full HD
 /// source at 1080p instead of dropping to 720p. A 4K output is never chosen automatically (the
@@ -1273,7 +1312,15 @@ pub(crate) async fn negotiate_playback(
         .iter()
         .any(|c| playarr_transcode::codecs_match(c, &media_file.codec));
     // Best effort: without a probe the legacy codec/bitrate rules decide alone.
-    let source_video = state.transcode.probe_source(&media_file).await;
+    let mut source_video = state.transcode.probe_source(&media_file).await;
+    if playarr_transcode::video::colour_unknown(&media_file.codec, source_video.as_ref()) {
+        // A failed probe is retried once with a longer limit; colours that stay unknown for an
+        // HEVC source (the carrier of Dolby Vision) are refused, never copied or encoded blind.
+        source_video = state.transcode.probe_source_strict(&media_file).await;
+    }
+    if playarr_transcode::video::colour_unknown(&media_file.codec, source_video.as_ref()) {
+        return Err(ApiError::unsupported_colour_format());
+    }
     let video_plan = source_video.as_ref().map(|source| {
         playarr_transcode::video::plan_video(
             source,
@@ -1300,7 +1347,7 @@ pub(crate) async fn negotiate_playback(
         });
     let force_transcode = query.force_transcode
         || (query.profile.is_none() && persisted_quality_id.is_some_and(|id| id != "original"));
-    let profile = query
+    let mut profile = query
         .profile
         .clone()
         .or_else(|| {
@@ -1317,6 +1364,33 @@ pub(crate) async fn negotiate_playback(
     } else {
         "original".to_string()
     };
+
+    // Owner ruling: a title whose colours need its Dolby Vision RPU (profile 5) is never streamed
+    // through a path that skips the RPU. Re-encoding it needs libplacebo fast enough for live
+    // playback on this node (a GPU); without that the viewer gets a clear refusal.
+    let mut force_transcode = force_transcode;
+    let mut selected_quality_id = selected_quality_id;
+    if source_video.as_ref().is_some_and(|s| s.requires_rpu()) {
+        let rpu_ready = state.transcode.tone_map_support().await.libplacebo;
+        match colour_gate(
+            video_plan,
+            force_transcode,
+            query.force_transcode,
+            rpu_ready,
+        ) {
+            ColourGate::Proceed => {}
+            // A device that renders profile 5 itself keeps the original after an old saved
+            // quality choice, instead of failing.
+            ColourGate::DropSavedQuality => {
+                force_transcode = false;
+                selected_quality_id = "original".to_string();
+                profile =
+                    default_transcode_profile(source_video.as_ref(), video_plan, query.max_height)
+                        .to_string();
+            }
+            ColourGate::Refuse => return Err(ApiError::unsupported_colour_format()),
+        }
+    }
 
     let seed = SessionSeed {
         user_id,
@@ -1410,6 +1484,7 @@ pub(crate) async fn negotiate_playback(
             .transcode
             .find_existing_rendition(media_file_id, &profile)
             .await?
+            .filter(|rendition| rendition_fits_source(source_video.as_ref(), rendition))
     } else {
         None
     };
@@ -1474,6 +1549,11 @@ pub(crate) async fn negotiate_playback(
             Some(playarr_transcode::video::VideoPlan::Copy { strip_dovi: true })
         ),
         max_audio_channels: query.max_channels.filter(|_| !query.force_direct_audio),
+        // A profile 5 copy is planned only for a device that renders it, or when forced.
+        dv_copy_allowed: matches!(
+            video_plan,
+            Some(playarr_transcode::video::VideoPlan::Copy { .. })
+        ),
     };
     let source_audio_transcode = || async {
         match video_copy {
@@ -2088,6 +2168,14 @@ async fn forward_negotiation_to_peer(
                     "the serving node has no on-demand transcode capacity",
                 ));
             }
+            // The owner refused the colour format: pass the refusal on, never try another address.
+            Err(playarr_peer_sync::PeerClientError::Status { status, body, .. })
+                if status == reqwest::StatusCode::UNPROCESSABLE_ENTITY
+                    && serde_json::from_str::<serde_json::Value>(&body)
+                        .is_ok_and(|json| json["error"] == "unsupported_colour_format") =>
+            {
+                return Err(ApiError::unsupported_colour_format());
+            }
             Err(err) => {
                 tracing::warn!(
                     peer_node_id = %peer_node_id,
@@ -2660,6 +2748,31 @@ mod tests {
             default_transcode_profile(Some(&uhd_hdr), c, None),
             DEFAULT_PROFILE
         );
+        // The colour gate for a profile 5 source.
+        use playarr_transcode::video::VideoPlan::{Copy as C, Transcode as T};
+        assert_eq!(
+            colour_gate(Some(T), false, false, true),
+            ColourGate::Proceed
+        );
+        assert_eq!(
+            colour_gate(Some(T), false, false, false),
+            ColourGate::Refuse
+        );
+        assert_eq!(
+            colour_gate(Some(C { strip_dovi: false }), false, false, false),
+            ColourGate::Proceed
+        );
+        // A saved quality on a device that renders profile 5 falls back to the copy...
+        assert_eq!(
+            colour_gate(Some(C { strip_dovi: false }), true, false, false),
+            ColourGate::DropSavedQuality
+        );
+        // ...but a quality picked in this request is refused when the RPU path is missing.
+        assert_eq!(
+            colour_gate(Some(C { strip_dovi: false }), true, true, false),
+            ColourGate::Refuse
+        );
+        assert_eq!(colour_gate(None, true, false, false), ColourGate::Refuse);
         // An unsupported HDR format (plan: transcode) blocks the copy; "Force direct video" wins
         // over both a missing codec claim and the capability checks.
         let transcode = Some(playarr_transcode::video::VideoPlan::Transcode);
@@ -3248,6 +3361,45 @@ mod tests {
         assert!(tracked.transcode_reason.is_some());
     }
 
+    /// Colours that cannot be probed on an HEVC file (the carrier of Dolby Vision) are refused with
+    /// 422, never direct-played, copied or encoded blind.
+    #[tokio::test]
+    async fn an_unprobeable_hevc_title_is_refused_not_streamed_blind() {
+        let (router, state) =
+            crate::test_support::test_state_with_probe("/usr/bin/true", 1, "/usr/bin/false").await;
+        let file = media_file(); // mkv/hevc
+        let id = file.id;
+        let source_instance_id = file.source_instance_id;
+        state.media_files.insert(file);
+        let user_id = Uuid::new_v4();
+        seed_streaming_user_with_library_allow(&state, user_id, vec![source_instance_id]).await;
+        let token = mint_access_token(&state, user_id);
+        // Both a client that could copy the codec and one that needs a transcode.
+        for query in [
+            "containers=mkv&video_codecs=hevc",
+            "containers=mp4&video_codecs=h264",
+        ] {
+            let response = router
+                .clone()
+                .oneshot(get_with_connect_info(
+                    format!("/api/v1/playback/{id}?{query}"),
+                    &token,
+                ))
+                .await
+                .unwrap();
+            assert_eq!(
+                response.status(),
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "{query}"
+            );
+            let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(body["error"], "unsupported_colour_format");
+        }
+    }
+
     #[tokio::test]
     async fn existing_rendition_session_carries_the_rendition_id_and_play_method() {
         use playarr_model::{ProducedBy, Rendition, RenditionStatus};
@@ -3297,6 +3449,57 @@ mod tests {
         assert_eq!(tracked.play_method, PlayMethod::Transcode);
         assert_eq!(tracked.rendition_id, Some(rendition.id));
         assert_eq!(tracked.target_codec, "h264");
+    }
+
+    /// Tdarr has no RPU awareness: a Ready Tdarr rendition of a profile 5 title is never served.
+    /// Without a libplacebo path on this node the viewer is refused instead.
+    #[tokio::test]
+    async fn a_tdarr_rendition_is_not_served_for_a_dolby_vision_profile_5_source() {
+        use playarr_model::{ProducedBy, Rendition, RenditionStatus};
+
+        let (router, state) = crate::test_support::test_state_with_probe(
+            "/usr/bin/true",
+            1,
+            &crate::test_support::dv5_hevc_ffprobe_stub(),
+        )
+        .await;
+        let file = media_file();
+        let id = file.id;
+        let source_instance_id = file.source_instance_id;
+        state.media_files.insert(file);
+        let user_id = Uuid::new_v4();
+        seed_streaming_user_with_library_allow(&state, user_id, vec![source_instance_id]).await;
+        let token = mint_access_token(&state, user_id);
+        let rendition = Rendition {
+            id: Uuid::new_v4(),
+            media_file_id: id,
+            profile: DEFAULT_PROFILE.to_string(),
+            container: "hls".to_string(),
+            codec: "h264".to_string(),
+            bitrate: Some(4_000_000),
+            output_path: PathBuf::from("/renditions/out/playlist.m3u8"),
+            produced_by: ProducedBy::Tdarr,
+            produced_at: Utc::now(),
+            status: RenditionStatus::Ready,
+        };
+        state.rendition_repo.upsert(&rendition).await.unwrap();
+
+        let response = router
+            .oneshot(get_with_connect_info(
+                format!("/api/v1/playback/{id}?containers=mp4&video_codecs=h264"),
+                &token,
+            ))
+            .await
+            .unwrap();
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert!(
+            !String::from_utf8_lossy(&bytes).contains(&rendition.id.to_string()),
+            "the Tdarr rendition must not be offered"
+        );
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     /// Full flow: negotiate playback (getting a `session_id`), post a

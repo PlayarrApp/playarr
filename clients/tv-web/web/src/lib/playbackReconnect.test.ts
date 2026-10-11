@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_RECONNECT_ATTEMPTS,
   canReconnect,
+  humanNegotiationMessage,
+  isPermanentNegotiationError,
+  isTransientNegotiationError,
+  isUnsupportedColourError,
   isRecoverableConnectionError,
   isUnhandledEngineError,
   sessionCloseForEngineState,
@@ -85,5 +89,21 @@ describe("decode-error fallback to a forced transcode", () => {
     const engine = readFileSync(new URL("./usePlaybackEngine.ts", import.meta.url), "utf8");
     expect(engine).toContain("shouldFallBackToTranscodeAfterDecodeError(engineState.error");
     expect(engine).toContain("profile: DECODE_FALLBACK_PROFILE,");
+  });
+});
+
+describe("unsupported colour format refusal", () => {
+  const refusal = { status: 422, body: { error: "unsupported_colour_format" } };
+
+  it("is recognised, never retried, and shown with the plain message", () => {
+    expect(isUnsupportedColourError(refusal)).toBe(true);
+    expect(isUnsupportedColourError({ status: 422, body: { error: "other" } })).toBe(false);
+    expect(isTransientNegotiationError(refusal)).toBe(false);
+    // Neither the reconnect loop nor the auto-retry may repeat it.
+    expect(isPermanentNegotiationError(refusal)).toBe(true);
+    expect(isPermanentNegotiationError({ status: 503, body: { error: "no_transcode_capacity" } })).toBe(false);
+    expect(humanNegotiationMessage(refusal, "API request failed")).toBe(
+      "This title's colour format can't be converted for this device."
+    );
   });
 });

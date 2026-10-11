@@ -50,11 +50,24 @@ impl SourceVideo {
         )
     }
 
+    /// True for Dolby Vision with no compatible base layer (profile 5, IPT-PQ-C2): the picture is
+    /// unreadable unless the RPU is applied (by libplacebo) or the device renders Dolby Vision.
+    pub fn requires_rpu(&self) -> bool {
+        matches!(self.hdr(), HdrKind::DolbyVision { bl_compat: 0, .. })
+    }
+
     pub fn hdr(&self) -> HdrKind {
         if let Some(profile) = self.dv_profile {
+            // A record without `dv_bl_signal_compatibility_id` (an old ffprobe): assume the usual base
+            // layer of the profile (7: UHD Blu-ray HDR10, 8: HDR10); anything else needs the RPU.
+            let default_compat = match profile {
+                7 => 6,
+                8 => 1,
+                _ => 0,
+            };
             return HdrKind::DolbyVision {
                 profile,
-                bl_compat: self.dv_bl_compat.unwrap_or(0),
+                bl_compat: self.dv_bl_compat.unwrap_or(default_compat),
             };
         }
         match self.color_transfer.as_deref() {
@@ -152,10 +165,24 @@ pub fn parse_source_video(stdout: &[u8]) -> Option<SourceVideo> {
 }
 
 /// Best-effort probe of the first video stream; `None` when ffprobe is missing or fails.
+///
+/// Needs an ffprobe that reports `side_data_list` with the "DOVI configuration record"
+/// (`dv_profile`, `dv_bl_signal_compatibility_id`): FFmpeg 4.3 or newer. An older ffprobe leaves
+/// Dolby Vision undetected, so such a node would treat profile 5 as plain SDR; the production image
+/// ships FFmpeg 7.
 pub async fn probe_source_video(path: &Path) -> Option<SourceVideo> {
-    let binary = std::env::var("PLAYARR_FFPROBE_BINARY").unwrap_or_else(|_| "ffprobe".to_string());
+    probe_source_video_with(&default_ffprobe(), path, 8).await
+}
+
+/// The ffprobe executable: `PLAYARR_FFPROBE_BINARY`, else `ffprobe` on `PATH`.
+pub fn default_ffprobe() -> String {
+    std::env::var("PLAYARR_FFPROBE_BINARY").unwrap_or_else(|_| "ffprobe".to_string())
+}
+
+/// [`probe_source_video`] with an explicit executable and time limit (the slower strict re-probe).
+pub async fn probe_source_video_with(binary: &str, path: &Path, secs: u64) -> Option<SourceVideo> {
     let output = tokio::time::timeout(
-        Duration::from_secs(8),
+        Duration::from_secs(secs),
         Command::new(binary)
             .args([
                 "-v",
@@ -186,8 +213,11 @@ pub async fn probe_source_video(path: &Path) -> Option<SourceVideo> {
 pub struct ToneMapSupport {
     /// `zscale` (libzimg) and `tonemap` are both present.
     pub zscale: bool,
-    /// `libplacebo` is present, opted into, and a Vulkan self-test passed.
+    /// `libplacebo` is present, a Vulkan device initialises (a GPU, or CPU lavapipe), and a 4K to 1080p
+    /// benchmark ran at [`RPU_MIN_FPS`] or better. Only then can a Dolby Vision RPU be applied live.
     pub libplacebo: bool,
+    /// Measured frames per second of that benchmark, when it ran.
+    pub libplacebo_fps: Option<u32>,
 }
 
 impl Default for ToneMapSupport {
@@ -195,6 +225,7 @@ impl Default for ToneMapSupport {
         Self {
             zscale: true,
             libplacebo: false,
+            libplacebo_fps: None,
         }
     }
 }
@@ -210,20 +241,26 @@ const TONEMAP_PEAK: u32 = 10;
 ///   source otherwise leaves yuvj420p).
 /// * HDR10 / HLG / Dolby Vision with an HDR10 or HLG base layer: zscale + tonemap (hable).
 /// * Dolby Vision without a compatible base layer (profile 5, IPT-PQ-C2): needs the RPU applied,
-///   which only libplacebo does. Without it the best we can do is the PQ path, whose colours are
-///   wrong for profile 5 (documented limit).
+///   which only libplacebo does. Without a libplacebo that is fast enough this is an error, never
+///   a guess: the PQ path would turn the picture green.
 /// * No `zscale` in this ffmpeg: the range fix only; HDR then keeps its washed-out look.
-pub fn sdr_filter(source: &SourceVideo, support: &ToneMapSupport) -> String {
+pub fn sdr_filter(
+    source: &SourceVideo,
+    support: &ToneMapSupport,
+) -> Result<String, UnsupportedColour> {
     let range_only = "scale=out_range=tv".to_string();
     if !source.needs_tone_map() {
-        return range_only;
+        return Ok(range_only);
     }
-    let needs_rpu = matches!(source.hdr(), HdrKind::DolbyVision { bl_compat: 0, .. });
-    if needs_rpu && support.libplacebo {
-        return "libplacebo=tonemapping=bt.2390:colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv:format=yuv420p".to_string();
+    if source.requires_rpu() && !support.libplacebo {
+        // Never a plain PQ/zscale path: it reads IPT-PQ-C2 as YCbCr and the picture comes out green.
+        return Err(UnsupportedColour);
+    }
+    if source.requires_rpu() {
+        return Ok("libplacebo=tonemapping=bt.2390:colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv:format=yuv420p".to_string());
     }
     if !support.zscale {
-        return range_only;
+        return Ok(range_only);
     }
     let hlg = matches!(
         source.hdr(),
@@ -238,12 +275,26 @@ pub fn sdr_filter(source: &SourceVideo, support: &ToneMapSupport) -> String {
     // Input properties are forced: HDR sources are often untagged, and zscale refuses to guess.
     // Output primaries must be explicit (`p=2020`): without it zscale fails "no path between
     // colorspaces" on the linear RGB step.
-    format!(
+    Ok(format!(
         "zscale=tin={tin}:pin=2020:min=2020_ncl:rin={rin}:t=linear:npl=100:p=2020,format=gbrpf32le,\
          zscale=p=709,tonemap=tonemap=hable:desat=0:peak={TONEMAP_PEAK},\
          zscale=t=709:m=709:r=tv,format=yuv420p"
-    )
+    ))
 }
+
+/// True when the picture's colour format is unknown: an HEVC source whose probe failed. HEVC is the
+/// carrier of Dolby Vision, so such a source is never copied or encoded blind.
+pub fn colour_unknown(codec: &str, source: Option<&SourceVideo>) -> bool {
+    source.is_none() && crate::normalise_codec(codec) == "hevc"
+}
+
+/// The picture's colours depend on Dolby Vision metadata this node cannot apply in real time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnsupportedColour;
+
+/// Minimum frames per second the node's real transcode chain must reach on the bundled 24 fps 4K
+/// sample (2.5x realtime: the sample decodes about twice as fast as a 90 Mbps film remux on the same GPU) before the RPU path is offered.
+pub const RPU_MIN_FPS: u32 = 60;
 
 /// (matrix, primaries, transfer) of the output. BT.601 SDR sources keep their matrix.
 fn sdr_output_colour(source: &SourceVideo) -> (String, String, String) {
@@ -331,7 +382,17 @@ pub fn plan_video(
     let hdr = source.hdr();
     let hdr_has = |name: &str| caps.hdr.iter().any(|h| h == name);
     if let HdrKind::DolbyVision { profile, bl_compat } = hdr {
-        // Legacy clients keep the legacy behaviour, Dolby Vision included.
+        // A picture that needs its RPU (profile 5) is copied only to a device that says it renders
+        // that profile. An undeclared client gets the RPU applied (or a refusal), never a guess.
+        if source.requires_rpu() {
+            return if hdr_has("dolby_vision") && caps.dv_profiles.contains(&profile) {
+                fits(source, caps, VideoPlan::Copy { strip_dovi: false })
+            } else {
+                VideoPlan::Transcode
+            };
+        }
+        // Other Dolby Vision (profiles 7/8) has a readable base layer: legacy clients keep the
+        // legacy behaviour.
         if !caps.declared {
             return VideoPlan::Copy { strip_dovi: false };
         }
@@ -470,11 +531,17 @@ fn lists_filter(stdout: &str, name: &str) -> bool {
         .any(|line| line.split_whitespace().nth(1) == Some(name))
 }
 
-async fn run_quiet(binary: &str, args: &[&str], secs: u64) -> Option<std::process::Output> {
+async fn run_quiet(
+    binary: &str,
+    args: &[&str],
+    envs: &[(&str, String)],
+    secs: u64,
+) -> Option<std::process::Output> {
     tokio::time::timeout(
         Duration::from_secs(secs),
         Command::new(binary)
             .args(args)
+            .envs(envs.iter().map(|(k, v)| (*k, v.as_str())))
             .stdin(std::process::Stdio::null())
             .kill_on_drop(true)
             .output(),
@@ -484,17 +551,26 @@ async fn run_quiet(binary: &str, args: &[&str], secs: u64) -> Option<std::proces
     .ok()
 }
 
-/// Detects the tone-mapping filters of `binary`. libplacebo is used only when `want_libplacebo`,
-/// the filter exists and a tiny Vulkan job actually runs; any failure falls back to zscale.
-pub async fn detect_tone_map_support(binary: &str, want_libplacebo: bool) -> ToneMapSupport {
-    let Some(out) = run_quiet(binary, &["-hide_banner", "-filters"], 10).await else {
-        return ToneMapSupport {
+/// What `ffmpeg -filters` and a tiny Vulkan job say about this node, before any benchmark.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FilterProbe {
+    pub zscale: bool,
+    /// libplacebo is listed and a Vulkan device initialised (a GPU, or lavapipe if installed).
+    pub vulkan: bool,
+}
+
+/// Lists the filters of `binary` and, unless `PLAYARR_FFMPEG_LIBPLACEBO=0`, checks that libplacebo
+/// can create a Vulkan device. The speed check is [`crate::TranscodeOrchestrator::tone_map_support`].
+pub async fn probe_filters(binary: &str) -> FilterProbe {
+    let Some(out) = run_quiet(binary, &["-hide_banner", "-filters"], &[], 10).await else {
+        return FilterProbe {
             zscale: false,
-            libplacebo: false,
+            vulkan: false,
         };
     };
     let listing = String::from_utf8_lossy(&out.stdout);
-    let libplacebo = want_libplacebo
+    let disabled = std::env::var("PLAYARR_FFMPEG_LIBPLACEBO").is_ok_and(|v| v == "0");
+    let vulkan = !disabled
         && lists_filter(&listing, "libplacebo")
         && run_quiet(
             binary,
@@ -516,13 +592,14 @@ pub async fn detect_tone_map_support(binary: &str, want_libplacebo: bool) -> Ton
                 "null",
                 "-",
             ],
+            &[],
             15,
         )
         .await
         .is_some_and(|o| o.status.success());
-    ToneMapSupport {
+    FilterProbe {
         zscale: lists_filter(&listing, "zscale") && lists_filter(&listing, "tonemap"),
-        libplacebo,
+        vulkan,
     }
 }
 
@@ -530,13 +607,19 @@ pub async fn detect_tone_map_support(binary: &str, want_libplacebo: bool) -> Ton
 mod tests {
     use super::*;
 
+    fn filt(s: &SourceVideo, support: &ToneMapSupport) -> String {
+        sdr_filter(s, support).unwrap()
+    }
+
     const LP: ToneMapSupport = ToneMapSupport {
         zscale: true,
         libplacebo: true,
+        libplacebo_fps: None,
     };
     const NOLP: ToneMapSupport = ToneMapSupport {
         zscale: true,
         libplacebo: false,
+        libplacebo_fps: None,
     };
 
     const DV5: &str = r#"{"streams":[{"codec_name":"hevc","profile":"Main 10","width":3840,"height":2160,
@@ -571,7 +654,7 @@ mod tests {
 
     #[test]
     fn hdr10_is_tone_mapped_to_bt709_limited() {
-        let f = sdr_filter(
+        let f = filt(
             &src(r#"{"streams":[{"color_transfer":"smpte2084"}]}"#),
             &NOLP,
         );
@@ -581,7 +664,7 @@ mod tests {
 
     #[test]
     fn hlg_uses_the_hlg_input_transfer() {
-        let f = sdr_filter(
+        let f = filt(
             &src(r#"{"streams":[{"color_transfer":"arib-std-b67"}]}"#),
             &NOLP,
         );
@@ -589,10 +672,11 @@ mod tests {
     }
 
     #[test]
-    fn dv5_uses_libplacebo_when_available_else_the_pq_path() {
+    fn dv5_uses_libplacebo_when_available_else_is_unsupported() {
         let s = src(DV5);
-        assert!(sdr_filter(&s, &LP).starts_with("libplacebo="));
-        assert!(sdr_filter(&s, &NOLP).starts_with("zscale="));
+        assert!(filt(&s, &LP).starts_with("libplacebo="));
+        // Without a fast enough libplacebo there is no path at all.
+        assert_eq!(sdr_filter(&s, &NOLP), Err(UnsupportedColour));
     }
 
     #[test]
@@ -601,21 +685,72 @@ mod tests {
             r#"{"streams":[{"color_transfer":"smpte2084","side_data_list":[
           {"side_data_type":"DOVI configuration record","dv_profile":8,"dv_bl_signal_compatibility_id":1}]}]}"#,
         );
-        assert!(sdr_filter(&s, &LP).starts_with("zscale="));
+        assert!(filt(&s, &LP).starts_with("zscale="));
     }
 
     #[test]
     fn sdr_only_forces_limited_range_and_tags_bt709() {
         let s = src(r#"{"streams":[{"color_range":"pc","pix_fmt":"yuvj420p"}]}"#);
-        assert_eq!(sdr_filter(&s, &NOLP), "scale=out_range=tv");
+        assert_eq!(filt(&s, &NOLP), "scale=out_range=tv");
         assert_eq!(sdr_colour_tags(&s)[..2], ["-colorspace", "bt709"]);
+    }
+
+    /// Guard: a profile 5 picture is never copied unless the device declares profile 5 (or the viewer
+    /// forces direct video), whatever else the device says.
+    #[test]
+    fn dv5_is_never_copied_to_a_device_that_does_not_declare_it() {
+        let s = dv(5, 0);
+        let hdr_sets: [&[&str]; 5] = [
+            &[],
+            &["hdr10"],
+            &["hlg"],
+            &["hdr10", "hlg"],
+            &["dolby_vision"],
+        ];
+        for declared in [false, true] {
+            for hdr in hdr_sets {
+                for dv_profiles in [&[][..], &[8][..], &[7, 8][..]] {
+                    let mut c = caps(hdr, dv_profiles);
+                    c.declared = declared;
+                    assert_eq!(
+                        plan_video(&s, true, &c, false),
+                        VideoPlan::Transcode,
+                        "declared={declared} hdr={hdr:?} dv={dv_profiles:?}"
+                    );
+                }
+            }
+        }
+        assert_eq!(
+            plan_video(&s, true, &caps(&["dolby_vision"], &[5]), false),
+            VideoPlan::Copy { strip_dovi: false }
+        );
+    }
+
+    /// Guard: the SDR filter for a profile 5 source is either libplacebo (which applies the RPU) or
+    /// an error; never the zscale/PQ chain.
+    #[test]
+    fn dv5_filter_is_libplacebo_or_an_error() {
+        let s = dv(5, 0);
+        for zscale in [false, true] {
+            for libplacebo in [false, true] {
+                let support = ToneMapSupport {
+                    zscale,
+                    libplacebo,
+                    libplacebo_fps: None,
+                };
+                match sdr_filter(&s, &support) {
+                    Ok(f) => assert!(f.starts_with("libplacebo="), "{f}"),
+                    Err(UnsupportedColour) => assert!(!libplacebo),
+                }
+            }
+        }
     }
 
     #[test]
     fn dv_8_2_with_an_sdr_base_layer_is_treated_as_sdr() {
         let s = dv(8, 2);
         assert!(!s.needs_tone_map());
-        assert_eq!(sdr_filter(&s, &LP), "scale=out_range=tv");
+        assert_eq!(filt(&s, &LP), "scale=out_range=tv");
         assert_eq!(sdr_colour_tags(&s)[1], "bt709");
         assert_eq!(
             sdr_setparams(&s),
@@ -634,8 +769,50 @@ mod tests {
         let none = ToneMapSupport {
             zscale: false,
             libplacebo: false,
+            libplacebo_fps: None,
         };
-        assert_eq!(sdr_filter(&s, &none), "scale=out_range=tv");
+        assert_eq!(filt(&s, &none), "scale=out_range=tv");
+    }
+
+    #[test]
+    fn a_missing_compatibility_id_defaults_by_profile() {
+        let rec = |profile: u8| {
+            src(&format!(
+                r#"{{"streams":[{{"color_transfer":"smpte2084","side_data_list":[
+                {{"side_data_type":"DOVI configuration record","dv_profile":{profile}}}]}}]}}"#
+            ))
+        };
+        assert_eq!(
+            rec(5).hdr(),
+            HdrKind::DolbyVision {
+                profile: 5,
+                bl_compat: 0
+            }
+        );
+        assert!(rec(5).requires_rpu());
+        assert_eq!(
+            rec(8).hdr(),
+            HdrKind::DolbyVision {
+                profile: 8,
+                bl_compat: 1
+            }
+        );
+        assert!(!rec(8).requires_rpu());
+        assert_eq!(
+            rec(7).hdr(),
+            HdrKind::DolbyVision {
+                profile: 7,
+                bl_compat: 6
+            }
+        );
+    }
+
+    #[test]
+    fn an_unprobed_hevc_source_has_unknown_colours() {
+        assert!(colour_unknown("hevc", None));
+        assert!(colour_unknown("x265", None));
+        assert!(!colour_unknown("h264", None));
+        assert!(!colour_unknown("hevc", Some(&SourceVideo::default())));
     }
 
     #[test]
@@ -689,7 +866,7 @@ mod tests {
     #[test]
     fn tone_map_peak_is_fixed() {
         let s = src(r#"{"streams":[{"color_transfer":"smpte2084"}]}"#);
-        assert!(sdr_filter(&s, &NOLP).contains("tonemap=tonemap=hable:desat=0:peak=10"));
+        assert!(filt(&s, &NOLP).contains("tonemap=tonemap=hable:desat=0:peak=10"));
     }
 
     #[test]
@@ -721,9 +898,14 @@ mod tests {
             plan_video(&s, true, &caps(&["hdr10"], &[]), false),
             VideoPlan::Transcode
         );
-        // Undeclared (legacy) clients keep the legacy behaviour, Dolby Vision included.
+        // Even an undeclared (legacy) client never gets profile 5 copied: owner ruling, no broken colours.
         assert_eq!(
             plan_video(&dv(5, 0), true, &DeviceVideoCaps::default(), false),
+            VideoPlan::Transcode
+        );
+        // Profile 7/8 keep the legacy behaviour for an undeclared client.
+        assert_eq!(
+            plan_video(&dv(8, 1), true, &DeviceVideoCaps::default(), false),
             VideoPlan::Copy { strip_dovi: false }
         );
         assert_eq!(

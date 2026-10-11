@@ -83,6 +83,9 @@ pub enum TranscodeError {
     Serialize(#[from] serde_json::Error),
     #[error("could not fetch the external audio track: {0}")]
     ExternalAudio(String),
+    /// The picture's colours depend on Dolby Vision metadata this node cannot apply in real time.
+    #[error("this title's colour format can't be converted for this device")]
+    UnsupportedColour,
 }
 
 /// What a requesting client can play natively — the input to
@@ -339,6 +342,9 @@ pub struct StreamHints {
     pub strip_dovi: bool,
     /// Fold audio to at most this many channels (2 forces stereo); `None` keeps 5.1 available.
     pub max_audio_channels: Option<u8>,
+    /// The device renders Dolby Vision profile 5 itself (or the viewer forced direct video), so a
+    /// profile 5 picture may be copied untouched. Without it a copy of such a source is refused.
+    pub dv_copy_allowed: bool,
 }
 
 impl StreamHints {
@@ -457,6 +463,7 @@ pub fn build_ffmpeg_hls_args_at_with_audio(
         video::ToneMapSupport::default(),
         StreamHints::default(),
     )
+    .expect("no source video: no colour path to refuse")
 }
 
 /// An audio file outside the source container (a Dubarr dub track) that
@@ -494,6 +501,7 @@ pub fn build_ffmpeg_hls_args_at_with_external_audio(
         video::ToneMapSupport::default(),
         StreamHints::default(),
     )
+    .expect("no source video: no colour path to refuse")
 }
 
 /// How the source video is carried into an on-demand HLS session whose only
@@ -544,10 +552,12 @@ pub fn build_ffmpeg_hls_args_video_copy(
         external,
         Some(video),
         DEFAULT_FFMPEG_THREADS,
-        None,
+        // The caller states the source is plain SDR (this builder is for dubs and tests).
+        Some(&video::SourceVideo::default()),
         video::ToneMapSupport::default(),
         StreamHints::default(),
     )
+    .expect("an SDR source has no colour path to refuse")
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -564,7 +574,17 @@ fn build_hls_args(
     source: Option<&video::SourceVideo>,
     tone_map: video::ToneMapSupport,
     hints: StreamHints,
-) -> Vec<String> {
+) -> Result<Vec<String>, TranscodeError> {
+    // Guard (owner ruling): a profile 5 / IPT-PQ-C2 picture only leaves here through libplacebo, which
+    // applies the RPU, or as an untouched copy the device renders itself. Anything else is refused.
+    if let Some(source) = source {
+        if source.requires_rpu() && video_copy.is_some() && !hints.dv_copy_allowed {
+            return Err(TranscodeError::UnsupportedColour);
+        }
+    } else if video_copy.is_some_and(|v| v.hevc) {
+        // An HEVC copy with no probe could carry profile 5: unknown colours are never copied.
+        return Err(TranscodeError::UnsupportedColour);
+    }
     let mut args = vec![
         // Overwrite without prompting — the per-session output directory
         // is freshly created, but ffmpeg still probes for an existing
@@ -581,7 +601,9 @@ fn build_hls_args(
     ];
 
     let uses_libplacebo = video_copy.is_none()
-        && source.is_some_and(|s| video::sdr_filter(s, &tone_map).starts_with("libplacebo"));
+        && source.is_some_and(
+            |s| matches!(video::sdr_filter(s, &tone_map), Ok(f) if f.starts_with("libplacebo")),
+        );
     if uses_libplacebo {
         args.extend(["-init_hw_device", "vulkan=vk", "-filter_hw_device", "vk"].map(String::from));
     }
@@ -673,7 +695,10 @@ fn build_hls_args(
             chain.push(format!("scale=-2:min({}\\,ih)", profile.height));
         }
         if let Some(source) = source {
-            chain.push(video::sdr_filter(source, &tone_map));
+            chain.push(
+                video::sdr_filter(source, &tone_map)
+                    .map_err(|_| TranscodeError::UnsupportedColour)?,
+            );
             chain.push(video::sdr_setparams(source));
         }
         if !chain.is_empty() {
@@ -731,7 +756,7 @@ fn build_hls_args(
             .into_owned(),
     );
 
-    args
+    Ok(args)
 }
 
 /// Shared, process-local count of active on-demand transcode sessions.
@@ -768,6 +793,112 @@ impl ActiveSessionCounter {
             }
         }
     }
+}
+
+#[cfg(not(test))]
+fn default_ffprobe_binary() -> String {
+    video::default_ffprobe()
+}
+
+/// Tests never reach a real ffprobe: this stub reports a plain SDR HEVC stream for any file.
+#[cfg(test)]
+fn default_ffprobe_binary() -> String {
+    use std::os::unix::fs::PermissionsExt;
+    static STUB: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    STUB.get_or_init(|| {
+        let path = std::env::temp_dir().join(format!("playarr-test-ffprobe-{}", std::process::id()));
+        std::fs::write(
+            &path,
+            "#!/bin/sh\necho '{\"streams\":[{\"codec_name\":\"hevc\",\"pix_fmt\":\"yuv420p10le\"}]}'\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path.to_string_lossy().into_owned()
+    })
+    .clone()
+}
+
+/// A 4 s, 24 fps, 4K 10-bit HEVC clip (synthetic gradients, no media content): the benchmark input.
+static BENCH_SAMPLE: &[u8] = include_bytes!("../assets/bench-4k-hdr10.mp4");
+const BENCH_FRAMES: f64 = 96.0;
+
+/// Probes the filters, then (when a Vulkan device initialises) runs the node's own transcode chain,
+/// the one a profile 5 title would use (decode 4K HEVC, scale to 1080p, libplacebo, x264 at the
+/// 1080p profile bitrate, `threads` for everything including lavapipe), over the bundled sample.
+/// The RPU path is offered only at [`video::RPU_MIN_FPS`] or better.
+async fn detect_tone_map_support(binary: &str, threads: usize) -> video::ToneMapSupport {
+    let probe = video::probe_filters(binary).await;
+    let mut fps = None;
+    if probe.vulkan {
+        // The first run pays for shader compilation and cold caches: take the better of two.
+        let first = benchmark_rpu_chain(binary, threads).await;
+        let second = benchmark_rpu_chain(binary, threads).await;
+        fps = first.max(second);
+    }
+    video::ToneMapSupport {
+        zscale: probe.zscale,
+        libplacebo: fps.is_some_and(|f| f >= video::RPU_MIN_FPS),
+        libplacebo_fps: fps,
+    }
+}
+
+async fn benchmark_rpu_chain(binary: &str, threads: usize) -> Option<u32> {
+    let dir = std::env::temp_dir().join(format!("playarr-bench-{}", Uuid::new_v4()));
+    tokio::fs::create_dir_all(&dir).await.ok()?;
+    let result = async {
+        let input = dir.join("bench.mp4");
+        tokio::fs::write(&input, BENCH_SAMPLE).await.ok()?;
+        let out = dir.join("out");
+        tokio::fs::create_dir_all(&out).await.ok()?;
+        // The sample stands in for a profile 5 title: the same chain, libplacebo, is selected.
+        let source = video::SourceVideo {
+            codec: "hevc".into(),
+            width: 3840,
+            height: 2160,
+            bit_depth: 10,
+            dv_profile: Some(5),
+            dv_bl_compat: Some(0),
+            ..Default::default()
+        };
+        let args = build_hls_args(
+            &input,
+            &TranscodeTargetProfile::resolve("h264-1080p-8mbps"),
+            &out,
+            0,
+            None,
+            None,
+            None,
+            threads,
+            Some(&source),
+            video::ToneMapSupport {
+                zscale: true,
+                libplacebo: true,
+                libplacebo_fps: None,
+            },
+            StreamHints::default(),
+        )
+        .ok()?;
+        let started = std::time::Instant::now();
+        let ran = tokio::time::timeout(
+            Duration::from_secs(60),
+            Command::new(binary)
+                .args(&args)
+                .env("LP_NUM_THREADS", threads.to_string())
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .kill_on_drop(true)
+                .status(),
+        )
+        .await
+        .ok()?
+        .ok()?;
+        ran.success()
+            .then(|| (BENCH_FRAMES / started.elapsed().as_secs_f64()).round() as u32)
+    }
+    .await;
+    let _ = tokio::fs::remove_dir_all(&dir).await;
+    result
 }
 
 /// Decides, per playback request, whether the source file can be served
@@ -837,11 +968,26 @@ pub struct TranscodeOrchestrator {
     /// notify Tdarr" — correct both when Tdarr isn't configured for this
     /// deployment and when this node doesn't also run the worker role.
     tdarr_notify: Option<mpsc::Sender<MediaFileImportEvent>>,
-    /// Which tone-mapping filters this ffmpeg runs; detected once, on first use.
-    tone_map_support: tokio::sync::OnceCell<video::ToneMapSupport>,
+    /// Which tone-mapping filters this ffmpeg runs and whether the RPU path is fast enough; see
+    /// [`Self::tone_map_support`].
+    detect: Arc<std::sync::Mutex<DetectState>>,
+    /// ffprobe executable used for source probes.
+    ffprobe_binary: String,
+    /// How many times detection has started (tests).
+    detect_runs: Arc<AtomicUsize>,
     /// Source probes by (media file, size), so negotiation and the spawn probe a file once.
     source_probes: std::sync::Mutex<video::ProbeCache>,
 }
+
+#[derive(Default)]
+struct DetectState {
+    done: Option<(video::ToneMapSupport, std::time::Instant)>,
+    running: Option<tokio::sync::watch::Receiver<Option<video::ToneMapSupport>>>,
+}
+
+/// A detection that found no usable RPU path is repeated after this long (a GPU driver that came up
+/// late, a transient failure); a positive result is kept.
+const DETECT_RETRY_TTL: Duration = Duration::from_secs(300);
 
 struct ActiveChild {
     child: Child,
@@ -872,19 +1018,21 @@ impl TranscodeOrchestrator {
             inflight: Mutex::new(HashMap::new()),
             recently_released: std::sync::Mutex::new(HashMap::new()),
             tdarr_notify: None,
-            tone_map_support: tokio::sync::OnceCell::new(),
+            ffprobe_binary: default_ffprobe_binary(),
+            detect: Arc::new(std::sync::Mutex::new(DetectState::default())),
+            detect_runs: Arc::new(AtomicUsize::new(0)),
             source_probes: std::sync::Mutex::new(video::ProbeCache::default()),
         }
     }
 
-    pub fn with_ffmpeg_binary(mut self, ffmpeg_binary: impl Into<String>) -> Self {
-        self.ffmpeg_binary = ffmpeg_binary.into();
+    /// ffprobe executable for source probes (defaults to `PLAYARR_FFPROBE_BINARY`, else `ffprobe`).
+    pub fn with_ffprobe_binary(mut self, ffprobe_binary: impl Into<String>) -> Self {
+        self.ffprobe_binary = ffprobe_binary.into();
         self
     }
 
-    /// Fixes the tone-mapping filter support instead of detecting it from the ffmpeg binary.
-    pub fn with_tone_map_support(self, support: video::ToneMapSupport) -> Self {
-        let _ = self.tone_map_support.set(support);
+    pub fn with_ffmpeg_binary(mut self, ffmpeg_binary: impl Into<String>) -> Self {
+        self.ffmpeg_binary = ffmpeg_binary.into();
         self
     }
 
@@ -976,28 +1124,94 @@ impl TranscodeOrchestrator {
             return hit;
         }
         let path = playarr_model::resolve_media_path(&media_file.path);
-        let probed = video::probe_source_video(&path).await;
+        let probed = video::probe_source_video_with(&self.ffprobe_binary, &path, 8).await;
         if let Ok(mut cache) = self.source_probes.lock() {
             cache.put(key, probed.clone(), std::time::Instant::now());
         }
         probed
     }
 
-    /// Which tone-mapping filters this node's ffmpeg can run, detected once (`ffmpeg -filters`).
-    /// libplacebo additionally needs `PLAYARR_FFMPEG_LIBPLACEBO=1` and a passing Vulkan self-test.
+    /// Strict probe for a source whose colour format must be known: the cached answer when it is a
+    /// success, otherwise a fresh probe with a longer limit. `None` means the colours stay unknown.
+    pub async fn probe_source_strict(&self, media_file: &MediaFile) -> Option<video::SourceVideo> {
+        let key = (media_file.id, media_file.size_bytes);
+        if let Some(Some(hit)) = self
+            .source_probes
+            .lock()
+            .ok()?
+            .get(key, std::time::Instant::now())
+        {
+            return Some(hit);
+        }
+        let path = playarr_model::resolve_media_path(&media_file.path);
+        let probed = video::probe_source_video_with(&self.ffprobe_binary, &path, 30).await;
+        if let Ok(mut cache) = self.source_probes.lock() {
+            cache.put(key, probed.clone(), std::time::Instant::now());
+        }
+        probed
+    }
+
+    /// Which tone-mapping filters this node's ffmpeg runs, and whether it can apply a Dolby Vision RPU
+    /// live (libplacebo on a Vulkan device whose measured speed on the node's real transcode chain
+    /// reaches [`video::RPU_MIN_FPS`]). Detected once in a spawned task, so a dropped caller never
+    /// cancels it or starts a second run; a negative RPU result is re-run after [`DETECT_RETRY_TTL`].
     pub async fn tone_map_support(&self) -> video::ToneMapSupport {
-        *self
-            .tone_map_support
-            .get_or_init(|| async {
-                let support = video::detect_tone_map_support(
-                    &self.ffmpeg_binary,
-                    std::env::var("PLAYARR_FFMPEG_LIBPLACEBO").is_ok_and(|v| v == "1"),
-                )
-                .await;
-                tracing::info!(?support, "tone-mapping filters detected");
-                support
-            })
-            .await
+        let mut rx = {
+            let mut state = self.detect.lock().expect("detect state");
+            let stale = match state.done {
+                Some((support, at)) if support.libplacebo || at.elapsed() < DETECT_RETRY_TTL => {
+                    return support;
+                }
+                other => other.map(|(support, _)| support),
+            };
+            let rx = match &state.running {
+                Some(rx) => rx.clone(),
+                None => {
+                    let (tx, rx) = tokio::sync::watch::channel(None);
+                    state.running = Some(rx.clone());
+                    self.detect_runs.fetch_add(1, Ordering::SeqCst);
+                    let binary = self.ffmpeg_binary.clone();
+                    let threads = self.ffmpeg_threads;
+                    let shared = self.detect.clone();
+                    tokio::spawn(async move {
+                        // Clears `running` even if detection panics, so the next call retries.
+                        struct Running(Arc<std::sync::Mutex<DetectState>>);
+                        impl Drop for Running {
+                            fn drop(&mut self) {
+                                if let Ok(mut state) = self.0.lock() {
+                                    state.running = None;
+                                }
+                            }
+                        }
+                        let _running = Running(shared.clone());
+                        let support = detect_tone_map_support(&binary, threads).await;
+                        tracing::info!(?support, "tone-mapping support detected");
+                        if let Ok(mut state) = shared.lock() {
+                            state.done = Some((support, std::time::Instant::now()));
+                        }
+                        let _ = tx.send(Some(support));
+                    });
+                    rx
+                }
+            };
+            // An old negative answer is served while a refresh runs; only the first detection waits.
+            if let Some(stale) = stale {
+                return stale;
+            }
+            rx
+        };
+        loop {
+            if let Some(support) = *rx.borrow() {
+                return support;
+            }
+            if rx.changed().await.is_err() {
+                return video::ToneMapSupport {
+                    zscale: false,
+                    libplacebo: false,
+                    libplacebo_fps: None,
+                };
+            }
+        }
     }
 
     /// Step 2: looks up whether a `Ready` rendition already exists for
@@ -1270,9 +1484,18 @@ impl TranscodeOrchestrator {
 
         let source_path = playarr_model::resolve_media_path(&media_file.path);
         // A failed probe still gets the SDR path (range + BT.709 tags) rather than the bare encode.
+        let mut probed = self.probe_source(media_file).await;
+        if video::colour_unknown(&media_file.codec, probed.as_ref()) {
+            probed = self.probe_source_strict(media_file).await;
+        }
+        // Colours still unknown for an HEVC source: never encode or copy blind.
+        if video::colour_unknown(&media_file.codec, probed.as_ref()) {
+            return Err(TranscodeError::UnsupportedColour);
+        }
         let source_video = match video_copy {
-            Some(_) => None,
-            None => Some(self.probe_source(media_file).await.unwrap_or_default()),
+            // A copy keeps the picture, but a profile 5 copy is still guarded in `build_hls_args`.
+            Some(_) => probed,
+            None => Some(probed.unwrap_or_default()),
         };
         let tone_map = self.tone_map_support().await;
         let args = build_hls_args(
@@ -1287,11 +1510,13 @@ impl TranscodeOrchestrator {
             source_video.as_ref(),
             tone_map,
             hints,
-        );
+        )?;
 
         let mut command = Command::new(&self.ffmpeg_binary);
         command
             .args(&args)
+            // lavapipe (CPU Vulkan, when there is no GPU) takes its thread count from here.
+            .env("LP_NUM_THREADS", self.ffmpeg_threads.to_string())
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -2257,10 +2482,14 @@ mod tests {
         use super::*;
         use crate::video::{parse_source_video, SourceVideo};
 
-        fn args_for(source: &SourceVideo, libplacebo: bool) -> Vec<String> {
+        fn try_args_for(
+            source: &SourceVideo,
+            libplacebo: bool,
+        ) -> Result<Vec<String>, TranscodeError> {
             let tone_map = video::ToneMapSupport {
                 zscale: true,
                 libplacebo,
+                libplacebo_fps: None,
             };
             build_hls_args(
                 Path::new("/media/in.mkv"),
@@ -2275,6 +2504,10 @@ mod tests {
                 tone_map,
                 StreamHints::default(),
             )
+        }
+
+        fn args_for(source: &SourceVideo, libplacebo: bool) -> Vec<String> {
+            try_args_for(source, libplacebo).unwrap()
         }
 
         fn value<'a>(args: &'a [String], flag: &str) -> &'a str {
@@ -2311,11 +2544,84 @@ mod tests {
                     < args.iter().position(|a| a == "-i").unwrap()
             );
             assert!(value(&args, "-vf").contains(",libplacebo="));
-            assert!(!args_for(&s, false).contains(&"-init_hw_device".to_string()));
+            // Guard: without a fast enough libplacebo a profile 5 source has no transcode path.
+            assert!(matches!(
+                try_args_for(&s, false),
+                Err(TranscodeError::UnsupportedColour)
+            ));
+        }
+
+        /// Guard (owner ruling): whatever the node supports, a profile 5 transcode either runs
+        /// libplacebo (which applies the RPU) or is refused.
+        #[test]
+        fn dv5_never_reaches_an_output_that_skips_the_rpu() {
+            let s = parse_source_video(DV5.as_bytes()).unwrap();
+            for libplacebo in [false, true] {
+                match try_args_for(&s, libplacebo) {
+                    Ok(args) => {
+                        assert!(libplacebo);
+                        assert!(value(&args, "-vf").contains("libplacebo="));
+                        assert!(!value(&args, "-vf").contains("zscale"));
+                    }
+                    Err(e) => {
+                        assert!(matches!(e, TranscodeError::UnsupportedColour) && !libplacebo)
+                    }
+                }
+            }
+        }
+
+        #[test]
+        fn an_unprobed_hevc_copy_is_refused() {
+            let copy = |hevc| {
+                build_hls_args(
+                    Path::new("/media/in.mkv"),
+                    &TranscodeTargetProfile::resolve(""),
+                    Path::new("/tmp/s"),
+                    0,
+                    None,
+                    None,
+                    Some(VideoCopy { hevc }),
+                    2,
+                    None,
+                    video::ToneMapSupport::default(),
+                    StreamHints::default(),
+                )
+            };
+            assert!(matches!(copy(true), Err(TranscodeError::UnsupportedColour)));
+            // H.264 carries no profile 5, so an unprobed copy of it is fine.
+            assert!(copy(false).is_ok());
+        }
+
+        #[test]
+        fn dv5_copy_is_refused_unless_the_device_renders_it() {
+            let s = parse_source_video(DV5.as_bytes()).unwrap();
+            let copy = |allowed| {
+                build_hls_args(
+                    Path::new("/media/in.mkv"),
+                    &TranscodeTargetProfile::resolve(""),
+                    Path::new("/tmp/s"),
+                    0,
+                    None,
+                    None,
+                    Some(VideoCopy { hevc: true }),
+                    2,
+                    Some(&s),
+                    video::ToneMapSupport::default(),
+                    StreamHints {
+                        dv_copy_allowed: allowed,
+                        ..StreamHints::default()
+                    },
+                )
+            };
+            assert!(matches!(
+                copy(false),
+                Err(TranscodeError::UnsupportedColour)
+            ));
+            assert!(copy(true).is_ok());
         }
 
         fn copy_args(hints: StreamHints) -> Vec<String> {
-            build_hls_args(
+            let args = build_hls_args(
                 Path::new("/media/in.mkv"),
                 &TranscodeTargetProfile::resolve(""),
                 Path::new("/tmp/s"),
@@ -2324,17 +2630,18 @@ mod tests {
                 None,
                 Some(VideoCopy { hevc: true }),
                 2,
-                None,
+                Some(&SourceVideo::default()),
                 video::ToneMapSupport::default(),
                 hints,
-            )
+            );
+            args.unwrap()
         }
 
         #[test]
         fn hevc_copy_strips_the_dovi_rpu_only_when_asked() {
             let strip = copy_args(StreamHints {
                 strip_dovi: true,
-                max_audio_channels: None,
+                ..StreamHints::default()
             });
             assert_eq!(value(&strip, "-bsf:v"), "dovi_rpu=strip=1");
             assert!(!copy_args(StreamHints::default()).contains(&"-bsf:v".to_string()));
@@ -2343,8 +2650,8 @@ mod tests {
         #[test]
         fn stereo_device_gets_a_stereo_aac_fold() {
             let stereo = copy_args(StreamHints {
-                strip_dovi: false,
                 max_audio_channels: Some(2),
+                ..StreamHints::default()
             });
             assert_eq!(value(&stereo, "-af"), "aformat=channel_layouts=stereo|mono");
             assert_eq!(
@@ -3513,6 +3820,83 @@ mod tests {
                 .await
                 .unwrap();
             assert!(missing.is_none());
+        }
+
+        /// Manual: `cargo test -p playarr-transcode detects_the_real_ffmpeg -- --ignored --nocapture`
+        /// inside a memory scope; runs the real 4K chain benchmark with 4 threads.
+        #[tokio::test]
+        #[ignore]
+        async fn detects_the_real_ffmpeg() {
+            let support = detect_tone_map_support("ffmpeg", 4).await;
+            eprintln!("{support:?}");
+            assert!(support.zscale);
+        }
+
+        /// A caller that gives up must neither cancel detection nor cause a second run.
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_dropped_first_caller_does_not_start_a_second_detection() {
+            use std::os::unix::fs::PermissionsExt;
+            let root = unique_tmp_dir();
+            tokio::fs::create_dir_all(&root).await.unwrap();
+            let slow = root.join("ffmpeg-slow-filters");
+            tokio::fs::write(&slow, "#!/bin/sh\nsleep 1\nexit 0\n")
+                .await
+                .unwrap();
+            let mut permissions = tokio::fs::metadata(&slow).await.unwrap().permissions();
+            permissions.set_mode(0o755);
+            tokio::fs::set_permissions(&slow, permissions)
+                .await
+                .unwrap();
+            let orchestrator = test_orchestrator(Arc::new(FakeRenditionRepo::default()))
+                .with_ffmpeg_binary(slow.to_string_lossy().into_owned());
+
+            // The first caller gives up while detection runs (or, on a loaded machine, finishes).
+            let _ =
+                tokio::time::timeout(Duration::from_millis(100), orchestrator.tone_map_support())
+                    .await;
+            let support = orchestrator.tone_map_support().await;
+            assert!(!support.libplacebo);
+            assert_eq!(orchestrator.detect_runs.load(Ordering::SeqCst), 1);
+            // The result is kept: no third run for a settled answer within the retry window.
+            orchestrator.tone_map_support().await;
+            assert_eq!(orchestrator.detect_runs.load(Ordering::SeqCst), 1);
+        }
+
+        /// An old negative answer is returned at once while a refresh runs in the background.
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_stale_negative_result_is_served_while_the_refresh_runs() {
+            use std::os::unix::fs::PermissionsExt;
+            let root = unique_tmp_dir();
+            tokio::fs::create_dir_all(&root).await.unwrap();
+            let slow = root.join("ffmpeg-slow-refresh");
+            tokio::fs::write(&slow, "#!/bin/sh\nsleep 1\nexit 0\n")
+                .await
+                .unwrap();
+            let mut permissions = tokio::fs::metadata(&slow).await.unwrap().permissions();
+            permissions.set_mode(0o755);
+            tokio::fs::set_permissions(&slow, permissions)
+                .await
+                .unwrap();
+            let orchestrator = test_orchestrator(Arc::new(FakeRenditionRepo::default()))
+                .with_ffmpeg_binary(slow.to_string_lossy().into_owned());
+            orchestrator.detect.lock().unwrap().done = Some((
+                video::ToneMapSupport {
+                    zscale: true,
+                    libplacebo: false,
+                    libplacebo_fps: None,
+                },
+                std::time::Instant::now() - DETECT_RETRY_TTL - Duration::from_secs(1),
+            ));
+            let started = std::time::Instant::now();
+            let support = orchestrator.tone_map_support().await;
+            assert!(
+                started.elapsed() < Duration::from_millis(500),
+                "must not wait for the refresh"
+            );
+            assert!(support.zscale);
+            assert_eq!(orchestrator.detect_runs.load(Ordering::SeqCst), 1);
         }
 
         #[tokio::test]

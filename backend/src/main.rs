@@ -1695,6 +1695,14 @@ async fn boot_api(
             .with_ffmpeg_threads(ffmpeg_threads_from_env())
             .with_tdarr_notify(tdarr_notify_tx),
     );
+    // Detect GPU/CPU tone-mapping support now, in the background, so the first Dolby Vision title
+    // does not wait for the benchmark. The task owns the detection; nothing here can cancel it.
+    {
+        let transcode = transcode.clone();
+        tokio::spawn(async move {
+            transcode.tone_map_support().await;
+        });
+    }
 
     let jwt_secret = jwt_secret_from_env(node_identity.private_key.expose_secret());
     // `with_group_identity` (`docs/architecture/peer-groups.md` §5.4):

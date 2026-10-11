@@ -475,6 +475,50 @@ pub async fn test_state() -> (Router, TestState) {
 /// node-local transcode admission slot count, so a test can hold a slot open
 /// with a long-running process.
 pub async fn test_state_with_ffmpeg(ffmpeg_binary: &str, slots: usize) -> (Router, TestState) {
+    test_state_with_probe(ffmpeg_binary, slots, &sdr_hevc_ffprobe_stub()).await
+}
+
+/// An ffprobe stand-in that reports a plain SDR HEVC stream for any file.
+pub fn sdr_hevc_ffprobe_stub() -> String {
+    use std::os::unix::fs::PermissionsExt;
+    static STUB: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    STUB.get_or_init(|| {
+        let path = std::env::temp_dir().join(format!("playarr-api-test-ffprobe-{}", std::process::id()));
+        std::fs::write(
+            &path,
+            "#!/bin/sh\necho '{\"streams\":[{\"codec_name\":\"hevc\",\"pix_fmt\":\"yuv420p10le\"}]}'\n",
+        )
+        .expect("write ffprobe stub");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("chmod stub");
+        path.to_string_lossy().into_owned()
+    })
+    .clone()
+}
+
+/// An ffprobe stand-in that reports a Dolby Vision profile 5 HEVC stream for any file.
+pub fn dv5_hevc_ffprobe_stub() -> String {
+    use std::os::unix::fs::PermissionsExt;
+    static STUB: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    STUB.get_or_init(|| {
+        let path =
+            std::env::temp_dir().join(format!("playarr-api-test-ffprobe-dv5-{}", std::process::id()));
+        std::fs::write(
+            &path,
+            "#!/bin/sh\necho '{\"streams\":[{\"codec_name\":\"hevc\",\"pix_fmt\":\"yuv420p10le\",\"side_data_list\":[{\"side_data_type\":\"DOVI configuration record\",\"dv_profile\":5,\"dv_bl_signal_compatibility_id\":0}]}]}'\n",
+        )
+        .expect("write ffprobe stub");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("chmod stub");
+        path.to_string_lossy().into_owned()
+    })
+    .clone()
+}
+
+/// [`test_state_with_ffmpeg`] with a chosen ffprobe executable (for example one that always fails).
+pub async fn test_state_with_probe(
+    ffmpeg_binary: &str,
+    slots: usize,
+    ffprobe_binary: &str,
+) -> (Router, TestState) {
     let (pool, pool_acquisitions) = test_pool().await;
 
     let live_events = playarr_db::LiveEventPublisher::from_pool(pool.clone());
@@ -621,6 +665,7 @@ pub async fn test_state_with_ffmpeg(ffmpeg_binary: &str, slots: usize) -> (Route
     let transcode = Arc::new(
         TranscodeOrchestrator::new(rendition_repo.clone(), cache, ActiveSessionCounter::new())
             .with_ffmpeg_binary(ffmpeg_binary)
+            .with_ffprobe_binary(ffprobe_binary)
             .with_max_concurrent_sessions(slots)
             .with_output_root(
                 std::env::temp_dir().join(format!("playarr-api-test-{}", Uuid::new_v4())),

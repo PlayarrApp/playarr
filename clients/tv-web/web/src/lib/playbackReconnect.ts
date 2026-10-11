@@ -87,6 +87,18 @@ export function isCapacityError(err: unknown): boolean {
   return Boolean(body && typeof body === "object" && "error" in body && body.error === "no_transcode_capacity");
 }
 
+/** 422 `unsupported_colour_format`: the title's Dolby Vision colours cannot be converted for this device. */
+export function isUnsupportedColourError(err: unknown): boolean {
+  if (!err || typeof err !== "object" || !("status" in err) || err.status !== 422) return false;
+  const body = "body" in err ? err.body : undefined;
+  return Boolean(body && typeof body === "object" && "error" in body && body.error === "unsupported_colour_format");
+}
+
+/** A refusal that no retry or reconnect can change (the title's colours cannot be converted). */
+export function isPermanentNegotiationError(err: unknown): boolean {
+  return isUnsupportedColourError(err);
+}
+
 export function capacityRetryDelayMs(attempt: number): number {
   return Math.min(10_000, 2000 * 2 ** Math.max(0, attempt));
 }
@@ -142,6 +154,7 @@ export function humanNegotiationMessage(err: unknown, fallback: string): string 
       ? "Can't reach the server. Check your connection and try again."
       : fallback;
   }
+  if (isUnsupportedColourError(err)) return "This title's colour format can't be converted for this device.";
   if (isCapacityError(err)) return "The server is busy with other playback. Try again in a moment.";
   if (status === 404) return "This title is no longer available on the server.";
   if (status === 408 || status === 429 || status >= 500) {

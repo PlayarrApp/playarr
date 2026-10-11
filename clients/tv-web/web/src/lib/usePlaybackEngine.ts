@@ -45,6 +45,7 @@ import {
   humanNegotiationMessage,
   capacityRetryDelayMs,
   isCapacityError,
+  isPermanentNegotiationError,
   retryOnCapacityRefusal,
   isTransientNegotiationError,
   MAX_CAPACITY_RETRIES,
@@ -784,7 +785,12 @@ export function usePlaybackEngine(
       .catch((err: unknown) => {
         if (cancelled) return;
         const forbidden = err instanceof ApiError && err.status === 403;
-        if (reconnectingRef.current && !forbidden && canReconnect(reconnectAttemptRef.current)) {
+        if (
+          reconnectingRef.current &&
+          !forbidden &&
+          !isPermanentNegotiationError(err) &&
+          canReconnect(reconnectAttemptRef.current)
+        ) {
           // The backend is still away: stay mounted and try again shortly.
           const delay = reconnectDelayMs(reconnectAttemptRef.current);
           reconnectAttemptRef.current += 1;
@@ -1325,7 +1331,7 @@ export function usePlaybackEngine(
           setNegotiation({
             kind: "error",
             forbidden: err instanceof ApiError && err.status === 403,
-            message: describeApiError(err),
+            message: humanNegotiationMessage(err, describeApiError(err)),
           });
         });
       sourceSwitchBarrierRef.current = switchOperation.then(
@@ -1428,7 +1434,7 @@ export function usePlaybackEngine(
           setNegotiation({
             kind: "error",
             forbidden: err instanceof ApiError && err.status === 403,
-            message: describeApiError(err),
+            message: humanNegotiationMessage(err, describeApiError(err)),
           });
         });
       sourceSwitchBarrierRef.current = switchOperation.then(
@@ -1585,7 +1591,7 @@ export function usePlaybackEngine(
           setNegotiation({
             kind: "error",
             forbidden: err instanceof ApiError && err.status === 403,
-            message: describeApiError(err),
+            message: humanNegotiationMessage(err, describeApiError(err)),
           });
         });
       sourceSwitchBarrierRef.current = switchOperation.then(

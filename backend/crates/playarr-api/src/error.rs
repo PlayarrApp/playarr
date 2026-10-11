@@ -89,6 +89,16 @@ impl ApiError {
         )
     }
 
+    /// 422 `unsupported_colour_format`: the title's colours depend on Dolby Vision metadata this
+    /// node cannot apply in real time, so it is refused instead of streamed with wrong colours.
+    pub fn unsupported_colour_format() -> Self {
+        Self::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "unsupported_colour_format",
+            "This title's colour format can't be converted for this device.",
+        )
+    }
+
     pub fn no_peer_available(message: impl Into<String>) -> Self {
         Self::new(
             StatusCode::SERVICE_UNAVAILABLE,
@@ -133,6 +143,7 @@ impl From<playarr_transcode::TranscodeError> for ApiError {
             TranscodeError::NoCapacity => Self::no_transcode_capacity(
                 "no on-demand transcode capacity available on this node",
             ),
+            TranscodeError::UnsupportedColour => Self::unsupported_colour_format(),
             TranscodeError::Db(playarr_db::DbError::NotFound) => {
                 Self::not_found("rendition not found")
             }
@@ -220,6 +231,26 @@ impl From<playarr_auth::LoginError> for ApiError {
             }
             LoginError::Directory(message) => Self::internal(message),
             LoginError::Session(inner) => Self::internal(inner.to_string()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod unsupported_colour_tests {
+    use super::*;
+
+    #[test]
+    fn a_refused_colour_format_is_a_422_with_a_stable_code_and_message() {
+        for err in [
+            ApiError::unsupported_colour_format(),
+            ApiError::from(playarr_transcode::TranscodeError::UnsupportedColour),
+        ] {
+            assert_eq!(err.status, StatusCode::UNPROCESSABLE_ENTITY);
+            assert_eq!(err.body.error, "unsupported_colour_format");
+            assert_eq!(
+                err.body.message,
+                "This title's colour format can't be converted for this device."
+            );
         }
     }
 }
