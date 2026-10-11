@@ -1,1 +1,0 @@
-- Samsung Tizen native client: drawers use the web strong surface with the soft left shadow, the title-actions panel and library details panel sit where web puts them, and the series cast row follows the web gap.

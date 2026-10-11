@@ -482,6 +482,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Samsung Tizen native client: drawers use the web strong surface with the soft left shadow, the title-actions panel and library details panel sit where web puts them, and the series cast row follows the web gap.
 - Linux phone client: one token refresh at a time with the new pair flushed to disk before use, and text drawn unhinted with grayscale anti-aliasing as the browser does.
 - Parity drivers rely on the app's own Home focus once the rails settle; a programmatic focus made the first D-pad key unreliable.
 - VIDAA: a long press of OK from the TV's remote service (delivered as an instant burst of repeats) now registers as a real hold, so the actions panel opens (VIDAA only).
