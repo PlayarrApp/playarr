@@ -62,3 +62,49 @@ export function normaliseSubtitleLanguage(raw: string): string {
   const trimmed = raw.trim().toLowerCase();
   return trimmed.length > 0 ? trimmed : "en";
 }
+
+export interface SubtitleCandidate {
+  id: string;
+  forced: boolean;
+  is_default: boolean;
+  language?: string | null;
+}
+
+const LANGUAGE_ALIASES: Record<string, string> = {
+  ara: "ar", chi: "zh", deu: "de", eng: "en", fra: "fr", fre: "fr", ger: "de", hin: "hi",
+  ita: "it", jpn: "ja", kor: "ko", por: "pt", spa: "es", tha: "th", zho: "zh",
+};
+
+function languageCode(value: string | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  const head = value.trim().toLowerCase().split(/[-_]/)[0];
+  return LANGUAGE_ALIASES[head] ?? head;
+}
+
+/**
+ * The subtitle track to start with for the saved default, as web `selectDefaultSubtitleTrackId`: nothing when off;
+ * forced tracks only for "forced"; the preferred language if present, else the track flagged default, else the first.
+ */
+export function selectDefaultSubtitleTrackId(tracks: SubtitleCandidate[], mode: string, language: string): string | null {
+  if (mode === "off") {
+    return null;
+  }
+  const eligible = mode === "forced" ? tracks.filter((track) => track.forced) : tracks.slice();
+  if (eligible.length === 0) {
+    return null;
+  }
+  const preferred = languageCode(language);
+  for (const track of eligible) {
+    if (languageCode(track.language) === preferred) {
+      return track.id;
+    }
+  }
+  for (const track of eligible) {
+    if (track.is_default) {
+      return track.id;
+    }
+  }
+  return eligible[0].id;
+}

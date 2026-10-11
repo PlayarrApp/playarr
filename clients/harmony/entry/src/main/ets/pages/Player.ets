@@ -112,6 +112,8 @@ import { image } from '@kit.ImageKit';
 import { audio } from '@kit.AudioKit';
 
 import { negotiatePlayback, getWatchProgress } from '../data/PlaybackRepository';
+import { loadPlayerDefaults } from '../AppContainer';
+import { ORIGINAL_QUALITY, normaliseQuality, normaliseSubtitleMode, normaliseSubtitleLanguage, selectDefaultSubtitleTrackId } from '../core/PlayerDefaults.ts';
 import type { PlaybackNegotiationOptions } from '../data/PlaybackRepository';
 import { getWorkDetail, getSimilarWorks } from '../data/CatalogRepository';
 import { fetchWorkArtworkByPriority, COVER_ARTWORK_PRIORITY } from '../data/ArtworkRepository';
@@ -240,6 +242,9 @@ struct Player {
   /** Mirrors `PlayerChrome`'s own visibility, reported through `onVisibilityChanged`. */
   private controlsVisible: boolean = true;
   @State private subtitleCueText: string = '';
+  /** The saved Settings > Player subtitle default, read when playback starts. */
+  private defaultSubtitleMode: string = 'off';
+  private defaultSubtitleLanguage: string = 'en';
 
   // -- End of playback (docs/architecture/end-of-playback.md) --
   /** Own copies of the route params: they change as the queue advances. */
@@ -450,6 +455,14 @@ struct Player {
     if (resumeMs > 0) {
       options.startPositionMs = resumeMs;
     }
+    // Settings > Player: the saved default quality and subtitles (device-local, as web's playerDefaults).
+    const stored = await loadPlayerDefaults();
+    const quality = normaliseQuality(stored[0]);
+    if (quality !== ORIGINAL_QUALITY) {
+      options.profile = quality;
+    }
+    this.defaultSubtitleMode = normaliseSubtitleMode(stored[1]);
+    this.defaultSubtitleLanguage = normaliseSubtitleLanguage(stored[2]);
     await this.negotiateAndAttach(options);
   }
 
@@ -535,7 +548,9 @@ struct Player {
   // -- Subtitles (brief 4.11) --------------------------------------------------
 
   private async attachDefaultSubtitleIfNamed(info: PlaybackInfoResponse): Promise<void> {
-    const selectedId = info.selected_subtitle_track_id;
+    // A track the server already chose wins; otherwise the saved default (web `selectDefaultSubtitleTrackId`).
+    const selectedId = info.selected_subtitle_track_id !== null ? info.selected_subtitle_track_id :
+      selectDefaultSubtitleTrackId(info.subtitle_tracks, this.defaultSubtitleMode, this.defaultSubtitleLanguage);
     if (selectedId === null) {
       return;
     }
