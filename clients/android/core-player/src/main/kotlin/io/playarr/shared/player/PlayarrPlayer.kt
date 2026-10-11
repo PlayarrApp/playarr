@@ -72,6 +72,8 @@ interface PlayarrPlayer {
         selectedSubtitleId: String? = null,
         preferredAudioLanguage: String? = null,
         preferredSubtitleLanguage: String? = null,
+        /** Plays [mediaUrl] from the offline download cache under this key (a finished download stored as several spans). */
+        cacheKey: String? = null,
     )
 
     fun play()

@@ -30,9 +30,11 @@ import kotlinx.coroutines.launch
 
 /** Hilt entry point for the mobile app; every `@Inject`/`@AndroidEntryPoint` site roots here. */
 @HiltAndroidApp
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayarrMobileApp : Application(), Configuration.Provider, SingletonImageLoader.Factory {
     @Inject lateinit var tokenStore: TokenStore
     @Inject lateinit var liveEvents: LiveEventsManager
+    @Inject lateinit var downloadManager: androidx.media3.exoplayer.offline.DownloadManager
 
     /**
      * Lets `KeepUntilSweepWorker` (a `@HiltWorker`) get its dependencies
@@ -54,6 +56,17 @@ class PlayarrMobileApp : Application(), Configuration.Provider, SingletonImageLo
     override fun onCreate() {
         super.onCreate()
         bindLiveEvents(scope, liveEvents, tokenStore)
+        // Media3 keeps unfinished downloads in its index but only advances them while its service runs; start it again
+        // after a process restart so a queued download carries on instead of sitting at 0 MB.
+        downloadManager.addListener(object : androidx.media3.exoplayer.offline.DownloadManager.Listener {
+            override fun onInitialized(downloadManager: androidx.media3.exoplayer.offline.DownloadManager) {
+                val pending = downloadManager.currentDownloads.any {
+                    it.state == androidx.media3.exoplayer.offline.Download.STATE_QUEUED || it.state == androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
+                }
+                // Not allowed from the background (a worker start); the next launch retries.
+                if (pending) runCatching { androidx.media3.exoplayer.offline.DownloadService.start(this@PlayarrMobileApp, io.playarr.mobile.download.PlayarrDownloadService::class.java) }
+            }
+        })
         // Downloads' own notification channel is created lazily by
         // PlayarrDownloadService's DownloadService constructor (which is
         // given the channel name/description string resources directly),

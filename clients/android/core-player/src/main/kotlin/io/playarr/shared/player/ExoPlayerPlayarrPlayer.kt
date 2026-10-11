@@ -192,6 +192,7 @@ class ExoPlayerPlayarrPlayer private constructor(
         selectedSubtitleId: String?,
         preferredAudioLanguage: String?,
         preferredSubtitleLanguage: String?,
+        cacheKey: String?,
     ) {
         _state.update { PlaybackState() }
         decoderRetries = 0
@@ -208,6 +209,7 @@ class ExoPlayerPlayarrPlayer private constructor(
             .build()
         val mediaItem = MediaItem.Builder()
             .setUri(mediaUrl)
+            .apply { if (cacheKey != null) setCustomCacheKey(cacheKey) }
             .setSubtitleConfigurations(
                 subtitles.map { subtitle ->
                     MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitle.url))
@@ -304,6 +306,8 @@ class ExoPlayerPlayarrPlayer private constructor(
             context: Context,
             dataSourceFactory: DataSource.Factory? = null,
             parallelHttpClient: OkHttpClient? = null,
+            /** Read-only view of the offline download cache, consulted before the network. */
+            offlineCache: androidx.media3.datasource.cache.Cache? = null,
         ): ExoPlayerPlayarrPlayer {
             val appContext = context.applicationContext
             val parallelEnabled = AtomicBoolean(false)
@@ -315,6 +319,15 @@ class ExoPlayerPlayarrPlayer private constructor(
                 )
             } else {
                 dataSourceFactory
+            }
+            val cachedFactory = if (offlineCache != null && effectiveFactory != null) {
+                androidx.media3.datasource.cache.CacheDataSource.Factory()
+                    .setCache(offlineCache)
+                    .setUpstreamDataSourceFactory(effectiveFactory)
+                    .setCacheWriteDataSinkFactory(null)
+                    .setFlags(androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+            } else {
+                effectiveFactory
             }
             val decoderBlocklist = DecoderBlocklist()
             val extractorsFactory = DolbyVisionFallbackExtractorsFactory(DefaultExtractorsFactory())
@@ -328,8 +341,8 @@ class ExoPlayerPlayarrPlayer private constructor(
                     .setMediaCodecSelector(decoderBlocklist.selector()),
             ).setLoadControl(buildLoadControl(appContext))
             builder.setMediaSourceFactory(
-                if (effectiveFactory != null) {
-                    DefaultMediaSourceFactory(effectiveFactory, extractorsFactory)
+                if (cachedFactory != null) {
+                    DefaultMediaSourceFactory(cachedFactory, extractorsFactory)
                 } else {
                     DefaultMediaSourceFactory(appContext, extractorsFactory)
                 },

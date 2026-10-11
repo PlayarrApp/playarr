@@ -21,10 +21,12 @@ import okhttp3.Protocol
 object PlayerModule {
     @Provides
     @Singleton
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     fun providePlayarrPlayer(
         @ApplicationContext context: Context,
         dataSourceFactory: DataSource.Factory,
         @Named(MEDIA_OKHTTP_CLIENT) mediaClient: OkHttpClient,
+        downloadCache: androidx.media3.datasource.cache.Cache,
     ): PlayarrPlayer {
         // Direct play fetches big files over several concurrent range
         // requests. HTTP/1.1 only, so each gets its own TCP flow rather than
@@ -34,7 +36,7 @@ object PlayerModule {
             .protocols(listOf(Protocol.HTTP_1_1))
             .connectionPool(ConnectionPool(PARALLEL_IDLE_CONNECTIONS, PARALLEL_KEEP_ALIVE_MINUTES, TimeUnit.MINUTES))
             .build()
-        return ExoPlayerPlayarrPlayer.create(context, dataSourceFactory, parallelClient)
+        return ExoPlayerPlayarrPlayer.create(context, dataSourceFactory, parallelClient, downloadCache)
     }
 
     private const val PARALLEL_IDLE_CONNECTIONS = 8

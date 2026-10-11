@@ -561,6 +561,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     val serverAccessResolver: PlayarrServerAccessResolver,
     val remoteController: io.playarr.mobile.remote.RemoteController,
     val liveBus: LiveInvalidationBus,
+    @param:dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
     private val homeStamp = LiveFetchStamp()
     private val libraryStamps = mutableMapOf<WorkKind, LiveFetchStamp>()
@@ -940,7 +941,11 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     }
 
     private suspend fun refreshCapabilities() {
-        _canDownload.value = runCatching { api.getSelfCapabilities().canDownload }.getOrDefault(false)
+        // Offline (the one time downloads matter most) the call fails: keep the last answer the server gave on this device.
+        val prefs = appContext.getSharedPreferences("playarr_capabilities", android.content.Context.MODE_PRIVATE)
+        val fresh = runCatching { api.getSelfCapabilities().canDownload }.getOrNull()
+        if (fresh != null) prefs.edit().putBoolean("can_download", fresh).apply()
+        _canDownload.value = fresh ?: prefs.getBoolean("can_download", false)
     }
 
     /**
@@ -2537,9 +2542,15 @@ private fun ExperienceNavHost(
                     isOnline = isOnline,
                     onBack = { navController.openExperienceTopLevel("home") },
                     onOpen = { download ->
-                        navController.navigate(
-                            "experience-detail/${download.workId}?mediaFileId=${Uri.encode(download.mediaFileId)}",
-                        )
+                        if (download.state == io.playarr.shared.download.DownloadState.Completed) {
+                            // A finished download plays straight from the device (no connection needed).
+                            viewModel.startPlayback(download.mediaFileId, emptyList())
+                            navController.navigate("experience-player/${Uri.encode(download.mediaFileId)}")
+                        } else {
+                            navController.navigate(
+                                "experience-detail/${download.workId}?mediaFileId=${Uri.encode(download.mediaFileId)}",
+                            )
+                        }
                     },
                 )
             }
@@ -3893,6 +3904,27 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             tvGrid.focus(0, filteredWorks.indexOfFirst { it.id == selectedId }.coerceAtLeast(0))
                         }
                     }
+                    }
+                }
+                if (!isTelevision && sortMode == "title") {
+                    // Web phone `.tv-directory .tv-alphabet`: a fixed index strip on the right edge, as wide as the page gutter (16 dp),
+                    // between the header and the bottom nav; its 27 letters share the height (8.96 px, 700), the active one on an ink disc.
+                    val shownLetter = if (activeLetter == "#") selected.sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
+                    Column(
+                        modifier = Modifier.align(Alignment.TopEnd)
+                            .padding(top = 74.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(), bottom = 80.dp)
+                            .width(16.dp).fillMaxHeight(),
+                    ) {
+                        (listOf("#") + ('A'..'Z').map(Char::toString)).forEach { letter ->
+                            val active = shownLetter == letter
+                            Box(
+                                Modifier.weight(1f).fillMaxWidth().clickable { activeLetter = letter },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (active) Box(Modifier.size(16.dp).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
+                                Text(letter, color = if (active) WebBackground else WebInkMuted, fontSize = 8.96.sp, lineHeight = 9.sp, fontWeight = FontWeight.Bold, style = WebTextStyle)
+                            }
+                        }
                     }
                 }
                 if (isTelevision && sortMode == "title") {
@@ -8091,7 +8123,8 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             activeMediaFileId = mediaFileId
             playbackReached = false
             _notice.value = null
-            activeServerUrl = serverAccessResolver.forMedia(mediaFileId).serverUrl
+            // Offline, a downloaded file must still play: the lookup is a network call, so fall back to the last known server.
+            activeServerUrl = runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrDefault(activeServerUrl)
             activeDefaults = defaults
             activeSourceOffsetMs = 0L
             activeSourceDurationMs = 0L
@@ -8115,6 +8148,15 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             val localFile = runCatching { downloadRepository.localFile(mediaFileId) }.getOrNull()
             if (localFile != null) {
                 player.prepare(Uri.fromFile(localFile).toString(), StreamFormat.Direct, resumePosition)
+                player.play()
+                armStartStallWatchdog()
+                _state.value = ExperienceLoad.Ready(Unit)
+                return@launch
+            }
+
+            // Fully downloaded but stored as several cache spans: play it from the cache, still without a network.
+            if (runCatching { downloadRepository.isDownloaded(mediaFileId) }.getOrDefault(false)) {
+                player.prepare("http://offline.invalid/$mediaFileId", StreamFormat.Direct, resumePosition, cacheKey = mediaFileId)
                 player.play()
                 armStartStallWatchdog()
                 _state.value = ExperienceLoad.Ready(Unit)

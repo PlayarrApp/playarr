@@ -63,7 +63,7 @@ class PlayarrDownloadService : DownloadService(
             val manager = NotificationManagerCompat.from(this@PlayarrDownloadService)
             val id = TERMINAL_ID_BASE + download.request.id.hashCode()
             val notification = when (download.state) {
-                Download.STATE_COMPLETED -> terminal(download, R.string.download_notification_completed)
+                Download.STATE_COMPLETED -> { downloadRepository.acknowledgeComplete(download.request.id); terminal(download, R.string.download_notification_completed) }
                 Download.STATE_FAILED -> terminal(download, R.string.download_notification_failed)
                 // Media3 drops its foreground notification once everything is stopped, so a paused download needs its own.
                 Download.STATE_STOPPED -> pausedNotification(download)

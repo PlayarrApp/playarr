@@ -435,6 +435,10 @@ interface PlayarrApi {
     @DELETE("api/v1/downloads/{id}")
     suspend fun cancelDownloadTicket(@Path("id") id: String): Response<ResponseBody>
 
+    /** `POST /api/v1/downloads/{id}/complete` -- the device has stored the file, so the server may drop its staged copy (best effort; 204, 409 not ready, 410 canceled). */
+    @POST("api/v1/downloads/{id}/complete")
+    suspend fun completeDownloadTicket(@Path("id") id: String): Response<ResponseBody>
+
     // ---- Playarr profiles and preferences ---------------------------------
 
     @GET("api/v1/users/profiles")

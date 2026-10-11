@@ -88,6 +88,12 @@ interface DownloadRepository {
 
     /** Removes every download whose Keep-until has passed. Called from `KeepUntilSweepWorker`'s periodic tick. */
     suspend fun sweepExpired()
+
+    /** Tells the server this download is stored on the device so it can delete its staged copy; best effort. */
+    fun acknowledgeComplete(mediaFileId: String)
+
+    /** True when [mediaFileId] is fully downloaded (even when its bytes sit in several cache spans rather than one file). */
+    suspend fun isDownloaded(mediaFileId: String): Boolean
 }
 
 class DefaultDownloadRepository @Inject constructor(
@@ -137,8 +143,16 @@ class DefaultDownloadRepository @Inject constructor(
 
     /** Re-emits the full current `Download` list (keyed by `mediaFileId`) on every Media3 change. */
     private fun downloadManagerUpdates(): Flow<Map<String, Download>> = callbackFlow {
+        // `currentDownloads` lists only unfinished downloads; finished ones live in the index, so read that (off the main thread).
         fun emitCurrent() {
-            trySend(downloadManager.currentDownloads.associateBy { it.request.id })
+            launch(Dispatchers.IO) {
+                val all = runCatching {
+                    downloadManager.downloadIndex.getDownloads().use { cursor ->
+                        buildList { while (cursor.moveToNext()) add(cursor.download) }
+                    }
+                }.getOrDefault(emptyList())
+                trySend((all + downloadManager.currentDownloads).associateBy { it.request.id })
+            }
         }
         val listener = object : DownloadManager.Listener {
             override fun onDownloadChanged(downloadManager: DownloadManager, download: Download, finalException: Exception?) = emitCurrent()
@@ -257,6 +271,16 @@ class DefaultDownloadRepository @Inject constructor(
         val onlySpan = spans.singleOrNull() ?: return@withContext null
         if (onlySpan.position != 0L || onlySpan.length != totalBytes) return@withContext null
         onlySpan.file
+    }
+
+    override suspend fun isDownloaded(mediaFileId: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching { downloadManager.downloadIndex.getDownload(mediaFileId) }.getOrNull()?.state == Download.STATE_COMPLETED
+    }
+
+    override fun acknowledgeComplete(mediaFileId: String) {
+        repositoryScope.launch {
+            dao.get(mediaFileId)?.ticketId?.let { runCatching { api.completeDownloadTicket(it) } }
+        }
     }
 
     override suspend fun sweepExpired() {
