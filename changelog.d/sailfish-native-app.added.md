@@ -1,1 +1,0 @@
-- Sailfish OS: a native Qt/QML (Silica) client in `clients/sailfish` with QR sign-in, profiles, Home, library, detail, search, settings and playback with resume; built into an RPM with the official SDK tarballs without Docker or root.

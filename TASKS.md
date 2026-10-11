@@ -12,6 +12,7 @@ Steps only the repository owner can perform.
 |---|---|---|---|---|---|---|---|
 | 10083 | Nura/postmarketOS native app (GTK4/libadwaita) | in_progress | client-nura | feat/linux-mobile | | 2026-10-13 18:00 ICT | Scaffold, QR sign-in and CI job merged (#761). Native app running on the Nura emulator as Device Test: Home, library grids with filters, music, calendar, search, detail, actions sheet, settings, playback with resume. Remaining: merge the stacked PRs, light and dark parity captures, deploy-time linux-phone identity switch. |
 | 10084 | Linux phone clients: packaging and CI | in_progress | client-nura | feat/linux-mobile-packaging | | 2026-10-13 12:00 ICT | Hosted CI job for clients/linux-mobile merged (#761, in ci-required). Flatpak manifest builds locally; Alpine APKBUILD written, not yet built into an apk. |
+| 10082 | Sailfish OS native app (Qt/QML + Silica) | in_progress | client-sailfish | sailfish-app | | 2026-10-12 18:00 ICT | clients/sailfish: QR sign-in, profiles, Home, library, detail, search, settings, playback with resume (direct and HLS via a loopback proxy) verified on the SDK emulator; PR open: #764. Stacked next: player menus, PIN, calendar, watchlist, requests, downloads. Waiting on the sailfish platform identity deploy. |
 
 ## 60. Legal pages and project conduct before public release
 

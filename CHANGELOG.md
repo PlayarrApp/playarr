@@ -279,6 +279,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Sailfish OS: a native Qt/QML (Silica) client in `clients/sailfish` with QR sign-in, profiles, Home, library, detail, search, settings and playback with resume; built into an RPM with the official SDK tarballs without Docker or root.
 - Linux phone client: title detail (film and series with seasons and episodes), settings, and playback with resume and progress reporting.
 - Linux phone client: tabbed shell with Home rails (On deck first), movie and series grids with infinite scroll, and search.
 - Linux phone client: Flatpak manifest, Alpine APKBUILD, desktop entry, metainfo and icon.
