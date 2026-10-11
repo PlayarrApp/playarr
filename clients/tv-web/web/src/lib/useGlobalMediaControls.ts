@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { nowPlayingPositionState } from "./nowPlaying";
 
 export type GlobalMediaControlAction =
   | "play"
@@ -68,6 +69,8 @@ interface GlobalMediaControlCallbacks {
   onSeekForward?: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
+  /** The notification's scrubber: jump to an absolute position. */
+  onSeekTo?: (seconds: number) => void;
 }
 
 interface MediaSessionLike {
@@ -101,6 +104,17 @@ export function installMediaSessionActionHandlers(
     ["pause", callbacks.onPause],
     ["previoustrack", callbacks.onPrevious ?? null],
     ["nexttrack", callbacks.onNext ?? null],
+    ["stop", callbacks.onStop ?? null],
+    ["seekbackward", callbacks.onSeekBackward ?? null],
+    ["seekforward", callbacks.onSeekForward ?? null],
+    [
+      "seekto",
+      callbacks.onSeekTo
+        ? (details) => {
+            if (typeof details.seekTime === "number") callbacks.onSeekTo?.(details.seekTime);
+          }
+        : null,
+    ],
   ];
 
   handlers.forEach(([action, handler]) =>
@@ -195,6 +209,7 @@ export function useGlobalMediaControls({
   onSeekForward,
   onPrevious,
   onNext,
+  onSeekTo,
   playbackState,
   keyboardShortcuts = true,
 }: GlobalMediaControlCallbacks & { playbackState: string; keyboardShortcuts?: boolean }) {
@@ -207,6 +222,7 @@ export function useGlobalMediaControls({
     onSeekForward,
     onPrevious,
     onNext,
+    onSeekTo,
   });
   callbacksRef.current = {
     onPlay,
@@ -217,6 +233,7 @@ export function useGlobalMediaControls({
     onSeekForward,
     onPrevious,
     onNext,
+    onSeekTo,
   };
 
   const keyboardShortcutsRef = useRef(keyboardShortcuts);
@@ -256,6 +273,10 @@ export function useGlobalMediaControls({
             ? () => callbacksRef.current.onPrevious?.()
             : undefined,
           onNext: canNext ? () => callbacksRef.current.onNext?.() : undefined,
+          onStop: () => callbacksRef.current.onStop?.(),
+          onSeekBackward: () => callbacksRef.current.onSeekBackward?.(),
+          onSeekForward: () => callbacksRef.current.onSeekForward?.(),
+          onSeekTo: (seconds) => callbacksRef.current.onSeekTo?.(seconds),
         })
       : undefined;
 
@@ -280,4 +301,21 @@ export function useGlobalMediaControls({
       // A partially implemented Media Session API must not affect playback.
     }
   }, [playbackState]);
+}
+
+/** Publishes the playback position to the platform's now-playing notification, once a second at most. */
+export function useNowPlayingPosition(positionSeconds: number | undefined, durationSeconds: number | undefined): void {
+  const whole = positionSeconds === undefined ? undefined : Math.floor(positionSeconds);
+  useEffect(() => {
+    const session = typeof navigator === "undefined" ? undefined : navigator.mediaSession;
+    if (!session || typeof session.setPositionState !== "function") return;
+    if (whole === undefined || durationSeconds === undefined) return;
+    const state = nowPlayingPositionState(whole, durationSeconds);
+    if (!state) return;
+    try {
+      session.setPositionState(state);
+    } catch {
+      // A partially implemented Media Session must never affect playback.
+    }
+  }, [whole, durationSeconds]);
 }

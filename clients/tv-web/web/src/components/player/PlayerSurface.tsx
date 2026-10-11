@@ -12,7 +12,9 @@ import type { Work } from "@playarr-tv/api-client";
 import type { PlayarrCastStateMessage } from "@playarr-tv/cast-protocol";
 import type { PlaybackEngineController } from "../../lib/usePlaybackEngine";
 import { CachedArtworkImage } from "../../lib/artwork";
-import { useGlobalMediaControls } from "../../lib/useGlobalMediaControls";
+import { useGlobalMediaControls, useNowPlayingPosition } from "../../lib/useGlobalMediaControls";
+import { useNowPlayingArtwork, useNowPlayingMetadata } from "../../lib/nowPlaying";
+import { useCachedArtwork } from "../../lib/artwork";
 import { IS_TIZEN, IS_TV, IS_WEBOS, type PlayarrWebPlatform } from "../../lib/clientPlatform";
 import { usesTenFootChrome } from "../../lib/productSurfaces";
 import { createDoubleTapDetector, DOUBLE_TAP_WINDOW_MS } from "../../lib/doubleTapSeek";
@@ -258,6 +260,8 @@ interface MusicAudioGraph {
 interface WebKitAudioWindow extends Window {
   webkitAudioContext?: typeof AudioContext;
 }
+
+const NO_ARTWORK_WORK: Pick<Work, "id" | "images"> = { id: "", images: [] };
 
 const musicAudioGraphs = new WeakMap<HTMLMediaElement, MusicAudioGraph>();
 
@@ -534,9 +538,12 @@ export function PlayerSurface({
   castState = null,
   onToggleCast,
   onPlayOnDevice,
+  artworkWorkId,
 }: {
   player: PlaybackEngineController;
   title: string;
+  /** The work whose poster the now-playing notification shows (video; music uses its album art). */
+  artworkWorkId?: string;
   minimised?: boolean;
   inlineMusic?: boolean;
   playbackStarted?: boolean;
@@ -902,11 +909,24 @@ export function PlayerSurface({
         )
       );
     },
+    onSeekTo: (seconds) => seek(Math.max(0, Math.min(engineStateRef.current.durationSeconds || seconds, seconds))),
     onPrevious,
     onNext,
     playbackState: engineState.state,
     keyboardShortcuts: !minimised,
   });
+
+  // The platform's now-playing notification: title, artwork and progress (play, pause, seek, next and previous are
+  // the handlers above).
+  const musicArtwork = useCachedArtwork(musicContext?.artworkWork ?? NO_ARTWORK_WORK, ["poster", "backdrop"], Boolean(musicContext), 512);
+  const videoArtworkUrl = useNowPlayingArtwork(musicContext ? undefined : artworkWorkId);
+  useNowPlayingMetadata({
+    title: activePlaylistItem?.title ?? title,
+    artist: musicContext?.artistName ?? activePlaylistItem?.subtitle,
+    album: musicContext?.albumTitle,
+    artworkUrl: musicContext ? musicArtwork.url : videoArtworkUrl,
+  });
+  useNowPlayingPosition(engineState.currentTimeSeconds, engineState.durationSeconds);
 
   // Player-only keyboard shortcuts remain available on the video surface: Enter
   // play-pause, arrows seek/volume, m mute, and f fullscreen. Player controls

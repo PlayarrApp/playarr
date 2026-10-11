@@ -91,6 +91,10 @@ describe("installMediaSessionActionHandlers", () => {
       onTogglePlay: vi.fn(),
       onPrevious: vi.fn(),
       onNext: vi.fn(),
+      onStop: vi.fn(),
+      onSeekBackward: vi.fn(),
+      onSeekForward: vi.fn(),
+      onSeekTo: vi.fn(),
     };
 
     const removeHandlers = installMediaSessionActionHandlers(
@@ -107,8 +111,20 @@ describe("installMediaSessionActionHandlers", () => {
     expect(callbacks.onPrevious).toHaveBeenCalledOnce();
     expect(callbacks.onNext).toHaveBeenCalledOnce();
 
+    // The notification's seek buttons and scrubber.
+    handlers.get("seekbackward")?.({ action: "seekbackward" });
+    handlers.get("seekforward")?.({ action: "seekforward" });
+    handlers.get("seekto")?.({ action: "seekto", seekTime: 42 });
+    handlers.get("stop")?.({ action: "stop" });
+    expect(callbacks.onSeekBackward).toHaveBeenCalledOnce();
+    expect(callbacks.onSeekForward).toHaveBeenCalledOnce();
+    expect(callbacks.onSeekTo).toHaveBeenCalledWith(42);
+    expect(callbacks.onStop).toHaveBeenCalledOnce();
+
     removeHandlers();
-    expect(mediaSession.setActionHandler).toHaveBeenCalledTimes(8);
-    expect(Array.from(handlers.values())).toEqual([null, null, null, null]);
+    expect(Array.from(handlers.keys()).sort()).toEqual(
+      ["nexttrack", "pause", "play", "previoustrack", "seekbackward", "seekforward", "seekto", "stop"]
+    );
+    expect(Array.from(handlers.values()).every((handler) => handler === null)).toBe(true);
   });
 });

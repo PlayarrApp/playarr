@@ -805,6 +805,7 @@ function PlayerPageInner({
       <PlayerSurface
         player={player}
         title={playerTitle}
+        artworkWorkId={workIdFromDetailRoute(locationState?.backTo) ?? undefined}
         minimised={minimised}
         inlineMusic={inlineMusic}
         playbackStarted={musicPlaybackStateRef.current.hasPlayed}
