@@ -232,6 +232,8 @@ final class TVPlayerViewModel {
     }
 
     private(set) var state: State = .idle
+    /// False after the 422 `unsupported_colour_format` refusal: Try again would only get the same answer.
+    private(set) var canRetryFailure = true
     private(set) var playbackMode: PlaybackMode?
     private(set) var currentTitle = ""
     private(set) var currentSubtitle: String?
@@ -331,6 +333,7 @@ final class TVPlayerViewModel {
         currentTitle = title
         lastMediaFileID = mediaFileID
         state = .negotiating
+        canRetryFailure = true
         do {
             // Resume from the server's saved position (web: getWatchProgress).
             let saved = startFromBeginning ? nil : try? await apiClient.getWatchProgress(mediaFileID: mediaFileID)
@@ -368,6 +371,8 @@ final class TVPlayerViewModel {
             activeMediaFileID = mediaFileID
             startHeartbeat()
         } catch let error as APIError {
+            // 422 unsupported_colour_format: the server's message, and no retry (a retry changes nothing).
+            canRetryFailure = !error.isUnsupportedColourFormat
             state = .failed(error.displayMessage)
         } catch {
             state = .failed(error.localizedDescription)

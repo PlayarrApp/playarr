@@ -160,9 +160,9 @@ struct TVPlayerView: View {
                     ProgressView().tint(.white).controlSize(.large)
                 }
             case .failed(let message):
-                TVErrorView(title: "Playback failed", message: message) {
+                TVErrorView(title: "Playback failed", message: message, retry: viewModel.canRetryFailure ? {
                     Task { await viewModel.play(mediaFileID: mediaFileID, title: title) }
-                }
+                } : nil)
             }
 
             if viewModel.endOfPlayback.phase != .playing {

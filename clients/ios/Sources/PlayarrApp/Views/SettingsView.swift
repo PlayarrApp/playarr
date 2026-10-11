@@ -68,6 +68,8 @@ struct SettingsView: View {
     @AppStorage(NativePlayerDefaults.subtitleModeKey) private var subtitleMode = "off"
     @AppStorage(NativePlayerDefaults.subtitleLanguageKey) private var subtitleLanguage = "en"
     @AppStorage(NativePlayerDefaults.audioLanguageKey) private var audioLanguage = "en"
+    @AppStorage(DeviceMediaCaps.forceDirectVideoKey) private var forceDirectVideo = false
+    @AppStorage(DeviceMediaCaps.forceDirectAudioKey) private var forceDirectAudio = false
 
     @Environment(\.playarrGoHome) private var goHome
     @State private var selected: Section? = SettingsView.initialSection
@@ -318,6 +320,7 @@ struct SettingsView: View {
     }
 
     private var playerContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
         settingsCard(title: "Playback defaults", description: "Applied when a title has no remembered per-title choice.") {
             settingPicker("Quality", selection: $qualityID) {
                 Text("Original · Best source").tag("original")
@@ -331,6 +334,11 @@ struct SettingsView: View {
             if subtitleMode != "off" { settingPicker("Subtitle language", selection: $subtitleLanguage) { languageOptions } }
             settingPicker("Audio language", selection: $audioLanguage) { languageOptions }
                 .onChange(of: audioLanguage) { _, value in savePlayerLanguage(value) }
+        }
+        settingsCard(title: "Advanced", description: "Send the original video or audio to this device even when the server could convert it. Both are off by default and stored on this device.") {
+            offOnRow("Force direct video", isOn: $forceDirectVideo)
+            offOnRow("Force direct audio", isOn: $forceDirectAudio)
+        }
         }
     }
 
@@ -406,6 +414,16 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(PlayarrStyle.surfaceStrong.opacity(0.7))
         .overlay { Rectangle().stroke(PlayarrStyle.line, lineWidth: 1) }
+    }
+
+    private func offOnRow(_ label: String, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(label).foregroundStyle(PlayarrStyle.ink)
+            Spacer()
+            Picker(label, selection: isOn) { Text("Off").tag(false); Text("On").tag(true) }
+                .labelsHidden().pickerStyle(.segmented).frame(maxWidth: 160)
+        }
+        .font(.subheadline).padding(.vertical, 5)
     }
 
     private func settingPicker<Content: View>(_ label: String, selection: Binding<String>, @ViewBuilder content: () -> Content) -> some View {

@@ -632,6 +632,8 @@ public final class APIClient: PlayarrAPIClient, PlayarrUploadTransport {
         if !audioCodecs.isEmpty { query.append(URLQueryItem(name: "audio_codecs", value: audioCodecs.joined(separator: ","))) }
         if let maxBitrateBps { query.append(URLQueryItem(name: "max_bitrate_bps", value: String(maxBitrateBps))) }
         if let profile { query.append(URLQueryItem(name: "profile", value: profile)) }
+        // The device's real video and audio capabilities, and the per-device force-direct switches (PR 802).
+        query.append(contentsOf: DeviceMediaCaps.currentQueryItems())
         return try await get("/api/v1/playback/\(mediaFileID.uuidString)", query: query)
     }
 

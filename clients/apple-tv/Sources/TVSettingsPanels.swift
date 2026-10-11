@@ -7,6 +7,8 @@ struct TVSettingsPanel: View {
     var section: Int
     @Environment(TVAppEnvironment.self) private var environment
     @State private var avatarOverride: String?
+    @AppStorage(DeviceMediaCaps.forceDirectVideoKey) private var forceDirectVideo = false
+    @AppStorage(DeviceMediaCaps.forceDirectAudioKey) private var forceDirectAudio = false
 
     private typealias Stage = DesignTokens.Stage
     private var ink: Color { Stage.ink }
@@ -246,6 +248,33 @@ struct TVSettingsPanel: View {
                 text(item.0, x: x + 17, y: 1035.3, w: 300, h: 22.1, size: 14.72, css: 680, color: index == 0 ? ink : soft)
                 text(item.1, x: x + 491.5 - 17 - 12.6, y: 1037, w: 40, h: 13.9, size: 9.28, css: 720, color: index == 0 ? Stage.brandPink : muted, tracking: 0.7424, mono: true)
             }
+            }
+            Group {
+            text("Advanced", x: left, y: 1110, w: 995, h: 39.6, size: 26.4, css: 560, color: ink, tracking: -0.8)
+            text("Send the original video or audio even when the server could convert it. Off by default.", x: left, y: 1155.2, w: 995, h: 20.3, size: 13.12, css: 400, color: muted)
+            advancedToggle("Force direct video", isOn: $forceDirectVideo, y: 1195)
+            advancedToggle("Force direct audio", isOn: $forceDirectAudio, y: 1270)
+            }
+        }
+    }
+
+    /// One Off / On control of the Advanced group (web "Force direct video" / "Force direct audio").
+    private func advancedToggle(_ title: String, isOn: Binding<Bool>, y: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
+            text(title, x: left, y: y + 20, w: 480, h: 22.1, size: 14.72, css: 680, color: ink)
+            ForEach(Array(["Off", "On"].enumerated()), id: \.offset) { index, label in
+                let x = left + 503.4 + CGFloat(index) * 251.7
+                let selected = isOn.wrappedValue == (index == 1)
+                Button { isOn.wrappedValue = index == 1 } label: {
+                    ZStack {
+                        choiceBox(x: 0, y: 0, w: 239.7, h: 62, selected: selected, radius: 0, bar: 4)
+                        Text(label).font(TVTheme.font(size: 14.08, css: 700)).foregroundStyle(selected ? ink : soft)
+                    }
+                    .frame(width: 239.7, height: 62)
+                }
+                .buttonStyle(TVFocusableCardButtonStyle())
+                .accessibilityLabel("\(title) \(label)")
+                .offset(x: x, y: y)
             }
         }
     }

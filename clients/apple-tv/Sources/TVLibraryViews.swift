@@ -1926,7 +1926,7 @@ struct TVWorkCard: View {
 struct TVErrorView: View {
     let title: String
     let message: String
-    let retry: () -> Void
+    let retry: (() -> Void)?
 
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.md) {
@@ -1941,7 +1941,7 @@ struct TVErrorView: View {
                 .foregroundStyle(DesignTokens.Color.textSecondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 800)
-            TVPrimaryButton(label: "Try again", action: retry)
+            if let retry { TVPrimaryButton(label: "Try again", action: retry) }
         }
         .padding(DesignTokens.Spacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
