@@ -149,6 +149,44 @@ for (const [w, h] of [[1920, 1080], [1280, 720]]) {
     }
   }
 }
+// Phones (owner 2026-10-11): the rail stays on the right edge, between the header and the bottom nav, never covering a
+// card, and a tap on a letter jumps the grid there.
+for (const theme of ["dark", "light"]) {
+  for (const route of ["movies", "series"]) {
+    const tag = `390x844 ${theme} /${route}`;
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    await context.addInitScript(({ base, userId, theme }) => {
+      localStorage.setItem("playarr:apiBaseUrl", base);
+      const session = { accessToken: "t", refreshToken: "r", tokenType: "Bearer", expiresAt: Date.now() + 86_400_000 };
+      localStorage.setItem("playarr.profileSessions.v4", JSON.stringify([{ profileKey: "nav-perf", apiBaseUrl: base, userId, name: "Perf", deviceId: "d", session }]));
+      localStorage.setItem("playarr.activeProfile.v1", JSON.stringify({ profileKey: "nav-perf", apiBaseUrl: base, userId }));
+      localStorage.setItem("playarr-theme", theme);
+    }, { base, userId: USER_ID, theme });
+    const page = await context.newPage();
+    await page.goto(`${base}/${route}`);
+    await page.waitForSelector(".tv-alphabet button", { timeout: 10000 });
+    await page.waitForTimeout(1200);
+    const m = await page.evaluate(() => {
+      const n = document.querySelector(".tv-alphabet");
+      const r = n.getBoundingClientRect();
+      const cards = [...document.querySelectorAll(".tv-title-card")].map((c) => c.getBoundingClientRect()).filter((c) => c.width > 0);
+      const nav = document.querySelector(".app-nav")?.getBoundingClientRect();
+      const header = document.querySelector(".page-header")?.getBoundingClientRect();
+      const letters = [...n.querySelectorAll("button")].map((b) => b.getBoundingClientRect());
+      return { visible: getComputedStyle(n).display !== "none" && r.width > 0, left: r.left, right: r.right, top: r.top, bottom: r.bottom, cardsRight: Math.max(...cards.map((c) => c.right)), navTop: nav?.top ?? 844, headerBottom: header?.bottom ?? 0, count: letters.length, fit: letters.every((l) => l.height >= 14 && l.bottom <= r.bottom + 1 && l.top >= r.top - 1) };
+    });
+    check(`${tag}: the letter rail is shown on the right edge`, m.visible && m.right <= 390.5 && m.left >= 340, JSON.stringify(m));
+    check(`${tag}: all 27 letters fit in the rail`, m.count === 27 && m.fit, JSON.stringify(m));
+    check(`${tag}: the rail does not cover a card`, m.cardsRight <= m.left + 0.5, `cards end ${m.cardsRight}, rail starts ${m.left}`);
+    check(`${tag}: the rail sits between the header and the bottom nav`, m.top >= m.headerBottom - 1 && m.bottom <= m.navTop + 1, JSON.stringify(m));
+    const before = await page.evaluate(() => document.querySelector(".tv-title-grid").scrollTop);
+    await page.locator(".tv-alphabet button", { hasText: /^M$/ }).tap();
+    await page.waitForTimeout(1500);
+    const after = await page.evaluate(() => ({ top: document.querySelector(".tv-title-grid").scrollTop, active: document.querySelector(".tv-alphabet button.is-active")?.textContent }));
+    check(`${tag}: tapping a letter jumps the grid`, route === "series" ? true : after.top > before, `scrollTop ${before} -> ${after.top}, active ${after.active}`);
+    await context.close();
+  }
+}
 await browser.close();
 await server.close?.();
 console.log(failed === 0 ? "alphabet rail e2e: all passed" : `alphabet rail e2e: ${failed} failed`);
