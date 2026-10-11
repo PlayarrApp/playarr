@@ -45,7 +45,8 @@ elif dev == "iphone":
 else:  # the iPad sim must be iOS 18 (iPadOS 26 rotation fails on the landscape wall build); newest as fallback
     t = next(d for d in types if d["name"].startswith("iPad Air 13-inch"))
     ios = sorted([x for x in runtimes if ".iOS-" in x["identifier"]], key=ver)
-    r = next((x for x in reversed(ios) if ver(x)[0] == 18), ios[-1])
+    r = next((x for x in reversed(ios) if ver(x)[0] == 18), None)
+    if r is None: sys.exit("no iOS 18 runtime on this runner (iPadOS 26 does not rotate): iPad skipped")
 print(t["identifier"], r["identifier"])
 P
 }
@@ -136,6 +137,7 @@ capture)
       [[ $(stat -f %z "$OUT/$theme/$id.png") -gt 20000 ]] || { log "$theme/$id looks empty"; rm -rf "$OUT"; exit 1; }
       log "captured $theme/$id"
     done
+    [[ $(stat -f %z "$OUT/$theme/home.png") -gt 150000 ]] || { log "$theme/home.png is too plain: an error or signed-out screen"; rm -rf "$OUT"; exit 1; }
     # An app stuck on one screen (sign-in, error) gives identical frames: publish nothing then.
     [[ $(shasum "$OUT/$theme"/*.png | awk '{print $1}' | sort -u | wc -l) -ge 3 ]] || { log "$theme frames are nearly identical: not signed in or stuck"; rm -rf "$OUT"; exit 1; }
   done
