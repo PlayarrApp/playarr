@@ -292,9 +292,11 @@ pub fn colour_unknown(codec: &str, source: Option<&SourceVideo>) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UnsupportedColour;
 
-/// Minimum frames per second the node's real transcode chain must reach on the bundled 24 fps 4K
-/// sample (2.5x realtime: the sample decodes about twice as fast as a 90 Mbps film remux on the same GPU) before the RPU path is offered.
-pub const RPU_MIN_FPS: u32 = 60;
+/// Minimum frames per second the node's real transcode chain must reach on the generated 24 fps 4K
+/// 20 Mbps clip before the RPU path is offered. Calibrated as 24 x clip_fps / heavy_fps: on the same
+/// GPU the clip ran at 37 fps and a 77 Mbps 4K HEVC remux at 35 fps, so realtime on the heavy source
+/// is about 25 fps on the clip; 26 adds a little margin.
+pub const RPU_MIN_FPS: u32 = 26;
 
 /// (matrix, primaries, transfer) of the output. BT.601 SDR sources keep their matrix.
 fn sdr_output_colour(source: &SourceVideo) -> (String, String, String) {

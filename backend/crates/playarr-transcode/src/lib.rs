@@ -818,22 +818,39 @@ fn default_ffprobe_binary() -> String {
     .clone()
 }
 
-/// A 4 s, 24 fps, 4K 10-bit HEVC clip (synthetic gradients, no media content): the benchmark input.
-static BENCH_SAMPLE: &[u8] = include_bytes!("../assets/bench-4k-hdr10.mp4");
-const BENCH_FRAMES: f64 = 96.0;
+/// Benchmark clip: 4 s, 24 fps, 4K 10-bit HEVC at about 20 Mbps (gradients plus noise with fixed
+/// colours and seeds, nothing copyrighted), generated once per detection with ffmpeg and kept in a
+/// playarr-owned directory.
+const BENCH_CLIP_NAME: &str = "bench-4k-20m-v2.mp4";
+const BENCH_FRAMES: u32 = 96;
 
-/// Probes the filters, then (when a Vulkan device initialises) runs the node's own transcode chain,
-/// the one a profile 5 title would use (decode 4K HEVC, scale to 1080p, libplacebo, x264 at the
-/// 1080p profile bitrate, `threads` for everything including lavapipe), over the bundled sample.
-/// The RPU path is offered only at [`video::RPU_MIN_FPS`] or better.
-async fn detect_tone_map_support(binary: &str, threads: usize) -> video::ToneMapSupport {
-    let probe = video::probe_filters(binary).await;
+/// The node's tone-mapping inputs: binaries, threads and the directory the benchmark clip lives in.
+#[derive(Clone)]
+struct DetectEnv {
+    ffmpeg: String,
+    ffprobe: String,
+    threads: usize,
+    bench_dir: PathBuf,
+}
+
+/// Probes the filters, then (when a Vulkan device initialises) generates the benchmark clip once and
+/// runs the node's own transcode chain, the one a profile 5 title would use (decode 4K HEVC, scale to
+/// 1080p, libplacebo, x264 at the 1080p profile bitrate, `threads` for everything including
+/// lavapipe), over it. The RPU path is offered only at [`video::RPU_MIN_FPS`] or better.
+async fn detect_tone_map_support(
+    env: &DetectEnv,
+    on_filters: impl FnOnce(video::FilterProbe),
+) -> video::ToneMapSupport {
+    let probe = video::probe_filters(&env.ffmpeg).await;
+    on_filters(probe);
     let mut fps = None;
     if probe.vulkan {
-        // The first run pays for shader compilation and cold caches: take the better of two.
-        let first = benchmark_rpu_chain(binary, threads).await;
-        let second = benchmark_rpu_chain(binary, threads).await;
-        fps = first.max(second);
+        if let Some(clip) = bench_clip(env).await {
+            // The first run pays for shader compilation and cold caches: take the better of two.
+            let first = benchmark_rpu_chain(env, &clip).await;
+            let second = benchmark_rpu_chain(env, &clip).await;
+            fps = first.max(second);
+        }
     }
     video::ToneMapSupport {
         zscale: probe.zscale,
@@ -842,15 +859,98 @@ async fn detect_tone_map_support(binary: &str, threads: usize) -> video::ToneMap
     }
 }
 
-async fn benchmark_rpu_chain(binary: &str, threads: usize) -> Option<u32> {
-    let dir = std::env::temp_dir().join(format!("playarr-bench-{}", Uuid::new_v4()));
+/// True when `path` is the benchmark clip: [`BENCH_FRAMES`] frames of 3840x2160.
+async fn bench_clip_valid(env: &DetectEnv, path: &Path) -> bool {
+    let Ok(out) = tokio::time::timeout(
+        Duration::from_secs(20),
+        Command::new(&env.ffprobe)
+            .args([
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-count_frames",
+                "-show_entries",
+                "stream=width,height,nb_read_frames",
+                "-of",
+                "csv=p=0",
+            ])
+            .arg(path)
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    else {
+        return false;
+    };
+    out.is_ok_and(|o| {
+        o.status.success()
+            && String::from_utf8_lossy(&o.stdout).trim() == format!("3840,2160,{BENCH_FRAMES}")
+    })
+}
+
+/// Generates the clip into a uuid-named partial file that is always removed unless renamed into place.
+async fn generate_bench_clip(env: &DetectEnv, path: &Path) -> bool {
+    let partial = path.with_extension(format!("{}.part.mp4", Uuid::new_v4()));
+    let x265 = format!(
+        "pools={}:frame-threads=1:preset=veryfast:bitrate=20000:vbv-maxrate=24000:vbv-bufsize=24000:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:log-level=error",
+        env.threads
+    );
+    // Colours and seeds are explicit so every node builds the same clip.
+    let source = "gradients=s=3840x2160:d=4:r=24:speed=0.05:nb_colors=5:seed=3:c0=0x203060:c1=0xd08040:c2=0x40a060:c3=0xa03070:c4=0x808080,noise=alls=40:allf=t+u:all_seed=1,format=yuv420p10le";
+    let ran = tokio::time::timeout(
+        Duration::from_secs(180),
+        Command::new(&env.ffmpeg)
+            .args(["-hide_banner", "-loglevel", "error", "-y", "-threads"])
+            .arg(env.threads.to_string())
+            .args([
+                "-f",
+                "lavfi",
+                "-i",
+                source,
+                "-c:v",
+                "libx265",
+                "-x265-params",
+            ])
+            .arg(&x265)
+            .args(["-tag:v", "hvc1", "-an"])
+            .arg(&partial)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .status(),
+    )
+    .await;
+    let ok = matches!(ran, Ok(Ok(status)) if status.success())
+        && bench_clip_valid(env, &partial).await
+        && tokio::fs::rename(&partial, path).await.is_ok();
+    // Every exit path, a timeout included, leaves no partial file behind.
+    let _ = tokio::fs::remove_file(&partial).await;
+    ok
+}
+
+/// The verified benchmark clip, generated first when missing or damaged. Called once per detection.
+async fn bench_clip(env: &DetectEnv) -> Option<PathBuf> {
+    tokio::fs::create_dir_all(&env.bench_dir).await.ok()?;
+    let path = env.bench_dir.join(BENCH_CLIP_NAME);
+    if tokio::fs::metadata(&path).await.is_ok() {
+        if bench_clip_valid(env, &path).await {
+            return Some(path);
+        }
+        let _ = tokio::fs::remove_file(&path).await;
+    }
+    generate_bench_clip(env, &path).await.then_some(path)
+}
+
+async fn benchmark_rpu_chain(env: &DetectEnv, input: &Path) -> Option<u32> {
+    let (binary, threads) = (&env.ffmpeg, env.threads);
+    let dir = env.bench_dir.join(format!("run-{}", Uuid::new_v4()));
     tokio::fs::create_dir_all(&dir).await.ok()?;
     let result = async {
-        let input = dir.join("bench.mp4");
-        tokio::fs::write(&input, BENCH_SAMPLE).await.ok()?;
         let out = dir.join("out");
         tokio::fs::create_dir_all(&out).await.ok()?;
-        // The sample stands in for a profile 5 title: the same chain, libplacebo, is selected.
+        // The clip stands in for a profile 5 title: the same chain, libplacebo, is selected.
         let source = video::SourceVideo {
             codec: "hevc".into(),
             width: 3840,
@@ -861,7 +961,7 @@ async fn benchmark_rpu_chain(binary: &str, threads: usize) -> Option<u32> {
             ..Default::default()
         };
         let args = build_hls_args(
-            &input,
+            input,
             &TranscodeTargetProfile::resolve("h264-1080p-8mbps"),
             &out,
             0,
@@ -894,7 +994,7 @@ async fn benchmark_rpu_chain(binary: &str, threads: usize) -> Option<u32> {
         .ok()?
         .ok()?;
         ran.success()
-            .then(|| (BENCH_FRAMES / started.elapsed().as_secs_f64()).round() as u32)
+            .then(|| (f64::from(BENCH_FRAMES) / started.elapsed().as_secs_f64()).round() as u32)
     }
     .await;
     let _ = tokio::fs::remove_dir_all(&dir).await;
@@ -982,6 +1082,8 @@ pub struct TranscodeOrchestrator {
 #[derive(Default)]
 struct DetectState {
     done: Option<(video::ToneMapSupport, std::time::Instant)>,
+    /// The filter listing, stored as soon as it is known (before the slower benchmark).
+    filters: Option<video::FilterProbe>,
     running: Option<tokio::sync::watch::Receiver<Option<video::ToneMapSupport>>>,
 }
 
@@ -1170,8 +1272,12 @@ impl TranscodeOrchestrator {
                     let (tx, rx) = tokio::sync::watch::channel(None);
                     state.running = Some(rx.clone());
                     self.detect_runs.fetch_add(1, Ordering::SeqCst);
-                    let binary = self.ffmpeg_binary.clone();
-                    let threads = self.ffmpeg_threads;
+                    let env = DetectEnv {
+                        ffmpeg: self.ffmpeg_binary.clone(),
+                        ffprobe: self.ffprobe_binary.clone(),
+                        threads: self.ffmpeg_threads,
+                        bench_dir: self.output_root.join("bench"),
+                    };
                     let shared = self.detect.clone();
                     tokio::spawn(async move {
                         // Clears `running` even if detection panics, so the next call retries.
@@ -1184,7 +1290,12 @@ impl TranscodeOrchestrator {
                             }
                         }
                         let _running = Running(shared.clone());
-                        let support = detect_tone_map_support(&binary, threads).await;
+                        let support = detect_tone_map_support(&env, |probe| {
+                            if let Ok(mut state) = shared.lock() {
+                                state.filters = Some(probe);
+                            }
+                        })
+                        .await;
                         tracing::info!(?support, "tone-mapping support detected");
                         if let Ok(mut state) = shared.lock() {
                             state.done = Some((support, std::time::Instant::now()));
@@ -1212,6 +1323,25 @@ impl TranscodeOrchestrator {
                 };
             }
         }
+    }
+
+    /// Tone-mapping support without waiting: the settled answer, else plain zscale (no RPU path). Only
+    /// a profile 5 source needs the real answer; everything else must not wait for detection.
+    pub fn tone_map_support_now(&self) -> video::ToneMapSupport {
+        let Ok(state) = self.detect.lock() else {
+            return video::ToneMapSupport::default();
+        };
+        if let Some((support, _)) = state.done {
+            return support;
+        }
+        // Mid-detection: the filter listing is known long before the benchmark ends.
+        state
+            .filters
+            .map_or_else(video::ToneMapSupport::default, |f| video::ToneMapSupport {
+                zscale: f.zscale,
+                libplacebo: false,
+                libplacebo_fps: None,
+            })
     }
 
     /// Step 2: looks up whether a `Ready` rendition already exists for
@@ -1497,7 +1627,11 @@ impl TranscodeOrchestrator {
             Some(_) => probed,
             None => Some(probed.unwrap_or_default()),
         };
-        let tone_map = self.tone_map_support().await;
+        let tone_map = if source_video.as_ref().is_some_and(|s| s.requires_rpu()) {
+            self.tone_map_support().await
+        } else {
+            self.tone_map_support_now()
+        };
         let args = build_hls_args(
             &source_path,
             &target_profile,
@@ -3827,9 +3961,163 @@ mod tests {
         #[tokio::test]
         #[ignore]
         async fn detects_the_real_ffmpeg() {
-            let support = detect_tone_map_support("ffmpeg", 4).await;
+            let env = DetectEnv {
+                ffmpeg: "ffmpeg".into(),
+                ffprobe: "ffprobe".into(),
+                threads: 4,
+                bench_dir: std::env::temp_dir().join("playarr-bench-test"),
+            };
+            let support = detect_tone_map_support(&env, |_| {}).await;
             eprintln!("{support:?}");
             assert!(support.zscale);
+        }
+
+        #[cfg(unix)]
+        async fn script(dir: &Path, name: &str, body: &str) -> String {
+            use std::os::unix::fs::PermissionsExt;
+            let path = dir.join(name);
+            tokio::fs::write(&path, format!("#!/bin/sh\n{body}\n"))
+                .await
+                .unwrap();
+            let mut permissions = tokio::fs::metadata(&path).await.unwrap().permissions();
+            permissions.set_mode(0o755);
+            tokio::fs::set_permissions(&path, permissions)
+                .await
+                .unwrap();
+            path.to_string_lossy().into_owned()
+        }
+
+        #[cfg(unix)]
+        async fn bench_env(ffmpeg_body: &str, ffprobe_body: &str) -> DetectEnv {
+            let root = unique_tmp_dir();
+            tokio::fs::create_dir_all(&root).await.unwrap();
+            DetectEnv {
+                // The last argument is the output path, as ffmpeg takes it.
+                ffmpeg: script(&root, "ffmpeg", ffmpeg_body).await,
+                ffprobe: script(&root, "ffprobe", ffprobe_body).await,
+                threads: 2,
+                bench_dir: root.join("bench"),
+            }
+        }
+
+        #[cfg(unix)]
+        async fn leftovers(env: &DetectEnv) -> Vec<String> {
+            let mut names = Vec::new();
+            let mut dir = tokio::fs::read_dir(&env.bench_dir).await.unwrap();
+            while let Some(entry) = dir.next_entry().await.unwrap() {
+                names.push(entry.file_name().to_string_lossy().into_owned());
+            }
+            names
+        }
+
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_generated_clip_is_verified_and_kept_in_the_bench_dir() {
+            let env = bench_env(
+                "for a; do last=$a; done; head -c 1100000 /dev/zero > \"$last\"",
+                "echo 3840,2160,96",
+            )
+            .await;
+            let clip = bench_clip(&env).await.expect("clip generated");
+            assert_eq!(clip, env.bench_dir.join(BENCH_CLIP_NAME));
+            assert_eq!(leftovers(&env).await, vec![BENCH_CLIP_NAME.to_string()]);
+            // A valid clip is reused, not regenerated.
+            assert_eq!(bench_clip(&env).await, Some(clip));
+        }
+
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_wrong_or_failed_clip_is_never_used_and_leaves_no_partial_file() {
+            // ffmpeg "succeeds" but the file is not 96 frames of 4K.
+            let env = bench_env(
+                "for a; do last=$a; done; head -c 1100000 /dev/zero > \"$last\"",
+                "echo 1920,1080,10",
+            )
+            .await;
+            assert_eq!(bench_clip(&env).await, None);
+            assert!(leftovers(&env).await.is_empty());
+            // ffmpeg writes a partial file and then fails.
+            let env = bench_env(
+                "for a; do last=$a; done; head -c 10 /dev/zero > \"$last\"; exit 1",
+                "echo 3840,2160,96",
+            )
+            .await;
+            assert_eq!(bench_clip(&env).await, None);
+            assert!(leftovers(&env).await.is_empty());
+        }
+
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_junk_file_at_the_clip_path_is_replaced_not_benchmarked() {
+            // The file at the clip path is big enough but not the clip: it is deleted and regenerated.
+            let env = bench_env(
+                "for a; do last=$a; done; head -c 1100000 /dev/zero > \"$last\"",
+                "case \"$*\" in *part*) echo 3840,2160,96;; *) echo 640,360,1;; esac",
+            )
+            .await;
+            tokio::fs::create_dir_all(&env.bench_dir).await.unwrap();
+            let path = env.bench_dir.join(BENCH_CLIP_NAME);
+            tokio::fs::write(&path, vec![1u8; 1_100_000]).await.unwrap();
+            assert_eq!(bench_clip(&env).await, Some(path.clone()));
+            assert_eq!(leftovers(&env).await, vec![BENCH_CLIP_NAME.to_string()]);
+        }
+
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn detection_never_blocks_a_request_that_does_not_need_it() {
+            let orchestrator = test_orchestrator(Arc::new(FakeRenditionRepo::default()));
+            // Nothing detected yet: the non-waiting answer is plain zscale with no RPU path.
+            let support = orchestrator.tone_map_support_now();
+            assert!(support.zscale && !support.libplacebo);
+            assert_eq!(orchestrator.detect_runs.load(Ordering::SeqCst), 0);
+        }
+
+        /// While the (slow) benchmark runs, an HDR10 transcode must already respect a node whose
+        /// ffmpeg has no zscale: the filter listing is stored before the benchmark starts.
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn the_filter_listing_is_used_before_the_benchmark_ends() {
+            let root = unique_tmp_dir();
+            tokio::fs::create_dir_all(&root).await.unwrap();
+            // `-filters` lists libplacebo only (no zscale); the Vulkan check passes; clip generation hangs.
+            let ffmpeg = script(
+                &root,
+                "ffmpeg",
+                "case \"$*\" in\n*-filters*) echo ' .. libplacebo V->V x';;\n*vulkan*) exit 0;;\n*) sleep 20;;\nesac",
+            )
+            .await;
+            let orchestrator = Arc::new(
+                test_orchestrator(Arc::new(FakeRenditionRepo::default()))
+                    .with_ffmpeg_binary(ffmpeg),
+            );
+            let running = orchestrator.clone();
+            let detection = tokio::spawn(async move { running.tone_map_support().await });
+            tokio::time::sleep(Duration::from_millis(800)).await;
+            assert!(!detection.is_finished(), "the benchmark is still running");
+
+            let support = orchestrator.tone_map_support_now();
+            assert!(!support.zscale && !support.libplacebo);
+            let hdr10 = video::parse_source_video(
+                br#"{"streams":[{"pix_fmt":"yuv420p10le","color_transfer":"smpte2084"}]}"#,
+            )
+            .unwrap();
+            let args = build_hls_args(
+                Path::new("/media/in.mkv"),
+                &TranscodeTargetProfile::resolve("h264-720p-4mbps"),
+                Path::new("/tmp/s"),
+                0,
+                None,
+                None,
+                None,
+                2,
+                Some(&hdr10),
+                support,
+                StreamHints::default(),
+            )
+            .unwrap();
+            let vf = args[args.iter().position(|a| a == "-vf").unwrap() + 1].clone();
+            assert!(!vf.contains("zscale"), "{vf}");
+            detection.abort();
         }
 
         /// A caller that gives up must neither cancel detection nor cause a second run.
