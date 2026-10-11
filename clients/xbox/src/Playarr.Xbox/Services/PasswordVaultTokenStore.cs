@@ -17,38 +17,43 @@ namespace Playarr.Xbox.Services
     /// application head's real implementation.
     /// </summary>
     /// <remarks>
-    /// One console, one signed-in account at a time, so the stored
-    /// <see cref="StoredAuthSession"/> lives under one fixed
-    /// resource/username pair rather than being keyed per server or per
-    /// profile.
+    /// One console, one signed-in account at a time, so there is one
+    /// stored <see cref="StoredAuthSession"/> under the one resource,
+    /// not keyed per server or per profile. Each write adds a new entry
+    /// and then removes the older ones (see <c>UserNamePrefix</c>).
     /// </remarks>
     public sealed class PasswordVaultTokenStore : ITokenStore
     {
         private const string ResourceName = "Playarr";
-        private const string UserName = "session";
+
+        // Entries are named "session.<ticks>.<guid>" (the older single "session" entry counts as ticks 0). A new session is added first and
+        // the older entries are removed afterwards, so a crash between the two steps leaves the old and the new pair and never none;
+        // reading takes the newest.
+        private const string UserNamePrefix = "session";
 
         public Task<StoredAuthSession?> GetSessionAsync(CancellationToken cancellationToken = default)
         {
             var vault = new PasswordVault();
-            PasswordCredential credential;
-            try
+            PasswordCredential? newest = null;
+            long newestTicks = -1;
+            foreach (var credential in Entries(vault))
             {
-                credential = vault.Retrieve(ResourceName, UserName);
+                var ticks = TicksOf(credential.UserName);
+                if (ticks > newestTicks)
+                {
+                    newest = credential;
+                    newestTicks = ticks;
+                }
             }
-            catch (Exception)
+
+            if (newest is null)
             {
-                // PasswordVault.Retrieve throws (typically a COMException
-                // wrapping HRESULT 0x80070490, ERROR_NOT_FOUND) rather than
-                // returning null when no matching credential exists. "Never
-                // paired yet" / "signed out" is the overwhelmingly common
-                // reason this throws -- not an exceptional condition, hence
-                // caught and translated to a null session rather than left
-                // to propagate.
+                // "Never paired yet" / "signed out" is the common case, not an error.
                 return Task.FromResult<StoredAuthSession?>(null);
             }
 
-            credential.RetrievePassword();
-            var session = JsonCoding.Deserialize<StoredAuthSession>(credential.Password);
+            newest.RetrievePassword();
+            var session = JsonCoding.Deserialize<StoredAuthSession>(newest.Password);
             return Task.FromResult(session);
         }
 
@@ -60,14 +65,15 @@ namespace Playarr.Xbox.Services
             }
 
             var vault = new PasswordVault();
+            var older = Entries(vault);
+            var userName = UserNamePrefix + "." + DateTime.UtcNow.Ticks + "." + Guid.NewGuid().ToString("N");
+            vault.Add(new PasswordCredential(ResourceName, userName, JsonCoding.Serialize(session)));
 
-            // PasswordVault.Add throws if a credential already exists for
-            // this resource/username pair -- unlike a plain upsert, so any
-            // previous session has to be removed first.
-            RemoveExisting(vault);
-
-            var json = JsonCoding.Serialize(session);
-            vault.Add(new PasswordCredential(ResourceName, UserName, json));
+            // `older` was listed before the add, so the entry just written is never removed
+            foreach (var credential in older)
+            {
+                Remove(vault, credential);
+            }
 
             return Task.CompletedTask;
         }
@@ -75,22 +81,50 @@ namespace Playarr.Xbox.Services
         public Task ClearSessionAsync(CancellationToken cancellationToken = default)
         {
             var vault = new PasswordVault();
-            RemoveExisting(vault);
+            foreach (var credential in Entries(vault))
+            {
+                Remove(vault, credential);
+            }
+
             return Task.CompletedTask;
         }
 
-        private static void RemoveExisting(PasswordVault vault)
+        private static System.Collections.Generic.List<PasswordCredential> Entries(PasswordVault vault)
+        {
+            var found = new System.Collections.Generic.List<PasswordCredential>();
+            try
+            {
+                foreach (var credential in vault.FindAllByResource(ResourceName))
+                {
+                    if (credential.UserName.StartsWith(UserNamePrefix, StringComparison.Ordinal))
+                    {
+                        found.Add(credential);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // FindAllByResource throws (ERROR_NOT_FOUND) when nothing is stored for the resource.
+            }
+
+            return found;
+        }
+
+        private static long TicksOf(string userName)
+        {
+            var parts = userName.Split('.');
+            return parts.Length > 1 && long.TryParse(parts[1], out var ticks) ? ticks : 0;
+        }
+
+        private static void Remove(PasswordVault vault, PasswordCredential credential)
         {
             try
             {
-                var credential = vault.Retrieve(ResourceName, UserName);
                 vault.Remove(credential);
             }
             catch (Exception)
             {
-                // Nothing to remove -- fine. Both StoreSessionAsync (clearing
-                // the way for the new credential) and ClearSessionAsync
-                // treat "wasn't there" as a no-op rather than an error.
+                // Already gone -- fine.
             }
         }
     }

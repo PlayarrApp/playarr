@@ -1,0 +1,1 @@
+- Sign-in safety: a network error or server error while refreshing the session no longer signs the device out (Core and Samsung Tizen native); only a server rejection of the refresh token does, and the Tizen session file is flushed to disk before the rotated pair is used.

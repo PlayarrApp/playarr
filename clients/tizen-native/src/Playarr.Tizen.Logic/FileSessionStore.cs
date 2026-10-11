@@ -27,7 +27,14 @@ public sealed class FileSessionStore(string directory) : ITokenStore
     {
         Directory.CreateDirectory(directory);
         var tmp = _session + ".tmp";
-        File.WriteAllText(tmp, Playarr.Core.Networking.JsonCoding.Serialize(session));
+        // the file is flushed before the rename, so the pair is never half written; the rename itself is not fsynced to the directory,
+        // so a power cut right after could bring back the previous pair, which the server still accepts for 120 s after a rotation
+        using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            var bytes = new System.Text.UTF8Encoding(false).GetBytes(Playarr.Core.Networking.JsonCoding.Serialize(session));
+            fs.Write(bytes, 0, bytes.Length);
+            fs.Flush(true);
+        }
         File.Move(tmp, _session, overwrite: true);
         return Task.CompletedTask;
     }

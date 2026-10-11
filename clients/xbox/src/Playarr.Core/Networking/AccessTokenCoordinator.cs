@@ -78,9 +78,12 @@ namespace Playarr.Core.Networking
                 return existing.AccessToken.ExposeSecret();
             }
 
+            Exception? transientError = null;
+            var definitive = false;
             if (existing != null)
             {
-                foreach (var baseUrl in await RefreshCandidatesAsync(existing, cancellationToken).ConfigureAwait(false))
+                var (candidates, sameNode) = await RefreshCandidatesAsync(existing, cancellationToken).ConfigureAwait(false);
+                foreach (var baseUrl in candidates)
                 {
                     try
                     {
@@ -92,13 +95,48 @@ namespace Playarr.Core.Networking
                         await _tokenStore.StoreSessionAsync(rotated, cancellationToken).ConfigureAwait(false);
                         return rotated.AccessToken.ExposeSecret();
                     }
-                    catch (Exception)
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
-                        // Try the next same-node address before giving up.
+                        throw;
+                    }
+                    catch (ApiException error) when (error.StatusCode == HttpStatusCode.Forbidden && error.Body?.Error == "pin_required")
+                    {
+                        // The profile needs its PIN: the session is fine, so keep it and let the caller ask for the unlock.
+                        throw;
+                    }
+                    catch (Exception error)
+                    {
+                        // Try the next same-node address before giving up. Only a server answer that rejects the refresh
+                        // token (400/401/403) proves it dead; a timeout (an HttpClient timeout is a cancellation too), a dropped
+                        // connection or a 5xx says nothing about it, and clearing then would sign the device out for a network blip.
+                        //
+                        // A rejection only counts when it comes from the node that issued the token (or the group or issuer is
+                        // unknown): another node never saw this refresh token, so its 401 proves nothing. The trade-off: if the
+                        // issuing node is gone for good the device stays signed in but failing, which is safer than a silent
+                        // switch to another user through the credential-less login.
+                        var fromIssuer = sameNode is null || sameNode.Contains(baseUrl.ToString().TrimEnd('/'));
+                        if (IsDefinitiveRejection(error) && fromIssuer) definitive = true; else transientError = error;
                     }
                 }
 
-                await _tokenStore.ClearSessionAsync(cancellationToken).ConfigureAwait(false);
+                // a definitive rejection from any address wins over a transient error elsewhere
+                if (definitive)
+                {
+                    await _tokenStore.ClearSessionAsync(cancellationToken).ConfigureAwait(false);
+                }
+                else if (transientError != null)
+                {
+                    // Only a transient failure, no rejection: the session stays as it is and the credential-less login is NOT
+                    // tried, because it can sign the device into the household user and bypass a child or PIN profile. A token
+                    // that is still valid (and was not just rejected, i.e. not a forced refresh) is returned; otherwise the
+                    // transient error surfaces.
+                    if (!forceRefresh && existing.ExpiresAt > _clock())
+                    {
+                        return existing.AccessToken.ExposeSecret();
+                    }
+
+                    throw transientError;
+                }
             }
 
             Exception lastLoginError = new ApiException(
@@ -113,6 +151,10 @@ namespace Playarr.Core.Networking
                     await _tokenStore.StoreSessionAsync(session, cancellationToken).ConfigureAwait(false);
                     return session.AccessToken.ExposeSecret();
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception error)
                 {
                     lastLoginError = error;
@@ -121,6 +163,12 @@ namespace Playarr.Core.Networking
 
             throw lastLoginError;
         }
+
+        private static bool IsDefinitiveRejection(Exception error) =>
+            error is ApiException api &&
+            (api.StatusCode == HttpStatusCode.Unauthorized ||
+             api.StatusCode == HttpStatusCode.BadRequest ||
+             api.StatusCode == HttpStatusCode.Forbidden);
 
         /// <summary>
         /// <strong>Any-node.</strong> Used only by the credential-less login
@@ -162,7 +210,7 @@ namespace Playarr.Core.Networking
         /// standalone node's non-GUID issuer string, an unknown group, a
         /// malformed token) this degrades to the configured address alone.
         /// </summary>
-        private async Task<IReadOnlyList<Uri>> RefreshCandidatesAsync(
+        private async Task<(IReadOnlyList<Uri> Urls, HashSet<string>? SameNode)> RefreshCandidatesAsync(
             StoredAuthSession session,
             CancellationToken cancellationToken)
         {
@@ -170,7 +218,7 @@ namespace Playarr.Core.Networking
 
             if (_serverGroupStore is null)
             {
-                return urls;
+                return (urls, null);
             }
 
             var group = await _serverGroupStore.GetGroupAsync(cancellationToken).ConfigureAwait(false);
@@ -178,18 +226,23 @@ namespace Playarr.Core.Networking
 
             if (group is null || issuer is null)
             {
-                return urls;
+                return (urls, null);
             }
 
+            var sameNode = new HashSet<string>(StringComparer.Ordinal);
             foreach (var candidate in group.SameNodeAddresses(issuer.Value))
             {
-                if (Uri.TryCreate(candidate, UriKind.Absolute, out var parsed) && !urls.Contains(parsed))
+                if (Uri.TryCreate(candidate, UriKind.Absolute, out var parsed))
                 {
-                    urls.Add(parsed);
+                    sameNode.Add(parsed.ToString().TrimEnd('/'));
+                    if (!urls.Contains(parsed))
+                    {
+                        urls.Add(parsed);
+                    }
                 }
             }
 
-            return urls;
+            return (urls, sameNode);
         }
 
         private async Task<StoredAuthSession> RefreshAsync(
