@@ -208,6 +208,7 @@ jobs:
             harmony:
               - 'clients/harmony/**'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/harmony-ci.yml'
             linux-mobile:
               - 'clients/linux-mobile/**'
               # The client embeds the shared avatar plates.
@@ -606,13 +607,11 @@ jobs:
 
   # ---------------------------------------------------------------------
   # HarmonyOS (clients/harmony -- native ArkTS/ArkUI HarmonyOS NEXT client).
-  # There is no HarmonyOS SDK available in this runner, so this job runs
-  # only the two offline tiers: structural/contract validation (Tier 0,
-  # scripts/validate.mjs) and the pure-logic core's unit tests (Tier 0b,
-  # tools/run-core-tests.mjs), matching the Justfile's harmony-validate /
-  # harmony-test recipes. Compiling a real HAP (Tier 1, needs the
-  # ~1 GB OpenHarmony SDK) is deliberately NOT gated here -- see the release
-  # workflow for that.
+  # Two jobs. `harmony-check` runs the two offline tiers in seconds: structural/contract validation (Tier 0,
+  # scripts/validate.mjs) and the pure-logic core's unit tests (Tier 0b, tools/run-core-tests.mjs), matching the
+  # Justfile's harmony-validate / harmony-test recipes. `harmony-hap` (below) is Tier 1: it fetches the public
+  # OpenHarmony SDK and Command Line Tools (no Huawei login) and compiles a real, unsigned HAP, so an ArkTS type
+  # error fails the PR. Signing and on-device behaviour still need real material and hardware.
   # ---------------------------------------------------------------------
   harmony-check:
     name: HarmonyOS client checks (validate, core tests)
@@ -642,6 +641,51 @@ jobs:
 
       - name: Run core logic tests
         run: node tools/run-core-tests.mjs
+
+  # ArkTS compile. Same steps as the release workflow (harmony-ci.yml), which proved them on a dispatch; the SDK
+  # (about 4.5 GB) is cached, so a warm run is a few minutes and a cold one about six.
+  harmony-hap:
+    name: HarmonyOS HAP compile (OpenHarmony SDK)
+    needs: changes
+    if: needs.changes.outputs.harmony == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: clients/harmony
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache OpenHarmony SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ohos-sdk
+          key: ohos-sdk-6.1-release-cli-5.1.0.840
+
+      # The SDK's resource compiler (restool) loads libGL at start-up; the runner image has none.
+      - name: Install the OpenGL runtime library for the SDK toolchain
+        run: |
+          if ! ldconfig -p | grep -q 'libGL\.so\.1'; then
+            sudo -n apt-get update -qq
+            sudo -n apt-get install -y --no-install-recommends libgl1
+          fi
+
+      - name: Fetch the OpenHarmony SDK + Command Line Tools
+        run: bash scripts/fetch-sdk.sh
+
+      - name: Compile the HAP (release, unsigned)
+        run: bash scripts/build.sh release
 
   # ---------------------------------------------------------------------
   # Linux phone client (clients/linux-mobile -- GTK4 + libadwaita, Rust). Builds against the runner's
@@ -1105,6 +1149,7 @@ jobs:
       - tizen-native-check
       - xbox-uwp-package
       - harmony-check
+      - harmony-hap
       - linux-mobile-check
       - tv-web-check
       - server-image-web
@@ -1124,7 +1169,7 @@ jobs:
           echo "$NEEDS_JSON" | jq .
 
           fail=0
-          for job in changes backend-check android-check android-apk xbox-check tizen-native-check xbox-uwp-package harmony-check linux-mobile-check tv-web-check server-image-web firetv-check web-layout-parity web-storybook web-behaviour openapi-contract-check; do
+          for job in changes backend-check android-check android-apk xbox-check tizen-native-check xbox-uwp-package harmony-check harmony-hap linux-mobile-check tv-web-check server-image-web firetv-check web-layout-parity web-storybook web-behaviour openapi-contract-check; do
             result=$(echo "$NEEDS_JSON" | jq -r --arg j "$job" '.[$j].result // "missing"')
             echo "Job '$job' result: $result"
             case "$result" in
