@@ -77,6 +77,7 @@ jobs:
       android_tasks: ${{ steps.android.outputs.android_tasks }}
       xbox: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.xbox == 'true' }}
       harmony: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.harmony == 'true' }}
+      linux-mobile: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.linux-mobile == 'true' }}
       tv-web: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.tv-web == 'true' }}
       server-image: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.server-image == 'true' }}
       firetv: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.firetv == 'true' }}
@@ -199,6 +200,11 @@ jobs:
               - '.github/workflows/ci.yml'
             harmony:
               - 'clients/harmony/**'
+              - '.github/workflows/ci.yml'
+            linux-mobile:
+              - 'clients/linux-mobile/**'
+              # The client embeds the shared avatar plates.
+              - 'clients/shared/profile-avatars/**'
               - '.github/workflows/ci.yml'
             tv-web:
               - 'clients/tv-web/**'
@@ -579,6 +585,46 @@ jobs:
 
       - name: Run core logic tests
         run: node tools/run-core-tests.mjs
+
+  # ---------------------------------------------------------------------
+  # Linux phone client (clients/linux-mobile -- GTK4 + libadwaita, Rust). Builds against the runner's
+  # distro GTK/libadwaita/GStreamer dev packages, then format, lint and unit tests. No display needed.
+  # ---------------------------------------------------------------------
+  linux-mobile-check:
+    name: Linux phone client (fmt, clippy, tests)
+    needs: changes
+    if: needs.changes.outputs.linux-mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: clients/linux-mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GTK, libadwaita and GStreamer development packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clients/linux-mobile
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Unit tests
+        run: cargo test
 
   # ---------------------------------------------------------------------
   # tv-web (pnpm workspace under clients/tv-web -- packages/*, apps/*, web/)
@@ -1001,6 +1047,7 @@ jobs:
       - xbox-check
       - xbox-uwp-package
       - harmony-check
+      - linux-mobile-check
       - tv-web-check
       - server-image-web
       - firetv-check
@@ -1019,7 +1066,7 @@ jobs:
           echo "$NEEDS_JSON" | jq .
 
           fail=0
-          for job in changes backend-check android-check android-apk xbox-check xbox-uwp-package harmony-check tv-web-check server-image-web firetv-check web-layout-parity web-storybook web-behaviour openapi-contract-check; do
+          for job in changes backend-check android-check android-apk xbox-check xbox-uwp-package harmony-check linux-mobile-check tv-web-check server-image-web firetv-check web-layout-parity web-storybook web-behaviour openapi-contract-check; do
             result=$(echo "$NEEDS_JSON" | jq -r --arg j "$job" '.[$j].result // "missing"')
             echo "Job '$job' result: $result"
             case "$result" in

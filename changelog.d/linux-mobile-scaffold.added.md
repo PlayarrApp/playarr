@@ -1,0 +1,1 @@
+- Linux phone client scaffold (clients/linux-mobile, GTK4 and libadwaita): hosted-link QR sign-in, profile picker, theme tokens, Nunito Sans, CI job.
