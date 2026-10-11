@@ -1,0 +1,300 @@
+{
+  "$comment": "Shared device parity suite (docs/parity/SUITE.md). Every platform runs the same screens, themes, D-pad checks and playback cases; web (clients/tv-web) is the source of truth and its run writes expected.json. Keys are D-pad names: up down left right select back, select:long for a long press, name*N repeats a key. keys start from the signed-in Home screen. Nav moves are anchored at the bottom of the nav rail (left, then down*12 clamps on the profile entry) because the top of the rail depends on the account. route is the web path the screen ends on (:id matches one path segment); match (optional) is the end-state pattern when it differs from route (the agenda is the calendar's default view, so its URL has no view parameter). Every screen has a D-pad path on web; the calendar views and the Filters panel are reached through the Filters panel (View toggle) and the library's right-hand Filters button.",
+  "version": 1,
+  "account": "Device Test profile, dark by default, signed in, Home",
+  "themes": [
+    "dark",
+    "light"
+  ],
+  "screens": [
+    {
+      "id": "home",
+      "route": "/",
+      "keys": []
+    },
+    {
+      "id": "movies",
+      "route": "/movies",
+      "keys": [
+        "left",
+        "down*12",
+        "up*6",
+        "select"
+      ]
+    },
+    {
+      "id": "series",
+      "route": "/series",
+      "keys": [
+        "left",
+        "down*12",
+        "up*7",
+        "select"
+      ]
+    },
+    {
+      "id": "music",
+      "route": "/music",
+      "keys": [
+        "left",
+        "down*12",
+        "up*5",
+        "select"
+      ]
+    },
+    {
+      "id": "calendar-month",
+      "route": "/calendar?view=month",
+      "keys": [
+        "left",
+        "down*12",
+        "up*1",
+        "select",
+        "down",
+        "select",
+        "down",
+        "select",
+        "back"
+      ]
+    },
+    {
+      "id": "calendar-week",
+      "route": "/calendar?view=week",
+      "keys": [
+        "left",
+        "down*12",
+        "up*1",
+        "select",
+        "down",
+        "select",
+        "down",
+        "left",
+        "select",
+        "back"
+      ]
+    },
+    {
+      "id": "calendar-agenda",
+      "route": "/calendar?view=agenda",
+      "keys": [
+        "left",
+        "down*12",
+        "up*1",
+        "select"
+      ],
+      "match": "/calendar"
+    },
+    {
+      "id": "search",
+      "route": "/search",
+      "keys": [
+        "left",
+        "down*12",
+        "up*9",
+        "select"
+      ]
+    },
+    {
+      "id": "film-detail",
+      "route": "/movies/:id",
+      "keys": [
+        "left",
+        "down*12",
+        "up*6",
+        "select",
+        "right",
+        "select"
+      ]
+    },
+    {
+      "id": "series-detail",
+      "route": "/series/:id",
+      "keys": [
+        "left",
+        "down*12",
+        "up*7",
+        "select",
+        "right",
+        "select"
+      ]
+    },
+    {
+      "id": "settings",
+      "route": "/settings",
+      "keys": [
+        "left",
+        "down*12",
+        "select",
+        "down*2",
+        "select"
+      ]
+    },
+    {
+      "id": "filters",
+      "route": "/movies?panel=filters",
+      "keys": [
+        "left",
+        "down*12",
+        "up*6",
+        "select",
+        "right*12",
+        "up",
+        "select"
+      ]
+    },
+    {
+      "id": "profiles",
+      "route": "/profiles",
+      "keys": [
+        "left",
+        "down*12",
+        "select"
+      ]
+    },
+    {
+      "id": "player-controls",
+      "route": "/player/:id",
+      "keys": [
+        "left",
+        "down*12",
+        "up*6",
+        "select",
+        "right",
+        "select",
+        "select"
+      ]
+    },
+    {
+      "id": "actions",
+      "route": "/movies",
+      "keys": [
+        "left",
+        "down*12",
+        "up*6",
+        "select",
+        "right",
+        "select:long"
+      ]
+    }
+  ],
+  "dpad": [
+    {
+      "id": "home-right",
+      "from": "home",
+      "keys": [
+        "right"
+      ]
+    },
+    {
+      "id": "home-down",
+      "from": "home",
+      "keys": [
+        "down"
+      ]
+    },
+    {
+      "id": "home-down-right",
+      "from": "home",
+      "keys": [
+        "down",
+        "right"
+      ]
+    },
+    {
+      "id": "home-left-nav",
+      "from": "home",
+      "keys": [
+        "left"
+      ]
+    },
+    {
+      "id": "nav-down",
+      "from": "home",
+      "keys": [
+        "left",
+        "down*12",
+        "up"
+      ]
+    },
+    {
+      "id": "movies-grid-right",
+      "from": "movies",
+      "keys": [
+        "right",
+        "right"
+      ]
+    },
+    {
+      "id": "movies-grid-down",
+      "from": "movies",
+      "keys": [
+        "right",
+        "down"
+      ]
+    },
+    {
+      "id": "movies-grid-left-nav",
+      "from": "movies",
+      "keys": [
+        "right",
+        "left"
+      ]
+    },
+    {
+      "id": "series-grid-down",
+      "from": "series",
+      "keys": [
+        "right",
+        "down"
+      ]
+    },
+    {
+      "id": "detail-back",
+      "from": "film-detail",
+      "keys": [
+        "back"
+      ]
+    },
+    {
+      "id": "long-press-actions",
+      "from": "movies",
+      "keys": [
+        "right",
+        "select:long"
+      ]
+    }
+  ],
+  "playback": [
+    {
+      "id": "a",
+      "file": "b9a68b2c-8382-4c34-a6f0-c4dd58f55093",
+      "label": "normal 1080p",
+      "expect": {
+        "state": "playing",
+        "startWithinSeconds": 30,
+        "advanceSeconds": 3
+      }
+    },
+    {
+      "id": "b",
+      "file": "c9a9f905-3037-4bd7-9c73-2250e8aa347d",
+      "label": "4K HEVC",
+      "expect": {
+        "state": "playing",
+        "startWithinSeconds": 30,
+        "advanceSeconds": 3
+      }
+    },
+    {
+      "id": "c",
+      "file": "b9a68b2c-8382-4c34-a6f0-c4dd58f55093",
+      "label": "title served by the other server",
+      "expect": {
+        "state": "playing",
+        "startWithinSeconds": 45,
+        "advanceSeconds": 3
+      },
+      "setup": "needs the admin routing rule that prefers the other node for this library; web serves it through /media/proxy/ then"
+    }
+  ]
+}

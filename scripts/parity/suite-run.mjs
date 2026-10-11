@@ -1,0 +1,102 @@
+#!/usr/bin/env node
+// Runs the shared parity suite (suite.json) through a per-platform driver (docs/parity/SUITE.md).
+//   node suite-run.mjs --driver ./drivers/web.mjs --out <dir> [--themes dark,light] [--only screens,dpad,playback]
+//                      [--screens home,movies] [--via keys|route] [--reference | --expected <expected.json>]
+// Writes <out>/<theme>/<id>.png, <out>/dpad.json and <out>/playback.json (and expected.json with --reference).
+// A screen is never written unless its end state matches the suite route: a wrong or signed-out screen aborts it.
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { expandKeys, routeMatches, validateSuite } from "./suite-lib.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));
+const args = process.argv.slice(2);
+const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : d; };
+const out = resolve(opt("out", "suite-out"));
+const themes = opt("themes", suite.themes.join(",")).split(",");
+const only = opt("only", "screens,dpad,playback").split(",");
+const wantScreens = opt("screens", "").split(",").filter(Boolean);
+const via = opt("via", "keys");
+const reference = args.includes("--reference");
+const expectedFile = resolve(opt("expected", join(out, "..", "web", "expected.json")));
+const problems = validateSuite(suite);
+if (problems.length) throw new Error(`suite.json invalid: ${problems.join("; ")}`);
+if (!opt("driver")) throw new Error("--driver <module> is required");
+const driver = await (await import(pathToFileURL(resolve(opt("driver"))).href)).createDriver({ out, args });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const norm = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+async function press(keys) {
+  for (const { key, long } of expandKeys(keys)) await driver.key(key, { long });
+}
+// One retry: the first key of a run can land before the app shell has settled.
+async function reach(screen, tries = 2) {
+  try { return await reachOnce(screen); } catch (e) { if (tries > 1) return reach(screen, tries - 1); throw e; }
+}
+async function reachOnce(screen) {
+  await driver.home();
+  if (via === "route" || !screen.keys) {
+    if (via === "keys" && !screen.keys) console.log(`  ${screen.id}: no keys in the suite, deep linking`);
+    await driver.route(screen.route);
+  } else await press(screen.keys);
+  await sleep(1500);
+  const at = await driver.location();
+  if (!routeMatches(screen.match ?? screen.route, at)) throw new Error(`${screen.id}: ended on ${at}, expected ${screen.route}`);
+}
+
+const summary = { screens: 0, failed: [] };
+await driver.start?.({ theme: themes[0] });
+if (only.includes("screens")) {
+  for (const theme of themes) {
+    await driver.setTheme(theme);
+    mkdirSync(join(out, theme), { recursive: true });
+    for (const s of suite.screens.filter((x) => !wantScreens.length || wantScreens.includes(x.id))) {
+      try { await reach(s); await driver.screenshot(join(out, theme, `${s.id}.png`)); summary.screens += 1; console.log(`ok ${theme} ${s.id}`); }
+      catch (e) { summary.failed.push(`${theme}/${s.id}`); console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); }
+    }
+  }
+}
+const expSrc = reference ? join(out, "expected.json") : expectedFile;
+const expected = existsSync(expSrc) ? JSON.parse(readFileSync(expSrc, "utf8")) : {};
+expected.dpad ??= {}; expected.playback ??= {};
+const stamp = { suite: suite.version, checked_at: new Date().toISOString() };
+if (only.includes("dpad")) {
+  await driver.setTheme("dark");
+  const results = [];
+  for (const d of suite.dpad) {
+    let actual = null;
+    try {
+      const from = suite.screens.find((x) => x.id === d.from);
+      await reach(from);
+      await press(d.keys);
+      await sleep(800);
+      actual = norm(await driver.focused());
+    } catch (e) { console.log(`ERR dpad ${d.id}: ${e.message.split("\n")[0]}`); }
+    if (reference) expected.dpad[d.id] = actual;
+    const want = expected.dpad[d.id];
+    results.push({ id: d.id, pass: !!actual && actual === want, expected: want ?? null, actual });
+    console.log(`${results.at(-1).pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual}${actual === want ? "" : ` (expected ${want})`}`);
+  }
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, "dpad.json"), JSON.stringify({ ...stamp, results }, null, 2));
+}
+if (only.includes("playback")) {
+  const results = [];
+  for (const p of suite.playback) {
+    let r;
+    try {
+      r = await driver.play(p, p.expect);
+    } catch (e) { r = { state: "error", detail: e.message.split("\n")[0] }; }
+    const pass = r.state === p.expect.state && (r.advancedSeconds ?? 0) >= p.expect.advanceSeconds && (r.startSeconds ?? 1e9) <= p.expect.startWithinSeconds;
+    if (reference) expected.playback[p.id] = { state: r.state };
+    results.push({ id: p.id, pass, ...r });
+    console.log(`${pass ? "pass" : "FAIL"} playback ${p.id}: ${JSON.stringify(r)}`);
+  }
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, "playback.json"), JSON.stringify({ ...stamp, results }, null, 2));
+}
+if (reference) { mkdirSync(out, { recursive: true }); writeFileSync(join(out, "expected.json"), JSON.stringify({ suite: suite.version, ...expected }, null, 2)); }
+await driver.stop?.();
+console.log(`captured ${summary.screens}, failed ${summary.failed.length}${summary.failed.length ? `: ${summary.failed.join(", ")}` : ""}`);
+process.exit(summary.failed.length ? 1 : 0);

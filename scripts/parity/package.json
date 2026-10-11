@@ -5,7 +5,9 @@
   "description": "Pixel parity tooling: web reference captures and PNG diff reports.",
   "scripts": {
     "capture:web": "node capture-web.mjs",
-    "diff": "node diff.mjs"
+    "diff": "node diff.mjs",
+    "suite": "node suite-run.mjs",
+    "test:suite": "node --test suite.test.mjs"
   },
   "dependencies": {
     "pixelmatch": "^6.0.0",

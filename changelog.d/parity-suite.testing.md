@@ -1,0 +1,1 @@
+- Shared device parity suite (scripts/parity/suite.json, suite-run.mjs, web reference driver, validator test) and docs/parity/SUITE.md and DEVICES.md.

@@ -1,5 +1,7 @@
 # Pixel parity tooling
 
+Shared suite for every device: [SUITE.md](SUITE.md). Per-device run and capture notes: [DEVICES.md](DEVICES.md).
+
 Native clients must match the web client pixel for pixel on the same fixture data, screen and viewport.
 Web is the source of truth: fix the native client, not the web reference. If the web looks wrong, report it.
 
