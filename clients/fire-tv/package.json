@@ -12,6 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest",
     "gate": "node --test scripts/*.test.mjs",
+    "prebuild:debug": "node scripts/require-shaka.mjs",
+    "prebuild:release": "node scripts/require-shaka.mjs",
     "build:debug": "react-native build-vega --build-type Debug",
     "build:release": "react-native build-vega --build-type Release",
     "manifest:validate": "vega exec vpt validate ./manifest.toml",
