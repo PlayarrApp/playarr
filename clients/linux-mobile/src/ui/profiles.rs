@@ -15,7 +15,7 @@ pub fn avatar_widget(preset: &str, size: i32) -> gtk4::Image {
     img
 }
 
-pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
+pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     let root = gtk4::Box::new(gtk4::Orientation::Vertical, 18);
     root.add_css_class("pa-page");
     root.set_margin_top(36);
@@ -30,11 +30,12 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
     );
     let grid = gtk4::FlowBox::builder()
         .selection_mode(gtk4::SelectionMode::None)
-        .max_children_per_line(2)
-        .min_children_per_line(2)
+        .max_children_per_line(3)
+        .min_children_per_line(1)
         .row_spacing(18)
         .column_spacing(18)
         .homogeneous(true)
+        .halign(gtk4::Align::Center)
         .valign(gtk4::Align::Start)
         .build();
     root.append(&grid);
@@ -53,6 +54,16 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         let app = app.clone();
         sign_out.connect_clicked(move |_| app.sign_out());
     }
+    if from_shell {
+        let settings = gtk4::Button::builder()
+            .label("Settings")
+            .css_classes(["pa-secondary"])
+            .halign(gtk4::Align::Center)
+            .build();
+        let (app, client) = (app.clone(), client.clone());
+        settings.connect_clicked(move |_| app.push_settings(client.clone()));
+        root.append(&settings);
+    }
     root.append(&sign_out);
 
     let c = client.clone();
@@ -66,7 +77,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
             Ok(profiles) => {
                 status.set_visible(false);
                 for p in profiles {
-                    grid.append(&tile(&app, &client, &p, my_preset.as_deref()));
+                    grid.append(&tile(&app, &client, &p, my_preset.as_deref(), from_shell));
                 }
             }
         },
@@ -79,7 +90,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         .upcast()
 }
 
-fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>) -> gtk4::Button {
+fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>, from_shell: bool) -> gtk4::Button {
     let preset = match (p.is_current, my_preset) {
         (true, Some(m)) => m.to_string(),
         _ => avatar::default_preset(&p.id).to_string(),
@@ -104,7 +115,9 @@ fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>) ->
     }
     let (app, client, current) = (app.clone(), client.clone(), p.is_current);
     b.connect_clicked(move |_| {
-        if current {
+        if current && from_shell {
+            app.nav.pop();
+        } else if current {
             app.enter(client.clone());
         } else {
             // shortcut: another profile needs its own device link, there is no saved-session switcher yet.

@@ -15,3 +15,45 @@ button.pa-plain { background: transparent; border: none; box-shadow: none; paddi
 .pa-avatar { border-radius: 999px; }
 .pa-profile-name { font-size: 15px; color: @pa_ink_soft; }
 button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avatar { outline: 3px solid @pa_ink; outline-offset: 3px; }
+
+/* Cards and rails */
+.pa-poster { border-radius: 10px; background: linear-gradient(145deg, @pa_soft, @pa_surface); }
+.pa-poster-initial { font-size: 34px; font-weight: 300; color: @pa_muted; }
+.pa-card-title { font-size: 14px; font-weight: 600; color: @pa_ink; }
+.pa-card-meta { font-size: 12px; color: @pa_muted; }
+button.pa-card { background: transparent; border: none; box-shadow: none; padding: 0; min-height: 0; min-width: 0; }
+button.pa-card:focus-visible .pa-poster { outline: 3px solid @pa_ink; outline-offset: 2px; }
+.pa-rail-title { font-size: 22px; font-weight: 400; color: @pa_ink; }
+.pa-progress { min-height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.25); }
+.pa-progress progress { background: @pa_brand; min-height: 4px; border-radius: 2px; }
+
+/* Floating bottom navigation pill */
+.pa-nav { background: alpha(@pa_surface_strong, 0.94); border-radius: 26px; border: 1px solid @pa_line; padding: 6px 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45); }
+.pa-nav button { background: transparent; color: @pa_ink_soft; border: none; box-shadow: none; border-radius: 18px; min-width: 44px; min-height: 44px; padding: 0 6px; }
+.pa-nav button.active { background: @pa_accent; color: @pa_on_accent; }
+.pa-nav button image { -gtk-icon-size: 22px; }
+.pa-pagehead { font-size: 30px; font-weight: 300; color: @pa_ink; }
+
+/* Detail */
+.pa-hero { background: linear-gradient(145deg, @pa_soft, @pa_surface); }
+.pa-hero-fade { background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 40%, @pa_bg 100%); }
+.pa-detail-title { font-size: 32px; font-weight: 300; color: @pa_ink; }
+.pa-overview { font-size: 15px; color: @pa_ink_soft; }
+button.pa-episode { background: @pa_surface; border: 1px solid @pa_line; border-radius: 12px; box-shadow: none; padding: 10px 12px; color: @pa_ink; }
+button.pa-episode:disabled { opacity: 0.5; }
+.pa-ep-num { font-size: 18px; font-weight: 300; color: @pa_muted; min-width: 34px; }
+.pa-chip { font-size: 12px; color: @pa_muted; border: 1px solid @pa_line; border-radius: 999px; padding: 2px 10px; }
+
+/* Player */
+.pa-player { background: #000000; }
+.pa-player-scrim { background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0)); padding: 24px 16px 18px 16px; }
+.pa-player-top { background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0)); padding: 14px 12px 28px 12px; }
+.pa-player button.pa-round { background: rgba(255, 255, 255, 0.16); color: #ffffff; border-radius: 999px; min-width: 48px; min-height: 48px; padding: 0; border: none; box-shadow: none; }
+.pa-player button.pa-round.big { min-width: 76px; min-height: 76px; }
+.pa-player label { color: #ffffff; }
+.pa-player scale trough { background: rgba(255, 255, 255, 0.28); min-height: 4px; border-radius: 2px; }
+.pa-player scale highlight { background: @pa_brand; border-radius: 2px; }
+.pa-player scale slider { background: #ffffff; min-width: 16px; min-height: 16px; border-radius: 999px; }
+.pa-player-time { font-size: 13px; color: #ffffff; }
+headerbar.pa-header { background: @pa_bg; color: @pa_ink; box-shadow: none; border: none; }
+headerbar.pa-header button { color: @pa_ink; }

@@ -176,6 +176,8 @@ pub struct ResumePlan {
 pub struct WatchProgress {
     pub media_file_id: String,
     #[serde(default)]
+    pub work_id: String,
+    #[serde(default)]
     pub position_ms: i64,
     #[serde(default)]
     pub duration_ms: i64,

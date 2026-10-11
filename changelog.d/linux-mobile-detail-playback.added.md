@@ -1,0 +1,1 @@
+- Linux phone client: title detail (film and series with seasons and episodes), settings, and playback with resume and progress reporting.

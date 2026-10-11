@@ -208,8 +208,14 @@ impl Client {
     pub fn resume_plans(&self) -> Result<Vec<ResumePlan>> {
         self.get("/api/v1/playback/resume-plans")
     }
+    pub fn resume_plan(&self, series_id: &str) -> Option<ResumePlan> {
+        self.get(&format!("/api/v1/catalog/{series_id}/resume-plan")).ok()
+    }
     pub fn progress(&self, media_file_id: &str) -> Option<WatchProgress> {
         self.get(&format!("/api/v1/playback/{media_file_id}/progress")).ok()
+    }
+    pub fn all_progress(&self) -> Result<Vec<WatchProgress>> {
+        self.get("/api/v1/playback/progress")
     }
     pub fn playback(&self, media_file_id: &str, start_ms: i64) -> Result<PlaybackInfo> {
         // The GStreamer HLS/MP4 pipeline plays H.264/AAC in MP4 or TS; the server transcodes anything else.

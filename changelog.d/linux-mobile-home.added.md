@@ -1,0 +1,1 @@
+- Linux phone client: tabbed shell with Home rails (On deck first), movie and series grids with infinite scroll, and search.

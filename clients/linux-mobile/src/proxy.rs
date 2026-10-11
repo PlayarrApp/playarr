@@ -24,11 +24,11 @@ impl Proxy {
         });
         Ok(Proxy { port })
     }
+}
 
-    /// Local URL for a server-relative (or absolute) playback URL.
-    pub fn local_url(&self, url: &str) -> String {
-        format!("http://127.0.0.1:{}{}", self.port, path_and_query(url))
-    }
+/// Local URL for `url` on a proxy listening at `port`.
+pub fn local_url(port: u16, url: &str) -> String {
+    format!("http://127.0.0.1:{port}{}", path_and_query(url))
 }
 
 /// Strips scheme and host from an absolute URL, leaving the path and query.
@@ -96,5 +96,6 @@ mod tests {
     fn strips_origin() {
         assert_eq!(path_and_query("https://h.example/api/v1/x?y=1"), "/api/v1/x?y=1");
         assert_eq!(path_and_query("/api/v1/x"), "/api/v1/x");
+        assert_eq!(local_url(9, "https://h/api/v1/x"), "http://127.0.0.1:9/api/v1/x");
     }
 }
