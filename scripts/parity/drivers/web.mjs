@@ -51,7 +51,7 @@ export async function createDriver() {
       // so Home-rail drift (other clients' activity on the shared account) is visible next to the D-pad results.
       let last = "", still = 0;
       for (let i = 0; i < 40 && still < 3; i += 1) {
-        const now = await page.evaluate(() => [...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label")).join("|"));
+        const now = await page.evaluate(() => [...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label") || c.textContent.trim().slice(0, 40)).join("|"));
         still = now && now === last ? still + 1 : 0; last = now; await page.waitForTimeout(1500);
       }
       console.log(`  home first card: ${last.split("|")[0]}`);

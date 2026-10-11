@@ -95,7 +95,7 @@ export async function createDriver() {
       // Rails fill in asynchronously and reorder the cards: wait until the card list holds still before focusing.
       let last = "", still = 0;
       for (let i = 0; i < 40 && still < 3; i += 1) {
-        const now = await ev(`[...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label")).join("|")`).catch(() => "");
+        const now = await ev(`[...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label") || c.textContent.trim().slice(0, 40)).join("|")`).catch(() => "");
         still = now && now === last ? still + 1 : 0; last = now; await sleep(1500);
       }
       // The contract: Home with its first card focused (the app can restore an earlier focus).

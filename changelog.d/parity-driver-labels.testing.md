@@ -1,0 +1,1 @@
+- Parity driver labels Home cards by text when they carry no aria-label.
