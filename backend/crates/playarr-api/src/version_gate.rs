@@ -54,6 +54,12 @@ pub struct ClientCompatibilityTable {
     pub harmony_mobile: Option<ClientEntry>,
     #[serde(rename = "harmony-tv")]
     pub harmony_tv: Option<ClientEntry>,
+    pub roku: Option<ClientEntry>,
+    #[serde(rename = "linux-phone")]
+    pub linux_phone: Option<ClientEntry>,
+    pub sailfish: Option<ClientEntry>,
+    #[serde(rename = "tizen-native")]
+    pub tizen_native: Option<ClientEntry>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -272,5 +278,9 @@ deprecatedBelow = "1.3.0"
         assert!(table.xbox.is_some());
         assert!(table.harmony_mobile.is_some());
         assert!(table.harmony_tv.is_some());
+        assert!(table.roku.is_some());
+        assert!(table.linux_phone.is_some());
+        assert!(table.sailfish.is_some());
+        assert!(table.tizen_native.is_some());
     }
 }

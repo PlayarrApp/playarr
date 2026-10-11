@@ -9745,6 +9745,10 @@ components:
       - xbox
       - harmony-mobile
       - harmony-tv
+      - roku
+      - linux-phone
+      - sailfish
+      - tizen-native
       - playarr-admin
     ClientPlaybackReport:
       type: object

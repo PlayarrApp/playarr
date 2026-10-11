@@ -125,3 +125,27 @@ latestVersion = "0.1.0"
 minSupported = "0.1.0"
 deprecatedBelow = "0.1.0"
 sunset = "2026-12-31"
+
+[roku]
+latestVersion = "0.1.0"
+minSupported = "0.1.0"
+deprecatedBelow = "0.1.0"
+sunset = "2026-12-31"
+
+[linux-phone]
+latestVersion = "0.1.0"
+minSupported = "0.1.0"
+deprecatedBelow = "0.1.0"
+sunset = "2026-12-31"
+
+[sailfish]
+latestVersion = "0.1.0"
+minSupported = "0.1.0"
+deprecatedBelow = "0.1.0"
+sunset = "2026-12-31"
+
+[tizen-native]
+latestVersion = "0.1.0"
+minSupported = "0.1.0"
+deprecatedBelow = "0.1.0"
+sunset = "2026-12-31"

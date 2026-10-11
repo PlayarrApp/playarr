@@ -38,8 +38,14 @@ pub enum ClientPlatform {
     Cast,
     TvFire,
     Xbox,
+    #[serde(alias = "harmony-phone")]
     HarmonyMobile,
     HarmonyTv,
+    #[serde(alias = "tv-roku")]
+    Roku,
+    LinuxPhone,
+    Sailfish,
+    TizenNative,
     PlayarrAdmin,
 }
 
@@ -62,6 +68,10 @@ impl ClientPlatform {
             ClientPlatform::Xbox => "xbox",
             ClientPlatform::HarmonyMobile => "harmony-mobile",
             ClientPlatform::HarmonyTv => "harmony-tv",
+            ClientPlatform::Roku => "roku",
+            ClientPlatform::LinuxPhone => "linux-phone",
+            ClientPlatform::Sailfish => "sailfish",
+            ClientPlatform::TizenNative => "tizen-native",
             ClientPlatform::PlayarrAdmin => "playarr-admin",
         }
     }
@@ -78,8 +88,13 @@ impl ClientPlatform {
             "cast" => ClientPlatform::Cast,
             "tv-fire" => ClientPlatform::TvFire,
             "xbox" => ClientPlatform::Xbox,
-            "harmony-mobile" => ClientPlatform::HarmonyMobile,
+            // `harmony-phone` and `tv-roku` are spellings clients and the hosted link broker also use.
+            "harmony-mobile" | "harmony-phone" => ClientPlatform::HarmonyMobile,
             "harmony-tv" => ClientPlatform::HarmonyTv,
+            "roku" | "tv-roku" => ClientPlatform::Roku,
+            "linux-phone" => ClientPlatform::LinuxPhone,
+            "sailfish" => ClientPlatform::Sailfish,
+            "tizen-native" => ClientPlatform::TizenNative,
             "playarr-admin" => ClientPlatform::PlayarrAdmin,
             _ => return None,
         })
@@ -133,6 +148,10 @@ mod tests {
         ClientPlatform::Xbox,
         ClientPlatform::HarmonyMobile,
         ClientPlatform::HarmonyTv,
+        ClientPlatform::Roku,
+        ClientPlatform::LinuxPhone,
+        ClientPlatform::Sailfish,
+        ClientPlatform::TizenNative,
         ClientPlatform::PlayarrAdmin,
     ];
 
@@ -160,7 +179,11 @@ mod tests {
             ClientPlatform::Xbox => 9,
             ClientPlatform::HarmonyMobile => 10,
             ClientPlatform::HarmonyTv => 11,
-            ClientPlatform::PlayarrAdmin => 12,
+            ClientPlatform::Roku => 12,
+            ClientPlatform::LinuxPhone => 13,
+            ClientPlatform::Sailfish => 14,
+            ClientPlatform::TizenNative => 15,
+            ClientPlatform::PlayarrAdmin => 16,
         }
     }
 
@@ -200,6 +223,18 @@ mod tests {
                 format!("\"{}\"", platform.wire_name()),
                 "{platform:?} serialises differently from its wire_name",
             );
+        }
+    }
+
+    #[test]
+    fn alternative_spellings_resolve_to_the_canonical_platform() {
+        for (alias, platform) in [
+            ("harmony-phone", ClientPlatform::HarmonyMobile),
+            ("tv-roku", ClientPlatform::Roku),
+        ] {
+            assert_eq!(ClientPlatform::from_wire_name(alias), Some(platform));
+            let decoded: ClientPlatform = serde_json::from_str(&format!("\"{alias}\"")).unwrap();
+            assert_eq!(decoded, platform);
         }
     }
 }

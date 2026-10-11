@@ -52,7 +52,7 @@ any compatibility decision by any code in this repository today.
 `backend/config/client-compatibility.toml` is the real, checked-in source of
 per-platform floors — one section per shipped Playarr `playarr_model::ClientPlatform`
 (`android-mobile`, `android-tv`, `ios`, `web`, `tv-webos`, `tv-tizen`,
-`tv-vidaa`, `tv-fire`, `xbox`, `harmony-mobile`, `harmony-tv`). `PlayarrAdmin` is the one variant with no
+`tv-vidaa`, `tv-fire`, `xbox`, `harmony-mobile`, `harmony-tv`, `roku`, `linux-phone`, `sailfish`, `tizen-native`). `PlayarrAdmin` is the one variant with no
 section here: it identifies Playarr Server's own admin UI, not a shipped Playarr
 client, so it has no version floor to gate. The schema itself is intentionally split in two,
 because Android and everything else key off different notions of "version":

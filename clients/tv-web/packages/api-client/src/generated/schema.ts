@@ -4191,7 +4191,7 @@ export interface components {
          *     authorization from an already-signed-in sender.
          * @enum {string}
          */
-        ClientPlatform: "android-mobile" | "android-tv" | "ios" | "web" | "tv-webos" | "tv-tizen" | "tv-vidaa" | "cast" | "tv-fire" | "xbox" | "harmony-mobile" | "harmony-tv" | "playarr-admin";
+        ClientPlatform: "android-mobile" | "android-tv" | "ios" | "web" | "tv-webos" | "tv-tizen" | "tv-vidaa" | "cast" | "tv-fire" | "xbox" | "harmony-mobile" | "harmony-tv" | "roku" | "linux-phone" | "sailfish" | "tizen-native" | "playarr-admin";
         ClientPlaybackReport: {
             measured?: components["schemas"]["MeasuredPlayback"];
             reported?: components["schemas"]["ReportedCapabilities"];
