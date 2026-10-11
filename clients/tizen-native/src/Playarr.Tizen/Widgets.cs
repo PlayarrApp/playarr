@@ -1,0 +1,183 @@
+using Playarr.Core.Models;
+using Playarr.Tizen.Logic;
+using Tizen.NUI;
+using Tizen.NUI.BaseComponents;
+
+namespace Playarr.Tizen;
+
+/// <summary>A media card (web .media-card): art with watch state, title and optional sub line. One component for Home and the grids.</summary>
+internal sealed class MediaCard
+{
+    public const float Width = 327.2f, Height = 184f;
+    public View Box { get; } = new();
+    public View Art { get; } = new();
+    public TextLabel Title { get; }
+    private readonly PlayarrTheme _t;
+    private readonly float _scale, _lift, _blur, _shadowY, _shadowAlpha;
+    private readonly View? _ring;
+
+    /// <param name="scale">Focus scale (home 1.025, library 1.04).</param>
+    /// <param name="lift">Focus lift in px (negative = up).</param>
+    public MediaCard(AppEnv env, PlayarrTheme t, WorkCard card, float x, float y, bool showSub, float titleInset, float scale, float lift,
+        float blur, float shadowY, float shadowAlpha)
+    {
+        _t = t; _scale = scale; _lift = lift; _blur = blur; _shadowY = shadowY; _shadowAlpha = shadowAlpha;
+        Box.PositionX = x; Box.PositionY = y; Box.Size = new Size(Width, 230);
+        Art.Size = new Size(Width, Height); Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
+        Art.ClippingMode = ClippingModeType.ClipChildren;
+        env.Images.Apply(Art, card.ThumbUrl, Width, Height);
+        if (card.Progress > 0)
+        {
+            Art.Add(Ui.Box(0, Height - 3, Width, 3, new Rgba(1, 1, 1, 0.2f)));
+            Art.Add(Ui.Box(0, Height - 3, Math.Max(3, Width * (float)card.Progress), 3, t.Brand));
+        }
+        Box.Add(Art);
+        if (t.Name != "dark")
+        {
+            // web light keeps a 3 px brand ring on the focused card (the light theme's box-shadow ring)
+            _ring = new View { Size = new Size(Width, Height), CornerRadius = 12.48f, BorderlineWidth = 3, BorderlineColor = new Color(0.647f, 0.153f, 0.271f, 1), BorderlineOffset = -1 };
+            _ring.Show(false);
+            Art.Add(_ring);
+        }
+        if (card.Unseen)
+        {
+            var dot = Ui.Box(Width - 23.6f, 10.6f, 13, 13, t.Brand, 6.5f);
+            dot.BorderlineWidth = 2; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
+            Box.Add(dot);
+        }
+        Title = Ui.Text(card.Title, titleInset, Height + 11.5f, 11.904f, 700, t.Ink, Width - titleInset * 2, 17.856f, spacing: -0.18f);
+        Box.Add(Title);
+        if (showSub) Box.Add(Ui.Text(card.Sub, titleInset, Height + 31.9f, 8.832f, 400, t.InkMuted, Width - titleInset * 2, 13.248f));
+    }
+
+    public void SetFocused(bool focused)
+    {
+        Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
+        Art.PositionY = focused ? _lift : 0;
+        Art.BoxShadow = focused ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
+        _ring?.Show(focused && _t.Name != "dark");
+        Title.TextColor = focused ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
+    }
+
+    public static MediaCard Home(AppEnv env, WorkCard card, float x, float y) =>
+        new(env, env.Theme, card, x, y, showSub: true, titleInset: 0, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f);
+
+    /// <summary>Search result: title left, kind label right on the caption line (web .tv-search-result).</summary>
+    public static MediaCard Search(AppEnv env, WorkCard card, float x, float y)
+    {
+        var c = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.015f, lift: -6, blur: 52, shadowY: 22, shadowAlpha: 0.28f);
+        var kind = card.Sub.ToUpperInvariant();
+        c.Box.Add(Ui.Text(kind, 0, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, Width, 12.672f, HorizontalAlignment.End));
+        return c;
+    }
+
+    public static MediaCard Library(AppEnv env, WorkCard card, float x, float y) =>
+        new(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f);
+}
+
+/// <summary>Web .tv-key-art: the focused title's backdrop in grayscale, faded into the page colour.</summary>
+internal sealed class KeyArt
+{
+    public View Root { get; } = new();
+    private readonly AppEnv _env;
+    private readonly PlayarrTheme _t;
+    private string? _path, _shown;
+    private bool _armed;
+
+    /// <summary>
+    /// As web: the key art of a library, search or detail page only appears once focus has moved (the page's first preview is
+    /// not artwork-backed); Home shows it from the start (<paramref name="armed"/>).
+    /// </summary>
+    public void Arm() { if (_armed) return; _armed = true; var p = _path; _path = null; Set(p); }
+
+    public KeyArt(AppEnv env, bool armed = false) { _armed = armed; _env = env; _t = env.Theme; Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight); }
+
+    /// <summary>Shows the server artwork at <paramref name="artworkPath"/> (a /api/v1/artwork/... path) as key art.</summary>
+    public void Set(string? artworkPath)
+    {
+        if (artworkPath == _path) return;
+        _path = artworkPath;
+        if (!_armed) return;
+        foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
+        if (artworkPath is null) return;
+        var wanted = artworkPath;
+        _ = Task.Run(async () =>
+        {
+            var file = await _env.Images.GetAsync(wanted).ConfigureAwait(false);
+            if (file is null) return;
+            SynchronizationContextHolder.Post(() =>
+            {
+                if (_path != wanted) return; // focus moved on
+                foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
+                var dark = _t.Name == "dark";
+                var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f);
+                img.Opacity = dark ? 0.72f : 0.07f; // web light: the art is only a ghost
+                Root.Add(img);
+                var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
+                Root.Add(Ui.Gradient(-20 + 1038.3f * 0.72f, 0, 1038.3f * 0.28f, 1080, true, (0, clear), (1, s)));
+                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, s), (0.22f, clear), (1, clear)));
+                Root.Add(Ui.Gradient(0, 0, 1920, 1080, false, (0, s), (0.18f, clear), (0.82f, clear), (1, s)));
+            });
+        });
+    }
+}
+
+/// <summary>The left panel: kicker, title, meta row and overview of the focused title. Sizes differ slightly between Home and the grids (as on web).</summary>
+internal sealed class DetailsPanel
+{
+    public View Root { get; } = new();
+    private readonly AppEnv _env;
+    private readonly bool _library;
+    private readonly bool _flow;
+    private Guid _showing;
+    private static readonly Dictionary<Guid, long?> RuntimeCache = new();
+
+    public DetailsPanel(AppEnv env, bool library, bool flow = false) { _env = env; _library = library || flow; _flow = flow; }
+
+    public void Show(WorkCard card, string? kickerOverride = null, string? metaLead = null)
+    {
+        _showing = card.WorkId;
+        Render(card, kickerOverride, metaLead, RuntimeCache.TryGetValue(card.WorkId, out var rt) ? rt : null);
+        if (!RuntimeCache.ContainsKey(card.WorkId))
+            _ = FetchRuntimeAsync(card, kickerOverride, metaLead);
+    }
+
+    private async Task FetchRuntimeAsync(WorkCard card, string? kicker, string? lead)
+    {
+        try
+        {
+            await Task.Delay(140); // as web: focus must rest before the page-level selection follows it
+            if (_showing != card.WorkId) return;
+            var detail = await _env.Api.GetWorkAsync(card.WorkId);
+            RuntimeCache[card.WorkId] = detail.RuntimeMs;
+            SynchronizationContextHolder.Post(() => { if (_showing == card.WorkId) Render(card, kicker, lead, detail.RuntimeMs); });
+        }
+        catch (Exception) { RuntimeCache[card.WorkId] = null; }
+    }
+
+    private void Render(WorkCard card, string? kicker, string? lead, long? runtimeMs)
+    {
+        var t = _env.Theme;
+        foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
+        var ky = _flow ? 286.6f : 259.2f; var tsize = _flow ? 49.92f : 69.12f; var tlh = _flow ? 47.424f : 62.208f; var tw = _flow ? 420f : 369f; var ty = _flow ? 330.9f : 303.5f;
+        Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 800, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
+        var title = Ui.Text(card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, multiline: true, spacing: _flow ? -3f : -4.98f, maxLines: 5);
+        Root.Add(title);
+        var lines = Math.Clamp((int)Math.Round(title.GetHeightForWidth(tw) / (tsize * 1.364f)), 1, 5);
+        var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f);
+        var metaSize = _library ? 13.056f : 12.864f;
+        var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
+        if (meta.Length > 0) Root.Add(Ui.Text(meta, 153.6f, metaY, metaSize, 600, Soft(t), 455, _library ? 19.584f : 18, spacing: 0));
+        var oy = metaY + (_library ? 41.2f : 40.9f);
+        Root.Add(Ui.Text(card.Overview, 153.6f, oy, _library ? 13.824f : 12.864f, 600, Soft(t), 336, _library ? 21.842f : 20.325f, multiline: true, maxLines: _library ? 5 : 4));
+    }
+
+    private static Rgba Soft(PlayarrTheme t) => t.Name == "dark" ? new Rgba(0.855f, 0.84f, 0.844f) : t.InkSoft;
+
+    public static string Runtime(long ms)
+    {
+        var minutes = (int)(ms / 60000);
+        var h = minutes / 60; var m = minutes % 60;
+        return h <= 0 ? $"{m} min" : m > 0 ? $"{h}h {m}m" : $"{h}h";
+    }
+}

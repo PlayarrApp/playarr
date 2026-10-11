@@ -7,6 +7,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Playarr.Tizen</RootNamespace>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(PlayarrDebug)' == 'true'">
+    <!-- Debug mirror and logging for the parity driver; never set in CI or release builds. -->
+    <DefineConstants>$(DefineConstants);PLAYARR_DEBUG</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Playarr.Tizen.Logic/Playarr.Tizen.Logic.csproj" />
   </ItemGroup>

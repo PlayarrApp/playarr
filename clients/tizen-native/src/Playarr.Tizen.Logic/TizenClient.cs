@@ -4,11 +4,8 @@ namespace Playarr.Tizen.Logic;
 
 public static class TizenClient
 {
-    /// <summary>
-    /// Client identity sent to the link broker and server. "web" until the server's ClientPlatform enum and the
-    /// broker allow-list accept "tizen-native"; switch this one constant when they do.
-    /// </summary>
-    public const string PlatformId = "web";
+    /// <summary>Client identity sent to the link broker and the server (accepted since the broker and ClientPlatform enum gained it).</summary>
+    public const string PlatformId = "tizen-native";
 
     public const string DeviceName = "Samsung TV";
 

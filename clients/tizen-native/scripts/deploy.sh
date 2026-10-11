@@ -10,7 +10,7 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1
 pw=$(grep '^PLAYARR_TIZEN_SAMSUNG_CERT_PASSWORD=' "${PLAYARR_TIZEN_SECRETS:?}" | head -1 | cut -d= -f2- | tr -d "'\"")
 cert=${PLAYARR_TIZEN_CERT_DIR:?}
 PLAYARR_TIZEN_CERT_PASS=$pw dotnet build "$here/src/Playarr.Tizen" -c Release \
-  -p:AuthorPath="$cert/author.p12" -p:DistributorPath="$cert/distributor.p12" >/dev/null
+  -p:AuthorPath="$cert/author.p12" -p:DistributorPath="$cert/distributor.p12" -v q -nologo ${PLAYARR_BUILD_ARGS:-} >&2
 tpk=$(ls "$here"/src/Playarr.Tizen/bin/Release/net8.0-tizen10.0/*.tpk)
 sdb=${SDB:-sdb}; [ -n "$serial" ] && sdb="$sdb -s $serial"
 $sdb install "$tpk"

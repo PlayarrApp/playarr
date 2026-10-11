@@ -1,0 +1,169 @@
+using Playarr.Core.Models;
+using Playarr.Tizen.Logic;
+using Xunit;
+
+public class HomeModelTests
+{
+    private static Work W(string title, string added = "2026-01-01T00:00:00Z") => new()
+    {
+        Id = Guid.NewGuid(), Kind = WorkKind.Movie, Title = title, AddedAt = DateTimeOffset.Parse(added), ReleaseDate = "2016-03-01", Genres = { "Drama" },
+    };
+
+    private static WatchProgress P(Work w, WatchState s, long pos = 50, long dur = 100, string? at = null) => new()
+    {
+        MediaFileId = Guid.NewGuid(), WorkId = w.Id, State = s, PositionMs = pos, DurationMs = dur, UpdatedAt = at is null ? null : DateTimeOffset.Parse(at),
+    };
+
+    [Fact]
+    public void OnDeckRowsAreNewestPartWatchedOnePerWorkMaxTen()
+    {
+        var a = W("A"); var b = W("B");
+        var rows = new[] { P(a, WatchState.InProgress, at: "2026-10-01T00:00:00Z"), P(a, WatchState.InProgress, at: "2026-10-05T00:00:00Z"),
+                           P(b, WatchState.Watched, at: "2026-10-09T00:00:00Z") };
+        var deck = HomeModel.OnDeckRows(rows);
+        Assert.Single(deck);
+        Assert.Equal(DateTimeOffset.Parse("2026-10-05T00:00:00Z"), deck[0].UpdatedAt);
+    }
+
+    [Fact]
+    public void BuildPutsOnDeckFirstWithProgressAndMarksUnseenOnRecentRails()
+    {
+        var a = W("A"); var b = W("B");
+        var progress = HomeModel.IndexByWork(new[] { P(a, WatchState.InProgress, 25, 100) });
+        var rail = new HomeRail { Id = "recent", Title = "Recently Added in Movies", Items = { a, b } };
+        var rails = HomeModel.Build(new[] { rail }, new[] { a }, progress);
+        Assert.Equal("On deck", rails[0].Title);
+        Assert.Equal(0.25, rails[0].Cards[0].Progress);
+        Assert.False(rails[1].Cards[0].Unseen); // a has progress
+        Assert.True(rails[1].Cards[1].Unseen);  // b has none
+        Assert.Equal("Movie · Drama", rails[0].Cards[0].Kicker);
+        Assert.Equal("Movie · 2016", rails[0].Cards[0].Sub);
+    }
+
+    [Fact]
+    public void WithoutOnDeckTheFirstRailIsStartWatching()
+    {
+        var a = W("A");
+        var rails = HomeModel.Build(new[] { new HomeRail { Id = "r", Title = "R", Items = { a } } }, Array.Empty<Work>(), HomeModel.IndexByWork(Array.Empty<WatchProgress>()));
+        Assert.Equal("Start watching", rails[0].Title);
+    }
+}
+
+public class SessionStoreTests
+{
+    [Fact]
+    public async Task SessionSurvivesAFileRoundTripWithItsTokens()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "playarr-test-" + Guid.NewGuid());
+        try
+        {
+            var store = new FileSessionStore(dir);
+            await store.StoreSessionAsync(new Playarr.Core.Models.StoredAuthSession("access", "refresh", "Bearer", DateTimeOffset.UtcNow.AddHours(1)));
+            var back = await new FileSessionStore(dir).GetSessionAsync();
+            Assert.Equal("access", back!.AccessToken.ExposeSecret());
+            Assert.Equal("refresh", back.RefreshToken.ExposeSecret());
+            Assert.Equal(store.DeviceId(), new FileSessionStore(dir).DeviceId());
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
+}
+
+public class DetailModelTests
+{
+    [Fact]
+    public void ChaptersUseTheSmallestIntervalNearATenth()
+    {
+        // 108 min film: a tenth is 10.8 min -> 15 min chapters -> 8 chapters
+        var chapters = DetailModel.GeneratedChapters(108 * 60_000L);
+        Assert.Equal(8, chapters.Count);
+        Assert.Equal(15 * 60_000L, chapters[1].StartMs);
+        Assert.Equal(108 * 60_000L, chapters[^1].EndMs);
+        Assert.Equal("Chapter 01", chapters[0].Title);
+    }
+
+    [Fact]
+    public void LongFilmsCapAtThirtyMinuteChapters() =>
+        Assert.Equal(14, DetailModel.GeneratedChapters(400 * 60_000L).Count);
+
+    [Theory]
+    [InlineData(0, "0:00")]
+    [InlineData(688_000, "11:28")]
+    [InlineData(3_723_000, "1:02:03")]
+    public void Clock(long ms, string expected) => Assert.Equal(expected, DetailModel.Clock(ms));
+
+    [Theory]
+    [InlineData(6_480_000, "1h 48m")]
+    [InlineData(3_600_000, "1h")]
+    [InlineData(2_700_000, "45 min")]
+    public void Runtime(long ms, string expected) => Assert.Equal(expected, DetailModel.Runtime(ms));
+}
+
+public class AvatarTests
+{
+    [Fact]
+    public void DefaultIsAStableHashOfTheUserId()
+    {
+        var id = "0849772b-e4e8-4aaf-bc47-6b6249ed0408";
+        Assert.Equal(AvatarPresets.Default(id), AvatarPresets.Default(id));
+        Assert.Contains(AvatarPresets.Default(id), AvatarPresets.Ids);
+        Assert.Equal("astronaut", AvatarPresets.Default("")); // hash 0 -> first preset
+    }
+}
+
+public class AlphabetTests
+{
+    [Theory]
+    [InlineData("2 Test Movie A", '#')]
+    [InlineData("  the Sample Series 1", 'T')]
+    [InlineData("Éclair", '#')]
+    [InlineData("", '#')]
+    public void LetterOf(string title, char expected) => Assert.Equal(expected, Alphabet.LetterOf(title));
+
+    [Fact]
+    public void FirstIndexOfFindsTheFirstTitleWithTheLetter() =>
+        Assert.Equal(2, Alphabet.FirstIndexOf(new[] { "2 A", "9 B", "Alpha", "Beta" }, (char)65));
+}
+
+public class CatalogSearchTests
+{
+    private const string One = """{"id":"94199bce-b5ab-4cda-8401-35eac8a96157","kind":"movie","title":"Test Movie A","images":[]}""";
+
+    [Fact] public void ParsesACatalogPage() => Assert.Equal("Test Movie A", CatalogSearch.Parse("{\"items\":[" + One + "],\"total\":1}")[0].Title);
+    [Fact] public void ParsesABareArray() => Assert.Equal("Test Movie A", CatalogSearch.Parse("[" + One + "]")[0].Title);
+    [Fact] public void EmptyPageIsEmpty() => Assert.Empty(CatalogSearch.Parse("{\"items\":[]}"));
+}
+
+public class ArtworkPathTests
+{
+    [Fact]
+    public void VersionIsFnv1aOfTheSourceUrl()
+    {
+        Assert.Equal("811c9dc5", ArtworkPaths.Version(""));   // FNV offset basis
+        Assert.Equal("e40c292c", ArtworkPaths.Version("a")); // known FNV-1a 32-bit value
+    }
+
+    [Fact]
+    public void PathUsesTheKindDefaultWidthAndFallsBack()
+    {
+        var w = new Playarr.Core.Models.Work { Id = Guid.Parse("94199bce-b5ab-4cda-8401-35eac8a96157") };
+        w.Images.Add(new Playarr.Core.Models.ImageAsset { Kind = Playarr.Core.Models.ImageKind.Backdrop, Url = "a" });
+        Assert.Equal("/api/v1/artwork/work/94199bce-b5ab-4cda-8401-35eac8a96157/backdrop?w=780&v=e40c292c", ArtworkPaths.First(w, Playarr.Core.Models.ImageKind.Thumb, Playarr.Core.Models.ImageKind.Backdrop));
+        Assert.Null(ArtworkPaths.First(w, Playarr.Core.Models.ImageKind.Logo));
+    }
+}
+
+public class CreditsTests
+{
+    [Fact]
+    public void CastKeepsCharacterThenJobAsTheCaptionAndBuildsInitials()
+    {
+        var json = """{"cast":[{"id":"c1","person":{"id":"p1","name":"Test Person One","headshot_url":"https://x.example/a.jpg"},"character":"Role A"},{"id":"c2","person":{"id":"p2","name":"Solo","headshot_url":null},"job":"Writer"}],"crew":[]}""";
+        var cast = Credits.ParseCast(json);
+        Assert.Equal("TP", cast[0].Initials);
+        Assert.Equal("Role A", cast[0].Subtitle);
+        Assert.True(cast[0].HasHeadshot);
+        Assert.Equal("Writer", cast[1].Subtitle);
+        Assert.False(cast[1].HasHeadshot);
+        Assert.Equal("S", cast[1].Initials);
+    }
+}

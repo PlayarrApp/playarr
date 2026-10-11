@@ -544,7 +544,11 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/Samsung/Tizen.NET/6ab8cb41e7ccab90a3ba838e7f6d6b38a9c4ec08/workload/scripts/workload-install.sh -o "$RUNNER_TEMP/wi.sh"
           echo "b6a8bbd3aefbcca452e05abce8272c82362c83da2cfaca2470cbb7fd07ac5158  $RUNNER_TEMP/wi.sh" | sha256sum -c -
           dotnet --version
-          sudo bash "$RUNNER_TEMP/wi.sh" -v 10.0.126 -t 8.0.400 --dotnet-install-dir "$(dirname "$(readlink -f "$(command -v dotnet)")")"
+          for attempt in 1 2 3; do
+            sudo bash "$RUNNER_TEMP/wi.sh" -v 10.0.126 -t 8.0.400 --dotnet-install-dir "$(dirname "$(readlink -f "$(command -v dotnet)")")" && break
+            [ "$attempt" = 3 ] && exit 1
+            echo "workload install failed (attempt $attempt), retrying"; sleep $((attempt * 15))
+          done
 
       - name: dotnet test (Playarr.Tizen.Logic.Tests)
         run: dotnet test tests/Playarr.Tizen.Logic.Tests/Playarr.Tizen.Logic.Tests.csproj

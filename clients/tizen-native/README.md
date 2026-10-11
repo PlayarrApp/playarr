@@ -20,3 +20,19 @@ behaviour and tokens match it.
 - NUI aborts on the Tizen TV emulator unless multisampling is off: `Program.Main` calls libc `setenv("DALI_MULTI_SAMPLING_LEVEL", "-1")`
   (`Environment.SetEnvironmentVariable` does not reach native code on Linux).
 - `sdb shell` and `dlog` are disabled on the TV profile; read app output (stderr is redirected) from the emulator's kernel log.
+
+## What is built
+
+Sign-in (QR via the hosted link broker, as `tizen-native`), nav rail with D-pad focus, Home, Movies/Series/Music grids with the
+A-Z rail and the Filters drawer, film and series detail with a cast rail, search, Settings (appearance), the profile picker,
+calendar (month, week, agenda), long-press title actions, and HLS playback on the TV player plane (controls, resume, progress
+reports). Downloads, Playlists, Watchlist and Requests show an honest "not available yet" page.
+
+Layout, tokens and focus follow web TV at 1920x1080; the geometry in the code is measured from the web DOM. Artwork goes through
+the server's artwork route (`/api/v1/artwork/...`), like web.
+
+## Parity driver
+
+Build with `-p:PlayarrDebug=true` (never in CI or release): the app then starts a control server on port 8765 (`/state`, `/key`,
+`/route`, `/theme`, `/text`). `scripts/parity/drivers/tizen-native.mjs` drives the shared suite through `sdb forward` and
+screenshots the emulator display (`docs/parity/DEVICES.md`).

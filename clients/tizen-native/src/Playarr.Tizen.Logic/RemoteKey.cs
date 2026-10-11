@@ -1,7 +1,7 @@
 namespace Playarr.Tizen.Logic;
 
 /// <summary>What the app does with a remote press, independent of the Tizen key name.</summary>
-public enum RemoteKey { None, Up, Down, Left, Right, Select, Back, PlayPause, Play, Pause, Stop, FastForward, Rewind }
+public enum RemoteKey { None, Up, Down, Left, Right, Select, SelectLong, Back, PlayPause, Play, Pause, Stop, FastForward, Rewind }
 
 public static class RemoteKeys
 {

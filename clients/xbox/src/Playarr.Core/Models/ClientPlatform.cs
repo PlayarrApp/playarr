@@ -41,6 +41,9 @@ namespace Playarr.Core.Models
         /// <c>DeviceCodeRequest.client_platform</c> when pairing.
         /// </summary>
         Xbox,
+
+        /// <summary>The native Samsung Tizen TV client (Tizen .NET / NUI).</summary>
+        TizenNative,
     }
 
     public static class ClientPlatformExtensions
@@ -61,6 +64,7 @@ namespace Playarr.Core.Models
                 case ClientPlatform.TvTizen: return "tv-tizen";
                 case ClientPlatform.TvVidaa: return "tv-vidaa";
                 case ClientPlatform.Xbox: return "xbox";
+                case ClientPlatform.TizenNative: return "tizen-native";
                 default:
                     throw new ArgumentOutOfRangeException(
                         nameof(platform),
@@ -93,6 +97,7 @@ namespace Playarr.Core.Models
                 case "tv-tizen": return ClientPlatform.TvTizen;
                 case "tv-vidaa": return ClientPlatform.TvVidaa;
                 case "xbox": return ClientPlatform.Xbox;
+                case "tizen-native": return ClientPlatform.TizenNative;
                 default: return null;
             }
         }

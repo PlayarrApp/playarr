@@ -1,4 +1,7 @@
+using HostedLinkClient = Playarr.Tizen.Logic.HostedLinkClient;
 using System.Runtime.InteropServices;
+using Playarr.Core.Auth;
+using Playarr.Core.Models;
 using Playarr.Tizen.Logic;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
@@ -16,23 +19,119 @@ internal sealed class Program : NUIApplication
     protected override void OnCreate()
     {
         base.OnCreate();
+        SynchronizationContextHolder.Ui = SynchronizationContext.Current;
         var window = Window.Default;
-        window.BackgroundColor = new Color(0.125f, 0.125f, 0.125f, 1f);
-        window.Add(new TextLabel("Playarr")
-        {
-            PointSize = 48,
-            TextColor = Color.White,
-            PositionX = 120,
-            PositionY = 80,
-            WidthResizePolicy = ResizePolicyType.UseNaturalSize,
-            HeightResizePolicy = ResizePolicyType.UseNaturalSize,
-        });
-        window.KeyEvent += (_, e) =>
-        {
-            if (e.Key.State != Key.StateType.Down) return;
-            if (RemoteKeys.FromName(e.Key.KeyPressedName) == RemoteKey.Back) Exit();
-        };
+        Ui.RegisterFonts();
+        var data = global::Tizen.Applications.Application.Current.DirectoryInfo.Data;
+        var store = new FileSessionStore(data);
+        if (store.GetSessionAsync().GetAwaiter().GetResult() is null) StartSignIn(window, store);
+        else ShowShell(window, store);
     }
+
+    private global::Tizen.NUI.Timer? _longPress;
+    private bool _longFired;
+
+    /// <summary>Select fires on release; held for 0.8 s it becomes SelectLong (web's long-press actions).</summary>
+    private void HandleSelect(Key.StateType state)
+    {
+        if (state == Key.StateType.Down)
+        {
+            if (_longPress is not null) return; // key repeat
+            _longFired = false;
+            _longPress = new global::Tizen.NUI.Timer(800);
+            _longPress.Tick += (_, _) => { _longFired = true; _longPress = null; _shell?.OnKey(RemoteKey.SelectLong); return false; };
+            _longPress.Start();
+        }
+        else if (state == Key.StateType.Up)
+        {
+            _longPress?.Stop(); _longPress = null;
+            if (!_longFired) _shell?.OnKey(RemoteKey.Select);
+        }
+    }
+
+    private Shell? _shell;
+    private AppEnv? _env;
+    private EventHandler<Window.KeyEventArgs>? _keys;
+
+    private void ShowShell(Window window, FileSessionStore store, string route = "/")
+    {
+        _env ??= AppEnv.Create(store);
+        var env = _env;
+        if (env is null) return;
+        env.Theme = PlayarrTheme.ByName(store.Theme());
+        if (_shell is not null) { window.Remove(_shell); _shell.Dispose(); }
+        var shell = _shell = new Shell(env, Exit);
+        window.Add(shell);
+        shell.Navigate(route);
+        _ = env.LoadProfileNameAsync(shell.SetProfileName).ContinueWith(_ => { if (env.CurrentAvatar is { } a) SynchronizationContextHolder.Post(() => shell.SetAvatar(a)); });
+        env.SignOut = () =>
+        {
+            store.ClearSessionAsync().GetAwaiter().GetResult();
+            if (_keys is not null) window.KeyEvent -= _keys;
+            if (_shell is not null) { window.Remove(_shell); _shell.Dispose(); _shell = null; }
+            _env = null;
+            StartSignIn(window, store);
+        };
+        env.SetTheme = name =>
+        {
+            store.SaveTheme(name);
+            ShowShell(window, store, shell.Route);
+        };
+#if PLAYARR_DEBUG
+        _debug ??= new DebugMirror(() => _shell!, () => _env!);
+        _debug.Start();
+#endif
+        if (_keys is not null) window.KeyEvent -= _keys;
+        _keys = (_, e) =>
+        {
+            var name = e.Key.KeyPressedName;
+            if (RemoteKeys.FromName(name) == RemoteKey.Select) { HandleSelect(e.Key.State); return; }
+            if (e.Key.State != Key.StateType.Down) return;
+#if PLAYARR_DEBUG
+            if (e.Key.KeyPressedName == "1") { _ = DebugPlayFirstAsync(env, _shell!); return; }
+#endif
+            _shell!.OnKey(RemoteKeys.FromName(e.Key.KeyPressedName));
+        };
+        window.KeyEvent += _keys;
+    }
+
+#if PLAYARR_DEBUG
+    private DebugMirror? _debug;
+#endif
+
+#if PLAYARR_DEBUG
+    private static async Task DebugPlayFirstAsync(AppEnv env, Shell shell)
+    {
+        var rows = await env.Api.ListWatchProgressAsync();
+        var file = rows.FirstOrDefault()?.MediaFileId;
+        if (file is { } f) SynchronizationContextHolder.Post(() => shell.Navigate("/player/" + f));
+    }
+#endif
+
+    private void StartSignIn(Window window, FileSessionStore store)
+    {
+        var screen = new LoginScreen(PlayarrTheme.Dark);
+        window.Add(screen);
+        EventHandler<Window.KeyEventArgs>? signInKeys = null;
+        signInKeys = (_, e) => { if (e.Key.State == Key.StateType.Down && RemoteKeys.FromName(e.Key.KeyPressedName) == RemoteKey.Back) Exit(); };
+        window.KeyEvent += signInKeys;
+        var ui = SynchronizationContext.Current;
+        var flow = new SignIn(new HostedLinkClient(new HttpClient()), store,
+            url => new DeviceFlowClient(url, clientPlatform: ClientPlatform.TizenNative),
+            state => ui!.Post(_ =>
+            {
+                if (state.Stage == SignInStage.SignedIn) { window.Remove(screen); ShowShell(window, store); return; }
+                screen.Show(state);
+                if (state.Code is { } c) { _expires = c.ExpiresAt; }
+            }, null));
+        _ = flow.RunAsync(_cts.Token);
+        var tick = new global::Tizen.NUI.Timer(1000);
+        tick.Tick += (_, _) => { if (_expires is { } e) screen.Tick(e); return true; };
+        tick.Start();
+    }
+
+    private readonly CancellationTokenSource _cts = new();
+    private DateTimeOffset? _expires;
 
     private static void Main(string[] args)
     {

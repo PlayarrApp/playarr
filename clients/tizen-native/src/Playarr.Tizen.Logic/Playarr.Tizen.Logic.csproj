@@ -7,6 +7,7 @@
     <RootNamespace>Playarr.Tizen.Logic</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     <ProjectReference Include="../../../xbox/src/Playarr.Core/Playarr.Core.csproj" />
   </ItemGroup>
 </Project>

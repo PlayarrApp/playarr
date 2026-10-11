@@ -1,0 +1,44 @@
+using Playarr.Core.Models;
+
+namespace Playarr.Tizen;
+
+/// <summary>Route table: web routes to native pages.</summary>
+internal static class Pages
+{
+    public static IPage? Create(AppEnv env, string route) => route switch
+    {
+        "/" => new HomeScreen(env),
+        "/movies" => new LibraryScreen(env, WorkKind.Movie, "Movies", "/movies"),
+        "/series" => new LibraryScreen(env, WorkKind.Series, "Series", "/series"),
+        _ when route.StartsWith("/calendar") => CalendarFor(env, route),
+        "/settings" => new SettingsScreen(env),
+        "/search" => new SearchScreen(env),
+        "/profiles" => new ProfilesScreen(env),
+        "/music" => new LibraryScreen(env, WorkKind.Artist, "Music", "/music"),
+        _ when route.StartsWith("/player/") => PlayerFor(env, route),
+        _ when route.StartsWith("/series/") && Guid.TryParse(route[8..], out var series) => new SeriesDetailScreen(env, series),
+        _ when route.StartsWith("/movies/") && Guid.TryParse(route[8..], out var movie) => new DetailScreen(env, movie),
+        "/downloads" => new UnavailableScreen(env, "Downloads", route),
+        "/playlists" => new UnavailableScreen(env, "Playlists", route),
+        "/watchlist" => new UnavailableScreen(env, "Watchlist", route),
+        "/requests" => new UnavailableScreen(env, "Requests", route),
+        _ => null,
+    };
+
+    private static IPage? PlayerFor(AppEnv env, string route)
+    {
+        var parts = route[8..].Split('?');
+        if (!Guid.TryParse(parts[0], out var file)) return null;
+        long start = 0;
+        if (parts.Length > 1 && parts[1].StartsWith("t=")) long.TryParse(parts[1][2..], out start);
+        return new PlayerScreen(env, file, start);
+    }
+
+    private static IPage CalendarFor(AppEnv env, string route)
+    {
+        var view = route.Contains("view=month") ? Playarr.Core.Models.CalendarView.Month : route.Contains("view=week") ? Playarr.Core.Models.CalendarView.Week : Playarr.Core.Models.CalendarView.Agenda;
+        var screen = new CalendarScreen(env, view);
+        if (route.Contains("panel=filters")) screen.OpenFiltersFromRoute();
+        return screen;
+    }
+}

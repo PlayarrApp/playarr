@@ -1,0 +1,245 @@
+using Playarr.Core.Models;
+using Playarr.Tizen.Logic;
+using Tizen.NUI;
+using Tizen.NUI.BaseComponents;
+
+namespace Playarr.Tizen;
+
+/// <summary>Series detail (web WorkDetail for a series): lead episode copy and actions on the left, one episode rail per season on the right.</summary>
+internal sealed class SeriesDetailScreen : IPage
+{
+    private const float RailX = 881.6f, CardPitch = 292.95f, FocusedHeadingY = 358f, RailPitch = 314.3f, ClipX = 729.6f;
+
+    private sealed class Rail { public View Row = new(); public float Scroll; public List<int> Items = new(); }
+
+    private readonly AppEnv _env;
+    private readonly PlayarrTheme _t;
+    private readonly Guid _id;
+    private readonly View _root = new();
+    private readonly View _content = new();
+    private readonly View _stack = new() { PositionX = -ClipX };
+    private readonly View _copy = new();
+    private readonly KeyArt _keyArt;
+    private readonly FocusSet _focus = new();
+    private readonly AuthImage _images;
+    private readonly List<Rail> _rails = new();
+    private readonly List<(int Rail, int Col, EpisodeDetail Ep, SeasonDetail Season)> _episodes = new();
+    private WorkDetail? _detail;
+    private IReadOnlyDictionary<Guid, WatchProgress> _progress = new Dictionary<Guid, WatchProgress>();
+    private int _activeRail, _seasonCount;
+    private int _leadFocus;
+
+    public bool IsReady => _focus.Items.Count > 0;
+    public View Root => _root;
+    public string Route => $"/series/{_id}";
+    public string? FocusedLabel => _focus.Item?.Label;
+    public float FocusCentreY => _focus.CurrentRect is { Height: > 0 } r ? r.CentreY : 540;
+
+    public SeriesDetailScreen(AppEnv env, Guid id)
+    {
+        _env = env; _t = env.Theme; _id = id; _images = new AuthImage(env.Api);
+        _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
+        _root.BackgroundColor = Ui.C(_t.Surface);
+        _keyArt = new KeyArt(env);
+        _root.Add(_keyArt.Root);
+        _root.Add(_content);
+        _ = LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var detail = await _env.Api.GetWorkAsync(_id);
+            var rows = await _env.Api.ListWatchProgressAsync();
+            SynchronizationContextHolder.Post(() => { try { Build(detail, rows); } catch (Exception e) { Dbg.Log("SDETAIL build failed: " + e); } });
+        }
+        catch (Exception e) { Dbg.Log("SDETAIL load failed: " + e); }
+    }
+
+    private void Build(WorkDetail detail, IList<WatchProgress> rows)
+    {
+        _detail = detail;
+        _progress = rows.ToDictionary(r => r.MediaFileId);
+        var w = detail.Work;
+        _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
+
+        var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
+        back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
+        back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
+        _content.Add(back);
+        _content.Add(Ui.Text("Series", 226.6f, 56.2f, 33.6f, 700, _t.Ink, 400, 50, spacing: -1.51f));
+        _content.Add(Ui.Text(w.Title, 226.6f, 111.8f, 12.288f, 800, _t.BrandInk, 700, 18.432f, upper: true, spacing: 0.98f));
+        _content.Add(_copy);
+
+        var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
+        clip.Add(_stack);
+        _content.Add(clip);
+
+        // lead episode: the newest part-watched one, else the first
+        var all = detail.Children.Seasons.SelectMany(s => s.Episodes.Select(e => (s, e))).ToList();
+        var lead = all.Where(x => x.e.MediaFileId is { } f && _progress.TryGetValue(f, out var p) && p.State == WatchState.InProgress)
+                      .OrderByDescending(x => _progress[x.e.MediaFileId!.Value].UpdatedAt ?? DateTimeOffset.MinValue).Select(x => ((SeasonDetail, EpisodeDetail)?)(x.s, x.e)).FirstOrDefault()
+                   ?? all.Select(x => ((SeasonDetail, EpisodeDetail)?)(x.s, x.e)).FirstOrDefault();
+
+        var seasons = detail.Children.Seasons.Where(s => s.Episodes.Count > 0).OrderBy(s => s.Season.SeasonNumber).ToList();
+        for (var si = 0; si < seasons.Count; si++) BuildRail(si, seasons[si], file: (f) => { });
+        _seasonCount = seasons.Count;
+        _ = LoadCastAsync(detail);
+        if (lead is { } l) SetLead(l.Item1, l.Item2);
+        if (_focus.Items.Count > 0)
+        {
+            var leadIdx = _episodes.FindIndex(x => lead is { } ll && x.Ep == ll.Item2);
+            _focus.Set(leadIdx >= 0 ? leadIdx : 0);
+        }
+    }
+
+    private void BuildRail(int si, SeasonDetail season, Action<Guid> file)
+    {
+        var rail = new Rail();
+        var y = si * RailPitch;
+        _stack.Add(Ui.Text($"Season {season.Season.SeasonNumber}", RailX, y, 17.664f, 700, _t.Ink, 400, 26.496f, spacing: -0.53f));
+        _stack.Add(Ui.Text($"{season.Episodes.Count} episodes", RailX, y + 30.5f, 9.984f, 400, _t.InkMuted, 400, 14.976f));
+        rail.Row.PositionY = y + 80.7f; rail.Row.Size = new Size(9000, 220);
+        _stack.Add(rail.Row);
+        _rails.Add(rail);
+        for (var ci = 0; ci < season.Episodes.Count; ci++)
+        {
+            var ep = season.Episodes[ci];
+            var x = RailX + ci * CardPitch;
+            var box = new View { PositionX = x, Size = new Size(268, 200) };
+            var art = Ui.Box(0, 0, 268, 150.8f, _t.SurfaceSoft, 13.44f);
+            art.ClippingMode = ClippingModeType.ClipChildren;
+            if (ep.MediaFileId is { } f) _ = SetThumbAsync(art, f);
+            art.Add(Ui.Text(ep.Episode.EpisodeNumber.ToString("00"), 268 - 35.5f, 150.8f - 8 - 28.8f, 19.2f, 600, new Rgba(1, 1, 1), 28, 28.8f));
+            var unseen = ep.MediaFileId is { } mf && (!_progress.TryGetValue(mf, out var pr) || pr.State == WatchState.Unwatched);
+            var inProgress = ep.MediaFileId is { } mf2 && _progress.TryGetValue(mf2, out var pr2) && pr2.State == WatchState.InProgress ? pr2 : null;
+            if (inProgress is not null)
+            {
+                art.Add(Ui.Box(0, 147.8f, 268, 3, new Rgba(1, 1, 1, 0.2f)));
+                art.Add(Ui.Box(0, 147.8f, Math.Max(3, 268 * (float)inProgress.Fraction), 3, _t.Brand));
+            }
+            box.Add(art);
+            if (unseen)
+            {
+                var dot = Ui.Box(268 - 23.6f, 10.6f, 13, 13, _t.Brand, 6.5f);
+                dot.BorderlineWidth = 2; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
+                box.Add(dot);
+            }
+            var code = $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}";
+            box.Add(Ui.Text(code, 0, 165.3f, 8.832f, 700, _t.InkMuted, 46, 13.248f));
+            var tt = Ui.Text(ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}", 45.8f, 162.3f, 11.52f, 700, _t.Ink, 222, 17.28f, spacing: -0.17f);
+            box.Add(tt);
+            rail.Row.Add(box);
+            var railIdx = si; var col = ci; var epc = ep; var seasonc = season;
+            _episodes.Add((si, ci, ep, season));
+            _focus.Items.Add(new Focusable
+            {
+                Rect = () => new Box(x - rail.Scroll, FocusedHeadingY - (_activeRail - railIdx) * RailPitch + 80.7f, 268, 150.8f),
+                Label = $"play {code}".ToLowerInvariant(),
+                Select = () => PlayEpisode(epc),
+                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; tt.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.Ink); },
+                Focused = () => OnEpisodeFocused(railIdx, col, epc, seasonc),
+            });
+        }
+    }
+
+    private async Task LoadCastAsync(WorkDetail d)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, _env.Api.ResolveUrl($"/api/v1/catalog/{d.Work.Id:D}/credits"));
+            foreach (var h in await _env.Api.GetPlaybackRequestHeadersAsync()) req.Headers.TryAddWithoutValidation(h.Key, h.Value);
+            using var res = await new HttpClient().SendAsync(req);
+            if (!res.IsSuccessStatusCode) return;
+            var cast = Credits.ParseCast(await res.Content.ReadAsStringAsync());
+            if (cast.Count == 0) return;
+            SynchronizationContextHolder.Post(() =>
+            {
+                var rail = _seasonCount;
+                new PeopleRail(_env, _stack, cast, rail * RailPitch, _focus, () => _stack.PositionY, _ =>
+                {
+                    _activeRail = rail;
+                    _stack.PositionY = FocusedHeadingY - rail * RailPitch;
+                });
+            });
+        }
+        catch (Exception e) { Dbg.Log("CAST failed: " + e.Message); }
+    }
+
+    private void OnEpisodeFocused(int rail, int col, EpisodeDetail ep, SeasonDetail season)
+    {
+        _activeRail = rail;
+        var r = _rails[rail];
+        var visible = TizenClient.DesignWidth - RailX;
+        var right = (col + 1) * CardPitch - 25f;
+        if (right - r.Scroll > visible) r.Scroll = right - visible;
+        if (col * CardPitch < r.Scroll) r.Scroll = col * CardPitch;
+        r.Row.PositionX = -r.Scroll;
+        _stack.PositionY = FocusedHeadingY - rail * RailPitch;
+        SetLead(season, ep);
+    }
+
+    private void SetLead(SeasonDetail season, EpisodeDetail ep)
+    {
+        foreach (var c in _copy.Children.ToArray()) { _copy.Remove(c); c.Dispose(); }
+        var w = _detail!.Work;
+        var code = $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}";
+        _copy.Add(Ui.Text(code, 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
+        var title = Ui.Text(w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, multiline: true, spacing: -4.98f, maxLines: 5);
+        _copy.Add(title);
+        var lines = Math.Clamp((int)Math.Round(title.GetHeightForWidth(369) / (69.12f * 1.364f)), 1, 5);
+        var bas = 303.5f + 62.208f * lines;
+        _copy.Add(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 21.7f, 21.12f, 600, _t.InkSoft, 312, 24.288f, spacing: -0.74f));
+        var meta = new List<string> { $"Season {season.Season.SeasonNumber}", code };
+        if (ep.RuntimeMs is > 0) meta.Add(DetailModel.Runtime(ep.RuntimeMs.Value));
+        if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
+        if (ep.Episode.AirDate is { Length: > 0 } air && DateTime.TryParse(air, out var d)) meta.Add("Aired  " + d.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
+        meta.AddRange(w.Genres.Take(1));
+        _copy.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 73f, 10.56f, 400, _t.InkMuted, 700, 15.84f));
+        _copy.Add(Ui.Text(ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 110.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, multiline: true, maxLines: 3));
+        var yb = bas + 183.4f;
+        var hasProgress = ep.MediaFileId is { } f && _progress.TryGetValue(f, out var pr) && pr.State == WatchState.InProgress;
+        Pill(_copy, hasProgress ? "Resume" : "Start", "▶", 153.6f, yb, 156, true);
+        Pill(_copy, "Ask again", "↺", 325.6f, yb, 142, false);
+        Pill(_copy, "Add to watchlist", "+", 483.6f, yb, 142, false);
+        Pill(_copy, "Add to Playlist", "+", 641.6f, yb, 142, false);
+        _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
+    }
+
+    private void Pill(View parent, string text, string glyph, float x, float y, float w, bool primary)
+    {
+        var bg = primary ? _t.Ink : new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f);
+        var box = Ui.Box(x, y, w, 64, bg, 32);
+        if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
+        var textW = text.Length * 6.4f; var startX = (w - (11 + 9.4f + textW)) / 2;
+        box.Add(Ui.Text(glyph, startX, 22.4f, 12.8f, 400, primary ? _t.OnAccent : _t.BrandInk, 15, 19.2f));
+        box.Add(Ui.Text(text, startX + 20.4f, 23.7f, 11.136f, 700, primary ? _t.OnAccent : _t.Ink, textW + 20, 16.7f));
+        parent.Add(box);
+    }
+
+    private async Task SetThumbAsync(View art, Guid file)
+    {
+        var path = await _images.GetAsync($"/api/v1/media/{file:D}/thumbnail");
+        if (path is null) return;
+        SynchronizationContextHolder.Post(() => art.Add(new ImageView(path) { Size = new Size(268, 150.8f) }));
+    }
+
+    private void PlayEpisode(EpisodeDetail ep)
+    {
+        if (ep.MediaFileId is not { } f) return;
+        var resume = _progress.TryGetValue(f, out var p) && p.State == WatchState.InProgress ? p.PositionMs : 0;
+        _env.Navigate($"/player/{f}" + (resume > 0 ? $"?t={resume}" : ""));
+    }
+
+    public bool OnKey(RemoteKey key)
+    {
+        if (key is RemoteKey.Up or RemoteKey.Down or RemoteKey.Left or RemoteKey.Right) _keyArt.Arm();
+        switch (key)
+        {
+            case RemoteKey.Select: _focus.Item?.Select?.Invoke(); return true;
+            case RemoteKey.Back: return false;
+            default: return _focus.Items.Count == 0 ? key != RemoteKey.Left : (_focus.Move(key) || key != RemoteKey.Left);
+        }
+    }
+}
