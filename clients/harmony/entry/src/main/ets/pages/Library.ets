@@ -117,6 +117,8 @@ import { titleCountLabel } from '../core/CountFormat';
 import { AlphabetRail } from '../design/components/AlphabetRail';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
+import { libraryViews, libraryViewLabel, normaliseLibraryView, COVER_COLUMNS, COVER_CARD_WIDTH, COVER_CARD_HEIGHT, COVER_GAP_X, COVER_GAP_Y } from '../core/LibraryView';
+import { loadLibraryView, saveLibraryView } from '../AppContainer';
 import { PageShell } from '../design/components/PageShell';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
@@ -455,11 +457,15 @@ export struct Library {
   @State private activeLetter: string = '#';
   /** The Filters drawer (web `?panel=filters`). */
   @State private filtersOpen: boolean = false;
+  /** web's View choice: 'list', 'screen' (the default) or 'cover'; remembered per kind. */
+  @State private view: string = 'screen';
   /** The title whose long-press actions are open (web's media context menu), or undefined. */
   @State private actionsWork: Work | undefined = undefined;
   @State private watchIndex: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private watchLoaded: boolean = false;
   private gridScroller: Scroller = new Scroller();
+  /** The list view's own scroller (the A to Z rail jumps in whichever view is showing). */
+  private listScroller: Scroller = new Scroller();
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
   // actual values always go through design/Theme.ets's resolvers and
@@ -473,6 +479,16 @@ export struct Library {
   aboutToAppear(): void {
     this.loadPage(0);
     this.loadWatchProgress();
+    this.loadView();
+  }
+
+  private async loadView(): Promise<void> {
+    this.view = normaliseLibraryView(await loadLibraryView(this.kind), this.kind);
+  }
+
+  private chooseView(value: string): void {
+    this.view = value;
+    saveLibraryView(this.kind, value);
   }
 
   /** Web Library: the watch list once; until it loads, cards draw no marks. */
@@ -525,7 +541,8 @@ export struct Library {
     // Pages loaded by the jump are not laid out yet in this frame; scroll once they are.
     const target = index;
     setTimeout((): void => {
-      this.gridScroller.scrollToIndex(target, false, ScrollAlign.START);
+      const scroller: Scroller = this.view === 'list' ? this.listScroller : this.gridScroller;
+      scroller.scrollToIndex(target, false, ScrollAlign.START);
     }, JUMP_SCROLL_DELAY_MS);
   }
 
@@ -825,8 +842,122 @@ export struct Library {
       .backgroundColor(toResourceColor(activeColors().bg))
   }
 
+  /** The right panel by View: the landscape grid (screen), a portrait cover wall (cover) or title rows (list). */
   @Builder
   private tvGrid(): void {
+    if (this.view === 'cover') {
+      this.coverWall()
+    } else if (this.view === 'list') {
+      this.titleList()
+    } else {
+      this.screenGrid()
+    }
+  }
+
+  @Builder
+  private coverWall(): void {
+    Grid(this.gridScroller) {
+      ForEach(
+        this.items,
+        (work: Work) => {
+          GridItem() {
+            LibraryGridCell({
+              work: work,
+              cardWidth: tv(COVER_CARD_WIDTH),
+              cardHeight: tv(COVER_CARD_HEIGHT),
+              cardRadius: tv(TvGeometry.libraryGridCardRadius),
+              landscape: false,
+              unseen: this.markFor(work).unseen,
+              progress: this.markFor(work).progress,
+              onSelect: (workId: string) => {
+                this.openDetail(workId);
+              },
+              onFocused: (focused: Work) => {
+                this.setHero(focused);
+              },
+              onLongPress: (pressed: Work) => {
+                this.actionsWork = pressed;
+              },
+            })
+          }
+        },
+        (work: Work): string => work.id
+      )
+    }
+    .columnsTemplate(columnsTemplateFor(COVER_COLUMNS))
+    .columnsGap(tv(COVER_GAP_X))
+    .rowsGap(tv(COVER_GAP_Y))
+    .width(tv(COVER_CARD_WIDTH * COVER_COLUMNS + COVER_GAP_X * (COVER_COLUMNS - 1)))
+    .height('100%')
+    .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop) })
+    .margin({ left: tv(TvGeometry.libraryGridInsetLeft) })
+    .scrollBar(BarState.Off)
+    .edgeEffect(EdgeEffect.None)
+    .onScrollIndex((_first: number, last: number) => {
+      this.maybeLoadMore(last);
+    })
+    .onReachEnd(() => {
+      this.maybeLoadMore(this.items.length - 1);
+    })
+  }
+
+  /** Web's list view: one row per title (its name, then year), the hero following the focused row. */
+  @Builder
+  private titleList(): void {
+    List({ space: tv(8), scroller: this.listScroller }) {
+      ForEach(
+        this.items,
+        (work: Work) => {
+          ListItem() {
+            Row({ space: tv(16) }) {
+              Text(work.title)
+                .fontSize(tv(16.32))
+                .fontWeight(FontWeight.Bold)
+                .fontColor(toResourceColor(activeColors().ink))
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .layoutWeight(1)
+              Text(releaseYearOf(work))
+                .fontSize(tv(13.4))
+                .fontColor(toResourceColor(activeColors().inkMuted))
+            }
+            .width('100%')
+            .padding(tv(19.2))
+            .borderRadius(tv(14))
+            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceSoft, 0.45))
+            .focusable(true)
+            .onClick(() => {
+              this.openDetail(work.id);
+            })
+            .onFocus(() => {
+              this.setHero(work);
+            })
+            .gesture(
+              LongPressGesture({ repeat: false }).onAction(() => {
+                this.actionsWork = work;
+              })
+            )
+          }
+        },
+        (work: Work): string => work.id
+      )
+    }
+    .width(tv(TvGeometry.libraryGridCardWidth * TvGeometry.libraryGridColumns +
+      TvGeometry.libraryGridColumnGap * (TvGeometry.libraryGridColumns - 1)))
+    .height('100%')
+    .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop) })
+    .margin({ left: tv(TvGeometry.libraryGridInsetLeft) })
+    .scrollBar(BarState.Off)
+    .onScrollIndex((_first: number, last: number) => {
+      this.maybeLoadMore(last);
+    })
+    .onReachEnd(() => {
+      this.maybeLoadMore(this.items.length - 1);
+    })
+  }
+
+  @Builder
+  private screenGrid(): void {
     Grid(this.gridScroller) {
       ForEach(
         this.items,
@@ -947,6 +1078,14 @@ export struct Library {
 
   @Builder
   private filtersBody(): void {
+    ChoiceSegments({
+      heading: 'View',
+      choices: libraryViews(this.kind).map((value: string): Choice => ({ value: value, label: libraryViewLabel(value) })),
+      selected: this.view,
+      onChoose: (value: string): void => {
+        this.chooseView(value);
+      },
+    })
     ChoiceSegments({
       heading: 'Sort by',
       choices: TV_SORT_CHOICES,

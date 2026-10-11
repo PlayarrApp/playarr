@@ -56,12 +56,14 @@ import { DeviceProfile } from './core/DeviceProfile.ts';
 
 import {
   getCalendarLink,
+  getLibraryView,
   getPlayerDefaultQuality,
   getPlayerSubtitleLanguage,
   getPlayerSubtitleMode,
   getThemeOverride,
   initSettingsStore,
   setCalendarLink,
+  setLibraryView,
   setPlayerDefaultQuality,
   setPlayerSubtitleLanguage,
   setPlayerSubtitleMode,
@@ -183,4 +185,13 @@ export async function loadStoredCalendarLink(scope: string): Promise<string> {
 
 export async function storeCalendarLink(scope: string, url: string): Promise<void> {
   await setCalendarLink(scope, url);
+}
+
+/** The Library's saved View for a kind ('screen' when none). Pages may not import `auth/`. */
+export async function loadLibraryView(kind: string): Promise<string> {
+  return getLibraryView(kind);
+}
+
+export async function saveLibraryView(kind: string, view: string): Promise<void> {
+  await setLibraryView(kind, view);
 }

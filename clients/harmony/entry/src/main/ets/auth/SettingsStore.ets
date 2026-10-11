@@ -286,6 +286,15 @@ export async function setCalendarLink(scope: string, url: string): Promise<void>
   await putString('calendar_link:' + scope, url);
 }
 
+/** The Library's View choice (list, screen or cover), remembered per kind (web keeps it per kind in local storage). */
+export async function getLibraryView(kind: string): Promise<string> {
+  return getString('library_view:' + kind, 'screen');
+}
+
+export async function setLibraryView(kind: string, view: string): Promise<void> {
+  await putString('library_view:' + kind, view);
+}
+
 function toLibrarySortField(value: string): LibrarySortField {
   if (value === 'date_added' || value === 'recent') {
     return value;
