@@ -3124,7 +3124,7 @@ internal fun ExperienceMediaRail(
                     // Web: Home cards are THE poster card, the Library grid card (owner request 2026-10-10): `--card-w`
                     // 327.2 dp and `--card-w-cover` 191.3 dp at 1920 x 1080.
                     width = when (homeView) {
-                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidth(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else 179.4.dp
+                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidth(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else 173.dp
                         PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidth(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else 118.dp
                     },
                     homeView = homeView,
@@ -9298,6 +9298,18 @@ private const val HERO_LUMA_SAMPLE_SIZE = 32
  */
 internal const val HERO_ART_LIFT_NEAR_BLACK = false
 
+/** The widths web requests from the artwork endpoint (`defaultArtworkWidth`); hero backdrops ask for 1920. */
+internal fun playarrWebArtworkUrl(url: String, hero: Boolean): String {
+    if (!url.contains("/api/v1/artwork/work/") || url.contains('?')) return url
+    val width = when {
+        hero -> 1920
+        url.endsWith("/poster") -> 360
+        url.endsWith("/thumb") || url.endsWith("/logo") -> 540
+        else -> 780
+    }
+    return "$url?w=$width"
+}
+
 @Composable
 internal fun AuthenticatedArtwork(
     work: Work,
@@ -9323,7 +9335,8 @@ internal fun AuthenticatedArtwork(
     }
     val candidates = remember(candidateGroups) { candidateGroups.flatten().distinct() }
     var failed by remember(candidates) { mutableStateOf(0) }
-    val resolved = candidates.getOrNull(failed)
+    // Web asks the artwork endpoint for a fixed width per kind (hero backdrops 1920) and scales that image itself.
+    val resolved = candidates.getOrNull(failed)?.let { playarrWebArtworkUrl(it, heroStyle) }
     // Near-black art (e.g. a dark film still) is sampled once from the decoded bitmap and lifted.
     var exposureGain by remember(resolved) { mutableStateOf(1f) }
     if (serverAccess == null || resolved == null) {
@@ -9336,6 +9349,8 @@ internal fun AuthenticatedArtwork(
     val request = remember(resolved, requestToken, heroStyle) {
         ImageRequest.Builder(context)
             .data(resolved)
+            // Decode at the served width and scale once at draw time, as the browser does.
+            .size(coil3.size.Size.ORIGINAL)
             // Hero art is sampled for luminance once decoded; hardware bitmaps cannot be read back.
             .apply { if (heroStyle) allowHardware(false) }
             .apply {
@@ -9353,6 +9368,7 @@ internal fun AuthenticatedArtwork(
         model = request,
         contentDescription = work.title,
         contentScale = contentScale,
+        filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
         onError = { failed += 1 },
         onSuccess = if (heroStyle && HERO_ART_LIFT_NEAR_BLACK) {
             { state ->
