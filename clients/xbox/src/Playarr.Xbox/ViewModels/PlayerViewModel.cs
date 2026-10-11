@@ -761,7 +761,8 @@ namespace Playarr.Xbox.ViewModels
             Player.CommandManager.NextReceived += (sender, args) =>
             {
                 args.Handled = true;
-                if (EndOfPlayback.Phase != EndOfPlaybackPhase.Playing && EndOfPlayback.Next != null)
+                // Remote Next skips to the queued item at any time, as the Next button in the player does.
+                if (EndOfPlayback.Next != null)
                 {
                     PlayNextNow();
                 }
@@ -772,6 +773,31 @@ namespace Playarr.Xbox.ViewModels
             updater.Type = MediaPlaybackType.Video;
             updater.VideoProperties.Title = string.IsNullOrEmpty(Title) ? "Playarr" : Title;
             updater.Update();
+            _ = AddNowPlayingArtworkAsync();
+        }
+
+        /// <summary>The now-playing card's artwork: the title's poster from the server's artwork endpoint.</summary>
+        private async Task AddNowPlayingArtworkAsync()
+        {
+            if (_workId is not { } work)
+            {
+                return;
+            }
+
+            try
+            {
+                var bytes = await _environment.ApiClient.GetWorkArtworkAsync(work, ImageKind.Poster, 360);
+                var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+                await stream.WriteAsync(System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBufferExtensions.AsBuffer(bytes));
+                stream.Seek(0);
+                var updater = Player.SystemMediaTransportControls.DisplayUpdater;
+                updater.Thumbnail = Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream);
+                updater.Update();
+            }
+            catch (Exception)
+            {
+                // Artwork is decoration: the card still shows the title and the position.
+            }
         }
 
         public void Dispose()
