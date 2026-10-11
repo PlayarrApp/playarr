@@ -194,9 +194,12 @@ class MainActivity : ComponentActivity() {
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         }?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
         // Debuggable builds only: start on a given route so parity captures reach every screen with the D-pad alone.
-        io.playarr.mobile.ui.parityRoute = intent.getStringExtra("parity_route")?.takeIf {
+        val parityTarget = intent.getStringExtra("parity_route")?.takeIf {
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 && it.isNotBlank()
         }
+        // `player/<mediaFileId>` plays that file (the suite's pinned ids); it is not a nav route, so it must never reach the NavHost.
+        io.playarr.mobile.ui.parityPlay = parityTarget?.removePrefix("player/")?.takeIf { parityTarget.startsWith("player/") }
+        io.playarr.mobile.ui.parityRoute = parityTarget?.takeUnless { it.startsWith("player/") }
         io.playarr.mobile.ui.parityPauseAtMs = intent.getLongExtra("parity_pause_at_ms", -1L).takeIf {
             it >= 0L && (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         }

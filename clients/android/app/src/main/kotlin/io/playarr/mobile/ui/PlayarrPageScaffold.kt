@@ -477,6 +477,9 @@ internal var parityClock: java.time.Instant? = null
 /** Debug builds: the route the app opens on (`parity_route` launch extra), for D-pad-only parity captures. */
 internal var parityRoute: String? = null
 
+/** Debug builds: a media file id to play on launch (`parity_route=player/<id>`), as the other clients' parity drivers do. */
+internal var parityPlay: String? = null
+
 internal fun playarrNow(zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): java.time.LocalDateTime =
     parityClock?.let { java.time.LocalDateTime.ofInstant(it, zone) } ?: java.time.LocalDateTime.now(zone)
 

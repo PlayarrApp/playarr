@@ -1459,6 +1459,13 @@ internal fun PlayarrExperience(
     playerViewModel: ExperiencePlayerViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
+    LaunchedEffect(Unit) {
+        parityPlay?.let { id ->
+            parityPlay = null
+            viewModel.startPlayback(id, emptyList())
+            navController.navigate("experience-player/${Uri.encode(id)}")
+        }
+    }
     val entry by navController.currentBackStackEntryAsState()
     val currentRoute = entry?.destination?.route.orEmpty().substringBefore('?')
     var detailSectionRoute by remember { mutableStateOf<String?>(null) }
