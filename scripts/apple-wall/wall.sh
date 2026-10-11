@@ -56,8 +56,13 @@ token() { # a fresh access token for the Device Test profile, masked in the log
   echo "::add-mask::$t" >&2; printf '%s' "$t"
 }
 
+crashes() { # recent crash reports and a memory snapshot for the diagnosis artifact
+  mkdir -p "$WORK/failed"; vm_stat > "$WORK/failed/vm_stat.txt" 2>&1 || true
+  find "$HOME/Library/Logs/DiagnosticReports" -type f -mmin -90 2>/dev/null | head -5 | while read -r f; do head -c 4000 "$f" > "$WORK/failed/$(basename "$f").txt"; done
+}
+
 rejected() { # keep the frames and the app's recent log for diagnosis (the log has no credentials)
-  rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"
+  rm -rf "$WORK/failed"; mv "$OUT" "$WORK/failed"; crashes
   if [[ $KIND == macos ]]; then cp "$WORK/app.log" "$WORK/failed/app.log" 2>/dev/null || true
   else xcrun simctl spawn "$UDID" log show --last 5m --style compact --predicate 'subsystem CONTAINS "playarr" OR processImagePath CONTAINS "Playarr"' 2>/dev/null | tail -n 400 > "$WORK/failed/app.log" || true; fi
 }
@@ -83,8 +88,17 @@ pin_device() { # the app must send the device id its token was issued for
   esac
 }
 
+ensure_sim() { # a simulator that died mid-run (memory pressure on the runner) is booted again
+  [[ $KIND == macos ]] && return 0
+  if ! xcrun simctl list devices booted | grep -q "$UDID"; then
+    log "simulator was not booted: booting it again"; vm_stat | head -4 | tr '\n' ' '; echo
+    xcrun simctl boot "$UDID" 2>/dev/null || true; xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true; sleep 10
+  fi
+}
+
 launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route (default Home)
   local theme=$1 route=${2:-home}
+  ensure_sim
   case $KIND in
     tvos)
       xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
