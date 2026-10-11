@@ -1,1 +1,0 @@
-- Linux phone client: library cards are drawn 24 at a time so long lists open quickly.

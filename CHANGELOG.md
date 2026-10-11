@@ -282,6 +282,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Linux phone client: MPRIS now-playing controls (title, poster, position, play, pause and seek) for the shell and lock screen.
 - Fire TV: playback reports the device's real capabilities (HEVC Main 10 up to 4K at 60 fps, HDR10 and HLG, 6 channels, Dolby Digital passthrough), Settings > Player has the Force direct video and Force direct audio switches (off by default, sent only when on), and a 422 colour-format answer shows the server's message with no retry.
 - Xbox: the profile picker and the nav rail show the profile's avatar plate (the account's preset or custom avatar, else the preset picked by hashing the profile id), as on the web.
 - Windows desktop: the app scales its TV layout to the window (resizable, minimum 640x360) with a draggable title bar, from the same code as the Xbox build.
@@ -454,6 +455,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Linux phone client: library cards are drawn 24 at a time so long lists open quickly.
 - Linux phone client: web-exact sizes for calendar, detail, drawers, profiles and preferences; the web library order.
 - Xbox: the system now-playing card (SystemMediaTransportControls) shows the title's poster, and its Next button skips to the queued episode at any time.
 - Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.
