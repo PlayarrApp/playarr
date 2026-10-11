@@ -94,6 +94,8 @@ impl CatalogQuery {
 pub struct Client {
     agent: ureq::Agent,
     session: Arc<Mutex<Session>>,
+    /// Only one refresh runs at a time; the others wait and reuse its result.
+    refresh_lock: Arc<Mutex<()>>,
 }
 
 impl Client {
@@ -101,6 +103,7 @@ impl Client {
         Client {
             agent: agent(),
             session: Arc::new(Mutex::new(session)),
+            refresh_lock: Arc::default(),
         }
     }
 
@@ -130,7 +133,8 @@ impl Client {
     ) -> Result<ureq::http::Response<ureq::Body>> {
         let mut refreshed = false;
         loop {
-            let auth = format!("Bearer {}", self.token());
+            let used = self.token();
+            let auth = format!("Bearer {used}");
             let url = self.url(path);
             let resp = match (method, body) {
                 ("GET", _) => {
@@ -161,7 +165,7 @@ impl Client {
             let code = resp.status().as_u16();
             if code == 401 && !refreshed {
                 refreshed = true;
-                if self.refresh().is_ok() {
+                if self.refresh(&used).is_ok() {
                     continue;
                 }
             }
@@ -182,7 +186,13 @@ impl Client {
         }
     }
 
-    fn refresh(&self) -> Result<()> {
+    /// Swaps the refresh token for a new pair. `used` is the access token that was refused: if another thread already
+    /// replaced it, there is nothing to do. The new pair is on disk before anyone uses it.
+    fn refresh(&self, used: &str) -> Result<()> {
+        let _one = self.refresh_lock.lock().unwrap();
+        if self.token() != used {
+            return Ok(());
+        }
         let (refresh_token, device_id) = {
             let s = self.session.lock().unwrap();
             (s.refresh_token.clone(), s.device_id.clone())

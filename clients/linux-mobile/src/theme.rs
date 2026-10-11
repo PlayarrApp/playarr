@@ -65,6 +65,14 @@ thread_local! {
 
 /// Applies `"dark"`, `"light"` or `"system"`: the libadwaita scheme plus the matching token CSS.
 pub fn apply(theme: &str) {
+    // Text as Chromium draws it: unhinted outlines and metrics, grayscale anti-aliasing.
+    if let Some(st) = gtk4::Settings::default() {
+        st.set_gtk_hint_font_metrics(false);
+        st.set_gtk_xft_hinting(0);
+        st.set_gtk_xft_hintstyle(Some("hintnone"));
+        st.set_gtk_xft_antialias(1);
+        st.set_gtk_xft_rgba(Some("none"));
+    }
     let mgr = adw::StyleManager::default();
     mgr.set_color_scheme(match theme {
         "light" => adw::ColorScheme::ForceLight,
