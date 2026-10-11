@@ -10,6 +10,9 @@ namespace Playarr.Tizen.Logic;
 /// </summary>
 public sealed class FileSessionStore(string directory) : ITokenStore
 {
+    /// <summary>The app data directory (also holds downloads.json and the downloaded files).</summary>
+    public string DataDirectory => directory;
+
     private readonly string _session = Path.Combine(directory, "session.json");
     private readonly string _device = Path.Combine(directory, "device.json");
     private readonly string _server = Path.Combine(directory, "server.json");

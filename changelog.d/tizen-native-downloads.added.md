@@ -1,0 +1,1 @@
+- Samsung Tizen native client: offline downloads. Pick a quality and keep-until from the film Download button; the Downloads page lists active, downloaded and needs-attention items with Pause, Resume, Cancel, Play offline, Edit keep-until and Delete.

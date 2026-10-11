@@ -29,7 +29,7 @@ internal sealed class DetailScreen : IPage
     public bool IsReady => _focus.Items.Count > 0;
     public View Root => _root;
     public string Route => $"/movies/{_id}";
-    public string? FocusedLabel => _focus.Item?.Label;
+    public string? FocusedLabel => _dl?.FocusedLabel ?? _focus.Item?.Label;
     public float FocusCentreY => _focus.CurrentRect is { Height: > 0 } r ? r.CentreY : 540;
 
     public DetailScreen(AppEnv env, Guid id)
@@ -93,7 +93,7 @@ internal sealed class DetailScreen : IPage
 
         var y1 = bas + 203.8f; var y2 = y1 + 76f;
         var resume = _progress is { State: WatchState.InProgress } p ? "Resume from " + DetailModel.Clock(p.PositionMs) : "Play";
-        AddButton("Download", "⇩", 153.6f, y1, 142, primary: false, label: "download", select: () => Toast("Downloads are not available in this app yet."));
+        AddButton("Download", "⇩", 153.6f, y1, 142, primary: false, label: "download", select: () => OpenDownload(w));
         AddButton("Playback", "☷", 311.6f, y1, 142, primary: false, label: "playback settings", select: () => Toast("Playback settings are not available in this app yet."));
         PlayIndex = _focus.Items.Count;
         AddButton(resume, "▶", 469.6f, y1, resume.Length > 4 ? 160.6f : 112, primary: true, label: $"play {w.Title}".ToLowerInvariant(), select: () => PlayFrom(_progress is { State: WatchState.InProgress } rp ? rp.PositionMs : null));
@@ -192,6 +192,48 @@ internal sealed class DetailScreen : IPage
         _chapterRow.PositionX = -_chapterScroll;
     }
 
+    private DownloadDrawer? _dl;
+
+    /// <summary>Loads the file's download options, then asks for quality and keep-until; the transfer runs in the engine and shows on /downloads.</summary>
+    private void OpenDownload(Work w)
+    {
+        if (_file is not { } file || _dl is not null) return;
+        _dl = new DownloadDrawer(_env, "Download", [], KeepUntil.Forever, (_, _) => { }, CloseDownload, loading: "Loading download options…");
+        _root.Add(_dl.Root);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var (container, options) = await _env.DownloadsServer.OptionsAsync(file);
+                SynchronizationContextHolder.Post(() =>
+                {
+                    if (_dl is null) return;
+                    CloseDownload();
+                    _dl = new DownloadDrawer(_env, w.Title, options, KeepUntil.Forever, (q, keep) => StartDownload(w, file, container, q ?? options[0], keep), CloseDownload);
+                    _root.Add(_dl.Root);
+                });
+            }
+            catch (Exception e)
+            {
+                Dbg.Log("DOWNLOAD options failed: " + e.Message);
+                SynchronizationContextHolder.Post(() => { CloseDownload(); Toast("Download options could not be loaded."); });
+            }
+        });
+    }
+
+    private void StartDownload(Work w, Guid file, string container, DownloadQuality q, KeepUntil keep)
+    {
+        CloseDownload();
+        var rec = new DownloadRecord { WorkId = w.Id.ToString("D"), Title = w.Title, QualityId = q.Id, QualityLabel = q.Label, Container = container, TotalBytes = q.Estimate ? null : q.Bytes, RuntimeMs = _detail?.RuntimeMs ?? 0 };
+        _ = Task.Run(async () =>
+        {
+            try { await _env.Downloads.StartAsync(rec, file, keep); SynchronizationContextHolder.Post(() => Toast("Download started. Find it under Downloads.")); }
+            catch (Exception e) { Dbg.Log("DOWNLOAD start failed: " + e.Message); SynchronizationContextHolder.Post(() => Toast(e.Message.Length is > 0 and < 90 ? e.Message : "The download could not be started.")); }
+        });
+    }
+
+    private void CloseDownload() { if (_dl is null) return; _root.Remove(_dl.Root); _dl.Root.Dispose(); _dl = null; }
+
     private void PlayFrom(long? startMs)
     {
         if (_file is not { } f) return;
@@ -210,6 +252,7 @@ internal sealed class DetailScreen : IPage
 
     public bool OnKey(RemoteKey key)
     {
+        if (_dl is not null) return _dl.OnKey(key);
         if (key is RemoteKey.Up or RemoteKey.Down or RemoteKey.Left or RemoteKey.Right) _keyArt.Arm();
         switch (key)
         {

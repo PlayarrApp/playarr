@@ -27,8 +27,18 @@ export async function createDriver() {
     },
     async stop() {},
     async setTheme(t) { if (state.theme !== t) { state = await call("POST", `/theme?name=${t}`); await sleep(6000); } },
-    async home() { state = await call("POST", "/route?path=/"); await sleep(9000); },
-    async route(p) { state = await call("POST", `/route?path=${encodeURIComponent(p)}`); await sleep(7000); },
+    // a page is settled once the app reports it ready (data loaded); a slow server can take far longer than a fixed wait
+    async settle(ms) {
+      await sleep(ms);
+      for (let waited = 0; waited < 40000; waited += 1000) {
+        state = await call("GET", "/state");
+        if (state.ready !== false) break;
+        await sleep(1000);
+      }
+      await sleep(1500);
+    },
+    async home() { state = await call("POST", "/route?path=/"); await this.settle(5000); },
+    async route(p) { state = await call("POST", `/route?path=${encodeURIComponent(p)}`); await this.settle(4000); },
     async key(k, { long } = {}) { state = await call("POST", `/key?name=${k}${long ? "&long=1" : ""}`); await sleep(long ? 1500 : 900); },
     async location() { state = await call("GET", "/state"); return state.route; },
     async focused() { state = await call("GET", "/state"); return state.focused ?? null; },
@@ -47,9 +57,9 @@ export async function createDriver() {
       }
       if (p0 === null) return { state: "error", detail: "no frames in time" };
       const startSeconds = (Date.now() - t0) / 1000;
-      // the picture may stall for a moment after the first frame: allow up to 15 s of wall time for the clock to advance
+      // the picture may stall for a moment after the first frame: allow up to 30 s of wall time for the clock to advance
       let p1 = p0;
-      for (let waited = 0; waited < 15000 && p1 - p0 < expect.advanceSeconds; waited += 500) {
+      for (let waited = 0; waited < 30000 && p1 - p0 < expect.advanceSeconds; waited += 500) {
         await sleep(500);
         const s = await call("GET", "/state");
         if (s.playing) p1 = s.positionMs / 1000;

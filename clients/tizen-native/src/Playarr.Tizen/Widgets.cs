@@ -111,7 +111,7 @@ internal sealed class KeyArt
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
                 var dark = _t.Name == "dark";
                 var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f);
-                img.Opacity = dark ? 0.72f : 0.07f; // web light: the art is only a ghost
+                img.Opacity = dark ? 0.07f : 0.07f; // web (measured at 1920x1080): the art is only a ghost in both themes
                 Root.Add(img);
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
                 Root.Add(Ui.Gradient(-20 + 1038.3f * 0.72f, 0, 1038.3f * 0.28f, 1080, true, (0, clear), (1, s)));

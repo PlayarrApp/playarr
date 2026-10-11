@@ -42,9 +42,11 @@ internal sealed class PlayerScreen : IPage
     public bool Fullscreen => true;
     public float FocusCentreY => 990;
 
-    public PlayerScreen(AppEnv env, Guid file, long startMs = 0)
+    private readonly string? _local;
+
+    public PlayerScreen(AppEnv env, Guid file, long startMs = 0, string? local = null)
     {
-        _env = env; _t = env.Theme; _file = file; _startMs = startMs;
+        _env = env; _t = env.Theme; _file = file; _startMs = startMs; _local = local;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _controls.Size = _root.Size;
         _root.Add(_controls);
@@ -112,6 +114,16 @@ internal sealed class PlayerScreen : IPage
     {
         try
         {
+            if (_local is not null)
+            {
+                // downloaded copy: no session, no network; the progress report is best effort and fails quietly offline
+                var path = _env.Downloads.PlayablePath(_local);
+                var rec = _env.Downloads.Records.FirstOrDefault(r => r.Id == _local);
+                if (path is null) { SynchronizationContextHolder.Post(() => ShowError("This download is no longer on the device.")); return; }
+                var offline = new PlaybackInfoResponse { Mode = PlaybackMode.Direct, Url = path, DurationMs = rec?.RuntimeMs ?? 0 };
+                SynchronizationContextHolder.Post(() => Begin(offline, _startMs));
+                return;
+            }
             var force = _env.Store.ForceDirect();
             var client = new PlaybackClient(_env.Api, new HttpClient(), _env.Caps, force.Video, force.Audio);
             var start = _startMs;
@@ -143,11 +155,12 @@ internal sealed class PlayerScreen : IPage
             if (info.SessionId is { } sid) _player.Cookie = PlaybackClient.SessionCookie(sid);
             _player.ErrorOccurred += (_, e) => Dbg.Log("PLAY error " + e.Error);
             _player.PlaybackCompleted += (_, _) => SynchronizationContextHolder.Post(OnCompleted);
-            _player.SetSource(new MediaUriSource(_env.Abs(info.Url)));
+            _player.SetSource(new MediaUriSource(_local is not null ? info.Url : _env.Abs(info.Url)));
             _player.Display = new Display(Window.Default);
             Window.Default.BackgroundColor = Color.Transparent;
             await _player.PrepareAsync();
             if (_stopped || _player is null) return;
+            if (_info.DurationMs <= 0) { try { _info.DurationMs = _player.StreamInfo.GetDuration(); _total.Text = DetailModel.Clock(_info.DurationMs); } catch (Exception) { /* keeps the unknown length */ } }
             if (start > info.SourceOffsetMs && info.Mode != PlaybackMode.Hls) await _player.SetPlayPositionAsync((int)start, false);
             _player.Start();
             Dbg.Log("PLAY started");

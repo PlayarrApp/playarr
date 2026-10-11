@@ -18,7 +18,7 @@ internal static class Pages
         _ when route.StartsWith("/player/") => PlayerFor(env, route),
         _ when route.StartsWith("/series/") && Guid.TryParse(route[8..], out var series) => new SeriesDetailScreen(env, series),
         _ when route.StartsWith("/movies/") && Guid.TryParse(route[8..], out var movie) => new DetailScreen(env, movie),
-        "/downloads" => new UnavailableScreen(env, "Downloads", route),
+        "/downloads" => new DownloadsScreen(env),
         "/playlists" => new UnavailableScreen(env, "Playlists", route),
         "/watchlist" => new UnavailableScreen(env, "Watchlist", route),
         "/requests" => new UnavailableScreen(env, "Requests", route),
@@ -29,9 +29,13 @@ internal static class Pages
     {
         var parts = route[8..].Split('?');
         if (!Guid.TryParse(parts[0], out var file)) return null;
-        long start = 0;
-        if (parts.Length > 1 && parts[1].StartsWith("t=")) long.TryParse(parts[1][2..], out start);
-        return new PlayerScreen(env, file, start);
+        long start = 0; string? local = null;
+        foreach (var q in parts.Skip(1).SelectMany(p => p.Split('&')))
+        {
+            if (q.StartsWith("t=")) long.TryParse(q[2..], out start);
+            else if (q.StartsWith("local=")) local = q[6..];
+        }
+        return new PlayerScreen(env, file, start, local);
     }
 
     private static IPage CalendarFor(AppEnv env, string route)

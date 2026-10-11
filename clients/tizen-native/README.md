@@ -26,7 +26,7 @@ behaviour and tokens match it.
 Sign-in (QR via the hosted link broker, as `tizen-native`), nav rail with D-pad focus, Home, Movies/Series/Music grids with the
 A-Z rail and the Filters drawer, film and series detail with a cast rail, search, Settings (appearance), the profile picker,
 calendar (month, week, agenda), long-press title actions, and HLS playback on the TV player plane (controls, resume, progress
-reports). Downloads, Playlists, Watchlist and Requests show an honest "not available yet" page.
+reports), offline downloads and Playlists, Watchlist and Requests show an honest "not available yet" page except Downloads (below).
 
 Layout, tokens and focus follow web TV at 1920x1080; the geometry in the code is measured from the web DOM. Artwork goes through
 the server's artwork route (`/api/v1/artwork/...`), like web.
@@ -36,3 +36,21 @@ the server's artwork route (`/api/v1/artwork/...`), like web.
 Build with `-p:PlayarrDebug=true` (never in CI or release): the app then starts a control server on port 8765 (`/state`, `/key`,
 `/route`, `/theme`, `/text`). `scripts/parity/drivers/tizen-native.mjs` drives the shared suite through `sdb forward` and
 screenshots the emulator display (`docs/parity/DEVICES.md`).
+
+## Downloads, and what the platform does not do
+
+Downloads follow the server tickets API (`/api/v1/downloads`): choose a quality and a keep-until from the film detail Download
+button, then the Downloads page lists Active, Downloaded and Needs attention with Pause, Resume, Cancel, Play (offline, from the
+local file), Edit (keep-until) and Delete. The engine runs in the app (HttpClient with Range resume into the app data
+directory, `downloads.json` as the index), so a transfer continues only while the app is running and anything mid-transfer on
+start comes back paused.
+
+Not supported on this platform, by design of the Tizen TV profile:
+
+- **Download notifications** (progress, paused, completed, failed): a TV has no notification tray for third-party apps, so the
+  Downloads page and the in-app toast are the only surface.
+- **Now-playing notifications and media-session hooks**: the Tizen TV profile has no system media-controls surface that a
+  third-party .NET app can publish to, so title, artwork and transport controls are only on the player itself and the remote's
+  media keys.
+- **Background transfers**: the app has no background service on the TV profile.
+- Series episode downloads are not wired yet (films only); the keep-until presets are Forever, 1 week or 30 days after watched.

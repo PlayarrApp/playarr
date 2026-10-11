@@ -49,6 +49,7 @@ internal sealed class Shell : View
     public string Route => _page?.Route ?? "/";
     public IPage? Page => _page;
     public bool NavFocused => _navFocus >= 0;
+    public bool Ready => _page?.IsReady ?? true;
     public string? FocusedLabel => _navFocus >= 0 ? _nav[_navFocus].Item.Label.ToLowerInvariant() : _page?.FocusedLabel;
 
     public Shell(AppEnv env, Action exit)

@@ -17,6 +17,9 @@ public sealed class PlaybackClient(IPlayarrApiClient api, HttpClient http, Devic
         ["audio_codecs"] = "aac,mp3",
     };
 
+    public const int RetryAttempts = 5;
+    public static TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(3);
+
     public async Task<PlaybackInfoResponse> GetInfoAsync(Guid mediaFileId, long? startMs = null, CancellationToken ct = default)
     {
         var query = new List<string>();
@@ -24,14 +27,19 @@ public sealed class PlaybackClient(IPlayarrApiClient api, HttpClient http, Devic
         else foreach (var kv in Capabilities) query.Add($"{kv.Key}={Uri.EscapeDataString(kv.Value)}");
         if (startMs is > 0) query.Add($"start_position_ms={startMs}");
         var url = api.ResolveUrl($"/api/v1/playback/{mediaFileId:D}?{string.Join("&", query)}")!;
-        using var req = new HttpRequestMessage(HttpMethod.Get, url);
-        foreach (var h in await api.GetPlaybackRequestHeadersAsync(ct).ConfigureAwait(false)) req.Headers.TryAddWithoutValidation(h.Key, h.Value);
-        req.Headers.TryAddWithoutValidation("X-Playarr-Client-Platform", TizenClient.PlatformId);
-        using var res = await http.SendAsync(req, ct).ConfigureAwait(false);
-        var body = await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-        if ((int)res.StatusCode == 422) throw Refusal(body);
-        if (!res.IsSuccessStatusCode) throw new InvalidOperationException($"playback request failed: HTTP {(int)res.StatusCode}");
-        return JsonCoding.Deserialize<PlaybackInfoResponse>(body) ?? throw new InvalidOperationException("unreadable playback response");
+        // 503 no_transcode_capacity is transient (another viewer holds the slot): ask again a few times before giving up
+        for (var attempt = 1; ; attempt++)
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            foreach (var h in await api.GetPlaybackRequestHeadersAsync(ct).ConfigureAwait(false)) req.Headers.TryAddWithoutValidation(h.Key, h.Value);
+            req.Headers.TryAddWithoutValidation("X-Playarr-Client-Platform", TizenClient.PlatformId);
+            using var res = await http.SendAsync(req, ct).ConfigureAwait(false);
+            var body = await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            if ((int)res.StatusCode == 422) throw Refusal(body);
+            if ((int)res.StatusCode == 503 && attempt < RetryAttempts) { await Task.Delay(RetryDelay, ct).ConfigureAwait(false); continue; }
+            if (!res.IsSuccessStatusCode) throw new InvalidOperationException($"playback request failed: HTTP {(int)res.StatusCode}");
+            return JsonCoding.Deserialize<PlaybackInfoResponse>(body) ?? throw new InvalidOperationException("unreadable playback response");
+        }
     }
 
     /// <summary>A 422 body {"error": code, "message": text}: the text is shown as is, with no retry.</summary>

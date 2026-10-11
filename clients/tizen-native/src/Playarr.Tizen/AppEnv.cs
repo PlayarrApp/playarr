@@ -34,6 +34,10 @@ internal sealed class AppEnv
         return DeviceCaps.Tv();
     }
 
+    /// <summary>Offline downloads: server tickets fetched into the app data directory (single profile per device, so no per-profile scoping).</summary>
+    public DownloadEngine Downloads { get; }
+    public DownloadsApi DownloadsServer { get; }
+
     public string? CurrentAvatar { get; private set; }
     public string Profile { get; set; } = "Profile";
     public PlayarrTheme Theme { get; set; }
@@ -79,7 +83,12 @@ internal sealed class AppEnv
         catch (Exception e) { Dbg.Log("PLAYWORK failed: " + e.Message); }
     }
 
-    private AppEnv(FileSessionStore store, IPlayarrApiClient api) { Store = store; Api = api; Images = new AuthImage(api); Theme = PlayarrTheme.ByName(store.Theme()); }
+    private AppEnv(FileSessionStore store, IPlayarrApiClient api) { Store = store; Api = api; Images = new AuthImage(api); Theme = PlayarrTheme.ByName(store.Theme());
+        DownloadsServer = new DownloadsApi(api, new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
+        Downloads = new DownloadEngine(DownloadsServer, new DownloadStore(store.DataDirectory));
+        Downloads.Recover();
+        _ = Downloads.SweepAsync(DateTime.UtcNow);
+    }
 
     public static AppEnv? Create(FileSessionStore store)
     {
