@@ -192,7 +192,10 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .halign(gtk4::Align::Center)
         .build();
     circle.set_size_request(144, 144);
-    circle.append(&icons::image("add", 28, Tone::Ink));
+    let plus = icons::image("add", 28, Tone::Ink);
+    plus.set_hexpand(true);
+    plus.set_vexpand(true);
+    circle.append(&plus);
     col.append(&circle);
     col.append(
         &gtk4::Label::builder()

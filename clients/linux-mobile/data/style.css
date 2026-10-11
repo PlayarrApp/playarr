@@ -140,7 +140,6 @@ button.pa-row.focus { outline: 2px solid @pa_ink; outline-offset: -1px; }
 /* Profiles */
 .pa-mark { background: @pa_brand; border-radius: 999px; min-width: 38px; min-height: 38px; padding: 10px; }
 .pa-add-circle { background: radial-gradient(circle at 35% 30%, alpha(@pa_brand, 0.55), alpha(@pa_brand, 0.95)); border-radius: 999px; }
-.pa-add-circle image { margin: auto; }
 .pa-avatar.current { border-radius: 999px; box-shadow: 0 0 0 3px alpha(@pa_brand_ink, 0.9), 0 0 24px alpha(@pa_brand, 0.5); }
 .pa-tiny { font-size: 8px; letter-spacing: 1px; font-weight: 700; color: @pa_muted; }
 dropdown.pa-dropdown > button { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 8px; min-height: 44px; box-shadow: none; color: @pa_ink; }

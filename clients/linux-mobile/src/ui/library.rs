@@ -12,6 +12,8 @@ use std::rc::Rc;
 
 /// The web asks for 200 titles at a time.
 const PAGE: usize = 200;
+/// Cards drawn per step; the rest of a page waits until the list is scrolled to its end.
+const CHUNK: usize = 24;
 
 pub fn grid() -> gtk4::Box {
     gtk4::Box::builder()
@@ -92,12 +94,18 @@ struct Lib {
     /// Bumped on every reset so a late page from the old query is dropped.
     generation: Cell<u32>,
     genres: RefCell<BTreeSet<String>>,
+    /// Titles fetched but not drawn yet: pages arrive 200 at a time, cards are drawn 24 at a time.
+    buffer: RefCell<std::collections::VecDeque<crate::model::Work>>,
+    /// Titles the server has handed over so far (the next page's offset).
+    fetched: Cell<usize>,
 }
 
 impl Lib {
     fn reset(self: &Rc<Self>) {
         self.generation.set(self.generation.get() + 1);
         self.loaded.set(0);
+        self.fetched.set(0);
+        self.buffer.borrow_mut().clear();
         self.total.set(usize::MAX);
         self.busy.set(false);
         while let Some(c) = self.flow.first_child() {
@@ -106,8 +114,47 @@ impl Lib {
         self.load_more();
     }
 
+    /// Draws up to `CHUNK` buffered titles.
+    fn render_chunk(self: &Rc<Self>) {
+        for _ in 0..CHUNK {
+            let Some(w) = self.buffer.borrow_mut().pop_front() else {
+                break;
+            };
+            self.genres.borrow_mut().extend(w.genres.iter().cloned());
+            let a = self.app.clone();
+            let first = self.flow.first_child().is_none();
+            if first {
+                if let Some(k) = ["backdrop", "poster"].iter().find(|k| w.has_image(k)) {
+                    self.imgs.load(Client::artwork_path(&w.id, k, 780), &self.backdrop);
+                }
+            }
+            let opts = CardOpts {
+                selected: first,
+                unseen: self.app.is_unseen(&w),
+                ..Default::default()
+            };
+            self.loaded.set(self.loaded.get() + 1);
+            self.flow.append(&card(&self.imgs, &w, opts, move |w| a.open_work(w)));
+        }
+        let more = !self.buffer.borrow().is_empty() || self.fetched.get() < self.total.get();
+        self.status.set_label(if more {
+            "Loading more…"
+        } else if self.loaded.get() == 0 {
+            "Nothing matches these filters."
+        } else {
+            ""
+        });
+        self.status.set_visible(more || self.loaded.get() == 0);
+    }
+
     fn load_more(self: &Rc<Self>) {
-        if self.busy.get() || self.loaded.get() >= self.total.get() {
+        if self.busy.get() {
+            return;
+        }
+        if !self.buffer.borrow().is_empty() {
+            return self.render_chunk();
+        }
+        if self.fetched.get() >= self.total.get() {
             return;
         }
         self.busy.set(true);
@@ -117,7 +164,7 @@ impl Lib {
             self.clone(),
             self.client.clone(),
             self.query.borrow().clone(),
-            self.loaded.get(),
+            self.fetched.get(),
             self.generation.get(),
         );
         bg(
@@ -138,40 +185,17 @@ impl Lib {
                                 p.items.reverse();
                             }
                         }
-                        me.loaded.set(offset + n);
+                        me.fetched.set(offset + n);
                         me.total.set(if n == 0 {
-                            offset + n
+                            offset
                         } else {
                             p.total.map(|t| t.max(0) as usize).unwrap_or(usize::MAX)
                         });
                         if let Some(t) = p.total {
                             me.head.set_subtitle(&format!("{} {}", group_digits(t), me.noun));
                         }
-                        for w in &p.items {
-                            me.genres.borrow_mut().extend(w.genres.iter().cloned());
-                            let a = me.app.clone();
-                            let first = me.flow.first_child().is_none();
-                            if first {
-                                if let Some(k) = ["backdrop", "poster"].iter().find(|k| w.has_image(k)) {
-                                    me.imgs.load(Client::artwork_path(&w.id, k, 780), &me.backdrop);
-                                }
-                            }
-                            let opts = CardOpts {
-                                selected: first,
-                                unseen: me.app.is_unseen(w),
-                                ..Default::default()
-                            };
-                            me.flow.append(&card(&me.imgs, w, opts, move |w| a.open_work(w)));
-                        }
-                        let more = me.loaded.get() < me.total.get();
-                        me.status.set_label(if more {
-                            "Loading more…"
-                        } else if me.loaded.get() == 0 {
-                            "Nothing matches these filters."
-                        } else {
-                            ""
-                        });
-                        me.status.set_visible(more || me.loaded.get() == 0);
+                        me.buffer.borrow_mut().extend(p.items);
+                        me.render_chunk();
                     }
                 }
             },
@@ -355,6 +379,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         busy: Cell::new(false),
         generation: Cell::new(0),
         genres: RefCell::default(),
+        buffer: RefCell::default(),
+        fetched: Cell::new(0),
     });
     {
         let lib = lib.clone();
