@@ -94,3 +94,16 @@ export function itemMediaFileId(detail: WorkDetail, trackId: string | null | und
   const leaves = watchLeaves(detail);
   return leaves.length > 0 ? leaves[0].mediaFileId : null;
 }
+
+/** Video playlists take movies, series and sites; audio playlists take music (web's playlist target by kind). */
+export function playlistMediaTypeForKind(workKind: string): string {
+  return workKind === "artist" ? "audio" : "video";
+}
+
+/** The playlists a title can be added to: the right media class, System ones only listed when `canEditSystem` (administrators). */
+export function playlistsForKind(playlists: PlaylistResponse[], workKind: string, canEditSystem: boolean): PlaylistResponse[] {
+  const mediaType = playlistMediaTypeForKind(workKind);
+  return playlists
+    .filter((playlist) => playlist.media_type === mediaType && (canEditSystem || !playlist.is_system))
+    .sort((a, b) => compareNames(a.name, b.name));
+}

@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { childPlaylists, itemMediaFileId, itemsInOrder, moveId, playlistCaption, topLevelPlaylists } from "../main/ets/core/Playlists";
+import { childPlaylists, itemMediaFileId, itemsInOrder, moveId, playlistCaption, playlistMediaTypeForKind, playlistsForKind, topLevelPlaylists } from "../main/ets/core/Playlists";
 import type { PlaylistResponse } from "../main/ets/core/Types/Playlists";
 
 const pl = (id: string, name: string, over: Partial<PlaylistResponse> = {}): PlaylistResponse =>
@@ -43,4 +43,13 @@ test("an item plays its track, else the movie file, else the first file", () => 
   assert.equal(itemMediaFileId(artist, "t2"), "f2");
   assert.equal(itemMediaFileId(artist, null), "f1");
   assert.equal(itemMediaFileId(detail({}), null), null);
+
+test("which playlists a title can join", () => {
+});
+  const list = [pl("a", "Mixes"), pl("b", "Music", { media_type: "audio" }), pl("c", "Shared", { is_system: true }), pl("d", "Zed")];
+  assert.equal(playlistMediaTypeForKind("artist"), "audio");
+  assert.equal(playlistMediaTypeForKind("movie"), "video");
+  assert.deepEqual(playlistsForKind(list, "movie", false).map((p) => p.id), ["a", "d"]);
+  assert.deepEqual(playlistsForKind(list, "movie", true).map((p) => p.id), ["a", "c", "d"]);
+  assert.deepEqual(playlistsForKind(list, "artist", false).map((p) => p.id), ["b"]);
 });

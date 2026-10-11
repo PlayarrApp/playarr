@@ -8,6 +8,7 @@
 //   4. Keep it until its keep-until policy lapses, then delete the file and the record.
 
 import type { DownloadRecord, KeepUntil } from "./Downloads";
+import { formatBytes } from "./Downloads";
 
 export interface DownloadTicket {
   id: string;
@@ -228,4 +229,75 @@ export function downloadFileName(ticketId: string, container: string): string {
   const safeId = ticketId.replace(/[^A-Za-z0-9-]/g, "");
   const safeExt = container.replace(/[^A-Za-z0-9]/g, "");
   return safeExt.length > 0 ? safeId + "." + safeExt : safeId;
+}
+
+// ---- the quality choice --------------------------------------------------------------------------------------------
+
+/** One entry of `GET /api/v1/media/{id}/download-options`: Original or a transcode profile. */
+export interface DownloadOption {
+  id: string;
+  label: string;
+  /** null only for an unknown Original size. */
+  estimated_size_bytes: number | null;
+  /** True for a transcode profile (its size is estimated from bitrate and duration); false for Original (a real count). */
+  size_is_estimate: boolean;
+}
+
+export interface DownloadOptionsResponse {
+  media_file_id: string;
+  container: string;
+  options: DownloadOption[];
+}
+
+/** The choice's label as web shows it: the name and its size, "~" marking an estimate, "per item" for a container of many files. */
+export function downloadOptionLabel(option: DownloadOption, fileCount: number): string {
+  if (option.estimated_size_bytes === null || option.estimated_size_bytes <= 0) {
+    return option.label;
+  }
+  const size = (option.size_is_estimate ? "~" : "") + formatBytes(option.estimated_size_bytes);
+  return option.label + " · " + size + (fileCount > 1 ? " per item" : "");
+}
+
+/** The chosen quality if the server still offers it, else Original (always first). */
+export function validQuality(options: DownloadOption[], wanted: string): string {
+  for (const option of options) {
+    if (option.id === wanted) {
+      return wanted;
+    }
+  }
+  return "original";
+}
+
+// ---- keep-until presets (the Downloads page's Edit and the title actions' Download choice share these) ----------------
+
+export interface KeepPreset {
+  value: string;
+  label: string;
+}
+
+function isoDay(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/** forever, 7 or 30 days after watched, or until a date 30 days from now. */
+export function keepPresets(nowMs: number): KeepPreset[] {
+  return [
+    { value: "forever", label: "Keep forever" },
+    { value: "watched7", label: "Keep 7 days after watched" },
+    { value: "watched30", label: "Keep 30 days after watched" },
+    { value: "date30", label: "Keep until " + isoDay(nowMs + 30 * DAY_MS) },
+  ];
+}
+
+export function keepUntilFromPreset(value: string, nowMs: number): KeepUntil {
+  if (value === "watched7") {
+    return { kind: "afterWatched", amount: 7, unit: "days" };
+  }
+  if (value === "watched30") {
+    return { kind: "afterWatched", amount: 30, unit: "days" };
+  }
+  if (value === "date30") {
+    return { kind: "date", date: isoDay(nowMs + 30 * DAY_MS) };
+  }
+  return DEFAULT_KEEP_UNTIL;
 }

@@ -52,3 +52,14 @@ export function reorderPlaylistItems(id: string, itemIds: string[]): Promise<Api
 export function removePlaylistItem(id: string, itemId: string): Promise<ApiResult<Object>> {
   return getPlayarrClient().deleteJson<Object>(playlistItemUrl(id, itemId));
 }
+
+interface AddItemBody {
+  work_id: string;
+  track_id?: string | null;
+}
+
+/** Adds a title (or one track of an artist) to a playlist. */
+export function addPlaylistItem(playlistId: string, workId: string, trackId: string | null): Promise<ApiResult<PlaylistItemResponse>> {
+  const body: AddItemBody = { work_id: workId, track_id: trackId };
+  return getPlayarrClient().postJson<AddItemBody, PlaylistItemResponse>(playlistItemsUrl(playlistId), body);
+}

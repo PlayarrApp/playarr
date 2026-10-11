@@ -20,11 +20,11 @@ import {
   removeDownload,
   setDownloadKeepUntil,
 } from '../data/DownloadsRepository';
-import { keepUntilLabel } from '../core/DownloadEngine';
+import { keepUntilLabel, keepPresets, keepUntilFromPreset } from '../core/DownloadEngine';
+import type { KeepPreset } from '../core/DownloadEngine';
 import { ROUTES } from '../navigation/Routes';
 import type { PlayerRouteParams } from '../navigation/Routes';
 import { getNavStack, pushRoute } from '../navigation/NavStack';
-import type { KeepUntil } from '../core/Downloads';
 import { Drawer } from '../design/components/Drawer';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import type { Choice } from '../design/components/ChoiceSegments';
@@ -181,27 +181,12 @@ export struct DownloadsScreen {
     pushRoute(getNavStack(), ROUTES.Player, params);
   }
 
-  /** The keep-until presets: web's three kinds (forever, until a date, after watched) at a few useful values. */
   private keepChoices(): Choice[] {
-    const inThirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    return [
-      { value: 'forever', label: 'Keep forever' },
-      { value: 'watched7', label: 'Keep 7 days after watched' },
-      { value: 'watched30', label: 'Keep 30 days after watched' },
-      { value: 'date30', label: 'Keep until ' + inThirtyDays },
-    ];
+    return keepPresets(Date.now()).map((preset: KeepPreset): Choice => ({ value: preset.value, label: preset.label }));
   }
 
   private chooseKeep(value: string): void {
-    let policy: KeepUntil = { kind: 'forever' };
-    if (value === 'watched7') {
-      policy = { kind: 'afterWatched', amount: 7, unit: 'days' };
-    } else if (value === 'watched30') {
-      policy = { kind: 'afterWatched', amount: 30, unit: 'days' };
-    } else if (value === 'date30') {
-      policy = { kind: 'date', date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10) };
-    }
-    setDownloadKeepUntil(this.editingId, policy);
+    setDownloadKeepUntil(this.editingId, keepUntilFromPreset(value, Date.now()));
     this.editingId = '';
   }
 

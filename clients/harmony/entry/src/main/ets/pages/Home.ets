@@ -114,6 +114,7 @@ import type { MediaRailItem } from '../design/components/MediaRail';
 import type { NavRailItem } from '../design/components/NavRail';
 import { HOME_NAV_ID, buildNavRailItems, navigateFromRail } from '../navigation/NavItems';
 import { PageShell } from '../design/components/PageShell';
+import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { NavPill } from '../design/components/NavPill';
 import type { NavPillItem } from '../design/components/NavPill';
 import { PosterCard } from '../design/components/PosterCard';
@@ -424,6 +425,9 @@ export struct Home {
   /** `NavRail`/`NavPill`'s shared item list, driven by `getCatalogKinds()`
    * (brief 9), never hard-coded. */
   @State private navItems: NavRailItem[] = [];
+  /** The title whose long-press actions are open (web's media context menu), '' for none. */
+  @State private actionsWorkId: string = '';
+  @State private actionsTitle: string = '';
   /** `'<id>-nav-tile'` for `navItems[0]` once populated, or `''` before that
    * -- see `NavRail.ets`'s own header comment on this exact wiring contract. */
   @State private topRailFocusUpId: string = '';
@@ -717,6 +721,10 @@ export struct Home {
         onFocused: (): void => {
           this.focusHero(item as HomeCardItem);
         },
+        onLongPress: (): void => {
+          this.actionsWorkId = ((item as HomeCardItem).id);
+          this.actionsTitle = ((item as HomeCardItem).title);
+        },
       })
         .nextFocus({ up: this.topRailFocusUpId })
     } else {
@@ -732,6 +740,10 @@ export struct Home {
     }),
         onFocused: (): void => {
           this.focusHero(item as HomeCardItem);
+        },
+        onLongPress: (): void => {
+          this.actionsWorkId = ((item as HomeCardItem).id);
+          this.actionsTitle = ((item as HomeCardItem).title);
         },
       })
     }
@@ -937,6 +949,21 @@ export struct Home {
         this.tvRailsSlot();
       },
     })
+    if (this.actionsWorkId.length > 0) {
+      TitleActionsDrawer({
+        workId: this.actionsWorkId,
+        workTitle: this.actionsTitle,
+        onClose: (): void => {
+          this.actionsWorkId = '';
+        },
+        onPlay: (workId: string): void => {
+          this.openDetail(workId);
+        },
+        onWatchedChanged: (): void => {
+          this.load();
+        },
+      })
+    }
   }
 
   /** TV: the shared page shell (rail, logo, clock; Home has no header) around the `Stage` (hero + rails). */

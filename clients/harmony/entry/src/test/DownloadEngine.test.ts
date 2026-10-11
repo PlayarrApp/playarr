@@ -4,7 +4,7 @@ import { strict as assert } from "node:assert";
 
 import {
   chunkFailureStatus, chunkReplyOk, chunkRetryable, downloadFileName, keepUntilLabel, keepUntilLapsed, lapsedDownloadIds,
-  nextChunkRange, nextStep, normaliseKeepUntil, parseIndex, rangeHeader, serializeIndex, statusFromTicket, withSavedBytes,
+  downloadOptionLabel, keepPresets, keepUntilFromPreset, validQuality, nextChunkRange, nextStep, normaliseKeepUntil, parseIndex, rangeHeader, serializeIndex, statusFromTicket, withSavedBytes,
 } from "../main/ets/core/DownloadEngine";
 import type { DownloadTicket } from "../main/ets/core/DownloadEngine";
 import type { DownloadRecord } from "../main/ets/core/Downloads";
@@ -93,4 +93,25 @@ test("file names are safe", () => {
   assert.equal(downloadFileName("a1-b2", "mp4"), "a1-b2.mp4");
   assert.equal(downloadFileName("../x/y", "m p4"), "xy.mp4");
   assert.equal(downloadFileName("abc", ""), "abc");
+});
+
+test("quality labels: size with ~ for an estimate, per item for many files", () => {
+  const original = { id: "original", label: "Original", estimated_size_bytes: 2_000_000_000, size_is_estimate: false };
+  const profile = { id: "p", label: "1080p 8 Mbps", estimated_size_bytes: 900_000_000, size_is_estimate: true };
+  assert.equal(downloadOptionLabel(original, 1), "Original · 2 GB");
+  assert.equal(downloadOptionLabel(profile, 1), "1080p 8 Mbps · ~900 MB");
+  assert.equal(downloadOptionLabel(profile, 8), "1080p 8 Mbps · ~900 MB per item");
+  assert.equal(downloadOptionLabel({ ...original, estimated_size_bytes: null }, 1), "Original");
+  assert.equal(validQuality([original, profile], "p"), "p");
+  assert.equal(validQuality([original], "gone"), "original");
+});
+
+test("keep-until presets and their policies", () => {
+  const now = Date.parse("2026-10-11T12:00:00Z");
+  assert.deepEqual(keepPresets(now).map((p) => p.value), ["forever", "watched7", "watched30", "date30"]);
+  assert.equal(keepPresets(now)[3].label, "Keep until 2026-11-10");
+  assert.deepEqual(keepUntilFromPreset("forever", now), { kind: "forever" });
+  assert.deepEqual(keepUntilFromPreset("watched7", now), { kind: "afterWatched", amount: 7, unit: "days" });
+  assert.deepEqual(keepUntilFromPreset("date30", now), { kind: "date", date: "2026-11-10" });
+  assert.deepEqual(keepUntilFromPreset("nonsense", now), { kind: "forever" });
 });
