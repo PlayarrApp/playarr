@@ -5199,7 +5199,7 @@ private fun ExperienceDetailScreen(
             var pendingDownloadCandidates by remember(detail.work.id) { mutableStateOf<List<DownloadCandidate>?>(null) }
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Detail,
-                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), onBack = onBack, subtitle = if (isTelevision) detail.work.title else null, largeTitle = true),
+                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), onBack = onBack, subtitle = detail.work.title, largeTitle = true, countLine = true),
                 body = PlayarrPageBody.Bleed,
             ) {
             Box(Modifier.fillMaxSize()) {
@@ -5770,7 +5770,7 @@ private fun PhoneVideoDetailBody(
                 } else {
                     Spacer(Modifier.height(10.dp))
                 }
-                Text(synopsis, color = WebInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, style = WebTextStyle, maxLines = 6, overflow = TextOverflow.Ellipsis)
+                Text(synopsis, color = WebInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, style = WebTextStyle, maxLines = 3, minLines = if (episode != null) 3 else 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(if (episode != null) 11.67.dp else 14.dp))
                 PhoneDetailActions(
                     work = work, episode = selectedEpisode, mediaFileId = mediaFileId, progress = progress, canDownload = canDownload,
@@ -5985,15 +5985,15 @@ private fun PhoneDetailActions(
                     Text(playarrString(PlayarrString.DetailPlayback), color = WebInk, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
                 }
             }
+            // Web phone `.tv-detail-play`: the ink pill (no hover scale on touch) that fills what is left of the first row;
+            // a long label such as "Resume from 0:02" wraps to two lines inside it.
             PhonePill(
-                onClick = onPlayClick, container = WebKicker, width = 119.dp,
+                onClick = onPlayClick, container = WebInk, width = 118.5.dp,
                 shadow = WebShadow(18.dp, 46.dp, Color(0xFF382621).copy(alpha = 0.18f)),
-                // The film's Play pill is drawn at 1.06x (web `.tv-detail-play`).
-                modifier = Modifier.graphicsLayer { scaleX = 1.06f; scaleY = 1.06f },
             ) {
-                Text("▶", color = Color.White, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle)
+                Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle)
                 Spacer(Modifier.width(10.dp))
-                Text(playLabel, color = Color.White, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                Text(playLabel, color = WebBackground, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 2)
             }
             WatchlistToggleButton(work, webPhone = true)
             PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor) {
@@ -8444,9 +8444,17 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         stallJob?.cancel()
         val mediaFileId = activeMediaFileId ?: return
         stallJob = viewModelScope.launch {
-            delay(PLAYER_START_STALL_TIMEOUT_MS)
-            if (activeMediaFileId == mediaFileId && !playbackReached && !player.state.value.isPlaying) {
+            // A transcode that is still filling its buffer is slow, not stalled (a 4K re-encode needs about 25 s to warm up):
+            // restarting it would throw the work away, so extend the wait while the buffer ahead keeps growing.
+            var extensions = 0
+            var lastBufferedMs = 0L
+            while (true) {
+                delay(PLAYER_START_STALL_TIMEOUT_MS)
+                if (activeMediaFileId != mediaFileId || playbackReached || player.state.value.isPlaying) return@launch
+                val buffered = timelineSnapshot().let { it.bufferedPositionMs - it.positionMs }
+                if (buffered > lastBufferedMs && extensions++ < PLAYER_START_STALL_MAX_EXTENSIONS) { lastBufferedMs = buffered; continue }
                 if (!scheduleAutoRetry("start_stalled")) failPlayback("start_stalled")
+                return@launch
             }
         }
     }

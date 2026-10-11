@@ -5,6 +5,9 @@ import io.playarr.shared.domain.model.PlayarrError
 /** How long a start may sit buffering with no frame played before it counts as stalled. */
 internal const val PLAYER_START_STALL_TIMEOUT_MS = 25_000L
 
+/** Extra waits granted to a start whose buffer ahead is still growing, before it counts as stalled. */
+internal const val PLAYER_START_STALL_MAX_EXTENSIONS = 3
+
 /** Backoff between automatic retries after an error or stalled start; once exhausted the in-player error shows. */
 internal val PLAYER_AUTO_RETRY_DELAYS_MS: List<Long> = listOf(1_500L, 3_000L, 6_000L)
 
