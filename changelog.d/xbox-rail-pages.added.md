@@ -1,1 +1,0 @@
-- Xbox: the nav rail's Watchlist, Playlists, Requests and Downloads items open pages as on the web (watchlist rows with Resume or Play and Remove, playlist cards and their titles, requests with their status, and an honest Downloads empty state).

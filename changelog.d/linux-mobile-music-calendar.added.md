@@ -1,1 +1,0 @@
-- Linux phone client: music library, release calendar (agenda, week, month), library filters and the long-press actions sheet.

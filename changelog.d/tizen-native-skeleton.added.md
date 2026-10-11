@@ -1,1 +1,0 @@
-- Samsung Tizen native client skeleton (`clients/tizen-native`, Tizen .NET and NUI): logic library with remote-key mapping and geometric D-pad focus (unit tested), an NUI application head that boots on the Tizen 10 TV emulator, and a hosted CI job that builds the tpk and runs the tests.

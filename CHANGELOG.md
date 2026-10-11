@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: arrow keys and the D-pad move focus spatially across the nav rail, Home rails and grids (Up and Down on Home no longer scroll instead of moving focus), detail pages focus Play or the next-up episode, and Escape or the Back key goes back one level.
 - Starting the same title from several devices of one account no longer fails with `no_transcode_capacity`: devices at the same start position share one on-demand transcode (the process stops when the last viewer leaves), a video-copy remux takes a quarter of a transcode slot, and a full node answers 503 with `Retry-After` while the web and Android players retry with back-off.
 - Apple TV: series pages show episode stills and place the season rails at the web height; the parity routes draw the production Home and nav.
 - On-demand HLS audio is folded onto 5.1, stereo or mono before AAC encoding: a DTS 5.1(side) or 7.1 source produced AAC with channel configuration 0, which Android TV failed to decode after the transcode fallback and Chrome rejected (20.260).
@@ -279,6 +280,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Linux phone client: music library, release calendar (agenda, week, month), library filters and the long-press actions sheet.
+- Samsung Tizen native client skeleton (`clients/tizen-native`, Tizen .NET and NUI): logic library with remote-key mapping and geometric D-pad focus (unit tested), an NUI application head that boots on the Tizen 10 TV emulator, and a hosted CI job that builds the tpk and runs the tests.
+- Xbox: the nav rail's Watchlist, Playlists, Requests and Downloads items open pages as on the web (watchlist rows with Resume or Play and Remove, playlist cards and their titles, requests with their status, and an honest Downloads empty state).
 - Sailfish OS: calendar month and week views, library Filters (view, sort, order, language) with List/Screen/Cover layouts, and the title Actions page (play, download, add to playlist, mark watched or unwatched) on press and hold.
 - Sailfish OS: calendar agenda, watchlist, requests and downloads (server tickets plus resumable offline copies with offline playback), with a loopback media proxy so the platform player can play authenticated HLS and direct streams.
 - Sailfish OS: PIN prompt for PIN-locked profiles in the profile picker (unlock with the stored device credential, wrong-PIN and rate-limit messages) and the web's scroll-edge fades on Home, rails, grids, detail and settings.
@@ -443,6 +447,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Xbox: Home and the library pages share one focused-title detail column (backdrop, genre, title, year, synopsis) as on web, the first card takes focus when a page opens, artwork loads through the server artwork endpoint (art kept behind a private source scheme now shows), and Music reads "ARTISTS".
+- Xbox: signing in shows a QR code and pairing code from the hosted link service, as on the web, with no server address to type; the code renews silently when it expires or the network blips, and "Sign in manually" keeps the typed-address fallback.
 - Fire TV: a focused media card takes the web's pink glow ring (3 px ring and 20 px glow, brand ink in dark, strong brand in light); the calendar week columns start at the web's top edge.
 - Fire TV: the calendar agenda follows the web: status pills (Available, Upcoming, Missing, Not tracked), the details panel with the synopsis, meta line, pills and Open and watchlist actions, the web's card width, day heading and card spacing; date-only releases show "All day". The profile picker's selected avatar gets the web's focus ring colour.
 - Fire TV client: the release calendar has the week and month views, the filters drawer (view, type, status, monitored only) and the calendar link drawer with its QR code; entry cards, the details and the period picker follow the web.

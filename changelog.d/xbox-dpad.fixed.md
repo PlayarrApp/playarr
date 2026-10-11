@@ -1,1 +1,0 @@
-- Xbox: arrow keys and the D-pad move focus spatially across the nav rail, Home rails and grids (Up and Down on Home no longer scroll instead of moving focus), detail pages focus Play or the next-up episode, and Escape or the Back key goes back one level.
