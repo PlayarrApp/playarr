@@ -1,12 +1,41 @@
 /**
- * The device's downloads. shortcut: HarmonyOS has no download engine here yet (no ticket requests, no local file
- * store, no keep-until policy), so there is never a record to show; this is the one place the page reads from, so the
- * engine plugs in here without touching the page. Build it on the platform request agent when downloads are scheduled.
+ * The device's downloads: reads and changes them through the download engine (`download/DownloadEngine.ets`), so the
+ * Downloads page and the title actions never touch the engine directly.
  */
 
-import { DownloadRecord } from '../core/Downloads.ts';
+import { DownloadRecord, KeepUntil } from '../core/Downloads.ts';
+import { downloadEngine } from '../download/DownloadEngine';
 
 export async function listDownloads(): Promise<DownloadRecord[]> {
-  const none: DownloadRecord[] = [];
-  return none;
+  return downloadEngine.list();
+}
+
+/** Calls `listener` after every change to the downloads (progress included); returns what to pass to `unsubscribeDownloads`. */
+export function subscribeDownloads(listener: () => void): void {
+  downloadEngine.subscribe(listener);
+}
+
+export function unsubscribeDownloads(listener: () => void): void {
+  downloadEngine.unsubscribe(listener);
+}
+
+export function cancelDownload(id: string): void {
+  downloadEngine.cancel(id);
+}
+
+export function retryDownload(id: string): void {
+  downloadEngine.retry(id);
+}
+
+export function removeDownload(id: string): void {
+  downloadEngine.remove(id);
+}
+
+export function setDownloadKeepUntil(id: string, keepUntil: KeepUntil): void {
+  downloadEngine.setKeepUntil(id, keepUntil);
+}
+
+/** Queues a download of one media file at a quality (`original` or a transcode profile). */
+export function enqueueDownload(mediaFileId: string, workId: string, title: string, workKind: string, qualityId: string, keepUntil: KeepUntil): void {
+  downloadEngine.enqueue(mediaFileId, workId, title, workKind, qualityId, keepUntil);
 }

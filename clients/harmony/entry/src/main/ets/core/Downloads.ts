@@ -8,6 +8,32 @@ export interface DownloadRecord {
   sizeBytes?: number | null;
   downloadedBytes?: number | null;
   errorMessage?: string | null;
+  /** The engine's own fields, absent on a plain page row. */
+  mediaFileId?: string;
+  workId?: string;
+  workKind?: string;
+  qualityId?: string;
+  /** The server's download ticket for this record. */
+  ticketId?: string;
+  /** When the server says the ticket (and its file) expires, ISO 8601. */
+  ticketExpiresAt?: string | null;
+  keepUntil?: KeepUntil;
+  /** When the title was last played from this download, ISO 8601, for "keep N days after watched". */
+  watchedAt?: string | null;
+  /** The saved file in the app sandbox. */
+  filePath?: string;
+  readyAt?: string | null;
+}
+
+/** How long a downloaded file is kept (web `DownloadKeepUntilPolicy`): forever, until a date, or N days or weeks after it was watched. */
+export interface KeepUntil {
+  kind: string;
+  /** For kind `date`: the day, `YYYY-MM-DD`. */
+  date?: string;
+  /** For kind `afterWatched`: how many. */
+  amount?: number;
+  /** For kind `afterWatched`: `days` or `weeks`. */
+  unit?: string;
 }
 
 const STATUS_LABELS: Record<string, string> = {

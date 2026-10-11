@@ -136,6 +136,8 @@ export interface PlayerRouteParams {
   mediaFileId: string;
   workId: string;
   startPositionMs?: number;
+  /** A downloaded file to play offline (its sandbox path); absent plays from the server. */
+  localPath?: string;
   /** Items queued after this one (next episodes); absent or empty means a plain ended card. */
   queue?: QueueItem[];
 }

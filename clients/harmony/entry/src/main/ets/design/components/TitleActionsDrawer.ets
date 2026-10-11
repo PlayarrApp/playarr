@@ -2,16 +2,20 @@
  * The long-press title actions (web `MediaContextMenu`): the shared right drawer with Play, Mark as watched and Mark
  * as unwatched. One component for every page that has title cards (Library, Search). Play hands the work to the
  * page (it opens the title page); the watched actions write progress for every file of the title and then tell the
- * page, which refreshes its watch marks. Not here: Download and the playlist actions.
+ * page, which refreshes its watch marks. Download queues every file of the title at Original quality, kept forever. Not here: a quality choice and the playlist actions.
  */
 
 import { Drawer } from './Drawer';
 import { ActionList } from './ActionList';
 import type { ActionItem } from './ActionList';
 import { setWorkWatched } from '../../data/PlaybackRepository';
+import { getWorkDetail } from '../../data/CatalogRepository';
+import { enqueueDownload } from '../../data/DownloadsRepository';
+import { downloadTargets } from '../../core/DownloadTargets';
 
 const TITLE_ACTIONS: ActionItem[] = [
   { id: 'play', glyph: '▶', label: 'Play' },
+  { id: 'download', glyph: '⇩', label: 'Download' },
   { id: 'watched', glyph: '✓', label: 'Mark as watched' },
   { id: 'unwatched', glyph: '○', label: 'Mark as unwatched' },
 ];
@@ -36,11 +40,30 @@ export struct TitleActionsDrawer {
       this.onPlay(this.workId);
       return;
     }
+    if (id === 'download') {
+      this.busyId = id;
+      await this.download();
+      this.busyId = '';
+      this.onClose();
+      return;
+    }
     this.busyId = id;
     await setWorkWatched(this.workId, id === 'watched');
     this.busyId = '';
     this.onClose();
     this.onWatchedChanged();
+  }
+
+  /** Queues every file of the title at Original quality, kept forever (the Downloads page edits the policy). */
+  private async download(): Promise<void> {
+    const detail = await getWorkDetail(this.workId);
+    if (detail.kind !== 'ok') {
+      return;
+    }
+    const kind: string = detail.value.work.kind;
+    for (const target of downloadTargets(detail.value)) {
+      enqueueDownload(target.mediaFileId, this.workId, target.title, kind, 'original', { kind: 'forever' });
+    }
   }
 
   @Builder

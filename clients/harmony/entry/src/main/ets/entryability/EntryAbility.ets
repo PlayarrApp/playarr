@@ -38,6 +38,7 @@ import { window } from '@kit.ArkUI';
 
 import { bootstrapAppContainer } from '../AppContainer';
 import { initSandbox, cleanupStaleSandboxFiles } from '../util/Sandbox';
+import { downloadEngine } from '../download/DownloadEngine';
 import { logError } from '../util/Log';
 
 const LOG_DOMAIN: number = 0x0000;
@@ -55,7 +56,10 @@ export default class EntryAbility extends UIAbility {
   onWindowStageCreate(windowStage: window.WindowStage): void {
     hilog.info(LOG_DOMAIN, LOG_TAG, '%{public}s', 'onWindowStageCreate');
 
-    bootstrapAppContainer(this.context, windowStage).catch((err: Error): void => {
+    bootstrapAppContainer(this.context, windowStage).then((): void => {
+      // Resumes the saved downloads once the server directory and session exist.
+      downloadEngine.start(this.context);
+    }).catch((err: Error): void => {
       logError(LOG_TAG, 'AppContainer bootstrap failed: ' + err.message);
     });
 

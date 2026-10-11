@@ -113,6 +113,7 @@ import { audio } from '@kit.AudioKit';
 
 import { negotiatePlayback, getWatchProgress } from '../data/PlaybackRepository';
 import { loadPlayerDefaults } from '../AppContainer';
+import { downloadEngine } from '../download/DownloadEngine';
 import { ORIGINAL_QUALITY, normaliseQuality, normaliseSubtitleMode, normaliseSubtitleLanguage, selectDefaultSubtitleTrackId } from '../core/PlayerDefaults.ts';
 import type { PlaybackNegotiationOptions } from '../data/PlaybackRepository';
 import { getWorkDetail, getSimilarWorks } from '../data/CatalogRepository';
@@ -221,6 +222,8 @@ struct Player {
    * `player/AvPlayerController.ets#attachSource`'s own
    * `startPositionMs > 0` threshold for whether a local seek applies. */
   @Prop startPositionMs: number = 0;
+  /** A downloaded file to play offline, or '' to play from the server. */
+  @Prop localPath: string = '';
   /** Items queued after the current one (next episodes / tracks). */
   @Prop queue: QueueItem[] = [];
 
@@ -442,7 +445,42 @@ struct Player {
 
   // -- Negotiation (brief 4.10) -----------------------------------------------
 
+  /** Plays a downloaded file with no negotiation and no server reporting (web's offline playback). */
+  private async attachLocal(): Promise<void> {
+    this.phase = 'loading';
+    this.errorMessage = '';
+    this.subtitleCueText = '';
+    this.bufferedPositionMs = 0;
+    this.isPlaying = false;
+    const info: PlaybackInfoResponse = {
+      mode: 'direct',
+      url: '',
+      mime_type: 'video/mp4',
+      duration_ms: 0,
+      source_offset_ms: 0,
+      audio_tracks: [],
+      selected_audio_track_id: null,
+      subtitle_tracks: [],
+      selected_subtitle_track_id: null,
+      quality_options: [],
+      selected_quality_id: 'original',
+      session_id: '',
+    };
+    this.currentInfo = info;
+    this.currentSourceOffsetMs = 0;
+    this.hasStartedOnce = false;
+    this.durationMs = 0;
+    this.reporter = null;
+    downloadEngine.markWatched(this.activeMediaFileId);
+    await this.controller.attachLocalFile(this.localPath, info, this.startPositionMs);
+    this.phase = 'ready';
+  }
+
   private async loadInitial(): Promise<void> {
+    if (this.localPath.length > 0) {
+      await this.attachLocal();
+      return;
+    }
     const options: PlaybackNegotiationOptions = {};
     let resumeMs: number = this.startPositionMs;
     if (resumeMs <= 0) {
@@ -1307,6 +1345,7 @@ export function PlayerBuilder(name: string, param: Object): void {
     mediaFileId: (param as PlayerRouteParams).mediaFileId,
     workId: (param as PlayerRouteParams).workId,
     startPositionMs: ((param as PlayerRouteParams).startPositionMs ?? 0),
+    localPath: ((param as PlayerRouteParams).localPath ?? ''),
     queue: ((param as PlayerRouteParams).queue ?? []),
   });
 }

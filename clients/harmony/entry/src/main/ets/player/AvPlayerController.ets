@@ -75,6 +75,7 @@
 import { media } from '@kit.MediaKit';
 import { audio } from '@kit.AudioKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { fileIo } from '@kit.CoreFileKit';
 
 import { getServerDirectory, getSessionManager } from '../AppContainer';
 import { fetchSubtitleTrack } from '../data/SubtitleRepository';
@@ -365,6 +366,68 @@ export class AvPlayerController {
 
     const accessToken = getSessionManager().getAccessToken();
     await this.attachHlsSource(player, generation, joinedUrl, accessToken, info.session_id);
+  }
+
+  /**
+   * Offline playback: plays a downloaded file from the app's files directory instead of a negotiated URL. `info` is a
+   * stand-in `PlaybackInfoResponse` (direct mode, no session): the same state machine drives the player, the file
+   * is handed over as a read-only file descriptor (`fdSrc`), and nothing is reported to the server. The duration
+   * comes from the player once prepared (the stand-in carries none). Not verified on a device (written without one).
+   */
+  public async attachLocalFile(path: string, info: PlaybackInfoResponse, startPositionMs?: number): Promise<void> {
+    await this.teardown();
+    const generation = this.nextGeneration();
+
+    let file: fileIo.File;
+    try {
+      file = fileIo.openSync(path, fileIo.OpenMode.READ_ONLY);
+    } catch (err) {
+      const asError = err as Error;
+      logError(LOG_TAG, 'failed to open the downloaded file: ' + asError.message);
+      if (this.callbacks.onError !== undefined) {
+        this.callbacks.onError('The downloaded file could not be opened.');
+      }
+      return;
+    }
+    const length: number = fileIo.statSync(file.fd).size;
+
+    this.mode = 'direct';
+    this.sessionId = info.session_id;
+    this.sourceOffsetMs = 0;
+    this.serverDurationMs = info.duration_ms;
+    this.effectiveDurationMs = resolveDurationMs(info.duration_ms, 0);
+    this.currentAudioRendererInfo = resolveAudioRendererInfo(info.mime_type);
+    this.pendingLocalSeekMs = startPositionMs !== undefined && startPositionMs > 0 ? startPositionMs : null;
+
+    await this.waitForSurface();
+    if (generation !== this.generation) {
+      fileIo.closeSync(file.fd);
+      return;
+    }
+
+    let player: media.AVPlayer;
+    try {
+      player = await media.createAVPlayer();
+    } catch (err) {
+      const asError = err as Error;
+      logError(LOG_TAG, 'media.createAVPlayer() failed: ' + asError.message);
+      fileIo.closeSync(file.fd);
+      if (this.callbacks.onError !== undefined) {
+        this.callbacks.onError('Could not start the media player: ' + asError.message);
+      }
+      return;
+    }
+
+    if (generation !== this.generation) {
+      await this.releasePlayerQuietly(player);
+      fileIo.closeSync(file.fd);
+      return;
+    }
+    this.player = player;
+    this.registerListeners(player, generation);
+
+    const source: media.AVFileDescriptor = { fd: file.fd, offset: 0, length: length };
+    player.fdSrc = source;
   }
 
   /**

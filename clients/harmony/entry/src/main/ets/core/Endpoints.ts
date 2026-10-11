@@ -121,6 +121,26 @@ export function playlistItemsUrl(id: string): string {
   return `/api/v1/playlists/${encodeURIComponent(id)}/items`;
 }
 
+/** `POST`/`GET /api/v1/downloads`: create a download ticket, list the caller's tickets. */
+export function downloadsUrl(): string {
+  return "/api/v1/downloads";
+}
+
+/** `GET`/`DELETE /api/v1/downloads/{id}`: poll or cancel one ticket. */
+export function downloadTicketUrl(id: string): string {
+  return `/api/v1/downloads/${encodeURIComponent(id)}`;
+}
+
+/** `GET /api/v1/downloads/{id}/file`: the range-resumable file. */
+export function downloadFileUrl(id: string): string {
+  return `/api/v1/downloads/${encodeURIComponent(id)}/file`;
+}
+
+/** `GET /api/v1/media/{id}/download-options`: the qualities one media file can be downloaded at. */
+export function downloadOptionsUrl(mediaFileId: string): string {
+  return `/api/v1/media/${encodeURIComponent(mediaFileId)}/download-options`;
+}
+
 /** `GET /api/v1/home/rails`: the server-curated Home rails web TV Home renders. */
 export function homeRailsUrl(): string {
   return "/api/v1/home/rails";

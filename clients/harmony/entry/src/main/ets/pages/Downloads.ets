@@ -1,8 +1,9 @@
 /**
  * Downloads (web `pages/Downloads.tsx`, TV layout): the shell, and on the right three groups (Active, Needs
- * attention, Downloaded) of rows (title, status and size), or the "No downloads yet" state. Records come from
- * `data/DownloadsRepository.ets`, which has no engine behind it yet, so today the page shows the empty state; the
- * row actions (cancel, retry, delete, edit keep-until) arrive with the engine.
+ * attention, Downloaded) of rows (title, status and size, and for a downloaded one its keep-until), or the "No
+ * downloads yet" state. Records come from the download engine through `data/DownloadsRepository.ets`; the page redraws
+ * on every engine change (progress included). Row actions as web: Cancel an active one, Retry or Delete one that needs
+ * attention, Delete or Edit keep-until on a downloaded one (a few presets in the shared drawer).
  */
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -10,7 +11,23 @@ import { tv } from '../design/Metrics';
 import { PageShell } from '../design/components/PageShell';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 
-import { listDownloads } from '../data/DownloadsRepository';
+import {
+  listDownloads,
+  subscribeDownloads,
+  unsubscribeDownloads,
+  cancelDownload,
+  retryDownload,
+  removeDownload,
+  setDownloadKeepUntil,
+} from '../data/DownloadsRepository';
+import { keepUntilLabel } from '../core/DownloadEngine';
+import { ROUTES } from '../navigation/Routes';
+import type { PlayerRouteParams } from '../navigation/Routes';
+import { getNavStack, pushRoute } from '../navigation/NavStack';
+import type { KeepUntil } from '../core/Downloads';
+import { Drawer } from '../design/components/Drawer';
+import { ChoiceSegments } from '../design/components/ChoiceSegments';
+import type { Choice } from '../design/components/ChoiceSegments';
 import { downloadSections, downloadMetaParts } from '../core/Downloads';
 import type { DownloadRecord, DownloadSections } from '../core/Downloads';
 
@@ -29,6 +46,10 @@ const META_SIZE: number = 13.4;
 const META_GAP: number = 9.6;
 const COPY_GAP: number = 5.76;
 const HEADING_SIZE: number = 10.88;
+const PILL_HEIGHT: number = 44;
+const PILL_PADDING: number = 17.28;
+const PILL_SIZE: number = 12.48;
+const PILL_GAP: number = 9.6;
 const MESSAGE_LEFT: number = 826;
 const MESSAGE_TOP: number = 312;
 
@@ -38,9 +59,24 @@ type DownloadsPhase = 'loading' | 'ready';
 export struct DownloadsScreen {
   @State private phase: DownloadsPhase = 'loading';
   @State private records: DownloadRecord[] = [];
+  /** The download whose keep-until is being edited, or '' for none. */
+  @State private editingId: string = '';
+  /** The engine listener this page registered, so it can be removed again. */
+  private listener: (() => void) | null = null;
 
   aboutToAppear(): void {
     this.load();
+    this.listener = (): void => {
+      this.load();
+    };
+    subscribeDownloads(this.listener);
+  }
+
+  aboutToDisappear(): void {
+    if (this.listener !== null) {
+      unsubscribeDownloads(this.listener);
+      this.listener = null;
+    }
   }
 
   private async load(): Promise<void> {
@@ -59,33 +95,127 @@ export struct DownloadsScreen {
   }
 
   @Builder
+  private pill(label: string, onTap: () => void): void {
+    Text(label)
+      .fontSize(tv(PILL_SIZE))
+      .fontColor(toResourceColor(activeColors().ink))
+      .height(tv(PILL_HEIGHT))
+      .padding({ left: tv(PILL_PADDING), right: tv(PILL_PADDING) })
+      .borderRadius(tv(PILL_HEIGHT / 2))
+      .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+      .focusable(true)
+      .onClick(onTap)
+  }
+
+  @Builder
   private row(record: DownloadRecord): void {
-    Column({ space: tv(COPY_GAP) }) {
-      Text(record.title)
-        .fontSize(tv(TITLE_SIZE_ROW))
-        .fontWeight(FontWeight.Bold)
-        .fontColor(toResourceColor(activeColors().ink))
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-      Row({ space: tv(META_GAP) }) {
-        ForEach(downloadMetaParts(record), (part: string) => {
-          Text(part)
+    Row({ space: tv(PILL_GAP) }) {
+      Column({ space: tv(COPY_GAP) }) {
+        Text(record.title)
+          .fontSize(tv(TITLE_SIZE_ROW))
+          .fontWeight(FontWeight.Bold)
+          .fontColor(toResourceColor(activeColors().ink))
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Row({ space: tv(META_GAP) }) {
+          ForEach(downloadMetaParts(record), (part: string) => {
+            Text(part)
+              .fontSize(tv(META_SIZE))
+              .fontColor(toResourceColor(activeColors().inkMuted))
+          }, (part: string): string => part)
+          if (record.status === 'ready') {
+            Text(keepUntilLabel(record.keepUntil))
+              .fontSize(tv(META_SIZE))
+              .fontColor(toResourceColor(activeColors().inkMuted))
+          }
+        }
+        if (record.errorMessage !== undefined && record.errorMessage !== null && record.errorMessage.length > 0 &&
+          (record.status === 'failed' || record.status === 'expired')) {
+          Text(record.errorMessage)
             .fontSize(tv(META_SIZE))
-            .fontColor(toResourceColor(activeColors().inkMuted))
-        }, (part: string): string => part)
+            .fontColor(toResourceColor(activeColors().danger))
+        }
       }
-      if (record.status === 'failed' && record.errorMessage !== undefined && record.errorMessage !== null) {
-        Text(record.errorMessage)
-          .fontSize(tv(META_SIZE))
-          .fontColor(toResourceColor(activeColors().danger))
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      if (record.status === 'queued' || record.status === 'processing' || record.status === 'downloading') {
+        this.pill('Cancel', (): void => {
+          cancelDownload(record.id);
+        })
+      }
+      if (record.status === 'failed' || record.status === 'canceled' || record.status === 'expired') {
+        this.pill('Retry', (): void => {
+          retryDownload(record.id);
+        })
+      }
+      if (record.status === 'ready' && record.filePath !== undefined && record.filePath.length > 0) {
+        this.pill('Play', (): void => {
+          this.playOffline(record);
+        })
+      }
+      if (record.status === 'ready') {
+        this.pill('Edit', (): void => {
+          this.editingId = record.id;
+        })
+      }
+      if (record.status !== 'queued' && record.status !== 'processing' && record.status !== 'downloading') {
+        this.pill('Delete', (): void => {
+          removeDownload(record.id);
+        })
       }
     }
-    .alignItems(HorizontalAlign.Start)
     .width(tv(LIST_WIDTH))
     .padding(tv(ROW_PADDING))
     .borderRadius(tv(ROW_RADIUS))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceSoft, ROW_BG_ALPHA))
-    .focusable(true)
+    .alignItems(VerticalAlign.Center)
+  }
+
+  /** Plays the saved file with no server (web's offline playback). */
+  private playOffline(record: DownloadRecord): void {
+    const params: PlayerRouteParams = {
+      mediaFileId: record.mediaFileId !== undefined ? record.mediaFileId : '',
+      workId: record.workId !== undefined ? record.workId : '',
+      localPath: record.filePath !== undefined ? record.filePath : '',
+    };
+    pushRoute(getNavStack(), ROUTES.Player, params);
+  }
+
+  /** The keep-until presets: web's three kinds (forever, until a date, after watched) at a few useful values. */
+  private keepChoices(): Choice[] {
+    const inThirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    return [
+      { value: 'forever', label: 'Keep forever' },
+      { value: 'watched7', label: 'Keep 7 days after watched' },
+      { value: 'watched30', label: 'Keep 30 days after watched' },
+      { value: 'date30', label: 'Keep until ' + inThirtyDays },
+    ];
+  }
+
+  private chooseKeep(value: string): void {
+    let policy: KeepUntil = { kind: 'forever' };
+    if (value === 'watched7') {
+      policy = { kind: 'afterWatched', amount: 7, unit: 'days' };
+    } else if (value === 'watched30') {
+      policy = { kind: 'afterWatched', amount: 30, unit: 'days' };
+    } else if (value === 'date30') {
+      policy = { kind: 'date', date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10) };
+    }
+    setDownloadKeepUntil(this.editingId, policy);
+    this.editingId = '';
+  }
+
+  @Builder
+  private keepBody(): void {
+    ChoiceSegments({
+      heading: 'Keep this download',
+      choices: this.keepChoices(),
+      selected: '',
+      sectionWidth: 268,
+      onChoose: (value: string): void => {
+        this.chooseKeep(value);
+      },
+    })
   }
 
   @Builder
@@ -131,6 +261,18 @@ export struct DownloadsScreen {
       .padding({ top: tv(LIST_TOP), bottom: tv(LIST_TOP) })
       .scrollBar(BarState.Off)
       .position({ x: tv(LIST_LEFT), y: 0 })
+    }
+    if (this.editingId.length > 0) {
+      Drawer({
+        kicker: 'Downloads',
+        title: 'Keep until',
+        onClose: (): void => {
+          this.editingId = '';
+        },
+        body: (): void => {
+          this.keepBody();
+        },
+      })
     }
   }
 
