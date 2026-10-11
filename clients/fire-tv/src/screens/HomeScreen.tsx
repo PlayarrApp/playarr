@@ -3,7 +3,7 @@
  * title's key art, the title panel on the left, and the vertical stack of rails on the right
  * (the merged "Start watching" rail first, then the server's rails, then the sites rails).
  */
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Animated, Easing, Pressable, View} from 'react-native';
 import {useNavigation, type NavigationProp, type ParamListBase} from '@amazon-devices/react-navigation__native';
 import type {ResumePlan, WatchProgress, Work} from '@playarr-tv/api-client';
@@ -183,14 +183,19 @@ export function HomeScreen(): React.ReactElement {
   // The rails scroll through their LEFT offset (JS-driven), not a transform: Vega's focus engine measures layout frames and
   // ignores transforms, so a transform made UP and DOWN land on the same index instead of the card visually above or below.
   const railLeft = u(RAIL_X - 729.6);
-  const scrollX = useRef(rails.map(() => new Animated.Value(railLeft))).current;
+  const scrollXs = useRef<Animated.Value[]>([]).current;
+  const scrollXFor = (rail: number): Animated.Value => {
+    while (scrollXs.length <= rail) scrollXs.push(new Animated.Value(railLeft));
+    return scrollXs[rail];
+  };
   useEffect(() => {
     Animated.timing(railY, {toValue: -focus.rail * RAIL_PITCH, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
   }, [focus.rail, railY]);
   const scrollTargets = useRef<number[]>([]);
   const [scrolled, setScrolled] = useState<number[]>([]);
-  function focusItem(rail: number, item: number): void {
-    setFocus({rail, item});
+  // Stable, so the memoised cards and rails do not re-render on every focus move.
+  const focusItem = useCallback((rail: number, item: number): void => {
+    setFocus((current) => (current.rail === rail && current.item === item ? current : {rail, item}));
     const visible = 1920 - RAIL_X;
     const left = item * CARD_PITCH;
     let target = scrollTargets.current[rail] ?? 0;
@@ -198,13 +203,15 @@ export function HomeScreen(): React.ReactElement {
     if (left < target + 8) target = Math.max(0, left - 8);
     scrollTargets.current[rail] = target;
     setScrolled((current) => {
+      if ((current[rail] ?? 0) === target) return current;
       const next = [...current];
       next[rail] = target;
       return next;
     });
-    while (scrollX.length <= rail) scrollX.push(new Animated.Value(railLeft));
-    Animated.timing(scrollX[rail], {toValue: railLeft - u(target), duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false}).start();
-  }
+    while (scrollXs.length <= rail) scrollXs.push(new Animated.Value(railLeft));
+    Animated.timing(scrollXs[rail], {toValue: railLeft - u(target), duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false}).start();
+  }, [scrollXs, railLeft]);
+  const openWork = useCallback((work: Work) => navigation.navigate(ROUTES.workDetail, {workId: work.id, backTo: ROUTES.home}), [navigation]);
 
   const homeSettled =
     onDeckSettled && (railsState.status === 'ready' || railsState.status === 'empty' || railsState.status === 'error') && siteState.status !== 'idle' && siteState.status !== 'loading';
@@ -251,84 +258,33 @@ export function HomeScreen(): React.ReactElement {
 
       <Box x={729.6} y={0} w={1190.4} h={1080} style={{overflow: 'hidden'}} pointerEvents="box-none">
         <Animated.View style={{transform: [{translateY: railY}]}} pointerEvents="box-none">
-          {rails.map((rail, railIndex) => {
-            const headingY = FIRST_HEADING_Y + railIndex * RAIL_PITCH;
-            const active = railIndex === focus.rail;
-            return (
-              <View key={rail.id} pointerEvents="box-none">
-                <RailHeading title={rail.title} x={RAIL_X - 729.6} y={headingY} active={active} colour={colour.ink} />
-                <Animated.View
-                  style={{
-                    position: 'absolute',
-                    left: scrollX[railIndex] ?? railLeft,
-                    top: u(headingY + 26.5 + 17.28 + 18),
-                    width: u(rail.items.length * CARD_PITCH),
-                    height: u(CARD_H),
-                  }}
-                >
-                  {rail.items.map((work, itemIndex) => {
-                    const entry = rail.id === 'primary' ? onDeckByWork.get(work.id) : undefined;
-                    const episode = entry?.episode;
-                    const progress = entry?.progress ?? progressByWork.get(work.id);
-                    const cardTitle =
-                      episode?.detail.episode.title ?? (episode ? t('pages.home.episodeLabel', {number: episode.detail.episode.episode_number}) : work.title);
-                    const subtitle = episode
-                      ? t('pages.home.episodeProvider', {title: work.title, season: pad(episode.seasonNumber), episode: pad(episode.detail.episode.episode_number)})
-                      : labelWithYear(workKindLabel(work, t), work);
-                    return (
-                    <HomeCard
-                      key={work.id}
-                      work={work}
-                      mediaFileId={episode?.detail.media_file_id ?? undefined}
-                      title={cardTitle}
-                      progress={progress}
-                      progressReady={progressRows !== null}
-                      first={railIndex === 0 && itemIndex === 0}
-                      cardRef={active && itemIndex === focus.item ? selectedCardRef : undefined}
-                      index={itemIndex}
-                      baseUrl={baseUrl}
-                      token={token}
-                      selected={active && itemIndex === focus.item}
-                      onFocus={() => focusItem(railIndex, itemIndex)}
-                      onPress={() => navigation.navigate(ROUTES.workDetail, {workId: work.id, backTo: ROUTES.home})}
-                      onLongPress={() => setActionsWork(work)}
-                      subtitle={subtitle}
-                    />
-                    );
-                  })}
-                </Animated.View>
-                <EdgeFade
-                  kind="gutter"
-                  tint
-                  side="left"
-                  active={(scrolled[railIndex] ?? 0) > 0}
-                  x={0}
-                  y={headingY + 26.5}
-                  w={1190.4}
-                  h={ART_H + FADE_EXTRA + 47}
-                  size={TRACK_GUTTER}
-                />
-                <EdgeFade
-                  kind="mask"
-                  side="right"
-                  active={rail.items.length * CARD_PITCH - (scrolled[railIndex] ?? 0) > 1920 - RAIL_X + 8}
-                  x={0}
-                  y={headingY + 44}
-                  w={1190.4}
-                  h={ART_H + 60}
-                  size={70}
-                  solid={8}
-                />
-              </View>
-            );
-          })}
+          {rails.map((rail, railIndex) => (
+            <HomeRailRow
+              key={rail.id}
+              rail={rail}
+              railIndex={railIndex}
+              active={railIndex === focus.rail}
+              focusedItem={railIndex === focus.rail ? focus.item : -1}
+              scrolled={scrolled[railIndex] ?? 0}
+              scrollX={scrollXFor(railIndex)}
+              onDeckByWork={onDeckByWork}
+              progressByWork={progressByWork}
+              progressReady={progressRows !== null}
+              baseUrl={baseUrl}
+              token={token}
+              cardRef={selectedCardRef}
+              onFocusItem={focusItem}
+              onOpen={openWork}
+              onActions={setActionsWork}
+            />
+          ))}
         </Animated.View>
       </Box>
       {actionsWork ? (
         <ActionsDrawer
           work={actionsWork}
           onClose={() => setActionsWork(null)}
-          onOpen={() => navigation.navigate(ROUTES.workDetail, {workId: actionsWork.id, backTo: ROUTES.home})}
+          onOpen={() => openWork(actionsWork)}
           onAddToPlaylist={() => {
             setPlaylistWork(actionsWork);
             setActionsWork(null);
@@ -376,7 +332,114 @@ function RailHeading({title, x, y, active, colour}: {title: string; x: number; y
   );
 }
 
-function HomeCard(props: {
+/**
+ * Cards mounted either side of the visible window. A rail holds up to a dozen cards of several views each; mounting them
+ * all made every frame cost thousands of view updates on Vega, so focus lagged behind the remote.
+ */
+const WINDOW_BEFORE = 1;
+const WINDOW_AFTER = 5;
+
+/** The cards to mount for a rail scrolled by `scrolled` px: `[first, last]` indices, always including the focused card. */
+export function railWindow(count: number, scrolled: number, focusedItem: number): [number, number] {
+  const first = Math.floor(scrolled / CARD_PITCH);
+  let lo = Math.max(0, first - WINDOW_BEFORE);
+  let hi = Math.min(count - 1, first + WINDOW_AFTER);
+  if (focusedItem >= 0) {
+    lo = Math.min(lo, focusedItem);
+    hi = Math.max(hi, Math.min(count - 1, focusedItem + 1));
+  }
+  return [lo, hi];
+}
+
+interface HomeRailRowProps {
+  rail: HomeRail;
+  railIndex: number;
+  active: boolean;
+  /** The focused card's index when this is the active rail, otherwise -1. */
+  focusedItem: number;
+  scrolled: number;
+  scrollX: Animated.Value;
+  onDeckByWork: Map<string, OnDeckEntry>;
+  progressByWork: Map<string, WatchProgress>;
+  progressReady: boolean;
+  baseUrl: string;
+  token: string | undefined;
+  cardRef: React.Ref<View>;
+  onFocusItem: (rail: number, item: number) => void;
+  onOpen: (work: Work) => void;
+  onActions: (work: Work) => void;
+}
+
+/** One rail: heading, windowed cards and edge fades. Memoised so a focus move re-renders only the two rails involved. */
+const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.ReactElement {
+  const {rail, railIndex, active, focusedItem, scrolled, scrollX, onDeckByWork, progressByWork, progressReady, baseUrl, token, cardRef, onFocusItem, onOpen, onActions} = props;
+  const {t} = useLanguage();
+  const {colour} = useTheme();
+  const headingY = FIRST_HEADING_Y + railIndex * RAIL_PITCH;
+  const [lo, hi] = railWindow(rail.items.length, scrolled, focusedItem);
+  return (
+    <View pointerEvents="box-none">
+      <RailHeading title={rail.title} x={RAIL_X - 729.6} y={headingY} active={active} colour={colour.ink} />
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: scrollX,
+          top: u(headingY + 26.5 + 17.28 + 18),
+          width: u(rail.items.length * CARD_PITCH),
+          height: u(CARD_H),
+        }}
+      >
+        {rail.items.slice(lo, hi + 1).map((work, offset) => {
+          const itemIndex = lo + offset;
+          const entry = rail.id === 'primary' ? onDeckByWork.get(work.id) : undefined;
+          const episode = entry?.episode;
+          const cardTitle = episode?.detail.episode.title ?? (episode ? t('pages.home.episodeLabel', {number: episode.detail.episode.episode_number}) : work.title);
+          const subtitle = episode
+            ? t('pages.home.episodeProvider', {title: work.title, season: pad2(episode.seasonNumber), episode: pad2(episode.detail.episode.episode_number)})
+            : labelWithYear(workKindLabel(work, t), work);
+          const selected = itemIndex === focusedItem;
+          return (
+            <HomeCard
+              key={work.id}
+              work={work}
+              mediaFileId={episode?.detail.media_file_id ?? undefined}
+              title={cardTitle}
+              progress={entry?.progress ?? progressByWork.get(work.id)}
+              progressReady={progressReady}
+              first={railIndex === 0 && itemIndex === 0}
+              cardRef={selected ? cardRef : undefined}
+              index={itemIndex}
+              railIndex={railIndex}
+              baseUrl={baseUrl}
+              token={token}
+              selected={selected}
+              onFocusItem={onFocusItem}
+              onOpen={onOpen}
+              onActions={onActions}
+              subtitle={subtitle}
+            />
+          );
+        })}
+      </Animated.View>
+      <EdgeFade kind="gutter" tint side="left" active={scrolled > 0} x={0} y={headingY + 26.5} w={1190.4} h={ART_H + FADE_EXTRA + 47} size={TRACK_GUTTER} />
+      <EdgeFade
+        kind="mask"
+        side="right"
+        active={rail.items.length * CARD_PITCH - scrolled > 1920 - RAIL_X + 8}
+        x={0}
+        y={headingY + 44}
+        w={1190.4}
+        h={ART_H + 60}
+        size={70}
+        solid={8}
+      />
+    </View>
+  );
+});
+
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+
+const HomeCard = memo(function HomeCard(props: {
   work: Work;
   /** The on-deck episode's media file: the card shows a frame from it, as the web's thumbnail view does. */
   mediaFileId?: string;
@@ -386,15 +449,19 @@ function HomeCard(props: {
   first: boolean;
   cardRef?: React.Ref<View>;
   index: number;
+  railIndex: number;
   baseUrl: string;
   token: string | undefined;
   selected: boolean;
   subtitle: string;
-  onFocus: () => void;
-  onPress: () => void;
-  onLongPress: () => void;
+  onFocusItem: (rail: number, item: number) => void;
+  onOpen: (work: Work) => void;
+  onActions: (work: Work) => void;
 }): React.ReactElement {
-  const {work, mediaFileId, title, progress, progressReady, first, cardRef, index, baseUrl, token, selected, subtitle, onFocus, onPress, onLongPress} = props;
+  const {work, mediaFileId, title, progress, progressReady, first, cardRef, index, railIndex, baseUrl, token, selected, subtitle, onFocusItem, onOpen, onActions} = props;
+  const onFocus = useCallback(() => onFocusItem(railIndex, index), [onFocusItem, railIndex, index]);
+  const onPress = useCallback(() => onOpen(work), [onOpen, work]);
+  const onLongPress = useCallback(() => onActions(work), [onActions, work]);
   const {colour} = useTheme();
   const kind = preferredArtworkKind(work, ['backdrop', 'poster']);
   const uri = mediaFileId ? mediaThumbnailUrl(baseUrl, mediaFileId) : kind ? workArtworkUrl(baseUrl, work.id, kind) : undefined;
@@ -427,4 +494,4 @@ function HomeCard(props: {
       </View>
     </Pressable>
   );
-}
+});

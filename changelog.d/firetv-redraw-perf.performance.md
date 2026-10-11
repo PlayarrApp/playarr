@@ -1,0 +1,1 @@
+- Fire TV: Home and the calendar no longer re-render every card on each focus move (memoised rails, windowed Home cards, memoised agenda rows and month chips), so focus keeps up with the remote; the Home feature title balances without breaking inside a word.

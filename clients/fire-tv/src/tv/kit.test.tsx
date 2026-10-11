@@ -3,7 +3,7 @@ import React from 'react';
 import {act, create, type ReactTestRenderer} from 'react-test-renderer';
 import {Dimensions, Text, View} from 'react-native';
 import {ThemeProvider} from '../theme/ThemeProvider';
-import {BalancedT} from './kit';
+import {BalancedT, breaksInsideWord} from './kit';
 
 (globalThis as unknown as {React: typeof React}).React = React;
 
@@ -39,4 +39,15 @@ test('stops at the last whole-word width when the next pass breaks inside a word
   // Done: later layouts change nothing.
   layout(renderer, [{text: 'Wordy ', width: 100}, {text: '(2021)', width: 100}]);
   expect(width(renderer)).toBe(good);
+});
+
+describe('breaksInsideWord', () => {
+  it('accepts breaks between words and at hyphens', () => {
+    expect(breaksInsideWord(['2 Fast', '2 Furious'], '2 Fast 2 Furious')).toBe(false);
+    expect(breaksInsideWord(['Spider-', 'Man'], 'Spider-Man')).toBe(false);
+  });
+  it('flags a word cut in two, however the line ends', () => {
+    expect(breaksInsideWord(['The Leonard', 'o Story'], 'The Leonardo Story')).toBe(true);
+    expect(breaksInsideWord(['Extraordina', 'ry Tales'], 'Extraordinary Tales')).toBe(true);
+  });
 });

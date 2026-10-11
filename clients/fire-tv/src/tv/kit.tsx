@@ -116,6 +116,16 @@ export function useColours(): ReturnType<typeof useTheme> {
  */
 const MAX_BALANCE_PASSES = 6;
 
+/**
+ * True when a wrapped layout cut a word in two. Every fragment on a line must be a whole word of the source (hyphens and
+ * dashes are legal break points), whatever the platform does with the trailing space of a line.
+ */
+export function breaksInsideWord(lines: readonly string[], source: string): boolean {
+  const split = /[\s\-\u2010-\u2015]+/;
+  const words = new Set(source.split(split).filter(Boolean));
+  return lines.some((line) => line.split(split).filter(Boolean).some((fragment) => !words.has(fragment)));
+}
+
 export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout'> & {width: number}): React.ReactElement {
   // `good` is the narrowest width whose layout was acceptable so far; the loop narrows to the widest line each pass.
   const [state, setState] = useState<{w: number; good: number; lines: number | null; done: boolean; passes: number}>({w: width, good: width, lines: null, done: false, passes: 0});
@@ -133,12 +143,7 @@ export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout
       // Narrower than the longest word, RN breaks inside it ("Leonard" / "o") without adding a line, so a line that does
       // not end in a space also ends the search; the result is the last acceptable width.
       // (Vega may drop the trailing space from line text, so test the join against the source string instead.)
-      const source = typeof children === 'string' ? children : '';
-      const midWord = found.slice(0, -1).some((line, i) => {
-        const head = line.text.trimEnd();
-        const next = found[i + 1].text.trimStart();
-        return head.length > 0 && next.length > 0 && !/\s$/.test(line.text) && source.includes(head + next[0]);
-      });
+      const midWord = typeof children === 'string' && breaksInsideWord(found.map((line) => line.text), children);
       if (found.length > current.lines || midWord || widest <= 4) return {...current, w: current.good, done: true};
       // Each pass is a full layout round trip (~0.3 s on a Vega stick); a few are enough to balance a title.
       if (current.passes >= MAX_BALANCE_PASSES) return {...current, done: true};

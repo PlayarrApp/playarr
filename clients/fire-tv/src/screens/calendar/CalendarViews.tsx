@@ -3,8 +3,8 @@
  * list on the right), the week (one 440 px column per day on a horizontal track, each column scrolling on its own) and the
  * month grid. Every scrolling area fades at the edges where content continues.
  */
-import React, {useRef, useState} from 'react';
-import {Animated, Pressable, View} from 'react-native';
+import React, {useCallback, useMemo, useRef, useState} from 'react';
+import {Animated, Pressable, View, type LayoutChangeEvent} from 'react-native';
 import type {CalendarEntry} from '@playarr-tv/api-client';
 import {useLanguage} from '../../i18n/LanguageProvider';
 import {type CalendarItem, type Day, type DayGroup, type MonthCell, buildMonthGrid, buildWeekDays, groupSeriesEpisodes, itemAvailability, parseDay} from '../../lib/calendar';
@@ -65,13 +65,15 @@ function DayHeading({day, today, locale}: {day: Day; today: Day; locale: string}
 
 /** Agenda: the previewed release's details on the left, the list on the right. */
 function AgendaViewImpl({groups, selectedKey, onSelect, onOpenRoute, locale, today, contentTop}: ViewShared & {groups: readonly DayGroup[]}): React.ReactElement {
-  const items = groups.flatMap((group) => groupSeriesEpisodes(group.entries).map((item) => ({day: group.day, item})));
+  const items = useMemo(() => groups.flatMap((group) => groupSeriesEpisodes(group.entries).map((item) => ({day: group.day, item}))), [groups]);
   const selected = items.find((entry) => entry.item.key === selectedKey)?.item ?? items[0]?.item ?? null;
   const rows = useRef(new Map<string, {y: number; h: number}>()).current;
   const [contentH, setContentH] = useState(0);
   const top = contentTop - 4;
   const viewport = BODY_BOTTOM - top;
   const scroll = useScrollReveal({viewport, content: contentH + 8 + 32, margin: 24});
+  const agendaTop = useMemo(() => Animated.add(new Animated.Value(u(4)), scroll.offset), [scroll.offset]);
+  const onAgendaLayout = useCallback((event: LayoutChangeEvent) => setContentH(event.nativeEvent.layout.height / (event.nativeEvent.layout.width / AGENDA_W)), []);
   let previous: Day | null = null;
 
   return (
@@ -82,7 +84,7 @@ function AgendaViewImpl({groups, selectedKey, onSelect, onOpenRoute, locale, tod
         </Box>
       ) : null}
       <Box x={AGENDA_X - 4} y={top} w={AGENDA_W + 24} h={viewport} style={{overflow: 'hidden'}} pointerEvents="box-none">
-        <Animated.View style={{position: 'absolute', left: u(4), top: Animated.add(new Animated.Value(u(4)), scroll.offset), width: u(AGENDA_W)}} pointerEvents="box-none" onLayout={(event) => setContentH(event.nativeEvent.layout.height / (event.nativeEvent.layout.width / AGENDA_W))}>
+        <Animated.View style={{position: 'absolute', left: u(4), top: agendaTop, width: u(AGENDA_W)}} pointerEvents="box-none" onLayout={onAgendaLayout}>
           {items.map((entry, index) => {
             const heading = entry.day !== previous;
             previous = entry.day;
@@ -93,27 +95,7 @@ function AgendaViewImpl({groups, selectedKey, onSelect, onOpenRoute, locale, tod
                     <DayHeading day={entry.day} today={today} locale={locale} />
                   </View>
                 ) : null}
-                <View
-                  style={{marginBottom: u(ENTRY_GAP)}}
-                  onLayout={(event) => {
-                    rows.set(entry.item.key, {y: event.nativeEvent.layout.y / (event.nativeEvent.layout.width / AGENDA_W), h: event.nativeEvent.layout.height / (event.nativeEvent.layout.width / AGENDA_W)});
-                  }}
-                >
-                  <EntryCard
-                    item={entry.item}
-                    width={AGENDA_W}
-                    selected={selected?.key === entry.item.key}
-                                        onFocus={() => {
-                      onSelect(entry.item);
-                      const row = rows.get(entry.item.key);
-                      if (row) scroll.reveal(row.y, row.h);
-                    }}
-                    onPress={() => {
-                      const route = itemRoute(entry.item);
-                      if (route) onOpenRoute(route);
-                    }}
-                  />
-                </View>
+                <AgendaRow item={entry.item} selected={selected?.key === entry.item.key} rows={rows} reveal={scroll.reveal} onSelect={onSelect} onOpenRoute={onOpenRoute} />
               </React.Fragment>
             );
           })}
@@ -124,6 +106,31 @@ function AgendaViewImpl({groups, selectedKey, onSelect, onOpenRoute, locale, tod
     </>
   );
 }
+
+/** One agenda row. Memoised: moving focus re-renders the two rows involved, not the whole list. */
+const AgendaRow = React.memo(function AgendaRow({item, selected, rows, reveal, onSelect, onOpenRoute}: {item: CalendarItem; selected: boolean; rows: Map<string, {y: number; h: number}>; reveal: (start: number, size: number) => void; onSelect: (item: CalendarItem) => void; onOpenRoute: (route: string) => void}): React.ReactElement {
+  const onLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const scale = event.nativeEvent.layout.width / AGENDA_W;
+      rows.set(item.key, {y: event.nativeEvent.layout.y / scale, h: event.nativeEvent.layout.height / scale});
+    },
+    [rows, item.key],
+  );
+  const onFocus = useCallback(() => {
+    onSelect(item);
+    const row = rows.get(item.key);
+    if (row) reveal(row.y, row.h);
+  }, [onSelect, item, rows, reveal]);
+  const onPress = useCallback(() => {
+    const route = itemRoute(item);
+    if (route) onOpenRoute(route);
+  }, [item, onOpenRoute]);
+  return (
+    <View style={{marginBottom: u(ENTRY_GAP)}} onLayout={onLayout}>
+      <EntryCard item={item} width={AGENDA_W} selected={selected} onFocus={onFocus} onPress={onPress} />
+    </View>
+  );
+});
 
 function itemRoute(item: CalendarItem): string | null {
   const entry = itemEntry(item);
@@ -231,7 +238,7 @@ const CHIP_LIMIT = 3;
 function MonthViewImpl({groups, anchor, firstDay, shared, onMore}: {groups: readonly DayGroup[]; anchor: Day; firstDay: number; shared: ViewShared; onMore: (day: Day) => void}): React.ReactElement {
   const {colour} = useTheme();
   const {t, language} = useLanguage();
-  const weeks = buildMonthGrid(anchor, firstDay, groups, shared.today);
+  const weeks = useMemo(() => buildMonthGrid(anchor, firstDay, groups, shared.today), [anchor, firstDay, groups, shared.today]);
   const rowH = (BODY_BOTTOM - MONTH_GRID_Y) / weeks.length;
   const chipLimit = Math.max(1, Math.min(CHIP_LIMIT + 2, Math.floor((rowH - 52) / 26)));
   const weekday = new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : language, {weekday: 'short', timeZone: 'UTC'});
@@ -248,14 +255,14 @@ function MonthViewImpl({groups, anchor, firstDay, shared, onMore}: {groups: read
       ))}
       {weeks.map((week, weekIndex) =>
         week.map((cell, cellIndex) => (
-          <MonthCellView key={cell.day} cell={cell} x={MONTH_X + cellIndex * CELL_W} y={MONTH_GRID_Y + weekIndex * rowH} h={rowH} chipLimit={chipLimit} shared={shared} onMore={onMore} moreLabel={(count) => t('pages.calendar.more', {count})} />
+          <MonthCellView key={cell.day} cell={cell} x={MONTH_X + cellIndex * CELL_W} y={MONTH_GRID_Y + weekIndex * rowH} h={rowH} chipLimit={chipLimit} shared={shared} onMore={onMore} t={t} />
         )),
       )}
     </>
   );
 }
 
-function MonthCellView({cell, x, y, h, chipLimit, shared, onMore, moreLabel}: {cell: MonthCell; x: number; y: number; h: number; chipLimit: number; shared: ViewShared; onMore: (day: Day) => void; moreLabel: (count: number) => string}): React.ReactElement {
+const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, chipLimit, shared, onMore, t}: {cell: MonthCell; x: number; y: number; h: number; chipLimit: number; shared: ViewShared; onMore: (day: Day) => void; t: ReturnType<typeof useLanguage>['t']}): React.ReactElement {
   const {colour} = useTheme();
   const items = groupSeriesEpisodes(cell.entries);
   const overflow = items.length > chipLimit;
@@ -283,14 +290,14 @@ function MonthCellView({cell, x, y, h, chipLimit, shared, onMore, moreLabel}: {c
         </T>
       </Box>
       {shown.map((item, index) => (
-        <Chip key={item.key} item={item} x={x + 5.8} y={y + 32.2 + index * 30.8} w={CELL_W - 12} onPress={() => shared.onSelect(item)} />
+        <Chip key={item.key} item={item} x={x + 5.8} y={y + 32.2 + index * 30.8} w={CELL_W - 12} onSelect={shared.onSelect} />
       ))}
-      {hidden > 0 ? <MoreButton label={moreLabel(hidden)} x={x + 5.8} y={y + 32.2 + shown.length * 30.8 - 2} w={CELL_W - 12} onPress={() => onMore(cell.day)} /> : null}
+      {hidden > 0 ? <MoreButton label={t('pages.calendar.more', {count: hidden})} x={x + 5.8} y={y + 32.2 + shown.length * 30.8 - 2} w={CELL_W - 12} onPress={() => onMore(cell.day)} /> : null}
     </>
   );
-}
+});
 
-function Chip({item, x, y, w, onPress}: {item: CalendarItem; x: number; y: number; w: number; onPress: () => void}): React.ReactElement {
+const Chip = React.memo(function Chip({item, x, y, w, onSelect}: {item: CalendarItem; x: number; y: number; w: number; onSelect: (item: CalendarItem) => void}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   const available = itemAvailability(item) === 'available';
@@ -303,7 +310,7 @@ function Chip({item, x, y, w, onPress}: {item: CalendarItem; x: number; y: numbe
       accessibilityLabel={itemTitle(item)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
-      onPress={onPress}
+      onPress={() => onSelect(item)}
       style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(24), borderRadius: u(4), borderLeftWidth: u(3), borderLeftColor: available ? colour.success : colour.inkMuted, backgroundColor: colour.surfaceSoft, justifyContent: 'center', paddingLeft: u(5.6), paddingRight: u(5.6), overflow: 'visible'}}
     >
       <T size={12} weight={item.kind === 'series' ? 680 : 400} lh={18} color={colour.ink} lines={1}>
@@ -312,7 +319,7 @@ function Chip({item, x, y, w, onPress}: {item: CalendarItem; x: number; y: numbe
       {focused ? <View pointerEvents="none" style={{position: 'absolute', left: u(-5), top: u(-5), right: u(-5), bottom: u(-5), borderRadius: u(9), borderWidth: u(3), borderColor: colour.ink}} /> : null}
     </Pressable>
   );
-}
+});
 
 function MoreButton({label, x, y, w, onPress}: {label: string; x: number; y: number; w: number; onPress: () => void}): React.ReactElement {
   const {colour} = useTheme();
