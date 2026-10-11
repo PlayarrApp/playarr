@@ -1,0 +1,1 @@
+- Fire TV: a focused media card takes the web's pink glow ring (3 px ring and 20 px glow, brand ink in dark, strong brand in light); the calendar week columns start at the web's top edge.

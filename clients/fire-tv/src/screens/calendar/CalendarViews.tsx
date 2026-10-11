@@ -191,8 +191,8 @@ function DayColumn({group, x, height, shared, onColumnFocus, onOpen}: {group: Da
 /** Week: LEFT and RIGHT move between days, UP and DOWN between entries of a day. */
 function WeekViewImpl({groups, anchor, firstDay, shared}: {groups: readonly DayGroup[]; anchor: Day; firstDay: number; shared: ViewShared}): React.ReactElement {
   const days = buildWeekDays(anchor, firstDay, groups, shared.today);
-  const top = 236;
-  const height = 949 - top;
+  const top = 174; // the web week scroller runs from y 174 to 961.2
+  const height = BODY_BOTTOM - top;
   const scroll = useScrollReveal({viewport: WEEK_W, content: days.length * COLUMN_PITCH - 20, snap: 0});
   return (
     <>

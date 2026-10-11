@@ -8,12 +8,16 @@
  *  - art: scale 1.025;
  *  - focused art shadow: 0 24px 48px rgba(56,38,33,.30) + 0 10px 20px rgba(56,38,33,.20) (Home 0 26px 52px .32 + 0 11px
  *    22px .22; search 0 22px 52px rgba(31,14,20,.28)); at rest: 0 10px 20px .14 + 0 3px 8px .10.
+ * Owner 2026-10-09 (web `--card-glow`): a focused card also takes a subtle pink glow ring, a 3 px ring in the brand ink (dark) or
+ * strong brand (light) plus a 20 px glow at 45%.
  * The lift is a transform, so it never changes the layout frames Vega's focus engine measures (UP and DOWN stay
  * geometric). Vega has no blur, so a CSS shadow is drawn as concentric translucent rounded rectangles whose spread
  * follows the blur radius.
  */
 import React, {useEffect, useRef, useState} from 'react';
 import {Animated, Easing, View, type StyleProp, type ViewStyle} from 'react-native';
+import {withAlpha} from '../theme/color';
+import {useTheme} from '../theme/ThemeProvider';
 import {u} from './kit';
 
 export type MediaFocusVariant = 'default' | 'library' | 'home' | 'search';
@@ -70,6 +74,30 @@ function ShadowLayers({shadows, radius, steps = [0.5, 0.34, 0.18]}: {shadows: re
   );
 }
 
+/** The web's `--card-glow`: `0 0 0 3px c, 0 0 20px 4px c at 45%`; the glow is drawn as concentric translucent rounded rectangles. */
+function GlowRing({radius, colour}: {radius: number; colour: string}): React.ReactElement {
+  const glow = [0.33, 0.66, 1].map((step) => ({spread: 3 + 4 * step + 8 * step, alpha: 0.45 / 3}));
+  return (
+    <>
+      {glow.map(({spread, alpha}) => (
+        <View
+          key={spread}
+          style={{
+            position: 'absolute',
+            left: -u(spread),
+            top: -u(spread),
+            right: -u(spread),
+            bottom: -u(spread),
+            borderRadius: u(radius + spread),
+            backgroundColor: withAlpha(colour, alpha),
+          }}
+        />
+      ))}
+      <View style={{position: 'absolute', left: -u(3), top: -u(3), right: -u(3), bottom: -u(3), borderRadius: u(radius + 3), borderWidth: u(3), borderColor: colour}} />
+    </>
+  );
+}
+
 export interface MediaFocusProps {
   focused: boolean;
   width: number;
@@ -83,6 +111,8 @@ export interface MediaFocusProps {
 /** Wraps the artwork of a card: lifts and enlarges it and cross-fades its shadow from the rest shadow to the focused one. */
 export function MediaFocus({focused, width, height, radius, variant = 'default', style, children}: MediaFocusProps): React.ReactElement {
   const spec = MEDIA_FOCUS.variants[variant];
+  const {scheme} = useTheme();
+  const glow = scheme === 'dark' ? '#eaa6b6' : '#a52745';
   const progress = useRef(new Animated.Value(focused ? 1 : 0)).current;
   // The focused shadow is only mounted while it is visible or fading: a Home or library page holds dozens of cards.
   const [shadowMounted, setShadowMounted] = useState(focused);
@@ -103,6 +133,7 @@ export function MediaFocus({focused, width, height, radius, variant = 'default',
       {shadowMounted ? (
         <Animated.View pointerEvents="none" style={{position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, opacity: progress}}>
           <ShadowLayers shadows={spec.shadow} radius={radius} />
+          <GlowRing radius={radius} colour={glow} />
         </Animated.View>
       ) : null}
       <View style={{width: u(width), height: u(height), borderRadius: u(radius), overflow: 'hidden'}}>{children}</View>
