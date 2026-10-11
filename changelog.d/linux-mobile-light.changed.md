@@ -1,1 +1,0 @@
-- Linux phone client: light theme page colour and shadows from the web tokens, On deck loads like the web (one entry per title, ten at most), series show their year range and dates as the web writes them.

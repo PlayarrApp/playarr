@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Roku follows the web's refreshed palette (ink-soft, ink-muted, brand-ink, danger, success), shows the profile tile and build label at the foot of the dock, puts the page subtitle under the heading, keeps the clock fixed, titles grid cards below the art after recycling, and lays series rails out as the web does.
 - Fire TV: HLS playback now starts on the Vega player. Shaka's media source needs the video surface mounted before it attaches, text display and blob URLs are set up for Vega, and a failing sidecar subtitle no longer leaves a loaded title paused.
 - Library: on phones the list view no longer scrolls past its last row into blank space; the spacer under unmounted rows now uses the real row pitch (a 120px floor over-sized it).
 - Parity suite: a scored dpad or playback run without web expected values now stops with an error instead of overwriting dpad.json or playback.json with null results.
@@ -482,6 +483,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Linux phone client: light theme page colour and shadows from the web tokens, On deck loads like the web (one entry per title, ten at most), series show their year range and dates as the web writes them.
 - Samsung Tizen native client: drawers use the web strong surface with the soft left shadow, the title-actions panel and library details panel sit where web puts them, and the series cast row follows the web gap.
 - Linux phone client: one token refresh at a time with the new pair flushed to disk before use, and text drawn unhinted with grayscale anti-aliasing as the browser does.
 - Parity drivers rely on the app's own Home focus once the rails settle; a programmatic focus made the first D-pad key unreliable.
