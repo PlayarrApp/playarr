@@ -8,8 +8,7 @@ rails, cards and tokens follow the web app's mobile layout (`clients/tv-web`, th
 ## Identity
 
 - Link broker (`https://playarr.app/api/link/*`): `linux-phone`.
-- Server header `X-Playarr-Client-Platform`: `web` until the server's closed platform enum gains `linux-phone`
-  (one constant, `SERVER_PLATFORM` in `src/api.rs`).
+- Server header `X-Playarr-Client-Platform`: `linux-phone` (`SERVER_PLATFORM` in `src/api.rs`).
 
 ## Sign-in
 

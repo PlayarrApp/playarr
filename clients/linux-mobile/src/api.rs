@@ -5,9 +5,8 @@ use serde::de::DeserializeOwned;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-/// Wire name sent to the server as `X-Playarr-Client-Platform`. The server's closed enum has no
-/// "linux-phone" yet, so this stays "web" until it does; flip this one constant then.
-pub const SERVER_PLATFORM: &str = "web";
+/// Wire name sent to the server as `X-Playarr-Client-Platform`.
+pub const SERVER_PLATFORM: &str = "linux-phone";
 /// Identity the hosted link broker accepts for this app.
 pub const BROKER_PLATFORM: &str = "linux-phone";
 
