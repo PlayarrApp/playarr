@@ -453,6 +453,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.
+- Android phone: Home rail cards are 173 dp wide as on the web phone layout, so the next card peeks at the right edge.
 - Linux phone client: layout and look follow the web phone design (header, 16:9 cards, key-art Home, navigation strip, calendar cards, detail pages, side panels, profiles and preferences).
 - Xbox: artwork is requested at the web's width for each kind and decoded at its exact display size with the web's cover crop, so posters and cards are resampled once, as in the browser.
 - tvOS and macOS: artwork is requested at the width web asks for (poster 360, thumb and logo 540, banner and backdrop 780, the first Home hero 1920, cast photos 240) instead of the full-size original, so the pictures are scaled the same way as on web (57.10025, 17.470).

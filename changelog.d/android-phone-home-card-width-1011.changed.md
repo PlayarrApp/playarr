@@ -1,1 +1,0 @@
-- Android phone: Home rail cards are 173 dp wide as on the web phone layout, so the next card peeks at the right edge.
