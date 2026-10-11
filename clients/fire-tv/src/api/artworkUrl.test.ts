@@ -4,10 +4,10 @@ import {albumArtworkUrl, artworkAuthHeaders, preferredArtworkKind, workArtworkUr
 describe('artwork URLs and a trailing-slash base', () => {
   it('never produces a double slash when the base ends in one (the Fire TV grey-box bug)', () => {
     expect(workArtworkUrl('http://192.0.2.10:8484/', 'work-1', 'poster')).toBe(
-      'http://192.0.2.10:8484/api/v1/artwork/work/work-1/poster'
+      'http://192.0.2.10:8484/api/v1/artwork/work/work-1/poster?w=360'
     );
     expect(albumArtworkUrl('http://192.0.2.10:8484//', 'artist-1', 'album-1', 'thumb')).toBe(
-      'http://192.0.2.10:8484/api/v1/artwork/album/artist-1/album-1/thumb'
+      'http://192.0.2.10:8484/api/v1/artwork/album/artist-1/album-1/thumb?w=540'
     );
   });
 });
@@ -15,13 +15,13 @@ describe('artwork URLs and a trailing-slash base', () => {
 describe('workArtworkUrl', () => {
   it('builds the exact path api-client/src/index.ts\'s getWorkArtwork uses', () => {
     expect(workArtworkUrl('http://192.168.1.20:8484', 'work-1', 'poster')).toBe(
-      'http://192.168.1.20:8484/api/v1/artwork/work/work-1/poster'
+      'http://192.168.1.20:8484/api/v1/artwork/work/work-1/poster?w=360'
     );
   });
 
   it('percent-encodes path segments', () => {
     expect(workArtworkUrl('http://192.168.1.20:8484', 'work/1 with spaces', 'poster')).toBe(
-      'http://192.168.1.20:8484/api/v1/artwork/work/work%2F1%20with%20spaces/poster'
+      'http://192.168.1.20:8484/api/v1/artwork/work/work%2F1%20with%20spaces/poster?w=360'
     );
   });
 });
@@ -29,7 +29,7 @@ describe('workArtworkUrl', () => {
 describe('albumArtworkUrl', () => {
   it('builds the exact path api-client/src/index.ts\'s getAlbumArtwork uses', () => {
     expect(albumArtworkUrl('http://192.168.1.20:8484', 'artist-1', 'album-1', 'thumb')).toBe(
-      'http://192.168.1.20:8484/api/v1/artwork/album/artist-1/album-1/thumb'
+      'http://192.168.1.20:8484/api/v1/artwork/album/artist-1/album-1/thumb?w=540'
     );
   });
 });

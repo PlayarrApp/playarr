@@ -453,6 +453,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: artwork is requested at the width the web asks for (poster 360, backdrop and banner 780, other kinds 540), so the device decodes and scales the same pixels as the browser.
 - Xbox: Back from a title returns focus to the card that was focused on Home or the library, as the web does.
 - Android phone: the profile avatar moves into the bottom navigation as on the web phone layout, the library header title uses the 21.6 px phone title and its actions sit flush with the content grid, Home cards use the 8.8 px label with the small detail line hanging below, and debug parity captures can hide the system bars.
 - Fire TV: on the film page the Cast and Crew tracks start where the web's do (Chapters 351 px, each person track 284 px).
