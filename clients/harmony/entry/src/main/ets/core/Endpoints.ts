@@ -96,6 +96,16 @@ export function requestsUrl(): string {
   return "/api/v1/requests";
 }
 
+/** `GET /api/v1/playlists`: the viewer's playlists (their own and System ones). */
+export function playlistsUrl(): string {
+  return "/api/v1/playlists";
+}
+
+/** `GET /api/v1/playlists/{id}/items`. */
+export function playlistItemsUrl(id: string): string {
+  return `/api/v1/playlists/${encodeURIComponent(id)}/items`;
+}
+
 /** `GET /api/v1/home/rails`: the server-curated Home rails web TV Home renders. */
 export function homeRailsUrl(): string {
   return "/api/v1/home/rails";

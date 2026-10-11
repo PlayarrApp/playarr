@@ -79,6 +79,12 @@
       "data": {}
     },
     {
+      "name": "Playlists",
+      "pageSourceFile": "src/main/ets/pages/Playlists.ets",
+      "buildFunction": "PlaylistsBuilder",
+      "data": {}
+    },
+    {
       "name": "Settings",
       "pageSourceFile": "src/main/ets/pages/Settings.ets",
       "buildFunction": "SettingsBuilder",
