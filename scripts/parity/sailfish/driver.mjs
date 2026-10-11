@@ -1,0 +1,114 @@
+// Suite driver for the Sailfish OS client on the SDK emulator (or a device) reached over ssh. Contract: docs/parity/SUITE.md.
+//   PLAYARR_SF_SSH_KEY (private key), PLAYARR_SF_SSH_PORT (default 2223), PLAYARR_SF_SSH_HOST (default 127.0.0.1),
+//   PLAYARR_SF_VNC (host:port of the display), PLAYARR_SF_VNC_PW_FILE (password file), PLAYARR_SF_VNCDO (vncdo binary).
+// The phone has no D-pad. key() records the sequence and location() resolves it against the suite's own key paths, then
+// drives the app to that screen with its smoke-script hook (PLAYARR_STEPS, src/main.cpp): the same end states a D-pad
+// run reaches on the web. focused() reports null, so the D-pad checks are honestly not passed.
+import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { expandKeys } from "../suite-lib.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const suite = JSON.parse(readFileSync(join(here, "..", "suite.json"), "utf8"));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const PAGES = "file:///usr/share/harbour-playarr/qml/pages";
+
+export async function createDriver() {
+  const env = process.env;
+  const host = env.PLAYARR_SF_SSH_HOST ?? "127.0.0.1", port = env.PLAYARR_SF_SSH_PORT ?? "2223";
+  const sshArgs = ["-i", env.PLAYARR_SF_SSH_KEY, "-p", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"];
+  const ssh = (user, cmd) => execFileSync("ssh", [...sshArgs, `${user}@${host}`, cmd], { encoding: "utf8", timeout: 60000 });
+  const tmp = mkdtempSync(join(tmpdir(), "sf-driver-"));
+  let theme = "dark", seq = [], at = "/";
+  const sequences = suite.screens.filter((s) => s.keys).map((s) => ({ s, k: expandKeys(s.keys).map((x) => x.key + (x.long ? ":long" : "")).join(",") }));
+
+  const KILL = `for p in $(ps -eo pid,comm | awk '$2=="harbour-playarr"{print $1}'); do kill $p; done`;
+  // Restart the app with a smoke script; every run starts with the theme so it holds without a stored preference.
+  const launch = (steps) => {
+    const script = [`js:Api.themeMode='${theme}'`, ...steps].join("|");
+    writeFileSync(join(tmp, "steps"), script);
+    execFileSync("scp", ["-i", env.PLAYARR_SF_SSH_KEY, "-P", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", join(tmp, "steps"), `defaultuser@${host}:/tmp/pa-steps.txt`]);
+    ssh("root", KILL);
+    ssh("defaultuser", [
+      "export XDG_RUNTIME_DIR=/run/user/100000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/100000/dbus/user_bus_socket",
+      'export PLAYARR_STEPS="$(cat /tmp/pa-steps.txt)"',
+      "setsid nohup invoker --type=silica-qt5 --no-wait /usr/bin/harbour-playarr >/tmp/pa.log 2>&1 </dev/null &",
+      "sleep 2"].join("\n"));
+  };
+  const firstMovie = "Api.request('GET','/api/v1/catalog?kind=movie&limit=1&available_only=true',null,function(s,d){pageStack.currentPage.open(d.items[0])})";
+  const firstSeries = "Api.request('GET','/api/v1/catalog?kind=series&limit=1&available_only=true',null,function(s,d){pageStack.currentPage.open(d.items[0])})";
+  const section = (n) => [`js:pageStack.currentPage.section='${n}'`];
+  const calendar = (m) => [`js:Api.setSetting('cal.mode','${m}')`, ...section("calendar")];
+  // [steps, seconds to settle] for a web route as the suite names it.
+  function plan(route, screenId) {
+    const [path, q] = route.split("?");
+    const view = new URLSearchParams(q ?? "").get("view");
+    if (screenId === "actions") return [["wait", "js:Api.request('GET','/api/v1/catalog?kind=movie&limit=1&available_only=true',null,function(s,d){pageStack.currentPage.actions(d.items[0])})"], 16];
+    if (path === "/") return [["wait"], 12];
+    if (path === "/movies" && q?.includes("panel=filters")) return [["wait", ...section("movies"), "wait", `js:pageStack.push('${PAGES}/FiltersPage.qml')`], 16];
+    if (path === "/movies") return [["wait", ...section("movies")], 14];
+    if (path === "/series") return [["wait", ...section("series")], 14];
+    if (path === "/music") return [["wait", ...section("music")], 14];
+    if (path === "/search") return [["wait", ...section("search")], 12];
+    if (path === "/calendar") return [["wait", ...calendar(view ?? "agenda")], 18];
+    if (path.startsWith("/movies/")) return [["wait", `js:${firstMovie}`], 16];
+    if (path.startsWith("/series/")) return [["wait", `js:${firstSeries}`], 16];
+    if (path === "/settings") return [["wait", `js:pageStack.push('${PAGES}/SettingsPage.qml')`], 12];
+    if (path === "/profiles") return [["wait", `js:pageStack.push('${PAGES}/ProfilesPage.qml')`], 12];
+    if (path.startsWith("/player/")) return [["wait", `js:${firstMovie}`, "wait", "wait", "js:pageStack.currentPage.play(pageStack.currentPage.target.id,pageStack.currentPage.work.title)",
+      ...Array(7).fill("wait"), "js:pageStack.currentPage.engine.pause()", "js:pageStack.currentPage.controls=true"], 34];
+    throw new Error(`no Sailfish mapping for ${route}`);
+  }
+  async function goto(route, screenId) {
+    const [steps, settle] = plan(route, screenId);
+    launch(steps);
+    await sleep(settle * 1000);
+    at = route.replace(":id", "item");
+  }
+  const vnc = () => {
+    const [h, p] = env.PLAYARR_SF_VNC.split(":");
+    return [env.PLAYARR_SF_VNCDO, ["--delay", "20", "-s", `${h}::${p}`, "-p", readFileSync(env.PLAYARR_SF_VNC_PW_FILE, "utf8").trim()]];
+  };
+
+  return {
+    async start() { ssh("defaultuser", "test -s ~/.config/harbour-playarr/harbour-playarr.conf && grep -q refresh ~/.config/harbour-playarr/harbour-playarr.conf"); },
+    async stop() { rmSync(tmp, { recursive: true, force: true }); },
+    async setTheme(t) { theme = t; },
+    async home() { seq = []; launch(["wait"]); await sleep(12000); at = "/"; },
+    async key(name, { long } = {}) { seq.push(name + (long ? ":long" : "")); },
+    async route(path) { await goto(path); },
+    // Resolves the recorded key path to a screen and shows it; an unknown path stays on Home (the D-pad checks then fail).
+    async location() {
+      if (seq.length) {
+        const hit = sequences.find((x) => x.k === seq.join(","));
+        seq = [];
+        if (hit) await goto(hit.s.route, hit.s.id);
+      }
+      return at;
+    },
+    async focused() { return null; },
+    async screenshot(file) {
+      const conf = ssh("defaultuser", "cat ~/.config/harbour-playarr/harbour-playarr.conf");
+      if (!/refresh=/.test(conf)) throw new Error("signed out: not capturing");
+      const [bin, base] = vnc();
+      execFileSync(bin, [...base, "capture", file], { stdio: "ignore" });
+      if (!existsSync(file)) throw new Error("capture failed");
+    },
+    // Plays case.file straight in the player and reads the engine position from the app's own log.
+    async play(c) {
+      const t0 = Date.now();
+      const probe = "js:console.log('PLAYPOS',Date.now(),pageStack.currentPage.engine.position)";
+      launch(["wait", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${c.file}',title:'case ${c.id}',startMs:0})`, ...Array(36).fill(probe)]);
+      await sleep(70000);
+      const log = ssh("root", `journalctl -b --no-pager | grep PLAYPOS | tail -60`);
+      const samples = [...log.matchAll(/PLAYPOS (\d+) (-?\d+)/g)].map((m) => ({ t: Number(m[1]), pos: Number(m[2]) })).filter((s) => s.t >= t0 - 5000);
+      const moving = samples.filter((s) => s.pos > 0);
+      if (!moving.length) return { state: samples.length ? "stalled" : "error", detail: "position never advanced" };
+      const first = moving[0], last = moving.at(-1);
+      return { state: last.pos > first.pos ? "playing" : "stalled", startSeconds: (first.t - t0) / 1000, advancedSeconds: (last.pos - first.pos) / 1000 };
+    },
+  };
+}

@@ -32,7 +32,7 @@ D-pad column as n/a.
 | iPad | iOS simulator (iPad) | As iPhone | As iPhone | Own size; compared with web mobile at that size | `ios-tablet` |
 | Android phone | Android Emulator, phone image | `adb shell input` | `adb exec-out screencap` | Software codecs | `android-phone` |
 | HarmonyOS phone | DevEco Previewer | Previewer input | Previewer screenshot | UI only, no real playback | `harmony-phone` |
-| Sailfish OS | Sailfish SDK emulator under QEMU | Emulator input | Emulator screenshot | Slow; no GPU video | `sailfish` |
+| Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad | Display capture over VNC | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
 | Nura (postmarketOS) | `pmbootstrap` qemu-amd64 | QEMU input | QEMU screendump | Slow; software rendering | `postmarketos` |
 
 ## Legend and build.json rules
