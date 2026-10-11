@@ -31,8 +31,9 @@ function DeviceMediaCaps() as Object
     if DeviceCanDecode(di, { Codec: "av1", Profile: "main" }) then caps.videoCodecs.Push("av1")
 
     ' Output size and rate from the current video mode ("1080p60", "2160p60", "720p").
-    mode = di.GetVideoMode()
-    if mode <> invalid
+    mode = invalid
+    if FindMemberFunction(di, "GetVideoMode") <> invalid then mode = di.GetVideoMode()
+    if mode <> invalid and type(mode) = "roString"
         height = Val(mode)
         if height >= 2160
             caps.maxWidth = 3840
@@ -52,8 +53,9 @@ function DeviceMediaCaps() as Object
     end if
 
     ' HDR: only what the display accepts and the 10-bit decoder can render.
-    display = di.GetDisplayProperties()
-    if display <> invalid and caps.maxBitDepth >= 10
+    display = invalid
+    if FindMemberFunction(di, "GetDisplayProperties") <> invalid then display = di.GetDisplayProperties()
+    if display <> invalid and type(display) = "roAssociativeArray" and caps.maxBitDepth >= 10
         if display.Hdr10 = true then caps.hdr.Push("hdr10")
         if display.Hlg = true then caps.hdr.Push("hlg")
         if display.DolbyVision = true
@@ -64,15 +66,17 @@ function DeviceMediaCaps() as Object
     end if
 
     ' Audio: channel layout of the output and the codecs it can take as they are.
-    layout = di.GetAudioOutputChannel()
-    if layout <> invalid
+    layout = invalid
+    if FindMemberFunction(di, "GetAudioOutputChannel") <> invalid then layout = di.GetAudioOutputChannel()
+    if layout <> invalid and type(layout) = "roString"
         if Instr(1, layout, "7.1") > 0
             caps.maxChannels = 8
         else if Instr(1, layout, "5.1") > 0
             caps.maxChannels = 6
         end if
     end if
-    decoders = di.GetAudioDecoders()
+    decoders = invalid
+    if FindMemberFunction(di, "GetAudioDecoders") <> invalid then decoders = di.GetAudioDecoders()
     if decoders <> invalid
         names = {}
         if type(decoders) = "roAssociativeArray"
@@ -95,8 +99,9 @@ function DeviceMediaCaps() as Object
 end function
 
 function DeviceCanDecode(di as Object, options as Object) as Boolean
+    if FindMemberFunction(di, "CanDecodeVideo") = invalid then return false
     result = di.CanDecodeVideo(options)
-    return result <> invalid and result.result = true
+    return type(result) = "roAssociativeArray" and result.result = true
 end function
 
 function DeviceCodecList(caps as Object) as String
