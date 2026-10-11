@@ -93,6 +93,11 @@ export function navigateFromRail(id: string, currentId: string): void {
   if (id === currentId) {
     return;
   }
+  if (id === 'profile') {
+    // Web: the profile tile opens the picker; Back returns to the page it was opened from.
+    pushRoute(getNavStack(), ROUTES.Profiles);
+    return;
+  }
   if (id === HOME_NAV_ID) {
     popRoute(getNavStack());
     return;

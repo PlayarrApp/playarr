@@ -72,6 +72,16 @@ import { INTERACTION_CURVE, INTERACTION_CARD_MS } from '../Motion';
 import { TvGeometry } from '../../core/Tokens';
 import type { RgbaColor } from '../../core/Tokens';
 import { FOCUS_LIFT } from './FocusLift';
+import { ProfileAvatar } from './ProfileAvatar';
+import { resolveAvatarPreset } from '../../core/AvatarPreset';
+import { clientVersion } from '../../core/AppConfig';
+
+/** The id the rail reports when the profile tile is activated. */
+export const PROFILE_NAV_ID: string = 'profile';
+// Web `.app-user-identity`: the tile group sits at y=954 with the version line under it.
+const PROFILE_GROUP_TOP: number = 954;
+const PROFILE_AVATAR_SIZE: number = 28;
+const VERSION_SIZE: number = 8.832;
 
 /** Brief 5.8, "TV nav tile" row: `bg ink@0.14 / ink@0.09`. Not a
  * `core/Tokens.ts` field -- see this file's header comment. */
@@ -213,6 +223,9 @@ export struct NavRail {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
+  /** The signed-in profile, set by the profile picker when it loads (web's foot-of-rail identity tile). */
+  @StorageProp('currentProfileName') private profileName: string = '';
+  @StorageProp('currentProfileId') private profileId: string = '';
 
   /** Web's next group (Playlists, Watchlist, Requests, Calendar), below the library group. Plain field,
    * like `items`. */
@@ -258,6 +271,73 @@ export struct NavRail {
     })
   }
 
+  /** Web's tile label: the first name. */
+  private firstName(): string {
+    const parts = this.profileName.trim().split(' ');
+    return parts[0].length > 0 ? parts[0] : this.profileName;
+  }
+
+  /** Gap that puts the profile group at its web position under the groups above it. */
+  private profileGroupMargin(): number {
+    let used = this.groupHeight(this.items.length);
+    let top = TvGeometry.navGroupTop;
+    if (this.primaryItems.length > 0) {
+      top = top - (this.groupHeight(this.primaryItems.length) + TvGeometry.navGroupGap);
+      used = used + this.groupHeight(this.primaryItems.length) + TvGeometry.navGroupGap;
+    }
+    if (this.secondaryItems.length > 0) {
+      used = used + this.groupHeight(this.secondaryItems.length) + TvGeometry.navGroupGap;
+    }
+    return Math.max(0, PROFILE_GROUP_TOP - top - used - TvGeometry.navGroupGap);
+  }
+
+  @Builder
+  private profileGroup(): void {
+    Column({ space: tv(4) }) {
+      Column({ space: NAV_TILE_ICON_LABEL_GAP }) {
+        ProfileAvatar({ presetId: resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE) })
+          .focusable(false)
+        Text(this.firstName())
+          .fontSize(tv(TvGeometry.navTileLabelSize))
+          .fontWeight(TvGeometry.navTileLabelWeight)
+          .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
+          .fontColor(toResourceColor(activeColors().inkSoft))
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width(tv(TvGeometry.navTileSize - 8))
+          .textAlign(TextAlign.Center)
+      }
+      .id(`${PROFILE_NAV_ID}-nav-tile`)
+      .width(tv(TvGeometry.navTileSize))
+      .height(tv(TvGeometry.navTileSize))
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+      .borderRadius(tv(TvGeometry.navTileRadius))
+      .focusable(true)
+      .onClick(() => {
+        this.onSelect(PROFILE_NAV_ID);
+      })
+    }
+    .padding({
+      left: tv(TvGeometry.navGroupPaddingH),
+      right: tv(TvGeometry.navGroupPaddingH),
+      top: tv(TvGeometry.navGroupPaddingV),
+      bottom: tv(TvGeometry.navGroupPaddingV),
+    })
+    .borderRadius(tv(TvGeometry.navGroupRadius))
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, TvGeometry.navGroupBackgroundOpacity))
+    .border({
+      width: tv(TvGeometry.navGroupBorderWidth),
+      color: toResourceColorWithAlpha(activeColors().ink, TvGeometry.navGroupBorderOpacity),
+    })
+    .margin({ top: tv(this.profileGroupMargin()) })
+    Text('v' + clientVersion)
+      .fontSize(tv(VERSION_SIZE))
+      .fontColor(toResourceColor(activeColors().inkMuted))
+      .width(tv(TvGeometry.navTileSize + 2 * TvGeometry.navGroupPaddingH))
+      .textAlign(TextAlign.Center)
+  }
+
   build() {
     Column({ space: tv(TvGeometry.navGroupGap) }) {
       if (this.primaryItems.length > 0) {
@@ -266,6 +346,9 @@ export struct NavRail {
       this.group(this.items)
       if (this.secondaryItems.length > 0) {
         this.group(this.secondaryItems)
+      }
+      if (this.profileName.length > 0) {
+        this.profileGroup()
       }
     }
     .alignItems(HorizontalAlign.Start)

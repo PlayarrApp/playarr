@@ -160,6 +160,13 @@ struct Profiles {
     const result = await listProfiles();
     if (result.kind === 'ok') {
       this.profiles = result.value;
+      // The nav rail's identity tile reads the signed-in profile from here.
+      for (const profile of result.value) {
+        if (profile.is_current) {
+          AppStorage.setOrCreate<string>('currentProfileId', profile.id);
+          AppStorage.setOrCreate<string>('currentProfileName', profile.display_name);
+        }
+      }
       this.viewState = ProfilesViewState.Ready;
       return;
     }
