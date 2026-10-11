@@ -91,7 +91,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
                 }
                 b.connect_toggled(move |b| {
                     if b.is_active() {
-                        store::save_settings(&store::Settings { theme: id.into() });
+                        store::update_settings(|s| s.theme = id.into());
                         theme::apply(id);
                     }
                 });
@@ -139,11 +139,80 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         "Language",
         "Follow this device or keep a language fixed",
     ));
-    list.append(&section_row(
+    let player = section_row(
         4,
         "Player",
         "Choose how Playarr should start quality, subtitles and audio",
-    ));
+    );
+    {
+        let app = app.clone();
+        player.connect_clicked(move |_| {
+            let col = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+            col.append(
+                &gtk4::Label::builder()
+                    .label("ADVANCED")
+                    .css_classes(["pa-section-label"])
+                    .xalign(0.0)
+                    .build(),
+            );
+            let current = store::load_settings();
+            for (label, on, set) in [
+                (
+                    "Force direct video",
+                    current.force_direct_video,
+                    (|s: &mut store::Settings, v: bool| s.force_direct_video = v) as fn(&mut store::Settings, bool),
+                ),
+                (
+                    "Force direct audio",
+                    current.force_direct_audio,
+                    (|s: &mut store::Settings, v: bool| s.force_direct_audio = v) as fn(&mut store::Settings, bool),
+                ),
+            ] {
+                col.append(
+                    &gtk4::Label::builder()
+                        .label(label)
+                        .css_classes(["pa-pref-title"])
+                        .xalign(0.0)
+                        .margin_top(8)
+                        .build(),
+                );
+                let row = gtk4::Box::builder().spacing(10).homogeneous(true).build();
+                let off = gtk4::ToggleButton::builder()
+                    .label("Off")
+                    .css_classes(["pa-seg-tile"])
+                    .active(!on)
+                    .build();
+                let on_btn = gtk4::ToggleButton::builder()
+                    .label("On")
+                    .css_classes(["pa-seg-tile"])
+                    .group(&off)
+                    .active(on)
+                    .build();
+                on_btn.connect_toggled(move |b| store::update_settings(|s| set(s, b.is_active())));
+                row.append(&off);
+                row.append(&on_btn);
+                col.append(&row);
+            }
+            col.append(
+                &gtk4::Label::builder()
+                    .label("Skip transcoding of that stream even when the device may not decode it. Off by default.")
+                    .css_classes(["pa-pref-desc"])
+                    .wrap(true)
+                    .xalign(0.0)
+                    .margin_top(8)
+                    .build(),
+            );
+            app.present_panel("Preferences", "Player", &col, true);
+        });
+    }
+    {
+        // Capture hook: open the Player section.
+        let player = player.clone();
+        app.hooks
+            .borrow_mut()
+            .insert("settings-player", Rc::new(move |_| player.emit_clicked()));
+    }
+    list.append(&player);
 
     let server = section_row(
         5,

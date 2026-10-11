@@ -46,7 +46,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     theme_pick.set_selected(THEMES.iter().position(|t| t.0 == current).unwrap_or(0) as u32);
     theme_pick.connect_selected_notify(|d| {
         let name = THEMES[d.selected() as usize].0;
-        store::save_settings(&store::Settings { theme: name.into() });
+        store::update_settings(|s| s.theme = name.into());
         theme::apply(name);
     });
     top.append(&theme_pick);

@@ -15,11 +15,20 @@ pub struct Session {
 pub struct Settings {
     /// "dark" (default), "light" or "system".
     pub theme: String,
+    /// Advanced player settings: skip transcoding of that stream (default off, stored per device).
+    #[serde(default)]
+    pub force_direct_video: bool,
+    #[serde(default)]
+    pub force_direct_audio: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { theme: "dark".into() }
+        Settings {
+            theme: "dark".into(),
+            force_direct_video: false,
+            force_direct_audio: false,
+        }
     }
 }
 
@@ -81,6 +90,12 @@ pub fn load_settings() -> Settings {
 pub fn save_settings(s: &Settings) {
     save("settings.json", s)
 }
+/// Loads the settings, applies `change`, saves them.
+pub fn update_settings(change: impl FnOnce(&mut Settings)) {
+    let mut s = load_settings();
+    change(&mut s);
+    save_settings(&s);
+}
 
 /// Random UUID v4 from the kernel, used as the refresh `device_id` when the token carries none.
 pub fn new_device_id() -> String {
@@ -131,6 +146,14 @@ fn b64url_decode(s: &str) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn settings_default_off_and_old_files_load() {
+        let s: Settings = serde_json::from_str(r#"{"theme":"light"}"#).unwrap();
+        assert_eq!(s.theme, "light");
+        assert!(!s.force_direct_video && !s.force_direct_audio);
+        assert!(!Settings::default().force_direct_video);
+    }
 
     #[test]
     fn device_id_is_v4_uuid() {

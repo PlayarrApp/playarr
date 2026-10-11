@@ -327,11 +327,15 @@ impl App {
                 );
             }
             "theme" => {
-                store::save_settings(&store::Settings { theme: arg.into() });
+                store::update_settings(|s| s.theme = arg.into());
                 crate::theme::apply(arg);
             }
             "profiles" => self.push_profiles(client),
             "settings" => self.push_settings(client),
+            "settings-player" => {
+                self.push_settings(client);
+                self.hook("settings-player", "");
+            }
             "film" | "series-detail" | "player" => {
                 let kind = if name == "series-detail" { "series" } else { "movie" };
                 let (me, c) = (self.clone(), client.clone());

@@ -1,6 +1,7 @@
 #![allow(dead_code)] // client surface lands over several changes; remove once every API call is used
 mod api;
 mod avatar;
+mod caps;
 mod icons;
 mod link;
 mod model;

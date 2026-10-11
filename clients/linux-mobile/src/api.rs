@@ -13,6 +13,8 @@ pub const BROKER_PLATFORM: &str = "linux-phone";
 #[derive(Debug, Clone)]
 pub enum ApiError {
     Http(u16),
+    /// A rejection that carries the server's own message (for example the 422 colour-format refusal).
+    Message(String),
     Transport(String),
     Decode(String),
 }
@@ -22,6 +24,7 @@ impl std::fmt::Display for ApiError {
         match self {
             ApiError::Http(401) => write!(f, "Signed out. Link this device again."),
             ApiError::Http(c) => write!(f, "The server answered HTTP {c}."),
+            ApiError::Message(m) => write!(f, "{m}"),
             ApiError::Transport(m) => write!(f, "Could not reach the server ({m})."),
             ApiError::Decode(m) => write!(f, "Unexpected server reply ({m})."),
         }
@@ -162,6 +165,16 @@ impl Client {
                     continue;
                 }
             }
+            if code == 422 {
+                // The playback negotiation refuses a colour format this device cannot be given; show the server's words.
+                let mut resp = resp;
+                let msg = resp
+                    .body_mut()
+                    .read_json::<serde_json::Value>()
+                    .ok()
+                    .and_then(|v| v.get("message")?.as_str().map(str::to_string));
+                return Err(msg.map(ApiError::Message).unwrap_or(ApiError::Http(422)));
+            }
             if !(200..300).contains(&code) {
                 return Err(ApiError::Http(code));
             }
@@ -288,11 +301,11 @@ impl Client {
         self.get("/api/v1/playback/progress")
     }
     pub fn playback(&self, media_file_id: &str, start_ms: i64) -> Result<PlaybackInfo> {
-        // The GStreamer HLS/MP4 pipeline plays H.264/AAC in MP4 or TS; the server transcodes anything else.
-        let path = format!(
-            "/api/v1/playback/{media_file_id}?containers=mp4,mov&video_codecs=h264&audio_codecs=aac,mp3&start_position_ms={start_ms}"
-        );
-        // The server answers 503 while every transcode slot is busy; wait and retry a few times.
+        let settings = store::load_settings();
+        let caps = crate::caps::Caps::detect().query(settings.force_direct_video, settings.force_direct_audio);
+        let path = format!("/api/v1/playback/{media_file_id}?{caps}&start_position_ms={start_ms}");
+        // The server answers 503 while every transcode slot is busy; wait and retry a few times. A 422
+        // (colour format cannot be converted) is final: no retry.
         let mut tries = 0;
         loop {
             match self.get(&path) {
@@ -338,6 +351,38 @@ mod tests {
     fn urlenc_escapes() {
         assert_eq!(urlenc("a b&c"), "a%20b%26c");
         assert_eq!(urlenc("Zoë"), "Zo%C3%AB");
+    }
+
+    #[test]
+    fn colour_format_422_shows_the_server_message_and_is_not_retried() {
+        use std::io::{Read, Write};
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let hits = std::sync::Arc::new(AtomicUsize::new(0));
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = l.local_addr().unwrap();
+        let h2 = hits.clone();
+        std::thread::spawn(move || {
+            for conn in l.incoming().flatten() {
+                let mut conn = conn;
+                let mut buf = [0u8; 4096];
+                let _ = conn.read(&mut buf);
+                h2.fetch_add(1, Ordering::SeqCst);
+                let body = r#"{"error":"unsupported_colour_format","message":"This title's colour format can't be converted for this device."}"#;
+                let _ = conn.write_all(format!("HTTP/1.1 422 Unprocessable Entity\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes());
+            }
+        });
+        let c = Client::new(Session {
+            server_url: format!("http://{addr}"),
+            access_token: "t".into(),
+            refresh_token: "r".into(),
+            device_id: "d".into(),
+        });
+        let err = c.playback("f", 0).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "This title's colour format can't be converted for this device."
+        );
+        assert_eq!(hits.load(Ordering::SeqCst), 1, "no retry");
     }
 
     #[test]

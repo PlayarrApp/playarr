@@ -1,0 +1,1 @@
+- Linux phone client: reports real decoder capabilities, Force direct video and audio settings, and shows the 422 colour-format message.
