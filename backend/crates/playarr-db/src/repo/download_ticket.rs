@@ -28,6 +28,7 @@ pub trait DownloadTicketRepo: Send + Sync {
         user_id: Uuid,
         media_file_id: Uuid,
         quality_id: &str,
+        device_id: Option<Uuid>,
     ) -> Result<Option<DownloadTicket>, DbError>;
 
     async fn insert(&self, ticket: &DownloadTicket) -> Result<(), DbError>;
@@ -56,6 +57,43 @@ pub trait DownloadTicketRepo: Send + Sync {
     /// method exists so that job has a real, tested query to call rather
     /// than inventing one later.
     async fn list_expired(&self, now: DateTime<Utc>) -> Result<Vec<DownloadTicket>, DbError>;
+
+    /// Tickets waiting for the download worker, oldest first.
+    async fn list_queued(&self) -> Result<Vec<DownloadTicket>, DbError>;
+
+    /// Atomically moves a `Queued` ticket to `Processing`; `false` when it was no longer queued
+    /// (canceled, or taken by another worker).
+    async fn claim(&self, id: Uuid) -> Result<bool, DbError>;
+
+    /// Moves a ticket from `from` to `to` only if it is still in `from`; `false` when something else
+    /// (a cancel) changed it first, so a worker never overwrites a newer state.
+    async fn transition(
+        &self,
+        id: Uuid,
+        from: DownloadStatus,
+        to: DownloadStatus,
+        error_message: Option<&str>,
+    ) -> Result<bool, DbError>;
+
+    /// Marks a `Processing` ticket `Ready`; `false` when it is no longer `Processing` (canceled).
+    async fn finish_ready(
+        &self,
+        id: Uuid,
+        output_path: &std::path::Path,
+        size_bytes: u64,
+        ready_at: DateTime<Utc>,
+        expires_at: DateTime<Utc>,
+    ) -> Result<bool, DbError>;
+
+    /// `Ready` tickets that have an output file recorded (the boot check looks for missing files).
+    async fn list_ready_with_files(&self) -> Result<Vec<DownloadTicket>, DbError>;
+
+    /// Sends a `Ready` ticket whose file vanished back to `Queued`, clearing its output, size and
+    /// dates, so it is produced again; `false` when it was no longer `Ready`.
+    async fn requeue_missing_file(&self, id: Uuid) -> Result<bool, DbError>;
+
+    /// Puts every `Processing` ticket back to `Queued` (the node restarted mid-job); returns how many.
+    async fn requeue_processing(&self) -> Result<u64, DbError>;
 }
 
 pub struct SqlxDownloadTicketRepo {
@@ -71,6 +109,7 @@ impl SqlxDownloadTicketRepo {
         let id: String = row.try_get("id")?;
         let user_id: String = row.try_get("user_id")?;
         let media_file_id: String = row.try_get("media_file_id")?;
+        let device_id: Option<String> = row.try_get("device_id")?;
         let quality_id: String = row.try_get("quality_id")?;
         let profile: Option<String> = row.try_get("profile")?;
         let container: String = row.try_get("container")?;
@@ -86,6 +125,7 @@ impl SqlxDownloadTicketRepo {
             id: parse_uuid(&id)?,
             user_id: parse_uuid(&user_id)?,
             media_file_id: parse_uuid(&media_file_id)?,
+            device_id: device_id.as_deref().map(parse_uuid).transpose()?,
             quality_id,
             profile,
             container,
@@ -103,7 +143,7 @@ impl SqlxDownloadTicketRepo {
 #[async_trait]
 impl DownloadTicketRepo for SqlxDownloadTicketRepo {
     async fn get(&self, id: Uuid) -> Result<Option<DownloadTicket>, DbError> {
-        let sql = "SELECT id, user_id, media_file_id, quality_id, profile, container, status, \
+        let sql = "SELECT id, user_id, media_file_id, device_id, quality_id, profile, container, status, \
                  output_path, size_bytes, error_message, requested_at, ready_at, expires_at \
                  FROM download_tickets WHERE id = ?";
         let row = sqlx::query(sql)
@@ -114,7 +154,7 @@ impl DownloadTicketRepo for SqlxDownloadTicketRepo {
     }
 
     async fn list_for_user(&self, user_id: Uuid) -> Result<Vec<DownloadTicket>, DbError> {
-        let sql = "SELECT id, user_id, media_file_id, quality_id, profile, container, status, \
+        let sql = "SELECT id, user_id, media_file_id, device_id, quality_id, profile, container, status, \
                  output_path, size_bytes, error_message, requested_at, ready_at, expires_at \
                  FROM download_tickets WHERE user_id = ? ORDER BY requested_at DESC";
         let rows = sqlx::query(sql)
@@ -129,31 +169,44 @@ impl DownloadTicketRepo for SqlxDownloadTicketRepo {
         user_id: Uuid,
         media_file_id: Uuid,
         quality_id: &str,
+        device_id: Option<Uuid>,
     ) -> Result<Option<DownloadTicket>, DbError> {
-        let sql = "SELECT id, user_id, media_file_id, quality_id, profile, container, status, \
+        let sql = "SELECT id, user_id, media_file_id, device_id, quality_id, profile, container, status, \
                  output_path, size_bytes, error_message, requested_at, ready_at, expires_at \
                  FROM download_tickets \
                  WHERE user_id = ? AND media_file_id = ? AND quality_id = ? \
+                 AND (? IS NULL OR device_id = ?) \
                  AND status IN ('queued', 'processing', 'ready') \
                  ORDER BY requested_at DESC LIMIT 1";
-        let row = sqlx::query(sql)
+        let rows = sqlx::query(sql)
             .bind(user_id.to_string())
             .bind(media_file_id.to_string())
             .bind(quality_id.to_string())
-            .fetch_optional(&self.pool)
+            .bind(device_id.map(|d| d.to_string()))
+            .bind(device_id.map(|d| d.to_string()))
+            .fetch_all(&self.pool)
             .await?;
-        row.as_ref().map(Self::from_row).transpose()
+        // A ticket past its expiry is gone (the sweep may not have run yet): a new request makes a new one.
+        let now = Utc::now();
+        for row in &rows {
+            let ticket = Self::from_row(row)?;
+            if ticket.expires_at.is_none_or(|at| at > now) {
+                return Ok(Some(ticket));
+            }
+        }
+        Ok(None)
     }
 
     async fn insert(&self, ticket: &DownloadTicket) -> Result<(), DbError> {
         let sql = "INSERT INTO download_tickets \
-                 (id, user_id, media_file_id, quality_id, profile, container, status, \
+                 (id, user_id, media_file_id, device_id, quality_id, profile, container, status, \
                   output_path, size_bytes, error_message, requested_at, ready_at, expires_at) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         sqlx::query(sql)
             .bind(ticket.id.to_string())
             .bind(ticket.user_id.to_string())
             .bind(ticket.media_file_id.to_string())
+            .bind(ticket.device_id.map(|d| d.to_string()))
             .bind(ticket.quality_id.clone())
             .bind(ticket.profile.clone())
             .bind(ticket.container.clone())
@@ -190,6 +243,103 @@ impl DownloadTicketRepo for SqlxDownloadTicketRepo {
         Ok(())
     }
 
+    async fn list_queued(&self) -> Result<Vec<DownloadTicket>, DbError> {
+        let sql = "SELECT id, user_id, media_file_id, device_id, quality_id, profile, container, status, \
+                 output_path, size_bytes, error_message, requested_at, ready_at, expires_at \
+                 FROM download_tickets WHERE status = ? ORDER BY requested_at ASC";
+        let rows = sqlx::query(sql)
+            .bind(download_status_to_str(DownloadStatus::Queued))
+            .fetch_all(&self.pool)
+            .await?;
+        rows.iter().map(Self::from_row).collect()
+    }
+
+    async fn claim(&self, id: Uuid) -> Result<bool, DbError> {
+        let sql = "UPDATE download_tickets SET status = ? WHERE id = ? AND status = ?";
+        let done = sqlx::query(sql)
+            .bind(download_status_to_str(DownloadStatus::Processing))
+            .bind(id.to_string())
+            .bind(download_status_to_str(DownloadStatus::Queued))
+            .execute(&self.pool)
+            .await?;
+        Ok(done.rows_affected() == 1)
+    }
+
+    async fn transition(
+        &self,
+        id: Uuid,
+        from: DownloadStatus,
+        to: DownloadStatus,
+        error_message: Option<&str>,
+    ) -> Result<bool, DbError> {
+        let sql =
+            "UPDATE download_tickets SET status = ?, error_message = ? WHERE id = ? AND status = ?";
+        let done = sqlx::query(sql)
+            .bind(download_status_to_str(to))
+            .bind(error_message.map(str::to_string))
+            .bind(id.to_string())
+            .bind(download_status_to_str(from))
+            .execute(&self.pool)
+            .await?;
+        Ok(done.rows_affected() == 1)
+    }
+
+    async fn finish_ready(
+        &self,
+        id: Uuid,
+        output_path: &std::path::Path,
+        size_bytes: u64,
+        ready_at: DateTime<Utc>,
+        expires_at: DateTime<Utc>,
+    ) -> Result<bool, DbError> {
+        let sql = "UPDATE download_tickets SET status = ?, output_path = ?, size_bytes = ?, \
+                 ready_at = ?, expires_at = ?, error_message = NULL WHERE id = ? AND status = ?";
+        let done = sqlx::query(sql)
+            .bind(download_status_to_str(DownloadStatus::Ready))
+            .bind(output_path.to_string_lossy().into_owned())
+            .bind(i64::try_from(size_bytes).unwrap_or(i64::MAX))
+            .bind(format_datetime(ready_at))
+            .bind(format_datetime(expires_at))
+            .bind(id.to_string())
+            .bind(download_status_to_str(DownloadStatus::Processing))
+            .execute(&self.pool)
+            .await?;
+        Ok(done.rows_affected() == 1)
+    }
+
+    async fn list_ready_with_files(&self) -> Result<Vec<DownloadTicket>, DbError> {
+        let sql = "SELECT id, user_id, media_file_id, device_id, quality_id, profile, container, status, \
+                 output_path, size_bytes, error_message, requested_at, ready_at, expires_at \
+                 FROM download_tickets WHERE status = ? AND output_path IS NOT NULL";
+        let rows = sqlx::query(sql)
+            .bind(download_status_to_str(DownloadStatus::Ready))
+            .fetch_all(&self.pool)
+            .await?;
+        rows.iter().map(Self::from_row).collect()
+    }
+
+    async fn requeue_missing_file(&self, id: Uuid) -> Result<bool, DbError> {
+        let sql = "UPDATE download_tickets SET status = ?, output_path = NULL, size_bytes = NULL, \
+                 ready_at = NULL, expires_at = NULL, error_message = NULL WHERE id = ? AND status = ?";
+        let done = sqlx::query(sql)
+            .bind(download_status_to_str(DownloadStatus::Queued))
+            .bind(id.to_string())
+            .bind(download_status_to_str(DownloadStatus::Ready))
+            .execute(&self.pool)
+            .await?;
+        Ok(done.rows_affected() == 1)
+    }
+
+    async fn requeue_processing(&self) -> Result<u64, DbError> {
+        let sql = "UPDATE download_tickets SET status = ? WHERE status = ?";
+        let done = sqlx::query(sql)
+            .bind(download_status_to_str(DownloadStatus::Queued))
+            .bind(download_status_to_str(DownloadStatus::Processing))
+            .execute(&self.pool)
+            .await?;
+        Ok(done.rows_affected())
+    }
+
     async fn mark_ready(
         &self,
         id: Uuid,
@@ -222,7 +372,7 @@ impl DownloadTicketRepo for SqlxDownloadTicketRepo {
     }
 
     async fn list_expired(&self, now: DateTime<Utc>) -> Result<Vec<DownloadTicket>, DbError> {
-        let sql = "SELECT id, user_id, media_file_id, quality_id, profile, container, status, \
+        let sql = "SELECT id, user_id, media_file_id, device_id, quality_id, profile, container, status, \
                  output_path, size_bytes, error_message, requested_at, ready_at, expires_at \
                  FROM download_tickets \
                  WHERE status NOT IN ('expired', 'canceled') \
@@ -302,6 +452,7 @@ mod tests {
             id: Uuid::new_v4(),
             user_id,
             media_file_id,
+            device_id: None,
             quality_id: "original".to_string(),
             profile: None,
             container: "mkv".to_string(),
@@ -378,7 +529,7 @@ mod tests {
         let canceled = sample_ticket(user_id, media_file_id, DownloadStatus::Canceled);
         repo.insert(&canceled).await.unwrap();
         assert!(repo
-            .find_active(user_id, media_file_id, "original")
+            .find_active(user_id, media_file_id, "original", None)
             .await
             .unwrap()
             .is_none());
@@ -386,18 +537,18 @@ mod tests {
         let queued = sample_ticket(user_id, media_file_id, DownloadStatus::Queued);
         repo.insert(&queued).await.unwrap();
         let found = repo
-            .find_active(user_id, media_file_id, "original")
+            .find_active(user_id, media_file_id, "original", None)
             .await
             .unwrap();
         assert_eq!(found.map(|t| t.id), Some(queued.id));
 
         assert!(repo
-            .find_active(user_id, media_file_id, "h264-1080p-8mbps")
+            .find_active(user_id, media_file_id, "h264-1080p-8mbps", None)
             .await
             .unwrap()
             .is_none());
         assert!(repo
-            .find_active(other_user_id, media_file_id, "original")
+            .find_active(other_user_id, media_file_id, "original", None)
             .await
             .unwrap()
             .is_none());

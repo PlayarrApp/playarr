@@ -36,6 +36,7 @@ pub mod calendar_cache;
 pub mod catalog;
 pub mod credits;
 pub mod discovery;
+pub mod download_worker;
 pub mod downloads;
 pub mod dubarr_audio;
 pub mod error;
@@ -412,6 +413,7 @@ fn api_router() -> OpenApiRouter<AppState> {
             downloads::cancel_download_ticket_handler
         ))
         .routes(routes!(downloads::download_ticket_file_handler))
+        .routes(routes!(downloads::complete_download_ticket_handler))
         .routes(routes!(
             admin::create_source_instance_handler,
             admin::list_source_instances_handler

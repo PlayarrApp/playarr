@@ -220,8 +220,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 playarr \
     && useradd --system --uid 10001 --gid playarr --home-dir /app --shell /usr/sbin/nologin playarr \
-    && mkdir -p /app /data/playarr-cache/artwork \
-    && chown -R playarr:playarr /app /data
+    && mkdir -p /app /data/playarr-cache/artwork /downloads \
+    && chown -R playarr:playarr /app /data /downloads
 
 # --------------------------------------------------------------------
 # Self-update-refusal marker.

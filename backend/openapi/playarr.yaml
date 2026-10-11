@@ -4077,6 +4077,34 @@ paths:
           description: Unknown ticket id, or it does not belong to the caller
       security:
       - bearer_auth: []
+  /api/v1/downloads/{id}/complete:
+    post:
+      tags:
+      - downloads
+      operationId: complete_download_ticket_handler
+      parameters:
+      - name: id
+        in: path
+        description: DownloadTicket id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: 'The server''s staged copy was deleted (or already gone). The ticket then reads `expired`: the server file is only staging, the device keeps its own copy'
+        '401':
+          description: Missing or invalid access token
+        '403':
+          description: Caller lacks Playarr streaming access, download access, or access to this media file's library
+        '404':
+          description: Unknown ticket id, or it does not belong to the caller
+        '409':
+          description: The ticket has not finished processing yet (queued/processing/failed)
+        '410':
+          description: The ticket was canceled
+      security:
+      - bearer_auth: []
   /api/v1/downloads/{id}/file:
     get:
       tags:

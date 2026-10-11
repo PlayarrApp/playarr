@@ -49,6 +49,7 @@ CONFIG_DIR="/etc/playarr"
 ENV_FILE="${CONFIG_DIR}/playarr.env"
 ENV_EXAMPLE="${SCRIPT_DIR}/playarr.env.example"
 DATA_DIR="/var/lib/playarr"
+DOWNLOAD_DIR="/var/lib/playarr-downloads"
 LOG_DIR="/var/log/playarr"
 UNIT_DIR="/etc/systemd/system"
 SERVICE_USER="playarr"
@@ -107,6 +108,8 @@ ensure_dirs() {
   install -d -o root -g "${SERVICE_GROUP}" -m 0750 "${CONFIG_DIR}"
   install -d -o "${SERVICE_USER}" -g "${SERVICE_GROUP}" -m 0750 "${DATA_DIR}"
   install -d -o "${SERVICE_USER}" -g "${SERVICE_GROUP}" -m 0750 "${LOG_DIR}"
+  # Converted downloads: a directory of their own, so they can sit on another disk than the database.
+  install -d -o "${SERVICE_USER}" -g "${SERVICE_GROUP}" -m 0750 "${DOWNLOAD_DIR}"
 }
 
 install_binary() {

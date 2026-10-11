@@ -4027,6 +4027,7 @@ version = "0.3.0"
 dependencies = [
  "async-trait",
  "chrono",
+ "libc",
  "playarr-cache",
  "playarr-db",
  "playarr-model",

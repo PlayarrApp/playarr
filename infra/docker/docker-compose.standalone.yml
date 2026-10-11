@@ -35,6 +35,8 @@ services:
       # survives `docker compose restart`.
       DATABASE_URL: sqlite:///data/playarr.db
       PLAYARR_ARTWORK_CACHE_DIR: /data/cache/artwork
+      # Converted downloads are short-lived staging files: their own volume, not the database volume.
+      PLAYARR_DOWNLOAD_DIR: /downloads
       PLAYARR_LOG: ${PLAYARR_LOG:-info,playarr_api=debug}
       PLAYARR_HTTP_BIND_ADDR: 0.0.0.0:8484
       PLAYARR_METRICS_BIND_ADDR: 0.0.0.0:9090
@@ -63,7 +65,9 @@ services:
       - "9090:9090"
     volumes:
       - playarr_standalone_data:/data
+      - playarr_standalone_downloads:/downloads
     restart: unless-stopped
 
 volumes:
   playarr_standalone_data:
+  playarr_standalone_downloads:

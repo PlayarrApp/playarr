@@ -3163,6 +3163,15 @@ export class ApiClient {
     return this.requestJson("GET", `/api/v1/downloads/${encodeURIComponent(id)}`);
   }
 
+  /**
+   * Tells the server the device has the whole file: the server's converted copy is only short-lived
+   * staging and is deleted at once (otherwise it expires after the staging time). Idempotent. The
+   * ticket then reads `expired`; ask again to download the title again.
+   */
+  async completeDownload(id: string): Promise<void> {
+    await this.requestJson("POST", `/api/v1/downloads/${encodeURIComponent(id)}/complete`);
+  }
+
   /** Cancels/deletes a download ticket (and its stored file, server-side). */
   async cancelDownload(id: string): Promise<void> {
     await this.requestJson("DELETE", `/api/v1/downloads/${encodeURIComponent(id)}`);

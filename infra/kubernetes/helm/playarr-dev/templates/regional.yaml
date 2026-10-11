@@ -120,6 +120,12 @@ spec:
               value: {{ $instance.transcodeMaxConcurrentJobs | quote }}
             - name: PLAYARR_FFMPEG_THREADS
               value: {{ $instance.ffmpegThreads | quote }}
+            # Converted downloads are staging files on their own capped scratch volume, never the state volume.
+            - name: PLAYARR_DOWNLOAD_DIR
+              value: /downloads
+            - name: PLAYARR_DOWNLOAD_MAX_BYTES
+              # About 90% of the 10Gi staging volume.
+              value: "9Gi"
             {{- with $instance.peerInternalRoutes }}
             - name: PLAYARR_PEER_INTERNAL_ROUTES
               value: {{ join "," . | quote }}
@@ -314,6 +320,8 @@ spec:
               mountPath: /tmp
             - name: state
               mountPath: /data
+            - name: downloads
+              mountPath: /downloads
             - name: media
               mountPath: {{ $instance.mediaMountPath | default $instance.mediaPath }}
               readOnly: true
@@ -328,6 +336,11 @@ spec:
         - name: state
           persistentVolumeClaim:
             claimName: {{ $instance.persistence.claimName }}
+        # Converted downloads are short-lived staging (the device keeps its own copy): capped node-local
+        # scratch, never the state volume.
+        - name: downloads
+          emptyDir:
+            sizeLimit: 10Gi
         - name: media
           hostPath:
             path: {{ $instance.mediaPath }}

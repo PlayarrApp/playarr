@@ -161,6 +161,9 @@ These are the variables that matter on a single server. Every one is read at sta
 | `PLAYARR_BOOTSTRAP_ADMIN_PASSWORD` | random 64 hex chars | If unset, a real random password is generated and logged once. |
 | `PLAYARR_WEB_ASSETS_DIR` | `web/` next to the binary | Directory holding Playarr Admin's built `index.html` and `assets/`. |
 | `PLAYARR_ARTWORK_CACHE_DIR` | derived from the SQLite path | See [caches](#where-state-lives-on-disk). |
+| `PLAYARR_DOWNLOAD_DIR` | `playarr-downloads` in the temp dir | Where converted-quality downloads are **staged**. Downloads live on the device; this is only a short-lived copy, so a small directory is enough. Give it its own directory, not the database volume; every shipped deployment sets it. |
+| `PLAYARR_DOWNLOAD_STAGING_TTL` | `24h` | How long a staged file stays if the device never confirms it has it (seconds, or a suffix such as `90m`, `24h`, `2d`). The file is deleted at once when the device confirms. |
+| `PLAYARR_DOWNLOAD_MAX_BYTES` | unset | Cap on the staging directory's total size (plain bytes, or a suffix such as `20Gi`). A conversion that would exceed it fails with a clear message. |
 | `PLAYARR_FFMPEG_BINARY` | `ffmpeg` | Override the executable used for transcoding and subtitle extraction. |
 | `PLAYARR_FFPROBE_BINARY` | `ffprobe` | Override the executable used for container probing. |
 | `PLAYARR_MEDIA_REMOTE_ROOT` | unset | Path prefix as an *arr app reports it. Must be set together with the next one. |

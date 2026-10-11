@@ -7,17 +7,13 @@
 //!   [`playarr_model::MediaFile`] is served byte-for-byte, nothing to
 //!   produce). A named transcode profile starts `Queued`.
 //!
-//!   TODO(downloads): named-profile tickets never leave `Queued` in this
-//!   pass -- there is no single-file transcode job in `playarr-transcode`
-//!   yet to actually produce their output (that crate only knows how to
-//!   produce HLS-segmented renditions for playback, see
-//!   `TranscodeOrchestrator::spawn_on_demand_transcode`'s doc comment). The
-//!   API shape and DB schema for a named-profile ticket are complete and
-//!   correct (see [`DownloadTicketResponse`] and
-//!   `playarr_db::repo::DownloadTicketRepo`); wiring an actual worker that
-//!   drives `mark_ready`/`mark_status` for these is deliberately left as
-//!   follow-up rather than risking an untested new ffmpeg job runner here.
-//!   Original-quality downloads, the common case, work end to end.
+//!   Downloads live on the device: the server's converted file is only short-lived staging. The device
+//!   fetches it (resumable with `Range`) and then confirms with [`complete_download_ticket_handler`], which
+//!   deletes the staged file at once; otherwise it expires after `PLAYARR_DOWNLOAD_STAGING_TTL` (24 hours by
+//!   default). An expired ticket is not reused: asking again creates a new one.
+//!   A background worker ([`crate::download_worker`]) turns named-profile tickets into a single-file MP4
+//!   (`Queued` -> `Processing` -> `Ready`, or `Failed` with a reason), one job at a time per node, holding a
+//!   transcode admission slot so it waits behind busy live playback.
 //! - [`list_download_tickets_handler`]/[`get_download_ticket_handler`] --
 //!   list/poll.
 //! - [`cancel_download_ticket_handler`] -- `DELETE /api/v1/downloads/{id}`.
@@ -165,9 +161,17 @@ pub async fn create_download_ticket_handler(
         )));
     }
 
+    // A converted copy is made for one device (each device stages and acknowledges its own);
+    // Original tickets serve the library file and are shared.
+    let device_id = (!is_original).then_some(streaming.user.claims.device_id);
     if let Some(existing) = state
         .download_tickets
-        .find_active(streaming.user_id, media_file.id, &body.quality_id)
+        .find_active(
+            streaming.user_id,
+            media_file.id,
+            &body.quality_id,
+            device_id,
+        )
         .await?
     {
         return Ok((StatusCode::OK, Json(existing.into())));
@@ -179,6 +183,7 @@ pub async fn create_download_ticket_handler(
             id: Uuid::new_v4(),
             user_id: streaming.user_id,
             media_file_id: media_file.id,
+            device_id: None,
             quality_id: "original".to_string(),
             profile: None,
             container: media_file.container.clone(),
@@ -195,13 +200,11 @@ pub async fn create_download_ticket_handler(
             id: Uuid::new_v4(),
             user_id: streaming.user_id,
             media_file_id: media_file.id,
+            device_id,
             quality_id: body.quality_id.clone(),
             profile: Some(body.quality_id.clone()),
-            // A plain MP4 mux is what a real single-file transcode job
-            // would eventually produce here -- not the HLS segmenting
-            // `spawn_on_demand_transcode` uses for playback (see this
-            // module's doc comment: this path stays `Queued` for now, no
-            // job actually runs yet).
+            // The download worker produces a plain single-file MP4 here, not the HLS segmenting
+            // playback uses.
             container: "mp4".to_string(),
             status: DownloadStatus::Queued,
             output_path: None,
@@ -337,7 +340,80 @@ pub async fn cancel_download_ticket_handler(
         .download_tickets
         .mark_status(ticket.id, DownloadStatus::Canceled, None)
         .await?;
+    // A converted file is of no use to a canceled ticket (a running job notices the cancel itself).
+    remove_staged(&ticket).await;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Deletes a ticket's staged file. Only a file named after the ticket (`<ticket id>.mp4`) is ever
+/// removed, so a path that somehow points into a media library can never be deleted from here.
+pub(crate) async fn remove_staged(ticket: &DownloadTicket) {
+    let Some(path) = &ticket.output_path else {
+        return;
+    };
+    if path.file_name().and_then(|n| n.to_str()) == Some(&format!("{}.mp4", ticket.id)) {
+        let _ = tokio::fs::remove_file(path).await;
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/downloads/{id}/complete",
+    tag = "downloads",
+    params(("id" = Uuid, Path, description = "DownloadTicket id")),
+    responses(
+        (status = 204, description = "The server's staged copy was deleted (or already gone). The ticket then reads `expired`: the server file is only staging, the device keeps its own copy"),
+        (status = 401, description = "Missing or invalid access token"),
+        (status = 403, description = "Caller lacks Playarr streaming access, download access, or access to this media file's library"),
+        (status = 404, description = "Unknown ticket id, or it does not belong to the caller"),
+        (status = 409, description = "The ticket has not finished processing yet (queued/processing/failed)"),
+        (status = 410, description = "The ticket was canceled")
+    )
+)]
+pub async fn complete_download_ticket_handler(
+    State(state): State<AppState>,
+    streaming: StreamingUser,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    ensure_can_download(&streaming.policy)?;
+    let ticket = load_owned_ticket(&state, &streaming, id).await?;
+    // Another device's staged copy is not this device's to acknowledge.
+    if ticket
+        .device_id
+        .is_some_and(|device| device != streaming.user.claims.device_id)
+    {
+        return Err(ApiError::not_found(format!("unknown download ticket {id}")));
+    }
+    match ticket.status {
+        // An Original ticket serves the library file and may be shared by several devices: nothing to do.
+        DownloadStatus::Ready if ticket.output_path.is_none() => Ok(StatusCode::NO_CONTENT),
+        DownloadStatus::Ready => {
+            // Move the ticket first and delete the file only if this call won (a cancel or a second
+            // ack in between must not lose or double-delete the file).
+            let moved = state
+                .download_tickets
+                .transition(
+                    ticket.id,
+                    DownloadStatus::Ready,
+                    DownloadStatus::Expired,
+                    None,
+                )
+                .await?;
+            if moved {
+                remove_staged(&ticket).await;
+            }
+            Ok(StatusCode::NO_CONTENT)
+        }
+        DownloadStatus::Expired => Ok(StatusCode::NO_CONTENT),
+        DownloadStatus::Canceled => Err(ApiError::new(
+            StatusCode::GONE,
+            "gone",
+            "this download ticket was canceled",
+        )),
+        DownloadStatus::Queued | DownloadStatus::Processing | DownloadStatus::Failed => Err(
+            ApiError::conflict("this download ticket has not finished processing yet"),
+        ),
+    }
 }
 
 #[utoipa::path(
@@ -364,6 +440,16 @@ pub async fn download_ticket_file_handler(
     ensure_can_download(&streaming.policy)?;
     let ticket = load_owned_ticket(&state, &streaming, id).await?;
 
+    // A ready ticket past its expiry is gone even before the sweep deletes the file.
+    if ticket.status == DownloadStatus::Ready
+        && ticket.expires_at.is_some_and(|at| at <= Utc::now())
+    {
+        return Err(ApiError::new(
+            StatusCode::GONE,
+            "gone",
+            "this download ticket is no longer available",
+        ));
+    }
     match ticket.status {
         DownloadStatus::Ready => {}
         DownloadStatus::Expired | DownloadStatus::Canceled => {
@@ -376,6 +462,16 @@ pub async fn download_ticket_file_handler(
         DownloadStatus::Queued | DownloadStatus::Processing | DownloadStatus::Failed => {
             return Err(ApiError::conflict(
                 "this download ticket has not finished processing yet",
+            ));
+        }
+    }
+
+    // A converted file that vanished (a wiped volume, a restore): the ticket is produced again.
+    if let Some(path) = &ticket.output_path {
+        if tokio::fs::metadata(path).await.is_err() {
+            let _ = state.download_tickets.requeue_missing_file(ticket.id).await;
+            return Err(ApiError::conflict(
+                "this download is being prepared again; try again shortly",
             ));
         }
     }

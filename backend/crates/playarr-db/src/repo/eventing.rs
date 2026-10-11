@@ -259,9 +259,10 @@ impl DownloadTicketRepo for EventingDownloadTicketRepo {
         user_id: Uuid,
         media_file_id: Uuid,
         quality_id: &str,
+        device_id: Option<Uuid>,
     ) -> Result<Option<DownloadTicket>, DbError> {
         self.inner
-            .find_active(user_id, media_file_id, quality_id)
+            .find_active(user_id, media_file_id, quality_id, device_id)
             .await
     }
     async fn insert(&self, ticket: &DownloadTicket) -> Result<(), DbError> {
@@ -319,6 +320,59 @@ impl DownloadTicketRepo for EventingDownloadTicketRepo {
     }
     async fn list_expired(&self, now: DateTime<Utc>) -> Result<Vec<DownloadTicket>, DbError> {
         self.inner.list_expired(now).await
+    }
+    async fn list_queued(&self) -> Result<Vec<DownloadTicket>, DbError> {
+        self.inner.list_queued().await
+    }
+    async fn claim(&self, id: Uuid) -> Result<bool, DbError> {
+        let claimed = self.inner.claim(id).await?;
+        if claimed {
+            self.emit_for(id, "status").await;
+        }
+        Ok(claimed)
+    }
+    async fn transition(
+        &self,
+        id: Uuid,
+        from: DownloadStatus,
+        to: DownloadStatus,
+        error_message: Option<&str>,
+    ) -> Result<bool, DbError> {
+        let moved = self.inner.transition(id, from, to, error_message).await?;
+        if moved {
+            self.emit_for(id, "status").await;
+        }
+        Ok(moved)
+    }
+    async fn finish_ready(
+        &self,
+        id: Uuid,
+        output_path: &std::path::Path,
+        size_bytes: u64,
+        ready_at: DateTime<Utc>,
+        expires_at: DateTime<Utc>,
+    ) -> Result<bool, DbError> {
+        let done = self
+            .inner
+            .finish_ready(id, output_path, size_bytes, ready_at, expires_at)
+            .await?;
+        if done {
+            self.emit_for(id, "status").await;
+        }
+        Ok(done)
+    }
+    async fn list_ready_with_files(&self) -> Result<Vec<DownloadTicket>, DbError> {
+        self.inner.list_ready_with_files().await
+    }
+    async fn requeue_missing_file(&self, id: Uuid) -> Result<bool, DbError> {
+        let done = self.inner.requeue_missing_file(id).await?;
+        if done {
+            self.emit_for(id, "status").await;
+        }
+        Ok(done)
+    }
+    async fn requeue_processing(&self) -> Result<u64, DbError> {
+        self.inner.requeue_processing().await
     }
 }
 

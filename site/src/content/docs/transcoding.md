@@ -309,6 +309,27 @@ deployment the dispatcher only sees the sessions on its own node.
 > feeding the dispatcher is the on-demand playback bridge described above. Wiring import and upgrade
 > events from the *arr reconciliation flow onto the same channel is a known, unaddressed gap.
 
+## Converted downloads
+
+A download at a lower quality than Original is converted once into a single MP4 file by a background
+worker. **Downloads live on the device: the server's file is only short-lived staging.** The device
+fetches it (resumable with `Range`) and then calls `POST /api/v1/downloads/{id}/complete`, which deletes
+the staged file at once; the ticket then reads `expired`. Without that call the staged file is deleted after
+`PLAYARR_DOWNLOAD_STAGING_TTL` (24 hours by default). An expired ticket is not reused: asking again creates
+a new ticket and converts again.
+
+The worker runs one conversion at a time per node, in fair turns per user, and live playback always wins: a
+download is only started while a whole transcode slot stays free (a one-slot node must be idle), runs at low
+CPU priority, and is paused the moment a viewer needs its slot. It resumes when the slot is free again.
+
+- Staged files go to `PLAYARR_DOWNLOAD_DIR`; `PLAYARR_DOWNLOAD_MAX_BYTES` caps the directory and a
+  free-space check runs before every conversion. A sweep deletes expired, canceled and orphaned files.
+- A title whose colours cannot be converted on this node (Dolby Vision profile 5 without a fast enough
+  GPU) fails its ticket with a plain message instead of producing a wrong picture.
+- **A deploy or restart interrupts running conversions.** Interrupted tickets go back to the queue at
+  start-up and start again from the beginning.
+- A staged file that has disappeared (a wiped volume) is queued again automatically.
+
 ## Transcode temp directory
 
 On-demand HLS output is written to a per-session directory under a fixed root:

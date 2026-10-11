@@ -42,6 +42,9 @@ pub struct DownloadTicket {
     pub id: Uuid,
     pub user_id: Uuid,
     pub media_file_id: Uuid,
+    /// The device a converted ticket was made for (each device stages and acknowledges its own copy);
+    /// `None` for Original tickets, which serve the library file and are shared.
+    pub device_id: Option<Uuid>,
     /// Stable selector matching `PlaybackQualityOption::id` /
     /// `DownloadQualityOption::id` -- `"original"` or a real transcode
     /// profile name.

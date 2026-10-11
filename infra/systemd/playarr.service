@@ -44,7 +44,7 @@ CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/var/lib/playarr /var/log/playarr
+ReadWritePaths=/var/lib/playarr /var/lib/playarr-downloads /var/log/playarr
 UMask=0027
 
 [Install]

@@ -1873,6 +1873,11 @@ async fn boot_api(
         availability_event_repo,
         folder_repo: Arc::new(playarr_db::SqlxFolderRepo::new(pool.clone())),
     };
+    // Converted-quality download tickets are produced by a background worker (one job at a time).
+    playarr_api::download_worker::spawn(
+        state.clone(),
+        playarr_api::download_worker::download_root(),
+    );
     let version_gate = VersionGateLayer::new(compatibility_table);
 
     // Must run on every node that runs this (the API) role -- not

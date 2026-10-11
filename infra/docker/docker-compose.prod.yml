@@ -46,6 +46,8 @@ services:
       PLAYARR_METRICS_BIND_ADDR: 0.0.0.0:9090
       DATABASE_URL: sqlite:///data/playarr.db
       PLAYARR_ARTWORK_CACHE_DIR: /data/playarr-cache/artwork
+      # Converted downloads are short-lived staging files: their own volume, not the database volume.
+      PLAYARR_DOWNLOAD_DIR: /downloads
       PLAYARR_JWT_SECRET: ${PLAYARR_JWT_SECRET:?Set PLAYARR_JWT_SECRET (e.g. in a .env file) before starting the prod stack}
     # Mirrors the Helm chart's podSecurityContext/securityContext as closely
     # as a single-host container runtime allows: non-root (the image already
@@ -71,6 +73,7 @@ services:
     volumes:
       # The SQLite database file and the artwork cache.
       - playarr_prod_data:/data
+      - playarr_prod_downloads:/downloads
     networks:
       - playarr-net
 
@@ -114,3 +117,4 @@ volumes:
   caddy_data:
   caddy_config:
   playarr_prod_data:
+  playarr_prod_downloads:

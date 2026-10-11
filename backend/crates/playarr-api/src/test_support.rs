@@ -467,6 +467,11 @@ async fn test_pool() -> (DbPool, Arc<std::sync::atomic::AtomicUsize>) {
     (pool, acquisitions)
 }
 
+/// A router over a (possibly modified) copy of a test state's `AppState`.
+pub fn router_for_test(app: AppState) -> Router {
+    build_router(app, test_version_gate(), None).0
+}
+
 pub async fn test_state() -> (Router, TestState) {
     test_state_with_ffmpeg("/usr/bin/true", 1).await
 }

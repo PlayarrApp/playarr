@@ -35,6 +35,11 @@ spec:
               value: sqlite:///data/playarr.db
             - name: PLAYARR_ARTWORK_CACHE_DIR
               value: /data/cache/artwork
+            # Converted downloads are short-lived staging files on a capped scratch volume, never the database volume.
+            - name: PLAYARR_DOWNLOAD_DIR
+              value: /downloads
+            - name: PLAYARR_DOWNLOAD_MAX_BYTES
+              value: 9Gi
           envFrom:
             - configMapRef:
                 name: playarr-config
@@ -69,6 +74,12 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: downloads
+              mountPath: /downloads
+      volumes:
+        - name: downloads
+          emptyDir:
+            sizeLimit: 10Gi
   volumeClaimTemplates:
     - metadata:
         name: data

@@ -1682,6 +1682,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/downloads/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["complete_download_ticket_handler"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/downloads/{id}/file": {
         parameters: {
             query?: never;
@@ -13542,6 +13558,62 @@ export interface operations {
             };
             /** @description Unknown ticket id, or it does not belong to the caller */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    complete_download_ticket_handler: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description DownloadTicket id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The server's staged copy was deleted (or already gone). The ticket then reads `expired`: the server file is only staging, the device keeps its own copy */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller lacks Playarr streaming access, download access, or access to this media file's library */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown ticket id, or it does not belong to the caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The ticket has not finished processing yet (queued/processing/failed) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The ticket was canceled */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };

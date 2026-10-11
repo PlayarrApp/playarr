@@ -54,6 +54,21 @@ spec:
               value: "sqlite://{{ .Values.persistence.mountPath }}/playarr.db"
             - name: PLAYARR_ARTWORK_CACHE_DIR
               value: "{{ .Values.persistence.mountPath }}/cache/artwork"
+            # Converted downloads are staging files on their own capped scratch volume, never the database volume.
+            - name: PLAYARR_DOWNLOAD_DIR
+              value: /downloads
+            - name: PLAYARR_DOWNLOAD_MAX_BYTES
+              # About 90% of the scratch volume, so a job in flight and filesystem overhead still fit (Mi or Gi).
+              {{- /* about 90% of the cap, computed in Mi so Mi and Gi both work; never below 1Mi */ -}}
+              {{- $size := .Values.downloads.staging.sizeLimit | toString }}
+              {{- $mi := 0 }}
+              {{- if hasSuffix "Gi" $size }}{{ $mi = mul (trimSuffix "Gi" $size | int) 1024 }}
+              {{- else if hasSuffix "Mi" $size }}{{ $mi = (trimSuffix "Mi" $size | int) }}{{ end }}
+              {{- if gt $mi 0 }}
+              value: {{ printf "%dMi" (max 1 (div (mul $mi 9) 10)) | quote }}
+              {{- else }}
+              value: {{ $size | quote }}
+              {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "playarr.configMapName" . }}
@@ -95,9 +110,16 @@ spec:
               mountPath: /tmp
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
+            - name: downloads
+              mountPath: /downloads
       volumes:
         - name: tmp
           emptyDir: {}
+        # Converted downloads are short-lived staging (the device keeps its own copy): capped node-local
+        # scratch, never the database volume.
+        - name: downloads
+          emptyDir:
+            sizeLimit: {{ .Values.downloads.staging.sizeLimit }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

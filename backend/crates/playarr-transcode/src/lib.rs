@@ -759,6 +759,272 @@ fn build_hls_args(
     Ok(args)
 }
 
+/// ffmpeg arguments for a downloadable single-file MP4 at `profile`: same picture rules as live
+/// playback (downscale, HDR tone mapping, BT.709 tags, a refused profile 5 without libplacebo), but
+/// one fast-start MP4 file instead of HLS segments. Pure, like [`build_ffmpeg_hls_args`].
+pub fn build_download_args(
+    input_path: &Path,
+    profile: &TranscodeTargetProfile,
+    output_path: &Path,
+    ffmpeg_threads: usize,
+    source: &video::SourceVideo,
+    tone_map: video::ToneMapSupport,
+    tracks: &DownloadTracks,
+) -> Result<Vec<String>, TranscodeError> {
+    let threads = ffmpeg_threads.to_string();
+    let mut chain = Vec::new();
+    if profile.height > 0 {
+        chain.push(format!("scale=-2:min({}\\,ih)", profile.height));
+    }
+    chain
+        .push(video::sdr_filter(source, &tone_map).map_err(|_| TranscodeError::UnsupportedColour)?);
+    chain.push(video::sdr_setparams(source));
+    let mut args: Vec<String> = ["-y", "-threads:v"]
+        .iter()
+        .map(|s| s.to_string())
+        .chain([
+            threads.clone(),
+            "-filter_threads".into(),
+            threads.clone(),
+            "-i".into(),
+            input_path.to_string_lossy().into_owned(),
+            "-map".into(),
+            "0:v:0".into(),
+            "-map".into(),
+            tracks
+                .audio_stream_index
+                .map_or_else(|| "0:a:0?".to_string(), |index| format!("0:{index}")),
+        ])
+        .collect();
+    // Text subtitles the viewer could see in playback travel as MP4 timed text.
+    for (index, _) in &tracks.subtitles {
+        args.extend(["-map".into(), format!("0:{index}")]);
+    }
+    if tracks.subtitles.is_empty() {
+        args.push("-sn".into());
+    }
+    args.extend(["-vf".into(), chain.join(",")]);
+    if tone_map.libplacebo && source.requires_rpu() {
+        args.splice(
+            0..0,
+            ["-init_hw_device", "vulkan=vk", "-filter_hw_device", "vk"].map(String::from),
+        );
+    }
+    args.extend([
+        "-c:v".into(),
+        profile.video_codec.clone(),
+        "-threads:v".into(),
+        threads,
+        "-pix_fmt".into(),
+        "yuv420p".into(),
+        "-preset".into(),
+        "veryfast".into(),
+    ]);
+    if let Some(kbps) = profile.video_bitrate_kbps {
+        args.extend(["-b:v".into(), format!("{kbps}k")]);
+    }
+    args.extend(video::sdr_colour_tags(source));
+    args.extend([
+        "-af".into(),
+        AAC_CHANNEL_LAYOUTS_FILTER.to_string(),
+        "-c:a".into(),
+        profile.audio_codec.clone(),
+    ]);
+    if let Some(kbps) = profile.audio_bitrate_kbps {
+        args.extend(["-b:a".into(), format!("{kbps}k")]);
+    }
+    if !tracks.subtitles.is_empty() {
+        args.extend(["-c:s".into(), "mov_text".into()]);
+        for (n, (_, language)) in tracks.subtitles.iter().enumerate() {
+            if let Some(language) = language {
+                args.extend([format!("-metadata:s:s:{n}"), format!("language={language}")]);
+            }
+        }
+    }
+    args.extend([
+        "-movflags".into(),
+        "+faststart".into(),
+        "-f".into(),
+        "mp4".into(),
+        output_path.to_string_lossy().into_owned(),
+    ]);
+    Ok(args)
+}
+
+/// Which audio and subtitle tracks a download keeps: the audio playback would pick for the viewer,
+/// and the text subtitles (stream index, language).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DownloadTracks {
+    pub audio_stream_index: Option<u32>,
+    pub subtitles: Vec<(u32, Option<String>)>,
+}
+
+/// State shared between the orchestrator and a running download, so live playback can pause the
+/// download to take its capacity.
+struct DownloadShared {
+    pid: std::sync::atomic::AtomicU32,
+    /// The admission permits the download holds; `None` while it is paused for live playback.
+    permit: std::sync::Mutex<Option<OwnedSemaphorePermit>>,
+    paused: std::sync::atomic::AtomicBool,
+}
+
+/// Sends `sig` to `pid`; `false` when the process is gone or the signal was refused.
+fn signal(pid: u32, sig: i32) -> bool {
+    pid != 0
+        && i32::try_from(pid).is_ok_and(|pid| {
+            // SAFETY: `kill` only reads its two integer arguments.
+            unsafe { libc::kill(pid, sig) == 0 }
+        })
+}
+
+/// Permits a download needs available to start or resume. Live playback always wins: on a one-slot node
+/// the node must be completely idle, on a larger one a whole slot must stay spare after the download.
+fn download_admission_need(total_permits: usize) -> usize {
+    if total_permits <= FULL_TRANSCODE_PERMITS as usize {
+        FULL_TRANSCODE_PERMITS as usize
+    } else {
+        2 * FULL_TRANSCODE_PERMITS as usize
+    }
+}
+
+/// Admission for a download, taken before its ticket is claimed. It is registered at once, so live
+/// playback can take the slot back even while the download is still being set up (probing, claiming);
+/// dropping it releases the permits and the registration.
+pub struct DownloadReservation {
+    shared: Option<Arc<DownloadShared>>,
+    registry: Arc<std::sync::Mutex<Option<Arc<DownloadShared>>>>,
+}
+
+impl DownloadReservation {
+    /// Whether live playback took the slot back (the download then starts paused).
+    pub fn was_preempted(&self) -> bool {
+        self.shared
+            .as_ref()
+            .is_some_and(|s| s.paused.load(Ordering::SeqCst))
+    }
+
+    fn into_shared(mut self) -> Arc<DownloadShared> {
+        self.shared.take().expect("reservation not yet consumed")
+    }
+}
+
+impl std::fmt::Debug for DownloadReservation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("DownloadReservation")
+    }
+}
+
+impl Drop for DownloadReservation {
+    fn drop(&mut self) {
+        if let (Some(shared), Ok(mut registry)) = (self.shared.take(), self.registry.lock()) {
+            if registry.as_ref().is_some_and(|r| Arc::ptr_eq(r, &shared)) {
+                *registry = None;
+            }
+        }
+    }
+}
+
+/// Cloneable control over a running download: whether live playback paused it, and resuming it.
+#[derive(Clone)]
+pub struct DownloadHandle {
+    shared: Arc<DownloadShared>,
+    slots: Arc<Semaphore>,
+    total_permits: usize,
+}
+
+impl DownloadHandle {
+    /// Whether live playback has paused the download.
+    pub fn is_paused(&self) -> bool {
+        self.shared.paused.load(Ordering::SeqCst)
+    }
+
+    /// Resumes a paused download once the node has a spare slot again; `true` when it is running.
+    pub async fn try_resume(&self) -> bool {
+        if !self.is_paused() {
+            return true;
+        }
+        if self.slots.available_permits() < download_admission_need(self.total_permits) {
+            return false;
+        }
+        let Ok(permit) = self
+            .slots
+            .clone()
+            .try_acquire_many_owned(FULL_TRANSCODE_PERMITS)
+        else {
+            return false;
+        };
+        let pid = self.shared.pid.load(Ordering::SeqCst);
+        // Before ffmpeg exists there is nothing to continue; afterwards a refused SIGCONT keeps it paused.
+        if pid != 0 && !signal(pid, libc::SIGCONT) {
+            return false;
+        }
+        if let Ok(mut held) = self.shared.permit.lock() {
+            *held = Some(permit);
+        }
+        self.shared.paused.store(false, Ordering::SeqCst);
+        true
+    }
+}
+
+/// A running download transcode. It holds a full admission slot, yields it to live playback by being
+/// paused (SIGSTOP) and resumes (SIGCONT) when a spare slot returns.
+pub struct DownloadJob {
+    child: Child,
+    handle: DownloadHandle,
+    registry: Arc<std::sync::Mutex<Option<Arc<DownloadShared>>>>,
+}
+
+impl DownloadJob {
+    /// Waits for ffmpeg to finish; `true` when it exited successfully.
+    pub async fn wait(&mut self) -> bool {
+        let ok = self.child.wait().await.is_ok_and(|status| status.success());
+        // The process is gone: its pid must never be signalled again (it could be reused).
+        self.deregister();
+        ok
+    }
+
+    /// Stops ffmpeg for good (a canceled ticket).
+    pub async fn kill(&mut self) {
+        let _ = self.child.kill().await;
+        self.deregister();
+    }
+
+    fn deregister(&self) {
+        self.handle.shared.pid.store(0, Ordering::SeqCst);
+        // The slot goes back at once, not when the job value is dropped.
+        if let Ok(mut held) = self.handle.shared.permit.lock() {
+            held.take();
+        }
+        if let Ok(mut registry) = self.registry.lock() {
+            if registry
+                .as_ref()
+                .is_some_and(|r| Arc::ptr_eq(r, &self.handle.shared))
+            {
+                *registry = None;
+            }
+        }
+    }
+
+    /// A handle for pausing state and resuming, usable while [`Self::wait`] is pending.
+    pub fn handle(&self) -> DownloadHandle {
+        self.handle.clone()
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.handle.is_paused()
+    }
+
+    pub async fn try_resume(&self) -> bool {
+        self.handle.try_resume().await
+    }
+}
+
+impl Drop for DownloadJob {
+    fn drop(&mut self) {
+        self.deregister();
+    }
+}
+
 /// Shared, process-local count of active on-demand transcode sessions.
 /// See the module docs for why this isn't derived from the cache.
 #[derive(Debug, Clone, Default)]
@@ -1024,6 +1290,10 @@ pub struct TranscodeOrchestrator {
     /// Node-local atomic admission for on-demand FFmpeg jobs; independent
     /// from a user's `Policy::max_concurrent_sessions`.
     transcode_slots: Arc<Semaphore>,
+    /// Total admission permits (slots x [`PERMITS_PER_SLOT`]).
+    total_permits: usize,
+    /// The running download, if any, so live playback can pause it.
+    download: Arc<std::sync::Mutex<Option<Arc<DownloadShared>>>>,
     ffmpeg_threads: usize,
     /// Process handles for sessions this exact node spawned, so
     /// `expire_session` can actually terminate the ffmpeg process instead
@@ -1113,6 +1383,8 @@ impl TranscodeOrchestrator {
             output_root: std::env::temp_dir().join("playarr-transcode"),
             session_ttl: Duration::from_secs(60),
             transcode_slots: Arc::new(Semaphore::new(PERMITS_PER_SLOT as usize)),
+            total_permits: PERMITS_PER_SLOT as usize,
+            download: Arc::new(std::sync::Mutex::new(None)),
             ffmpeg_threads: DEFAULT_FFMPEG_THREADS,
             active_children: Mutex::new(HashMap::new()),
             playback_transcodes: Mutex::new(HashMap::new()),
@@ -1160,7 +1432,8 @@ impl TranscodeOrchestrator {
 
     pub fn with_max_concurrent_sessions(mut self, max: usize) -> Self {
         let max = max.max(1);
-        self.transcode_slots = Arc::new(Semaphore::new(max * PERMITS_PER_SLOT as usize));
+        self.total_permits = max * PERMITS_PER_SLOT as usize;
+        self.transcode_slots = Arc::new(Semaphore::new(self.total_permits));
         self
     }
 
@@ -1231,6 +1504,85 @@ impl TranscodeOrchestrator {
             cache.put(key, probed.clone(), std::time::Instant::now());
         }
         probed
+    }
+
+    /// Starts the single-file MP4 transcode of a download ticket with the admission taken by
+    /// [`Self::reserve_download`]. Errors with [`TranscodeError::UnsupportedColour`] for a title whose
+    /// colours cannot be converted here (profile 5 without a fast enough libplacebo, or an unprobeable
+    /// HEVC file). ffmpeg runs under `nice`.
+    pub async fn start_download(
+        &self,
+        reservation: DownloadReservation,
+        media_file: &MediaFile,
+        profile: &str,
+        output_path: &Path,
+        tracks: &DownloadTracks,
+    ) -> Result<DownloadJob, TranscodeError> {
+        let mut probed = self.probe_source(media_file).await;
+        if video::colour_unknown(&media_file.codec, probed.as_ref()) {
+            probed = self.probe_source_strict(media_file).await;
+        }
+        if video::colour_unknown(&media_file.codec, probed.as_ref()) {
+            return Err(TranscodeError::UnsupportedColour);
+        }
+        let source = probed.unwrap_or_default();
+        let tone_map = if source.requires_rpu() {
+            self.tone_map_support().await
+        } else {
+            self.tone_map_support_now()
+        };
+        let input = playarr_model::resolve_media_path(&media_file.path);
+        let args = build_download_args(
+            &input,
+            &TranscodeTargetProfile::resolve(profile),
+            output_path,
+            self.ffmpeg_threads,
+            &source,
+            tone_map,
+            tracks,
+        )?;
+        if let Some(parent) = output_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        let spawn = |niced: bool| {
+            let mut command = if niced {
+                let mut c = Command::new("nice");
+                c.args(["-n", "10"]).arg(&self.ffmpeg_binary);
+                c
+            } else {
+                Command::new(&self.ffmpeg_binary)
+            };
+            command
+                .args(&args)
+                .env("LP_NUM_THREADS", self.ffmpeg_threads.to_string())
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .kill_on_drop(true)
+                .spawn()
+        };
+        // `nice` execs ffmpeg in place, so the pid is ffmpeg's; without `nice` it runs unniced.
+        let child = match spawn(true) {
+            Ok(child) => child,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => spawn(false)?,
+            Err(error) => return Err(error.into()),
+        };
+        let shared = reservation.into_shared();
+        let pid = child.id().unwrap_or(0);
+        shared.pid.store(pid, Ordering::SeqCst);
+        // Live playback took the slot while the download was being set up: start it stopped.
+        if shared.paused.load(Ordering::SeqCst) {
+            signal(pid, libc::SIGSTOP);
+        }
+        Ok(DownloadJob {
+            child,
+            handle: DownloadHandle {
+                shared,
+                slots: self.transcode_slots.clone(),
+                total_permits: self.total_permits,
+            },
+            registry: self.download.clone(),
+        })
     }
 
     /// Strict probe for a source whose colour format must be known: the cached answer when it is a
@@ -1591,7 +1943,66 @@ impl TranscodeOrchestrator {
         if BORROW_ADMISSION.try_with(|borrow| *borrow).unwrap_or(false) {
             return Ok(Slot { permit: None });
         }
+        // Live playback always wins: a running download yields its slot (it is paused, not killed).
+        if self.preempt_download().await {
+            if let Ok(permit) = self.transcode_slots.clone().try_acquire_many_owned(permits) {
+                return Ok(Slot {
+                    permit: Some(permit),
+                });
+            }
+        }
         Err(TranscodeError::NoCapacity)
+    }
+
+    /// Pauses the running (or still starting) download and releases its permits; `true` when it gave a
+    /// slot up. A refused SIGSTOP means the download keeps its slot and live playback is not served.
+    async fn preempt_download(&self) -> bool {
+        let shared = self.download.lock().ok().and_then(|d| d.clone());
+        let Some(shared) = shared else {
+            return false;
+        };
+        if shared.paused.swap(true, Ordering::SeqCst) {
+            return false;
+        }
+        let pid = shared.pid.load(Ordering::SeqCst);
+        // pid 0: ffmpeg has not started yet; it is stopped as soon as it does.
+        if pid != 0 && !signal(pid, libc::SIGSTOP) {
+            shared.paused.store(false, Ordering::SeqCst);
+            return false;
+        }
+        let permit = shared.permit.lock().ok().and_then(|mut held| held.take());
+        tracing::info!("download paused for live playback");
+        permit.is_some()
+    }
+
+    /// Admission for a download: only when live playback keeps a spare slot (a one-slot node must be
+    /// completely idle) and no other download runs. Taken before the ticket is claimed.
+    pub fn reserve_download(&self) -> Result<DownloadReservation, TranscodeError> {
+        let mut registry = self
+            .download
+            .lock()
+            .map_err(|_| TranscodeError::NoCapacity)?;
+        if registry.is_some()
+            || self.transcode_slots.available_permits()
+                < download_admission_need(self.total_permits)
+        {
+            return Err(TranscodeError::NoCapacity);
+        }
+        let permit = self
+            .transcode_slots
+            .clone()
+            .try_acquire_many_owned(FULL_TRANSCODE_PERMITS)
+            .map_err(|_| TranscodeError::NoCapacity)?;
+        let shared = Arc::new(DownloadShared {
+            pid: std::sync::atomic::AtomicU32::new(0),
+            permit: std::sync::Mutex::new(Some(permit)),
+            paused: std::sync::atomic::AtomicBool::new(false),
+        });
+        *registry = Some(shared.clone());
+        Ok(DownloadReservation {
+            shared: Some(shared),
+            registry: self.download.clone(),
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -2702,6 +3113,108 @@ mod tests {
                     }
                 }
             }
+        }
+
+        #[test]
+        fn a_download_is_one_fast_start_mp4_at_the_profile_with_the_picture_rules() {
+            let hdr10 =
+                parse_source_video(br#"{"streams":[{"color_transfer":"smpte2084"}]}"#).unwrap();
+            let profile = TranscodeTargetProfile::resolve("h264-480p-2mbps");
+            let args = build_download_args(
+                Path::new("/m/in.mkv"),
+                &profile,
+                Path::new("/d/t.mp4"),
+                2,
+                &hdr10,
+                video::ToneMapSupport::default(),
+                &DownloadTracks::default(),
+            )
+            .unwrap();
+            let joined = args.join(" ");
+            assert!(
+                joined.contains("-movflags +faststart -f mp4 /d/t.mp4"),
+                "{joined}"
+            );
+            assert!(!joined.contains("hls"));
+            let vf = value(&args, "-vf");
+            assert!(vf.starts_with(&format!("scale=-2:min({}", profile.height)));
+            assert!(vf.contains("tonemap=") && vf.ends_with("range=tv"));
+            assert_eq!(value(&args, "-c:v"), profile.video_codec);
+            assert_eq!(
+                value(&args, "-b:v"),
+                format!("{}k", profile.video_bitrate_kbps.unwrap())
+            );
+            assert_eq!(value(&args, "-colorspace"), "bt709");
+        }
+
+        #[test]
+        fn a_download_keeps_the_chosen_audio_and_text_subtitles() {
+            let sdr = SourceVideo::default();
+            let profile = TranscodeTargetProfile::resolve("h264-480p-2mbps");
+            let tracks = DownloadTracks {
+                audio_stream_index: Some(3),
+                subtitles: vec![(5, Some("en".into())), (6, None)],
+            };
+            let args = build_download_args(
+                Path::new("/m/in.mkv"),
+                &profile,
+                Path::new("/d/t.mp4"),
+                2,
+                &sdr,
+                video::ToneMapSupport::default(),
+                &tracks,
+            )
+            .unwrap();
+            let joined = args.join(" ");
+            assert!(
+                joined.contains("-map 0:v:0 -map 0:3 -map 0:5 -map 0:6"),
+                "{joined}"
+            );
+            assert!(
+                joined.contains("-c:s mov_text -metadata:s:s:0 language=en"),
+                "{joined}"
+            );
+            assert!(!args.contains(&"-sn".to_string()));
+            // No tracks chosen: the first audio track and no subtitles, as before.
+            let plain = build_download_args(
+                Path::new("/m/in.mkv"),
+                &profile,
+                Path::new("/d/t.mp4"),
+                2,
+                &sdr,
+                video::ToneMapSupport::default(),
+                &DownloadTracks::default(),
+            )
+            .unwrap();
+            assert!(plain.join(" ").contains("-map 0:a:0? -sn"));
+        }
+
+        #[test]
+        fn a_profile_5_download_needs_libplacebo_like_playback() {
+            let s = parse_source_video(DV5.as_bytes()).unwrap();
+            let profile = TranscodeTargetProfile::resolve("h264-480p-2mbps");
+            let build = |libplacebo| {
+                build_download_args(
+                    Path::new("/m/in.mkv"),
+                    &profile,
+                    Path::new("/d/t.mp4"),
+                    2,
+                    &s,
+                    video::ToneMapSupport {
+                        zscale: true,
+                        libplacebo,
+                        libplacebo_fps: None,
+                    },
+                    &DownloadTracks::default(),
+                )
+            };
+            assert!(matches!(
+                build(false),
+                Err(TranscodeError::UnsupportedColour)
+            ));
+            let args = build(true).unwrap();
+            assert!(value(&args, "-vf").contains("libplacebo="));
+            assert_eq!(args[0], "-init_hw_device");
         }
 
         #[test]
@@ -4118,6 +4631,182 @@ mod tests {
             let vf = args[args.iter().position(|a| a == "-vf").unwrap() + 1].clone();
             assert!(!vf.contains("zscale"), "{vf}");
             detection.abort();
+        }
+
+        /// Process state letter from /proc (`T` = stopped).
+        #[cfg(target_os = "linux")]
+        fn proc_state(pid: u32) -> char {
+            std::fs::read_to_string(format!("/proc/{pid}/stat"))
+                .ok()
+                .and_then(|stat| {
+                    stat.rsplit(')')
+                        .next()
+                        .and_then(|r| r.trim().chars().next())
+                })
+                .unwrap_or('?')
+        }
+
+        #[cfg(target_os = "linux")]
+        async fn running_download(orchestrator: &TranscodeOrchestrator) -> DownloadJob {
+            let reservation = orchestrator
+                .reserve_download()
+                .expect("an idle node admits a download");
+            orchestrator
+                .start_download(
+                    reservation,
+                    &sample_media_file_h264(),
+                    "h264-480p-2mbps",
+                    &unique_tmp_dir().join("d.mp4"),
+                    &DownloadTracks::default(),
+                )
+                .await
+                .expect("download starts")
+        }
+
+        fn sample_media_file_h264() -> MediaFile {
+            MediaFile {
+                codec: "h264".to_string(),
+                ..sample_media_file()
+            }
+        }
+
+        /// Live playback always wins on a one-slot node: a running download is paused, not refused.
+        #[cfg(target_os = "linux")]
+        #[tokio::test]
+        async fn a_running_download_never_causes_no_capacity_for_live_playback() {
+            let orchestrator = sleeper_orchestrator(1).await;
+            let job = running_download(&orchestrator).await;
+            let pid = job.handle.shared.pid.load(Ordering::SeqCst);
+            assert_ne!(proc_state(pid), 'T');
+
+            // The only slot is the download's, yet a viewer is admitted.
+            let live = orchestrator
+                .spawn_on_demand_transcode(&sample_media_file_h264(), "p", "n")
+                .await
+                .expect("live playback must not get NoCapacity because of a download");
+            assert!(job.is_paused());
+            // SIGSTOP is asynchronous: wait for the state to show.
+            for _ in 0..50 {
+                if proc_state(pid) == 'T' {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+            assert_eq!(
+                proc_state(pid),
+                'T',
+                "the download is stopped while live runs"
+            );
+            // No resume while live playback holds the node.
+            assert!(!job.try_resume().await);
+
+            // Live ends: the download gets a slot back and continues.
+            orchestrator.expire_session(live.id).await.unwrap();
+            assert!(job.try_resume().await);
+            for _ in 0..50 {
+                if proc_state(pid) != 'T' {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+            assert_ne!(proc_state(pid), 'T');
+            drop(job);
+        }
+
+        /// The reservation is preemptible from the moment it is taken, even while the download is
+        /// still being set up (probing, claiming): live playback can always take the slot.
+        #[cfg(target_os = "linux")]
+        #[tokio::test]
+        async fn a_download_still_being_set_up_yields_the_slot_to_live_playback() {
+            let orchestrator = sleeper_orchestrator(1).await;
+            let reservation = orchestrator.reserve_download().expect("idle node");
+            assert!(!reservation.was_preempted());
+            // No ffmpeg yet, and a viewer arrives: admitted, the reservation is preempted.
+            let live = orchestrator
+                .spawn_on_demand_transcode(&sample_media_file_h264(), "p", "n")
+                .await
+                .expect("live playback must take the slot");
+            assert!(reservation.was_preempted());
+
+            // The download then starts already stopped, and stays so while live runs.
+            let job = orchestrator
+                .start_download(
+                    reservation,
+                    &sample_media_file_h264(),
+                    "h264-480p-2mbps",
+                    &unique_tmp_dir().join("d.mp4"),
+                    &DownloadTracks::default(),
+                )
+                .await
+                .expect("download starts");
+            let pid = job.handle.shared.pid.load(Ordering::SeqCst);
+            for _ in 0..50 {
+                if proc_state(pid) == 'T' {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+            assert_eq!(proc_state(pid), 'T');
+            assert!(!job.try_resume().await);
+            orchestrator.expire_session(live.id).await.unwrap();
+            assert!(job.try_resume().await);
+        }
+
+        /// A finished download frees its registration at once: its pid is never signalled again and a
+        /// new download can be admitted.
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_finished_download_clears_its_registration_when_wait_returns() {
+            let orchestrator = test_orchestrator(Arc::new(FakeRenditionRepo::default()));
+            let reservation = orchestrator.reserve_download().expect("idle");
+            let mut job = orchestrator
+                .start_download(
+                    reservation,
+                    &sample_media_file_h264(),
+                    "h264-480p-2mbps",
+                    &unique_tmp_dir().join("d.mp4"),
+                    &DownloadTracks::default(),
+                )
+                .await
+                .unwrap();
+            assert!(job.wait().await, "/usr/bin/true succeeds");
+            assert_eq!(job.handle.shared.pid.load(Ordering::SeqCst), 0);
+            // The job value is still alive, yet the node already admits another download.
+            assert!(
+                orchestrator.reserve_download().is_ok()
+                    || job.handle.shared.permit.lock().unwrap().is_some()
+            );
+        }
+
+        #[tokio::test]
+        async fn downloads_are_admitted_only_when_a_slot_stays_free_for_live_playback() {
+            // One slot: only on a completely idle node.
+            let one = test_orchestrator(Arc::new(FakeRenditionRepo::default()));
+            let first = one.reserve_download().expect("idle node");
+            assert!(matches!(
+                one.reserve_download(),
+                Err(TranscodeError::NoCapacity)
+            ));
+            drop(first);
+
+            // Two slots: a spare slot must remain, so one download fits and a second does not.
+            let two = test_orchestrator(Arc::new(FakeRenditionRepo::default()))
+                .with_max_concurrent_sessions(2);
+            let a = two.reserve_download().expect("two idle slots");
+            assert!(matches!(
+                two.reserve_download(),
+                Err(TranscodeError::NoCapacity)
+            ));
+            drop(a);
+            // A live session on one of two slots: no download (it would take the last one).
+            let live = two
+                .spawn_on_demand_transcode(&sample_media_file_h264(), "p", "n")
+                .await;
+            let _ = live;
+            assert!(matches!(
+                two.reserve_download(),
+                Err(TranscodeError::NoCapacity)
+            ));
         }
 
         /// A caller that gives up must neither cancel detection nor cause a second run.

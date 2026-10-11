@@ -91,6 +91,15 @@ persistence:
   # -- Empty uses the cluster default StorageClass.
   storageClassName: ""
 
+# Converted-quality downloads. Downloads live on the device: the server's converted file is only staging,
+# deleted when the device confirms it has it (or after PLAYARR_DOWNLOAD_STAGING_TTL, default 24h), so a
+# small capped scratch volume is enough and nothing needs a claim.
+downloads:
+  staging:
+    # -- Size cap of the node-local scratch volume holding staged files; the server keeps its own
+    # total at about 90% of it.
+    sizeLimit: 10Gi
+
 service:
   type: ClusterIP
   port: 80

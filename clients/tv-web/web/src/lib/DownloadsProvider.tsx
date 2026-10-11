@@ -321,6 +321,17 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // The server's converted copy is only staging: tell it the device has the file so it deletes it now.
+  // Best effort; without it the staged file expires on its own.
+  const acknowledgeDownload = useCallback(
+    (id: string) => {
+      void Promise.resolve()
+        .then(() => client.completeDownload(id))
+        .catch(() => undefined);
+    },
+    [client]
+  );
+
   const scheduleNext = useCallback(() => {
     while (
       activeEngineRunsRef.current.size < MAX_CONCURRENT_DOWNLOADS &&
@@ -345,6 +356,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
                   getAccessToken: () => client.getAccessToken(),
                 });
                 showToast(t("lib.downloads.savedToDeviceToast", { title: record.title }));
+                acknowledgeDownload(id);
                 await deleteDownloadRow(id);
                 downloadsRef.current = downloadsRef.current.filter(
                   (candidate) => candidate.id !== id
@@ -386,6 +398,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
                     errorMessage: null,
                   });
                   refreshStorageUsage();
+                  acknowledgeDownload(id);
                 } else if (status === "canceled") {
                   // A pause aborts the run too; it keeps its own "paused" status.
                   const current = downloadsRef.current.find((candidate) => candidate.id === id);
@@ -402,7 +415,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         }
       })();
     }
-  }, [client, patchRecord, refreshStorageUsage, showToast, t]);
+  }, [client, patchRecord, refreshStorageUsage, showToast, t, acknowledgeDownload]);
 
   const beginFetch = useCallback(
     (id: string) => {
