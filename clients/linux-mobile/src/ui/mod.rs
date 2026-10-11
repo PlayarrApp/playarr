@@ -51,6 +51,7 @@ pub struct App {
     pub layer: gtk4::Overlay,
     pub panel: RefCell<Option<gtk4::Widget>>,
     pub nav_bar: RefCell<Option<gtk4::Widget>>,
+    pub mpris: crate::mpris::Mpris,
     /// Watch state per work id (from the progress list) for the unseen dot.
     pub watch: RefCell<std::collections::HashMap<String, String>>,
 }
@@ -354,6 +355,7 @@ impl App {
                                             media_file_id: f,
                                             start_ms: 0,
                                             title,
+                                            art_work_id: None,
                                         });
                                     }
                                 },
@@ -425,6 +427,7 @@ pub fn build_window(app: &adw::Application) {
         layer,
         panel: RefCell::new(None),
         nav_bar: RefCell::new(None),
+        mpris: crate::mpris::Mpris::start(),
         watch: RefCell::default(),
     });
     state.start();

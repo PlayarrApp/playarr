@@ -31,6 +31,14 @@ pub fn data_dir() -> PathBuf {
     base.join("playarr-mobile")
 }
 
+pub fn cache_dir() -> PathBuf {
+    let base = std::env::var_os("XDG_CACHE_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))
+        .unwrap_or_else(|| PathBuf::from("."));
+    base.join("playarr-mobile")
+}
+
 fn write_private(path: &std::path::Path, text: &str) -> std::io::Result<()> {
     use std::io::Write;
     use std::os::unix::fs::OpenOptionsExt;

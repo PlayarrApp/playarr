@@ -33,6 +33,7 @@ pub fn show(app: &Rc<App>, work: &Work) {
         );
         play.connect_clicked(move |_| {
             app.close_panel();
+            let art_id = id.clone();
             let (app, client, id, title) = (app.clone(), client.clone(), id.clone(), title.clone());
             let is_series = kind == "series";
             bg(
@@ -52,6 +53,7 @@ pub fn show(app: &Rc<App>, work: &Work) {
                             media_file_id: file,
                             start_ms: start,
                             title,
+                            art_work_id: Some(art_id),
                         });
                     }
                 },

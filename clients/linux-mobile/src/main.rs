@@ -4,6 +4,7 @@ mod avatar;
 mod icons;
 mod link;
 mod model;
+mod mpris;
 mod proxy;
 mod qr;
 mod store;

@@ -294,12 +294,13 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
 
     let title = w.title.clone();
     let play = {
-        let app = app.clone();
+        let (app, art_id) = (app.clone(), w.id.clone());
         move |file: String, start: i64, label: String| {
             app.play(PlayRequest {
                 media_file_id: file,
                 start_ms: start,
                 title: label,
+                art_work_id: Some(art_id.clone()),
             });
         }
     };

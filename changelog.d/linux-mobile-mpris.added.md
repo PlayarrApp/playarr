@@ -1,0 +1,1 @@
+- Linux phone client: MPRIS now-playing controls (title, poster, position, play, pause and seek) for the shell and lock screen.

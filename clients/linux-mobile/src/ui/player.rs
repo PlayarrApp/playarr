@@ -13,6 +13,8 @@ pub struct PlayRequest {
     pub media_file_id: String,
     pub start_ms: i64,
     pub title: String,
+    /// Work whose poster shows in the system's media controls.
+    pub art_work_id: Option<String>,
 }
 
 /// Report progress at most this often while playing.
@@ -33,6 +35,7 @@ struct Player {
     duration_ms: Cell<i64>,
     last_report: Cell<Instant>,
     closed: Cell<bool>,
+    mpris: crate::mpris::Mpris,
 }
 
 impl Player {
@@ -62,6 +65,7 @@ impl Player {
             return;
         }
         self.report(false);
+        self.mpris.clear();
         let _ = self.pipeline.set_state(gst::State::Null);
     }
 }
@@ -156,6 +160,7 @@ fn start_pipeline(
         duration_ms: Cell::new(info.duration_ms),
         last_report: Cell::new(Instant::now()),
         closed: Cell::new(false),
+        mpris: app.mpris.clone(),
     });
 
     let picture = gtk4::Picture::builder()
@@ -261,11 +266,67 @@ fn start_pipeline(
             } else {
                 "media-playback-start-symbolic"
             });
+            player.mpris.set_status(if now_playing { "Playing" } else { "Paused" });
             if !now_playing {
                 player.report(false);
             }
             shown_until.set(Instant::now() + Duration::from_secs(4));
         });
+    }
+
+    // System media controls (MPRIS): title, poster, position and play, pause and seek from outside the app.
+    {
+        let control: crate::mpris::Control = {
+            let (toggle, playing, player, app) = (toggle.clone(), playing.clone(), player.clone(), app.clone());
+            Rc::new(move |c| {
+                use crate::mpris::Cmd;
+                match c {
+                    Cmd::Play if !playing.get() => toggle.emit_clicked(),
+                    Cmd::Pause if playing.get() => toggle.emit_clicked(),
+                    Cmd::PlayPause => toggle.emit_clicked(),
+                    Cmd::Stop => {
+                        app.nav.pop();
+                    }
+                    Cmd::Seek(us) => {
+                        let target = (player.position_ms() + us / 1000 - player.offset_ms).max(0);
+                        let _ = player.pipeline.seek_simple(
+                            gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT,
+                            gst::ClockTime::from_mseconds(target as u64),
+                        );
+                    }
+                    Cmd::SetPosition(us) => {
+                        let target = (us / 1000 - player.offset_ms).max(0);
+                        let _ = player.pipeline.seek_simple(
+                            gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT,
+                            gst::ClockTime::from_mseconds(target as u64),
+                        );
+                    }
+                    _ => {}
+                }
+            })
+        };
+        let pos_player = player.clone();
+        app.mpris.set_playing(
+            &req.title,
+            None,
+            info.duration_ms * 1000,
+            control,
+            Rc::new(move || pos_player.position_ms() * 1000),
+        );
+        if let Some(id) = req.art_work_id.clone() {
+            let (mpris, c) = (app.mpris.clone(), player.client.clone());
+            bg(
+                move || {
+                    let bytes = c.bytes(&crate::api::Client::artwork_path(&id, "poster", 360)).ok()?;
+                    let dir = crate::store::cache_dir();
+                    std::fs::create_dir_all(&dir).ok()?;
+                    let path = dir.join(format!("art-{id}.img"));
+                    std::fs::write(&path, bytes).ok()?;
+                    Some(format!("file://{}", path.display()))
+                },
+                move |url| mpris.set_art(url),
+            );
+        }
     }
 
     let updating = Rc::new(Cell::new(false));
@@ -309,6 +370,7 @@ fn start_pipeline(
                     player.report(true);
                     let _ = player.pipeline.set_state(gst::State::Paused);
                     playing.set(false);
+                    player.mpris.set_status("Paused");
                     toggle.set_icon_name("media-playback-start-symbolic");
                 }
                 V::Buffering(b) => {
