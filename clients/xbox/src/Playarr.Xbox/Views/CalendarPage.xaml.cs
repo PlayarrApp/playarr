@@ -29,6 +29,9 @@ namespace Playarr.Xbox.Views
         private readonly Grid _content = new Grid();
         private readonly Button _rangeButton;
         private CalendarView _view = CalendarView.Agenda;
+
+        /// <summary>The open view; read by the parity trace.</summary>
+        internal CalendarView View => _view;
         private DateTime _anchor = DateTime.Today;
         private IList<CalendarEntry> _entries = new List<CalendarEntry>();
         private int _loadVersion;

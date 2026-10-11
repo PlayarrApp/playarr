@@ -32,6 +32,9 @@ namespace Playarr.Xbox.Views
         private bool _focusFirst;
         private Guid? _restoreId;
         private IReadOnlyList<Work>? _renderedWorks;
+
+        /// <summary>The kind this page lists; read by the parity trace.</summary>
+        internal WorkKind? Kind => _viewModel.SelectedKind;
         private readonly Dictionary<Guid, Work> _worksById = new Dictionary<Guid, Work>();
 
         public LibraryPage()

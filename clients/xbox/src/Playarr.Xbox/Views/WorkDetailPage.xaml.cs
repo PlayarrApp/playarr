@@ -38,6 +38,9 @@ namespace Playarr.Xbox.Views
         private WorkDetailViewModel _viewModel = null!;
         private Work? _backdropWork;
 
+        /// <summary>The title's kind once loaded; read by the parity trace.</summary>
+        internal WorkKind? Kind => _viewModel?.Work?.Kind;
+
         public WorkDetailPage()
         {
             InitializeComponent();

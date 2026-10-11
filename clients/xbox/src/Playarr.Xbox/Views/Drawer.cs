@@ -21,9 +21,13 @@ namespace Playarr.Xbox.Views
         private readonly Grid _overlay;
         private readonly Control? _opener;
 
+        /// <summary>The drawer's title ("Filters", a title's name for card actions); read by the parity trace.</summary>
+        public string Title { get; }
+
         private Drawer(Panel host, string eyebrow, string title, UIElement body)
         {
             _host = host;
+            Title = title;
             _opener = FocusManager.GetFocusedElement() as Control;
 
             var panel = new Grid

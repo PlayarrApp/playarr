@@ -229,6 +229,7 @@
     <Compile Include="Views\Theme.cs" />
     <Compile Include="Views\Avatars.cs" />
     <Compile Include="Views\FocusClaim.cs" />
+    <Compile Include="Views\ParityTrace.cs" />
     <Compile Include="Views\Drawer.cs" />
     <Compile Include="Views\CardActions.cs" />
     <Compile Include="Views\CardFocus.cs" />

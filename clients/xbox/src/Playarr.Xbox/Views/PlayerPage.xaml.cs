@@ -303,6 +303,37 @@ namespace Playarr.Xbox.Views
         /// why this is one unconditional method rather than a per-property
         /// handler.
         /// </summary>
+        /// <summary>Parity capture: pause on the current frame and show the controls, so a screenshot matches the web's.</summary>
+        internal async void PauseForTest(double? seekSeconds = null)
+        {
+            if (_viewModel != null && seekSeconds is { } at)
+            {
+                var offset = TimeSpan.FromMilliseconds(_viewModel.PlaybackInfo?.SourceOffsetMs ?? 0);
+                _viewModel.Player.PlaybackSession.Position = TimeSpan.FromSeconds(at) - offset;
+                await System.Threading.Tasks.Task.Delay(3000);
+            }
+
+            _viewModel?.Player.Pause();
+            ShowChrome();
+        }
+
+        /// <summary>Playback state and position for the parity trace: "error", "playing" or "loading".</summary>
+        internal (string State, double Seconds) Probe()
+        {
+            if (_viewModel is null)
+            {
+                return ("loading", 0);
+            }
+
+            if (_viewModel.LoadState == PlayerLoadState.Failed)
+            {
+                return ("error", 0);
+            }
+
+            var session = _viewModel.Player.PlaybackSession;
+            return (session.PlaybackState == Windows.Media.Playback.MediaPlaybackState.Playing ? "playing" : "loading", session.Position.TotalSeconds);
+        }
+
         private void Render()
         {
             if (_viewModel is null)

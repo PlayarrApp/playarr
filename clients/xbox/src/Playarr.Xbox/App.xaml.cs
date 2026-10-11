@@ -83,6 +83,7 @@ namespace Playarr.Xbox
                 };
                 Windows.UI.ViewManagement.ApplicationView.GetForCurrentView().SetPreferredMinSize(new Windows.Foundation.Size(640, 360));
                 Views.Theme.Load();
+                Views.ParityTrace.StartIfRequested(rootFrame);
 
                 // Windows desktop: open at the web TV layout size (1920x1080) with the content drawn under the
                 // title bar, so the device-wall tile shows the app 1:1. Ignored on Xbox, which is always full screen.
