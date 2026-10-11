@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.ComponentModel;
 using Windows.UI.Xaml;
@@ -26,6 +27,8 @@ namespace Playarr.Xbox.Views
     public sealed partial class HomePage : Page
     {
         private readonly HomeViewModel _viewModel;
+        private bool _focusFirst;
+        private IReadOnlyList<HomeRail>? _renderedRails;
 
         public HomePage()
         {
@@ -54,6 +57,7 @@ namespace Playarr.Xbox.Views
         {
             base.OnNavigatedTo(e);
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            _focusFirst = true;
             Render();
         }
 
@@ -82,15 +86,28 @@ namespace Playarr.Xbox.Views
 
             RailsScroll.Visibility = _viewModel.IsLoading || hasError ? Visibility.Collapsed : Visibility.Visible;
 
-            // Rebuilt on every notification, same simplicity call as Views/LoginPage.xaml.cs's Render().
-            RailsPanel.Children.Clear();
-            foreach (var rail in _viewModel.Rails)
+            // Rebuild only for a new result: a rebuild drops focus back to the nav rail.
+            if (!ReferenceEquals(_renderedRails, _viewModel.Rails))
             {
-                RailsPanel.Children.Add(BuildRail(rail));
+                _renderedRails = _viewModel.Rails;
+                RailsPanel.Children.Clear();
+                foreach (var rail in _viewModel.Rails)
+                {
+                    RailsPanel.Children.Add(BuildRail(rail));
+                }
+
+                var shown = _viewModel.Rails.Count > 0 && _viewModel.Rails[0].Items.Count > 0 ? _viewModel.Rails[0].Items[0] : null;
+                Detail.Show(shown, withKind: true);
             }
 
             var first = _viewModel.Rails.Count > 0 && _viewModel.Rails[0].Items.Count > 0 ? _viewModel.Rails[0].Items[0] : null;
-            HeroTitle.Text = first?.Title ?? string.Empty;
+            if (_focusFirst && !_viewModel.IsLoading && !hasError && first != null && RailsPanel.Children.Count > 0)
+            {
+                // Render rebuilds the rails on every notification: keep asking until a card really holds focus.
+                var firstList = (ListView)((StackPanel)RailsPanel.Children[0]).Children[1];
+                _focusFirst = false;
+                CardFocus.FocusFirstWhenReady(firstList);
+            }
         }
 
         private UIElement BuildRail(HomeRail rail)
@@ -116,13 +133,7 @@ namespace Playarr.Xbox.Views
             {
                 if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: Guid id } })
                 {
-                    foreach (var work in rail.Items)
-                    {
-                        if (work.Id == id)
-                        {
-                            HeroTitle.Text = work.Title;
-                        }
-                    }
+                    Detail.Show(rail.Items.FirstOrDefault(w => w.Id == id), withKind: true);
                 }
             };
             foreach (var work in rail.Items)

@@ -22,16 +22,7 @@
         focused title's details on the left, and a 3-column grid of 328x184 landscape cards from x=783.
     -->
     <Grid>
-        <!-- The focused title's backdrop behind the left column, faded into the page like the web. -->
-        <Image x:Name="FocusBackdrop" Width="960" HorizontalAlignment="Left" Stretch="UniformToFill" Opacity="0.35" />
-        <Rectangle Width="960" HorizontalAlignment="Left">
-            <Rectangle.Fill>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                    <GradientStop Color="#99151315" Offset="0" />
-                    <GradientStop Color="#FF151315" Offset="1" />
-                </LinearGradientBrush>
-            </Rectangle.Fill>
-        </Rectangle>
+        <local:FocusDetail x:Name="Detail" />
 
         <!-- Shell action column: Filters (web .tv-filter-launcher tile). -->
         <Button
@@ -83,41 +74,6 @@
                 CharacterSpacing="120"
                 Foreground="{StaticResource PlayarrBrandInk}"
                 Margin="0,6,0,0" />
-        </StackPanel>
-
-        <!-- Focused title, as the web library's left detail column. -->
-        <StackPanel
-            x:Name="FocusPanel"
-            Width="380"
-            Margin="154,258,0,0"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            Spacing="0">
-            <TextBlock
-                x:Name="FocusEyebrow"
-                FontSize="12"
-                FontWeight="Bold"
-                CharacterSpacing="120"
-                Foreground="{StaticResource PlayarrBrandInk}" />
-            <TextBlock
-                x:Name="FocusTitle"
-                FontSize="64"
-                FontWeight="SemiBold"
-                CharacterSpacing="-30"
-                LineHeight="64"
-                TextWrapping="WrapWholeWords"
-                MaxLines="3"
-                Margin="0,22,0,0" />
-            <TextBlock x:Name="FocusMeta" FontSize="14" Foreground="{StaticResource PlayarrInkSoft}" Margin="0,24,0,0" />
-            <TextBlock
-                x:Name="FocusOverview"
-                FontSize="14"
-                LineHeight="22"
-                TextWrapping="WrapWholeWords"
-                MaxLines="5"
-                TextTrimming="WordEllipsis"
-                Foreground="{StaticResource PlayarrInkSoft}"
-                Margin="0,20,0,0" />
         </StackPanel>
 
         <ProgressRing

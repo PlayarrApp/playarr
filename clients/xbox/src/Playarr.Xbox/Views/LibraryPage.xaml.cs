@@ -29,6 +29,8 @@ namespace Playarr.Xbox.Views
     public sealed partial class LibraryPage : Page
     {
         private readonly LibraryViewModel _viewModel;
+        private bool _focusFirst;
+        private IReadOnlyList<Work>? _renderedWorks;
         private readonly Dictionary<Guid, Work> _worksById = new Dictionary<Guid, Work>();
 
         public LibraryPage()
@@ -51,6 +53,7 @@ namespace Playarr.Xbox.Views
             }
 
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            _focusFirst = true;
             Render();
         }
 
@@ -83,18 +86,30 @@ namespace Playarr.Xbox.Views
             var kind = _viewModel.SelectedKind;
             TitleText.Text = kind is { } k ? DisplayNameFor(k) : "Library";
             CountText.Text = _viewModel.Total is { } total
-                ? $"{total.ToString("N0", CultureInfo.CurrentCulture)} TITLES"
+                ? $"{total.ToString("N0", CultureInfo.CurrentCulture)} {(kind == WorkKind.Artist ? "ARTISTS" : "TITLES")}"
                 : string.Empty;
 
-            WorksGridView.Items.Clear();
-            _worksById.Clear();
-            foreach (var work in _viewModel.Works)
+            // Rebuild only for a new result: a rebuild drops focus back to the nav rail.
+            if (!ReferenceEquals(_renderedWorks, _viewModel.Works))
             {
-                _worksById[work.Id] = work;
-                WorksGridView.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, caption: false));
+                _renderedWorks = _viewModel.Works;
+                WorksGridView.Items.Clear();
+                _worksById.Clear();
+                foreach (var work in _viewModel.Works)
+                {
+                    _worksById[work.Id] = work;
+                    WorksGridView.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, caption: false));
+                }
+
+                ShowFocused(_viewModel.Works.Count > 0 ? _viewModel.Works[0] : null);
             }
 
-            ShowFocused(_viewModel.Works.Count > 0 ? _viewModel.Works[0] : null);
+            if (_focusFirst && !isLoading && !hasError && _viewModel.Works.Count > 0)
+            {
+                _focusFirst = false;
+                CardFocus.FocusFirstWhenReady(WorksGridView);
+            }
+
             RenderLetterRail();
         }
 
@@ -107,34 +122,7 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        /// <summary>The web library's left column: genre eyebrow, title, year and genres, synopsis.</summary>
-        private void ShowFocused(Work? work)
-        {
-            FocusPanel.Visibility = work == null ? Visibility.Collapsed : Visibility.Visible;
-            if (work == null)
-            {
-                return;
-            }
-
-            var backdrop = work.Image(ImageKind.Backdrop)?.Url;
-            var backdropUri = string.IsNullOrEmpty(backdrop) ? null : App.Environment.ApiClient.ResolveUrl(backdrop!);
-            FocusBackdrop.Source = backdropUri == null ? null : new Windows.UI.Xaml.Media.Imaging.BitmapImage(backdropUri) { DecodePixelWidth = 960 };
-                        FocusEyebrow.Text = work.Genres.Count > 0 ? work.Genres[0].ToUpperInvariant() : string.Empty;
-            FocusTitle.Text = work.Title;
-            var meta = new List<string>();
-            if (WorkLabels.YearRange(work) is { } years)
-            {
-                meta.Add(years);
-            }
-
-            if (work.Genres.Count > 0)
-            {
-                meta.Add(string.Join(" \u00b7 ", work.Genres.Take(2)));
-            }
-
-            FocusMeta.Text = string.Join("   ", meta);
-            FocusOverview.Text = work.Overview ?? string.Empty;
-        }
+        private void ShowFocused(Work? work) => Detail.Show(work);
 
         /// <summary>Web A-Z rail: "#" then A-Z; a letter jumps to the first title starting with it.</summary>
         private void RenderLetterRail()

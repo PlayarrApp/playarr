@@ -36,6 +36,7 @@ namespace Playarr.Xbox.Views
     public sealed partial class WorkDetailPage : Page
     {
         private WorkDetailViewModel _viewModel = null!;
+        private Work? _backdropWork;
 
         public WorkDetailPage()
         {
@@ -101,8 +102,11 @@ namespace Playarr.Xbox.Views
             MetaText.Text = string.Join("      ", meta);
             OverviewText.Text = _viewModel.Overview;
 
-            var backdropUrl = _viewModel.BackdropImageUrl;
-            BackdropImage.Source = backdropUrl != null ? new BitmapImage(backdropUrl) : null;
+            if (work != null && !ReferenceEquals(_backdropWork, work))
+            {
+                _backdropWork = work;
+                Artwork.Load(BackdropImage, work, 1280, ImageKind.Backdrop);
+            }
 
             PlayButton.IsEnabled = _viewModel.CanPlay;
 

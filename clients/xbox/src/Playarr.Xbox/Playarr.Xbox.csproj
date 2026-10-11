@@ -230,6 +230,8 @@
     <Compile Include="Views\Drawer.cs" />
     <Compile Include="Views\CardActions.cs" />
     <Compile Include="Views\CardFocus.cs" />
+    <Compile Include="Views\FocusDetail.cs" />
+    <Compile Include="Views\Artwork.cs" />
 
     <Page Include="Views\ProfilesPage.xaml">
       <Generator>MSBuild:Compile</Generator>

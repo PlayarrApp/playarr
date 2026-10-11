@@ -2,6 +2,7 @@ using System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Animation;
 
@@ -21,6 +22,50 @@ namespace Playarr.Xbox.Views
         {
             list.GotFocus += (s, e) => Apply(e.OriginalSource, true);
             list.LostFocus += (s, e) => Apply(e.OriginalSource, false);
+        }
+
+        private static DispatcherTimer? _firstFocus;
+
+        /// <summary>
+        /// Web TV puts focus on the first card when a page opens. The first container is realised a few layout passes
+        /// after the items appear and is replaced when the list first becomes visible (which drops focus to the nav
+        /// rail), so keep claiming it until focus has stayed inside the list for half a second. One claim at a time.
+        /// </summary>
+        public static void FocusFirstWhenReady(ListViewBase list)
+        {
+            _firstFocus?.Stop();
+            var tries = 0;
+            var stable = 0;
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+            _firstFocus = timer;
+            timer.Tick += (s, e) =>
+            {
+                if (++tries > 60 || (FocusManager.GetFocusedElement() is DependencyObject focused && IsInside(list, focused) && ++stable >= 4))
+                {
+                    timer.Stop();
+                    return;
+                }
+
+                if (!(FocusManager.GetFocusedElement() is DependencyObject now && IsInside(list, now)))
+                {
+                    stable = 0;
+                    (list.ContainerFromIndex(0) as Control)?.Focus(FocusState.Keyboard);
+                }
+            };
+            timer.Start();
+        }
+
+        private static bool IsInside(DependencyObject ancestor, DependencyObject node)
+        {
+            for (var current = node; current != null; current = VisualTreeHelper.GetParent(current))
+            {
+                if (ReferenceEquals(current, ancestor))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void Apply(object source, bool focused)

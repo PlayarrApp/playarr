@@ -51,6 +51,12 @@ namespace Playarr.Core.Networking
 
         Task<HomeRailsResponse> GetHomeRailsAsync(CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Server-cached, resized artwork (<c>/api/v1/artwork/work/{id}/{kind}</c>), the only route that serves
+        /// art the source stores behind a private scheme. Needs the bearer token, so an Image cannot load it by URL.
+        /// </summary>
+        Task<byte[]> GetWorkArtworkAsync(Guid id, ImageKind kind, int width, string? version = null, CancellationToken cancellationToken = default);
+
         Task<CalendarResponse> GetCalendarAsync(DateTime start, DateTime end, CancellationToken cancellationToken = default);
 
         Task<IList<WorkKind>> ListCatalogKindsAsync(CancellationToken cancellationToken = default);
@@ -216,6 +222,60 @@ namespace Playarr.Core.Networking
         /// <summary><c>GET /api/v1/home/rails</c>: the caller's ordered, non-empty Home rails.</summary>
         public Task<HomeRailsResponse> GetHomeRailsAsync(CancellationToken cancellationToken = default) =>
             GetAsync<HomeRailsResponse>("/api/v1/home/rails", null, authenticated: true, cancellationToken);
+
+        public async Task<byte[]> GetWorkArtworkAsync(
+            Guid id, ImageKind kind, int width, string? version = null, CancellationToken cancellationToken = default)
+        {
+            var query = new Dictionary<string, string> { ["w"] = width.ToString(CultureInfo.InvariantCulture) };
+            if (version != null)
+            {
+                query["v"] = version;
+            }
+
+            var path = $"/api/v1/artwork/work/{id:D}/{kind.ToString().ToLowerInvariant()}";
+            try
+            {
+                return await SendBytesOnceAsync(path, query, false, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ApiException error) when (error.Kind == ApiErrorKind.Unauthorized && _tokens != null)
+            {
+                return await SendBytesOnceAsync(path, query, true, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        private async Task<byte[]> SendBytesOnceAsync(
+            string path, IDictionary<string, string> query, bool forceRefresh, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, BuildUri(path, query));
+            request.Headers.TryAddWithoutValidation(ClientPlatformHeader, _configuration.ClientPlatform.WireName());
+            request.Headers.TryAddWithoutValidation(ClientVersionHeader, _configuration.ClientVersion);
+            if (_tokens != null)
+            {
+                var token = await _tokens.GetAccessTokenAsync(forceRefresh, cancellationToken).ConfigureAwait(false);
+                request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {token}");
+            }
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception transport) when (transport is HttpRequestException or OperationCanceledException
+                                              && !cancellationToken.IsCancellationRequested)
+            {
+                throw new ApiException(ApiErrorKind.Transport, "the request could not be sent", innerException: transport);
+            }
+
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw ApiException.ForStatus(response.StatusCode, null);
+                }
+
+                return await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+            }
+        }
 
         /// <summary><c>GET /api/v1/calendar</c> for a day range, series grouped per day like the web.</summary>
         public Task<CalendarResponse> GetCalendarAsync(DateTime start, DateTime end, CancellationToken cancellationToken = default) =>

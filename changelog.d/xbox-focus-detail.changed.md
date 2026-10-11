@@ -1,0 +1,1 @@
+- Xbox: Home and the library pages share one focused-title detail column (backdrop, genre, title, year, synopsis) as on web, the first card takes focus when a page opens, artwork loads through the server artwork endpoint (art kept behind a private source scheme now shows), and Music reads "ARTISTS".

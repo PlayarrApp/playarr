@@ -117,9 +117,7 @@ namespace Playarr.Xbox.Views
                 CornerRadius = new CornerRadius(12),
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
-            var url = (work.Image(ImageKind.Thumb) ?? work.Image(ImageKind.Backdrop))?.Url;
-            var uri = string.IsNullOrEmpty(url) ? null : App.Environment.ApiClient.ResolveUrl(url!);
-            if (uri == null)
+            if (work.Image(ImageKind.Thumb) == null && work.Image(ImageKind.Backdrop) == null)
             {
                 art.Children.Add(new TextBlock
                 {
@@ -132,11 +130,9 @@ namespace Playarr.Xbox.Views
             }
             else
             {
-                art.Children.Add(new Image
-                {
-                    Source = new BitmapImage(uri) { DecodePixelWidth = (int)CardWidth },
-                    Stretch = Stretch.UniformToFill,
-                });
+                var image = new Image { Stretch = Stretch.UniformToFill };
+                art.Children.Add(image);
+                Artwork.Load(image, work, 540, ImageKind.Thumb, ImageKind.Backdrop);
             }
 
             var root = new StackPanel { Width = CardWidth, Spacing = 0, Tag = work.Id };
