@@ -28,18 +28,9 @@
  * content to show (the code, the address, the completion URL) alongside a
  * small `AsyncState` `Loading` spinner, not a single full-screen state.
  *
- * QR CODE GAP: the implementation brief asks for a QR of
- * `verification_uri_complete`, generated via `@kit.ScanKit`. No QR
- * *generation* surface for `@kit.ScanKit` (or any other kit) appears
- * anywhere in this project's documented SDK reference, only a QR *scanning*
- * one, which is the wrong direction for this screen. Rather than guess at an
- * undocumented API with no compiler available to check it against, this
- * page renders `verification_uri_complete` as large, wrappable text with an
- * explicit "open this on another device" instruction instead -- functionally
- * complete (a client that ignores `servers=`, or in this case ignores the QR
- * entirely, still works per brief section 4.3), just less convenient than a
- * scan. A later slice with a confirmed `@kit.ScanKit` QR-generation API
- * should replace this block.
+ * QR: the code shows as a QR of `verification_uri_complete` (ArkUI `QRCode`) beside the web layout's instructions. With no
+ * server configured the page uses the hosted link broker (`requestHostedLink`/`beginHostedPolling`), so the QR path never
+ * asks for a typed server address; "Sign in manually" is the separate fallback to `ServerSetup`.
  *
  * On the TV profile (`device/DeviceProfileService.ets`'s published
  * `DeviceProfile.inputMode === 'dpad'`), `getUIContext().getFocusController()
@@ -52,7 +43,7 @@
  * now-consumed pairing code.
  */
 
-import { getDeviceAuthService } from '../AppContainer';
+import { getDeviceAuthService, getServerDirectory } from '../AppContainer';
 import { Spacing, Radii } from '../core/Tokens';
 import type { DeviceCodeResponse } from '../core/Types/Auth';
 import type { DeviceProfile } from '../core/DeviceProfile';
@@ -61,7 +52,7 @@ import { activeColors, toResourceColor } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 import { ROUTES } from '../navigation/Routes';
-import { getNavStack, replaceRoute } from '../navigation/NavStack';
+import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 import { logWarn } from '../util/Log';
 
 /** brief 9 ("Slice 5" acceptance): "renders the user_code at display size
@@ -74,6 +65,8 @@ import { logWarn } from '../util/Log';
  * this file's own reasonable choice for "display size" / "wide". */
 const USER_CODE_FONT_SIZE: number = 56;
 const USER_CODE_LETTER_SPACING: number = 8;
+const QR_SIZE: number = 240;
+const QR_GAP: number = 48;
 
 /** The four states this screen's own acceptance criteria name. "success" is
  * deliberately not a rendered state -- `handleOutcome` below navigates away
@@ -132,7 +125,9 @@ struct Pairing {
     this.deviceCode = null;
 
     const service = getDeviceAuthService();
-    const result = await service.requestDeviceCode();
+    // No server yet: link through the hosted broker, so nobody types a server address.
+    const hosted = getServerDirectory().getActiveBaseUrl() === null;
+    const result = await service.requestPairingCode(hosted);
 
     if (result.kind === 'network_failure') {
       this.phase = 'error';
@@ -158,7 +153,7 @@ struct Pairing {
     this.deviceCode = response;
     this.phase = 'waiting';
 
-    const handle = service.beginPolling(response.device_code, response.interval, response.expires_in, (outcome): void => {
+    const handle = service.beginPairing(hosted, response, (outcome): void => {
       if (outcome.kind === 'success') {
         this.cancelPolling = null;
         replaceRoute(getNavStack(), ROUTES.Profiles);
@@ -209,49 +204,42 @@ struct Pairing {
             },
           })
         } else if (this.deviceCode !== null) {
-          Column({ space: Spacing.lg }) {
-            Text(this.deviceCode.user_code)
-              .fontSize(USER_CODE_FONT_SIZE)
-              .fontWeight(FontWeight.Bold)
-              .letterSpacing(USER_CODE_LETTER_SPACING)
-              .fontColor(toResourceColor(activeColors().ink))
-              .textAlign(TextAlign.Center)
+          Row({ space: QR_GAP }) {
+            QRCode(this.deviceCode.verification_uri_complete)
+              .width(QR_SIZE)
+              .height(QR_SIZE)
+              .color('#000000')
+              .backgroundColor('#FFFFFF')
+              .focusable(false)
 
-            Text(this.deviceCode.verification_uri)
-              .fontSize(16)
-              .fontColor(toResourceColor(activeColors().inkSoft))
-              .textAlign(TextAlign.Center)
-
-            // See the file header's "QR CODE GAP" note: no confirmed
-            // @kit.ScanKit QR-generation surface exists to render here, so
-            // the full completion URL is shown as text with an explicit
-            // instruction instead.
             Column({ space: Spacing.sm }) {
-              Text($r('app.string.pairing_open_instruction'))
-                .fontSize(14)
+              Text('Scan the QR code, or visit')
+                .fontSize(18)
                 .fontColor(toResourceColor(activeColors().inkSoft))
-                .textAlign(TextAlign.Center)
-
-              Text(this.deviceCode.verification_uri_complete)
-                .fontSize(14)
+              Text(this.deviceCode.verification_uri)
+                .fontSize(24)
+                .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
-                .textAlign(TextAlign.Center)
-                .maxLines(3)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-            }
-            .width('100%')
-            .padding(Spacing.md)
-            .backgroundColor(toResourceColor(activeColors().surface))
-            .border({ width: 1, color: toResourceColor(activeColors().line), radius: Radii.railPanel })
-
-            Row({ space: Spacing.sm }) {
-              AsyncState({ kind: AsyncStateKind.Loading })
+              Text('and enter this code')
+                .fontSize(18)
+                .fontColor(toResourceColor(activeColors().inkSoft))
+              Text(this.deviceCode.user_code)
+                .fontSize(USER_CODE_FONT_SIZE)
+                .fontWeight(FontWeight.Bold)
+                .letterSpacing(USER_CODE_LETTER_SPACING)
+                .fontColor(toResourceColor(activeColors().ink))
               Text($r('app.string.pairing_waiting'))
-                .fontSize(14)
+                .fontSize(16)
                 .fontColor(toResourceColor(activeColors().inkMuted))
             }
+            .alignItems(HorizontalAlign.Start)
           }
-          .width('100%')
+          Button('Sign in manually')
+            .defaultFocus(true)
+            .onClick((): void => {
+              this.cancelActivePoll();
+              pushRoute(getNavStack(), ROUTES.ServerSetup);
+            })
         }
       }
       .width('100%')

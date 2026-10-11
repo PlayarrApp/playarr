@@ -166,3 +166,15 @@ export function playbackProgressListUrl(): string {
 export function playbackProgressUrl(mediaFileId: string): string {
   return "/api/v1/playback/" + mediaFileId + "/progress";
 }
+
+// -- Hosted TV link broker (used before the client knows a server address) --
+
+export const HOSTED_LINK_ORIGIN = "https://playarr.app";
+
+export function hostedLinkCodeUrl(): string {
+  return HOSTED_LINK_ORIGIN + "/api/link/code";
+}
+
+export function hostedLinkClaimUrl(deviceCode: string): string {
+  return HOSTED_LINK_ORIGIN + "/api/link/code/" + encodeURIComponent(deviceCode);
+}

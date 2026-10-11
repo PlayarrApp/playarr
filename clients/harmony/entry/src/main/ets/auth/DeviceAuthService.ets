@@ -42,9 +42,13 @@
  */
 
 import { PlayarrClient } from '../net/PlayarrClient';
-import { ApiResult } from '../net/ApiResult';
+import { ApiResult, ApiOk, ApiNetworkFailure } from '../net/ApiResult';
 
-import { deviceCodeUrl, tokenUrl } from '../core/Endpoints.ts';
+import { deviceCodeUrl, tokenUrl, hostedLinkCodeUrl, hostedLinkClaimUrl } from '../core/Endpoints.ts';
+import { parseHostedCode, parseHostedClaim, HostedLinkClaim } from '../core/HostedLink.ts';
+import { buildHeaders, buildJsonBodyHeaders } from '../core/Headers.ts';
+import { clientVersion } from '../core/AppConfig.ts';
+import { sendHttpRequest } from '../net/HttpTransport';
 import { DeviceCodeResponse, TokenResponse, PeerAddressBundle } from '../core/Types/Auth.ts';
 import { decodeServersParam } from '../core/ServerBundle.ts';
 import { decodeAccessTokenClaims } from '../core/Jwt.ts';
@@ -72,6 +76,11 @@ interface DeviceTokenPollRequest {
   grant_type: string;
   device_code: string;
 }
+
+/** The hosted broker's session platform. Its allow-list has no HarmonyOS entry yet, so like Roku this uses the
+ * `web` compatibility identity (shortcut: switch to the TV wire name once the broker accepts it). */
+const HOSTED_LINK_PLATFORM: string = 'web';
+const HOSTED_POLL_MS_MIN: number = 1000;
 
 export type DeviceAuthOutcomeKind = 'success' | 'access_denied' | 'expired' | 'cancelled' | 'request_failed';
 
@@ -317,6 +326,123 @@ export class DeviceAuthService {
         timeoutHandle = null;
       }
       deliver(new DeviceAuthOutcome('cancelled'));
+    });
+    return handle;
+  }
+
+
+  /** The pairing screen's code request: the hosted broker's when no server is configured, else the server's. */
+  public async requestPairingCode(hosted: boolean): Promise<ApiResult<DeviceCodeResponse>> {
+    if (!hosted) {
+      return this.requestDeviceCode();
+    }
+    const code = await this.requestHostedLink();
+    if (code === null) {
+      const failure: ApiNetworkFailure = { kind: 'network_failure', reason: 'no_connection', message: 'Playarr linking is unavailable.' };
+      return failure;
+    }
+    const ok: ApiOk<DeviceCodeResponse> = { kind: 'ok', status: 200, value: code };
+    return ok;
+  }
+
+  /** Polls for the approval of a code from `requestPairingCode(hosted)`. */
+  public beginPairing(
+    hosted: boolean,
+    code: DeviceCodeResponse,
+    onOutcome: (outcome: DeviceAuthOutcome) => void
+  ): DeviceAuthHandle {
+    return hosted ? this.beginHostedPolling(code, onOutcome) : this.beginPolling(code.device_code, code.interval, code.expires_in, onOutcome);
+  }
+
+  /**
+   * Starts a hosted link session (no server address needed: the QR carries only the broker address). Returns the
+   * code to show, or null when the broker cannot be reached.
+   */
+  private async requestHostedLink(): Promise<DeviceCodeResponse | null> {
+    const response = await sendHttpRequest(hostedLinkCodeUrl(), {
+      method: 'POST',
+      headers: buildJsonBodyHeaders(HOSTED_LINK_PLATFORM, clientVersion, null),
+      dataType: 'string',
+      body: JSON.stringify({ client_platform: HOSTED_LINK_PLATFORM }),
+    });
+    if (response.status < 200 || response.status >= 300) {
+      return null;
+    }
+    return parseHostedCode(response.bodyText ?? '');
+  }
+
+  /**
+   * Polls the broker until the phone approves, adopts the server it chose, then finishes with the ordinary server
+   * device-code poll. `onOutcome` fires once, as `beginPolling`'s does (404 from the broker is `expired`).
+   */
+  private beginHostedPolling(
+    code: DeviceCodeResponse,
+    onOutcome: (outcome: DeviceAuthOutcome) => void
+  ): DeviceAuthHandle {
+    let cancelled = false;
+    let inner: DeviceAuthHandle | null = null;
+    let timeoutHandle: number | null = null;
+    const expiresAtMs: number = Date.now() + code.expires_in * 1000;
+    const waitMs: number = Math.max(code.interval * 1000, HOSTED_POLL_MS_MIN);
+
+    const step = async (): Promise<void> => {
+      if (cancelled) {
+        return;
+      }
+      if (Date.now() >= expiresAtMs) {
+        onOutcome(new DeviceAuthOutcome('expired'));
+        return;
+      }
+      const response = await sendHttpRequest(hostedLinkClaimUrl(code.device_code), {
+        method: 'GET',
+        headers: buildHeaders(HOSTED_LINK_PLATFORM, clientVersion, null),
+        dataType: 'string',
+      });
+      if (cancelled) {
+        return;
+      }
+      if (response.status === 404) {
+        onOutcome(new DeviceAuthOutcome('expired'));
+        return;
+      }
+      if (response.status >= 200 && response.status < 300 && response.status !== 202) {
+        const claim: HostedLinkClaim | null = parseHostedClaim(response.bodyText ?? '');
+        if (claim === null) {
+          onOutcome(new DeviceAuthOutcome('request_failed', 'Playarr returned an invalid TV link response.'));
+          return;
+        }
+        let chosen: number = -1;
+        for (const url of [claim.serverUrl].concat(claim.serverUrls)) {
+          const added = await this.serverDirectory.addServer(url);
+          if (added !== null && chosen === -1) {
+            chosen = this.serverDirectory.listServers().indexOf(added);
+          }
+        }
+        if (chosen === -1 || !(await this.serverDirectory.selectServer(chosen))) {
+          onOutcome(new DeviceAuthOutcome('request_failed', 'Playarr returned an invalid server address.'));
+          return;
+        }
+        inner = this.beginPolling(claim.serverDeviceCode, HOSTED_POLL_MS_MIN / 1000, code.expires_in, onOutcome);
+        return;
+      }
+      // 202 pending, or a blip: try again on the next tick.
+      timeoutHandle = setTimeout((): void => {
+        step();
+      }, waitMs);
+    };
+    step();
+
+    const handle: DeviceAuthHandle = new CallbackAuthHandle((): void => {
+      cancelled = true;
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+      }
+      if (inner !== null) {
+        inner.cancel();
+      } else {
+        onOutcome(new DeviceAuthOutcome('cancelled'));
+      }
     });
     return handle;
   }

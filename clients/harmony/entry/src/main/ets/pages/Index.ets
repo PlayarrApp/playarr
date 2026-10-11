@@ -15,7 +15,8 @@
  * "Slice 5" acceptance:
  *
  * 1. No server configured (`AppContainer#getServerDirectory().
- *    getActiveBaseUrl()` is `null`) -> push `ROUTES.ServerSetup`.
+ *    getActiveBaseUrl()` is `null`) -> push `ROUTES.Pairing` (QR link through the hosted broker; it offers manual
+ *    `ROUTES.ServerSetup` as a fallback).
  * 2. A server exists -> probe it with `GET /api/system/version` (this
  *    file's only network call, via `data/SystemRepository.ets`, never
  *    `net/`/`auth/` directly, per this project's `pages/` layering rule).
@@ -101,7 +102,7 @@ struct Index {
     const directory = getServerDirectory();
     const activeBaseUrl = directory.getActiveBaseUrl();
     if (activeBaseUrl === null) {
-      pushRoute(this.navPathStack, ROUTES.ServerSetup);
+      pushRoute(this.navPathStack, ROUTES.Pairing);
       return;
     }
 
@@ -127,7 +128,7 @@ struct Index {
     if (servers.length === 0) {
       // Defensive only, runBoot already checked getActiveBaseUrl() !==
       // null, which implies at least one address exists.
-      pushRoute(this.navPathStack, ROUTES.ServerSetup);
+      pushRoute(this.navPathStack, ROUTES.Pairing);
       return false;
     }
 
