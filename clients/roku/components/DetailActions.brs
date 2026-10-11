@@ -23,7 +23,7 @@ function tileSpecs() as Object
     end if
     return [
         { id: 1, x: 311.6, y: 508.6, w: 142, h: 64, icon: "nav-playlists.png", text: "Playback", primary: false }
-        { id: 0, x: 464.9, y: 506.7, w: 165.4, h: 67.8, icon: "player-play.png", text: playText, primary: true }
+        { id: 0, x: 464.9, y: 506.7, w: 165.4, h: 67.8, icon: "player-play.png", text: playText, primary: true, ink: true }
         { id: 2, x: 153.6, y: 584.6, w: 142, h: 64, icon: "", text: watchText, primary: false }
         { id: 3, x: 311.6, y: 584.6, w: 142, h: 64, icon: "", text: "Add to Playlist", primary: false }
     ]

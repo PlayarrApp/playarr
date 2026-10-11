@@ -121,6 +121,10 @@
           <Rectangle id="progressFill" width="3" height="3" color="0xCF3157FF" />
         </Rectangle>
         <Poster id="unwatchedBadge" translation="[196,11]" width="13" height="13" uri="pkg:/images/badge-unwatched.png" visible="false" />
+        <!-- Cast (web .tv-cast-card): a 104 px round headshot centred in a 177 px slot, the name and character below. -->
+        <MaskGroup id="circleMask" visible="false" translation="[36.5,0]" maskUri="pkg:/images/avatar-mask.png" maskSize="[104,104]">
+          <Poster id="circlePoster" width="104" height="104" loadDisplayMode="scaleToZoom" />
+        </MaskGroup>
       </Group>
       <!-- Title + kind sit BELOW the art box entirely, on the page's own
            background, not overlaid on the art, confirmed live there is no

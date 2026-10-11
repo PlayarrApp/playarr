@@ -34,6 +34,9 @@ end sub
 sub onContentChanged()
     content = m.top.itemContent
     if content = invalid then return
+    circle = content.shape <> invalid and content.shape = "circle"
+    m.titleY = 133
+    if circle then m.titleY = 118
     m.title.text = content.title
     ' cardScale/showKind: MarkupGrid/RowList only ever bind the itemContent
     ' field on each item instance, there is no path for a screen to set an
@@ -95,12 +98,41 @@ sub onContentChanged()
     end if
     m.poster.SetHttpAgent(agent)
     ' Library art is 4K: ask for a bitmap decoded at 2x the card (4K textures overflow the GPU budget and some fail to load).
-    m.poster.loadWidth = Int(440 * cardScale)
-    m.poster.loadHeight = Int(248 * cardScale)
-    m.posterUri = content.hdPosterUrl
-    m.posterRetries = 0
-    m.retryTimer.control = "stop"
-    m.poster.uri = content.hdPosterUrl
+    m.top.findNode("circleMask").visible = circle
+    for each id in ["posterBg", "poster", "cornerTL", "cornerTR", "cornerBL", "cornerBR"]
+        m.top.findNode(id).visible = not circle
+    end for
+    if circle
+        ' Cast circle: the headshot only, centred in its 177 px slot, name and character centred under it.
+        m.restShadow.visible = false
+        m.focusShadow.visible = false
+        m.artGroup.scaleRotateCenter = [88.5, 52]
+        m.title.horizAlign = "center"
+        m.title.width = 472
+        m.kind.horizAlign = "center"
+        m.kind.width = 656
+        m.kind.translation = [0, 137]
+        m.circlePoster = m.top.findNode("circlePoster")
+        m.circlePoster.SetHttpAgent(agent)
+        m.circlePoster.loadWidth = 208
+        m.circlePoster.loadHeight = 208
+        m.circlePoster.uri = content.hdPosterUrl
+    else
+        m.restShadow.visible = true
+        m.focusShadow.visible = true
+        m.artGroup.scaleRotateCenter = [110, 62]
+        m.title.horizAlign = "left"
+        m.title.width = 587
+        m.kind.horizAlign = "left"
+        m.kind.width = 815
+        m.kind.translation = [0, 152]
+        m.poster.loadWidth = Int(440 * cardScale)
+        m.poster.loadHeight = Int(248 * cardScale)
+        m.posterUri = content.hdPosterUrl
+        m.posterRetries = 0
+        m.retryTimer.control = "stop"
+        m.poster.uri = content.hdPosterUrl
+    end if
     ' A field literally named rowFocusPercent turned out to be reserved --
     ' RowList silently overwrites it on its own after content binds,
     ' confirmed live via debug-console tracing (a sibling rail's item would

@@ -2771,7 +2771,7 @@ sub onBrowseKeyArtTimer()
     m.browseKeyArt.loadWidth = 1038
     m.browseKeyArt.loadHeight = 1191
     m.browseKeyArt.uri = uri
-    if Instr(1, uri, "style=stage") > 0 then m.browseKeyArt.opacity = 0.15 else m.browseKeyArt.opacity = 0.4
+    if Instr(1, uri, "style=stage-light") > 0 then m.browseKeyArt.opacity = 0.15 else if Instr(1, uri, "style=stage") > 0 then m.browseKeyArt.opacity = 0.15 else m.browseKeyArt.opacity = 0.4
     m.browseKeyArt.visible = true
     m.browseKeyArtFade.visible = true
 end sub
@@ -5103,6 +5103,8 @@ end sub
 ' See buildDetailChaptersRail's comment for why moveDetailFocus (below)
 ' needs to rebuild this rail's content on every focus transition too.
 sub buildDetailSimilarRail(isActive as Boolean)
+    m.detailSimilar.rowItemSize = [[268, 190]]
+    m.detailSimilar.rowItemSpacing = [[25, 0]]
     buildRailContent(m.detailSimilar, m.similarWorks, isActive, 1.5)
     row = m.detailSimilar.content.GetChild(0)
     if row <> invalid then row.title = "Similar Titles"
@@ -6978,7 +6980,12 @@ sub buildDetailCastRail(isActive as Boolean)
         item.AddField("watchState", "string", false)
         item.watchState = ""
         item.AddField("subtitleOverride", "string", false)
+        item.AddField("shape", "string", false)
+        item.shape = "circle"
+        item.cardScale = 1.0
     end for
+    m.detailSimilar.rowItemSize = [[177, 190]]
+    m.detailSimilar.rowItemSpacing = [[0, 0]]
     m.detailSimilar.content = root
 end sub
 
