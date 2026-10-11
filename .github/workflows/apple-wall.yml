@@ -253,6 +253,19 @@ jobs:
           args: --accept-dns=false
           use-cache: "true"
 
+      # Streams showed "A server with the specified hostname could not be found" after the join: look at the resolver.
+      - name: Network check after the join
+        if: steps.ts.outcome == 'success'
+        continue-on-error: true
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+        run: |
+          host=$(python3 -c 'import os, urllib.parse as u; print(u.urlparse(os.environ["SERVER_URL"]).hostname)')
+          if dscacheutil -q host -a name "$host" | grep -q ip_address; then echo "system resolver: ok"; else echo "system resolver: FAIL"; fi
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$SERVER_URL/" || true); echo "server reachable by curl: HTTP $code"
+          scutil --dns | grep -E 'resolver #|nameserver\[|flags|if_index' | head -24
+          route -n get default | grep -E 'interface|gateway' || true
+
       - name: Stream over VNC until the end of the run
         if: steps.ts.outcome == 'success'
         timeout-minutes: 350
