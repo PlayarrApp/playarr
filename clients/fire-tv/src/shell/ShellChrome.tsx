@@ -168,7 +168,7 @@ function Rail({
     if (!getFocusedTag() && !focusDefaultTarget()) focusNode(activeRef);
   });
   return (
-    <TvFocusScope trap={['up', 'down']} destinations={[activeRef]} style={{position: 'absolute', left: 0, top: 0, width: sw(128), height: sw(1080)}}>
+    <TvFocusScope trap={['up', 'down']} style={{position: 'absolute', left: 0, top: 0, width: sw(128), height: sw(1080)}}>
       {groups.map((group) => {
         const height = groupHeight(group.items.length);
         const groupTop = y;

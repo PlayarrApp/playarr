@@ -28,6 +28,8 @@ export const VEGA_PLAYBACK_CAPABILITIES: PlaybackCapabilities = {
   maxWidth: 3840,
   maxHeight: 2160,
   maxFps: 60,
+  // 25 Mbps: what a Stick sustains over Wi-Fi with headroom; a 90 Mbps remux is served converted, not raw.
+  maxBitrateBps: 25_000_000,
   maxChannels: 6,
   passthrough: 'eac3,ac3',
 };
