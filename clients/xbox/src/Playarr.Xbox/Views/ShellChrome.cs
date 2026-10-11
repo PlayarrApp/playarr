@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Playarr.Core.Models;
 using Windows.UI;
 using Windows.UI.Text;
@@ -41,6 +42,7 @@ namespace Playarr.Xbox.Views
             // The remote's D-pad is a gamepad on Xbox, but a keyboard (and the device-wall tests) must move focus the
             // same way: arrow keys move focus spatially across the nav rail, rails and grids, not only inside a list.
             Root = new Grid { XYFocusKeyboardNavigation = Windows.UI.Xaml.Input.XYFocusKeyboardNavigationMode.Enabled };
+            Root.PreviewKeyDown += EnterRailLevel;
             Root.Children.Add(frame);
             Root.Children.Add(_chrome);
             Build();
@@ -51,6 +53,47 @@ namespace Playarr.Xbox.Views
         }
 
         public Grid Root { get; }
+
+        /// <summary>
+        /// LEFT out of the content lands on the rail item level with the focused card, as the web does (XYFocus alone
+        /// picks the item with the largest edge overlap, which is a different one for a tall card).
+        /// </summary>
+        private void EnterRailLevel(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        {
+            if (e.Key != Windows.System.VirtualKey.Left && e.Key != Windows.System.VirtualKey.GamepadDPadLeft)
+            {
+                return;
+            }
+
+            if (!(Windows.UI.Xaml.Input.FocusManager.GetFocusedElement() is FrameworkElement source) || IsRailItem(source))
+            {
+                return;
+            }
+
+            var target = Windows.UI.Xaml.Input.FocusManager.FindNextElement(Windows.UI.Xaml.Input.FocusNavigationDirection.Left);
+            if (!(target is FrameworkElement to) || !IsRailItem(to))
+            {
+                return;
+            }
+
+            double CentreY(FrameworkElement el) => el.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point(0, el.ActualHeight / 2)).Y;
+            var y = CentreY(source);
+            Button? best = null;
+            foreach (var (button, page, _) in _items)
+            {
+                if (page != typeof(object) && (best == null || Math.Abs(CentreY(button) - y) < Math.Abs(CentreY(best) - y)))
+                {
+                    best = button;
+                }
+            }
+
+            if (best != null && best.Focus(FocusState.Keyboard))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private bool IsRailItem(FrameworkElement el) => _items.Any(i => ReferenceEquals(i.Button, el));
 
         /// <summary>Label under the profile avatar (the active profile's display name).</summary>
         public static string ProfileName { get; set; } = string.Empty;

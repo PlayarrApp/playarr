@@ -1,0 +1,1 @@
+- Xbox: LEFT from content lands on the nav item level with the focused card, as the web does.
