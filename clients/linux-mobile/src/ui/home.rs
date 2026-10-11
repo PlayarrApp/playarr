@@ -92,11 +92,16 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
     bg(
         move || {
             let rails = c.home_rails();
-            let deck: Vec<Deck> = c
+            // Most recently watched first, as the web lists On deck.
+            let mut started: Vec<_> = c
                 .all_progress()
                 .unwrap_or_default()
                 .into_iter()
                 .filter(|p| p.state == "part_watched" && !p.work_id.is_empty() && p.duration_ms > 0)
+                .collect();
+            started.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+            let deck: Vec<Deck> = started
+                .into_iter()
                 .take(8)
                 .filter_map(|p| {
                     let w = c.work(&p.work_id).ok()?.work;

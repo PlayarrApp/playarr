@@ -8,6 +8,15 @@ use crate::ui::player::PlayRequest;
 use gtk4::prelude::*;
 use std::rc::Rc;
 
+/// "2003-06-05T00:00:00Z" as "5 Jun 2003".
+pub fn fmt_date(iso: &str) -> Option<String> {
+    let d = crate::ui::calendar::parse(iso)?;
+    let months = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    Some(format!("{} {} {}", d.d, months.get(d.m as usize - 1)?, d.y))
+}
+
 pub fn fmt_clock(ms: i64) -> String {
     let s = (ms / 1000).max(0);
     if s >= 3600 {
@@ -76,7 +85,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
     root.set_child(Some(&art));
     root.add_overlay(&wash);
 
-    let page = gtk4::Box::new(gtk4::Orientation::Vertical, 14);
+    let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     page.set_margin_bottom(32);
     let status = gtk4::Label::builder()
         .label("Loading…")
@@ -95,8 +104,12 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
     // Header: round back button, section name, the title in small caps.
     let head = header::build(&app, "", "filters");
     head.action.set_visible(false);
-    root.add_overlay(&head.widget);
+    // The header scrolls away with the page, as on the web.
+    let top = gtk4::Box::builder().height_request(307).build();
     head.widget.set_valign(gtk4::Align::Start);
+    head.widget.set_hexpand(true);
+    top.append(&head.widget);
+    page.prepend(&top);
 
     let id = work_id.clone();
     let art2 = art.clone();
@@ -194,7 +207,6 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     let body = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     body.set_margin_start(16);
     body.set_margin_end(16);
-    body.set_margin_top(229 + 78);
     page.append(&body);
     let gap = |b: &gtk4::Box, px: i32| b.append(&gtk4::Box::builder().height_request(px).build());
     // Focused episode for a series, the title itself for a film.
@@ -259,10 +271,14 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     } else {
         meta.push((w.kind_label().to_string(), true));
         if let Some(m) = l.detail.runtime_ms.filter(|m| *m > 0) {
-            meta.push((format!("{}h {:02}m", m / 3_600_000, (m / 60_000) % 60), false));
+            let mins = (m + 30_000) / 60_000;
+            meta.push((format!("{}h {:02}m", mins / 60, mins % 60), false));
         }
         if let Some(y) = w.year() {
             meta.push((y.to_string(), false));
+        }
+        if let Some(d) = w.release_date.as_deref().and_then(fmt_date) {
+            meta.push((format!("Released {d}"), false));
         }
     }
     meta.extend(
@@ -591,6 +607,12 @@ fn albums(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn released_date_format() {
+        assert_eq!(super::fmt_date("2003-06-05T00:00:00Z").as_deref(), Some("5 Jun 2003"));
+        assert_eq!(super::fmt_date("nope"), None);
+    }
+
     #[test]
     fn clock_format() {
         assert_eq!(super::fmt_clock(65_000), "1:05");

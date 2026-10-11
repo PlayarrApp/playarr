@@ -84,7 +84,7 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
         .css_classes(["pa-round"])
         .halign(gtk4::Align::End)
         .build();
-    back.set_child(Some(&crate::icons::image("close", 20, crate::icons::Tone::Ink)));
+    back.set_child(Some(&crate::icons::image("close", 20, crate::icons::Tone::White)));
     let top = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
         .spacing(10)

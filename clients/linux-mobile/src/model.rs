@@ -264,6 +264,8 @@ pub struct WatchProgress {
     pub duration_ms: i64,
     #[serde(default)]
     pub state: String,
+    #[serde(default)]
+    pub updated_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

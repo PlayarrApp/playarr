@@ -73,9 +73,14 @@ pub enum Tone {
     OnAccent,
     /// Brand tint.
     Brand,
+    /// Always white (on the black player stage).
+    White,
 }
 
 pub fn color(tone: Tone) -> &'static str {
+    if tone == Tone::White {
+        return "#ffffff";
+    }
     let dark = adw::StyleManager::default().is_dark();
     match (tone, dark) {
         (Tone::Soft, true) => "#cdc1c6",
@@ -86,6 +91,7 @@ pub fn color(tone: Tone) -> &'static str {
         (Tone::OnAccent, false) => "#ffffff",
         (Tone::Brand, true) => "#eaa6b6",
         (Tone::Brand, false) => "#821e36",
+        (Tone::White, _) => "#ffffff",
     }
 }
 
