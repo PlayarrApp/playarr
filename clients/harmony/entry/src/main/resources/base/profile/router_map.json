@@ -85,6 +85,12 @@
       "data": {}
     },
     {
+      "name": "Downloads",
+      "pageSourceFile": "src/main/ets/pages/Downloads.ets",
+      "buildFunction": "DownloadsBuilder",
+      "data": {}
+    },
+    {
       "name": "Settings",
       "pageSourceFile": "src/main/ets/pages/Settings.ets",
       "buildFunction": "SettingsBuilder",

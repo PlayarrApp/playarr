@@ -16,6 +16,7 @@ export const SEARCH_NAV_ID: string = 'search';
 export const WATCHLIST_NAV_ID: string = 'watchlist';
 export const REQUESTS_NAV_ID: string = 'requests';
 export const PLAYLISTS_NAV_ID: string = 'playlists';
+export const DOWNLOADS_NAV_ID: string = 'downloads';
 
 const PLACEHOLDER_NAV_ICON: ResourceStr = $r('app.media.playarr_logo');
 
@@ -43,6 +44,9 @@ export function navIconFor(id: string): ResourceStr {
   }
   if (id === CALENDAR_NAV_ID) {
     return $r('app.media.nav_calendar');
+  }
+  if (id === DOWNLOADS_NAV_ID) {
+    return $r('app.media.nav_downloads');
   }
   if (id === PLAYLISTS_NAV_ID) {
     return $r('app.media.nav_playlists');
@@ -97,7 +101,10 @@ export function buildSecondaryNavItems(): NavRailItem[] {
 
 /** Web's Downloads/Search group, above the library group: only the screens this client has so far. */
 export function buildPrimaryNavItems(): NavRailItem[] {
-  return [{ id: SEARCH_NAV_ID, icon: navIconFor(SEARCH_NAV_ID), label: 'Search' }];
+  return [
+    { id: DOWNLOADS_NAV_ID, icon: navIconFor(DOWNLOADS_NAV_ID), label: 'Downloads' },
+    { id: SEARCH_NAV_ID, icon: navIconFor(SEARCH_NAV_ID), label: 'Search' },
+  ];
 }
 
 /**
@@ -118,7 +125,7 @@ export function navigateFromRail(id: string, currentId: string): void {
     return;
   }
   const fromHome = currentId === HOME_NAV_ID;
-  if (id === CALENDAR_NAV_ID || id === SEARCH_NAV_ID || id === WATCHLIST_NAV_ID || id === REQUESTS_NAV_ID || id === PLAYLISTS_NAV_ID) {
+  if (id === CALENDAR_NAV_ID || id === SEARCH_NAV_ID || id === WATCHLIST_NAV_ID || id === REQUESTS_NAV_ID || id === PLAYLISTS_NAV_ID || id === DOWNLOADS_NAV_ID) {
     let route = ROUTES.Watchlist;
     if (id === CALENDAR_NAV_ID) {
       route = ROUTES.Calendar;
@@ -128,6 +135,8 @@ export function navigateFromRail(id: string, currentId: string): void {
       route = ROUTES.Requests;
     } else if (id === PLAYLISTS_NAV_ID) {
       route = ROUTES.Playlists;
+    } else if (id === DOWNLOADS_NAV_ID) {
+      route = ROUTES.Downloads;
     }
     if (fromHome) {
       pushRoute(getNavStack(), route);
