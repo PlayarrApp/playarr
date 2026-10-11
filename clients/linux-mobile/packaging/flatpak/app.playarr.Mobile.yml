@@ -1,0 +1,52 @@
+# Flatpak build of the Playarr Linux phone client. Build from the repository root:
+#   flatpak-builder --user --install --force-clean build-dir clients/linux-mobile/packaging/flatpak/app.playarr.Mobile.yml
+# Cargo fetches crates during the build (network is enabled for those two modules), so this manifest is for self-built
+# and CI-built bundles, not for Flathub, which requires vendored sources.
+app-id: app.playarr.Mobile
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: playarr-mobile
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --env=GST_PLUGIN_PATH=/app/lib/gstreamer-1.0
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/cargo
+modules:
+  # GStreamer's GTK4 paintable sink (renders video into a GTK widget); not part of the GNOME runtime.
+  - name: gst-plugin-gtk4
+    buildsystem: simple
+    build-options:
+      build-args: [--share=network]
+    build-commands:
+      - cargo build --release -p gst-plugin-gtk4
+      - install -Dm755 target/release/libgstgtk4.so /app/lib/gstreamer-1.0/libgstgtk4.so
+    sources:
+      - type: git
+        url: https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git
+        tag: gstreamer-1.28.3
+
+  - name: playarr-mobile
+    buildsystem: simple
+    build-options:
+      build-args: [--share=network]
+    build-commands:
+      - cd clients/linux-mobile && cargo build --release --locked
+      - install -Dm755 clients/linux-mobile/target/release/playarr-mobile /app/bin/playarr-mobile
+      - install -Dm644 clients/linux-mobile/data/app.playarr.Mobile.desktop /app/share/applications/app.playarr.Mobile.desktop
+      - install -Dm644 clients/linux-mobile/data/app.playarr.Mobile.metainfo.xml /app/share/metainfo/app.playarr.Mobile.metainfo.xml
+      - install -Dm644 clients/linux-mobile/data/app.playarr.Mobile.svg /app/share/icons/hicolor/scalable/apps/app.playarr.Mobile.svg
+      - install -Dm644 -t /app/share/fonts/NunitoSans clients/linux-mobile/data/fonts/NunitoSans-Variable.ttf clients/linux-mobile/data/fonts/NunitoSans-LatinExt-Variable.ttf
+    sources:
+      - type: dir
+        path: ../../../..
+        skip: [.git, node_modules, target, backend, site, docs, infra, scratch, android, apple-tv, harmony, ios, roku, xbox, fire-tv, tv-web]

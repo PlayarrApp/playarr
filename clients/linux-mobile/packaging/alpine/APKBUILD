@@ -1,0 +1,57 @@
+# Maintainer: Playarr <noreply@playarr.app>
+# postmarketOS and Alpine package for the Playarr Linux phone client.
+# Build locally from a source tree: tar the repository (clients/linux-mobile and clients/shared/profile-avatars)
+# as playarr-$pkgver.tar.gz, point `source` at it, run `abuild checksum && abuild -r`.
+pkgname=playarr-mobile
+pkgver=0.1.0
+pkgrel=0
+pkgdesc="Native Playarr media client for Linux phones (GTK4, libadwaita, GStreamer)"
+url="https://playarr.app"
+arch="all"
+license="MIT"
+depends="
+	gst-libav
+	gst-plugins-bad
+	gst-plugins-base
+	gst-plugins-good
+	gst-plugins-rs-gtk4
+	gtk4.0
+	libadwaita
+	"
+makedepends="
+	cargo
+	gstreamer-dev
+	gst-plugins-base-dev
+	gtk4.0-dev
+	libadwaita-dev
+	pkgconf
+	rust
+	"
+options="net"
+source="playarr-$pkgver.tar.gz"
+builddir="$srcdir/playarr-$pkgver/clients/linux-mobile"
+
+prepare() {
+	default_prepare
+	cargo fetch --locked
+}
+
+build() {
+	cargo build --release --locked
+}
+
+check() {
+	cargo test --release --locked
+}
+
+package() {
+	install -Dm755 target/release/playarr-mobile "$pkgdir"/usr/bin/playarr-mobile
+	install -Dm644 data/app.playarr.Mobile.desktop "$pkgdir"/usr/share/applications/app.playarr.Mobile.desktop
+	install -Dm644 data/app.playarr.Mobile.metainfo.xml "$pkgdir"/usr/share/metainfo/app.playarr.Mobile.metainfo.xml
+	install -Dm644 data/app.playarr.Mobile.svg "$pkgdir"/usr/share/icons/hicolor/scalable/apps/app.playarr.Mobile.svg
+	install -Dm644 -t "$pkgdir"/usr/share/fonts/NunitoSans data/fonts/NunitoSans-Variable.ttf data/fonts/NunitoSans-LatinExt-Variable.ttf
+}
+
+sha512sums="
+SKIP  playarr-0.1.0.tar.gz
+"

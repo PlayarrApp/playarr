@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Playarr
+Comment=Your Playarr media library
+Exec=playarr-mobile
+Icon=app.playarr.Mobile
+Terminal=false
+Categories=AudioVideo;Video;Player;GTK;
+Keywords=movies;series;media;player;
+StartupNotify=true
+X-GNOME-FullName=Playarr
+X-Purism-FormFactor=Workstation;Mobile;

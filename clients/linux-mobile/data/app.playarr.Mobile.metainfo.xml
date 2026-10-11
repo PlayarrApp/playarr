@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>app.playarr.Mobile</id>
+  <name>Playarr</name>
+  <summary>Watch your Playarr library on a Linux phone</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>Playarr for Linux phones is a native GTK4 and libadwaita app for your own Playarr Server library. Link the phone with a QR code, pick your profile, browse Home rails, movies and series, search, and play with resume.</p>
+  </description>
+  <launchable type="desktop-id">app.playarr.Mobile.desktop</launchable>
+  <url type="homepage">https://playarr.app</url>
+  <developer id="app.playarr"><name>Playarr</name></developer>
+  <content_rating type="oars-1.1"/>
+  <requires><display_length compare="ge">360</display_length></requires>
+  <supports><control>keyboard</control><control>pointing</control><control>touch</control></supports>
+  <releases><release version="0.1.0" date="2026-10-11"/></releases>
+</component>
