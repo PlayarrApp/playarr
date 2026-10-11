@@ -104,7 +104,9 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
                     let (left, right) = ((idx + 1.0) * tile, (idx + 2.0) * tile);
                     // Before the first layout the page size is 0; leave the strip at its start.
                     if page > 0.0 {
-                        if left < adj.value() {
+                        if right <= page {
+                            adj.set_value(0.0);
+                        } else if left < adj.value() {
                             adj.set_value(left - 8.0);
                         } else if right > adj.value() + page {
                             adj.set_value((right - page + 8.0).clamp(0.0, (adj.upper() - page).max(0.0)));

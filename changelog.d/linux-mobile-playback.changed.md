@@ -1,0 +1,1 @@
+- Linux phone client: reports Full HD as its decode limit when only software decoders exist, search shows the first result's art, detail pages highlight their tab.

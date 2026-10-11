@@ -29,11 +29,18 @@ pub struct Caps {
     pub hdr: Vec<&'static str>,
     pub dv_profiles: Vec<u8>,
     pub max_channels: u8,
+    /// Largest picture decoded in real time: Full HD when only software decoders exist (a phone CPU cannot keep up with 4K).
+    pub max_width: u32,
+    pub max_height: u32,
 }
 
 impl Caps {
     /// Capabilities from a list of decoder factories that are present.
     pub fn from_decoders(has: impl Fn(&str) -> bool) -> Caps {
+        let hardware = VIDEO
+            .iter()
+            .flat_map(|(_, n)| n.iter())
+            .any(|n| (n.starts_with("v4l2sl") || n.starts_with("va")) && has(n));
         let video_codecs: Vec<&'static str> = VIDEO
             .iter()
             .filter(|(_, names)| names.iter().any(|n| has(n)))
@@ -49,6 +56,8 @@ impl Caps {
             hdr: Vec::new(),
             dv_profiles: Vec::new(),
             max_channels: 2,
+            max_width: if hardware { 3840 } else { 1920 },
+            max_height: if hardware { 2160 } else { 1080 },
         }
     }
 
@@ -60,11 +69,13 @@ impl Caps {
     /// Query string tail for the playback request. The force flags only appear when switched on.
     pub fn query(&self, force_direct_video: bool, force_direct_audio: bool) -> String {
         let mut q = format!(
-            "containers=mp4,mov&video_codecs={}&audio_codecs=aac,mp3&hdr={}&max_bit_depth={}&max_channels={}",
+            "containers=mp4,mov&video_codecs={}&audio_codecs=aac,mp3&hdr={}&max_bit_depth={}&max_channels={}&max_width={}&max_height={}",
             self.video_codecs.join(","),
             self.hdr.join(","),
             self.max_bit_depth,
-            self.max_channels
+            self.max_channels,
+            self.max_width,
+            self.max_height
         );
         if !self.dv_profiles.is_empty() {
             let dv: Vec<String> = self.dv_profiles.iter().map(|p| p.to_string()).collect();
@@ -98,7 +109,10 @@ mod tests {
     #[test]
     fn sdr_display_sends_empty_hdr_with_bit_depth() {
         let q = Caps::from_decoders(|n| n == "avdec_h264").query(false, false);
-        assert!(q.contains("&hdr=&max_bit_depth=8&max_channels=2"), "{q}");
+        assert!(
+            q.contains("&hdr=&max_bit_depth=8&max_channels=2&max_width=1920&max_height=1080"),
+            "{q}"
+        );
         assert!(
             !q.contains("dv_profiles"),
             "DV profiles only when the display renders them"

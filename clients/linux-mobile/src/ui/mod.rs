@@ -282,7 +282,7 @@ impl App {
 
     /// Opens a screen straight away (`name` or `name:argument`): `home`, `movies`, `series`, `music`,
     /// `search:<text>`, `calendar-agenda|week|month`, `film`, `series-detail`, `player`, `profiles`, `settings`,
-    /// `filters`, `actions`, `theme:dark|light|system`. Used by the parity capture scripts through `PLAYARR_ROUTE` and `PLAYARR_CONTROL`.
+    /// `filters`, `actions`, `play:<media file id>`, `theme:dark|light|system`. Used by the parity capture scripts through `PLAYARR_ROUTE` and `PLAYARR_CONTROL`.
     pub fn route(self: &Rc<Self>, route: &str) {
         let Some(client) = self.client.borrow().clone() else {
             return;
@@ -330,6 +330,12 @@ impl App {
                 store::update_settings(|s| s.theme = arg.into());
                 crate::theme::apply(arg);
             }
+            "play" if !arg.is_empty() => self.play(player::PlayRequest {
+                media_file_id: arg.into(),
+                start_ms: 0,
+                title: String::new(),
+                art_work_id: None,
+            }),
             "profiles" => self.push_profiles(client),
             "settings" => self.push_settings(client),
             "settings-player" => {
@@ -348,6 +354,9 @@ impl App {
                     },
                     move |w| {
                         let Some(w) = w else { return };
+                        if let Some(f) = me.select_tab.borrow().clone() {
+                            f(if route == "series-detail" { "series" } else { "movies" })
+                        }
                         if route == "player" {
                             let c = client.clone();
                             let (me2, id, title) = (me.clone(), w.id.clone(), w.title.clone());
