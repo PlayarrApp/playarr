@@ -282,6 +282,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Apple clients (iOS, iPadOS, tvOS, macOS): playback shows on the system now-playing surface with the title, position, duration and play state, and the Play, Pause, skip and scrub buttons control the player (artwork and next/previous are not wired yet).
+- Linux phone client: reports real decoder capabilities, Force direct video and audio settings, and shows the 422 colour-format message.
+- Samsung Tizen native client (`clients/tizen-native`, Tizen .NET and NUI): QR sign-in through the hosted link broker, nav rail with D-pad focus, Home, Movies/Series/Music grids with the A-Z rail and Filters, film and series detail, search, Settings (appearance), profile picker, calendar (month, week, agenda), long-press title actions, and HLS playback on the TV player plane with resume and progress reporting. It signs in as `tizen-native`. A shared parity driver (`scripts/parity/drivers/tizen-native.mjs`) runs the suite against the emulator.
 - Xbox: title pages gain the web's secondary actions under Play: Add to / Remove from watchlist and Add to Playlist.
 - Linux phone client: MPRIS now-playing controls (title, poster, position, play, pause and seek) for the shell and lock screen.
 - Fire TV: playback reports the device's real capabilities (HEVC Main 10 up to 4K at 60 fps, HDR10 and HLG, 6 channels, Dolby Digital passthrough), Settings > Player has the Force direct video and Force direct audio switches (off by default, sent only when on), and a 422 colour-format answer shows the server's message with no retry.
@@ -456,6 +459,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Xbox: playback negotiation reports the device's real media capabilities (HDR10 when the display is in HDR, 10-bit HEVC Main 10 on HEVC consoles, 5.1 and AC-3/E-AC-3 pass-through; never Dolby Vision), Settings > Player > Advanced adds Force direct video and Force direct audio (Off by default, sent only when On), and a 422 from the negotiation shows the server's message with no retry.
+- Xbox: the focused title's hero uses the web's size, tracking and 9ch width cap, so titles wrap the way the web wraps them.
 - Sailfish OS: layouts follow the web mobile app more closely (nav pill with the web icons, watch-state dots and progress on cards, library counts and natural title order, film detail, Preferences list, profile picker, playlists tab, calendar views), and the page background uses the web surface colour in both themes.
 - Linux phone client: library cards are drawn 24 at a time so long lists open quickly.
 - Linux phone client: web-exact sizes for calendar, detail, drawers, profiles and preferences; the web library order.

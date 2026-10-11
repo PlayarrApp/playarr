@@ -1,1 +1,0 @@
-- Apple clients (iOS, iPadOS, tvOS, macOS): playback shows on the system now-playing surface with the title, position, duration and play state, and the Play, Pause, skip and scrub buttons control the player (artwork and next/previous are not wired yet).

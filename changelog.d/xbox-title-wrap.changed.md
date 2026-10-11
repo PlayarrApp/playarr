@@ -1,1 +1,0 @@
-- Xbox: the focused title's hero uses the web's size, tracking and 9ch width cap, so titles wrap the way the web wraps them.
