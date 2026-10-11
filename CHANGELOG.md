@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV: HLS playback now starts on the Vega player. Shaka's media source needs the video surface mounted before it attaches, text display and blob URLs are set up for Vega, and a failing sidecar subtitle no longer leaves a loaded title paused.
 - Library: on phones the list view no longer scrolls past its last row into blank space; the spacer under unmounted rows now uses the real row pitch (a 120px floor over-sized it).
 - Parity suite: a scored dpad or playback run without web expected values now stops with an error instead of overwriting dpad.json or playback.json with null results.
 - Sign-in safety: a network error or server error while refreshing the session no longer signs the device out (Core and Samsung Tizen native); only a server rejection of the refresh token does, and the Tizen session file is flushed to disk before the rotated pair is used.
@@ -294,6 +295,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Linux phone client: offline downloads with pause, resume, cancel, delete, keep-until and quality, offline playback and freedesktop notifications.
 - Xbox wall workflow: builds the UWP app on a hosted Windows runner and runs the parity screens (dark, light), D-pad and playback as parallel jobs, signed in fresh as Device Test; the app's parity trace now reports the pairing code so a test can approve it.
 - Samsung Tizen native client: series episode downloads. Long-press an episode to download that episode or the whole season (quality and keep-until), at most two transfers at a time; the Downloads page groups by series and season.
 - Sailfish OS: the playback request reports the device's real caps (8-bit H.264 up to 1080p60, stereo, no HDR, no passthrough), adds "Force direct video" and "Force direct audio" under Player > Advanced (default off, sent only when on), and shows the server's 422 `unsupported_colour_format` message without retrying.

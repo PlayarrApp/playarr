@@ -1,1 +1,0 @@
-- Linux phone client: offline downloads with pause, resume, cancel, delete, keep-until and quality, offline playback and freedesktop notifications.
