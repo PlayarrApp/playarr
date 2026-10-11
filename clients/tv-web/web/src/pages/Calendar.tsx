@@ -1240,6 +1240,15 @@ export function CalendarPage() {
         ) : detailItem ? (
           <ItemDetails item={detailItem} t={t} locale={locale} today={today} onOpen={openRoute} onPlay={playFile} stage />
         ) : null}
+        {/* Phones: the date switcher and Prev/Today/Next stay fixed under the page header while the list scrolls. */}
+        {isPhoneWidth ? (
+          <div className="calendar-header calendar-header-fixed">
+            {periodPicker}
+            <div className="calendar-nav calendar-nav-inline" role="group" aria-label={t("pages.calendar.navigationLabel")}>
+              {navButtons}
+            </div>
+          </div>
+        ) : null}
         <ListPanel
           ariaLabel={t("pages.calendar.title")}
           scrollKey="calendar:list"
@@ -1247,14 +1256,6 @@ export function CalendarPage() {
           contentClassName="calendar-agenda-content"
           gridProps={{ "data-tv-honour-scroll-padding": "" }}
         >
-          {isPhoneWidth ? (
-            <div className="calendar-header">
-              {periodPicker}
-              <div className="calendar-nav calendar-nav-inline" role="group" aria-label={t("pages.calendar.navigationLabel")}>
-                {navButtons}
-              </div>
-            </div>
-          ) : null}
           {stateMessage ?? (
             <DaySections
               days={loading ? skeletonDays() : groups}

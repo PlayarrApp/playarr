@@ -523,6 +523,67 @@
   opacity: 1;
 }
 
+/*
+ * Phones (1.10038-1.10041): the standard page gutter on both sides, the date switcher and Prev/Today/Next fixed under the
+ * page header and right-aligned to the content's right edge, and day headings with no box of their own: a soft fade of the
+ * panel colour sits behind them and dies out below, so entries dissolve under the heading with no hard edge.
+ */
+@media (max-width: 760px) {
+  .calendar-view-agenda .calendar-header-fixed {
+    position: fixed;
+    top: calc(var(--mobile-top-inset) + 54px);
+    right: var(--mobile-page-gutter);
+    left: var(--mobile-page-gutter);
+    z-index: var(--z-actions);
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
+  .calendar-view-agenda .calendar-header-fixed .period-picker {
+    min-width: 0;
+  }
+
+  .calendar-view-agenda .calendar-header-fixed .period-picker > .ui-btn {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .calendar-view-agenda .calendar-header-fixed .calendar-nav-inline {
+    flex: 0 0 auto;
+    margin-left: 0;
+    gap: var(--page-actions-gap);
+  }
+
+  .tv-title-grid:has(> .calendar-agenda-content) {
+    /* Below the fixed navigation row. */
+    --library-rail-top: calc(var(--mobile-top-inset) + 106px);
+    --agenda-glow-room: 0.75rem;
+    scroll-padding-bottom: calc(var(--mobile-nav-height) + 24px);
+  }
+
+  .tv-title-grid-content.calendar-agenda-content {
+    padding: var(--library-rail-top) var(--mobile-page-gutter) calc(var(--mobile-nav-height) + 24px);
+  }
+
+  .calendar-agenda-content .calendar-day > h3 {
+    background: none;
+  }
+
+  /* One fade shared by the pinned heading (shown once scrolled): the panel colour behind the heading, dying out below it. */
+  .calendar-agenda-fade::after {
+    inset: calc(-1 * var(--agenda-heading-h)) calc(-1 * var(--mobile-page-gutter)) auto;
+    height: calc(var(--agenda-heading-h) + var(--page-edge-fade-size));
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--tv-rail-frost) 92%, transparent) calc(var(--agenda-heading-h) - 2px),
+      color-mix(in srgb, var(--tv-rail-frost) 40%, transparent) calc(var(--agenda-heading-h) + var(--page-edge-fade-size) * 0.5),
+      transparent
+    );
+  }
+}
+
 .calendar-entry-skeleton {
   pointer-events: none;
 }
