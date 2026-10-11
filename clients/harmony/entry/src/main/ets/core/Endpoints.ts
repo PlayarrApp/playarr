@@ -91,6 +91,11 @@ export function calendarFeedUrl(rotate: boolean = false): string {
   return rotate ? "/api/v1/calendar/feed?rotate=true" : "/api/v1/calendar/feed";
 }
 
+/** `GET /api/v1/requests`: the viewer's title requests (administrators see everyone's). */
+export function requestsUrl(): string {
+  return "/api/v1/requests";
+}
+
 /** `GET /api/v1/home/rails`: the server-curated Home rails web TV Home renders. */
 export function homeRailsUrl(): string {
   return "/api/v1/home/rails";

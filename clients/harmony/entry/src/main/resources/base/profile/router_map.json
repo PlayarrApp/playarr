@@ -73,6 +73,12 @@
       "data": {}
     },
     {
+      "name": "Requests",
+      "pageSourceFile": "src/main/ets/pages/Requests.ets",
+      "buildFunction": "RequestsBuilder",
+      "data": {}
+    },
+    {
       "name": "Settings",
       "pageSourceFile": "src/main/ets/pages/Settings.ets",
       "buildFunction": "SettingsBuilder",

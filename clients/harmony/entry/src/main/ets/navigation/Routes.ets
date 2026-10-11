@@ -81,6 +81,9 @@ export const ROUTE_SETTINGS: string = 'Settings';
 /** `pages/Watchlist.ets`. The viewer's watchlist. No navigation parameters. */
 export const ROUTE_WATCHLIST: string = 'Watchlist';
 
+/** `pages/Requests.ets`. The viewer's title requests. No navigation parameters. */
+export const ROUTE_REQUESTS: string = 'Requests';
+
 /**
  * Every route name a page may push, replace or pop by, keyed the same way
  * `router_map.json` names them. Import this object rather than any of the
@@ -100,6 +103,7 @@ export class RouteNames {
   readonly Calendar: string = ROUTE_CALENDAR;
   readonly Search: string = ROUTE_SEARCH;
   readonly Watchlist: string = ROUTE_WATCHLIST;
+  readonly Requests: string = ROUTE_REQUESTS;
   readonly Settings: string = ROUTE_SETTINGS;
 }
 
