@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS: the production Home no longer sits 32 pt too high with a strip at the bottom (the stage coordinate space replaces the window's global space on the Mac, 57.10025).
 - Xbox: arrow keys and the D-pad move focus spatially across the nav rail, Home rails and grids (Up and Down on Home no longer scroll instead of moving focus), detail pages focus Play or the next-up episode, and Escape or the Back key goes back one level.
 - Starting the same title from several devices of one account no longer fails with `no_transcode_capacity`: devices at the same start position share one on-demand transcode (the process stops when the last viewer leaves), a video-copy remux takes a quarter of a transcode slot, and a full node answers 503 with `Retry-After` while the web and Android players retry with back-off.
 - Apple TV: series pages show episode stills and place the season rails at the web height; the parity routes draw the production Home and nav.
