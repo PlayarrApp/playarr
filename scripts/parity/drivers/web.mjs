@@ -70,7 +70,8 @@ export async function createDriver() {
       return page.evaluate(() => {
         const e = document.activeElement;
         if (!e || e === document.body) return null;
-        return e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString();
+        // Resume progress is per account and changes between runs: "Resume X from 2:14" and "Open X" are the same item.
+        return (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1");
       });
     },
     async screenshot(file) {

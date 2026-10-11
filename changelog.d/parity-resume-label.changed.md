@@ -1,0 +1,1 @@
+- Parity drivers treat the Resume and Open labels of one title as the same focused item.

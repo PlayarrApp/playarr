@@ -117,7 +117,7 @@ export async function createDriver() {
     },
     async location() { return (await ev("location.hash.replace(/^#/, '')")) ?? null; },
     async focused() {
-      return ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null; return e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString(); })()`);
+      return ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null; return (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1"); })()`);
     },
     async screenshot(file) {
       await ev("(document.activeElement && document.activeElement.blur && document.activeElement.blur(), true)");
