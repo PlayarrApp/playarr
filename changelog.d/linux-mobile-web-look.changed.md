@@ -1,1 +1,0 @@
-- Linux phone client: layout and look follow the web phone design (header, 16:9 cards, key-art Home, navigation strip, calendar cards, detail pages, side panels, profiles and preferences).
