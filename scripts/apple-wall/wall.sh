@@ -96,6 +96,12 @@ ensure_sim() { # a simulator that died mid-run (memory pressure on the runner) i
   fi
 }
 
+restart_sim() { # tvOS/iOS simulators only: shut down and boot again (state and the saved session stay)
+  [[ $KIND == macos ]] && return 0
+  xcrun simctl shutdown "$UDID" 2>/dev/null || true
+  xcrun simctl boot "$UDID" 2>/dev/null || true; xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true; sleep 8
+}
+
 launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route (default Home)
   local theme=$1 route=${2:-home}
   ensure_sim
@@ -157,18 +163,30 @@ capture)
   ACCESS_TOKEN=$(token)
   rm -rf "$OUT"; mkdir -p "$OUT"
   for theme in dark light; do
-    mkdir -p "$OUT/$theme"
+    mkdir -p "$OUT/$theme"; restart_sim # the runner swaps hard: a fresh simulator per theme keeps SimLaunchHost alive
+    bad=
     for pair in $SCREENS; do
-      id=${pair%%:*}; route=${pair#*:}
-      ACCESS_TOKEN=$ACCESS_TOKEN launch "$theme" "$route"
-      sleep 14
-      shot "$OUT/$theme/$id.png" || { log "no frame for $theme/$id"; rejected; exit 1; }
-      [[ $(stat -f %z "$OUT/$theme/$id.png") -gt 20000 ]] || { log "$theme/$id looks empty"; rejected; exit 1; }
+      id=${pair%%:*}; route=${pair#*:}; f="$OUT/$theme/$id.png"
+      for attempt in 1 2; do
+        ACCESS_TOKEN=$ACCESS_TOKEN launch "$theme" "$route" || true
+        sleep 14
+        if shot "$f" && [[ $(stat -f %z "$f") -gt 20000 ]]; then bad=; break; fi
+        bad="$theme/$id"; rm -f "$f"; log "no usable frame for $bad (attempt $attempt)"; restart_sim
+      done
+      [[ -z $bad ]] || break
       log "captured $theme/$id"
     done
-    [[ $(stat -f %z "$OUT/$theme/home.png") -gt 150000 ]] || { log "$theme/home.png is too plain: an error or signed-out screen"; rejected; exit 1; }
-    # An app stuck on one screen (sign-in, error) gives identical frames: publish nothing then.
-    [[ $(shasum "$OUT/$theme"/*.png | awk '{print $1}' | sort -u | wc -l) -ge 3 ]] || { log "$theme frames are nearly identical: not signed in or stuck"; rejected; exit 1; }
+    if [[ -z $bad ]]; then
+      [[ $(stat -f %z "$OUT/$theme/home.png") -gt 150000 ]] || bad="$theme/home too plain: an error or signed-out screen"
+      # An app stuck on one screen (sign-in, error) gives identical frames.
+      [[ $(shasum "$OUT/$theme"/*.png | awk '{print $1}' | sort -u | wc -l) -ge 3 ]] || bad="$theme frames nearly identical"
+    fi
+    if [[ -n $bad ]]; then
+      log "theme $theme rejected: $bad"
+      # Dark is the base: without it nothing is published. A missing light theme only drops the light set.
+      if [[ $theme == dark ]]; then rejected; exit 1; fi
+      rm -rf "$OUT/$theme"
+    fi
   done
   printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
     "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$OUT/build.json"
