@@ -101,6 +101,21 @@ export function playlistsUrl(): string {
   return "/api/v1/playlists";
 }
 
+/** `PATCH`/`DELETE /api/v1/playlists/{id}`. */
+export function playlistUrl(id: string): string {
+  return `/api/v1/playlists/${encodeURIComponent(id)}`;
+}
+
+/** `PUT /api/v1/playlists/{id}/items/order`. */
+export function playlistItemOrderUrl(id: string): string {
+  return `/api/v1/playlists/${encodeURIComponent(id)}/items/order`;
+}
+
+/** `DELETE /api/v1/playlists/{id}/items/{item_id}`. */
+export function playlistItemUrl(id: string, itemId: string): string {
+  return `/api/v1/playlists/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}`;
+}
+
 /** `GET /api/v1/playlists/{id}/items`. */
 export function playlistItemsUrl(id: string): string {
   return `/api/v1/playlists/${encodeURIComponent(id)}/items`;

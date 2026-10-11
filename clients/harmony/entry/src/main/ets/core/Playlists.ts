@@ -1,5 +1,7 @@
 // core/Playlists.ts: ordering and labels for the playlists page, as web pages/Playlists.tsx.
-import type { PlaylistResponse, PlaylistItemResponse } from "./Types/Playlists.ts";
+import type { PlaylistResponse, PlaylistItemResponse } from "./Types/Playlists";
+import type { WorkDetail, WorkChildrenArtist } from "./Types/WorkDetail";
+import { watchLeaves } from "./WatchLeaves";
 
 /** Web sorts by name, numbers in natural order, ignoring case (`localeCompare` with `numeric` and base sensitivity). */
 function naturalKey(name: string): string[] {
@@ -58,4 +60,37 @@ export function playlistCaption(playlist: PlaylistResponse): string {
 /** Items in playlist order. */
 export function itemsInOrder(items: PlaylistItemResponse[]): PlaylistItemResponse[] {
   return items.slice().sort((a, b) => a.position - b.position);
+}
+
+/** The ids in `ids` with the one at `index` moved by `delta` places (up is negative); unchanged when it would leave the list. */
+export function moveId(ids: string[], index: number, delta: number): string[] {
+  const target = index + delta;
+  if (index < 0 || index >= ids.length || target < 0 || target >= ids.length) {
+    return ids.slice();
+  }
+  const next = ids.slice();
+  const moved = next.splice(index, 1)[0];
+  next.splice(target, 0, moved);
+  return next;
+}
+
+/**
+ * The file a playlist item plays: an audio item's own track, else the work's own file (a movie), else its first playable
+ * file (an episode or track), as web resolves a playlist item. Null when nothing is playable yet.
+ */
+export function itemMediaFileId(detail: WorkDetail, trackId: string | null | undefined): string | null {
+  if (trackId !== undefined && trackId !== null) {
+    const albums = (detail.children as WorkChildrenArtist).Artist;
+    if (albums !== undefined) {
+      for (const album of albums) {
+        for (const track of album.tracks) {
+          if (track.track.id === trackId && track.media_file_id) {
+            return track.media_file_id;
+          }
+        }
+      }
+    }
+  }
+  const leaves = watchLeaves(detail);
+  return leaves.length > 0 ? leaves[0].mediaFileId : null;
 }
