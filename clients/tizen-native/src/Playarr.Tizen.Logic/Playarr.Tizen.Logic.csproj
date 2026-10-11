@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Pure logic, no Tizen API: builds and tests on any .NET 8 host, referenced by the NUI head. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Playarr.Tizen.Logic</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../xbox/src/Playarr.Core/Playarr.Core.csproj" />
+  </ItemGroup>
+</Project>

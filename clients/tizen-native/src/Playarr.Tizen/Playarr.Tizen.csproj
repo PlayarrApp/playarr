@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Samsung.NET.Sdk.Tizen workload; Tizen 10 matches the TV emulator and current TVs. -->
+    <TargetFramework>net8.0-tizen10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Playarr.Tizen</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Playarr.Tizen.Logic/Playarr.Tizen.Logic.csproj" />
+  </ItemGroup>
+</Project>

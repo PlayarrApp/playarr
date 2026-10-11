@@ -76,6 +76,7 @@ jobs:
       android: ${{ steps.android.outputs.android }}
       android_tasks: ${{ steps.android.outputs.android_tasks }}
       xbox: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.xbox == 'true' }}
+      tizen-native: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.tizen-native == 'true' }}
       harmony: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.harmony == 'true' }}
       linux-mobile: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.linux-mobile == 'true' }}
       tv-web: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.tv-web == 'true' }}
@@ -194,6 +195,10 @@ jobs:
         id: filter
         with:
           filters: |
+            tizen-native:
+              - 'clients/tizen-native/**'
+              - 'clients/xbox/src/Playarr.Core/**'
+              - '.github/workflows/ci.yml'
             xbox:
               - 'clients/xbox/**'
               - '.github/workflows/xbox-ci.yml'
@@ -500,6 +505,56 @@ jobs:
 
       - name: dotnet test (Playarr.Core.Tests)
         run: dotnet test tests/Playarr.Core.Tests/Playarr.Core.Tests.csproj
+
+  # ---------------------------------------------------------------------
+  # Samsung Tizen native client (clients/tizen-native, Tizen .NET / NUI).
+  # Hosted ubuntu job: installs the Samsung Tizen workload from a pinned
+  # Samsung/Tizen.NET script (checksum verified), builds the test-signed tpk
+  # and runs the logic unit tests. No emulator here.
+  # ---------------------------------------------------------------------
+  tizen-native-check:
+    name: Tizen native build & test
+    needs: changes
+    if: needs.changes.outputs.tizen-native == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: clients/tizen-native
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-tizen-${{ runner.os }}-${{ hashFiles('clients/tizen-native/**/*.csproj') }}
+          restore-keys: nuget-tizen-${{ runner.os }}-
+
+      - name: Install the Samsung Tizen workload (pinned)
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/Samsung/Tizen.NET/6ab8cb41e7ccab90a3ba838e7f6d6b38a9c4ec08/workload/scripts/workload-install.sh -o "$RUNNER_TEMP/wi.sh"
+          echo "b6a8bbd3aefbcca452e05abce8272c82362c83da2cfaca2470cbb7fd07ac5158  $RUNNER_TEMP/wi.sh" | sha256sum -c -
+          dotnet --version
+          sudo bash "$RUNNER_TEMP/wi.sh" -v 10.0.126 -t 8.0.400 --dotnet-install-dir "$(dirname "$(readlink -f "$(command -v dotnet)")")"
+
+      - name: dotnet test (Playarr.Tizen.Logic.Tests)
+        run: dotnet test tests/Playarr.Tizen.Logic.Tests/Playarr.Tizen.Logic.Tests.csproj
+
+      - name: Build the test-signed tpk
+        run: dotnet build src/Playarr.Tizen/Playarr.Tizen.csproj -c Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playarr-tizen-native-tpk
+          path: clients/tizen-native/src/Playarr.Tizen/bin/Release/net8.0-tizen10.0/*.tpk
+          if-no-files-found: error
+          retention-days: 7
 
   # ---------------------------------------------------------------------
   # Xbox UWP head (Windows): the PR-time Windows build. Builds the unsigned
@@ -1045,6 +1100,7 @@ jobs:
       - android-check
       - android-apk
       - xbox-check
+      - tizen-native-check
       - xbox-uwp-package
       - harmony-check
       - linux-mobile-check
@@ -1066,7 +1122,7 @@ jobs:
           echo "$NEEDS_JSON" | jq .
 
           fail=0
-          for job in changes backend-check android-check android-apk xbox-check xbox-uwp-package harmony-check linux-mobile-check tv-web-check server-image-web firetv-check web-layout-parity web-storybook web-behaviour openapi-contract-check; do
+          for job in changes backend-check android-check android-apk xbox-check tizen-native-check xbox-uwp-package harmony-check linux-mobile-check tv-web-check server-image-web firetv-check web-layout-parity web-storybook web-behaviour openapi-contract-check; do
             result=$(echo "$NEEDS_JSON" | jq -r --arg j "$job" '.[$j].result // "missing"')
             echo "Job '$job' result: $result"
             case "$result" in

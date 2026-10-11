@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Test-signing is the SDK default (the workload's built-in certificates), which is what CI uses.
+    A device build exports PLAYARR_TIZEN_CERT_PASS and passes AuthorPath/DistributorPath:
+    scripts/sign-build.sh does that and reads the password from a file, never from the command line.
+  -->
+  <PropertyGroup Condition="'$(PLAYARR_TIZEN_CERT_PASS)' != ''">
+    <AuthorPass>$(PLAYARR_TIZEN_CERT_PASS)</AuthorPass>
+    <DistributorPass>$(PLAYARR_TIZEN_CERT_PASS)</DistributorPass>
+  </PropertyGroup>
+</Project>
