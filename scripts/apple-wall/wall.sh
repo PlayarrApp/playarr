@@ -53,7 +53,7 @@ P
 
 token() { # a fresh access token for the Device Test profile, masked in the log
   local t; t=$(DEVICE_NAME="wall-$DEVICE" python3 "$TRUSTED/scripts/apple-wall/login.py")
-  echo "::add-mask::$t"; printf '%s' "$t"
+  echo "::add-mask::$t" >&2; printf '%s' "$t"
 }
 
 rejected() { # keep the frames and the app's recent log for diagnosis (the log has no credentials)
