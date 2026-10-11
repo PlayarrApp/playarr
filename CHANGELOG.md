@@ -433,6 +433,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: the calendar agenda follows the web: status pills (Available, Upcoming, Missing, Not tracked), the details panel with the synopsis, meta line, pills and Open and watchlist actions, the web's card width, day heading and card spacing; date-only releases show "All day". The profile picker's selected avatar gets the web's focus ring colour.
 - Fire TV client: the release calendar has the week and month views, the filters drawer (view, type, status, monitored only) and the calendar link drawer with its QR code; entry cards, the details and the period picker follow the web.
 - Fire TV client: Movies, Series and Music have the Filters drawer (list, screen and cover views, sort and order, audio and subtitle language filters); a film's page has the Playback settings drawer (quality, audio, subtitles) and plays at the saved quality.
 - Fire TV client: the artist page has the album cover flow and the track list; headshots crop as the web's do.
@@ -1963,6 +1964,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Performance
 
+- Fire TV: Home and the calendar no longer re-render every card on each focus move (memoised rails, windowed Home cards, memoised agenda rows and month chips), so focus keeps up with the remote; the Home feature title balances without breaking inside a word.
 - Fire TV: Home and the calendar no longer re-render every card on each focus move (memoised rails, windowed Home cards, memoised agenda rows and month chips), so focus keeps up with the remote; the Home feature title balances without breaking inside a word.
 - Peer sync: a peer's availability snapshot that has not changed no longer reads its 50,000 stored fingerprints (1.3 to 3.8 s on a loaded server). Each peer's stored snapshot carries a marker (row count and digest, migration 0084) that is checked with two index lookups, and is forgotten before a replacement starts writing and recorded in its last chunk.
 - Peer sync push: the sender leaves its unchanged inventory (about 26 MB for 50,000 files) out of the minute-by-minute push once the receiver has said it holds it, and repeats it in full every ten minutes. Older peers keep receiving the rows; the new fields are optional on the wire.
