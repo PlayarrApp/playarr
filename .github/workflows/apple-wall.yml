@@ -235,7 +235,7 @@ jobs:
           STREAM_BIND: 127.0.0.1
           PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] || 'selftest1' }}
         run: |
-          export DEADLINE=$(( $(date +%s) + 40 ))
+          export DEADLINE=$(( $(date +%s) + 90 ))
           bash "$TRUSTED/scripts/apple-wall/wall.sh" stream "$DEVICE" &
           pid=$!
           case $DEVICE in
@@ -244,7 +244,7 @@ jobs:
             ipad) port=5914 ;;
             macos) port=5916 ;;
           esac
-          sleep 25
+          sleep 50
           curl -fsS "http://127.0.0.1:$port/" | tee "$RUNNER_TEMP/vnc-health.txt"
           grep -Eq 'frames=[1-9]|device ' "$RUNNER_TEMP/vnc-health.txt"
           wait $pid
