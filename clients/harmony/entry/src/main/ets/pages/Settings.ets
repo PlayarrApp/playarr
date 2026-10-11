@@ -24,7 +24,9 @@ import type { Choice } from '../design/components/ChoiceSegments';
 import { BRAND_PINK_SOFT } from '../core/Tokens';
 
 import { getCatalogKinds } from '../data/CatalogRepository';
-import { getServerDirectory, saveThemeChoice } from '../AppContainer';
+import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault } from '../AppContainer';
+import { QualityMatrix } from '../design/components/QualityMatrix';
+import { ORIGINAL_QUALITY, normaliseQuality, normaliseSubtitleMode, normaliseSubtitleLanguage } from '../core/PlayerDefaults';
 
 import { buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../navigation/NavItems';
 import { getNavStack, popRoute } from '../navigation/NavStack';
@@ -42,6 +44,11 @@ const SECTIONS: SettingsSection[] = [
   { id: APPEARANCE, number: '01', title: 'Appearance' },
   { id: PLAYER, number: '04', title: 'Player' },
   { id: SERVER, number: '05', title: 'Server connection' },
+];
+const SUBTITLE_MODE_CHOICES: Choice[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'forced', label: 'Forced only' },
+  { value: 'always', label: 'Always on' },
 ];
 const AUDIO_CHOICES: Choice[] = AUDIO_LANGUAGES.map((language: AudioLanguage): Choice => ({ value: language.value, label: language.label }));
 
@@ -83,11 +90,34 @@ export struct SettingsScreen {
   @State private audioLanguage: string = 'en';
   /** Web's player preference status: loading, ready, saving or an error message. */
   @State private audioStatus: string = 'loading';
+  /** Device-local playback defaults (web lib/playerDefaults). */
+  @State private defaultQuality: string = ORIGINAL_QUALITY;
+  @State private subtitleMode: string = 'off';
+  @State private subtitleLanguage: string = 'en';
   @State private audioError: string = '';
 
   aboutToAppear(): void {
     this.loadNav();
     this.loadAudioLanguage();
+    this.loadDefaults();
+  }
+
+  private async loadDefaults(): Promise<void> {
+    const stored = await loadPlayerDefaults();
+    this.defaultQuality = normaliseQuality(stored[0]);
+    this.subtitleMode = normaliseSubtitleMode(stored[1]);
+    this.subtitleLanguage = normaliseSubtitleLanguage(stored[2]);
+  }
+
+  private setDefault(which: string, value: string): void {
+    if (which === 'quality') {
+      this.defaultQuality = value;
+    } else if (which === 'subtitleMode') {
+      this.subtitleMode = value;
+    } else {
+      this.subtitleLanguage = value;
+    }
+    savePlayerDefault(which, value);
   }
 
   private async loadAudioLanguage(): Promise<void> {
@@ -192,30 +222,74 @@ export struct SettingsScreen {
   }
 
   @Builder
+  private panelHeading(title: string, description: string): void {
+    Text(title)
+      .fontSize(tv(26.4))
+      .fontWeight(FontWeight.Medium)
+      .letterSpacing(tv(-0.924))
+      .fontColor(toResourceColor(activeColors().ink))
+    Text(description)
+      .fontSize(tv(PANEL_TEXT_SIZE))
+      .fontColor(toResourceColor(activeColors().inkSoft))
+  }
+
+  /** Web's Player section: Default quality, Default subtitles, Default audio track, then the device note. */
+  @Builder
   private playerPanel(): void {
-    Column({ space: tv(16) }) {
-      Text('Default audio track')
-        .fontSize(tv(26.4))
-        .fontWeight(FontWeight.Medium)
-        .letterSpacing(tv(-0.924))
-        .fontColor(toResourceColor(activeColors().ink))
-      Text('Prefer this audio language whenever a matching track is available.')
-        .fontSize(tv(PANEL_TEXT_SIZE))
-        .fontColor(toResourceColor(activeColors().inkSoft))
-      SelectField({
-        options: AUDIO_CHOICES,
-        value: this.audioLanguage,
-        selectWidth: PANEL_WIDTH,
-        disabled: this.audioStatus === 'loading' || this.audioStatus === 'saving',
-        onChange: (value: string): void => {
-          this.chooseAudioLanguage(value);
-        },
-      })
-      Text(this.audioStatusText())
-        .fontSize(tv(PANEL_TEXT_SIZE))
-        .fontColor(toResourceColor(this.audioStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
+    Scroll() {
+      Column({ space: tv(16) }) {
+        this.panelHeading('Default quality', 'Start playback at this quality when your connection allows it.')
+        QualityMatrix({
+          selected: this.defaultQuality,
+          matrixWidth: PANEL_WIDTH,
+          onChoose: (id: string): void => {
+            this.setDefault('quality', id);
+          },
+        })
+        this.panelHeading('Default subtitles', 'Choose when subtitles start, and in which language.')
+        ChoiceSegments({
+          heading: '',
+          choices: SUBTITLE_MODE_CHOICES,
+          selected: this.subtitleMode,
+          sectionWidth: PANEL_WIDTH,
+          onChoose: (value: string): void => {
+            this.setDefault('subtitleMode', value);
+          },
+        })
+        if (this.subtitleMode !== 'off') {
+          SelectField({
+            options: AUDIO_CHOICES,
+            value: this.subtitleLanguage,
+            selectWidth: PANEL_WIDTH,
+            onChange: (value: string): void => {
+              this.setDefault('subtitleLanguage', value);
+            },
+          })
+        }
+        this.panelHeading('Default audio track', 'Prefer this audio language whenever a matching track is available.')
+        SelectField({
+          options: AUDIO_CHOICES,
+          value: this.audioLanguage,
+          selectWidth: PANEL_WIDTH,
+          disabled: this.audioStatus === 'loading' || this.audioStatus === 'saving',
+          onChange: (value: string): void => {
+            this.chooseAudioLanguage(value);
+          },
+        })
+        Text(this.audioStatusText())
+          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontColor(toResourceColor(this.audioStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
+        Text('Quality and subtitle defaults are saved on this device. Audio language follows your profile.')
+          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontColor(toResourceColor(activeColors().inkMuted))
+      }
+      .alignItems(HorizontalAlign.Start)
+      .padding({ bottom: tv(60) })
     }
-    .alignItems(HorizontalAlign.Start)
+    .width(tv(PANEL_WIDTH))
+    .height(tv(1080 - PANEL_TOP))
+    .scrollBar(BarState.Off)
+    .align(Alignment.TopStart)
   }
 
   @Builder

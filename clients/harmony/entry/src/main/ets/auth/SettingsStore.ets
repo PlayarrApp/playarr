@@ -50,6 +50,9 @@ const DEVICE_ID_KEY: string = 'device_id';
 const SELECTED_PROFILE_ID_KEY: string = 'selected_profile_id';
 const SELECTED_PROFILE_NAME_KEY: string = 'selected_profile_name';
 const THEME_OVERRIDE_KEY: string = 'theme_override';
+const PLAYER_QUALITY_KEY: string = 'player_default_quality';
+const PLAYER_SUBTITLE_MODE_KEY: string = 'player_default_subtitle_mode';
+const PLAYER_SUBTITLE_LANGUAGE_KEY: string = 'player_default_subtitle_language';
 const LIBRARY_SORT_FIELD_KEY: string = 'library_sort_field';
 const LIBRARY_SORT_ORDER_KEY: string = 'library_sort_order';
 const LIBRARY_ARTWORK_DENSITY_KEY: string = 'library_artwork_density';
@@ -245,6 +248,32 @@ export async function getThemeOverride(): Promise<ThemeOverride> {
 /** Sets the manual theme override; `design/Theme.ets` treats this as winning over the system signal in both directions. */
 export async function setThemeOverride(themeOverride: ThemeOverride): Promise<void> {
   await putString(THEME_OVERRIDE_KEY, themeOverride);
+}
+
+/** Settings > Player defaults, saved on this device (web keeps them in local storage). Raw strings: the caller
+ * normalises with `core/PlayerDefaults.ts`. */
+export async function getPlayerDefaultQuality(): Promise<string> {
+  return getString(PLAYER_QUALITY_KEY, 'original');
+}
+
+export async function setPlayerDefaultQuality(value: string): Promise<void> {
+  await putString(PLAYER_QUALITY_KEY, value);
+}
+
+export async function getPlayerSubtitleMode(): Promise<string> {
+  return getString(PLAYER_SUBTITLE_MODE_KEY, 'off');
+}
+
+export async function setPlayerSubtitleMode(value: string): Promise<void> {
+  await putString(PLAYER_SUBTITLE_MODE_KEY, value);
+}
+
+export async function getPlayerSubtitleLanguage(): Promise<string> {
+  return getString(PLAYER_SUBTITLE_LANGUAGE_KEY, 'en');
+}
+
+export async function setPlayerSubtitleLanguage(value: string): Promise<void> {
+  await putString(PLAYER_SUBTITLE_LANGUAGE_KEY, value);
 }
 
 function toLibrarySortField(value: string): LibrarySortField {

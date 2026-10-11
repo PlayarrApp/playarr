@@ -54,7 +54,17 @@ import { window } from '@kit.ArkUI';
 import { resolveClientPlatform } from './core/AppConfig.ts';
 import { DeviceProfile } from './core/DeviceProfile.ts';
 
-import { getThemeOverride, initSettingsStore, setThemeOverride } from './auth/SettingsStore';
+import {
+  getPlayerDefaultQuality,
+  getPlayerSubtitleLanguage,
+  getPlayerSubtitleMode,
+  getThemeOverride,
+  initSettingsStore,
+  setPlayerDefaultQuality,
+  setPlayerSubtitleLanguage,
+  setPlayerSubtitleMode,
+  setThemeOverride,
+} from './auth/SettingsStore';
 import type { ThemeOverride } from './auth/SettingsStore';
 import { ServerDirectory } from './auth/ServerDirectory';
 import { SessionManager } from './auth/SessionManager';
@@ -146,4 +156,20 @@ export async function saveThemeChoice(mode: ThemeOverride): Promise<void> {
 /** The saved colour theme choice (`'system'` until one is saved). */
 export function savedThemeChoice(): Promise<ThemeOverride> {
   return getThemeOverride();
+}
+
+/** Settings > Player: the device-local playback defaults (quality, subtitle mode and language). Pages may not
+ * import `auth/`, so the store goes through here. */
+export async function loadPlayerDefaults(): Promise<string[]> {
+  return [await getPlayerDefaultQuality(), await getPlayerSubtitleMode(), await getPlayerSubtitleLanguage()];
+}
+
+export async function savePlayerDefault(which: string, value: string): Promise<void> {
+  if (which === 'quality') {
+    await setPlayerDefaultQuality(value);
+  } else if (which === 'subtitleMode') {
+    await setPlayerSubtitleMode(value);
+  } else {
+    await setPlayerSubtitleLanguage(value);
+  }
 }
