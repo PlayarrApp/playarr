@@ -106,6 +106,8 @@
                 </StackPanel>
             </Button>
 
+            <StackPanel x:Name="ActionRow" Orientation="Horizontal" Spacing="14" Margin="0,16,0,0" Visibility="Collapsed" />
+
             <ProgressRing x:Name="LoadingRing" IsActive="False" HorizontalAlignment="Left" Width="40" Height="40" />
             <TextBlock x:Name="ErrorText" Style="{StaticResource PlayarrRailTitle}" Visibility="Collapsed" />
         </StackPanel>

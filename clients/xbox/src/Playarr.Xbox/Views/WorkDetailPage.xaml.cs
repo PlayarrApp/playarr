@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.ComponentModel;
 using Windows.UI.Text;
 using Windows.UI.Xaml;
@@ -112,6 +113,7 @@ namespace Playarr.Xbox.Views
                 Artwork.Load(BackdropImage, work, 1280, new[] { ImageKind.Backdrop }, requestWidth: 1280);
             }
 
+            RenderActions();
             PlayButton.IsEnabled = _viewModel.CanPlay;
             PlayLabel.Text = _viewModel.ResumePositionMs is { } resumeMs
                 ? "Resume from " + TimeSpan.FromMilliseconds(resumeMs).ToString(resumeMs >= 3600000 ? @"h\:mm\:ss" : @"m\:ss")
@@ -134,6 +136,78 @@ namespace Playarr.Xbox.Views
         }
 
         private bool _focusPrimary = true;
+        private bool? _actionsInWatchlist;
+
+        /// <summary>The web's secondary pills under the primary action: watchlist toggle and Add to Playlist.</summary>
+        private void RenderActions()
+        {
+            if (_viewModel.Work == null || _viewModel.IsLoading)
+            {
+                return;
+            }
+
+            var inWatchlist = _viewModel.WatchlistKey != null;
+            if (_actionsInWatchlist == inWatchlist)
+            {
+                return;
+            }
+
+            _actionsInWatchlist = inWatchlist;
+            ActionRow.Children.Clear();
+            ActionRow.Visibility = Visibility.Visible;
+            var watch = Ui.Pill(inWatchlist ? "\u2713  Remove from watchlist" : "+  Add to watchlist", null);
+            watch.Click += async (s, e) =>
+            {
+                try
+                {
+                    await _viewModel.ToggleWatchlistAsync();
+                }
+                catch (Exception)
+                {
+                    // Left as it was: the pill still shows the real state.
+                }
+
+                RenderActions();
+            };
+            ActionRow.Children.Add(watch);
+            var playlist = Ui.Pill("+  Add to Playlist", OpenPlaylistDrawer);
+            ActionRow.Children.Add(playlist);
+        }
+
+        private async void OpenPlaylistDrawer()
+        {
+            if (_viewModel.Work is not { } work)
+            {
+                return;
+            }
+
+            try
+            {
+                var playlists = await App.Environment.ApiClient.ListPlaylistsAsync();
+                var body = new StackPanel();
+                foreach (var info in playlists.Where(p => !p.IsSystem))
+                {
+                    var id = info.Id;
+                    body.Children.Add(Drawer.Action("\uE710", info.Name, async () =>
+                    {
+                        try
+                        {
+                            await App.Environment.ApiClient.AddToPlaylistAsync(id, work.Id);
+                        }
+                        catch (Exception)
+                        {
+                        }
+
+                        Drawer.TryCloseCurrent();
+                    }));
+                }
+
+                Drawer.Open((Panel)Content, "Add to Playlist", work.Title, body);
+            }
+            catch (Exception)
+            {
+            }
+        }
 
         private Control? NextUpEpisodeContainer()
         {

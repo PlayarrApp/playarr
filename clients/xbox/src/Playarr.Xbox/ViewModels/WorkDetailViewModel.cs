@@ -51,6 +51,9 @@ namespace Playarr.Xbox.ViewModels
         private readonly Guid _workId;
 
         private WorkDetail? _detail;
+
+        /// <summary>The watchlist entry for this title, when it is saved (its key removes it).</summary>
+        public string? WatchlistKey { get; private set; }
         private Dictionary<Guid, WatchProgress> _progress = new Dictionary<Guid, WatchProgress>();
         private bool _isLoading;
         private string? _errorMessage;
@@ -159,6 +162,40 @@ namespace Playarr.Xbox.ViewModels
             }
         }
 
+        public async Task RefreshWatchlistAsync()
+        {
+            try
+            {
+                var list = await _environment.ApiClient.GetWatchlistAsync();
+                WatchlistKey = list.Items.FirstOrDefault(i => i.Title.Sources.Any(src => src.WorkId == _workId))?.Title.TitleKey;
+            }
+            catch (Exception)
+            {
+                WatchlistKey = null;
+            }
+        }
+
+        /// <summary>Adds the title to the watchlist, or removes it when it is already there.</summary>
+        public async Task ToggleWatchlistAsync()
+        {
+            if (_detail == null)
+            {
+                return;
+            }
+
+            if (WatchlistKey != null)
+            {
+                await _environment.ApiClient.RemoveFromWatchlistAsync(WatchlistKey);
+            }
+            else
+            {
+                await _environment.ApiClient.AddToWatchlistAsync(_detail.Work);
+            }
+
+            await RefreshWatchlistAsync();
+            OnPropertyChanged(nameof(WatchlistKey));
+        }
+
         /// <summary>
         /// Loads the work once. Fire-and-forget from the page's
         /// perspective, exactly like every other screen's ViewModel in this
@@ -188,6 +225,7 @@ namespace Playarr.Xbox.ViewModels
                     // Resume points are an extra: without them the title plays from the start.
                 }
 
+                await RefreshWatchlistAsync();
                 SelectDefaultSeasonAndEpisode();
             }
             catch (ApiException error)

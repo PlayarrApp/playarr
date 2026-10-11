@@ -71,6 +71,12 @@ namespace Playarr.Core.Networking
 
         Task<WatchlistResponse> GetWatchlistAsync(CancellationToken cancellationToken = default);
 
+        /// <summary>Saves a library title to the watchlist (<c>POST /api/v1/watchlist</c> with the title snapshot).</summary>
+        Task AddToWatchlistAsync(Work work, CancellationToken cancellationToken = default);
+
+        /// <summary>Adds a work to a playlist (<c>POST /api/v1/playlists/{id}/items</c>).</summary>
+        Task AddToPlaylistAsync(Guid playlistId, Guid workId, CancellationToken cancellationToken = default);
+
         Task RemoveFromWatchlistAsync(string titleKey, CancellationToken cancellationToken = default);
 
         Task<IList<RequestView>> ListRequestsAsync(CancellationToken cancellationToken = default);
@@ -320,6 +326,24 @@ namespace Playarr.Core.Networking
         public Task<WatchlistResponse> GetWatchlistAsync(CancellationToken cancellationToken = default) =>
             GetAsync<WatchlistResponse>("/api/v1/watchlist", null, authenticated: true, cancellationToken);
 
+        public Task AddToWatchlistAsync(Work work, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(HttpMethod.Post, "/api/v1/watchlist", WatchlistSnapshot.Json(work), cancellationToken);
+
+        public Task AddToPlaylistAsync(Guid playlistId, Guid workId, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(HttpMethod.Post, $"/api/v1/playlists/{playlistId:D}/items", "{\"work_id\":\"" + workId.ToString("D") + "\"}", cancellationToken);
+
+        private async Task SendNoBodyAsync(HttpMethod method, string path, string json, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await SendEmptyOnceAsync(method, path, false, cancellationToken, json).ConfigureAwait(false);
+            }
+            catch (ApiException error) when (error.Kind == ApiErrorKind.Unauthorized && _tokens != null)
+            {
+                await SendEmptyOnceAsync(method, path, true, cancellationToken, json).ConfigureAwait(false);
+            }
+        }
+
         public async Task RemoveFromWatchlistAsync(string titleKey, CancellationToken cancellationToken = default)
         {
             try
@@ -342,9 +366,14 @@ namespace Playarr.Core.Networking
             GetAsync<IList<PlaylistItem>>($"/api/v1/playlists/{playlistId:D}/items", null, authenticated: true, cancellationToken);
 
         /// <summary>A request whose success carries no body (204), such as removing a watchlist entry.</summary>
-        private async Task SendEmptyOnceAsync(HttpMethod method, string path, bool forceRefresh, CancellationToken cancellationToken)
+        private async Task SendEmptyOnceAsync(HttpMethod method, string path, bool forceRefresh, CancellationToken cancellationToken, string? json = null)
         {
             using var request = new HttpRequestMessage(method, BuildUri(path, null));
+            if (json != null)
+            {
+                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            }
+
             request.Headers.TryAddWithoutValidation(ClientPlatformHeader, _configuration.ClientPlatform.WireName());
             request.Headers.TryAddWithoutValidation(ClientVersionHeader, _configuration.ClientVersion);
             if (_tokens != null)

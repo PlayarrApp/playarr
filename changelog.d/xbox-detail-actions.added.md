@@ -1,0 +1,1 @@
+- Xbox: title pages gain the web's secondary actions under Play: Add to / Remove from watchlist and Add to Playlist.

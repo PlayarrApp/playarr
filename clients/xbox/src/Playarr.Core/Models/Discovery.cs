@@ -143,3 +143,32 @@ namespace Playarr.Core.Models
         [JsonProperty("position")] public int Position { get; set; }
     }
 }
+
+namespace Playarr.Core.Models
+{
+    /// <summary>The title snapshot the watchlist endpoint takes (web's <c>snapshotFromWork</c>).</summary>
+    public static class WatchlistSnapshot
+    {
+        public static string Json(Work work)
+        {
+            var refs = new Newtonsoft.Json.Linq.JArray();
+            foreach (var reference in work.ExternalRefs)
+            {
+                refs.Add(new Newtonsoft.Json.Linq.JObject { ["provider"] = reference.Provider, ["external_id"] = reference.ExternalId });
+            }
+
+            int? year = work.ReleaseDate is { Length: >= 4 } date && int.TryParse(date.Substring(0, 4), out var y) ? y : (int?)null;
+            var poster = work.Image(ImageKind.Poster)?.Url;
+            var json = new Newtonsoft.Json.Linq.JObject
+            {
+                ["kind"] = work.Kind.ToString().ToLowerInvariant(),
+                ["title"] = work.Title,
+                ["year"] = year,
+                ["work_id"] = work.Id,
+                ["external_refs"] = refs,
+                ["poster_url"] = poster,
+            };
+            return json.ToString(Newtonsoft.Json.Formatting.None);
+        }
+    }
+}
