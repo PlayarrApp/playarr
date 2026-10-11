@@ -1,4 +1,5 @@
 import QtQuick 2.6
+import "."
 import Sailfish.Silica 1.0
 
 // Web's rounded action button; `primary` is the filled "Play" style.

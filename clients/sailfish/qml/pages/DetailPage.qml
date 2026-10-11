@@ -35,6 +35,18 @@ PlayarrPage {
     }
     readonly property var targetProgress: target && progress[target.id] && progress[target.id].state === "part_watched" ? progress[target.id] : null
 
+    property string downloadNote: ""
+    // Asks the server for a download ticket of the original file; the Downloads tab shows its progress.
+    function requestDownload() {
+        Api.request("POST", "/api/v1/downloads", { media_file_id: detail.media_file_id, quality_id: "original" }, function (status, ticket) {
+            if (status === 200 || status === 201) {
+                Api.setSetting("dltitle-" + ticket.id, work.title)
+                downloadNote = qsTr("Requested: see Downloads")
+            } else {
+                downloadNote = status === 403 ? qsTr("Downloads are not allowed") : qsTr("Download failed")
+            }
+        })
+    }
     function play(id, title) {
         var p = progress[id]
         pageStack.push(Qt.resolvedUrl("PlayerPage.qml"), {
@@ -52,6 +64,7 @@ PlayarrPage {
             progress = m
         })
     }
+    onDetailChanged: if (detail) work = detail.work
     onStatusChanged: if (status === PageStatus.Active && detail) load() // refresh resume state after playback
     Component.onCompleted: load()
 
@@ -130,6 +143,12 @@ PlayarrPage {
                 width: 160 * Tokens.u
                 text: "▶  " + (page.targetProgress ? qsTr("Resume %1").arg(mmss(page.targetProgress.position_ms)) : qsTr("Play"))
                 onClicked: page.play(page.target.id, page.target.title)
+            }
+            PillButton {
+                x: Tokens.pad
+                visible: !!detail && !!detail.media_file_id
+                text: page.downloadNote !== "" ? page.downloadNote : qsTr("Download")
+                onClicked: page.requestDownload()
             }
             BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; size: BusyIndicatorSize.Medium; running: !detail && !failed }
             Label {
@@ -248,5 +267,6 @@ PlayarrPage {
             }
         }
         VerticalScrollDecorator {}
+        EdgeFade { target: parent }
     }
 }

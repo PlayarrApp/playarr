@@ -1,4 +1,5 @@
 import QtQuick 2.6
+import "."
 
 // Round avatar plate (preset art from clients/shared/profile-avatars, or the account's custom picture).
 Item {

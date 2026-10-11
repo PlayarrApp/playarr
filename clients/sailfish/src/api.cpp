@@ -36,9 +36,13 @@ QJsonObject toObject(const QByteArray &raw)
 
 Api::Api(QObject *parent)
     : QObject(parent)
+    , m_proxy(&m_nam, [this]() { return serverUrl(); }, [this](const QUrl &u) { return bearerFor(u); }, this)
     , m_settings(QSettings::NativeFormat, QSettings::UserScope, QStringLiteral("harbour-playarr"), QStringLiteral("harbour-playarr"))
 {
+    // Qt 5.6 on Sailfish reports "not accessible" until connman says online (never on the emulator); do not let that block requests.
+    m_nam.setNetworkAccessible(QNetworkAccessManager::Accessible);
     load();
+    QTimer::singleShot(0, this, &Api::refreshFlags);
     m_linkTimer.setSingleShot(true);
     connect(&m_linkTimer, &QTimer::timeout, this, &Api::linkStep);
 }
@@ -58,6 +62,7 @@ void Api::load()
         p.refresh = m_settings.value(QStringLiteral("refresh")).toString();
         p.server = m_settings.value(QStringLiteral("server")).toString();
         p.avatar = m_settings.value(QStringLiteral("avatar")).toString();
+        p.pinLocked = m_settings.value(QStringLiteral("pinLocked")).toBool();
         p.expiresAt = m_settings.value(QStringLiteral("expiresAt")).toLongLong();
         if (!p.userId.isEmpty() && !p.refresh.isEmpty())
             m_profiles.append(p);
@@ -84,6 +89,7 @@ void Api::save()
         m_settings.setValue(QStringLiteral("refresh"), p.refresh);
         m_settings.setValue(QStringLiteral("server"), p.server);
         m_settings.setValue(QStringLiteral("avatar"), p.avatar);
+        m_settings.setValue(QStringLiteral("pinLocked"), p.pinLocked);
         m_settings.setValue(QStringLiteral("expiresAt"), p.expiresAt);
     }
     m_settings.endArray();
@@ -110,6 +116,7 @@ QVariantList Api::profilesModel() const
         m[QStringLiteral("name")] = p.name.isEmpty() ? tr("Profile") : p.name;
         m[QStringLiteral("avatar")] = avatarSource(p.avatar.isEmpty() ? Util::defaultAvatarPreset(p.userId) : p.avatar);
         m[QStringLiteral("active")] = i == m_active;
+        m[QStringLiteral("pinLocked")] = p.pinLocked;
         out.append(m);
     }
     return out;
@@ -150,6 +157,7 @@ QString Api::artwork(const QString &workId, const QVariantList &images, const QS
     return QString();
 }
 
+// The media player talks to the loopback proxy (see mediaproxy.h); the proxy adds the bearer token.
 QString Api::playbackUrl(const QString &infoUrl, const QString &sessionId) const
 {
     QUrl u(infoUrl.startsWith(QLatin1String("http")) ? infoUrl : url(infoUrl));
@@ -157,7 +165,10 @@ QString Api::playbackUrl(const QString &infoUrl, const QString &sessionId) const
     if (!q.hasQueryItem(QStringLiteral("playback_session_id")))
         q.addQueryItem(QStringLiteral("playback_session_id"), sessionId);
     u.setQuery(q);
-    return u.toString();
+    const QString base = const_cast<MediaProxy &>(m_proxy).base();
+    if (base.isEmpty() || Util::originOf(u) != Util::originOf(QUrl(serverUrl())))
+        return u.toString();
+    return base + u.path() + QLatin1Char('?') + u.query();
 }
 
 QByteArray Api::bearerFor(const QUrl &u) const
@@ -178,6 +189,32 @@ void Api::request(const QString &method, const QString &path, const QVariant &bo
     if (body.isValid() && !body.isNull())
         r.body = QJsonDocument::fromVariant(body).toJson(QJsonDocument::Compact);
     send(r);
+}
+
+void Api::requestText(const QString &path, const QJSValue &cb)
+{
+    Req r;
+    r.method = QStringLiteral("GET");
+    r.cb = cb;
+    r.text = true;
+    const QUrl u(path);
+    r.path = u.scheme().isEmpty() ? path : u.path() + (u.hasQuery() ? QStringLiteral("?") + u.query() : QString());
+    if (!u.scheme().isEmpty() && Util::originOf(u) != Util::originOf(QUrl(serverUrl()))) {
+        finish(r, 0, QVariant()); // never send the token to another host
+        return;
+    }
+    send(r);
+}
+
+QVariant Api::setting(const QString &key, const QVariant &fallback) const
+{
+    return m_settings.value(QStringLiteral("app/") + key, fallback);
+}
+
+void Api::setSetting(const QString &key, const QVariant &value)
+{
+    m_settings.setValue(QStringLiteral("app/") + key, value);
+    m_settings.sync();
 }
 
 void Api::finish(const Req &r, int status, const QVariant &data)
@@ -230,7 +267,7 @@ void Api::send(const Req &r)
             return;
         }
         const QByteArray raw = reply->readAll();
-        finish(r, status, raw.isEmpty() ? QVariant() : QJsonDocument::fromJson(raw).toVariant());
+        finish(r, status, r.text ? QVariant(QString::fromUtf8(raw)) : raw.isEmpty() ? QVariant() : QJsonDocument::fromJson(raw).toVariant());
     });
 }
 
@@ -292,6 +329,7 @@ void Api::selectProfile(const QString &userId)
             m_active = i;
             save();
             emit sessionChanged();
+            refreshFlags();
             return;
         }
 }
@@ -312,6 +350,53 @@ void Api::removeProfile(const QString &userId)
     emit sessionChanged();
 }
 
+void Api::refreshFlags()
+{
+    if (m_active >= 0)
+        learnProfile(m_profiles.at(m_active).userId);
+}
+
+void Api::unlockProfile(const QString &userId, const QString &pin, const QJSValue &cb)
+{
+    int idx = -1;
+    for (int i = 0; i < m_profiles.size(); ++i)
+        if (m_profiles.at(i).userId == userId)
+            idx = i;
+    Req r;
+    r.cb = cb;
+    if (idx < 0) {
+        finish(r, 404, QVariant());
+        return;
+    }
+    const Profile p = m_profiles.at(idx);
+    QJsonObject body;
+    body[QStringLiteral("device_id")] = p.deviceId;
+    body[QStringLiteral("refresh_token")] = p.refresh;
+    body[QStringLiteral("pin")] = pin;
+    QNetworkReply *reply = post(QUrl(Util::joinUrl(p.server, QStringLiteral("/api/v1/auth/unlock"))), body);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, r, userId]() {
+        reply->deleteLater();
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QJsonObject o = toObject(reply->readAll());
+        QVariantMap out;
+        out[QStringLiteral("retryAfter")] = o.value(QStringLiteral("retry_after_seconds")).toInt();
+        if (status == 200) {
+            for (int i = 0; i < m_profiles.size(); ++i) {
+                if (m_profiles.at(i).userId != userId)
+                    continue;
+                Profile &q = m_profiles[i];
+                q.access = o.value(QStringLiteral("access_token")).toString();
+                q.refresh = o.value(QStringLiteral("refresh_token")).toString();
+                q.expiresAt = QDateTime::currentMSecsSinceEpoch() + qint64(o.value(QStringLiteral("expires_in")).toDouble(3600) * 1000);
+                m_active = i;
+            }
+            save();
+            emit sessionChanged();
+        }
+        finish(r, status, out);
+    });
+}
+
 void Api::signOut() { removeProfile(profileId()); }
 
 // Name and avatar of the freshly linked profile.
@@ -326,14 +411,16 @@ void Api::learnProfile(const QString &userId)
         const QJsonArray arr = QJsonDocument::fromJson(reply->readAll()).array();
         for (const QJsonValue &v : arr) {
             const QJsonObject o = v.toObject();
-            if (!o.value(QStringLiteral("is_current")).toBool())
-                continue;
-            for (Profile &p : m_profiles)
-                if (p.userId == userId)
+            for (Profile &p : m_profiles) {
+                if (p.userId != o.value(QStringLiteral("id")).toString())
+                    continue;
+                p.pinLocked = o.value(QStringLiteral("pin_locked")).toBool();
+                if (o.value(QStringLiteral("is_current")).toBool() || p.name.isEmpty())
                     p.name = o.value(QStringLiteral("display_name")).toString(o.value(QStringLiteral("username")).toString());
-            save();
-            emit sessionChanged();
+            }
         }
+        save();
+        emit sessionChanged();
     });
     QNetworkRequest areq = baseRequest(QUrl(url(QStringLiteral("/api/v1/users/me/profile-avatar"))));
     areq.setRawHeader("Authorization", "Bearer " + m_profiles.at(m_active).access.toUtf8());

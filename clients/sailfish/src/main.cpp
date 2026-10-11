@@ -1,9 +1,12 @@
 #include <QGuiApplication>
+#include <QDebug>
+#include <QQuickItem>
 #include <QQuickWindow>
 #include <QTimer>
 #include <QNetworkDiskCache>
 #include <QNetworkReply>
 #include <QQmlContext>
+#include <QQmlExpression>
 #include <QQmlEngine>
 #include <QQmlNetworkAccessManagerFactory>
 #include <QQuickView>
@@ -11,6 +14,9 @@
 #include <sailfishapp.h>
 
 #include "api.h"
+#include "playback.h"
+#include "calendar.h"
+#include "downloads.h"
 
 // QML Image/Video requests to the signed-in server get the bearer token and an on-disk artwork cache.
 class AuthNam : public QNetworkAccessManager
@@ -22,6 +28,7 @@ public:
         cache->setCacheDirectory(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + QStringLiteral("/artwork"));
         cache->setMaximumCacheSize(200 * 1024 * 1024);
         setCache(cache);
+        setNetworkAccessible(QNetworkAccessManager::Accessible);
     }
 
 protected:
@@ -54,21 +61,38 @@ int main(int argc, char *argv[])
     QScopedPointer<QGuiApplication> app(SailfishApp::application(argc, argv));
     app->setApplicationVersion(QStringLiteral(APP_VERSION));
     Api api;
+    Playback playback;
+    Calendar calendar;
+    Downloads downloads(&api);
     QScopedPointer<QQuickView> view(SailfishApp::createView());
     api.setEngine(view->engine());
-    api.setAssetBase(SailfishApp::pathTo(QString()).toString());
+    QString base = SailfishApp::pathTo(QString()).toString(); // no trailing slash on some releases
+    if (!base.endsWith(QLatin1Char('/')))
+        base += QLatin1Char('/');
+    api.setAssetBase(base);
     view->engine()->setNetworkAccessManagerFactory(new NamFactory(&api));
     view->rootContext()->setContextProperty(QStringLiteral("Api"), &api);
+    view->rootContext()->setContextProperty(QStringLiteral("Playback"), &playback);
+    view->rootContext()->setContextProperty(QStringLiteral("Calendar"), &calendar);
+    view->rootContext()->setContextProperty(QStringLiteral("Downloads"), &downloads);
     view->setSource(SailfishApp::pathToMainQml());
     view->showFullScreen();
-    // Developer smoke captures (offscreen or emulator): PLAYARR_GRAB=<file.png>[:<delay ms>]
-    const QString grab = QString::fromLocal8Bit(qgetenv("PLAYARR_GRAB"));
-    if (!grab.isEmpty()) {
-        const QStringList parts = grab.split(QLatin1Char(':'));
-        QTimer::singleShot(parts.value(1, QStringLiteral("4000")).toInt(), app.data(), [&view, parts]() {
-            view->grabWindow().save(parts.at(0));
-            QCoreApplication::quit();
+    // Developer smoke runs (set by whoever launches the app, no runtime channel): PLAYARR_STEPS is a '|' list of
+    // `wait`, `js:<expression in the root QML context>` and `grab:<file.png>`, 1.5 s apart.
+    const QStringList steps = QString::fromLocal8Bit(qgetenv("PLAYARR_STEPS")).split(QLatin1Char('|'), QString::SkipEmptyParts);
+    int delay = 4000;
+    for (const QString &step : steps) {
+        QTimer::singleShot(delay, app.data(), [&view, step]() {
+            if (step.startsWith(QLatin1String("grab:"))) {
+                view->grabWindow().save(step.mid(5));
+            } else if (step.startsWith(QLatin1String("js:"))) {
+                QQmlExpression e(view->rootContext(), view->rootObject(), step.mid(3));
+                e.evaluate();
+                if (e.hasError())
+                    qWarning() << "PLAYARR_STEPS:" << e.error().toString();
+            }
         });
+        delay += 1500;
     }
     return app->exec();
 }

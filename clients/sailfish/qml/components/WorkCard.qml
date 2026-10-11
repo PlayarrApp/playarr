@@ -1,4 +1,5 @@
 import QtQuick 2.6
+import "."
 import Sailfish.Silica 1.0
 
 // Home/library card: landscape artwork with title and "Kind · Year" caption underneath, as on web mobile.
@@ -7,9 +8,11 @@ MouseArea {
     property var work
     property real cardWidth: 173 * Tokens.u
     signal opened(var work)
+    signal held(var work)
     width: cardWidth
     height: art.height + caption.height + 8 * Tokens.u
     onClicked: opened(work)
+    onPressAndHold: held(work)
 
     function kindLabel(k) {
         return k === "movie" ? qsTr("Movie") : k === "series" ? qsTr("Series") : k === "artist" ? qsTr("Artist") : k === "author" ? qsTr("Author") : ""

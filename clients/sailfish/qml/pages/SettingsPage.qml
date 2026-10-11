@@ -41,6 +41,50 @@ PlayarrPage {
             }
             Label {
                 x: Tokens.pad
+                text: qsTr("SUBTITLES")
+                color: Tokens.brandPinkSoft
+                font.family: Tokens.family
+                font.weight: Font.Bold
+                font.letterSpacing: 2 * Tokens.u
+                font.pixelSize: 12 * Tokens.u
+            }
+            Row {
+                id: subMode
+                x: Tokens.pad
+                spacing: 10 * Tokens.u
+                property string value: Api.setting("subtitleMode", "off")
+                Repeater {
+                    model: [ { id: "off", label: qsTr("Off") }, { id: "forced", label: qsTr("Forced") }, { id: "always", label: qsTr("Always") } ]
+                    PillButton {
+                        text: modelData.label
+                        primary: subMode.value === modelData.id
+                        onClicked: { Api.setSetting("subtitleMode", modelData.id); subMode.value = modelData.id }
+                    }
+                }
+            }
+            Flickable {
+                width: parent.width
+                height: 44 * Tokens.u
+                contentWidth: langs.width + 2 * Tokens.pad
+                clip: true
+                Row {
+                    id: langs
+                    x: Tokens.pad
+                    spacing: 10 * Tokens.u
+                    property string value: Api.setting("subtitleLanguage", "en")
+                    Repeater {
+                        model: [ { id: "en", label: "English" }, { id: "th", label: "\u0E44\u0E17\u0E22" }, { id: "ja", label: "\u65E5\u672C\u8A9E" },
+                                 { id: "de", label: "Deutsch" }, { id: "fr", label: "Fran\u00E7ais" }, { id: "es", label: "Espa\u00F1ol" } ]
+                        PillButton {
+                            text: modelData.label
+                            primary: langs.value === modelData.id
+                            onClicked: { Api.setSetting("subtitleLanguage", modelData.id); langs.value = modelData.id }
+                        }
+                    }
+                }
+            }
+            Label {
+                x: Tokens.pad
                 text: qsTr("ACCOUNT")
                 color: Tokens.brandPinkSoft
                 font.family: Tokens.family
@@ -67,11 +111,17 @@ PlayarrPage {
             }
             PillButton {
                 x: Tokens.pad
+                text: qsTr("Requests")
+                onClicked: pageStack.push(Qt.resolvedUrl("RequestsPage.qml"))
+            }
+            PillButton {
+                x: Tokens.pad
                 text: qsTr("Sign out")
                 onClicked: remorse.execute(qsTr("Signing out"), function () { Api.signOut() })
             }
         }
         VerticalScrollDecorator {}
+        EdgeFade { target: parent }
     }
     RemorsePopup { id: remorse }
 }

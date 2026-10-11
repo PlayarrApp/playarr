@@ -5,6 +5,8 @@
 #include <QSettings>
 #include <QTimer>
 #include <QVariantList>
+#include <memory>
+#include "mediaproxy.h"
 
 class QJSEngine;
 class QNetworkReply;
@@ -48,6 +50,10 @@ public:
 
     // JSON request against the active server: cb(status, data); status 0 = network failure.
     Q_INVOKABLE void request(const QString &method, const QString &path, const QVariant &body, const QJSValue &cb);
+    // Same, but the body is returned as text (WebVTT sidecars). `path` may be a server path or a URL on the server.
+    Q_INVOKABLE void requestText(const QString &path, const QJSValue &cb);
+    Q_INVOKABLE QVariant setting(const QString &key, const QVariant &fallback) const;
+    Q_INVOKABLE void setSetting(const QString &key, const QVariant &value);
     Q_INVOKABLE QString url(const QString &path) const;
     // Server artwork URL for a Work/Episode image list (kinds tried in order); empty when none.
     Q_INVOKABLE QString artwork(const QString &workId, const QVariantList &images, const QStringList &kinds) const;
@@ -60,7 +66,10 @@ public:
     Q_INVOKABLE void selectProfile(const QString &userId);
     Q_INVOKABLE void removeProfile(const QString &userId);
     Q_INVOKABLE void signOut();
+    // POST /api/v1/auth/unlock for a PIN-locked profile, then switch to it: cb(status, {retryAfter}).
+    Q_INVOKABLE void unlockProfile(const QString &userId, const QString &pin, const QJSValue &cb);
 
+    QNetworkAccessManager *network() { return &m_nam; }
     // For the QML image network manager: bearer for requests to the active server only.
     QByteArray bearerFor(const QUrl &url) const;
 
@@ -74,6 +83,7 @@ signals:
 private:
     struct Profile {
         QString userId, name, deviceId, access, refresh, server, avatar;
+        bool pinLocked = false;
         qint64 expiresAt = 0; // epoch ms
     };
     struct Req {
@@ -81,6 +91,7 @@ private:
         QByteArray body;
         QJSValue cb;
         bool retried = false;
+        bool text = false;
     };
 
     void send(const Req &r);
@@ -89,6 +100,7 @@ private:
     void load();
     void save();
     void learnProfile(const QString &userId);
+    void refreshFlags();
     QNetworkReply *post(const QUrl &url, const QJsonObject &body, bool auth = false);
     // link flow
     void linkRequestCode();
@@ -100,6 +112,7 @@ private:
 
     QJSEngine *m_engine = nullptr;
     QNetworkAccessManager m_nam;
+    MediaProxy m_proxy;
     QSettings m_settings;
     QList<Profile> m_profiles;
     int m_active = -1;

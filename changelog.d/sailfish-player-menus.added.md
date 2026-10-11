@@ -1,0 +1,1 @@
+- Sailfish OS: player menus for audio track and quality (server-side renegotiation at the current position, with 503 capacity retry), WebVTT subtitles drawn as an overlay with the web's forced/always default rule, and subtitle defaults in Settings.

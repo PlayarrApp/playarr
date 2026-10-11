@@ -24,6 +24,7 @@ def work(i, kind, title, art=True):
 
 MOVIES = [work(i, "movie", f"Test Movie {c}", art=i % 2 == 0) for i, c in enumerate("ABCDEF")]
 SERIES = [work(10 + i, "series", f"Sample Series {i + 1}") for i in range(3)]
+DL = bytes(range(256)) * 12000  # about 3 MB of placeholder bytes
 ALL = {w["id"]: w for w in MOVIES + SERIES}
 
 
@@ -51,6 +52,30 @@ class H(BaseHTTPRequestHandler):
                                               {"id": "s", "kind": "recent", "library": "series", "title": "Recently Added in Series", "items": SERIES}]})
         if p == "/api/v1/playback/progress":
             return self.send(200, [])
+        if p.startswith("/api/v1/playback/") and p.count("/") == 4:
+            return self.send(200, {"mode": "direct", "url": "/api/v1/media/f0/stream", "mime_type": "video/mp4", "duration_ms": 3600000, "source_offset_ms": 0,
+                                   "audio_tracks": [{"id": "a1", "stream_index": 1, "label": "English 5.1", "is_default": True}, {"id": "a2", "stream_index": 2, "label": "Commentary", "is_default": False}],
+                                   "selected_audio_track_id": "a1",
+                                   "subtitle_tracks": [{"id": "s1", "stream_index": 3, "label": "English", "language": "eng", "codec": "webvtt", "is_default": True, "forced": False, "url": "/api/v1/media/f0/subtitles/3"}],
+                                   "selected_subtitle_track_id": None,
+                                   "quality_options": [{"id": "orig", "label": "Original", "profile": None, "height": None, "video_bitrate_bps": None},
+                                                       {"id": "q1", "label": "720p 4 Mbps", "profile": "h264-720p-4mbps", "height": 720, "video_bitrate_bps": 4000000}],
+                                   "selected_quality_id": "orig", "session_id": "00000000-0000-0000-0000-000000000001"})
+        if p == "/api/v1/downloads":
+            return self.send(200, [{"id": "6a5e2c3e-2b9a-4b3e-9b7a-8e2f1c3d4a5b", "media_file_id": "f0", "quality_id": "original", "status": "ready",
+                                    "container": "mkv", "requested_at": "2026-01-01T00:00:00Z", "size_bytes": len(DL)}])
+        if p.endswith("/file") and p.startswith("/api/v1/downloads/"):
+            rng = self.headers.get("Range")
+            start = int(rng.split("=")[1].split("-")[0]) if rng else 0
+            body = DL[start:]
+            self.send_response(206 if rng else 200)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Content-Type", "video/x-matroska")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if "/subtitles/" in p:
+            return self.send(200, b"WEBVTT\n\n00:00:00.000 --> 00:10:00.000\nPlaceholder subtitle line\n", "text/vtt")
         if p == "/api/v1/catalog":
             items = MOVIES if "kind=movie" in self.path else SERIES
             return self.send(200, {"items": items, "total": len(items), "available_on": {}, "remote_only": []})

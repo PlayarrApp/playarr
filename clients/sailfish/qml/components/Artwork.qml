@@ -1,4 +1,5 @@
 import QtQuick 2.6
+import "."
 import QtGraphicalEffects 1.0
 
 // Rounded artwork with the placeholder gradient + title the web shows when a title has no picture.

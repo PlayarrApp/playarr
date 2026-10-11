@@ -18,3 +18,6 @@ Icon 1.0 Icon.qml
 CoverBackground 1.0 CoverBackground.qml
 FadeAnimation 1.0 FadeAnimation.qml
 Label 1.0 Label.qml
+IconSource 1.0 IconSource.qml
+PaletteStub 1.0 PaletteStub.qml
+SilicaListView 1.0 SilicaListView.qml

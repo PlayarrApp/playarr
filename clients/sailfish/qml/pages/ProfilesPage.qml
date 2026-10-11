@@ -36,6 +36,10 @@ PlayarrPage {
                     width: (parent.width - 16 * Tokens.u) / 2
                     height: width + 56 * Tokens.u
                     onClicked: {
+                        if (modelData.pinLocked && !modelData.active) {
+                            pageStack.push(Qt.resolvedUrl("PinPage.qml"), { profile: modelData })
+                            return
+                        }
                         Api.selectProfile(modelData.userId)
                         pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"))
                     }

@@ -7,3 +7,6 @@ Avatar 1.0 Avatar.qml
 NavBar 1.0 NavBar.qml
 PillButton 1.0 PillButton.qml
 WorkGrid 1.0 WorkGrid.qml
+MenuRow 1.0 MenuRow.qml
+EdgeFade 1.0 EdgeFade.qml
+PageTitle 1.0 PageTitle.qml

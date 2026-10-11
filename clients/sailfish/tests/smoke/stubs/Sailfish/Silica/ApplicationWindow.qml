@@ -15,7 +15,9 @@ Window {
         property int depth: win._stack.length
         function _show(item) { for (var i = 0; i < win._stack.length; ++i) win._stack[i].visible = false; if (item) { item.visible = true } }
         function push(page, props) {
-            var it = typeof page === "string" ? Qt.createComponent(page).createObject(pages, props || {}) : page.createObject(pages, props || {})
+            var comp = typeof page === "string" ? Qt.createComponent(page) : page
+            if (comp.status === Component.Error) console.warn(comp.errorString())
+            var it = comp.createObject(pages, props || {})
             it.anchors.fill = pages
             win._stack.push(it); win._stack = win._stack; _show(it); return it
         }

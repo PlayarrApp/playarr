@@ -72,5 +72,6 @@ SilicaFlickable {
         hintText: qsTr("Pull down to retry")
     }
     BusyIndicator { anchors.centerIn: parent; size: BusyIndicatorSize.Large; running: root.busy }
+    EdgeFade { target: root }
     VerticalScrollDecorator {}
 }

@@ -1,4 +1,5 @@
 import QtQuick 2.6
+import "."
 import Sailfish.Silica 1.0
 
 // Web mobile's floating pill navigation: profile avatar, then the section tabs.
@@ -8,11 +9,14 @@ Rectangle {
     signal selected(string target)
     signal profileClicked()
     readonly property var tabs: [
+        { id: "downloads", icon: "icon-m-downloads" },
         { id: "search", icon: "icon-m-search" },
         { id: "home", icon: "icon-m-home" },
+        { id: "calendar", icon: "icon-m-date" },
         { id: "movies", icon: "icon-m-video" },
         { id: "series", icon: "icon-m-media-albums" },
-        { id: "music", icon: "icon-m-music" }
+        { id: "music", icon: "icon-m-music" },
+        { id: "watchlist", icon: "icon-m-favorite" }
     ]
     height: 58 * Tokens.u
     radius: height / 2
@@ -43,8 +47,8 @@ Rectangle {
                 }
                 Icon {
                     anchors.centerIn: parent
-                    source: "image://theme/" + modelData.icon
-                    color: root.section === modelData.id ? Tokens.onPrimary : Tokens.ink
+                    // Silica tints monochrome theme icons through the image URL.
+                    source: "image://theme/" + modelData.icon + "?" + (root.section === modelData.id ? Tokens.onPrimary : Tokens.ink)
                     sourceSize: Qt.size(32 * Tokens.u, 32 * Tokens.u)
                 }
             }

@@ -14,9 +14,13 @@ PlayarrPage {
         anchors { top: parent.top; left: parent.left; right: parent.right; bottom: parent.bottom }
         source: page.section === "home" ? "HomeView.qml"
               : page.section === "search" ? "SearchView.qml"
+              : page.section === "calendar" ? "CalendarView.qml"
+              : page.section === "watchlist" ? "WatchlistView.qml"
+              : page.section === "downloads" ? "DownloadsView.qml"
               : "LibraryView.qml"
         onLoaded: {
             item.opened.connect(page.open)
+            if (item.goHome) item.goHome.connect(function () { page.section = "home" })
             if (item.kind !== undefined) item.kind = page.section === "movies" ? "movie" : page.section === "series" ? "series" : "artist"
             if (item.title !== undefined) item.title = page.section === "movies" ? qsTr("Movies") : page.section === "series" ? qsTr("Series") : qsTr("Music")
         }

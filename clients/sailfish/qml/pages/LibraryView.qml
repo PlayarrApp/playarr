@@ -12,6 +12,7 @@ Item {
     property bool busy: false
     property int generation: 0
     signal opened(var work)
+    signal goHome()
 
     function reload() {
         generation++
@@ -35,17 +36,14 @@ Item {
     }
     Component.onCompleted: reload()
 
-    Label {
+    PageTitle {
         id: heading
-        x: Tokens.pad
-        y: 28 * Tokens.u
-        text: root.title
-        color: Tokens.ink
-        font.family: Tokens.family
-        font.pixelSize: 30 * Tokens.u
+        y: 12 * Tokens.u
+        title: root.title
+        onBackClicked: root.goHome()
     }
     WorkGrid {
-        anchors { top: heading.bottom; topMargin: 18 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { top: heading.bottom; topMargin: 6 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
         works: root.works
         busy: root.busy
         done: root.total >= 0 && root.works.length >= root.total

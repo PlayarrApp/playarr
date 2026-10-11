@@ -1,4 +1,5 @@
 import QtQuick 2.6
+import "."
 import Sailfish.Silica 1.0
 
 // A titled horizontal rail of WorkCards.
@@ -18,18 +19,23 @@ Column {
         font.family: Tokens.family
         font.pixelSize: 22 * Tokens.u
     }
-    ListView {
+    Item {
         width: parent.width
         height: 173 * Tokens.u * 9 / 16 + 50 * Tokens.u
-        orientation: ListView.Horizontal
-        spacing: 14 * Tokens.u
-        leftMargin: Tokens.pad
-        rightMargin: Tokens.pad
-        clip: true
-        model: root.items
-        delegate: WorkCard {
-            work: modelData
-            onOpened: root.opened(work)
+        ListView {
+            id: list
+            anchors.fill: parent
+            orientation: ListView.Horizontal
+            spacing: 14 * Tokens.u
+            leftMargin: Tokens.pad
+            rightMargin: Tokens.pad
+            clip: true
+            model: root.items
+            delegate: WorkCard {
+                work: modelData
+                onOpened: root.opened(work)
+            }
         }
+        EdgeFade { target: list; horizontal: true }
     }
 }

@@ -1,4 +1,5 @@
 import QtQuick 2.6
+import "."
 import Sailfish.Silica 1.0
 
 // Two-column grid of WorkCards with end-of-list paging (`loadMore` fires near the bottom).
@@ -8,6 +9,7 @@ SilicaGridView {
     property bool busy: false
     property bool done: false
     signal opened(var work)
+    signal held(var work)
     signal loadMore()
 
     readonly property real gap: 14 * Tokens.u
@@ -23,6 +25,7 @@ SilicaGridView {
             work: modelData
             cardWidth: root.cellWidth - Tokens.pad - root.gap / 2
             onOpened: root.opened(work)
+            onHeld: root.held(work)
         }
     }
     onContentYChanged: if (!busy && !done && contentY + height > contentHeight - height) loadMore()
@@ -32,5 +35,6 @@ SilicaGridView {
         size: BusyIndicatorSize.Medium
         running: root.busy
     }
+    EdgeFade { target: root }
     VerticalScrollDecorator {}
 }
