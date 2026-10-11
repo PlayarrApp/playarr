@@ -305,8 +305,13 @@ export function isPinRequiredError(err: unknown): boolean {
   return (candidate.body as { error?: unknown } | null | undefined)?.error === "pin_required";
 }
 
-/** HTTP statuses on which the server has definitively refused the credential. */
-const DEFINITIVE_REJECTION_STATUSES = new Set([400, 401, 403, 404, 410, 422]);
+/**
+ * HTTP statuses on which the server has definitively refused the credential. 405 is one: a host that answers a
+ * sign-in POST with "method not allowed" (the hosted web app's own origin on a first visit, which serves no API)
+ * is not a Playarr Server, so there is no session there. Treating it as transient left a first-time visitor on
+ * "API request failed: 405" instead of the sign-in page.
+ */
+const DEFINITIVE_REJECTION_STATUSES = new Set([400, 401, 403, 404, 405, 410, 422]);
 
 /** The server answered and said "this credential is not valid". */
 function isDefinitiveRejection(err: unknown): boolean {

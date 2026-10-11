@@ -928,6 +928,17 @@ describe("session persistence under races and outages", () => {
     expect(isTransientAuthFailure(failure)).toBe(false);
   });
 
+  it("treats 405 from a host that serves no API as a definitive rejection (first visit on the hosted app)", async () => {
+    const store = new TokenStore();
+    const client = new ApiClient({
+      baseUrl: BASE_URL,
+      fetchImpl: mockFetch(() => new Response("Method not allowed", { status: 405 })),
+    });
+    const failure = await ensureAccessToken(client, store, IDENTITY).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(isTransientAuthFailure(failure)).toBe(false);
+  });
+
   it("shares one refresh between two tabs through the cross-tab lock", async () => {
     // A minimal Web Locks stand-in: exclusive, FIFO, shared by both "tabs".
     let tail: Promise<unknown> = Promise.resolve();
