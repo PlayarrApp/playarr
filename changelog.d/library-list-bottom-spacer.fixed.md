@@ -1,0 +1,1 @@
+- Library: on phones the list view no longer scrolls past its last row into blank space; the spacer under unmounted rows now uses the real row pitch (a 120px floor over-sized it).

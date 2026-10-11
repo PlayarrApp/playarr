@@ -618,7 +618,9 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
         styles.gridTemplateColumns.split(" ").filter(Boolean).length
       );
       const gap = Number.parseFloat(styles.rowGap || styles.gap || "0") || 0;
-      const rowHeight = Math.max(120, sample.offsetHeight + gap);
+      // The real row pitch (a phone list row is ~85px): a 120px floor over-sized the spacer below the mounted rows and under-mounted them.
+      const measured = sample.offsetHeight + gap;
+      const rowHeight = measured > 0 ? measured : 120;
       gridMetricsRef.current = { cols: colCount, rowHeight, gap };
       grid.dataset.libraryCols = String(colCount);
       grid.dataset.libraryRowHeight = String(rowHeight);
