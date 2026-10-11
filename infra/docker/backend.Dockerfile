@@ -208,6 +208,13 @@ FROM ${ARTIFACTS} AS artifacts
 # ------------------------------------------------------------------------
 FROM debian:${DEBIAN_CODENAME}-slim AS runtime
 
+# Optional software Vulkan (lavapipe) so ffmpeg's libplacebo filter can tone-map Dolby Vision
+# profile 5 on a node without a GPU. Off by default: it adds an LLVM runtime to the image and, measured
+# on a synthetic 4K PQ clip with 2 threads, runs at about 3 fps (0.12x realtime) to 1080p, far below
+# what live playback needs. Build with --build-arg INSTALL_LAVAPIPE=1 and set
+# PLAYARR_FFMPEG_LIBPLACEBO=1 at runtime only after checking your own node's speed.
+ARG INSTALL_LAVAPIPE=0
+
 # curl is installed deliberately (not "stripped for size") because it is
 # what HEALTHCHECK below uses to hit the binary's own /healthz endpoint --
 # see docs/architecture/overview.md for the axum-based playarr-api
@@ -217,6 +224,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       curl \
       ffmpeg \
       tini \
+    && if [ "$INSTALL_LAVAPIPE" = "1" ]; then \
+         apt-get install -y --no-install-recommends libvulkan1 mesa-vulkan-drivers; \
+       fi \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 playarr \
     && useradd --system --uid 10001 --gid playarr --home-dir /app --shell /usr/sbin/nologin playarr \
