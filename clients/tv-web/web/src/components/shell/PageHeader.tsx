@@ -83,7 +83,7 @@ export function PageHeader({
       const clock = document.querySelector<HTMLElement>(".app-clock");
       const clockLeft = clock && getComputedStyle(clock).display !== "none" ? clock.getBoundingClientRect().left : Infinity;
       const left = title.getBoundingClientRect().left;
-      const room = clockLeft - left - 16;
+      const room = clockLeft - left - 8;
       if (Number.isFinite(room) && room > 0) header.style.setProperty("--page-title-max", `${Math.floor(room)}px`);
       else header.style.removeProperty("--page-title-max");
     };

@@ -7,6 +7,7 @@ import {
   MUSIC_VISUALISER_BAR_COUNT_TEN_FOOT,
   musicVisualiserBarCount,
   playerVideoAccessibilityProps,
+  usesSystemVolumeOnly,
 } from "./PlayerSurface";
 
 describe("playerVideoAccessibilityProps", () => {
@@ -59,5 +60,16 @@ describe("PlayerCloseButton", () => {
     expect(markup).toContain('class="player-close"');
     expect(markup).not.toContain("Back to details");
     expect(markup).not.toContain("<span");
+  });
+});
+
+describe("usesSystemVolumeOnly", () => {
+  it("is on for the system-volume TVs (Tizen, webOS) and the Android TV app", () => {
+    expect(usesSystemVolumeOnly(true, "Mozilla/5.0")).toBe(true);
+    expect(usesSystemVolumeOnly(false, "Mozilla/5.0 PlayarrAndroidTV/1.0")).toBe(true);
+  });
+
+  it("is off for browser web", () => {
+    expect(usesSystemVolumeOnly(false, "Mozilla/5.0 Chrome/120")).toBe(false);
   });
 });
