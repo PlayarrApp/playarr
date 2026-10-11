@@ -224,9 +224,12 @@ jobs:
           PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+          SUITE_ARGS: ${{ inputs.suite_args }}
         run: |
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
-          node suite-run.mjs --driver ./drivers/web.mjs --reference --out "${{ runner.temp }}/web" --only screens,dpad
+          # Same checks as the device run below, so parallel dispatches (one with --only dpad, one with --only playback) each take only what they score.
+          only=$(grep -oE -e '--only [a-z,]+' <<<"$SUITE_ARGS" | cut -d' ' -f2 || true)
+          node suite-run.mjs --driver ./drivers/web.mjs --reference --out "${{ runner.temp }}/web" --only "${only:-screens,dpad}"
 
       # The shared suite (scripts/parity, docs/parity/SUITE.md) through the Apple driver: the 15 screens in both themes (written
       # over the interim captures above), the D-pad checks against the web reference, playback (not yet).
