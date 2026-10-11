@@ -31,7 +31,7 @@ button.pa-card:focus-visible .pa-rail-title { font-size: 22px; font-weight: 400;
 .pa-progress progress { background: @pa_brand; min-height: 4px; border-radius: 2px; }
 
 /* Floating bottom navigation (web: 340 x 58, radius 20, 42 x 46 tiles) */
-.pa-nav { background: alpha(@pa_surface_strong, 0.88); border-radius: 20px; border: 1px solid @pa_line; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35); padding: 6px 5px; }
+.pa-nav { background: alpha(@pa_surface_strong, 0.88); border-radius: 20px; border: 1px solid @pa_line; box-shadow: 0 10px 40px @pa_shadow; padding: 6px 5px; }
 .pa-nav viewport { background: transparent; }
 button.pa-navbtn { background: transparent; border: none; box-shadow: none; border-radius: 16px; min-width: 42px; min-height: 46px; padding: 0; }
 button.pa-navbtn.active { background: @pa_ink; }
@@ -87,7 +87,7 @@ button.pa-hbtn.square { border-radius: 14px; }
 
 /* Home key art and search field */
 .pa-key-art { opacity: 0.38; filter: grayscale(1); }
-.pa-key-wash { background: linear-gradient(to bottom, alpha(@pa_bg, 0.15), @pa_bg); }
+.pa-key-wash { background: linear-gradient(to bottom, @pa_wash, @pa_bg); }
 scrolledwindow.pa-transparent, scrolledwindow.pa-transparent viewport { background: transparent; }
 .pa-rail-title { font-size: 16px; font-weight: 610; }
 .pa-search { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; min-height: 58px; padding: 0 14px; box-shadow: none; color: @pa_ink; }

@@ -97,16 +97,23 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                 .all_progress()
                 .unwrap_or_default()
                 .into_iter()
-                .filter(|p| p.state == "part_watched" && !p.work_id.is_empty() && p.duration_ms > 0)
+                .filter(|p| p.state == "part_watched" && !p.work_id.is_empty())
                 .collect();
             started.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+            // One entry per title (the newest episode wins), ten at most, as the web's On deck loader.
+            let mut seen = std::collections::HashSet::new();
+            started.retain(|p| seen.insert(p.work_id.clone()));
             let deck: Vec<Deck> = started
                 .into_iter()
-                .take(8)
+                .take(10)
                 .filter_map(|p| {
                     let w = c.work(&p.work_id).ok()?.work;
                     Some(Deck {
-                        fraction: p.position_ms as f64 / p.duration_ms as f64,
+                        fraction: if p.duration_ms > 0 {
+                            p.position_ms as f64 / p.duration_ms as f64
+                        } else {
+                            0.0
+                        },
                         work: w,
                     })
                 })

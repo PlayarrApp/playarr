@@ -15,10 +15,13 @@ struct Tokens {
     brand_ink: &'static str,
     on_accent: &'static str,
     accent: &'static str,
+    /// Shadow under floating panels and the top of the key-art wash.
+    shadow: &'static str,
+    wash: &'static str,
 }
 
 const DARK: Tokens = Tokens {
-    bg: "#151315",
+    bg: "#1b181b",
     surface: "#1b181b",
     surface_strong: "#211d21",
     surface_soft: "#312a30",
@@ -30,10 +33,12 @@ const DARK: Tokens = Tokens {
     brand_ink: "#eaa6b6",
     on_accent: "#211d21",
     accent: "#dfdcdd",
+    shadow: "rgba(0, 0, 0, 0.35)",
+    wash: "rgba(27, 24, 27, 0.15)",
 };
 
 const LIGHT: Tokens = Tokens {
-    bg: "#f5f3f2",
+    bg: "#fbfaf9",
     surface: "#fbfaf9",
     surface_strong: "#ffffff",
     surface_soft: "#dfdcdd",
@@ -45,6 +50,8 @@ const LIGHT: Tokens = Tokens {
     brand_ink: "#821e36",
     on_accent: "#ffffff",
     accent: "#4d4248",
+    shadow: "rgba(56, 38, 33, 0.12)",
+    wash: "rgba(251, 250, 249, 0.85)",
 };
 
 pub fn css(dark: bool) -> String {
@@ -52,9 +59,9 @@ pub fn css(dark: bool) -> String {
     let defs = format!(
         "@define-color pa_bg {}; @define-color pa_surface {}; @define-color pa_surface_strong {}; @define-color pa_soft {};\n\
          @define-color pa_ink {}; @define-color pa_ink_soft {}; @define-color pa_muted {}; @define-color pa_line {};\n\
-         @define-color pa_brand {}; @define-color pa_brand_ink {}; @define-color pa_on_accent {}; @define-color pa_accent {};\n",
+         @define-color pa_brand {}; @define-color pa_brand_ink {}; @define-color pa_on_accent {}; @define-color pa_accent {}; @define-color pa_shadow {}; @define-color pa_wash {};\n",
         t.bg, t.surface, t.surface_strong, t.surface_soft, t.ink, t.ink_soft, t.ink_muted, t.line, t.brand, t.brand_ink,
-        t.on_accent, t.accent
+        t.on_accent, t.accent, t.shadow, t.wash
     );
     defs + include_str!("../data/style.css")
 }

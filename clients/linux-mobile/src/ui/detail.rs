@@ -12,7 +12,7 @@ use std::rc::Rc;
 pub fn fmt_date(iso: &str) -> Option<String> {
     let d = crate::ui::calendar::parse(iso)?;
     let months = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
     ];
     Some(format!("{} {} {}", d.d, months.get(d.m as usize - 1)?, d.y))
 }
@@ -262,11 +262,11 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         if let Some(m) = e.episode.runtime_minutes {
             meta.push((format!("{m} min"), false));
         }
-        if let Some(y) = w.year() {
-            meta.push((format!("{y}–"), false));
+        if let Some(y) = w.year_range() {
+            meta.push((y, false));
         }
         if let Some(a) = &e.episode.air_date {
-            meta.push((format!("Aired {a}"), false));
+            meta.push((format!("Aired {}", fmt_date(a).unwrap_or_else(|| a.clone())), false));
         }
     } else {
         meta.push((w.kind_label().to_string(), true));
@@ -274,8 +274,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             let mins = (m + 30_000) / 60_000;
             meta.push((format!("{}h {:02}m", mins / 60, mins % 60), false));
         }
-        if let Some(y) = w.year() {
-            meta.push((y.to_string(), false));
+        if let Some(y) = w.year_range() {
+            meta.push((y, false));
         }
         if let Some(d) = w.release_date.as_deref().and_then(fmt_date) {
             meta.push((format!("Released {d}"), false));

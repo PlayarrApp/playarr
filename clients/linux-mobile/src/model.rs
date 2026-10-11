@@ -20,6 +20,9 @@ pub struct Work {
     pub genres: Vec<String>,
     #[serde(default)]
     pub release_date: Option<String>,
+    /// Set once the source reports a series as ended.
+    #[serde(default)]
+    pub end_date: Option<String>,
     #[serde(default)]
     pub images: Vec<Image>,
     #[serde(default)]
@@ -29,6 +32,14 @@ pub struct Work {
 impl Work {
     pub fn year(&self) -> Option<&str> {
         self.release_date.as_deref().and_then(|d| d.get(..4))
+    }
+    /// "2011", or "2011–2017" for an ended series that closed in a later year.
+    pub fn year_range(&self) -> Option<String> {
+        let start = self.year()?;
+        match self.end_date.as_deref().and_then(|d| d.get(..4)) {
+            Some(end) if end > start => Some(format!("{start}\u{2013}{end}")),
+            _ => Some(start.to_string()),
+        }
     }
     pub fn has_image(&self, kind: &str) -> bool {
         self.images.iter().any(|i| i.kind == kind)
@@ -43,7 +54,7 @@ impl Work {
     }
     /// "Movie · 2008", the meta line under a card.
     pub fn meta_line(&self) -> String {
-        match self.year() {
+        match self.year_range() {
             Some(y) => format!("{} · {y}", self.kind_label()),
             None => self.kind_label().to_string(),
         }
