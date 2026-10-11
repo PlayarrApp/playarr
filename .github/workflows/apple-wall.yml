@@ -199,7 +199,12 @@ jobs:
           export DEADLINE=$(( $(date +%s) + 40 ))
           bash "$TRUSTED/scripts/apple-wall/wall.sh" stream "$DEVICE" &
           pid=$!
-          port=$(case $DEVICE in tvos) echo 5905;; iphone) echo 5912;; ipad) echo 5914;; macos) echo 5916;; esac)
+          case $DEVICE in
+            tvos) port=5905 ;;
+            iphone) port=5912 ;;
+            ipad) port=5914 ;;
+            macos) port=5916 ;;
+          esac
           sleep 25
           curl -fsS "http://127.0.0.1:$port/" | tee "$RUNNER_TEMP/vnc-health.txt"
           grep -Eq 'frames=[1-9]|device ' "$RUNNER_TEMP/vnc-health.txt"
