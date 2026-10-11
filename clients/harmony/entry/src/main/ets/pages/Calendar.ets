@@ -13,6 +13,7 @@ import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../desi
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
 import { CalendarLinkPanel } from '../design/components/CalendarLinkPanel';
+import { PeriodPicker } from '../design/components/PeriodPicker';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import type { Choice } from '../design/components/ChoiceSegments';
 import { MultiSelect } from '../design/components/MultiSelect';
@@ -110,6 +111,9 @@ const HEADER_CONTROL_SIZE: number = 50;
 const HEADER_CONTROL_FONT: number = 14.72;
 const HEADER_CONTROL_GAP: number = 15;
 const HEADER_RIGHT: number = 1844;
+// Web's period panel: under the range button (its right edge at about x=1609), 8 below it.
+const PERIOD_PANEL_LEFT: number = 1297;
+const PERIOD_PANEL_TOP: number = 114;
 const BACK_GLYPH_SIZE: number = 17.28;
 const TITLE_SIZE: number = 33.6;
 const TITLE_LETTER_SPACING: number = -1.512;
@@ -191,6 +195,7 @@ export struct ReleaseCalendar {
   @State private view: CalendarView = 'agenda';
   @State private filtersOpen: boolean = false;
   @State private linkOpen: boolean = false;
+  @State private periodOpen: boolean = false;
   @State private groups: DayGroup[] = [];
   /** The loaded window before filtering; `regroup` applies the filters (web filters on the client). */
   private entries: CalendarEntry[] = [];
@@ -854,6 +859,9 @@ export struct ReleaseCalendar {
             .backgroundColor(toResourceColor(activeColors().bg))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
             .focusable(true)
+            .onClick(() => {
+              this.periodOpen = !this.periodOpen;
+            })
           this.headerControl('←', true, (): void => {
             this.page(-1);
           })
@@ -866,6 +874,21 @@ export struct ReleaseCalendar {
         }
         .position({ x: tv(HEADER_RIGHT), y: tv(TvGeometry.utilityRowTop) })
         .markAnchor({ x: '100%', y: 0 })
+        if (this.periodOpen) {
+          // Web hangs the jump panel under the range button, right edges aligned.
+          PeriodPicker({
+            value: this.anchor,
+            onChange: (day: string): void => {
+              this.anchor = day;
+              this.load();
+            },
+            onClose: (): void => {
+              this.periodOpen = false;
+            },
+          })
+            .position({ x: tv(PERIOD_PANEL_LEFT), y: tv(PERIOD_PANEL_TOP) })
+            .zIndex(2)
+        }
         // Web's slot 0: the Calendar link (bell); Filters is the second tile.
         ActionTile({
           icon: $r('app.media.action_bell'),
