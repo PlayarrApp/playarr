@@ -447,6 +447,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Linux phone client: identify as linux-phone to the server as well as the link broker.
+- Sailfish OS: the client now identifies as `sailfish` to the link broker and the server instead of the `web` compatibility identity.
 - Xbox: Home and the library pages share one focused-title detail column (backdrop, genre, title, year, synopsis) as on web, the first card takes focus when a page opens, artwork loads through the server artwork endpoint (art kept behind a private source scheme now shows), and Music reads "ARTISTS".
 - Xbox: signing in shows a QR code and pairing code from the hosted link service, as on the web, with no server address to type; the code renews silently when it expires or the network blips, and "Sign in manually" keeps the typed-address fallback.
 - Fire TV: a focused media card takes the web's pink glow ring (3 px ring and 20 px glow, brand ink in dark, strong brand in light); the calendar week columns start at the web's top edge.

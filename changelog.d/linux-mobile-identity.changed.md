@@ -1,1 +1,0 @@
-- Linux phone client: identify as linux-phone to the server as well as the link broker.
