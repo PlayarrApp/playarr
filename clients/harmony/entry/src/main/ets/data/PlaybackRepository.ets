@@ -58,6 +58,8 @@ import {
 import { sendHttpRequest, HttpRequestOptions, HttpTransportResponse } from '../net/HttpTransport';
 
 import { buildHeaders, buildJsonBodyHeaders } from '../core/Headers.ts';
+import { watchLeaves } from '../core/WatchLeaves.ts';
+import { getWorkDetail } from './CatalogRepository';
 import { clientVersion, resolveClientPlatform } from '../core/AppConfig.ts';
 import { absoluteUrl } from '../core/Url.ts';
 import { decodeErrorEnvelope } from '../core/ErrorEnvelope.ts';
@@ -354,4 +356,30 @@ export function getMediaChapters(mediaFileId: string): Promise<ApiResult<MediaCh
 /** `GET /api/v1/media/{media_file_id}/metadata` (brief 4.11): `{duration_ms}`. Bearer-only. */
 export function getMediaMetadata(mediaFileId: string): Promise<ApiResult<MediaMetadata>> {
   return sendDirectJsonGet<MediaMetadata>(mediaMetadataUrl(mediaFileId));
+}
+
+/**
+ * Web's long-press "Mark as watched/unwatched": every file of the work gets a progress row at its end (watched) or
+ * at the start (unwatched). Returns false when the work has no playable file or any write failed.
+ */
+export async function setWorkWatched(workId: string, watched: boolean): Promise<boolean> {
+  const detail = await getWorkDetail(workId);
+  if (detail.kind !== 'ok') {
+    return false;
+  }
+  const leaves = watchLeaves(detail.value);
+  if (leaves.length === 0) {
+    return false;
+  }
+  let allOk = true;
+  for (const leaf of leaves) {
+    // shortcut: `putWatchProgress` derives `completed` from the duration, so an unknown runtime is padded past its
+    // 5 s completion margin to keep "unwatched" from reading as complete; send an explicit flag if the endpoint gets one.
+    const duration = watched ? leaf.runtimeMs : Math.max(leaf.runtimeMs, 5001);
+    const result = await putWatchProgress(leaf.mediaFileId, watched ? leaf.runtimeMs : 0, duration);
+    if (result.kind !== 'ok') {
+      allOk = false;
+    }
+  }
+  return allOk;
 }

@@ -122,6 +122,9 @@ import { titleCountLabel } from '../core/CountFormat';
 import { AlphabetRail } from '../design/components/AlphabetRail';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
+import { ActionList } from '../design/components/ActionList';
+import type { ActionItem } from '../design/components/ActionList';
+import { setWorkWatched } from '../data/PlaybackRepository';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import type { Choice } from '../design/components/ChoiceSegments';
 import { alphabetFor, firstIndexAtOrAfter, workLetter } from '../core/AlphabetIndex';
@@ -392,6 +395,7 @@ struct LibraryGridCell {
   onSelect: (workId: string) => void = () => {};
   /** Called with the card's work when it takes focus (the TV hero follows focus, as on web). */
   onFocused: (work: Work) => void = () => {};
+  onLongPress: (work: Work) => void = () => {};
 
   @State private artwork: image.PixelMap | undefined = undefined;
 
@@ -427,6 +431,9 @@ struct LibraryGridCell {
       onFocused: () => {
         this.onFocused(this.work);
       },
+      onLongPress: () => {
+        this.onLongPress(this.work);
+      },
     })
   }
 }
@@ -455,6 +462,9 @@ export struct Library {
   @State private activeLetter: string = '#';
   /** The Filters drawer (web `?panel=filters`). */
   @State private filtersOpen: boolean = false;
+  /** The title whose long-press actions are open (web's media context menu), or undefined. */
+  @State private actionsWork: Work | undefined = undefined;
+  @State private actionBusy: string = '';
   @State private watchIndex: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private watchLoaded: boolean = false;
   private gridScroller: Scroller = new Scroller();
@@ -855,6 +865,9 @@ export struct Library {
               onFocused: (focused: Work) => {
                 this.setHero(focused);
               },
+              onLongPress: (pressed: Work) => {
+                this.actionsWork = pressed;
+              },
             })
           }
         },
@@ -966,7 +979,18 @@ export struct Library {
       }
       .alignItems(VerticalAlign.Top)
       .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
-      if (this.filtersOpen) {
+      if (this.actionsWork !== undefined) {
+        Drawer({
+          kicker: 'Title actions',
+          title: this.actionsWork.title,
+          onClose: (): void => {
+            this.actionsWork = undefined;
+          },
+          body: (): void => {
+            this.actionsBody();
+          },
+        })
+      } else if (this.filtersOpen) {
         Drawer({
           kicker: 'Library controls',
           title: 'Filters',
@@ -982,6 +1006,35 @@ export struct Library {
     .width('100%')
     .height('100%')
     .backgroundColor(toResourceColor(activeColors().bg))
+  }
+
+  /** Web's action order for a title: Play, Mark as watched, Mark as unwatched. */
+  private async chooseAction(id: string): Promise<void> {
+    const work = this.actionsWork;
+    if (work === undefined || this.actionBusy.length > 0) {
+      return;
+    }
+    if (id === 'play') {
+      this.actionsWork = undefined;
+      this.openDetail(work.id);
+      return;
+    }
+    this.actionBusy = id;
+    await setWorkWatched(work.id, id === 'watched');
+    this.actionBusy = '';
+    this.actionsWork = undefined;
+    this.loadWatchProgress();
+  }
+
+  @Builder
+  private actionsBody(): void {
+    ActionList({
+      actions: TITLE_ACTIONS,
+      busyId: this.actionBusy,
+      onChoose: (id: string): void => {
+        this.chooseAction(id);
+      },
+    })
   }
 
   @Builder
@@ -1021,6 +1074,11 @@ const TV_TITLE_LETTER_SPACING: number = -1.512;
 const TV_TITLE_SUBTITLE_GAP: number = 6;
 const TV_SUBTITLE_SIZE: number = 12.288;
 const TV_SUBTITLE_LETTER_SPACING: number = 0.983;
+const TITLE_ACTIONS: ActionItem[] = [
+  { id: 'play', glyph: '▶', label: 'Play' },
+  { id: 'watched', glyph: '✓', label: 'Mark as watched' },
+  { id: 'unwatched', glyph: '○', label: 'Mark as unwatched' },
+];
 const TV_SUBTITLE_COLOR: string = 'rgba(234, 166, 182, 1)';
 
 /** Web library hero meta: "2003  Action · Crime" (year, then genres). */

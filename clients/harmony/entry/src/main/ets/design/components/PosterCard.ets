@@ -204,6 +204,9 @@ export struct PosterCard {
   onSelect: () => void = () => {};
   /** Called when the card gains focus (web TV Home moves its hero to the focused card). */
   onFocused: () => void = () => {};
+  /** Holding OK (or a touch long press) opens the title actions, as web's long-press menu. The release that follows is not a click. */
+  onLongPress: () => void = () => {};
+  private longPressFired: boolean = false;
 
   // Tracked purely to force a re-render when the theme changes; the actual
   // colour decision always goes through design/Theme.ets's own resolver
@@ -365,7 +368,17 @@ export struct PosterCard {
       this.setFocused(false);
     })
     .onClick(() => {
+      if (this.longPressFired) {
+        this.longPressFired = false;
+        return;
+      }
       this.onSelect();
     })
+    .gesture(
+      LongPressGesture({ repeat: false }).onAction(() => {
+        this.longPressFired = true;
+        this.onLongPress();
+      })
+    )
   }
 }
