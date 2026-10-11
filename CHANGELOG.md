@@ -279,6 +279,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Sailfish OS: calendar month and week views, library Filters (view, sort, order, language) with List/Screen/Cover layouts, and the title Actions page (play, download, add to playlist, mark watched or unwatched) on press and hold.
 - Sailfish OS: calendar agenda, watchlist, requests and downloads (server tickets plus resumable offline copies with offline playback), with a loopback media proxy so the platform player can play authenticated HLS and direct streams.
 - Sailfish OS: PIN prompt for PIN-locked profiles in the profile picker (unlock with the stored device credential, wrong-PIN and rate-limit messages) and the web's scroll-edge fades on Home, rails, grids, detail and settings.
 - Sailfish OS: player menus for audio track and quality (server-side renegotiation at the current position, with 503 capacity retry), WebVTT subtitles drawn as an overlay with the web's forced/always default rule, and subtitle defaults in Settings.

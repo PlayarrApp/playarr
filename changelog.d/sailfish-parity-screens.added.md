@@ -1,1 +1,0 @@
-- Sailfish OS: calendar month and week views, library Filters (view, sort, order, language) with List/Screen/Cover layouts, and the title Actions page (play, download, add to playlist, mark watched or unwatched) on press and hold.
