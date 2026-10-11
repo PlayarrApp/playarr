@@ -1,10 +1,12 @@
-sub Main()
+sub Main(args as Dynamic)
     screen = CreateObject("roSGScreen")
     port = CreateObject("roMessagePort")
     screen.SetMessagePort(port)
 
     screen.getGlobalNode().addFields({ themeMode: ResolvePairingTheme(LoadPairingThemePreference()) })
     scene = screen.CreateScene("MainScene")
+    ' ECP deep link (launch with contentId=<media file id>): signed-in devices play that file as soon as the profile is known.
+    if type(args) = "roAssociativeArray" and args.contentId <> invalid and args.contentId <> "" then scene.deepLink = args.contentId
     screen.Show()
     scene.SetFocus(true)
 

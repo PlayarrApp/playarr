@@ -40,8 +40,9 @@ async function coldStart() {
   await sleep(9);
   // The channel resumes instantly with the picker's last focus (a bottom-row button after a Preferences capture), so move to the
   // first profile before anything presses Select.
-  await press("Up", 0.6);
-  await press("Left", 0.6);
+  // Down twice reaches the bottom row from the profile or from the theme dropdown, Left selects the gear, Up returns to the
+  // first profile whichever control the channel resumed on (a bare Up from the profile lands on the theme dropdown).
+  await presses(["Down", "Down", "Left", "Up"], 0.6);
 }
 const toHome = async () => { await coldStart(); await press("Select", 10); };
 // Left from the first rail enters the dock (web TV); Down walks it: Search 0, Home 1, Series 2, Movies 3, Playlists 4,
@@ -67,7 +68,16 @@ const screens = {
   "series-detail": async () => { await toHome(); await dock(2); await press("Select", 9); }, // first series of the A-Z library
   "film-detail": async () => { await toHome(); await dock(3); await press("Select", 9); }, // first film of the A-Z library
   search: async () => { await toHome(); await dock(0, 3); },
-  calendar: async () => { await toHome(); await dock(7, 6); },
+  calendar: async () => { await toHome(); await dock(7, 16); },
+  // Legend ids (the shared 15-screen suite).
+  profiles: async () => { await coldStart(); },
+  music: async () => { await toHome(); await press("Left"); await presses(Array(4).fill("Down"), 0.8); await press("Select", 12); },
+  // The calendar opens on the month view; the range switcher (header, left of Previous) chooses Month, Week or Agenda.
+  "calendar-month": async () => { await toHome(); await dock(7, 16); },
+  "calendar-week": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Up", "Up", "Left", "Left", "Select"], 0.8); await sleep(3); await presses(["Down", "Select"], 1); await sleep(14); },
+  "calendar-agenda": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Up", "Up", "Left", "Left", "Select"], 0.8); await sleep(3); await presses(["Down", "Down", "Select"], 1); await sleep(14); },
+  // Library: the Info (*) key enters the alphabet strip, Up from its first letter reaches Filters, Select opens the panel.
+  filters: async () => { await toHome(); await dock(3, 14); await presses(["Info", "Up"], 1); await press("Select", 3); },
   watchlist: async () => { await toHome(); await dock(5, 6); },
   requests: async () => { await toHome(); await dock(6, 6); },
   // The first Home card opens its detail page; Play there starts playback. The video plane screenshots black, so the
@@ -101,6 +111,10 @@ function shoot(id) {
   const r = spawnSync("systemd-run", ["--user", "--scope", "-q", "-p", "MemoryHigh=2G", "-p", "MemoryMax=3G", "-p", "MemorySwapMax=0", "--",
     "timeout", "120", "ffmpeg", "-threads", "2", "-y", "-v", "error", "-i", jpg, "-frames:v", "1", png], { stdio: "inherit" });
   if (r.status !== 0) throw new Error(`ffmpeg failed for ${id}`);
+  // Never keep a signed-out capture: the pairing screen's white QR tile sits at x 840-1080, y 400-640 (a session evicted by
+  // other logins on the same account shows it). A white tile there on any screen but the pairing one aborts the run.
+  const probe = spawnSync("systemd-run", ["--user", "--scope", "-q", "-p", "MemoryHigh=2G", "-p", "MemoryMax=3G", "-p", "MemorySwapMax=0", "--", "timeout", "120", "ffmpeg", "-threads", "2", "-v", "error", "-i", png, "-vf", "crop=40:40:850:410,scale=1:1", "-f", "rawvideo", "-pix_fmt", "gray", "-"], { encoding: "buffer" });
+  if (theme === "dark" && probe.stdout?.[0] > 190) { rmSync(png); throw new Error(`${id}: the channel is signed out (pairing screen captured); sign in again and re-run`); }
   rmSync(jpg);
 }
 
@@ -108,11 +122,12 @@ function shoot(id) {
 async function setTheme() {
   await coldStart();
   await press("Up");
-  await press("Select", 2);
-  await presses(Array(theme === "light" ? 1 : 2).fill("Down"), 0.6);
+  await press("Select", 4);
+  await presses(Array(theme === "light" ? 1 : 2).fill("Down"), 1.2);
   await press("Select", 3);
 }
-await setTheme();
+// ROKU_SKIP_THEME=1: the channel already has the theme (the picker dropdown shows it), so a re-run skips the dialog.
+if (process.env.ROKU_SKIP_THEME !== "1") await setTheme();
 
 for (const id of Object.keys(screens)) {
   if (only.length && !only.includes(id)) continue;

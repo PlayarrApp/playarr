@@ -680,3 +680,24 @@ class RokuDeviceBugfixTests(unittest.TestCase):
         capture = ROOT.parents[1] / "scripts" / "parity" / "roku" / "capture.mjs"
         self.assertTrue(capture.is_file())
         self.assertIn("plugin_inspect", capture.read_text(encoding="utf-8"))
+
+    def test_title_actions_drawer_opens_on_a_long_press_and_deep_link_plays(self) -> None:
+        drawer = (ROOT / "components" / "Drawer.brs").read_text(encoding="utf-8")
+        self.assertIn("components/Drawer.brs", SCENE)
+        # Home, library and search cards defer their select until the key comes up (short press) or the hold timer fires.
+        self.assertEqual(MAIN.count("selectWork("), 4)
+        self.assertIn('if key = "OK" then selectWorkReleased()', MAIN)
+        self.assertIn('"Add to Playlist"', drawer)
+        self.assertIn('"Mark as Watched"', drawer)
+        # ECP deep link: launch with contentId plays that media file once the profile is known.
+        main = (ROOT / "source" / "main.brs").read_text(encoding="utf-8")
+        self.assertIn("args.contentId", main)
+        self.assertIn("requestPlayback(id)", MAIN)
+
+    def test_calendar_has_month_week_and_agenda_views(self) -> None:
+        pages = (ROOT / "components" / "Pages.brs").read_text(encoding="utf-8")
+        for name in ("renderCalendarMonth", "renderCalendarWeek", "renderCalendarAgenda", "calendarViewRange", "calendarStatusText"):
+            self.assertIn(name, pages)
+        self.assertIn('pageBegin("Calendar", 0)', pages)
+        self.assertIn('dialog.buttons = ["Month", "Week", "Agenda"]', pages)
+

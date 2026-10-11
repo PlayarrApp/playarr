@@ -22,7 +22,8 @@ sub pagesInit()
     m.pageKind = ""
     m.pageData = invalid
     m.pageStatus = ""
-    m.calendarStart = invalid
+    m.calendarAnchor = invalid
+    m.calendarView = "month"
     m.calendarKinds = []
     m.pageScrollY = 0
     m.settingsPanel = "appearance"
@@ -178,6 +179,7 @@ sub pageBegin(title as String, panelX as Float)
     m.pageItems = []
     if m.pageKeepScroll <> true
         m.pageScrollY = 0
+        m.pageScrollX = 0
         m.pageBody.translation = [0, 0]
     end if
     m.pagePanel.visible = panelX > 0
@@ -221,6 +223,19 @@ sub pageFocusRender()
         if m.pageScrollY > 0 then m.pageScrollY = 0
         m.pageBody.translation = [0, m.pageScrollY]
     end if
+    ox = 0
+    if item.sx = true
+        ' Week view: scroll the columns sideways so the focused card stays on screen.
+        if m.pageScrollX = invalid then m.pageScrollX = 0
+        if item.x + item.w + m.pageScrollX > 1850 then m.pageScrollX = 1850 - (item.x + item.w)
+        if item.x + m.pageScrollX < 154 then m.pageScrollX = 154 - item.x
+        if m.pageScrollX > 0 then m.pageScrollX = 0
+        m.pageBody.translation = [m.pageScrollX, m.pageBody.translation[1]]
+        ox = m.pageScrollX
+    else if m.pageScrollX <> invalid and m.pageScrollX <> 0 and m.pageKind = "calendar" and m.calendarView <> "week"
+        m.pageScrollX = 0
+        m.pageBody.translation = [0, m.pageBody.translation[1]]
+    end if
     oy = 0
     if item.scrolls = true then oy = m.pageScrollY
     bottom = 0.0
@@ -231,7 +246,7 @@ sub pageFocusRender()
     radius = 25
     if item.r < 25 then radius = 12
     m.pageRing.uri = "pkg:/images/round-ring-r" + radius.ToStr() + ".9.png"
-    m.pageRing.translation = [item.x - 3, item.y + oy - 3]
+    m.pageRing.translation = [item.x + ox - 3, item.y + oy - 3]
     m.pageRing.width = item.w + 6
     m.pageRing.height = item.h + 6
     m.pageRing.visible = not m.navDockMode
@@ -367,6 +382,7 @@ end sub
 
 sub openPage(kind as String)
     m.pageKind = kind
+    parityEmit("page", kind)
     m.pageData = invalid
     m.pageStatus = "loading"
     showOnly("page")
@@ -380,7 +396,10 @@ sub openPage(kind as String)
         renderRequests()
         sendApi("requests", "GET", "/api/v1/requests", invalid, true)
     else if kind = "calendar"
-        m.calendarStart = invalid
+        m.calendarAnchor = invalid
+        m.calendarView = "month"
+        m.calendarFocusAction = ""
+        m.calendarPlaceFirst = true
         m.calendarSelected = ""
         renderCalendar()
         loadCalendar()
@@ -542,36 +561,92 @@ function calendarToday() as Object
 end function
 
 sub calendarEnsureRange()
-    if m.calendarStart = invalid
-        m.calendarStart = calendarToday()
-    end if
+    if m.calendarView = invalid then m.calendarView = "month"
+    if m.calendarAnchor = invalid then m.calendarAnchor = calendarTodayString()
 end sub
 
-sub loadCalendar()
+' Dates are "YYYY-MM-DD" strings in UTC midnight arithmetic, so no time zone can shift a day.
+function calendarTodayString() as String
+    dt = calendarToday()
+    return dt.GetYear().ToStr() + "-" + calendarTwo(dt.GetMonth()) + "-" + calendarTwo(dt.GetDayOfMonth())
+end function
+
+function calDate(day as String) as Object
+    dt = CreateObject("roDateTime")
+    dt.FromISO8601String(day + "T00:00:00Z")
+    return dt
+end function
+
+function calAddDays(day as String, n as Integer) as String
+    dt = calDate(day)
+    dt.FromSeconds(dt.AsSeconds() + n * 86400)
+    return dt.ToISOString().Left(10)
+end function
+
+' 0 = Monday ... 6 = Sunday.
+function calWeekday(day as String) as Integer
+    return (calDate(day).GetDayOfWeek() + 6) mod 7
+end function
+
+function calAddMonths(day as String, n as Integer) as String
+    total = Val(day.Left(4)) * 12 + (Val(Mid(day, 6, 2)) - 1) + n
+    return Int(total / 12).ToStr() + "-" + calendarTwo((total mod 12) + 1) + "-01"
+end function
+
+' First and last visible day of the current view (month: whole Monday-based weeks; week: Monday to Sunday; agenda: 30 days).
+function calendarViewRange() as Object
     calendarEnsureRange()
-    startSeconds = m.calendarStart.AsSeconds()
-    endDt = CreateObject("roDateTime")
-    endDt.FromSeconds(startSeconds + 29 * 86400)
-    path = "/api/v1/calendar?start=" + calendarDateString(m.calendarStart) + "&end=" + calendarDateString(endDt)
+    anchor = m.calendarAnchor
+    if m.calendarView = "month"
+        first = anchor.Left(8) + "01"
+        gridStart = calAddDays(first, -calWeekday(first))
+        monthEnd = calAddDays(calAddMonths(first, 1), -1)
+        gridEnd = calAddDays(monthEnd, 6 - calWeekday(monthEnd))
+        return { start: gridStart, finish: gridEnd, first: first }
+    else if m.calendarView = "week"
+        monday = calAddDays(anchor, -calWeekday(anchor))
+        return { start: monday, finish: calAddDays(monday, 6), first: monday }
+    end if
+    return { start: anchor, finish: calAddDays(anchor, 29), first: anchor }
+end function
+
+sub loadCalendar()
+    r = calendarViewRange()
+    path = "/api/v1/calendar?start=" + r.start + "&end=" + r.finish
     if m.calendarKinds.Count() > 0 then path = path + "&kind=" + joinStrings(m.calendarKinds, ",")
     m.pageStatus = "loading"
+    m.pageData = invalid
     sendApi("calendar", "GET", path, invalid, true)
 end sub
 
+function calendarShortDay(day as String) as String
+    return Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), true)
+end function
+
 function calendarRangeLabel() as String
-    calendarEnsureRange()
-    endDt = CreateObject("roDateTime")
-    endDt.FromSeconds(m.calendarStart.AsSeconds() + 29 * 86400)
-    s = m.calendarStart.GetDayOfMonth().ToStr() + " " + calendarMonthName(m.calendarStart.GetMonth(), true)
-    e = endDt.GetDayOfMonth().ToStr() + " " + calendarMonthName(endDt.GetMonth(), true) + " " + endDt.GetYear().ToStr()
-    return s + " – " + e
+    r = calendarViewRange()
+    if m.calendarView = "month" then return calendarMonthName(Val(Mid(r.first, 6, 2)), true) + " " + r.first.Left(4)
+    if m.calendarView = "week" then return Val(Mid(r.start, 9, 2)).ToStr() + " – " + calendarShortDay(r.finish)
+    return calendarShortDay(r.start) + " – " + calendarShortDay(r.finish)
 end function
 
 function calendarEntryDate(entry as Object) as Object
     dt = CreateObject("roDateTime")
-    dt.FromISO8601String(entry.release_at)
-    dt.ToLocalTime()
+    if entry.release_at <> invalid and entry.release_at <> ""
+        dt.FromISO8601String(entry.release_at)
+        dt.ToLocalTime()
+    else if entry.date <> invalid
+        dt.FromISO8601String(entry.date + "T00:00:00Z")
+    end if
     return dt
+end function
+
+' Status text as web shows it: Available, Upcoming (monitored, still to come), Missing (monitored, already due), Not tracked.
+function calendarStatusText(entry as Object) as String
+    if entry.has_file = true then return "Available"
+    if entry.monitored <> true then return "Not tracked"
+    if entry.date <> invalid and entry.date < calendarTodayString() then return "Missing"
+    return "Upcoming"
 end function
 
 function calendarTwo(value as Integer) as String
@@ -617,23 +692,45 @@ function calendarReleaseLabel(entry as Object) as String
     return "Release"
 end function
 
+' Redraws the calendar and keeps focus on the control the viewer just used (the range switcher, Previous, Today, Next), or on the
+' view's own default (today's cell, the first card) when the data arrives.
 sub renderCalendar()
-    pageBegin("Release Calendar", 0)
-    ' Controls on the right of the header row.
-    pgRound(m.pageHead, 1367.4, 56.2, 50, 50, 25, "surface")
-    pgRound(m.pageHead, 1367.4, 56.2, 50, 50, 25, "line", -1, true)
-    pgIcon(m.pageHead, 1385, 73, 15, "arrow-left.png", "inkSoft")
-    pgFocusable(1367.4, 56.2, 50, 50, 25, "calPrev")
-    pgButton(m.pageHead, 1423.1, 54.8, 52.8, "Today", "secondary", "calToday")
-    pgRound(m.pageHead, 1516.6, 56.2, 50, 50, 25, "surface")
-    pgRound(m.pageHead, 1516.6, 56.2, 50, 50, 25, "line", -1, true)
-    pgIcon(m.pageHead, 1534, 73, 15, "arrow-right.png", "inkSoft")
-    pgFocusable(1516.6, 56.2, 50, 50, 25, "calNext")
+    renderCalendarBody()
+    wanted = m.calendarFocusAction
+    if wanted <> invalid and wanted <> ""
+        for i = 0 to m.pageItems.Count() - 1
+            if m.pageItems[i].action = wanted then m.pageFocusIdx = i
+        end for
+    else if m.calendarView <> "month" and m.calendarPlaceFirst = true
+        for i = 0 to m.pageItems.Count() - 1
+            if m.pageItems[i].action = "entry"
+                m.pageFocusIdx = i
+                exit for
+            end if
+        end for
+    end if
+    if m.pageFocusIdx >= m.pageItems.Count() then m.pageFocusIdx = 0
+end sub
+
+sub renderCalendarBody()
+    calendarEnsureRange()
+    pageBegin("Calendar", 0)
+    ' Controls on the right of the header row (web: the range switcher, Previous, Today, Next).
+    pgRound(m.pageHead, 1793, 56.2, 50, 50, 25, "surface")
+    pgRound(m.pageHead, 1793, 56.2, 50, 50, 25, "line", -1, true)
+    pgIcon(m.pageHead, 1810.5, 73, 15, "arrow-right.png", "inkSoft")
+    pgFocusable(1793, 56.2, 50, 50, 25, "calNext")
+    todayW = pgButton(m.pageHead, 1692, 54.8, 52.8, "Today", "secondary", "calToday")
+    pgRound(m.pageHead, 1629, 56.2, 50, 50, 25, "surface")
+    pgRound(m.pageHead, 1629, 56.2, 50, 50, 25, "line", -1, true)
+    pgIcon(m.pageHead, 1646.5, 73, 15, "arrow-left.png", "inkSoft")
+    pgFocusable(1629, 56.2, 50, 50, 25, "calPrev")
+    probe = pgLabel(m.pageHead, 0, 0, 0, 30, calendarRangeLabel(), 15, 700, "inkSoft")
+    rw = probe.boundingRect().width + 36
+    m.pageHead.removeChild(probe)
+    pgButton(m.pageHead, 1616 - rw, 54.8, 52.8, calendarRangeLabel(), "secondary", "calView", invalid, 18)
     pgTile(m.pageHead, shellActionX(), shellActionY(0), "Calendar link", "tile-bell.png", "calLink")
     pgTile(m.pageHead, shellActionX(), shellActionY(1), "Filters", "tile-filters.png", "calFilters")
-
-    rangeLabel = pgLabel(m.pageBody, 174.6, 175, 0, 40, calendarRangeLabel(), 24, 600, "ink", { vertAlign: "center" })
-    pgIcon(m.pageBody, 174.6 + rangeLabel.boundingRect().width + 12, 188, 14, "chevron-down.png", "ink")
 
     entries = []
     if m.pageData <> invalid and m.pageData.entries <> invalid then entries = m.pageData.entries
@@ -645,6 +742,16 @@ sub renderCalendar()
         pgLabel(m.pageBody, 153.6, 240, 1200, 30, m.pageError, 14, 400, "danger")
         return
     end if
+    if m.calendarView = "month"
+        renderCalendarMonth(entries)
+    else if m.calendarView = "week"
+        renderCalendarWeek(entries)
+    else
+        renderCalendarAgenda(entries)
+    end if
+end sub
+
+sub renderCalendarAgenda(entries as Object)
     if entries.Count() = 0
         pgLabel(m.pageBody, 153.6, 240, 1200, 30, "No releases in this range.", 19, 400, "inkSoft")
         return
@@ -667,9 +774,7 @@ sub renderCalendar()
     pgLabel(m.pageHead, 153.6, 387, 600, 17, UCase("Release"), 11, 400, "inkMuted")
     pgLabel(m.pageHead, 153.6, 405, 620, 26, calendarDayHeading(dt, true) + " at " + calendarTime(dt), 19, 400, "ink")
     pgLabel(m.pageHead, 153.6, 443, 600, 17, UCase("Status"), 11, 400, "inkMuted")
-    statusText = "Not monitored"
-    if selected.monitored = true then statusText = "Monitored"
-    if selected.has_file = true then statusText = "Available"
+    statusText = calendarStatusText(selected)
     badgeW = calendarBadge(m.pageHead, 153.6, 461.3, 26, statusText, 19)
     pgLabel(m.pageHead, 153.6, 498.7, 600, 17, UCase("Reported by"), 11, 400, "inkMuted")
     y = 516.0
@@ -726,13 +831,127 @@ sub renderCalendar()
         pgLabel(m.pageBody, mx + 45.6, ay + 71, 120, 19, rel, 13, 400, "inkMuted")
         kindX = mx + 45.6 + 12 + rel.Len() * 6.2
         pgLabel(m.pageBody, kindX, ay + 71, 120, 19, calendarKindLabel(entry), 13, 400, "inkMuted")
-        st = "Not monitored"
-        if entry.monitored = true then st = "Monitored"
-        if entry.has_file = true then st = "Available"
+        st = calendarStatusText(entry)
         calendarBadge(m.pageBody, kindX + 12 + calendarKindLabel(entry).Len() * 6.4, ay + 71, 19.2, st, 13)
         pgFocusable(786.4, ay, 1048.8, 99.6, 14, "entry", entry.id, true)
         ay = ay + 114
     end for
+end sub
+
+' Month grid (web calendar month): Monday-first weeks, up to four chips per day (a dot in the availability colour and the
+' title), "+N more" and the day number at the bottom of the cell.
+sub renderCalendarMonth(entries as Object)
+    r = calendarViewRange()
+    days = Int((calDate(r.finish).AsSeconds() - calDate(r.start).AsSeconds()) / 86400) + 1
+    rows = Int(days / 7)
+    gx = 154.0
+    gy = 205.0
+    cw = 237.4
+    ch = 755.0 / rows
+    byDay = {}
+    for each entry in entries
+        if entry.date <> invalid
+            if byDay[entry.date] = invalid then byDay[entry.date] = []
+            byDay[entry.date].Push(entry)
+        end if
+    end for
+    names = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+    for c = 0 to 6
+        pgLabel(m.pageBody, gx + c * cw, 183, cw, 16, names[c], 11, 700, "inkMuted", { horizAlign: "center" })
+    end for
+    for rr = 0 to rows
+        pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
+    end for
+    for c = 0 to 7
+        pgRect(m.pageBody, gx + c * cw, gy, 1, ch * rows, "line")
+    end for
+    maxChips = 4
+    if rows > 5 then maxChips = 3
+    today = calendarTodayString()
+    todayIdx = 0
+    for i = 0 to days - 1
+        day = calAddDays(r.start, i)
+        x = gx + (i mod 7) * cw
+        y = gy + Int(i / 7) * ch
+        list = byDay[day]
+        n = 0
+        if list <> invalid then n = list.Count()
+        ' One chip per title ("Title · 2×" when it airs more than once that day), as web groups them.
+        chips = []
+        index = {}
+        if list <> invalid
+            for each e in list
+                if index[e.title] = invalid
+                    index[e.title] = chips.Count()
+                    chips.Push({ title: e.title, count: 0, have: true })
+                end if
+                chip = chips[index[e.title]]
+                chip.count = chip.count + 1
+                if e.has_file <> true then chip.have = false
+            end for
+        end if
+        n = chips.Count()
+        shown = n
+        if shown > maxChips then shown = maxChips
+        for k = 0 to shown - 1
+            role = "brand"
+            if chips[k].have then role = "success"
+            text = chips[k].title
+            if chips[k].count > 1 then text = text + " · " + chips[k].count.ToStr() + "×"
+            pgRound(m.pageBody, x + 10, y + 13 + k * 25.4, 6, 6, 3, role)
+            pgLabel(m.pageBody, x + 22, y + 8 + k * 25.4, cw - 30, 18, text, 11, 600, "ink", { maxLines: 1 })
+        end for
+        pgLabel(m.pageBody, x + 10, y + ch - 24, 60, 16, Val(Mid(day, 9, 2)).ToStr(), 11, 600, "inkMuted")
+        if n > shown then pgLabel(m.pageBody, x + 60, y + ch - 24, cw - 70, 16, "+" + (n - shown).ToStr() + " more", 11, 600, "inkMuted", { horizAlign: "right" })
+        if day = today then todayIdx = m.pageItems.Count()
+        pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
+    end for
+    m.pageFocusIdx = m.pageItems.Count() - days + 0
+    if todayIdx > 0 then m.pageFocusIdx = todayIdx
+end sub
+
+' Week view (web calendar week): one column per day, a card per release with the availability colour on its left edge.
+sub renderCalendarWeek(entries as Object)
+    r = calendarViewRange()
+    byDay = {}
+    for each entry in entries
+        if entry.date <> invalid
+            if byDay[entry.date] = invalid then byDay[entry.date] = []
+            byDay[entry.date].Push(entry)
+        end if
+    end for
+    today = calendarTodayString()
+    todayIdx = -1
+    for c = 0 to 6
+        day = calAddDays(r.start, c)
+        x = 154.0 + c * 460
+        dt = calDate(day)
+        pgLabel(m.pageBody, x, 176, 440, 28, dt.GetWeekday() + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false), 18, 600, "ink")
+        list = byDay[day]
+        y = 216.0
+        if list <> invalid
+            for each entry in list
+                pgRound(m.pageBody, x, y, 440, 106, 14, "surfaceStrong")
+                role = "inkMuted"
+                if entry.has_file = true then role = "success"
+                pgRect(m.pageBody, x, y + 10, 3, 86, role)
+                art = ""
+                if entry.work_id <> invalid then art = m.serverUrl + "/api/v1/artwork/work/" + UrlEncode(entry.work_id) + "/poster"
+                pgRound(m.pageBody, x + 16, y + 13, 54, 80, 6, "surfaceSoft")
+                pgArtwork(m.pageBody, x + 16, y + 13, 54, 80, art)
+                pgLabel(m.pageBody, x + 84, y + 8, 340, 26, entry.title, 19, 600, "ink", { maxLines: 1 })
+                pgLabel(m.pageBody, x + 84, y + 38, 340, 24, calendarEntrySubtitle(entry), 15, 400, "inkSoft", { maxLines: 1 })
+                edt = calendarEntryDate(entry)
+                pgLabel(m.pageBody, x + 84, y + 72, 60, 18, calendarTime(edt), 12, 400, "inkMuted")
+                st = calendarStatusText(entry)
+                calendarBadge(m.pageBody, x + 140, y + 71, 19.2, st, 12)
+                pgFocusable(x, y, 440, 106, 14, "entry", entry.id, true)
+                m.pageItems[m.pageItems.Count() - 1].sx = true
+                y = y + 120
+            end for
+        end if
+    end for
+    if m.pageItems.Count() > 0 then m.pageFocusIdx = 0
 end sub
 
 ' Status chip (web .calendar-badge): tinted pill with the status text. Returns its width.
@@ -747,16 +966,38 @@ end function
 
 sub calendarAction(item as Object)
     a = item.action
-    if a = "calPrev"
+    m.calendarFocusAction = a
+    m.calendarPlaceFirst = false
+    if a = "calPrev" or a = "calNext"
         calendarEnsureRange()
-        m.calendarStart.FromSeconds(m.calendarStart.AsSeconds() - 30 * 86400)
-        loadCalendar()
-    else if a = "calNext"
-        calendarEnsureRange()
-        m.calendarStart.FromSeconds(m.calendarStart.AsSeconds() + 30 * 86400)
+        dir = 1
+        if a = "calPrev" then dir = -1
+        if m.calendarView = "month"
+            m.calendarAnchor = calAddMonths(m.calendarAnchor, dir)
+        else if m.calendarView = "week"
+            m.calendarAnchor = calAddDays(m.calendarAnchor, 7 * dir)
+        else
+            m.calendarAnchor = calAddDays(m.calendarAnchor, 30 * dir)
+        end if
+        renderCalendar()
         loadCalendar()
     else if a = "calToday"
-        m.calendarStart = invalid
+        m.calendarAnchor = invalid
+        calendarEnsureRange()
+        renderCalendar()
+        loadCalendar()
+    else if a = "calView"
+        dialog = CreateObject("roSGNode", "Dialog")
+        dialog.title = "Calendar view"
+        dialog.buttons = ["Month", "Week", "Agenda"]
+        dialog.ObserveField("buttonSelected", "onCalendarViewButton")
+        m.top.dialog = dialog
+    else if a = "cell"
+        m.calendarFocusAction = ""
+        m.calendarPlaceFirst = true
+        m.calendarAnchor = item.data
+        m.calendarView = "agenda"
+        renderCalendar()
         loadCalendar()
     else if a = "calPlay"
         requestPlayback(item.data)
@@ -769,6 +1010,20 @@ sub calendarAction(item as Object)
         sendApi("calendarFeed", "POST", "/api/v1/calendar/feed", {}, true)
     else if a = "calFilters"
         openCalendarFilters()
+    end if
+    if a = "calPrev" or a = "calNext" or a = "calToday" or a = "cell" then pageFocusRender()
+end sub
+
+sub onCalendarViewButton(event as Object)
+    index = event.GetData()
+    if m.top.dialog <> invalid then m.top.dialog.close = true
+    views = ["month", "week", "agenda"]
+    if index >= 0 and index < views.Count()
+        m.calendarView = views[index]
+        m.calendarFocusAction = "calView"
+        renderCalendar()
+        loadCalendar()
+        pageFocusRender()
     end if
 end sub
 

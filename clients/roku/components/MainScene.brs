@@ -180,6 +180,7 @@ sub init()
     end for
     detailChromeInit()
     m.profileLabel = m.top.findNode("profileLabel")
+    m.userFocusRing = m.top.findNode("userFocusRing")
     m.persistentHeader = m.top.findNode("persistentHeader")
     m.video = m.top.findNode("video")
     m.endScreen = m.top.findNode("endScreen")
@@ -254,6 +255,7 @@ sub init()
     m.homeFocusIndex = 0
     m.homeColIndex = 0
     m.homeLeftProxy = m.top.findNode("homeLeftProxy")
+    m.drawerOpen = false
     m.navDockMode = false
     m.navDockIndex = 0
     m.navDockReturnState = "home"
@@ -760,6 +762,10 @@ sub onApiResult(event as Object)
         acceptDetailPlaylists(result.data)
     else if action = "detailWatchlistAdd" or action = "detailWatchlistRemove" or action = "detailPlaylistAdd"
         loadDetailWatchlist()
+    else if action = "actionDetail"
+        acceptActionDetail(result.data)
+    else if action = "actionProgress"
+        ' Fire and forget: the watch state shows on the next Home load.
     else if action = "detail"
         showDetail(result.data)
     else if action = "chapters"
@@ -1465,9 +1471,30 @@ end sub
 ' that component's header comment).
 ' ---------------------------------------------------------------------------
 
+' ECP deep link: the media file id to play once the session and the current profile are known (see Main in source/main.brs).
+sub onDeepLink()
+    m.pendingDeepLink = m.top.deepLink
+end sub
+
+sub playDeepLink()
+    id = m.pendingDeepLink
+    m.pendingDeepLink = ""
+    name = "Viewer"
+    for each profile in m.profiles
+        if profile.is_current and profile.display_name <> invalid then name = profile.display_name
+    end for
+    enterHome(name)
+    m.selectedDetail = { work: { id: "", title: "" } }
+    requestPlayback(id)
+end sub
+
 sub showProfiles(data as Dynamic)
     if data = invalid then data = []
     m.profiles = data
+    if m.pendingDeepLink <> invalid and m.pendingDeepLink <> "" and data.Count() > 0
+        playDeepLink()
+        return
+    end if
     rememberCurrentProfileId(data)
     buildProfileAvatarContent(data)
     applyProfilesChrome()
@@ -2269,6 +2296,7 @@ end sub
 
 sub openBrowse(kind as String, label as String)
     m.browseKind = kind
+    parityEmit("browse", kind)
     m.browseLabel = label
     m.browseItems = []
     m.browseTotal = invalid
@@ -2793,6 +2821,7 @@ sub onBrowseItemFocused(event as Object)
     if itemIndex = invalid then return
     if itemIndex >= 0 and itemIndex < m.browseItems.Count()
         updateBrowsePreview(m.browseItems[itemIndex])
+        parityEmit("focus", "open " + m.browseItems[itemIndex].title)
     end if
     browseFadesUpdate(itemIndex)
     ' Web keeps the focused row 70 px clear of the bottom edge once the grid scrolls (its rows then sit 56 px higher).
@@ -2810,7 +2839,7 @@ end sub
 sub onBrowseItemSelected(event as Object)
     index = event.GetData()
     if index = invalid or index < 0 or index >= m.browseItems.Count() then return
-    openWorkDetail(m.browseItems[index], "browse")
+    selectWork(m.browseItems[index], "browse")
 end sub
 
 ' ---------------------------------------------------------------------------
@@ -2932,7 +2961,7 @@ end sub
 sub onSearchItemSelected(event as Object)
     index = event.GetData()
     if index = invalid or index < 0 or index >= m.searchDisplayItems.Count() then return
-    openWorkDetail(m.searchDisplayItems[index], "search")
+    selectWork(m.searchDisplayItems[index], "search")
 end sub
 
 ' Mirrors updateBrowsePreview: tv-web's real Search page
@@ -3439,6 +3468,7 @@ end sub
 ' Back key returns to wherever the viewer actually came from.
 sub openWorkDetail(work as Object, originState as String)
     m.selectedWork = work
+    if work <> invalid and work.kind <> invalid then parityEmit("detail", work.kind)
     m.detailOrigin = originState
     ' Stay in the detail shell while WorkDetail loads (matches tv-web: route
     ' changes first, body fills when the request returns).
@@ -4047,6 +4077,7 @@ sub onHomeItemFocused(event as Object)
     works = worksForRow(event.GetRoSGNode())
     if works = invalid or itemIndex < 0 or itemIndex >= works.Count() then return
     m.homeColIndex = itemIndex
+    parityEmit("focus", parityWorkLabel(works[itemIndex]))
     homeRailTrack(event.GetRoSGNode(), itemIndex)
     homeFadesUpdate(itemIndex, works.Count())
     updateHeroFromWork(works[itemIndex])
@@ -4125,7 +4156,7 @@ sub onHomeItemSelected(event as Object)
     itemIndex = position[1]
     works = worksForRow(event.GetRoSGNode())
     if works = invalid or itemIndex < 0 or itemIndex >= works.Count() then return
-    openWorkDetail(works[itemIndex], "home")
+    selectWork(works[itemIndex], "home")
 end sub
 
 ' Restores focus to whichever rail was focused before navigating away (e.g.
@@ -4413,9 +4444,31 @@ sub enterNavDock()
     m.navDockReturnState = m.top.screenState
     m.navDockMode = true
     m.navDockIndex = 0
+    ' Web enters the nav at the item level with the focused card (geometric spatial nav), not at the top.
+    if m.visibleRails.Count() > 0
+        idx = m.homeFocusIndex
+        if idx < 0 or idx >= m.visibleRails.Count() then idx = 0
+        rect = m.visibleRails[idx].row.sceneBoundingRect()
+        m.navDockIndex = navDockIndexNearestY(rect.y + rect.height / 2)
+    end if
     renderNavDockFocus()
     m.top.SetFocus(true)
 end sub
+
+function navDockIndexNearestY(y as Float) as Integer
+    best = 0
+    bestDist = 100000
+    for i = 0 to m.navLabels.Count() - 1
+        if m.navEnabled = invalid or m.navEnabled[i]
+            d = Abs((m.navIcons[i].translation[1] + 10) - y)
+            if d < bestDist
+                bestDist = d
+                best = i
+            end if
+        end if
+    end for
+    return best
+end function
 
 sub exitNavDock()
     m.navDockMode = false
@@ -4424,9 +4477,10 @@ sub exitNavDock()
 end sub
 
 function moveNavDockFocus(delta as Integer) as Boolean
+    ' Slot navLabels.Count() is the identity chip (web .app-user-identity is the last nav entry; Select opens the profiles page).
     newIndex = m.navDockIndex + delta
-    while newIndex >= 0 and newIndex < m.navLabels.Count()
-        if m.navEnabled = invalid or m.navEnabled[newIndex]
+    while newIndex >= 0 and newIndex <= m.navLabels.Count()
+        if newIndex = m.navLabels.Count() or m.navEnabled = invalid or m.navEnabled[newIndex]
             m.navDockIndex = newIndex
             renderNavDockFocus()
             return true
@@ -4458,6 +4512,16 @@ end function
 
 sub renderNavDockFocus()
     activeIdx = activeNavDockIndex()
+    chipFocused = m.navDockMode = true and m.navDockIndex = m.navLabels.Count()
+    m.userFocusRing.visible = chipFocused
+    for i = 0 to m.userFocusRing.getChildCount() - 1
+        m.userFocusRing.getChild(i).color = ThemeColor("focusRing")
+    end for
+    if chipFocused
+        parityEmit("focus", m.profileLabel.text)
+    else if m.navDockMode = true and m.navLabels[m.navDockIndex] <> invalid
+        parityEmit("focus", m.navLabels[m.navDockIndex].text)
+    end if
     for i = 0 to m.navLabels.Count() - 1
         enabled = true
         if m.navEnabled <> invalid then enabled = m.navEnabled[i]
@@ -4502,6 +4566,12 @@ sub selectNavDockItem()
     kinds = navDockKindList()
     labels = navDockLabelList()
     idx = m.navDockIndex
+    if idx = kinds.Count()
+        m.navDockMode = false
+        renderNavDockFocus()
+        loadProfiles()
+        return
+    end if
     if idx < 0 or idx >= kinds.Count() then return
     if m.navEnabled <> invalid and not m.navEnabled[idx] then return
     m.navDockMode = false
@@ -6221,7 +6291,20 @@ sub showStatus(title as String, message as String, busy as Boolean)
     m.top.SetFocus(true)
 end sub
 
+' Parity-suite hook (scripts/parity/roku/driver.mjs reads the debug console): one "PARITY|<kind>|<text>" line per screen change
+' and focus change. The Roku has no accessibility query over ECP, so the driver learns the screen and the focused item from here.
+sub parityEmit(kind as String, text as String)
+    print "PARITY|" + kind + "|" + text
+end sub
+
+function parityWorkLabel(work as Object) as String
+    year = ""
+    if work.release_date <> invalid and work.release_date.Len() >= 4 then year = " · " + work.release_date.Left(4)
+    return work.title + CapitalizeFirst(work.kind) + year
+end function
+
 sub showOnly(name as String)
+    parityEmit("screen", name)
     ' tv-web Profiles is a full-canvas picker with no left nav dock / clock chrome.
     ' Hide the signed-in shell on pre-auth and profiles so those screens match web.
     m.persistentHeader.visible = name <> "status" and name <> "pairing" and name <> "profiles"
@@ -6259,7 +6342,11 @@ sub showOnly(name as String)
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
-    if not press then return false
+    if not press
+        if key = "OK" then selectWorkReleased()
+        return false
+    end if
+    if m.drawerOpen = true then return drawerOnKey(key)
     state = m.top.screenState
     if state = "page"
         return pageOnKey(key)
@@ -6328,6 +6415,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             showOnly("browse")
             m.top.screenState = "browse"
             m.browseGrid.SetFocus(true)
+            idx = m.browseGrid.itemFocused
+            if idx <> invalid and idx >= 0 and idx < m.browseItems.Count() then parityEmit("focus", "open " + m.browseItems[idx].title)
         else if m.detailOrigin = "search"
             showOnly("search")
             m.top.screenState = "search"
@@ -6481,7 +6570,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             if idx < 0 or idx >= m.visibleRails.Count() then idx = 0
             works = m.visibleRails[idx].works
             if works <> invalid and works.Count() > 0
-                openWorkDetail(works[0], "home")
+                selectWork(works[0], "home")
                 return true
             end if
         end if
