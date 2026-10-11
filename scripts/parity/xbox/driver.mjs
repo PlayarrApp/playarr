@@ -85,7 +85,8 @@ export async function createDriver() {
     },
     async key(name, { long } = {}) {
       run("key", long ? "shift+f10" : KEYS[name]);
-      await sleep(1200);
+      // A page opened with select loads its grid over the network: give it time before the next key.
+      await sleep(name === "select" && !long ? 9000 : 1200);
     },
     async location() { return location(); },
     async focused() { return trace().focus ?? null; },
