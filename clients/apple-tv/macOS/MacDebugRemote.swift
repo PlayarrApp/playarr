@@ -54,7 +54,24 @@ enum MacDebugRemote {
             if parts[0] == "hold" { target.secondary?() } else if let activate = target.activate { activate() } else {
                 MacFocusEngine.click(target.frame, in: window)
             }
-        case "state":
+        case "targets":
+            for t in MacFocusEngine.shared.targets.values.sorted(by: { ($0.frame.minY, $0.frame.minX) < ($1.frame.minY, $1.frame.minX) }) {
+                NSLog("PlayarrMac targets: %@ layer=%d", NSStringFromRect(t.frame), t.layer)
+            }
+        case "hover" where parts.count > 1, "rclick" where parts.count > 1:
+            // The hover and right-click paths without moving the person's real pointer (a synthetic CGEvent would):
+            // hover marks the target under a stage point as hovered and focused; rclick then runs its secondary action.
+            let xy = parts[1].split(separator: ",").compactMap { Double($0) }
+            let engine = MacFocusEngine.shared
+            guard xy.count == 2, let target = engine.target(at: CGPoint(x: xy[0], y: xy[1])),
+                  let id = engine.targets.first(where: { $0.value.frame == target.frame })?.key else {
+                NSLog("PlayarrMac debug: no target at %@", parts[1])
+                return
+            }
+            engine.didHover(id, true)
+            target.focus()
+            if parts[0] == "rclick" { NSLog("PlayarrMac debug: rclick handled=%d", engine.secondary(hovered: true) ? 1 : 0) }
+        case "targets":
             let engine = MacFocusEngine.shared
             let focused = engine.focusedID.flatMap { engine.targets[$0] }
             NSLog("PlayarrMac debug: key=%d bounds=%@ targets=%d top=%d focused=%@ responder=%@",

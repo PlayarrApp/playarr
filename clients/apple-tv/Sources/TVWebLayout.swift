@@ -456,6 +456,9 @@ struct TVDrawer<Content: View>: View {
                 .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
                 .focusEffectDisabled()
                 .focused($closeFocused)
+                #if os(macOS)
+                .macPreferredFocus() // the drawer opens with the close button focused, as on tvOS
+                #endif
                 .accessibilityLabel("Close")
             }
             .padding(.top, 54)

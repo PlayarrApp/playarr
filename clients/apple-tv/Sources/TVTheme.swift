@@ -692,7 +692,12 @@ struct TVFloatingNav: View {
         .focused(externalFocus, equals: .nav(tab))
         // not .focusable: on a Button it adds a second, inert focus target. While focus is outside the nav only the
         // active tab can take it, so Left from the page lands on the active tab (web), not the nearest one.
+        #if os(macOS)
+        // The mouse must reach every tab (hover, click); only the remote needs the one-active-tab rule above.
+        .disabled(suppressFocusChrome)
+        #else
         .disabled(suppressFocusChrome || (!navHasFocus && !isActive))
+        #endif
         .focusEffectDisabled(suppressFocusChrome)
         .onMoveCommand { direction in
             // Right from any dock item jumps into the stage (first rail card).

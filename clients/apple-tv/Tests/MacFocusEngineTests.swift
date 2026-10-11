@@ -85,5 +85,19 @@ final class MacFocusEngineTests: XCTestCase {
         let back = await wait({ engine.focusedID == first })
         XCTAssertTrue(back, "Left comes back")
     }
+
+    /// A layer's preferred target (a drawer's close button) takes focus when it appears, ahead of the other buttons.
+    @MainActor
+    func testPreferredTargetTakesFocusWhenItAppears() async {
+        let engine = MacFocusEngine.shared
+        var focused: [String] = []
+        let layer = 99 // above anything a page registers, so it is the top layer
+        let first = UUID(), preferred = UUID()
+        engine.update(first, .init(frame: card(0, 0), layer: layer, focus: { focused.append("first") }))
+        engine.update(preferred, .init(frame: card(400, 0), layer: layer, focus: { focused.append("preferred") }, preferred: true))
+        defer { engine.remove(first); engine.remove(preferred) }
+        for _ in 0..<30 where !focused.contains("preferred") { try? await Task.sleep(for: .milliseconds(100)) }
+        XCTAssertTrue(focused.contains("preferred"), "the preferred target takes focus")
+    }
 }
 #endif

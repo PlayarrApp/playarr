@@ -1,0 +1,1 @@
+- macOS: every nav tab can be clicked and hovered (only the active tab was enabled), and a drawer opens with its close button focused as on tvOS; the debug remote gained targets, hover and rclick commands (57.10025).

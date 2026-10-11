@@ -24,6 +24,8 @@ final class MacFocusEngine {
         var activate: (() -> Void)?
         /// The long press (a media card's actions).
         var secondary: (() -> Void)?
+        /// Where focus starts when its layer opens (a drawer's close button), before the first page content.
+        var preferred = false
     }
 
     private(set) var targets: [UUID: Target] = [:]
@@ -36,6 +38,15 @@ final class MacFocusEngine {
         let isNew = targets[id] == nil
         targets[id] = target
         if isNew { scheduleSettle() }
+        // A preferred target that appears (a drawer's close button) takes focus once its layer has settled, even where
+        // the system already focused another button.
+        if isNew, target.preferred {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self, let t = self.targets[id], t.layer == self.topLayer, self.focusedID != id else { return }
+                self.autoFocusedID = id
+                t.focus()
+            }
+        }
     }
 
     func remove(_ id: UUID) {
@@ -165,6 +176,7 @@ final class MacFocusEngine {
         if restore, let layer = candidates.first?.value.layer, let id = lastFocused[layer], let t = candidates[id] {
             return (id, t)
         }
+        if !restore, let p = candidates.first(where: { $0.value.preferred }) { return (p.key, p.value) }
         let order: ((UUID, Target), (UUID, Target)) -> Bool = {
             ($0.1.frame.minY, $0.1.frame.minX) < ($1.1.frame.minY, $1.1.frame.minX)
         }
@@ -208,11 +220,17 @@ private struct MacFocusLayerKey: EnvironmentKey { static let defaultValue = 0 }
 
 struct MacSecondary { let action: () -> Void }
 private struct MacSecondaryKey: EnvironmentKey { static let defaultValue: MacSecondary? = nil }
+private struct MacPreferredKey: EnvironmentKey { static let defaultValue = false }
 
 extension EnvironmentValues {
     var macFocusLayer: Int {
         get { self[MacFocusLayerKey.self] }
         set { self[MacFocusLayerKey.self] = newValue }
+    }
+
+    var macPreferredFocus: Bool {
+        get { self[MacPreferredKey.self] }
+        set { self[MacPreferredKey.self] = newValue }
     }
 
     var macSecondaryAction: MacSecondary? {
@@ -227,6 +245,9 @@ extension View {
 
     /// Makes a view a keyboard and hover focus target; `activate` runs on Return.
     func macFocusTarget(activate: (() -> Void)? = nil) -> some View { modifier(MacFocusTarget(activate: activate)) }
+
+    /// The button inside takes focus first when its layer opens (the tvOS drawer focuses its close button).
+    func macPreferredFocus() -> some View { environment(\.macPreferredFocus, true) }
 
     /// The long-press action (actions drawer) of the button inside: right click while hovered, or Shift+Return.
     func macSecondaryAction(_ action: @escaping () -> Void) -> some View {
@@ -244,6 +265,7 @@ struct MacFocusTarget: ViewModifier {
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.macFocusLayer) private var layer
     @Environment(\.macSecondaryAction) private var secondary
+    @Environment(\.macPreferredFocus) private var preferred
     @FocusState private var focused: Bool
     @State private var id = UUID()
 
@@ -278,7 +300,7 @@ struct MacFocusTarget: ViewModifier {
         }
         let binding = $focused
         MacFocusEngine.shared.update(id, .init(frame: frame, layer: layer, focus: { binding.wrappedValue = true },
-                                               activate: activate, secondary: secondary?.action))
+                                               activate: activate, secondary: secondary?.action, preferred: preferred))
     }
 }
 
