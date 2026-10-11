@@ -463,6 +463,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.
 - Android phone: the Calendar uses the web phone design: one toolbar row (period, previous, Today, next), agenda without a details panel, week days as columns of the shared entry cards, and en-GB day headings.
+- Android phone: Home rail cards are 173 dp wide as on the web phone layout, so the next card peeks at the right edge.
+- Linux phone client: detail header scrolls with the page, series pages open on the next-up episode, white close button on the player.
+- Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.
+- Android phone: the Calendar uses the web phone design: one toolbar row (period, previous, Today, next), agenda without a details panel, week days as columns of the shared entry cards, and en-GB day headings.
 - Android phone: playback negotiation reports the device's real decoder, HDR and audio capabilities, Settings > Player > Advanced has Force direct video and audio (off by default), and a 422 unsupported colour format shows the server's message.
 - Android phone: Home rail cards are 173 dp wide as on the web phone layout, so the next card peeks at the right edge.
 - Sailfish OS: layouts follow the web mobile app more closely (nav pill with the web icons, watch-state dots and progress on cards, library counts and natural title order, film detail, Preferences list, profile picker, playlists tab, calendar views), and the page background uses the web surface colour in both themes.

@@ -1,1 +1,0 @@
-- Android phone: the Calendar uses the web phone design: one toolbar row (period, previous, Today, next), agenda without a details panel, week days as columns of the shared entry cards, and en-GB day headings.

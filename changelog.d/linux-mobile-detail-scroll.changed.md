@@ -1,1 +1,0 @@
-- Linux phone client: detail header scrolls with the page, series pages open on the next-up episode, white close button on the player.
