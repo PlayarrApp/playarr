@@ -1,1 +1,0 @@
-- Apple TV: series pages show episode stills and place the season rails at the web height; the parity routes draw the production Home and nav.
