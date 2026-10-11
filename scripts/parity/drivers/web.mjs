@@ -275,13 +275,25 @@ export async function createDriver() {
       await page.waitForTimeout(350);
     },
     async location() { const u = new URL(page.url()); return u.pathname + u.search; },
-    // Focused item label, or null when the page body has focus (a check then fails).
+    // { label, position } of the focused item, or null when the page body has focus (a check then fails).
+    // position: { rail, index } = Home rail number and card number in it, or { rail: "nav", index } for a nav item; null elsewhere.
     async focused() {
       return page.evaluate(() => {
         const e = document.activeElement;
         if (!e || e === document.body) return null;
         // Resume progress is per account and changes between runs: "Resume X from 2:14" and "Open X" are the same item.
-        return (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1");
+        const label = (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1");
+        let position = null;
+        const nav = e.closest(".app-nav-link");
+        const card = e.closest(".tv-home-card");
+        if (nav) position = { rail: "nav", index: [...document.querySelectorAll(".app-nav-link")].indexOf(nav) };
+        else if (card) {
+          const rail = (c) => (c.getAttribute("data-navigation-focus-key") || "").split(":")[1];
+          const cards = [...document.querySelectorAll(".tv-home-card")];
+          const rails = [...new Set(cards.map(rail))];
+          position = { rail: rails.indexOf(rail(card)), index: cards.filter((c) => rail(c) === rail(card)).indexOf(card) };
+        }
+        return { label, position };
       });
     },
     async screenshot(file) {

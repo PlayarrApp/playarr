@@ -35,6 +35,11 @@ Pinned titles: `film-detail` (2 Fast 2 Furious) and `series-detail` (2 Broke Gir
 calls `driver.route(open)` for them, so a driver must open that exact title by id (deep link or its own search), never "the first card":
 web and native then show the same title. The web driver also waits for skeletons, spinners and images to settle before a screenshot.
 
+The four Home checks (`compare: "position"` in `suite.json`) compare focus **position**, not the label: Home rails reorder
+whenever other devices play on the shared account, so the same key press lands on a different title from run to run. The label stays in
+the result as information. A driver that does not report `position` is compared by label, as before. `expected.json` stores
+`{ label, position }` for these checks, and a plain label for the others.
+
 Keys: `up down left right select back`, `select:long` for a long press, `name*N` to repeat. Nav moves are anchored at
 the bottom of the nav rail (`left`, `down*12` clamps on the profile entry), because the top depends on the account.
 The account is the Device Test profile.
@@ -52,7 +57,7 @@ A device worker writes one ES module exporting `createDriver({ out, args })` tha
 | `key(name, { long })` | Press one D-pad key (`long`: hold about 1 s). |
 | `route(path)` | Deep link to a web route; used for screens whose `keys` are null and for pinned `open` paths (map the work id to the device's own detail screen). |
 | `location()` | Current route as `/path?query` in web terms (map native screens to the suite routes). |
-| `focused()` | Label of the focused item (accessibility label or visible text), or null. |
+| `focused()` | The focused item: its label (accessibility label or visible text) as a string, or `{ label, position: { rail, index } }`, or null. `position` is where focus sits: on Home `rail` is the rail number (0 = first rail) and `index` the card number in it (0 = first); on the nav rail `rail` is `"nav"` and `index` the item number from the top. Report it wherever the device can; drivers that cannot keep returning a string. |
 | `screenshot(file)` | Write a 1920x1080 PNG. Throw if the screen is an error or signed-out screen. |
 | `supports` | Optional object of flags: `downloads`, `notifications` (the driver can read system notifications), `nowPlaying` (it can read the now-playing entry), `grouped-downloads` (the device has the grouped Downloads page). |
 | `download(case, expect)` | Optional. Run one downloads case (`case.action`, `case.media` = title, work id, file id), return `{ state: "ok"\|"failed", detail }`. Must leave nothing downloaded. |
@@ -81,7 +86,7 @@ Captures: `<out>/<theme>/<id>.png`. The reference run also writes `<out>/expecte
 
 ```json
 { "suite": 1, "checked_at": "ISO time",
-  "results": [ { "id": "home-right", "pass": true, "expected": "open x", "actual": "open x" } ] }
+  "results": [ { "id": "home-right", "pass": true, "compared": "position", "expected": { "label": "open x", "position": { "rail": 0, "index": 1 } }, "actual": { "label": "open y", "position": { "rail": 0, "index": 1 } } } ] }
 ```
 
 `playback.json`:

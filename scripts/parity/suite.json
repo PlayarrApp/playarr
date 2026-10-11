@@ -187,14 +187,16 @@
       "from": "home",
       "keys": [
         "right"
-      ]
+      ],
+      "compare": "position"
     },
     {
       "id": "home-down",
       "from": "home",
       "keys": [
         "down"
-      ]
+      ],
+      "compare": "position"
     },
     {
       "id": "home-down-right",
@@ -202,14 +204,16 @@
       "keys": [
         "down",
         "right"
-      ]
+      ],
+      "compare": "position"
     },
     {
       "id": "home-left-nav",
       "from": "home",
       "keys": [
         "left"
-      ]
+      ],
+      "compare": "position"
     },
     {
       "id": "nav-down",

@@ -30,6 +30,10 @@ const driver = await (await import(pathToFileURL(resolve(opt("driver"))).href)).
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 // Labels differ in wording per platform ("open x", "x movie · 2003", "x"): same item when one holds the other.
+// focused() answers a label string or { label, position: { rail, index } }. Position is the stable check: Home rails reorder
+// when other devices play on the shared account, so a `compare: "position"` check ignores the label (kept as info).
+const asFocus = (f) => (f && typeof f === "object" ? { label: norm(f.label), position: f.position ?? null } : { label: norm(f), position: null });
+const samePosition = (a, b) => !!a && !!b && String(a.rail) === String(b.rail) && Number(a.index) === Number(b.index);
 const sameItem = (a, b) => { const t = (s) => s.replace(/^open /, ""); return !!a && !!b && (a === b || t(a).includes(t(b)) || t(b).includes(t(a))); };
 
 async function press(keys) {
@@ -83,12 +87,14 @@ if (only.includes("dpad")) {
       await reach(from);
       await press(d.keys);
       await sleep(800);
-      actual = norm(await driver.focused());
+      actual = asFocus(await driver.focused());
     } catch (e) { console.log(`ERR dpad ${d.id}: ${e.message.split("\n")[0]}`); }
-    if (reference) expected.dpad[d.id] = actual;
-    const want = expected.dpad[d.id];
-    results.push({ id: d.id, pass: sameItem(actual, want), expected: want ?? null, actual });
-    console.log(`${results.at(-1).pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual}${actual === want ? "" : ` (expected ${want})`}`);
+    if (reference) expected.dpad[d.id] = actual && (d.compare === "position" ? actual : actual.label);
+    const w = asFocus(expected.dpad[d.id]);
+    const byPosition = d.compare === "position" && w.position && actual?.position; // a driver without position falls back to the label
+    const pass = byPosition ? samePosition(actual.position, w.position) : !!actual?.label && sameItem(actual.label, w.label);
+    results.push({ id: d.id, pass, compared: byPosition ? "position" : "label", expected: expected.dpad[d.id] ?? null, actual: actual && (actual.position ? actual : actual.label) });
+    console.log(`${pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual?.label}${actual?.position ? ` @${actual.position.rail}:${actual.position.index}` : ""}${pass ? "" : ` (expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""})`}`);
   }
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, "dpad.json"), JSON.stringify({ ...stamp, results }, null, 2));
