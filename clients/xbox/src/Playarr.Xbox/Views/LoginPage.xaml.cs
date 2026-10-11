@@ -84,6 +84,9 @@ namespace Playarr.Xbox.Views
     /// </remarks>
     public sealed partial class LoginPage : Page
     {
+        /// <summary>The pairing code on screen (read by the parity trace so a test can approve it).</summary>
+        internal string PairingCode => UserCodeText.Text;
+
         private const int QrModulePixels = 6;
         private readonly LoginViewModel _viewModel;
         private readonly DispatcherTimer _countdown = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };

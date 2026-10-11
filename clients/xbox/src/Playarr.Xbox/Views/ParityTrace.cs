@@ -104,7 +104,7 @@ namespace Playarr.Xbox.Views
                 var panel = Drawer.Current?.Title ?? string.Empty;
                 var focus = Describe(FocusManager.GetFocusedElement() as DependencyObject, frame.Content);
                 var play = frame.Content is PlayerPage player ? player.Probe() : ("", 0.0);
-                var json = Newtonsoft.Json.JsonConvert.SerializeObject(new { screen, kind, panel, focus, play = play.Item1, pos = Math.Round(play.Item2, 1) });
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(new { screen, kind, panel, focus, play = play.Item1, pos = Math.Round(play.Item2, 1), code = (frame.Content as LoginPage)?.PairingCode });
                 if (json == _last)
                 {
                     return;

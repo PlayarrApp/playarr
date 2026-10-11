@@ -23,7 +23,7 @@ const FIRST_CARD = [947, 254];
 export async function createDriver() {
   const io = process.env.XBOX_IO;
   if (!io) throw new Error("XBOX_IO is required (see the header of this file)");
-  const run = (...a) => execFileSync(io, a.map(String), { encoding: "utf8" });
+  const run = (...a) => execFileSync(io, a.map(String), { encoding: "utf8", shell: /\.cmd$/i.test(io) });
   const click = async (x, y, wait = 6) => { run("click", x, y); await sleep(wait * 1000); };
   const trace = () => { try { return JSON.parse(run("read")); } catch { return {}; } };
   const until = async (fn, seconds, what) => {
