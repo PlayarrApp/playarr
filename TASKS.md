@@ -81,6 +81,7 @@ Steps only the repository owner can perform.
 | 10058 | Scanning and metadata test cases (huge libraries, special characters, multi-part files, extras) | parked | | | | | Parked by owner 2026-10-11: researched and logged; resume when the owner un-parks. 11 cases in docs/testing/media-server-bug-test-plan.md section 11. |
 | 10059 | Security and auth test cases (unauthenticated routes, traversal, injection, token leaks) | parked | | | | | Parked by owner 2026-10-11: researched and logged; resume when the owner un-parks. 11 cases in docs/testing/media-server-bug-test-plan.md section 12. |
 | 10060 | Accessibility test cases (screen readers, focus, contrast, motion) | parked | | | | | Parked by owner 2026-10-11: researched and logged; resume when the owner un-parks. 8 cases in docs/testing/media-server-bug-test-plan.md section 13. |
+| 10104 | Transcode capacity under load: smart handling when a server cannot keep up with demand (measured 11 Oct: 4K HEVC decode on a loaded node runs at about 0.35x realtime, and 503 no_transcode_capacity appears with several devices). Options to evaluate: pre-made renditions for heavy sources, routing to a node with spare CPU or hardware decode, demand-aware admission and queueing, quality step-down, and clear user messaging. Uses the per-case playback profiling data (mode, codecs, resolution, bitrate, time to first frame). | parked | | | | | Owner added 2026-10-12: come back to profile testing as a whole later. |
 
 ## 57. macOS client (2026-10-11)
 

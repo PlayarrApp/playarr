@@ -464,6 +464,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Parity drivers treat the Resume and Open labels of one title as the same focused item.
 - Fire TV: release and debug builds stop with a clear message when the vendored Shaka player is missing (run scripts/setup-shaka.sh), so no build ships unable to play HLS titles.
 - Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.
 - Android phone: the Calendar uses the web phone design: one toolbar row (period, previous, Today, next), agenda without a details panel, week days as columns of the shared entry cards, and en-GB day headings.
