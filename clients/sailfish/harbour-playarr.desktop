@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+X-Nemo-Application-Type=silica-qt5
+Icon=harbour-playarr
+Exec=harbour-playarr
+Name=Playarr
+Comment=Your Playarr library on Sailfish OS
+
+[X-Sailjail]
+Sandboxing=Disabled

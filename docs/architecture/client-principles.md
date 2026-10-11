@@ -35,6 +35,7 @@ distribution.
 | Roku | SceneGraph + native `Video` node. Not a browser channel. |
 | Xbox | UWP / WinUI XAML + Media Foundation / `MediaPlayerElement`. Browser Edge is a **zero-install fallback**, not the product client. |
 | HarmonyOS | ArkTS / ArkUI + platform `AVPlayer`. Not a packaged copy of Playarr Web. |
+| Sailfish OS | Qt 5 / QML with Silica + QtMultimedia, C++ network backend. Not a browser or WebView. |
 | LG webOS / Samsung Tizen | Vendor TV package with platform lifecycle, remote keys, and **native decode surfaces where the vendor exposes them** (e.g. Tizen AVPlay). Sharing React UI with Web is allowed only as a deliberate platform-stack choice, never as a permanent excuse for missing features, weak focus, or non-native playback when a native plane exists. |
 | Hisense VIDAA | Prefer a real installed app when the platform permits one. Hosted Web in the TV browser is a **capability-limited delivery path**, not a licence to ship a thinner product. |
 | Web (browser / PWA) | The browser *is* the platform: React + MSE/Shaka (or equivalent), real scroll containers, keyboard/pointer/D-pad where relevant. "Native" here means first-class web app behaviour, not a thin marketing site. |
