@@ -55,7 +55,9 @@ int main()
     CHECK(PlaybackLogic::negotiationMessage(503, e422), QString());
     CHECK(PlaybackLogic::retryDelayMs(0), 1000);
     CHECK(PlaybackLogic::retryDelayMs(2), 4000);
-    CHECK(PlaybackLogic::retryDelayMs(3), -1);
+    CHECK(PlaybackLogic::retryDelayMs(3), 8000);
+    CHECK(PlaybackLogic::retryDelayMs(7), 8000);
+    CHECK(PlaybackLogic::retryDelayMs(8), -1);
 
     // WebVTT
     const QString vtt = "WEBVTT\r\n\r\n1\r\n00:00:01.000 --> 00:00:03.500 align:start\r\n<i>Hello</i> &amp; bye\r\n\r\n00:01:00.250 --> 01:00:02.000\r\nSecond\r\nline\r\n\r\nbroken --> x\r\nnope\r\n";

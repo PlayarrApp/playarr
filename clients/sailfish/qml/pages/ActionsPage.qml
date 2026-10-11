@@ -64,14 +64,14 @@ PlayarrPage {
         Column {
             id: col
             width: parent.width
-            spacing: 10 * Tokens.u
+            spacing: 13.5 * Tokens.u
             Item {
                 width: parent.width
-                height: 84 * Tokens.u
+                height: 79.5 * Tokens.u
                 Column {
                     anchors { left: parent.left; leftMargin: Tokens.pad; verticalCenter: parent.verticalCenter; right: closeBtn.left; rightMargin: 8 * Tokens.u }
-                    Label { text: qsTr("TITLE ACTIONS"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u; font.letterSpacing: 1.5 * Tokens.u }
-                    Label { width: parent.width; text: page.work.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 26 * Tokens.u }
+                    Label { text: qsTr("TITLE ACTIONS"); color: Tokens.inkMuted; font.family: Tokens.family820; font.pixelSize: 8 * Tokens.u; font.letterSpacing: 0.8 * Tokens.u }
+                    Label { width: parent.width; text: page.work.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -0.6 * Tokens.u; font.pixelSize: 24 * Tokens.u }
                 }
                 MouseArea {
                     id: closeBtn
@@ -82,7 +82,7 @@ PlayarrPage {
                     Label { anchors.centerIn: parent; text: "✕"; color: Tokens.ink; font.pixelSize: 16 * Tokens.u }
                 }
             }
-            ActionRow { glyph: "▶"; text: qsTr("Play"); primary: true; onClicked: page.play() }
+            ActionRow { glyph: "▶"; text: qsTr("Play"); primary: Tokens.dark; onClicked: page.play() }
             ActionRow { glyph: "⤓"; text: qsTr("Download"); visible: !!page.detail && !!page.detail.media_file_id; onClicked: page.download() }
             ActionRow { glyph: "+"; text: qsTr("Add to Playlist"); visible: page.playlists.length > 0; onClicked: page.showPlaylists = !page.showPlaylists }
             Repeater {

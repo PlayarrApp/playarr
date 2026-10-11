@@ -85,7 +85,7 @@ PlayarrPage {
     }
 
     // Series open scrolled to the next-up episode, as the web focuses it.
-    Timer { id: focusEp; interval: 700; onTriggered: if (epPanel.visible) flick.contentY = epPanel.y - 6 * Tokens.u }
+    Timer { id: focusEp; interval: 700; onTriggered: if (epPanel.visible) flick.contentY = epPanel.y + 0.5 * Tokens.u }
     SilicaFlickable {
         id: flick
         anchors.fill: parent
@@ -252,7 +252,7 @@ PlayarrPage {
                     x: Tokens.pad + 4 * Tokens.u; width: parent.width - 2 * Tokens.pad
                     text: page.target && page.target.episode ? (page.target.episode.episode.title || qsTr("Episode")) : ""
                     elide: Text.ElideRight
-                    color: Tokens.ink; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 15 * Tokens.u
+                    color: Tokens.ink; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 16 * Tokens.u
                 }
                 Row {
                     x: Tokens.pad + 4 * Tokens.u; spacing: 11 * Tokens.u
@@ -266,32 +266,54 @@ PlayarrPage {
                     visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.overview
                     text: page.target && page.target.episode ? (page.target.episode.episode.overview || "") : ""
                     wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 11 * Tokens.u
+                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 12.3 * Tokens.u
                 }
-                Row {
-                    x: Tokens.pad
-                    spacing: 8 * Tokens.u
-                    PillButton {
-                        primary: true
-                        fontSize: 11 * Tokens.u
-                        implicitWidth: 100 * Tokens.u
-                        text: "\u25B6  " + (page.targetProgress ? qsTr("Resume") : qsTr("Play"))
-                        onClicked: page.play(page.target.id, page.target.title)
+                // The web lays the actions over a faded slice of the series backdrop.
+                Item {
+                    width: parent.width; height: 68 * Tokens.u
+                    Artwork {
+                        anchors.fill: parent; radius: 0; hero: true
+                        opacity: Tokens.dark ? 0.16 : 0.28
+                        work: page.work
+                        kinds: ["backdrop", "poster", "thumb"]
                     }
-                    PillButton {
-                        fontSize: 9.5 * Tokens.u
-                        implicitWidth: 142 * Tokens.u
-                        text: "+  " + (page.inWatchlist ? qsTr("In watchlist") : qsTr("Add to watchlist"))
-                        onClicked: page.toggleWatchlist()
+                    Rectangle {
+                        anchors.fill: parent
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: "transparent" }
+                            GradientStop { position: 1.0; color: Tokens.bg }
+                        }
                     }
-                    PillButton {
-                        fontSize: 9.5 * Tokens.u
-                        implicitWidth: 126 * Tokens.u
-                        text: "+  " + qsTr("Add to Playlist")
-                        onClicked: pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work })
+                    Row {
+                        y: 1 * Tokens.u
+                        x: Tokens.pad
+                        spacing: 8 * Tokens.u
+                        PillButton {
+                            primary: true
+                            fontSize: 11 * Tokens.u
+                            implicitHeight: 43.5 * Tokens.u
+                            implicitWidth: 100 * Tokens.u
+                            text: "\u25B6  " + (page.targetProgress ? qsTr("Resume") : qsTr("Play"))
+                            onClicked: page.play(page.target.id, page.target.title)
+                        }
+                        PillButton {
+                            fontSize: 9.5 * Tokens.u
+                            implicitHeight: 43.5 * Tokens.u
+                            implicitWidth: 142 * Tokens.u
+                            text: "+  " + (page.inWatchlist ? qsTr("In watchlist") : qsTr("Add to watchlist"))
+                            onClicked: page.toggleWatchlist()
+                        }
+                        PillButton {
+                            fontSize: 9.5 * Tokens.u
+                            implicitHeight: 43.5 * Tokens.u
+                            implicitWidth: 126 * Tokens.u
+                            text: "+  " + qsTr("Add to Playlist")
+                            onClicked: pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work })
+                        }
                     }
                 }
             }
+            Item { width: 1; height: 0 }
             Repeater {
                 model: seasons
                 Column {
@@ -299,20 +321,31 @@ PlayarrPage {
                     width: col.width
                     spacing: 8 * Tokens.u
                     property var sdata: modelData
-                    Label { x: Tokens.pad + 4 * Tokens.u; text: qsTr("Season %1").arg(modelData.season.season_number); color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 17 * Tokens.u }
+                    Label { x: Tokens.pad + 4 * Tokens.u; text: qsTr("Season %1").arg(modelData.season.season_number); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 17.5 * Tokens.u }
                     Label { x: Tokens.pad + 4 * Tokens.u; text: qsTr("%1 episodes").arg(modelData.episodes.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Item { width: 1; height: 0.5 * Tokens.u }
                     ListView {
+                        id: epList
                         width: col.width
-                        height: 176 * Tokens.u * 9 / 16 + 40 * Tokens.u
+                        height: 181.5 * Tokens.u * 9 / 16 + 52 * Tokens.u
                         orientation: ListView.Horizontal
                         spacing: 12 * Tokens.u
                         leftMargin: Tokens.pad
                         rightMargin: Tokens.pad
                         clip: true
                         model: modelData.episodes
+                        // The web opens each rail at the next-up episode of its own season.
+                        function focusNext() {
+                            if (!page.target || !page.target.season || page.target.season.id !== seasonCol.sdata.season.id) return
+                            for (var i = 0; i < modelData.episodes.length; ++i)
+                                if (modelData.episodes[i].media_file_id === page.target.id) { positionViewAtIndex(i, ListView.Beginning); contentX -= Tokens.pad; return }
+                        }
+                        Timer { id: railTimer; interval: 300; onTriggered: epList.focusNext() }
+                        Component.onCompleted: railTimer.start()
+                        Connections { target: page; onTargetChanged: railTimer.restart() }
                         delegate: MouseArea {
                                 id: epCard
-                                readonly property real cw: 176 * Tokens.u
+                                readonly property real cw: 181.5 * Tokens.u
                                 width: cw
                                 height: cw * 9 / 16 + 34 * Tokens.u
                                 enabled: !!modelData.media_file_id
@@ -324,8 +357,11 @@ PlayarrPage {
                                     width: parent.width; height: parent.width * 9 / 16
                                     radius: 10 * Tokens.u; color: Tokens.surfaceSoft; clip: true
                                     Image {
-                                        anchors.fill: parent; fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize.width: 400
-                                        source: modelData.media_file_id ? Api.url("/api/v1/media/" + modelData.media_file_id + "/thumbnail") : ""
+                                        // The web prefers the episode's own still, then the media-file frame.
+                                        readonly property bool hasStill: (modelData.episode.images || []).some(function (i) { return i.kind === "thumb" })
+                                        anchors.fill: parent; fillMode: Image.PreserveAspectCrop; asynchronous: true; mipmap: true; sourceSize.width: 540
+                                        source: hasStill ? Api.url("/api/v1/artwork/episode/" + work.id + "/" + modelData.episode.id + "/thumb?width=540")
+                                              : modelData.media_file_id ? Api.url("/api/v1/media/" + modelData.media_file_id + "/thumbnail") : ""
                                     }
                                     Label { anchors { right: parent.right; bottom: parent.bottom; margins: 8 * Tokens.u }
                                             text: ("0" + modelData.episode.episode_number).slice(-2); color: "#ffffff"; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
@@ -343,10 +379,10 @@ PlayarrPage {
                                     }
                                 }
                                 Row {
-                                    anchors { top: thumb.bottom; topMargin: 8 * Tokens.u; left: parent.left; right: parent.right; leftMargin: 4 * Tokens.u }
+                                    anchors { top: thumb.bottom; topMargin: 13.5 * Tokens.u; left: parent.left; right: parent.right; leftMargin: 4 * Tokens.u }
                                     spacing: 6 * Tokens.u
-                                    Label { id: codeLbl; text: "S" + ("0" + seasonCol.sdata.season.season_number).slice(-2) + " \u00B7 E" + ("0" + modelData.episode.episode_number).slice(-2); color: Tokens.ink; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 8.5 * Tokens.u }
-                                    Label { width: epCard.width - codeLbl.width - 14 * Tokens.u; text: modelData.episode.title || ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 9 * Tokens.u }
+                                    Label { id: codeLbl; text: "S" + ("0" + seasonCol.sdata.season.season_number).slice(-2) + " \u00B7 E" + ("0" + modelData.episode.episode_number).slice(-2); color: Tokens.ink; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 10 * Tokens.u }
+                                    Label { width: epCard.width - codeLbl.width - 14 * Tokens.u; text: modelData.episode.title || ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 11 * Tokens.u }
                                 }
                         }
                     }

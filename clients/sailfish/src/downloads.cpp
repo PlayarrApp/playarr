@@ -42,6 +42,8 @@ void Downloads::load()
         it.received = QFileInfo(it.path).size();
         if (it.state == QLatin1String("downloading"))
             it.state = QStringLiteral("paused"); // the app was closed mid-download
+        if (it.state == QLatin1String("done") && !QFile::exists(it.path))
+            continue; // the file was deleted outside the app: not downloaded any more
         if (!it.ticketId.isEmpty())
             m_items.append(it);
     }
@@ -235,6 +237,7 @@ void Downloads::remove(const QString &ticketId)
             it.file->deleteLater();
         }
         QFile::remove(it.path);
+        emit progress(it.ticketId, it.title, QStringLiteral("removed"), 0, 0);
         break;
     }
     save();

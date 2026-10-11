@@ -31,6 +31,7 @@ ApplicationWindow {
     Component { id: mainPage; MainPage {} }
 
     DownloadNotices {}
+    KeepRules {}
 
     Connections {
         target: Api

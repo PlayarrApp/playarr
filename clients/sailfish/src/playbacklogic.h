@@ -40,8 +40,8 @@ inline QString query(const QVariantMap &o)
     return q.join(QLatin1Char('&'));
 }
 
-// 503 means no transcode capacity right now: retry 3 times with 1 s, 2 s, 4 s; -1 = give up.
-inline int retryDelayMs(int attempt) { return attempt >= 0 && attempt < 3 ? 1000 << attempt : -1; }
+// 503 means no transcode capacity right now: retry 8 times with 1 s, 2 s, 4 s, then 8 s (about 45 s in all); -1 = give up.
+inline int retryDelayMs(int attempt) { return attempt >= 0 && attempt < 8 ? 1000 << qMin(attempt, 3) : -1; }
 
 inline qint64 timestampMs(const QString &t) // "[hh:]mm:ss.mmm"
 {

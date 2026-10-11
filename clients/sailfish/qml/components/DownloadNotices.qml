@@ -2,8 +2,7 @@ import QtQuick 2.6
 import Nemo.Notifications 1.0
 
 // System notifications that follow each download: progress with percent and size, paused, complete and failed.
-// Sailfish groups them under the app. Pause, Resume and Cancel are not offered on the notification: they need a
-// D-Bus service in the app, so they stay in the Downloads tab.
+// Sailfish groups them under the app. Cancelling a download clears its notification.
 Item {
     id: root
     property var notes: ({})
@@ -22,6 +21,10 @@ Item {
         target: Downloads
         onProgress: {
             var n = root.notes[ticketId]
+            if (state === "removed") {
+                if (n) { n.close(); n.destroy(); delete root.notes[ticketId] }
+                return
+            }
             if (!n) { n = noteComp.createObject(root); root.notes[ticketId] = n }
             n.summary = title
             if (state === "downloading") {

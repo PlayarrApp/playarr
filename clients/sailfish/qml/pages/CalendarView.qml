@@ -124,33 +124,27 @@ Item {
             }
         }
     }
-    SilicaFlickable {
-        id: flick
-        visible: root.mode !== "month"
-        anchors { top: nav.bottom; topMargin: 12 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
-        contentHeight: col.height + 120 * Tokens.u
-        clip: true
+    Component {
+        id: dayComp
         Column {
-            id: col
-            width: parent.width
-            spacing: 10 * Tokens.u
-            Repeater {
-                model: root.groups
-                Column {
-                    width: col.width
+                    id: dayCol
+                    property var day
+                    property real cw: col.width
+                    readonly property bool wk: root.mode === "week"
+                    width: cw
                     spacing: 8 * Tokens.u
                     Row {
-                        x: Tokens.pad
+                        x: dayCol.wk ? 0 : Tokens.pad
                         spacing: 8 * Tokens.u
                     Label {
-                        text: Calendar.dayHeading(modelData.date)
+                        text: Calendar.dayHeading(day.date)
                         color: Tokens.ink
                         font.family: Tokens.family
                         font.weight: Font.DemiBold
-                        font.pixelSize: 12.5 * Tokens.u
+                        font.pixelSize: (dayCol.wk ? 14.5 : 12.5) * Tokens.u
                     }
                     Rectangle {
-                        visible: modelData.date === Qt.formatDate(new Date(), "yyyy-MM-dd")
+                        visible: day.date === Qt.formatDate(new Date(), "yyyy-MM-dd")
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 14 * Tokens.u; height: 18 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.brandPink
@@ -158,12 +152,12 @@ Item {
                     }
                     }
                     Repeater {
-                        model: modelData.entries
+                        model: day.entries
                         MouseArea {
                             id: card
-                            x: Tokens.pad
-                            width: col.width - 2 * Tokens.pad
-                            height: Math.max(70 * Tokens.u, info.height + 18 * Tokens.u)
+                            x: dayCol.wk ? 0 : Tokens.pad
+                            width: dayCol.cw - (dayCol.wk ? 0 : 2 * Tokens.pad)
+                            height: Math.max(dayCol.wk ? 91 * Tokens.u : 70 * Tokens.u, info.height + 18 * Tokens.u)
                             onClicked: root.openEntry(modelData)
                             Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: card.pressed ? 0.6 : 1 }
                             // Left border: we have it (playable) or not, never which library.
@@ -173,7 +167,7 @@ Item {
                                 id: poster
                                 x: 14 * Tokens.u
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: 34 * Tokens.u; height: 50 * Tokens.u; radius: 4 * Tokens.u; clip: true
+                                width: (dayCol.wk ? 40 : 34) * Tokens.u; height: (dayCol.wk ? 60 : 50) * Tokens.u; radius: 4 * Tokens.u; clip: true
                                 color: Tokens.surfaceSoft
                                 Image {
                                     anchors.fill: parent
@@ -187,18 +181,18 @@ Item {
                                 id: info
                                 anchors { left: poster.right; leftMargin: 14 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
                                 spacing: 3 * Tokens.u
-                                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.weight: Font.DemiBold; font.pixelSize: 12.5 * Tokens.u }
+                                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.weight: Font.DemiBold; font.pixelSize: (dayCol.wk ? 15 : 12.5) * Tokens.u }
                                 Label {
                                     width: parent.width
                                     visible: text !== ""
                                     text: [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
-                                    elide: Text.ElideRight; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 11 * Tokens.u
+                                    elide: Text.ElideRight; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: (dayCol.wk ? 15 : 11) * Tokens.u
                                 }
                                 Row {
                                     spacing: 10 * Tokens.u
-                                    Label { text: modelData.release_at ? Qt.formatTime(new Date(modelData.release_at), "hh:mm") : qsTr("All day"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 9 * Tokens.u }
-                                    Label { text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("Cinema") : modelData.release_type === "digital" ? qsTr("Digital") : modelData.release_type === "physical" ? qsTr("Physical") : qsTr("Release"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 9 * Tokens.u }
-                                    Label { text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 9 * Tokens.u }
+                                    Label { text: modelData.release_at ? Qt.formatTime(new Date(modelData.release_at), "hh:mm") : qsTr("All day"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: (dayCol.wk ? 13 : 9) * Tokens.u }
+                                    Label { text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("Cinema") : modelData.release_type === "digital" ? qsTr("Digital") : modelData.release_type === "physical" ? qsTr("Physical") : qsTr("Release"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: (dayCol.wk ? 13 : 9) * Tokens.u }
+                                    Label { text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: (dayCol.wk ? 13 : 9) * Tokens.u }
                                     Rectangle {
                                         width: badge.width + 16 * Tokens.u; height: badge.height + 6 * Tokens.u; radius: height / 2
                                         color: "transparent"; border.width: 1; border.color: modelData.has_file ? Tokens.accent : Tokens.brandPink
@@ -209,6 +203,39 @@ Item {
                         }
                     }
                 }
+    }
+    // Week: one column per day side by side, scrolled sideways, as the web lays it out.
+    SilicaFlickable {
+        id: weekFlick
+        visible: root.mode === "week"
+        anchors { top: nav.bottom; topMargin: 12 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
+        contentWidth: weekRow.width + Tokens.pad
+        contentHeight: height
+        flickableDirection: Flickable.HorizontalFlick
+        clip: true
+        Row {
+            id: weekRow
+            x: Tokens.pad
+            spacing: 20 * Tokens.u
+            Repeater {
+                model: root.mode === "week" ? root.groups : []
+                Loader { sourceComponent: dayComp; onLoaded: { item.day = modelData; item.cw = 320 * Tokens.u } }
+            }
+        }
+    }
+    SilicaFlickable {
+        id: flick
+        visible: root.mode === "agenda"
+        anchors { top: nav.bottom; topMargin: 12 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
+        contentHeight: col.height + 120 * Tokens.u
+        clip: true
+        Column {
+            id: col
+            width: parent.width
+            spacing: 10 * Tokens.u
+            Repeater {
+                model: root.mode === "week" ? [] : root.groups
+                Loader { sourceComponent: dayComp; onLoaded: { item.day = modelData; item.cw = Qt.binding(function () { return col.width }) } }
             }
         }
         EdgeFade { target: flick }

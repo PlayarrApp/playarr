@@ -28,7 +28,7 @@ Item {
     PageTitle { id: head; y: 4 * Tokens.u; title: qsTr("Preferences"); onBackClicked: page.goHome() }
     SilicaListView {
         id: list
-        anchors { top: head.bottom; topMargin: 6 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { top: head.bottom; topMargin: 12 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
         model: page.rows
         clip: true
         bottomMargin: 100 * Tokens.u
@@ -36,12 +36,12 @@ Item {
             width: list.width
             height: 87 * Tokens.u
             onClicked: page.open(modelData.id)
-            Rectangle { anchors.fill: parent; color: Tokens.surfaceStrong; opacity: index === 0 ? 0.5 : (parent.pressed ? 0.5 : 0) }
-            Label { x: Tokens.pad; y: 18 * Tokens.u; text: (index + 1 < 10 ? "0" : "") + (index + 1); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 8 * Tokens.u }
+            Rectangle { anchors.fill: parent; color: Tokens.dark ? Tokens.surfaceStrong : Tokens.surfaceSoft; opacity: index === 0 ? (Tokens.dark ? 0.5 : 1) : (parent.pressed ? 0.5 : 0) }
+            Label { x: Tokens.pad; y: 18 * Tokens.u; text: (index + 1 < 10 ? "0" : "") + (index + 1); color: Tokens.inkMuted; font.family: Tokens.family820; font.pixelSize: 8 * Tokens.u }
             Column {
                 anchors { left: parent.left; leftMargin: 56 * Tokens.u; right: arrow.left; rightMargin: 8 * Tokens.u; verticalCenter: parent.verticalCenter }
                 spacing: 4 * Tokens.u
-                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 14.5 * Tokens.u }
+                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 14.5 * Tokens.u }
                 Label { width: parent.width; text: modelData.hint; elide: Text.ElideRight; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 9.5 * Tokens.u }
             }
             Label { id: arrow; anchors.right: parent.right; anchors.rightMargin: Tokens.pad; anchors.verticalCenter: parent.verticalCenter; text: "→"; color: Tokens.inkSoft; font.pixelSize: 13 * Tokens.u }

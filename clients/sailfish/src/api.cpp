@@ -201,8 +201,10 @@ void Api::request(const QString &method, const QString &path, const QVariant &bo
     r.method = method.toUpper();
     r.path = path;
     r.cb = cb;
-    if (body.isValid() && !body.isNull())
-        r.body = QJsonDocument::fromVariant(body).toJson(QJsonDocument::Compact);
+    QVariant b = body;
+    if (b.userType() == qMetaTypeId<QJSValue>()) b = b.value<QJSValue>().toVariant(); // some callers hand over the wrapped value
+    if (b.isValid() && !b.isNull())
+        r.body = QJsonDocument::fromVariant(b).toJson(QJsonDocument::Compact);
     send(r);
 }
 
@@ -314,6 +316,7 @@ void Api::send(const Req &r)
             return;
         }
         const QByteArray raw = reply->readAll();
+        if (status >= 400) qDebug() << "api error" << r.method << r.path << status << raw.left(200);
         finish(r, status, r.text ? QVariant(QString::fromUtf8(raw)) : raw.isEmpty() ? QVariant() : QJsonDocument::fromJson(raw).toVariant());
     });
 }

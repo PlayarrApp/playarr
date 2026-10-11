@@ -1,0 +1,1 @@
+- Sailfish requests sent from QML no longer lose their JSON body when the value arrives wrapped, which had made download tickets fail with 400.
