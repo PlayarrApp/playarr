@@ -1385,6 +1385,26 @@ internal enum class PlayarrString(
         "ภาษาแทร็กเสียงเริ่มต้น",
         "デフォルト音声トラックの言語",
     ),
+    SettingsPlayerAdvancedTitle("Advanced", "ขั้นสูง", "詳細設定"),
+    SettingsPlayerAdvancedDescription(
+        "Override what Playarr decides for this device. Leave both off unless playback is wrong: forcing a format the device cannot show gives a black screen, wrong colours or silence.",
+        "แทนที่การตัดสินใจของ Playarr สำหรับอุปกรณ์นี้ ปล่อยปิดทั้งสองอย่างไว้ เว้นแต่การเล่นผิดปกติ การบังคับรูปแบบที่อุปกรณ์แสดงไม่ได้อาจทำให้จอดำ สีเพี้ยน หรือไม่มีเสียง",
+        "この端末に対するPlayarrの判断を上書きします。再生に問題がない限り両方オフのままにしてください。端末が表示できない形式を強制すると、黒画面、色の異常、無音になることがあります。",
+    ),
+    SettingsPlayerForceDirectVideo("Force direct video", "บังคับเล่นวิดีโอโดยตรง", "映像を強制的にダイレクト再生"),
+    SettingsPlayerForceDirectVideoDescription(
+        "Always send the original picture, even when the device may not support its codec, bit depth or HDR format.",
+        "ส่งภาพต้นฉบับเสมอ แม้อุปกรณ์อาจไม่รองรับตัวแปลงรหัส ความลึกบิต หรือ HDR",
+        "コーデック、ビット深度、HDR形式が端末で非対応の可能性があっても、常に元の映像を送信します。",
+    ),
+    SettingsPlayerForceDirectAudio("Force direct audio", "บังคับเล่นเสียงโดยตรง", "音声を強制的にダイレクト再生"),
+    SettingsPlayerForceDirectAudioDescription(
+        "Always send the original audio, even when the device may not support its codec or channel count.",
+        "ส่งเสียงต้นฉบับเสมอ แม้อุปกรณ์อาจไม่รองรับตัวแปลงรหัสหรือจำนวนช่อง",
+        "コーデックやチャンネル数が端末で非対応の可能性があっても、常に元の音声を送信します。",
+    ),
+    SettingsPlayerForceOff("Off", "ปิด", "オフ"),
+    SettingsPlayerForceOn("On", "เปิด", "オン"),
     SettingsPlayerDeviceNote(
         "Quality and subtitle defaults are saved on this device. Audio language follows your profile.",
         "คุณภาพและคำบรรยายจะบันทึกในอุปกรณ์นี้ ภาษาเสียงจะบันทึกในโปรไฟล์ของคุณ",

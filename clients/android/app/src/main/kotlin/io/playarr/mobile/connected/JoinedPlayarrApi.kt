@@ -269,6 +269,7 @@ internal class JoinedPlayarrApi(
         startPositionMs: Long?,
         audioStreamIndex: Int?,
         ignoreSavedPreferences: Boolean?,
+        caps: Map<String, String>,
     ): PlaybackInfoResponse {
         val server = serverForMedia(mediaFileId)
         return server.api.getPlaybackInfo(
@@ -282,6 +283,7 @@ internal class JoinedPlayarrApi(
             startPositionMs,
             audioStreamIndex,
             ignoreSavedPreferences,
+            caps,
         ).also { response ->
             response.sessionId?.let { registry.registerPlaybackSession(it, server) }
         }

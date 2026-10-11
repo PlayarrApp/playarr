@@ -179,6 +179,7 @@ class MainActivity : ComponentActivity() {
                 navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             )
         }
+        io.playarr.mobile.playback.installPlaybackCaps(applicationContext, if (Build.VERSION.SDK_INT >= 30) display else null)
         io.playarr.mobile.ui.parityNoInsets = !isTelevision &&
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
             intent.getBooleanExtra("parity_no_insets", false)

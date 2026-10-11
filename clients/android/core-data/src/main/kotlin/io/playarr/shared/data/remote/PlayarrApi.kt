@@ -315,6 +315,8 @@ interface PlayarrApi {
         @Query("start_position_ms") startPositionMs: Long? = null,
         @Query("audio_stream_index") audioStreamIndex: Int? = null,
         @Query("ignore_saved_preferences") ignoreSavedPreferences: Boolean? = null,
+        /** Device media capabilities and the force-direct flags (`hdr`, `max_bit_depth`, `max_channels`, `force_direct_video`, ...). */
+        @retrofit2.http.QueryMap caps: Map<String, String> = emptyMap(),
     ): PlaybackInfoResponse
 
     @POST("api/v1/playback/sessions/{session_id}/events")

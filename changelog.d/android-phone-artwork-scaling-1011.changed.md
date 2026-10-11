@@ -1,0 +1,1 @@
+- Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.

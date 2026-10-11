@@ -27,6 +27,15 @@ interface PlaybackRepository {
     ): PlaybackInfoResponse
 }
 
+/**
+ * The device's real media capabilities and force-direct flags, sent with every playback negotiation. The app installs the
+ * provider at start-up (it needs the platform codec and display APIs); the default sends nothing.
+ */
+object PlaybackDeviceCaps {
+    @Volatile
+    var provider: () -> Map<String, String> = { emptyMap() }
+}
+
 class DefaultPlaybackRepository @Inject constructor(
     private val api: PlayarrApi,
 ) : PlaybackRepository {
@@ -53,5 +62,6 @@ class DefaultPlaybackRepository @Inject constructor(
         startPositionMs = startPositionMs,
         audioStreamIndex = audioStreamIndex,
         ignoreSavedPreferences = ignoreSavedPreferences,
+        caps = PlaybackDeviceCaps.provider(),
     )
 }

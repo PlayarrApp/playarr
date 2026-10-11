@@ -1,0 +1,1 @@
+- Android phone: playback negotiation reports the device's real decoder, HDR and audio capabilities, Settings > Player > Advanced has Force direct video and audio (off by default), and a 422 unsupported colour format shows the server's message.

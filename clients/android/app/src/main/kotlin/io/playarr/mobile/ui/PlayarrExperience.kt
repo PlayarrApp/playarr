@@ -183,6 +183,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import coil3.compose.AsyncImage
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
 import coil3.request.ImageRequest
@@ -9677,6 +9679,15 @@ private fun WorkKind.playarrCollectionNoun(): String = playarrString(
     if (this == WorkKind.Artist) PlayarrString.LibraryCollectionArtists else PlayarrString.LibraryCollectionTitles,
 )
 
+private const val UNSUPPORTED_COLOUR_FORMAT_FALLBACK = "This title's colour format can't be converted for this device."
+
+/** The `message` of a 422 `{"error":"unsupported_colour_format","message":...}` body, else the documented text. */
+internal fun unsupportedColourFormatMessage(cause: retrofit2.HttpException): String = runCatching {
+    val body = kotlinx.serialization.json.Json.parseToJsonElement(cause.response()?.errorBody()?.string().orEmpty()).jsonObject
+    val code = body["error"]?.jsonPrimitive?.content
+    body["message"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() && code == "unsupported_colour_format" }
+}.getOrNull() ?: UNSUPPORTED_COLOUR_FORMAT_FALLBACK
+
 internal fun io.playarr.shared.domain.model.PlayarrError.userMessageForExperience(
     subject: PlayarrString,
 ): PlayarrMessage = when (this) {
@@ -9693,6 +9704,8 @@ internal fun io.playarr.shared.domain.model.PlayarrError.userMessageForExperienc
             PlayarrString.ErrorSubjectNotFound,
             mapOf("subject" to subject),
         )
+        // The negotiation could not convert this title's colour format for this device: show the server's own words.
+        422 -> PlayarrMessage.Dynamic(unsupportedColourFormatMessage(cause))
         else -> PlayarrMessage.Localized(
             PlayarrString.ErrorServerStatus,
             mapOf("code" to code),

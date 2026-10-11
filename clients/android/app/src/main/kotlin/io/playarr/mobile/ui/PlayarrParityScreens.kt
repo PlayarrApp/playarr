@@ -3544,6 +3544,28 @@ private fun SettingsSectionContent(
                     color = WebInkSoft,
                     fontSize = 10.sp,
                 )
+                val forceSettings = androidx.compose.ui.platform.LocalContext.current.let { ctx -> remember { io.playarr.mobile.playback.ForceDirectSettings(ctx) } }
+                var forceVideo by remember { mutableStateOf(forceSettings.video) }
+                var forceAudio by remember { mutableStateOf(forceSettings.audio) }
+                PlayerDefaultHeading(
+                    playarrString(PlayarrString.SettingsPlayerAdvancedTitle),
+                    playarrString(PlayarrString.SettingsPlayerAdvancedDescription),
+                    divider = true,
+                )
+                SettingChoiceOptions(
+                    label = playarrString(PlayarrString.SettingsPlayerForceDirectVideo),
+                    choices = listOf(false to playarrString(PlayarrString.SettingsPlayerForceOff), true to playarrString(PlayarrString.SettingsPlayerForceOn)),
+                    selected = forceVideo,
+                    cells = true,
+                ) { forceVideo = it; forceSettings.video = it }
+                Text(playarrString(PlayarrString.SettingsPlayerForceDirectVideoDescription), color = WebInkMuted, fontSize = 10.sp)
+                SettingChoiceOptions(
+                    label = playarrString(PlayarrString.SettingsPlayerForceDirectAudio),
+                    choices = listOf(false to playarrString(PlayarrString.SettingsPlayerForceOff), true to playarrString(PlayarrString.SettingsPlayerForceOn)),
+                    selected = forceAudio,
+                    cells = true,
+                ) { forceAudio = it; forceSettings.audio = it }
+                Text(playarrString(PlayarrString.SettingsPlayerForceDirectAudioDescription), color = WebInkMuted, fontSize = 10.sp)
                 Text(
                     playarrString(PlayarrString.SettingsPlayerDeviceNote),
                     color = WebInkMuted,
