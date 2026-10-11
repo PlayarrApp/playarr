@@ -319,7 +319,7 @@ export function PlayerPanel(): React.ReactElement {
   const levelLabel = {low: t('quality.level.low'), medium: t('quality.level.medium'), high: t('quality.level.high')};
   const tierLabel = {sd: t('quality.tier.sd'), hd: t('quality.tier.hd'), fhd: t('quality.tier.fhd'), uhd: t('quality.tier.uhd')};
   return (
-    <ScrollView style={{position: 'absolute', left: 0, top: 0, width: u(1920), height: u(1080)}} contentContainerStyle={{height: u(1700)}} showsVerticalScrollIndicator={false}>
+    <ScrollView style={{position: 'absolute', left: 0, top: 0, width: u(1920), height: u(1080)}} contentContainerStyle={{height: u(2100)}} showsVerticalScrollIndicator={false}>
       <Box x={773.8} y={210} w={995}>
         <SectionTitle>{t('settings.playerPreferences.qualityTitle')}</SectionTitle>
         <Gap h={5.2} />
@@ -427,6 +427,43 @@ export function PlayerPanel(): React.ReactElement {
           </ChoiceCard>
         </Box>
       ))}
+      <Box x={773.8} y={1015 + Math.ceil(AUDIO_LANGUAGES.length / 2) * 74 + 12}>
+        <Divider />
+      </Box>
+      <Box x={773.8} y={1015 + Math.ceil(AUDIO_LANGUAGES.length / 2) * 74 + 12 + 30} w={995}>
+        <SectionTitle>{t('settings.playerPreferences.advancedTitle')}</SectionTitle>
+        <Gap h={5.2} />
+        <T size={13.12} weight={400} lh={20.3} color={colour.inkMuted}>
+          {t('settings.playerPreferences.advancedDescription')}
+        </T>
+        {(
+          [
+            ['forceDirectVideo', 'forceDirectVideoTitle', 'forceDirectVideoDescription'],
+            ['forceDirectAudio', 'forceDirectAudioTitle', 'forceDirectAudioDescription'],
+          ] as const
+        ).map(([key, title, description]) => (
+          <React.Fragment key={key}>
+            <Gap h={24} />
+            <T size={14.4} weight={700} lh={22} color={colour.ink}>
+              {t(`settings.playerPreferences.${title}`)}
+            </T>
+            <T size={13.12} weight={400} lh={20.3} color={colour.inkMuted}>
+              {t(`settings.playerPreferences.${description}`)}
+            </T>
+            <Gap h={12} />
+            <Segmented
+              accessibilityLabel={t(`settings.playerPreferences.${title}`)}
+              w={400}
+              value={defaults[key] ? 'on' : 'off'}
+              options={[
+                {id: 'off', label: t('settings.playerPreferences.forceOff')},
+                {id: 'on', label: t('settings.playerPreferences.forceOn')},
+              ]}
+              onChange={(next) => update({[key]: next === 'on'})}
+            />
+          </React.Fragment>
+        ))}
+      </Box>
     </ScrollView>
   );
 }

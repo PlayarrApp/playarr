@@ -73,7 +73,8 @@ import {QualityMenu, originalLabel} from '../player/QualityMenu';
 import {Sheet, SheetOption} from '../tv/Sheet';
 import {getSharedVegaPlaybackEngine} from '../platform/media/VegaPlaybackEngine';
 import {VegaVideoSurface} from '../platform/media/VegaVideoSurface';
-import {VEGA_PLAYBACK_CAPABILITIES} from '../lib/playbackCapabilities';
+import {negotiationErrorText, playbackCapabilities} from '../lib/playbackCapabilities';
+import {readPlayerDefaults} from '../lib/playerDefaults';
 import {clearActivePlayerSession, readActivePlayerSession, writeActivePlayerSession} from '../lib/playerSession';
 import {colour} from '../theme/tokens';
 import {resumeSecondsFromServer, settleWithin, shouldWriteProgress} from '../lib/progressRules';
@@ -154,10 +155,12 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     onVisibleChange?.(visible);
   }, [visible, onVisibleChange]);
 
+  // Read once per player: the switches change in Settings, not while a title plays.
+  const [forceDefaults] = useState(readPlayerDefaults);
   const negotiation = usePlaybackInfo(
     client,
     mediaFileId ?? undefined,
-    quality.profile ? {...VEGA_PLAYBACK_CAPABILITIES, profile: quality.profile, forceTranscode: true} : VEGA_PLAYBACK_CAPABILITIES,
+    quality.profile ? playbackCapabilities(forceDefaults, {profile: quality.profile, forceTranscode: true}) : playbackCapabilities(forceDefaults),
   );
 
   const loadedSessionIdRef = useRef<string | null>(null);
@@ -563,7 +566,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
           <Text style={styles.errorTitle}>This title cannot be played as it is</Text>
           <Text style={styles.errorMessage}>
             {negotiationFailed
-              ? 'The server could not prepare it for this device.'
+              ? negotiationErrorText(negotiation.status === 'error' ? negotiation.message : '')
               : 'This device cannot decode it (often its audio format). Choose a quality below to have the server convert it.'}
           </Text>
           <View style={{flexDirection: 'row'}}>
