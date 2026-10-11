@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS: every nav tab can be clicked and hovered (only the active tab was enabled), and a drawer opens with its close button focused as on tvOS; the debug remote gained targets, hover and rclick commands (57.10025).
 - macOS: the production Home no longer sits 32 pt too high with a strip at the bottom (the stage coordinate space replaces the window's global space on the Mac, 57.10025).
 - Xbox: arrow keys and the D-pad move focus spatially across the nav rail, Home rails and grids (Up and Down on Home no longer scroll instead of moving focus), detail pages focus Play or the next-up episode, and Escape or the Back key goes back one level.
 - Starting the same title from several devices of one account no longer fails with `no_transcode_capacity`: devices at the same start position share one on-demand transcode (the process stops when the last viewer leaves), a video-copy remux takes a quarter of a transcode slot, and a full node answers 503 with `Retry-After` while the web and Android players retry with back-off.
@@ -452,6 +453,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android phone: the profile avatar moves into the bottom navigation as on the web phone layout, the library header title uses the 21.6 px phone title and its actions sit flush with the content grid, Home cards use the 8.8 px label with the small detail line hanging below, and debug parity captures can hide the system bars.
+- Fire TV: on the film page the Cast and Crew tracks start where the web's do (Chapters 351 px, each person track 284 px).
 - Xbox: the player's controls follow the web's set and layout: previous and next, play/pause, the time, mute, audio and subtitles, queue, the quality chip and playback info.
 - Xbox: a title's Play button resumes from the saved position ("Resume from 1:23") and a series opens on the next item to play (the episode part-watched most recently, else the one after the last finished), as on the web.
 - Linux phone client: identify as linux-phone to the server as well as the link broker.
@@ -2737,6 +2740,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- tvOS (debug builds only): the app writes its current route and focused item label to parity-state.json in its Documents folder for the shared parity suite driver.
 - Parity: a Sailfish OS driver for the shared device suite (scripts/parity/sailfish/driver.mjs) that drives the app on the emulator over ssh and captures the display over VNC.
 - Shared device parity suite (scripts/parity/suite.json, suite-run.mjs, web reference driver, validator test) and docs/parity/SUITE.md and DEVICES.md.
 - Parity: the live web capture waits for skeleton loaders to clear before the screenshot.

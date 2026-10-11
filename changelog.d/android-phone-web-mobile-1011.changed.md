@@ -1,1 +1,0 @@
-- Android phone: the profile avatar moves into the bottom navigation as on the web phone layout, the library header title uses the 21.6 px phone title and its actions sit flush with the content grid, Home cards use the 8.8 px label with the small detail line hanging below, and debug parity captures can hide the system bars.
