@@ -59,6 +59,7 @@ import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 import { ROUTES } from '../navigation/Routes';
 
 import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
+import { openInBrowser } from '../util/ExternalLink';
 import { activeColors, setThemeModeSetting, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
@@ -97,6 +98,11 @@ const TV_CHOICE_GAP: number = 42;
 const TV_ACTION_HEIGHT: number = 44;
 const TV_ACTION_ICON: number = 18;
 const TV_ACTION_TEXT: number = 10.752;
+// Web foot-of-page pills at y=1002: Check for updates from x=48, Clients ending at x=1866.
+const FOOTER_TOP: number = 1002;
+const FOOTER_LEFT: number = 48;
+const FOOTER_RIGHT_LEFT: number = 1752;
+const CLIENTS_URL: string = 'https://playarr.app/clients';
 // Web `.theme-select` on the profile picker: 144 wide at (1551, 50).
 const THEME_SELECT_LEFT: number = 1551;
 const THEME_SELECT_TOP: number = 50;
@@ -135,6 +141,8 @@ struct Profiles {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
 
+  /** Web's update note under the Check for updates pill; '' before it is tapped. */
+  @State private updateNote: string = '';
   @State private viewState: ProfilesViewState = ProfilesViewState.Loading;
   @State private profiles: AvailableProfileResponse[] = [];
   @State private errorMessage: string = '';
@@ -302,6 +310,23 @@ struct Profiles {
     return profile.pin_locked ? 'PIN required' : 'Ready';
   }
 
+  /** Web's foot-of-page pills (Check for updates, Clients): a 44 px pill on surface-strong at 0.64, text only. */
+  @Builder
+  private footerPill(label: string, x: number, y: number, onTap: () => void): void {
+    Text(label)
+      .fontSize(tv(TV_ACTION_TEXT))
+      .fontWeight(FontWeight.Bold)
+      .fontColor(toResourceColor(activeColors().inkSoft))
+      .height(tv(TV_ACTION_HEIGHT))
+      .padding({ left: tv(17), right: tv(17) })
+      .borderRadius(tv(TV_ACTION_HEIGHT / 2))
+      .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
+      .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
+      .position({ x: tv(x), y: tv(y) })
+      .focusable(true)
+      .onClick(onTap)
+  }
+
   /** Web `.profile-action-button`: a 44 px pill on surface-strong at 0.64. */
   @Builder
   private tvActionButton(icon: Resource, label: string, tint: RgbaColor, onTap: () => void): void {
@@ -336,6 +361,20 @@ struct Profiles {
     Stack({ alignContent: Alignment.Top }) {
       PlayarrLogo({ logoSize: tv(TvGeometry.logoSize) })
         .position({ x: tv(TvGeometry.logoLeft), y: tv(TvGeometry.logoTop) })
+      // Web's foot-of-page pills: Check for updates (bottom left) and the Clients link (bottom right). HarmonyOS has
+      // no in-app installer, so the update check says what web says for a build that cannot update itself.
+      this.footerPill(this.updateNote.length > 0 ? 'Try update again' : 'Check for updates', FOOTER_LEFT, FOOTER_TOP, (): void => {
+        this.updateNote = 'This Playarr build cannot start native updates.';
+      })
+      if (this.updateNote.length > 0) {
+        Text(this.updateNote)
+          .fontSize(tv(13.4))
+          .fontColor(toResourceColor(activeColors().inkSoft))
+          .position({ x: tv(FOOTER_LEFT), y: tv(FOOTER_TOP - 28) })
+      }
+      this.footerPill('Clients ↗', FOOTER_RIGHT_LEFT, FOOTER_TOP, (): void => {
+        openInBrowser(getContext(this), CLIENTS_URL);
+      })
       // Web's top-right theme control (the language select needs the Language setting, which is not built here).
       SelectField({
         options: THEME_CHOICES,
