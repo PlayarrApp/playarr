@@ -85,3 +85,15 @@ stage image, the web draws the raw art in greyscale at 40% in light, so a `style
 states (the web scrolls rails with its own track algorithm, the Roku uses floating focus), and three capture flukes to repeat:
 watchlist (92%, a loading race), settings-player (the web capture is missing) and the player screens (the light web player capture did not
 reveal its controls). Household blocked needs a restricted profile, which the real device account is not, and stays a documented exception.
+
+## Owner requirements that Roku cannot meet (11 October)
+
+- **Downloads** (start, pause, resume, cancel, delete, edit keep-until and quality, offline playback): not supported. A Roku channel has no
+  persistent file storage it can fill and play from, so the Downloads entry stays hidden, as web hides it when storage is unavailable. The
+  device downloads suite records `downloads.json` with `supported: false` and no results.
+- **Download notifications**: not applicable (no downloads, and a channel has no system notification API).
+- **Now-playing notifications**: Roku has no media-notification API for channels. The Video node already reports the title, position and
+  duration to the system (visible through ECP `query/media-player` and the Roku mobile app remote), and the remote's play, pause, rewind and
+  fast-forward keys control the player. Artwork in a system now-playing entry is not possible: the server's art needs the sign-in headers,
+  which the system cannot send.
+
