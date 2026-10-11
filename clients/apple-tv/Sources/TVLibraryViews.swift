@@ -70,7 +70,7 @@ struct TVHomeView: View {
         // Screen coordinates: the stage's own origin (after the nav column) is subtracted once here.
         let origin = geo.frame(in: tvScreenSpace).origin
         ZStack(alignment: .topLeading) {
-            liveHeroBackdrop(hero)
+            liveHeroBackdrop(hero, wide: hero?.id == rails.first?.works.first?.id)
                 .frame(width: 1920, height: 1080)
                 .offset(x: -origin.x, y: -origin.y)
                 .allowsHitTesting(false)
@@ -544,11 +544,12 @@ struct TVHomeView: View {
         }
     }
 
-    private func liveHeroBackdrop(_ hero: Work?) -> some View {
+    /// `wide`: the Home's first hero, which web loads at 1920 (every other hero reuses the 780 card art).
+    private func liveHeroBackdrop(_ hero: Work?, wide: Bool = false) -> some View {
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated
             if let hero {
-                TVKeyArt(url: imageURL(for: hero, prefer: .backdrop))
+                TVKeyArt(url: imageURL(for: hero, prefer: .backdrop, width: wide ? 1920 : nil))
             }
             TVStageWash()
         }
@@ -660,12 +661,12 @@ struct TVHomeView: View {
         }
     }
 
-    private func imageURL(for work: Work, prefer kind: ImageKind) -> URL? {
+    private func imageURL(for work: Work, prefer kind: ImageKind, width: Int? = nil) -> URL? {
         let path = work.images.first(where: { $0.kind == kind })?.url
             ?? work.images.first(where: { $0.kind == .poster })?.url
             ?? work.images.first?.url
         guard let path else { return nil }
-        return environment.apiClient.resolvedURL(forPath: path)
+        return environment.apiClient.artworkURL(forPath: path, width: width)
     }
 }
 
@@ -764,7 +765,7 @@ struct TVHomeCard: View {
             ?? work.images.first(where: { $0.kind == .thumb })?.url
             ?? work.images.first(where: { $0.kind == .poster })?.url
         guard let path else { return nil }
-        return apiClient.resolvedURL(forPath: path)
+        return apiClient.artworkURL(forPath: path)
     }
 }
 
@@ -958,7 +959,7 @@ struct TVWorkArt: View {
         let path = order.lazy.compactMap { kind in work.images.first(where: { $0.kind == kind })?.url }.first
             ?? work.images.first?.url
         guard let path else { return nil }
-        return apiClient.resolvedURL(forPath: path)
+        return apiClient.artworkURL(forPath: path)
     }
 }
 
@@ -1000,7 +1001,7 @@ struct TVSearchView: View {
         let path = work.images.first(where: { $0.kind == .backdrop })?.url
             ?? work.images.first(where: { $0.kind == .poster })?.url
         guard let path else { return nil }
-        return environment.apiClient.resolvedURL(forPath: path)
+        return environment.apiClient.artworkURL(forPath: path)
     }
 
     private func selectedWork(_ model: TVSearchViewModel) -> Work? {
@@ -1759,7 +1760,7 @@ struct TVLibraryKindView: View {
         let path = work.images.first(where: { $0.kind == .backdrop })?.url
             ?? work.images.first(where: { $0.kind == .poster })?.url
         guard let path else { return nil }
-        return environment.apiClient.resolvedURL(forPath: path)
+        return environment.apiClient.artworkURL(forPath: path)
     }
 
     @ViewBuilder

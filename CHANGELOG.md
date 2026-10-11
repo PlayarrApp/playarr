@@ -453,6 +453,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- tvOS and macOS: artwork is requested at the width web asks for (poster 360, thumb and logo 540, banner and backdrop 780, the first Home hero 1920, cast photos 240) instead of the full-size original, so the pictures are scaled the same way as on web (57.10025, 17.470).
 - Fire TV: artwork is requested at the width the web asks for (poster 360, backdrop and banner 780, other kinds 540), so the device decodes and scales the same pixels as the browser.
 - Xbox: Back from a title returns focus to the card that was focused on Home or the library, as the web does.
 - Android phone: the profile avatar moves into the bottom navigation as on the web phone layout, the library header title uses the 21.6 px phone title and its actions sit flush with the content grid, Home cards use the 8.8 px label with the small detail line hanging below, and debug parity captures can hide the system bars.

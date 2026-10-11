@@ -932,3 +932,22 @@ let tvScreenSpace: CoordinateSpace = .named(macStageSpace)
 #else
 let tvScreenSpace: CoordinateSpace = .global
 #endif
+
+// MARK: - Artwork widths (as web)
+
+extension PlayarrAPIClient {
+    /// Web asks the artwork route for a snapped width (`w`) instead of the full-size original, per image kind
+    /// (`defaultArtworkWidth` in clients/tv-web/web/src/lib/artwork.tsx), so every client shows the same bytes and
+    /// resamples the same way. The server never upscales; non-artwork paths are returned unchanged.
+    func artworkURL(forPath path: String, width: Int? = nil) -> URL? {
+        guard let url = resolvedURL(forPath: path) else { return nil }
+        guard path.contains("/api/v1/artwork/"), var parts = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return url }
+        var query = parts.queryItems ?? []
+        guard !query.contains(where: { $0.name == "w" }) else { return url }
+        let kind = path.split(separator: "?").first?.split(separator: "/").last.map(String.init) ?? ""
+        let byKind = ["poster": 360, "thumb": 540, "logo": 540, "banner": 780, "backdrop": 780]
+        query.append(URLQueryItem(name: "w", value: String(width ?? byKind[kind] ?? 540)))
+        parts.queryItems = query
+        return parts.url ?? url
+    }
+}

@@ -38,7 +38,7 @@ struct TVCalendarView: View {
     @ViewBuilder
     private func content(_ model: CalendarViewModel) -> some View {
         if model.mode == .agenda, let item = selectedAgendaItem(model), let entry = item.entries.first {
-            TVKeyArt(url: entry.posterURL.flatMap { environment.apiClient.resolvedURL(forPath: $0) })
+            TVKeyArt(url: entry.posterURL.flatMap { environment.apiClient.artworkURL(forPath: $0) })
             TVStageWash()
             agendaDetail(entry, item: item, today: model.today)
         }

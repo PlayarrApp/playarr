@@ -485,7 +485,7 @@ struct TVWorkDetailView: View {
                         .font(TVTheme.font(size: 34.4, css: 640))
                         .tracking(-1.72)
                         .foregroundStyle(DesignTokens.Color.textSecondary)
-                    if let url = credit.person.headshotURL.flatMap({ apiClient.resolvedURL(forPath: $0) }),
+                    if let url = credit.person.headshotURL.flatMap({ apiClient.artworkURL(forPath: $0, width: 240) }),
                        url.scheme?.hasPrefix("http") == true {
                         AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { Color.clear }
                     }
@@ -667,6 +667,6 @@ struct TVWorkDetailView: View {
         let path = work.images.first(where: { $0.kind == .backdrop })?.url
             ?? work.images.first(where: { $0.kind == .poster })?.url
         guard let path else { return nil }
-        return apiClient.resolvedURL(forPath: path)
+        return apiClient.artworkURL(forPath: path)
     }
 }
