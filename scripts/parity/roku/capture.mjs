@@ -11,6 +11,7 @@
 // The shell clock cannot be frozen on a Roku, so the clock rectangle is masked in the diff (--mask-rect above).
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, rmSync } from "node:fs";
+import net from "node:net";
 import { join } from "node:path";
 
 const [out, theme = "dark", ...only] = process.argv.slice(2);
@@ -19,6 +20,19 @@ const password = process.env.ROKU_DEV_PASSWORD;
 if (!out || !target || !password) {
   console.error("usage: ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pw> capture.mjs <out-dir> [dark|light] [screen-id ...]");
   process.exit(2);
+}
+// The debug console (port 8085) prints PARITY|screen|<name> on every screen change; the last one tells whether the channel is signed out.
+let consoleScreen = "";
+{
+  let buf = "";
+  const sock = net.connect(8085, target);
+  sock.on("error", () => {});
+  sock.on("data", (d) => {
+    buf += d;
+    const lines = buf.split("\n"); buf = lines.pop();
+    for (const l of lines) { const m = /PARITY\|screen\|(\w+)/.exec(l); if (m) consoleScreen = m[1]; }
+  });
+  sock.unref();
 }
 const dest = join(out, "tv", theme);
 mkdirSync(dest, { recursive: true });
@@ -49,7 +63,15 @@ const toHome = async () => { await coldStart(); await press("Select", 10); };
 // Watchlist 5, Requests 6, Calendar 7 (no Sites or Music in the fixture, no Downloads on Roku).
 // The real device account also has a Music library, which adds a dock entry before Playlists (ROKU_DOCK_HAS_MUSIC=1).
 const hasMusic = process.env.ROKU_DOCK_HAS_MUSIC === "1";
-const dock = async (steps, wait = 8) => { const downs = hasMusic && steps >= 4 ? steps + 1 : steps; await press("Left"); await presses(Array(downs).fill("Down"), 0.8); await press("Select", wait); };
+const dock = async (steps, wait = 8) => {
+  // Left enters the dock level with the focused card, so walk it from the bottom: Down clamps on the identity chip (slot 10), then
+  // Up counts back to the entry: Calendar 1, Requests 2, Watchlist 3, Playlists 4, Music 5, Movies 6, Series 7, Home 8, Search 9.
+  const index = hasMusic && steps >= 4 ? steps + 1 : steps;
+  await press("Left", 0.8);
+  await presses(Array(12).fill("Down"), 0.35);
+  await presses(Array(9 - index).fill("Up"), 0.6);
+  await press("Select", wait);
+};
 // Preferences opens from the profile picker's gear; the section rows are walked with Down and opened with Select.
 const settings = async (row) => {
   await coldStart();
@@ -71,7 +93,9 @@ const screens = {
   calendar: async () => { await toHome(); await dock(7, 16); },
   // Legend ids (the shared 15-screen suite).
   profiles: async () => { await coldStart(); },
-  music: async () => { await toHome(); await press("Left"); await presses(Array(4).fill("Down"), 0.8); await press("Select", 12); },
+  music: async () => { await toHome(); await press("Left", 0.8); await presses(Array(12).fill("Down"), 0.35); await presses(Array(5).fill("Up"), 0.6); await press("Select", 12); },
+  // Title actions: long-press Select on the first library card (web: the context menu of the same card).
+  actions: async () => { await toHome(); await dock(3, 14); await ecp("keydown/Select"); await sleep(1.2); await ecp("keyup/Select"); await sleep(3); },
   // The calendar opens on the month view; the range switcher (header, left of Previous) chooses Month, Week or Agenda.
   "calendar-month": async () => { await toHome(); await dock(7, 16); },
   "calendar-week": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Up", "Up", "Left", "Left", "Select"], 0.8); await sleep(3); await presses(["Down", "Select"], 1); await sleep(14); },
@@ -84,8 +108,8 @@ const screens = {
   // diff compares only the chrome (screens.json compareRegions, diff.mjs --chrome-only).
   // The first Home card (the most recently watched film; the web reference plays the same file): open it, Play, wait for the
   // stream, pause. The video plane screenshots black, so the diff compares the chrome only (--chrome-only).
-  "player-controls": async () => { await toHome(); await presses(["Select", "Select"], 25); await press("play", 2); await press("Down", 2); },
-  "player-quality-menu": async () => { await toHome(); await presses(["Select", "Select"], 25); await press("play", 2); await press("Up", 2); },
+  "player-controls": async () => { await toHome(); await presses(["Select", "Select"], 25); await press("Play", 2); await press("Down", 1); },
+  "player-quality-menu": async () => { await toHome(); await presses(["Select", "Select"], 25); await press("Play", 2); await press("Up", 1); },
   // Scrolled states (owner rule): a Home rail several cards in, a library grid several rows down, a long settings panel.
   "home-scrolled": async () => { await toHome(); await press("Down", 2); await presses(Array(7).fill("Right"), 1.4); await sleep(3); },
   "movies-scrolled": async () => { await toHome(); await dock(3, 14); await presses(Array(7).fill("Down"), 0.8); await sleep(3); },
@@ -111,11 +135,11 @@ function shoot(id) {
   const r = spawnSync("systemd-run", ["--user", "--scope", "-q", "-p", "MemoryHigh=2G", "-p", "MemoryMax=3G", "-p", "MemorySwapMax=0", "--",
     "timeout", "120", "ffmpeg", "-threads", "2", "-y", "-v", "error", "-i", jpg, "-frames:v", "1", png], { stdio: "inherit" });
   if (r.status !== 0) throw new Error(`ffmpeg failed for ${id}`);
-  // Never keep a signed-out capture: the pairing screen's white QR tile sits at x 840-1080, y 400-640 (a session evicted by
-  // other logins on the same account shows it). A white tile there on any screen but the pairing one aborts the run.
-  const probe = spawnSync("systemd-run", ["--user", "--scope", "-q", "-p", "MemoryHigh=2G", "-p", "MemoryMax=3G", "-p", "MemorySwapMax=0", "--", "timeout", "120", "ffmpeg", "-threads", "2", "-v", "error", "-i", png, "-vf", "crop=40:40:850:410,scale=1:1", "-f", "rawvideo", "-pix_fmt", "gray", "-"], { encoding: "buffer" });
-  if (theme === "dark" && probe.stdout?.[0] > 190) { rmSync(png); throw new Error(`${id}: the channel is signed out (pairing screen captured); sign in again and re-run`); }
-  rmSync(jpg);
+  // Never keep a signed-out capture: the channel reports its screen on the debug console, and the pairing screen means the session is gone.
+  if (consoleScreen === "pairing" || consoleScreen === "status") {
+    rmSync(png);
+    throw new Error(`${id}: the channel is signed out (pairing screen); sign in again and re-run`);
+  }
 }
 
 // The theme preference lives in the channel's registry; the profile picker's theme dropdown (System, Light, Dark) sets it.

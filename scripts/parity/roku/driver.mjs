@@ -28,7 +28,7 @@ export async function createDriver({ out }) {
   const press = async (key, s = 1.2) => { await ecp(`keypress/${key}`); await wait(s); };
 
   // Debug console: keep the latest screen, kinds and focus, with a sequence number to wait for changes.
-  const st = { screen: "", browse: "", detail: "", page: "", panel: "", focus: null, seq: 0 };
+  const st = { screen: "", browse: "", detail: "", page: "", panel: "", view: "", focus: null, seq: 0 };
   let sock, buf = "";
   const connect = () => new Promise((ok, fail) => {
     sock = net.connect(8085, target, ok);
@@ -41,7 +41,7 @@ export async function createDriver({ out }) {
         if (!m) continue;
         const [, kind, text] = m;
         st.seq += 1;
-        if (kind === "screen") { st.screen = text; st.panel = ""; st.focus = null; }
+        if (kind === "screen") { st.screen = text; st.panel = ""; st.focus = null; if (text !== "page") st.view = ""; }
         else if (kind === "focus") st.focus = text;
         else st[kind] = text;
       }
@@ -100,18 +100,50 @@ export async function createDriver({ out }) {
       await until(() => st.focus, 90, "the first Home card");
       await wait(25);
     },
-    // Calendar views and the filters panel have no D-pad keys in the suite: reach them the way a Roku viewer does.
+    // Every screen is reached by deep link (suite-run --via route): the dock walk is Left, Down until the identity chip, Up back to
+    // the entry (Calendar 1, Requests 2, Watchlist 3, Playlists 4, Music 5, Movies 6, Series 7, Home 8, Search 9).
     async route(path) {
-      if (path.startsWith("/movies?panel=filters")) {
-        for (const k of ["Left", "Down", "Down", "Down", "Select"]) await press(k, 0.8);
-        await until(() => st.browse === "movie" || st.screen === "browse", 30, "the movies library");
-        await wait(14);
+      const dockTo = async (ups) => { await press("Left", 0.8); for (let i = 0; i < 12; i += 1) await press("Down", 0.35); for (let i = 0; i < ups; i += 1) await press("Up", 0.6); await press("Select", 0.8); };
+      const library = async (ups, kind) => { await dockTo(ups); await until(() => st.browse === kind, 30, `the ${kind} library`); await until(() => st.focus !== null, 90, "the first library item"); await wait(10); };
+      const [pathname, query = ""] = path.split("?");
+      if (pathname === "/") return;
+      if (pathname === "/movies" && !query) { await library(6, "movie"); return; }
+      if (pathname === "/movies" && query.includes("panel=filters")) {
+        await library(6, "movie");
         await press("Info", 1); await press("Up", 1); await press("Select", 3);
         st.panel = "filters";
-      } else if (path.startsWith("/calendar")) {
-        for (const k of ["Left", ...Array(10).fill("Down"), "Select"]) await press(k, 0.8);
+      } else if (pathname === "/series") await library(7, "series");
+      else if (pathname === "/music") await library(5, "artist");
+      else if (pathname === "/search") { await dockTo(9); await until(() => st.screen === "search", 30, "search"); await wait(4); }
+      else if (pathname === "/profiles") { await dockTo(0); await until(() => st.screen === "profiles", 30, "the profiles page"); await wait(3); }
+      else if (pathname === "/settings") {
+        await dockTo(0); await until(() => st.screen === "profiles", 30, "the profiles page"); await wait(3);
+        for (const k of ["Down", "Left", "Select"]) await press(k, 1);
+        await until(() => st.screen === "settings", 30, "preferences"); await wait(3);
+      } else if (pathname === "/calendar") {
+        await dockTo(1);
         await until(() => st.page === "calendar", 30, "the calendar");
         await wait(16);
+        // The range switcher (left of Previous) chooses the view: Month is the default, Week and Agenda are one and two rows down.
+        const view = /view=(week|agenda)/.exec(query)?.[1];
+        if (view) {
+          for (const k of ["Up", "Up", "Up", "Up", "Left", "Left", "Select"]) await press(k, 0.8);
+          await wait(3);
+          for (const k of view === "week" ? ["Down", "Select"] : ["Down", "Down", "Select"]) await press(k, 1);
+          await wait(14);
+          st.view = view;
+        }
+      } else if (pathname.startsWith("/movies/") || pathname.startsWith("/series/") || pathname.startsWith("/player/") || pathname === "/movies") {
+        // Detail pages open the second library item, as the suite's keys do (right, select); the player plays that title.
+        const series = pathname.startsWith("/series/");
+        await library(series ? 7 : 6, series ? "series" : "movie");
+        await press("Right", 0.8); await press("Select", 1);
+        await until(() => st.screen === "detail", 30, "the detail page"); await wait(12);
+        if (pathname.startsWith("/player/")) {
+          await press("Select", 1);
+          await until(() => st.screen === "playback", 30, "the player"); await wait(20);
+          await press("Play", 1.5); await press("Down", 1);
+        }
       } else throw new Error(`no route for ${path}`);
     },
     async key(name, { long } = {}) {
@@ -132,13 +164,19 @@ export async function createDriver({ out }) {
         case "search": return "/search";
         case "playlists": return "/playlists";
         case "playback": return "/player/x";
+        case "drawer": return "/movies";
         case "browse": return `${lib[st.browse] ?? `/${st.browse}`}${st.panel ? `?panel=${st.panel}` : ""}`;
-        case "page": return `/${st.page}`;
+        case "page": return st.page === "calendar" && st.view && st.view !== "month" ? `/calendar?view=${st.view}` : `/${st.page}`;
         case "detail": return `${lib[st.detail] ?? `/${st.detail}`}/x`;
         default: return `/${st.screen}`;
       }
     },
-    async focused() { return st.focus; },
+    // The focus event of a rail or grid move arrives after the move animation: wait until none has come for 1.5 s.
+    async focused() {
+      let seen = st.seq;
+      for (let i = 0; i < 8; i += 1) { await sleep(1500); if (st.seq === seen) break; seen = st.seq; }
+      return st.focus;
+    },
     async screenshot(file) {
       if (st.screen === "pairing" || st.screen === "status") throw new Error("signed out or error screen");
       shoot(file);
