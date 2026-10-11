@@ -1,1 +1,0 @@
-- Sailfish OS: the playback request reports the device's real caps (8-bit H.264 up to 1080p60, stereo, no HDR, no passthrough), adds "Force direct video" and "Force direct audio" under Player > Advanced (default off, sent only when on), and shows the server's 422 `unsupported_colour_format` message without retrying.

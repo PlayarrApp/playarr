@@ -282,6 +282,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Sailfish OS: the playback request reports the device's real caps (8-bit H.264 up to 1080p60, stereo, no HDR, no passthrough), adds "Force direct video" and "Force direct audio" under Player > Advanced (default off, sent only when on), and shows the server's 422 `unsupported_colour_format` message without retrying.
+- Sailfish OS: now-playing through MPRIS (title, artwork, position, duration, Play, Pause, Stop and Seek from the media controls), download notifications with progress, percent and size plus Pause, Resume and Cancel actions over a small D-Bus service, a download options page with quality and keep-until (also used to edit an existing download), and keep-until rules checked on the local copies.
 - Apple clients (iOS, iPadOS, tvOS, macOS): playback shows on the system now-playing surface with the title, position, duration and play state, and the Play, Pause, skip and scrub buttons control the player (artwork and next/previous are not wired yet).
 - Linux phone client: reports real decoder capabilities, Force direct video and audio settings, and shows the 422 colour-format message.
 - Samsung Tizen native client (`clients/tizen-native`, Tizen .NET and NUI): QR sign-in through the hosted link broker, nav rail with D-pad focus, Home, Movies/Series/Music grids with the A-Z rail and Filters, film and series detail, search, Settings (appearance), profile picker, calendar (month, week, agenda), long-press title actions, and HLS playback on the TV player plane with resume and progress reporting. It signs in as `tizen-native`. A shared parity driver (`scripts/parity/drivers/tizen-native.mjs`) runs the suite against the emulator.
@@ -459,6 +461,11 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.
+- Android phone: the Calendar uses the web phone design: one toolbar row (period, previous, Today, next), agenda without a details panel, week days as columns of the shared entry cards, and en-GB day headings.
+- Android phone: playback negotiation reports the device's real decoder, HDR and audio capabilities, Settings > Player > Advanced has Force direct video and audio (off by default), and a 422 unsupported colour format shows the server's message.
+- Android phone: Home rail cards are 173 dp wide as on the web phone layout, so the next card peeks at the right edge.
+- Sailfish OS: layouts follow the web mobile app more closely (nav pill with the web icons, watch-state dots and progress on cards, library counts and natural title order, film detail, Preferences list, profile picker, playlists tab, calendar views), and the page background uses the web surface colour in both themes.
 - Xbox: playback negotiation reports the device's real media capabilities (HDR10 when the display is in HDR, 10-bit HEVC Main 10 on HEVC consoles, 5.1 and AC-3/E-AC-3 pass-through; never Dolby Vision), Settings > Player > Advanced adds Force direct video and Force direct audio (Off by default, sent only when On), and a 422 from the negotiation shows the server's message with no retry.
 - Xbox: the focused title's hero uses the web's size, tracking and 9ch width cap, so titles wrap the way the web wraps them.
 - Sailfish OS: layouts follow the web mobile app more closely (nav pill with the web icons, watch-state dots and progress on cards, library counts and natural title order, film detail, Preferences list, profile picker, playlists tab, calendar views), and the page background uses the web surface colour in both themes.
