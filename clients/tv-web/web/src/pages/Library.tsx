@@ -80,7 +80,7 @@ import { adoptLegacyArtworkSize, useArtworkSize } from "../lib/artworkSize";
 import { useCoverflowMotion } from "../lib/libraryCoverflow";
 import { usePanelParam } from "../lib/usePanelParam";
 import { releaseYear, yearRangeLabel } from "../lib/workYear";
-import { FilterSection, FiltersDrawer, PageLayout, ViewToggle } from "../components/shell";
+import { FilterSection, FiltersDrawer, LoadingTrail, PageLayout, SkeletonCard, ViewToggle } from "../components/shell";
 import { MultiSelect } from "../components/ui";
 
 /** Initial DOM mount for dense grids — enough for a full 4K viewport + headroom. */
@@ -95,6 +95,11 @@ const ARTWORK_MARGIN_ROWS = 2;
 /** Rows mounted per idle task, and the pause between tasks. */
 const PREMOUNT_SLICE_ROWS = 2;
 const PREMOUNT_GAP_MS = 24;
+
+/** The next page is requested once fewer than this many pixels of the loaded list remain below (right of) the viewport. */
+const LOAD_AHEAD_PX = 1600;
+/** Rows mounted below the viewport while the user scrolls by touch or wheel (selection-driven mounting only follows focus). */
+const MOUNT_AHEAD_ROWS = 12;
 
 const PAGE_SIZE = LIBRARY_PAGE_SIZE;
 const ALPHABET = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"] as const;
@@ -304,7 +309,6 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
   const [mountedEnd, setMountedEnd] = useState(INITIAL_MOUNTED);
 
   const gridRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<Work[]>(seed?.items ?? []);
   const totalRef = useRef<number | null>(seed?.total ?? null);
   const requestRef = useRef<Promise<Work[]> | null>(null);
@@ -313,7 +317,7 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
   const selectTimerRef = useRef(0);
   const previewStore = useMemo(() => createPreviewStore<Work>(), []);
   const pendingSelectIdRef = useRef<string | null>(null);
-  const gridMetricsRef = useRef({ cols: 3, rowHeight: 180 });
+  const gridMetricsRef = useRef({ cols: 3, rowHeight: 180, gap: 0 });
   const mountedEndRef = useRef(mountedEnd);
   mountedEndRef.current = mountedEnd;
   const coverflowProfile = useCoverflowMotion(
@@ -615,7 +619,7 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
       );
       const gap = Number.parseFloat(styles.rowGap || styles.gap || "0") || 0;
       const rowHeight = Math.max(120, sample.offsetHeight + gap);
-      gridMetricsRef.current = { cols: colCount, rowHeight };
+      gridMetricsRef.current = { cols: colCount, rowHeight, gap };
       grid.dataset.libraryCols = String(colCount);
       grid.dataset.libraryRowHeight = String(rowHeight);
     };
@@ -851,26 +855,40 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
   const hasMore =
     !refreshing && items !== null && (total === null || items.length < total);
 
+  // Paging and mounting follow the scroll position. They used to hang on a sentinel after the mounted rows, which a fast
+  // fling scrolled past (the unmounted rows below are only padding), so it never intersected again and nothing loaded.
+  // The list's scroll extent always covers every loaded row, so "how far from the end" is exact however many rows are
+  // mounted, and it is re-checked after every page, so one fling keeps fetching until the end.
   useEffect(() => {
-    const sentinel = sentinelRef.current;
     const grid = gridRef.current;
-    if (!sentinel || !grid || !hasMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void appendNextPage().catch(() => undefined);
+    if (!grid || itemCount === 0) return;
+    const horizontal = view === "cover-flow";
+    const sync = () => {
+      if (!horizontal) {
+        const content = grid.querySelector<HTMLElement>(".tv-title-grid-content");
+        const { cols: rawCols, rowHeight } = gridMetricsRef.current;
+        if (content && rowHeight > 0) {
+          const cols = Math.max(1, rawCols);
+          const lastRow = Math.floor((grid.getBoundingClientRect().bottom - content.getBoundingClientRect().top) / rowHeight);
+          const want = Math.min(itemsRef.current.length, (lastRow + 1 + MOUNT_AHEAD_ROWS) * cols);
+          if (want > mountedEndRef.current) setMountedEnd((current) => Math.max(current, want));
         }
-      },
-      {
-        root: grid,
-        rootMargin:
-          view === "cover-flow" ? "0px 800px 0px 0px" : "0px 0px 800px 0px",
-        threshold: 0,
       }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [appendNextPage, hasMore, view]);
+      if (!hasMore || loadMoreError) return;
+      const remaining = horizontal
+        ? grid.scrollWidth - grid.scrollLeft - grid.clientWidth
+        : grid.scrollHeight - grid.scrollTop - grid.clientHeight;
+      if (remaining < LOAD_AHEAD_PX) void appendNextPage().catch(() => undefined);
+    };
+    sync();
+    grid.addEventListener("scroll", sync, { passive: true });
+    const observer = new ResizeObserver(sync);
+    observer.observe(grid);
+    return () => {
+      grid.removeEventListener("scroll", sync);
+      observer.disconnect();
+    };
+  }, [appendNextPage, hasMore, itemCount, loadMoreError, loadingMore, view]);
 
   const selected = useMemo(
     () => items?.find((work) => work.id === selectedId) ?? items?.[0] ?? null,
@@ -1220,7 +1238,12 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
         className={`tv-library tv-directory tv-directory-${view} tv-artwork-${artworkSize}`}
         ariaLabel={t("pages.library.stageAriaLabel", { plural })}
         header={{ title: plural, back: { label: t("pages.library.backToHome"), to: "/" } }}
-        overlay={filtersDrawer}
+        overlay={
+          <>
+            {filtersDrawer}
+            {items === null && !initialError ? <LoadingTrail /> : null}
+          </>
+        }
         state={
           initialError
             ? {
@@ -1249,6 +1272,8 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
   }
 
   const alphabet = order === "desc" ? [...ALPHABET].reverse() : [...ALPHABET];
+  const unmountedRows =
+    Math.ceil(items.length / Math.max(1, gridMetricsRef.current.cols)) - Math.ceil(renderWindow.end / Math.max(1, gridMetricsRef.current.cols));
   const selectedIndex = Math.max(
     0,
     items.findIndex((item) => item.id === selected.id)
@@ -1259,7 +1284,13 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
       pageId="library"
       className={`tv-library tv-directory tv-directory-${view} tv-artwork-${artworkSize}`}
       ariaLabel={t("pages.library.stageAriaLabel", { plural })}
-      overlay={filtersDrawer}
+      // Same Fragment shape as the loading branch, so the open Filters panel is not remounted when the list arrives.
+      overlay={
+        <>
+          {filtersDrawer}
+          {null}
+        </>
+      }
       backdrop={{
         artKey: "library-art",
         art: <CrossfadeArt work={selected} kinds={["backdrop", "poster"]} />,
@@ -1296,28 +1327,10 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
           "aria-busy": refreshing,
         }}
         overlay={
-          refreshing ? (
-            <span className="tv-library-refreshing" role="status" aria-label={t("pages.library.updatingLibrary")}>
-              <span className="tv-mini-loader" aria-hidden="true" />
-            </span>
+          refreshing || loadingMore ? (
+            <LoadingTrail label={refreshing ? t("pages.library.updatingLibrary") : t("pages.library.loadingMoreTitles")} />
           ) : null
         }
-        contentStyle={(() => {
-          // Only additive bottom spacer when more rows exist off-mount.
-          // Never write paddingTop: 0 — that wipes --library-rail-top.
-          if (view === "cover-flow") return undefined;
-          const cols = Math.max(1, gridMetricsRef.current.cols);
-          const rowHeight = gridMetricsRef.current.rowHeight;
-          const spacerBottom = Math.max(
-            0,
-            (Math.ceil(items.length / cols) - Math.ceil(renderWindow.end / cols)) * rowHeight
-          );
-          if (spacerBottom <= 0) return undefined;
-          const style: CSSProperties = {
-            paddingBottom: `calc(var(--library-rail-bottom) + ${spacerBottom}px)`,
-          };
-          return style;
-        })()}
         footer={
           loadMoreError ? (
             <button type="button" className="tv-inline-error" onClick={() => void appendNextPage().catch(() => undefined)}>
@@ -1374,11 +1387,22 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
                   />
                 ))}
 
-            <div ref={sentinelRef} className="tv-grid-sentinel" aria-live="polite">
-              {loadingMore ? (
-                <span className="tv-mini-loader" aria-label={t("pages.library.loadingMoreTitles")} />
-              ) : null}
-            </div>
+            {view === "cover-flow" ? null : (
+              <>
+                {unmountedRows > 0 ? (
+                  // The rows below the mounted prefix: their exact height, so the scroll extent covers every loaded row.
+                  <div
+                    aria-hidden="true"
+                    className="tv-grid-spacer"
+                    style={{ gridColumn: "1 / -1", height: Math.max(0, unmountedRows * gridMetricsRef.current.rowHeight - gridMetricsRef.current.gap) }}
+                  />
+                ) : null}
+                {loadingMore
+                  ? // Exactly one extra row of skeleton cards while the next page loads.
+                    Array.from({ length: Math.max(1, gridMetricsRef.current.cols) }, (_, index) => <SkeletonCard key={`more-${index}`} />)
+                  : null}
+              </>
+            )}
       </ListPanel>
 
 

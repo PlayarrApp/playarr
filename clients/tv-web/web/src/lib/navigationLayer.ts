@@ -186,6 +186,15 @@ function restoreSnapshot(snapshot: NavigationSnapshot): (() => void) | false {
       )
     : null;
   if (snapshot.focusKey && !focusTarget) return false;
+  // A saved scroll offset needs its scroller on screen: while the page still shows a skeleton there is nothing to restore
+  // into, and reporting success would spend the one restore (the 700 ms settle) before the list exists.
+  const scrollKeys = Object.keys(snapshot.scroll);
+  if (
+    scrollKeys.length > 0 &&
+    !scrollKeys.some((key) => document.querySelector(`[data-navigation-scroll-key="${CSS.escape(key)}"]`))
+  ) {
+    return false;
+  }
 
   const applyScroll = () => {
     for (const [key, position] of Object.entries(snapshot.scroll)) {
@@ -244,6 +253,28 @@ export function useNavigationLayer(
   // two animation frames the effect below waits would paint the top of the page (and its default focus) first, a
   // visible jump when Back returns to a title far down a list. The effect below stays as the retry for targets that
   // mount later (more rows, data arriving). Runs every commit while a restore is pending and costs one lookup.
+  // Leaving by any route (a nav tab, a link that captured nothing) still saves where each scroller was, so Back returns
+  // to the same offset. A card click already captured focus and scroll a moment ago; that richer snapshot is kept.
+  useEffect(() => {
+    const entryKey = location.key;
+    const route = location.pathname;
+    const positions: Record<string, ScrollPosition> = {};
+    const onScroll = (event: Event) => {
+      const element = event.target;
+      if (!(element instanceof HTMLElement)) return;
+      const key = element.dataset.navigationScrollKey;
+      if (key) positions[key] = { top: element.scrollTop, left: element.scrollLeft };
+    };
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("scroll", onScroll, true);
+      if (Object.keys(positions).length === 0) return;
+      const existing = readSnapshot(entryKey);
+      if (existing && Date.now() - existing.capturedAt < 2000) return;
+      persistSnapshot(entryKey, { route, focusKey: null, scroll: positions, capturedAt: Date.now() });
+    };
+  }, [location.key, location.pathname]);
+
   const earlyCancelRef = useRef<(() => void) | null>(null);
   useLayoutEffect(() => {
     if (

@@ -5257,26 +5257,6 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   );
 }
 
-.tv-library-refreshing {
-  position: absolute;
-  z-index: var(--z-raised);
-  top: calc(var(--library-rail-top) + 12px);
-  right: clamp(58px, calc(5.2 * var(--vw)), 96px);
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
-  box-shadow: 0 10px 28px rgba(35, 20, 23, 0.14);
-  backdrop-filter: blur(18px);
-}
-
-.tv-library-refreshing .tv-mini-loader {
-  width: 16px;
-  height: 16px;
-}
-
 .tv-title-grid {
   flex: 1 1 auto;
   min-height: 0;
@@ -5568,12 +5548,6 @@ body[data-input-mode="remote"] .tv-search-result[data-remote-active] .tv-search-
   font-size: clamp(0.68rem, calc(0.8 * var(--vw)), 1.05rem);
 }
 
-.tv-library-grid-panel.is-cover-flow .tv-grid-sentinel {
-  width: 90px;
-  min-width: 90px;
-  align-self: stretch;
-}
-
 .tv-library-grid-panel.is-list .tv-title-grid-content {
   grid-template-columns: 1fr;
   gap: 0.45rem;
@@ -5637,13 +5611,6 @@ body[data-input-mode="remote"] .tv-search-result[data-remote-active] .tv-search-
   height: 3px;
   border-radius: 50%;
   background: currentColor;
-}
-
-.tv-grid-sentinel {
-  grid-column: 1 / -1;
-  min-height: 36px;
-  display: grid;
-  place-items: center;
 }
 
 .tv-mini-loader {
@@ -8515,7 +8482,10 @@ html.is-native-scroll-root .profile-auth-scroll {
   :root {
     --mobile-page-gutter: 16px;
     --mobile-top-inset: max(14px, env(safe-area-inset-top));
-    --mobile-nav-height: calc(68px + env(safe-area-inset-bottom));
+    /* Top edge of the floating bar above the viewport bottom: its 58px height plus its offset (see .app-nav). */
+    --mobile-nav-height: calc(58px + max(8px, env(safe-area-inset-bottom)));
+    /* The one bottom padding every scrolling page ends with: the last item clears the bar by one gutter. */
+    --mobile-bottom-clearance: calc(var(--mobile-nav-height) + var(--mobile-page-gutter));
     --screen-x: var(--mobile-page-gutter);
     --screen-y: 20px;
   }
@@ -8732,12 +8702,22 @@ html.is-native-scroll-root .profile-auth-scroll {
     gap: 24px;
     /* The mobile stack keeps its own 24px gap on top of the related spacing. */
     --tv-track-gap-section: var(--tv-track-gap-related);
-    padding: 22px 0 calc(var(--mobile-nav-height) + 24px);
+    padding: 22px 0 var(--mobile-bottom-clearance);
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     background: linear-gradient(180deg, transparent, var(--surface) 14%);
-    scroll-padding-block: 22px calc(var(--mobile-nav-height) + 24px);
+    scroll-padding-block: 22px var(--mobile-bottom-clearance);
+  }
+
+  /* `.tv-rail-surface.is-vertical-tracks` pads half a viewport top and bottom; on a phone the stack ends one gutter above the bar. */
+  .tv-home-rails.is-vertical-tracks {
+    padding-bottom: var(--mobile-bottom-clearance);
+  }
+
+  /* The last rail's shadow room would extend the scroll past that padding; drop it so the clearance is exact. */
+  .tv-home-rails.is-vertical-tracks > .tv-media-track:last-child {
+    --tv-track-shadow-bottom: 0px;
   }
 
   .tv-home:not(.tv-playlists) .tv-home-rails {
@@ -8745,7 +8725,7 @@ html.is-native-scroll-root .profile-auth-scroll {
     height: calc(100% - var(--mobile-top-inset) - 58px);
     padding-top: 20px;
     background: linear-gradient(180deg, transparent, var(--surface) 8%);
-    scroll-padding-block: 20px calc(var(--mobile-nav-height) + 24px);
+    scroll-padding-block: 20px var(--mobile-bottom-clearance);
   }
 
   .tv-media-track {
@@ -8892,7 +8872,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
   }
 
   .tv-title-grid {
-    scroll-padding-block: 84px calc(var(--mobile-nav-height) + 18px);
+    scroll-padding-block: 84px var(--mobile-bottom-clearance);
   }
 
   .tv-title-grid-content,
@@ -8905,7 +8885,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
     grid-template-columns: repeat(var(--card-cols), var(--card-w));
     gap: 24px var(--card-grid-gap);
     padding: 84px var(--mobile-page-gutter)
-      calc(var(--mobile-nav-height) + 24px);
+      var(--mobile-bottom-clearance);
   }
 
   .tv-library-grid-panel.is-list .tv-title-grid-content {
@@ -8925,7 +8905,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
   }
 
   .tv-library-grid-panel.is-cover-flow .tv-title-grid-content {
-    padding-block: 84px calc(var(--mobile-nav-height) + 30px);
+    padding-block: 84px var(--mobile-bottom-clearance);
   }
 
   .tv-filter-drawer,
@@ -8950,7 +8930,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
     height: auto;
     min-height: var(--viewport-height);
     overflow: visible;
-    padding-bottom: var(--mobile-nav-height);
+    padding-bottom: var(--mobile-bottom-clearance);
   }
 
   .tv-detail > .tv-key-art,
@@ -9170,8 +9150,8 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
 
   .tv-search-results {
     padding: 16px var(--mobile-page-gutter)
-      calc(var(--mobile-nav-height) + 24px);
-    scroll-padding-block: 16px calc(var(--mobile-nav-height) + 24px);
+      var(--mobile-bottom-clearance);
+    scroll-padding-block: 16px var(--mobile-bottom-clearance);
   }
 
   .tv-search-results-grid {
@@ -9207,7 +9187,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
     top: calc(var(--mobile-top-inset) + 150px);
     height: calc(var(--viewport-height) - var(--mobile-top-inset) - 150px);
     gap: 18px;
-    padding: 18px 0 calc(var(--mobile-nav-height) + 24px);
+    padding: 18px 0 var(--mobile-bottom-clearance);
     scroll-padding-inline: var(--mobile-page-gutter);
   }
 
@@ -9271,7 +9251,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
   }
 
   .settings-options-list {
-    padding: 84px 0 calc(var(--mobile-nav-height) + 24px);
+    padding: 84px 0 var(--mobile-bottom-clearance);
   }
 
   .settings-option {
@@ -9332,7 +9312,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
   }
 
   .settings-section {
-    padding: 84px 18px calc(var(--mobile-nav-height) + 24px);
+    padding: 84px 18px var(--mobile-bottom-clearance);
   }
 
   .settings-card,
@@ -9808,7 +9788,7 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
     width: 100%;
   }
   .app-main .tv-downloads-panel {
-    padding: var(--page-body-top) var(--mobile-page-gutter) calc(var(--mobile-nav-height) + 12px);
+    padding: var(--page-body-top) var(--mobile-page-gutter) var(--mobile-bottom-clearance);
   }
   .app-main .tv-downloads-content {
     padding-left: 0;

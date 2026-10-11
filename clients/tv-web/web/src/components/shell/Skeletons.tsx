@@ -9,7 +9,8 @@ import { SkeletonBlock, SkeletonLines } from "./Skeleton";
  */
 export type SkeletonKind = "grid" | "rails" | "detail" | "rows" | "settings";
 
-function Card({ aspect = "16 / 9" }: { aspect?: string }) {
+/** One card placeholder (also the single extra row a library shows while it loads more). */
+export function SkeletonCard({ aspect = "16 / 9" }: { aspect?: string }) {
   return (
     <div className="skeleton-card">
       <SkeletonBlock className="skeleton-card-art" style={{ aspectRatio: aspect }} />
@@ -24,7 +25,7 @@ export function SkeletonGrid({ count = 12 }: { count?: number }) {
   return (
     <div className="skeleton-set skeleton-grid-set" aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
-        <Card key={i} />
+        <SkeletonCard key={i} />
       ))}
     </div>
   );
@@ -39,7 +40,7 @@ export function SkeletonRails({ rails = 3, cards = 6 }: { rails?: number; cards?
           <SkeletonBlock height="1.1rem" width="14rem" />
           <div className="skeleton-rail-row">
             {Array.from({ length: cards }, (_, i) => (
-              <Card key={i} />
+              <SkeletonCard key={i} />
             ))}
           </div>
         </div>

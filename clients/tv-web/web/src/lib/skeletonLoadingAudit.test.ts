@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
  * Loading is a skeleton, everywhere (owner ruling, 8 October 2026; docs/design/page-layout.md): no centred or full-page
  * loading screen, no "Preparing ..." interstitial. Pages load with the shared skeleton set inside the normal frame (header
  * and Back visible), built from the Calendar's shimmer block. The player stage keeps the black stage and the standard
- * spinner (its own rule), and small widget spinners (a drawer fetching options, the library's "loading more") are not
+ * spinner (its own rule), and small widget spinners (a drawer fetching options; the library's "loading more" is the shared top loading trail) are not
  * page loading.
  */
 const here = new URL("./", import.meta.url);
@@ -20,7 +20,6 @@ const sources = [...walk(new URL("../pages/", here)), ...walk(new URL("../compon
 
 /** Widget-level spinners that are not page loading, with the count each file may keep. */
 const MINI_LOADER_ALLOWED: Record<string, number> = {
-  "pages/Library.tsx": 2, // "updating the library" badge and "loading more titles" at the end of the grid
   "components/MediaContextMenu.tsx": 2,
   "components/DownloadQualityDrawer.tsx": 1,
   "pages/WorkDetail.tsx": 1, // the playback options drawer

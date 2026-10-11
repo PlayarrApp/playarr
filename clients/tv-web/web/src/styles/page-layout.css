@@ -953,12 +953,58 @@ body[data-input-mode="remote"] .action-pill {
 }
 /* The library's loading skeleton sits where its cards land: the same padding and gaps as .tv-title-grid-content, so the
    cards do not jump sideways (about 40 px) when the list arrives. */
-@media (min-width: 761px) {
-  .tv-library-grid-panel.page-layout-state:has(> .skeleton-state.is-grid) {
-    align-items: start;
+.tv-library-grid-panel.page-layout-state:has(> .skeleton-state.is-grid) {
+  align-items: start;
+  overflow: hidden;
+}
+/* On a phone the skeleton starts where the real grid does (84px, below the header) and uses its columns and gaps. */
+@media (max-width: 760px) {
+  .tv-library-grid-panel.page-layout-state .skeleton-grid-set {
+    grid-template-columns: repeat(var(--card-cols), var(--card-w));
+    padding: 84px var(--mobile-page-gutter) 0;
+    gap: 24px var(--card-grid-gap);
   }
+}
+@media (min-width: 761px) {
   .tv-library-grid-panel.page-layout-state .skeleton-grid-set {
     padding: var(--library-rail-top) var(--library-rail-right) 0 var(--library-rail-left);
     gap: clamp(22px, calc(2.5 * var(--viewport-unit)), 36px) clamp(14px, calc(1.35 * var(--vw)), 28px);
   }
+}
+
+/* The shared loading trail (components/shell/LoadingTrail.tsx): a thin bar along the top edge, brand colour, sliding. */
+.loading-trail {
+  position: fixed;
+  z-index: var(--z-toast);
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.loading-trail-bar {
+  display: block;
+  width: 38%;
+  height: 100%;
+  border-radius: 0 3px 3px 0;
+  background: var(--brand, var(--ink));
+  animation: loading-trail-slide 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes loading-trail-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(263%); }
+}
+
+/* The list view's loading-more row matches its 104px thumbnail rows. */
+.tv-library-grid-panel.is-list .tv-title-grid-content > .skeleton-card {
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.tv-library-grid-panel.is-list .tv-title-grid-content > .skeleton-card > .skeleton-card-art {
+  grid-row: span 2;
 }
