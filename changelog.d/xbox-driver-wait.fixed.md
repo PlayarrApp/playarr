@@ -1,1 +1,0 @@
-- Xbox parity driver waits for a page to load after select, so D-pad checks that follow an open compare like for like.

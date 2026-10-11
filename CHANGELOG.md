@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox parity driver waits for a page to load after select, so D-pad checks that follow an open compare like for like.
+- Xbox: LEFT from content lands on the nav item level with the focused card, as the web does.
 - The macOS build compiles again: device HDR modes are read on iOS and tvOS only.
 - Cancelling a Sailfish download clears its notification, and a finished download whose file was deleted outside the app reverts to not downloaded.
 - Sailfish requests sent from QML no longer lose their JSON body when the value arrives wrapped, which had made download tickets fail with 400.
@@ -473,6 +475,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Sailfish Downloads groups episodes by series and season with shared controls at each level, adds a Filters panel and press-and-hold episode downloads, and the movie and series grids get the alphabet rail.
 - The web parity driver waits for the key handler after Home settles, so web D-pad references stop losing the first key.
 - Sailfish calendar week view lays the days out as side-by-side columns like the web, and the title actions page matches the web fonts and spacing.
 - Sailfish series detail matches the web episode-card geometry, and an expired keep-until rule now deletes the local download.
