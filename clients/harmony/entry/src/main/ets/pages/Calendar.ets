@@ -30,14 +30,10 @@ import { BRAND_PINK } from '../core/Tokens';
 import type { RgbaColor } from '../core/Tokens';
 import type { ThemeModeSetting } from '../design/Theme';
 import { tv, TvGeometry } from '../design/Metrics';
+import { PageShell } from '../design/components/PageShell';
 import { Stage } from '../design/components/Stage';
-import { NavRail } from '../design/components/NavRail';
-import type { NavRailItem } from '../design/components/NavRail';
-import { PlayarrLogo } from '../design/components/PlayarrLogo';
-import { Clock } from '../design/components/Clock';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 
-import { getCatalogKinds } from '../data/CatalogRepository';
 import { getCalendar } from '../data/CalendarRepository';
 import { addToWatchlist, removeFromWatchlist, resolveTitle } from '../data/WatchlistRepository';
 import { planItemActions } from '../core/CalendarActions';
@@ -72,10 +68,10 @@ import {
 import type { CalendarCell, CalendarItem, CalendarView, DayGroup, EntryPillTone } from '../core/CalendarAgenda';
 import type { CalendarEntry } from '../core/Types/Calendar';
 
-import { CALENDAR_NAV_ID, buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../navigation/NavItems';
+import { CALENDAR_NAV_ID } from '../navigation/NavItems';
 import { ROUTES } from '../navigation/Routes';
 import type { DetailRouteParams, PlayerRouteParams } from '../navigation/Routes';
-import { getNavStack, popRoute, pushRoute } from '../navigation/NavStack';
+import { getNavStack, pushRoute } from '../navigation/NavStack';
 
 // Web `.calendar-days-agenda`: from x=783 (53 into the x=730 column), first day heading at y=162, 1033 wide.
 const LIST_INSET_LEFT: number = 53;
@@ -114,10 +110,6 @@ const HEADER_RIGHT: number = 1844;
 // Web's period panel: under the range button (its right edge at about x=1609), 8 below it.
 const PERIOD_PANEL_LEFT: number = 1297;
 const PERIOD_PANEL_TOP: number = 114;
-const BACK_GLYPH_SIZE: number = 17.28;
-const TITLE_SIZE: number = 33.6;
-const TITLE_LETTER_SPACING: number = -1.512;
-const HEADER_GAP: number = 23;
 // Details panel extras under the meta line.
 const PANEL_GAP: number = 17;
 const OVERVIEW_SIZE: number = 13.824;
@@ -207,16 +199,9 @@ export struct ReleaseCalendar {
   @State private watchlistBusy: boolean = false;
   @State private loading: boolean = true;
   @State private errorMessage: string = '';
-  @State private navItems: NavRailItem[] = [];
 
   aboutToAppear(): void {
     this.load();
-    this.loadNav();
-  }
-
-  private async loadNav(): Promise<void> {
-    const kinds = await getCatalogKinds();
-    this.navItems = buildNavRailItems(kinds.kind === 'ok' ? kinds.value : []);
   }
 
   private async load(): Promise<void> {
@@ -321,11 +306,6 @@ export struct ReleaseCalendar {
     this.anchor = next === 'month' ? startOfMonth(this.anchor) : this.anchor;
     this.load();
   }
-
-  private handleNavSelect(id: string): void {
-    navigateFromRail(id, CALENDAR_NAV_ID);
-  }
-
 
   private openEntry(entry: CalendarEntry): void {
     if (entry.work_id === undefined || entry.work_id === null) {
@@ -781,158 +761,129 @@ export struct ReleaseCalendar {
       })
   }
 
+  @Builder
+  private pageContent(): void {
+    if (this.view === 'week') {
+      this.weekView()
+    } else if (this.view === 'month') {
+      this.monthView()
+    } else {
+    Stage({
+      keyArt: '',
+      kicker: this.selected !== undefined ?
+        `${mediaKindLabel(this.selected.media_kind)} · ${releaseTypeLabel(this.selected.release_type)}` : '',
+      title: this.selected !== undefined ? this.selected.title : '',
+      metaLines: this.selected !== undefined ?
+        [`${entrySubtitle(this.selected)}    ${entryWhenLabel(this.selected)}`] : [],
+      synopsis: '',
+      scrollRails: false,
+      railsSlot: (): void => {
+        this.agenda();
+      },
+      heroExtraSlot: (): void => {
+        this.panelExtras();
+      },
+    })
+    }
+    // Web's slot 0: the Calendar link (bell); Filters is the second tile.
+    ActionTile({
+      icon: $r('app.media.action_bell'),
+      label: 'Calendar link',
+      slot: 0,
+      onActivate: (): void => {
+        this.linkOpen = true;
+      },
+    })
+    ActionTile({
+      icon: $r('app.media.action_filters'),
+      label: 'Filters',
+      slot: 1,
+      onActivate: (): void => {
+        this.filtersOpen = true;
+      },
+    })
+    if (this.linkOpen) {
+      Drawer({
+        kicker: 'Calendar',
+        title: 'Calendar link',
+        onClose: (): void => {
+          this.linkOpen = false;
+        },
+        body: (): void => {
+          this.linkBody();
+        },
+      })
+    } else if (this.filtersOpen) {
+      Drawer({
+        kicker: 'Calendar',
+        title: 'Filters',
+        onClose: (): void => {
+          this.filtersOpen = false;
+        },
+        body: (): void => {
+          this.filtersBody();
+        },
+      })
+    }
+  }
+
+  @Builder
+  private pageControls(): void {
+    Row({ space: tv(HEADER_CONTROL_GAP) }) {
+      Text(rangeLabel(this.view, this.anchor))
+        .fontSize(tv(HEADER_CONTROL_FONT))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .height(tv(HEADER_CONTROL_SIZE))
+        .padding({ left: tv(20), right: tv(20) })
+        .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
+        .backgroundColor(toResourceColor(activeColors().bg))
+        .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+        .focusable(true)
+        .onClick(() => {
+          this.periodOpen = !this.periodOpen;
+        })
+      this.headerControl('←', true, (): void => {
+        this.page(-1);
+      })
+      this.headerControl('Today', false, (): void => {
+        this.page(0);
+      })
+      this.headerControl('→', true, (): void => {
+        this.page(1);
+      })
+    }
+    .position({ x: tv(HEADER_RIGHT), y: tv(TvGeometry.utilityRowTop) })
+    .markAnchor({ x: '100%', y: 0 })
+    if (this.periodOpen) {
+      // Web hangs the jump panel under the range button, right edges aligned.
+      PeriodPicker({
+        value: this.anchor,
+        onChange: (day: string): void => {
+          this.anchor = day;
+          this.load();
+        },
+        onClose: (): void => {
+          this.periodOpen = false;
+        },
+      })
+        .position({ x: tv(PERIOD_PANEL_LEFT), y: tv(PERIOD_PANEL_TOP) })
+        .zIndex(2)
+    }
+  }
+
   build() {
     NavDestination() {
-      Stack() {
-        if (this.view === 'week') {
-          this.weekView()
-        } else if (this.view === 'month') {
-          this.monthView()
-        } else {
-        Stage({
-          keyArt: '',
-          kicker: this.selected !== undefined ?
-            `${mediaKindLabel(this.selected.media_kind)} · ${releaseTypeLabel(this.selected.release_type)}` : '',
-          title: this.selected !== undefined ? this.selected.title : '',
-          metaLines: this.selected !== undefined ?
-            [`${entrySubtitle(this.selected)}    ${entryWhenLabel(this.selected)}`] : [],
-          synopsis: '',
-          scrollRails: false,
-          railsSlot: (): void => {
-            this.agenda();
-          },
-          heroExtraSlot: (): void => {
-            this.panelExtras();
-          },
-        })
-        }
-        if (this.navItems.length > 0) {
-          NavRail({
-            items: this.navItems,
-            primaryItems: buildPrimaryNavItems(),
-          secondaryItems: buildSecondaryNavItems(),
-            selectedId: CALENDAR_NAV_ID,
-            onSelect: (id: string): void => {
-              this.handleNavSelect(id);
-            },
-          })
-        }
-        PlayarrLogo({ logoSize: tv(TvGeometry.logoSize) })
-          .position({ x: tv(TvGeometry.logoLeft), y: tv(TvGeometry.logoTop) })
-        Row() {
-          Clock()
-        }
-        .height(tv(TvGeometry.utilityRowHeight))
-        .alignItems(VerticalAlign.Center)
-        .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
-        Row({ space: tv(HEADER_GAP) }) {
-          Text('←')
-            .fontSize(tv(BACK_GLYPH_SIZE))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .textAlign(TextAlign.Center)
-            .width(tv(HEADER_CONTROL_SIZE))
-            .height(tv(HEADER_CONTROL_SIZE))
-            .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
-            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-            .focusable(true)
-            .onClick(() => {
-              popRoute(getNavStack());
-            })
-          Text('Calendar')
-            .fontSize(tv(TITLE_SIZE))
-            .fontWeight(FontWeight.Medium)
-            .letterSpacing(tv(TITLE_LETTER_SPACING))
-            .fontColor(toResourceColor(activeColors().ink))
-        }
-        .height(tv(HEADER_CONTROL_SIZE))
-        .alignItems(VerticalAlign.Center)
-        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
-        Row({ space: tv(HEADER_CONTROL_GAP) }) {
-          Text(rangeLabel(this.view, this.anchor))
-            .fontSize(tv(HEADER_CONTROL_FONT))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .height(tv(HEADER_CONTROL_SIZE))
-            .padding({ left: tv(20), right: tv(20) })
-            .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
-            .backgroundColor(toResourceColor(activeColors().bg))
-            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-            .focusable(true)
-            .onClick(() => {
-              this.periodOpen = !this.periodOpen;
-            })
-          this.headerControl('←', true, (): void => {
-            this.page(-1);
-          })
-          this.headerControl('Today', false, (): void => {
-            this.page(0);
-          })
-          this.headerControl('→', true, (): void => {
-            this.page(1);
-          })
-        }
-        .position({ x: tv(HEADER_RIGHT), y: tv(TvGeometry.utilityRowTop) })
-        .markAnchor({ x: '100%', y: 0 })
-        if (this.periodOpen) {
-          // Web hangs the jump panel under the range button, right edges aligned.
-          PeriodPicker({
-            value: this.anchor,
-            onChange: (day: string): void => {
-              this.anchor = day;
-              this.load();
-            },
-            onClose: (): void => {
-              this.periodOpen = false;
-            },
-          })
-            .position({ x: tv(PERIOD_PANEL_LEFT), y: tv(PERIOD_PANEL_TOP) })
-            .zIndex(2)
-        }
-        // Web's slot 0: the Calendar link (bell); Filters is the second tile.
-        ActionTile({
-          icon: $r('app.media.action_bell'),
-          label: 'Calendar link',
-          slot: 0,
-          onActivate: (): void => {
-            this.linkOpen = true;
-          },
-        })
-        ActionTile({
-          icon: $r('app.media.action_filters'),
-          label: 'Filters',
-          slot: 1,
-          onActivate: (): void => {
-            this.filtersOpen = true;
-          },
-        })
-        if (this.linkOpen) {
-          Drawer({
-            kicker: 'Calendar',
-            title: 'Calendar link',
-            onClose: (): void => {
-              this.linkOpen = false;
-            },
-            body: (): void => {
-              this.linkBody();
-            },
-          })
-        } else if (this.filtersOpen) {
-          Drawer({
-            kicker: 'Calendar',
-            title: 'Filters',
-            onClose: (): void => {
-              this.filtersOpen = false;
-            },
-            body: (): void => {
-              this.filtersBody();
-            },
-          })
-        }
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(toResourceColor(activeColors().bg))
+      PageShell({
+        title: 'Calendar',
+        selectedId: CALENDAR_NAV_ID,
+        content: (): void => {
+          this.pageContent();
+        },
+        controls: (): void => {
+          this.pageControls();
+        },
+      })
     }
     .hideTitleBar(true)
   }
