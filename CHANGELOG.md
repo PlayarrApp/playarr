@@ -278,6 +278,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Linux phone client scaffold (clients/linux-mobile, GTK4 and libadwaita): hosted-link QR sign-in, profile picker, theme tokens, Nunito Sans, CI job.
 - Playarr for Mac: a macOS app built from the Apple TV sources and PlayarrKit, showing the TV layout in a resizable 16:9 window with keyboard, mouse and hover control (57.10024). Its build and unit tests run on hosted macOS for pull requests that touch it.
 - Apple TV: the library Filters drawer has the web View choice (list, screen, cover) and audio and subtitle language filters; entering a library grid lands on the first (or last focused) title; open drawers are modal.
 - Apple TV: holding Select on a media card opens its actions (Play, Add to Playlist, Mark as Watched or Unwatched) in the shared drawer and returns focus to the card; title pages show the cast; episode tiles show their own frame; Settings has the Artwork size choice (small, medium, large) and the colour theme choice works; Right from a settings row enters its panel.
