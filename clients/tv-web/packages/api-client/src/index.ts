@@ -519,6 +519,25 @@ export interface PlaybackInfoParams {
   audioStreamIndex?: number;
   /** Ignore remembered per-media choices for this explicit request. */
   ignoreSavedPreferences?: boolean;
+  /** Comma-separated HDR formats the device shows: `hdr10`, `hlg`, `dolby_vision`. */
+  hdr?: string;
+  /** Comma-separated Dolby Vision profiles the device renders, e.g. `5,8`. */
+  dvProfiles?: string;
+  /** Deepest video bit depth the device decodes. Sending it declares the video capabilities. */
+  maxBitDepth?: number;
+  /** Comma-separated `codec:profile` pairs, e.g. `hevc:main 10`. */
+  videoProfiles?: string;
+  maxWidth?: number;
+  maxHeight?: number;
+  maxFps?: number;
+  /** Most audio channels the device outputs. Sending it declares the audio capabilities. */
+  maxChannels?: number;
+  /** Comma-separated audio codecs the device passes through: `eac3`, `ac3`, `dts`, `truehd`. */
+  passthrough?: string;
+  /** "Force direct video": keep the picture as is, whatever the capability checks say. */
+  forceDirectVideo?: boolean;
+  /** "Force direct audio": keep the source audio as is, whatever the capability checks say. */
+  forceDirectAudio?: boolean;
 }
 
 export interface WatchProgressUpdate {
@@ -2685,6 +2704,17 @@ export class ApiClient {
             start_position_ms: params.startPositionMs,
             audio_stream_index: params.audioStreamIndex,
             ignore_saved_preferences: params.ignoreSavedPreferences,
+            hdr: params.hdr,
+            dv_profiles: params.dvProfiles,
+            max_bit_depth: params.maxBitDepth,
+            video_profiles: params.videoProfiles,
+            max_width: params.maxWidth,
+            max_height: params.maxHeight,
+            max_fps: params.maxFps,
+            max_channels: params.maxChannels,
+            passthrough: params.passthrough,
+            force_direct_video: params.forceDirectVideo,
+            force_direct_audio: params.forceDirectAudio,
           },
         },
       })

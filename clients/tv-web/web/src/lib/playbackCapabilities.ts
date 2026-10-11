@@ -1,4 +1,7 @@
 import type { PlaybackCapabilities } from "@playarr-tv/api-client/react";
+import { currentMediaCaps, mediaCapsReady, startMediaCapsDetection } from "./deviceMediaCaps";
+import type { ApiClient, PlaybackInfo, PlaybackInfoParams } from "@playarr-tv/api-client";
+import { readPlayerDefaults } from "./playerDefaults";
 import {
   PLAYARR_CLIENT_PLATFORM,
   type PlayarrWebPlatform,
@@ -96,6 +99,43 @@ export function playbackCapabilitiesForPlatform(
     default:
       return browserPlaybackCapabilities(hevc);
   }
+}
+
+// Platforms whose browser over-reports decode support (see the Xbox note above).
+const UNTRUSTED_TYPE_PROBES: readonly PlayarrWebPlatform[] = ["xbox"];
+
+void startMediaCapsDetection(!UNTRUSTED_TYPE_PROBES.includes(PLAYARR_CLIENT_PLATFORM));
+
+/**
+ * Capabilities sent with every playback negotiation: the platform's codec/container profile, the
+ * detected HDR/bit-depth/audio abilities and the "Force direct" player settings. Read per request,
+ * because detection finishes shortly after start-up and the settings can change at any time.
+ */
+export function currentPlaybackCapabilities(): PlaybackCapabilities {
+  return { ...WEB_PLAYBACK_CAPABILITIES, ...currentMediaCaps(), ...forceFlags() };
+}
+
+function forceFlags(): Pick<PlaybackCapabilities, "forceDirectVideo" | "forceDirectAudio"> {
+  const { forceDirectVideo, forceDirectAudio } = readPlayerDefaults();
+  return {
+    ...(forceDirectVideo ? { forceDirectVideo: true } : {}),
+    ...(forceDirectAudio ? { forceDirectAudio: true } : {}),
+  };
+}
+
+/**
+ * `ApiClient.getPlaybackInfo` after device detection has finished: detected abilities and the force
+ * flags fill any key the caller's params (built earlier, perhaps before detection) left out.
+ */
+export async function getPlaybackInfoReady(
+  client: ApiClient,
+  mediaFileId: string,
+  params: PlaybackInfoParams
+): Promise<PlaybackInfo> {
+  await mediaCapsReady();
+  // The force settings are read now, not taken from params captured earlier.
+  const { forceDirectVideo: _v, forceDirectAudio: _a, ...rest } = params;
+  return client.getPlaybackInfo(mediaFileId, { ...currentMediaCaps(), ...rest, ...forceFlags() });
 }
 
 export const WEB_PLAYBACK_CAPABILITIES: PlaybackCapabilities =

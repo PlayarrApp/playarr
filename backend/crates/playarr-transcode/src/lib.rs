@@ -47,6 +47,8 @@
 // `async_trait` expansions trip clippy::double_must_use on current stable.
 #![allow(clippy::double_must_use)]
 
+pub mod video;
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -323,6 +325,32 @@ pub const HLS_SEGMENT_SECONDS: u32 = 4;
 const AAC_CHANNEL_LAYOUTS_FILTER: &str = "aformat=channel_layouts=5.1|stereo|mono";
 const DEFAULT_FFMPEG_THREADS: usize = 2;
 
+/// On-demand renditions produced before this instant were encoded without HDR tone mapping.
+static TONE_MAP_EPOCH: std::sync::LazyLock<DateTime<Utc>> = std::sync::LazyLock::new(|| {
+    DateTime::parse_from_rfc3339("2026-10-12T00:00:00Z")
+        .expect("valid epoch")
+        .with_timezone(&Utc)
+});
+
+/// Per-request output choices from the device capability decision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct StreamHints {
+    /// Remove the Dolby Vision RPU while copying HEVC (the client cannot render Dolby Vision).
+    pub strip_dovi: bool,
+    /// Fold audio to at most this many channels (2 forces stereo); `None` keeps 5.1 available.
+    pub max_audio_channels: Option<u8>,
+}
+
+impl StreamHints {
+    fn audio_filter(self) -> &'static str {
+        match self.max_audio_channels {
+            Some(1) => "aformat=channel_layouts=mono",
+            Some(2) => "aformat=channel_layouts=stereo|mono",
+            _ => AAC_CHANNEL_LAYOUTS_FILTER,
+        }
+    }
+}
+
 /// Admission permits one on-demand slot is worth. A full video re-encode
 /// takes a whole slot; a video-copy remux (audio-only encode) takes a
 /// quarter, so several devices remuxing one title do not exhaust the node.
@@ -366,6 +394,10 @@ pub struct SharedTranscodeKey {
     pub audio_stream_index: Option<u32>,
     pub start_position_ms: u64,
     pub video_copy: bool,
+    /// A stripped Dolby Vision RPU is a different stream from the original; they never share.
+    pub strip_dovi: bool,
+    /// The audio fold differs per device channel count.
+    pub max_audio_channels: Option<u8>,
 }
 
 /// Builds the ffmpeg argv for transcoding `input_path` into an HLS
@@ -421,6 +453,9 @@ pub fn build_ffmpeg_hls_args_at_with_audio(
         None,
         None,
         DEFAULT_FFMPEG_THREADS,
+        None,
+        video::ToneMapSupport::default(),
+        StreamHints::default(),
     )
 }
 
@@ -455,6 +490,9 @@ pub fn build_ffmpeg_hls_args_at_with_external_audio(
         Some(external),
         None,
         DEFAULT_FFMPEG_THREADS,
+        None,
+        video::ToneMapSupport::default(),
+        StreamHints::default(),
     )
 }
 
@@ -506,6 +544,9 @@ pub fn build_ffmpeg_hls_args_video_copy(
         external,
         Some(video),
         DEFAULT_FFMPEG_THREADS,
+        None,
+        video::ToneMapSupport::default(),
+        StreamHints::default(),
     )
 }
 
@@ -519,6 +560,10 @@ fn build_hls_args(
     external: Option<&ExternalAudio>,
     video_copy: Option<VideoCopy>,
     ffmpeg_threads: usize,
+    // `Some` on the production path: the probed source drives tone mapping and colour tags.
+    source: Option<&video::SourceVideo>,
+    tone_map: video::ToneMapSupport,
+    hints: StreamHints,
 ) -> Vec<String> {
     let mut args = vec![
         // Overwrite without prompting — the per-session output directory
@@ -534,6 +579,12 @@ fn build_hls_args(
         "-filter_complex_threads".to_string(),
         ffmpeg_threads.to_string(),
     ];
+
+    let uses_libplacebo = video_copy.is_none()
+        && source.is_some_and(|s| video::sdr_filter(s, &tone_map).starts_with("libplacebo"));
+    if uses_libplacebo {
+        args.extend(["-init_hw_device", "vulkan=vk", "-filter_hw_device", "vk"].map(String::from));
+    }
 
     if start_position_ms > 0 {
         args.push("-ss".to_string());
@@ -556,6 +607,9 @@ fn build_hls_args(
             args.extend(["-c:v".to_string(), "copy".to_string()]);
             if video.hevc {
                 args.extend(["-tag:v".to_string(), "hvc1".to_string()]);
+                if hints.strip_dovi {
+                    args.extend(["-bsf:v".to_string(), "dovi_rpu=strip=1".to_string()]);
+                }
             }
         }
         None => args.extend([
@@ -601,7 +655,7 @@ fn build_hls_args(
     // encoder writes channel configuration 0 plus a PCE, which Android's AAC
     // decoder and Chrome's MSE reject (TASKS 20.260: "Decoder failed" and
     // Shaka 3014).
-    let mut audio_filter = AAC_CHANNEL_LAYOUTS_FILTER.to_string();
+    let mut audio_filter = hints.audio_filter().to_string();
     if external.is_some() {
         // A dub can be shorter than the title (a partial run, or a seek past
         // its end). Pad it with silence so audio never runs out before the
@@ -613,9 +667,22 @@ fn build_hls_args(
     }
     args.extend(["-af".to_string(), audio_filter]);
 
-    if video_copy.is_none() && profile.height > 0 {
-        args.push("-vf".to_string());
-        args.push(format!("scale=-2:min({}\\,ih)", profile.height));
+    if video_copy.is_none() {
+        let mut chain = Vec::new();
+        if profile.height > 0 {
+            chain.push(format!("scale=-2:min({}\\,ih)", profile.height));
+        }
+        if let Some(source) = source {
+            chain.push(video::sdr_filter(source, &tone_map));
+            chain.push(video::sdr_setparams(source));
+        }
+        if !chain.is_empty() {
+            args.push("-vf".to_string());
+            args.push(chain.join(","));
+        }
+        if let Some(source) = source {
+            args.extend(video::sdr_colour_tags(source));
+        }
     }
 
     if let (None, Some(kbps)) = (video_copy, profile.video_bitrate_kbps) {
@@ -770,6 +837,10 @@ pub struct TranscodeOrchestrator {
     /// notify Tdarr" — correct both when Tdarr isn't configured for this
     /// deployment and when this node doesn't also run the worker role.
     tdarr_notify: Option<mpsc::Sender<MediaFileImportEvent>>,
+    /// Which tone-mapping filters this ffmpeg runs; detected once, on first use.
+    tone_map_support: tokio::sync::OnceCell<video::ToneMapSupport>,
+    /// Source probes by (media file, size), so negotiation and the spawn probe a file once.
+    source_probes: std::sync::Mutex<video::ProbeCache>,
 }
 
 struct ActiveChild {
@@ -801,11 +872,19 @@ impl TranscodeOrchestrator {
             inflight: Mutex::new(HashMap::new()),
             recently_released: std::sync::Mutex::new(HashMap::new()),
             tdarr_notify: None,
+            tone_map_support: tokio::sync::OnceCell::new(),
+            source_probes: std::sync::Mutex::new(video::ProbeCache::default()),
         }
     }
 
     pub fn with_ffmpeg_binary(mut self, ffmpeg_binary: impl Into<String>) -> Self {
         self.ffmpeg_binary = ffmpeg_binary.into();
+        self
+    }
+
+    /// Fixes the tone-mapping filter support instead of detecting it from the ffmpeg binary.
+    pub fn with_tone_map_support(self, support: video::ToneMapSupport) -> Self {
+        let _ = self.tone_map_support.set(support);
         self
     }
 
@@ -885,6 +964,42 @@ impl TranscodeOrchestrator {
         container_ok && codec_ok && bitrate_ok
     }
 
+    /// Probes the first video stream of `media_file` once per (file, size); `None` when ffprobe fails.
+    pub async fn probe_source(&self, media_file: &MediaFile) -> Option<video::SourceVideo> {
+        let key = (media_file.id, media_file.size_bytes);
+        if let Some(hit) = self
+            .source_probes
+            .lock()
+            .ok()?
+            .get(key, std::time::Instant::now())
+        {
+            return hit;
+        }
+        let path = playarr_model::resolve_media_path(&media_file.path);
+        let probed = video::probe_source_video(&path).await;
+        if let Ok(mut cache) = self.source_probes.lock() {
+            cache.put(key, probed.clone(), std::time::Instant::now());
+        }
+        probed
+    }
+
+    /// Which tone-mapping filters this node's ffmpeg can run, detected once (`ffmpeg -filters`).
+    /// libplacebo additionally needs `PLAYARR_FFMPEG_LIBPLACEBO=1` and a passing Vulkan self-test.
+    pub async fn tone_map_support(&self) -> video::ToneMapSupport {
+        *self
+            .tone_map_support
+            .get_or_init(|| async {
+                let support = video::detect_tone_map_support(
+                    &self.ffmpeg_binary,
+                    std::env::var("PLAYARR_FFMPEG_LIBPLACEBO").is_ok_and(|v| v == "1"),
+                )
+                .await;
+                tracing::info!(?support, "tone-mapping filters detected");
+                support
+            })
+            .await
+    }
+
     /// Step 2: looks up whether a `Ready` rendition already exists for
     /// this `(media_file_id, profile)` pair — via
     /// `RenditionRepo::find_ready` — regardless of whether the background
@@ -898,7 +1013,11 @@ impl TranscodeOrchestrator {
             .rendition_repo
             .find_ready(media_file_id, profile)
             .await?;
-        Ok(rendition)
+        // On-demand encodes made before HDR tone mapping existed carry untouched HDR pictures
+        // (washed out or green); they are re-made instead of reused.
+        Ok(rendition.filter(|r| {
+            r.produced_by != playarr_model::ProducedBy::OnDemand || r.produced_at >= *TONE_MAP_EPOCH
+        }))
     }
 
     /// Step 3, last resort: starts a new [`TranscodeSession`] on
@@ -936,6 +1055,7 @@ impl TranscodeOrchestrator {
             owning_node_id,
             start_position_ms,
             None,
+            StreamHints::default(),
         )
         .await
     }
@@ -947,6 +1067,7 @@ impl TranscodeOrchestrator {
         owning_node_id: &str,
         start_position_ms: u64,
         audio_stream_index: Option<u32>,
+        hints: StreamHints,
     ) -> Result<TranscodeSession, TranscodeError> {
         let slot = self.reserve_capacity(FULL_TRANSCODE_PERMITS).await?;
         self.spawn_on_demand(
@@ -958,6 +1079,7 @@ impl TranscodeOrchestrator {
             audio_stream_index,
             None,
             None,
+            hints,
             slot,
         )
         .await
@@ -965,6 +1087,7 @@ impl TranscodeOrchestrator {
 
     /// Like [`Self::spawn_on_demand_transcode_at_with_audio`], but the source
     /// video is copied instead of re-encoded (see [`VideoCopy`]).
+    #[allow(clippy::too_many_arguments)]
     pub async fn spawn_video_copy_at_with_audio(
         &self,
         media_file: &MediaFile,
@@ -973,6 +1096,7 @@ impl TranscodeOrchestrator {
         start_position_ms: u64,
         audio_stream_index: Option<u32>,
         video: VideoCopy,
+        hints: StreamHints,
     ) -> Result<TranscodeSession, TranscodeError> {
         let slot = self.reserve_capacity(VIDEO_COPY_PERMITS).await?;
         self.spawn_on_demand(
@@ -984,6 +1108,7 @@ impl TranscodeOrchestrator {
             audio_stream_index,
             None,
             Some(video),
+            hints,
             slot,
         )
         .await
@@ -1004,6 +1129,7 @@ impl TranscodeOrchestrator {
         profile: &str,
         owning_node_id: &str,
         start_position_ms: u64,
+        hints: StreamHints,
         fetch: F,
     ) -> Result<TranscodeSession, TranscodeError>
     where
@@ -1016,6 +1142,7 @@ impl TranscodeOrchestrator {
             owning_node_id,
             start_position_ms,
             None,
+            hints,
             fetch,
         )
         .await
@@ -1023,6 +1150,7 @@ impl TranscodeOrchestrator {
 
     /// [`Self::spawn_on_demand_transcode_with_fetched_audio`] with the source
     /// video copied instead of re-encoded (see [`VideoCopy`]).
+    #[allow(clippy::too_many_arguments)]
     pub async fn spawn_video_copy_with_fetched_audio<F, Fut>(
         &self,
         media_file: &MediaFile,
@@ -1030,6 +1158,7 @@ impl TranscodeOrchestrator {
         owning_node_id: &str,
         start_position_ms: u64,
         video: VideoCopy,
+        hints: StreamHints,
         fetch: F,
     ) -> Result<TranscodeSession, TranscodeError>
     where
@@ -1042,11 +1171,13 @@ impl TranscodeOrchestrator {
             owning_node_id,
             start_position_ms,
             Some(video),
+            hints,
             fetch,
         )
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn spawn_with_fetched_audio<F, Fut>(
         &self,
         media_file: &MediaFile,
@@ -1054,6 +1185,7 @@ impl TranscodeOrchestrator {
         owning_node_id: &str,
         start_position_ms: u64,
         video_copy: Option<VideoCopy>,
+        hints: StreamHints,
         fetch: F,
     ) -> Result<TranscodeSession, TranscodeError>
     where
@@ -1085,6 +1217,7 @@ impl TranscodeOrchestrator {
                 None,
                 Some(&external),
                 video_copy,
+                hints,
                 slot,
             )
             .await;
@@ -1128,6 +1261,7 @@ impl TranscodeOrchestrator {
         audio_stream_index: Option<u32>,
         external: Option<&ExternalAudio>,
         video_copy: Option<VideoCopy>,
+        hints: StreamHints,
         slot: Slot,
     ) -> Result<TranscodeSession, TranscodeError> {
         let target_profile = TranscodeTargetProfile::resolve(profile);
@@ -1135,6 +1269,12 @@ impl TranscodeOrchestrator {
         tokio::fs::create_dir_all(&output_dir).await?;
 
         let source_path = playarr_model::resolve_media_path(&media_file.path);
+        // A failed probe still gets the SDR path (range + BT.709 tags) rather than the bare encode.
+        let source_video = match video_copy {
+            Some(_) => None,
+            None => Some(self.probe_source(media_file).await.unwrap_or_default()),
+        };
+        let tone_map = self.tone_map_support().await;
         let args = build_hls_args(
             &source_path,
             &target_profile,
@@ -1144,6 +1284,9 @@ impl TranscodeOrchestrator {
             external,
             video_copy,
             self.ffmpeg_threads,
+            source_video.as_ref(),
+            tone_map,
+            hints,
         );
 
         let mut command = Command::new(&self.ffmpeg_binary);
@@ -2110,6 +2253,114 @@ mod tests {
 
     // ---- ffmpeg command construction ----------------------------------
 
+    mod hdr_args {
+        use super::*;
+        use crate::video::{parse_source_video, SourceVideo};
+
+        fn args_for(source: &SourceVideo, libplacebo: bool) -> Vec<String> {
+            let tone_map = video::ToneMapSupport {
+                zscale: true,
+                libplacebo,
+            };
+            build_hls_args(
+                Path::new("/media/in.mkv"),
+                &TranscodeTargetProfile::resolve("h264-720p-4mbps"),
+                Path::new("/tmp/s"),
+                0,
+                None,
+                None,
+                None,
+                2,
+                Some(source),
+                tone_map,
+                StreamHints::default(),
+            )
+        }
+
+        fn value<'a>(args: &'a [String], flag: &str) -> &'a str {
+            &args[args.iter().position(|a| a == flag).unwrap() + 1]
+        }
+
+        const DV5: &str = r#"{"streams":[{"color_range":"pc","pix_fmt":"yuv420p10le","side_data_list":[
+          {"side_data_type":"DOVI configuration record","dv_profile":5,"dv_bl_signal_compatibility_id":0}]}]}"#;
+
+        #[test]
+        fn hdr10_transcode_is_scaled_then_tone_mapped_and_tagged_bt709_limited() {
+            let s = parse_source_video(br#"{"streams":[{"color_transfer":"smpte2084"}]}"#).unwrap();
+            let args = args_for(&s, false);
+            let vf = value(&args, "-vf");
+            assert!(vf.starts_with("scale=-2:min(720\\,ih),zscale="), "{vf}");
+            assert!(vf.contains("tonemap=tonemap=hable"));
+            // Frame properties carry the tags; ffmpeg 7+ ignores the encoder options.
+            assert!(vf.ends_with(
+                "setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv"
+            ));
+            assert_eq!(value(&args, "-pix_fmt"), "yuv420p");
+            assert_eq!(value(&args, "-colorspace"), "bt709");
+            assert_eq!(value(&args, "-color_primaries"), "bt709");
+            assert_eq!(value(&args, "-color_trc"), "bt709");
+            assert_eq!(value(&args, "-color_range"), "tv");
+        }
+
+        #[test]
+        fn dv5_with_libplacebo_gets_a_vulkan_device_before_the_input() {
+            let s = parse_source_video(DV5.as_bytes()).unwrap();
+            let args = args_for(&s, true);
+            assert!(
+                args.iter().position(|a| a == "-init_hw_device").unwrap()
+                    < args.iter().position(|a| a == "-i").unwrap()
+            );
+            assert!(value(&args, "-vf").contains(",libplacebo="));
+            assert!(!args_for(&s, false).contains(&"-init_hw_device".to_string()));
+        }
+
+        fn copy_args(hints: StreamHints) -> Vec<String> {
+            build_hls_args(
+                Path::new("/media/in.mkv"),
+                &TranscodeTargetProfile::resolve(""),
+                Path::new("/tmp/s"),
+                0,
+                None,
+                None,
+                Some(VideoCopy { hevc: true }),
+                2,
+                None,
+                video::ToneMapSupport::default(),
+                hints,
+            )
+        }
+
+        #[test]
+        fn hevc_copy_strips_the_dovi_rpu_only_when_asked() {
+            let strip = copy_args(StreamHints {
+                strip_dovi: true,
+                max_audio_channels: None,
+            });
+            assert_eq!(value(&strip, "-bsf:v"), "dovi_rpu=strip=1");
+            assert!(!copy_args(StreamHints::default()).contains(&"-bsf:v".to_string()));
+        }
+
+        #[test]
+        fn stereo_device_gets_a_stereo_aac_fold() {
+            let stereo = copy_args(StreamHints {
+                strip_dovi: false,
+                max_audio_channels: Some(2),
+            });
+            assert_eq!(value(&stereo, "-af"), "aformat=channel_layouts=stereo|mono");
+            assert_eq!(
+                value(&copy_args(StreamHints::default()), "-af"),
+                AAC_CHANNEL_LAYOUTS_FILTER
+            );
+        }
+
+        #[test]
+        fn full_range_sdr_is_forced_to_limited_range() {
+            let s = parse_source_video(br#"{"streams":[{"color_range":"pc"}]}"#).unwrap();
+            let args = args_for(&s, false);
+            assert!(value(&args, "-vf").contains(",scale=out_range=tv,setparams="));
+        }
+    }
+
     mod ffmpeg_args {
         use super::*;
 
@@ -2325,7 +2576,7 @@ mod tests {
 
             tokio::fs::create_dir_all(root).await.unwrap();
             let path = root.join("ffmpeg-sleeper");
-            tokio::fs::write(&path, "#!/bin/sh\nexec /usr/bin/sleep 30\n")
+            tokio::fs::write(&path, "#!/bin/sh\n# Answers the start-up `-filters` probe at once; any other call stands in for a transcode.\n[ \"$2\" = -filters ] && exit 0\nexec /usr/bin/sleep 30\n")
                 .await
                 .unwrap();
             let mut permissions = tokio::fs::metadata(&path).await.unwrap().permissions();
@@ -2439,6 +2690,7 @@ mod tests {
                     "h264-720p-4mbps",
                     "node-a",
                     0,
+                    StreamHints::default(),
                     |path| async move {
                         tokio::fs::write(&path, b"dub")
                             .await
@@ -2463,6 +2715,7 @@ mod tests {
                     "h264-720p-4mbps",
                     "node-a",
                     0,
+                    StreamHints::default(),
                     |_| async { Err("dubarr down".to_string()) },
                 )
                 .await;
@@ -2777,14 +3030,30 @@ mod tests {
             for _ in 0..PERMITS_PER_SLOT {
                 sessions.push(
                     orchestrator
-                        .spawn_video_copy_at_with_audio(&media_file, "p", "n", 0, None, copy)
+                        .spawn_video_copy_at_with_audio(
+                            &media_file,
+                            "p",
+                            "n",
+                            0,
+                            None,
+                            copy,
+                            StreamHints::default(),
+                        )
                         .await
                         .expect("a remux costs a quarter slot"),
                 );
             }
             assert!(matches!(
                 orchestrator
-                    .spawn_video_copy_at_with_audio(&media_file, "p", "n", 0, None, copy)
+                    .spawn_video_copy_at_with_audio(
+                        &media_file,
+                        "p",
+                        "n",
+                        0,
+                        None,
+                        copy,
+                        StreamHints::default()
+                    )
                     .await,
                 Err(TranscodeError::NoCapacity)
             ));
@@ -2806,7 +3075,15 @@ mod tests {
             // A running full re-encode leaves no room for a remux.
             assert!(matches!(
                 orchestrator
-                    .spawn_video_copy_at_with_audio(&media_file, "p", "n", 0, None, copy)
+                    .spawn_video_copy_at_with_audio(
+                        &media_file,
+                        "p",
+                        "n",
+                        0,
+                        None,
+                        copy,
+                        StreamHints::default()
+                    )
                     .await,
                 Err(TranscodeError::NoCapacity)
             ));
@@ -2878,6 +3155,8 @@ mod tests {
                 audio_stream_index: None,
                 start_position_ms: 5_000,
                 video_copy: false,
+                strip_dovi: false,
+                max_audio_channels: None,
             };
             let (first_playback, second_playback) = (Uuid::new_v4(), Uuid::new_v4());
             let session = orchestrator
@@ -2914,7 +3193,15 @@ mod tests {
                 user_id: Uuid::new_v4(),
                 ..key.clone()
             };
-            for other in [other_start, other_user] {
+            let other_channels = SharedTranscodeKey {
+                max_audio_channels: Some(2),
+                ..key.clone()
+            };
+            let other_strip = SharedTranscodeKey {
+                strip_dovi: true,
+                ..key.clone()
+            };
+            for other in [other_start, other_user, other_channels, other_strip] {
                 assert!(orchestrator
                     .find_shared_transcode(&other)
                     .await
@@ -3226,6 +3513,30 @@ mod tests {
                 .await
                 .unwrap();
             assert!(missing.is_none());
+        }
+
+        #[tokio::test]
+        async fn on_demand_renditions_from_before_tone_mapping_are_not_reused() {
+            let media_file_id = Uuid::new_v4();
+            let repo = Arc::new(FakeRenditionRepo::with_ready(media_file_id, "p"));
+            for r in repo.renditions.lock().unwrap().values_mut() {
+                r.produced_by = ProducedBy::OnDemand;
+                r.produced_at = *TONE_MAP_EPOCH - chrono::Duration::days(1);
+            }
+            let orchestrator = test_orchestrator(repo.clone());
+            assert!(orchestrator
+                .find_existing_rendition(media_file_id, "p")
+                .await
+                .unwrap()
+                .is_none());
+            for r in repo.renditions.lock().unwrap().values_mut() {
+                r.produced_at = *TONE_MAP_EPOCH + chrono::Duration::hours(1);
+            }
+            assert!(orchestrator
+                .find_existing_rendition(media_file_id, "p")
+                .await
+                .unwrap()
+                .is_some());
         }
     }
 

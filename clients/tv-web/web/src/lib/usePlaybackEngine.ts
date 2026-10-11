@@ -30,7 +30,7 @@ import type {
 } from "@playarr-tv/player-core";
 import { useServerAccessToken, useServerClient } from "./ApiClientProvider";
 import { replayNegotiationParams } from "./endScreen";
-import { WEB_PLAYBACK_CAPABILITIES } from "./playbackCapabilities";
+import { currentPlaybackCapabilities, getPlaybackInfoReady } from "./playbackCapabilities";
 import {
   readPlayerDefaults,
   selectDefaultSubtitleTrackId,
@@ -91,7 +91,7 @@ function getInitialPlaybackInfo(
   const existing = clientNegotiations.get(requestKey);
   if (existing) return existing;
 
-  const request = client.getPlaybackInfo(mediaFileId, params);
+  const request = getPlaybackInfoReady(client, mediaFileId, params);
   clientNegotiations.set(requestKey, request);
   const clearRequest = () => {
     if (clientNegotiations?.get(requestKey) === request) {
@@ -280,7 +280,7 @@ export function usePlaybackEngine(
   // "default to the completed download" effect backs off for the rest of
   // this viewing session instead of overriding a deliberate choice.
   const userSelectedQualityRef = useRef(false);
-  const negotiationRequestRef = useRef<PlaybackInfoParams>(WEB_PLAYBACK_CAPABILITIES);
+  const negotiationRequestRef = useRef<PlaybackInfoParams>(currentPlaybackCapabilities());
   const automaticRecoveryUrlRef = useRef<string | null>(null);
   // One automatic switch to a forced H.264 transcode per title after a decode failure.
   const decodeFallbackAttemptedRef = useRef(false);
@@ -602,7 +602,7 @@ export function usePlaybackEngine(
     latestUserSeekRef.current = null;
     pendingQualitySwitchRef.current = null;
     negotiationRequestRef.current = {
-      ...WEB_PLAYBACK_CAPABILITIES,
+      ...currentPlaybackCapabilities(),
       ...(preferredQualityId !== "original"
         ? {
             profile: initialSettings?.profile ?? preferredQualityId,
@@ -734,7 +734,7 @@ export function usePlaybackEngine(
         negotiationRequestRef.current = requestParams;
         return getInitialPlaybackInfo(client, mediaFileId, requestParams);
       }
-      return client.getPlaybackInfo(mediaFileId, requestParams);
+      return getPlaybackInfoReady(client, mediaFileId, requestParams);
     })();
 
     void request
@@ -1287,7 +1287,7 @@ export function usePlaybackEngine(
         .then(() => {
           if (qualitySwitchRequestRef.current !== requestId) return undefined;
           return retryOnCapacityRefusal(
-            () => client.getPlaybackInfo(mediaFileId, negotiationRequestRef.current),
+            () => getPlaybackInfoReady(client, mediaFileId, negotiationRequestRef.current),
             () => qualitySwitchRequestRef.current === requestId
           );
         })
@@ -1390,7 +1390,7 @@ export function usePlaybackEngine(
         .then(() => {
           if (qualitySwitchRequestRef.current !== requestId) return undefined;
           return retryOnCapacityRefusal(
-            () => client.getPlaybackInfo(mediaFileId, request),
+            () => getPlaybackInfoReady(client, mediaFileId, request),
             () => qualitySwitchRequestRef.current === requestId
           );
         })
@@ -1522,13 +1522,13 @@ export function usePlaybackEngine(
       const request =
         option.id === "original"
           ? {
-              ...WEB_PLAYBACK_CAPABILITIES,
+              ...currentPlaybackCapabilities(),
               startPositionMs: Math.round(absolutePositionSeconds * 1000),
               audioStreamIndex: selectedAudioStreamIndex,
               ignoreSavedPreferences: true,
             }
           : {
-              ...WEB_PLAYBACK_CAPABILITIES,
+              ...currentPlaybackCapabilities(),
               profile: option.profile ?? option.id,
               forceTranscode: true,
               startPositionMs: Math.round(absolutePositionSeconds * 1000),
@@ -1544,7 +1544,7 @@ export function usePlaybackEngine(
         .then(() => {
           if (qualitySwitchRequestRef.current !== requestId) return undefined;
           return retryOnCapacityRefusal(
-            () => client.getPlaybackInfo(mediaFileId, request),
+            () => getPlaybackInfoReady(client, mediaFileId, request),
             () => qualitySwitchRequestRef.current === requestId
           );
         })

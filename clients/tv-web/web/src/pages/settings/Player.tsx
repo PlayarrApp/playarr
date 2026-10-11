@@ -213,6 +213,33 @@ export function SettingsPlayerPage() {
           </p>
         </div>
 
+        <div className="player-default-group">
+          <div className="player-default-heading">
+            <h3>{t("settings.playerPreferences.advancedTitle")}</h3>
+            <p>{t("settings.playerPreferences.advancedDescription")}</p>
+          </div>
+          {(
+            [
+              ["forceDirectVideo", "forceDirectVideoTitle", "forceDirectVideoDescription"],
+              ["forceDirectAudio", "forceDirectAudioTitle", "forceDirectAudioDescription"],
+            ] as const
+          ).map(([key, title, description]) => (
+            <div className="player-default-heading" key={key}>
+              <h4>{t(`settings.playerPreferences.${title}`)}</h4>
+              <p>{t(`settings.playerPreferences.${description}`)}</p>
+              <SegmentedControl
+                ariaLabel={t(`settings.playerPreferences.${title}`)}
+                value={playerDefaults[key] ? "on" : "off"}
+                options={[
+                  { value: "off", label: t("settings.playerPreferences.forceOff") },
+                  { value: "on", label: t("settings.playerPreferences.forceOn") },
+                ]}
+                onChange={(value) => updatePlayerDefaults({ [key]: value === "on" })}
+              />
+            </div>
+          ))}
+        </div>
+
         <p className="player-default-device-note">
           {t("settings.playerPreferences.deviceNote")}
         </p>

@@ -38,6 +38,8 @@ describe("player defaults", () => {
       qualityId: "h264-2160p-35mbps" as const,
       subtitleMode: "always" as const,
       subtitleLanguage: "ja",
+      forceDirectVideo: true,
+      forceDirectAudio: false,
     };
 
     writePlayerDefaults(defaults, storage);

@@ -1,5 +1,11 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { browserDecodesHevc, playbackCapabilitiesForPlatform } from "./playbackCapabilities";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  browserDecodesHevc,
+  currentPlaybackCapabilities,
+  getPlaybackInfoReady,
+  playbackCapabilitiesForPlatform,
+} from "./playbackCapabilities";
+import { PLAYER_DEFAULTS_STORAGE_KEY } from "./playerDefaults";
 
 describe("playbackCapabilitiesForPlatform", () => {
   it.each(["tv-webos", "tv-tizen"] as const)(
@@ -69,5 +75,52 @@ describe("browserDecodesHevc without MediaSource (iPhone Safari)", () => {
     expect(browserDecodesHevc()).toBe(true);
     canPlayType.mockReturnValue("");
     expect(browserDecodesHevc()).toBe(false);
+  });
+});
+
+describe("currentPlaybackCapabilities", () => {
+  const store = new Map<string, string>();
+  beforeEach(() => {
+    store.clear();
+    vi.stubGlobal("window", {
+      localStorage: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) },
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("declares nothing where the platform cannot be probed, and leaves the force flags off", () => {
+    const caps = currentPlaybackCapabilities();
+    // No MediaSource in this environment: no guessed bit depth or channels.
+    expect(caps.maxBitDepth).toBeUndefined();
+    expect(caps.maxChannels).toBeUndefined();
+    expect(caps.forceDirectVideo).toBeUndefined();
+    expect(caps.forceDirectAudio).toBeUndefined();
+  });
+
+  it("sends each force flag only when its setting is on", () => {
+    store.set(PLAYER_DEFAULTS_STORAGE_KEY, JSON.stringify({ forceDirectAudio: true }));
+    const caps = currentPlaybackCapabilities();
+    expect(caps.forceDirectAudio).toBe(true);
+    expect(caps.forceDirectVideo).toBeUndefined();
+  });
+
+  it("waits for detection and fills detected keys the caller's params lack", async () => {
+    const calls: unknown[] = [];
+    const client = { getPlaybackInfo: async (_id: string, p: unknown) => void calls.push(p) };
+    store.set(PLAYER_DEFAULTS_STORAGE_KEY, JSON.stringify({ forceDirectVideo: true }));
+    await getPlaybackInfoReady(client as never, "m", { containers: "mp4" });
+    expect(calls).toHaveLength(1);
+    // The caller's explicit keys win; the force flag comes from the setting.
+    expect(calls[0]).toMatchObject({ containers: "mp4", forceDirectVideo: true });
+  });
+
+  it("takes the force flags from the current settings, not from captured params", async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const client = { getPlaybackInfo: async (_id: string, p: Record<string, unknown>) => void calls.push(p) };
+    await getPlaybackInfoReady(client as never, "m", { forceDirectVideo: true });
+    expect(calls[0]!.forceDirectVideo).toBeUndefined();
+    store.set(PLAYER_DEFAULTS_STORAGE_KEY, JSON.stringify({ forceDirectAudio: true }));
+    await getPlaybackInfoReady(client as never, "m", {});
+    expect(calls[1]).toMatchObject({ forceDirectAudio: true });
   });
 });

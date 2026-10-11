@@ -12,6 +12,10 @@ export interface PlayerDefaults {
   qualityId: PlayerQualityDefault;
   subtitleMode: PlayerSubtitleDefault;
   subtitleLanguage: string;
+  /** Advanced: keep the picture as is, overriding the server's capability decision. */
+  forceDirectVideo: boolean;
+  /** Advanced: keep the source audio as is, overriding the server's capability decision. */
+  forceDirectAudio: boolean;
 }
 
 export interface SubtitleDefaultCandidate {
@@ -25,6 +29,8 @@ export const DEFAULT_PLAYER_DEFAULTS: PlayerDefaults = {
   qualityId: "original",
   subtitleMode: "off",
   subtitleLanguage: "en",
+  forceDirectVideo: false,
+  forceDirectAudio: false,
 };
 
 function browserStorage(): Storage | undefined {
@@ -64,6 +70,8 @@ export function readPlayerDefaults(storage = browserStorage()): PlayerDefaults {
         typeof parsed?.subtitleLanguage === "string" && parsed.subtitleLanguage.trim()
           ? parsed.subtitleLanguage.trim().toLowerCase()
           : DEFAULT_PLAYER_DEFAULTS.subtitleLanguage,
+      forceDirectVideo: parsed?.forceDirectVideo === true,
+      forceDirectAudio: parsed?.forceDirectAudio === true,
     };
   } catch {
     return DEFAULT_PLAYER_DEFAULTS;

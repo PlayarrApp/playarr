@@ -837,6 +837,14 @@ export const en = {
   "settings.playerPreferences.audioTitle": "Default audio track",
   "settings.playerPreferences.description":
     "Choose how Playarr should start quality, subtitles and audio.",
+  "settings.playerPreferences.advancedTitle": "Advanced",
+  "settings.playerPreferences.advancedDescription": "Override what Playarr decides for this device. Leave both off unless playback is wrong: forcing a format the device cannot show gives a black screen, wrong colours or silence.",
+  "settings.playerPreferences.forceDirectVideoTitle": "Force direct video",
+  "settings.playerPreferences.forceDirectVideoDescription": "Always send the original picture, even when the device may not support its codec, bit depth or HDR format.",
+  "settings.playerPreferences.forceDirectAudioTitle": "Force direct audio",
+  "settings.playerPreferences.forceDirectAudioDescription": "Always send the original audio, even when the device may not support its codec or channel count.",
+  "settings.playerPreferences.forceOff": "Off",
+  "settings.playerPreferences.forceOn": "On",
   "settings.playerPreferences.deviceNote":
     "Quality and subtitle defaults are saved on this device. Audio language follows your profile.",
   "settings.playerPreferences.documentTitle": "Player - Settings",

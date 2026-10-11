@@ -271,6 +271,18 @@ export interface PlaybackCapabilities {
   profile?: string;
   /** Force the requested rendition instead of direct-playing the source (a quality chosen in the player). */
   forceTranscode?: boolean;
+  /** Device capability fields; see `PlaybackInfoParams`. */
+  hdr?: string;
+  dvProfiles?: string;
+  maxBitDepth?: number;
+  videoProfiles?: string;
+  maxWidth?: number;
+  maxHeight?: number;
+  maxFps?: number;
+  maxChannels?: number;
+  passthrough?: string;
+  forceDirectVideo?: boolean;
+  forceDirectAudio?: boolean;
 }
 
 /** Negotiate playback for a MediaFile. Idle until `mediaFileId` is defined. */

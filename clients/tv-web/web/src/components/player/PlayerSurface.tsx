@@ -33,7 +33,7 @@ import {
 } from "../../lib/pictureInPicture";
 import { PlayerControls } from "./PlayerControls";
 import { PlaybackHealthPanel } from "./PlaybackHealthPanel";
-import { WEB_PLAYBACK_CAPABILITIES } from "../../lib/playbackCapabilities";
+import { currentPlaybackCapabilities } from "../../lib/playbackCapabilities";
 import {
   CloseIcon,
   ErrorIcon,
@@ -1577,7 +1577,7 @@ export function PlayerSurface({
         <PlaybackHealthPanel
           getSessionId={player.getSessionId}
           videoRef={videoRef}
-          capabilities={WEB_PLAYBACK_CAPABILITIES}
+          capabilities={currentPlaybackCapabilities()}
           about={{
             title: activePlaylistItem?.title ?? title,
             subtitle: activePlaylistItem?.subtitle,

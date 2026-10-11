@@ -6163,6 +6163,12 @@ export interface components {
             audio_stream_index?: number | null;
             /** @description Comma-separated container names the client can play, e.g. `"mp4"`. */
             containers?: string;
+            /** @description Comma-separated Dolby Vision profiles the device renders (e.g. `5,8`). */
+            dv_profiles?: string;
+            /** @description "Force direct audio": keep the source audio as is whatever the capability checks say. */
+            force_direct_audio?: boolean;
+            /** @description "Force direct video": keep the picture as is whatever the capability checks say. */
+            force_direct_video?: boolean;
             /**
              * @description Skip direct play and produce the requested rendition profile. Used
              *     by an explicit player quality choice; omitted/false keeps Original
@@ -6170,12 +6176,36 @@ export interface components {
              */
             force_transcode?: boolean;
             /**
+             * @description Comma-separated HDR formats the device decodes and shows: `hdr10`, `hlg`,
+             *     `dolby_vision`. Together with `max_bit_depth` this marks the video capabilities as
+             *     declared; clients that send neither keep the legacy behaviour.
+             */
+            hdr?: string;
+            /**
              * @description Ignore this viewer's remembered per-media choices for this request.
              *     Used when the player explicitly switches back to Original/automatic.
              */
             ignore_saved_preferences?: boolean;
+            /**
+             * Format: int32
+             * @description Deepest video bit depth the device decodes (8, 10, 12).
+             */
+            max_bit_depth?: number | null;
             /** Format: int64 */
             max_bitrate_bps?: number | null;
+            /**
+             * Format: int32
+             * @description Most audio channels the device outputs; sending it declares the audio capabilities.
+             */
+            max_channels?: number | null;
+            /** Format: int32 */
+            max_fps?: number | null;
+            /** Format: int32 */
+            max_height?: number | null;
+            /** Format: int32 */
+            max_width?: number | null;
+            /** @description Comma-separated audio codecs the device passes through (`eac3`, `ac3`, `dts`, `truehd`). */
+            passthrough?: string;
             /**
              * @description Target rendition profile name if a transcode is needed; defaults to
              *     `"h264-720p-4mbps"` (an unrecognized name still resolves to a sane
@@ -6191,6 +6221,8 @@ export interface components {
             start_position_ms?: number;
             /** @description Comma-separated video codecs the client can play, e.g. `"h264"`. */
             video_codecs?: string;
+            /** @description Comma-separated `codec:profile` pairs (e.g. `hevc:main 10`); empty means any profile. */
+            video_profiles?: string;
         };
         /**
          * @description One playback attempt from start to finish. Written incrementally: a row
@@ -15939,6 +15971,29 @@ export interface operations {
                  *     Used when the player explicitly switches back to Original/automatic.
                  */
                 ignore_saved_preferences?: boolean;
+                /**
+                 * @description Comma-separated HDR formats the device decodes and shows: `hdr10`, `hlg`,
+                 *     `dolby_vision`. Together with `max_bit_depth` this marks the video capabilities as
+                 *     declared; clients that send neither keep the legacy behaviour.
+                 */
+                hdr?: string;
+                /** @description Comma-separated Dolby Vision profiles the device renders (e.g. `5,8`). */
+                dv_profiles?: string;
+                /** @description Deepest video bit depth the device decodes (8, 10, 12). */
+                max_bit_depth?: number | null;
+                /** @description Comma-separated `codec:profile` pairs (e.g. `hevc:main 10`); empty means any profile. */
+                video_profiles?: string;
+                max_width?: number | null;
+                max_height?: number | null;
+                max_fps?: number | null;
+                /** @description Most audio channels the device outputs; sending it declares the audio capabilities. */
+                max_channels?: number | null;
+                /** @description Comma-separated audio codecs the device passes through (`eac3`, `ac3`, `dts`, `truehd`). */
+                passthrough?: string;
+                /** @description "Force direct video": keep the picture as is whatever the capability checks say. */
+                force_direct_video?: boolean;
+                /** @description "Force direct audio": keep the source audio as is whatever the capability checks say. */
+                force_direct_audio?: boolean;
             };
             header?: never;
             path?: never;
@@ -16259,6 +16314,29 @@ export interface operations {
                  *     Used when the player explicitly switches back to Original/automatic.
                  */
                 ignore_saved_preferences?: boolean;
+                /**
+                 * @description Comma-separated HDR formats the device decodes and shows: `hdr10`, `hlg`,
+                 *     `dolby_vision`. Together with `max_bit_depth` this marks the video capabilities as
+                 *     declared; clients that send neither keep the legacy behaviour.
+                 */
+                hdr?: string;
+                /** @description Comma-separated Dolby Vision profiles the device renders (e.g. `5,8`). */
+                dv_profiles?: string;
+                /** @description Deepest video bit depth the device decodes (8, 10, 12). */
+                max_bit_depth?: number | null;
+                /** @description Comma-separated `codec:profile` pairs (e.g. `hevc:main 10`); empty means any profile. */
+                video_profiles?: string;
+                max_width?: number | null;
+                max_height?: number | null;
+                max_fps?: number | null;
+                /** @description Most audio channels the device outputs; sending it declares the audio capabilities. */
+                max_channels?: number | null;
+                /** @description Comma-separated audio codecs the device passes through (`eac3`, `ac3`, `dts`, `truehd`). */
+                passthrough?: string;
+                /** @description "Force direct video": keep the picture as is whatever the capability checks say. */
+                force_direct_video?: boolean;
+                /** @description "Force direct audio": keep the source audio as is whatever the capability checks say. */
+                force_direct_audio?: boolean;
             };
             header?: never;
             path: {

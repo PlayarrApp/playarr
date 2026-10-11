@@ -153,6 +153,66 @@ pub struct PlaybackQuery {
     /// Used when the player explicitly switches back to Original/automatic.
     #[serde(default)]
     pub ignore_saved_preferences: bool,
+    /// Comma-separated HDR formats the device decodes and shows: `hdr10`, `hlg`,
+    /// `dolby_vision`. Together with `max_bit_depth` this marks the video capabilities as
+    /// declared; clients that send neither keep the legacy behaviour.
+    #[serde(default)]
+    pub hdr: String,
+    /// Comma-separated Dolby Vision profiles the device renders (e.g. `5,8`).
+    #[serde(default)]
+    pub dv_profiles: String,
+    /// Deepest video bit depth the device decodes (8, 10, 12).
+    pub max_bit_depth: Option<u8>,
+    /// Comma-separated `codec:profile` pairs (e.g. `hevc:main 10`); empty means any profile.
+    #[serde(default)]
+    pub video_profiles: String,
+    pub max_width: Option<u32>,
+    pub max_height: Option<u32>,
+    pub max_fps: Option<u32>,
+    /// Most audio channels the device outputs; sending it declares the audio capabilities.
+    pub max_channels: Option<u8>,
+    /// Comma-separated audio codecs the device passes through (`eac3`, `ac3`, `dts`, `truehd`).
+    #[serde(default)]
+    pub passthrough: String,
+    /// "Force direct video": keep the picture as is whatever the capability checks say.
+    #[serde(default)]
+    pub force_direct_video: bool,
+    /// "Force direct audio": keep the source audio as is whatever the capability checks say.
+    #[serde(default)]
+    pub force_direct_audio: bool,
+}
+
+impl PlaybackQuery {
+    fn video_caps(&self) -> playarr_transcode::video::DeviceVideoCaps {
+        playarr_transcode::video::DeviceVideoCaps {
+            declared: self.max_bit_depth.is_some() || !self.hdr.is_empty(),
+            hdr: split_csv(&self.hdr)
+                .into_iter()
+                .map(|h| h.to_ascii_lowercase())
+                .collect(),
+            dv_profiles: split_csv(&self.dv_profiles)
+                .iter()
+                .filter_map(|p| p.parse().ok())
+                .collect(),
+            max_bit_depth: self.max_bit_depth,
+            video_profiles: split_csv(&self.video_profiles)
+                .into_iter()
+                .map(|p| p.to_ascii_lowercase())
+                .collect(),
+            max_width: self.max_width,
+            max_height: self.max_height,
+            max_fps: self.max_fps,
+        }
+    }
+
+    fn audio_caps(&self) -> playarr_transcode::video::DeviceAudioCaps {
+        playarr_transcode::video::DeviceAudioCaps {
+            declared: self.max_channels.is_some(),
+            codecs: split_csv(&self.audio_codecs),
+            passthrough: split_csv(&self.passthrough),
+            max_channels: self.max_channels,
+        }
+    }
 }
 
 fn split_csv(raw: &str) -> Vec<String> {
@@ -208,6 +268,24 @@ impl From<&PlaybackQuery> for ClientCapabilities {
 }
 
 const DEFAULT_PROFILE: &str = "h264-720p-4mbps";
+/// Default when the picture must be re-encoded for a device that can show 1080p: keep a Full HD
+/// source at 1080p instead of dropping to 720p. A 4K output is never chosen automatically (the
+/// node cannot encode it in real time); the viewer can still pick a quality.
+const HD_DEFAULT_PROFILE: &str = "h264-1080p-8mbps";
+
+fn default_transcode_profile(
+    source: Option<&playarr_transcode::video::SourceVideo>,
+    plan: Option<playarr_transcode::video::VideoPlan>,
+    device_max_height: Option<u32>,
+) -> &'static str {
+    let reencode = plan == Some(playarr_transcode::video::VideoPlan::Transcode);
+    let hd_source = source.is_some_and(|s| s.height >= 1080);
+    if reencode && hd_source && device_max_height.is_none_or(|h| h >= 1080) {
+        HD_DEFAULT_PROFILE
+    } else {
+        DEFAULT_PROFILE
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
@@ -618,15 +696,21 @@ fn video_copy_for_hls(
     capabilities: &ClientCapabilities,
     original_quality: bool,
     force_transcode: bool,
+    video_plan: Option<playarr_transcode::video::VideoPlan>,
+    force_direct_video: bool,
 ) -> Option<playarr_transcode::VideoCopy> {
-    if !original_quality || force_transcode {
+    if !original_quality
+        || force_transcode
+        || video_plan == Some(playarr_transcode::video::VideoPlan::Transcode)
+    {
         return None;
     }
     let video = playarr_transcode::VideoCopy::for_codec(&media_file.codec)?;
-    let codec_ok = capabilities
-        .supported_video_codecs
-        .iter()
-        .any(|c| playarr_transcode::codecs_match(c, &media_file.codec));
+    let codec_ok = force_direct_video
+        || capabilities
+            .supported_video_codecs
+            .iter()
+            .any(|c| playarr_transcode::codecs_match(c, &media_file.codec));
     let bitrate_ok = match (media_file.bitrate, capabilities.max_bitrate_bps) {
         (Some(file_bitrate), Some(max_bitrate)) => file_bitrate <= max_bitrate,
         _ => true,
@@ -1184,6 +1268,28 @@ pub(crate) async fn negotiate_playback(
         .cloned();
 
     let capabilities: ClientCapabilities = query.into();
+    let codec_supported = capabilities
+        .supported_video_codecs
+        .iter()
+        .any(|c| playarr_transcode::codecs_match(c, &media_file.codec));
+    // Best effort: without a probe the legacy codec/bitrate rules decide alone.
+    let source_video = state.transcode.probe_source(&media_file).await;
+    let video_plan = source_video.as_ref().map(|source| {
+        playarr_transcode::video::plan_video(
+            source,
+            codec_supported,
+            &query.video_caps(),
+            query.force_direct_video,
+        )
+    });
+    let selected_audio = selected_audio_stream_index
+        .and_then(|index| audio_tracks.iter().find(|t| t.stream_index == index));
+    let audio_direct = playarr_transcode::video::audio_direct_ok(
+        selected_audio.and_then(|t| t.codec.as_deref()),
+        selected_audio.and_then(|t| t.channels),
+        &query.audio_caps(),
+        query.force_direct_audio,
+    );
     let persisted_quality_id = persisted_preferences
         .as_ref()
         .map(|preferences| preferences.quality_id.as_str())
@@ -1202,7 +1308,10 @@ pub(crate) async fn negotiate_playback(
                 .filter(|id| *id != "original")
                 .map(str::to_string)
         })
-        .unwrap_or_else(|| DEFAULT_PROFILE.to_string());
+        .unwrap_or_else(|| {
+            default_transcode_profile(source_video.as_ref(), video_plan, query.max_height)
+                .to_string()
+        });
     let selected_quality_id = if force_transcode {
         profile.clone()
     } else {
@@ -1224,7 +1333,18 @@ pub(crate) async fn negotiate_playback(
     // Step 1: can the source file be served byte-for-byte?
     if !force_transcode
         && !requires_audio_selection
-        && state.transcode.can_direct_play(&media_file, &capabilities)
+        && audio_direct
+        && !matches!(
+            video_plan,
+            Some(playarr_transcode::video::VideoPlan::Transcode)
+                | Some(playarr_transcode::video::VideoPlan::Copy { strip_dovi: true })
+        )
+        && (state.transcode.can_direct_play(&media_file, &capabilities)
+            || (query.force_direct_video
+                && capabilities
+                    .supported_containers
+                    .iter()
+                    .any(|c| c.eq_ignore_ascii_case(&media_file.container))))
     {
         // This codebase never produces `DirectStream` -- `can_direct_play`
         // only distinguishes "serve the source file as-is" vs. "transcode",
@@ -1276,6 +1396,9 @@ pub(crate) async fn negotiate_playback(
         TranscodeReason::Other("audio_selection".to_string())
     } else if force_transcode {
         TranscodeReason::Other("quality_selection".to_string())
+    } else if codec_supported && video_plan == Some(playarr_transcode::video::VideoPlan::Transcode)
+    {
+        TranscodeReason::Other("hdr_or_profile_unsupported".to_string())
     } else {
         derive_transcode_reason(&media_file, &capabilities)
     };
@@ -1342,7 +1465,16 @@ pub(crate) async fn negotiate_playback(
         &capabilities,
         query.profile.as_deref().is_none_or(|p| p == "original"),
         force_transcode,
+        video_plan,
+        query.force_direct_video,
     );
+    let stream_hints = playarr_transcode::StreamHints {
+        strip_dovi: matches!(
+            video_plan,
+            Some(playarr_transcode::video::VideoPlan::Copy { strip_dovi: true })
+        ),
+        max_audio_channels: query.max_channels.filter(|_| !query.force_direct_audio),
+    };
     let source_audio_transcode = || async {
         match video_copy {
             Some(video) => {
@@ -1355,6 +1487,7 @@ pub(crate) async fn negotiate_playback(
                         source_offset_ms,
                         selected_audio_stream_index,
                         video,
+                        stream_hints,
                     )
                     .await
             }
@@ -1367,6 +1500,7 @@ pub(crate) async fn negotiate_playback(
                         &state.node_id,
                         source_offset_ms,
                         selected_audio_stream_index,
+                        stream_hints,
                     )
                     .await
             }
@@ -1384,6 +1518,8 @@ pub(crate) async fn negotiate_playback(
             audio_stream_index: selected_audio_stream_index,
             start_position_ms: source_offset_ms,
             video_copy: video_copy.is_some(),
+            strip_dovi: stream_hints.strip_dovi,
+            max_audio_channels: stream_hints.max_audio_channels,
         });
     // Held across find, spawn and register, so racing first requests attach to one transcode.
     let share_guard = match &share_key {
@@ -1419,6 +1555,7 @@ pub(crate) async fn negotiate_playback(
                                 &state.node_id,
                                 source_offset_ms,
                                 video,
+                                stream_hints,
                                 fetch,
                             )
                             .await
@@ -1431,6 +1568,7 @@ pub(crate) async fn negotiate_playback(
                                 &profile,
                                 &state.node_id,
                                 source_offset_ms,
+                                stream_hints,
                                 fetch,
                             )
                             .await
@@ -2456,34 +2594,118 @@ mod tests {
         remux.bitrate = Some(64_000_000);
 
         // A 4K HEVC remux and an HEVC-capable client: copy, whatever the container.
-        let video = video_copy_for_hls(&remux, &caps(&["h264", "h265"], None), true, false);
+        let video = video_copy_for_hls(
+            &remux,
+            &caps(&["h264", "h265"], None),
+            true,
+            false,
+            None,
+            false,
+        );
         assert_eq!(video, Some(playarr_transcode::VideoCopy { hevc: true }));
         // The client's cap is above the file's bitrate: still a copy.
-        assert!(
-            video_copy_for_hls(&remux, &caps(&["hevc"], Some(80_000_000)), true, false).is_some()
-        );
+        assert!(video_copy_for_hls(
+            &remux,
+            &caps(&["hevc"], Some(80_000_000)),
+            true,
+            false,
+            None,
+            false
+        )
+        .is_some());
 
         // A lower quality was asked for, or a transcode was forced: no copy.
-        assert!(video_copy_for_hls(&remux, &caps(&["hevc"], None), false, false).is_none());
-        assert!(video_copy_for_hls(&remux, &caps(&["hevc"], None), true, true).is_none());
-        // Client cannot play HEVC, reports nothing, or the file exceeds its cap: transcode.
-        assert!(video_copy_for_hls(&remux, &caps(&["h264"], None), true, false).is_none());
-        assert!(video_copy_for_hls(&remux, &caps(&[], None), true, false).is_none());
         assert!(
-            video_copy_for_hls(&remux, &caps(&["hevc"], Some(8_000_000)), true, false).is_none()
+            video_copy_for_hls(&remux, &caps(&["hevc"], None), false, false, None, false).is_none()
         );
+        assert!(
+            video_copy_for_hls(&remux, &caps(&["hevc"], None), true, true, None, false).is_none()
+        );
+        // Client cannot play HEVC, reports nothing, or the file exceeds its cap: transcode.
+        assert!(
+            video_copy_for_hls(&remux, &caps(&["h264"], None), true, false, None, false).is_none()
+        );
+        assert!(video_copy_for_hls(&remux, &caps(&[], None), true, false, None, false).is_none());
+        use playarr_transcode::video::{parse_source_video, SourceVideo};
+        let src = |json: &str| -> SourceVideo { parse_source_video(json.as_bytes()).unwrap() };
+        let uhd_hdr = src(r#"{"streams":[{"height":2160,"color_transfer":"smpte2084"}]}"#);
+        let uhd_sdr = src(r#"{"streams":[{"height":2160}]}"#);
+        let t = Some(playarr_transcode::video::VideoPlan::Transcode);
+        let c = Some(playarr_transcode::video::VideoPlan::Copy { strip_dovi: false });
+        assert_eq!(
+            default_transcode_profile(Some(&uhd_hdr), t, None),
+            HD_DEFAULT_PROFILE
+        );
+        assert_eq!(
+            default_transcode_profile(Some(&uhd_hdr), t, Some(1080)),
+            HD_DEFAULT_PROFILE
+        );
+        assert_eq!(
+            default_transcode_profile(Some(&uhd_hdr), t, Some(720)),
+            DEFAULT_PROFILE
+        );
+        // Re-encoding an SDR 4K source (codec not supported) also keeps Full HD.
+        assert_eq!(
+            default_transcode_profile(Some(&uhd_sdr), t, None),
+            HD_DEFAULT_PROFILE
+        );
+        // Copying the picture (an audio-only transcode) keeps the old default.
+        assert_eq!(
+            default_transcode_profile(Some(&uhd_sdr), c, None),
+            DEFAULT_PROFILE
+        );
+        assert_eq!(default_transcode_profile(None, None, None), DEFAULT_PROFILE);
+        // HDR alone is no reason: only a planned re-encode of the picture is.
+        assert_eq!(
+            default_transcode_profile(Some(&uhd_hdr), c, None),
+            DEFAULT_PROFILE
+        );
+        // An unsupported HDR format (plan: transcode) blocks the copy; "Force direct video" wins
+        // over both a missing codec claim and the capability checks.
+        let transcode = Some(playarr_transcode::video::VideoPlan::Transcode);
+        let copy = Some(playarr_transcode::video::VideoPlan::Copy { strip_dovi: false });
+        assert!(video_copy_for_hls(
+            &remux,
+            &caps(&["hevc"], None),
+            true,
+            false,
+            transcode,
+            false
+        )
+        .is_none());
+        assert!(
+            video_copy_for_hls(&remux, &caps(&["h264"], None), true, false, copy, true).is_some()
+        );
+        assert!(video_copy_for_hls(
+            &remux,
+            &caps(&["hevc"], Some(8_000_000)),
+            true,
+            false,
+            None,
+            false
+        )
+        .is_none());
         // An H.264 MKV for a browser without Matroska or the source audio
         // codec: remux, never a real-time video re-encode (TASKS 20.260).
         let mut mkv = media_file();
         mkv.codec = "h264".to_string();
         assert_eq!(
-            video_copy_for_hls(&mkv, &caps(&["h264", "vp9"], None), true, false),
+            video_copy_for_hls(
+                &mkv,
+                &caps(&["h264", "vp9"], None),
+                true,
+                false,
+                None,
+                false
+            ),
             Some(playarr_transcode::VideoCopy { hevc: false })
         );
         // A codec the fragmented-MP4 path does not carry is transcoded.
         let mut other = media_file();
         other.codec = "vc1".to_string();
-        assert!(video_copy_for_hls(&other, &caps(&["vc1"], None), true, false).is_none());
+        assert!(
+            video_copy_for_hls(&other, &caps(&["vc1"], None), true, false, None, false).is_none()
+        );
     }
 
     #[test]
