@@ -1,6 +1,7 @@
 import Foundation
 import PlayarrKit
 import SwiftUI
+import UIKit
 
 #if DEBUG
 /// Launch-argument hooks used only by the pixel-parity workflow
@@ -61,6 +62,17 @@ enum ParityLaunch {
         return ISO8601DateFormatter().date(from: raw)
     }
     static var isActive: Bool { server != nil && user != nil }
+    /// `--playarr-parity-landscape`: rotates the window to landscape (a wall tile shows the iPad 4:3 landscape).
+    @MainActor static func applyLandscape() {
+        guard ProcessInfo.processInfo.arguments.contains("--playarr-parity-landscape") else { return }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+                scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+                scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeLeft)) { NSLog("PlayarrParity rotate failed: %@", String(describing: $0)) }
+            }
+        }
+    }
 }
 
 /// Resolves the fixture film named in the launch route to its media file through the catalogue,

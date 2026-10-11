@@ -43,6 +43,7 @@ struct RootView: View {
         .updateGate(updateViewModel)
         .task {
             #if DEBUG
+            ParityLaunch.applyLandscape()
             if ParityLaunch.isActive, let server = ParityLaunch.server, let user = ParityLaunch.user {
                 try? await environment.signIn(
                     serverURL: server,
