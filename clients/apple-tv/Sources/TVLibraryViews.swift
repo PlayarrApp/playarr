@@ -68,7 +68,7 @@ struct TVHomeView: View {
             ?? rails.first?.works.first
         return GeometryReader { geo in
         // Screen coordinates: the stage's own origin (after the nav column) is subtracted once here.
-        let origin = geo.frame(in: .global).origin
+        let origin = geo.frame(in: tvScreenSpace).origin
         ZStack(alignment: .topLeading) {
             liveHeroBackdrop(hero)
                 .frame(width: 1920, height: 1080)
@@ -897,7 +897,7 @@ struct TVHomeHeroCopy: View {
 struct TVHomeSkeleton: View {
     var body: some View {
         GeometryReader { geo in
-        let origin = geo.frame(in: .global).origin
+        let origin = geo.frame(in: tvScreenSpace).origin
         let block = DesignTokens.Stage.surfaceSoft
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 4).fill(block).frame(width: 120, height: 14).placed(x: 153.6, y: 261, w: 120, h: 14)

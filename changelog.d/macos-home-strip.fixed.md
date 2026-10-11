@@ -1,0 +1,1 @@
+- macOS: the production Home no longer sits 32 pt too high with a strip at the bottom (the stage coordinate space replaces the window's global space on the Mac, 57.10025).

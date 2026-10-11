@@ -919,3 +919,11 @@ enum TVShellActionColumn {
     static var x: CGFloat { 1920 - edge - width }
     static func y(slot: Int) -> CGFloat { top + CGFloat(slot) * (TVHeaderPill.height + gap) }
 }
+
+/// The screen coordinate space of the 1920x1080 stage. On the Mac `.global` includes the window's title bar (32 pt),
+/// which shifted the production Home up by that much and left a strip at the bottom; the stage's own space does not.
+#if os(macOS)
+let tvScreenSpace: CoordinateSpace = .named(macStageSpace)
+#else
+let tvScreenSpace: CoordinateSpace = .global
+#endif
