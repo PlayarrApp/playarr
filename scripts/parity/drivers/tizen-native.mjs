@@ -47,8 +47,13 @@ export async function createDriver() {
       }
       if (p0 === null) return { state: "error", detail: "no frames in time" };
       const startSeconds = (Date.now() - t0) / 1000;
-      await sleep((expect.advanceSeconds + 1) * 1000);
-      const p1 = (await call("GET", "/state")).positionMs / 1000;
+      // the picture may stall for a moment after the first frame: allow up to 15 s of wall time for the clock to advance
+      let p1 = p0;
+      for (let waited = 0; waited < 15000 && p1 - p0 < expect.advanceSeconds; waited += 500) {
+        await sleep(500);
+        const s = await call("GET", "/state");
+        if (s.playing) p1 = s.positionMs / 1000;
+      }
       return { state: p1 - p0 >= expect.advanceSeconds ? "playing" : "stalled", startSeconds, advancedSeconds: p1 - p0 };
     },
   };

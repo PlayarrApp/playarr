@@ -112,14 +112,25 @@ internal sealed class PlayerScreen : IPage
     {
         try
         {
-            var client = new PlaybackClient(_env.Api, new HttpClient());
+            var force = _env.Store.ForceDirect();
+            var client = new PlaybackClient(_env.Api, new HttpClient(), _env.Caps, force.Video, force.Audio);
             var start = _startMs;
             if (start == 0) try { start = PlaybackResume.FromProgress(await _env.Api.GetWatchProgressAsync(_file)) ?? 0; } catch (Exception) { /* no saved position */ }
             var info = await client.GetInfoAsync(_file, start);
             Dbg.Log($"PLAY mode={info.Mode} dur={info.DurationMs} offset={info.SourceOffsetMs} start={start}");
             SynchronizationContextHolder.Post(() => Begin(info, start));
         }
-        catch (Exception e) { Dbg.Log("PLAY info failed: " + e.Message); }
+        catch (PlaybackRefusedException e)
+        {
+            // 422 and similar refusals: show the server's message, no retry and no "server busy" wording
+            Dbg.Log("PLAY refused: " + e.Code);
+            SynchronizationContextHolder.Post(() => ShowError(e.Message));
+        }
+        catch (Exception e)
+        {
+            Dbg.Log("PLAY info failed: " + e.Message);
+            SynchronizationContextHolder.Post(() => ShowError("This title can't be played right now."));
+        }
     }
 
     private async void Begin(PlaybackInfoResponse info, long start)
@@ -162,6 +173,23 @@ internal sealed class PlayerScreen : IPage
         _progress.Size = new Size(Math.Max(0, TrackW * frac), 6);
         _now.Text = DetailModel.Clock(pos);
         if (++_sinceReport >= 20) { _sinceReport = 0; Report(pos, completed: false); }
+    }
+
+    private bool _error;
+
+    private void ShowError(string message)
+    {
+        _error = true;
+        _controls.Show(false);
+        var box = Ui.Box(560, 440, 800, 200, new Rgba(0.047f, 0.039f, 0.043f, 0.92f), 24);
+        box.BorderlineWidth = 1; box.BorderlineColor = new Color(1, 1, 1, 0.28f);
+        box.Add(Ui.Text("Playback problem", 40, 28, 12, 800, _t.BrandInk, 720, 18, upper: true, spacing: 0.9f));
+        Ui.Paragraph(box, message, 40, 60, 20, 600, new Rgba(1, 1, 1), 720, 30, 0, 3);
+        var close = Ui.Box(40, 136, 120, 44, new Rgba(1, 1, 1, 0.14f), 22);
+        close.Add(Ui.Text("Close", 0, 12, 13, 700, new Rgba(1, 1, 1), 120, 20, HorizontalAlignment.Center));
+        var ring = Ring.Make(120, 44, 22, new Rgba(1, 1, 1)); close.Add(ring);
+        box.Add(close);
+        _root.Add(box);
     }
 
     private void Report(long pos, bool completed)
@@ -225,6 +253,7 @@ internal sealed class PlayerScreen : IPage
 
     public bool OnKey(RemoteKey key)
     {
+        if (_error) { if (key is RemoteKey.Select or RemoteKey.Back) CloseSelf(); return true; }
         switch (key)
         {
             case RemoteKey.Back: Stop(); return false;

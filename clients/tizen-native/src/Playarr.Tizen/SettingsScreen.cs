@@ -18,6 +18,54 @@ internal sealed class SettingsScreen : IPage
     private readonly View _root = new();
     private readonly FocusSet _focus = new();
     private readonly View _panel = new();
+    private int _listCount;
+
+    private void Show(int option)
+    {
+        foreach (var c in _panel.Children.ToArray()) { _panel.Remove(c); c.Dispose(); }
+        _focus.Items.RemoveRange(_listCount, _focus.Items.Count - _listCount);
+        foreach (var k in _focus.Overrides.Keys.Where(k => k.From >= _listCount).ToList()) _focus.Overrides.Remove(k);
+        if (option == 3) BuildPlayer(); else if (option == 0) BuildAppearance();
+        for (var i = 0; i < _listCount; i++) _focus.Overrides[(i, RemoteKey.Right)] = _listCount;
+    }
+
+    /// <summary>Settings > Player > Advanced: the two Off/On switches (default off, stored per device, read on every negotiation).</summary>
+    private void BuildPlayer()
+    {
+        var (video, audio) = _env.Store.ForceDirect();
+        _panel.Add(Ui.Text("Advanced", 773.8f, 210, 26.4f, 600, _t.Ink, 800, 39.6f, spacing: -0.92f));
+        Switch("Force direct video", "Always play the original video stream; never re-encode it.", 265.8f, video, v => _env.Store.SaveForceDirect(v, _env.Store.ForceDirect().Audio));
+        Switch("Force direct audio", "Always play the original audio; never re-encode it.", 465.8f, audio, v => _env.Store.SaveForceDirect(_env.Store.ForceDirect().Video, v));
+        var b0 = _listCount; // keep Up/Down inside the panel (the list rows sit at similar heights)
+        for (var k = 0; k < 2; k++) { _focus.Overrides[(b0 + k, RemoteKey.Down)] = b0 + 2 + k; _focus.Overrides[(b0 + 2 + k, RemoteKey.Up)] = b0 + k; _focus.Overrides[(b0 + k, RemoteKey.Left)] = k == 0 ? 3 : b0; _focus.Overrides[(b0 + 2 + k, RemoteKey.Left)] = k == 0 ? 3 : b0 + 2; _focus.Overrides[(b0 + k, RemoteKey.Right)] = b0 + 1; _focus.Overrides[(b0 + 2 + k, RemoteKey.Right)] = b0 + 3; }
+    }
+
+    private void Switch(string title, string help, float y, bool on, Action<bool> save)
+    {
+        _panel.Add(Ui.Text(title, 773.8f, y, 19.2f, 700, _t.Ink, 700, 28.8f));
+        _panel.Add(Ui.Text(help, 773.8f, y + 30, 13.12f, 400, _t.InkMuted, 900, 20.3f));
+        var current = on;
+        var labels = new List<(View Box, TextLabel Text)>();
+        for (var i = 0; i < 2; i++)
+        {
+            var idx = i; var x = 773.8f + i * 349.9f; var active = (i == 1) == current;
+            var b = Ui.Box(x, y + 62, 342.1f, 56, active ? _t.Ink : _t.SurfaceSoft, 12);
+            b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(_t, 0.153f);
+            var tl = Ui.Text(i == 0 ? "Off" : "On", 0, 22.2f, 10.56f, 800, active ? _t.OnAccent : _t.InkMuted, 342.1f, 11.6f, HorizontalAlignment.Center);
+            b.Add(tl);
+            var ring = Ring.Make(342.1f, 56, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
+            _panel.Add(b); labels.Add((b, tl));
+            _focus.Items.Add(new Focusable
+            {
+                Rect = () => new Box(x, y + 62, 342.1f, 56), Label = $"{title} {(i == 0 ? "off" : "on")}".ToLowerInvariant(), Style = f => ring.Show(f),
+                Select = () =>
+                {
+                    current = idx == 1; save(current);
+                    for (var k = 0; k < 2; k++) { var a = (k == 1) == current; labels[k].Box.BackgroundColor = Ui.C(a ? _t.Ink : _t.SurfaceSoft); labels[k].Text.TextColor = Ui.C(a ? _t.OnAccent : _t.InkMuted); }
+                },
+            });
+        }
+    }
 
     public View Root => _root;
     public string Route => "/settings";
@@ -37,7 +85,9 @@ internal sealed class SettingsScreen : IPage
         _root.Add(Ui.Text("Appearance", 226.6f, 111.8f, 12.288f, 800, _t.BrandInk, 400, 18.432f, upper: true, spacing: 0.98f));
         BuildList();
         _root.Add(_panel);
+        _listCount = _focus.Items.Count;
         BuildAppearance();
+        for (var i = 0; i < _listCount; i++) _focus.Overrides[(i, RemoteKey.Right)] = _listCount;
         _focus.Set(0);
     }
 
@@ -56,7 +106,7 @@ internal sealed class SettingsScreen : IPage
             {
                 Rect = () => new Box(153.6f, y, 480.4f, 91.9f), Label = Options[i].ToLowerInvariant(),
                 Style = f => ring.Show(f),
-                Select = () => { if (idx != 0) Toast(Options[idx] + " is not available in this app yet."); },
+                Select = () => { if (idx is 0 or 3) Show(idx); else Toast(Options[idx] + " is not available in this app yet."); },
             });
         }
     }

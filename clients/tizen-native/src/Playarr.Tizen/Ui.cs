@@ -7,6 +7,44 @@ namespace Playarr.Tizen;
 /// <summary>Thin helpers so screens read like the web CSS: absolute design pixels on the 1920x1080 canvas.</summary>
 internal static class Ui
 {
+    private static TextLabel? _measure;
+
+    /// <summary>Natural single-line width of a string at the given style (a hidden label, measured synchronously).</summary>
+    public static float TextWidth(string text, float size, int weight, float spacing, string family = Font)
+    {
+        if (_measure is null) { _measure = new TextLabel { MultiLine = false, WidthResizePolicy = ResizePolicyType.UseNaturalSize, HeightResizePolicy = ResizePolicyType.UseNaturalSize }; _measure.Opacity = 0; Window.Default.Add(_measure); }
+        _measure.PixelSize = size; _measure.FontFamily = family; _measure.FontStyle = new PropertyMap().AddWeight(weight); _measure.CharacterSpacing = spacing; _measure.Text = text;
+        return _measure.NaturalSize.Width;
+    }
+
+    /// <summary>Greedy word wrap like the browser's, using measured widths; the last line gets an ellipsis when text is cut at maxLines.</summary>
+    public static List<string> WrapLines(string text, float size, int weight, float spacing, float width, int maxLines = int.MaxValue, string family = Font)
+    {
+        var lines = new List<string>(); var cur = "";
+        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var next = cur.Length == 0 ? word : cur + " " + word;
+            if (cur.Length > 0 && TextWidth(next, size, weight, spacing, family) > width) { lines.Add(cur); cur = word; } else cur = next;
+        }
+        if (cur.Length > 0) lines.Add(cur);
+        if (lines.Count > maxLines)
+        {
+            lines.RemoveRange(maxLines, lines.Count - maxLines);
+            var last = lines[^1];
+            while (last.Length > 0 && TextWidth(last + "\u2026", size, weight, spacing, family) > width) last = last[..^1].TrimEnd();
+            lines[^1] = last + "\u2026";
+        }
+        return lines;
+    }
+
+    /// <summary>A wrapped paragraph as one single-line label per line (CSS line height <paramref name="lh"/>); returns the number of lines.</summary>
+    public static int Paragraph(View parent, string text, float x, float y, float size, int weight, Rgba color, float width, float lh, float spacing = 0, int maxLines = int.MaxValue)
+    {
+        var lines = WrapLines(text, size, weight, spacing, width, maxLines);
+        for (var i = 0; i < lines.Count; i++) parent.Add(Text(lines[i], x, y + i * lh, size, weight, color, width, lh, spacing: spacing));
+        return lines.Count;
+    }
+
     /// <summary>The theme's hairline colour family (dark: light grey, light: warm ink) at the given alpha.</summary>
     public static Color LineA(PlayarrTheme t, float alpha) => new(t.Line.R, t.Line.G, t.Line.B, alpha);
 
@@ -72,6 +110,16 @@ internal static class Ui
         var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.Make(horizontal, stops));
         return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
+    }
+
+    /// <summary>The details-panel scrim over a panel box (x, y, w, h): extends 40% left, 22% right, 14% above and below, as web.</summary>
+    public static View PanelScrim(PlayarrTheme t, float x, float y, float w, float h)
+    {
+        var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+        Directory.CreateDirectory(dir);
+        var path = dir + $"scrim-{t.Name}.png";
+        if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.PanelScrim(new Rgba(t.Surface.R, t.Surface.G, t.Surface.B, 0.94f)));
+        return new ImageView(path) { PositionX = x - 0.4f * w, PositionY = y - 0.14f * h, Size = new Size(w * 1.62f, h * 1.28f) };
     }
 
     /// <summary>An ImageView drawn through a grayscale/contrast/brightness shader (web's filter on the Home key art).</summary>

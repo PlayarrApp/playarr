@@ -49,6 +49,20 @@ public sealed class FileSessionStore(string directory) : ITokenStore
     public string Theme() => File.Exists(ThemeFile) ? File.ReadAllText(ThemeFile).Trim() : "dark";
     public void SaveTheme(string name) { Directory.CreateDirectory(directory); File.WriteAllText(ThemeFile, name == "light" ? "light" : "dark"); }
 
+    private string PlayerFile => Path.Combine(directory, "player.json");
+    /// <summary>Settings > Player > Advanced: "Force direct video" and "Force direct audio" (default off, stored on the device).</summary>
+    public (bool Video, bool Audio) ForceDirect()
+    {
+        try { var o = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(PlayerFile)); return ((bool?)o["force_direct_video"] ?? false, (bool?)o["force_direct_audio"] ?? false); }
+        catch (Exception) { return (false, false); }
+    }
+
+    public void SaveForceDirect(bool video, bool audio)
+    {
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(PlayerFile, new Newtonsoft.Json.Linq.JObject { ["force_direct_video"] = video, ["force_direct_audio"] = audio }.ToString());
+    }
+
     public string? ServerUrl() => File.Exists(_server) ? File.ReadAllText(_server).Trim() : null;
 
     public void SaveServerUrl(string url)

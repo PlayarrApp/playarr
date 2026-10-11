@@ -20,6 +20,20 @@ internal sealed class AppEnv
     public Action<string> SetTheme { get; set; } = _ => { };
     /// <summary>Set by the app: forgets the session and returns to QR sign-in.</summary>
     public Action SignOut { get; set; } = () => { };
+    /// <summary>This device's real decoder and output capabilities (the emulator decodes in software and claims less).</summary>
+    public DeviceCaps Caps { get; } = DetectCaps();
+
+    private static DeviceCaps DetectCaps()
+    {
+        try
+        {
+            if (global::Tizen.System.Information.TryGetValue("http://tizen.org/system/model_name", out string model) && model.Contains("emulator", StringComparison.OrdinalIgnoreCase))
+                return DeviceCaps.Emulator();
+        }
+        catch (Exception e) { Dbg.Log("CAPS model probe failed: " + e.Message); }
+        return DeviceCaps.Tv();
+    }
+
     public string? CurrentAvatar { get; private set; }
     public string Profile { get; set; } = "Profile";
     public PlayarrTheme Theme { get; set; }

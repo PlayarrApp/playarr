@@ -167,3 +167,51 @@ public class CreditsTests
         Assert.Equal("S", cast[1].Initials);
     }
 }
+
+public class DeviceCapsTests
+{
+    [Fact]
+    public void ForceFlagsAreOnlySentWhenOn()
+    {
+        var caps = DeviceCaps.Tv();
+        Assert.DoesNotContain("force_direct_video", caps.ToQuery().Keys);
+        Assert.DoesNotContain("force_direct_audio", caps.ToQuery().Keys);
+        Assert.Equal("true", caps.ToQuery(forceDirectVideo: true)["force_direct_video"]);
+        Assert.DoesNotContain("force_direct_audio", caps.ToQuery(forceDirectVideo: true).Keys);
+        Assert.Equal("true", caps.ToQuery(forceDirectAudio: true)["force_direct_audio"]);
+    }
+
+    [Fact]
+    public void DepthWithoutHdrSendsAnEmptyHdrSoTheServerToneMaps()
+    {
+        var q = DeviceCaps.Tv().ToQuery();
+        Assert.Equal("10", q["max_bit_depth"]);
+        Assert.Equal("", q["hdr"]);
+        Assert.Equal("hevc:main 10", q["video_profiles"]);
+        Assert.DoesNotContain("dv_profiles", q.Keys); // DV 5 is only copied when listed
+    }
+
+    [Fact]
+    public void HdrDisplaysAndDolbyVisionAreReportedWhenKnown()
+    {
+        var q = (DeviceCaps.Tv() with { Hdr = new[] { "hdr10", "hlg", "dolby_vision" }, DvProfiles = new[] { 5, 8 } }).ToQuery();
+        Assert.Equal("hdr10,hlg,dolby_vision", q["hdr"]);
+        Assert.Equal("5,8", q["dv_profiles"]);
+    }
+
+    [Fact]
+    public void UnknownFieldsAreOmitted()
+    {
+        var q = new DeviceCaps(new[] { "mp4" }, new[] { "h264" }, new[] { "aac" }).ToQuery();
+        Assert.Equal(3, q.Count);
+    }
+
+    [Fact]
+    public void A422BodyBecomesARefusalWithTheServersMessage()
+    {
+        var e = PlaybackClient.Refusal("{\"error\":\"unsupported_colour_format\",\"message\":\"This title's colour format can't be converted for this device.\"}");
+        Assert.Equal("unsupported_colour_format", e.Code);
+        Assert.Equal("This title's colour format can't be converted for this device.", e.Message);
+        Assert.Equal("This title can't be played on this device.", PlaybackClient.Refusal("not json").Message);
+    }
+}

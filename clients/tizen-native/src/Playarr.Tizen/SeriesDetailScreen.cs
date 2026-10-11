@@ -186,9 +186,7 @@ internal sealed class SeriesDetailScreen : IPage
         var w = _detail!.Work;
         var code = $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}";
         _copy.Add(Ui.Text(code, 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var title = Ui.Text(w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, multiline: true, spacing: -4.98f, maxLines: 5);
-        _copy.Add(title);
-        var lines = Math.Clamp((int)Math.Round(title.GetHeightForWidth(369) / (69.12f * 1.364f)), 1, 5);
+        var lines = Ui.Paragraph(_copy, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
         var bas = 303.5f + 62.208f * lines;
         _copy.Add(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 21.7f, 21.12f, 600, _t.InkSoft, 312, 24.288f, spacing: -0.74f));
         var meta = new List<string> { $"Season {season.Season.SeasonNumber}", code };
@@ -197,7 +195,7 @@ internal sealed class SeriesDetailScreen : IPage
         if (ep.Episode.AirDate is { Length: > 0 } air && DateTime.TryParse(air, out var d)) meta.Add("Aired  " + d.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         meta.AddRange(w.Genres.Take(1));
         _copy.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 73f, 10.56f, 400, _t.InkMuted, 700, 15.84f));
-        _copy.Add(Ui.Text(ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 110.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, multiline: true, maxLines: 3));
+        Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 110.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 3);
         var yb = bas + 183.4f;
         var hasProgress = ep.MediaFileId is { } f && _progress.TryGetValue(f, out var pr) && pr.State == WatchState.InProgress;
         Pill(_copy, hasProgress ? "Resume" : "Start", "▶", 153.6f, yb, 156, true);

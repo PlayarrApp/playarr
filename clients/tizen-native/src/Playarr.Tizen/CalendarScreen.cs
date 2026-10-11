@@ -282,9 +282,7 @@ internal sealed class CalendarScreen : IPage
         foreach (var c in _panel.Children.ToArray()) { _panel.Remove(c); c.Dispose(); }
         var tone = CalendarRules.Tone(e, _today);
         _panel.Add(Ui.Text($"{(e.MediaKind == "movie" ? "Movies" : "Episodes")} \u00b7 {(e.ReleaseType is "digital" ? "Digital release" : "Airs")}", 153.6f, 263.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var title = Ui.Text(e.Title, 153.6f, 291.5f, 69.12f, 600, _t.Ink, 369, 62.208f, multiline: true, spacing: -4.98f, maxLines: 5);
-        _panel.Add(title);
-        var lines = Math.Clamp((int)Math.Round(title.GetHeightForWidth(369) / (69.12f * 1.364f)), 1, 5);
+        var lines = Ui.Paragraph(_panel, e.Title, 153.6f, 291.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
         var my = 291.5f + 62.208f * lines + 22.6f;
         var code = CalendarRules.EpisodeCode(e.SeasonNumber, e.EpisodeNumber);
         var day = CalendarRules.LocalDay(e).ToString("dddd, d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB"));
@@ -295,7 +293,7 @@ internal sealed class CalendarScreen : IPage
         pill.BorderlineWidth = 1; pill.BorderlineColor = Ui.C(ToneColor(tone));
         pill.Add(Ui.Text(label, 0, 4, 13.44f, 800, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
         _panel.Add(pill);
-        _panel.Add(Ui.Text(e.Overview ?? "", 153.6f, my + 85f, 13.824f, 600, _t.InkSoft, 336, 21.842f, multiline: true, maxLines: 5));
+        Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 85f, 13.824f, 600, _t.InkSoft, 336, 21.842f, 0, 5);
         var by = my + 218f;
         var open = Ui.Box(153.6f, by, 124, 58, _t.Ink, 29);
         open.Add(Ui.Text("Open series", 0, 18, 14.72f, 700, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center));

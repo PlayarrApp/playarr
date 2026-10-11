@@ -161,15 +161,17 @@ internal sealed class DetailsPanel
         foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
         var ky = _flow ? 286.6f : 259.2f; var tsize = _flow ? 49.92f : 69.12f; var tlh = _flow ? 47.424f : 62.208f; var tw = _flow ? 420f : 369f; var ty = _flow ? 330.9f : 303.5f;
         Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 800, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var title = Ui.Text(card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, multiline: true, spacing: _flow ? -3f : -4.98f, maxLines: 5);
-        Root.Add(title);
-        var lines = Math.Clamp((int)Math.Round(title.GetHeightForWidth(tw) / (tsize * 1.364f)), 1, 5);
+        var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, 5);
         var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f);
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
         if (meta.Length > 0) Root.Add(Ui.Text(meta, 153.6f, metaY, metaSize, 600, Soft(t), 455, _library ? 19.584f : 18, spacing: 0));
         var oy = metaY + (_library ? 41.2f : 40.9f);
-        Root.Add(Ui.Text(card.Overview, 153.6f, oy, _library ? 13.824f : 12.864f, 600, Soft(t), 336, _library ? 21.842f : 20.325f, multiline: true, maxLines: _library ? 5 : 4));
+        var ovLine = _library ? 21.842f : 20.325f; var ovSize = _library ? 13.824f : 12.864f;
+        var ovLines = Ui.Paragraph(Root, card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 336, ovLine, 0, _library ? 5 : 4);
+        var top = ky; var bottom = oy + ovLines * ovLine;
+        var scrim = Ui.PanelScrim(t, 153.6f, top, 455, bottom - top);
+        Root.Add(scrim); scrim.LowerToBottom();
     }
 
     private static Rgba Soft(PlayarrTheme t) => t.Name == "dark" ? new Rgba(0.855f, 0.84f, 0.844f) : t.InkSoft;

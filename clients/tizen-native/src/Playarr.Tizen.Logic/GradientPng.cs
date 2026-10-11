@@ -22,6 +22,11 @@ public static class GradientPng
             raw[o] = (byte)Math.Round(c.R * 255); raw[o + 1] = (byte)Math.Round(c.G * 255);
             raw[o + 2] = (byte)Math.Round(c.B * 255); raw[o + 3] = (byte)Math.Round(c.A * 255);
         }
+        return Encode(w, h, raw);
+    }
+
+    private static byte[] Encode(int w, int h, byte[] raw)
+    {
         using var png = new MemoryStream();
         png.Write(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
         var ihdr = new byte[13];
@@ -34,6 +39,29 @@ public static class GradientPng
         Chunk(png, "IDAT", z.ToArray());
         Chunk(png, "IEND", Array.Empty<byte>());
         return png.ToArray();
+    }
+
+    /// <summary>
+    /// The details panel's scrim (web .details-panel::before): a horizontal gradient transparent, scrim at 22%, scrim at 80%, transparent,
+    /// multiplied by a vertical mask that is clear at the top and bottom 10%.
+    /// </summary>
+    public static byte[] PanelScrim(Rgba scrim, int w = 128, int h = 64)
+    {
+        var stops = new[] { (0f, new Rgba(scrim.R, scrim.G, scrim.B, 0)), (0.22f, scrim), (0.8f, scrim), (1f, new Rgba(scrim.R, scrim.G, scrim.B, 0)) };
+        var raw = new byte[(w * 4 + 1) * h];
+        for (var y = 0; y < h; y++)
+        {
+            var fy = y / (float)(h - 1);
+            var v = fy < 0.1f ? fy / 0.1f : fy > 0.9f ? (1 - fy) / 0.1f : 1f;
+            for (var x = 0; x < w; x++)
+            {
+                var c = Sample(stops, x / (float)(w - 1));
+                var o = y * (w * 4 + 1) + 1 + x * 4;
+                raw[o] = (byte)Math.Round(c.R * 255); raw[o + 1] = (byte)Math.Round(c.G * 255); raw[o + 2] = (byte)Math.Round(c.B * 255);
+                raw[o + 3] = (byte)Math.Round(c.A * v * 255);
+            }
+        }
+        return Encode(w, h, raw);
     }
 
     public static Rgba Sample(IReadOnlyList<(float At, Rgba Color)> stops, float t)

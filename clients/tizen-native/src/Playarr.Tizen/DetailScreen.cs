@@ -82,16 +82,14 @@ internal sealed class DetailScreen : IPage
     private void BuildCopy(Work w, WorkDetail d)
     {
         _content.Add(Ui.Text(w.Genres.FirstOrDefault() ?? "Movie", 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var title = Ui.Text(w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, multiline: true, spacing: -4.98f, maxLines: 5);
-        _content.Add(title);
-        var lines = Math.Clamp((int)Math.Round(title.GetHeightForWidth(369) / (69.12f * 1.364f)), 1, 5);
+        var lines = Ui.Paragraph(_content, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
         var bas = 303.5f + 62.208f * lines;
         var meta = new List<string> { "Movie" };
         if (d.RuntimeMs is > 0) meta.Add(DetailModel.Runtime(d.RuntimeMs.Value));
         if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
         meta.AddRange(w.Genres.Take(3));
         _content.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 27, 10.56f, 400, _t.InkMuted, 700, 15.84f));
-        _content.Add(Ui.Text(w.Overview ?? "", 153.6f, bas + 64.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, multiline: true, maxLines: 5));
+        Ui.Paragraph(_content, w.Overview ?? "", 153.6f, bas + 64.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
 
         var y1 = bas + 203.8f; var y2 = y1 + 76f;
         var resume = _progress is { State: WatchState.InProgress } p ? "Resume from " + DetailModel.Clock(p.PositionMs) : "Play";
