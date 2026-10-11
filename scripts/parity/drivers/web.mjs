@@ -55,7 +55,6 @@ export async function createDriver() {
         still = now && now === last ? still + 1 : 0; last = now; await page.waitForTimeout(1500);
       }
       console.log(`  home first card: ${last.split("|")[0]}`);
-      await page.evaluate(() => document.querySelector(".tv-home-card")?.focus());
       // The key handler attaches a moment after the first focus: a key sent sooner is lost (the web checks then fail at random).
       await page.waitForTimeout(3500);
       await settle();

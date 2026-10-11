@@ -98,8 +98,6 @@ export async function createDriver() {
         const now = await ev(`[...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label") || c.textContent.trim().slice(0, 40)).join("|")`).catch(() => "");
         still = now && now === last ? still + 1 : 0; last = now; await sleep(1500);
       }
-      // The contract: Home with its first card focused (the app can restore an earlier focus).
-      await ev(`(document.querySelector(".tv-home-card").focus(), true)`);
       await sleep(3500); // the key handler attaches a moment after the first focus
       console.log(`  home first card: ${last.split("|")[0]}`);
       await settle();
