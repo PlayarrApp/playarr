@@ -110,6 +110,8 @@ internal fun playarrPageHeader(
     largeTitle: Boolean = false,
     /** Web phone: draw the back button in its focused (inverted, 1.055x) state, as the settings index does. */
     backActive: Boolean = false,
+    /** Web phone: the subtitle is a count line under the title (library headers). */
+    countLine: Boolean = false,
 ): PlayarrPageHeaderSpec = PlayarrPageHeaderSpec(
     title = title,
     detail = subtitle,
@@ -120,6 +122,7 @@ internal fun playarrPageHeader(
     },
     backActive = backActive,
     largeTitle = largeTitle,
+    countLine = countLine,
 )
 
 /** The state of a page's Filters action. */
@@ -146,7 +149,7 @@ internal fun PlayarrFiltersSheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     PlayarrSheetFrame(
-        titleContent = { if (playarrTvDrawer()) Text(title, modifier = Modifier.semantics { heading() }) else Text(title, color = WebInk, fontSize = 26.sp, fontWeight = FontWeight(590), modifier = Modifier.semantics { heading() }) },
+        titleContent = { if (playarrTvDrawer()) Text(title, modifier = Modifier.semantics { heading() }) else Text(title, color = WebInk, fontSize = 22.4.sp, lineHeight = 33.6.sp, fontWeight = FontWeight(590), modifier = Modifier.semantics { heading() }) },
         kicker = kicker,
         closeLabel = closeLabel,
         onClose = onClose,
@@ -174,7 +177,7 @@ internal fun PlayarrPanel(
 ) {
     PlayarrSheetFrame(
         titleContent = title?.let { t ->
-            { if (playarrTvDrawer()) Box(Modifier.semantics { heading() }) { t() } else androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(fontSize = 26.sp, fontWeight = FontWeight(590), color = WebInk)) { Box(Modifier.semantics { heading() }) { t() } } }
+            { if (playarrTvDrawer()) Box(Modifier.semantics { heading() }) { t() } else androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(fontSize = 22.4.sp, lineHeight = 33.6.sp, fontWeight = FontWeight(590), color = WebInk)) { Box(Modifier.semantics { heading() }) { t() } } }
         },
         kicker = null,
         closeLabel = playarrString(PlayarrString.CommonClose),
@@ -213,37 +216,37 @@ private fun PlayarrSheetFrame(
             decorFitsSystemWindows = false,
         ),
     ) {
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = dismiss)) {
-            BoxWithConstraints(Modifier.align(Alignment.CenterEnd).fillMaxHeight()) {
-                Surface(
-                    color = WebSurfaceStrong,
-                    contentColor = WebInk,
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(minOf(400.dp, maxWidth * 0.92f))
-                        .clickable(enabled = false) {},
-                ) {
-                    Column(
-                        Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 28.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                if (kicker != null) {
-                                    Text(kicker.uppercase(), color = WebInkMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                                }
-                                titleContent?.invoke()
-                            }
-                            if (dismissible) {
-                                PlayarrIconButton(onClick = onClose, contentDescription = closeLabel, modifier = Modifier.focusRequester(focus)) {
-                                    Icon(Icons.Outlined.Close, contentDescription = null, tint = WebInk)
-                                }
-                            }
+        val view = androidx.compose.ui.platform.LocalView.current
+        androidx.compose.runtime.SideEffect {
+            (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.let { w ->
+                w.setDimAmount(0f)
+                // Parity captures hide the system bars in the dialog window too, as in the main window.
+                if (parityNoInsets) androidx.core.view.WindowCompat.getInsetsController(w, view).hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            }
+        }
+        // Web phone `.drawer`: the whole 390 px viewport, 20 px padding, 7.04 px eyebrow, 22.4 px title, a 44 px round close button.
+        Box(Modifier.fillMaxSize().background(WebSurfaceStrong.copy(alpha = 0.94f)).clickable(interactionSource = null, indication = null, enabled = false) {}) {
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+            ) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                        if (kicker != null) {
+                            Text(kicker.uppercase(), color = WebInkSoft, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
                         }
-                        content()
-                        if (footer != null) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = footer)
+                        titleContent?.invoke()
+                    }
+                    if (dismissible) {
+                        PlayarrIconButton(onClick = onClose, contentDescription = closeLabel, modifier = Modifier.focusRequester(focus), variant = PlayarrButtonVariant.Secondary) {
+                            Text("\u00D7", fontSize = 16.sp, fontWeight = FontWeight(720))
                         }
+                    }
+                }
+                Spacer(Modifier.height(27.6.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    content()
+                    if (footer != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = footer)
                     }
                 }
             }

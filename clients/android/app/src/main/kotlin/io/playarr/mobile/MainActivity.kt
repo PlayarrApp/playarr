@@ -182,6 +182,13 @@ class MainActivity : ComponentActivity() {
         io.playarr.mobile.ui.parityNoInsets = !isTelevision &&
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
             intent.getBooleanExtra("parity_no_insets", false)
+        // Parity captures: hide the system bars so the frame is the app alone, like the web reference viewport.
+        if (io.playarr.mobile.ui.parityNoInsets) {
+            androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
+                hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        }
         io.playarr.mobile.ui.parityClock = intent.getStringExtra("parity_clock")?.takeIf {
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         }?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }

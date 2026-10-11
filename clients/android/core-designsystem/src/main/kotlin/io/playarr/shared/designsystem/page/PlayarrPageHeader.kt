@@ -152,7 +152,7 @@ internal fun PlayarrPageHeaderRow(
             subcompose("probe") { PlayarrBreadcrumbText(it, phone = !tv) }.first().measure(loose)
         }
         // Television: web stacks the subtitle under the title in the one shared small subtitle style (owner rule 2026-10-10).
-        val placement = if (tv && subtitle != null) PlayarrSubtitlePlacement.Wrapped
+        val placement = if ((tv || spec.countLine) && subtitle != null) PlayarrSubtitlePlacement.Wrapped
         else decideSubtitlePlacement(subtitle != null, titleEnd, probe?.width ?: 0, separator, reservedStartPx)
         val inline = if (placement == PlayarrSubtitlePlacement.Inline) {
             subcompose("inline") {
@@ -175,8 +175,8 @@ internal fun PlayarrPageHeaderRow(
         }
         val wrapped = if (placement == PlayarrSubtitlePlacement.Wrapped) {
             subcompose("wrapped") {
-                if (tv) {
-                    PlayarrPageSubtitleText(subtitle!!)
+                if (tv || spec.countLine) {
+                    PlayarrPageSubtitleText(subtitle!!, phone = !tv)
                 } else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(Modifier.fillMaxWidth().height(1.dp).background(palette.inkMuted.copy(alpha = 0.45f)))
                     PlayarrBreadcrumbText(subtitle!!, phone = !tv)
@@ -201,14 +201,15 @@ internal fun PlayarrPageHeaderRow(
 
 /** Web `.page-subtitle` (shared with the media kickers): `--brand-ink`, 12.288 px, weight 820, 0.08em, uppercase. */
 @Composable
-private fun PlayarrPageSubtitleText(text: String) {
+private fun PlayarrPageSubtitleText(text: String, phone: Boolean = false) {
     Text(
         text.uppercase(),
         color = PlayarrWebTheme.palette.brandInk,
-        fontSize = 12.288.sp,
-        lineHeight = 18.432.sp,
+        // Web phone: `.page-subtitle` is 0.66rem (10.56 px) under 760 px.
+        fontSize = if (phone) 10.56.sp else 12.288.sp,
+        lineHeight = if (phone) 15.84.sp else 18.432.sp,
         fontWeight = FontWeight(820),
-        letterSpacing = 0.983.sp,
+        letterSpacing = if (phone) 0.845.sp else 0.983.sp,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )

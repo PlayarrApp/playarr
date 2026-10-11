@@ -1727,8 +1727,8 @@ internal fun PlayarrExperience(
                         },
                     )
                 }
-                // Television draws the profile as the rail's last tile (above); the chip stays for phones.
-                if (!isTelevision || visibleDestinations.isEmpty()) ProfileControl(
+                // The rail (television) or the bottom bar (phone, web `.app-nav-profile`) carries the profile; the chip only stands in when there is no nav.
+                if (visibleDestinations.isEmpty()) ProfileControl(
                     isTelevision = isTelevision,
                     userId = currentUserId.orEmpty(),
                     userName = currentUserName,
@@ -1948,21 +1948,33 @@ private fun ExperienceNavigation(
         LazyRow(
             modifier = Modifier.padding(5.dp).fillMaxWidth(),
             // A short list (a household-limited profile) is centred in the bar; a long one scrolls from the start.
-            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally),
             contentPadding = PaddingValues(0.dp),
         ) {
+            if (tvProfile != null) item(key = "profile") {
+                Surface(
+                    onClick = tvProfile.onClick,
+                    color = Color.Transparent,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.height(46.dp).semantics { contentDescription = tvProfile.description },
+                ) {
+                    Box(Modifier.width(46.dp), contentAlignment = Alignment.Center) {
+                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(25.dp), glyphSize = 13.sp)
+                    }
+                }
+            }
             items(destinations, key = { it.route }) { destination ->
                 val selected = currentRoute == destination.route
                 val label = playarrString(destination.label)
                 Surface(
                     onClick = { onNavigate(destination.route) },
                     color = if (selected) WebInk else Color.Transparent,
-                    contentColor = if (selected) WebBackground else WebInkMuted,
+                    contentColor = if (selected) WebBackground else WebInk,
                     shape = RoundedCornerShape(if (isTelevision) 16.dp else 14.dp),
                     modifier = Modifier.height(46.dp),
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = if (selected && isTelevision) 16.dp else if (isTelevision) 12.dp else 11.5.dp),
+                        modifier = Modifier.padding(horizontal = if (selected && isTelevision) 16.dp else if (isTelevision) 12.dp else 12.5.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
                     ) {
@@ -2777,7 +2789,7 @@ private fun ExperienceHomeScreen(
                             top = if (isTelevision) 389.9.dp else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
                             bottom = if (isTelevision) 120.dp else 98.dp,
                         ),
-                        verticalArrangement = Arrangement.spacedBy(if (isTelevision) 52.8.dp else 66.93.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (isTelevision) 52.8.dp else 51.2.dp),
                     ) {
                         itemsIndexed(current.value, key = { _, rail -> rail.key }) { railIndex, rail ->
                             ExperienceMediaRail(
@@ -3293,15 +3305,16 @@ internal fun ExperienceLandscapeCard(
             Text(displayTitle, color = WebInk, fontSize = 11.328.sp, fontWeight = FontWeight(630), lineHeight = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 9.9.dp))
             Text(resolvedSubtitle, color = WebInkMuted, fontSize = 8.64.sp, lineHeight = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.6.dp))
         } else if (webPhone && webHome) {
+            // Web `.tv-home-card > strong` (8.8 px / 610) and `> small` (6.88 px, 2.56 px below; it hangs under the card, so the rail gap below is shorter).
             Text(
-                displayTitle, color = WebInk, fontSize = 12.48.sp, lineHeight = 18.72.sp, fontWeight = FontWeight(630),
-                style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 10.4.dp),
+                displayTitle, color = WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
+                letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 1.9.dp, top = 9.7.dp),
             )
             Text(
-                resolvedSubtitle, color = WebInkMuted, fontSize = 9.92.sp, lineHeight = 14.88.sp,
+                resolvedSubtitle, color = WebInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 0.5.dp),
+                modifier = Modifier.padding(start = 1.9.dp, top = 2.56.dp),
             )
         } else if (webPhone && webSearch) {
             Text(
@@ -3780,12 +3793,12 @@ private fun ExperienceLibraryScreen(
             val selected = filteredWorks.firstOrNull { it.id == selectedId } ?: filteredWorks.firstOrNull() ?: state.value.first()
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Library,
-                header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }, // Web phone shows no detail line on library pages; television keeps the count.
-                subtitle = if (isTelevision) playarrString(
+                header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }, largeTitle = true, countLine = true,
+                subtitle = playarrString(
                     PlayarrString.LibraryCollectionCount,
                     "count" to java.text.NumberFormat.getIntegerInstance(language.locale).format(libraryTotal ?: state.value.size.toLong()),
                     "collection" to collection,
-                ).uppercase(language.locale) else null, filters = PlayarrFilterAction(
+                ).uppercase(language.locale), filters = PlayarrFilterAction(
                     label = playarrString(PlayarrString.LibraryFilters),
                     active = filtersOpen,
                     badge = languageSelection.audio.size + languageSelection.subtitle.size,
@@ -4703,8 +4716,8 @@ private fun MediaContextDialog(
             downloadCandidates = candidates
         }
     }
-    if (playarrTvDrawer()) {
-        // Web `MediaContextMenu` drawer: "Title actions", the title, then 68 dp rows with a crimson glyph.
+    run {
+        // Web `MediaContextMenu` drawer (the phone drawer uses the same rows): "Title actions", the title, then 68 dp rows with a crimson glyph.
         PlayarrFiltersSheet(
             title = work.title,
             kicker = playarrString(PlayarrString.ContextTitleActions),
@@ -4733,41 +4746,7 @@ private fun MediaContextDialog(
                 TvDrawerActionRow("\u25CB", playarrString(PlayarrString.ContextMarkUnwatched), { onMark(false) })
             }
         }
-    } else PlayarrPanel(
-        onDismissRequest = onDismiss,
-        title = { Text(work.title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PlayarrButton(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
-                    Text(playarrString(PlayarrString.ContextOpen))
-                }
-                PlayarrButton(onClick = { addToPlaylist = true }, modifier = Modifier.fillMaxWidth(), variant = PlayarrButtonVariant.Secondary) {
-                    Text(playarrString(PlayarrString.ContextAddToPlaylist))
-                }
-                if (canDownload) {
-                    PlayarrButton(
-                        onClick = download,
-                        enabled = !resolvingDownload,
-                        modifier = Modifier.fillMaxWidth(),
-                        variant = PlayarrButtonVariant.Secondary,
-                    ) {
-                        Text(
-                            playarrString(
-                                if (resolvingDownload) PlayarrString.ContextResolving else PlayarrString.ContextDownload,
-                            ),
-                        )
-                    }
-                }
-                PlayarrButton(onClick = { onMark(true) }, modifier = Modifier.fillMaxWidth(), variant = PlayarrButtonVariant.Secondary) {
-                    Text(playarrString(PlayarrString.ContextMarkWatched))
-                }
-                PlayarrButton(onClick = { onMark(false) }, modifier = Modifier.fillMaxWidth(), variant = PlayarrButtonVariant.Secondary) {
-                    Text(playarrString(PlayarrString.ContextMarkUnwatched))
-                }
-            }
-        },
-        confirmButton = { PlayarrButton(onClick = onDismiss) { Text(playarrString(PlayarrString.CommonClose)) } },
-    )
+    }
     if (addToPlaylist) {
         AddToPlaylistDialog(
             workId = work.id,
@@ -4817,6 +4796,7 @@ private fun TvLibrarySkeleton(loadingLabel: String) {
 @Composable
 private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit, enabled: Boolean = true) {
     var focused by remember { mutableStateOf(false) }
+    val tv = playarrTvDrawer()
     Surface(
         onClick = onClick,
         enabled = enabled,
@@ -4827,7 +4807,7 @@ private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit,
     ) {
         Row(Modifier.padding(start = 18.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(glyph, color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp))
-            Text(label, fontSize = 19.2.sp, lineHeight = 28.8.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, fontSize = if (tv) 19.2.sp else 16.sp, lineHeight = if (tv) 28.8.sp else 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

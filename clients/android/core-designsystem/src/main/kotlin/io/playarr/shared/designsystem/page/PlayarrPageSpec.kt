@@ -87,6 +87,8 @@ data class PlayarrPageHeaderSpec(
     val backActive: Boolean = false,
     /** Phone: the 21.6 px title (Search, Settings index). The Detail variant implies it. */
     val largeTitle: Boolean = false,
+    /** Phone: the detail is a count line under the title (web `.page-subtitle`), not a breadcrumb behind a divider. */
+    val countLine: Boolean = false,
 )
 
 @Immutable
