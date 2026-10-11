@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { groupThousands, titleCountLabel } from "../main/ets/core/CountFormat";
+import { groupThousands, resultCountLabel, titleCountLabel } from "../main/ets/core/CountFormat";
 
 test("groups thousands with commas", () => {
   assert.equal(groupThousands(0), "0");
@@ -14,4 +14,9 @@ test("groups thousands with commas", () => {
 test("title count label is singular for one", () => {
   assert.equal(titleCountLabel(1), "1 title");
   assert.equal(titleCountLabel(1754), "1,754 titles");
+});
+
+test("search result count, singular for one", () => {
+  assert.equal(resultCountLabel(8), "8 results");
+  assert.equal(resultCountLabel(1), "1 result");
 });

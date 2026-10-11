@@ -15,3 +15,8 @@ export function groupThousands(value: number): string {
 export function titleCountLabel(count: number): string {
   return `${groupThousands(count)} ${count === 1 ? "title" : "titles"}`;
 }
+
+/** Web search subtitle: "8 results" (singular for one). */
+export function resultCountLabel(count: number): string {
+  return `${groupThousands(count)} ${count === 1 ? "result" : "results"}`;
+}

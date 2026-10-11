@@ -16,11 +16,13 @@ import type { NavRailItem } from '../design/components/NavRail';
 import { PlayarrLogo } from '../design/components/PlayarrLogo';
 import { Clock } from '../design/components/Clock';
 import { PosterCard } from '../design/components/PosterCard';
+import { FeatureCopy } from '../design/components/FeatureCopy';
+import { resultCountLabel } from '../core/CountFormat';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import { searchTypeChoices, workMatchesType } from '../core/SearchTypes';
-import { BRAND_PINK } from '../core/Tokens';
+import { BRAND_PINK, BRAND_PINK_SOFT } from '../core/Tokens';
 
 import { getCatalogKinds, listWatchProgress, searchCatalog } from '../data/CatalogRepository';
 import { indexWatchProgressByWork, watchMarkFor } from '../core/WatchState';
@@ -68,6 +70,14 @@ const TITLE_SIZE: number = 33.6;
 const TITLE_LETTER_SPACING: number = -1.512;
 const HEADER_GAP: number = 23;
 const SEARCH_DEBOUNCE_MS: number = 300;
+// Web `.tv-search-preview`: the selected result's copy under the form, 154 wide column from y=287.
+const PREVIEW_TOP: number = 287;
+const PREVIEW_WIDTH: number = 420;
+// Web results count under the title, pink like the library count.
+const COUNT_TOP: number = 112;
+const COUNT_SIZE: number = 12.288;
+const COUNT_LETTER_SPACING: number = 0.983;
+const CLEAR_SIZE: number = 12.288;
 
 function kindLabel(work: Work): string {
   if (work.kind === 'movie') {
@@ -79,8 +89,12 @@ function kindLabel(work: Work): string {
   return work.kind === 'artist' ? 'Artist' : 'Title';
 }
 
+function resultYear(work: Work): string {
+  return work.release_date !== null && work.release_date.length >= 4 ? work.release_date.slice(0, 4) : '';
+}
+
 function resultCaption(work: Work): string {
-  const year = work.release_date !== null && work.release_date.length >= 4 ? work.release_date.slice(0, 4) : '';
+  const year = resultYear(work);
   return year.length > 0 ? `${kindLabel(work)} · ${year}` : kindLabel(work);
 }
 
@@ -91,6 +105,8 @@ struct SearchResultCard {
   @Prop unseen: boolean = false;
   @Prop progress: number = -1;
   onSelect: (workId: string) => void = () => {};
+  /** The card took focus: the preview panel follows it (web `selectedId`). */
+  onFocused: (workId: string) => void = () => {};
 
   @State private artwork: image.PixelMap | undefined = undefined;
 
@@ -122,6 +138,11 @@ struct SearchResultCard {
           this.onSelect(this.work.id);
         }
       },
+      onFocused: () => {
+        if (this.work !== undefined) {
+          this.onFocused(this.work.id);
+        }
+      },
     })
   }
 }
@@ -139,6 +160,8 @@ export struct SearchScreen {
   @State private mediaType: string = 'all';
   @State private availableKinds: string[] = [];
   @State private filtersOpen: boolean = false;
+  /** The result whose details the left panel shows: the focused card, else the first (web `selectedWork`). */
+  @State private selectedId: string = '';
   @State private navItems: NavRailItem[] = [];
   @State private watchIndex: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private watchLoaded: boolean = false;
@@ -203,6 +226,26 @@ export struct SearchScreen {
     return this.results.filter((work: Work): boolean => workMatchesType(work.kind, this.mediaType));
   }
 
+  private previewWork(): Work | undefined {
+    const shown = this.shownResults();
+    for (const work of shown) {
+      if (work.id === this.selectedId) {
+        return work;
+      }
+    }
+    return shown.length > 0 ? shown[0] : undefined;
+  }
+
+  private previewMeta(work: Work): string[] {
+    const parts: string[] = [];
+    const year = resultYear(work);
+    if (year.length > 0) {
+      parts.push(year);
+    }
+    parts.push(work.genres.length > 0 ? work.genres.slice(0, 2).join(' · ') : 'Available to play');
+    return [parts.join('    ')];
+  }
+
   private openDetail(workId: string): void {
     const params: DetailRouteParams = { workId: workId };
     pushRoute(getNavStack(), ROUTES.Detail, params);
@@ -254,6 +297,9 @@ export struct SearchScreen {
             progress: this.markFor(work).progress,
             onSelect: (workId: string) => {
               this.openDetail(workId);
+            },
+            onFocused: (workId: string) => {
+              this.selectedId = workId;
             },
           })
         }
@@ -340,6 +386,16 @@ export struct SearchScreen {
             .onChange((value: string) => {
               this.onQueryChange(value);
             })
+          if (this.query.length > 0) {
+            Text('Clear')
+              .fontSize(tv(CLEAR_SIZE))
+              .fontWeight(FontWeight.Bold)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .focusable(true)
+              .onClick(() => {
+                this.onQueryChange('');
+              })
+          }
         }
         .width(tv(FORM_WIDTH))
         .height(tv(FORM_HEIGHT))
@@ -368,11 +424,30 @@ export struct SearchScreen {
             },
           })
         }
-        Text('Find any available movie, series, artist or playlist.')
-          .fontSize(tv(PROMPT_SIZE))
-          .fontColor(toResourceColor(activeColors().inkSoft))
-          .width(tv(PROMPT_WIDTH))
-          .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PROMPT_TOP) })
+        if (this.previewWork() !== undefined) {
+          // Web `.tv-search-preview`: the selected result's kind and year, title, meta and overview.
+          FeatureCopy({
+            kicker: resultCaption(this.previewWork() as Work),
+            title: (this.previewWork() as Work).title,
+            metaLines: this.previewMeta(this.previewWork() as Work),
+            synopsis: (this.previewWork() as Work).overview !== null ? ((this.previewWork() as Work).overview as string) : 'No synopsis available.',
+          })
+            .width(tv(PREVIEW_WIDTH))
+            .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PREVIEW_TOP) })
+          Text(resultCountLabel(this.shownResults().length))
+            .fontSize(tv(COUNT_SIZE))
+            .fontWeight(FontWeight.Bolder)
+            .letterSpacing(tv(COUNT_LETTER_SPACING))
+            .textCase(TextCase.UpperCase)
+            .fontColor(toResourceColor(BRAND_PINK_SOFT))
+            .position({ x: tv(TvGeometry.titlePanelLeft + HEADER_SIZE + HEADER_GAP), y: tv(COUNT_TOP) })
+        } else {
+          Text('Find any available movie, series, artist or playlist.')
+            .fontSize(tv(PROMPT_SIZE))
+            .fontColor(toResourceColor(activeColors().inkSoft))
+            .width(tv(PROMPT_WIDTH))
+            .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PROMPT_TOP) })
+        }
       }
       .width('100%')
       .height('100%')
