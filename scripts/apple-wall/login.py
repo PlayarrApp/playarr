@@ -15,6 +15,10 @@ server = os.environ["SERVER_URL"].strip().rstrip("/")
 device = {"device_id": "5a1e0000-0000-4000-8000-%012x" % (uuid.uuid5(uuid.NAMESPACE_DNS, "apple-wall." + os.environ.get("DEVICE_NAME", "wall")).int & 0xFFFFFFFFFFFF),
           "device_name": os.environ.get("DEVICE_NAME", "apple-wall"), "client_platform": "ios", "client_version": "parity"}
 
+if "--device-id" in sys.argv:  # the id the app must send with this token (the server ties a token to its device)
+    print(device["device_id"])
+    sys.exit(0)
+
 
 def call(path, body=None, token=None, what="request"):
     headers = {"content-type": "application/json", "user-agent": "playarr-apple-wall"}

@@ -75,11 +75,20 @@ shot() { # <file.png|jpg>: one frame of the device, never the desktop
   [[ -s $f ]]
 }
 
+pin_device() { # the app must send the device id its token was issued for
+  local id; id=$(DEVICE_NAME="wall-$DEVICE" python3 "$TRUSTED/scripts/apple-wall/login.py" --device-id)
+  case $KIND in
+    tvos) xcrun simctl spawn "$UDID" defaults write "$BUNDLE" com.playarr.playarr.tvos.deviceID -string "$id" ;;
+    macos) CFFIXED_USER_HOME="$WORK/machome" defaults write "$BUNDLE" com.playarr.playarr.tvos.deviceID -string "$id" ;;
+  esac
+}
+
 launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route (default Home)
   local theme=$1 route=${2:-home}
   case $KIND in
     tvos)
       xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
+      [[ -n ${ACCESS_TOKEN:-} ]] && pin_device
       if [[ -n ${ACCESS_TOKEN:-} ]]; then
         xcrun simctl launch "$UDID" "$BUNDLE" -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrParityRoute "$route" -PlayarrTheme "$theme" -PlayarrMuted >/dev/null
       else xcrun simctl launch "$UDID" "$BUNDLE" -PlayarrTheme "$theme" -PlayarrMuted >/dev/null; fi ;;
@@ -91,7 +100,7 @@ launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route 
         $([[ $DEVICE == ipad ]] && echo --playarr-parity-landscape) >/dev/null ;;
     macos)
       pkill -x PlayarrMac 2>/dev/null || true; sleep 1
-      mkdir -p "$WORK/machome"
+      mkdir -p "$WORK/machome"; pin_device
       open -n -g -j "$APP" --env CFFIXED_USER_HOME="$WORK/machome" --stdout "$WORK/app.log" --stderr "$WORK/app.log" \
         --args -PlayarrInvisible -PlayarrMuted -PlayarrTheme "$theme" -ApplePersistenceIgnoreState YES \
         -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "${ACCESS_TOKEN:-$(token)}" -PlayarrParityRoute "$route" ;;
