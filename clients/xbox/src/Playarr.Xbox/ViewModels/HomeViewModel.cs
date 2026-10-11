@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Playarr.Core.Models;
 using Playarr.Core.Networking;
@@ -54,6 +55,70 @@ namespace Playarr.Xbox.ViewModels
             private set => SetProperty(ref _errorMessage, value);
         }
 
+        private static readonly TimeSpan OnDeckWait = TimeSpan.FromMilliseconds(2500);
+
+        /// <summary>
+        /// The web's On deck rail (<c>lib/onDeck.ts</c>): the most recently played part-watched titles, newest first,
+        /// at most ten, one per title; a series shows the episode to resume. Null when nothing is part-watched.
+        /// </summary>
+        private async Task<HomeRail?> LoadOnDeckAsync()
+        {
+            try
+            {
+                var progress = await _environment.ApiClient.ListWatchProgressAsync();
+                var seen = new HashSet<Guid>();
+                var resumable = progress
+                    .Where(p => p.State == WatchState.InProgress)
+                    .OrderByDescending(p => p.UpdatedAt ?? DateTimeOffset.MinValue)
+                    .Where(p => seen.Add(p.WorkId))
+                    .Take(10)
+                    .ToList();
+                var details = await Task.WhenAll(resumable.Select(async p =>
+                {
+                    try
+                    {
+                        return (p, detail: await _environment.ApiClient.GetWorkAsync(p.WorkId));
+                    }
+                    catch (Exception)
+                    {
+                        return (p, detail: (WorkDetail?)null);
+                    }
+                }));
+
+                var items = new List<Work>();
+                foreach (var (p, detail) in details)
+                {
+                    if (detail == null)
+                    {
+                        continue;
+                    }
+
+                    var work = detail.Work;
+                    if (work.Kind == WorkKind.Series || work.Kind == WorkKind.Site)
+                    {
+                        var found = detail.Children.Seasons
+                            .SelectMany(season => season.Episodes.Select(e => (season, e)))
+                            .FirstOrDefault(x => x.e.MediaFileId == p.MediaFileId);
+                        if (found.e == null)
+                        {
+                            continue;
+                        }
+
+                        work.OnDeckEpisode = found.e.Episode;
+                        work.OnDeckSeason = found.season.Season.SeasonNumber;
+                    }
+
+                    items.Add(work);
+                }
+
+                return items.Count == 0 ? null : new HomeRail { Id = "on-deck", Kind = "on-deck", Title = "On deck", Items = items };
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         /// <summary>Retries a failed load. Wired to HomePage's retry button.</summary>
         public void Retry() => _ = LoadAsync();
 
@@ -64,9 +129,25 @@ namespace Playarr.Xbox.ViewModels
 
             try
             {
-                // The same server-computed rails the web Home renders, in the same order.
+                // The same server-computed rails the web Home renders, in the same order, led by On deck.
+                var onDeck = LoadOnDeckAsync();
                 var response = await _environment.ApiClient.GetHomeRailsAsync();
-                Rails = new List<HomeRail>(response.Rails);
+                var rails = new List<HomeRail>(response.Rails);
+                // The web waits at most this long for On deck before showing the rest, then adds it when it arrives.
+                var first = await Task.WhenAny(onDeck, Task.Delay(OnDeckWait));
+                if (first == onDeck && onDeck.Result is { } early)
+                {
+                    rails.Insert(0, early);
+                    onDeck = null!;
+                }
+
+                Rails = rails;
+                if (onDeck != null && await onDeck is { } late)
+                {
+                    var withLate = new List<HomeRail>(rails);
+                    withLate.Insert(0, late);
+                    Rails = withLate;
+                }
             }
             catch (ApiException error)
             {

@@ -35,9 +35,20 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private static async Task SetAsync(Image image, Guid id, ImageKind kind, int width, string version, int decodeWidth)
+        /// <summary>An episode's still, for the On deck card of a series.</summary>
+        public static async void LoadEpisode(Image image, Work series, Episode episode, int width)
         {
-            var key = $"{id:N}:{kind}:{width}:{version}";
+            image.Source = null;
+            var asset = episode.Images.Count > 0 ? episode.Images[0] : null;
+            if (asset != null)
+            {
+                await SetAsync(image, series.Id, ImageKind.Thumb, width, Version(asset.Url), width, episode.Id).ConfigureAwait(true);
+            }
+        }
+
+        private static async Task SetAsync(Image image, Guid id, ImageKind kind, int width, string version, int decodeWidth, Guid? episodeId = null)
+        {
+            var key = $"{id:N}:{episodeId:N}:{kind}:{width}:{version}";
             try
             {
                 if (!Cache.TryGetValue(key, out var bytes))
@@ -45,7 +56,9 @@ namespace Playarr.Xbox.Views
                     await Gate.WaitAsync().ConfigureAwait(true);
                     try
                     {
-                        bytes = await App.Environment.ApiClient.GetWorkArtworkAsync(id, kind, width, version).ConfigureAwait(true);
+                        bytes = episodeId is { } episode
+                            ? await App.Environment.ApiClient.GetEpisodeArtworkAsync(id, episode, kind, width, version).ConfigureAwait(true)
+                            : await App.Environment.ApiClient.GetWorkArtworkAsync(id, kind, width, version).ConfigureAwait(true);
                     }
                     finally
                     {

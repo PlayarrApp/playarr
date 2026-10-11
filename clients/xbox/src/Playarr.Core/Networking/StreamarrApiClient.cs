@@ -55,6 +55,8 @@ namespace Playarr.Core.Networking
         /// Server-cached, resized artwork (<c>/api/v1/artwork/work/{id}/{kind}</c>), the only route that serves
         /// art the source stores behind a private scheme. Needs the bearer token, so an Image cannot load it by URL.
         /// </summary>
+        Task<byte[]> GetEpisodeArtworkAsync(Guid seriesId, Guid episodeId, ImageKind kind, int width, string? version = null, CancellationToken cancellationToken = default);
+
         Task<byte[]> GetWorkArtworkAsync(Guid id, ImageKind kind, int width, string? version = null, CancellationToken cancellationToken = default);
 
         Task<CalendarResponse> GetCalendarAsync(DateTime start, DateTime end, CancellationToken cancellationToken = default);
@@ -223,8 +225,15 @@ namespace Playarr.Core.Networking
         public Task<HomeRailsResponse> GetHomeRailsAsync(CancellationToken cancellationToken = default) =>
             GetAsync<HomeRailsResponse>("/api/v1/home/rails", null, authenticated: true, cancellationToken);
 
-        public async Task<byte[]> GetWorkArtworkAsync(
-            Guid id, ImageKind kind, int width, string? version = null, CancellationToken cancellationToken = default)
+        public Task<byte[]> GetEpisodeArtworkAsync(
+            Guid seriesId, Guid episodeId, ImageKind kind, int width, string? version = null, CancellationToken cancellationToken = default) =>
+            FetchArtworkAsync($"/api/v1/artwork/episode/{seriesId:D}/{episodeId:D}/{kind.ToString().ToLowerInvariant()}", width, version, cancellationToken);
+
+        public Task<byte[]> GetWorkArtworkAsync(
+            Guid id, ImageKind kind, int width, string? version = null, CancellationToken cancellationToken = default) =>
+            FetchArtworkAsync($"/api/v1/artwork/work/{id:D}/{kind.ToString().ToLowerInvariant()}", width, version, cancellationToken);
+
+        private async Task<byte[]> FetchArtworkAsync(string path, int width, string? version, CancellationToken cancellationToken)
         {
             var query = new Dictionary<string, string> { ["w"] = width.ToString(CultureInfo.InvariantCulture) };
             if (version != null)
@@ -232,7 +241,6 @@ namespace Playarr.Core.Networking
                 query["v"] = version;
             }
 
-            var path = $"/api/v1/artwork/work/{id:D}/{kind.ToString().ToLowerInvariant()}";
             try
             {
                 return await SendBytesOnceAsync(path, query, false, cancellationToken).ConfigureAwait(false);

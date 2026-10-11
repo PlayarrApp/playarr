@@ -89,6 +89,12 @@ namespace Playarr.Xbox.Views
             // Rebuild only for a new result: a rebuild drops focus back to the nav rail.
             if (!ReferenceEquals(_renderedRails, _viewModel.Rails))
             {
+                // A late On deck replaces the rails under the viewer: if focus was on a card, claim the first one again.
+                if (_renderedRails != null && Windows.UI.Xaml.Input.FocusManager.GetFocusedElement() is DependencyObject focused && IsInRails(focused))
+                {
+                    _focusFirst = true;
+                }
+
                 _renderedRails = _viewModel.Rails;
                 RailsPanel.Children.Clear();
                 foreach (var rail in _viewModel.Rails)
@@ -98,6 +104,10 @@ namespace Playarr.Xbox.Views
 
                 var shown = _viewModel.Rails.Count > 0 && _viewModel.Rails[0].Items.Count > 0 ? _viewModel.Rails[0].Items[0] : null;
                 Detail.Show(shown, withKind: true);
+                if (shown != null)
+                {
+                    ShowRuntime(shown.Id);
+                }
             }
 
             var first = _viewModel.Rails.Count > 0 && _viewModel.Rails[0].Items.Count > 0 ? _viewModel.Rails[0].Items[0] : null;
@@ -108,6 +118,54 @@ namespace Playarr.Xbox.Views
                 _focusFirst = false;
                 CardFocus.FocusFirstWhenReady(firstList);
             }
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<Guid, string> Runtimes = new System.Collections.Generic.Dictionary<Guid, string>();
+        private Guid _runtimeFor;
+
+        /// <summary>The web hero's meta is the runtime ("1h 48m"), read from the title's detail once focus has dwelt on it.</summary>
+        private async void ShowRuntime(Guid id)
+        {
+            _runtimeFor = id;
+            if (!Runtimes.TryGetValue(id, out var label))
+            {
+                await System.Threading.Tasks.Task.Delay(300);
+                if (_runtimeFor != id)
+                {
+                    return;
+                }
+
+                try
+                {
+                    var detail = await App.Environment.ApiClient.GetWorkAsync(id);
+                    var minutes = detail.RuntimeMs is { } ms && ms > 0 ? Math.Max(1, (int)Math.Round(ms / 60000.0)) : 0;
+                    label = minutes == 0 ? string.Empty : minutes < 60 ? $"{minutes}m" : minutes % 60 == 0 ? $"{minutes / 60}h" : $"{minutes / 60}h {minutes % 60}m";
+                }
+                catch (Exception)
+                {
+                    label = string.Empty;
+                }
+
+                Runtimes[id] = label;
+            }
+
+            if (_runtimeFor == id)
+            {
+                Detail.SetMeta(label);
+            }
+        }
+
+        private bool IsInRails(DependencyObject node)
+        {
+            for (var current = node; current != null; current = Windows.UI.Xaml.Media.VisualTreeHelper.GetParent(current))
+            {
+                if (ReferenceEquals(current, RailsPanel))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private UIElement BuildRail(HomeRail rail)

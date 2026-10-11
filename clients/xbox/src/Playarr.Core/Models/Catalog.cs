@@ -154,6 +154,14 @@ namespace Playarr.Core.Models
         [JsonProperty("end_date")] public string? EndDate { get; set; }
 
         /// <summary>
+        /// Client-side only: on Home's On deck rail a series is shown as the episode to resume, with its season. Never
+        /// serialised.
+        /// </summary>
+        [JsonIgnore] public Episode? OnDeckEpisode { get; set; }
+
+        [JsonIgnore] public int OnDeckSeason { get; set; }
+
+        /// <summary>
         /// The best artwork of <paramref name="kind"/>, or <c>null</c>. A
         /// convenience for the tile and detail views, which both want "the
         /// poster" without caring that the server returns a list.
@@ -391,6 +399,10 @@ namespace Playarr.Core.Models
             var end = YearOf(work.EndDate);
             return end != null && end > start ? $"{start}\u2013{end}" : start.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
+
+        /// <summary>The web On deck caption for an episode card: "Series title · S02:E03".</summary>
+        public static string OnDeckCaption(Work series) =>
+            $"{series.Title} \u00b7 S{series.OnDeckSeason:00}:E{series.OnDeckEpisode?.EpisodeNumber ?? 0:00}";
 
         /// <summary>"Movie · 2019" or "Series · 2011–2019"; the bare kind label when no year is known.</summary>
         public static string KindWithYear(Work work)

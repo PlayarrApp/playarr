@@ -117,7 +117,8 @@ namespace Playarr.Xbox.Views
                 CornerRadius = new CornerRadius(12),
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
-            if (work.Image(ImageKind.Thumb) == null && work.Image(ImageKind.Backdrop) == null)
+            var episode = work.OnDeckEpisode;
+            if (episode == null && work.Image(ImageKind.Thumb) == null && work.Image(ImageKind.Backdrop) == null)
             {
                 art.Children.Add(new TextBlock
                 {
@@ -132,18 +133,28 @@ namespace Playarr.Xbox.Views
             {
                 var image = new Image { Stretch = Stretch.UniformToFill };
                 art.Children.Add(image);
-                Artwork.Load(image, work, 540, ImageKind.Thumb, ImageKind.Backdrop);
+                if (episode != null)
+                {
+                    Artwork.LoadEpisode(image, work, episode, 540);
+                }
+                else
+                {
+                    Artwork.Load(image, work, 540, ImageKind.Thumb, ImageKind.Backdrop);
+                }
             }
 
             var root = new StackPanel { Width = CardWidth, Spacing = 0, Tag = work.Id };
             root.Children.Add(art);
             root.Children.Add(new TextBlock
             {
-                Text = work.Title,
+                Text = episode != null ? (string.IsNullOrEmpty(episode.Title) ? work.Title : episode.Title) : work.Title,
                 FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(2, 12, 0, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis,
+                // Library grid rows repeat every 240 px, as the web's 184 px art, 12 px gap, 19 px title and 25 px row gap.
+                LineHeight = caption ? 0 : 19,
+                LineStackingStrategy = caption ? LineStackingStrategy.MaxHeight : LineStackingStrategy.BlockLineHeight,
             });
             if (!caption)
             {
@@ -152,7 +163,7 @@ namespace Playarr.Xbox.Views
 
             root.Children.Add(new TextBlock
             {
-                Text = WorkLabels.KindWithYear(work),
+                Text = episode != null ? WorkLabels.OnDeckCaption(work) : WorkLabels.KindWithYear(work),
                 FontSize = 10,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"],

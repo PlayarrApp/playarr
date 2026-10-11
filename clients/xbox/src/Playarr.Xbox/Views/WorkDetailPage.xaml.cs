@@ -169,7 +169,7 @@ namespace Playarr.Xbox.Views
                     "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
                 foreach (var episode in season.Episodes)
                 {
-                    list.Items.Add(EpisodeCard(season.Season.SeasonNumber, episode));
+                    list.Items.Add(EpisodeCard(_viewModel.Work, season.Season.SeasonNumber, episode));
                 }
 
                 list.ItemClick += (s, e) =>
@@ -204,7 +204,7 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private static FrameworkElement EpisodeCard(int seasonNumber, EpisodeDetail detail)
+        private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail)
         {
             var episode = detail.Episode;
             var art = new Grid
@@ -214,11 +214,12 @@ namespace Playarr.Xbox.Views
                 CornerRadius = new CornerRadius(12),
                 Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
-            var url = episode.Images.Count > 0 ? episode.Images[0].Url : null;
-            var uri = string.IsNullOrEmpty(url) ? null : App.Environment.ApiClient.ResolveUrl(url!);
-            if (uri != null)
+            if (series != null && episode.Images.Count > 0)
             {
-                art.Children.Add(new Image { Source = new BitmapImage(uri) { DecodePixelWidth = 268 }, Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill });
+                // The server's cached, resized episode still (the source URL may sit behind a private scheme).
+                var still = new Image { Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
+                art.Children.Add(still);
+                Artwork.LoadEpisode(still, series, episode, 540);
             }
 
             art.Children.Add(new TextBlock
