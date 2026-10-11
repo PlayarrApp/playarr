@@ -282,6 +282,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Fire TV: playback reports the device's real capabilities (HEVC Main 10 up to 4K at 60 fps, HDR10 and HLG, 6 channels, Dolby Digital passthrough), Settings > Player has the Force direct video and Force direct audio switches (off by default, sent only when on), and a 422 colour-format answer shows the server's message with no retry.
 - Xbox: the profile picker and the nav rail show the profile's avatar plate (the account's preset or custom avatar, else the preset picked by hashing the profile id), as on the web.
 - Windows desktop: the app scales its TV layout to the window (resizable, minimum 640x360) with a draggable title bar, from the same code as the Xbox build.
 - Xbox: Home leads with the web's On deck rail, the part-watched titles to resume (a series shows its episode with the season and episode code).
@@ -453,6 +454,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Linux phone client: web-exact sizes for calendar, detail, drawers, profiles and preferences; the web library order.
+- Xbox: the system now-playing card (SystemMediaTransportControls) shows the title's poster, and its Next button skips to the queued episode at any time.
 - Android phone: artwork is requested at the widths web requests, decoded once and drawn with a high quality filter, so posters scale like the browser's.
 - Android phone: Home rail cards are 173 dp wide as on the web phone layout, so the next card peeks at the right edge.
 - Linux phone client: layout and look follow the web phone design (header, 16:9 cards, key-art Home, navigation strip, calendar cards, detail pages, side panels, profiles and preferences).
@@ -2747,6 +2750,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Parity driver labels Home cards by text when they carry no aria-label.
+- Xbox: a parity suite driver (scripts/parity/xbox/driver.mjs) and an off-by-default trace hook in the app (screen, panel, focused label, playback) so the shared suite's D-pad and playback checks run on the Windows build.
 - Shared parity suite driver for the Samsung Tizen emulator and the LG webOS simulator, plus the webOS documented exceptions in docs/parity/DEVICES.md.
 - tvOS (debug builds only): the app writes its current route and focused item label to parity-state.json in its Documents folder for the shared parity suite driver.
 - Parity: a Sailfish OS driver for the shared device suite (scripts/parity/sailfish/driver.mjs) that drives the app on the emulator over ssh and captures the display over VNC.

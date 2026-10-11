@@ -1,1 +1,0 @@
-- Linux phone client: web-exact sizes for calendar, detail, drawers, profiles and preferences; the web library order.

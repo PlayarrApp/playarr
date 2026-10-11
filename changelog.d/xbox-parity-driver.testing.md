@@ -1,1 +1,0 @@
-- Xbox: a parity suite driver (scripts/parity/xbox/driver.mjs) and an off-by-default trace hook in the app (screen, panel, focused label, playback) so the shared suite's D-pad and playback checks run on the Windows build.

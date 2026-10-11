@@ -1,1 +1,0 @@
-- Xbox: the system now-playing card (SystemMediaTransportControls) shows the title's poster, and its Next button skips to the queued episode at any time.

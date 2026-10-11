@@ -1,1 +1,0 @@
-- Fire TV: playback reports the device's real capabilities (HEVC Main 10 up to 4K at 60 fps, HDR10 and HLG, 6 channels, Dolby Digital passthrough), Settings > Player has the Force direct video and Force direct audio switches (off by default, sent only when on), and a 422 colour-format answer shows the server's message with no retry.
