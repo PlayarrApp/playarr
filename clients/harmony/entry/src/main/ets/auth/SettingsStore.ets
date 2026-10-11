@@ -276,6 +276,16 @@ export async function setPlayerSubtitleLanguage(value: string): Promise<void> {
   await putString(PLAYER_SUBTITLE_LANGUAGE_KEY, value);
 }
 
+/** The calendar link's secret URL, remembered on this device per server and profile (`core/CalendarLink.ts#calendarLinkScope`):
+ * the server shows it only when it is created. An empty string means none is stored. */
+export async function getCalendarLink(scope: string): Promise<string> {
+  return getString('calendar_link:' + scope, '');
+}
+
+export async function setCalendarLink(scope: string, url: string): Promise<void> {
+  await putString('calendar_link:' + scope, url);
+}
+
 function toLibrarySortField(value: string): LibrarySortField {
   if (value === 'date_added' || value === 'recent') {
     return value;

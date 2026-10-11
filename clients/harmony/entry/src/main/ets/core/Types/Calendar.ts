@@ -42,3 +42,14 @@ export interface CalendarResponse {
   end: string;
   entries: CalendarEntry[];
 }
+
+/** `GET /api/v1/calendar/feed`: whether the viewer has an iCal link, and whether the server can show it again. */
+export interface CalendarFeedStatus {
+  active: boolean;
+  link_available?: boolean;
+}
+
+/** `POST /api/v1/calendar/feed`: the secret iCal URL (returned when the link is created or reset). */
+export interface CalendarFeedCreated {
+  url: string;
+}

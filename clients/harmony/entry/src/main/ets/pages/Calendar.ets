@@ -12,6 +12,7 @@
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
+import { CalendarLinkPanel } from '../design/components/CalendarLinkPanel';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import type { Choice } from '../design/components/ChoiceSegments';
 import { MultiSelect } from '../design/components/MultiSelect';
@@ -189,6 +190,7 @@ export struct ReleaseCalendar {
   @State private anchor: string = localDayOf(new Date());
   @State private view: CalendarView = 'agenda';
   @State private filtersOpen: boolean = false;
+  @State private linkOpen: boolean = false;
   @State private groups: DayGroup[] = [];
   /** The loaded window before filtering; `regroup` applies the filters (web filters on the client). */
   private entries: CalendarEntry[] = [];
@@ -589,6 +591,11 @@ export struct ReleaseCalendar {
   }
 
   @Builder
+  private linkBody(): void {
+    CalendarLinkPanel()
+  }
+
+  @Builder
   private filtersBody(): void {
     Column({ space: tv(FILTER_SECTION_GAP) }) {
       ChoiceSegments({
@@ -859,7 +866,15 @@ export struct ReleaseCalendar {
         }
         .position({ x: tv(HEADER_RIGHT), y: tv(TvGeometry.utilityRowTop) })
         .markAnchor({ x: '100%', y: 0 })
-        // Web keeps slot 0 for the Calendar link tile (not in this client yet); Filters is the second tile.
+        // Web's slot 0: the Calendar link (bell); Filters is the second tile.
+        ActionTile({
+          icon: $r('app.media.action_bell'),
+          label: 'Calendar link',
+          slot: 0,
+          onActivate: (): void => {
+            this.linkOpen = true;
+          },
+        })
         ActionTile({
           icon: $r('app.media.action_filters'),
           label: 'Filters',
@@ -868,7 +883,18 @@ export struct ReleaseCalendar {
             this.filtersOpen = true;
           },
         })
-        if (this.filtersOpen) {
+        if (this.linkOpen) {
+          Drawer({
+            kicker: 'Calendar',
+            title: 'Calendar link',
+            onClose: (): void => {
+              this.linkOpen = false;
+            },
+            body: (): void => {
+              this.linkBody();
+            },
+          })
+        } else if (this.filtersOpen) {
           Drawer({
             kicker: 'Calendar',
             title: 'Filters',

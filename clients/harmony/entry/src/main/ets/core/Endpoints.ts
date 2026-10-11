@@ -86,6 +86,11 @@ export function calendarUrl(start: string, end: string): string {
   return `/api/v1/calendar?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
 }
 
+/** `GET`/`POST /api/v1/calendar/feed` (the viewer's iCal link; `rotate` replaces it). */
+export function calendarFeedUrl(rotate: boolean = false): string {
+  return rotate ? "/api/v1/calendar/feed?rotate=true" : "/api/v1/calendar/feed";
+}
+
 /** `GET /api/v1/home/rails`: the server-curated Home rails web TV Home renders. */
 export function homeRailsUrl(): string {
   return "/api/v1/home/rails";

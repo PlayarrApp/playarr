@@ -55,11 +55,13 @@ import { resolveClientPlatform } from './core/AppConfig.ts';
 import { DeviceProfile } from './core/DeviceProfile.ts';
 
 import {
+  getCalendarLink,
   getPlayerDefaultQuality,
   getPlayerSubtitleLanguage,
   getPlayerSubtitleMode,
   getThemeOverride,
   initSettingsStore,
+  setCalendarLink,
   setPlayerDefaultQuality,
   setPlayerSubtitleLanguage,
   setPlayerSubtitleMode,
@@ -172,4 +174,13 @@ export async function savePlayerDefault(which: string, value: string): Promise<v
   } else {
     await setPlayerSubtitleLanguage(value);
   }
+}
+
+/** The remembered calendar link for this server and profile ('' when none). Pages may not import `auth/`. */
+export async function loadStoredCalendarLink(scope: string): Promise<string> {
+  return getCalendarLink(scope);
+}
+
+export async function storeCalendarLink(scope: string, url: string): Promise<void> {
+  await setCalendarLink(scope, url);
 }
