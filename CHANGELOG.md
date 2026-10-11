@@ -2740,6 +2740,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Shared parity suite driver for the Samsung Tizen emulator and the LG webOS simulator, plus the webOS documented exceptions in docs/parity/DEVICES.md.
 - tvOS (debug builds only): the app writes its current route and focused item label to parity-state.json in its Documents folder for the shared parity suite driver.
 - Parity: a Sailfish OS driver for the shared device suite (scripts/parity/sailfish/driver.mjs) that drives the app on the emulator over ssh and captures the display over VNC.
 - Shared device parity suite (scripts/parity/suite.json, suite-run.mjs, web reference driver, validator test) and docs/parity/SUITE.md and DEVICES.md.

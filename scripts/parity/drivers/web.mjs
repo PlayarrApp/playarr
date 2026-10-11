@@ -47,6 +47,15 @@ export async function createDriver() {
       // Signed out (the server can drop a session when other devices sign in): sign in again once.
       if (!(await page.locator(".app-nav").count())) { try { session = undefined; await open(false); } finally { await page.goto(web + "/", { waitUntil: "load" }); } }
       await page.waitForFunction(() => document.querySelectorAll(".app-nav-link").length >= 6 && !document.querySelector(".app-nav-link-placeholder") && document.querySelector(".tv-home-card"), null, { timeout: 30000 });
+      // Home rails fill in asynchronously and reorder the cards: wait until the list holds still, then log the first card
+      // so Home-rail drift (other clients' activity on the shared account) is visible next to the D-pad results.
+      let last = "", still = 0;
+      for (let i = 0; i < 40 && still < 3; i += 1) {
+        const now = await page.evaluate(() => [...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label")).join("|"));
+        still = now && now === last ? still + 1 : 0; last = now; await page.waitForTimeout(1500);
+      }
+      console.log(`  home first card: ${last.split("|")[0]}`);
+      await page.evaluate(() => document.querySelector(".tv-home-card")?.focus());
       await settle();
     },
     async route(r) { await page.goto(web + r, { waitUntil: "load" }); await settle(); },
