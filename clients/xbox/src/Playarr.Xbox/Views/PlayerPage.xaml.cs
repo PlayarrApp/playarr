@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -76,7 +77,7 @@ namespace Playarr.Xbox.Views
         private void HideChrome()
         {
             _chromeHide.Stop();
-            if (TracksPanel.Visibility != Visibility.Visible && ChromePanel.Visibility == Visibility.Visible)
+            if (_openPanel == null && ChromePanel.Visibility == Visibility.Visible)
             {
                 AnimateScrim(0, Scrim.Height, () => ChromePanel.Visibility = Visibility.Collapsed);
             }
@@ -123,6 +124,10 @@ namespace Playarr.Xbox.Views
             Scrubber.Value = Math.Min(Scrubber.Maximum, position.TotalSeconds);
             _updatingScrubber = false;
             TimeText.Text = $"{Clock(position)}  /  {Clock(duration)}";
+            QualityText.Text = QualityLabel();
+            var hasNext = _parameter != null && _parameter.UpNext.Count > 0;
+            NextButton.IsEnabled = hasNext;
+            NextButton.Opacity = hasNext ? 1 : 0.35;
             PlayPauseIcon.Glyph = session.PlaybackState == Windows.Media.Playback.MediaPlaybackState.Playing ? "\uE769" : "\uE768";
         }
 
@@ -521,11 +526,68 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private void TracksButton_Click(object sender, RoutedEventArgs e)
+        private Grid? _openPanel;
+        private Button? _panelOpener;
+
+        private void TogglePanel(Grid panel, Button opener)
         {
-            TracksPanel.Visibility = TracksPanel.Visibility == Visibility.Visible
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            var wasOpen = ReferenceEquals(_openPanel, panel);
+            CloseAllPanels();
+            if (!wasOpen)
+            {
+                panel.Visibility = Visibility.Visible;
+                _openPanel = panel;
+                _panelOpener = opener;
+            }
+        }
+
+        private void CloseAllPanels()
+        {
+            TracksPanel.Visibility = InfoPanel.Visibility = QueuePanel.Visibility = Visibility.Collapsed;
+            _openPanel = null;
+        }
+
+        private void TracksButton_Click(object sender, RoutedEventArgs e) => TogglePanel(TracksPanel, TracksButton);
+
+        private void QueueButton_Click(object sender, RoutedEventArgs e)
+        {
+            var queue = _parameter?.UpNext;
+            QueueText.Text = queue == null || queue.Count == 0 ? "Nothing is queued after this." : string.Join("\n", queue.Select(q => q.Title));
+            TogglePanel(QueuePanel, QueueButton);
+        }
+
+        private void InfoButton_Click(object sender, RoutedEventArgs e)
+        {
+            var info = _viewModel?.PlaybackInfo;
+            InfoText.Text = info == null
+                ? string.Empty
+                : $"Delivery: {info.Mode}\nQuality: {QualityLabel()}\nContainer: {info.MimeType}\nDuration: {Clock(TimeSpan.FromMilliseconds(info.DurationMs))}";
+            TogglePanel(InfoPanel, InfoButton);
+        }
+
+        /// <summary>Mute toggle, as the web's volume control; the console's own volume stays with the system.</summary>
+        private void VolumeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.Player.IsMuted = !_viewModel.Player.IsMuted;
+                ((FontIcon)VolumeButton.Content).Glyph = _viewModel.Player.IsMuted ? "\uE74F" : "\uE767";
+            }
+        }
+
+        private void PrevButton_Click(object sender, RoutedEventArgs e)
+        {
+        }
+
+        private void NextButton_Click(object sender, RoutedEventArgs e) => _viewModel?.PlayNextNow();
+
+        /// <summary>"Original · 12.6 Mbps", the chosen quality as the web's chip reads.</summary>
+        private string QualityLabel()
+        {
+            var info = _viewModel?.PlaybackInfo;
+            var option = info?.QualityOptions.FirstOrDefault(o => o.Id == info.SelectedQualityId);
+            var name = string.IsNullOrEmpty(option?.Label) ? (info?.SelectedQualityId == "original" ? "Original" : info?.SelectedQualityId ?? string.Empty) : option!.Label!;
+            return option?.BitrateBps is { } bps && bps > 0 ? $"{name} \u00b7 {bps / 1e6:0.0} Mbps" : name;
         }
 
         /// <summary>
@@ -535,7 +597,7 @@ namespace Playarr.Xbox.Views
         /// </summary>
         public bool TryHandleBack()
         {
-            var panelOpen = TracksPanel.Visibility == Visibility.Visible;
+            var panelOpen = _openPanel != null;
             if (PlayerStagePolicy.BackAction(panelOpen) != PlayerBackAction.ClosePanel)
             {
                 // Then the controls overlay; only with everything hidden does BACK exit (owner rule).
@@ -548,8 +610,9 @@ namespace Playarr.Xbox.Views
                 return false;
             }
 
-            TracksPanel.Visibility = Visibility.Collapsed;
-            TracksButton.Focus(FocusState.Programmatic);
+            var opener = _panelOpener;
+            CloseAllPanels();
+            opener?.Focus(FocusState.Programmatic);
             return true;
         }
 

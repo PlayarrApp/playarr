@@ -1,0 +1,1 @@
+- Xbox: the player's controls follow the web's set and layout: previous and next, play/pause, the time, mute, audio and subtitles, queue, the quality chip and playback info.
