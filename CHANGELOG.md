@@ -281,6 +281,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Xbox: the profile picker and the nav rail show the profile's avatar plate (the account's preset or custom avatar, else the preset picked by hashing the profile id), as on the web.
+- Windows desktop: the app scales its TV layout to the window (resizable, minimum 640x360) with a draggable title bar, from the same code as the Xbox build.
+- Xbox: Home leads with the web's On deck rail, the part-watched titles to resume (a series shows its episode with the season and episode code).
+- Xbox: Home hero shows the runtime, library rows repeat every 240 px, wrapped titles balance like web, and episode stills load through the server artwork endpoint.
 - Linux phone client: music library, release calendar (agenda, week, month), library filters and the long-press actions sheet.
 - Samsung Tizen native client skeleton (`clients/tizen-native`, Tizen .NET and NUI): logic library with remote-key mapping and geometric D-pad focus (unit tested), an NUI application head that boots on the Tizen 10 TV emulator, and a hosted CI job that builds the tpk and runs the tests.
 - Xbox: the nav rail's Watchlist, Playlists, Requests and Downloads items open pages as on the web (watchlist rows with Resume or Play and Remove, playlist cards and their titles, requests with their status, and an honest Downloads empty state).
@@ -448,6 +452,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Xbox: the player's controls follow the web's set and layout: previous and next, play/pause, the time, mute, audio and subtitles, queue, the quality chip and playback info.
+- Xbox: a title's Play button resumes from the saved position ("Resume from 1:23") and a series opens on the next item to play (the episode part-watched most recently, else the one after the last finished), as on the web.
 - Linux phone client: identify as linux-phone to the server as well as the link broker.
 - Sailfish OS: the client now identifies as `sailfish` to the link broker and the server instead of the `web` compatibility identity.
 - Xbox: Home and the library pages share one focused-title detail column (backdrop, genre, title, year, synopsis) as on web, the first card takes focus when a page opens, artwork loads through the server artwork endpoint (art kept behind a private source scheme now shows), and Music reads "ARTISTS".
@@ -2731,6 +2737,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Parity: a Sailfish OS driver for the shared device suite (scripts/parity/sailfish/driver.mjs) that drives the app on the emulator over ssh and captures the display over VNC.
 - Shared device parity suite (scripts/parity/suite.json, suite-run.mjs, web reference driver, validator test) and docs/parity/SUITE.md and DEVICES.md.
 - Parity: the live web capture waits for skeleton loaders to clear before the screenshot.
 - Web: `nav-list-rows-e2e` checks row heights with 1, 2 and 10 watchlist items at 1920 and 1280 (1.9967).

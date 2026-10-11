@@ -1,1 +1,0 @@
-- Parity: a Sailfish OS driver for the shared device suite (scripts/parity/sailfish/driver.mjs) that drives the app on the emulator over ssh and captures the display over VNC.

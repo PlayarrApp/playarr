@@ -1,1 +1,0 @@
-- Windows desktop: the app scales its TV layout to the window (resizable, minimum 640x360) with a draggable title bar, from the same code as the Xbox build.

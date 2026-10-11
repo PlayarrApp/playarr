@@ -1,1 +1,0 @@
-- Xbox: the profile picker and the nav rail show the profile's avatar plate (the account's preset or custom avatar, else the preset picked by hashing the profile id), as on the web.

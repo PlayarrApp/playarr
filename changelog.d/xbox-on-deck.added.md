@@ -1,2 +1,0 @@
-- Xbox: Home leads with the web's On deck rail, the part-watched titles to resume (a series shows its episode with the season and episode code).
-- Xbox: Home hero shows the runtime, library rows repeat every 240 px, wrapped titles balance like web, and episode stills load through the server artwork endpoint.
