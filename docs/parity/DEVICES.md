@@ -69,6 +69,31 @@ D-pad column as n/a.
 | Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad | Display capture over VNC | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
 | Nura (postmarketOS) | `pmbootstrap` qemu-amd64 | QEMU input | QEMU screendump | Slow; software rendering | `postmarketos` |
 
+## Downloads: which platforms support them
+
+Checked in each client's code (11 Oct 2026). Platforms marked Yes must run the `downloads` cases and report
+`downloads.json`; the others record "not supported", which is not a failure. Move a platform to Yes in the same PR that
+ships its download engine.
+
+| Platform | Downloads | Evidence |
+| --- | --- | --- |
+| Web TV (reference) | Yes | OPFS or IndexedDB engine (`downloadEngine.ts`); grouped Downloads page (series, season, episode) with Pause, Resume, Edit, Cancel and Delete at each level, an opt-in system notification, offline playback from the local copy. The edit drawer changes keep-until only, so the quality half of the `edit` case fails on the reference until the web client can edit quality. |
+| Android TV and Android phone | Yes | One app: `PlayarrDownloadService` (Media3 downloads with a notification), keep-until sweep worker |
+| Fire TV (Fire OS, Android TV app) | Yes | Same app as Android TV |
+| Fire TV (Vega OS) | No | Vega app has no downloads route (design marks `/downloads` out of scope) |
+| iOS and iPadOS | Yes | `PlayarrKit/Downloads` engine, Downloads view |
+| tvOS | No | The page says Apple TV streams and keeps no offline copies |
+| macOS (Apple TV app) | No | Same app as tvOS |
+| HarmonyOS TV and phone | Not yet | Downloads page exists, no engine (`DownloadsRepository.ets`); becomes Yes with the engine |
+| Sailfish OS | Yes | `downloads.cpp` with Range resume, offline playback |
+| Nura (postmarketOS, `linux-mobile`) | No | README: offline downloads not available yet |
+| Xbox and Windows (UWP) | No | `DownloadsPage` says downloads are not available yet |
+| Roku | No | Real platform limit (no offline downloads) |
+| Samsung Tizen, LG webOS, Hisense VIDAA | Unverified | They run the web client, so downloads work only if the device browser offers OPFS or IndexedDB (`detectDownloadStorage`); probe on the device and set the flag in the driver |
+
+Notifications (a live system notification per download) and the now-playing entry are checked only where the driver sets
+`supports.notifications` and `supports.nowPlaying`; elsewhere the suite records "not supported".
+
 ## Legend and build.json rules
 
 - After every capture run, unmerged branches included, write captures to the legend dir, refresh `web/` in the same
@@ -76,7 +101,7 @@ D-pad column as n/a.
   the UNMERGED badge.
 - Never publish an error or signed-out screen as a capture: abort instead (the suite runner does).
 - The device test account, "Device Test" profile, is signed in on Home, dark by default.
-- Result files `dpad.json` and `playback.json` sit beside the captures (schema in `SUITE.md`).
+- Result files `dpad.json`, `playback.json` and `downloads.json` sit beside the captures (schema in `SUITE.md`).
 - The score per client: Dark % and Light % are the mean per-screen similarity over the screens captured in that theme;
   D-pad is checks passed of 11 and playback is cases passed of 3; overall is the mean of the parts that have results
   (mobile has no D-pad). Coverage (captured screens out of 15 per theme) is shown beside, never mixed into a percentage.

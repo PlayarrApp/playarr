@@ -29,6 +29,7 @@ export function validateSuite(s, legendScreens) {
   if (JSON.stringify(s.themes) !== '["dark","light"]') bad.push("themes must be dark, light");
   for (const x of s.screens ?? []) {
     if (!x.route?.startsWith("/")) bad.push(`${x.id}: route`);
+    if (x.open && !routeMatches(x.route, x.open)) bad.push(`${x.id}: open must match route`);
     if (x.keys !== null && !Array.isArray(x.keys)) bad.push(`${x.id}: keys must be an array or null`);
     try { if (x.keys) expandKeys(x.keys); } catch (e) { bad.push(`${x.id}: ${e.message}`); }
   }
@@ -44,5 +45,27 @@ export function validateSuite(s, legendScreens) {
   }
   if (JSON.stringify((s.playback ?? []).map((x) => x.id)) !== '["a","b","c"]') bad.push("playback cases must be a, b, c");
   for (const p of s.playback ?? []) if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(p.file ?? "")) bad.push(`${p.id}: file must be a media file id`);
+  const dl = s.downloads ?? [];
+  const dlids = dl.map((x) => x.id);
+  if (!dl.length) bad.push("no downloads cases");
+  if (dup(dlids).length) bad.push(`duplicate downloads ids ${dup(dlids)}`);
+  for (const d of dl) if (!s.downloadMedia?.[d.media]) bad.push(`${d.id}: unknown media ${d.media}`);
+  for (const m of Object.values(s.downloadMedia ?? {})) for (const k of ["work", "file"]) if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(m[k] ?? "")) bad.push(`downloadMedia ${k} must be an id`);
   return bad;
+}
+
+// Sets the Device Test profile's watch progress of each media file back to 0, so On deck and Resume stay the same on every
+// device. Logs in with its own device id (nothing is stored). env: PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD.
+export async function resetProgress(files, env = process.env) {
+  const srv = env.PLAYARR_SERVER_URL?.replace(/\/$/, "");
+  if (!srv || !env.PLAYARR_USERNAME) throw new Error("--reset-progress needs PLAYARR_SERVER_URL, PLAYARR_USERNAME and PLAYARR_PASSWORD");
+  const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
+  if (!lr.ok) throw new Error(`reset-progress login ${lr.status}`);
+  const h = { "content-type": "application/json", authorization: `Bearer ${(await lr.json()).access_token}` };
+  for (const f of new Set(files)) {
+    const meta = await (await fetch(`${srv}/api/v1/media/${f}/metadata`, { headers: h })).json().catch(() => ({}));
+    const r = await fetch(`${srv}/api/v1/playback/${f}/progress`, { method: "PUT", headers: h, body: JSON.stringify({ position_ms: 0, duration_ms: meta.duration_ms ?? 0, completed: false }) });
+    if (!r.ok) throw new Error(`reset-progress ${f}: ${r.status}`);
+  }
 }

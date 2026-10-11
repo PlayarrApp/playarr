@@ -16,10 +16,24 @@ Devices and how each is run: [DEVICES.md](DEVICES.md).
 - **2 themes**: dark, light. 15 x 2 = 30 captures per client.
 - **D-pad checks**: a start screen, a key sequence, and the focused item (its accessible label) compared with web's
   result in `expected.json`.
-- **Playback cases** a (normal 1080p), b (4K HEVC), c (title served by the other server). Each pins a
+- **Playback cases** a (normal 1080p), b (high-bitrate H.264, about 15 Mbps: parity checks that playback works, not server performance, so b is a file the server serves without a live 4K HEVC re-encode; the test server has no 4K H.264 file, all 12 direct-stream H.264 candidates deliver 1080p or less), c (title served by the other server). Each pins a
   media `file` id on the test server (the Device Test account). Case c is the same file served through the other server
   and needs the admin routing rule that prefers the other node (`setup` in `suite.json`); web then plays it through
   `/media/proxy/`. Without that rule it just replays case a.
+
+- **Downloads cases** (`downloads` in `suite.json`, media pinned in `downloadMedia`: the smallest original files: a movie and an
+  episode on the test server): start a movie download and see it complete, start an episode download, pause then
+  resume, cancel mid-download, delete a completed download, edit keep-until and quality, play the downloaded title
+  offline (network off, then the same "frames advance" check as playback), and a system notification that appears,
+  updates its progress and ends as completed or paused. Four more cases (series-level and season-level pause and delete)
+  are marked `requires: grouped-downloads` and are skipped as "not built yet" until the grouped Downloads page ships.
+  Run them under the shared playback lock and delete what you download.
+- **Now-playing entry**: playback case a (`nowPlaying: true`) also checks that the platform's now-playing entry
+  exists with a title, is in the playing state, and that its Pause action pauses the player.
+
+Pinned titles: `film-detail` (2 Fast 2 Furious) and `series-detail` (2 Broke Girls) carry an `open` path with the work id. The runner always
+calls `driver.route(open)` for them, so a driver must open that exact title by id (deep link or its own search), never "the first card":
+web and native then show the same title. The web driver also waits for skeletons, spinners and images to settle before a screenshot.
 
 Keys: `up down left right select back`, `select:long` for a long press, `name*N` to repeat. Nav moves are anchored at
 the bottom of the nav rail (`left`, `down*12` clamps on the profile entry), because the top depends on the account.
@@ -36,15 +50,18 @@ A device worker writes one ES module exporting `createDriver({ out, args })` tha
 | `setTheme("dark"\|"light")` | Switch theme (system setting or in-app), staying signed in. |
 | `home()` | Back to the signed-in Home screen with its first card focused. |
 | `key(name, { long })` | Press one D-pad key (`long`: hold about 1 s). |
-| `route(path)` | Deep link to a web route; used only for screens whose `keys` are null. |
+| `route(path)` | Deep link to a web route; used for screens whose `keys` are null and for pinned `open` paths (map the work id to the device's own detail screen). |
 | `location()` | Current route as `/path?query` in web terms (map native screens to the suite routes). |
 | `focused()` | Label of the focused item (accessibility label or visible text), or null. |
 | `screenshot(file)` | Write a 1920x1080 PNG. Throw if the screen is an error or signed-out screen. |
-| `play(case, expect)` | Play the media file `case.file` (deep link or the device's own way), return `{ state: "playing"\|"stalled"\|"error", startSeconds, advancedSeconds, detail? }`. |
+| `supports` | Optional object of flags: `downloads`, `notifications` (the driver can read system notifications), `nowPlaying` (it can read the now-playing entry), `grouped-downloads` (the device has the grouped Downloads page). |
+| `download(case, expect)` | Optional. Run one downloads case (`case.action`, `case.media` = title, work id, file id), return `{ state: "ok"\|"failed", detail }`. Must leave nothing downloaded. |
+| `cleanupDownloads()` | Optional. Remove every download the cases touched (safety net after an abort). |
+| `play(case, expect)` | Play the media file `case.file` (deep link or the device's own way), return `{ state: "playing"\|"stalled"\|"error", startSeconds, advancedSeconds, detail?, nowPlaying?: { ok } }` (`nowPlaying` only when `case.nowPlaying` and `supports.nowPlaying`). |
 
 Run: `node suite-run.mjs --driver ./my-driver.mjs --out <dir>/<cand>/ [--themes dark] [--only screens,dpad,playback]
-[--screens home,movies] [--via keys|route] [--expected <web>/expected.json]`. A screen whose end state does not match
-the suite route is not written. Web reference: `--driver drivers/web.mjs --reference --out <dir>/web` (env:
+[--screens home,movies] [--reset-progress] [--via keys|route] [--expected <web>/expected.json]`. A screen whose end state does not match
+the suite route is not written. `--reset-progress` (needs the same `PLAYARR_*` env as the web driver) sets the watch progress of every pinned file back to 0 through the API before the captures and after each playback case and offline-play check, so On deck and Resume stay the same on every device. Web reference: `--driver drivers/web.mjs --reference --out <dir>/web` (env:
 `PLAYARR_WEB_URL`, `PLAYARR_SERVER_URL`, `PLAYARR_USERNAME`, `PLAYARR_PASSWORD`, `PARITY_CHROME`).
 
 ## Session rule: never share sessions
@@ -73,6 +90,23 @@ Captures: `<out>/<theme>/<id>.png`. The reference run also writes `<out>/expecte
 { "suite": 1, "checked_at": "ISO time",
   "results": [ { "id": "a", "pass": true, "state": "playing", "startSeconds": 4.1, "advancedSeconds": 4.2 } ] }
 ```
+
+`downloads.json`: one result per case. `pass: null` with `state: "not supported"` (device or driver without downloads,
+or without `supports.notifications`) or `"not built yet"` (`requires: grouped-downloads`) is a skip, not a failure,
+and does not count towards the total.
+
+```json
+{ "suite": 1, "checked_at": "ISO time",
+  "results": [ { "id": "movie-download", "pass": true, "state": "ok", "detail": "..." },
+               { "id": "series-pause", "pass": null, "state": "not built yet" } ] }
+```
+
+Each playback result may also carry `profile`, data for the performance and bug-testing epic that is never part of the
+score: `mode` (negotiated: `direct` or `hls`), `playMethod` (`direct_play`, `direct_stream` or `transcode`), `health` (the
+server's facts for the session: source and delivered video, bitrate, dynamic range, audio, transcode reason),
+`quality`, `decoded` (video width and height), `timeToFirstFrameSeconds`, `negotiationStatuses`,
+`no_transcode_capacity` (a 503 was seen) and `stalled`. Drivers fill what they can read; web gets the facts from
+`POST /api/v1/playback/sessions/{id}/health`.
 
 The device wall legend reads `<dir>/<cand>/dpad.json` and `playback.json`: passed = results with `pass: true`, out of
 the suite's check count (11 D-pad checks, 3 playback cases). Missing results count as failed.
