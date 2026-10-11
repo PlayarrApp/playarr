@@ -11,25 +11,18 @@
 import { activeColors, setThemeModeSetting, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { tv, TvGeometry } from '../design/Metrics';
-import { NavRail } from '../design/components/NavRail';
-import type { NavRailItem } from '../design/components/NavRail';
-import { PlayarrLogo } from '../design/components/PlayarrLogo';
-import { Clock } from '../design/components/Clock';
+import { PageShell } from '../design/components/PageShell';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
 import type { AudioLanguage } from '../core/AudioLanguages';
 import { AUDIO_LANGUAGES, normaliseAudioLanguage, audioLanguageLabel } from '../core/AudioLanguages';
 import { getPlayerPreferences, updatePlayerPreferences } from '../data/ProfileRepository';
 import type { Choice } from '../design/components/ChoiceSegments';
-import { BRAND_PINK_SOFT } from '../core/Tokens';
 
-import { getCatalogKinds } from '../data/CatalogRepository';
 import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault } from '../AppContainer';
 import { QualityMatrix } from '../design/components/QualityMatrix';
 import { ORIGINAL_QUALITY, normaliseQuality, normaliseSubtitleMode, normaliseSubtitleLanguage } from '../core/PlayerDefaults';
 
-import { buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../navigation/NavItems';
-import { getNavStack, popRoute } from '../navigation/NavStack';
 
 interface SettingsSection {
   id: string;
@@ -69,15 +62,6 @@ const PANEL_LEFT: number = 774;
 const PANEL_TOP: number = 210;
 const PANEL_WIDTH: number = 1042;
 const PANEL_TEXT_SIZE: number = 13.824;
-// Web page header with a subtitle: back 50x50, "Preferences" 33.6 px, the kicker 12.288 px pink at y=112.
-const HEADER_SIZE: number = 50;
-const BACK_GLYPH_SIZE: number = 17.28;
-const HEADING_SIZE: number = 33.6;
-const HEADING_LETTER_SPACING: number = -1.512;
-const HEADER_GAP: number = 23;
-const KICKER_TOP: number = 112;
-const KICKER_SIZE: number = 12.288;
-const KICKER_LETTER_SPACING: number = 0.983;
 
 @Component
 export struct SettingsScreen {
@@ -86,7 +70,6 @@ export struct SettingsScreen {
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
 
   @State private openSection: string = APPEARANCE;
-  @State private navItems: NavRailItem[] = [];
   @State private audioLanguage: string = 'en';
   /** Web's player preference status: loading, ready, saving or an error message. */
   @State private audioStatus: string = 'loading';
@@ -97,7 +80,6 @@ export struct SettingsScreen {
   @State private audioError: string = '';
 
   aboutToAppear(): void {
-    this.loadNav();
     this.loadAudioLanguage();
     this.loadDefaults();
   }
@@ -161,11 +143,6 @@ export struct SettingsScreen {
       return 'Could not update the player preference (' + this.audioError + ').';
     }
     return language + ' will be selected when it is available.';
-  }
-
-  private async loadNav(): Promise<void> {
-    const kinds = await getCatalogKinds();
-    this.navItems = buildNavRailItems(kinds.kind === 'ok' ? kinds.value : []);
   }
 
   private sectionTitle(): string {
@@ -308,93 +285,38 @@ export struct SettingsScreen {
     .alignItems(HorizontalAlign.Start)
   }
 
-  build() {
-    NavDestination() {
-      // Colours come from `activeColors()`, which ArkUI does not track, so a theme change rebuilds this page
-      // (keyed by the theme) to repaint at once as web does. Pages below it repaint when next opened.
-      Stack() {
-        ForEach([this.themeSetting], (_theme: string) => {
-          this.page()
-        }, (theme: string): string => theme)
-      }
-      .width('100%')
-      .height('100%')
+  @Builder
+  private pageContent(): void {
+    Column() {
+      ForEach(SECTIONS, (section: SettingsSection) => {
+        this.sectionRow(section)
+      }, (section: SettingsSection): string => `${section.id}:${section.id === this.openSection}`)
     }
-    .hideTitleBar(true)
+    .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(LIST_TOP) })
+    Column() {
+      if (this.openSection === APPEARANCE) {
+        this.appearancePanel()
+      } else if (this.openSection === PLAYER) {
+        this.playerPanel()
+      } else {
+        this.serverPanel()
+      }
+    }
+    .position({ x: tv(PANEL_LEFT), y: tv(PANEL_TOP) })
   }
 
-  @Builder
-  private page(): void {
-      Stack() {
-        Column() {
-          ForEach(SECTIONS, (section: SettingsSection) => {
-            this.sectionRow(section)
-          }, (section: SettingsSection): string => `${section.id}:${section.id === this.openSection}`)
-        }
-        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(LIST_TOP) })
-        Column() {
-          if (this.openSection === APPEARANCE) {
-            this.appearancePanel()
-          } else if (this.openSection === PLAYER) {
-            this.playerPanel()
-          } else {
-            this.serverPanel()
-          }
-        }
-        .position({ x: tv(PANEL_LEFT), y: tv(PANEL_TOP) })
-        if (this.navItems.length > 0) {
-          NavRail({
-            items: this.navItems,
-            primaryItems: buildPrimaryNavItems(),
-            secondaryItems: buildSecondaryNavItems(),
-            selectedId: '',
-            onSelect: (id: string): void => {
-              navigateFromRail(id, '');
-            },
-          })
-        }
-        PlayarrLogo({ logoSize: tv(TvGeometry.logoSize) })
-          .position({ x: tv(TvGeometry.logoLeft), y: tv(TvGeometry.logoTop) })
-        Row() {
-          Clock()
-        }
-        .height(tv(TvGeometry.utilityRowHeight))
-        .alignItems(VerticalAlign.Center)
-        .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
-        Row({ space: tv(HEADER_GAP) }) {
-          Text('←')
-            .fontSize(tv(BACK_GLYPH_SIZE))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .textAlign(TextAlign.Center)
-            .width(tv(HEADER_SIZE))
-            .height(tv(HEADER_SIZE))
-            .borderRadius(tv(HEADER_SIZE / 2))
-            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-            .focusable(true)
-            .onClick(() => {
-              popRoute(getNavStack());
-            })
-          Text('Preferences')
-            .fontSize(tv(HEADING_SIZE))
-            .fontWeight(FontWeight.Medium)
-            .letterSpacing(tv(HEADING_LETTER_SPACING))
-            .fontColor(toResourceColor(activeColors().ink))
-        }
-        .height(tv(HEADER_SIZE))
-        .alignItems(VerticalAlign.Center)
-        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
-        Text(this.sectionTitle())
-          .fontSize(tv(KICKER_SIZE))
-          .fontWeight(FontWeight.Bolder)
-          .letterSpacing(tv(KICKER_LETTER_SPACING))
-          .textCase(TextCase.UpperCase)
-          .fontColor(toResourceColor(BRAND_PINK_SOFT))
-          .position({ x: tv(TvGeometry.titlePanelLeft + HEADER_SIZE + HEADER_GAP), y: tv(KICKER_TOP) })
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(toResourceColor(activeColors().bg))
+  build() {
+    NavDestination() {
+      PageShell({
+        title: 'Preferences',
+        selectedId: '',
+        kicker: this.sectionTitle(),
+        content: (): void => {
+          this.pageContent();
+        },
+      })
+    }
+    .hideTitleBar(true)
   }
 }
 

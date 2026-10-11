@@ -10,22 +10,18 @@
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
-import { tv, TvGeometry } from '../design/Metrics';
-import { NavRail } from '../design/components/NavRail';
-import type { NavRailItem } from '../design/components/NavRail';
-import { PlayarrLogo } from '../design/components/PlayarrLogo';
-import { Clock } from '../design/components/Clock';
+import { tv } from '../design/Metrics';
+import { PageShell } from '../design/components/PageShell';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 
-import { getCatalogKinds } from '../data/CatalogRepository';
 import { listWatchlist, removeFromWatchlist } from '../data/WatchlistRepository';
 import { libraryWorkId, sourceChips, explainedReasons, primaryActionLabel } from '../core/Watchlist';
 import type { WatchlistEntry } from '../core/Types/Watchlist';
 
-import { WATCHLIST_NAV_ID, buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../navigation/NavItems';
+import { WATCHLIST_NAV_ID } from '../navigation/NavItems';
 import { ROUTES } from '../navigation/Routes';
 import type { DetailRouteParams } from '../navigation/Routes';
-import { getNavStack, popRoute, pushRoute } from '../navigation/NavStack';
+import { getNavStack, pushRoute } from '../navigation/NavStack';
 
 // Rows start where Search's results do: (826, 173), 1042 wide.
 const LIST_LEFT: number = 826;
@@ -43,12 +39,6 @@ const PILL_HEIGHT: number = 44;
 const PILL_PADDING: number = 17.28;
 const PILL_SIZE: number = 12.48;
 const PILL_GAP: number = 9.6;
-// Web back button and title (shared header look).
-const HEADER_SIZE: number = 50;
-const BACK_GLYPH_SIZE: number = 17.28;
-const TITLE_SIZE: number = 33.6;
-const TITLE_LETTER_SPACING: number = -1.512;
-const HEADER_GAP: number = 23;
 const MESSAGE_LEFT: number = 826;
 const MESSAGE_TOP: number = 312;
 
@@ -63,17 +53,11 @@ export struct WatchlistScreen {
   @State private phase: WatchlistPhase = 'loading';
   @State private entries: WatchlistEntry[] = [];
   @State private removeError: string = '';
-  @State private navItems: NavRailItem[] = [];
 
   aboutToAppear(): void {
-    this.loadNav();
     this.load();
   }
 
-  private async loadNav(): Promise<void> {
-    const kinds = await getCatalogKinds();
-    this.navItems = buildNavRailItems(kinds.kind === 'ok' ? kinds.value : []);
-  }
 
   private async load(): Promise<void> {
     this.phase = 'loading';
@@ -165,102 +149,66 @@ export struct WatchlistScreen {
     .alignItems(VerticalAlign.Center)
   }
 
+  @Builder
+  private pageContent(): void {
+    if (this.phase === 'loading') {
+      AsyncState({ kind: AsyncStateKind.Loading })
+        .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
+    } else if (this.phase === 'error') {
+      AsyncState({
+        kind: AsyncStateKind.Error,
+        message: "Couldn't load your watchlist",
+        retryLabel: 'Try again',
+        retry: (): void => {
+          this.load();
+        },
+      })
+        .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
+    } else if (this.entries.length === 0) {
+      Column({ space: tv(8) }) {
+        Text('Your watchlist is empty')
+          .fontSize(tv(26.4))
+          .fontWeight(FontWeight.Medium)
+          .letterSpacing(tv(-0.924))
+          .fontColor(toResourceColor(activeColors().ink))
+        Text('Add titles from search or a title page to keep them here on every device.')
+          .fontSize(tv(13.824))
+          .fontColor(toResourceColor(activeColors().inkSoft))
+      }
+      .alignItems(HorizontalAlign.Start)
+      .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
+    } else {
+      List({ space: tv(ROW_GAP) }) {
+        ForEach(this.entries, (entry: WatchlistEntry) => {
+          ListItem() {
+            this.row(entry)
+          }
+        }, (entry: WatchlistEntry): string => entry.title.title_key)
+        if (this.removeError.length > 0) {
+          ListItem() {
+            Text(this.removeError)
+              .fontSize(tv(META_SIZE))
+              .fontColor(toResourceColor(activeColors().danger))
+          }
+        }
+      }
+      .width(tv(LIST_WIDTH))
+      .height(tv(1080))
+      .padding({ top: tv(LIST_TOP), bottom: tv(LIST_TOP) })
+      .scrollBar(BarState.Off)
+      .position({ x: tv(LIST_LEFT), y: 0 })
+    }
+  }
+
   build() {
     NavDestination() {
-      Stack() {
-        if (this.phase === 'loading') {
-          AsyncState({ kind: AsyncStateKind.Loading })
-            .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
-        } else if (this.phase === 'error') {
-          AsyncState({
-            kind: AsyncStateKind.Error,
-            message: "Couldn't load your watchlist",
-            retryLabel: 'Try again',
-            retry: (): void => {
-              this.load();
-            },
-          })
-            .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
-        } else if (this.entries.length === 0) {
-          Column({ space: tv(8) }) {
-            Text('Your watchlist is empty')
-              .fontSize(tv(26.4))
-              .fontWeight(FontWeight.Medium)
-              .letterSpacing(tv(-0.924))
-              .fontColor(toResourceColor(activeColors().ink))
-            Text('Add titles from search or a title page to keep them here on every device.')
-              .fontSize(tv(13.824))
-              .fontColor(toResourceColor(activeColors().inkSoft))
-          }
-          .alignItems(HorizontalAlign.Start)
-          .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
-        } else {
-          List({ space: tv(ROW_GAP) }) {
-            ForEach(this.entries, (entry: WatchlistEntry) => {
-              ListItem() {
-                this.row(entry)
-              }
-            }, (entry: WatchlistEntry): string => entry.title.title_key)
-            if (this.removeError.length > 0) {
-              ListItem() {
-                Text(this.removeError)
-                  .fontSize(tv(META_SIZE))
-                  .fontColor(toResourceColor(activeColors().danger))
-              }
-            }
-          }
-          .width(tv(LIST_WIDTH))
-          .height(tv(1080))
-          .padding({ top: tv(LIST_TOP), bottom: tv(LIST_TOP) })
-          .scrollBar(BarState.Off)
-          .position({ x: tv(LIST_LEFT), y: 0 })
-        }
-        if (this.navItems.length > 0) {
-          NavRail({
-            items: this.navItems,
-            primaryItems: buildPrimaryNavItems(),
-            secondaryItems: buildSecondaryNavItems(),
-            selectedId: WATCHLIST_NAV_ID,
-            onSelect: (id: string): void => {
-              navigateFromRail(id, WATCHLIST_NAV_ID);
-            },
-          })
-        }
-        PlayarrLogo({ logoSize: tv(TvGeometry.logoSize) })
-          .position({ x: tv(TvGeometry.logoLeft), y: tv(TvGeometry.logoTop) })
-        Row() {
-          Clock()
-        }
-        .height(tv(TvGeometry.utilityRowHeight))
-        .alignItems(VerticalAlign.Center)
-        .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
-        Row({ space: tv(HEADER_GAP) }) {
-          Text('←')
-            .fontSize(tv(BACK_GLYPH_SIZE))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .textAlign(TextAlign.Center)
-            .width(tv(HEADER_SIZE))
-            .height(tv(HEADER_SIZE))
-            .borderRadius(tv(HEADER_SIZE / 2))
-            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-            .focusable(true)
-            .onClick(() => {
-              popRoute(getNavStack());
-            })
-          Text('Watchlist')
-            .fontSize(tv(TITLE_SIZE))
-            .fontWeight(FontWeight.Medium)
-            .letterSpacing(tv(TITLE_LETTER_SPACING))
-            .fontColor(toResourceColor(activeColors().ink))
-        }
-        .height(tv(HEADER_SIZE))
-        .alignItems(VerticalAlign.Center)
-        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(toResourceColor(activeColors().bg))
+      PageShell({
+        title: 'Watchlist',
+        selectedId: WATCHLIST_NAV_ID,
+        content: (): void => {
+          this.pageContent();
+        },
+      })
     }
     .hideTitleBar(true)
   }

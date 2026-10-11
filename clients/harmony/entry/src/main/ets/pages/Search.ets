@@ -11,10 +11,7 @@ import { image } from '@kit.ImageKit';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { tv, TvGeometry } from '../design/Metrics';
-import { NavRail } from '../design/components/NavRail';
-import type { NavRailItem } from '../design/components/NavRail';
-import { PlayarrLogo } from '../design/components/PlayarrLogo';
-import { Clock } from '../design/components/Clock';
+import { PageShell } from '../design/components/PageShell';
 import { PosterCard } from '../design/components/PosterCard';
 import { FeatureCopy } from '../design/components/FeatureCopy';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
@@ -23,7 +20,7 @@ import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import { searchTypeChoices, workMatchesType } from '../core/SearchTypes';
-import { BRAND_PINK, BRAND_PINK_SOFT } from '../core/Tokens';
+import { BRAND_PINK } from '../core/Tokens';
 
 import { getCatalogKinds, listWatchProgress, searchCatalog } from '../data/CatalogRepository';
 import { indexWatchProgressByWork, watchMarkFor } from '../core/WatchState';
@@ -32,10 +29,10 @@ import type { WatchProgress } from '../core/Types/Playback';
 import { fetchWorkArtworkByPriority, LANDSCAPE_ARTWORK_PRIORITY } from '../data/ArtworkRepository';
 import type { Work } from '../core/Types/Work';
 
-import { SEARCH_NAV_ID, buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../navigation/NavItems';
+import { SEARCH_NAV_ID } from '../navigation/NavItems';
 import { ROUTES } from '../navigation/Routes';
 import type { DetailRouteParams } from '../navigation/Routes';
-import { getNavStack, popRoute, pushRoute } from '../navigation/NavStack';
+import { getNavStack, pushRoute } from '../navigation/NavStack';
 
 // Web `.tv-search-form`: a 590x76 pill at (154, 173), surfaceStrong at 0.88, 24 px icon, 17.664 px text.
 const FORM_TOP: number = 173;
@@ -64,20 +61,10 @@ const EMPTY_ART_SIZE: number = 132;
 const EMPTY_GLYPH_SIZE: number = 54;
 const EMPTY_TEXT_SIZE: number = 16.896;
 const EMPTY_GAP: number = 42;
-// Web back button and title (shared header look).
-const HEADER_SIZE: number = 50;
-const BACK_GLYPH_SIZE: number = 17.28;
-const TITLE_SIZE: number = 33.6;
-const TITLE_LETTER_SPACING: number = -1.512;
-const HEADER_GAP: number = 23;
 const SEARCH_DEBOUNCE_MS: number = 300;
 // Web `.tv-search-preview`: the selected result's copy under the form, 154 wide column from y=287.
 const PREVIEW_TOP: number = 287;
 const PREVIEW_WIDTH: number = 420;
-// Web results count under the title, pink like the library count.
-const COUNT_TOP: number = 112;
-const COUNT_SIZE: number = 12.288;
-const COUNT_LETTER_SPACING: number = 0.983;
 const CLEAR_SIZE: number = 12.288;
 
 function kindLabel(work: Work): string {
@@ -172,7 +159,6 @@ export struct SearchScreen {
   @State private actionsWork: Work | undefined = undefined;
   /** The result whose details the left panel shows: the focused card, else the first (web `selectedWork`). */
   @State private selectedId: string = '';
-  @State private navItems: NavRailItem[] = [];
   @State private watchIndex: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private watchLoaded: boolean = false;
   private debounce: number = -1;
@@ -201,10 +187,10 @@ export struct SearchScreen {
     clearTimeout(this.debounce);
   }
 
+  /** The kinds the server has, for the Type filter (the shell loads its own nav). */
   private async loadNav(): Promise<void> {
     const kinds = await getCatalogKinds();
     this.availableKinds = kinds.kind === 'ok' ? kinds.value : [];
-    this.navItems = buildNavRailItems(kinds.kind === 'ok' ? kinds.value : []);
   }
 
   private onQueryChange(value: string): void {
@@ -329,156 +315,114 @@ export struct SearchScreen {
     .position({ x: tv(RESULTS_LEFT), y: 0 })
   }
 
+  @Builder
+  private pageContent(): void {
+    if (this.shownResults().length > 0) {
+      this.resultsGrid()
+    } else {
+      this.emptyState(this.searched ? 'No matching titles or playlists.' : 'Start typing to search.')
+    }
+    Row({ space: tv(12) }) {
+      Image($r('app.media.nav_search'))
+        .width(tv(ICON_SIZE))
+        .height(tv(ICON_SIZE))
+        .colorFilter(tintFilter(activeColors().inkSoft))
+      TextInput({ text: this.query, placeholder: 'Search your libraries and playlists' })
+        .fontSize(tv(INPUT_SIZE))
+        .fontColor(toResourceColor(activeColors().ink))
+        .placeholderColor(toResourceColor(activeColors().inkMuted))
+        .backgroundColor(Color.Transparent)
+        // The pill is the field (web): no inner box or focus border on the input itself.
+        .border({ width: 0 })
+        .borderRadius(0)
+        .padding(0)
+        .caretColor(toResourceColor(activeColors().ink))
+        .layoutWeight(1)
+        .defaultFocus(true)
+        .onChange((value: string) => {
+          this.onQueryChange(value);
+        })
+      if (this.query.length > 0) {
+        Text('Clear')
+          .fontSize(tv(CLEAR_SIZE))
+          .fontWeight(FontWeight.Bold)
+          .fontColor(toResourceColor(activeColors().inkSoft))
+          .focusable(true)
+          .onClick(() => {
+            this.onQueryChange('');
+          })
+      }
+    }
+    .width(tv(FORM_WIDTH))
+    .height(tv(FORM_HEIGHT))
+    .padding({ left: tv(FORM_PADDING_LEFT), right: tv(FORM_PADDING_LEFT) })
+    .borderRadius(tv(FORM_HEIGHT / 2))
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
+    .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
+    .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(FORM_TOP) })
+    ActionTile({
+      icon: $r('app.media.action_filters'),
+      label: 'Filters',
+      slot: 0,
+      onActivate: (): void => {
+        this.filtersOpen = true;
+      },
+    })
+    if (this.actionsWork !== undefined) {
+      TitleActionsDrawer({
+        workId: this.actionsWork.id,
+        workTitle: this.actionsWork.title,
+        onClose: (): void => {
+          this.actionsWork = undefined;
+        },
+        onPlay: (workId: string): void => {
+          this.openDetail(workId);
+        },
+        onWatchedChanged: (): void => {
+          this.loadWatchProgress();
+        },
+      })
+    } else if (this.filtersOpen) {
+      Drawer({
+        kicker: 'Search controls',
+        title: 'Filters',
+        onClose: (): void => {
+          this.filtersOpen = false;
+        },
+        body: (): void => {
+          this.filtersBody();
+        },
+      })
+    }
+    if (this.previewWork() !== undefined) {
+      // Web `.tv-search-preview`: the selected result's kind and year, title, meta and overview.
+      FeatureCopy({
+        kicker: resultCaption(this.previewWork() as Work),
+        title: (this.previewWork() as Work).title,
+        metaLines: this.previewMeta(this.previewWork() as Work),
+        synopsis: (this.previewWork() as Work).overview !== null ? ((this.previewWork() as Work).overview as string) : 'No synopsis available.',
+      })
+        .width(tv(PREVIEW_WIDTH))
+        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PREVIEW_TOP) })
+    } else {
+      Text('Find any available movie, series, artist or playlist.')
+        .fontSize(tv(PROMPT_SIZE))
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .width(tv(PROMPT_WIDTH))
+        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PROMPT_TOP) })
+    }
+  }
+
   build() {
     NavDestination() {
-      Stack() {
-        if (this.shownResults().length > 0) {
-          this.resultsGrid()
-        } else {
-          this.emptyState(this.searched ? 'No matching titles or playlists.' : 'Start typing to search.')
-        }
-        if (this.navItems.length > 0) {
-          NavRail({
-            items: this.navItems,
-            primaryItems: buildPrimaryNavItems(),
-            secondaryItems: buildSecondaryNavItems(),
-            selectedId: SEARCH_NAV_ID,
-            onSelect: (id: string): void => {
-              navigateFromRail(id, SEARCH_NAV_ID);
-            },
-          })
-        }
-        PlayarrLogo({ logoSize: tv(TvGeometry.logoSize) })
-          .position({ x: tv(TvGeometry.logoLeft), y: tv(TvGeometry.logoTop) })
-        Row() {
-          Clock()
-        }
-        .height(tv(TvGeometry.utilityRowHeight))
-        .alignItems(VerticalAlign.Center)
-        .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
-        Row({ space: tv(HEADER_GAP) }) {
-          Text('←')
-            .fontSize(tv(BACK_GLYPH_SIZE))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .textAlign(TextAlign.Center)
-            .width(tv(HEADER_SIZE))
-            .height(tv(HEADER_SIZE))
-            .borderRadius(tv(HEADER_SIZE / 2))
-            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-            .focusable(true)
-            .onClick(() => {
-              popRoute(getNavStack());
-            })
-          Text('Search')
-            .fontSize(tv(TITLE_SIZE))
-            .fontWeight(FontWeight.Medium)
-            .letterSpacing(tv(TITLE_LETTER_SPACING))
-            .fontColor(toResourceColor(activeColors().ink))
-        }
-        .height(tv(HEADER_SIZE))
-        .alignItems(VerticalAlign.Center)
-        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
-        Row({ space: tv(12) }) {
-          Image($r('app.media.nav_search'))
-            .width(tv(ICON_SIZE))
-            .height(tv(ICON_SIZE))
-            .colorFilter(tintFilter(activeColors().inkSoft))
-          TextInput({ text: this.query, placeholder: 'Search your libraries and playlists' })
-            .fontSize(tv(INPUT_SIZE))
-            .fontColor(toResourceColor(activeColors().ink))
-            .placeholderColor(toResourceColor(activeColors().inkMuted))
-            .backgroundColor(Color.Transparent)
-            // The pill is the field (web): no inner box or focus border on the input itself.
-            .border({ width: 0 })
-            .borderRadius(0)
-            .padding(0)
-            .caretColor(toResourceColor(activeColors().ink))
-            .layoutWeight(1)
-            .defaultFocus(true)
-            .onChange((value: string) => {
-              this.onQueryChange(value);
-            })
-          if (this.query.length > 0) {
-            Text('Clear')
-              .fontSize(tv(CLEAR_SIZE))
-              .fontWeight(FontWeight.Bold)
-              .fontColor(toResourceColor(activeColors().inkSoft))
-              .focusable(true)
-              .onClick(() => {
-                this.onQueryChange('');
-              })
-          }
-        }
-        .width(tv(FORM_WIDTH))
-        .height(tv(FORM_HEIGHT))
-        .padding({ left: tv(FORM_PADDING_LEFT), right: tv(FORM_PADDING_LEFT) })
-        .borderRadius(tv(FORM_HEIGHT / 2))
-        .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
-        .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
-        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(FORM_TOP) })
-        ActionTile({
-          icon: $r('app.media.action_filters'),
-          label: 'Filters',
-          slot: 0,
-          onActivate: (): void => {
-            this.filtersOpen = true;
-          },
-        })
-        if (this.actionsWork !== undefined) {
-          TitleActionsDrawer({
-            workId: this.actionsWork.id,
-            workTitle: this.actionsWork.title,
-            onClose: (): void => {
-              this.actionsWork = undefined;
-            },
-            onPlay: (workId: string): void => {
-              this.openDetail(workId);
-            },
-            onWatchedChanged: (): void => {
-              this.loadWatchProgress();
-            },
-          })
-        } else if (this.filtersOpen) {
-          Drawer({
-            kicker: 'Search controls',
-            title: 'Filters',
-            onClose: (): void => {
-              this.filtersOpen = false;
-            },
-            body: (): void => {
-              this.filtersBody();
-            },
-          })
-        }
-        if (this.previewWork() !== undefined) {
-          // Web `.tv-search-preview`: the selected result's kind and year, title, meta and overview.
-          FeatureCopy({
-            kicker: resultCaption(this.previewWork() as Work),
-            title: (this.previewWork() as Work).title,
-            metaLines: this.previewMeta(this.previewWork() as Work),
-            synopsis: (this.previewWork() as Work).overview !== null ? ((this.previewWork() as Work).overview as string) : 'No synopsis available.',
-          })
-            .width(tv(PREVIEW_WIDTH))
-            .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PREVIEW_TOP) })
-          Text(resultCountLabel(this.shownResults().length))
-            .fontSize(tv(COUNT_SIZE))
-            .fontWeight(FontWeight.Bolder)
-            .letterSpacing(tv(COUNT_LETTER_SPACING))
-            .textCase(TextCase.UpperCase)
-            .fontColor(toResourceColor(BRAND_PINK_SOFT))
-            .position({ x: tv(TvGeometry.titlePanelLeft + HEADER_SIZE + HEADER_GAP), y: tv(COUNT_TOP) })
-        } else {
-          Text('Find any available movie, series, artist or playlist.')
-            .fontSize(tv(PROMPT_SIZE))
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .width(tv(PROMPT_WIDTH))
-            .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PROMPT_TOP) })
-        }
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(toResourceColor(activeColors().bg))
+      PageShell({
+        title: 'Search',
+        selectedId: SEARCH_NAV_ID,
+        kicker: this.previewWork() !== undefined ? resultCountLabel(this.shownResults().length) : '',
+        content: (): void => {
+          this.pageContent();
+        },
+      })
     }
     .hideTitleBar(true)
   }
