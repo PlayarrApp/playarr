@@ -48,4 +48,25 @@ inline QString originOf(const QUrl &url)
     return url.scheme() + QLatin1String("://") + url.authority();
 }
 
+// Width the web asks the artwork endpoint for by kind (clients/tv-web lib/artwork.tsx defaultArtworkWidth); `hero`
+// is the full-width backdrop (1280). The server snaps these up to its own set.
+inline int artworkWidth(const QString &kind, bool hero)
+{
+    if (kind == QLatin1String("poster")) return 360;
+    if (kind == QLatin1String("backdrop")) return hero ? 1280 : 780;
+    if (kind == QLatin1String("banner")) return 780;
+    return 540; // thumb, logo, anything else
+}
+
+// Same token the web derives from the artwork source URL (FNV-1a over UTF-16 units, 8 hex digits).
+inline QString artworkVersion(const QString &sourceUrl)
+{
+    quint32 h = 0x811c9dc5u;
+    for (const QChar c : sourceUrl) {
+        h ^= c.unicode();
+        h *= 0x01000193u;
+    }
+    return QStringLiteral("%1").arg(h, 8, 16, QLatin1Char('0'));
+}
+
 } // namespace Util

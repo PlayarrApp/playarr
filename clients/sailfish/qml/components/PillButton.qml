@@ -7,6 +7,7 @@ MouseArea {
     id: root
     property alias text: label.text
     property bool primary: false
+    property real fontSize: 15 * Tokens.u
     implicitHeight: 40 * Tokens.u
     implicitWidth: label.implicitWidth + 40 * Tokens.u
     Rectangle {
@@ -21,7 +22,11 @@ MouseArea {
         id: label
         anchors.centerIn: parent
         font.family: Tokens.family
-        font.pixelSize: 15 * Tokens.u
+        font.pixelSize: root.fontSize
+        width: parent.width - 16 * Tokens.u
+        wrapMode: Text.Wrap
+        maximumLineCount: 2
+        horizontalAlignment: Text.AlignHCenter
         font.weight: Font.DemiBold
         color: root.primary ? Tokens.onPrimary : Tokens.ink
     }

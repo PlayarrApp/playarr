@@ -56,7 +56,8 @@ public:
     Q_INVOKABLE void setSetting(const QString &key, const QVariant &value);
     Q_INVOKABLE QString url(const QString &path) const;
     // Server artwork URL for a Work/Episode image list (kinds tried in order); empty when none.
-    Q_INVOKABLE QString artwork(const QString &workId, const QVariantList &images, const QStringList &kinds) const;
+    Q_INVOKABLE QString artwork(const QString &workId, const QVariantList &images, const QStringList &kinds, bool hero) const;
+    Q_INVOKABLE QString artworkOf(const QString &workId, const QString &kind) const;
     // Playback URL with the session capability query the server accepts for header-less players.
     Q_INVOKABLE QString playbackUrl(const QString &infoUrl, const QString &sessionId) const;
     Q_INVOKABLE QString avatarSource(const QString &avatar) const;
@@ -66,6 +67,7 @@ public:
     Q_INVOKABLE void selectProfile(const QString &userId);
     Q_INVOKABLE void removeProfile(const QString &userId);
     Q_INVOKABLE void signOut();
+    Q_INVOKABLE void refreshProfile() { if (m_active >= 0) learnProfile(m_profiles.at(m_active).userId); }
     // POST /api/v1/auth/unlock for a PIN-locked profile, then switch to it: cb(status, {retryAfter}).
     Q_INVOKABLE void unlockProfile(const QString &userId, const QString &pin, const QJSValue &cb);
 

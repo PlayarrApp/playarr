@@ -14,7 +14,7 @@ MouseArea {
     Rectangle {
         anchors.fill: parent
         radius: 10 * Tokens.u
-        color: Tokens.surfaceStrong
+        color: Tokens.dark ? Tokens.surfaceStrong : Tokens.surfaceSoft
         border.width: root.primary ? 2 : 0
         border.color: Tokens.ink
         opacity: root.pressed ? 0.6 : 1

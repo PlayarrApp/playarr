@@ -1,6 +1,8 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
 import "../components"
+import "../components/Library.js" as Library
+import "../components/NavIcons.js" as NavIcons
 
 // Library grid for one kind with infinite scroll (pages of 50).
 Item {
@@ -27,7 +29,7 @@ Item {
         if (busy || (total >= 0 && works.length >= total)) return
         busy = true
         var gen = generation
-        var q = "/api/v1/catalog?kind=" + kind + "&available_only=true&limit=50&offset=" + works.length
+        var q = "/api/v1/catalog?kind=" + kind + "&available_only=true&limit=200&offset=" + works.length
               + "&sort=" + Api.setting("lib.sort", "title") + "&order=" + Api.setting("lib.order", "asc")
         var al = Api.setting("lib.audio", ""), sl = Api.setting("lib.subs", "")
         if (al) q += "&audio_lang=" + al
@@ -37,31 +39,43 @@ Item {
             if (gen !== generation) return
             busy = false
             if (status !== 200 || !data) { total = works.length; return }
-            works = works.concat(data.items)
-            total = data.total !== null && data.total !== undefined ? data.total : (data.items.length < 50 ? works.length : -1)
+            var seen = {}, merged = []
+            works.concat(data.items).forEach(function (w) { if (!seen[w.id]) { seen[w.id] = true; merged.push(w) } })
+            works = orderWorks(merged)
+            total = data.total !== null && data.total !== undefined ? data.total : (data.items.length < 200 ? works.length : -1)
         })
     }
-    Component.onCompleted: reload()
-
+    // Web's client-side order: natural title order (digits compare as numbers) or date added.
+    function orderWorks(list) { return Library.order(list, Api.setting("lib.sort", "title"), Api.setting("lib.order", "asc")) }
     MouseArea {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter }
-        width: 44 * Tokens.u; height: width
+        width: 43.7 * Tokens.u; height: width
         onClicked: {
             var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
         }
-        Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: "transparent"; border.width: 1; border.color: Tokens.lineStrong; opacity: filterBtn.pressed ? 0.5 : 1 }
-        Icon { anchors.centerIn: parent; source: "image://theme/icon-m-menu?" + Tokens.ink; sourceSize: Qt.size(24 * Tokens.u, 24 * Tokens.u) }
+        Rectangle { anchors.fill: parent; radius: 11 * Tokens.u; color: "transparent"; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
+        Image { anchors.centerIn: parent; width: 15 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
     }
     PageTitle {
         id: heading
-        y: 12 * Tokens.u
+        y: 4 * Tokens.u
         title: root.title
         onBackClicked: root.goHome()
     }
+    Label {
+        id: count
+        anchors { top: heading.bottom; topMargin: -4 * Tokens.u; left: parent.left; leftMargin: 70 * Tokens.u }
+        visible: root.total > 0
+        text: (root.kind === "artist" ? qsTr("%1 artists") : qsTr("%1 titles")).arg(Number(root.total).toLocaleString(Qt.locale(), "f", 0)).toUpperCase()
+        color: Tokens.brandPinkSoft
+        font.family: Tokens.family820
+        font.letterSpacing: 1 * Tokens.u
+        font.pixelSize: 10.2 * Tokens.u
+    }
     WorkGrid {
-        anchors { top: heading.bottom; topMargin: 6 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { top: count.bottom; topMargin: 3 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
         works: root.works
         mode: root.viewMode
         busy: root.busy

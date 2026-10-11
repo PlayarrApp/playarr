@@ -148,13 +148,25 @@ void Api::setThemeMode(const QString &mode)
 
 QString Api::url(const QString &path) const { return Util::joinUrl(serverUrl(), path); }
 
-QString Api::artwork(const QString &workId, const QVariantList &images, const QStringList &kinds) const
+QString Api::artwork(const QString &workId, const QVariantList &images, const QStringList &kinds, bool hero) const
 {
     for (const QString &kind : kinds)
-        for (const QVariant &v : images)
-            if (v.toMap().value(QStringLiteral("kind")).toString() == kind)
-                return url(QStringLiteral("/api/v1/artwork/work/%1/%2").arg(workId, kind));
+        for (const QVariant &v : images) {
+            const QVariantMap img = v.toMap();
+            if (img.value(QStringLiteral("kind")).toString() != kind)
+                continue;
+            QString u = url(QStringLiteral("/api/v1/artwork/work/%1/%2?w=%3").arg(workId, kind).arg(Util::artworkWidth(kind, hero)));
+            const QString src = img.value(QStringLiteral("url")).toString();
+            if (!src.isEmpty())
+                u += QStringLiteral("&v=") + Util::artworkVersion(src);
+            return u;
+        }
     return QString();
+}
+
+QString Api::artworkOf(const QString &workId, const QString &kind) const
+{
+    return url(QStringLiteral("/api/v1/artwork/work/%1/%2?w=%3").arg(workId, kind).arg(Util::artworkWidth(kind, false)));
 }
 
 // The media player talks to the loopback proxy (see mediaproxy.h); the proxy adds the bearer token.

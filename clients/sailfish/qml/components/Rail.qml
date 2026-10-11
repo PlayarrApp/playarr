@@ -7,18 +7,19 @@ Column {
     id: root
     property string title
     property var items: []
+    property bool showUnwatched: true
     signal opened(var work)
     signal held(var work)
     width: parent ? parent.width : 0
-    spacing: 14 * Tokens.u
+    spacing: 19.5 * Tokens.u
     visible: items.length > 0
 
     Label {
         x: Tokens.pad
         text: root.title
         color: Tokens.ink
-        font.family: Tokens.family
-        font.pixelSize: 22 * Tokens.u
+        font.family: Tokens.family580
+        font.pixelSize: 15.9 * Tokens.u
     }
     Item {
         width: parent.width
@@ -27,13 +28,14 @@ Column {
             id: list
             anchors.fill: parent
             orientation: ListView.Horizontal
-            spacing: 14 * Tokens.u
+            spacing: Tokens.px(12)
             leftMargin: Tokens.pad
             rightMargin: Tokens.pad
             clip: true
             model: root.items
             delegate: WorkCard {
                 work: modelData
+                showUnwatched: root.showUnwatched
                 onOpened: root.opened(work)
                 onHeld: root.held(work)
             }

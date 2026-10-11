@@ -38,15 +38,16 @@ export async function createDriver() {
       "setsid nohup invoker --type=silica-qt5 --no-wait /usr/bin/harbour-playarr >/tmp/pa.log 2>&1 </dev/null &",
       "sleep 2"].join("\n"));
   };
-  const firstMovie = "Api.request('GET','/api/v1/catalog?kind=movie&limit=1&available_only=true',null,function(s,d){pageStack.currentPage.open(d.items[0])})";
-  const firstSeries = "Api.request('GET','/api/v1/catalog?kind=series&limit=1&available_only=true',null,function(s,d){pageStack.currentPage.open(d.items[0])})";
+  // The first title of a library in the web's order (natural title order), as the web's D-pad path opens it.
+  const firstMovie = "pageStack.currentPage.openFirst('movie')";
+  const firstSeries = "pageStack.currentPage.openFirst('series')";
   const section = (n) => [`js:pageStack.currentPage.section='${n}'`];
   const calendar = (m) => [`js:Api.setSetting('cal.mode','${m}')`, ...section("calendar")];
   // [steps, seconds to settle] for a web route as the suite names it.
   function plan(route, screenId) {
     const [path, q] = route.split("?");
     const view = new URLSearchParams(q ?? "").get("view");
-    if (screenId === "actions") return [["wait", "js:Api.request('GET','/api/v1/catalog?kind=movie&limit=1&available_only=true',null,function(s,d){pageStack.currentPage.actions(d.items[0])})"], 16];
+    if (screenId === "actions") return [["wait", "js:pageStack.currentPage.actionsFirst('movie')"], 16];
     if (path === "/") return [["wait"], 12];
     if (path === "/movies" && q?.includes("panel=filters")) return [["wait", ...section("movies"), "wait", `js:pageStack.push('${PAGES}/FiltersPage.qml')`], 16];
     if (path === "/movies") return [["wait", ...section("movies")], 14];
@@ -56,7 +57,7 @@ export async function createDriver() {
     if (path === "/calendar") return [["wait", ...calendar(view ?? "agenda")], 18];
     if (path.startsWith("/movies/")) return [["wait", `js:${firstMovie}`], 16];
     if (path.startsWith("/series/")) return [["wait", `js:${firstSeries}`], 16];
-    if (path === "/settings") return [["wait", `js:pageStack.push('${PAGES}/SettingsPage.qml')`], 12];
+    if (path === "/settings") return [["wait", ...section("settings")], 12];
     if (path === "/profiles") return [["wait", `js:pageStack.push('${PAGES}/ProfilesPage.qml')`], 12];
     if (path.startsWith("/player/")) return [["wait", `js:${firstMovie}`, "wait", "wait", "js:pageStack.currentPage.play(pageStack.currentPage.target.id,pageStack.currentPage.work.title)",
       ...Array(7).fill("wait"), "js:pageStack.currentPage.engine.pause()", "js:pageStack.currentPage.controls=true"], 34];

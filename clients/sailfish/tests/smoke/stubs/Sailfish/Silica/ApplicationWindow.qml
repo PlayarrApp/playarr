@@ -14,6 +14,7 @@ Window {
         property var currentPage: win._stack.length ? win._stack[win._stack.length - 1] : null
         property int depth: win._stack.length
         function _show(item) { for (var i = 0; i < win._stack.length; ++i) win._stack[i].visible = false; if (item) { item.visible = true } }
+        function find(fn) { for (var i = win._stack.length - 1; i >= 0; --i) if (fn(win._stack[i])) return win._stack[i]; return null }
         function push(page, props) {
             var comp = typeof page === "string" ? Qt.createComponent(page) : page
             if (comp.status === Component.Error) console.warn(comp.errorString())

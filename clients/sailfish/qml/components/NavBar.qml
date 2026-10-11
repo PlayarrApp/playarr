@@ -1,26 +1,18 @@
 import QtQuick 2.6
 import "."
+import "NavIcons.js" as NavIcons
 import Sailfish.Silica 1.0
 
-// Web mobile's floating pill navigation: profile avatar, then the section tabs.
+// Web mobile's floating pill navigation: profile avatar, then downloads, search, home, series, movies, music, playlists.
 Rectangle {
     id: root
     property string section: "home"
     signal selected(string target)
     signal profileClicked()
-    readonly property var tabs: [
-        { id: "downloads", icon: "icon-m-downloads" },
-        { id: "search", icon: "icon-m-search" },
-        { id: "home", icon: "icon-m-home" },
-        { id: "calendar", icon: "icon-m-date" },
-        { id: "movies", icon: "icon-m-video" },
-        { id: "series", icon: "icon-m-media-albums" },
-        { id: "music", icon: "icon-m-music" },
-        { id: "watchlist", icon: "icon-m-favorite" }
-    ]
-    height: 58 * Tokens.u
-    radius: height / 2
-    color: Tokens.surfaceStrong
+    readonly property var tabs: ["downloads", "search", "home", "series", "movies", "music", "playlists"]
+    height: 53.5 * Tokens.u
+    radius: 20 * Tokens.u
+    color: Qt.rgba(Tokens.surfaceStrong.r, Tokens.surfaceStrong.g, Tokens.surfaceStrong.b, 0.86)
     border.width: 1
     border.color: Tokens.line
 
@@ -28,28 +20,31 @@ Rectangle {
         anchors.fill: parent
         anchors.margins: 6 * Tokens.u
         MouseArea {
-            width: (root.width - 12 * Tokens.u) / (root.tabs.length + 1)
+            width: parent.width / (root.tabs.length + 1)
             height: parent.height
             onClicked: root.profileClicked()
-            Avatar { anchors.centerIn: parent; width: 36 * Tokens.u; source: Api.profileAvatar }
+            Avatar { anchors.centerIn: parent; width: 21 * Tokens.u; source: Api.profileAvatar }
         }
         Repeater {
             model: root.tabs
             MouseArea {
-                width: (root.width - 12 * Tokens.u) / (root.tabs.length + 1)
+                width: parent.width / (root.tabs.length + 1)
                 height: parent.height
-                onClicked: root.selected(modelData.id)
+                onClicked: root.selected(modelData)
                 Rectangle {
-                    anchors.fill: parent
-                    radius: height / 2
-                    color: Tokens.primary
-                    visible: root.section === modelData.id
-                }
-                Icon {
                     anchors.centerIn: parent
-                    // Silica tints monochrome theme icons through the image URL.
-                    source: "image://theme/" + modelData.icon + "?" + (root.section === modelData.id ? Tokens.onPrimary : Tokens.ink)
-                    sourceSize: Qt.size(32 * Tokens.u, 32 * Tokens.u)
+                    width: 43.7 * Tokens.u; height: 45.7 * Tokens.u
+                    radius: 12 * Tokens.u
+                    color: Tokens.primary
+                    visible: root.section === modelData
+                }
+                Image {
+                    anchors.centerIn: parent
+                    width: 18.4 * Tokens.u; height: width
+                    sourceSize: Qt.size(48, 48)
+                    smooth: true
+                    opacity: root.section === modelData ? 1 : 0.72
+                    source: NavIcons.url(modelData, root.section === modelData ? Tokens.onPrimary : Tokens.ink)
                 }
             }
         }

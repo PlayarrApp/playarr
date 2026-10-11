@@ -31,7 +31,7 @@ Item {
 
     PageTitle {
         id: head
-        y: 12 * Tokens.u
+        y: 4 * Tokens.u
         title: qsTr("Watchlist")
         onBackClicked: root.goHome()
     }

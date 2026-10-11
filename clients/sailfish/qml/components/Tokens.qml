@@ -8,7 +8,8 @@ QtObject {
     // CSS px of the 390 px web mobile layout, scaled to this screen (set by the application window).
     property real u: 1
 
-    readonly property color bg: dark ? "#151315" : "#f5f3f2"
+    // Pages sit on the web's surface colour (the web token `bg` is only the outer shell).
+    readonly property color bg: dark ? "#1b181b" : "#fbfaf9"
     readonly property color surface: dark ? "#1b181b" : "#fbfaf9"
     readonly property color surfaceStrong: dark ? "#211d21" : "#ffffff"
     readonly property color surfaceSoft: dark ? "#312a30" : "#dfdcdd"
@@ -29,6 +30,15 @@ QtObject {
 
     readonly property string family: nunito.name
     property FontLoader nunito: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-wght-web.ttf") }
-    readonly property real pad: 16 * u
+    // Static weights the web phone layout uses (Qt 5.6 cannot pick weights from a variable font).
+    property FontLoader nunito580: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-580.ttf") }
+    property FontLoader nunito610: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-610.ttf") }
+    property FontLoader nunito820: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-820.ttf") }
+    readonly property string family580: nunito580.name
+    readonly property string family610: nunito610.name
+    readonly property string family820: nunito820.name
+    // Device-pixel snapping like the browser: edges land on whole pixels so art is not resampled by a half pixel.
+    function px(v) { return Math.round(v * u) }
+    readonly property real pad: Math.round(16 * u)
     readonly property real radius: 10 * u
 }

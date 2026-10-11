@@ -1,5 +1,6 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import QtGraphicalEffects 1.0
 import "../components"
 
 // Home: "Start watching" (resume) followed by the server-curated rails.
@@ -43,7 +44,7 @@ SilicaFlickable {
                     if (--left === 0) {
                         var items = works.filter(function (w) { return w })
                         if (items.length > 0)
-                            rails = [{ title: qsTr("Start watching"), items: items }].concat(rails)
+                            rails = [{ title: qsTr("On deck"), items: items, onDeck: true }].concat(rails)
                     }
                 })
             })
@@ -53,16 +54,25 @@ SilicaFlickable {
     Component.onCompleted: load()
     PullDownMenu { MenuItem { text: qsTr("Refresh"); onClicked: root.load() } }
 
+    // Soft grey backdrop from the first title, behind the first rail (web home).
+    Item {
+        x: 0; y: 0; width: parent.width; height: 150 * Tokens.u
+        visible: !Tokens.dark && root.rails.length > 0 && root.rails[0].items.length > 0
+        Artwork { id: backdropArt; anchors.fill: parent; radius: 0; work: root.rails.length > 0 && root.rails[0].items.length > 0 ? root.rails[0].items[0] : null; kinds: ["backdrop", "poster"]; visible: false }
+        Desaturate { anchors.fill: parent; source: backdropArt; desaturation: 1.0; opacity: Tokens.dark ? 0.12 : 0.4 }
+        Rectangle { anchors.fill: parent; gradient: Gradient { GradientStop { position: 0.0; color: "transparent" } GradientStop { position: 1.0; color: Tokens.bg } } }
+    }
     Column {
         id: column
         width: parent.width
-        spacing: 30 * Tokens.u
-        Item { width: 1; height: 36 * Tokens.u }
+        spacing: 37.2 * Tokens.u
+        Item { width: 1; height: 55.8 * Tokens.u }
         Repeater {
             model: root.rails
             Rail {
                 title: modelData.title
                 items: modelData.items
+                showUnwatched: !modelData.onDeck
                 onOpened: root.opened(work)
                 onHeld: root.held(work)
             }

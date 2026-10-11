@@ -8,7 +8,8 @@ Item {
     property var work
     property var kinds: ["backdrop", "thumb", "poster"]
     property real radius: Tokens.radius
-    readonly property string src: work ? Api.artwork(work.id, work.images || [], kinds) : ""
+    property bool hero: false
+    readonly property string src: work ? Api.artwork(work.id, work.images || [], kinds, hero) : ""
 
     function hue(s) {
         var h = 0
@@ -46,7 +47,9 @@ Item {
             source: root.src
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            sourceSize.width: root.width * 2
+            // Same source size as the web asks for, scaled by the GPU with mipmaps like the browser does.
+            smooth: true
+            mipmap: true
         }
     }
     Rectangle { id: mask; anchors.fill: parent; radius: root.radius; visible: false }

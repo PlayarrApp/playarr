@@ -18,7 +18,7 @@ avatars.files = $$AVATARS/*.png
 avatars.path = /usr/share/$${TARGET}/avatars
 INSTALLS += avatars
 
-fonts.files = $$FONT
+fonts.files = $$FONT $$PWD/fonts/*.ttf
 fonts.path = /usr/share/$${TARGET}/fonts
 INSTALLS += fonts
 

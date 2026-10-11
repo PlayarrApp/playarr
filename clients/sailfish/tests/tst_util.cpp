@@ -112,6 +112,14 @@ int main()
     CHECK(MediaProxy::upstreamPath("/tok//evil.example/x", "tok"), QString());
     CHECK(MediaProxy::parse("garbage").ok, false);
 
+    // Artwork request sizes and version token (web: lib/artwork.tsx)
+    CHECK(Util::artworkWidth("poster", false), 360);
+    CHECK(Util::artworkWidth("backdrop", false), 780);
+    CHECK(Util::artworkWidth("backdrop", true), 1280);
+    CHECK(Util::artworkWidth("thumb", false), 540);
+    CHECK(Util::artworkVersion(""), QString("811c9dc5"));
+    CHECK(Util::artworkVersion("a").size(), 8);
+
     // Downloads
     CHECK(DownloadLogic::safeName("A/B: C?", "6a5e2c3e-2b9a", "mkv"), QString("A_B_ C_ [6a5e2c3e].mkv"));
     CHECK(DownloadLogic::safeName("", "abcdefghij", ""), QString("download [abcdefgh].bin"));
