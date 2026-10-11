@@ -9,7 +9,8 @@ Item {
     property var kinds: ["backdrop", "thumb", "poster"]
     property real radius: Tokens.radius
     property bool hero: false
-    readonly property string src: work ? Api.artwork(work.id, work.images || [], kinds, hero) : ""
+    property string override: ""     // a specific picture (an episode's frame) instead of the work art
+    readonly property string src: override !== "" ? override : (work ? Api.artwork(work.id, work.images || [], kinds, hero) : "")
 
     function hue(s) {
         var h = 0

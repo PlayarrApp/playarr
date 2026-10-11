@@ -16,6 +16,8 @@ SilicaGridView {
     readonly property real gap: 14 * Tokens.u
     readonly property int columns: mode === "cover" ? 3 : mode === "list" ? 1 : 2
     cellWidth: width / columns
+    // Scrolls so the row holding `index` is at the top (positionViewAtIndex does not move a SilicaGridView).
+    function scrollToIndex(index) { contentY = originY + Math.floor(index / columns) * cellHeight; returnToBounds() }
     // Web phone grid: 173 CSS px cards, 12 px gap, 16 px side padding.
     readonly property real cardW: columns === 2 ? Tokens.px(189) - Tokens.px(16) : cellWidth - Tokens.pad - gap / 2
     cellHeight: mode === "list" ? 76 * Tokens.u

@@ -1,0 +1,1 @@
+- Sailfish Home builds On deck as the web does (resume-plan lead episodes, episode titles and stills, plan-only series), series detail follows the resume plan, and the alphabet rail jumps reliably.

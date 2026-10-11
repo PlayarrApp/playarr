@@ -25,6 +25,7 @@ MouseArea {
     Artwork {
         id: art
         work: root.work
+        override: work && work.deckFile ? Api.url("/api/v1/media/" + work.deckFile + "/thumbnail") : ""
         width: parent.width
         kinds: root.poster ? ["poster", "backdrop"] : ["backdrop", "thumb", "poster"]
         height: Math.round(width * (root.poster ? 3 / 2 : 9 / 16) + (root.poster ? 0 : 0.2))
@@ -52,7 +53,7 @@ MouseArea {
         spacing: 3 * Tokens.u
         Label {
             width: parent.width
-            text: work ? work.title : ""
+            text: work ? (work.deckTitle || work.title) : ""
             elide: Text.ElideRight
             color: Tokens.ink
             font.family: Tokens.family610
@@ -61,7 +62,7 @@ MouseArea {
         Label {
             visible: !root.compact
             width: parent.width
-            text: work ? kindLabel(work.kind) + (work.release_date ? " · " + work.release_date.substr(0, 4) : "") : ""
+            text: work && work.deckSub ? work.deckSub : work ? kindLabel(work.kind) + (work.release_date ? " · " + work.release_date.substr(0, 4) : "") : ""
             elide: Text.ElideRight
             color: Tokens.inkMuted
             font.family: Tokens.family

@@ -16,6 +16,14 @@ Item {
     signal opened(var work)
     signal goHome()
     signal held(var work)
+    property real keepY: 0
+    property string targetLetter: ""
+    // The grid lays out lazily: scroll once it has sized itself for the new rows.
+    property int scrollTries: 0
+    Timer { id: scrollTimer; interval: 200; onTriggered: {
+        grid.positionViewAtIndex(root.firstAtOrAfter(root.targetLetter), GridView.Beginning); keepY = grid.contentY
+        if (++root.scrollTries < 3) restart(); else root.scrollTries = 0 } }
+    Timer { id: restoreY; interval: 0; onTriggered: if (root.jumping === "") grid.contentY = root.keepY }
     property string viewMode: Api.setting("lib.view", "screen")
 
     function reload() {
@@ -41,7 +49,9 @@ Item {
             if (status !== 200 || !data) { total = works.length; return }
             var seen = {}, merged = []
             works.concat(data.items).forEach(function (w) { if (!seen[w.id]) { seen[w.id] = true; merged.push(w) } })
+            keepY = grid.contentY
             works = orderWorks(merged)
+            if (keepY > 0) restoreY.restart()   // a new page resets the grid; stay where the reader is
             total = data.total !== null && data.total !== undefined ? data.total : (data.items.length < 200 ? works.length : -1)
         })
     }
@@ -92,12 +102,14 @@ Item {
     property string jumping: ""
     readonly property var alphabet: ["#", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
     function letterOf(w) { var c = String((w.sort_title && w.sort_title.length) ? w.sort_title : w.title).trim().charAt(0).toUpperCase(); return /^[A-Z]$/.test(c) ? c : "#" }
+    function firstAtOrAfter(letter) {
+        var order = Api.setting("lib.order", "asc") === "desc" ? alphabet.slice().reverse() : alphabet, target = order.indexOf(letter)
+        for (var i = 0; i < works.length; ++i)
+            if (order.indexOf(letterOf(works[i])) >= target) return i
+        return -1
+    }
     function jumpTo(letter) {
-        var desc = Api.setting("lib.order", "asc") === "desc"
-        var order = desc ? alphabet.slice().reverse() : alphabet, target = order.indexOf(letter)
-        for (var i = 0; i < works.length; ++i) {
-            if (order.indexOf(letterOf(works[i])) >= target) { jumping = ""; grid.positionViewAtIndex(i, GridView.Beginning); return }
-        }
+        if (firstAtOrAfter(letter) >= 0) { jumping = ""; targetLetter = letter; scrollTries = 0; scrollTimer.restart(); return }
         if (total < 0 || works.length < total) { jumping = letter; more() } else jumping = ""
     }
     onWorksChanged: if (jumping !== "") jumpTo(jumping)

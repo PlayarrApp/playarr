@@ -18,7 +18,7 @@ PlayarrPage {
     readonly property var target: {
         if (!detail) return null
         if (detail.media_file_id) return { id: detail.media_file_id, title: work.title }
-        var first = null, unwatched = null, part = null
+        var first = null, unwatched = null, part = null, lead = null
         for (var s = 0; s < seasons.length; ++s) {
             var eps = seasons[s].episodes
             for (var e = 0; e < eps.length; ++e) {
@@ -27,12 +27,14 @@ PlayarrPage {
                 var t = { id: id, title: work.title + " · S" + seasons[s].season.season_number + "E" + eps[e].episode.episode_number, season: seasons[s].season, episode: eps[e] }
                 var st = progress[id] ? progress[id].state : "unseen"
                 if (!first) first = t
+                if (!lead && plan && plan.target && plan.target.media_file_id === id) lead = t
                 if (!part && st === "part_watched") part = t
                 if (!unwatched && st !== "watched") unwatched = t
             }
         }
-        return part || unwatched || first
+        return lead || part || unwatched || first   // the server's resume plan leads, as on the web
     }
+    property var plan: null                 // series: GET /catalog/{id}/resume-plan
     readonly property var targetProgress: target && progress[target.id] && progress[target.id].state === "part_watched" ? progress[target.id] : null
 
     // Asks the server for a download ticket of the original file; the Downloads tab shows its progress.
@@ -46,6 +48,8 @@ PlayarrPage {
             startMs: p && p.state === "part_watched" ? p.position_ms : 0 })
     }
     function load() {
+        if (work.kind === "series")
+            Api.request("GET", "/api/v1/catalog/" + work.id + "/resume-plan", null, function (st, p) { if (st === 200 && p) plan = p })
         Api.request("GET", "/api/v1/catalog/" + work.id, null, function (status, data) {
             if (status === 200 && data) detail = data; else failed = true
         })
@@ -293,7 +297,7 @@ PlayarrPage {
                             fontSize: 11 * Tokens.u
                             implicitHeight: 43.5 * Tokens.u
                             implicitWidth: 100 * Tokens.u
-                            text: "\u25B6  " + (page.targetProgress ? qsTr("Resume") : qsTr("Play"))
+                            text: "\u25B6  " + (page.plan ? (page.plan.action === "start" ? qsTr("Start") : page.plan.action === "restart" ? qsTr("Watch again") : qsTr("Resume")) : page.targetProgress ? qsTr("Resume") : qsTr("Play"))
                             onClicked: page.play(page.target.id, page.target.title)
                         }
                         PillButton {
