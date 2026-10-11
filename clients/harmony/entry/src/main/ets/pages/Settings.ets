@@ -4,8 +4,8 @@
  * the open one on surface-soft) and the open section's panel on the right. Geometry copies the live web TV
  * DOM at 1920x1080. Section numbers are web's own (they are ids, not positions).
  *
- * Here so far: Appearance (colour theme, saved for the next start) and Server connection (the address in
- * use). The other web sections land with 13.10018's later steps.
+ * Here so far: Appearance (colour theme, saved for the next start), Player (the default audio language, on the
+ * profile) and Server connection (the address in use). The other web sections land with 13.10018's later steps.
  */
 
 import { activeColors, setThemeModeSetting, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -16,6 +16,10 @@ import type { NavRailItem } from '../design/components/NavRail';
 import { PlayarrLogo } from '../design/components/PlayarrLogo';
 import { Clock } from '../design/components/Clock';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
+import { SelectField } from '../design/components/SelectField';
+import type { AudioLanguage } from '../core/AudioLanguages';
+import { AUDIO_LANGUAGES, normaliseAudioLanguage, audioLanguageLabel } from '../core/AudioLanguages';
+import { getPlayerPreferences, updatePlayerPreferences } from '../data/ProfileRepository';
 import type { Choice } from '../design/components/ChoiceSegments';
 import { BRAND_PINK_SOFT } from '../core/Tokens';
 
@@ -32,11 +36,14 @@ interface SettingsSection {
 }
 
 const APPEARANCE: string = 'appearance';
+const PLAYER: string = 'player';
 const SERVER: string = 'server';
 const SECTIONS: SettingsSection[] = [
   { id: APPEARANCE, number: '01', title: 'Appearance' },
+  { id: PLAYER, number: '04', title: 'Player' },
   { id: SERVER, number: '05', title: 'Server connection' },
 ];
+const AUDIO_CHOICES: Choice[] = AUDIO_LANGUAGES.map((language: AudioLanguage): Choice => ({ value: language.value, label: language.label }));
 const THEME_CHOICES: Choice[] = [
   { value: 'system', label: 'System' },
   { value: 'light', label: 'Light' },
@@ -78,9 +85,57 @@ export struct SettingsScreen {
 
   @State private openSection: string = APPEARANCE;
   @State private navItems: NavRailItem[] = [];
+  @State private audioLanguage: string = 'en';
+  /** Web's player preference status: loading, ready, saving or an error message. */
+  @State private audioStatus: string = 'loading';
+  @State private audioError: string = '';
 
   aboutToAppear(): void {
     this.loadNav();
+    this.loadAudioLanguage();
+  }
+
+  private async loadAudioLanguage(): Promise<void> {
+    const result = await getPlayerPreferences();
+    if (result.kind === 'ok') {
+      this.audioLanguage = normaliseAudioLanguage(result.value.preferred_audio_language);
+      this.audioStatus = 'ready';
+    } else {
+      this.audioStatus = 'error';
+      this.audioError = 'The server could not be reached.';
+    }
+  }
+
+  private async chooseAudioLanguage(next: string): Promise<void> {
+    if (next === this.audioLanguage || this.audioStatus === 'loading' || this.audioStatus === 'saving') {
+      return;
+    }
+    const previous = this.audioLanguage;
+    this.audioLanguage = next;
+    this.audioStatus = 'saving';
+    const result = await updatePlayerPreferences({ preferred_audio_language: next });
+    if (result.kind === 'ok') {
+      this.audioLanguage = normaliseAudioLanguage(result.value.preferred_audio_language);
+      this.audioStatus = 'ready';
+    } else {
+      this.audioLanguage = previous;
+      this.audioStatus = 'error';
+      this.audioError = 'The server could not be reached.';
+    }
+  }
+
+  private audioStatusText(): string {
+    const language = audioLanguageLabel(this.audioLanguage);
+    if (this.audioStatus === 'loading') {
+      return 'Loading your player preference…';
+    }
+    if (this.audioStatus === 'saving') {
+      return 'Saving ' + language + '…';
+    }
+    if (this.audioStatus === 'error') {
+      return 'Could not update the player preference (' + this.audioError + ').';
+    }
+    return language + ' will be selected when it is available.';
   }
 
   private async loadNav(): Promise<void> {
@@ -142,6 +197,33 @@ export struct SettingsScreen {
   }
 
   @Builder
+  private playerPanel(): void {
+    Column({ space: tv(16) }) {
+      Text('Default audio track')
+        .fontSize(tv(26.4))
+        .fontWeight(FontWeight.Medium)
+        .letterSpacing(tv(-0.924))
+        .fontColor(toResourceColor(activeColors().ink))
+      Text('Prefer this audio language whenever a matching track is available.')
+        .fontSize(tv(PANEL_TEXT_SIZE))
+        .fontColor(toResourceColor(activeColors().inkSoft))
+      SelectField({
+        options: AUDIO_CHOICES,
+        value: this.audioLanguage,
+        selectWidth: PANEL_WIDTH,
+        disabled: this.audioStatus === 'loading' || this.audioStatus === 'saving',
+        onChange: (value: string): void => {
+          this.chooseAudioLanguage(value);
+        },
+      })
+      Text(this.audioStatusText())
+        .fontSize(tv(PANEL_TEXT_SIZE))
+        .fontColor(toResourceColor(this.audioStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
+    }
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
   private serverPanel(): void {
     Column({ space: tv(16) }) {
       Text('Server connection')
@@ -184,6 +266,8 @@ export struct SettingsScreen {
         Column() {
           if (this.openSection === APPEARANCE) {
             this.appearancePanel()
+          } else if (this.openSection === PLAYER) {
+            this.playerPanel()
           } else {
             this.serverPanel()
           }
