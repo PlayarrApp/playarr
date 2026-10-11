@@ -19,14 +19,14 @@ QtObject {
     readonly property color line: dark ? Qt.rgba(223/255, 220/255, 221/255, 0.11) : Qt.rgba(56/255, 38/255, 33/255, 0.14)
     readonly property color lineStrong: dark ? Qt.rgba(223/255, 220/255, 221/255, 0.23) : Qt.rgba(56/255, 38/255, 33/255, 0.28)
     readonly property color accent: dark ? "#dfdcdd" : "#675961"
-    readonly property color onAccent: dark ? "#211d21" : "#ffffff"
+    readonly property color accentInk: dark ? "#211d21" : "#ffffff"
     readonly property color success: dark ? "#7fc09d" : "#347559"
     readonly property color danger: dark ? "#ee9297" : "#a8464c"
     readonly property color brandPink: "#cf3157"
     readonly property color brandPinkSoft: "#eaa6b6"
     // The web's primary "Play" button is the near-white ink on dark.
     readonly property color primary: dark ? "#f4f0f1" : "#382621"
-    readonly property color onPrimary: dark ? "#211d21" : "#ffffff"
+    readonly property color primaryInk: dark ? "#211d21" : "#ffffff"
 
     readonly property string family: nunito.name
     property FontLoader nunito: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-wght-web.ttf") }

@@ -1,6 +1,7 @@
 import QtQuick 2.6
 import "."
 import Sailfish.Silica 1.0
+import QtGraphicalEffects 1.0
 
 // Home/library card: landscape artwork with title and "Kind · Year" caption underneath, as on web mobile.
 MouseArea {
@@ -22,6 +23,12 @@ MouseArea {
         return k === "movie" ? qsTr("Movie") : k === "series" ? qsTr("Series") : k === "artist" ? qsTr("Artist") : k === "author" ? qsTr("Author") : ""
     }
 
+    RectangularGlow {   // web card shadow (0 10px 20px of the ink tone); invisible on the dark theme
+        visible: !Tokens.dark
+        y: 10 * Tokens.u; width: art.width; height: art.height
+        glowRadius: 14 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
+        color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.16)
+    }
     Artwork {
         id: art
         work: root.work
@@ -56,8 +63,8 @@ MouseArea {
             text: work ? (work.deckTitle || work.title) : ""
             elide: Text.ElideRight
             color: Tokens.ink
-            font.family: Tokens.family610
-            font.pixelSize: 8.8 * Tokens.u
+            font.family: Tokens.family580
+            font.pixelSize: 8.9 * Tokens.u
         }
         Label {
             visible: !root.compact
@@ -66,7 +73,7 @@ MouseArea {
             elide: Text.ElideRight
             color: Tokens.inkMuted
             font.family: Tokens.family
-            font.pixelSize: 6.6 * Tokens.u
+            font.pixelSize: 6.9 * Tokens.u
         }
     }
 }

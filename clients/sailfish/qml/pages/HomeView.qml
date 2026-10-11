@@ -87,15 +87,12 @@ SilicaFlickable {
     property int deckGen: 0
 
     Component.onCompleted: load()
-    PullDownMenu { MenuItem { text: qsTr("Refresh"); onClicked: root.load() } }
 
-    // Soft grey backdrop from the first title, behind the first rail (web home).
-    Item {
-        x: 0; y: 0; width: parent.width; height: 150 * Tokens.u
-        visible: !Tokens.dark && root.rails.length > 0 && root.rails[0].items.length > 0
-        Artwork { id: backdropArt; anchors.fill: parent; radius: 0; work: root.rails.length > 0 && root.rails[0].items.length > 0 ? root.rails[0].items[0] : null; kinds: ["backdrop", "poster"]; visible: false }
-        Desaturate { anchors.fill: parent; source: backdropArt; desaturation: 1.0; opacity: Tokens.dark ? 0.12 : 0.4 }
-        Rectangle { anchors.fill: parent; gradient: Gradient { GradientStop { position: 0.0; color: "transparent" } GradientStop { position: 1.0; color: Tokens.bg } } }
+    // Soft grey key art from the first title, behind the first rail (web home).
+    HeroArt {
+        visible: root.rails.length > 0 && root.rails[0].items.length > 0
+        work: root.rails.length > 0 && root.rails[0].items.length > 0 ? root.rails[0].items[0] : null
+        boxH: 124 * Tokens.u; imgFrac: 1; fadeFrom: 0.3; fadeTo: 1
     }
     Column {
         id: column

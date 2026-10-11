@@ -15,3 +15,4 @@ ChipRow 1.0 ChipRow.qml
 ActionRow 1.0 ActionRow.qml
 singleton Progress 1.0 Progress.qml
 DownloadNotices 1.0 DownloadNotices.qml
+HeroArt 1.0 HeroArt.qml

@@ -19,7 +19,7 @@ Column {
         text: root.title
         color: Tokens.ink
         font.family: Tokens.family580
-        font.pixelSize: 15.9 * Tokens.u
+        font.pixelSize: 15.2 * Tokens.u
     }
     Item {
         width: parent.width

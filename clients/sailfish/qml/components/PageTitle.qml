@@ -6,6 +6,7 @@ import Sailfish.Silica 1.0
 Item {
     property alias title: label.text
     property bool back: true
+    property bool filled: false   // detail pages: web fills the round button instead of outlining it
     signal backClicked()
     width: parent ? parent.width : 0
     height: 66 * Tokens.u
@@ -18,7 +19,7 @@ Item {
         anchors.verticalCenterOffset: 1 * Tokens.u
         width: 43.7 * Tokens.u; height: width
         onClicked: parent.backClicked()
-        Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border.width: 1; border.color: Tokens.lineStrong; opacity: btn.pressed ? 0.5 : 1 }
+        Rectangle { anchors.fill: parent; radius: width / 2; color: parent.parent.filled ? Tokens.surfaceSoft : "transparent"; border.width: parent.parent.filled ? 0 : 1; border.color: Tokens.lineStrong; opacity: btn.pressed ? 0.5 : 1 }
         Label { anchors.centerIn: parent; text: "←"; color: Tokens.ink; font.pixelSize: 13 * Tokens.u }
     }
     Label {
