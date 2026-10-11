@@ -67,7 +67,7 @@ import Svg, {Circle as SvgCircle, Defs, RadialGradient, Stop} from '@amazon-devi
 import {TokenStore} from '@playarr-tv/device-auth';
 import {useApiBaseUrl, useAuthFailed} from '../api/ApiClientProvider';
 import {useLanguage} from '../i18n/LanguageProvider';
-import {mix} from '../theme/color';
+import {blend, mix} from '../theme/color';
 import {useTheme, type ThemePreference} from '../theme/ThemeProvider';
 import {Icon} from '../shell/icons';
 import {PlayarrLogo} from '../shell/Logo';
@@ -143,6 +143,11 @@ const styles = StyleSheet.create({
 });
 
 
+/** The selected avatar's ring: the web's brand ring at 42% over the focus outline colour, which is what the picker shows on the remote's focus. */
+function selectedRing(outline: string): string {
+  return blend('#cf3157', outline, 0.42);
+}
+
 /** `.profile-avatar-button` + its avatar: lifts and scales when selected, with the web's pink 4px ring. */
 function ProfileChoice({
   profile,
@@ -182,7 +187,7 @@ function ProfileChoice({
           borderRadius: 999,
           transform: selected ? [{scale: 1.035}] : [],
           borderWidth: selected ? u(4) : 0,
-          borderColor: mix('#cf3157', 0.42),
+          borderColor: selectedRing(colour.accent),
         }}
       >
         <ProfileAvatar profileId={profile.id} size={selected ? u(236) : u(244)} style={selected ? undefined : undefined} />
@@ -219,7 +224,7 @@ function AddProfileTile({selected, onFocus, onPress}: {selected: boolean; onFocu
           borderRadius: 999,
           borderWidth: selected ? u(4) : 1,
           borderStyle: selected ? 'solid' : 'dashed',
-          borderColor: selected ? mix('#cf3157', 0.42) : mix(colour.lineStrong, 0.66),
+          borderColor: selected ? selectedRing(colour.accent) : mix(colour.lineStrong, 0.66),
           overflow: 'hidden',
           alignItems: 'center',
           justifyContent: 'center',

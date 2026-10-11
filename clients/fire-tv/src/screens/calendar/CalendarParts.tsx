@@ -11,18 +11,25 @@ import {ArtworkImage} from '../../components/ArtworkImage';
 import {useLanguage} from '../../i18n/LanguageProvider';
 import {
   type CalendarItem,
+  type Day,
+  type EntryPillTone,
+  entryPillTone,
   entryState,
+  itemPillTone,
+  releaseInstant,
   episodeCode,
   formatEpisodeCodes,
+  formatHumanDuration,
   itemAvailability,
   parseDay,
   workRouteForEntry,
 } from '../../lib/calendar';
 import {useWatchlistToggle} from '../../lib/watchlist';
-import {mix} from '../../theme/color';
+import {blend, mix} from '../../theme/color';
 import {useTheme} from '../../theme/ThemeProvider';
 import {Button} from '../../tv/forms';
-import {Box, T, u} from '../../tv/kit';
+import {BalancedT, Box, T, u} from '../../tv/kit';
+import {legacySnapshot, planItemActions} from '../../lib/calendarActions';
 
 export type EntryStateName = 'inLibrary' | 'monitored' | 'notMonitored';
 
@@ -48,10 +55,9 @@ const STATE_KEYS = {
   notMonitored: 'pages.calendar.stateNotMonitored',
 } as const;
 
+/** The release moment, or null for a date-only release (shown as "All day"). */
 export function entryTime(entry: CalendarEntry): Date | null {
-  if (!entry.release_at) return null;
-  const date = new Date(entry.release_at);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return releaseInstant(entry);
 }
 
 export function itemEntry(item: CalendarItem): CalendarEntry {
@@ -95,6 +101,43 @@ export function Badge({state, label, size}: {state: EntryStateName; label: strin
   );
 }
 
+const PILL_KEYS = {
+  available: 'pages.calendar.pillAvailable',
+  upcoming: 'pages.calendar.statusUpcoming',
+  missing: 'pages.calendar.statusMissing',
+  neutral: 'pages.calendar.pillNotTracked',
+} as const;
+const BRAND = '#cf3157';
+
+/** The web's `.status-pill`: the tone tints the fill (14% over the surface) and the border (60%); the text is the theme ink. */
+export function StatusPill({tone, label, size = 13.44}: {tone: EntryPillTone | 'requested'; label: string; size?: number}): React.ReactElement {
+  const {colour} = useTheme();
+  const tint = tone === 'available' ? colour.success : tone === 'upcoming' ? BRAND : tone === 'missing' ? colour.danger : tone === 'requested' ? colour.inkMuted : colour.inkSoft;
+  return (
+    <View
+      style={{
+        height: u(26.6),
+        paddingHorizontal: u(10.4),
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: mix(tint, 0.6),
+        backgroundColor: blend(tint, colour.surface, 0.14),
+        justifyContent: 'center',
+        alignSelf: 'flex-start',
+      }}
+    >
+      <T size={size} weight={750} lh={18.8} color={colour.ink} lines={1}>
+        {label}
+      </T>
+    </View>
+  );
+}
+
+export function TonePill({tone}: {tone: EntryPillTone}): React.ReactElement {
+  const {t} = useLanguage();
+  return <StatusPill tone={tone} label={t(PILL_KEYS[tone])} />;
+}
+
 export interface EntryCardProps {
   item: CalendarItem;
   width: number;
@@ -102,6 +145,7 @@ export interface EntryCardProps {
   wrap?: boolean;
   /** The card previewed in the agenda's details pane. */
   selected?: boolean;
+  today: Day;
   onFocus?: () => void;
   onPress: () => void;
   onLayout?: (event: LayoutChangeEvent) => void;
@@ -109,7 +153,7 @@ export interface EntryCardProps {
 }
 
 /** `.calendar-entry`: a 12 px card with a 4 px availability border on the left, a 40 x 60 poster and up to three lines. */
-export function EntryCard({item, width, wrap, selected, onFocus, onPress, onLayout, hasTVPreferredFocus}: EntryCardProps): React.ReactElement {
+export function EntryCard({item, width, wrap, selected, today, onFocus, onPress, onLayout, hasTVPreferredFocus}: EntryCardProps): React.ReactElement {
   const {colour} = useTheme();
   const {t, language} = useLanguage();
   const [focused, setFocused] = useState(false);
@@ -118,7 +162,7 @@ export function EntryCard({item, width, wrap, selected, onFocus, onPress, onLayo
   const kindColour = useAvailabilityColour(item);
   const subtitle = itemSubtitle(item, t as never);
   const locale = language === 'en' ? 'en-GB' : language;
-  const state = itemState(item);
+  const tone = itemPillTone(item, today);
   const lines = wrap ? undefined : 1;
   return (
     <Pressable
@@ -143,7 +187,8 @@ export function EntryCard({item, width, wrap, selected, onFocus, onPress, onLayo
         borderRadius: u(12),
         borderWidth: 1,
         borderLeftWidth: u(4),
-        borderColor: selected || focused ? colour.ink : colour.line,
+        // A selected card that holds no focus is only marked with a firmer outline; the ring belongs to focus alone.
+        borderColor: focused ? colour.ink : selected ? colour.lineStrong : colour.line,
         borderLeftColor: kindColour,
         backgroundColor: colour.surfaceStrong,
       }}
@@ -162,7 +207,7 @@ export function EntryCard({item, width, wrap, selected, onFocus, onPress, onLayo
             </T>
           </View>
         ) : null}
-        <View style={{flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: u(2.4)}}>
+        <View style={{flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', marginTop: u(2.4)}}>
           <View style={{marginRight: u(12)}}>
             <T size={12.8} weight={400} lh={19.2} dy={-1} color={colour.inkMuted}>
               {time ? new Intl.DateTimeFormat(locale, {timeStyle: 'short'}).format(time) : t('pages.calendar.allDay')}
@@ -180,16 +225,88 @@ export function EntryCard({item, width, wrap, selected, onFocus, onPress, onLayo
               </T>
             </View>
           )}
-          <Badge state={state} label={t(STATE_KEYS[state])} size={12.8} />
+          <TonePill tone={tone} />
         </View>
       </View>
-      {selected || focused ? (
+      {focused ? (
         <View pointerEvents="none" style={{position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, borderRadius: u(12), borderWidth: 1, borderColor: colour.ink}} />
       ) : null}
       {focused ? (
         <View pointerEvents="none" style={{position: 'absolute', left: u(-5), top: u(-5), right: u(-5), bottom: u(-5), borderRadius: u(17), borderWidth: u(3), borderColor: colour.ink}} />
       ) : null}
     </Pressable>
+  );
+}
+
+/**
+ * The agenda's details panel at the web `DetailsPanel` (stage placement) measurements: kicker, 69 px balanced title,
+ * meta runs, status pills, the synopsis of a lone release, then Open and the watchlist toggle.
+ */
+export function AgendaDetails({item, locale, today, onOpen}: {item: CalendarItem; locale: string; today: Day; onOpen: (route: string) => void}): React.ReactElement {
+  const {colour} = useTheme();
+  const {t} = useLanguage();
+  const client = useApiClient();
+  const first = itemEntry(item);
+  const time = entryTime(first);
+  const {plan, target} = planItemActions(item);
+  const route = workRouteForEntry(target);
+  const openRoute = plan.legacy ? route : (plan.open?.route ?? null);
+  const showWatchlist = (plan.legacy ? !openRoute : plan.watchlist !== null) && !(plan.watchlist && !plan.watchlist.enabled);
+  const watchlist = useWatchlistToggle(client, showWatchlist ? (plan.snapshot ?? legacySnapshot(target)) : null);
+  const subtitle = item.kind === 'series' ? t('pages.calendar.groupSummary', {count: item.entries.length, codes: formatEpisodeCodes(item.entries)}) : [episodeCode(first), first.subtitle].filter(Boolean).join(' · ');
+  const when = time
+    ? new Intl.DateTimeFormat(locale, {dateStyle: 'full', timeStyle: 'short'}).format(time)
+    : `${new Intl.DateTimeFormat(locale, {weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'}).format(parseDay(first.date))} · ${t('pages.calendar.allDay')}`;
+  const overview = item.kind === 'single' ? first.overview?.trim() : undefined;
+  const soft = blend(colour.ink, colour.surface, 0.88);
+  return (
+    <Box x={153.6} y={259.2} w={455} pointerEvents="box-none">
+      <T size={12.288} weight={860} ls={0.983} color={colour.stageKicker} upper lh={18.4} lines={1}>
+        {`${t(KIND_KEYS[first.media_kind])} · ${t(RELEASE_KEYS[first.release_type])}`}
+      </T>
+      <View style={{marginTop: u(25.9), left: u(2.5), top: u(3)}}>
+        <BalancedT key={itemTitle(item)} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
+          {itemTitle(item)}
+        </BalancedT>
+      </View>
+      <View style={{marginTop: u(27), flexDirection: 'row', flexWrap: 'wrap'}}>
+        {[subtitle, when].filter(Boolean).map((run, index) => (
+          <View key={index} style={{marginRight: u(12.8)}}>
+            <T size={13.056} weight={600} lh={19.584} color={soft}>
+              {run}
+            </T>
+          </View>
+        ))}
+      </View>
+      <View style={{marginTop: u(17.3), flexDirection: 'row', flexWrap: 'wrap'}}>
+        <TonePill tone={itemPillTone(item, today)} />
+        {plan.request?.requested ? (
+          <View style={{marginLeft: u(9.6)}}>
+            <StatusPill tone="requested" label={t('pages.calendar.pillRequested')} />
+          </View>
+        ) : null}
+        {first.average_lag_seconds != null ? (
+          <View style={{marginLeft: u(9.6)}}>
+            <StatusPill tone="neutral" label={t('pages.workDetail.availabilityLag', {duration: formatHumanDuration(first.average_lag_seconds, locale)})} />
+          </View>
+        ) : null}
+      </View>
+      {overview ? (
+        <View style={{marginTop: u(21.5), width: u(348.1)}}>
+          <T size={13.824} weight={600} lh={21.84} color={soft} lines={5}>
+            {overview}
+          </T>
+        </View>
+      ) : null}
+      <View style={{marginTop: u(23.8), flexDirection: 'row', alignItems: 'center'}}>
+        {openRoute ? <Button label={first.media_kind === 'episode' ? t('pages.calendar.openSeries') : t('pages.calendar.open')} onPress={() => onOpen(openRoute)} /> : null}
+        {showWatchlist ? (
+          <View style={{marginLeft: openRoute ? u(9.6) : 0}}>
+            <WatchlistPill listed={watchlist.listed} onPress={watchlist.toggle} />
+          </View>
+        ) : null}
+      </View>
+    </Box>
   );
 }
 

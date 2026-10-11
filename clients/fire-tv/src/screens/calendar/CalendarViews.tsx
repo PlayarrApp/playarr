@@ -13,11 +13,15 @@ import {useTheme} from '../../theme/ThemeProvider';
 import {EdgeFade} from '../../tv/EdgeFade';
 import {Box, T, u} from '../../tv/kit';
 import {useScrollReveal} from '../../tv/useScrollReveal';
-import {EntryCard, ItemDetails, itemEntry, itemTitle} from './CalendarParts';
+import {AgendaDetails, EntryCard, itemEntry, itemTitle} from './CalendarParts';
 
 export const BODY_BOTTOM = 961.3;
-const AGENDA_X = 786.4;
-const AGENDA_W = 1048.8;
+// Measured on the web agenda (1920x1080): cards 1033.4 px wide from x 783.4; day headings are 44 px boxes 32 px above their cards.
+const AGENDA_X = 783.4;
+const AGENDA_W = 1033.4;
+const AGENDA_HEADING_H = 44;
+const AGENDA_HEADING_GAP = 32;
+const AGENDA_HEADING_Y = 162;
 const DAY_GAP = 32;
 const HEADING_H = 27.6;
 const HEADING_GAP = 6.4;
@@ -44,16 +48,16 @@ function dayHeading(day: Day, locale: string): string {
   return `${weekday} ${rest}`;
 }
 
-function DayHeading({day, today, locale}: {day: Day; today: Day; locale: string}): React.ReactElement {
+function DayHeading({day, today, locale, height = HEADING_H, background}: {day: Day; today: Day; locale: string; height?: number; background?: string}): React.ReactElement {
   const {colour} = useTheme();
   const {t} = useLanguage();
   return (
-    <View style={{flexDirection: 'row', alignItems: 'center', height: u(HEADING_H)}}>
+    <View style={{flexDirection: 'row', alignItems: 'center', height: u(height), backgroundColor: background}}>
       <T size={18.4} weight={640} lh={HEADING_H} color={day === today ? colour.accent : colour.ink}>
         {dayHeading(day, locale)}
       </T>
       {day === today ? (
-        <View style={{marginLeft: u(9.6), height: u(19.2), paddingHorizontal: u(8), borderRadius: 999, borderWidth: 1, borderColor: colour.accent, justifyContent: 'center'}}>
+        <View style={{marginLeft: u(9.6), height: u(22), paddingHorizontal: u(8), borderRadius: 999, borderWidth: 1, borderColor: colour.accent, justifyContent: 'center'}}>
           <T size={11.2} weight={640} ls={0.896} lh={14} color={colour.accent} upper>
             {t('pages.calendar.today')}
           </T>
@@ -69,8 +73,8 @@ function AgendaViewImpl({groups, selectedKey, onSelect, onOpenRoute, locale, tod
   const selected = items.find((entry) => entry.item.key === selectedKey)?.item ?? items[0]?.item ?? null;
   const rows = useRef(new Map<string, {y: number; h: number}>()).current;
   const [contentH, setContentH] = useState(0);
-  const top = contentTop - 4;
-  const viewport = BODY_BOTTOM - top;
+  const top = AGENDA_HEADING_Y - 4;
+  const viewport = 1080 - top; // the web's list scroller runs to the bottom edge of the page
   const scroll = useScrollReveal({viewport, content: contentH + 8 + 32, margin: 24});
   const agendaTop = useMemo(() => Animated.add(new Animated.Value(u(4)), scroll.offset), [scroll.offset]);
   const onAgendaLayout = useCallback((event: LayoutChangeEvent) => setContentH(event.nativeEvent.layout.height / (event.nativeEvent.layout.width / AGENDA_W)), []);
@@ -79,9 +83,7 @@ function AgendaViewImpl({groups, selectedKey, onSelect, onOpenRoute, locale, tod
   return (
     <>
       {selected ? (
-        <Box x={153.6} y={contentTop} w={571.2}>
-          <ItemDetails item={selected} locale={locale} onOpen={onOpenRoute} />
-        </Box>
+        <AgendaDetails item={selected} locale={locale} today={today} onOpen={onOpenRoute} />
       ) : null}
       <Box x={AGENDA_X - 4} y={top} w={AGENDA_W + 24} h={viewport} style={{overflow: 'hidden'}} pointerEvents="box-none">
         <Animated.View style={{position: 'absolute', left: u(4), top: agendaTop, width: u(AGENDA_W)}} pointerEvents="box-none" onLayout={onAgendaLayout}>
@@ -91,11 +93,11 @@ function AgendaViewImpl({groups, selectedKey, onSelect, onOpenRoute, locale, tod
             return (
               <React.Fragment key={entry.item.key}>
                 {heading ? (
-                  <View style={{marginTop: u(index === 0 ? 0 : DAY_GAP - ENTRY_GAP), marginBottom: u(HEADING_GAP)}}>
-                    <DayHeading day={entry.day} today={today} locale={locale} />
+                  <View style={{marginTop: u(index === 0 ? 0 : DAY_GAP - ENTRY_GAP), marginBottom: u(AGENDA_HEADING_GAP)}}>
+                    <DayHeading day={entry.day} today={today} locale={locale} height={AGENDA_HEADING_H} />
                   </View>
                 ) : null}
-                <AgendaRow item={entry.item} selected={selected?.key === entry.item.key} rows={rows} reveal={scroll.reveal} onSelect={onSelect} onOpenRoute={onOpenRoute} />
+                <AgendaRow item={entry.item} today={today} selected={selected?.key === entry.item.key} rows={rows} reveal={scroll.reveal} onSelect={onSelect} onOpenRoute={onOpenRoute} />
               </React.Fragment>
             );
           })}
@@ -108,7 +110,7 @@ function AgendaViewImpl({groups, selectedKey, onSelect, onOpenRoute, locale, tod
 }
 
 /** One agenda row. Memoised: moving focus re-renders the two rows involved, not the whole list. */
-const AgendaRow = React.memo(function AgendaRow({item, selected, rows, reveal, onSelect, onOpenRoute}: {item: CalendarItem; selected: boolean; rows: Map<string, {y: number; h: number}>; reveal: (start: number, size: number) => void; onSelect: (item: CalendarItem) => void; onOpenRoute: (route: string) => void}): React.ReactElement {
+const AgendaRow = React.memo(function AgendaRow({item, today, selected, rows, reveal, onSelect, onOpenRoute}: {item: CalendarItem; today: Day; selected: boolean; rows: Map<string, {y: number; h: number}>; reveal: (start: number, size: number) => void; onSelect: (item: CalendarItem) => void; onOpenRoute: (route: string) => void}): React.ReactElement {
   const onLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const scale = event.nativeEvent.layout.width / AGENDA_W;
@@ -127,7 +129,7 @@ const AgendaRow = React.memo(function AgendaRow({item, selected, rows, reveal, o
   }, [item, onOpenRoute]);
   return (
     <View style={{marginBottom: u(ENTRY_GAP)}} onLayout={onLayout}>
-      <EntryCard item={item} width={AGENDA_W} selected={selected} onFocus={onFocus} onPress={onPress} />
+      <EntryCard item={item} today={today} width={AGENDA_W} selected={selected} onFocus={onFocus} onPress={onPress} />
     </View>
   );
 });
@@ -165,6 +167,7 @@ function DayColumn({group, x, height, shared, onColumnFocus, onOpen}: {group: Da
             >
               <EntryCard
                 item={item}
+                today={shared.today}
                 width={COLUMN_W}
                 wrap
                 selected={shared.selectedKey === item.key}

@@ -146,20 +146,28 @@ export function anchorForView(view: CalendarView, anchor: Day): Day {
   return view === "month" ? startOfMonth(anchor) : anchor;
 }
 
+/**
+ * The moment an entry releases, or null when it only has a date. The server stores date-only releases as midnight UTC; that
+ * is a date, not a moment, so it must not shift to the previous day west of UTC or show a time of day (the web's
+ * `releaseInstant`).
+ */
+export function releaseInstant(entry: Pick<CalendarEntry, "release_at">): Date | null {
+  if (!entry.release_at) return null;
+  const instant = new Date(entry.release_at);
+  const time = instant.getTime();
+  if (Number.isNaN(time)) return null;
+  if (time % 86_400_000 === 0) return null;
+  return instant;
+}
+
 export function entryLocalDay(entry: CalendarEntry): Day {
-  if (entry.release_at) {
-    const instant = new Date(entry.release_at);
-    if (!Number.isNaN(instant.getTime())) return localDayOf(instant);
-  }
-  return entry.date;
+  const instant = releaseInstant(entry);
+  return instant ? localDayOf(instant) : entry.date;
 }
 
 function entrySortKey(entry: CalendarEntry): number {
-  if (entry.release_at) {
-    const time = new Date(entry.release_at).getTime();
-    if (!Number.isNaN(time)) return time;
-  }
-  return Number.NEGATIVE_INFINITY; // All-day entries sort first within their day.
+  const instant = releaseInstant(entry);
+  return instant ? instant.getTime() : Number.NEGATIVE_INFINITY; // All-day entries sort first within their day.
 }
 
 export function compareEntries(a: CalendarEntry, b: CalendarEntry): number {
@@ -275,6 +283,23 @@ export function entryAvailable(
   const actions = entry.actions;
   if (!actions || actions.length === 0) return true;
   return actions.some((a) => (a.action === "play" || a.action === "resume") && a.enabled);
+}
+
+export type EntryPillTone = "available" | "upcoming" | "missing" | "neutral";
+
+/** The one status an entry shows as a pill: have it, not out yet, out but absent, or nothing to report. */
+export function entryPillTone(entry: CalendarEntry, today: Day): EntryPillTone {
+  if (entry.has_file) return "available";
+  if (entryLocalDay(entry) > today) return "upcoming";
+  return entry.monitored ? "missing" : "neutral";
+}
+
+/** A series group reports its worst state: missing, then upcoming, then available. */
+export function itemPillTone(item: CalendarItem, today: Day): EntryPillTone {
+  const entries = item.kind === "single" ? [item.entry] : item.entries;
+  const tones = entries.map((entry) => entryPillTone(entry, today));
+  for (const tone of ["missing", "upcoming", "neutral"] as const) if (tones.includes(tone)) return tone;
+  return "available";
 }
 
 export type EntryAvailability = "available" | "unavailable";
@@ -416,9 +441,8 @@ export function formatEpisodeCodes(entries: readonly CalendarEntry[]): string {
 }
 
 function entryTimeSlot(entry: CalendarEntry): string {
-  if (!entry.release_at) return "all-day";
-  const date = new Date(entry.release_at);
-  if (Number.isNaN(date.getTime())) return "all-day";
+  const date = releaseInstant(entry);
+  if (!date) return "all-day";
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 

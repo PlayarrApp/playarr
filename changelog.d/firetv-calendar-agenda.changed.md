@@ -1,0 +1,1 @@
+- Fire TV: the calendar agenda follows the web: status pills (Available, Upcoming, Missing, Not tracked), the details panel with the synopsis, meta line, pills and Open and watchlist actions, the web's card width, day heading and card spacing; date-only releases show "All day". The profile picker's selected avatar gets the web's focus ring colour.

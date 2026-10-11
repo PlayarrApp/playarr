@@ -69,7 +69,7 @@ describe('CalendarScreen', () => {
     const text = allText(renderer);
     expect(text).toContain('Calendar');
     expect(text).toContain('A Film');
-    expect(text).toContain('In library');
+    expect(text).toContain('Available');
     // Users never see source health or source-provider names (owner rule): no banner, no "reported by" line.
     expect(text).not.toContain('could not be read');
     expect(text).not.toContain('Sonarr');
