@@ -232,6 +232,8 @@ interface DetailRow {
   mediaFileId: string | null;
   similarWorkId: string | null;
   hasEpisodeStill: boolean;
+  /** Forces MediaRail's ForEach key to change when artwork arrives. */
+  stamp?: string;
   /** Where playback starts when the row is a chapter; absent plays from the beginning. */
   startMs?: number;
 }
@@ -552,6 +554,7 @@ function applyRowArtworkInRail(rail: DetailRail, rowId: string, artwork: image.P
         mediaFileId: item.mediaFileId,
         similarWorkId: item.similarWorkId,
         hasEpisodeStill: item.hasEpisodeStill,
+        stamp: 'art',
         startMs: item.startMs,
       };
       items.push(next);
@@ -591,6 +594,7 @@ function applyAlbumArtwork(rails: DetailRail[], railId: string, artwork: image.P
         mediaFileId: item.mediaFileId,
         similarWorkId: item.similarWorkId,
         hasEpisodeStill: item.hasEpisodeStill,
+        stamp: 'art',
       };
       items.push(next);
     }
