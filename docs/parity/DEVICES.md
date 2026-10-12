@@ -93,7 +93,7 @@ ships its download engine.
 | Sailfish OS | Yes | `downloads.cpp` with Range resume, offline playback |
 | Nura (postmarketOS, `linux-mobile`) | No | README: offline downloads not available yet |
 | Xbox and Windows (UWP) | No | `DownloadsPage` says downloads are not available yet |
-| Roku | No | Real platform limit (no offline downloads) |
+| Roku | No | Real platform limit (no offline downloads). The Downloads nav item and the Download row of the title actions drawer are left out on purpose; this is a device limit, not a parity gap. |
 | Samsung Tizen, LG webOS, Hisense VIDAA | Unverified | They run the web client, so downloads work only if the device browser offers OPFS or IndexedDB (`detectDownloadStorage`); probe on the device and set the flag in the driver |
 
 Notifications (a live system notification per download) and the now-playing entry are checked only where the driver sets

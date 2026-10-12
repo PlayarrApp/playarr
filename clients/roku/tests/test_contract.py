@@ -546,7 +546,7 @@ class BrandingAndResidualAssetTests(unittest.TestCase):
         marker = "BACK closes the controls overlay first"
         self.assertIn(marker, MAIN)
         body = MAIN.split(marker, 1)[1]
-        self.assertLess(body.index("hidePlayerControls()"), body.index('finishPlayback("user_stopped")'))
+        self.assertLess(body.index("m.playerControls.visible = false"), body.index('finishPlayback("user_stopped")'))
 
     def test_a_late_session_after_back_is_ignored(self) -> None:
         body = MAIN.split("sub startPlayback(", 1)[1].split("end sub", 1)[0]

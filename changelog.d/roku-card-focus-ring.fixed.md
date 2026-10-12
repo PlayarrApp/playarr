@@ -1,0 +1,1 @@
+- Roku media cards draw the web's focus ring and soft glow (brand ink in dark, brand strong in light); series detail's focused episode, Home and library cards now show a ring as the web does.

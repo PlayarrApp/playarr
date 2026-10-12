@@ -267,7 +267,7 @@
       <TrackedText id="browsePreviewMeta" translation="[153.6,454.9]" />
       <TrackedText id="browsePreviewMeta2" translation="[194.4,454.9]" />
       <TrackedText id="browsePreviewOverview" translation="[153.6,494.7]" />
-      <MarkupGrid id="browseGrid" translation="[783.4,162]" itemComponentName="PosterCard"
+      <MarkupGrid id="browseGrid" translation="[783.4,154]" itemComponentName="PosterCard"
         numColumns="3" numRows="4" itemSize="[353.5,240.5]" itemSpacing="[0,0]"
         focusBitmapBlendColor="0x00000000" vertFocusAnimationStyle="floatingFocus" />
       <Label id="browseHint" translation="[200,1020]" width="1700" height="40" text="" scale="[0.62,0.62]" color="0xA9B7C9FF" />
@@ -297,21 +297,7 @@
            carousel), not a parameter of this one MarkupGrid, so it is a
            real, documented gap rather than a decorative stand-in. -->
       <Label id="browseFiltersButton" visible="false" translation="[1784,71]" width="100" height="40" text="Filters" scale="[0.42,0.42]" color="0xA9B7C9FF" />
-      <Group id="browseFiltersPanel" visible="false">
-        <Rectangle translation="[1550,0]" width="370" height="1080" color="0x151315F5" />
-        <Label translation="[1610,90]" width="280" height="30" text="LIBRARY CONTROLS" scale="[0.38,0.38]" color="0x887A82FF" />
-        <Label translation="[1610,120]" width="280" height="60" text="Filters" scale="[1.3,1.3]" color="0xFFFFFFFF" />
-        <Label translation="[1610,220]" width="280" height="26" text="SORT BY" scale="[0.38,0.38]" color="0x887A82FF" />
-        <Label id="browseFilterSortTitle" translation="[1610,255]" width="280" height="40" text="Title" scale="[0.62,0.62]" color="0xCF3157FF" />
-        <Label id="browseFilterSortDate" translation="[1610,305]" width="280" height="40" text="Date added" scale="[0.62,0.62]" color="0xA9B7C9FF" />
-        <Label translation="[1610,375]" width="280" height="26" text="ORDER" scale="[0.38,0.38]" color="0x887A82FF" />
-        <Label id="browseFilterOrderAsc" translation="[1610,410]" width="280" height="40" text="A-Z" scale="[0.62,0.62]" color="0xCF3157FF" />
-        <Label id="browseFilterOrderDesc" translation="[1610,460]" width="280" height="40" text="Z-A" scale="[0.62,0.62]" color="0xA9B7C9FF" />
-        <Label translation="[1610,530]" width="280" height="26" text="ARTWORK SIZE" scale="[0.38,0.38]" color="0x887A82FF" />
-        <Label id="browseFilterSizeSmall" translation="[1610,565]" width="280" height="40" text="Small" scale="[0.62,0.62]" color="0xA9B7C9FF" />
-        <Label id="browseFilterSizeMedium" translation="[1610,615]" width="280" height="40" text="Medium" scale="[0.62,0.62]" color="0xCF3157FF" />
-        <Label id="browseFilterSizeLarge" translation="[1610,665]" width="280" height="40" text="Large" scale="[0.62,0.62]" color="0xA9B7C9FF" />
-      </Group>
+      <Group id="browseFiltersPanel" visible="false" />
     </Group>
 
     <!--
@@ -692,7 +678,7 @@
     <!-- Player stage: opens the instant Play is pressed (black stage, title,
          small buffering spinner). No interstitial page while negotiating. -->
     <Group id="playerStage" visible="false">
-      <Label id="playerTitleLabel" translation="[80,48]" width="1500" height="50" scale="[0.75,0.75]" color="0xFFFFFFFF" />
+      <Label id="playerTitleLabel" visible="false" translation="[80,48]" width="1500" height="50" scale="[0.75,0.75]" color="0xFFFFFFFF" />
       <BusySpinner id="playerSpinner" translation="[920,500]" control="stop" />
     </Group>
 
@@ -753,7 +739,7 @@
     <Timer id="heartbeatTimer" duration="20" repeat="true" />
     <Timer id="controlBarProgressTimer" duration="0.5" repeat="true" />
     <Timer id="endCountdownTimer" duration="1" repeat="true" />
-    <Timer id="playerAutoHideTimer" duration="3" repeat="false" />
+    <Timer id="playerAutoHideTimer" duration="5" repeat="false" />
     <!-- Deferred browse key-art download so acceptBrowseCatalog can paint first. -->
     <Timer id="browseKeyArtTimer" duration="0.5" repeat="false" />
   </children>
@@ -766,6 +752,7 @@
   <script type="text/brightscript" uri="pkg:/source/PairingPrefs.brs" />
   <script type="text/brightscript" uri="pkg:/components/Pages.brs" />
   <script type="text/brightscript" uri="pkg:/components/Drawer.brs" />
+  <script type="text/brightscript" uri="pkg:/components/Filters.brs" />
   <script type="text/brightscript" uri="pkg:/components/Settings.brs" />
   <script type="text/brightscript" uri="pkg:/components/PlaybackProgress.brs" />
   <script type="text/brightscript" uri="pkg:/components/PlayerChrome.brs" />

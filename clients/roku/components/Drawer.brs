@@ -14,6 +14,7 @@ sub drawerOpen(kicker as String, title as String, items as Object, returnTo as S
     m.drawerIndex = 0
     m.drawerReturn = returnTo
     m.drawerOpen = true
+    m.global.cardFocusOff = true
     ' Web draws the drawer over the page with no scrim: the page behind keeps its full strength.
     pgRect(g, 1560, 0, 360, 1080, "panel")
     pgLabel(g, 1606, 56, 190, 16, UCase(kicker), 11, 700, "inkMuted")
@@ -72,6 +73,7 @@ end function
 sub drawerClose()
     m.drawerGroup.visible = false
     m.drawerOpen = false
+    m.global.cardFocusOff = false
     back = m.drawerReturn
     parityEmit("screen", back)
     if back = "home"

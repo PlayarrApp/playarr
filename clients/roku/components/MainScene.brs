@@ -110,14 +110,6 @@ sub init()
     buildAlphabetStrip()
     m.browseFiltersButton = m.top.findNode("browseFiltersButton")
     m.browseFiltersPanel = m.top.findNode("browseFiltersPanel")
-    m.browseFilterSortTitle = m.top.findNode("browseFilterSortTitle")
-    m.browseFilterSortDate = m.top.findNode("browseFilterSortDate")
-    m.browseFilterOrderAsc = m.top.findNode("browseFilterOrderAsc")
-    m.browseFilterOrderDesc = m.top.findNode("browseFilterOrderDesc")
-    m.browseFilterSizeSmall = m.top.findNode("browseFilterSizeSmall")
-    m.browseFilterSizeMedium = m.top.findNode("browseFilterSizeMedium")
-    m.browseFilterSizeLarge = m.top.findNode("browseFilterSizeLarge")
-    m.browseFilterOptions = [m.browseFilterSortTitle, m.browseFilterSortDate, m.browseFilterOrderAsc, m.browseFilterOrderDesc, m.browseFilterSizeSmall, m.browseFilterSizeMedium, m.browseFilterSizeLarge]
     m.searchGroup = m.top.findNode("searchGroup")
     m.searchGrid = m.top.findNode("searchGrid")
     m.searchTitle = m.top.findNode("searchTitle")
@@ -280,6 +272,11 @@ sub init()
     m.browseFiltersButtonFocused = false
     m.browseFiltersMode = false
     m.browseFiltersIndex = 0
+    m.browseView = "screen"
+    m.browseAudioLangs = []
+    m.browseSubLangs = []
+    m.browseLangFacets = invalid
+    m.filtersOpen = false
     m.browseSort = "title"
     m.browseOrder = "asc"
     m.searchQuery = ""
@@ -719,6 +716,8 @@ sub onApiResult(event as Object)
         sendApi("railPrefs", "GET", "/api/v1/home/rails/preferences?lang=en", invalid, true)
     else if action = "resumePlan"
         acceptResumePlan(result.data)
+    else if action = "browseLanguages"
+        acceptBrowseLanguages(result.data)
     else if action = "householdStatus"
         acceptHouseholdStatus(result.data)
     else if action = "householdAsk"
@@ -805,6 +804,10 @@ sub handleApiFailure(action as String, result as Object)
     if action = "householdStatus" or action = "householdAsk" then return
     if action = "resumePlan"
         acceptResumePlan(invalid)
+        return
+    end if
+    if action = "browseLanguages"
+        acceptBrowseLanguages(invalid)
         return
     end if
     if action = "watchlist" or action = "requests" or action = "calendar" or action = "railPrefs"
@@ -2288,6 +2291,8 @@ sub loadCatalog(append as Boolean)
     end if
     config = AppConfig()
     path = "/api/v1/catalog?available_only=true&sort=title&limit=" + config.catalogPageSize.ToStr() + "&offset=" + offset.ToStr()
+    if m.browseAudioLangs.Count() > 0 then path = path + "&audio_lang=" + joinStrings(m.browseAudioLangs, ",")
+    if m.browseSubLangs.Count() > 0 then path = path + "&subtitle_lang=" + joinStrings(m.browseSubLangs, ",")
     sendApi(action, "GET", path, invalid, true)
 end sub
 
@@ -2344,6 +2349,10 @@ sub openBrowse(kind as String, label as String)
     m.browseSort = "title"
     m.browseOrder = "asc"
     m.browseArtworkSize = m.artworkSizePref
+    m.browseView = "screen"
+    m.browseAudioLangs = []
+    m.browseSubLangs = []
+    m.browseLangFacets = invalid
     applyBrowseArtworkSize()
     m.browseAlphabetMode = false
     m.browseFiltersButtonFocused = false
@@ -2631,81 +2640,7 @@ sub focusBrowseAlphabetFromButton()
 end sub
 
 sub openBrowseFiltersPanel()
-    m.browseFiltersMode = true
-    m.browseFiltersIndex = 0
-    if m.browseSort = "title" then m.browseFiltersIndex = 0
-    if m.browseSort = "date_added" then m.browseFiltersIndex = 1
-    m.browseFiltersPanel.visible = true
-    renderBrowseFiltersOptionsFocus()
-end sub
-
-' Kept out of the shared browseFilterOptions/isSelected loop below since
-' small/medium/large are radio-style and each has its own item index
-' (4/5/6), same convention as the sort/order pairs above it.
-function browseArtworkSizeOptionIndex() as Integer
-    if m.browseArtworkSize = "small" then return 4
-    if m.browseArtworkSize = "large" then return 6
-    return 5
-end function
-
-sub closeBrowseFiltersPanel()
-    m.browseFiltersMode = false
-    m.browseFiltersPanel.visible = false
-end sub
-
-function moveBrowseFiltersFocus(delta as Integer) as Boolean
-    newIndex = m.browseFiltersIndex + delta
-    if newIndex < 0 or newIndex >= m.browseFilterOptions.Count() then return true
-    m.browseFiltersIndex = newIndex
-    renderBrowseFiltersOptionsFocus()
-    return true
-end function
-
-' Selected values (not just focus) always stay highlighted (real tv-web's
-' own pressed-state pill), the currently-focused option additionally shows
-' the accent colour even if not yet the active value, mirroring the same
-' "selected vs focused can differ" pattern renderSettingsSection already
-' uses.
-sub renderBrowseFiltersOptionsFocus()
-    selectedSizeIndex = browseArtworkSizeOptionIndex()
-    for i = 0 to m.browseFilterOptions.Count() - 1
-        isSelected = (i = 0 and m.browseSort = "title") or (i = 1 and m.browseSort = "date_added") or (i = 2 and m.browseOrder = "asc") or (i = 3 and m.browseOrder = "desc") or (i = selectedSizeIndex)
-        if i = m.browseFiltersIndex or isSelected
-            m.browseFilterOptions[i].color = ThemeColor("brand")
-        else
-            m.browseFilterOptions[i].color = ThemeColor("inkSoft")
-        end if
-    end for
-end sub
-
-sub selectBrowseFilterOption()
-    if m.browseFiltersIndex = 0
-        m.browseSort = "title"
-    else if m.browseFiltersIndex = 1
-        m.browseSort = "date_added"
-    else if m.browseFiltersIndex = 2
-        m.browseOrder = "asc"
-    else if m.browseFiltersIndex = 3
-        m.browseOrder = "desc"
-    else if m.browseFiltersIndex = 4
-        m.browseArtworkSize = "small"
-    else if m.browseFiltersIndex = 5
-        m.browseArtworkSize = "medium"
-    else if m.browseFiltersIndex = 6
-        m.browseArtworkSize = "large"
-    end if
-    renderBrowseFiltersOptionsFocus()
-    if m.browseFiltersIndex >= 4
-        ' Artwork size is a pure client-side reflow of the same already-loaded
-        ' items -- no refetch, unlike Sort/Order which change what the server
-        ' returns.
-        applyBrowseArtworkSize()
-        rebuildBrowseContent()
-        return
-    end if
-    m.browseItems = []
-    m.browseTotal = invalid
-    loadBrowseCatalog(false)
+    filtersOpen()
 end sub
 
 ' Reflows browseGrid's column count/item box/spacing in place to match
@@ -2713,6 +2648,27 @@ end sub
 ' ArtworkSize toggle) -- keeps the same left edge (x=560) and roughly the
 ' same total grid footprint the medium/default layout already used, just
 ' with more/fewer, smaller/larger columns.
+sub applyBrowseView()
+    if m.browseView = "cover"
+        ' Web cover view: five portrait posters (190 x 286 art) on a 210.7 x 349 pitch.
+        m.browseGrid.numColumns = 5
+        m.browseGrid.numRows = 3
+        m.browseGrid.itemSize = [210.7, 349]
+        m.browseGrid.itemSpacing = [0, 0]
+        m.browseGrid.translation = [783.4, 154]
+    else if m.browseView = "list"
+        ' Web list view: a 173 x 97 thumbnail with the title and genre line beside it, 122 px apart.
+        m.browseGrid.numColumns = 1
+        m.browseGrid.numRows = 7
+        m.browseGrid.itemSize = [700, 122]
+        m.browseGrid.itemSpacing = [0, 0]
+        m.browseGrid.translation = [792, 157]
+    else
+        applyBrowseArtworkSize()
+        m.browseGrid.translation = [783.4, 154]
+    end if
+end sub
+
 sub applyBrowseArtworkSize()
     if m.browseArtworkSize = "small"
         m.browseGrid.numColumns = 4
@@ -2853,6 +2809,32 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
         item.cardScale = cardScale
         item.AddField("showKind", "boolean", false)
         item.showKind = false
+        ' The browse grid sits 8 px higher and each card 8 px lower in its cell: the lift and ring are not clipped at the top row.
+        item.AddField("padTop", "float", false)
+        if grid.id = "browseGrid" then item.padTop = 8
+        if grid.id = "browseGrid" and m.browseView <> "screen"
+            item.AddField("artW", "float", false)
+            item.AddField("artH", "float", false)
+            if m.browseView = "cover"
+                item.artW = 190
+                item.artH = 286
+                item.hdPosterUrl = withArtworkWidth(artworkUrl(work), 540)
+                item.artHeaders = artworkHeaders(item.hdPosterUrl, headers)
+            else
+                item.artW = 173
+                item.artH = 97
+                item.AddField("listMode", "boolean", false)
+                item.listMode = true
+                item.showKind = true
+                line = ""
+                if work.genres <> invalid and work.genres.Count() > 0
+                    line = work.genres[0]
+                    if work.genres.Count() > 1 then line = line + " · " + work.genres[1]
+                end if
+                if item.year <> "" then line = line + "  •  " + item.year
+                item.subtitleOverride = line
+            end if
+        end if
     end for
     grid.content = root
 end sub
@@ -2869,10 +2851,12 @@ sub onBrowseItemFocused(event as Object)
     end if
     browseFadesUpdate(itemIndex)
     ' Web keeps the focused row 70 px clear of the bottom edge once the grid scrolls (its rows then sit 56 px higher).
-    if Int(itemIndex / m.browseGrid.numColumns) >= 4
-        m.browseGrid.translation = [783.4, 106]
-    else
-        m.browseGrid.translation = [783.4, 162]
+    if m.browseView = "screen"
+        if Int(itemIndex / m.browseGrid.numColumns) >= 4
+            m.browseGrid.translation = [783.4, 98]
+        else
+            m.browseGrid.translation = [783.4, 154]
+        end if
     end if
     moreAvailable = m.browseTotal = invalid or m.browseItems.Count() < m.browseTotal
     if moreAvailable and itemIndex >= m.browseItems.Count() - 10 and not m.requestBusy
@@ -6005,7 +5989,7 @@ function formatRuntime(runtimeMs as Dynamic) as String
     return minutes.ToStr() + "m"
 end function
 
-' Shows the control bar and (re)arms the 3s auto-hide countdown. Called on
+' Shows the control bar and (re)arms the 5 s auto-hide countdown. Called on
 ' every playback-state key press (see onKeyEvent), matching tv-web's
 ' "any activity shows the bar and resets the idle timer" behaviour.
 ' playerAutoHideTimer is repeat="false", so it is explicitly stopped then
@@ -6018,6 +6002,8 @@ sub resetPlayerAutoHide()
 end sub
 
 sub hidePlayerControls()
+    ' Web (shouldAutoHidePlayerControls): the controls hide on their own only while playing; a paused player keeps them.
+    if m.video.state = "paused" then return
     m.playerControls.visible = false
 end sub
 
@@ -6421,6 +6407,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return false
     end if
     if m.drawerOpen = true then return drawerOnKey(key)
+    if m.filtersOpen = true then return filtersOnKey(key)
     state = m.top.screenState
     if state = "page"
         return pageOnKey(key)
@@ -6439,7 +6426,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             ' BACK closes the controls overlay first; the next BACK exits (an open quality menu closes before this).
             if m.playerControls.visible
                 m.playerAutoHideTimer.control = "stop"
-                hidePlayerControls()
+                m.playerControls.visible = false
                 return true
             end if
             finishPlayback("user_stopped")
@@ -6517,16 +6504,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if state = "library" and key = "back"
         loadProfiles()
-        return true
-    else if state = "browse" and m.browseFiltersMode and key = "back"
-        closeBrowseFiltersPanel()
-        return true
-    else if state = "browse" and m.browseFiltersMode and key = "up"
-        return moveBrowseFiltersFocus(-1)
-    else if state = "browse" and m.browseFiltersMode and key = "down"
-        return moveBrowseFiltersFocus(1)
-    else if state = "browse" and m.browseFiltersMode and key = "OK"
-        selectBrowseFilterOption()
         return true
     else if state = "browse" and m.browseFiltersButtonFocused and key = "back"
         focusBrowseAlphabetFromButton()

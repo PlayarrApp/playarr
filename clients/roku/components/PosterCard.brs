@@ -16,6 +16,8 @@ sub init()
     m.overlayNumber.font = PlayarrMakeFont(600, 19)
     m.captionPrefix.font = PlayarrMakeFont(700, 9)
     m.kind = m.top.findNode("kind")
+    m.titleFont0 = m.title.font
+    m.kindFont0 = m.kind.font
     m.unwatchedBadge = m.top.findNode("unwatchedBadge")
     m.progressTrack = m.top.findNode("progressTrack")
     m.progressFill = m.top.findNode("progressFill")
@@ -25,6 +27,9 @@ sub init()
     m.focusShadow = m.top.findNode("focusShadow")
     m.restShadow = m.top.findNode("restShadow")
     m.cardScaleValue = 1.0
+    m.cardListMode = false
+    m.cardTitleX = 0
+    m.padTop = 0
     m.titleY = 133
     m.liftInterp = m.top.findNode("liftInterp")
     m.retryTimer = m.top.findNode("retryTimer")
@@ -33,6 +38,7 @@ sub init()
     m.posterUri = ""
     m.posterRetries = 0
     m.scaleInterp = m.top.findNode("scaleInterp")
+    m.global.observeField("cardFocusOff", "onFocusChanged")
 end sub
 
 sub onContentChanged()
@@ -48,7 +54,16 @@ sub onContentChanged()
     cardScale = 1
     if content.cardScale <> invalid then cardScale = content.cardScale
     m.cardScaleValue = cardScale
-    layoutCard(cardScale)
+    artW = 0.0
+    artH = 0.0
+    listMode = false
+    if content.artW <> invalid then artW = content.artW
+    if content.artH <> invalid then artH = content.artH
+    if content.listMode = true then listMode = true
+    m.padTop = 0
+    if content.padTop <> invalid then m.padTop = content.padTop
+    m.cardRoot.translation = [0, m.padTop]
+    layoutCard(cardScale, artW, artH, listMode)
     ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
     m.titleY = m.cardTitleY
     if circle then m.titleY = 118
@@ -77,7 +92,7 @@ sub onContentChanged()
         m.captionPrefix.text = content.captionPrefix
         m.title.translation = [m.captionPrefix.boundingRect().width + 8, m.titleY]
     else
-        m.title.translation = [0, m.titleY]
+        m.title.translation = [m.cardTitleX, m.titleY]
     end if
     watchState = ""
     if content.watchState <> invalid then watchState = content.watchState
@@ -125,17 +140,18 @@ sub onContentChanged()
     else
         m.restShadow.visible = true
         m.focusShadow.visible = true
-        m.artGroup.scaleRotateCenter = [110, 62]
         m.title.horizAlign = "left"
-        m.title.width = 587
         m.kind.horizAlign = "left"
-        m.kind.width = 815
+        if not m.cardListMode
+            m.title.width = 587
+            m.kind.width = 815
+        end if
         ' The server serves 780 px (backdrop) or 540 px (poster) wide art; decode it at the card's own size so the stick resamples once.
-        m.poster.loadWidth = Int(220 * cardScale + 0.5)
-        if Instr(1, content.hdPosterUrl, "w=540") > 0
+        m.poster.loadWidth = Int(m.poster.width + 0.5)
+        if artW = 0 and Instr(1, content.hdPosterUrl, "w=540") > 0
             m.poster.loadHeight = Int(330 * cardScale + 0.5)
         else
-            m.poster.loadHeight = Int(124 * cardScale + 0.5)
+            m.poster.loadHeight = Int(m.poster.height + 0.5)
         end if
         m.posterUri = content.hdPosterUrl
         m.posterRetries = 0
@@ -168,6 +184,8 @@ end sub
 ' the art zooms in a touch further (scale(1.025)).
 sub onFocusChanged()
     effective = m.top.focusPercent * m.top.activeRailFactor
+    ' A drawer over the page owns focus: the cards behind it draw no focus (web keeps the ring on the drawer's control).
+    if m.global.cardFocusOff = true then effective = 0
     shadowOpacity = effective
     if shadowOpacity > 1 then shadowOpacity = 1
     if shadowOpacity < 0 then shadowOpacity = 0
@@ -181,7 +199,7 @@ sub onFocusChanged()
     liftY = -cardFocusLift() * effective
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
-    m.liftInterp.keyValue = [m.cardRoot.translation, [0, liftY]]
+    m.liftInterp.keyValue = [m.cardRoot.translation, [0, m.padTop + liftY]]
     m.scaleInterp.key = [0, 1]
     m.scaleInterp.keyValue = [m.artGroup.scale, [artScale, artScale]]
     m.focusAnim.control = "stop"
@@ -225,11 +243,17 @@ end sub
 
 ' Card geometry for the art size: the art, corner masks, watch overlays and text are laid out at their own web sizes (a 1.5 grid
 ' card has a 330 px art but still 12 px text and a 13 px dot), so nothing is scaled as a whole.
-sub layoutCard(cardScale as Float)
+sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listMode = false as Boolean)
     artW = 220 * cardScale
     artH = 124 * cardScale
-    if m.laidOutScale = cardScale then return
-    m.laidOutScale = cardScale
+    if ovW > 0
+        artW = ovW
+        artH = ovH
+    end if
+    key = artW.ToStr() + ":" + artH.ToStr() + ":" + listMode.ToStr()
+    if m.laidOutScale = key then return
+    m.laidOutScale = key
+    m.cardListMode = listMode
     m.top.findNode("posterBg").width = artW
     m.top.findNode("posterBg").height = artH
     m.poster.width = artW
@@ -259,10 +283,25 @@ sub layoutCard(cardScale as Float)
     if cardScale > 1 then titleGap = 11.5
     m.titleY = artH + titleGap
     m.cardTitleY = m.titleY
+    m.cardTitleX = 0
     m.title.translation = [0, m.titleY]
     m.title.width = artW
     m.kind.translation = [0, artH + titleGap + 19.5]
     m.kind.width = artW
+    if listMode
+        ' Web list row: the art on the left, the title and the genre line centred beside it.
+        m.title.font = PlayarrMakeFont(600, 15)
+        m.kind.font = PlayarrMakeFont(400, 10)
+        m.title.translation = [artW + 21, artH / 2 - 26]
+        m.title.width = 520
+        m.kind.translation = [artW + 21, artH / 2 + 6]
+        m.kind.width = 520
+        m.cardTitleY = artH / 2 - 26
+        m.cardTitleX = artW + 21
+    else
+        m.title.font = m.titleFont0
+        m.kind.font = m.kindFont0
+    end if
     m.overlayNumber.translation = [artW - 72, artH - 40]
     m.captionPrefix.translation = [0, artH + 12]
 end sub
