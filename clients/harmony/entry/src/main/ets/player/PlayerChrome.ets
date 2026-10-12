@@ -175,6 +175,20 @@ const TIME_LABEL_FONT_SIZE: number = 15;
 const TOUCH_TITLE_FONT_SIZE_FALLBACK: number = 15;
 const TOUCH_CHROME_GAP_FALLBACK: number = Spacing.sm;
 const PROGRESS_TRACK_HEIGHT: number = 4;
+const CIRCLE_FILL_ALPHA: number = 0.08;
+const CIRCLE_RING_ALPHA: number = 0.4;
+// Web TV player (1920x1080): the close button, the progress track and the transport row.
+const TV_CLOSE_SIZE: number = 48;
+const TV_CLOSE_RIGHT: number = 58;
+const TV_CLOSE_TOP: number = 38;
+const TV_BAR_SIDE: number = 70;
+const TV_BAR_BOTTOM: number = 42;
+const TV_TRACK_HEIGHT: number = 6;
+const TV_PLAY_SIZE: number = 72;
+const TV_SEEK_SIZE: number = 48;
+const TV_ROW_GAP: number = 24;
+const TV_BAR_GAP: number = 28;
+const TV_TIME_FONT_SIZE: number = 12;
 const BACK_BUTTON_WIDTH_TV: number = 96;
 
 function defaultChromePaddingH(): number {
@@ -307,6 +321,10 @@ struct ChromeButton {
   /** Plain (non-reactive) callback fields -- functions are not observable
    * state, the same pattern as every other content component in this
    * design system (e.g. `design/components/PosterCard.ets#onSelect`). */
+  /** Web TV player: a round button with a hairline ring (the play button's ring is heavier). */
+  circle: boolean = false;
+  ringWidth: number = 1;
+
   onActivate: () => void = () => {};
   /** Reports this button's own focus transitions up to the hosting
    * `PlayerChrome`, which aggregates every button's focus state into the
@@ -339,6 +357,9 @@ struct ChromeButton {
     }
     .width(this.buttonWidth)
     .height(this.buttonHeight)
+    .borderRadius(this.circle ? this.buttonHeight / 2 : 0)
+    .backgroundColor(this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_FILL_ALPHA) : Color.Transparent)
+    .border(this.circle ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_RING_ALPHA) } : { width: 0 })
     .scale({ x: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)), y: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)) })
     .focusable(true)
     .onFocus(() => {
@@ -494,7 +515,116 @@ export struct PlayerChrome {
     return Math.max(0, this.durationMs - this.positionMs);
   }
 
-  build() {
+  /** The progress track: grey, with the buffered part lighter and the played part in the player accent. */
+  @Builder
+  private progressTrack(height: number): void {
+    Stack({ alignContent: Alignment.Start }) {
+      Row()
+        .width('100%')
+        .height(height)
+        .borderRadius(height / 2)
+        .backgroundColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CHROME_TRACK_ALPHA))
+
+      Row()
+        .width(`${this.bufferedPercent()}%`)
+        .height(height)
+        .borderRadius(height / 2)
+        .backgroundColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CHROME_BUFFERED_ALPHA))
+
+      Row()
+        .width(`${this.progressPercent()}%`)
+        .height(height)
+        .borderRadius(height / 2)
+        .backgroundColor(toResourceColor(BRAND_PINK))
+    }
+    .width('100%')
+  }
+
+  /** Web TV player: close at the top right; at the bottom a thin progress track over one row of transport controls and the time. */
+  @Builder
+  private tvBar(): void {
+    Column() {
+      Row() {
+        ChromeButton({
+          label: '\u00D7',
+          circle: true,
+          buttonWidth: tv(TV_CLOSE_SIZE),
+          buttonHeight: tv(TV_CLOSE_SIZE),
+          fontSize: tv(22),
+          onActivate: this.onBack,
+          notifyFocusChanged: ((focused: boolean): void => {
+            this.setChildFocused(focused);
+          }),
+        })
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.End)
+      .padding({ right: tv(TV_CLOSE_RIGHT), top: tv(TV_CLOSE_TOP) })
+
+      Blank()
+
+      Column({ space: tv(TV_BAR_GAP) }) {
+        if (!this.isLive()) {
+          this.progressTrack(tv(TV_TRACK_HEIGHT))
+        }
+        Row({ space: tv(TV_ROW_GAP) }) {
+          ChromeButton({
+            label: '-10',
+            circle: true,
+            buttonWidth: tv(TV_SEEK_SIZE),
+            buttonHeight: tv(TV_SEEK_SIZE),
+            fontSize: tv(13),
+            onActivate: this.onSeekBack,
+            notifyFocusChanged: ((focused: boolean): void => {
+              this.setChildFocused(focused);
+            }),
+          })
+          ChromeButton({
+            showGlyph: true,
+            circle: true,
+            ringWidth: 2,
+            isPlaying: this.isPlaying,
+            glyphSize: tv(TV_PLAY_SIZE / 2.4),
+            buttonWidth: tv(TV_PLAY_SIZE),
+            buttonHeight: tv(TV_PLAY_SIZE),
+            onActivate: this.onTogglePlayPause,
+            notifyFocusChanged: ((focused: boolean): void => {
+              this.setChildFocused(focused);
+            }),
+          })
+          ChromeButton({
+            label: '+10',
+            circle: true,
+            buttonWidth: tv(TV_SEEK_SIZE),
+            buttonHeight: tv(TV_SEEK_SIZE),
+            fontSize: tv(13),
+            onActivate: this.onSeekForward,
+            notifyFocusChanged: ((focused: boolean): void => {
+              this.setChildFocused(focused);
+            }),
+          })
+          if (this.isLive()) {
+            Text('LIVE').fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
+          } else {
+            Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
+              .fontSize(tv(TV_TIME_FONT_SIZE))
+              .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+          }
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+      }
+      .width('100%')
+      .padding({ left: tv(TV_BAR_SIDE), right: tv(TV_BAR_SIDE), bottom: tv(TV_BAR_BOTTOM) })
+    }
+    .width('100%')
+    .height('100%')
+    .opacity(this.chromeOpacity)
+    .hitTestBehavior(this.visible ? HitTestMode.Default : HitTestMode.Transparent)
+  }
+
+  @Builder
+  private touchBar(): void {
 
     Column({ space: this.gap }) {
       Row() {
@@ -603,5 +733,13 @@ export struct PlayerChrome {
     })
     .opacity(this.chromeOpacity)
     .hitTestBehavior(this.visible ? HitTestMode.Default : HitTestMode.Transparent)
+  }
+
+  build() {
+    if (isTvMetrics()) {
+      this.tvBar()
+    } else {
+      this.touchBar()
+    }
   }
 }
