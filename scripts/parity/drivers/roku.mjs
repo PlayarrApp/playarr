@@ -117,6 +117,11 @@ export function createDriver({ out, args = [] } = {}) {
   let focus = null;
   let drawerSource = "";
   let lastRoute = null;
+  let debugFailure = false;
+
+  const assertDebug = () => {
+    if (!socket || socket.destroyed || debugFailure) throw new Error("Roku debug console is unavailable; refusing to infer route or focus state");
+  };
 
   const sendEcp = async (path, method = "POST") => {
     const response = await fetch(`${ecp}/${path}`, { method, signal: AbortSignal.timeout(8000) });
@@ -165,6 +170,7 @@ export function createDriver({ out, args = [] } = {}) {
   const waitFor = async (predicate, label, timeoutMs = 45000) => {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
+      assertDebug();
       if (predicate()) return;
       await sleep(250);
     }
@@ -285,6 +291,7 @@ export function createDriver({ out, args = [] } = {}) {
         debugBuffer = lines.pop() ?? "";
         for (const line of lines) ingest(line);
       });
+      socket.on("error", () => { debugFailure = true; });
       socket.on("timeout", () => socket?.destroy(new Error("Roku debug console timed out")));
       await new Promise((resolveConnect, reject) => {
         socket.once("connect", resolveConnect);
@@ -306,13 +313,15 @@ export function createDriver({ out, args = [] } = {}) {
     async key(name, { long = false } = {}) { await press(name, { long }); },
     async route(path) { await safeRoute(path); },
     async location() {
+      assertDebug();
       if (screen === "playback") return "/player/unsupported";
       const current = routeForState(screen, page, browse, drawerSource);
       if (current) lastRoute = current;
       return lastRoute;
     },
-    async focused() { return focus; },
+    async focused() { assertDebug(); return focus; },
     async screenshot(file) {
+      assertDebug();
       if (!out) throw new Error("suite runner output path is required");
       if (!screen || ["pairing", "status"].includes(screen)) throw new Error(`Roku screenshot refused on ${screen || "unknown"} screen`);
       if (screen === "playback") throw new Error("Roku parity driver refuses player screenshots");
