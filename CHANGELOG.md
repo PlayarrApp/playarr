@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Wait for the routed webOS view, finite page animations, visible content and decoded images to settle before capture; dismiss the Search keyboard through the real Filters and Back controls, retaining focus on Filters. Send a character event with CDP Enter so Calendar view buttons activate in the simulator.
 - Normalize the D-pad scorer's long-press Play action label across web and native clients.
 - Fire TV tests now unmount rendered screens and stop their finite animations before Jest tears down the test environment.
 - iPad series details now show episode-specific artwork with a media-thumbnail fallback.
