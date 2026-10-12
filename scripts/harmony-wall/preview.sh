@@ -29,6 +29,7 @@ build() {
   python3 "$HERE/patch_pairing.py" entry/src/main/ets/pages/Pairing.ets
   python3 "$HERE/patch_route.py" entry/src/main/ets/pages/Index.ets "$CTL"
   python3 "$HERE/patch_state.py" entry/src/main/ets
+  [ "${RAIL_PATCH:-yes}" = no ] || python3 "$HERE/patch_rail.py" entry/src/main/ets/design/components/MediaRail.ets
   python3 "$HERE/patch_artwork.py" entry/src/main/ets/data/ArtworkRepository.ets "$CTL"
   python3 "$HERE/patch_http.py" entry/src/main/ets/net/HttpTransport.ets entry/src/main/ets/data/ArtworkRepository.ets entry/src/main/ets/util/PreviewState.ets
   sed -i "s/PREVIEW_PORT: number = 40017/PREVIEW_PORT: number = $CTL/" entry/src/main/ets/util/PreviewState.ets
@@ -39,6 +40,7 @@ build() {
   local pid=$!
   for _ in $(seq 1 600); do grep -q -E "BUILD (SUCCESSFUL|FAILED)" "$WORK/hvigor.log" && break; sleep 1; done
   kill "$pid" 2>/dev/null || true
+  pkill -f "[h]vigor.*$WORK/app" 2>/dev/null || true # hvigor workers outlive the wrapper
   grep -E -A2 "ERROR|BUILD|Error Message" "$WORK/hvigor.log" | tail -30 || true
   grep -q "BUILD SUCCESSFUL" "$WORK/hvigor.log"
   mkdir -p "$I/loader_out/default/ets/apiMock"

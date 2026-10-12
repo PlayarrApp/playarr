@@ -43,6 +43,10 @@ def apply_state(q):
         STATE["kind"] = q.get("kind", [""])[0]
         if STATE["route"] == "Library":
             STATE["lib_kind"] = STATE["kind"]
+    if "dbg" in q:
+        STATE["dbg"] = q["dbg"][0]
+        STATE.setdefault("dbglog", []).append(q["dbg"][0])
+        del STATE["dbglog"][:-300]
     if "nav" in q:
         STATE["focused"] = q["nav"][0]
     if "title" in q:
@@ -177,6 +181,12 @@ class Commands:
     def clear_field(self, count: int = 80) -> bool:
         return all(self.send("KeyPress", {"isInputMethod": False, "keyCode": 2055, "keyAction": 0,
                                           "pressedCodes": [2055], "keyString": ""}) for _ in range(count))
+
+    def hold(self, x: int, y: int, seconds: float = 1.3) -> bool:
+        """A long press: press, wait, release."""
+        ok = self.send("MousePress", {"x": x, "y": y})
+        time.sleep(seconds)
+        return ok and self.send("MouseRelease", {"x": x, "y": y})
 
     def click(self, x: int, y: int) -> bool:
         return self.send("MousePress", {"x": x, "y": y}) and self.send("MouseRelease", {"x": x, "y": y})
@@ -359,6 +369,9 @@ def main():
                 return self._reply(200 if ok else 503, b"ok")
             if url.path == "/longclick":
                 ok = commands.long_click(int(query["x"][0]), int(query["y"][0]))
+                return self._reply(200 if ok else 503, b"ok")
+            if url.path == "/hold":
+                ok = commands.hold(int(query["x"][0]), int(query["y"][0]))
                 return self._reply(200 if ok else 503, b"ok")
             if url.path == "/type":
                 ok = all(commands.type_char(ch) for ch in query["text"][0])

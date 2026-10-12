@@ -17,6 +17,15 @@ on:
         type: choice
         options: [tv, phone]
         default: tv
+      parts:
+        description: TV parts (screens - the captures only; everything - captures, D-pad, key screens, playback)
+        type: choice
+        options: [screens, everything]
+        default: screens
+      rail_patch:
+        description: Apply the preview-only MediaRail @Prop patch (turn off to test whether the app needs it)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -28,6 +37,7 @@ jobs:
     timeout-minutes: 60
     env:
       DEVICE: ${{ inputs.device || 'tv' }}
+      RAIL_PATCH: ${{ inputs.rail_patch == false && 'no' || 'yes' }}
       WORK: ${{ github.workspace }}/harmony-wall-work
     steps:
       - uses: actions/checkout@v4
@@ -74,8 +84,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # the phone renders each theme in its own parallel job (one Previewer per colour mode); the TV does both in one
-        theme: ${{ fromJSON(inputs.device == 'phone' && '["dark","light"]' || '["all"]') }}
+        # phone: each theme in its own parallel job (one Previewer per colour mode). TV: the screens (all), the D-pad checks, the key-reached screens and
+        # the playback cases run as parallel jobs, each signing in on its own session
+        theme: ${{ fromJSON(inputs.device == 'phone' && '["dark","light"]' || (inputs.parts == 'screens' && '["all"]' || '["all","dpad","extra","playback"]')) }}
     defaults:
       run:
         shell: bash
@@ -123,7 +134,6 @@ jobs:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-          KEYCHECK: "1"
           BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
           GALLIUM_DRIVER: llvmpipe
@@ -134,25 +144,39 @@ jobs:
           if [ "$DEVICE" = phone ]; then D=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait); else D=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape); fi
           if [ "$THEME" = light ]; then CM=light; else CM=dark; fi
           cp scripts/sim-vnc/sim_vnc.py scripts/harmony-wall/
-          PLAYARR_VNC_PASSWORD=selftest1 python scripts/harmony-wall/harmony_vnc.py --bind 127.0.0.1 --port 5917 --ws $WS --ctl $CTL \
-            --debug-port $DBG --cmd-name playarr_cmd --password-env PLAYARR_VNC_PASSWORD > bridge.log 2>&1 &
-          # the Previewer connects to the command pipe once, at start: the bridge must have created it by then
-          for i in $(seq 1 60); do grep -q 'control on' bridge.log && break; sleep 1; done
-          sleep 2
-          cd sdk/pv/previewer/common/bin
-          ./Previewer.exe -refresh full -sm dynamic -projectID playarrharmony -ts playarr_trace -j "$I/loader_out/default/ets" \
-            -s playarr_cmd -cpm false -shape rect "${D[@]}" -n entry -av ACE_2_0 -url pages/Index -d -p $DBG -pages main_pages \
-            -arp "$I/res/default" -pm Stage -hsp "$W/harmony-wall-work/hms-previewer/systemHsp" -l en_GB -cm "$CM" -lws $WS \
-            -ljPath "$I/loader/default/loader.json" -abp ets/entryability/EntryAbility -abn EntryAbility -staticCard false \
-            -foldable false -bn io.playarr.harmony -srmPath "$I/router_map/default/router_map.json" > "$W/previewer.log" 2>&1 &
-          sleep 3; echo started
-          cd "$W"
-          python scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log "$THEME"
+          launch() {
+            PLAYARR_VNC_PASSWORD=selftest1 python scripts/harmony-wall/harmony_vnc.py --bind 127.0.0.1 --port 5917 --ws $WS --ctl $CTL \
+              --debug-port $DBG --cmd-name playarr_cmd --password-env PLAYARR_VNC_PASSWORD > bridge.log 2>&1 &
+            # the Previewer connects to the command pipe once, at start: the bridge must have created it by then
+            for i in $(seq 1 60); do grep -q 'control on' bridge.log && break; sleep 1; done
+            sleep 2
+            (cd sdk/pv/previewer/common/bin && ./Previewer.exe -refresh full -sm dynamic -projectID playarrharmony -ts playarr_trace -j "$I/loader_out/default/ets" \
+              -s playarr_cmd -cpm false -shape rect "${D[@]}" -n entry -av ACE_2_0 -url pages/Index -d -p $DBG -pages main_pages \
+              -arp "$I/res/default" -pm Stage -hsp "$W/harmony-wall-work/hms-previewer/systemHsp" -l en_GB -cm "$CM" -lws $WS \
+              -ljPath "$I/loader/default/loader.json" -abp ets/entryability/EntryAbility -abn EntryAbility -staticCard false \
+              -foldable false -bn io.playarr.harmony -srmPath "$I/router_map/default/router_map.json" > "$W/previewer.log" 2>&1 &)
+            sleep 3; echo started
+          }
+          # The Previewer's libhttp crashes now and then (access violation): start over, with a fresh sign-in, up to three times.
+          ok=0
+          for attempt in 1 2 3; do
+            rm -rf capture
+            launch
+            if python scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log "$THEME"; then ok=1; break; fi
+            echo "attempt $attempt failed: restarting the Previewer"
+            taskkill //F //IM Previewer.exe //T > /dev/null 2>&1 || true
+            taskkill //F //IM python.exe //T > /dev/null 2>&1 || true
+            sleep 5
+          done
+          [ "$ok" = 1 ]
           if [ "$DEVICE" = tv ]; then
-            # the shared suite over the same signed-in Previewer: D-pad checks, then the screens only reachable by keys
-            export HARMONY_CTL=$CTL
-            node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --only dpad --expected /nonexistent.json || true
-            node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --themes dark --only screens --screens player-controls,actions,filters || true
+            # the shared suite over the same signed-in Previewer, one part per parallel job
+            export HARMONY_CTL=$CTL PREVIEWER_LOG="$W/previewer.log"
+            case "$THEME" in
+              dpad) node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --only dpad --expected /nonexistent.json || true ;;
+              extra) node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --themes dark --only screens --screens player-controls,actions,filters || true ;;
+              playback) node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --only playback --expected /nonexistent.json || true ;;
+            esac
           fi
       - name: Upload the captures
         if: success()
@@ -164,6 +188,7 @@ jobs:
             capture/light
             capture/build.json
             suite/dpad.json
+            suite/playback.json
             suite/dark
           if-no-files-found: error
           retention-days: 14

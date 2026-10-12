@@ -47,6 +47,17 @@ methods = """
       this.navPathStack.replacePathByName('Library', params);
       return;
     }
+    if (name.indexOf('focus:') === 0) {
+      this.getUIContext().getFocusController().activate(true, false);
+      let result: string = 'ok';
+      try {
+        this.getUIContext().getFocusController().requestFocus(name.substring(6));
+      } catch (err) {
+        result = JSON.stringify(err);
+      }
+      previewReport('dbg=' + encodeURIComponent(name.substring(6) + ':' + result));
+      return;
+    }
     if (name.indexOf('player:') === 0) {
       this.navPathStack.replacePathByName('Player', new PreviewPlayerParams(name.substring(7)));
       return;

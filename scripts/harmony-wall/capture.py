@@ -7,7 +7,7 @@ import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.re
 from PIL import Image
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
-THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone only: the Previewer starts in this colour mode (-cm), one job per theme
+THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
 CTL = "http://127.0.0.1:" + ("40117" if device == "phone" else "40017")
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(out, exist_ok=True)
@@ -90,12 +90,17 @@ SEEN = {}
 
 
 def snap(name, folder, floor=60000):
-    try:
-        snap_checked(name, folder, floor)
-    except SystemExit:
-        if device != "phone":
-            raise
-        raise Skip(name)
+    for attempt in range(3 if device == "tv" else 1):
+        try:
+            snap_checked(name, folder, floor)
+            return
+        except SystemExit:
+            if device == "phone":
+                raise Skip(name)
+            if attempt == 2 or device != "tv":
+                raise
+            print(f"{name}: retrying in 25 s (the list may still be loading)", flush=True)
+            time.sleep(25)
 
 
 def snap_checked(name, folder, floor):
@@ -169,10 +174,28 @@ debug("after-profile")
 SCREENS_TV = None
 
 
+def extra_screens(folder):
+    """Screens a click cannot reach in one step: the actions drawer (long press on a card) and the player controls."""
+    try:
+        route("library:movie", 15)
+        get("/hold", x=946, y=254); time.sleep(4); snap("actions", folder)
+        key("back"); time.sleep(3)
+    except SystemExit:
+        print("actions not captured", flush=True)
+    try:
+        route("player:" + json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["playback"][0]["file"], 20)
+        click(960, 540); time.sleep(3); snap("player-controls", folder, 30000)
+    except SystemExit:
+        print("player-controls not captured", flush=True)
+
+
 def walk(folder, suffix):
     """The route-based screen walk (captures as <id><suffix>.png). Clicks only inside pages."""
     n = lambda s: s + suffix
     snap(n("home"), folder, 150000)
+    if os.environ.get("POSTERDBG"):
+        log_ = json.loads(get("/state")).get("dbglog", [])
+        print("dbgsum", {k: sum(1 for x in log_ if x.startswith(k)) for k in ("cardart", "imgok", "imgerr")}, [x[:160] for x in log_ if x.startswith("imgerr")][:3], flush=True)
     route("library:movie", 15); snap(n("movies"), folder, 150000)
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
     click(946, 254); time.sleep(12); snap(n("film-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
@@ -184,15 +207,20 @@ def walk(folder, suffix):
     click(1877, 272); time.sleep(4); click(1830, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-month"), folder)
     route("search", 12); snap(n("search"), folder)
     route("settings", 8); snap(n("settings"), folder)
+    extra_screens(folder)
 
 
-if device == "tv" and os.environ.get("KEYCHECK"):
-    click(*PROFILE_CLICK); time.sleep(20)
-    debug("k0-home"); print("state", get("/state"), flush=True); print(get("/health"), flush=True)
-    click(1000, 40); time.sleep(2)
-    for i, k in enumerate(("tab", "right", "down", "right")):
-        key(k); time.sleep(2); debug(f"k{i + 1}-{k}"); print("state", get("/state"), flush=True); print(get("/health"), flush=True)
-    key("left"); key("down"); key("ok"); time.sleep(8); debug("k-nav-select"); print("state", get("/state"), flush=True)
+if device == "tv" and THEME in ("extra", "playback"):
+    sys.exit(0)  # signed in on the Home screen: the suite (workflow step) takes over
+if device == "tv" and THEME == "dpad":
+    if not os.environ.get("KEYCHECK"):
+        sys.exit(0)
+    click(1044, 544); time.sleep(8); print("after card click", get("/state"), flush=True); debug("k-click-detail")
+    key("back"); time.sleep(6); print("after back", get("/state"), flush=True)
+    for i, k in enumerate(("right", "down", "left")):
+        key(k); time.sleep(2); print("after", k, get("/state"), flush=True); debug("k-" + k)
+    click(82, 466); time.sleep(6); print("after nav click", get("/state"), flush=True)
+    key("down"); time.sleep(2); print("after nav down", get("/state"), flush=True)
     sys.exit(0)
 if device == "tv":
     folder = os.path.join(out, "dark")
