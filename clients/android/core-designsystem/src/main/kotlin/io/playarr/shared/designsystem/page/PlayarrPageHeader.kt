@@ -192,9 +192,13 @@ internal fun PlayarrPageHeaderRow(
         val height = rowHeight + (wrapped?.let { it.height + subtitleGap } ?: 0)
         layout(width.coerceAtMost(constraints.maxWidth.coerceAtLeast(width)), height) {
             back?.placeRelative(0, (rowHeight - back.height) / 2)
-            titleP.placeRelative(backWidth + backGap, (rowHeight - titleP.height) / 2)
+            // Web phone, measured against the live page at 719 x 1558: the 17.6 px title's glyphs sit 2 px (1.1 dp) and the
+            // 21.6 px title's 7 px (3.8 dp) lower than a centred line box puts them; the count line follows 2 px (1.1 dp) further down.
+            // Pages with a Filters or other action beside the title (library, search, calendar) sit 2 px low; the rest (detail, settings) 7 px.
+            val titleDrop = if (tv) 0 else (if (spec.actions.isEmpty() && large) 3.8.dp else 1.1.dp).roundToPx()
+            titleP.placeRelative(backWidth + backGap, (rowHeight - titleP.height) / 2 + titleDrop)
             inline?.placeRelative(titleEnd, (rowHeight - inline.height) / 2)
-            wrapped?.placeRelative(backWidth + backGap, rowHeight + subtitleGap)
+            wrapped?.placeRelative(backWidth + backGap, rowHeight + subtitleGap + (if (tv) 0 else titleDrop + 1.1.dp.roundToPx()))
         }
     }
 }

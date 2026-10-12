@@ -1951,19 +1951,28 @@ private fun ExperienceNavigation(
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.material3.LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified,
     ) {
-    Surface(
+    // Phone: web's `.app-nav` box-shadow is a soft 0 14 40 pair that Compose's elevation shadow cannot match, so it is drawn as a web shadow.
+    WebShadowedBox(
+        shadows = if (isTelevision) emptyList() else listOf(WebShadow(14.dp, 40.dp, Color(0xFF382621).copy(alpha = 0.10f))),
+        shape = phoneNavShape,
         modifier = modifier
             .windowInsetsPadding(bottomInsets)
             .then(if (isTelevision) Modifier else Modifier.fillMaxWidth())
             .padding(horizontal = if (isTelevision) 0.dp else 10.dp)
-            .padding(top = if (isTelevision) 26.dp else 8.dp, bottom = if (isTelevision) 26.dp else maxOf(8.dp, systemBottom))
+            .padding(top = if (isTelevision) 26.dp else 8.dp, bottom = if (isTelevision) 26.dp else maxOf(8.dp, systemBottom)),
+        innerFill = false,
+        innerWidthFill = !isTelevision,
+    ) {
+    Surface(
+        modifier = Modifier
+            .then(if (isTelevision) Modifier else Modifier.fillMaxWidth())
             .glass(phoneNavShape, if (isTelevision) WebGlass.NavGroup else WebGlass.PhoneNav),
         color = Color.Transparent,
         shape = phoneNavShape,
         tonalElevation = 0.dp,
     ) {
         LazyRow(
-            modifier = Modifier.padding(5.dp).fillMaxWidth(),
+            modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = if (isTelevision) 5.dp else 7.dp, bottom = 5.dp).fillMaxWidth(),
             // A short list (a household-limited profile) is centred in the bar; a long one scrolls from the start.
             horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally),
             contentPadding = PaddingValues(0.dp),
@@ -2009,6 +2018,7 @@ private fun ExperienceNavigation(
                 }
             }
         }
+    }
     }
     }
 }
@@ -3610,7 +3620,7 @@ private fun LibraryFiltersDialog(
     }
     PlayarrFiltersSheet(
         title = playarrString(PlayarrString.LibraryFilters),
-        kicker = if (playarrTvDrawer()) playarrString(PlayarrString.LibraryControls) else null,
+        kicker = playarrString(PlayarrString.LibraryControls),
         closeLabel = playarrString(PlayarrString.LibraryCloseFilters),
         onClose = onDismiss,
     ) {
@@ -3722,10 +3732,11 @@ private fun <T> LibraryFilterChoices(
         }
         return
     }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // Web phone drawer: the same equal-width segments as the television one.
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title.uppercase(language.locale), color = WebInkMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(values) { value -> PlayarrChoice(label(value), value == selected) { onSelected(value) } }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            values.forEach { value -> PlayarrChoice(label(value), value == selected, Modifier.weight(1f)) { onSelected(value) } }
         }
     }
 }
@@ -3927,7 +3938,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                 contentAlignment = Alignment.Center,
                             ) {
                                 if (active) Box(Modifier.size(16.dp).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
-                                Text(letter, color = if (active) WebBackground else WebInkMuted, fontSize = 8.96.sp, lineHeight = 9.sp, fontWeight = FontWeight.Bold, style = WebTextStyle)
+                                Text(letter, color = if (active) WebBackground else WebInkSoft, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
                             }
                         }
                     }
@@ -5770,7 +5781,7 @@ private fun PhoneVideoDetailBody(
             add(playarrString(PlayarrString.DetailKindMovie))
             if (movieRuntimeMs != null && movieRuntimeMs > 0L) add(formatPlayarrVideoRuntime(movieRuntimeMs, language))
         }
-        work.releaseDate?.atZone(java.time.ZoneOffset.UTC)?.year?.let { add(it.toString()) }
+        playarrYearRange(work.releaseDate, work.endDate)?.let { add(it) }
         if (episode != null) {
             episode.airDate?.let { add(playarrString(PlayarrString.DetailAired, "date" to dateFormat.format(it))) }
         } else {
@@ -5820,14 +5831,11 @@ private fun PhoneVideoDetailBody(
                         )
                     }
                 }
-                if (series != null && availabilityLag != null) {
+                // Web draws the note only once the lag is known; with no samples it draws nothing.
+                if (series != null && availabilityLag?.averageSeconds != null) {
                     Spacer(Modifier.height(5.2.dp))
                     Text(
-                        if (availabilityLag.averageSeconds != null) {
-                            playarrString(PlayarrString.AvailabilityLagUsually, "duration" to calendarLagText(availabilityLag.averageSeconds!!))
-                        } else {
-                            playarrString(PlayarrString.AvailabilityLagNone)
-                        },
+                        playarrString(PlayarrString.AvailabilityLagUsually, "duration" to calendarLagText(availabilityLag.averageSeconds!!)),
                         color = WebInk, fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight(640), style = WebTextStyle,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -8123,13 +8131,16 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         prepareJob?.cancel()
         switchJob?.cancel()
         prepareJob = viewModelScope.launch {
+            // The saved position and the server lookup are independent network calls: start both now, not one after the other.
+            val progressCall = async { runCatching { api.getWatchProgress(mediaFileId) }.getOrNull() }
+            val serverCall = async { runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrNull() }
             if (activeMediaFileId != null) persistProgress(ensureCompletion = true)
             closeActiveSessionAndWait(PlaybackStopReason.UserStopped)
             activeMediaFileId = mediaFileId
             playbackReached = false
             _notice.value = null
             // Offline, a downloaded file must still play: the lookup is a network call, so fall back to the last known server.
-            activeServerUrl = runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrDefault(activeServerUrl)
+            activeServerUrl = serverCall.await() ?: activeServerUrl
             activeDefaults = defaults
             activeSourceOffsetMs = 0L
             activeSourceDurationMs = 0L
@@ -8140,8 +8151,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             decoderFallbackAttempted = false
             _controls.value = PlayarrPlaybackControls()
             _state.value = ExperienceLoad.Loading
-            val resumePosition = requestedStartPositionMs ?: runCatching { api.getWatchProgress(mediaFileId) }
-                .getOrNull()
+            val resumePosition = requestedStartPositionMs ?: progressCall.await()
                 ?.takeIf { it.state == WatchState.PartWatched }
                 ?.positionMs
                 ?: 0L

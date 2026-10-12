@@ -1297,6 +1297,13 @@ internal fun CalendarMonth(
     val gridScroll = rememberScrollState()
     BoxWithConstraints(modifier) {
         val wide = isTelevision || maxWidth >= 840.dp
+        if (!wide) {
+            // Web phone: the same month grid as on a television, 103 dp columns in a horizontally scrolling strip (measured on the live page).
+            Box(modifier.fillMaxSize().horizontalScroll(rememberScrollState())) {
+                CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.width(721.dp).height(34.dp + 117.5.dp * rows.size).padding(top = 8.dp), true, phoneStrip = true)
+            }
+            return@BoxWithConstraints
+        }
         if (wide) {
             // Web `.calendar-month`: chips inside the day cells, filling the space below the header.
             CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.fillMaxSize().padding(top = 8.dp), isTelevision)
@@ -1407,6 +1414,8 @@ private fun CalendarMonthChips(
     onMore: (LocalDate) -> Unit,
     modifier: Modifier,
     isTelevision: Boolean = false,
+    /** The phone's scrolling strip: web draws three lines per cell there, with the header row 8 dp deeper. */
+    phoneStrip: Boolean = false,
 ) {
     val rows = remember(state.window) { calendarGridRows(state.window) }
     val cells = remember(rows) { rows.flatten() }
@@ -1415,11 +1424,11 @@ private fun CalendarMonthChips(
         entries.groupBy { it.date }.mapValues { (_, day) -> groupSeriesEpisodes(day.sortedBy { it.releaseAt }, zone) }
     }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        val headerHeight = 26.dp
+        val headerHeight = if (phoneStrip) 34.dp else 26.dp
         val cellHeight = (maxHeight - headerHeight) / rows.size
         // Web: chips that fit = (cell height - 52) / 26, between 1 and 5; when more exist the last slot is "+N more".
         // Web TV text lines: 25 dp lines above a footer with the day number and "+N more", so the count never takes a line.
-        val limit = if (isTelevision) ((cellHeight.value - 50f) / 25f).toInt().coerceIn(1, 5) else ((cellHeight.value - 52f) / 26f).toInt().coerceIn(1, 5)
+        val limit = if (phoneStrip) 3 else if (isTelevision) ((cellHeight.value - 50f) / 25f).toInt().coerceIn(1, 5) else ((cellHeight.value - 52f) / 26f).toInt().coerceIn(1, 5)
         val visible = remember(cells, byDay, limit, loading, isTelevision) {
             cells.map { day ->
                 val items = if (loading) emptyList() else byDay[day].orEmpty()

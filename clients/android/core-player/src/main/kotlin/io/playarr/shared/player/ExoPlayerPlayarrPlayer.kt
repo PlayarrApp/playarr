@@ -308,6 +308,8 @@ class ExoPlayerPlayarrPlayer private constructor(
             parallelHttpClient: OkHttpClient? = null,
             /** Read-only view of the offline download cache, consulted before the network. */
             offlineCache: androidx.media3.datasource.cache.Cache? = null,
+            /** Small scratch cache for what was just read: a Matroska file is read from the head, then its cues at the tail, then the head again. */
+            headCache: androidx.media3.datasource.cache.Cache? = null,
         ): ExoPlayerPlayarrPlayer {
             val appContext = context.applicationContext
             val parallelEnabled = AtomicBoolean(false)
@@ -329,6 +331,14 @@ class ExoPlayerPlayarrPlayer private constructor(
             } else {
                 effectiveFactory
             }
+            val layeredFactory = if (headCache != null && cachedFactory != null) {
+                androidx.media3.datasource.cache.CacheDataSource.Factory()
+                    .setCache(headCache)
+                    .setUpstreamDataSourceFactory(cachedFactory)
+                    .setFlags(androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+            } else {
+                cachedFactory
+            }
             val decoderBlocklist = DecoderBlocklist()
             val extractorsFactory = DolbyVisionFallbackExtractorsFactory(DefaultExtractorsFactory())
             val builder = ExoPlayer.Builder(
@@ -341,8 +351,8 @@ class ExoPlayerPlayarrPlayer private constructor(
                     .setMediaCodecSelector(decoderBlocklist.selector()),
             ).setLoadControl(buildLoadControl(appContext))
             builder.setMediaSourceFactory(
-                if (cachedFactory != null) {
-                    DefaultMediaSourceFactory(cachedFactory, extractorsFactory)
+                if (layeredFactory != null) {
+                    DefaultMediaSourceFactory(layeredFactory, extractorsFactory)
                 } else {
                     DefaultMediaSourceFactory(appContext, extractorsFactory)
                 },

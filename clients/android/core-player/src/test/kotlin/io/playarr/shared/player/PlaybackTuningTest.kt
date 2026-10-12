@@ -99,7 +99,8 @@ class PlaybackTuningTest {
         val bitrate = 62_000_000L
         assertEquals(us, SeekBufferPolicy.startThresholdUs(false, true, bitrate, bitrate * 2))
         assertEquals(SeekBufferPolicy.MEDIUM_START_US, SeekBufferPolicy.startThresholdUs(false, true, bitrate, bitrate * 2 - 1))
-        assertEquals(null, SeekBufferPolicy.startThresholdUs(false, false, bitrate, bitrate * 5))
+        assertEquals(null, SeekBufferPolicy.startThresholdUs(false, false, bitrate, bitrate * 3))
+        assertEquals(SeekBufferPolicy.FAST_START_US, SeekBufferPolicy.startThresholdUs(false, false, bitrate, bitrate * 4))
         assertEquals(null, SeekBufferPolicy.startThresholdUs(true, true, bitrate, bitrate * 5))
         assertEquals(null, SeekBufferPolicy.startThresholdUs(false, true, 0, bitrate * 5))
         assertEquals(null, SeekBufferPolicy.startThresholdUs(false, true, bitrate, 0))

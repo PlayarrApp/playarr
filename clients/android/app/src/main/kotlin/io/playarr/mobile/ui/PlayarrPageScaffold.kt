@@ -386,7 +386,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
         modifier = modifier.heightIn(min = 44.dp).webFocusRing(focused, radius = 12.dp, offset = 0.dp),
     ) {
         Box(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-            Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(label.replaceFirstChar { it.titlecase() }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }

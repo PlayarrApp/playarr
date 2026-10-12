@@ -66,7 +66,7 @@ internal object SeekBufferPolicy {
 
     /**
      * Start threshold in us, or null to defer to the default load control.
-     * Only a post-seek start (not the initial one, and not a rebuffer, which
+     * Only a start with a wide margin (initial) or a post-seek start (not a rebuffer, which
      * keeps its 15 s cushion) with known bitrate and throughput qualifies, and
      * not within [REBUFFER_GUARD_MS] of a rebuffer. Headroom is compared in
      * integer tenths to keep the tier boundaries exact.
@@ -78,9 +78,11 @@ internal object SeekBufferPolicy {
         throughputBps: Long,
         msSinceRebuffer: Long = Long.MAX_VALUE,
     ): Long? {
-        if (rebuffering || !startedOnce || bitrateBps <= 0 || throughputBps <= 0) return null
+        if (rebuffering || bitrateBps <= 0 || throughputBps <= 0) return null
         if (msSinceRebuffer < REBUFFER_GUARD_MS) return null
         val scaled = throughputBps * 10
+        // The initial start has no proof the link holds up yet, so it only gets the short threshold with a wide margin (4x).
+        if (!startedOnce) return if (scaled >= bitrateBps * 40) FAST_START_US else null
         return when {
             scaled >= bitrateBps * 20 -> FAST_START_US
             scaled >= bitrateBps * 15 -> MEDIUM_START_US

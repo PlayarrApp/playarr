@@ -116,7 +116,8 @@ private fun PhonePlayerButton(
     Box(
         modifier
             .size(42.dp)
-            .alpha(if (enabled) 1f else 0.28f)
+            // Web styles no disabled state on `.player-btn`: a single-item queue shows Previous and Next at full strength, inert.
+            .alpha(1f)
             .clip(CircleShape)
             .then(if (primary) Modifier.background(Color.White.copy(alpha = 0.14f)) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
