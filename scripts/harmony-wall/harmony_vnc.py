@@ -41,6 +41,8 @@ def apply_state(q):
     if "route" in q:
         STATE["route"] = q["route"][0]
         STATE["kind"] = q.get("kind", [""])[0]
+        if STATE["route"] == "Detail":
+            STATE["work_id"] = q.get("work", [""])[0]
         if STATE["route"] == "Library":
             STATE["lib_kind"] = STATE["kind"]
     if "dbg" in q:

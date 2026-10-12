@@ -18,6 +18,15 @@ export function routeMatches(pattern, url) {
   return !pq || [...new URLSearchParams(pq)].every(([k, v]) => u.searchParams.get(k) === v);
 }
 
+// D-pad labels share semantic roles across platforms, except the play/pause toggle result: its exact
+// Play or Pause label is the state transition being compared with the generated web reference.
+export function focusForCheck(f, checkId) {
+  const norm = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  const raw = norm(f && typeof f === "object" ? f.label : f);
+  const label = checkId === "player-ok-toggle" ? raw : /^(play|pause)$/.test(raw) ? "play-pause" : raw;
+  return { label, position: f && typeof f === "object" ? f.position ?? null : null };
+}
+
 // Returns a list of problems (empty when valid).
 export function validateSuite(s, legendScreens) {
   const bad = [];

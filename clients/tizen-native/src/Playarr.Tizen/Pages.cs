@@ -12,7 +12,7 @@ internal static class Pages
         "/series" => new LibraryScreen(env, WorkKind.Series, "Series", "/series"),
         _ when route.StartsWith("/calendar") => CalendarFor(env, route),
         "/settings" => new SettingsScreen(env),
-        "/search" => new SearchScreen(env),
+        _ when route == "/search" || route.StartsWith("/search?", StringComparison.Ordinal) => SearchFor(env, route),
         "/profiles" => new ProfilesScreen(env),
         "/music" => new LibraryScreen(env, WorkKind.Artist, "Music", "/music"),
         _ when route.StartsWith("/player/") => PlayerFor(env, route),
@@ -43,6 +43,13 @@ internal static class Pages
         var view = route.Contains("view=month") ? Playarr.Core.Models.CalendarView.Month : route.Contains("view=week") ? Playarr.Core.Models.CalendarView.Week : Playarr.Core.Models.CalendarView.Agenda;
         var screen = new CalendarScreen(env, view);
         if (route.Contains("panel=filters")) screen.OpenFiltersFromRoute();
+        return screen;
+    }
+
+    private static IPage SearchFor(AppEnv env, string route)
+    {
+        var screen = new SearchScreen(env, route);
+        if (route.Contains("panel=filters", StringComparison.Ordinal)) screen.OpenFiltersFromRoute();
         return screen;
     }
 }
