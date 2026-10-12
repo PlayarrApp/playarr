@@ -464,6 +464,7 @@ enum TVParityState {
     }
 
     private static var tag: String?
+    private static var tagID: String?
     private static var position: [String: Any]?
     private static var playback: [String: Any]?
 
@@ -475,9 +476,11 @@ enum TVParityState {
 
     /// The focused card or nav tile's title, set by the tile itself: SwiftUI's focus item is not a view, so the
     /// accessibility tree cannot name it reliably.
-    static func setFocus(_ title: String, _ focused: Bool, rail: Any? = nil, index: Int? = nil) {
-        if focused { tag = title; position = rail.flatMap { r in index.map { ["rail": r, "index": $0] } } }
-        else if tag == title { tag = nil; position = nil }
+    /// `id` tells tiles apart when titles repeat (two films called "Brothers"): only the tile that set the tag clears it.
+    static func setFocus(_ title: String, _ focused: Bool, id: String? = nil, rail: Any? = nil, index: Int? = nil) {
+        let key = id ?? title
+        if focused { tag = title; tagID = key; position = rail.flatMap { r in index.map { ["rail": r, "index": $0] } } }
+        else if tagID == key { tag = nil; tagID = nil; position = nil }
         write()
     }
 
@@ -571,9 +574,13 @@ enum TVParityState {
         let found = focusState()
         let state: [String: Any] = ["route": route, "focused": (tag ?? found.label) as Any, "item": found.item as Any,
                                     "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any]
+        // `-PlayarrParityState <path>`: an explicit file (the Mac driver); otherwise the app's Documents folder.
+        let args = ProcessInfo.processInfo.arguments
+        let explicit = args.firstIndex(of: "-PlayarrParityState").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
         guard let data = try? JSONSerialization.data(withJSONObject: state),
-              let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-        try? data.write(to: dir.appendingPathComponent("parity-state.json"), options: .atomic)
+              let target = explicit.map({ URL(fileURLWithPath: $0) })
+                ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("parity-state.json") else { return }
+        do { try data.write(to: target, options: .atomic) } catch { NSLog("PlayarrParity: cannot write %@: %@", target.path, String(describing: error)) }
     }
 }
 #endif

@@ -159,9 +159,11 @@ final class MacFocusEngine {
             return ahead.min(by: { $0.2 + 2 * across($0.1) < $1.2 + 2 * across($1.1) })?.0
         case .up, .down:
             // The nearest row ahead, then the card whose horizontal centre is closest.
-            let row = ahead.map(\.2).min()!
+            // Up and Down stay in their column: the nav clamps at its ends, and the page never jumps into the nav (web).
+            let pool = ahead.filter { ($0.1.midX < 140) == (from.midX < 140) }
+            guard let row = pool.map(\.2).min() else { return nil }
             let rowTolerance: CGFloat = 24
-            return ahead.filter { $0.2 <= row + rowTolerance }.min(by: { across($0.1) < across($1.1) })?.0
+            return pool.filter { $0.2 <= row + rowTolerance }.min(by: { across($0.1) < across($1.1) })?.0
         }
     }
 
@@ -221,6 +223,9 @@ private struct MacFocusLayerKey: EnvironmentKey { static let defaultValue = 0 }
 struct MacSecondary { let action: () -> Void }
 private struct MacSecondaryKey: EnvironmentKey { static let defaultValue: MacSecondary? = nil }
 private struct MacPreferredKey: EnvironmentKey { static let defaultValue = false }
+/// Debug parity: what a focus target names itself in parity-state.json (the Mac's focus is not a SwiftUI focus the tiles can read).
+struct MacParityTag { let title: String; let id: String; let rail: Int?; let index: Int? }
+private struct MacParityTagKey: EnvironmentKey { static let defaultValue: MacParityTag? = nil }
 
 extension EnvironmentValues {
     var macFocusLayer: Int {
@@ -231,6 +236,11 @@ extension EnvironmentValues {
     var macPreferredFocus: Bool {
         get { self[MacPreferredKey.self] }
         set { self[MacPreferredKey.self] = newValue }
+    }
+
+    var macParityTag: MacParityTag? {
+        get { self[MacParityTagKey.self] }
+        set { self[MacParityTagKey.self] = newValue }
     }
 
     var macSecondaryAction: MacSecondary? {
@@ -266,6 +276,7 @@ struct MacFocusTarget: ViewModifier {
     @Environment(\.macFocusLayer) private var layer
     @Environment(\.macSecondaryAction) private var secondary
     @Environment(\.macPreferredFocus) private var preferred
+    @Environment(\.macParityTag) private var parityTag
     @FocusState private var focused: Bool
     @State private var id = UUID()
 
@@ -279,7 +290,12 @@ struct MacFocusTarget: ViewModifier {
                 MacFocusEngine.shared.didHover(id, inside)
                 if inside, isEnabled { focused = true }
             }
-            .onChange(of: focused) { _, now in MacFocusEngine.shared.didFocus(id, now) }
+            .onChange(of: focused) { _, now in
+                MacFocusEngine.shared.didFocus(id, now)
+                #if DEBUG
+                if let t = parityTag { TVParityState.setFocus(t.title, now, id: t.id, rail: t.rail, index: t.index) }
+                #endif
+            }
             .background {
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: .named(macStageSpace))

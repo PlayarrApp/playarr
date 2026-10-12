@@ -19,7 +19,9 @@ function readState(work) {
   return env;
 }
 
-export async function createDriver() {
+export async function createDriver({ args = [] } = {}) {
+  // The D-pad checks compare against web, where Select on a nav item moves focus into the page (-PlayarrSelectEntersPage).
+  const dpadOnly = args.includes("--only") && args[args.indexOf("--only") + 1] === "dpad";
   const device = process.env.DEVICE ?? "tvos";
   if (device !== "tvos" && device !== "macos") throw new Error(`apple-sim driver: ${device} is not supported yet`);
   const mac = device === "macos";
@@ -29,25 +31,34 @@ export async function createDriver() {
   const udid = process.env.SIM_UDID ?? st.UDID, bundle = process.env.SIM_BUNDLE ?? st.BUNDLE;
   if (!mac && (!udid || !bundle)) throw new Error("no simulator in WORK/state.env: run wall.sh up first");
   // The Mac app: keys and snapshots go through its debug remote (notify), the state file sits in the app's own home.
+  const macState = join(work, "parity-state.json");
   const notify = join(work, "notify"), wallSh = join(process.env.TRUSTED ?? "", "scripts/apple-wall/wall.sh");
   let theme = "dark";
   const hold = join(work, "hold-key");
   const frontmost = () => { if (mac) return; try { run("osascript", ["-e", 'tell application "Simulator" to activate']); } catch { /* keep going: keys may still land */ } };
   const launch = async (extra = [], wait = 22000) => {
     if (mac) {
-      run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: extra.join(" ") } });
+      run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
       await sleep(wait + 10000);
+      // The hidden window never takes the app's own first focus: any arrow with nothing focused focuses the first item, as web does on load.
+      run(notify, [`key:${KEYCODE.right}`]);
+      await sleep(1000);
+      if (process.env.DRIVER_TRACE && !globalThis.__targetsLogged) { // once: where the Mac's focus targets sit (diagnosis)
+        globalThis.__targetsLogged = true; run(notify, ["targets"]); await sleep(1500);
+        try { console.log(run("bash", ["-c", `grep "PlayarrMac targets" "${work}/app.log" | sort -u | head -60`]).trim()); } catch { /* diagnosis only */ }
+      }
       return;
     }
     try { run("xcrun", ["simctl", "terminate", udid, bundle]); } catch { /* not running */ }
     await sleep(1000);
-    run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrTheme", theme, "-PlayarrMuted", ...extra]);
+    run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...extra]);
     await sleep(wait); // a launch signs in from the seeded session and loads Home
     frontmost(); await sleep(500);
   };
   const state = () => {
     try {
-      const dir = mac ? join(work, "machome") : run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim();
+      if (mac) return JSON.parse(readFileSync(macState, "utf8"));
+      const dir = run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim();
       return JSON.parse(readFileSync(join(dir, "Documents", "parity-state.json"), "utf8"));
     } catch { return {}; }
   };
@@ -73,7 +84,8 @@ export async function createDriver() {
       if (mac) {
         await launch([], 15000);
         // Where the Mac app wrote its state (the home it runs in may not be the one handed to it).
-        try { console.log("parity-state files:", run("bash", ["-c", `find "${work}/machome" "$HOME/Library/Containers" "$HOME/Documents" -name parity-state.json 2>/dev/null | head -5`]).trim() || "none"); } catch { /* diagnosis only */ }
+        console.log("parity state file:", existsSync(macState) ? "written" : "missing");
+        try { console.log(run("bash", ["-c", `grep -i "PlayarrParity\\|PlayarrMac" "${work}/app.log" | tail -8`]).trim()); } catch { /* diagnosis only */ }
         return;
       }
       // Long-press helper: hold Return for 1.1 s with a CGEvent.

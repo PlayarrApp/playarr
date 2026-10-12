@@ -1,0 +1,1 @@
+- tvOS: Left from the page lands on the nav tile nearest in height (web); the parity focus tag tells apart titles that repeat.

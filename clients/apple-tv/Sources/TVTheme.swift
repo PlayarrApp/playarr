@@ -664,7 +664,9 @@ struct TVFloatingNav: View {
             selection = tab
             externalFocus.wrappedValue = .nav(tab)
             // Web: Select on a tab opens the page and puts focus on its first item (the page loads a moment later).
+            // Debug parity runs only (-PlayarrSelectEntersPage): the screens' key sequences were written for the old behaviour.
             Task { @MainActor in
+                guard ProcessInfo.processInfo.arguments.contains("-PlayarrSelectEntersPage") else { return }
                 try? await Task.sleep(for: .milliseconds(700))
                 if case .nav(tab) = externalFocus.wrappedValue { externalFocus.wrappedValue = .stage }
             }
@@ -701,7 +703,7 @@ struct TVFloatingNav: View {
         .accessibilityLabel(tab.title)
         .focused(externalFocus, equals: .nav(tab))
         #if DEBUG && (os(tvOS) || os(macOS))
-        .onChange(of: isFocused) { _, now in TVParityState.setFocus(tab.title, now, rail: "nav", index: TVNavTab.allCases.firstIndex(of: tab)) }
+        .onChange(of: isFocused) { _, now in TVParityState.setFocus(tab.title, now, id: "nav-" + tab.rawValue, rail: "nav", index: TVNavTab.allCases.firstIndex(of: tab)) }
         #endif
         // not .focusable: on a Button it adds a second, inert focus target. While focus is outside the nav only the
         // active tab can take it, so Left from the page lands on the active tab (web), not the nearest one.

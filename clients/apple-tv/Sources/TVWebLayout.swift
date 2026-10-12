@@ -583,11 +583,11 @@ struct TVCardButton<Label: View>: View {
         Button {
             if longPressed { longPressed = false } else { openRoute(route ?? .work(work)) }
         } label: {
-            label()
+            label().parityFocusTag(work.title, id: work.id.uuidString, rail: parityPosition?.rail, index: parityPosition?.index)
         }
         .focused($focused)
         #if DEBUG && (os(tvOS) || os(macOS))
-        .onChange(of: focused) { _, now in TVParityState.setFocus(work.title, now, rail: parityPosition?.rail, index: parityPosition?.index) }
+        .onChange(of: focused) { _, now in TVParityState.setFocus(work.title, now, id: work.id.uuidString, rail: parityPosition?.rail, index: parityPosition?.index) }
         #endif
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.65).onEnded { _ in
             longPressed = true
@@ -596,6 +596,7 @@ struct TVCardButton<Label: View>: View {
         #if os(macOS)
         // The Mac's long press: a right click, or Shift+Return (macOS/MacFocus.swift).
         .macSecondaryAction { openActions(work) }
+        .environment(\.macParityTag, MacParityTag(title: work.title, id: work.id.uuidString, rail: parityPosition?.rail, index: parityPosition?.index))
         #endif
         // Web: closing the actions drawer returns focus to the card that opened it.
         .onChange(of: actionsWorkID) { previous, current in
@@ -606,9 +607,9 @@ struct TVCardButton<Label: View>: View {
 
 extension View {
     /// Debug-only: names the focused control for the parity driver (see `TVParityState.setFocus`). Apply inside a button's label.
-    @ViewBuilder func parityFocusTag(_ title: String) -> some View {
+    @ViewBuilder func parityFocusTag(_ title: String, id: String? = nil, rail: Any? = nil, index: Int? = nil) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityFocusTag(title: title))
+        modifier(TVParityFocusTag(title: title, id: id, rail: rail, index: index))
         #else
         self
         #endif
@@ -618,12 +619,15 @@ extension View {
 #if DEBUG && (os(tvOS) || os(macOS))
 private struct TVParityFocusTag: ViewModifier {
     let title: String
+    var id: String?
+    var rail: Any?
+    var index: Int?
     @Environment(\.isFocused) private var isFocused
     func body(content: Content) -> some View {
         content
-            .onChange(of: isFocused) { _, now in TVParityState.setFocus(title, now) }
+            .onChange(of: isFocused) { _, now in TVParityState.setFocus(title, now, id: id, rail: rail, index: index) }
             // A control that starts focused (the drawer's first action) never changes.
-            .onAppear { if isFocused { TVParityState.setFocus(title, true) } }
+            .onAppear { if isFocused { TVParityState.setFocus(title, true, id: id, rail: rail, index: index) } }
     }
 }
 #endif
@@ -652,11 +656,13 @@ struct TVActionRow: View {
             .padding(.leading, 18)
             .frame(width: 268, height: 68)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
-            .parityFocusTag(label)
         }
         .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
         .focusEffectDisabled()
         .focused($focused)
+        #if DEBUG && (os(tvOS) || os(macOS))
+        .onChange(of: focused) { _, now in TVParityState.setFocus(label, now) }
+        #endif
         .task { if preferred { focused = true } }
         #if os(macOS)
         .macPreferredFocus(preferred)
