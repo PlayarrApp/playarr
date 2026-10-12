@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox wall: debug frames of the calendar view picker are uploaded.
+- Xbox wall: the dark job really sets the dark theme, a luminance guard refuses a frame of the wrong theme, and the playback job runs only on request.
 - Android: after the server reaps or evicts a transcode session (or the source cannot be decoded), the replacement session keeps a paused player paused instead of always starting playback.
 - Fire TV: the calendar's month view is rebuilt to the web's (text lines with a status dot, the day number and "+N more" in a 44 px bottom row, up to four lines a cell). For the parity suite, a build with PLAYARR_PARITY_CONTROL=1 carries a control channel (route, open, play, theme and state over the platform message bus) and scripts/parity/drivers/firetv.mjs drives it; a normal build has neither.
 - Roku series detail opens on the next-up episode (the resume plan is requested first), the unwatched dot has the web's white ring, and calendar week cards carry the rounded availability border.
