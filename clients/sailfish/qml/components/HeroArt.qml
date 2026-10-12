@@ -12,6 +12,7 @@ Item {
     property real imgH: 0             // or an explicit picture height (Home: the picture is taller than the visible strip)
     property real fadeFrom: 0.26      // where the page colour starts to cover it
     property real fadeTo: 0.54
+    property real artOpacity: Tokens.dark ? 0.72 : 0.42
     width: parent ? parent.width : 0
     height: boxH
     clip: true
@@ -20,7 +21,7 @@ Item {
         width: parent.width
         height: root.imgH > 0 ? root.imgH : root.imgFrac * root.boxH
         clip: true
-        opacity: Tokens.dark ? 0.72 : 0.42
+        opacity: root.artOpacity
         layer.enabled: true
         Image {
             id: im

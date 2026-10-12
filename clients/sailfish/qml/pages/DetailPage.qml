@@ -281,18 +281,11 @@ PlayarrPage {
                 // The web lays the actions over a faded slice of the series backdrop.
                 Item {
                     width: parent.width; height: 68 * Tokens.u
-                    Artwork {
-                        anchors.fill: parent; radius: 0; hero: true
-                        opacity: Tokens.dark ? 0.16 : 0.28
-                        work: page.work
-                        kinds: ["backdrop", "poster", "thumb"]
-                    }
-                    Rectangle {
-                        anchors.fill: parent
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: "transparent" }
-                            GradientStop { position: 1.0; color: Tokens.bg }
-                        }
+                    z: -1   // the slice starts above the row, under the overview text
+                    HeroArt {
+                        y: -12.7 * Tokens.u
+                        work: page.work; kinds: ["backdrop", "poster", "thumb"]
+                        boxH: 95 * Tokens.u; imgH: 120 * Tokens.u; artOpacity: Tokens.dark ? 0.2 : 0.42; fadeFrom: 0.4; fadeTo: 1
                     }
                     Row {
                         y: 1 * Tokens.u
