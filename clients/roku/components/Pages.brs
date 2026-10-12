@@ -34,6 +34,7 @@ sub pagesInit()
     m.pageFocusIdx = 0
     m.pageKind = ""
     m.clientGuideOpen = false
+    m.clientActiveId = ""
     m.pageData = invalid
     m.pageStatus = ""
     m.calendarAnchor = invalid
@@ -149,7 +150,7 @@ sub pgFocusable(x as Float, y as Float, w as Float, h as Float, r as Float, acti
 end sub
 
 ' Pill button: width from the text. style "primary" (accent fill) or "secondary" (outlined). Returns the width.
-function pgButton(parent as Object, x as Float, y as Float, h as Float, text as String, style as String, action as String, data = invalid as Dynamic, padX = 21 as Float) as Float
+function pgButton(parent as Object, x as Float, y as Float, h as Float, text as String, style as String, action as String, data = invalid as Dynamic, padX = 21 as Float, scrolls = false as Boolean) as Float
     probe = pgLabel(parent, x, y, 0, h, text, 15, 700, "inkSoft")
     textW = probe.boundingRect().width
     parent.removeChild(probe)
@@ -163,7 +164,7 @@ function pgButton(parent as Object, x as Float, y as Float, h as Float, text as 
         pgRound(parent, x, y, w, h, h / 2, "line", -1, true)
     end if
     pgLabel(parent, x, y, w, h, text, 15, 700, textRole, { horizAlign: "center", vertAlign: "center" })
-    pgFocusable(x, y, w, h, h / 2, action, data)
+    pgFocusable(x, y, w, h, h / 2, action, data, scrolls)
     return w
 end function
 
@@ -189,7 +190,7 @@ end sub
 
 ' Shell header shared by every page: round back button, title; panelX is where the right-hand panel starts (0 = none).
 sub pageBegin(title as String, panelX as Float)
-    clientsIndex = m.pageKind = "clients" and m.clientGuideOpen <> true
+    clientsPage = m.pageKind = "clients"
     m.pageBody.removeChildrenIndex(m.pageBody.getChildCount(), 0)
     m.pageHead.removeChildrenIndex(m.pageHead.getChildCount(), 0)
     m.pageItems = []
@@ -205,16 +206,16 @@ sub pageBegin(title as String, panelX as Float)
         m.pagePanel.translation = [panelX + 260, 0]
         m.pagePanel.width = 1920 - panelX - 260
     end if
-    if m.pageBg <> invalid then m.pageBg.visible = not clientsIndex
-    if m.clientsStageBg <> invalid then m.clientsStageBg.visible = clientsIndex
-    if m.clientsStageChrome <> invalid then m.clientsStageChrome.visible = clientsIndex
+    if m.pageBg <> invalid then m.pageBg.visible = not clientsPage
+    if m.clientsStageBg <> invalid then m.clientsStageBg.visible = clientsPage
+    if m.clientsStageChrome <> invalid then m.clientsStageChrome.visible = clientsPage
     backX = 153.6
-    if clientsIndex then backX = 0
+    if clientsPage then backX = 0
     pgRound(m.pageHead, backX, 56.3, 50, 50, 25, "surface", 179)
     pgRound(m.pageHead, backX, 56.3, 50, 50, 25, "line", -1, true)
     pgIcon(m.pageHead, backX + 16.4, 73, 17, "arrow-left.png", "inkSoft")
     pgFocusable(backX, 56.3, 50, 50, 25, "back")
-    if clientsIndex
+    if clientsPage
         pgFocusable(1552, 50, 144, 48, 24, "clientsTheme")
         pgFocusable(1710, 50, 168, 48, 24, "clientsLanguage")
         applyClientsChrome()
@@ -269,7 +270,7 @@ sub pageFocusRender()
     for each it in m.pageItems
         if it.scrolls = true and it.y + it.h > bottom then bottom = it.y + it.h
     end for
-    if m.pageKind = "clients" and m.clientGuideOpen <> true
+    if m.pageKind = "clients"
         m.pageFadeTop.visible = false
         m.pageFadeBottom.visible = false
     else
@@ -277,8 +278,8 @@ sub pageFocusRender()
     end if
     radius = 25
     if item.r < 25 then radius = 12
-    if m.pageKind = "clients" and m.clientGuideOpen <> true
-        if item.action = "clientChoice"
+    if m.pageKind = "clients"
+        if item.action = "clientChoice" or item.action = "clientActive"
             m.pageRing.uri = "pkg:/images/clients-focus-ring.png"
         else
             m.pageRing.uri = "pkg:/images/round-ring-r" + radius.ToStr() + ".9.png"
@@ -382,7 +383,7 @@ function pageOnKey(key as String) as Boolean
             loadProfiles()
         else if m.pageKind = "clients"
             if m.clientGuideOpen
-                leaveRokuGuideToClientList()
+                leaveClientDetailsToClientList()
             else
                 leaveClientsToProfiles()
             end if
@@ -396,7 +397,7 @@ function pageOnKey(key as String) as Boolean
         return true
     end if
     if key = "up" or key = "down" or key = "left" or key = "right"
-        if m.pageKind = "clients" and m.clientGuideOpen <> true and m.pageItems.Count() > 0
+        if m.pageKind = "clients" and m.pageItems.Count() > 0
             action = m.pageItems[m.pageFocusIdx].action
             if action = "back" or action = "clientsTheme" or action = "clientsLanguage"
                 if key = "right"
@@ -414,22 +415,36 @@ function pageOnKey(key as String) as Boolean
                     end if
                     return true
                 else if key = "down"
-                    if action = "clientsTheme" or action = "clientsLanguage"
-                        m.pageFocusIdx = 3
-                        pageFocusRender()
+                    if action = "back" or action = "clientsTheme" or action = "clientsLanguage"
+                        if m.clientGuideOpen and m.clientActiveId <> invalid
+                            focusClientTile(m.clientActiveId)
+                        else
+                            m.pageFocusIdx = 3
+                            pageFocusRender()
+                        end if
                     end if
                     return true
                 end if
                 return true
             end if
-            if key = "up" and m.pageItems[m.pageFocusIdx].action = "clientChoice" and m.pageItems[m.pageFocusIdx].y < 500
+            if key = "up" and (action = "clientChoice" or action = "clientActive") and m.pageItems[m.pageFocusIdx].y < 500
                 focusClientsHeader("clientsTheme")
+                return true
+            end if
+            if action = "clientActive" and (key = "left" or key = "right")
+                direction = -1
+                if key = "right" then direction = 1
+                changeClientSelection(direction)
                 return true
             end if
         end if
         if pageMoveFocus(key) then return true
+        if m.pageKind = "clients" and m.clientGuideOpen and (key = "up" or key = "down")
+            scrollClientDetails(key)
+            return true
+        end if
         if key = "left"
-            if m.pageKind = "clients" and m.clientGuideOpen <> true then return true
+            if m.pageKind = "clients" then return true
             m.navDockMode = true
             m.navDockIndex = activeNavDockIndex()
             if m.navDockIndex < 0 then m.navDockIndex = firstEnabledNavIndex()
@@ -441,12 +456,32 @@ function pageOnKey(key as String) as Boolean
     return false
 end function
 
+sub scrollClientDetails(direction as String)
+    if m.clientsContentBottom = invalid then return
+    maxScroll = m.clientsContentBottom - 1030
+    if maxScroll < 0 then return
+    oldY = m.pageScrollY
+    if direction = "down"
+        m.pageScrollY = m.pageScrollY - 300
+    else
+        m.pageScrollY = m.pageScrollY + 300
+    end if
+    if m.pageScrollY < -maxScroll then m.pageScrollY = -maxScroll
+    if m.pageScrollY > 0 then m.pageScrollY = 0
+    delta = m.pageScrollY - oldY
+    m.pageBody.translation = [0, m.pageScrollY]
+    if m.pageRing <> invalid and m.pageRing.visible
+        ringY = m.pageRing.translation[1]
+        m.pageRing.translation = [m.pageRing.translation[0], ringY + delta]
+    end if
+end sub
+
 sub pageActivate(item as Object)
     action = item.action
     if action = "back"
         if m.pageKind = "clients"
             if m.clientGuideOpen
-                leaveRokuGuideToClientList()
+                leaveClientDetailsToClientList()
             else
                 leaveClientsToProfiles()
             end if
@@ -468,18 +503,11 @@ sub pageActivate(item as Object)
     else if m.pageKind = "clients" and item.action = "clientsLanguage"
         openPairingLanguagePicker()
     else if m.pageKind = "clients" and action = "clientChoice"
-        clientId = item.data
-        if clientId = "roku"
-            m.clientGuideOpen = true
-            showOnly("page")
-            renderRokuInstallGuide()
-            m.pageFocusIdx = 0
-            pageFocusRender()
-        else
-            showClientGuideUnavailable(clientId)
-        end if
+        showClientDetails(item.data)
+    else if m.pageKind = "clients" and action = "clientOpenLink"
+        showClientLinkDialog(item.data)
     else if m.pageKind = "clients" and action = "clientsGuideInfo"
-        showClientGuideUnavailable("roku")
+        showClientLinkDialog({ title: "Roku official developer guide", url: "https://developer.roku.com/dev/docs/developer-setup" })
     end if
 end sub
 
@@ -488,7 +516,11 @@ end sub
 
 sub openPage(kind as String)
     m.pageKind = kind
-    if kind = "clients" then m.clientGuideOpen = false
+    if kind = "clients"
+        m.clientGuideOpen = false
+        m.clientActiveId = ""
+        m.clientsContentBottom = 0
+    end if
     parityEmit("page", kind)
     m.pageData = invalid
     m.pageStatus = "loading"
@@ -524,6 +556,7 @@ sub openPage(kind as String)
     else if kind = "clients"
         m.pageStatus = "ready"
         m.clientGuideOpen = false
+        m.clientActiveId = ""
         renderClientsIndex()
     end if
     pageFocusRender()
@@ -714,11 +747,117 @@ sub centerClientsTitle()
     if width > 0 then m.clientsTitle.translation = [Int((1920 - width) / 2), 198]
 end sub
 
-' The Web /clients index uses four columns of 220px bubbles on a 286px pitch at 1920x1080.
-sub renderClientsIndex()
-    pageBegin("", 0)
-    m.clientBubbles = []
+' Web's shared client order is used for both the four-column landing grid and the detail coverflow.
+function clientsIds() as Object
+    return ["vidaa", "android", "apple", "webos", "tizen", "roku", "chromecast", "xbox", "harmony", "firetv", "server"]
+end function
 
+function clientsIndexOf(clientId as String) as Integer
+    ids = clientsIds()
+    for i = 0 to ids.Count() - 1
+        if ids[i] = clientId then return i
+    end for
+    return -1
+end function
+
+function clientCoverflowPosition(offset as Integer) as Float
+    magnitude = Abs(offset)
+    position = 0.0
+    stepSize = 1.0
+    for i = 0 to magnitude - 1
+        position = position + stepSize
+        stepSize = stepSize * 0.55
+    end for
+    if offset < 0 then position = -position
+    return position
+end function
+
+function clientCoverflowScale(offset as Integer) as Float
+    magnitude = Abs(offset)
+    if magnitude = 0 then return 1.22
+    scale = 0.87 - (magnitude - 1) * 0.13
+    if scale < 0.4 then scale = 0.4
+    return scale
+end function
+
+sub drawClientBubble(clientId as String, x as Float, y as Float, size as Float)
+    fill = CreateObject("roSGNode", "Poster")
+    fill.uri = "pkg:/images/clients-bubble.png"
+    fill.translation = [x, y]
+    fill.width = size
+    fill.height = size
+    fill.blendColor = ThemeColor("surfaceStrong")
+    ThemeSetRole(fill, "surfaceStrong")
+    m.pageBody.AppendChild(fill)
+
+    border = CreateObject("roSGNode", "Poster")
+    border.uri = "pkg:/images/clients-bubble-border.png"
+    border.translation = [x, y]
+    border.width = size
+    border.height = size
+    m.pageBody.AppendChild(border)
+
+    icon = CreateObject("roSGNode", "Poster")
+    icon.uri = "pkg:/images/client-icon-" + clientId + ".png"
+    iconSize = size * 0.48
+    if clientId = "harmony" then iconSize = size * 0.62
+    icon.translation = [x + (size - iconSize) / 2, y + (size - iconSize) / 2]
+    icon.width = iconSize
+    icon.height = iconSize
+    icon.blendColor = clientPlatformIconColor(clientId)
+    m.pageBody.AppendChild(icon)
+    m.clientBubbles.Push({ id: clientId, fill: fill, border: border, icon: icon })
+end sub
+
+sub renderClientTrack(activeId as String)
+    ids = clientsIds()
+    if activeId = ""
+        columns = 4
+        rows = 3
+        tileSize = 220.0
+        pitch = 286.0
+        for i = 0 to ids.Count() - 1
+            row = Int(i / columns)
+            col = i - row * columns
+            itemsInRow = columns
+            if row = rows - 1 then itemsInRow = ids.Count() - row * columns
+            offsetX = col - (itemsInRow - 1) / 2.0
+            offsetY = row - (rows - 1) / 2.0
+            x = 960 + offsetX * pitch - tileSize / 2
+            y = 770 + offsetY * pitch - tileSize / 2
+            drawClientBubble(ids[i], x, y, tileSize)
+            pgFocusable(x, y, tileSize, tileSize, tileSize / 2, "clientChoice", ids[i], true)
+        end for
+        return
+    end if
+
+    selected = clientsIndexOf(activeId)
+    total = ids.Count()
+    tileSize = 220.0
+    spacing = tileSize * 1.15
+    for layer = 5 to 0 step -1
+        offsets = [0]
+        if layer > 0 then offsets = [-layer, layer]
+        for each offset in offsets
+            idx = selected + offset
+            while idx < 0
+                idx = idx + total
+            end while
+            while idx >= total
+                idx = idx - total
+            end while
+            size = tileSize * clientCoverflowScale(offset)
+            x = 960 + clientCoverflowPosition(offset) * spacing - size / 2
+            y = 494 - size / 2
+            drawClientBubble(ids[idx], x, y, size)
+            if offset = 0
+                pgFocusable(x, y, size, size, size / 2, "clientActive", activeId, true)
+            end if
+        end for
+    end for
+end sub
+
+sub renderClientsHeader()
     m.clientsKicker = CreateObject("roSGNode", "TrackedText")
     m.clientsKicker.ObserveField("textWidth", "centerClientsKicker")
     m.clientsKicker.spec = { text: "PLAYARR CLIENTS", size: 12, weight: 760, tracking: 2.16, role: "inkMuted", upper: true }
@@ -732,113 +871,351 @@ sub renderClientsIndex()
     m.clientsTitle.translation = [700, 198]
     centerClientsTitle()
     m.pageBody.AppendChild(m.clientsTitle)
+end sub
 
-    ids = ["vidaa", "android", "apple", "webos", "tizen", "roku", "chromecast", "xbox", "harmony", "firetv", "server"]
-    total = ids.Count()
-    columns = 4
-    rows = 3
-    tileSize = 220.0
-    pitch = 286.0
-    for i = 0 to total - 1
-        row = Int(i / columns)
-        col = i - row * columns
-        itemsInRow = columns
-        if row = rows - 1 then itemsInRow = total - row * columns
-        offsetX = col - (itemsInRow - 1) / 2.0
-        offsetY = row - (rows - 1) / 2.0
-        x = 960 + offsetX * pitch - tileSize / 2
-        y = 770 + offsetY * pitch - tileSize / 2
-
-        fill = CreateObject("roSGNode", "Poster")
-        fill.uri = "pkg:/images/clients-bubble.png"
-        fill.translation = [x, y]
-        fill.width = tileSize
-        fill.height = tileSize
-        fill.blendColor = ThemeColor("surfaceStrong")
-        ThemeSetRole(fill, "surfaceStrong")
-        m.pageBody.AppendChild(fill)
-
-        border = CreateObject("roSGNode", "Poster")
-        border.uri = "pkg:/images/clients-bubble-border.png"
-        border.translation = [x, y]
-        border.width = tileSize
-        border.height = tileSize
-        m.pageBody.AppendChild(border)
-
-        icon = CreateObject("roSGNode", "Poster")
-        icon.uri = "pkg:/images/client-icon-" + ids[i] + ".png"
-        iconSize = tileSize * 0.48
-        if ids[i] = "harmony" then iconSize = tileSize * 0.62
-        icon.translation = [x + (tileSize - iconSize) / 2, y + (tileSize - iconSize) / 2]
-        icon.width = iconSize
-        icon.height = iconSize
-        icon.blendColor = clientPlatformIconColor(ids[i])
-        m.pageBody.AppendChild(icon)
-
-        m.clientBubbles.Push({ id: ids[i], fill: fill, border: border, icon: icon })
-        pgFocusable(x, y, tileSize, tileSize, tileSize / 2, "clientChoice", ids[i], true)
-    end for
-
+sub renderClientsIndex()
+    pageBegin("", 0)
+    m.clientBubbles = []
+    renderClientsHeader()
+    renderClientTrack("")
     applyClientsChrome()
-    m.pageFocusIdx = 3 ' Back, theme, language precede the Web default focus on the first bubble.
+    m.pageFocusIdx = 3 ' Back, theme and language precede the default first platform.
     pageFocusRender()
 end sub
 
-' The native /clients/roku guide. Roku has no in-app browser or download handoff, so show the install steps directly and expose
-' the official guide through an explanatory dialog.
-sub renderRokuInstallGuide()
-    pageBegin("Clients", 0)
-    pgLabel(m.pageBody, 224, 126, 900, 18, "PLAYARR CLIENTS", 10, 800, "brandInk")
-    pgLabel(m.pageBody, 224, 153, 1400, 55, "Roku TV", 40, 500, "ink")
-    pgLabel(m.pageBody, 224, 215, 1460, 46, "The preview ZIP is the complete Roku channel bundle. Roku's development installer expects the archive itself, so keep it zipped.", 15, 400, "inkSoft", { wrap: true, maxLines: 2 })
+function clientMetadata(clientId as String) as Object
+    data = { name: "", platform: "", description: "", status: "Coming soon" }
+    if clientId = "vidaa"
+        data = { name: "Hisense VIDAA", platform: "Hisense smart TVs", description: "The hosted custom store can add a Playarr launcher tile when used with a compatible DNS or interception setup.", status: "Available · Experimental install" }
+    else if clientId = "android"
+        data = { name: "Android", platform: "Phones, tablets and TVs", description: "The same responsive APK detects phones, tablets, Android TV and Google TV, then selects touch or remote navigation automatically.", status: "Available" }
+    else if clientId = "apple"
+        data = { name: "Apple", platform: "iPhone, iPad and Apple TV", description: "The native Apple client is coming soon; a distributable signed release is not available yet.", status: "Coming soon" }
+    else if clientId = "webos"
+        data = { name: "LG webOS", platform: "LG smart TVs", description: "The webOS app packages Playarr's full TV interface, server pairing, remote navigation and playback in an installable IPK for LG televisions.", status: "Available · Developer preview" }
+    else if clientId = "tizen"
+        data = { name: "Samsung Tizen", platform: "Samsung smart TVs", description: "The Tizen app packages Playarr's full TV interface, server pairing, remote navigation and AVPlay playback in a Samsung TV widget.", status: "Available · Developer preview" }
+    else if clientId = "roku"
+        data = { name: "Roku TV", platform: "Roku televisions", description: "The preview ZIP is the complete Roku channel bundle. Roku's development installer expects the archive itself, so keep it zipped.", status: "Available · Experimental install" }
+    else if clientId = "chromecast"
+        data = { name: "Chromecast", platform: "Chromecast built-in devices", description: "The Chromecast sender and receiver are built and tested for the Playarr web and Android apps, with an iOS sender in progress. Casting is not live yet: it needs a receiver registered with the Google Cast Developer Console before any real device can use it.", status: "Coming soon" }
+    else if clientId = "xbox"
+        data = { name: "Xbox", platform: "Xbox Series X|S and Xbox One", description: "The native Xbox client is in development. It will install as a signed package, so no release is available to download yet.", status: "Coming soon" }
+    else if clientId = "harmony"
+        data = { name: "HarmonyOS", platform: "Huawei phones, tablets and Vision TVs", description: "The native HarmonyOS client is in development. It will install as a signed package, so no release is available to download yet.", status: "Coming soon" }
+    else if clientId = "firetv"
+        data = { name: "Fire TV", platform: "Amazon Fire TV devices", description: "The native Fire TV client is in development. It will install as a signed package, so no release is available to download yet.", status: "Coming soon" }
+    else if clientId = "server"
+        data = { name: "Playarr Server", platform: "Linux, Docker and Kubernetes hosts", description: "Playarr Server catalogues your library from the library sources you already run, generates thumbnails, probes audio and subtitle tracks and transcodes on demand. Every Playarr client on this page connects to it. Your media stays on your own hardware.", status: "Release 0.1.0 · Linux and Docker" }
+    end if
+    return data
+end function
 
-    pgLabel(m.pageBody, 224, 287, 900, 18, "DEVELOPER-MODE SIDELOAD", 10, 800, "brandInk")
-    pgLabel(m.pageBody, 224, 311, 1400, 43, "Install Playarr on your Roku", 30, 500, "ink")
-    pgLabel(m.pageBody, 224, 360, 1440, 40, "Keep the Roku and the phone or computer used for installation on the same local network. The Roku app cannot download the ZIP, so save it on that other device first.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
+function centeredClientButton(y as Float, label as String, url as String, style = "primary" as String) as Float
+    width = Len(label) * 8.8 + 42
+    x = 960 - width / 2
+    return pgButton(m.pageBody, x, y, 48, label, style, "clientOpenLink", { title: label, url: url }, 21, true)
+end function
 
-    clientInstallStep(224, 420, "01", "Enable Developer Mode", "On the Roku remote, press Home three times, Up twice, then Right, Left, Right, Left, Right. Note the URL shown, enable the Development Application Installer, accept the agreement and create a password. The Roku will restart.")
-    clientInstallStep(996, 420, "02", "Open the web installer", "From a phone or computer on the same network, open the URL shown on the TV. Sign in with the username rokudev and the developer password you created.")
-    clientInstallStep(224, 568, "03", "Upload the ZIP unchanged", "Choose Upload, select playarr-roku.zip without extracting it, then choose Install. Roku launches Playarr when the sideload finishes.")
-    clientInstallStep(996, 568, "04", "Connect Playarr", "Enter your Playarr Server base URL, follow the code shown on the TV to authorise the Roku, then choose a household profile.")
-
-    pgRound(m.pageBody, 224, 734, 1488, 54, 27, "surface", 204)
-    pgRound(m.pageBody, 224, 734, 1488, 54, 27, "line", -1, true)
-    pgLabel(m.pageBody, 248, 734, 820, 54, "Official guide: https://developer.roku.com/dev/docs/developer-setup", 13, 700, "ink", { vertAlign: "center" })
-    pgButton(m.pageBody, 1480, 740, 42, "About this link", "secondary", "clientsGuideInfo", invalid, 14)
-
-    pgRound(m.pageBody, 224, 812, 1488, 124, 18, "surfaceStrong", 205)
-    pgLabel(m.pageBody, 256, 834, 1400, 16, "IMPORTANT", 10, 800, "brandInk")
-    pgLabel(m.pageBody, 256, 858, 1400, 34, "Only one sideloaded app can be installed.", 22, 650, "ink")
-    pgLabel(m.pageBody, 256, 899, 1400, 30, "Installing another development app replaces Playarr. If Roku rejects an identical version, remove the existing sideloaded app and install the ZIP again.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
+sub drawClientPanel(x as Float, y as Float, w as Float, h as Float, safety = false as Boolean)
+    if safety
+        pgRound(m.pageBody, x, y, w, h, 28, "surfaceStrong", 204)
+    else
+        pgRound(m.pageBody, x, y, w, h, 28, "surfaceStrong", 174)
+        pgRound(m.pageBody, x, y, w, h, 28, "lineStrong", 174, true)
+    end if
 end sub
 
-sub showClientGuideUnavailable(clientId as String)
-    link = "https://playarr.app/clients/" + clientId
-    title = "Client guide on another device"
-    message = "Roku apps cannot open a web browser. On a phone or computer, visit " + link + "."
-    if clientId = "roku"
-        title = "Roku official developer guide"
-        message = "Roku apps cannot open a web browser. On a phone or computer, visit https://developer.roku.com/dev/docs/developer-setup."
+sub clientSectionHeading(y as Float, number as String, kicker as String, title as String)
+    pgLabel(m.pageBody, 530, y, 36, 22, number, 11, 700, "inkMuted", { mono: true })
+    pgLabel(m.pageBody, 580, y, 780, 18, UCase(kicker), 10, 800, "brandInk")
+    pgLabel(m.pageBody, 580, y + 24, 920, 42, title, 30, 500, "ink")
+end sub
+
+sub clientInstallStep(x as Float, y as Float, number as String, title as String, description as String)
+    pgRound(m.pageBody, x, y, 430, 190, 18, "surface", 188)
+    pgRound(m.pageBody, x, y, 430, 190, 18, "lineStrong", 156, true)
+    pgLabel(m.pageBody, x + 22, y + 18, 38, 20, number, 11, 700, "inkMuted", { mono: true })
+    pgLabel(m.pageBody, x + 74, y + 16, 326, 48, title, 17, 700, "ink", { wrap: true, maxLines: 2 })
+    pgLabel(m.pageBody, x + 74, y + 70, 326, 108, description, 13, 400, "inkSoft", { wrap: true, maxLines: 6 })
+end sub
+
+sub showClientDetails(clientId as String)
+    m.clientActiveId = clientId
+    m.clientGuideOpen = true
+    showOnly("page")
+    renderClientDetails(clientId)
+    focusClientTile(clientId)
+    m.top.SetFocus(true)
+end sub
+
+sub changeClientSelection(direction as Integer)
+    ids = clientsIds()
+    current = clientsIndexOf(m.clientActiveId)
+    if current < 0 then return
+    current = current + direction
+    if current < 0 then current = ids.Count() - 1
+    if current >= ids.Count() then current = 0
+    m.clientActiveId = ids[current]
+    renderClientDetails(m.clientActiveId)
+    focusClientTile(m.clientActiveId)
+    m.top.SetFocus(true)
+end sub
+
+sub focusClientTile(clientId as String)
+    for i = 0 to m.pageItems.Count() - 1
+        if m.pageItems[i].action = "clientActive" and m.pageItems[i].data = clientId
+            m.pageFocusIdx = i
+            pageFocusRender()
+            return
+        end if
+    end for
+end sub
+
+sub renderClientSummary(clientId as String, info as Object)
+    panelHeight = 560
+    if clientId = "webos" or clientId = "tizen" then panelHeight = 650
+    if clientId = "android" then panelHeight = 360
+    if clientId = "server" then panelHeight = 820
+    drawClientPanel(580, 700, 760, panelHeight)
+    if clientId = "android"
+        pgLabel(m.pageBody, 700, 748, 520, 18, UCase(info.platform), 10, 800, "inkMuted", { horizAlign: "center" })
+        pgLabel(m.pageBody, 640, 778, 640, 60, "One Android app. Every screen.", 40, 500, "ink", { horizAlign: "center" })
+        pgLabel(m.pageBody, 640, 852, 640, 72, info.description, 14, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
+        pgLabel(m.pageBody, 700, 936, 520, 22, UCase(info.status), 10, 800, "inkMuted", { horizAlign: "center" })
+        return
     end if
+
+    logo = CreateObject("roSGNode", "Poster")
+    logo.uri = "pkg:/images/clients-bubble.png"
+    logo.translation = [868, 738]
+    logo.width = 184
+    logo.height = 184
+    logo.blendColor = ThemeColor("surfaceStrong")
+    ThemeSetRole(logo, "surfaceStrong")
+    m.pageBody.AppendChild(logo)
+    logoBorder = CreateObject("roSGNode", "Poster")
+    logoBorder.uri = "pkg:/images/clients-bubble-border.png"
+    logoBorder.translation = [868, 738]
+    logoBorder.width = 184
+    logoBorder.height = 184
+    m.pageBody.AppendChild(logoBorder)
+    logoMark = CreateObject("roSGNode", "Poster")
+    logoMark.uri = "pkg:/images/client-icon-" + clientId + ".png"
+    iconSize = 88
+    if clientId = "harmony" then iconSize = 114
+    logoMark.translation = [960 - iconSize / 2, 830 - iconSize / 2]
+    logoMark.width = iconSize
+    logoMark.height = iconSize
+    logoMark.blendColor = clientPlatformIconColor(clientId)
+    m.pageBody.AppendChild(logoMark)
+    pgLabel(m.pageBody, 700, 950, 520, 18, UCase(info.platform), 10, 800, "inkMuted", { horizAlign: "center" })
+
+    title = info.name
+    if clientId = "webos" then title = "Playarr for LG webOS."
+    if clientId = "tizen" then title = "Playarr for Samsung Tizen."
+    if clientId = "server" then title = "Playarr Server."
+    pgLabel(m.pageBody, 640, 976, 640, 62, title, 42, 500, "ink", { horizAlign: "center" })
+    descriptionHeight = 96
+    statusY = 1142
+    if clientId = "webos" or clientId = "tizen"
+        descriptionHeight = 58
+        statusY = 1156
+        pgLabel(m.pageBody, 640, 1042, 640, descriptionHeight, info.description, 13, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
+        note = "A WGT must carry valid Samsung/Tizen signatures for its target install path. The package is shown when a compatible signed artifact has been published; otherwise build with your own certificate profile."
+        if clientId = "webos" then note = "The package button serves the latest developer IPK only after one has been published. If it is unavailable, build the same IPK from source with the commands below."
+        pgLabel(m.pageBody, 640, 1102, 640, 48, note, 12, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
+    else
+        pgLabel(m.pageBody, 640, 1042, 640, descriptionHeight, info.description, 14, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 4 })
+    end if
+    pgLabel(m.pageBody, 700, statusY, 520, 22, UCase(info.status), 10, 800, "inkMuted", { horizAlign: "center" })
+end sub
+
+sub renderClientDetails(clientId as String)
+    pageBegin("", 0)
+    m.clientBubbles = []
+    renderClientsHeader()
+    renderClientTrack(clientId)
+    info = clientMetadata(clientId)
+    if clientId <> "vidaa" then renderClientSummary(clientId, info)
+
+    if clientId = "roku"
+        centeredClientButton(1184, "Download Roku ZIP", "https://playarr.app/downloads/roku/playarr-roku.zip")
+    else if clientId = "android"
+        centeredClientButton(988, "Download Android APK", "https://playarr.app/downloads/android/playarr-android.apk")
+    else if clientId = "webos"
+        centeredClientButton(1190, "Download LG webOS IPK", "https://playarr.app/downloads/webos/playarr-webos.ipk")
+        pgButton(m.pageBody, 1030, 1248, 48, "Open source and README", "secondary", "clientOpenLink", { title: "LG webOS source and README", url: "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-webos" }, 18, true)
+    else if clientId = "tizen"
+        centeredClientButton(1190, "Download signed Samsung WGT", "https://playarr.app/downloads/tizen/playarr-tizen.wgt")
+        pgButton(m.pageBody, 1030, 1248, 48, "Open source and README", "secondary", "clientOpenLink", { title: "Samsung Tizen source and README", url: "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-tizen" }, 18, true)
+    else if clientId = "server"
+        pgLabel(m.pageBody, 660, 1180, 600, 60, "Prebuilt Linux tarballs (x86-64 and ARM64) and a public container image are published with every release. Each tarball holds the server, the Admin UI, the licence and example systemd units. Pick the build for your CPU.", 12, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
+        centeredClientButton(1250, "Download Linux x86-64 (.tar.gz)", "https://playarr.app/downloads/server/playarr-server-linux-amd64.tar.gz")
+        centeredClientButton(1310, "Download Linux ARM64 (.tar.gz)", "https://playarr.app/downloads/server/playarr-server-linux-arm64.tar.gz", "secondary")
+        centeredClientButton(1370, "SHA-256 checksum file, x86-64", "https://playarr.app/downloads/server/playarr-server-linux-amd64.tar.gz.sha256", "secondary")
+        centeredClientButton(1430, "SHA-256 checksum file, ARM64", "https://playarr.app/downloads/server/playarr-server-linux-arm64.tar.gz.sha256", "secondary")
+        pgLabel(m.pageBody, 650, 1490, 620, 54, "Check the download with sha256sum before you run it. Needs 64-bit Linux with glibc 2.39 or newer and ffmpeg on the PATH; the container image includes everything.", 12, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
+    end if
+
+    m.clientsContentBottom = 1280
+    if clientId = "roku" then m.clientsContentBottom = 2178
+    if clientId = "vidaa" then m.clientsContentBottom = 2040
+    if clientId = "webos" or clientId = "tizen" then m.clientsContentBottom = 2200
+    if clientId = "server" then m.clientsContentBottom = 4050
+    if clientId = "roku"
+        renderRokuClientGuide()
+    else if clientId = "vidaa"
+        renderVidaaClientGuide()
+    else if clientId = "webos" or clientId = "tizen"
+        renderSmartTvClientGuide(clientId)
+    else if clientId = "server"
+        renderServerClientGuide()
+    end if
+    pgLabel(m.pageBody, 560, m.clientsContentBottom + 60, 800, 26, "One library. Every screen. Your server stays yours.", 12, 400, "inkSoft", { horizAlign: "center" })
+    applyClientsChrome()
+end sub
+
+sub showClientLinkDialog(info as Object)
+    if info = invalid then return
     dialog = CreateObject("roSGNode", "Dialog")
-    dialog.title = title
-    dialog.message = message
+    dialog.title = info.title
+    dialog.message = "Roku has no web browser or package installer for this link. On a phone or computer, open: " + info.url
     dialog.buttons = ["OK"]
     dialog.ObserveField("buttonSelected", "onSimpleDialogButton")
     m.top.dialog = dialog
 end sub
 
-sub clientInstallStep(x as Float, y as Float, number as String, title as String, description as String)
-    pgRound(m.pageBody, x, y, 716, 132, 18, "surfaceStrong", 174)
-    pgRound(m.pageBody, x, y, 716, 132, 18, "line", 138, true)
-    pgLabel(m.pageBody, x + 22, y + 18, 38, 20, number, 11, 700, "inkMuted", { mono: true })
-    pgLabel(m.pageBody, x + 74, y + 16, 620, 25, title, 17, 700, "ink")
-    pgLabel(m.pageBody, x + 74, y + 50, 620, 72, description, 13, 400, "inkSoft", { wrap: true, maxLines: 4 })
+sub renderRokuClientGuide()
+    y = 1340
+    clientSectionHeading(y, "01", "Developer-mode sideload", "Install Playarr on your Roku")
+    pgLabel(m.pageBody, 580, y + 78, 900, 48, "Keep the Roku and the phone or computer used for installation on the same local network. You will need the Roku remote, the ZIP above and a developer password you create on the TV.", 14, 400, "inkSoft", { wrap: true, maxLines: 2 })
+    drawClientPanel(500, y + 122, 920, 486)
+    clientInstallStep(540, y + 220, "01", "Enable Developer Mode", "On the Roku remote, press Home three times, Up twice, then Right, Left, Right, Left, Right. Note the URL shown, enable the Development Application Installer, accept the agreement and create a password. The Roku will restart.")
+    clientInstallStep(970, y + 220, "02", "Open the web installer", "From a phone or computer on the same network, open the URL shown on the TV. Sign in with the username rokudev and the developer password you created.")
+    clientInstallStep(540, y + 422, "03", "Upload the ZIP unchanged", "Choose Upload, select playarr-roku.zip without extracting it, then choose Install. Roku launches Playarr when the sideload finishes.")
+    clientInstallStep(970, y + 422, "04", "Connect Playarr", "Enter your Playarr Server base URL, follow the code shown on the TV to authorise the Roku, then choose a household profile.")
+    pgButton(m.pageBody, 700, y + 620, 48, "Open Roku's official developer guide", "secondary", "clientOpenLink", { title: "Roku official developer guide", url: "https://developer.roku.com/dev/docs/developer-setup" }, 18, true)
+    drawClientPanel(500, y + 684, 920, 154, true)
+    pgLabel(m.pageBody, 540, y + 704, 840, 18, "IMPORTANT", 10, 800, "brandInk")
+    pgLabel(m.pageBody, 540, y + 732, 840, 34, "Only one sideloaded app can be installed.", 22, 650, "ink")
+    pgLabel(m.pageBody, 540, y + 772, 830, 48, "Installing another development app replaces Playarr. If Roku rejects an identical version, remove the existing sideloaded app and install the ZIP again.", 13, 400, "inkSoft", { wrap: true, maxLines: 3 })
+end sub
+
+sub renderVidaaClientGuide()
+    yOff = -660
+    pgLabel(m.pageBody, 610, 1360 + yOff, 680, 18, "HISENSE VIDAA", 10, 800, "brandInk", { horizAlign: "center" })
+    pgLabel(m.pageBody, 560, 1388 + yOff, 780, 56, "Put Playarr on your home screen.", 38, 500, "ink", { horizAlign: "center" })
+    pgLabel(m.pageBody, 580, 1454 + yOff, 740, 60, "Compatible VIDAA TVs can install a Playarr launcher through the Playarr custom store. You choose and operate the DNS or interception method; Playarr hosts only the store assets.", 14, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
+    drawClientPanel(580, 1528 + yOff, 760, 88, true)
+    pgLabel(m.pageBody, 610, 1544 + yOff, 700, 58, "Firmware support varies. Your chosen setup must present the store as vidaahub.com and handle any required certificate trust; some TVs omit the installation API entirely.", 13, 400, "inkSoft", { wrap: true, maxLines: 3 })
+    clientSectionHeading(1644 + yOff, "01", "Custom app store", "Use the Playarr store")
+    pgLabel(m.pageBody, 580, 1720 + yOff, 860, 48, "Playarr publishes the fixed, Playarr-only custom store at the address below. Configure your own compatible DNS, proxy or self-hosted interception setup to present it to the television.", 14, 400, "inkSoft", { wrap: true, maxLines: 2 })
+    centeredClientButton(1780 + yOff, "Open custom store", "https://playarr.app/vidaa-store/", "primary")
+    pgLabel(m.pageBody, 930, 1782 + yOff, 480, 48, "Playarr does not operate a public DNS resolver. You remain in control of the DNS method and restore your normal settings after installation.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
+    clientSectionHeading(1850 + yOff, "02", "On your router and TV", "Install Playarr")
+    pgLabel(m.pageBody, 580, 1920 + yOff, 840, 48, "Choose a trusted DNS or interception setup, install the Playarr-only launcher, then return your router or TV to automatic DNS.", 14, 400, "inkSoft", { wrap: true, maxLines: 2 })
+    drawClientPanel(500, 1980 + yOff, 920, 442)
+    clientInstallStep(540, 2000 + yOff, "01", "Set the temporary DNS", "Choose a trusted DNS or interception setup that can present the custom store as vidaahub.com. Enter its resolver address in your router or TV and keep every other network setting unchanged.")
+    clientInstallStep(970, 2000 + yOff, "02", "Open the VIDAA portal", "On the TV, open the VIDAA store or browser route used by your chosen setup. Accept a certificate warning only when you understand and trust that setup.")
+    clientInstallStep(540, 2202 + yOff, "03", "Choose Install Playarr", "Confirm the Playarr-only installation on the TV. Do not switch off the television while the launcher tile is being written.")
+    clientInstallStep(970, 2202 + yOff, "04", "Restart and restore DNS", "Restart the TV, confirm that Playarr opens, then return your router or TV to automatic DNS immediately.")
+    drawClientPanel(580, 2440 + yOff, 760, 156, true)
+    pgLabel(m.pageBody, 620, 2460 + yOff, 680, 24, "IMPORTANT", 10, 800, "brandInk")
+    pgLabel(m.pageBody, 620, 2492 + yOff, 680, 38, "Restore automatic DNS after installation.", 18, 500, "ink")
+    pgLabel(m.pageBody, 620, 2534 + yOff, 680, 48, "Your chosen resolver is only needed for installation. Restoring your normal DNS keeps everyday browsing private and reliable; the installed Playarr tile will continue to work.", 13, 400, "inkSoft", { wrap: true, maxLines: 3 })
+end sub
+
+sub clientCommandBlock(x as Float, y as Float, w as Float, h as Float, label as String, commands as String)
+    pgRound(m.pageBody, x, y, w, h, 12, "surfaceStrong", 210)
+    pgRound(m.pageBody, x, y, w, h, 12, "line", 156, true)
+    pgLabel(m.pageBody, x + 14, y + 10, w - 28, 16, label, 9, 800, "inkMuted")
+    pgLabel(m.pageBody, x + 14, y + 30, w - 28, h - 38, commands, 9, 400, "ink", { mono: true, wrap: true, maxLines: 16 })
+end sub
+
+sub renderSmartTvClientGuide(clientId as String)
+    isWebOS = clientId = "webos"
+    brand = "Samsung"
+    device = "Samsung TV"
+    title = "Install Playarr on your Samsung TV"
+    installDescription = "Use a 2023-or-newer Samsung television running Tizen 7.0 or newer, and keep it on the same local network as the computer. You need Tizen Studio with the Samsung TV extensions, a valid certificate profile and either a compatible signed WGT above or one you sign from source."
+    officialUrl = "https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-device.html"
+    sourceUrl = "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-tizen"
+    appId = "StrmarrTV1.Playarr Server"
+    if isWebOS
+        brand = "LG"
+        device = "LG TV"
+        title = "Install Playarr on your LG TV"
+        installDescription = "Use an LG television running webOS 23 or newer, and keep it on the same local network as the computer. You need an LG developer account, the Developer Mode app, the webOS CLI and either the published IPK above or a package you build from source."
+        officialUrl = "https://webostv.developer.lge.com/develop/getting-started/developer-mode-app"
+        sourceUrl = "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-webos"
+        appId = "com.playarr.tv"
+    end if
+    clientSectionHeading(1360, "01", brand + " Developer Mode", title)
+    pgLabel(m.pageBody, 580, 1438, 840, 78, installDescription, 13, 400, "inkSoft", { wrap: true, maxLines: 4 })
+    if isWebOS
+        clientInstallStep(540, 1530, "01", "Enable Developer Mode", "Install Developer Mode from the LG Content Store, sign in with your LG developer account, enable Dev Mode Status and let the TV restart. Reopen the app, select Key Server and use EXTEND before the remaining session expires.")
+        clientInstallStep(970, 1530, "02", "Get the Playarr IPK", "Try the package download above. If no release IPK has been published, install Node.js, clone Playarr, install the official webOS CLI and build the package locally.")
+        clientCommandBlock(540, 1732, 860, 142, "BUILD THE IPK FROM SOURCE", "git clone https://github.com/ThomasMcFarlane/playarr.git" + Chr(10) + "cd playarr/clients/tv-web" + Chr(10) + "npm install -g pnpm@11.13.0" + Chr(10) + "pnpm install --frozen-lockfile" + Chr(10) + "npm install -g @webos-tools/cli" + Chr(10) + "pnpm --filter @playarr-tv/app-webos run package:ipk")
+        clientInstallStep(540, 1890, "03", "Connect the TV", "Run the device setup, choose add and name the target playarr-tv. Enter the TV's IP address, port 9922 and user prisoner without a password. With Key Server still enabled, fetch the key and enter the six-character passphrase shown on the TV.")
+        clientCommandBlock(540, 2092, 860, 90, "CONNECT AND FETCH THE KEY", "ares-setup-device --add playarr-tv -i ""host=<TV-IP>"" -i ""port=9922"" -i ""username=prisoner""" + Chr(10) + "ares-novacom --device playarr-tv --getkey" + Chr(10) + "ares-device --system-info --device playarr-tv")
+        clientInstallStep(540, 2198, "04", "Install and launch", "Run the commands from the tv-web directory for a locally built IPK. If you downloaded playarr-webos.ipk instead, substitute that file's path. When Playarr opens, scan its link code and choose your Playarr Server and household profile in Playarr.")
+        clientCommandBlock(540, 2400, 860, 72, "INSTALL AND LAUNCH", "ares-install --device playarr-tv apps/tv-webos/out/com.playarr.tv_*_all.ipk" + Chr(10) + "ares-launch --device playarr-tv com.playarr.tv")
+        centeredClientButton(2488, "Open LG's official Developer Mode guide", officialUrl, "secondary")
+        drawClientPanel(580, 2552, 760, 150, true)
+        pgLabel(m.pageBody, 610, 2570, 700, 22, "BEFORE YOU INSTALL", 10, 800, "brandInk")
+        pgLabel(m.pageBody, 610, 2600, 700, 88, "Playarr launches as com.playarr.tv. LG removes Developer Mode apps when the session expires, so keep the TV online and use EXTEND before the timer reaches zero. Treat this build as a developer preview until playback, remote, suspend and resume are validated on representative hardware.", 13, 400, "inkSoft", { wrap: true, maxLines: 5 })
+        m.clientsContentBottom = 2720
+    else
+        clientInstallStep(540, 1530, "01", "Install the TV SDK and create a certificate", "Install Tizen Studio, then add the Samsung TV Extension, Samsung Certificate Extension and Web CLI in Package Manager. Create and activate a Samsung certificate profile; Tizen will not install an unsigned widget.")
+        clientInstallStep(970, 1530, "02", "Enable Developer Mode", "On the TV open Apps, then App Settings, and enter 12345. Turn Developer Mode on, enter the computer's local IP address, confirm and reboot the TV. Keep both devices on the same network.")
+        clientInstallStep(540, 1732, "03", "Build and sign the WGT", "Try the signed package download above first. If it is unavailable or its signature is not valid for your TV, build Playarr and package the dist directory with the exact active certificate profile name from Tizen Studio.")
+        clientCommandBlock(540, 1934, 860, 112, "BUILD AND SIGN THE WIDGET", "git clone https://github.com/ThomasMcFarlane/playarr.git" + Chr(10) + "cd playarr/clients/tv-web" + Chr(10) + "npm install -g pnpm@11.13.0" + Chr(10) + "pnpm install --frozen-lockfile" + Chr(10) + "pnpm --filter @playarr-tv/app-tizen... run build" + Chr(10) + "tizen package -t wgt -s <certificate-profile> -- apps/tv-tizen/dist")
+        clientInstallStep(540, 2058, "04", "Connect, install and launch", "Connect with SDB. In Tizen Studio Device Manager, right-click the connected TV and choose Permit to install applications. Use tizen list tv to find the CLI target name, then substitute the generated WGT filename, package directory and target name. Launch Playarr with its fixed application ID, scan its link code and choose your Playarr Server and household profile in Playarr.")
+        clientCommandBlock(540, 2258, 860, 112, "CONNECT, INSTALL AND LAUNCH", "sdb connect <TV-IP>" + Chr(10) + "sdb devices" + Chr(10) + "tizen list tv" + Chr(10) + "tizen install -n <generated-package>.wgt -t <target-name> -- apps/tv-tizen/dist" + Chr(10) + "tizen run -p StrmarrTV1.Playarr Server -t <target-name>")
+        centeredClientButton(2382, "Open Samsung's official TV device guide", officialUrl, "secondary")
+        drawClientPanel(580, 2446, 760, 130, true)
+        pgLabel(m.pageBody, 610, 2464, 700, 92, "The WGT must stay signed and unchanged. Tizen rejects unsigned or modified packages, and the certificate profile must permit the target TV. Playarr launches as StrmarrTV1.Playarr Server after installation. Treat this build as a developer preview until remote and AVPlay behaviour are validated on a supported real TV.", 13, 400, "inkSoft", { wrap: true, maxLines: 5 })
+        m.clientsContentBottom = 2590
+    end if
+end sub
+
+sub renderServerClientGuide()
+    clientSectionHeading(1580, "01", "Before you install", "System requirements")
+    pgLabel(m.pageBody, 580, 1658, 840, 44, "Playarr Server reads from the library sources you already run and needs persistent storage, ffmpeg and a network path for your clients.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
+    drawClientPanel(500, 1718, 920, 432)
+    clientInstallStep(540, 1738, "01", "64-bit Linux", "x86-64 or ARM64. Docker is optional; the container image is built for both architectures. The server stores its SQLite database and artwork cache in a writable data directory, so it needs persistent storage.")
+    clientInstallStep(970, 1738, "02", "ffmpeg and ffprobe", "Required for thumbnails, track probing and on-demand transcoding. The Docker image includes them. On systemd or Kubernetes installs without that image, install ffmpeg (which provides ffprobe) on the host and make sure both are on the server's PATH.")
+    clientInstallStep(540, 1940, "03", "Your media apps", "Playarr Server reads from the library sources that you already run. Register each one through the server's admin API after it starts.")
+    clientInstallStep(970, 1940, "04", "Network port 8484", "The API listens on TCP 8484, plain HTTP by default. Clients on the same network can connect to it directly. Metrics are on 9090 and should stay on your private network.")
+
+    clientSectionHeading(2180, "02", "Supported install methods", "Choose one")
+    pgLabel(m.pageBody, 580, 2258, 860, 48, "Pick one. Each method runs the same single all-in-one server process. The Docker commands pull the public image; the other methods use the downloaded tarball or your own chart values.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
+    drawClientPanel(500, 2320, 920, 1120)
+    clientInstallStep(540, 2340, "01", "Docker", "Pulls the multi-arch image, ffmpeg included, and starts one container with SQLite state in a named volume. The generated PLAYARR_JWT_SECRET keeps sessions across restarts; save it if you recreate the container.")
+    clientInstallStep(970, 2340, "02", "Docker Compose", "The same image as a compose file. Replace the secret with a long random string, then start it and open port 8484.")
+    clientCommandBlock(540, 2542, 860, 120, "DOCKER", "docker pull ghcr.io/thomasmcfarlane/playarr:latest" + Chr(10) + "docker run -d --name playarr --restart unless-stopped -p 8484:8484 -v playarr-data:/data -e DATABASE_URL=sqlite:///data/playarr.db -e PLAYARR_JWT_SECRET=""$(openssl rand -hex 32)"" ghcr.io/thomasmcfarlane/playarr:latest" + Chr(10) + "curl http://localhost:8484/healthz")
+    clientCommandBlock(540, 2672, 860, 248, "DOCKER COMPOSE", "services:" + Chr(10) + "  playarr:" + Chr(10) + "    image: ghcr.io/thomasmcfarlane/playarr:latest" + Chr(10) + "    container_name: playarr" + Chr(10) + "    restart: unless-stopped" + Chr(10) + "    ports:" + Chr(10) + "      - ""8484:8484""" + Chr(10) + "    environment:" + Chr(10) + "      DATABASE_URL: sqlite:///data/playarr.db" + Chr(10) + "      PLAYARR_JWT_SECRET: change-me-to-a-long-random-string" + Chr(10) + "    volumes:" + Chr(10) + "      - playarr-data:/data" + Chr(10) + "volumes:" + Chr(10) + "  playarr-data:" + Chr(10) + "docker compose up -d")
+    clientInstallStep(540, 2930, "03", "systemd on a Linux host", "Unpack the tarball, then install.sh installs the playarr-server binary, the Admin UI, an unprivileged playarr user and the unit files. It does not enable or start anything until you do. Set DATABASE_URL in the env file first, for example sqlite:///var/lib/playarr/playarr.db.")
+    clientInstallStep(970, 2930, "04", "Kubernetes (Helm chart)", "The playarr-standalone chart runs one Pod with a Recreate strategy for a single SQLite-backed server. Point it at the public image, an existing Secret and persistent storage. The chart never creates Secrets and has no migration or deletion hooks. Render and review it before applying.")
+    clientCommandBlock(540, 3132, 860, 142, "SYSTEMD", "tar -xzf playarr-server-linux-amd64.tar.gz" + Chr(10) + "cd playarr-server-*-linux-amd64" + Chr(10) + "sudo ./systemd/install.sh" + Chr(10) + "sudoedit /etc/playarr/playarr.env" + Chr(10) + "sudo systemctl enable --now playarr.service" + Chr(10) + "journalctl -u playarr.service -f")
+    clientCommandBlock(540, 3282, 860, 90, "KUBERNETES HELM", "helm template playarr infra/kubernetes/helm/playarr-standalone --values my-values.yaml")
+
+    clientSectionHeading(3450, "03", "Connect your clients", "HTTPS and the playarr.app relay")
+    pgLabel(m.pageBody, 580, 3528, 860, 62, "Native apps can connect to the server's address on your network. The hosted web client at playarr.app is served over HTTPS, so it needs a browser-trusted certificate for the server. Bring your own, or use the optional relay.", 13, 400, "inkSoft", { wrap: true, maxLines: 3 })
+    drawClientPanel(500, 3602, 920, 252)
+    pgLabel(m.pageBody, 540, 3622, 840, 26, "OPTIONAL RELAY (OFF BY DEFAULT)", 10, 800, "brandInk")
+    pgLabel(m.pageBody, 540, 3658, 840, 92, "For a server with a public IPv4 address and TCP 8484 reachable from the internet. The server registers with playarr.app, which publishes a DNS-only name such as v4-203-0-113-10.relay.playarr.app pointing at your address. The server then obtains its own Let's Encrypt certificate over DNS-01, so port 80 is not needed. For a short period after start, typically under two minutes, the API is plain HTTP; it then switches to HTTPS on the same port.", 13, 400, "inkSoft", { wrap: true, maxLines: 5 })
+    clientCommandBlock(540, 3756, 840, 84, "RELAY ENVIRONMENT", "PLAYARR_RELAY_REGISTER=true" + Chr(10) + "PLAYARR_ACME_CHALLENGE=relay-dns-01" + Chr(10) + "PLAYARR_ACME_DOMAIN=v4-<A>-<B>-<C>-<D>.relay.playarr.app" + Chr(10) + "PLAYARR_ACME_ACCEPT_TERMS=true")
+    drawClientPanel(500, 3854, 920, 170, true)
+    pgLabel(m.pageBody, 540, 3874, 840, 22, "WHAT THE RELAY SHARES", 10, 800, "brandInk")
+    pgLabel(m.pageBody, 540, 3904, 840, 96, "Enabling the relay sends your public IPv4 address and a key fingerprint to playarr.app, and the name is public DNS data. No streaming or API traffic passes through Cloudflare. Registration proves control of the address, not who owns the server. Leave it off if you would rather use your own certificate and name.", 13, 400, "inkSoft", { wrap: true, maxLines: 5 })
 end sub
 
 sub leaveClientsToProfiles()
     m.pageScrollY = 0
     m.navDockMode = false
+    m.clientActiveId = ""
     showOnly("profiles")
     m.top.screenState = "profiles"
     if m.profilesClientsHit <> invalid then m.profilesClientsHit.SetFocus(true)
@@ -846,16 +1223,19 @@ sub leaveClientsToProfiles()
     applyProfilesChromeFocus()
 end sub
 
-sub leaveRokuGuideToClientList()
+sub leaveClientDetailsToClientList()
     m.clientGuideOpen = false
     showOnly("page")
     renderClientsIndex()
-    m.pageFocusIdx = 8 ' Back and the two header controls precede the Roku tile and five earlier choices.
+    index = clientsIndexOf(m.clientActiveId)
+    if index < 0 then index = 0
+    m.pageFocusIdx = 3 + index
     pageFocusRender()
+    m.top.SetFocus(true)
 end sub
 
 sub focusClientsHeader(action as String)
-    if m.pageKind <> "clients" or m.clientGuideOpen = true then return
+    if m.pageKind <> "clients" then return
     for i = 0 to m.pageItems.Count() - 1
         if m.pageItems[i].action = action
             m.pageFocusIdx = i

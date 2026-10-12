@@ -1348,7 +1348,7 @@ sub onPairingThemeDialogButton(event as Object)
     if m.top.screenState = "profiles"
         if m.profilesThemeHit <> invalid then m.profilesThemeHit.SetFocus(true)
         applyProfilesChromeFocus()
-    else if m.top.screenState = "page" and m.pageKind = "clients" and m.clientGuideOpen <> true
+    else if m.top.screenState = "page" and m.pageKind = "clients"
         focusClientsHeader("clientsTheme")
     else if m.pairingThemeHit <> invalid
         m.pairingThemeHit.SetFocus(true)
@@ -1367,7 +1367,7 @@ sub onPairingLanguageDialogButton(event as Object)
     if m.top.screenState = "profiles"
         if m.profilesLangHit <> invalid then m.profilesLangHit.SetFocus(true)
         applyProfilesChromeFocus()
-    else if m.top.screenState = "page" and m.pageKind = "clients" and m.clientGuideOpen <> true
+    else if m.top.screenState = "page" and m.pageKind = "clients"
         focusClientsHeader("clientsLanguage")
     else if m.pairingLangHit <> invalid
         m.pairingLangHit.SetFocus(true)
@@ -6419,7 +6419,7 @@ sub showOnly(name as String)
     parityEmit("screen", name)
     ' tv-web Profiles is a full-canvas picker with no left nav dock / clock chrome.
     ' Hide the signed-in shell on pre-auth and profiles so those screens match web.
-    clientsIndex = name = "page" and m.pageKind = "clients" and m.clientGuideOpen <> true
+    clientsIndex = name = "page" and m.pageKind = "clients"
     m.persistentHeader.visible = name <> "status" and name <> "pairing" and name <> "profiles" and not clientsIndex
     m.statusGroup.visible = name = "status"
     m.pairingGroup.visible = name = "pairing"
