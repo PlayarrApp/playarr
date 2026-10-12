@@ -323,6 +323,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- HarmonyOS TV player: the control bar shows the negotiated quality; selecting it opens a drawer to switch quality (the stream renegotiates from the current position, keeping the chosen audio).
 - HarmonyOS TV detail page: Add to watchlist (and Remove), the Resume-from time on the primary pill for a part-watched movie, and a Playback button that opens the movie's saved quality, audio and subtitle settings.
 - Xbox: offline downloads. A Download action on the detail page, local storage with resume, the server complete call, a toast that tracks progress with Pause, Resume and Cancel, and a Downloads page grouped series, season, episode with pause, cancel, delete and edit (keep-until and quality).
 - HarmonyOS TV player: a CC button opens a drawer to pick the subtitle track (or Off) and, for files with several, the audio track (audio renegotiates the stream from the current position).
