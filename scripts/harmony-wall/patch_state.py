@@ -61,10 +61,28 @@ def detail(s):
                   "import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan } from '../data/CatalogRepository';\nimport { previewReport } from '../util/PreviewState';", 1)
     old = "@Component\nstruct Detail {"
     assert old in s
-    s = s.replace(old, "let PREVIEW_EPISODE_ART_DIAG_COUNT: number = 0;\n\n" + old, 1)
+    counters = "let PREVIEW_EPISODE_ART_DIAG_COUNT: number = 0;\nlet PREVIEW_EPISODE_CARD_NO_COUNT: number = 0;\nlet PREVIEW_EPISODE_CARD_YES_COUNT: number = 0;\n\n"
+    s = s.replace(old, counters + old, 1)
     old_load = "  private async loadDetail(): Promise<void> {\n"
     assert old_load in s
-    s = s.replace(old_load, old_load + "    PREVIEW_EPISODE_ART_DIAG_COUNT = 0;\n", 1)
+    reset = "    PREVIEW_EPISODE_ART_DIAG_COUNT = 0;\n    PREVIEW_EPISODE_CARD_NO_COUNT = 0;\n    PREVIEW_EPISODE_CARD_YES_COUNT = 0;\n"
+    s = s.replace(old_load, old_load + reset, 1)
+    row_item = "  private rowItem(item: MediaRailItem, index: number, activeRailFactor: number): void {\n"
+    assert row_item in s
+    card_diag = """    const previewEpisodeRow: DetailRow = item as DetailRow;
+    if (previewEpisodeRow.hasEpisodeStill) {
+      const hasArtwork: boolean = previewEpisodeRow.artwork !== undefined;
+      const hasStamp: boolean = previewEpisodeRow.stamp !== undefined;
+      if (hasArtwork && PREVIEW_EPISODE_CARD_YES_COUNT < 4) {
+        PREVIEW_EPISODE_CARD_YES_COUNT += 1;
+        previewReport('dbg=' + encodeURIComponent('episode-art:card-state:artwork=yes:stamp=' + (hasStamp ? 'yes' : 'no')));
+      } else if (!hasArtwork && PREVIEW_EPISODE_CARD_NO_COUNT < 4) {
+        PREVIEW_EPISODE_CARD_NO_COUNT += 1;
+        previewReport('dbg=' + encodeURIComponent('episode-art:card-state:artwork=no:stamp=' + (hasStamp ? 'yes' : 'no')));
+      }
+    }
+"""
+    s = s.replace(row_item, row_item + card_diag, 1)
     old = """      for (const item of rail.items) {
         if (item.hasEpisodeStill) {
           const still = await fetchEpisodeArtwork(artistWorkId, item.id, 'thumb');

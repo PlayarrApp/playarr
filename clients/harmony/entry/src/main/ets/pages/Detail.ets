@@ -494,6 +494,21 @@ function buildRailsFromChildren(children: WorkChildren): DetailRail[] {
   return [];
 }
 
+/** Touch rails rebuild when artwork arrives, matching Home's `railKey`
+ * contract; TV keys stay stable so an artwork update cannot drop D-pad focus. */
+function detailRailKey(rail: DetailRail): string {
+  if (isTvMetrics()) {
+    return rail.id;
+  }
+  let loaded: number = 0;
+  for (const item of rail.items) {
+    if (item.stamp !== undefined) {
+      loaded += 1;
+    }
+  }
+  return rail.id + ':' + loaded.toString();
+}
+
 /** Walks every rail's rows, in order, returning the first resolved
  * `media_file_id` -- "season 1 episode 1" / "album 1 track 1" / "book 1",
  * skipping any row that has not synced a file yet. */
@@ -1084,7 +1099,7 @@ struct Detail {
             },
           })
         },
-        (rail: DetailRail): string => rail.id
+        (rail: DetailRail): string => detailRailKey(rail)
       )
 
       if (this.similarRail !== null) {

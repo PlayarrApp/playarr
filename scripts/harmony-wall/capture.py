@@ -126,6 +126,8 @@ def save_episode_art_diagnostics(expected_work_id, event_cursor, readiness):
     for event in debug_events:
         if re.fullmatch(r"episode-art:row:thumb=(yes|no):file=(yes|no)", event):
             safe_events.append(event)
+        elif re.fullmatch(r"episode-art:card-state:artwork=(yes|no):stamp=(yes|no)", event):
+            safe_events.append(event)
         elif re.fullmatch(r"episode-art:(still|fallback):(ok|decode-failure|http-[0-9]{3}|network-(timeout|no_connection|unknown))", event):
             safe_events.append(event)
         elif re.fullmatch(r"episode-art:assigned:(still|fallback)", event):
