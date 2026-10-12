@@ -1571,7 +1571,6 @@ sub focusProfilesRowOnCurrent()
     ' Jump before SetFocus so the first paint is under the current avatar.
     m.profilesRow.jumpToRowItem = [0, idx]
     m.profilesRow.SetFocus(true)
-    emitProfileFocusTelemetry(idx)
 end sub
 
 ' Private parity diagnostics report the visible profile label, never account ids or credentials.
@@ -1733,6 +1732,7 @@ end sub
 sub onProfilesRowFocused(event as Object)
     position = event.GetData()
     if position = invalid or position.Count() < 2 then return
+    if m.profilesRow = invalid or not m.profilesRow.HasFocus() then return
     m.profilesFocusIndex = position[1]
     emitProfileFocusTelemetry(position[1])
     updateProfileActionsLayout()

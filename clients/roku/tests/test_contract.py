@@ -127,7 +127,9 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn('parityEmit("focus", profile.display_name)', focus_telemetry.group(0))
         self.assertNotIn("profile.id", focus_telemetry.group(0))
         self.assertNotIn("accessToken", focus_telemetry.group(0))
-        self.assertIn("emitProfileFocusTelemetry(idx)", focus_current.group(0))
+        self.assertIn("m.profilesRow.SetFocus(true)", focus_current.group(0))
+        self.assertNotIn("emitProfileFocusTelemetry", focus_current.group(0))
+        self.assertIn("m.profilesRow.HasFocus()", focus_change.group(0))
         self.assertIn("emitProfileFocusTelemetry(position[1])", focus_change.group(0))
 
     def test_clients_link_is_a_bottom_right_footer_action(self) -> None:

@@ -20,6 +20,17 @@ const SAFE_CHECKS = new Set([
 const KEY_NAMES = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Select", back: "Back" };
 const SUITE_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../suite.json");
 const SUITE_SCREENS = JSON.parse(readFileSync(SUITE_FILE, "utf8")).screens;
+const MAX_DEBUG_FRAME_BYTES = 16 * 1024;
+
+export function splitDebugFrames(buffer, chunk) {
+  const frames = (buffer + chunk).split("\n");
+  const remainder = frames.pop() ?? "";
+  if (Buffer.byteLength(remainder, "utf8") > MAX_DEBUG_FRAME_BYTES ||
+      frames.some((frame) => Buffer.byteLength(frame, "utf8") > MAX_DEBUG_FRAME_BYTES)) {
+    return { frames: [], remainder: "", overflow: true };
+  }
+  return { frames, remainder, overflow: false };
+}
 
 function option(args, name) {
   const i = args.indexOf(`--${name}`);
@@ -177,10 +188,15 @@ export function createDriver({ out, args = [] } = {}) {
     connection.setTimeout(60000);
     connection.on("data", (chunk) => {
       if (socket !== connection) return;
-      debugBuffer += chunk;
-      const lines = debugBuffer.split("\n");
-      debugBuffer = lines.pop() ?? "";
-      for (const line of lines) ingest(line);
+      const split = splitDebugFrames(debugBuffer, chunk);
+      if (split.overflow) {
+        debugBuffer = "";
+        debugFailure = true;
+        connection.destroy();
+        return;
+      }
+      debugBuffer = split.remainder;
+      for (const line of split.frames) ingest(line);
     });
     connection.on("error", () => { if (socket === connection) debugFailure = true; });
     connection.on("timeout", () => {
