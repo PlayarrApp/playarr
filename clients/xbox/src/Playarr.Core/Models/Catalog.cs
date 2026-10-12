@@ -161,6 +161,12 @@ namespace Playarr.Core.Models
 
         [JsonIgnore] public int OnDeckSeason { get; set; }
 
+        /// <summary>Client-side only: how far a part-watched title is (0..100), drawn as the card's progress line; null otherwise.</summary>
+        [JsonIgnore] public double? WatchPercent { get; set; }
+
+        /// <summary>Client-side only: the card shows the brand dot for a title with no watch history (web <c>WatchStateOverlay</c>).</summary>
+        [JsonIgnore] public bool ShowUnwatched { get; set; }
+
         /// <summary>
         /// The best artwork of <paramref name="kind"/>, or <c>null</c>. A
         /// convenience for the tile and detail views, which both want "the

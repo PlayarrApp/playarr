@@ -147,6 +147,30 @@ namespace Playarr.Xbox.Views
                 }
             }
 
+            if (work.WatchPercent is { } percent)
+            {
+                // .tv-watch-progress: a 3 px line along the bottom edge in the brand colour on a 20 % white track.
+                var track = new Grid { Height = 3, VerticalAlignment = VerticalAlignment.Bottom, Background = new SolidColorBrush(Windows.UI.Color.FromArgb(51, 255, 255, 255)), IsHitTestVisible = false };
+                track.Children.Add(new Border { Width = System.Math.Max(3, width * percent / 100), HorizontalAlignment = HorizontalAlignment.Left, Background = (Brush)Application.Current.Resources["PlayarrBrand"] });
+                art.Children.Add(track);
+            }
+            else if (work.ShowUnwatched)
+            {
+                // .tv-watch-unseen: a brand dot with a white ring in the top right corner.
+                art.Children.Add(new Windows.UI.Xaml.Shapes.Ellipse
+                {
+                    Width = 13,
+                    Height = 13,
+                    Margin = new Thickness(0, 10, 10, 0),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Fill = (Brush)Application.Current.Resources["PlayarrBrand"],
+                    Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false,
+                });
+            }
+
             var root = new StackPanel { Width = width, Spacing = 0, Tag = work.Id };
             root.Children.Add(art);
             root.Children.Add(new TextBlock

@@ -61,11 +61,11 @@ namespace Playarr.Xbox.ViewModels
         /// The web's On deck rail (<c>lib/onDeck.ts</c>): the most recently played part-watched titles, newest first,
         /// at most ten, one per title; a series shows the episode to resume. Null when nothing is part-watched.
         /// </summary>
-        private async Task<HomeRail?> LoadOnDeckAsync()
+        private async Task<HomeRail?> LoadOnDeckAsync(Task<IList<WatchProgress>> progressTask)
         {
             try
             {
-                var progress = await _environment.ApiClient.ListWatchProgressAsync();
+                var progress = await progressTask;
                 var seen = new HashSet<Guid>();
                 var resumable = progress
                     .Where(p => p.State == WatchState.InProgress)
@@ -94,6 +94,7 @@ namespace Playarr.Xbox.ViewModels
                     }
 
                     var work = detail.Work;
+                    work.WatchPercent = p.DurationMs > 0 ? Math.Min(100, Math.Max(0, p.PositionMs * 100.0 / p.DurationMs)) : 0;
                     if (work.Kind == WorkKind.Series || work.Kind == WorkKind.Site)
                     {
                         var found = detail.Children.Seasons
@@ -119,6 +120,52 @@ namespace Playarr.Xbox.ViewModels
             }
         }
 
+        /// <summary>
+        /// The web's card overlay (<c>WatchStateOverlay</c>): a part-watched title shows its progress line, a title with no
+        /// watch history (or an unseen one) shows the brand dot. The most advanced state per title wins.
+        /// </summary>
+        private static async Task MarkWatchStateAsync(IEnumerable<HomeRail> rails, Task<IList<WatchProgress>> progressTask)
+        {
+            IList<WatchProgress> rows;
+            try
+            {
+                rows = await progressTask;
+            }
+            catch (Exception)
+            {
+                return;
+            }
+
+            int Priority(WatchState state) => state == WatchState.InProgress ? 2 : state == WatchState.Watched ? 1 : 0;
+            var byWork = new Dictionary<Guid, WatchProgress>();
+            foreach (var row in rows)
+            {
+                if (!byWork.TryGetValue(row.WorkId, out var current) || Priority(row.State) > Priority(current.State))
+                {
+                    byWork[row.WorkId] = row;
+                }
+            }
+
+            foreach (var work in rails.SelectMany(r => r.Items))
+            {
+                if (byWork.TryGetValue(work.Id, out var row))
+                {
+                    if (row.State == WatchState.InProgress)
+                    {
+                        work.WatchPercent ??= row.DurationMs > 0 ? Math.Min(100, Math.Max(0, row.PositionMs * 100.0 / row.DurationMs)) : 0;
+                    }
+                    else
+                    {
+                        work.ShowUnwatched = row.State == WatchState.Unwatched;
+                    }
+                }
+                else
+                {
+                    work.ShowUnwatched = true;
+                }
+            }
+        }
+
         /// <summary>Retries a failed load. Wired to HomePage's retry button.</summary>
         public void Retry() => _ = LoadAsync();
 
@@ -130,9 +177,11 @@ namespace Playarr.Xbox.ViewModels
             try
             {
                 // The same server-computed rails the web Home renders, in the same order, led by On deck.
-                var onDeck = LoadOnDeckAsync();
+                var progressTask = _environment.ApiClient.ListWatchProgressAsync();
+                var onDeck = LoadOnDeckAsync(progressTask);
                 var response = await _environment.ApiClient.GetHomeRailsAsync();
                 var rails = new List<HomeRail>(response.Rails);
+                await MarkWatchStateAsync(rails, progressTask);
                 // The web waits at most this long for On deck before showing the rest, then adds it when it arrives.
                 var first = await Task.WhenAny(onDeck, Task.Delay(OnDeckWait));
                 if (first == onDeck && onDeck.Result is { } early)
