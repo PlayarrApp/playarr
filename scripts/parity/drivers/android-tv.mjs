@@ -115,20 +115,32 @@ export function createDriver() {
       if (LIBRARIES.has(route)) return `/${route}${panel === "filters" ? "?panel=filters" : ""}`;
       return `/${route}`;
     },
-    // Label of the focused node: its own description or text, else the visible text inside it (web's textContent; badges are descriptions only).
+    // { label, position } of the focused node; label: its own description or text, else the visible text inside it (web's textContent; badges are descriptions only).
     async focused() {
       const nodes = (await tree()).match(/<node [^>]*>/g) ?? [];
       const isFocus = (n) => attr(n, "focused") === "true" && bounds(n)[2] - bounds(n)[0] < 1900; // not the window root
       const i = nodes.findIndex((n) => isFocus(n) && attr(n, "focusable") === "true") >= 0 ? nodes.findIndex((n) => isFocus(n) && attr(n, "focusable") === "true") : nodes.findIndex(isFocus);
       if (i < 0) return null;
-      const f = nodes[i], own = attr(f, "content-desc") || attr(f, "text");
-      if (own) return own;
-      // Compose can put the description on a sibling node drawn over the same rect.
-      const twin = nodes.find((n) => n !== f && attr(n, "content-desc") && attr(n, "bounds") === attr(f, "bounds"));
-      if (twin) return attr(twin, "content-desc");
-      const [l, t, r, b] = bounds(f);
-      return nodes.slice(i + 1).filter((n) => { const [a, c, d, e] = bounds(n); return a >= l && c >= t && d <= r && e <= b; })
-        .map((n) => attr(n, "text")).filter(Boolean).join("").slice(0, 80) || null;
+      const f = nodes[i], [l, t, r, b] = bounds(f);
+      // position: nav rail item number from the top, else Home rail (row of cards, top to bottom) and card number in it.
+      const focusable = nodes.filter((n) => attr(n, "focusable") === "true" && bounds(n)[2] - bounds(n)[0] < 1900);
+      let position;
+      if (l < 140) position = { rail: "nav", index: [...new Set(focusable.filter((n) => bounds(n)[0] < 140).map((n) => bounds(n)[1]))].sort((x, y) => x - y).indexOf(t) };
+      else {
+        const cards = focusable.filter((n) => bounds(n)[0] >= 140 && bounds(n)[3] - bounds(n)[1] > 100);
+        const tops = [...new Set(cards.map((n) => bounds(n)[1]))].sort((x, y) => x - y);
+        position = { rail: tops.indexOf(t), index: cards.filter((n) => bounds(n)[1] === t && bounds(n)[0] < l).length };
+      }
+      const label = await (async () => {
+        const own = attr(f, "content-desc") || attr(f, "text");
+        if (own) return own;
+        // Compose can put the description on a sibling node drawn over the same rect.
+        const twin = nodes.find((n) => n !== f && attr(n, "content-desc") && attr(n, "bounds") === attr(f, "bounds"));
+        if (twin) return attr(twin, "content-desc");
+        return nodes.slice(i + 1).filter((n) => { const [a, c, d, e] = bounds(n); return a >= l && c >= t && d <= r && e <= b; })
+          .map((n) => attr(n, "text")).filter(Boolean).join("").slice(0, 80) || null;
+      })();
+      return label == null ? null : { label, position };
     },
     async screenshot(file) {
       const xml = await tree();
