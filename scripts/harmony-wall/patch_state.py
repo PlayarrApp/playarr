@@ -17,8 +17,11 @@ def card(s):
     assert old in s
     s = s.replace(old, old + "      reportCardFocus(this.title, this.subtitle);\n", 1)
     s = s.replace("    .focusable(true)\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", "    .focusable(true)\n    .focusOnTouch(true)\n    .id('pcard')\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", 1)
-    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onComplete(() => { if (this.variant === 'titleEpisode') { previewReport('dbg=' + encodeURIComponent('episode-art:card-image:ok')); } })\n            .onError(() => { if (this.variant === 'titleEpisode') { previewReport('dbg=' + encodeURIComponent('episode-art:card-image:error')); } })\n            .width('100%')", 1)
+    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onAppear(() => { if (this.variant === 'titleEpisode') { previewReport('dbg=' + encodeURIComponent('episode-art:card-state:artwork=yes')); } })\n            .onComplete(() => { if (this.variant === 'titleEpisode') { previewReport('dbg=' + encodeURIComponent('episode-art:card-image:ok')); } })\n            .onError(() => { if (this.variant === 'titleEpisode') { previewReport('dbg=' + encodeURIComponent('episode-art:card-image:error')); } })\n            .width('100%')", 1)
     s = s.replace("import { reportCardFocus } from '../../util/PreviewState';", "import { reportCardFocus, previewReport } from '../../util/PreviewState';", 1)
+    skeleton = "          Skeleton({ blockWidth: this.cardWidth, blockHeight: this.cardHeight, radius: this.resolvedArtworkRadius() })"
+    assert skeleton in s
+    s = s.replace(skeleton, skeleton + "\n            .onAppear(() => { if (this.variant === 'titleEpisode') { previewReport('dbg=' + encodeURIComponent('episode-art:card-state:artwork=no')); } })", 1)
     return s.replace("    .onClick(() => {\n      if (this.longPressFired) {", "    .onClick(() => {\n      reportCardFocus('click:' + this.title, '');\n      if (this.longPressFired) {", 1)
 
 def nav(s):
@@ -61,28 +64,11 @@ def detail(s):
                   "import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan } from '../data/CatalogRepository';\nimport { previewReport } from '../util/PreviewState';", 1)
     old = "@Component\nstruct Detail {"
     assert old in s
-    counters = "let PREVIEW_EPISODE_ART_DIAG_COUNT: number = 0;\nlet PREVIEW_EPISODE_CARD_NO_COUNT: number = 0;\nlet PREVIEW_EPISODE_CARD_YES_COUNT: number = 0;\n\n"
+    counters = "let PREVIEW_EPISODE_ART_DIAG_COUNT: number = 0;\n\n"
     s = s.replace(old, counters + old, 1)
     old_load = "  private async loadDetail(): Promise<void> {\n"
     assert old_load in s
-    reset = "    PREVIEW_EPISODE_ART_DIAG_COUNT = 0;\n    PREVIEW_EPISODE_CARD_NO_COUNT = 0;\n    PREVIEW_EPISODE_CARD_YES_COUNT = 0;\n"
-    s = s.replace(old_load, old_load + reset, 1)
-    row_item = "  private rowItem(item: MediaRailItem, index: number, activeRailFactor: number): void {\n"
-    assert row_item in s
-    card_diag = """    const previewEpisodeRow: DetailRow = item as DetailRow;
-    if (previewEpisodeRow.hasEpisodeStill) {
-      const hasArtwork: boolean = previewEpisodeRow.artwork !== undefined;
-      const hasStamp: boolean = previewEpisodeRow.stamp !== undefined;
-      if (hasArtwork && PREVIEW_EPISODE_CARD_YES_COUNT < 4) {
-        PREVIEW_EPISODE_CARD_YES_COUNT += 1;
-        previewReport('dbg=' + encodeURIComponent('episode-art:card-state:artwork=yes:stamp=' + (hasStamp ? 'yes' : 'no')));
-      } else if (!hasArtwork && PREVIEW_EPISODE_CARD_NO_COUNT < 4) {
-        PREVIEW_EPISODE_CARD_NO_COUNT += 1;
-        previewReport('dbg=' + encodeURIComponent('episode-art:card-state:artwork=no:stamp=' + (hasStamp ? 'yes' : 'no')));
-      }
-    }
-"""
-    s = s.replace(row_item, row_item + card_diag, 1)
+    s = s.replace(old_load, old_load + "    PREVIEW_EPISODE_ART_DIAG_COUNT = 0;\n", 1)
     old = """      for (const item of rail.items) {
         if (item.hasEpisodeStill) {
           const still = await fetchEpisodeArtwork(artistWorkId, item.id, 'thumb');
