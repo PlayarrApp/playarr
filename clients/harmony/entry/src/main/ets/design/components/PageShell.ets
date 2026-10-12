@@ -141,13 +141,13 @@ export struct PageShell {
       Row({ space: 12 }) {
         if (this.showHeader) {
           Text('←')
-            .fontSize(17)
-            .fontWeight(FontWeight.Bold)
+            .fontSize(16)
+            .fontWeight(FontWeight.Normal)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .textAlign(TextAlign.Center)
-            .width(40)
-            .height(40)
-            .borderRadius(20)
+            .width(43)
+            .height(43)
+            .borderRadius(22)
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
             .onClick(() => {
@@ -178,7 +178,7 @@ export struct PageShell {
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(BRAND_PINK_SOFT))
           .width('100%')
-          .padding({ left: 68, top: 8, bottom: 3 })
+          .padding({ left: 71, top: 8, bottom: 3 })
       }
       Column() {
         this.touchContent()

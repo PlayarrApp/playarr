@@ -3,7 +3,7 @@
  * buttons on the right edge; the current letter is filled with ink. Geometry from the live web TV DOM.
  */
 
-import { activeColors, toResourceColor } from '../Theme';
+import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
 
@@ -20,7 +20,7 @@ const TOUCH_RAIL_WIDTH: number = 52;
 const TOUCH_RAIL_TOP: number = 88;
 const TOUCH_RAIL_BOTTOM: number = 82;
 const TOUCH_LETTER_WIDTH: number = 44;
-const TOUCH_LETTER_SIZE: number = 9;
+const TOUCH_LETTER_SIZE: number = 8.5;
 
 @Component
 export struct AlphabetRail {
@@ -42,10 +42,10 @@ export struct AlphabetRail {
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
           .fontSize(TOUCH_LETTER_SIZE)
-          .fontWeight(FontWeight.Bold)
+          .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
-          .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().ink) : Color.Transparent)
-          .borderRadius(8)
+          .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.82) : Color.Transparent)
+          .borderRadius(22)
           .onClick(() => {
             this.onJump(letter);
           })

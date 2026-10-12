@@ -15,9 +15,9 @@ export struct TouchIconButton {
     Image(this.icon)
       .colorFilter(tintFilter(activeColors().inkSoft))
       .padding(10)
-      .width(40)
-      .height(40)
-      .borderRadius(20)
+      .width(43)
+      .height(43)
+      .borderRadius(13)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       .onClick(() => {

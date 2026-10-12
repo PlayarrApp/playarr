@@ -161,7 +161,11 @@ const TOUCH_GUTTER: number = 16;
 /** The letter rail's column: a 44 vp target with 4 vp of margin each side. */
 const TOUCH_ALPHA_RAIL: number = 52;
 const TOUCH_CARD_GAP: number = 12;
-const TOUCH_ROW_GAP: number = 24;
+const TOUCH_ROW_GAP: number = 33;
+/** Web phone card caption (the poster card's title size at 360 vp). */
+const TOUCH_LIBRARY_TITLE_SIZE: number = 8;
+/** The TV card caption size (`PosterCard`'s own default), passed through unchanged. */
+const TV_LIBRARY_TITLE_SIZE: number = 11.904;
 
 /** A defensive floor so a not-yet-measured or pathologically narrow layout
  * never computes a zero/negative card size. Not a `core/Tokens.ts` field --
@@ -431,6 +435,8 @@ struct LibraryGridCell {
       artworkRadius: this.cardRadius,
       title: this.work.title,
       subtitle: this.landscape ? '' : releaseYearOf(this.work),
+      titleFontSize: isTvMetrics() ? TV_LIBRARY_TITLE_SIZE : TOUCH_LIBRARY_TITLE_SIZE,
+      softCaption: !isTvMetrics(),
       unseen: this.unseen,
       progress: this.progress,
       onSelect: () => {
@@ -896,12 +902,11 @@ export struct Library {
     .alignItems(HorizontalAlign.Start)
   }
 
-  /** Web phone grid (the owner's 3/2/1 ruling, web `page-layout.css`): columns by the space between the 16 vp gutter and the
-   * 52 vp letter rail, 1 below 300 vp, 2 from 300, 3 from 540; the cards fill that space. A 360 vp phone therefore shows one. */
+  /** Web phone grid (the owner's 3/2/1 ruling, web `page-layout.css`): 1 column below 300 vp wide, 2 from 300, 3 from 540,
+   * the cards filling the space between the 16 vp gutter and the 52 vp letter rail. A 360 vp phone shows two, 140 wide. */
   private touchColumns(): number {
     const w = this.measuredWidthVp > 0 ? this.measuredWidthVp : FALLBACK_TOUCH_GRID_WIDTH_VP;
-    const space = w - TOUCH_GUTTER - TOUCH_ALPHA_RAIL;
-    return space < 300 ? 1 : (space < 540 ? 2 : 3);
+    return w < 300 ? 1 : (w < 540 ? 2 : 3);
   }
 
   private touchCardWidthVp(): number {

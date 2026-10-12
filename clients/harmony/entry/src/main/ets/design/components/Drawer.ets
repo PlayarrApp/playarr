@@ -6,7 +6,7 @@
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
-import { tv } from '../Metrics';
+import { isTvMetrics, tv } from '../Metrics';
 
 const DRAWER_WIDTH: number = 360;
 const DRAWER_BG_ALPHA: number = 0.94;
@@ -20,6 +20,14 @@ const TITLE_SIZE: number = 38.4;
 const TITLE_LETTER_SPACING: number = -2.112;
 const CLOSE_SIZE: number = 48;
 const CLOSE_GLYPH_SIZE: number = 26.88;
+// Phone (web phone drawer): the full page width, 20 padding, a 24 px title, a 43 round close button.
+const TOUCH_PADDING_H: number = 20;
+const TOUCH_HEADER_TOP: number = 24;
+const TOUCH_BODY_GAP: number = 24;
+const TOUCH_TITLE_SIZE: number = 24;
+const TOUCH_TITLE_LETTER_SPACING: number = -0.8;
+const TOUCH_CLOSE_SIZE: number = 43;
+const TOUCH_CLOSE_GLYPH_SIZE: number = 20;
 const SHADOW_COLOR: string = 'rgba(40, 26, 24, 0.24)';
 
 @Component
@@ -48,21 +56,21 @@ export struct Drawer {
             .textCase(TextCase.UpperCase)
             .fontColor(toResourceColor(activeColors().inkSoft))
           Text(this.title)
-            .fontSize(tv(TITLE_SIZE))
+            .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
-            .letterSpacing(tv(TITLE_LETTER_SPACING))
+            .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
             .fontColor(toResourceColor(activeColors().ink))
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
         Text('×')
-          .fontSize(tv(CLOSE_GLYPH_SIZE))
+          .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
           .textAlign(TextAlign.Center)
-          .width(tv(CLOSE_SIZE))
-          .height(tv(CLOSE_SIZE))
-          .borderRadius(tv(CLOSE_SIZE / 2))
+          .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
+          .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
+          .borderRadius(isTvMetrics() ? tv(CLOSE_SIZE / 2) : TOUCH_CLOSE_SIZE / 2)
           .backgroundColor(toResourceColor(activeColors().surfaceSoft))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
           .focusable(true)
@@ -73,7 +81,7 @@ export struct Drawer {
       }
       .width('100%')
       .alignItems(VerticalAlign.Top)
-      .margin({ top: tv(HEADER_TOP) })
+      .margin({ top: isTvMetrics() ? tv(HEADER_TOP) : TOUCH_HEADER_TOP })
       Scroll() {
         Column() {
           this.body()
@@ -86,11 +94,11 @@ export struct Drawer {
       .align(Alignment.Top)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
-      .margin({ top: tv(BODY_GAP) })
+      .margin({ top: isTvMetrics() ? tv(BODY_GAP) : TOUCH_BODY_GAP })
     }
-    .width(tv(DRAWER_WIDTH))
+    .width(isTvMetrics() ? tv(DRAWER_WIDTH) : '100%')
     .height('100%')
-    .padding({ left: tv(PADDING_H), right: tv(PADDING_H) })
+    .padding({ left: isTvMetrics() ? tv(PADDING_H) : TOUCH_PADDING_H, right: isTvMetrics() ? tv(PADDING_H) : TOUCH_PADDING_H })
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, DRAWER_BG_ALPHA))
     .shadow({ radius: tv(90), offsetX: -tv(32), offsetY: 0, color: SHADOW_COLOR })
     .position({ x: '100%', y: 0 })

@@ -27,7 +27,7 @@ import { playlistsForKind } from '../../core/Playlists';
 import type { PlaylistResponse } from '../../core/Types/Playlists';
 
 const TITLE_ACTIONS: ActionItem[] = [
-  { id: 'play', glyph: '▶', label: 'Play' },
+  { id: 'play', glyph: '▶\uFE0E', label: 'Play' },
   { id: 'download', glyph: '⇩', label: 'Download' },
   { id: 'playlist', glyph: '＋', label: 'Add to Playlist' },
   { id: 'watched', glyph: '✓', label: 'Mark as watched' },

@@ -185,6 +185,8 @@ export struct PosterCard {
 
   /** Web `.tv-watch-unseen`: a 13 px brand dot with a white ring, 10.56 px in from the top right. */
   @Prop unseen: boolean = false;
+  /** Phone Library caption: medium weight, the muted ink (web phone grid). */
+  @Prop softCaption: boolean = false;
 
   @Prop title: string = '';
   @Prop subtitle: string = '';
@@ -213,6 +215,15 @@ export struct PosterCard {
   // functions (see that file's header comment for this pattern).
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
+
+  /** The unseen dot: web's 13 px on the TV; 9 vp, 6 in, on the phone grid. */
+  private dotSize(): number {
+    return this.softCaption ? 9 : tv(UNSEEN_DOT_SIZE);
+  }
+
+  private dotInset(): number {
+    return this.softCaption ? 6 : tv(UNSEEN_DOT_INSET);
+  }
 
   @State private focusPercent: number = 0;
 
@@ -322,13 +333,13 @@ export struct PosterCard {
 
         if (this.unseen) {
           Column()
-            .width(tv(UNSEEN_DOT_SIZE))
-            .height(tv(UNSEEN_DOT_SIZE))
-            .borderRadius(tv(UNSEEN_DOT_SIZE / 2))
+            .width(this.dotSize())
+            .height(this.dotSize())
+            .borderRadius(this.dotSize() / 2)
             .backgroundColor(toResourceColor(BRAND_PINK))
             .border({ width: 2, color: 'rgba(255, 255, 255, 0.94)' })
             .shadow({ radius: tv(9), color: 'rgba(31, 14, 20, 0.45)', offsetY: tv(2) })
-            .position({ x: this.cardWidth - tv(UNSEEN_DOT_INSET + UNSEEN_DOT_SIZE), y: tv(UNSEEN_DOT_INSET) })
+            .position({ x: this.cardWidth - this.dotSize() - this.dotInset(), y: this.dotInset() })
         }
       }
       .width(this.cardWidth)
@@ -341,8 +352,8 @@ export struct PosterCard {
       Text(this.title)
         .width(this.cardWidth)
         .fontSize(this.titleFontSize)
-        .fontWeight(CARD_TITLE_FONT_WEIGHT)
-        .fontColor(toResourceColor(activeColors().ink))
+        .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+        .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
 

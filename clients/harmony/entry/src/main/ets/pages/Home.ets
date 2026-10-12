@@ -106,7 +106,7 @@ import { cardGeometry, normaliseArtworkSize } from '../core/ArtworkSize';
 import type { ArtworkSizeName, CardGeometry } from '../core/ArtworkSize';
 import { image } from '@kit.ImageKit';
 
-import { activeColors, toResourceColor } from '../design/Theme';
+import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry, TouchGeometry } from '../design/Metrics';
 import { Spacing, Radii } from '../core/Tokens';
@@ -180,8 +180,8 @@ const TOP_RAIL_MORE_SERIES: string = 'moreSeries';
  * (12/10) -- `design/components/PosterCard.ets`'s own header comment names
  * these as the documented touch override, matching `pages/DesignGallery.ets`'s
  * `touchRailItem` demo exactly. */
-const TOUCH_CARD_TITLE_FONT_SIZE: number = 12;
-const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 10;
+const TOUCH_CARD_TITLE_FONT_SIZE: number = 9;
+const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 8;
 
 /** `TouchGeometryTokens` has no dedicated rail-to-rail spacing field (only
  * `railItemGap`, the gap BETWEEN cards inside one rail) -- a reasoned,
@@ -189,12 +189,15 @@ const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 10;
  * where one is reasonably close" instinct `pages/Library.ets`'s own
  * `TOUCH_GRID_GAP_VP` already follows for an analogous gap brief 5.10 does
  * not name. */
-const TOUCH_RAIL_GAP: number = 38;
+const TOUCH_RAIL_GAP: number = 50;
 /** The touch rail's card row: the 16:9 card plus its two caption lines (a `List` with no height fills its parent). */
-const TOUCH_RAIL_LIST_HEIGHT: number = 232;
+const TOUCH_RAIL_LIST_HEIGHT: number = 142;
 /** Web phone Home: 328 vp cards (the 360 vp page less 16 each side) and 16 px rail headings. */
-const TOUCH_HOME_CARD_WIDTH: number = 328;
+/** Where the first heading sits under the dimmed backdrop (web phone Home). */
+const TOUCH_RAILS_TOP: number = 94;
+const TOUCH_HOME_CARD_WIDTH: number = 140;
 const TOUCH_RAIL_HEADING_SIZE: number = 16;
+const TOUCH_RAIL_HEADING_GAP: number = 22;
 
 /** Extra bottom clearance under the touch rails column so the last rail's
  * cards are never obscured by the floating `NavPill` (brief 9: "rails
@@ -936,6 +939,7 @@ export struct Home {
           itemGap: TouchGeometry.railItemGap,
           listHeight: TOUCH_RAIL_LIST_HEIGHT,
           headingSize: TOUCH_RAIL_HEADING_SIZE,
+          headingGap: TOUCH_RAIL_HEADING_GAP,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
@@ -950,6 +954,7 @@ export struct Home {
           itemGap: TouchGeometry.railItemGap,
           listHeight: TOUCH_RAIL_LIST_HEIGHT,
           headingSize: TOUCH_RAIL_HEADING_SIZE,
+          headingGap: TOUCH_RAIL_HEADING_GAP,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
@@ -958,7 +963,7 @@ export struct Home {
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
-    .padding({ top: Spacing.xl, bottom: TOUCH_BOTTOM_NAV_CLEARANCE, left: Spacing.md, right: Spacing.md })
+    .padding({ top: TOUCH_RAILS_TOP, bottom: TOUCH_BOTTOM_NAV_CLEARANCE, left: Spacing.md, right: Spacing.md })
   }
 
   /** TV: `Stage` (hero + rails) with `NavRail` as a sibling in one full-bleed
@@ -1013,8 +1018,30 @@ export struct Home {
   private touchContent(): void {
 
     Column() {
-      Scroll() {
-        this.touchRailsColumn()
+      Stack({ alignContent: Alignment.TopStart }) {
+        // Web phone Home: the first title's backdrop, dimmed, under the top of the rails.
+        if (this.hero !== undefined && this.hero.artwork !== undefined) {
+          Image(this.hero.artwork)
+            .width('100%')
+            .height(300)
+            .objectFit(ImageFit.Cover)
+            .grayscale(1)
+            .opacity(0.45)
+            .draggable(false)
+            .focusable(false)
+          Column()
+            .width('100%')
+            .height(300)
+            .linearGradient({
+              direction: GradientDirection.Bottom,
+              colors: [[toResourceColorWithAlpha(activeColors().bg, 0.7), 0.0], [toResourceColor(activeColors().bg), 1.0]],
+            })
+        }
+        Scroll() {
+          this.touchRailsColumn()
+        }
+        .width('100%')
+        .height('100%')
       }
       .width('100%')
       .layoutWeight(1)
