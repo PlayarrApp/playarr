@@ -146,6 +146,7 @@ import type { QueueItem } from '../core/EndOfPlayback.ts';
 
 import { ROUTES } from '../navigation/Routes';
 import type { DetailRouteParams, PlayerRouteParams } from '../navigation/Routes';
+import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { getNavStack, popRoute, pushRoute } from '../navigation/NavStack';
 
 // -- UI-only constants (not brief/Tokens.ts literals -- see design/components/
@@ -572,6 +573,8 @@ struct Detail {
   @State private rails: DetailRail[] = [];
   @State private similarRail: DetailRail | null = null;
   @State private primaryMediaFileId: string | null = null;
+  /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
+  @State private touchActionsOpen: boolean = false;
 
   aboutToAppear(): void {
     this.loadDetail();
@@ -976,6 +979,41 @@ struct Detail {
     .backgroundColor(toResourceColor(activeColors().surface))
   }
 
+  /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
+  @Builder
+  private touchActionButton(label: string, onTap: () => void): void {
+    Text(label)
+      .fontSize(11)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(toResourceColor(activeColors().inkSoft))
+      .height(40)
+      .padding({ left: 16, right: 16 })
+      .borderRadius(20)
+      .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+      .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+      .onClick(() => {
+        onTap();
+      })
+  }
+
+  @Builder
+  private touchActionRows(): void {
+    Row({ space: 8 }) {
+      this.touchActionButton('Download', (): void => {
+        this.touchActionsOpen = true;
+      })
+      this.touchActionButton('Playback', (): void => {
+        this.touchActionsOpen = true;
+      })
+      this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
+    }
+    Row({ space: 8 }) {
+      this.touchActionButton('Add to Playlist', (): void => {
+        this.touchActionsOpen = true;
+      })
+    }
+  }
+
   /** Phone (web phone detail): the backdrop fading into the page at the top, Back over it, then the pink kind line, the title, the
    * meta line, three lines of synopsis, the Play pill and the rails. */
   @Builder
@@ -997,7 +1035,7 @@ struct Detail {
         .height(HERO_TOUCH_HEIGHT)
         .linearGradient({
           direction: GradientDirection.Bottom,
-          colors: [[toResourceColorWithAlpha(activeColors().bg, 0.35), 0.0], [toResourceColor(activeColors().bg), 1.0]],
+          colors: [[toResourceColorWithAlpha(activeColors().bg, 0.78), 0.0], [toResourceColorWithAlpha(activeColors().bg, 0.9), 0.55], [toResourceColor(activeColors().bg), 1.0]],
         })
 
       Scroll() {
@@ -1024,7 +1062,7 @@ struct Detail {
               .lineHeight(18)
               .maxLines(3)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
-            this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
+            this.touchActionRows()
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
@@ -1064,6 +1102,21 @@ struct Detail {
       }
       .padding({ left: 16, top: 12 })
       .alignItems(VerticalAlign.Center)
+
+      if (this.touchActionsOpen && this.detail !== null) {
+        TitleActionsDrawer({
+          workId: this.detail.work.id,
+          workTitle: this.detail.work.title,
+          onClose: (): void => {
+            this.touchActionsOpen = false;
+          },
+          onPlay: (_workId: string): void => {
+            this.touchActionsOpen = false;
+            this.playPrimary();
+          },
+          onWatchedChanged: (): void => {},
+        })
+      }
     }
     .width('100%')
     .height('100%')
