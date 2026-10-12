@@ -173,7 +173,7 @@ struct WorkDetailView: View {
                         )
                     }
 
-                detailCopy(detail, phone: false)
+                detailCopy(detail, phone: false, tabletScale: proxy.size.width / 1366)
                     .frame(width: min(proxy.size.width * 0.24, 455), alignment: .leading)
                     .padding(.leading, proxy.size.width * 0.088)
                     .padding(.top, proxy.size.height * 0.24)
@@ -317,9 +317,9 @@ struct WorkDetailView: View {
     }
 
     @ViewBuilder
-    private func detailCopy(_ detail: WorkDetail, phone: Bool) -> some View {
+    private func detailCopy(_ detail: WorkDetail, phone: Bool, tabletScale: CGFloat = 1) -> some View {
         if !phone, detail.work.kind == .series, let selected = selectedTabletEpisode(in: detail) {
-            tabletSeriesCopy(detail, selected: selected)
+            tabletSeriesCopy(detail, selected: selected, tabletScale: tabletScale)
         } else {
         VStack(alignment: .leading, spacing: 0) {
             Text(detail.work.kind.displayName.uppercased())
@@ -405,7 +405,11 @@ struct WorkDetailView: View {
         }
     }
 
-    private func tabletSeriesCopy(_ detail: WorkDetail, selected: (season: SeasonDetail, episode: EpisodeDetail)) -> some View {
+    private func tabletSeriesCopy(
+        _ detail: WorkDetail,
+        selected: (season: SeasonDetail, episode: EpisodeDetail),
+        tabletScale: CGFloat
+    ) -> some View {
         let seasonNumber = selected.season.season.seasonNumber
         let episode = selected.episode.episode
         let episodeTitle = episode.title ?? "Episode \(episode.episodeNumber)"
@@ -414,53 +418,55 @@ struct WorkDetailView: View {
         let dateValue = episode.airDate ?? detail.work.releaseDate
         let dateLabel = dateValue.flatMap(Self.airDateLabel)
         let dateQualifier = episode.airDate == nil ? "Premiered" : "Aired"
+        let yearRange = Self.tabletYearRangeLabel(releaseDate: detail.work.releaseDate, endDate: detail.work.endDate)
         let synopsis = episode.overview ?? selected.season.season.overview ?? detail.work.overview
+        // These are the web's resolved CSS-pixel values at the guarded 1366px viewport, converted to native points below.
+        let titleFont = min(80, max(35.2, 3.6 * 1366 / 100)) * tabletScale
         return VStack(alignment: .leading, spacing: 0) {
             Text("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))")
-                .font(.custom("Avenir Next", fixedSize: 10).weight(.heavy))
-                .tracking(1.2)
-                .foregroundStyle(PlayarrStyle.pink)
-                .padding(.bottom, 22)
+                .font(DesignFont.font(8.75 * tabletScale, 820))
+                .tracking(0.08 * 8.75 * tabletScale)
+                .foregroundStyle(PlayarrStyle.brandInk)
+                .padding(.bottom, 18 * tabletScale)
             Text(detail.work.title)
-                .font(.custom("Avenir Next", fixedSize: 52).weight(.medium))
-                .tracking(-3.75)
-                .lineSpacing(-5)
+                .font(DesignFont.font(titleFont, 560))
+                .tracking(-0.072 * titleFont)
+                .lineSpacing(-3 * tabletScale)
                 .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(3)
-            Text(episodeTitle)
-                .font(.custom("Avenir Next", fixedSize: 18).weight(.semibold))
-                .foregroundStyle(PlayarrStyle.inkSoft)
                 .lineLimit(2)
-                .padding(.top, 12)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(selected.season.season.title ?? "Season \(seasonNumber)")
-                    Text("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))")
-                }
-                HStack(spacing: 8) {
-                    if let runtime, runtime > 0 { Text(Self.runtimeLabel(runtime)) }
-                    if let dateLabel { Text("\(dateQualifier) \(dateLabel)") }
-                }
-            }
-            .font(.custom("Avenir Next", fixedSize: 10).weight(.medium))
-            .foregroundStyle(PlayarrStyle.muted)
-            .padding(.top, 14)
-            if !detail.work.genres.isEmpty {
-                Text(detail.work.genres.prefix(3).joined(separator: "  •  "))
-                    .font(.custom("Avenir Next", fixedSize: 9.5).weight(.semibold))
+            Text(episodeTitle)
+                .font(DesignFont.font(15.026 * tabletScale, 570))
+                .tracking(-0.035 * 15.026 * tabletScale)
+                .foregroundStyle(PlayarrStyle.inkSoft)
+                .lineLimit(1)
+                .padding(.top, 10 * tabletScale)
+            FlexWrapLayout(horizontalSpacing: 13.6 * tabletScale, verticalSpacing: 6.4 * tabletScale) {
+                Text(selected.season.season.title ?? "Season \(seasonNumber)")
+                    .font(DesignFont.font(7.513 * tabletScale, 680))
                     .foregroundStyle(PlayarrStyle.inkSoft)
-                    .padding(.top, 10)
+                Text("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))")
+                if let runtime, runtime > 0 { Text(Self.runtimeLabel(runtime)) }
+                if let yearRange { Text(yearRange) }
+                if let dateLabel { Text("\(dateQualifier) \(dateLabel)") }
+                ForEach(Array(detail.work.genres.prefix(3).enumerated()), id: \.offset) { _, genre in
+                    Text(genre)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .font(DesignFont.font(7.513 * tabletScale, 400))
+            .foregroundStyle(PlayarrStyle.muted)
+            .padding(.top, 12 * tabletScale)
             if let synopsis, !synopsis.isEmpty {
                 Text(synopsis)
-                    .font(.custom("Avenir Next", fixedSize: 10.5))
+                    .font(DesignFont.font(9.15 * tabletScale, 400))
                     .foregroundStyle(PlayarrStyle.muted)
-                    .lineSpacing(4)
-                    .lineLimit(6)
-                    .padding(.top, 14)
+                    .lineSpacing(3.5 * tabletScale)
+                    .lineLimit(5)
+                    .padding(.top, 12 * tabletScale)
             }
             if let resumeEpisode, let mediaFileID = resumeEpisode.episode.mediaFileID {
-                VStack(alignment: .leading, spacing: 9) {
+                // Guarded web geometry measured a 116.109 x 57.359px primary action, 104px secondary minimum and 12.294px gap.
+                HStack(spacing: 12.294 * tabletScale) {
                     NavigationLink {
                         PlayerView(
                             apiClient: apiClient,
@@ -476,49 +482,56 @@ struct WorkDetailView: View {
                             )
                         )
                     } label: {
-                        Label(tabletResumeLabel, systemImage: "play.fill").frame(minWidth: 130, minHeight: 46)
+                        Label(tabletResumeLabel, systemImage: "play.fill")
+                            .font(DesignFont.font(8.463 * tabletScale, 610))
+                            .padding(.horizontal, 21.6 * tabletScale)
+                            .frame(minWidth: 116.109 * tabletScale, minHeight: 57.359 * tabletScale)
+                            .background(PlayarrStyle.ink, in: Capsule())
+                            .foregroundStyle(PlayarrStyle.background)
                     }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .buttonStyle(.plain)
                     .disabled(!tabletResumePlanLoaded)
                     .opacity(!tabletResumePlanLoaded ? 0.55 : 1)
 
-                    HStack(spacing: 8) {
-                        if watchlistLoaded {
-                            Button {
-                                Task { await toggleWatchlist(detail.work) }
-                            } label: {
-                                tabletSeriesActionLabel(
-                                    watchlistListed ? "Remove from watchlist" : "Add to watchlist",
-                                    systemImage: watchlistListed ? "checkmark" : "plus"
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(watchlistBusy)
-                        } else {
-                            Button {
-                                Task { await loadTabletWatchlist(detail.work) }
-                            } label: {
-                                tabletSeriesActionLabel(
-                                    watchlistLoadFailed ? "Retry watchlist" : "Loading watchlist",
-                                    systemImage: watchlistLoadFailed ? "arrow.clockwise" : "ellipsis"
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(watchlistBusy || !watchlistLoadFailed)
-                        }
-
-                        Menu {
-                            let availablePlaylists = writablePlaylists(for: detail.work)
-                            if availablePlaylists.isEmpty { Text("No playlists yet") }
-                            ForEach(availablePlaylists) { playlist in
-                                Button(playlist.name) { add(detail.work, to: playlist) }
-                            }
+                    if watchlistLoaded {
+                        Button {
+                            Task { await toggleWatchlist(detail.work) }
                         } label: {
-                            tabletSeriesActionLabel("Add to Playlist", systemImage: "plus")
+                            tabletSeriesActionLabel(
+                                watchlistListed ? "Remove from watchlist" : "Add to watchlist",
+                                systemImage: watchlistListed ? "checkmark" : "plus",
+                                tabletScale: tabletScale
+                            )
                         }
+                        .buttonStyle(.plain)
+                        .disabled(watchlistBusy)
+                    } else {
+                        Button {
+                            Task { await loadTabletWatchlist(detail.work) }
+                        } label: {
+                            tabletSeriesActionLabel(
+                                watchlistLoadFailed ? "Retry watchlist" : "Loading watchlist",
+                                systemImage: watchlistLoadFailed ? "arrow.clockwise" : "ellipsis",
+                                tabletScale: tabletScale
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(watchlistBusy || !watchlistLoadFailed)
                     }
+
+                    Menu {
+                        let availablePlaylists = writablePlaylists(for: detail.work)
+                        if availablePlaylists.isEmpty { Text("No playlists yet") }
+                        ForEach(availablePlaylists) { playlist in
+                            Button(playlist.name) { add(detail.work, to: playlist) }
+                        }
+                    } label: {
+                        tabletSeriesActionLabel("Add to Playlist", systemImage: "plus", tabletScale: tabletScale)
+                    }
+                    .fixedSize()
                 }
-                .padding(.top, 20)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.top, 18 * tabletScale)
             }
         }
     }
@@ -540,14 +553,16 @@ struct WorkDetailView: View {
         }
     }
 
-    private func tabletSeriesActionLabel(_ title: String, systemImage: String) -> some View {
+    private func tabletSeriesActionLabel(_ title: String, systemImage: String, tabletScale: CGFloat) -> some View {
         Label(title, systemImage: systemImage)
-            .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
+            .font(DesignFont.font(7.9228 * tabletScale, 610))
             .foregroundStyle(PlayarrStyle.ink)
-            .padding(.horizontal, 12)
-            .frame(height: 42)
-            .background(PlayarrStyle.surfaceStrong.opacity(0.82), in: Capsule())
-            .overlay { Capsule().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
+            .lineLimit(1)
+            .padding(.horizontal, 16 * tabletScale)
+            .frame(minWidth: 104 * tabletScale, minHeight: 57.359 * tabletScale)
+            .background(PlayarrStyle.surfaceStrong.opacity(0.72), in: Capsule())
+            .shadow(color: PlayarrStyle.ink.opacity(0.12), radius: 19 * tabletScale)
+            .contentShape(Capsule())
     }
 
     static func runtimeLabel(_ runtimeMs: Int64) -> String {
@@ -556,6 +571,12 @@ struct WorkDetailView: View {
         let minutes = totalMinutes % 60
         if hours == 0 { return "\(totalMinutes) min" }
         return minutes == 0 ? "\(hours)h" : "\(hours)h \(minutes)m"
+    }
+
+    static func tabletYearRangeLabel(releaseDate: String?, endDate: String?) -> String? {
+        guard let releaseDate, let start = Int(releaseDate.prefix(4)) else { return nil }
+        guard let endDate, let end = Int(endDate.prefix(4)), end > start else { return String(start) }
+        return "\(start)–\(end)"
     }
 
     static func airDateLabel(_ value: String) -> String? {
@@ -855,6 +876,7 @@ struct WorkDetailView: View {
                             cardWidth: cardWidth,
                             cardHeight: cardHeight,
                             selected: episode.id == selectedEpisodeID,
+                            tabletScale: tabletScale,
                             focusedEpisodeID: focusedEpisodeID,
                             onSelect: { onSelectEpisode(episode.id) }
                         )
@@ -894,6 +916,7 @@ struct WorkDetailView: View {
         cardWidth: CGFloat = 210,
         cardHeight: CGFloat = 118,
         selected: Bool = false,
+        tabletScale: CGFloat? = nil,
         focusedEpisodeID: FocusState<UUID?>.Binding,
         onSelect: @escaping () -> Void = {}
     ) -> some View {
@@ -925,7 +948,8 @@ struct WorkDetailView: View {
                         playable: true,
                         cardWidth: cardWidth,
                         cardHeight: cardHeight,
-                        selected: selected
+                        selected: selected,
+                        tabletScale: tabletScale
                     )
                 }
                 .buttonStyle(.plain)
@@ -949,7 +973,8 @@ struct WorkDetailView: View {
                         playable: false,
                         cardWidth: cardWidth,
                         cardHeight: cardHeight,
-                        selected: selected
+                        selected: selected,
+                        tabletScale: tabletScale
                     )
                 }
                 .buttonStyle(.plain)
@@ -966,9 +991,13 @@ struct WorkDetailView: View {
         playable: Bool,
         cardWidth: CGFloat = 210,
         cardHeight: CGFloat = 118,
-        selected: Bool = false
+        selected: Bool = false,
+        tabletScale: CGFloat? = nil
     ) -> some View {
-        return VStack(alignment: .leading, spacing: 7) {
+        let scale = tabletScale ?? 1
+        let cardRadius = tabletScale.map { 9.562 * $0 } ?? 12
+        let focusColor = PlayarrStyle.brandInk
+        return VStack(alignment: .leading, spacing: tabletScale == nil ? 7 : 0) {
             ZStack(alignment: .bottomLeading) {
                 if let work = viewModel.detail?.work {
                     WMRemoteImage(apiClient: apiClient, sources: episodeArtworkSources(detail, workID: work.id))
@@ -978,36 +1007,66 @@ struct WorkDetailView: View {
                     PlayarrStyle.surfaceStrong
                 }
                 LinearGradient(colors: [.clear, .black.opacity(0.68)], startPoint: .center, endPoint: .bottom)
-                HStack {
-                    Text(label)
-                        .font(.custom("Avenir Next", fixedSize: 10).weight(.heavy))
+                if let tabletScale {
+                    Text(String(format: "%02d", detail.episode.episodeNumber))
+                        .font(DesignFont.font(13.66 * tabletScale, 560))
                         .foregroundStyle(.white)
-                    Spacer()
-                    Image(systemName: playable ? "play.fill" : "clock")
-                        .font(.caption.bold())
-                        .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
-                        .background(.black.opacity(0.56), in: Circle())
+                        .padding(.trailing, 12 * tabletScale)
+                        .padding(.bottom, 8 * tabletScale)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                } else {
+                    HStack {
+                        Text(label)
+                            .font(.custom("Avenir Next", fixedSize: 10).weight(.heavy))
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Image(systemName: playable ? "play.fill" : "clock")
+                            .font(.caption.bold())
+                            .foregroundStyle(.white)
+                            .frame(width: 30, height: 30)
+                            .background(.black.opacity(0.56), in: Circle())
+                    }
+                    .padding(10)
                 }
-                .padding(10)
             }
             .frame(width: cardWidth, height: cardHeight)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(selected ? PlayarrStyle.pink : PlayarrStyle.lineStrong, lineWidth: selected ? 3 : 1)
+                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                    .stroke(
+                        tabletScale == nil ? (selected ? PlayarrStyle.pink : PlayarrStyle.lineStrong) : (selected ? focusColor : .clear),
+                        lineWidth: tabletScale == nil ? (selected ? 3 : 1) : (selected ? 3 * scale : 0)
+                    )
             }
-
-            Text(title)
-                .font(.custom("Avenir Next", fixedSize: 12.5).weight(.semibold))
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(1)
-            Text(playable ? "Episode" : "Not available yet")
-                .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
-                .foregroundStyle(PlayarrStyle.muted)
+            .scaleEffect(selected && tabletScale != nil ? 1.025 : 1)
+            .shadow(color: selected && tabletScale != nil ? focusColor.opacity(0.45) : .clear, radius: selected ? 10 * scale : 0)
+            if let tabletScale {
+                HStack(alignment: .firstTextBaseline, spacing: 8.8 * tabletScale) {
+                    Text(label)
+                        .font(DesignFont.font(6.278 * tabletScale, 700))
+                        .foregroundStyle(PlayarrStyle.muted)
+                        .fixedSize()
+                    Text(title)
+                        .font(DesignFont.font(8.196 * tabletScale, 610))
+                        .foregroundStyle(PlayarrStyle.ink)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .padding(.top, 11.52 * tabletScale)
+            } else {
+                Text(title)
+                    .font(.custom("Avenir Next", fixedSize: 12.5).weight(.semibold))
+                    .foregroundStyle(PlayarrStyle.ink)
+                    .lineLimit(1)
+                Text(playable ? "Episode" : "Not available yet")
+                    .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
+                    .foregroundStyle(PlayarrStyle.muted)
+            }
         }
         .frame(width: cardWidth, alignment: .leading)
         .contentShape(Rectangle())
+        .offset(y: selected && tabletScale != nil ? -7 * scale : 0)
+        .animation(.easeOut(duration: 0.24), value: selected)
     }
 
     private func episodeArtworkSources(_ episode: EpisodeDetail, workID: UUID) -> [WMRemoteImage.Source] {
@@ -1143,5 +1202,60 @@ struct WorkDetailView: View {
             apiClient: apiClient,
             downloadRepository: DownloadRepository(apiClient: apiClient)
         )
+    }
+}
+
+private struct FlexWrapLayout: Layout {
+    let horizontalSpacing: CGFloat
+    let verticalSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let widthLimit = proposal.width ?? .infinity
+        var lineWidth: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        var totalHeight: CGFloat = 0
+        var widestLine: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            let leadingSpacing = lineWidth == 0 ? 0 : horizontalSpacing
+            if lineWidth > 0, lineWidth + leadingSpacing + size.width > widthLimit {
+                widestLine = max(widestLine, lineWidth)
+                totalHeight += lineHeight + verticalSpacing
+                lineWidth = size.width
+                lineHeight = size.height
+            } else {
+                lineWidth += leadingSpacing + size.width
+                lineHeight = max(lineHeight, size.height)
+            }
+        }
+
+        widestLine = max(widestLine, lineWidth)
+        return CGSize(width: min(widthLimit, widestLine), height: totalHeight + lineHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var lineHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + horizontalSpacing + size.width > bounds.maxX {
+                x = bounds.minX
+                y += lineHeight + verticalSpacing
+                lineHeight = 0
+            } else if x > bounds.minX {
+                x += horizontalSpacing
+            }
+
+            subview.place(
+                at: CGPoint(x: x, y: y),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: size.width, height: size.height)
+            )
+            x += size.width
+            lineHeight = max(lineHeight, size.height)
+        }
     }
 }

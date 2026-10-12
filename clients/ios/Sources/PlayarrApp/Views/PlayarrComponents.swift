@@ -11,6 +11,7 @@ enum PlayarrStyle {
     static let inkSoft = adaptive(light: (0.404, 0.349, 0.380), dark: (0.773, 0.722, 0.741))
     static let muted = adaptive(light: (0.647, 0.588, 0.620), dark: (0.533, 0.478, 0.510))
     static let pink = Color(red: 0.812, green: 0.192, blue: 0.341)
+    static let brandInk = adaptive(light: (0.510, 0.118, 0.212), dark: (0.918, 0.651, 0.714))
     static let accent = adaptive(light: (0.404, 0.349, 0.380), dark: (0.875, 0.863, 0.867))
     static let onAccent = adaptive(light: (1, 1, 1), dark: (0.129, 0.114, 0.129))
     static let line = adaptive(light: (0.220, 0.149, 0.129), dark: (0.875, 0.863, 0.867)).opacity(0.14)

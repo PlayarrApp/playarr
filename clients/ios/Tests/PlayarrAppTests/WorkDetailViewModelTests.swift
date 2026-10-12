@@ -26,6 +26,12 @@ final class WorkDetailViewModelTests: XCTestCase {
         XCTAssertEqual(WorkDetailView.runtimeLabel(90 * 60_000), "1h 30m")
     }
 
+    func testTabletYearRangeIncludesOnlyLaterSeriesEndYear() {
+        XCTAssertEqual(WorkDetailView.tabletYearRangeLabel(releaseDate: "2011-01-01", endDate: "2019-01-01"), "2011–2019")
+        XCTAssertEqual(WorkDetailView.tabletYearRangeLabel(releaseDate: "2011-01-01", endDate: "2011-12-31"), "2011")
+        XCTAssertNil(WorkDetailView.tabletYearRangeLabel(releaseDate: nil, endDate: "2019-01-01"))
+    }
+
     func testTabletEpisodeAirDateUsesCurrentLocaleAndUTC() throws {
         let input = "2026-01-02"
         let parser = ISO8601DateFormatter()
