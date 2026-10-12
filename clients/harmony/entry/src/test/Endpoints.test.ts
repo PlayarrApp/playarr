@@ -36,6 +36,7 @@ import {
   viewResolveUrl,
   artworkWorkUrl,
   artworkAlbumUrl,
+  artworkEpisodeUrl,
   mediaThumbnailUrl,
   playbackInfoUrl,
   mediaStreamUrl,
@@ -173,6 +174,13 @@ describe('Endpoints - 4.9 artwork', () => {
     const forward = artworkAlbumUrl(WORK_ID, OTHER_ID, 'thumb');
     const swapped = artworkAlbumUrl(OTHER_ID, WORK_ID, 'thumb');
     assert.notEqual(forward, swapped);
+  });
+
+  it('artworkEpisodeUrl orders the series work id before the episode id', () => {
+    assert.equal(
+      artworkEpisodeUrl(WORK_ID, OTHER_ID, 'thumb'),
+      '/api/v1/artwork/episode/11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222/thumb'
+    );
   });
 
   it('mediaThumbnailUrl (position_ms query left to the caller)', () => {

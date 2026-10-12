@@ -10,8 +10,10 @@
  * - `GET /api/v1/artwork/work/{work_id}/{kind}` -- `fetchWorkArtwork(...)`.
  * - `GET /api/v1/artwork/album/{artist_work_id}/{album_id}/{kind}` --
  *   `fetchAlbumArtwork(...)`.
+ * - `GET /api/v1/artwork/episode/{series_work_id}/{episode_id}/{kind}` --
+ *   `fetchEpisodeArtwork(...)`.
  * - `GET /api/v1/media/{media_file_id}/thumbnail?position_ms=` --
- *   `fetchMediaThumbnail(...)`, for chapter cards and on-deck episode art.
+ *   `fetchMediaThumbnail(...)`, for chapter cards and episode-frame fallback.
  *
  * `{kind}` is always one of the lowercase `ImageKind` values (`poster`,
  * `backdrop`, `banner`, `logo`, `thumb`) from `core/Types/Work.ts`.
@@ -71,6 +73,7 @@ import { ImageKind } from '../core/Types/Work.ts';
 import {
   artworkWorkUrl,
   artworkAlbumUrl,
+  artworkEpisodeUrl,
   mediaThumbnailUrl,
 } from '../core/Endpoints.ts';
 
@@ -409,8 +412,20 @@ export function fetchAlbumArtwork(artistWorkId: string, albumId: string, kind: I
   return fetchArtworkBytes(path, cacheKey);
 }
 
+/** `GET /api/v1/artwork/episode/{series_work_id}/{episode_id}/{kind}`.
+ * Use the same 540px bound as the web detail page for episode stills. */
+export function fetchEpisodeArtwork(
+  seriesWorkId: string,
+  episodeId: string,
+  kind: ImageKind
+): Promise<ApiResult<image.PixelMap>> {
+  const path = artworkEpisodeUrl(seriesWorkId, episodeId, kind) + '?w=540';
+  const cacheKey = buildCacheKey('episode', seriesWorkId + '/' + episodeId, kind);
+  return fetchArtworkBytes(path, cacheKey);
+}
+
 /** `GET /api/v1/media/{media_file_id}/thumbnail?position_ms=` (brief 4.9):
- * chapter cards and on-deck episode art. */
+ * chapter cards and episode-frame fallback. */
 export function fetchMediaThumbnail(mediaFileId: string, positionMs: number): Promise<ApiResult<image.PixelMap>> {
   const path = mediaThumbnailUrl(mediaFileId) + '?position_ms=' + String(positionMs);
   const cacheKey = buildCacheKey('thumbnail', mediaFileId, 'position:' + String(positionMs));

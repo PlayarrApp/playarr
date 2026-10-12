@@ -51,11 +51,10 @@
  * Per-row artwork is intentionally modest in scope: an album's own cover
  * (`fetchAlbumArtworkByPriority`, `COVER_ARTWORK_PRIORITY`) is fetched ONCE
  * per album and reused for every track row inside it (there is no
- * per-track artwork endpoint at all, brief 4.9); an episode/book row tries
- * `fetchMediaThumbnail(mediaFileId, 0)` when it has a resolved
- * `media_file_id` -- exactly the "on-deck episode art" use
- * `data/ArtworkRepository.ets`'s own header comment documents that endpoint
- * for. Every fetch happens AFTER the rail/row skeletons are already on
+ * per-track artwork endpoint at all, brief 4.9); an episode with a `thumb`
+ * image first tries the server-cached episode still, then falls back to
+ * `fetchMediaThumbnail(mediaFileId, 0)`. Book rows use the media thumbnail
+ * directly. Every fetch happens AFTER the rail/row skeletons are already on
  * screen (never blocking first paint), and each success rebuilds the
  * `@State` array it belongs to with a fresh reference (ArkTS `@State`
  * reactivity needs a new array/object identity, never an in-place mutation
@@ -114,6 +113,7 @@ import { resumeStartMs } from '../core/PlaybackMath.ts';
 import {
   fetchWorkArtworkByPriority,
   fetchAlbumArtworkByPriority,
+  fetchEpisodeArtwork,
   fetchMediaThumbnail,
   HERO_ARTWORK_PRIORITY,
   COVER_ARTWORK_PRIORITY,
@@ -231,6 +231,7 @@ interface DetailRow {
   artwork: image.PixelMap | undefined;
   mediaFileId: string | null;
   similarWorkId: string | null;
+  hasEpisodeStill: boolean;
   /** Where playback starts when the row is a chapter; absent plays from the beginning. */
   startMs?: number;
 }
@@ -347,6 +348,7 @@ function buildEpisodeRow(detail: EpisodeDetail): DetailRow {
     artwork: undefined,
     mediaFileId: episodeMediaFileId(detail),
     similarWorkId: null,
+    hasEpisodeStill: episode.images.some((entry) => entry.kind === 'thumb'),
   };
   return row;
 }
@@ -395,6 +397,7 @@ function buildTrackRow(detail: TrackDetail): DetailRow {
     artwork: undefined,
     mediaFileId: trackMediaFileId(detail),
     similarWorkId: null,
+    hasEpisodeStill: false,
   };
   return row;
 }
@@ -443,6 +446,7 @@ function buildBookRow(detail: BookDetail): DetailRow {
     artwork: undefined,
     mediaFileId: bookMediaFileId(detail),
     similarWorkId: null,
+    hasEpisodeStill: false,
   };
   return row;
 }
@@ -521,6 +525,7 @@ function buildSimilarRail(works: Work[]): DetailRail {
       artwork: undefined,
       mediaFileId: null,
       similarWorkId: work.id,
+      hasEpisodeStill: false,
     };
     items.push(row);
   }
@@ -546,6 +551,7 @@ function applyRowArtworkInRail(rail: DetailRail, rowId: string, artwork: image.P
         artwork: artwork,
         mediaFileId: item.mediaFileId,
         similarWorkId: item.similarWorkId,
+        hasEpisodeStill: item.hasEpisodeStill,
         startMs: item.startMs,
       };
       items.push(next);
@@ -584,6 +590,7 @@ function applyAlbumArtwork(rails: DetailRail[], railId: string, artwork: image.P
         artwork: artwork,
         mediaFileId: item.mediaFileId,
         similarWorkId: item.similarWorkId,
+        hasEpisodeStill: item.hasEpisodeStill,
       };
       items.push(next);
     }
@@ -616,6 +623,7 @@ function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
     artwork: undefined,
     mediaFileId: mediaFileId,
     similarWorkId: null,
+    hasEpisodeStill: false,
     startMs: chapter.start_ms,
   };
   return row;
@@ -752,6 +760,13 @@ struct Detail {
       }
 
       for (const item of rail.items) {
+        if (item.hasEpisodeStill) {
+          const still = await fetchEpisodeArtwork(artistWorkId, item.id, 'thumb');
+          if (still.kind === 'ok') {
+            this.rails = applyRowArtworkAcrossRails(this.rails, item.id, still.value);
+            continue;
+          }
+        }
         if (item.mediaFileId === null) {
           continue;
         }

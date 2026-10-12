@@ -1,0 +1,1 @@
+- Harmony phone series-detail episode cards now prefer the server-cached episode still, then fall back to the existing media thumbnail.

@@ -200,6 +200,10 @@ export function artworkAlbumUrl(artistWorkId: string, albumId: string, kind: str
   return "/api/v1/artwork/album/" + artistWorkId + "/" + albumId + "/" + kind;
 }
 
+export function artworkEpisodeUrl(seriesWorkId: string, episodeId: string, kind: string): string {
+  return "/api/v1/artwork/episode/" + seriesWorkId + "/" + episodeId + "/" + kind;
+}
+
 export function mediaThumbnailUrl(mediaFileId: string): string {
   return "/api/v1/media/" + mediaFileId + "/thumbnail";
 }
