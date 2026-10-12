@@ -533,6 +533,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Tizen Search now exposes a remote-navigable type filter for movies, series, sites and music, keeps the selection in the route, and uses a single focus indicator while the page is active.
 - Fire TV: the player's video chrome stays dark in the light theme, as on the web; its drawers follow the theme.
 - Fire TV: the letter rail has the web's 44 px spacing and scrolls to keep the active letter centred; the grid scrolls only as far as the focused card needs, as on the web.
 - webOS parity driver waits once per player entry for the video to be playing before the first key, as the simulator opens the player slower than web.
