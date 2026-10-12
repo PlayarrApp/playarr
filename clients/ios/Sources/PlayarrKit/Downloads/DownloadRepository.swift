@@ -313,7 +313,12 @@ public final class DownloadRepository {
     private func handleFailed(mediaFileID: UUID, error: Error, resumeData: Data?) {
         guard let record = record(forMediaFileID: mediaFileID) else { return }
         record.resumeData = resumeData
-        fail(record, message: (error as NSError).localizedDescription)
+        let ns = error as NSError
+        #if DEBUG
+        fail(record, message: "\(ns.localizedDescription) (\(ns.domain) \(ns.code))") // the parity downloads cases show why a transfer failed
+        #else
+        fail(record, message: ns.localizedDescription)
+        #endif
     }
 
     private func handlePaused(mediaFileID: UUID, resumeData: Data?) {

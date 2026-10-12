@@ -26,7 +26,7 @@ on:
         type: string
         default: ""
       parts:
-        description: Comma-separated parts (dark, light; playback is out of parity)
+        description: Comma-separated parts (dark, light, downloads; playback is out of parity)
         type: string
         default: dark,light
 
@@ -48,7 +48,7 @@ jobs:
           python3 - <<'P' >> "$GITHUB_OUTPUT"
           import json, os
           ok = lambda v, allowed: [x for x in v.split(",") if x in allowed]
-          include = [{"device": d, "part": p} for d in ok(os.environ["DEVICES"], ("iphone", "ipad")) for p in ok(os.environ["PARTS"], ("dark", "light", "playback"))]
+          include = [{"device": d, "part": p} for d in ok(os.environ["DEVICES"], ("iphone", "ipad")) for p in ok(os.environ["PARTS"], ("dark", "light", "downloads"))]
           print("matrix=" + json.dumps({"include": include}))
           P
 
@@ -60,9 +60,9 @@ jobs:
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: macos-26
     timeout-minutes: 120
-    # Both playback jobs share the server's two transcode slots per node: one at a time.
+    # Both download jobs share the server's transcode slots: one at a time.
     concurrency:
-      group: ${{ matrix.part == 'playback' && 'ios-wall-playback' || format('ios-wall-{0}-{1}-{2}', matrix.device, matrix.part, github.run_id) }}
+      group: ${{ matrix.part == 'downloads' && 'ios-wall-downloads' || format('ios-wall-{0}-{1}-{2}', matrix.device, matrix.part, github.run_id) }}
     env:
       DEVICE: ${{ matrix.device }}
       PART: ${{ matrix.part }}
@@ -132,11 +132,11 @@ jobs:
             "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$out/build.json"
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
           case $PART in
-            playback) only=playback; themes=dark ;;
+            downloads) only=downloads; themes=dark ;;
             *) only=screens; themes=$PART ;;
           esac
           # Playback is scored against the suite's own expectation (every case plays); touch devices have no D-pad values.
-          echo '{"suite":1,"dpad":{},"playback":{"a":{"state":"playing"},"b":{"state":"playing"},"c":{"state":"playing"}}}' > "$RUNNER_TEMP/expected.json"
+          echo '{"suite":1,"dpad":{},"playback":{}}' > "$RUNNER_TEMP/expected.json"
           node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
 
       - name: Upload the results
