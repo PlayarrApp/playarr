@@ -22,8 +22,9 @@ internal sealed class DownloadDrawer
     public string? FocusedLabel => _focus.Item?.Label;
 
     /// <param name="qualities">null when only the keep-until is edited.</param>
-    public DownloadDrawer(AppEnv env, string title, IReadOnlyList<DownloadQuality>? qualities, KeepUntil current, Action<DownloadQuality?, KeepUntil, int> confirm, Action close, string? loading = null, string[]? scopes = null)
+    public DownloadDrawer(AppEnv env, string title, IReadOnlyList<DownloadQuality>? qualities, KeepUntil current, Action<DownloadQuality?, KeepUntil, int> confirm, Action close, string? loading = null, string[]? scopes = null, string? currentQualityId = null)
     {
+        var edit = currentQualityId is not null; View? hint = null;
         var t = env.Theme; _close = close;
         _keep = Math.Max(0, Array.FindIndex(Keeps, k => k.Type == current.Type && k.Amount == current.Amount && k.Unit == current.Unit));
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
@@ -67,6 +68,7 @@ internal sealed class DownloadDrawer
         var ViewTop = viewTopBase + 28;
         if (qualities is not null)
         {
+            if (currentQualityId is not null) _quality = Math.Max(0, qualities.ToList().FindIndex(q => q.Id == currentQualityId));
             Root.Add(Ui.Text("Quality", 1606, y, 9.6f, 800, t.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f));
             var clip = new View { PositionX = 1590, PositionY = ViewTop, Size = new Size(300, ViewH), ClippingMode = ClippingModeType.ClipChildren };
             var inner = new View();
@@ -94,6 +96,7 @@ internal sealed class DownloadDrawer
                     Select = () =>
                     {
                         _quality = idx;
+                        if (hint is not null) hint.Opacity = qualities[idx].Id != currentQualityId ? 1 : 0;
                         for (var k = 0; k < marks.Count; k++) { marks[k].Box.BackgroundColor = Ui.C(k == idx ? t.Ink : t.SurfaceSoft); marks[k].Text.TextColor = Ui.C(k == idx ? t.OnAccent : t.InkMuted); }
                     },
                 });
@@ -120,7 +123,15 @@ internal sealed class DownloadDrawer
         }
         y += 16;
         Button(t, 1606, y, 128, "Cancel", "cancel", false, _close);
-        Button(t, 1746, y, 128, qualities is null ? "Save" : "Download", qualities is null ? "save" : "download", true, () => confirm(qualities is null ? null : qualities.Count == 0 ? null : qualities[_quality], Keeps[_keep], _scope));
+        var saveOnly = qualities is null || edit;
+        Button(t, 1746, y, 128, saveOnly ? "Save" : "Download", saveOnly ? "save" : "download", true, () => confirm(qualities is null ? null : qualities.Count == 0 ? null : qualities[_quality], Keeps[_keep], _scope));
+        if (edit)
+        {
+            // web #945: a changed quality downloads again at the new quality, then removes the old copy
+            hint = new View { Opacity = 0 };
+            Ui.Paragraph(hint, "Changing the quality downloads this again at the new quality, then removes the old copy.", 1606, y + 70, 10, 400, t.InkMuted, 268, 15);
+            Root.Add(hint);
+        }
         _focus.Set(scopes is not null ? 1 : qualities is { Count: > 0 } ? 1 : 0);
     }
 

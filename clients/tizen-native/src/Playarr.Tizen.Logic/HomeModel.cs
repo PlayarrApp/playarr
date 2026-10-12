@@ -36,7 +36,7 @@ public static class HomeModel
         var kicker = w.Genres.Count > 0 ? (kind.Length > 0 ? kind + " · " + w.Genres[0] : w.Genres[0]) : kind;
         return new WorkCard(w.Id, w.Kind, w.Title, WorkLabels.KindWithYear(w), kicker, w.Overview ?? "",
             ArtworkPaths.First(w, ImageKind.Thumb, ImageKind.Backdrop, ImageKind.Banner, ImageKind.Poster), ArtworkPaths.Path(w, ImageKind.Poster), ArtworkPaths.Path(w, ImageKind.Backdrop),
-            p is { State: WatchState.InProgress } ? p.Fraction : 0,
+            p is { State: WatchState.InProgress } ? Math.Max(p.Fraction, 1e-6) : 0, // web draws the 3 px minimum even at 0
             p is { State: WatchState.Unwatched } || (p is null && showUnwatched), WorkLabels.YearRange(w), w.Genres.ToList());
     }
 
@@ -46,7 +46,7 @@ public static class HomeModel
         var used = new HashSet<Guid>();
         var all = serverRails.SelectMany(r => r.Items).OrderByDescending(w => w.AddedAt).ToList();
         var primary = (onDeck.Count > 0 ? onDeck : all).Where(w => used.Add(w.Id)).Take(onDeck.Count > 0 ? 10 : 8).ToList();
-        var rails = new List<RailModel> { new("primary", onDeck.Count > 0 ? "On deck" : "Start watching", primary.Select(w => Card(w, progress, onDeck.Count == 0)).ToList()) };
+        var rails = new List<RailModel> { new("primary", onDeck.Count > 0 ? "On deck" : "Start watching", primary.Select(w => Card(w, progress, true)).ToList()) };
         rails.AddRange(serverRails.Select(r => new RailModel(r.Id, r.Title, r.Items.Select(w => Card(w, progress, true)).ToList())));
         return rails.Where(r => r.Cards.Count > 0).ToList();
     }

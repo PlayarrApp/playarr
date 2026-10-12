@@ -180,8 +180,42 @@ internal sealed class DownloadsScreen : IPage
 
     private void OpenEdit(DownloadRecord r)
     {
+        if (_drawer is not null) return;
+        // web #945: the quality section lists the server's options and is absent when they cannot be loaded (offline)
         _drawer = new DownloadDrawer(_env, r.Title, null, r.Keep, (_, keep, _) => { _env.Downloads.EditKeep(r.Id, keep); CloseDrawer(); Build(); }, CloseDrawer);
         _root.Add(_drawer.Root);
+        if (!Guid.TryParse(r.MediaFileId, out var file)) return;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var (_, options) = await _env.DownloadsServer.OptionsAsync(file);
+                if (options.Count == 0) return;
+                SynchronizationContextHolder.Post(() =>
+                {
+                    if (_drawer is null) return;
+                    CloseDrawer();
+                    _drawer = new DownloadDrawer(_env, r.Title, options, r.Keep, (q, keep, _) => ConfirmEdit(r, file, q, keep), CloseDrawer, currentQualityId: r.QualityId);
+                    _root.Add(_drawer.Root);
+                });
+            }
+            catch (Exception e) { Dbg.Log("DOWNLOAD edit options failed: " + e.Message); }
+        });
+    }
+
+    /// <summary>A new quality re-converts through a new ticket (a failed request leaves the current copy alone), then the old copy goes; the same quality only takes the keep-until.</summary>
+    private void ConfirmEdit(DownloadRecord r, Guid file, DownloadQuality? q, KeepUntil keep)
+    {
+        CloseDrawer();
+        if (q is null || q.Id == r.QualityId) { _env.Downloads.EditKeep(r.Id, keep); Build(); return; }
+        var next = new DownloadRecord { WorkId = r.WorkId, MediaFileId = r.MediaFileId, Title = r.Title, Subtitle = r.Subtitle, SeriesTitle = r.SeriesTitle, Season = r.Season, Episode = r.Episode,
+            QualityId = q.Id, QualityLabel = q.Label, Container = r.Container, TotalBytes = q.Estimate ? null : q.Bytes, RuntimeMs = r.RuntimeMs };
+        _ = Task.Run(async () =>
+        {
+            try { await _env.Downloads.StartAsync(next, file, keep); await _env.Downloads.RemoveAsync(r.Id); }
+            catch (Exception e) { Dbg.Log("DOWNLOAD quality change failed: " + e.Message); }
+            SynchronizationContextHolder.Post(() => Build());
+        });
     }
 
     private void CloseDrawer() { if (_drawer is null) return; _root.Remove(_drawer.Root); _drawer.Root.Dispose(); _drawer = null; }

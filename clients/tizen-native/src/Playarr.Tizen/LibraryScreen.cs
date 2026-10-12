@@ -53,7 +53,7 @@ internal sealed class LibraryScreen : IPage
         _env = env; _t = env.Theme; _kind = kind; _title = title; _baseRoute = route; _progress = _noProgress;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
-        _keyArt = new KeyArt(env);
+        _keyArt = new KeyArt(env, armed: true);
         _panel = new DetailsPanel(env, library: true);
         _root.Add(_keyArt.Root);
         _root.Add(_panel.Root);
@@ -147,7 +147,7 @@ internal sealed class LibraryScreen : IPage
                 _views.Clear();
                 if (focusedId is { } fid) _focus = Math.Max(0, _items.FindIndex(c => c.WorkId == fid));
                 _count?.Dispose();
-                _count = Ui.Text($"{_total:N0} titles", 226.6f, 111.8f, 12.288f, 800, _t.BrandInk, 400, 18.432f, upper: true, spacing: 0.98f);
+                _count = Ui.Text($"{_total:N0} {(_kind == WorkKind.Artist ? "artists" : "titles")}", 226.6f, 111.8f, 12.288f, 800, _t.BrandInk, 400, 18.432f, upper: true, spacing: 0.98f);
                 _root.Add(_count);
                 if (_focus < 0 && _items.Count > 0)
                 {

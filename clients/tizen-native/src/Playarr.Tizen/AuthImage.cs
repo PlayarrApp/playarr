@@ -13,13 +13,18 @@ internal sealed class AuthImage(IPlayarrApiClient api)
     public void Apply(View parent, string? path, float w, float h, float radius = 0)
     {
         if (path is null) return;
+        Interlocked.Increment(ref _pending);
         _ = Task.Run(async () =>
         {
             var file = await GetAsync(path).ConfigureAwait(false);
-            if (file is null) return;
-            SynchronizationContextHolder.Post(() => { try { var img = Ui.Remote(file, w, h); if (radius > 0) img.CornerRadius = radius; parent.Add(img); img.LowerToBottom(); /* overlays (progress, focus ring) stay above a poster that loads later */ } catch (ObjectDisposedException) { /* page already gone */ } });
+            if (file is null) { Interlocked.Decrement(ref _pending); return; }
+            SynchronizationContextHolder.Post(() => { try { var img = Ui.Remote(file, w, h); if (radius > 0) img.CornerRadius = radius; parent.Add(img); img.LowerToBottom(); /* overlays (progress, focus ring) stay above a poster that loads later */ } catch (ObjectDisposedException) { /* page already gone */ } finally { Interlocked.Decrement(ref _pending); } });
         });
     }
+
+    private int _pending;
+    /// <summary>Images still downloading or about to be added; the parity driver waits for 0 before it captures.</summary>
+    public int Pending => Volatile.Read(ref _pending);
 
     private static readonly HttpClient Http = new();
     private readonly string _dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";

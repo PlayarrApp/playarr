@@ -38,7 +38,7 @@ internal sealed class DetailScreen : IPage
         _env = env; _t = env.Theme; _id = id; _images = new AuthImage(env.Api);
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
-        _keyArt = new KeyArt(env);
+        _keyArt = new KeyArt(env, armed: true);
         _root.Add(_keyArt.Root);
         _root.Add(_content);
         _ = LoadAsync();
@@ -82,7 +82,7 @@ internal sealed class DetailScreen : IPage
     private void BuildCopy(Work w, WorkDetail d)
     {
         _content.Add(Ui.Text(w.Genres.FirstOrDefault() ?? "Movie", 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var lines = Ui.Paragraph(_content, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
+        var lines = Ui.Paragraph(_content, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true);
         var bas = 303.5f + 62.208f * lines;
         var meta = new List<string> { "Movie" };
         if (d.RuntimeMs is > 0) meta.Add(DetailModel.Runtime(d.RuntimeMs.Value));
@@ -140,12 +140,12 @@ internal sealed class DetailScreen : IPage
         }
         catch (Exception e) { Dbg.Log("CHAPTERS failed: " + e.Message); }
         var done = new TaskCompletionSource();
-        SynchronizationContextHolder.Post(() => { try { BuildChapters(d, real is { Count: > 0 } ? real : DetailModel.GeneratedChapters(d.RuntimeMs ?? 0)); } finally { done.SetResult(); } });
+        SynchronizationContextHolder.Post(() => { try { BuildChapters(d, real is { Count: > 0 } ? real : DetailModel.GeneratedChapters(d.RuntimeMs ?? 0), generated: real is not { Count: > 0 }); } finally { done.SetResult(); } });
         await done.Task;
         await LoadCastAsync(d);
     }
 
-    private void BuildChapters(WorkDetail d, IReadOnlyList<Chapter> chapters)
+    private void BuildChapters(WorkDetail d, IReadOnlyList<Chapter> chapters, bool generated)
     {
         if (chapters.Count == 0 || d.MediaFileId is not { } file) return;
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
@@ -153,7 +153,7 @@ internal sealed class DetailScreen : IPage
         clip.Add(stack);
         _content.Add(clip);
         stack.Add(Ui.Text("Chapters", RailX, ChaptersHeadingY, 17.664f, 700, _t.Ink, 400, 26.496f, spacing: -0.53f));
-        stack.Add(Ui.Text($"{chapters.Count} chapters", RailX, ChaptersHeadingY + 30.5f, 9.984f, 400, _t.InkMuted, 400, 14.976f));
+        stack.Add(Ui.Text($"{chapters.Count} {(generated ? "scene markers" : "chapters")}", RailX, ChaptersHeadingY + 30.5f, 9.984f, 400, _t.InkMuted, 400, 14.976f));
         _chapterRow.PositionY = 620.7f; _chapterRow.Size = new Size(6000, 230);
         stack.Add(_chapterRow);
         foreach (var c in chapters)

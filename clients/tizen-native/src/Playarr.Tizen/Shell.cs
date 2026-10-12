@@ -119,7 +119,9 @@ internal sealed class Shell : View
         var focused = i == _navFocus; var active = i == _active;
         var scale = focused ? 1.1f : active ? 1.05f : 1f;
         nv.Item64.Scale = new Vector3(scale, scale, 1);
-        nv.Tile.BackgroundColor = focused ? new Color(0.957f, 0.941f, 0.945f, 0.16f) : active ? new Color(0.957f, 0.941f, 0.945f, 0.09f) : new Color(0, 0, 0, 0);
+        // web: the tile is the page ink at 9 % (16 % focused); in dark the ink is the pale 244,240,241
+        var tileInk = _theme.Name == "dark" ? new Color(0.957f, 0.941f, 0.945f, 1) : Ui.C(_theme.Ink);
+        nv.Tile.BackgroundColor = focused ? new Color(tileInk.R, tileInk.G, tileInk.B, 0.16f) : active ? new Color(tileInk.R, tileInk.G, tileInk.B, 0.09f) : new Color(0, 0, 0, 0);
         nv.Tile.BoxShadow = focused ? new Shadow(30, new Color(0.957f, 0.941f, 0.945f, 0.07f), new Vector2(0, 12), new Vector2(0, 0)) : null;
         var tint = focused || active ? Ui.C(_theme.Ink) : Ui.C(_theme.InkMuted);
         if (nv.Icon is not null) nv.Icon.Color = tint;
@@ -151,6 +153,12 @@ internal sealed class Shell : View
         _page = page;
         if (!push && _saved.Remove(route, out var restore)) page.RestoreState(restore);
         Add(page.Root);
+        if (_theme.Name == "light" && !page.HideChrome && !page.Fullscreen)
+        {
+            // web light: the page colour fades from #fbfaf9 to #efeeef between x 640 and 1120 (measured); text and cards sit above it
+            var fade = Ui.Gradient(640, 0, 1280, 1080, true, (0, _theme.Surface), (0.375f, new Rgba(0.937f, 0.937f, 0.937f)), (1, new Rgba(0.937f, 0.937f, 0.937f)));
+            page.Root.Add(fade); fade.LowerToBottom();
+        }
         page.Root.LowerToBottom();
         // full-screen pages (the player) draw over a transparent window: no rail, no background
         BackgroundColor = page.Fullscreen ? new Color(0, 0, 0, 0) : Ui.C(_theme.Bg);

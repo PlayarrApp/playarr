@@ -11,6 +11,8 @@ const SERIAL = process.env.PLAYARR_TIZEN_SERIAL ?? "emulator-26101";
 const PORT = Number(process.env.PLAYARR_TIZEN_FORWARD ?? 18890);
 const DISPLAY = process.env.PLAYARR_TIZEN_DISPLAY ?? ":25";
 const base = `http://127.0.0.1:${PORT}`;
+// key pacing: a busy host slows the emulator, and keys sent faster than it renders are lost (raise on a loaded machine)
+const KEY_MS = Number(process.env.PLAYARR_TIZEN_KEY_MS ?? 900);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function call(method, path) {
@@ -36,11 +38,13 @@ export async function createDriver() {
         if (state.ready !== false) break;
         await sleep(1000);
       }
-      await sleep(1500);
+      // chapter and cast images load after the page is ready
+      for (let waited = 0; waited < 25000 && state.pending > 0; waited += 1000) { await sleep(1000); state = await call("GET", "/state"); }
+      await sleep(2500); // posters decode after the page and the image downloads are done
     },
     async home() { state = await call("POST", "/route?path=/"); await this.settle(5000); },
     async route(p) { state = await call("POST", `/route?path=${encodeURIComponent(p)}`); await this.settle(4000); },
-    async key(k, { long } = {}) { state = await call("POST", `/key?name=${k}${long ? "&long=1" : ""}`); await sleep(long ? 1500 : 900); },
+    async key(k, { long } = {}) { state = await call("POST", `/key?name=${k}${long ? "&long=1" : ""}`); await sleep(long ? 1500 : KEY_MS); },
     async location() { state = await call("GET", "/state"); return state.route; },
     async focused() { state = await call("GET", "/state"); return state.focused == null ? null : { label: state.focused, position: state.position ?? null }; },
     async screenshot(file) {

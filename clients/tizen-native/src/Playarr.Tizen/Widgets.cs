@@ -15,6 +15,7 @@ internal sealed class MediaCard
     private readonly PlayarrTheme _t;
     private readonly float _scale, _lift, _blur, _shadowY, _shadowAlpha;
     private readonly View? _ring;
+    private readonly float _artDy;
 
     /// <param name="scale">Focus scale (home 1.025, library 1.04).</param>
     /// <param name="lift">Focus lift in px (negative = up).</param>
@@ -23,9 +24,12 @@ internal sealed class MediaCard
     {
         _t = t; _scale = scale; _lift = lift; _blur = blur; _shadowY = shadowY; _shadowAlpha = shadowAlpha;
         Box.PositionX = x; Box.PositionY = y; Box.Size = new Size(Width, 230);
-        Art.Size = new Size(Width, Height); Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
+        // Chromium snaps an image's rect to whole device pixels (left and right edges rounded); a fractional rect resamples and blurs the poster
+        var snapX = (float)Math.Round(x); var snapY = (float)Math.Round(y); var snapW = (float)Math.Round(x + Width) - snapX; var snapH = (float)Math.Round(y + Height) - snapY;
+        _artDy = snapY - y; Art.PositionX = snapX - x; Art.PositionY = _artDy;
+        Art.Size = new Size(snapW, snapH); Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
         Art.ClippingMode = ClippingModeType.ClipChildren;
-        env.Images.Apply(Art, card.ThumbUrl, Width, Height, 12.48f);
+        env.Images.Apply(Art, card.ThumbUrl, snapW, snapH, 12.48f);
         if (card.Progress > 0)
         {
             Art.Add(Ui.Box(0, Height - 3, Width, 3, new Rgba(1, 1, 1, 0.2f)));
@@ -43,7 +47,7 @@ internal sealed class MediaCard
         {
             var dot = Ui.Box(Width - 23.6f, 10.6f, 13, 13, t.Brand, 6.5f);
             dot.BorderlineWidth = 2; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
-            Box.Add(dot);
+            Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
         Title = Ui.Text(card.Title, titleInset, Height + 11.5f, 11.904f, 700, t.Ink, Width - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
@@ -53,7 +57,7 @@ internal sealed class MediaCard
     public void SetFocused(bool focused)
     {
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
-        Art.PositionY = focused ? _lift : 0;
+        Art.PositionY = _artDy + (focused ? _lift : 0);
         Art.BoxShadow = focused ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
         if (_ring is not null) { _ring.Show(focused); if (focused) _ring.RaiseToTop(); } // the poster loads later and would otherwise sit on top of the ring
         Title.TextColor = focused ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
@@ -161,7 +165,7 @@ internal sealed class DetailsPanel
         foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
         var ky = _flow ? 286.6f : 259.2f; var tsize = _flow ? 49.92f : 69.12f; var tlh = _flow ? 47.424f : 62.208f; var tw = _flow ? 420f : 369f; var ty = _flow ? 330.9f : 303.5f;
         Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 800, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, 5);
+        var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, 5, balance: true);
         var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f) + (_library ? 4f : 0); // library panels: measured 4 px lower on web
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
@@ -176,10 +180,5 @@ internal sealed class DetailsPanel
 
     private static Rgba Soft(PlayarrTheme t) => t.Name == "dark" ? new Rgba(0.855f, 0.84f, 0.844f) : t.InkSoft;
 
-    public static string Runtime(long ms)
-    {
-        var minutes = (int)(ms / 60000);
-        var h = minutes / 60; var m = minutes % 60;
-        return h <= 0 ? $"{m} min" : m > 0 ? $"{h}h {m}m" : $"{h}h";
-    }
+    public static string Runtime(long ms) => DetailModel.Runtime(ms); // web runtimeLabel: rounded, not truncated
 }

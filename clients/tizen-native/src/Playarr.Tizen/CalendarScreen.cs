@@ -191,13 +191,18 @@ internal sealed class CalendarScreen : IPage
             }
     }
 
-    private Rgba ToneColor(CalendarTone tone) => tone switch
+    // web .status-pill: available = --success, upcoming = --brand, missing = --danger (the dark and light values differ), otherwise the soft ink
+    private Rgba ToneColor(CalendarTone tone)
     {
-        CalendarTone.Available => new Rgba(0.541f, 0.773f, 0.647f),
-        CalendarTone.Missing => new Rgba(0.945f, 0.643f, 0.659f),
-        CalendarTone.Upcoming => new Rgba(0.62f, 0.72f, 0.95f),
-        _ => _t.InkSoft,
-    };
+        var dark = _t.Name == "dark";
+        return tone switch
+        {
+            CalendarTone.Available => dark ? new Rgba(0.541f, 0.773f, 0.647f) : new Rgba(0.133f, 0.298f, 0.227f),
+            CalendarTone.Missing => dark ? new Rgba(0.945f, 0.643f, 0.659f) : new Rgba(0.447f, 0.184f, 0.204f),
+            CalendarTone.Upcoming => _t.Brand,
+            _ => _t.InkSoft,
+        };
+    }
 
     private static (int, string) Order(CalendarEntry e) => (CalendarRules.ReleaseInstant(e) is { } at ? (int)at.ToLocalTime().TimeOfDay.TotalMinutes + 1 : 0, e.Title);
 
@@ -211,11 +216,22 @@ internal sealed class CalendarScreen : IPage
         for (var i = 0; i < 7; i++)
         {
             var day = start.AddDays(i); var x = i * 460f;
-            clip.Add(Ui.Text(day.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB")), x, 174, 18.4f, 700, _t.Ink, 440, 27.6f));
+            var head = day.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"));
+            clip.Add(Ui.Text(head, x, 174, 18.4f, 640, day == _today ? _t.Accent : _t.Ink, 440, 27.6f));
+            if (day == _today) { var holder = new View { PositionX = x, PositionY = 174 - 8.2f }; clip.Add(holder); TodayTag(holder, Ui.TextWidth(head, 18.4f, 640, 0) + 12, 11 + 0.2f); }
             var y = 208f;
             foreach (var e in byDay.TryGetValue(day, out var l) ? l : new List<CalendarEntry>())
                 y += EntryCard(clip, e, x, y, 440, 153.6f + x) + 13.6f;
         }
+    }
+
+    /// <summary>web .calendar-today-tag: the day heading's colour as a 1 px outline, no fill, small upper-case text.</summary>
+    private void TodayTag(View parent, float x, float y)
+    {
+        var tag = Ui.Box(x, y, 60.5f, 22, new Rgba(0, 0, 0, 0), 11);
+        tag.BorderlineWidth = 1; tag.BorderlineColor = Ui.C(_t.Accent);
+        tag.Add(Ui.Text("Today", 0, 2.6f, 11.2f, 700, _t.Accent, 60.5f, 16.8f, HorizontalAlignment.Center, upper: true, spacing: 0.9f));
+        parent.Add(tag);
     }
 
     private void RenderAgenda(DateTime start)
@@ -227,8 +243,9 @@ internal sealed class CalendarScreen : IPage
         foreach (var g in byDay)
         {
             var band = Ui.Box(0, y, 1033.4f, 44, _t.Bg, 0);
-            band.Add(Ui.Text(g.Key.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB")), 0, 8.2f, 18.4f, 700, _t.Ink, 400, 27.6f));
-            if (g.Key == _today) { var tag = Ui.Box(174.6f, 11, 60.5f, 22, new Rgba(_t.Brand.R, _t.Brand.G, _t.Brand.B, 0.25f), 11); tag.Add(Ui.Text("Today", 0, 2.6f, 11.2f, 700, _t.BrandInk, 60.5f, 16.8f, HorizontalAlignment.Center, upper: true, spacing: 0.9f)); band.Add(tag); }
+            var head = g.Key.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"));
+            band.Add(Ui.Text(head, 0, 8.2f, 18.4f, 640, g.Key == _today ? _t.Accent : _t.Ink, 400, 27.6f));
+            if (g.Key == _today) TodayTag(band, Ui.TextWidth(head, 18.4f, 640, 0) + 12, 11);
             clip.Add(band);
             y += 76f;
             foreach (var e in g.OrderBy(Order)) y += EntryCard(clip, e, 0, y, 1033.4f, 783.4f) + 13.6f;
@@ -245,13 +262,15 @@ internal sealed class CalendarScreen : IPage
             : string.Join(" · ", new[] { CalendarRules.EpisodeCode(e.SeasonNumber, e.EpisodeNumber), e.Subtitle }.Where(s => !string.IsNullOrEmpty(s)));
         var textW = w - 70.4f - 16f;
         var h = 106.9f + (sub.Length * 9.6f > textW ? 28.8f : 0);
-        var card = Ui.Box(x, y, w, h, _t.Surface, 12);
-        card.BorderlineWidth = 1; card.BorderlineColor = Ui.C(_t.Line);
+        // web .calendar-entry: --surface-strong with a 4 px left border (--success when available, else --ink-muted); the border colour is the card, the surface sits 4 px in
+        var card = Ui.Box(x, y, w, h, CalendarRules.Tone(e, _today) == CalendarTone.Available ? ToneColor(CalendarTone.Available) : _t.InkMuted, 12);
+        var surface = Ui.Box(4, 0, w - 4, h, _t.SurfaceStrong, 12); surface.BorderlineWidth = 1; surface.BorderlineColor = Ui.C(_t.Line);
+        card.Add(surface);
         var poster = Ui.Box(16, 23.5f + (h - 106.9f) / 2, 40, 60, _t.SurfaceSoft, 6);
         poster.ClippingMode = ClippingModeType.ClipChildren;
         if (e.PosterUrl is { Length: > 0 } pu) _ = LoadPoster(poster, pu);
         card.Add(poster);
-        card.Add(Ui.Text(e.Title, 70.4f, 9, 19.2f, 700, _t.Ink, textW, 28.8f));
+        card.Add(Ui.Text(e.Title, 70.4f, 9, 19.2f, 640, _t.Ink, textW, 28.8f));
         if (sub.Length > 0) card.Add(Ui.Text(sub, 70.4f, 40.2f, 19.2f, 400, _t.InkSoft, textW, 28.8f, multiline: sub.Length * 9.6f > textW, maxLines: 2));
         var my = h - 106.9f + 71.4f;
         var instant = CalendarRules.ReleaseInstant(e);
@@ -259,9 +278,9 @@ internal sealed class CalendarScreen : IPage
         card.Add(Ui.Text(string.Join("    ", parts), 70.4f, my, 12.8f, 400, _t.InkMuted, 260, 26.6f));
         var tone = CalendarRules.Tone(e, _today);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
-        var pw = label.Length * 7.6f + 24;
-        var pill = Ui.Box(70.4f + parts.Sum(p => p.Length * 6.6f) + 40, my, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.2f), 13.3f);
-        pill.BorderlineWidth = 1; pill.BorderlineColor = Ui.C(ToneColor(tone));
+        var pw = Ui.TextWidth(label, 13.44f, 800, 0) + 17;
+        var pill = Ui.Box(70.4f + Ui.TextWidth(string.Join("    ", parts), 12.8f, 400, 0) + 12, my, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
+        pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
         pill.Add(Ui.Text(label, 0, 4, 13.44f, 800, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
         card.Add(pill);
         var ring = Ring.Make(w, h, 12, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
@@ -288,9 +307,9 @@ internal sealed class CalendarScreen : IPage
         var day = CalendarRules.LocalDay(e).ToString("dddd, d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB"));
         _panel.Add(Ui.Text(string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, _t.InkSoft, 700, 19.584f));
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
-        var pw = label.Length * 7.6f + 24;
-        var pill = Ui.Box(153.6f, my + 36.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.2f), 13.3f);
-        pill.BorderlineWidth = 1; pill.BorderlineColor = Ui.C(ToneColor(tone));
+        var pw = Ui.TextWidth(label, 13.44f, 800, 0) + 17;
+        var pill = Ui.Box(153.6f, my + 36.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
+        pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
         pill.Add(Ui.Text(label, 0, 4, 13.44f, 800, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
         _panel.Add(pill);
         Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 85f, 13.824f, 600, _t.InkSoft, 336, 21.842f, 0, 5);
@@ -305,10 +324,16 @@ internal sealed class CalendarScreen : IPage
         _panel.Add(wl);
     }
 
+    /// <summary>web sizedPosterUrl: a TMDB original becomes a tile-sized w185 (calendar months show over a hundred posters).</summary>
+    private static string SizedPosterUrl(string url, int width = 185) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Host == "image.tmdb.org" && u.AbsolutePath.StartsWith("/t/p/original/")
+            ? new UriBuilder(u) { Path = $"/t/p/w{width}/" + u.AbsolutePath["/t/p/original/".Length..] }.Uri.ToString() : url;
+
     private async Task LoadPoster(View poster, string url)
     {
         if (url.StartsWith('/')) { _env.Images.Apply(poster, url, 40, 60); return; }
-        SynchronizationContextHolder.Post(() => poster.Add(new ImageView(url) { Size = new Size(40, 60) }));
+        var sized = SizedPosterUrl(url);
+        SynchronizationContextHolder.Post(() => poster.Add(new ImageView(sized) { Size = new Size(40, 60) }));
         await Task.CompletedTask;
     }
 

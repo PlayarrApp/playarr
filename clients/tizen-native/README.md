@@ -62,3 +62,11 @@ The suite can be split across emulator instances: `PLAYARR_TIZEN_SERIAL`, `PLAYA
 driver at another instance. A second instance is a copy of the TV emulator with its own qcow2 overlay, a launch conf with another
 `vm_name`, its own Xvnc display (enlarged with `xrandr --fb` so the 1920x1080 window fits at its offset), its own tpk install and a
 fresh sign-in. It runs in its own `systemd-run --user --scope` with memory limits.
+
+## Artwork scaling (the web rule)
+
+Web (`lib/artwork.tsx`, `CachedArtworkImage`) asks the server for `GET /api/v1/artwork/work/{id}/{kind}?w=<width>&v=<fnv1a of the source url>` with a card-sized default
+width per kind (poster 360, thumb and logo 540, banner and backdrop 780); the server snaps that to its own width set and never upscales. The browser then draws the
+image with `object-fit: cover` into a rect that Chromium snaps to whole device pixels (left and right edges rounded, so a card at x 1136.4 with width 327.2 is drawn
+from 1136 to 1464). A native client matches it by requesting the same width, drawing at the same pixel-snapped rect (a fractional rect makes the toolkit resample and
+blur the poster) and using cover fit with a Lanczos or bilinear filter. Tizen: `MediaCard` rounds the art rect, `Ui.Remote` uses `ScaleToFill` with Lanczos.
