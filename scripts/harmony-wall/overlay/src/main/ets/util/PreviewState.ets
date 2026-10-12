@@ -20,6 +20,18 @@ export class DetailRowImageContext {
   }
 }
 
+export class DetailLayoutContext {
+  route: string;
+  workId: string;
+  generation: number;
+
+  constructor(route: string, workId: string, generation: number) {
+    this.route = route;
+    this.workId = workId;
+    this.generation = generation;
+  }
+}
+
 export function previewReport(query: string): void {
   const req = http.createHttp();
   req.request('http://127.0.0.1:' + PREVIEW_PORT.toString() + '/state?' + query,
@@ -54,6 +66,28 @@ export function reportPreviewRoute(route: string, kind: string, workId: string):
 
 export function captureDetailRowImageContext(parentWorkId: string, rowId: string): DetailRowImageContext {
   return new DetailRowImageContext(PREVIEW_ROUTE, parentWorkId, rowId, PREVIEW_ROUTE_GENERATION);
+}
+
+export function captureDetailLayoutContext(workId: string): DetailLayoutContext {
+  return new DetailLayoutContext(PREVIEW_ROUTE, workId, PREVIEW_ROUTE_GENERATION);
+}
+
+export function reportDetailLayoutStage(context: DetailLayoutContext, stage: string,
+                                         value: number, width: number, height: number): void {
+  if (context.route !== 'Detail' || context.workId.length === 0 ||
+      context.workId !== PREVIEW_WORK_ID || context.generation !== PREVIEW_ROUTE_GENERATION) {
+    return;
+  }
+  const body: string = JSON.stringify({
+    route: context.route,
+    work_id: context.workId,
+    generation: context.generation,
+    stage: stage,
+    value: value,
+    width: width,
+    height: height,
+  });
+  previewPost('/layout-stage', body);
 }
 
 export function reportDetailRowImageComplete(context: DetailRowImageContext): void {

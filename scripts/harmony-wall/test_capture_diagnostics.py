@@ -2,7 +2,8 @@ import json
 import unittest
 from unittest.mock import mock_open, patch
 
-from capture_diagnostics import save_rejected_frame, summarize_detail_events, write_detail_summary
+from capture_diagnostics import (save_rejected_frame, summarize_detail_events,
+                                 summarize_detail_layout_events, write_detail_summary)
 
 
 class FakeFrame:
@@ -11,6 +12,49 @@ class FakeFrame:
 
 
 class CaptureDiagnosticsTests(unittest.TestCase):
+    def test_layout_summary_is_scoped_numeric_and_redacted(self):
+        events = [
+            {"sequence": 2, "category": "detail-layout-detail-rails-count", "route": "Detail",
+             "work_id": "private-work", "generation": 8, "timestamp": 10.1, "value": 3,
+             "title": "Private title", "token": "private-token", "url": "https://private.example"},
+            {"sequence": 3, "category": "detail-layout-rail-items-count", "route": "Detail",
+             "work_id": "private-work", "generation": 8, "timestamp": 10.2, "value": 6},
+            {"sequence": 4, "category": "detail-layout-rail-item-appear", "route": "Detail",
+             "work_id": "private-work", "generation": 8, "timestamp": 10.3, "value": 1},
+            {"sequence": 5, "category": "detail-layout-poster-card-root-area", "route": "Detail",
+             "work_id": "private-work", "generation": 8, "timestamp": 10.4,
+             "width": 230, "height": 190, "area": 43700},
+            {"sequence": 6, "category": "detail-layout-rail-list-height-default-fill", "route": "Detail",
+             "work_id": "private-work", "generation": 8, "timestamp": 10.5, "value": 0},
+            {"sequence": 7, "category": "detail-layout-poster-card-art-area", "route": "Detail",
+             "work_id": "private-work", "generation": 8, "timestamp": 10.6,
+             "width": float("nan"), "height": float("inf"), "area": float("inf")},
+            {"sequence": 8, "category": "detail-layout-rail-list-area", "route": "Detail",
+             "work_id": "other-work", "generation": 8, "timestamp": 10.6,
+             "width": 1280, "height": 420, "area": 537600},
+            {"sequence": 9, "category": "detail-layout-private-title", "route": "Detail",
+             "work_id": "private-work", "generation": 8, "timestamp": 10.7, "title": "Private title"},
+        ]
+        result = summarize_detail_layout_events(events, sequence_after=1, work_id="private-work",
+                                                generation=8, started_at=10.0)
+        self.assertEqual(result["detail-rails-count"], {
+            "count": 1, "first_elapsed_ms": 100, "last_elapsed_ms": 100,
+            "value": {"min": 3, "max": 3},
+        })
+        self.assertEqual(result["rail-items-count"]["value"], {"min": 6, "max": 6})
+        self.assertEqual(result["rail-item-appear"]["count"], 1)
+        self.assertEqual(result["poster-card-root-area"]["width"], {"min": 230, "max": 230})
+        self.assertEqual(result["rail-list-height-default-fill"]["value"], {"min": 0, "max": 0})
+        self.assertEqual(result["poster-card-art-area"]["count"], 1)
+        self.assertNotIn("width", result["poster-card-art-area"])
+        self.assertNotIn("height", result["poster-card-art-area"])
+        self.assertNotIn("area", result["poster-card-art-area"])
+        self.assertNotIn("rail-list-area", result)
+        self.assertNotIn("private-work", json.dumps(result))
+        self.assertNotIn("Private title", json.dumps(result))
+        self.assertNotIn("private-token", json.dumps(result))
+        self.assertNotIn("https://", json.dumps(result))
+
     def test_summary_aggregates_scoped_stages_without_identifiers(self):
         events = [
             {"sequence": 2, "category": "detail-row-image-source", "route": "Detail", "work_id": "private-work",

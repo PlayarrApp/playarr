@@ -13,6 +13,7 @@ import argparse
 import base64
 import http.server
 import json
+import math
 import os
 import socket
 import struct
@@ -39,6 +40,11 @@ DEBUG_SEQUENCE = 0
 DETAIL_IMAGE_STAGES = {
     "source", "fetch-start", "fetch-ok", "fetch-error", "bridge-source-ready",
     "assigned", "image-source", "image-area-positive", "image-area-zero", "on-complete", "on-error",
+}
+DETAIL_LAYOUT_STAGES = {
+    "detail-rails-count", "rail-items-count", "rail-item-appear",
+    "poster-card-root-area", "poster-card-art-area", "rail-list-area",
+    "rail-list-height-explicit", "rail-list-height-default-fill",
 }
 
 
@@ -105,6 +111,38 @@ def append_detail_image_stage(body: dict) -> bool:
         return False
     append_debug_event("detail-row-image-" + stage, route=route, work_id=work_id,
                        parent_work_id=parent_work_id, row_id=row_id, generation=generation)
+    return True
+
+
+def append_detail_layout_stage(body: dict) -> bool:
+    """Accept only scoped layout stages and numeric measurements."""
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    stage = str(body.get("stage", ""))
+    try:
+        generation = int(body.get("generation", 0))
+    except (TypeError, ValueError):
+        return False
+    if route != "Detail" or not work_id or generation <= 0 or stage not in DETAIL_LAYOUT_STAGES:
+        return False
+    if (STATE.get("route") != route or STATE.get("work_id") != work_id
+            or STATE.get("route_generation") != generation):
+        return False
+    numeric = {}
+    for field in ("value", "width", "height"):
+        raw = body.get(field)
+        if raw is None:
+            continue
+        if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(raw) or raw < -1:
+            return False
+        if raw > 1000000:
+            return False
+        if raw >= 0:
+            numeric[field] = raw
+    if "width" in numeric and "height" in numeric:
+        numeric["area"] = numeric["width"] * numeric["height"]
+    append_debug_event("detail-layout-" + stage, route=route, work_id=work_id, generation=generation)
+    STATE["debug_events"][-1].update(numeric)
     return True
 
 
@@ -509,6 +547,9 @@ def main():
                 return self._reply(200, b"ok")
             if url.path == "/row-image-stage":
                 append_detail_image_stage(body)
+                return self._reply(200, b"ok")
+            if url.path == "/layout-stage":
+                append_detail_layout_stage(body)
                 return self._reply(200, b"ok")
             ok = commands.send(body["command"], body.get("args"), body.get("type", "action"))
             return self._reply(200 if ok else 503, b"ok")

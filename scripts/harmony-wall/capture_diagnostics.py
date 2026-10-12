@@ -1,11 +1,17 @@
 """Private, identifier-free summaries for Harmony Previewer capture diagnostics."""
 import json
+import math
 import os
 
 
 STAGES = (
     "source", "fetch-start", "fetch-ok", "fetch-error", "bridge-source-ready",
     "assigned", "image-source", "image-area-positive", "image-area-zero", "on-complete", "on-error",
+)
+LAYOUT_STAGES = (
+    "detail-rails-count", "rail-items-count", "rail-item-appear",
+    "poster-card-root-area", "poster-card-art-area", "rail-list-area",
+    "rail-list-height-explicit", "rail-list-height-default-fill",
 )
 
 
@@ -45,6 +51,51 @@ def summarize_detail_events(events, *, sequence_after, work_id, generation, star
     return result
 
 
+def summarize_detail_layout_events(events, *, sequence_after, work_id, generation, started_at):
+    """Return counts, elapsed ranges, and numeric measurements for the current detail route only."""
+    samples = {stage: [] for stage in LAYOUT_STAGES}
+    for event in events:
+        category = event.get("category", "")
+        if not isinstance(category, str) or not category.startswith("detail-layout-"):
+            continue
+        stage = category.removeprefix("detail-layout-")
+        if stage not in samples or event.get("sequence", 0) <= sequence_after:
+            continue
+        if (event.get("route") != "Detail" or event.get("work_id") != work_id
+                or event.get("generation") != generation):
+            continue
+        timestamp = event.get("timestamp")
+        elapsed = None
+        if (isinstance(timestamp, (int, float)) and not isinstance(timestamp, bool)
+                and isinstance(started_at, (int, float)) and not isinstance(started_at, bool)
+                and (not isinstance(timestamp, float) or math.isfinite(timestamp))
+                and (not isinstance(started_at, float) or math.isfinite(started_at))):
+            elapsed = max(0, round((timestamp - started_at) * 1000))
+        metrics = {}
+        for key in ("value", "width", "height", "area"):
+            value = event.get(key)
+            if (isinstance(value, (int, float)) and not isinstance(value, bool)
+                    and (not isinstance(value, float) or math.isfinite(value))):
+                metrics[key] = value
+        samples[stage].append((elapsed, metrics))
+
+    result = {}
+    for stage, stage_samples in samples.items():
+        if not stage_samples:
+            continue
+        entry = {"count": len(stage_samples)}
+        elapsed = [sample[0] for sample in stage_samples if sample[0] is not None]
+        if elapsed:
+            entry["first_elapsed_ms"] = min(elapsed)
+            entry["last_elapsed_ms"] = max(elapsed)
+        for metric in ("value", "width", "height", "area"):
+            values = [sample[1][metric] for sample in stage_samples if metric in sample[1]]
+            if values:
+                entry[metric] = {"min": min(values), "max": max(values)}
+        result[stage] = entry
+    return result
+
+
 def save_rejected_frame(image, out_dir, theme, screen="series-detail"):
     debug_dir = os.path.join(out_dir, "_debug")
     os.makedirs(debug_dir, exist_ok=True)
@@ -53,7 +104,7 @@ def save_rejected_frame(image, out_dir, theme, screen="series-detail"):
     return os.path.join("_debug", filename)
 
 
-def write_detail_summary(out_dir, *, theme, accepted, failure, frame_path, stages):
+def write_detail_summary(out_dir, *, theme, accepted, failure, frame_path, stages, layout=None):
     debug_dir = os.path.join(out_dir, "_debug")
     os.makedirs(debug_dir, exist_ok=True)
     summary = {
@@ -64,6 +115,7 @@ def write_detail_summary(out_dir, *, theme, accepted, failure, frame_path, stage
         "failure": failure,
         "frame": frame_path,
         "stages": stages,
+        "layout": layout or {},
     }
     filename = "series-detail-" + theme + "-diagnostics.json"
     with open(os.path.join(debug_dir, filename), "w", encoding="utf-8") as stream:

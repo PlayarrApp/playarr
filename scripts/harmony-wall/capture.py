@@ -6,7 +6,8 @@ dark and light. Aborts, writing nothing more, when a frame is too plain (an erro
 import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
 from screen_selection import TV_SCREEN_IDS, parse_tv_screens, player_is_skipped
-from capture_diagnostics import save_rejected_frame, summarize_detail_events, write_detail_summary
+from capture_diagnostics import (save_rejected_frame, summarize_detail_events,
+                                 summarize_detail_layout_events, write_detail_summary)
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
@@ -277,7 +278,10 @@ if device == "tv":
                     stages = summarize_detail_events(state.get("debug_events", []), sequence_after=cursor,
                                                      work_id=work_id, generation=state.get("route_generation", 0),
                                                      started_at=started_at)
-                    write_detail_summary(out, theme=theme, accepted=False, failure="route-not-settled", frame_path=frame_path, stages=stages)
+                    layout = summarize_detail_layout_events(state.get("debug_events", []), sequence_after=cursor,
+                                                            work_id=work_id, generation=state.get("route_generation", 0),
+                                                            started_at=started_at)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="route-not-settled", frame_path=frame_path, stages=stages, layout=layout)
                 raise Skip(f"pinned route did not settle for {name}")
 
             if name == "series-detail":
@@ -294,11 +298,16 @@ if device == "tv":
                             stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                              work_id=work_id, generation=generation,
                                                              started_at=started_at)
-                            write_detail_summary(out, theme=theme, accepted=False, failure="route-changed", frame_path=frame_path, stages=stages)
+                            layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                                    work_id=work_id, generation=generation,
+                                                                    started_at=started_at)
+                            write_detail_summary(out, theme=theme, accepted=False, failure="route-changed", frame_path=frame_path, stages=stages, layout=layout)
                         raise Skip("pinned detail route changed while waiting for row artwork")
                     events = current.get("debug_events", [])
                     stages = summarize_detail_events(events, sequence_after=cursor, work_id=work_id,
                                                      generation=generation, started_at=started_at)
+                    layout = summarize_detail_layout_events(events, sequence_after=cursor, work_id=work_id,
+                                                            generation=generation, started_at=started_at)
                     if stages.get("on-complete", {}).get("count", 0) > 0:
                         decoded_art[theme] = True
                         break
@@ -308,7 +317,9 @@ if device == "tv":
                     current = route_state()
                     stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                      work_id=work_id, generation=generation, started_at=started_at)
-                    write_detail_summary(out, theme=theme, accepted=False, failure="row-artwork-timeout", frame_path=frame_path, stages=stages)
+                    layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                            work_id=work_id, generation=generation, started_at=started_at)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="row-artwork-timeout", frame_path=frame_path, stages=stages, layout=layout)
                     raise Skip("no fresh matching detail-row image completion was reported")
 
             detail_sources[name] = {"route": "Detail", "source": "suite.json:open", "route_confirmed": True}
@@ -320,14 +331,21 @@ if device == "tv":
                     current = route_state()
                     stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                      work_id=work_id, generation=generation, started_at=started_at)
-                    write_detail_summary(out, theme=theme, accepted=False, failure="frame-rejected", frame_path=frame_path, stages=stages)
+                    layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                            work_id=work_id, generation=generation,
+                                                            started_at=started_at)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="frame-rejected", frame_path=frame_path, stages=stages, layout=layout)
                 raise
             if name == "series-detail":
                 current = route_state()
                 stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                  work_id=work_id, generation=generation, started_at=started_at)
+                layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                        work_id=work_id, generation=generation,
+                                                        started_at=started_at)
                 write_detail_summary(out, theme=theme, accepted=True, failure=None,
-                                     frame_path=os.path.relpath(os.path.join(folder, name + ".png"), out), stages=stages)
+                                     frame_path=os.path.relpath(os.path.join(folder, name + ".png"), out), stages=stages,
+                                     layout=layout)
 
         def capture_selected(folder, theme):
             for name in TV_SELECTION:
