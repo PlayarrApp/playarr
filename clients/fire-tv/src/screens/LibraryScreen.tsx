@@ -416,13 +416,22 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
     if (onTop && key === 'menu' && raw.eventKeyAction === 0 && selected && !filtersOpen && !actionsWork) setActionsWork(selected);
   });
   const row = Math.floor(focusIndex / cols);
+  const gridOffset = useRef(0);
   useEffect(() => {
-    // Keep the focused row inside the panel: the web scrolls the grid so the row stays visible.
-    const rowTop = GRID_Y + row * rowPitch;
-    const target = Math.max(0, rowTop - 300);
-    Animated.timing(scrollY, {toValue: -target, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+    // The web's smoothScrollIntoView ("nearest"): the grid stays put until the focused card (art plus label) would leave
+    // [33.5, 1036.5], then moves just far enough; it does not return to the top on its own (measured on the live web).
+    const cardTop = GRID_Y - 7 + row * rowPitch - gridOffset.current;
+    const cardBottom = cardTop + (listView ? rowPitch - 24 : layout.cardH + 33);
+    let next = gridOffset.current;
+    if (cardBottom > 1036.5) next += cardBottom - 1036.5;
+    else if (cardTop < 33.5) next -= 33.5 - cardTop;
+    next = Math.max(0, next);
+    if (next !== gridOffset.current) {
+      gridOffset.current = next;
+      Animated.timing(scrollY, {toValue: -next, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+    }
     if (items && focusIndex > items.length - cols * 4) loadMore();
-  }, [row, rowPitch, cols, focusIndex, items, loadMore, scrollY]);
+  }, [row, rowPitch, cols, focusIndex, items, loadMore, scrollY, listView, layout.cardH]);
 
   const dark = scheme === 'dark';
   const activeLetter = selected ? workLetter(selected) : null;
@@ -530,6 +539,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
           })}
         </Animated.View>
       </Box>
+      {look.sort === 'title' ? <Alphabet active={activeLetter} onJump={(letter) => jumpTo(letter)} /> : null}
       <EdgeFade side="top" active={row > 0} x={GRID_X - 24} y={GRID_CLIP_TOP} w={1920 - GRID_X + 24} h={1080 - GRID_CLIP_TOP} />
       <EdgeFade
         side="bottom"
@@ -539,7 +549,6 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
         w={1920 - GRID_X + 24}
         h={1080 - GRID_CLIP_TOP}
       />
-      {look.sort === 'title' ? <Alphabet active={activeLetter} onJump={(letter) => jumpTo(letter)} /> : null}
       {filtersOpen ? (
         <FilterDrawer
           kicker={t('pages.library.libraryControls')}
@@ -704,35 +713,41 @@ function ListRow(props: CardProps): React.ReactElement {
   );
 }
 
+/** The web's letter column: 44 px targets from y 278 (a 270 box with 8 px padding) down to the screen edge; it scrolls to keep the active letter centred. */
+const RAIL_TOP = 270;
+const RAIL_ROW = 44;
+const RAIL_SCROLL_MAX = 8 + ALPHABET.length * RAIL_ROW + 65 - (1080 - RAIL_TOP);
+
 function Alphabet({active, onJump}: {active: string | null; onJump: (letter: string) => void}): React.ReactElement {
   const {colour} = useTheme();
+  const scroll = useRef(new Animated.Value(0)).current;
+  const at = active === null ? -1 : ALPHABET.indexOf(active as (typeof ALPHABET)[number]);
+  useEffect(() => {
+    if (at < 0) return;
+    const to = Math.min(RAIL_SCROLL_MAX, Math.max(0, 8 + at * RAIL_ROW + RAIL_ROW / 2 - (1080 - RAIL_TOP) / 2));
+    Animated.timing(scroll, {toValue: -to, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+  }, [at, scroll]);
   return (
-    <>
-      {ALPHABET.map((letter, index) => {
-        const on = letter === active;
-        return (
-          <Pressable
-            key={letter}
-            accessibilityRole="button"
-            accessibilityLabel={letter}
-            onPress={() => onJump(letter)}
-            style={{
-              position: 'absolute',
-              left: u(1864.5),
-              top: u(269.8 + index * 25.62),
-              width: u(24),
-              height: u(24),
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {on ? <View style={{position: 'absolute', width: u(18.2), height: u(18.2), borderRadius: 999, backgroundColor: mix(colour.ink, 0.78)}} /> : null}
-            <T size={9.216} weight={400} color={on ? colour.bg : colour.inkMuted} lh={11}>
-              {letter}
-            </T>
-          </Pressable>
-        );
-      })}
-    </>
+    <Box x={1851.5} y={RAIL_TOP} w={56} h={1080 - RAIL_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
+      <Animated.View style={{transform: [{translateY: scroll}]}}>
+        {ALPHABET.map((letter, index) => {
+          const on = letter === active;
+          return (
+            <Pressable
+              key={letter}
+              accessibilityRole="button"
+              accessibilityLabel={letter}
+              onPress={() => onJump(letter)}
+              style={{position: 'absolute', left: u(6), top: u(8 + index * RAIL_ROW), width: u(RAIL_ROW), height: u(RAIL_ROW), alignItems: 'center', justifyContent: 'center'}}
+            >
+              {on ? <View style={{position: 'absolute', width: u(24), height: u(24), borderRadius: 999, backgroundColor: mix(colour.ink, 0.78)}} /> : null}
+              <T size={9.216} weight={400} color={on ? colour.bg : colour.inkMuted} lh={11}>
+                {letter}
+              </T>
+            </Pressable>
+          );
+        })}
+      </Animated.View>
+    </Box>
   );
 }

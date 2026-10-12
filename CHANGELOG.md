@@ -532,6 +532,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: the letter rail has the web's 44 px spacing and scrolls to keep the active letter centred; the grid scrolls only as far as the focused card needs, as on the web.
 - webOS parity driver waits once per player entry for the video to be playing before the first key, as the simulator opens the player slower than web.
 - Fire TV: hero titles wrap as Chrome's text-wrap: balance does, from measured word widths.
 - VIDAA: the stage is now scaled with a transform instead of CSS zoom, so rects, scrolling and spatial navigation share one coordinate space on its Chrome 111 engine (Home first card and left-to-nav focus now land where web's do).
