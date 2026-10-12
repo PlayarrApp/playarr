@@ -42,6 +42,7 @@ sub onContentChanged()
     m.initial.visible = false
     m.name.text = content.title
     m.status.text = content.statusText
+    updateProfileNameColor()
 end sub
 
 function profileAddAvatarUri() as String
@@ -63,13 +64,17 @@ sub onFocusChanged()
     effective = m.top.focusPercent * m.top.activeRailFactor
     m.focusRing.opacity = effective
     m.focusShadow.opacity = effective * 0.28
-    if m.name <> invalid
-        if effective > 0 then m.name.color = ThemeColor("ink") else m.name.color = ThemeColor("inkSoft")
-    end if
+    updateProfileNameColor()
     if m.circleGroup = invalid then return
     scale = 1 + (effective * 0.09)
     m.circleGroup.scale = [scale, scale]
     ' Subtle lift (web translateY(-8px)) without shifting RowList slot.
     lift = Int(-10 * effective)
     m.circleGroup.translation = [61, 53 + lift]
+end sub
+
+sub updateProfileNameColor()
+    if m.name = invalid then return
+    effective = m.top.focusPercent * m.top.activeRailFactor
+    if effective > 0 then m.name.color = ThemeColor("ink") else m.name.color = ThemeColor("inkSoft")
 end sub
