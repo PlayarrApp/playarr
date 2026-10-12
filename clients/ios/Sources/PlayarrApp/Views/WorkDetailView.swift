@@ -501,30 +501,36 @@ struct WorkDetailView: View {
     private func seasonEpisodeTrack(_ season: SeasonDetail, tabletScale: CGFloat? = nil) -> some View {
         let cardWidth = tabletScale.map { 196.015 * $0 } ?? 210
         let cardHeight = tabletScale.map { 110.252 * $0 } ?? 118
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(season.season.title ?? "Season \(season.season.seasonNumber)")
-                    .font(.custom("Avenir Next", fixedSize: 18).weight(.semibold))
-                    .foregroundStyle(PlayarrStyle.ink)
-                Spacer()
-                Text("\(season.episodes.count) episodes")
-                    .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
-                    .foregroundStyle(PlayarrStyle.muted)
-                DownloadTriggerButton(
-                    candidates: season.episodes.compactMap { episode in
-                        episode.mediaFileID.map {
-                            candidate(
-                                mediaFileID: $0,
-                                title: episode.episode.title ?? "Episode \(episode.episode.episodeNumber)",
-                                subtitle: season.season.title ?? "Season \(season.season.seasonNumber)"
-                            )
-                        }
-                    },
-                    apiClient: apiClient,
-                    downloadRepository: downloadRepository
-                )
-                .foregroundStyle(PlayarrStyle.muted)
-                .accessibilityLabel("Download all episodes in this season")
+        // At 1366x1024 the web track heading is 33.875pt, its scroller starts 26.25pt below it, and artwork starts 42pt into the scroller.
+        let tabletHeadingHeight: CGFloat = 33.875
+        let tabletScrollTop: CGFloat = 26.25
+        let tabletArtInset: CGFloat = 42
+        let trackSpacing = tabletScale.map { (tabletScrollTop - tabletHeadingHeight) * $0 } ?? 10
+        return VStack(alignment: .leading, spacing: trackSpacing) {
+            if let tabletScale {
+                VStack(alignment: .leading, spacing: 4 * tabletScale) {
+                    Text(season.season.title ?? "Season \(season.season.seasonNumber)")
+                        .font(DesignFont.font(12.567 * tabletScale, 610))
+                        .tracking(-0.377 * tabletScale)
+                        .foregroundStyle(PlayarrStyle.ink)
+                    Text("\(season.episodes.count) episodes")
+                        .font(DesignFont.font(7.36 * tabletScale, 400))
+                        .foregroundStyle(PlayarrStyle.muted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: tabletHeadingHeight * tabletScale, alignment: .topLeading)
+                .padding(.trailing, 32.784 * tabletScale)
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(season.season.title ?? "Season \(season.season.seasonNumber)")
+                        .font(.custom("Avenir Next", fixedSize: 18).weight(.semibold))
+                        .foregroundStyle(PlayarrStyle.ink)
+                    Spacer()
+                    Text("\(season.episodes.count) episodes")
+                        .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
+                        .foregroundStyle(PlayarrStyle.muted)
+                    seasonDownloadButton(season)
+                }
             }
 
             ScrollView(.horizontal) {
@@ -538,12 +544,31 @@ struct WorkDetailView: View {
                         )
                     }
                 }
-                .padding(.vertical, 8)
+                .padding(.top, tabletScale.map { tabletArtInset * $0 } ?? 8)
+                .padding(.bottom, tabletScale == nil ? 8 : 0)
             }
+            .frame(height: tabletScale.map { 278.03125 * $0 }, alignment: .topLeading)
             .scrollIndicators(.hidden)
         }
-        .padding(.top, tabletScale.map { 20 * $0 } ?? 0)
-        .frame(height: tabletScale.map { 304.28 * $0 }, alignment: .topLeading)
+        .frame(height: tabletScale.map { 304.28125 * $0 }, alignment: .topLeading)
+    }
+
+    private func seasonDownloadButton(_ season: SeasonDetail) -> some View {
+        DownloadTriggerButton(
+            candidates: season.episodes.compactMap { episode in
+                episode.mediaFileID.map {
+                    candidate(
+                        mediaFileID: $0,
+                        title: episode.episode.title ?? "Episode \(episode.episode.episodeNumber)",
+                        subtitle: season.season.title ?? "Season \(season.season.seasonNumber)"
+                    )
+                }
+            },
+            apiClient: apiClient,
+            downloadRepository: downloadRepository
+        )
+        .foregroundStyle(PlayarrStyle.muted)
+        .accessibilityLabel("Download all episodes in this season")
     }
 
     @ViewBuilder
