@@ -71,6 +71,18 @@ export function applyParityLine(state, line) {
   return true;
 }
 
+export async function requestEcp(url, method = "POST", fetcher = fetch) {
+  try {
+    return await fetcher(url, {
+      method,
+      headers: { connection: "close" },
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    throw new Error("Roku ECP transport failed; no automatic retry was attempted and the device outcome may be unknown");
+  }
+}
+
 function option(args, name) {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] ?? "" : "";
@@ -251,7 +263,7 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   const sendEcp = async (path, method = "POST") => {
-    const response = await fetch(`${ecp}/${path}`, { method, signal: AbortSignal.timeout(8000) });
+    const response = await requestEcp(`${ecp}/${path}`, method);
     if (!response.ok) throw new Error(`Roku ECP request failed (${response.status})`);
     if (path === "launch/dev" && isLaunchErrorBody(await response.text())) {
       throw new Error("Roku ECP launch/dev returned an error response body");

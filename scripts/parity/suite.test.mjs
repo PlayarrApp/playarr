@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { applyParityLine, createParityState, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, routeForState as rokuRouteForState, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { applyParityLine, createParityState, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
@@ -98,6 +98,28 @@ test("Roku PARITY ingest records fresh screen and focus from CRLF events", () =>
   assert.equal(state.focusSeq, 1);
   assert.equal(state.focusScreenSeq, state.screenSeq);
   assert.equal(hasFreshScreenFocus(state, "profiles", "Device Test", 0, 0), true);
+});
+
+test("Roku ECP requests close the connection and never retry ambiguous transport failures", async () => {
+  let calls = 0;
+  let requestOptions;
+  const response = await requestEcp("http://example.invalid:8060/launch/dev", "POST", async (_url, options) => {
+    calls += 1;
+    requestOptions = options;
+    return { ok: true };
+  });
+  assert.equal(response.ok, true);
+  assert.equal(calls, 1);
+  assert.equal(requestOptions.headers.connection, "close");
+
+  await assert.rejects(
+    requestEcp("http://example.invalid:8060/launch/dev", "POST", async () => {
+      calls += 1;
+      throw new Error("UND_ERR_SOCKET private transport details");
+    }),
+    { message: "Roku ECP transport failed; no automatic retry was attempted and the device outcome may be unknown" },
+  );
+  assert.equal(calls, 2);
 });
 
 test("Roku suite driver refuses to interrupt an active media session", () => {
