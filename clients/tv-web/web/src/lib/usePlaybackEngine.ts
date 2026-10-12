@@ -338,11 +338,19 @@ export function usePlaybackEngine(
   // once per viewing session, never re-applied on every subsequent
   // re-render once it has resolved.
   const autoAppliedDownloadedQualityRef = useRef(false);
+  // True once the lookup below has answered (found or not) for this media file. Offline negotiation waits for it, so the
+  // first play never races the local-copy load into a "hasn't been downloaded" error.
+  const [localLookupDone, setLocalLookupDone] = useState(false);
+  const localLookupDoneRef = useRef(false);
+  localLookupDoneRef.current = localLookupDone;
+  // Changes only while offline, so the lookup answering re-runs the offline branch but never restarts a live online session.
+  const offlineLookupDone = !online && localLookupDone;
   useEffect(() => {
     let cancelled = false;
     localSourceRef.current = null;
     autoAppliedDownloadedQualityRef.current = false;
     setLocalSource(null);
+    setLocalLookupDone(false);
     if (!mediaFileId) return;
     // A failed lookup just means no local copy: stay on the online path.
     void downloads
@@ -352,7 +360,10 @@ export function usePlaybackEngine(
         localSourceRef.current = source;
         setLocalSource(source);
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setLocalLookupDone(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -677,6 +688,11 @@ export function usePlaybackEngine(
   useEffect(() => {
     if (!mediaFileId) return;
     if (!online) {
+      // Offline: play the local copy first, once the lookup has answered (never race it).
+      if (!localLookupDoneRef.current) {
+        setNegotiation({ kind: "loading" });
+        return;
+      }
       const source = localSourceRef.current;
       if (source) {
         setQualityOptions([
@@ -840,6 +856,7 @@ export function usePlaybackEngine(
     recordTerminalEvent,
     mediaFileId,
     online,
+    offlineLookupDone,
     retryCount,
     startPositionSeconds,
   ]);

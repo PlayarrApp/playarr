@@ -1032,8 +1032,8 @@ jobs:
   # list lives in clients/tv-web/web/scripts/web-behaviour.config.json and a unit test fails when a new script is not on it.
   # ---------------------------------------------------------------------
   web-behaviour:
-    # Three shards balanced by measured script time (web-behaviour.config.json "seconds"): 15 min as one job.
-    name: web behaviour (${{ matrix.shard }}/3)
+    # Four shards balanced by measured script time (web-behaviour.config.json "seconds"), each well inside 20 minutes.
+    name: web behaviour (${{ matrix.shard }}/4)
     needs: changes
     if: needs.changes.outputs.tv-web == 'true'
     runs-on: ubuntu-latest
@@ -1041,7 +1041,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     permissions:
       contents: read
     steps:
@@ -1081,7 +1081,7 @@ jobs:
 
       - name: Run this shard of the web behaviour scripts
         working-directory: clients/tv-web/web
-        run: node scripts/web-behaviour.mjs --dist dist --shard ${{ matrix.shard }}/3
+        run: node scripts/web-behaviour.mjs --dist dist --shard ${{ matrix.shard }}/4
 
   # ---------------------------------------------------------------------
   # Storybook (clients/tv-web/web/.storybook): the public component catalogue deployed at /storybook. Builds it and

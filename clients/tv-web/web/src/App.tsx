@@ -257,7 +257,7 @@ function AppShell() {
     location.pathname
   );
   const householdBlock = householdBlockFromStatus(householdStatus);
-  const { canDownload, downloadStorageAvailable } = useDownloads();
+  const { canDownload, downloadStorageAvailable, downloads: downloadRecords } = useDownloads();
   const playerRouteMatch = matchPath("/player/:mediaFileId", location.pathname);
   const routeMediaFileId = playerRouteMatch?.params.mediaFileId;
   const isPlayerRoute = routeMediaFileId !== undefined;
@@ -266,7 +266,11 @@ function AppShell() {
   // fully offline -- everything else this shell routes to needs the
   // network it was already built around, so it shows a plain offline
   // empty-state instead of a half-broken screen full of failed requests.
-  const isOfflineGated = !online && !isPlayerRoute && location.pathname !== "/downloads";
+  // A downloaded title's own detail page (the Downloads row's link) renders from the local metadata, so it is not gated.
+  const detailWorkId = matchPath("/library/:workId", location.pathname)?.params.workId;
+  const isDownloadedDetail =
+    detailWorkId !== undefined && downloadRecords.some((r) => r.workId === detailWorkId && r.status === "ready");
+  const isOfflineGated = !online && !isPlayerRoute && !isDownloadedDetail && location.pathname !== "/downloads";
   const routePlayerState = isPlayerRoute
     ? (location.state as PlayerLocationState | null)
     : null;
