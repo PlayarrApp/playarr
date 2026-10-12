@@ -4,6 +4,7 @@ using System.ComponentModel;
 using Windows.UI.Text;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using Playarr.Core.Models;
@@ -45,7 +46,12 @@ namespace Playarr.Xbox.Views
         public WorkDetailPage()
         {
             InitializeComponent();
-            BackdropFade.Fill = Theme.LeftFade();
+            BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
+            BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
+            BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
+            BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
+            BackdropStageWashRight.Fill = Theme.KeyArtStageWashRight();
+            BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.Filled(Ui.Pill("\u2637  Playback", OpenPlaybackDrawer, 142));
             PlaybackButton.Height = 64;
         }
@@ -124,8 +130,8 @@ namespace Playarr.Xbox.Views
             if (work != null && !ReferenceEquals(_backdropWork, work))
             {
                 _backdropWork = work;
-                BackdropImage.Opacity = Theme.IsLight && work.Kind == WorkKind.Series ? 0.1 : 0.35;
-                Artwork.Load(BackdropImage, work, 1280, new[] { ImageKind.Backdrop }, requestWidth: 1280);
+                BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
+                Artwork.Load(BackdropImage, work, 999, new[] { ImageKind.Backdrop }, requestWidth: 780, applyKeyArtFilter: true);
             }
 
             RenderActions();

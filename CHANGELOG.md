@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox/UWP shared key art now matches the TV web's grayscale, contrast and brightness filters, measured image geometry and stage wash across Home, library and detail pages in both themes.
 - Hide legacy Chromium scrollbars in the webOS Calendar week view without changing scroll behaviour.
 - Match Android phone Search geometry, idle illustration and muted colour to web, and label generated detail chapter markers consistently with web.
 - D-pad parity failures now make the suite command fail, while explicitly skipped player checks remain non-failing.
@@ -542,6 +543,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Xbox and Windows UWP now apply the web's grayscale, contrast and brightness key-art filter to shared backdrops, with alpha-correct pixel output and stale-request protection.
 - HarmonyOS TV: the Home hero meta line is the focused title's runtime, as web, instead of the release year.
 - Tizen Search now exposes a remote-navigable type filter for movies, series, sites and music, keeps the selection in the route, and uses a single focus indicator while the page is active.
 - Tizen Search now filters playlist results and exposes Games as a search type; when live Games discovery is unavailable, Search shows the provider's unavailable state.
