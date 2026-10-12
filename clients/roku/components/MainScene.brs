@@ -1644,7 +1644,11 @@ sub applyProfilesChromeFocus()
     end if
     if m.profilesClientsBtn <> invalid
         if clientsF
-            m.profilesClientsBtn.uri = "pkg:/images/profiles-clients-focus.png"
+            if suffix = "-light"
+                m.profilesClientsBtn.uri = "pkg:/images/profiles-clients.png"
+            else
+                m.profilesClientsBtn.uri = "pkg:/images/profiles-clients-focus.png"
+            end if
         else
             m.profilesClientsBtn.uri = "pkg:/images/profiles-clients" + suffix + ".png"
         end if

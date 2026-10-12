@@ -164,6 +164,15 @@ class NavigationContractTests(unittest.TestCase):
         self.assertGreater(left + width / 2, stage_width * 3 / 4)
         self.assertGreater(top + height / 2, stage_height * 4 / 5)
 
+        profiles_chrome = re.search(
+            r"sub applyProfilesChromeFocus\(\).*?end sub", MAIN, flags=re.DOTALL
+        )
+        self.assertIsNotNone(profiles_chrome)
+        assert profiles_chrome is not None
+        self.assertIn('if suffix = "-light"', profiles_chrome.group(0))
+        self.assertIn('m.profilesClientsBtn.uri = "pkg:/images/profiles-clients.png"', profiles_chrome.group(0))
+        self.assertIn('m.profilesClientsBtn.uri = "pkg:/images/profiles-clients-focus.png"', profiles_chrome.group(0))
+
         down_navigation = re.search(
             r'state = "profiles" and key = "down"(.*?)else if state = "profiles" and key = "up"',
             MAIN,
