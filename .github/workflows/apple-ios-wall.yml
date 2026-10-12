@@ -130,7 +130,9 @@ jobs:
             playback) only=playback; themes=dark ;;
             *) only=screens; themes=$PART ;;
           esac
-          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --themes "$themes"
+          # Playback is scored against the suite's own expectation (every case plays); touch devices have no D-pad values.
+          echo '{"suite":1,"dpad":{},"playback":{"a":{"state":"playing"},"b":{"state":"playing"},"c":{"state":"playing"}}}' > "$RUNNER_TEMP/expected.json"
+          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --themes "$themes" --expected "$RUNNER_TEMP/expected.json"
 
       - name: Upload the results
         if: always()

@@ -90,7 +90,10 @@ export async function createDriver() {
       let start = null, p0 = null, last = {};
       while ((Date.now() - t0) / 1000 < expect.startWithinSeconds + 15) {
         last = state().playback ?? {};
-        if (last.state === "failed") { await resetProgress([c.file]); return { state: "error", detail: last.detail || "the player reported a failure" }; }
+        if (last.state === "failed") {
+          // Diagnosis: the app's own recent log lines about HTTP errors (query strings, which may hold tokens, are cut).
+          try { console.log(run("sh", ["-c", `xcrun simctl spawn ${udid} log show --last 1m --style compact --predicate 'processImagePath CONTAINS "PlayarrApp"' | grep -i -E '404|not found|http|error' | sed -E 's/[?][^ ]*//g' | tail -n 12`]).slice(0, 2500)); } catch { /* no log */ }
+          await resetProgress([c.file]); return { state: "error", detail: last.detail || "the player reported a failure" }; }
         if (last.state === "playing" && last.position > 0) { start = (Date.now() - t0) / 1000; p0 = last.position; break; }
         await sleep(1000);
       }
