@@ -82,6 +82,16 @@ export function ThemeBoundary({children}: {children: React.ReactNode}): React.Re
   );
 }
 
+/**
+ * A subtree that stays dark whatever the app theme is: the web's player page forces the dark tokens for its video chrome
+ * (only its side drawers follow the theme), so light text on the dark scrim stays readable.
+ */
+export function DarkSurface({children}: {children: React.ReactNode}): React.ReactElement {
+  const outer = useTheme();
+  const value = useMemo(() => ({...outer, scheme: 'dark' as const, colour: palettes.dark}), [outer]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
 export function useTheme(): ThemeContextValue {
   return useContext(ThemeContext);
 }

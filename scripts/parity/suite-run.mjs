@@ -7,7 +7,7 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { expandKeys, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { expandKeys, focusForCheck, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));
@@ -34,15 +34,18 @@ const expectedFile = resolve(opt("expected", existsSync(siblingExpected) || !exi
 const problems = validateSuite(suite);
 if (problems.length) throw new Error(`suite.json invalid: ${problems.join("; ")}`);
 if (!opt("driver")) throw new Error("--driver <module> is required");
+const expSrc = reference ? join(out, "expected.json") : expectedFile;
+const expected = existsSync(expSrc) ? JSON.parse(readFileSync(expSrc, "utf8")) : {};
+expected.dpad ??= {}; expected.performance ??= {};
+if (!reference && playerAllowed && only.includes("dpad") && suite.dpad.some((d) => d.id === "player-ok-toggle" && (!wantChecks.length || wantChecks.includes(d.id)))
+  && !["play", "pause"].includes(focusForCheck(expected.dpad["player-ok-toggle"], "player-ok-toggle").label)) {
+  throw new Error("player-ok-toggle web reference has no exact Play/Pause state; regenerate it with --reference before scoring");
+}
 const driver = await (await import(pathToFileURL(resolve(opt("driver"))).href)).createDriver({ out, args });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const norm = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 // Labels differ in wording per platform ("open x", "x movie · 2003", "x"): same item when one holds the other.
 // focused() answers a label string or { label, position: { rail, index } }. Position is the stable check: Home rails reorder
 // when other devices play on the shared account, so a `compare: "position"` check ignores the label (kept as info).
-// The play/pause button reads "Play" or "Pause" depending on the playback state at that moment: one role, "play-pause".
-const role = (s) => (/^(play|pause)$/.test(s) ? "play-pause" : s);
-const asFocus = (f) => (f && typeof f === "object" ? { label: role(norm(f.label)), position: f.position ?? null } : { label: role(norm(f)), position: null });
 const samePosition = (a, b) => !!a && !!b && String(a.rail) === String(b.rail) && Number(a.index) === Number(b.index);
 const sameItem = (a, b) => { const t = (s) => s.replace(/^open /, ""); return !!a && !!b && (a === b || t(a).includes(t(b)) || t(b).includes(t(a))); };
 
@@ -79,9 +82,6 @@ if (only.includes("screens")) {
     }
   }
 }
-const expSrc = reference ? join(out, "expected.json") : expectedFile;
-const expected = existsSync(expSrc) ? JSON.parse(readFileSync(expSrc, "utf8")) : {};
-expected.dpad ??= {}; expected.performance ??= {};
 // A scored run without the web expected file would write expected: null for every result and overwrite a good dpad.json/performance.json.
 if (!reference && ((only.includes("dpad") && !Object.keys(expected.dpad).length) || (only.includes("performance") && !Object.keys(expected.performance).length))) {
   throw new Error(`no expected values for dpad/performance in ${expSrc}: pass --expected <web expected.json> (or --reference) before scoring`);
@@ -107,13 +107,13 @@ if (only.includes("dpad")) {
         // The player needs a known state before the first key: playing, controls up, focus on play/pause (driver.playerReady), else a fixed wait.
         if (d.wait) { if (driver.playerReady) await driver.playerReady(); else await sleep(d.wait); }
         if (d.start) {
-          const at = asFocus(await driver.focused()).position;
+          const at = focusForCheck(await driver.focused(), d.id).position;
           startOk = !at || samePosition(at, d.start); // a driver without position cannot assert the start
           if (!startOk) { console.log(`  dpad ${d.id}: start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index} (attempt ${attempt})`); continue; }
         }
         await press(d.keys);
         await sleep(800);
-        actual = asFocus(await driver.focused());
+        actual = focusForCheck(await driver.focused(), d.id);
         // observe "state": where the app is (route shape, ids dropped), for Back out of the player: the focus label there varies with timing.
         if (d.observe === "state") actual = { ...actual, label: `${(await driver.location()).split("?")[0].split("/").filter(Boolean).map((s, i) => (i ? ":id" : s)).join("/")}` };
       } catch (e) { console.log(`ERR dpad ${d.id}: ${e.message.split("\n")[0]}`); }
@@ -127,9 +127,11 @@ if (only.includes("dpad")) {
     }
     if (reference && !agreed) unstable.push(d.id);
     if (reference) expected.dpad[d.id] = actual && (d.compare === "position" ? actual : actual.label);
-    const w = asFocus(expected.dpad[d.id]);
+    const w = focusForCheck(expected.dpad[d.id], d.id);
     const byPosition = d.compare === "position" && w.position && actual?.position; // a driver without position falls back to the label
-    const pass = byPosition ? samePosition(actual.position, w.position) : !!actual?.label && sameItem(actual.label, w.label);
+    const pass = byPosition ? samePosition(actual.position, w.position) : d.id === "player-ok-toggle"
+      ? !!actual?.label && actual.label === w.label
+      : !!actual?.label && sameItem(actual.label, w.label);
     results.push({ id: d.id, pass, compared: byPosition ? "position" : "label", expected: expected.dpad[d.id] ?? null, actual: actual && (actual.position ? actual : actual.label) });
     console.log(`${pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual?.label}${actual?.position ? ` @${actual.position.rail}:${actual.position.index}` : ""}${pass ? "" : ` (expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""})`}`);
   }

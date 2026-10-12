@@ -146,13 +146,19 @@ internal sealed class Shell : View
 
     public void Navigate(string route, bool push = true)
     {
+        var previousSearch = _page as SearchScreen;
+        previousSearch?.OnRemoved();
         var page = Pages.Create(_env, route);
-        if (page is null) return;
+        if (page is null) { previousSearch?.OnAdded(); return; }
         if (push && _page is not null) { _history.Push(_page.Route); if (_page.SaveState() is { } st) _saved[_page.Route] = st; }
-        if (_page is not null) { Remove(_page.Root); _page.Root.Dispose(); }
+        if (_page is not null)
+        {
+            Remove(_page.Root); _page.Root.Dispose();
+        }
         _page = page;
         if (!push && _saved.Remove(route, out var restore)) page.RestoreState(restore);
         Add(page.Root);
+        if (page is SearchScreen searchPage) searchPage.OnAdded();
         if (_theme.Name == "light" && !page.HideChrome && !page.Fullscreen)
         {
             // web light: the page colour fades from #fbfaf9 to #efeeef between x 640 and 1120 (measured); text and cards sit above it

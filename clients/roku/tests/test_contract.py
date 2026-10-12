@@ -318,7 +318,6 @@ class NavigationContractTests(unittest.TestCase):
                 height = max(y for _, y in glyph) - min(y for _, y in glyph) + 1
                 self.assertLessEqual(width, 22)
                 self.assertLessEqual(height, 22)
-
     def test_every_client_renders_the_server_avatar_preference(self) -> None:
         # The same account must show the same avatar on every device: the server preference (a preset id or a custom
         # JPEG), the shared preset art, and the id-hash default only when nothing is set.

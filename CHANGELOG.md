@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Match the Roku profile picker avatar focus bounds and Sign out pill size to the live web layout.
 - Xbox: the film detail page has the web structure: a narrower two-line title, runtime and Released in the meta line, and a Chapters rail with a frame per chapter that plays from there.
 - Fire TV parity control: opening a title by id resets the stack so Back goes to its library page, as the web's URL does (suite check detail-back).
 - Fire TV: the player shows the title's length while an HLS stream is still being written (it read 0:00), and draws the web's missing controls: previous and next, volume, queue, info, cast and the Minimise pill (dimmed where nothing is behind them yet).
@@ -532,6 +533,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Tizen Search now exposes a remote-navigable type filter for movies, series, sites and music, keeps the selection in the route, and uses a single focus indicator while the page is active.
+- Fire TV: the player's video chrome stays dark in the light theme, as on the web; its drawers follow the theme.
 - Fire TV: the letter rail has the web's 44 px spacing and scrolls to keep the active letter centred; the grid scrolls only as far as the focused card needs, as on the web.
 - webOS parity driver waits once per player entry for the video to be playing before the first key, as the simulator opens the player slower than web.
 - Fire TV: hero titles wrap as Chrome's text-wrap: balance does, from measured word widths.
@@ -2884,6 +2887,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Harmony phone capture jobs now fail when required screens are missing and verify title-detail navigation through Previewer route state.
+- The player OK toggle parity check now compares the exact Play or Pause state from its generated web reference, while focus-order checks continue to compare the shared play-pause role.
 - The macOS Apple driver reads its parity state from an explicit file (-PlayarrParityState).
 - Web tests: the card-size e2e also checks 430, 539 and 540px, so the 2 to 3 column boundary beside the letter rail is covered.
 - HarmonyOS TV (hosted Windows runner, preview-only patches): all 15 parity screens in dark and light, with posters, the actions drawer and the player-controls overlay; suite driver for the Previewer (scripts/parity/drivers/harmony.mjs). D-pad and playback stay failures: the Previewer neither moves focus from key presses nor ships the media module.
