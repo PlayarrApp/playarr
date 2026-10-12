@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
 - Match the Roku profile picker avatar focus bounds and Sign out pill size to the live web layout.
 - Xbox: the film detail page has the web structure: a narrower two-line title, runtime and Released in the meta line, and a Chapters rail with a frame per chapter that plays from there.
 - Fire TV parity control: opening a title by id resets the stack so Back goes to its library page, as the web's URL does (suite check detail-back).
