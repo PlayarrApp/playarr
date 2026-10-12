@@ -1,1 +1,0 @@
-- Android: after the server reaps or evicts a transcode session (or the source cannot be decoded), the replacement session keeps a paused player paused instead of always starting playback.

@@ -13,6 +13,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Android: after the server reaps or evicts a transcode session (or the source cannot be decoded), the replacement session keeps a paused player paused instead of always starting playback.
+- Fire TV: the calendar's month view is rebuilt to the web's (text lines with a status dot, the day number and "+N more" in a 44 px bottom row, up to four lines a cell). For the parity suite, a build with PLAYARR_PARITY_CONTROL=1 carries a control channel (route, open, play, theme and state over the platform message bus) and scripts/parity/drivers/firetv.mjs drives it; a normal build has neither.
+- Roku series detail opens on the next-up episode (the resume plan is requested first), the unwatched dot has the web's white ring, and calendar week cards carry the rounded availability border.
+- Xbox wall: debug frames of the calendar view picker are uploaded.
 - Fire TV: UP and DOWN in the nav rail step through every item and group like the web (DOWN from the last item of a group used to jump into the page content).
 - Roku calendar: week and agenda open as the web does (the capture and suite driver reach the range switcher from the grid), date-only releases read All day, status pills carry their tone, the week view uses the web's sizes and TODAY chip; series detail shows a third season rail; Home focus reports its rail and card position; Left from Home enters the nav at the card's art.
 - Downloads (web): offline play uses the local copy on the first try (no "Try again"), and a downloaded title's detail page opens offline from its local metadata with Play reachable.
@@ -300,6 +304,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Xbox: Previous in the player and in the now-playing card plays the item played before this one, and puts the current one back up next, as the web playlist control does.
 - Xbox parity trace reports the focus position (rail and card, or nav item) for the suite Home D-pad checks.
 - Samsung Tizen native client: the Downloads page has Pause all, Resume all and Delete all on every series and season group, and the parity driver runs the downloads cases (start, pause and resume, cancel, delete, edit, offline play, series and season actions).
 - Linux phone client: offline downloads with pause, resume, cancel, delete, keep-until and quality, offline playback and freedesktop notifications.
