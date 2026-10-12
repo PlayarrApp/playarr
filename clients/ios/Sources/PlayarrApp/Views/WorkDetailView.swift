@@ -11,6 +11,7 @@ struct WorkDetailView: View {
     @State private var playlists: [Playlist] = []
     @State private var playlistMessage: String?
     @State private var selectedAlbumID: UUID?
+    @State private var initialTabletScrollWorkID: UUID?
 
     init(viewModel: WorkDetailViewModel, apiClient: PlayarrAPIClient, downloadRepository: DownloadRepository) {
         _viewModel = State(initialValue: viewModel)
@@ -144,42 +145,54 @@ struct WorkDetailView: View {
     }
 
     private func tabletDetail(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
-        ZStack(alignment: .topLeading) {
-            PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .opacity(scheme == .dark ? 0.3 : 0.07)
-                .overlay {
-                    LinearGradient(
-                        colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                }
-
-            detailCopy(detail, phone: false)
-                .frame(width: proxy.size.width * 0.205, alignment: .leading)
-                .padding(.leading, proxy.size.width * 0.088)
-                .padding(.top, proxy.size.height * 0.24)
-
-            if hasVisibleChildren(detail.children) || hasDiscoveryContent {
-                ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: 30) {
-                        children(for: detail.children)
-                        discoveryContent
+        ScrollViewReader { scrollProxy in
+            ZStack(alignment: .topLeading) {
+                PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .opacity(scheme == .dark ? 0.3 : 0.07)
+                    .overlay {
+                        LinearGradient(
+                            colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     }
-                        .padding(.leading, 0)
-                        .padding(.top, proxy.size.height * (detail.work.kind == .series ? 0.67 : 0.25)) // web tablet: Chapters at y 260, Season 1 at y 695 of 1024
+
+                detailCopy(detail, phone: false)
+                    .frame(width: min(proxy.size.width * 0.24, 455), alignment: .leading)
+                    .padding(.leading, proxy.size.width * 0.088)
+                    .padding(.top, proxy.size.height * 0.24)
+
+                if hasVisibleChildren(detail.children) || hasDiscoveryContent {
+                    ScrollView(.vertical) {
+                        VStack(alignment: .leading, spacing: 30) {
+                            children(for: detail.children)
+                            discoveryContent
+                        }
+                        .padding(.leading, proxy.size.width * 0.088)
+                        .padding(.top, proxy.size.height * (detail.work.kind == .series ? 0.5 : 0.25))
                         .padding(.bottom, proxy.size.height * 0.5)
-                }
-                .frame(width: proxy.size.width * 0.267, height: proxy.size.height)
-                .offset(x: proxy.size.width * 0.733) // rails start at x 1002 of 1366 and run off the edge
-                .scrollIndicators(.hidden)
-                .background {
-                    LinearGradient(
-                        colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    }
+                    .frame(width: proxy.size.width * 0.62, height: proxy.size.height)
+                    .background {
+                        LinearGradient(
+                            colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    }
+                    .scrollIndicators(.hidden)
+                    .offset(x: proxy.size.width * 0.38)
+                    .task(id: detail.work.id) {
+                        guard initialTabletScrollWorkID != detail.work.id,
+                              case .series(let seasons) = detail.children,
+                              let firstSeason = seasons.first else { return }
+
+                        await Task.yield()
+                        guard !Task.isCancelled, initialTabletScrollWorkID != detail.work.id else { return }
+                        scrollProxy.scrollTo(firstSeason.season.id, anchor: .center)
+                        initialTabletScrollWorkID = detail.work.id
+                    }
                 }
             }
         }
@@ -365,6 +378,7 @@ struct WorkDetailView: View {
             VStack(alignment: .leading, spacing: 34) {
                 ForEach(seasons, id: \.season.id) { season in
                     seasonEpisodeTrack(season)
+                        .id(season.season.id)
                 }
             }
         case .artist(let albums):
