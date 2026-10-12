@@ -539,6 +539,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV: the Home hero meta line is the focused title's runtime, as web, instead of the release year.
 - Tizen Search now exposes a remote-navigable type filter for movies, series, sites and music, keeps the selection in the route, and uses a single focus indicator while the page is active.
 - Tizen Search now filters playlist results and exposes Games as a search type; when live Games discovery is unavailable, Search shows the provider's unavailable state.
 - Tizen Search now exposes a remote-navigable type filter for movies, series, sites and music, keeps the selection in the route, and uses a single focus indicator while the page is active.
