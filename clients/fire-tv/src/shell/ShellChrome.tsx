@@ -4,7 +4,7 @@
  */
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {focusDefaultTarget, focusNode, getFocusedTag, TvFocusScope, useRemoteKey} from '../platform';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {findNodeHandle, Pressable, StyleSheet, Text, View} from 'react-native';
 import type {WorkKind} from '@playarr-tv/api-client';
 import {ProfileAvatar} from '../components/ProfileAvatar';
 import {mix} from '../theme/color';
@@ -91,11 +91,17 @@ function RailLink({
   active,
   onSelect,
   onActiveNode,
+  onNode,
+  up,
+  down,
 }: {
   item: RailItem;
   active: boolean;
   onSelect: (target: RailTarget) => void;
   onActiveNode: (node: unknown) => void;
+  onNode: (key: string, node: unknown) => void;
+  up?: number;
+  down?: number;
 }): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
@@ -104,9 +110,10 @@ function RailLink({
   // re-rendered the rail without end (the JS thread froze and the remote went dead).
   const activeRefCallback = useCallback(
     (node: unknown) => {
+      if (node) onNode(item.target, node);
       if (active && node) onActiveNode(node);
     },
-    [active, onActiveNode],
+    [active, onActiveNode, onNode, item.target],
   );
   const ink = lit ? colour.ink : colour.inkMuted;
   return (
@@ -115,6 +122,7 @@ function RailLink({
       accessibilityRole="button"
       accessibilityLabel={item.label}
       accessibilityState={{selected: active}}
+      {...({nextFocusUp: up, nextFocusDown: down} as object)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={() => onSelect(item.target)}
@@ -160,6 +168,14 @@ function Rail({
   // so LEFT from the content found no rail item until something else re-rendered the rail.
   const [activeNode, setActiveNode] = useState<unknown>(null);
   const activeRef = useMemo(() => ({current: activeNode}), [activeNode]);
+  // UP and DOWN step to the neighbouring item through every group, as the web does: the native engine otherwise picks the
+  // nearest view below, which from the end of a group is a card in the content, not the next group's first item.
+  const [tags, setTags] = useState<Record<string, number>>({});
+  const onNode = useCallback((key: string, node: unknown) => {
+    const tag = findNodeHandle(node as never);
+    if (tag !== null) setTags((previous) => (previous[key] === tag ? previous : {...previous, [key]: tag}));
+  }, []);
+  const order = groups.flatMap((group) => group.items.map((item) => item.target as string));
   // Vega drops focus when the focused view unmounts (a list re-rendered by late data), and then the D-pad does nothing.
   // The web never loses focus, so a direction key with nothing focused lands on the page default or the rail's item.
   useRemoteKey((key, raw) => {
@@ -192,13 +208,23 @@ function Rail({
           >
             {group.items.map((item, index) => (
               <View key={item.target} style={{marginTop: index === 0 ? 0 : sw(GROUP_GAP)}}>
-                <RailLink item={item} active={active === item.target} onSelect={onSelect} onActiveNode={setActiveNode} />
+                <RailLink
+                  item={item}
+                  active={active === item.target}
+                  onSelect={onSelect}
+                  onActiveNode={setActiveNode}
+                  onNode={onNode}
+                  up={tags[order[order.indexOf(item.target) - 1] ?? '']}
+                  down={tags[order[order.indexOf(item.target) + 1] ?? ''] ?? tags.profile}
+                />
               </View>
             ))}
           </View>
         );
       })}
-      {children}
+      {React.isValidElement(children)
+        ? React.cloneElement(children as React.ReactElement<Partial<ProfileChipProps>>, {onNode, up: tags[order[order.length - 1] ?? '']})
+        : children}
     </TvFocusScope>
   );
 }
@@ -231,9 +257,12 @@ export interface ProfileChipProps {
   name: string;
   version: string;
   onPress: () => void;
+  /** Set by the rail: registers this node and names the item above it. */
+  onNode?: (key: string, node: unknown) => void;
+  up?: number;
 }
 
-function ProfileChip({profileId, name, version, onPress}: ProfileChipProps): React.ReactElement {
+function ProfileChip({profileId, name, version, onPress, onNode, up}: ProfileChipProps): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   const ink = focused ? colour.ink : colour.inkMuted;
@@ -257,6 +286,10 @@ function ProfileChip({profileId, name, version, onPress}: ProfileChipProps): Rea
         }}
       >
         <Pressable
+          ref={(node) => {
+            if (node) onNode?.('profile', node);
+          }}
+          {...({nextFocusUp: up} as object)}
           accessibilityRole="button"
           accessibilityLabel={`Profile ${name}`}
           onFocus={() => setFocused(true)}

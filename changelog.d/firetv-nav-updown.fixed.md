@@ -1,0 +1,1 @@
+- Fire TV: UP and DOWN in the nav rail step through every item and group like the web (DOWN from the last item of a group used to jump into the page content).
