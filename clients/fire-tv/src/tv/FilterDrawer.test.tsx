@@ -7,6 +7,12 @@ import {FilterDrawer} from './FilterDrawer';
 
 (globalThis as unknown as {React: typeof React}).React = React;
 
+const renderers: ReactTestRenderer[] = [];
+function trackRenderer(renderer: ReactTestRenderer): ReactTestRenderer {
+  renderers.push(renderer);
+  return renderer;
+}
+
 jest.mock('../platform/focus', () => ({TvFocusScope: ({children}: {children: unknown}) => children, focusNode: jest.fn()}));
 
 const layers: Array<() => void> = [];
@@ -19,11 +25,17 @@ function texts(renderer: ReactTestRenderer): string[] {
 }
 
 describe('FilterDrawer', () => {
+  afterEach(() => {
+    act(() => {
+      for (const renderer of renderers.splice(0)) renderer.unmount();
+    });
+  });
+
   it('shows the kicker, the title and every section, with each chip label capitalised', () => {
     const picked: string[] = [];
     let renderer!: ReactTestRenderer;
     act(() => {
-      renderer = create(
+      renderer = trackRenderer(create(
         <ThemeProvider>
           <FilterDrawer
             kicker="Library controls"
@@ -37,7 +49,7 @@ describe('FilterDrawer', () => {
             ]}
           />
         </ThemeProvider>,
-      );
+      ));
     });
     const all = texts(renderer);
     expect(all).toEqual(expect.arrayContaining(['Library controls', 'Filters', 'View', 'List', 'Type', 'TV', 'Monitored Only', 'Quality', 'Original', '13 Mbps']));
@@ -51,11 +63,11 @@ describe('FilterDrawer', () => {
     const onClose = jest.fn();
     let renderer!: ReactTestRenderer;
     act(() => {
-      renderer = create(
+      renderer = trackRenderer(create(
         <ThemeProvider>
           <FilterDrawer kicker="k" title="t" closeLabel="Close" onClose={onClose} sections={[]} />
         </ThemeProvider>,
-      );
+      ));
     });
     expect(layers).toHaveLength(1);
     act(() => renderer.root.findAllByType(Pressable).find((node) => node.props.accessibilityLabel === 'Close')!.props.onPress());

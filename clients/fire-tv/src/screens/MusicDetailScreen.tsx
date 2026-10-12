@@ -7,7 +7,7 @@
  * brightness filter (Vega has neither): the covers beside the selected one are dimmed with a veil and the reflection is a
  * flipped copy under a gradient.
  */
-import React, {useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Animated, Easing, Pressable, View} from 'react-native';
 import type {Album, AlbumDetail, TrackDetail, WatchProgress, Work, WorkDetail} from '@playarr-tv/api-client';
 import {useAsyncData, useWorkDetail} from '@playarr-tv/api-client/react';
@@ -241,10 +241,13 @@ function FlowCover({entry, artistId, baseUrl, token, offset, selected, onFocus, 
   const [focused, setFocused] = useState(false);
   const slide = useRef(new Animated.Value(offset)).current;
   const last = useRef(offset);
-  if (last.current !== offset) {
+  useEffect(() => {
+    if (last.current === offset) return;
     last.current = offset;
-    Animated.timing(slide, {toValue: offset, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: false}).start();
-  }
+    const animation = Animated.timing(slide, {toValue: offset, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: false});
+    animation.start();
+    return () => animation.stop();
+  }, [offset, slide]);
   return (
     <Pressable
       accessibilityRole="button"

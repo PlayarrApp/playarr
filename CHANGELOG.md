@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV tests now unmount rendered screens and stop their finite animations before Jest tears down the test environment.
 - iPad series details now show episode-specific artwork with a media-thumbnail fallback.
 - Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
 - Match the Roku profile picker avatar focus bounds and Sign out pill size to the live web layout.
