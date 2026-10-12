@@ -356,8 +356,8 @@ struct WMDetailPage: View {
             }
             .frame(width: 358, height: 15.36, alignment: .leading)
             .padding(.top, isSeries ? 11.44 : 11.34)
-            if isSeries, let lag = model.lag {
-                WMText(lag.primaryLine, 16, 640, lh: 24)
+            if isSeries, let lagLine = model.lag?.primaryLine {
+                WMText(lagLine, 16, 640, lh: 24)
                     .frame(width: 358, alignment: .leading)
                     .padding(.top, 7.34)
             }
