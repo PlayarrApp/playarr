@@ -135,6 +135,10 @@ export function hasFreshScreenFocus(state, expectedScreen, expectedFocus, afterS
     && state.focus === expectedFocus;
 }
 
+export function hasFreshProfilesScreen(state, afterScreenSeq) {
+  return state.screenSeq > afterScreenSeq && state.screen === "profiles";
+}
+
 export function themePixelMatches(pixel, theme) {
   if (!pixel || ![pixel.r, pixel.g, pixel.b].every(Number.isFinite)) return false;
   if (theme === "dark") return pixel.r < 80 && pixel.g < 80 && pixel.b < 80;
@@ -352,11 +356,12 @@ export function createDriver({ out, args = [] } = {}) {
     await sendEcp("launch/dev");
     await connectDebug();
     try {
-      await waitFor(() => screenSeq > beforeScreenSeq && (screen === "profiles" || screen === "pairing" || screen === "status"), "fresh profile picker event", 40000);
+      await waitFor(() => hasFreshProfilesScreen({ screen, screenSeq }, beforeScreenSeq), "fresh signed-in Profiles screen", 40000);
     } catch {
+      if (screen === "pairing") throw new Error("Roku remained on the pairing screen; no fresh signed-in Profiles screen arrived");
+      if (screen === "status") throw new Error("Roku remained on the status screen; no fresh signed-in Profiles screen arrived");
       throw new Error(`Roku did not reach a fresh profile picker event after cold launch (screen=${screen || "none"}, newScreenEvents=${screenSeq - beforeScreenSeq}, debugConnected=${!!socket && !socket.destroyed && !debugFailure})`);
     }
-    if (screen !== "profiles") throw new Error(`Roku is on ${screen}; expected signed-in Profiles`);
     await sleep(3000);
     // Resume can retain focus on a bottom-row action. This deterministic path restores the first profile.
     for (const key of ["down", "down", "left", "up"]) {
