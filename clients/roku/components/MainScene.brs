@@ -84,6 +84,15 @@ sub init()
     m.homeGroup = m.top.findNode("homeGroup")
     m.homeStage = m.top.findNode("homeStage")
     m.homeContent = m.homeStage.contentTarget
+    m.artTelemetryEnabled = false
+    if m.global.parityArtEnabled = true then m.artTelemetryEnabled = true
+    m.artGeneration = 0
+    m.artActiveGeneration = 0
+    m.artActiveScope = ""
+    m.artActiveHasArt = false
+    m.artExpectedSlots = []
+    m.browseArtTelemetryVersion = 0
+    m.browseArtTelemetryArmed = false
     m.navDock = m.top.findNode("navDock")
     m.navHighlights = []
     m.navIcons = []
@@ -111,6 +120,7 @@ sub init()
     m.browseTitle = m.top.findNode("browseTitle")
     m.browseCountLabel = m.top.findNode("browseCountLabel")
     m.browseKeyArt = m.top.findNode("browseKeyArt")
+    if m.browseKeyArt <> invalid then m.browseKeyArt.ObserveField("loadStatus", "onBrowseKeyArtLoadStatus")
     m.browseKeyArtFade = m.top.findNode("browseKeyArtFade")
     ThemeSetRole(m.browseKeyArtFade, "bg")
     m.browsePreviewKind = m.top.findNode("browsePreviewKind")
@@ -2395,6 +2405,9 @@ end sub
 ' ---------------------------------------------------------------------------
 
 sub openBrowse(kind as String, label as String)
+    m.artActiveGeneration = 0
+    m.artActiveScope = ""
+    m.browseArtTelemetryArmed = false
     m.browseKind = kind
     parityEmit("browse", kind)
     m.browseLabel = label
@@ -2458,7 +2471,15 @@ sub acceptBrowseCatalog(data as Object, append as Boolean)
     showOnly("browse")
     m.top.screenState = "browse"
     m.browseGrid.SetFocus(true)
-    if not append then updateBrowsePreview(m.browseItems[0])
+    if not append and m.browseItems.Count() > 0
+        updateBrowsePreview(m.browseItems[0])
+    else if append and m.artActiveGeneration > 0
+        declareCurrentBrowsePreviewArt(m.artActiveGeneration)
+    end if
+    if m.artActiveGeneration > 0
+        announceArtGeneration(m.artActiveGeneration, "movies", m.artActiveHasArt)
+        finishArtGeneration(m.artActiveGeneration, "movies")
+    end if
 end sub
 
 ' Library heading (web .page-header h1: 33.6 px, weight 580, -0.045em tracking).
@@ -2472,6 +2493,13 @@ sub rebuildBrowseContent()
     ' client-side so the first page matches web freezes.
     if m.browseSort = "title"
         m.browseItems = sortWorksByTitleNumeric(m.browseItems, m.browseOrder)
+    end if
+    m.artActiveGeneration = 0
+    m.artActiveScope = ""
+    if m.artTelemetryEnabled and m.browseKind = "movie"
+        m.artActiveScope = "movies"
+        m.artActiveHasArt = worksHaveCardArt(m.browseItems)
+        m.artActiveGeneration = beginArtGeneration("movies")
     end if
     buildGridContent(m.browseGrid, m.browseItems, browseCardScale())
     ' Web heading: h1 = "Movies", span = "1,730 TITLES" (not "50 of 1730").
@@ -2795,6 +2823,16 @@ sub updateBrowsePreview(work as Object)
     if m.browseKeyArt <> invalid
         uri = heroArtworkUrl(work)
         m.browseKeyArtPendingUri = uri
+        if m.artTelemetryEnabled and m.artActiveScope = "movies" and m.artActiveGeneration > 0
+            m.browseArtTelemetryVersion += 1
+            m.browseArtTelemetryArmed = false
+            if uri <> ""
+                emitArtSlot(m.artActiveGeneration, "movies", "movies-preview", true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+                emitArtStatus(m.artActiveGeneration, "movies", "movies-preview", "pending", m.browseArtTelemetryVersion)
+            else
+                emitArtOptionalEmpty(m.artActiveGeneration, "movies", "movies-preview", m.browseArtTelemetryVersion)
+            end if
+        end if
         if uri = ""
             m.browseKeyArt.uri = ""
             m.browseKeyArt.visible = false
@@ -2811,6 +2849,7 @@ sub onBrowseKeyArtTimer()
     uri = m.browseKeyArtPendingUri
     if m.browseKeyArt = invalid then return
     if uri = invalid or uri = ""
+        m.browseArtTelemetryArmed = false
         m.browseKeyArt.uri = ""
         m.browseKeyArt.visible = false
         return
@@ -2824,10 +2863,41 @@ sub onBrowseKeyArtTimer()
     m.browseKeyArt.SetHttpAgent(agent)
     m.browseKeyArt.loadWidth = 1038
     m.browseKeyArt.loadHeight = 1191
+    m.browseArtTelemetryArmed = m.artTelemetryEnabled and m.artActiveScope = "movies" and m.artActiveGeneration > 0
     m.browseKeyArt.uri = uri
+    if m.browseArtTelemetryArmed
+        emitArtStatus(m.artActiveGeneration, "movies", "movies-preview", "pending", m.browseArtTelemetryVersion)
+        sampleBrowseKeyArtStatus()
+    end if
     if Instr(1, uri, "style=stage-light") > 0 then m.browseKeyArt.opacity = 0.15 else if Instr(1, uri, "style=stage") > 0 then m.browseKeyArt.opacity = 0.15 else m.browseKeyArt.opacity = 0.4
     m.browseKeyArt.visible = true
     m.browseKeyArtFade.visible = true
+end sub
+
+sub onBrowseKeyArtLoadStatus()
+    sampleBrowseKeyArtStatus()
+end sub
+
+sub sampleBrowseKeyArtStatus()
+    if not m.browseArtTelemetryArmed then return
+    if m.browseKeyArt.loadStatus = "ready"
+        emitArtStatus(m.artActiveGeneration, "movies", "movies-preview", "ready", m.browseArtTelemetryVersion)
+    else if m.browseKeyArt.loadStatus = "failed"
+        emitArtStatus(m.artActiveGeneration, "movies", "movies-preview", "failed", m.browseArtTelemetryVersion)
+    end if
+end sub
+
+sub declareCurrentBrowsePreviewArt(generation as Integer)
+    uri = m.browseKeyArtPendingUri
+    if uri = invalid or uri = ""
+        m.browseArtTelemetryArmed = false
+        return
+    end if
+    if m.browseArtTelemetryVersion < 1 then m.browseArtTelemetryVersion = 1
+    m.browseArtTelemetryArmed = true
+    emitArtSlot(generation, "movies", "movies-preview", true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+    emitArtStatus(generation, "movies", "movies-preview", "pending", m.browseArtTelemetryVersion)
+    if m.browseKeyArt.uri = uri then sampleBrowseKeyArtStatus()
 end sub
 
 ' Flat-content counterpart to buildRailContent() below: MarkupGrid takes one
@@ -2836,6 +2906,7 @@ end sub
 sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
     root = CreateObject("roSGNode", "ContentNode")
     headers = ClientHeaders(m.accessToken)
+    artIndex = 0
     for each work in works
         item = root.CreateChild("ContentNode")
         item.id = work.id
@@ -2889,6 +2960,22 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
                 item.subtitleOverride = line
             end if
         end if
+        if grid.id = "browseGrid" and m.artTelemetryEnabled and m.artActiveScope = "movies" and m.artActiveGeneration > 0 and m.browseView = "screen"
+            columns = m.browseGrid.numColumns
+            if columns < 1 then columns = 3
+            column = artIndex mod columns
+            rowIndex = Int(artIndex / columns)
+            x = m.browseGrid.translation[0] + column * (m.browseGrid.itemSize[0] + m.browseGrid.itemSpacing[0])
+            y = m.browseGrid.translation[1] + rowIndex * (m.browseGrid.itemSize[1] + m.browseGrid.itemSpacing[1]) + item.padTop
+            artWidth = 220 * cardScale
+            artHeight = 124 * cardScale
+            slot = "movies-r" + rowIndex.ToStr() + "-c" + column.ToStr()
+            if artRectVisible(x, y, artWidth, artHeight)
+                addPosterArtTelemetry(item, m.artActiveGeneration, "movies", slot, 0)
+                emitArtSlot(m.artActiveGeneration, "movies", slot, item.hdPosterUrl <> "", x, y, artWidth, artHeight, 0)
+            end if
+        end if
+        artIndex += 1
     end for
     grid.content = root
 end sub
@@ -3395,12 +3482,20 @@ end sub
 ' the first place. Content is rebuilt with the correct flag both at initial
 ' finishHomeLoad() (only rail 0 active) and on every moveHomeFocus() rail
 ' switch (old rail rebuilt false, new rail rebuilt true).
-sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardScale = 0.995 as Float)
+sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardScale = 0.995 as Float, artGeneration = 0 as Integer, artScope = "" as String, artRow = -1 as Integer)
     root = CreateObject("roSGNode", "ContentNode")
     rowNode = root.CreateChild("ContentNode")
     headers = ClientHeaders(m.accessToken)
     activeRailFactor = 0.0
     if isActive then activeRailFactor = 1.0
+    artRowIndex = artRow
+    if artRowIndex < 0 then artRowIndex = homeRailIndex(row)
+    generation = artGeneration
+    scope = artScope
+    if generation = 0 and m.artActiveScope = "home" then generation = m.artActiveGeneration
+    if scope = "" then scope = m.artActiveScope
+    artEnabledForRow = m.artTelemetryEnabled and scope = "home" and generation > 0 and artRowIndex >= 0
+    artCardIndex = 0
     for each work in works
         item = rowNode.CreateChild("ContentNode")
         item.id = work.id
@@ -3433,6 +3528,20 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         ' to a no-op 1.
         item.AddField("cardScale", "float", false)
         item.cardScale = cardScale
+        if artEnabledForRow
+            focusOffset = 0
+            if row.focusXOffset <> invalid and row.focusXOffset.Count() > 0 then focusOffset = row.focusXOffset[0]
+            artX = m.homeContent.translation[0] + row.translation[0] + focusOffset + artCardIndex * (row.rowItemSize[0][0] + row.rowItemSpacing[0][0])
+            artY = m.homeContent.translation[1] + m.homeRailPool[artRowIndex].group.translation[1] + row.translation[1]
+            artW = row.rowItemSize[0][0]
+            artH = artW * 9 / 16
+            artSlotName = "home-r" + artRowIndex.ToStr() + "-c" + artCardIndex.ToStr()
+            if artRectVisible(artX, artY, artW, artH)
+                addPosterArtTelemetry(item, generation, "home", artSlotName, 0)
+                emitArtSlot(generation, "home", artSlotName, item.hdPosterUrl <> "", artX, artY, artW, artH, 0)
+            end if
+        end if
+        artCardIndex += 1
     end for
     row.content = root
 end sub
@@ -4068,8 +4177,29 @@ sub finishHomeLoad()
         pooled.group.visible = false
     end for
 
+    m.artActiveGeneration = 0
+    m.artActiveScope = ""
+    homeHasArt = worksHaveHomeArt(candidates)
+    if m.artTelemetryEnabled
+        m.artActiveScope = "home"
+        m.artActiveHasArt = homeHasArt
+        m.artActiveGeneration = beginArtGeneration("home")
+        heroUri = heroArtworkUrl(candidates[0].works[0])
+        m.homeStage.artTelemetryGeneration = m.artActiveGeneration
+        m.homeStage.artTelemetryScope = "home"
+        m.homeStage.artTelemetrySlot = "home-hero"
+        m.homeStage.artTelemetryVersion = 0
+        m.homeStage.artTelemetryActive = heroUri <> ""
+        if heroUri <> ""
+            emitArtSlot(m.artActiveGeneration, "home", "home-hero", true, -20, -22.9, 1038, 1191, 0)
+        end if
+    else
+        m.homeStage.artTelemetryActive = false
+    end if
     ' The hero art is the slowest download (a 4 MB stage image): request it before the cards so it is first in the queue.
     updateHeroFromWork(candidates[0].works[0])
+    ' Reset scroll before deriving current screen-space art slots.
+    m.homeContent.translation = [881.6, 422.9]
     m.visibleRails = []
     y = 0
     railIndex = 0
@@ -4082,7 +4212,7 @@ sub finishHomeLoad()
         setRailTitle(rail, railIndex = 0)
         isActiveRail = false
         if railIndex = 0 then isActiveRail = true
-        buildRailContent(rail.row, rail.works, isActiveRail, 1.4864)
+        buildRailContent(rail.row, rail.works, isActiveRail, 1.4864, m.artActiveGeneration, "home", railIndex)
         m.visibleRails.Push({ row: rail.row, works: rail.works, first: 0, col: 0, last: 0, jumping: -1, rightAligned: false })
         ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards).
         y += 366
@@ -4094,7 +4224,6 @@ sub finishHomeLoad()
     ' scrollHomeToFocusedRail) -- the entrance animation only plays once
     ' ever (m.homeShown below), so a return trip to Home would otherwise
     ' keep whatever scroll position Back left it at.
-    m.homeContent.translation = [881.6, 422.9]
     showOnly("home")
     m.top.screenState = "home"
     ' Reveal rails/hero first, then load key-art. Key-art used to block the
@@ -4113,6 +4242,10 @@ sub finishHomeLoad()
     end if
     updateHeroFromWork(m.visibleRails[0].works[0])
     m.visibleRails[0].row.SetFocus(true)
+    if m.artActiveGeneration > 0
+        announceArtGeneration(m.artActiveGeneration, "home", homeHasArt)
+        finishArtGeneration(m.artActiveGeneration, "home")
+    end if
 end sub
 
 sub updateHeroFromWork(work as Object)
@@ -6415,11 +6548,110 @@ sub showStatus(title as String, message as String, busy as Boolean)
     m.top.SetFocus(true)
 end sub
 
-' Parity-suite hook (scripts/parity/roku/driver.mjs reads the debug console): one "PARITY|<kind>|<text>" line per screen change
+' Parity-suite hook (scripts/parity/drivers/roku.mjs reads the debug console): one "PARITY|<kind>|<text>" line per screen change
 ' and focus change. The Roku has no accessibility query over ECP, so the driver learns the screen and the focused item from here.
 sub parityEmit(kind as String, text as String)
     print "PARITY|" + kind + "|" + text
 end sub
+
+function beginArtGeneration(scope as String) as Integer
+    if not m.artTelemetryEnabled then return 0
+    if scope <> "home" and scope <> "movies" then return 0
+    m.artGeneration += 1
+    m.artActiveGeneration = m.artGeneration
+    m.artActiveScope = scope
+    m.artExpectedSlots = []
+    return m.artGeneration
+end function
+
+sub announceArtGeneration(generation as Integer, scope as String, hasArt as Boolean)
+    if not m.artTelemetryEnabled or generation < 1 then return
+    if scope <> "home" and scope <> "movies" then return
+    hasArtText = "0"
+    if hasArt then hasArtText = "1"
+    parityEmit("art", "begin|" + generation.ToStr() + "|" + scope + "|" + hasArtText + "|" + m.artExpectedSlots.Count().ToStr())
+end sub
+
+sub finishArtGeneration(generation as Integer, scope as String)
+    if not m.artTelemetryEnabled or generation < 1 then return
+    if scope <> "home" and scope <> "movies" then return
+    parityEmit("art", "finish|" + generation.ToStr() + "|" + scope)
+end sub
+
+sub emitArtSlot(generation as Integer, scope as String, slot as String, hasSource as Boolean, x as Float, y as Float, width as Float, height as Float, version as Integer)
+    if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
+    if scope <> "home" and scope <> "movies" then return
+    if not artRectVisible(x, y, width, height) then return
+    hasSourceText = "0"
+    if hasSource then hasSourceText = "1"
+    found = false
+    for each existingSlot in m.artExpectedSlots
+        if existingSlot = slot then found = true
+    end for
+    if not found then m.artExpectedSlots.Push(slot)
+    parityEmit("art", "slot|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + hasSourceText + "|" + x.ToStr() + "|" + y.ToStr() + "|" + width.ToStr() + "|" + height.ToStr() + "|" + version.ToStr())
+end sub
+
+sub emitArtStatus(generation as Integer, scope as String, slot as String, status as String, version as Integer)
+    if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
+    if scope <> "home" and scope <> "movies" then return
+    if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
+    parityEmit("art", "status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr())
+end sub
+
+sub emitArtOptionalEmpty(generation as Integer, scope as String, slot as String, version as Integer)
+    if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
+    if scope <> "movies" or slot <> "movies-preview" then return
+    remaining = []
+    for each expectedSlot in m.artExpectedSlots
+        if expectedSlot <> slot then remaining.Push(expectedSlot)
+    end for
+    m.artExpectedSlots = remaining
+    parityEmit("art", "optional-empty|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + version.ToStr())
+end sub
+
+sub addPosterArtTelemetry(item as Object, generation as Integer, scope as String, slot as String, version as Integer)
+    if item = invalid or generation < 1 then return
+    item.AddField("parityArtRequired", "boolean", false)
+    item.parityArtRequired = true
+    item.AddField("parityArtGeneration", "integer", false)
+    item.parityArtGeneration = generation
+    item.AddField("parityArtScope", "string", false)
+    item.parityArtScope = scope
+    item.AddField("parityArtSlot", "string", false)
+    item.parityArtSlot = slot
+    item.AddField("parityArtVersion", "integer", false)
+    item.parityArtVersion = version
+end sub
+
+function artRectVisible(x as Float, y as Float, width as Float, height as Float) as Boolean
+    return width > 0 and height > 0 and x < 1920 and y < 1080 and x + width > 0 and y + height > 0
+end function
+
+function worksHaveCardArt(works as Object) as Boolean
+    if works = invalid then return false
+    for each work in works
+        if cardArtworkUrl(work) <> "" then return true
+    end for
+    return false
+end function
+
+function worksHaveHomeArt(candidates as Object) as Boolean
+    if candidates = invalid then return false
+    for each candidate in candidates
+        if worksHaveCardArt(candidate.works) then return true
+        if candidate.works.Count() > 0 and heroArtworkUrl(candidate.works[0]) <> "" then return true
+    end for
+    return false
+end function
+
+function homeRailIndex(row as Object) as Integer
+    if row = invalid then return -1
+    for index = 0 to m.homeRailPool.Count() - 1
+        if m.homeRailPool[index].row.isSameNode(row) then return index
+    end for
+    return -1
+end function
 
 function parityWorkLabel(work as Object) as String
     year = ""

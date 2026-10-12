@@ -9,6 +9,7 @@ import net from "node:net";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { artReadiness, createArtReadinessState, intersectingSlots, parseArtEvent, reduceArtEvent, resetArtReadinessState } from "../roku/art-readiness.mjs";
 
 const SAFE_SCREENS = new Set([
   "home", "movies", "series", "music", "search", "settings", "filters", "profiles", "actions",
@@ -61,6 +62,7 @@ export function createParityState() {
   return {
     screen: "", screenSeq: 0, page: "", browse: "", focus: null,
     focusSeq: 0, focusScreenSeq: 0, focusFloorAtScreen: 0, drawerSource: "",
+    eventSeq: 0, artMarkers: { home: 0, movies: 0 }, artState: createArtReadinessState(),
   };
 }
 
@@ -68,6 +70,7 @@ export function applyParityLine(state, line) {
   const parsed = parseParityLine(line);
   if (!parsed) return false;
   const { kind, value } = parsed;
+  state.eventSeq += 1;
   if (kind === "screen") {
     state.screen = value.trim();
     state.screenSeq += 1;
@@ -75,10 +78,15 @@ export function applyParityLine(state, line) {
     state.focus = null;
     if (state.screen === "home" || state.screen === "profiles") state.drawerSource = "";
     if (state.screen === "drawer" && !state.drawerSource) state.drawerSource = "actions";
+    if (state.screen === "home") state.artMarkers.home = state.eventSeq;
   } else if (kind === "page") {
     state.page = value.trim();
   } else if (kind === "browse") {
     state.browse = value.trim();
+    if (state.browse === "movie" || state.browse === "movies") state.artMarkers.movies = state.eventSeq;
+  } else if (kind === "art") {
+    const event = parseArtEvent(value, state.eventSeq);
+    if (!event || event.type !== "slot" || intersectingSlots([event]).length > 0) reduceArtEvent(state.artState, event);
   } else if (kind === "focus") {
     const positioned = /^(.*)\|@([0-9]+):([0-9]+)$/.exec(value.trim());
     state.focus = positioned
@@ -222,6 +230,7 @@ export function createDriver({ out, args = [] } = {}) {
   const ecp = `http://${target}:8060`;
   const keyDelay = Math.max(300, Number(env.ROKU_PARITY_KEY_DELAY_MS ?? 850));
   const selectDelay = Math.max(1000, Number(env.ROKU_PARITY_SELECT_DELAY_MS ?? 2600));
+  const artEnabled = env.ROKU_ART_READINESS === "1";
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const parityState = createParityState();
   let socket;
@@ -298,7 +307,7 @@ export function createDriver({ out, args = [] } = {}) {
   const sendEcp = async (path, method = "POST") => {
     const response = await requestEcp(`${ecp}/${path}`, method);
     if (!response.ok) throw new Error(`Roku ECP request failed (${response.status})`);
-    if (path === "launch/dev") {
+    if (path.split("?")[0] === "launch/dev") {
       let body;
       try {
         body = await response.text();
@@ -353,6 +362,26 @@ export function createDriver({ out, args = [] } = {}) {
     throw new Error(`Roku did not reach ${label}`);
   };
 
+  const waitForArt = async (scope) => {
+    const afterSeq = parityState.artMarkers[scope];
+    const deadline = Date.now() + 90000;
+    let lastReason = "no-fresh-generation";
+    while (Date.now() < deadline) {
+      assertDebug();
+      const candidates = [...parityState.artState.generations.values()]
+        .filter((generation) => generation.scope === scope && generation.began && generation.beginSeq > afterSeq)
+        .sort((a, b) => b.generation - a.generation);
+      if (candidates.length) {
+        const result = artReadiness(candidates[0], { scope, afterSeq });
+        if (result.ready) return;
+        lastReason = result.reason;
+        if (result.reason === "art-failed" || result.reason === "no-required-art-slots") break;
+      }
+      await sleep(250);
+    }
+    throw new Error(`Roku art readiness rejected ${scope} capture: ${lastReason}`);
+  };
+
   const launchProfiles = async () => {
     await closeDebug();
     resetObservedState();
@@ -360,10 +389,14 @@ export function createDriver({ out, args = [] } = {}) {
     // Match the established device cold-start: Roku needs time to background the channel
     // before `launch/dev` reliably emits a new screen event on the debug console.
     await sleep(4000);
+    if (artEnabled) {
+      resetArtReadinessState(parityState.artState);
+      parityState.artMarkers = { home: 0, movies: 0 };
+    }
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
     resetObservedState();
-    await sendEcp("launch/dev");
+    await sendEcp(`launch/dev${artEnabled ? "?parityArtReady=1" : ""}`);
     await connectDebug();
     try {
       await waitFor(() => hasFreshProfilesScreen({ screen, screenSeq }, beforeScreenSeq), "fresh signed-in Profiles screen", 40000);
@@ -537,6 +570,8 @@ export function createDriver({ out, args = [] } = {}) {
       if (!out) throw new Error("suite runner output path is required");
       if (!screen || ["pairing", "status"].includes(screen)) throw new Error(`Roku screenshot refused on ${screen || "unknown"} screen`);
       if (screen === "playback") throw new Error("Roku parity driver refuses player screenshots");
+      if (artEnabled && screen === "home") { await waitForArt("home"); await sleep(1000); }
+      if (artEnabled && screen === "browse" && ["movie", "movies"].includes(browse)) await waitForArt("movies");
       const { jpeg, generation } = captureFrame();
       mkdirSync(dirname(resolve(file)), { recursive: true });
       const png = pngFromJpeg(jpeg);

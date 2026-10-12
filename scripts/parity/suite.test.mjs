@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { applyParityLine, createParityState, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { artReadiness } from "./roku/art-readiness.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
@@ -106,6 +107,35 @@ test("Roku PARITY ingest records fresh screen and focus from CRLF events", () =>
   assert.equal(state.focusSeq, 1);
   assert.equal(state.focusScreenSeq, state.screenSeq);
   assert.equal(hasFreshScreenFocus(state, "profiles", "Device Test", 0, 0), true);
+});
+
+test("Roku artwork readiness gates a fresh current population with explicit empty slots", () => {
+  const state = createParityState();
+  applyParityLine(state, "PARITY|screen|home");
+  const marker = state.artMarkers.home;
+  applyParityLine(state, "PARITY|art|slot|1|home|home-r0-c0|1|881.6|464|327|184|0");
+  applyParityLine(state, "PARITY|art|status|1|home|home-r0-c0|ready|0");
+  applyParityLine(state, "PARITY|art|slot|1|home|home-r0-c1|0|1233.6|464|327|184|0");
+  applyParityLine(state, "PARITY|art|status|1|home|home-r0-c1|empty|0");
+  applyParityLine(state, "PARITY|art|begin|1|home|1|2");
+  applyParityLine(state, "PARITY|art|finish|1|home");
+  const generation = state.artState.generations.get("home:1");
+  assert.deepEqual(artReadiness(generation, { scope: "home", afterSeq: marker }), { ready: true, reason: "ready" });
+  assert.equal(artReadiness(generation, { scope: "home", afterSeq: generation.beginSeq }).reason, "no-fresh-generation");
+});
+
+test("Roku Movies readiness does not treat a recoverable retry as terminal failure", () => {
+  const state = createParityState();
+  applyParityLine(state, "PARITY|browse|movie");
+  const marker = state.artMarkers.movies;
+  applyParityLine(state, "PARITY|art|slot|3|movies|movies-r0-c0|1|783.4|162|327.2|184.4|0");
+  applyParityLine(state, "PARITY|art|status|3|movies|movies-r0-c0|pending|0");
+  applyParityLine(state, "PARITY|art|begin|3|movies|1|1");
+  applyParityLine(state, "PARITY|art|finish|3|movies");
+  const generation = state.artState.generations.get("movies:3");
+  assert.equal(artReadiness(generation, { scope: "movies", afterSeq: marker }).reason, "art-pending");
+  applyParityLine(state, "PARITY|art|status|3|movies|movies-r0-c0|ready|0");
+  assert.deepEqual(artReadiness(generation, { scope: "movies", afterSeq: marker }), { ready: true, reason: "ready" });
 });
 
 test("Roku waits through transient pairing until a fresh Profiles screen arrives", () => {

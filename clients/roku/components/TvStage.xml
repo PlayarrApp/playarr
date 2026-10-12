@@ -33,6 +33,12 @@
     <field id="keyArtUri" type="string" onChange="onKeyArtUriChange" />
     <!-- Optional HTTP headers (Bearer) for authenticated artwork proxy loads. -->
     <field id="keyArtHeaders" type="assocarray" />
+    <!-- Optional sanitized parity-capture readiness telemetry. -->
+    <field id="artTelemetryGeneration" type="integer" value="0" />
+    <field id="artTelemetryScope" type="string" value="" />
+    <field id="artTelemetrySlot" type="string" value="" />
+    <field id="artTelemetryVersion" type="integer" value="0" />
+    <field id="artTelemetryActive" type="boolean" value="false" />
     <!-- from: .tv-provider / .tv-detail-kicker text content -->
     <field id="stageKicker" type="string" onChange="onStageKickerChange" />
     <!-- from: .tv-title-panel h1 text content -->
