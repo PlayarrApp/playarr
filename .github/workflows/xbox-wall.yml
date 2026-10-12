@@ -104,6 +104,7 @@ jobs:
           PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           PART: ${{ matrix.part }}
+          XBOX_DEBUG_DIR: ${{ github.workspace }}/out/debug
         working-directory: scripts/parity
         run: |
           set -o pipefail
@@ -141,10 +142,12 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Upload the debug frames
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xbox-wall-debug-${{ matrix.part }}
-          path: out/run
+          path: |
+            out/run
+            out/debug
           if-no-files-found: ignore
           retention-days: 3

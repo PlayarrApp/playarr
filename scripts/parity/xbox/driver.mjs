@@ -72,8 +72,9 @@ export async function createDriver() {
       if (base.startsWith("/calendar")) {
         await click(...RAIL["/calendar"], 8);
         const view = new URLSearchParams(query ?? "").get("view");
-        if (view === "week") { await click(1570, 76, 5); await click(1570, 157, 8); }
-        if (view === "month") { await click(1570, 76, 5); await click(1570, 189, 8); }
+        const dbg = (n) => { if (process.env.XBOX_DEBUG_DIR) run("shot", `${process.env.XBOX_DEBUG_DIR}/${view}-${n}.png`); };
+        dbg("1-calendar");
+        if (view === "week" || view === "month") { await click(1570, 76, 5); dbg("2-picker"); await click(1570, view === "week" ? 157 : 189, 8); dbg("3-chosen"); }
         return;
       }
       if (base.startsWith("/player")) {
