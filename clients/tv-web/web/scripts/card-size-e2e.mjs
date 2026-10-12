@@ -11,7 +11,7 @@ const TOL = 1;
 const THEMES_ALL = ["dark", "light"];
 // The two TV stage sizes in both themes, plus the tablet-landscape and phone layouts (dark only) which size the card on
 // their own columns.
-const SIZES = [[1920, 1080, THEMES_ALL], [1280, 720, THEMES_ALL], [1024, 768, ["dark"]], [320, 640, ["dark"]], [360, 740, ["dark"]], [390, 845, ["dark"]], [414, 896, ["dark"]], [480, 854, ["dark"]], [600, 900, ["dark"]]];
+const SIZES = [[1920, 1080, THEMES_ALL], [1280, 720, THEMES_ALL], [1024, 768, ["dark"]], [320, 640, ["dark"]], [360, 740, ["dark"]], [390, 845, ["dark"]], [414, 896, ["dark"]], [430, 932, ["dark"]], [480, 854, ["dark"]], [539, 900, ["dark"]], [540, 900, ["dark"]], [600, 900, ["dark"]]];
 const table = process.argv.includes("--table");
 const shots = opt("shots", "");
 if (shots) mkdirSync(shots, { recursive: true });

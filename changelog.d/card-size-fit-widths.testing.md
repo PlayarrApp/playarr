@@ -1,0 +1,1 @@
+- Web tests: the card-size e2e also checks 430, 539 and 540px, so the 2 to 3 column boundary beside the letter rail is covered.
