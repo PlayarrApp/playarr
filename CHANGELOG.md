@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV: UP and DOWN in the nav rail step through every item and group like the web (DOWN from the last item of a group used to jump into the page content).
+- Roku calendar: week and agenda open as the web does (the capture and suite driver reach the range switcher from the grid), date-only releases read All day, status pills carry their tone, the week view uses the web's sizes and TODAY chip; series detail shows a third season rail; Home focus reports its rail and card position; Left from Home enters the nav at the card's art.
 - Downloads (web): offline play uses the local copy on the first try (no "Try again"), and a downloaded title's detail page opens offline from its local metadata with Play reachable.
 - A single pick in the Start/Resume chooser now resolves the whole plan: with several unfinished episodes (or a missed episode on top) the chooser no longer returns after the answer. The unfinished episodes the viewer passed over are declined until they are played again, a pick that is finished carries on with the series, and a pick that later play has superseded is deleted.
 - Roku follows the web's refreshed palette (ink-soft, ink-muted, brand-ink, danger, success), shows the profile tile and build label at the foot of the dock, puts the page subtitle under the heading, keeps the clock fixed, titles grid cards below the art after recycling, and lays series rails out as the web does.

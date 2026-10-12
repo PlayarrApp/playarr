@@ -1,1 +1,0 @@
-- Roku calendar: week and agenda open as the web does (the capture and suite driver reach the range switcher from the grid), date-only releases read All day, status pills carry their tone, the week view uses the web's sizes and TODAY chip; series detail shows a third season rail; Home focus reports its rail and card position; Left from Home enters the nav at the card's art.
