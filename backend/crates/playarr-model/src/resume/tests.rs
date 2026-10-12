@@ -636,3 +636,185 @@ fn skipping_ahead_with_in_progress_marks_the_gap() {
     assert!(p.needs_choice);
     assert_eq!(labels(&p), vec!["S01E04", "S01E02", "S01E05"]);
 }
+
+fn choice(ep: i32, at: DateTime<Utc>) -> ResumeDismissal {
+    ResumeDismissal {
+        kind: ResumeDismissalKind::Choice,
+        episode_id: id((100 + ep) as u128),
+        created_at: at,
+    }
+}
+
+#[test]
+fn one_pick_resolves_several_unfinished_units() {
+    let prog = vec![
+        done(1, 1, t(1)),
+        row(1, 2, 30, t(2)),
+        done(1, 3, t(3)),
+        row(1, 4, 60, t(5)),
+    ];
+    let eps = all(&[(1, 8)]);
+    // Asking: two unfinished.
+    assert!(plan(&eps, &prog, &[]).needs_choice);
+    // Picking the older unfinished one resolves the plan to it.
+    let p = plan(&eps, &prog, &[choice(2, t(6))]);
+    assert!(!p.needs_choice);
+    assert_eq!(p.reason, ResumeReason::ResumeUnfinished);
+    assert_eq!(p.target.as_ref().unwrap().label, "S01E02");
+    assert!(p.ask_reasons.is_empty());
+    // Playing the picked unit afterwards keeps the answer.
+    let mut played = prog.clone();
+    played[1] = row(1, 2, 45, t(7));
+    assert_eq!(
+        plan(&eps, &played, &[choice(2, t(6))])
+            .target
+            .unwrap()
+            .label,
+        "S01E02"
+    );
+    // Another unit played after the pick makes it stale: the chooser comes back.
+    let mut other = prog.clone();
+    other[3] = row(1, 4, 70, t(8));
+    assert!(plan(&eps, &other, &[choice(2, t(6))]).needs_choice);
+}
+
+#[test]
+fn one_pick_resolves_stacked_reasons_including_a_missed_episode() {
+    // E1 untouched (gap), E2 and E4 unfinished: two stacked reasons.
+    let prog = vec![row(1, 2, 30, t(2)), done(1, 3, t(3)), row(1, 4, 60, t(5))];
+    let eps = all(&[(1, 8)]);
+    let asked = plan(&eps, &prog, &[]);
+    assert!(asked.needs_choice);
+    assert!(asked.ask_reasons.len() >= 2, "{:?}", asked.ask_reasons);
+    // A pick of the newest unfinished one plus the gap dismissal the API records answers it all.
+    let dismissals = vec![
+        ResumeDismissal {
+            kind: ResumeDismissalKind::MissedEpisode,
+            episode_id: id(101),
+            created_at: t(6),
+        },
+        choice(4, t(6)),
+    ];
+    let p = plan(&eps, &prog, &dismissals);
+    assert!(!p.needs_choice);
+    assert_eq!(p.target.unwrap().label, "S01E04");
+    // Even without the gap dismissal, the pick alone resolves it.
+    let p = plan(&eps, &prog, &[choice(4, t(6))]);
+    assert!(!p.needs_choice);
+}
+
+fn declined(ep: i32, at: DateTime<Utc>) -> ResumeDismissal {
+    ResumeDismissal {
+        kind: ResumeDismissalKind::DeclinedUnfinished,
+        episode_id: id((100 + ep) as u128),
+        created_at: at,
+    }
+}
+
+/// Opus's scenario: unfinished E2 and E4, the viewer picks E5 (the API declines E2 and E4), finishes it:
+/// the chooser must not come back.
+#[test]
+fn a_next_pick_that_finishes_does_not_bring_the_chooser_back() {
+    let eps = all(&[(1, 8)]);
+    let mut prog = vec![
+        done(1, 1, t(1)),
+        row(1, 2, 30, t(2)),
+        done(1, 3, t(3)),
+        row(1, 4, 60, t(5)),
+    ];
+    let dis = vec![declined(2, t(6)), declined(4, t(6)), choice(5, t(6))];
+    assert!(!plan(&eps, &prog, &dis).needs_choice);
+    prog.push(done(1, 5, t(7)));
+    let p = plan(&eps, &prog, &dis);
+    assert!(!p.needs_choice, "{:?}", p.ask_reasons);
+    assert_eq!(p.target.unwrap().label, "S01E06");
+    // Autoplay moves on to E6 and plays it: still no chooser.
+    prog.push(row(1, 6, 50, t(8)));
+    assert!(!plan(&eps, &prog, &dis).needs_choice);
+}
+
+/// Picking the older unfinished unit and finishing it advances normally.
+#[test]
+fn an_unfinished_pick_that_finishes_advances_normally() {
+    let eps = all(&[(1, 8)]);
+    let mut prog = vec![
+        done(1, 1, t(1)),
+        row(1, 2, 30, t(2)),
+        done(1, 3, t(3)),
+        row(1, 4, 60, t(5)),
+    ];
+    let dis = vec![declined(4, t(6)), choice(2, t(6))];
+    assert_eq!(plan(&eps, &prog, &dis).target.unwrap().label, "S01E02");
+    prog[1] = done(1, 2, t(7));
+    let p = plan(&eps, &prog, &dis);
+    assert!(!p.needs_choice, "{:?}", p.ask_reasons);
+    assert_eq!(p.target.unwrap().label, "S01E05");
+}
+
+/// Picking the missed episode (with unfinished units passed over) and finishing it advances normally.
+#[test]
+fn a_gap_pick_that_finishes_advances_normally() {
+    let eps = all(&[(1, 8)]);
+    let mut prog = vec![row(1, 2, 30, t(2)), done(1, 3, t(3)), row(1, 4, 60, t(5))];
+    let dis = vec![declined(2, t(6)), declined(4, t(6)), choice(1, t(6))];
+    assert_eq!(
+        plan(&eps, &prog, &dis).target.as_ref().unwrap().label,
+        "S01E01"
+    );
+    prog.push(done(1, 1, t(7)));
+    let p = plan(&eps, &prog, &dis);
+    assert!(!p.needs_choice, "{:?}", p.ask_reasons);
+    assert_eq!(p.target.unwrap().label, "S01E05");
+}
+
+/// A declined unit that is played again asks again.
+#[test]
+fn a_declined_unit_played_again_is_asked_about_again() {
+    let eps = all(&[(1, 8)]);
+    let prog = vec![
+        done(1, 1, t(1)),
+        row(1, 2, 30, t(8)),
+        done(1, 3, t(3)),
+        row(1, 4, 60, t(9)),
+    ];
+    let dis = vec![declined(2, t(6)), declined(4, t(6)), choice(5, t(6))];
+    assert!(plan(&eps, &prog, &dis).needs_choice);
+}
+
+#[test]
+fn superseded_picks_are_reported_for_deletion_and_boundaries_are_strict() {
+    let eps = all(&[(1, 8)]);
+    let prog = vec![done(1, 1, t(1)), row(1, 2, 30, t(2)), row(1, 4, 60, t(5))];
+    // Nothing played after the pick, even at the same instant: not superseded.
+    assert!(superseded_choice_episode_ids(&eps, &prog, &[choice(2, t(5))]).is_empty());
+    // E4 played after the pick of E2: superseded.
+    assert_eq!(
+        superseded_choice_episode_ids(&eps, &prog, &[choice(2, t(4))]),
+        vec![id(102)]
+    );
+    // The picked unit's own later play never supersedes it.
+    let own = vec![done(1, 1, t(1)), row(1, 2, 50, t(9)), row(1, 4, 60, t(5))];
+    assert!(superseded_choice_episode_ids(&eps, &own, &[choice(2, t(6))]).is_empty());
+}
+
+/// A pick of a unit the plan does not offer (a stale or foreign id) changes nothing.
+#[test]
+fn a_pick_of_a_unit_that_is_not_an_option_is_ignored() {
+    let eps = all(&[(1, 8)]);
+    let prog = vec![
+        done(1, 1, t(1)),
+        row(1, 2, 30, t(2)),
+        done(1, 3, t(3)),
+        row(1, 4, 60, t(5)),
+    ];
+    assert!(plan(&eps, &prog, &[choice(7, t(6))]).needs_choice);
+}
+
+#[test]
+fn picking_next_in_series_declines_the_unfinished_units() {
+    let prog = vec![done(1, 1, t(1)), row(1, 2, 30, t(2)), row(1, 4, 60, t(5))];
+    let eps = all(&[(1, 8)]);
+    let p = plan(&eps, &prog, &[choice(5, t(6))]);
+    assert!(!p.needs_choice);
+    assert_eq!(p.target.unwrap().label, "S01E05");
+}

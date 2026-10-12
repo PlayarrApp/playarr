@@ -1,0 +1,1 @@
+- A single pick in the Start/Resume chooser now resolves the whole plan: with several unfinished episodes (or a missed episode on top) the chooser no longer returns after the answer. The unfinished episodes the viewer passed over are declined until they are played again, a pick that is finished carries on with the series, and a pick that later play has superseded is deleted.

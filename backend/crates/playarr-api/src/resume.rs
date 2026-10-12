@@ -16,8 +16,8 @@ use axum::Json;
 use chrono::Utc;
 use playarr_catalog::{WorkChildren, WorkDetail};
 use playarr_model::{
-    compute_resume_plan, missed_run_episode_ids, ResumeDismissal, ResumeDismissalKind,
-    ResumeEpisode, ResumeOptionKind, ResumePlan, WatchProgress,
+    compute_resume_plan, missed_run_episode_ids, superseded_choice_episode_ids, ResumeDismissal,
+    ResumeDismissalKind, ResumeEpisode, ResumeOptionKind, ResumePlan, WatchProgress,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -160,6 +160,16 @@ pub async fn get_resume_plan_handler(
     Path(id): Path<Uuid>,
 ) -> Result<Json<ResumePlan>, ApiError> {
     let inputs = load(&state, &viewer, id, None).await?;
+    // A pick that later play has superseded can never apply again: delete it, so losing that later
+    // progress cannot bring an old pick back.
+    for episode_id in
+        superseded_choice_episode_ids(&inputs.episodes, &inputs.progress, &inputs.dismissals)
+    {
+        let _ = state
+            .resume_dismissals
+            .remove(viewer.user_id, id, ResumeDismissalKind::Choice, episode_id)
+            .await;
+    }
     Ok(Json(inputs.plan(id)))
 }
 
@@ -239,6 +249,43 @@ pub async fn record_resume_choice_handler(
                 .await?;
         }
     }
+    // The pick is a decision: it answers every stacked reason, and the unfinished units it passes
+    // over are declined (not asked about again unless played). Stamped after every progress row, so a
+    // device whose clock runs ahead cannot make the answer look older than its own play.
+    let answered_at = inputs
+        .progress
+        .iter()
+        .filter_map(|p| p.updated_at)
+        .max()
+        .map_or(now, |newest| {
+            now.max(newest + chrono::Duration::milliseconds(1))
+        });
+    for option in plan
+        .options
+        .iter()
+        .filter(|o| o.kind == ResumeOptionKind::Unfinished && o.episode_id != body.episode_id)
+    {
+        state
+            .resume_dismissals
+            .record(
+                viewer.user_id,
+                id,
+                ResumeDismissalKind::DeclinedUnfinished,
+                option.episode_id,
+                answered_at,
+            )
+            .await?;
+    }
+    state
+        .resume_dismissals
+        .record(
+            viewer.user_id,
+            id,
+            ResumeDismissalKind::Choice,
+            body.episode_id,
+            answered_at,
+        )
+        .await?;
     let inputs = load(&state, &viewer, id, None).await?;
     Ok(Json(inputs.plan(id)))
 }
@@ -298,8 +345,15 @@ pub async fn list_resume_plans_handler(
             break;
         }
         // Movies, hidden and deleted works fail to load as a visible series.
-        let Ok(inputs) = load(&state, &viewer, work_id, Some(&progress)).await else {
-            continue;
+        let inputs = match load(&state, &viewer, work_id, Some(&progress)).await {
+            Ok(inputs) => inputs,
+            // Not a visible series (a movie, hidden or deleted): not an error.
+            Err(error) if error.status == axum::http::StatusCode::NOT_FOUND => continue,
+            // Anything else is a real failure: say so instead of silently dropping the series.
+            Err(error) => {
+                tracing::warn!(%work_id, status = %error.status, "resume plan could not be loaded for the home list");
+                continue;
+            }
         };
         if inputs.progress.is_empty() {
             continue;
@@ -315,7 +369,7 @@ mod tests {
     use axum::http::{Request, StatusCode};
     use axum::Router;
     use playarr_model::media::LeafRef;
-    use playarr_model::{ResumeAction, ResumeReason};
+    use playarr_model::{ResumeAction, ResumeAskReason, ResumeReason};
     use tower::ServiceExt;
 
     use super::*;
@@ -522,9 +576,81 @@ mod tests {
 
         let (status, json) = call(&router, "DELETE", &format!("{uri}/choices"), &token, None).await;
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(json["removed"], 1);
+        // The declined gap and the pick itself.
+        assert_eq!(json["removed"], 2);
         let reset = plan_of(call(&router, "GET", &uri, &token, None).await.1);
         assert!(reset.needs_choice);
+    }
+
+    /// One POSTed pick resolves a plan with several unfinished episodes (the body web sends).
+    #[tokio::test]
+    async fn one_choice_resolves_a_plan_with_two_unfinished_episodes() {
+        let (router, _state, s, token) = setup(&[(1, 6)]).await;
+        watch(&router, &token, s.eps[&(1, 1)].1, 600_000).await;
+        watch(&router, &token, s.eps[&(1, 3)].1, 600_000).await;
+        let uri = format!("/api/v1/catalog/{}/resume-plan", s.id);
+        let plan = plan_of(call(&router, "GET", &uri, &token, None).await.1);
+        assert!(plan.needs_choice);
+        assert!(plan
+            .ask_reasons
+            .contains(&ResumeAskReason::MultipleUnfinished));
+        let older = plan
+            .options
+            .iter()
+            .find(|o| o.kind == ResumeOptionKind::Unfinished && o.label == "S01E01")
+            .expect("the older unfinished episode is offered");
+
+        let (status, json) = call(
+            &router,
+            "POST",
+            &format!("{uri}/choice"),
+            &token,
+            Some(serde_json::json!({"kind": older.kind, "episode_id": older.episode_id})),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        let after = plan_of(json);
+        assert!(!after.needs_choice, "{:?}", after.ask_reasons);
+        assert!(after.ask_reasons.is_empty());
+        assert_eq!(after.target.unwrap().label, "S01E01");
+        // Still resolved on a fresh GET, and the answers can be cleared.
+        let again = plan_of(call(&router, "GET", &uri, &token, None).await.1);
+        assert!(!again.needs_choice);
+        call(&router, "DELETE", &format!("{uri}/choices"), &token, None).await;
+        assert!(plan_of(call(&router, "GET", &uri, &token, None).await.1).needs_choice);
+    }
+
+    /// Pick the next episode while two are unfinished, finish it: the chooser never returns.
+    #[tokio::test]
+    async fn a_next_pick_declines_the_unfinished_units() {
+        let (router, _state, s, token) = setup(&[(1, 8)]).await;
+        watch(&router, &token, s.eps[&(1, 1)].1, 1_800_000).await;
+        watch(&router, &token, s.eps[&(1, 2)].1, 600_000).await;
+        watch(&router, &token, s.eps[&(1, 3)].1, 1_800_000).await;
+        watch(&router, &token, s.eps[&(1, 4)].1, 900_000).await;
+        let uri = format!("/api/v1/catalog/{}/resume-plan", s.id);
+        let plan = plan_of(call(&router, "GET", &uri, &token, None).await.1);
+        assert!(plan.needs_choice);
+        let next = plan
+            .options
+            .iter()
+            .find(|o| o.kind == ResumeOptionKind::NextInSeries)
+            .expect("next in series is offered");
+        let (status, json) = call(
+            &router,
+            "POST",
+            &format!("{uri}/choice"),
+            &token,
+            Some(serde_json::json!({"kind": next.kind, "episode_id": next.episode_id})),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(!plan_of(json).needs_choice);
+        // Finish the picked episode: the unfinished ones were passed over, so no chooser.
+        watch(&router, &token, s.eps[&(1, 5)].1, 1_800_000).await;
+        let after = plan_of(call(&router, "GET", &uri, &token, None).await.1);
+        assert!(!after.needs_choice, "{:?}", after.ask_reasons);
+        assert_eq!(after.target.unwrap().label, "S01E06");
     }
 
     #[tokio::test]

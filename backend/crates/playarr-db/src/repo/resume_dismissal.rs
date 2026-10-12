@@ -32,6 +32,15 @@ pub trait ResumeDismissalRepo: Send + Sync {
         at: DateTime<Utc>,
     ) -> Result<(), DbError>;
 
+    /// Forget one answer (superseded picks); returns whether a row was removed.
+    async fn remove(
+        &self,
+        user_id: Uuid,
+        series_work_id: Uuid,
+        kind: ResumeDismissalKind,
+        episode_id: Uuid,
+    ) -> Result<bool, DbError>;
+
     /// Forget every answer for one series; returns how many were removed.
     async fn clear_for_series(&self, user_id: Uuid, series_work_id: Uuid) -> Result<u64, DbError>;
 }
@@ -45,6 +54,8 @@ fn kind_to_str(kind: ResumeDismissalKind) -> &'static str {
         ResumeDismissalKind::MissedEpisode => "missed_episode",
         ResumeDismissalKind::RewatchContinueLast => "rewatch_continue_last",
         ResumeDismissalKind::RewatchContinueSeries => "rewatch_continue_series",
+        ResumeDismissalKind::Choice => "choice",
+        ResumeDismissalKind::DeclinedUnfinished => "declined_unfinished",
     }
 }
 
@@ -62,6 +73,8 @@ impl SqlxResumeDismissalRepo {
             "missed_episode" => ResumeDismissalKind::MissedEpisode,
             "rewatch_continue_last" => ResumeDismissalKind::RewatchContinueLast,
             "rewatch_continue_series" => ResumeDismissalKind::RewatchContinueSeries,
+            "choice" => ResumeDismissalKind::Choice,
+            "declined_unfinished" => ResumeDismissalKind::DeclinedUnfinished,
             other => return Err(decode_err(format!("unknown resume dismissal kind {other}"))),
         };
         Ok((
@@ -93,9 +106,18 @@ impl ResumeDismissalRepo for SqlxResumeDismissalRepo {
             .bind(series_work_id.to_string())
             .fetch_all(&self.pool)
             .await?;
-        rows.iter()
-            .map(|r| Self::from_row(r).map(|(_, d)| d))
-            .collect()
+        // A row of a kind this build does not know (written by a newer build, then rolled back) is
+        // skipped, never an error: one unknown answer must not hide a whole series.
+        Ok(rows
+            .iter()
+            .filter_map(|r| match Self::from_row(r) {
+                Ok((_, d)) => Some(d),
+                Err(error) => {
+                    tracing::warn!(%error, "skipping an unreadable resume answer");
+                    None
+                }
+            })
+            .collect())
     }
 
     async fn list_for_user(&self, user_id: Uuid) -> Result<Vec<(Uuid, ResumeDismissal)>, DbError> {
@@ -130,6 +152,25 @@ impl ResumeDismissalRepo for SqlxResumeDismissalRepo {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    async fn remove(
+        &self,
+        user_id: Uuid,
+        series_work_id: Uuid,
+        kind: ResumeDismissalKind,
+        episode_id: Uuid,
+    ) -> Result<bool, DbError> {
+        let sql = "DELETE FROM resume_dismissals WHERE user_id = ? AND series_work_id = ? \
+                 AND kind = ? AND episode_id = ?";
+        let res = sqlx::query(sql)
+            .bind(user_id.to_string())
+            .bind(series_work_id.to_string())
+            .bind(kind_to_str(kind))
+            .bind(episode_id.to_string())
+            .execute(&self.pool)
+            .await?;
+        Ok(res.rows_affected() == 1)
     }
 
     async fn clear_for_series(&self, user_id: Uuid, series_work_id: Uuid) -> Result<u64, DbError> {
@@ -245,5 +286,51 @@ mod tests {
         let listed = repo.list_for_series(user, work).await.unwrap();
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].created_at, later);
+    }
+
+    #[tokio::test]
+    async fn new_kinds_round_trip_remove_is_exact_and_unknown_kinds_are_skipped() {
+        let pool = test_sqlite_pool().await;
+        let user = seed_user(&pool).await;
+        let work = seed_work(&pool).await;
+        let repo = SqlxResumeDismissalRepo::new(pool.clone());
+        let (a, b) = (Uuid::new_v4(), Uuid::new_v4());
+        let at = Utc::now().trunc_subsecs(3);
+        repo.record(user, work, ResumeDismissalKind::Choice, a, at)
+            .await
+            .unwrap();
+        repo.record(user, work, ResumeDismissalKind::DeclinedUnfinished, b, at)
+            .await
+            .unwrap();
+        // A row written by a newer build, with a kind this one does not know: skipped, not an error.
+        sqlx::query(
+            "INSERT INTO resume_dismissals (user_id, series_work_id, episode_id, kind, created_at) \
+             VALUES (?, ?, ?, 'from_the_future', ?)",
+        )
+        .bind(user.to_string())
+        .bind(work.to_string())
+        .bind(Uuid::new_v4().to_string())
+        .bind(format_datetime(at))
+        .execute(&pool)
+        .await
+        .unwrap();
+        let listed = repo.list_for_series(user, work).await.unwrap();
+        assert_eq!(listed.len(), 2);
+        assert!(listed
+            .iter()
+            .any(|d| d.kind == ResumeDismissalKind::Choice && d.episode_id == a));
+        assert!(listed
+            .iter()
+            .any(|d| d.kind == ResumeDismissalKind::DeclinedUnfinished && d.episode_id == b));
+        // `remove` deletes exactly one (kind, episode) row.
+        assert!(!repo
+            .remove(user, work, ResumeDismissalKind::Choice, b)
+            .await
+            .unwrap());
+        assert!(repo
+            .remove(user, work, ResumeDismissalKind::Choice, a)
+            .await
+            .unwrap());
+        assert_eq!(repo.list_for_series(user, work).await.unwrap().len(), 1);
     }
 }

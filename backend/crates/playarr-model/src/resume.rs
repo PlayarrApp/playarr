@@ -84,6 +84,12 @@ pub enum ResumeDismissalKind {
     RewatchContinueLast,
     /// The viewer chose to continue the series past the rewatch.
     RewatchContinueSeries,
+    /// The viewer picked this unit in the chooser (unfinished, missed or next). The pick answers the
+    /// whole question until some other unit is played after it.
+    Choice,
+    /// The viewer passed over this unfinished unit by picking something else: it is not offered or
+    /// asked about again unless it is played after the answer.
+    DeclinedUnfinished,
 }
 
 /// A recorded answer, keyed by the (first) episode it concerns.
@@ -392,9 +398,16 @@ pub fn compute_resume_plan(
         None => Some(first_regular),
     };
 
-    // Unfinished, newest first.
+    // Unfinished, newest first. A unit the viewer passed over stays out until it is played again.
+    let declined = |i: usize| {
+        dismissals.iter().any(|d| {
+            d.kind == ResumeDismissalKind::DeclinedUnfinished
+                && units[i].episode_ids.contains(&d.episode_id)
+                && units[i].touched_at().is_none_or(|t| t <= d.created_at)
+        })
+    };
     let mut unfinished: Vec<usize> = (0..units.len())
-        .filter(|&i| units[i].state == UnitState::InProgress)
+        .filter(|&i| units[i].state == UnitState::InProgress && !declined(i))
         .collect();
     unfinished.sort_by(|&a, &b| {
         units[b]
@@ -425,8 +438,19 @@ pub fn compute_resume_plan(
                 && last_touched < f
         })
         .map(|_| last_touched);
-    let rewatch_resolution =
-        rewatch_anchor.and_then(|l| resolution_for(&units, &regular, l, dismissals));
+    let rewatch_resolution = rewatch_anchor.and_then(|l| {
+        resolution_for(&units, &regular, l, dismissals).or_else(|| {
+            // A unit the viewer picked in the chooser and then finished is not a rewatch: carry on
+            // with the series.
+            dismissals
+                .iter()
+                .any(|d| {
+                    d.kind == ResumeDismissalKind::Choice
+                        && units[l].episode_ids.contains(&d.episode_id)
+                })
+                .then_some(ResumeDismissalKind::RewatchContinueSeries)
+        })
+    });
     let rewatch_next = rewatch_anchor.and_then(|l| {
         let pos = regular.iter().position(|&i| i == l)?;
         regular.get(pos + 1).copied()
@@ -453,6 +477,45 @@ pub fn compute_resume_plan(
         asks.push(ResumeAskReason::RewatchBehindProgress);
     }
 
+    // One pick answers every stacked reason, for as long as nothing else was played after it.
+    if !asks.is_empty() {
+        let picked = dismissals
+            .iter()
+            .filter(|d| d.kind == ResumeDismissalKind::Choice)
+            .filter_map(|d| {
+                let i = units
+                    .iter()
+                    .position(|u| u.episode_ids.contains(&d.episode_id))?;
+                let kind = if unfinished.contains(&i) {
+                    ResumeOptionKind::Unfinished
+                } else if first_gap == Some(i) {
+                    ResumeOptionKind::MissedEpisode
+                } else if next_in_series == Some(i) {
+                    ResumeOptionKind::NextInSeries
+                } else {
+                    return None;
+                };
+                // Another unit played after the pick makes it stale (the picked one may be played).
+                let stale =
+                    (0..units.len()).any(|j| j != i && in_play(j) && stamp(j) > d.created_at);
+                (!stale).then_some((d.created_at, i, kind))
+            })
+            .max_by_key(|(at, _, _)| *at);
+        if let Some((_, i, kind)) = picked {
+            let reason = if kind == ResumeOptionKind::Unfinished {
+                ResumeReason::ResumeUnfinished
+            } else {
+                ResumeReason::NextInOrder
+            };
+            return plan(
+                ResumeAction::Resume,
+                reason,
+                false,
+                vec![],
+                vec![units[i].option(kind, None)],
+            );
+        }
+    }
     if !asks.is_empty() {
         let mut seen: HashSet<usize> = HashSet::new();
         let mut options: Vec<ResumeOption> = Vec::new();
@@ -592,6 +655,33 @@ fn resolution_for(
             .touched_at()
             .is_some_and(|t| t >= answered.created_at))
     .then_some(answered.kind)
+}
+
+/// Episode ids of `Choice` answers that another unit's later play has superseded. They can never apply
+/// again, so the caller deletes them (otherwise losing that later progress would revive an old pick).
+pub fn superseded_choice_episode_ids(
+    episodes: &[ResumeEpisode],
+    progress: &[WatchProgress],
+    dismissals: &[ResumeDismissal],
+) -> Vec<Uuid> {
+    let units = build_units(episodes, progress);
+    let stamp = |i: usize| units[i].touched_at().unwrap_or_default();
+    dismissals
+        .iter()
+        .filter(|d| d.kind == ResumeDismissalKind::Choice)
+        .filter(|d| {
+            let Some(i) = units
+                .iter()
+                .position(|u| u.episode_ids.contains(&d.episode_id))
+            else {
+                return false;
+            };
+            (0..units.len()).any(|j| {
+                j != i && units[j].state != UnitState::Untouched && stamp(j) > d.created_at
+            })
+        })
+        .map(|d| d.episode_id)
+        .collect()
 }
 
 /// Episode ids to dismiss when the viewer declines the missed episode

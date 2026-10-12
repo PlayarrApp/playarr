@@ -60,9 +60,24 @@ Activity within 60 seconds counts as simultaneous (bulk "mark watched"); the
 furthest episode wins. Several triggers merge into one chooser; options that
 point at the same episode are shown once.
 
+A pick in the chooser is a decision. It records a `choice` row for the picked episode and a
+`declined_unfinished` row for every unfinished episode it passes over:
+
+* The plan resolves to the pick, with no ask reasons, until some *other* episode is played after it (then
+  the pick is superseded and deleted, so it can never come back).
+* A passed-over unfinished episode is not offered or asked about again unless it is played again.
+* A picked episode that is then finished is not a rewatch: the series carries on after it.
+* Opening another episode for under 5% (an accidental open) does not count as playing it.
+* Answers are stamped after every existing progress row (the server's clock, never earlier than a device's
+  own timestamp). A device whose clock runs *behind* the server can still make a later play look older
+  than the pick; that is the same clock the rest of the plan already uses.
+* Rolling back to a build that does not know `choice`/`declined_unfinished`: such rows are skipped by this
+  build; an older build would fail to read the series' answers, so clear the answers
+  (`DELETE .../resume-plan/choices`) or the two kinds before rolling back.
+
 ## Storage
 
 `resume_dismissals (user_id, series_work_id, episode_id, kind, created_at)`,
 primary key `(user_id, episode_id, kind)`; kinds `missed_episode`,
-`rewatch_continue_last`, `rewatch_continue_series`. Per profile (a profile is a
+`rewatch_continue_last`, `rewatch_continue_series`, `choice`, `declined_unfinished`. Per profile (a profile is a
 user) and removed with the user or the series.

@@ -78,8 +78,9 @@ pub use playlist::{Playlist, PlaylistItem, PlaylistMediaType};
 pub use policy::{AccessWindow, Policy, TimeRange, Weekday};
 pub use publishing::{Author, Book};
 pub use resume::{
-    compute_resume_plan, missed_run_episode_ids, ResumeAction, ResumeAskReason, ResumeDismissal,
-    ResumeDismissalKind, ResumeEpisode, ResumeOption, ResumeOptionKind, ResumePlan, ResumeReason,
+    compute_resume_plan, missed_run_episode_ids, superseded_choice_episode_ids, ResumeAction,
+    ResumeAskReason, ResumeDismissal, ResumeDismissalKind, ResumeEpisode, ResumeOption,
+    ResumeOptionKind, ResumePlan, ResumeReason,
 };
 pub use routing::{DeliveryMode, RoutingRule};
 pub use seasonal::{Hemisphere, SeasonalRule};
