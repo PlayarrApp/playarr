@@ -92,7 +92,7 @@ SilicaFlickable {
     HeroArt {
         visible: root.rails.length > 0 && root.rails[0].items.length > 0
         work: root.rails.length > 0 && root.rails[0].items.length > 0 ? root.rails[0].items[0] : null
-        boxH: 124 * Tokens.u; imgFrac: 1; fadeFrom: 0.3; fadeTo: 1
+        boxH: 124 * Tokens.u; imgH: 375 * Tokens.u; fadeFrom: 0.3; fadeTo: 1
     }
     Column {
         id: column

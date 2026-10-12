@@ -9,6 +9,7 @@ Item {
     property var kinds: ["backdrop", "poster"]
     property real boxH: 396 * Tokens.u
     property real imgFrac: 0.55       // share of the box the picture fills
+    property real imgH: 0             // or an explicit picture height (Home: the picture is taller than the visible strip)
     property real fadeFrom: 0.26      // where the page colour starts to cover it
     property real fadeTo: 0.54
     width: parent ? parent.width : 0
@@ -17,15 +18,16 @@ Item {
 
     Item {
         width: parent.width
-        height: root.imgFrac * root.boxH
+        height: root.imgH > 0 ? root.imgH : root.imgFrac * root.boxH
         clip: true
         opacity: Tokens.dark ? 0.72 : 0.42
         layer.enabled: true
         Image {
             id: im
             width: parent.width
-            height: implicitWidth > 0 ? width * implicitHeight / implicitWidth : 0
-            y: -Math.max(0, height - parent.height) * 0.22   // object-position: center 22%
+            fillMode: root.imgH > 0 ? Image.PreserveAspectCrop : Image.Stretch   // Home: object-fit cover in the tall box
+            height: root.imgH > 0 ? parent.height : (implicitWidth > 0 ? width * implicitHeight / implicitWidth : 0)
+            y: root.imgH > 0 ? 0 : -Math.max(0, height - parent.height) * 0.22   // object-position: center 22%
             source: work ? Api.artwork(work.id, work.images || [], root.kinds, true) : ""
             asynchronous: true
             smooth: true
