@@ -133,6 +133,9 @@ jobs:
       TRUSTED: ${{ github.workspace }}/trusted
       SRC: ${{ github.workspace }}/src
       HAVE_TS: ${{ secrets.TS_OAUTH_SECRET != '' && secrets.TS_OAUTH_CLIENT_ID != '' }}
+      MAC_PARITY_VISIBLE: >-
+        ${{ matrix.device == 'macos' && inputs.capture == false && inputs.stream != true && inputs.chain != true
+        && inputs.suite_args == '--only dpad --skip-player' }}
     steps:
       - name: Note the start time
         run: |

@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Run hosted macOS D-pad checks with a real key window and observed startup focus, while regular Mac captures stay invisible.
 - Route D-pad Down from the synthetic Add profile avatar to Clients while preserving Settings below real profiles.
 - Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
 - Fix Apple TV startup so D-pad navigation begins on the first Home card.
