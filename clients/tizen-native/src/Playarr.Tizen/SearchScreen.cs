@@ -53,7 +53,6 @@ internal sealed class SearchScreen : IPage
     private string _mediaType = "all";
     private FiltersDrawer? _filters;
     private bool _removed;
-    private SearchFocusSnapshot? _restore;
 
     public View Root => _root;
     public string Route
@@ -196,13 +195,6 @@ internal sealed class SearchScreen : IPage
         _root.Remove(_filters.Root); _filters.Root.Dispose(); _filters = null;
         _sideFocus = 0; _side[_sideFocus].Style(true);
         if (_filterTile is not null) FocusManager.Instance.SetCurrentFocusView(_filterTile);
-    }
-
-    public object? SaveState() => new SearchFocusSnapshot(_focus, _sideFocus, _scroll);
-
-    public void RestoreState(object state)
-    {
-        if (state is SearchFocusSnapshot saved) _restore = saved;
     }
 
     internal void OnRemoved()
@@ -387,24 +379,6 @@ internal sealed class SearchScreen : IPage
         if (_items.Count > 0 && _targets[0].Work is not null) { _panel.Show(_items[0], kickerOverride: _items[0].Sub, metaLead: HomeModel.MetaLead(_items[0])); _keyArt.Set(_items[0].BackdropUrl); }
         else { _panel.Root.Show(false); }
         _panel.Root.Show(_items.Count > 0 && _targets[0].Work is not null);
-        RestoreFocus();
-    }
-
-    private void RestoreFocus()
-    {
-        if (_restore is not { } saved) return;
-        _restore = null;
-        var restored = SearchFocusState.Restore(saved, _items.Count, _side.Count);
-        _scroll = restored.Scroll;
-        _results.PositionY = -_scroll;
-        if (restored.Target == SearchFocusTargetKind.Side)
-        {
-            _sideFocus = restored.Index;
-            _side[_sideFocus].Style(true);
-            if (_filterTile is not null) FocusManager.Instance.SetCurrentFocusView(_filterTile);
-        }
-        else if (restored.Target == SearchFocusTargetKind.Result) SetFocus(restored.Index);
-        else SetFieldFocus(true);
     }
 
     private void AddResult(WorkCard card, SearchResultTarget target, int index)

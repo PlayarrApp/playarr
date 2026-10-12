@@ -110,6 +110,7 @@ import type { ResumePlan } from '../core/Types/ResumePlan';
 import { getMediaChapters, getWatchProgress } from '../data/PlaybackRepository';
 import { addToWatchlist, removeFromWatchlist, resolveTitle } from '../data/WatchlistRepository';
 import { snapshotFromWork } from '../core/TitleSnapshot';
+import { formatRuntimeLabel } from '../core/RuntimeLabel';
 import { resumeStartMs } from '../core/PlaybackMath.ts';
 import {
   fetchWorkArtworkByPriority,
@@ -275,22 +276,6 @@ function humanizeAvailability(availability: Availability): string {
     return 'Deleted';
   }
   return 'Availability unknown';
-}
-
-function formatRuntimeLabel(ms: number | null): string {
-  if (ms === null || ms <= 0) {
-    return '';
-  }
-  const totalMinutes = Math.round(ms / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours <= 0) {
-    return minutes + 'm';
-  }
-  if (minutes <= 0) {
-    return hours + 'h';
-  }
-  return hours + 'h ' + minutes + 'm';
 }
 
 function formatYearLabel(releaseDate: string | null): string {

@@ -1,1 +1,0 @@
-- Tizen Search now filters playlist results and exposes Games as a search type; when live Games discovery is unavailable, Search shows the provider's unavailable state.

@@ -13,6 +13,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV: replace stepped card-focus shadow and glow layers with Vega native blurred shadows.
+- Wait for the routed webOS view, finite page animations, visible content and decoded images to settle before capture; dismiss the Search keyboard through the real Filters and Back controls, retaining focus on Filters. Send a character event with CDP Enter so Calendar view buttons activate in the simulator.
+- Normalize the D-pad scorer's long-press Play action label across web and native clients.
 - Fire TV tests now unmount rendered screens and stop their finite animations before Jest tears down the test environment.
 - iPad series details now show episode-specific artwork with a media-thumbnail fallback.
 - Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
@@ -536,6 +539,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV: the Home hero meta line is the focused title's runtime, as web, instead of the release year.
+- Tizen Search now exposes a remote-navigable type filter for movies, series, sites and music, keeps the selection in the route, and uses a single focus indicator while the page is active.
+- Tizen Search now filters playlist results and exposes Games as a search type; when live Games discovery is unavailable, Search shows the provider's unavailable state.
 - Tizen Search now exposes a remote-navigable type filter for movies, series, sites and music, keeps the selection in the route, and uses a single focus indicator while the page is active.
 - Fire TV: the player's video chrome stays dark in the light theme, as on the web; its drawers follow the theme.
 - Fire TV: the letter rail has the web's 44 px spacing and scrolls to keep the active letter centred; the grid scrolls only as far as the focused card needs, as on the web.
