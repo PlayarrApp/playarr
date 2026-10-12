@@ -1683,11 +1683,6 @@ sub updateProfileActionsLayout()
         m.profilesSignOutHit.visible = true
         m.profilesSignOutHit.focusable = true
     end if
-    if m.profilesClientsHit <> invalid
-        m.profilesClientsHit.visible = true
-        m.profilesClientsHit.focusable = true
-    end if
-
     targetIndex = m.profilesFocusIndex
     if targetIndex = invalid then targetIndex = 0
     if targetIndex < 0 or targetIndex >= m.profiles.Count()
@@ -1711,7 +1706,7 @@ sub updateProfileActionsLayout()
         rowY = m.profilesRow.translation[1]
     end if
     centerX = rowX + targetIndex * (itemWidth + spacing) + Int(itemWidth / 2)
-    actionsW = 286 ' 44 gear + 10 gap + 104 Sign out pill + 10 gap + 118 Clients link
+    actionsW = 158 ' 44 gear + 10 gap + 104 Sign out pill
     x = centerX - Int(actionsW / 2)
     if x < 40 then x = 40
     if x > 1920 - actionsW - 40 then x = 1920 - actionsW - 40
@@ -6799,6 +6794,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 applyProfilesChromeFocus()
                 return true
             end if
+        else if m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
+            if m.profilesClientsHit <> invalid then m.profilesClientsHit.SetFocus(true)
+            applyProfilesChromeFocus()
+            return true
         end if
     else if state = "profiles" and key = "up"
         if m.profilesSettingsHit <> invalid and m.profilesSettingsHit.IsInFocusChain() or (m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()) or (m.profilesClientsHit <> invalid and m.profilesClientsHit.IsInFocusChain())

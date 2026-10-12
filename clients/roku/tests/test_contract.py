@@ -9,6 +9,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = (ROOT / "components" / "MainScene.brs").read_text(encoding="utf-8")
+PAGES = (ROOT / "components" / "Pages.brs").read_text(encoding="utf-8")
 SCENE = (ROOT / "components" / "MainScene.xml").read_text(encoding="utf-8")
 CONFIG = (ROOT / "source" / "Config.brs").read_text(encoding="utf-8")
 WEB_GLOBAL_CSS = (ROOT.parent / "tv-web" / "web" / "src" / "styles" / "global.css").read_text(encoding="utf-8")
@@ -106,6 +107,32 @@ class NavigationContractTests(unittest.TestCase):
         assert position_unpack is not None
         self.assertIn("position = event.GetData()", position_unpack.group(0))
         self.assertIn("index = position[1]", position_unpack.group(0))
+
+    def test_clients_link_is_a_bottom_right_footer_action(self) -> None:
+        profile_actions = re.search(
+            r'<Group id="profileActionsGroup".*?</Group>', SCENE, flags=re.DOTALL
+        )
+        self.assertIsNotNone(profile_actions)
+        assert profile_actions is not None
+        self.assertNotIn('id="profilesClientsHit"', profile_actions.group(0))
+        self.assertIn('translation="[1745,994]"', SCENE)
+        self.assertIn('id="profilesClientsHit"', SCENE)
+        self.assertIn("actionsW = 158", MAIN)
+        down_navigation = re.search(
+            r'state = "profiles" and key = "down"(.*?)else if state = "profiles" and key = "up"',
+            MAIN,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(down_navigation)
+        assert down_navigation is not None
+        self.assertIn("m.profilesSignOutHit", down_navigation.group(1))
+        self.assertIn("m.profilesClientsHit.SetFocus(true)", down_navigation.group(1))
+        return_to_opener = re.search(
+            r"sub leaveClientsToProfiles\(\).*?end sub", PAGES, flags=re.DOTALL
+        )
+        self.assertIsNotNone(return_to_opener)
+        assert return_to_opener is not None
+        self.assertIn("m.profilesClientsHit.SetFocus(true)", return_to_opener.group(0))
 
     def test_profile_heading_typography_tracks_web_clamps_and_weights(self) -> None:
         vw_match = re.search(r"--vw:\s*([\d.]+)vw", WEB_GLOBAL_CSS)

@@ -656,7 +656,7 @@ sub leaveClientsToProfiles()
     m.navDockMode = false
     showOnly("profiles")
     m.top.screenState = "profiles"
-    focusProfilesRowOnCurrent()
+    if m.profilesClientsHit <> invalid then m.profilesClientsHit.SetFocus(true)
     updateProfileActionsLayout()
     applyProfilesChromeFocus()
 end sub
