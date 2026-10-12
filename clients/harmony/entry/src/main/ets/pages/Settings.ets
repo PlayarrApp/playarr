@@ -10,7 +10,7 @@
 
 import { activeColors, setThemeModeSetting, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
-import { tv, TvGeometry } from '../design/Metrics';
+import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
 import { PageShell } from '../design/components/PageShell';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
@@ -38,6 +38,11 @@ const SECTIONS: SettingsSection[] = [
   { id: PLAYER, number: '04', title: 'Player' },
   { id: SERVER, number: '05', title: 'Server connection' },
 ];
+const SECTION_COPY: Map<string, string> = new Map<string, string>([
+  [APPEARANCE, "Choose this device's theme and home screen layout."],
+  [PLAYER, 'Choose how Playarr should start quality, subtitles and audio.'],
+  [SERVER, 'The server this device is connected to.'],
+]);
 const SUBTITLE_MODE_CHOICES: Choice[] = [
   { value: 'off', label: 'Off' },
   { value: 'forced', label: 'Forced only' },
@@ -62,6 +67,8 @@ const PANEL_LEFT: number = 774;
 const PANEL_TOP: number = 210;
 const PANEL_WIDTH: number = 1042;
 const PANEL_TEXT_SIZE: number = 13.824;
+/** Phone: the panel is the page width less 16 each side (the 360 vp web phone width). */
+const TOUCH_PANEL_WIDTH: number = 328;
 
 @Component
 export struct SettingsScreen {
@@ -70,6 +77,8 @@ export struct SettingsScreen {
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
 
   @State private openSection: string = APPEARANCE;
+  /** Phone: false shows the section list, true the open section's panel. */
+  @State private sectionOpen: boolean = false;
   @State private audioLanguage: string = 'en';
   /** Web's player preference status: loading, ready, saving or an error message. */
   @State private audioStatus: string = 'loading';
@@ -145,6 +154,10 @@ export struct SettingsScreen {
     return language + ' will be selected when it is available.';
   }
 
+  private panelWidth(): number {
+    return isTvMetrics() ? PANEL_WIDTH : TOUCH_PANEL_WIDTH;
+  }
+
   private sectionTitle(): string {
     const open = SECTIONS.find((section: SettingsSection) => section.id === this.openSection);
     return open !== undefined ? open.title : '';
@@ -190,7 +203,7 @@ export struct SettingsScreen {
       choices: THEME_CHOICES,
       selected: this.themeSetting,
       large: true,
-      sectionWidth: PANEL_WIDTH,
+      sectionWidth: this.panelWidth(),
       onChoose: (value: string) => {
         setThemeModeSetting(value as ThemeModeSetting);
         saveThemeChoice(value as ThemeModeSetting);
@@ -218,7 +231,7 @@ export struct SettingsScreen {
         this.panelHeading('Default quality', 'Start playback at this quality when your connection allows it.')
         QualityMatrix({
           selected: this.defaultQuality,
-          matrixWidth: PANEL_WIDTH,
+          matrixWidth: this.panelWidth(),
           onChoose: (id: string): void => {
             this.setDefault('quality', id);
           },
@@ -228,7 +241,7 @@ export struct SettingsScreen {
           heading: '',
           choices: SUBTITLE_MODE_CHOICES,
           selected: this.subtitleMode,
-          sectionWidth: PANEL_WIDTH,
+          sectionWidth: this.panelWidth(),
           onChoose: (value: string): void => {
             this.setDefault('subtitleMode', value);
           },
@@ -237,7 +250,7 @@ export struct SettingsScreen {
           SelectField({
             options: AUDIO_CHOICES,
             value: this.subtitleLanguage,
-            selectWidth: PANEL_WIDTH,
+            selectWidth: this.panelWidth(),
             onChange: (value: string): void => {
               this.setDefault('subtitleLanguage', value);
             },
@@ -247,7 +260,7 @@ export struct SettingsScreen {
         SelectField({
           options: AUDIO_CHOICES,
           value: this.audioLanguage,
-          selectWidth: PANEL_WIDTH,
+          selectWidth: this.panelWidth(),
           disabled: this.audioStatus === 'loading' || this.audioStatus === 'saving',
           onChange: (value: string): void => {
             this.chooseAudioLanguage(value);
@@ -263,8 +276,8 @@ export struct SettingsScreen {
       .alignItems(HorizontalAlign.Start)
       .padding({ bottom: tv(60) })
     }
-    .width(tv(PANEL_WIDTH))
-    .height(tv(1080 - PANEL_TOP))
+    .width(tv(this.panelWidth()))
+    .height(isTvMetrics() ? tv(1080 - PANEL_TOP) : '100%')
     .scrollBar(BarState.Off)
     .align(Alignment.TopStart)
   }
@@ -281,7 +294,7 @@ export struct SettingsScreen {
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
-    .width(tv(PANEL_WIDTH))
+    .width(tv(this.panelWidth()))
     .alignItems(HorizontalAlign.Start)
   }
 
@@ -305,12 +318,79 @@ export struct SettingsScreen {
     .position({ x: tv(PANEL_LEFT), y: tv(PANEL_TOP) })
   }
 
+  /** Phone: the numbered section list (number, title, one line of copy, arrow); a tap opens the section's panel. */
+  @Builder
+  private touchContentBody(): void {
+    if (this.sectionOpen) {
+      Scroll() {
+        Column() {
+          if (this.openSection === APPEARANCE) {
+            this.appearancePanel()
+          } else if (this.openSection === PLAYER) {
+            this.playerPanel()
+          } else {
+            this.serverPanel()
+          }
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16 })
+        .alignItems(HorizontalAlign.Start)
+      }
+      .width('100%')
+      .height('100%')
+      .scrollBar(BarState.Off)
+      .align(Alignment.TopStart)
+    } else {
+      Column() {
+        ForEach(SECTIONS, (section: SettingsSection) => {
+          Row({ space: 16 }) {
+            Text(section.number)
+              .fontSize(10)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(toResourceColor(activeColors().ink))
+              .alignSelf(ItemAlign.Start)
+              .margin({ top: 6 })
+            Column({ space: 4 }) {
+              Text(section.title)
+                .fontSize(20)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(toResourceColor(activeColors().ink))
+              Text(SECTION_COPY.get(section.id) ?? '')
+                .fontSize(12)
+                .fontColor(toResourceColor(activeColors().inkSoft))
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+            Text('→')
+              .fontSize(18)
+              .fontColor(toResourceColor(activeColors().ink))
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+          .backgroundColor(section.id === this.openSection ? toResourceColor(activeColors().surfaceSoft) : Color.Transparent)
+          .onClick(() => {
+            this.openSection = section.id;
+            this.sectionOpen = true;
+          })
+        }, (section: SettingsSection): string => `${section.id}:${section.id === this.openSection}`)
+      }
+      .width('100%')
+      .height('100%')
+    }
+  }
+
   build() {
     NavDestination() {
       PageShell({
         title: 'Preferences',
+        touch: true,
         selectedId: '',
-        kicker: this.sectionTitle(),
+        kicker: this.sectionOpen ? this.sectionTitle() : '',
+        touchContent: (): void => {
+          this.touchContentBody();
+        },
         content: (): void => {
           this.pageContent();
         },

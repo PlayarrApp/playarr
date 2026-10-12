@@ -13,9 +13,9 @@ on:
   workflow_dispatch:
     inputs:
       device:
-        description: Device (the phone profile is not wired yet)
+        description: Device
         type: choice
-        options: [tv]
+        options: [tv, phone]
         default: tv
 
 permissions:
@@ -67,16 +67,22 @@ jobs:
           retention-days: 1
 
   render:
-    name: Render on Windows (${{ inputs.device || 'tv' }})
+    name: Render on Windows (${{ inputs.device || 'tv' }} ${{ matrix.theme }})
     needs: build
     runs-on: windows-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # the phone renders each theme in its own parallel job (one Previewer per colour mode); the TV does both in one
+        theme: ${{ fromJSON(inputs.device == 'phone' && '["dark","light"]' || '["all"]') }}
     defaults:
       run:
         shell: bash
     env:
       DEVICE: ${{ inputs.device || 'tv' }}
       MESA_VERSION: 26.2.4
+      THEME: ${{ matrix.theme }}
       SDK_BUILD: "31" # the public SDK is 6.1.0.<build>; split so the env-data guard does not read it as an IPv4 address
     steps:
       - uses: actions/checkout@v4
@@ -117,44 +123,55 @@ jobs:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          KEYCHECK: "1"
           BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
           GALLIUM_DRIVER: llvmpipe
           MESA_GL_VERSION_OVERRIDE: "4.5"
         run: |
           W=$(cygpath -m "$GITHUB_WORKSPACE"); I="$W/harmony-wall-work/app/entry/.preview/default/intermediates"
+          if [ "$DEVICE" = phone ]; then CTL=40117; WS=40107; DBG=40127; else CTL=40017; WS=40007; DBG=40027; fi
           if [ "$DEVICE" = phone ]; then D=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait); else D=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape); fi
+          if [ "$THEME" = light ]; then CM=light; else CM=dark; fi
           cp scripts/sim-vnc/sim_vnc.py scripts/harmony-wall/
-          PLAYARR_VNC_PASSWORD=selftest1 python scripts/harmony-wall/harmony_vnc.py --bind 127.0.0.1 --port 5917 --ws 40007 --ctl 40017 \
-            --debug-port 40027 --cmd-name playarr_cmd --password-env PLAYARR_VNC_PASSWORD > bridge.log 2>&1 &
+          PLAYARR_VNC_PASSWORD=selftest1 python scripts/harmony-wall/harmony_vnc.py --bind 127.0.0.1 --port 5917 --ws $WS --ctl $CTL \
+            --debug-port $DBG --cmd-name playarr_cmd --password-env PLAYARR_VNC_PASSWORD > bridge.log 2>&1 &
           # the Previewer connects to the command pipe once, at start: the bridge must have created it by then
           for i in $(seq 1 60); do grep -q 'control on' bridge.log && break; sleep 1; done
           sleep 2
           cd sdk/pv/previewer/common/bin
           ./Previewer.exe -refresh full -sm dynamic -projectID playarrharmony -ts playarr_trace -j "$I/loader_out/default/ets" \
-            -s playarr_cmd -cpm false -shape rect "${D[@]}" -n entry -av ACE_2_0 -url pages/Index -d -p 40027 -pages main_pages \
-            -arp "$I/res/default" -pm Stage -hsp "$W/harmony-wall-work/hms-previewer/systemHsp" -l en_GB -cm dark -lws 40007 \
+            -s playarr_cmd -cpm false -shape rect "${D[@]}" -n entry -av ACE_2_0 -url pages/Index -d -p $DBG -pages main_pages \
+            -arp "$I/res/default" -pm Stage -hsp "$W/harmony-wall-work/hms-previewer/systemHsp" -l en_GB -cm "$CM" -lws $WS \
             -ljPath "$I/loader/default/loader.json" -abp ets/entryability/EntryAbility -abn EntryAbility -staticCard false \
             -foldable false -bn io.playarr.harmony -srmPath "$I/router_map/default/router_map.json" > "$W/previewer.log" 2>&1 &
           sleep 3; echo started
           cd "$W"
-          python scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log
+          python scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log "$THEME"
+          if [ "$DEVICE" = tv ]; then
+            # the shared suite over the same signed-in Previewer: D-pad checks, then the screens only reachable by keys
+            export HARMONY_CTL=$CTL
+            node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --only dpad --expected /nonexistent.json || true
+            node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --themes dark --only screens --screens player-controls,actions,filters || true
+          fi
       - name: Upload the captures
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: harmony-wall-${{ env.DEVICE }}-${{ github.run_id }}
+          name: harmony-wall-${{ env.DEVICE }}-${{ github.run_id }}${{ matrix.theme != 'all' && format('-{0}', matrix.theme) || '' }}
           path: |
             capture/dark
             capture/light
             capture/build.json
+            suite/dpad.json
+            suite/dark
           if-no-files-found: error
           retention-days: 14
       - name: Upload the debug frames and logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: harmony-debug-${{ env.DEVICE }}
+          name: harmony-debug-${{ env.DEVICE }}-${{ matrix.theme }}
           path: |
             capture/_debug
             capture/_rejected-*.png

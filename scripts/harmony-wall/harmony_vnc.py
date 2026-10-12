@@ -25,13 +25,30 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sim_vnc  # noqa: E402  (copied next to this file from scripts/sim-vnc)
 
 # OpenHarmony KeyCode values (range the Previewer accepts: 2000-2119)
-OH_KEYS = {"up": 2012, "down": 2013, "left": 2014, "right": 2015, "ok": 2054, "center": 2016, "space": 2050, "esc": 2070}
+OH_KEYS = {"up": 2012, "down": 2013, "left": 2014, "right": 2015, "ok": 2054, "center": 2016, "space": 2050, "esc": 2070, "tab": 2049, "enter": 2054, "pagedown": 2020}
 KEYSYM = {0xFF52: "up", 0xFF54: "down", 0xFF51: "left", 0xFF53: "right", 0xFF0D: "ok", 0xFF8D: "ok",
           0x0020: "space", 0xFF1B: "back", 0xFF08: "back"}
 
 
 # Preview-only route mailbox: the capture scripts set a route name, the patched Index polls and consumes it.
 ROUTE_BOX = {"name": ""}
+# Parity state the patched app reports (route, library kind, last focused item); GET /state returns it with the derived label.
+IMAGES: dict = {}  # id -> bytes, posted by the patched app (the Previewer cannot decode images itself)
+STATE = {"route": "", "kind": "", "focused": None, "lib_kind": ""}
+
+
+def apply_state(q):
+    if "route" in q:
+        STATE["route"] = q["route"][0]
+        STATE["kind"] = q.get("kind", [""])[0]
+        if STATE["route"] == "Library":
+            STATE["lib_kind"] = STATE["kind"]
+    if "nav" in q:
+        STATE["focused"] = q["nav"][0]
+    if "title" in q:
+        title, sub = q["title"][0], q.get("sub", [""])[0]
+        # web's accessible names: Home cards read "<title><subtitle>", grid cards "open <title>"
+        STATE["focused"] = title + sub if STATE["route"] in ("Home", "") else "open " + title
 
 
 def log(message: str) -> None:
@@ -132,10 +149,17 @@ class Commands:
             return self.send("BackClicked", None)
         code = OH_KEYS[name]
         ok = True
-        for action in (0, 1):  # down, up
+        for action in (0, 1):  # down, up: the release carries no pressed codes
             ok &= self.send("KeyPress", {"isInputMethod": False, "keyCode": code, "keyAction": action,
-                                         "pressedCodes": [code], "keyString": ""})
+                                         "pressedCodes": [code] if action == 0 else [], "keyString": ""})
         return ok
+
+    def key_long(self, name: str) -> bool:
+        """Hold a key for about a second (down, wait, up)."""
+        code = OH_KEYS[name]
+        ok = self.send("KeyPress", {"isInputMethod": False, "keyCode": code, "keyAction": 0, "pressedCodes": [code], "keyString": ""})
+        time.sleep(1.1)
+        return ok & self.send("KeyPress", {"isInputMethod": False, "keyCode": code, "keyAction": 1, "pressedCodes": [code], "keyString": ""})
 
     def type_char(self, ch: str) -> bool:
         """One hardware key event; the Previewer inserts keyString (one action only, or it doubles)."""
@@ -156,6 +180,12 @@ class Commands:
 
     def click(self, x: int, y: int) -> bool:
         return self.send("MousePress", {"x": x, "y": y}) and self.send("MouseRelease", {"x": x, "y": y})
+
+    def long_click(self, x: int, y: int) -> bool:
+        """Press, hold for about 1.3 s (past the long-press threshold), release."""
+        ok = self.send("MousePress", {"x": x, "y": y})
+        time.sleep(1.3)
+        return ok and self.send("MouseRelease", {"x": x, "y": y})
 
 
 def ws_connect(port: int, path: str):
@@ -327,6 +357,9 @@ def main():
             if url.path == "/click":
                 ok = commands.click(int(query["x"][0]), int(query["y"][0]))
                 return self._reply(200 if ok else 503, b"ok")
+            if url.path == "/longclick":
+                ok = commands.long_click(int(query["x"][0]), int(query["y"][0]))
+                return self._reply(200 if ok else 503, b"ok")
             if url.path == "/type":
                 ok = all(commands.type_char(ch) for ch in query["text"][0])
                 return self._reply(200 if ok else 503, b"ok")
@@ -335,6 +368,21 @@ def main():
             if url.path == "/reply":
                 body, commands.last_reply = commands.last_reply, b""
                 return self._reply(200, body)
+            if url.path.startswith("/img/"):
+                data = IMAGES.get(url.path[5:])
+                if data is None:
+                    return self._reply(404, b"")
+                return self._reply(200, data, "image/png" if data[:1] == b"\x89" else "image/jpeg")
+            if url.path == "/state" and query:
+                apply_state(query)
+                return self._reply(200, b"ok")
+            if url.path == "/state":
+                return self._reply(200, json.dumps(STATE).encode(), "application/json")
+            if url.path.startswith("/keylong/"):
+                name = url.path[9:]
+                if name not in OH_KEYS:
+                    return self._reply(400, b"unknown key")
+                return self._reply(200 if commands.key_long(name) else 503, b"ok")
             if url.path == "/setroute":
                 ROUTE_BOX["name"] = query.get("name", [""])[0]
                 return self._reply(200, b"ok")
@@ -342,11 +390,16 @@ def main():
                 name, ROUTE_BOX["name"] = ROUTE_BOX["name"], ""
                 return self._reply(200, name.encode())
             if url.path == "/health":
-                return self._reply(200, f"frames={server.hub.count} size={server.hub.size} cmd={'up' if commands.conn else 'down'}\n".encode())
+                return self._reply(200, f"frames={server.hub.count} size={server.hub.size} cmd={'up' if commands.conn else 'down'} images={len(IMAGES)} reply={commands.last_reply[-120:]!r}\n".encode())
             return self._reply(404, b"")
 
         def do_POST(self):  # noqa: N802
-            body = json.loads(self.rfile.read(int(self.headers.get("content-length", "0"))) or b"{}")
+            raw = self.rfile.read(int(self.headers.get("content-length", "0")))
+            url = urllib.parse.urlparse(self.path)
+            if url.path == "/imgput":
+                IMAGES[urllib.parse.parse_qs(url.query)["id"][0]] = raw
+                return self._reply(200, b"ok")
+            body = json.loads(raw or b"{}")
             ok = commands.send(body["command"], body.get("args"), body.get("type", "action"))
             return self._reply(200 if ok else 503, b"ok")
 

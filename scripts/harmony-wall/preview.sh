@@ -23,10 +23,15 @@ I="$WORK/app/entry/.preview/default/intermediates"
 build() {
   rm -rf "$WORK/app"; mkdir -p "$WORK"; cp -R "$APP_SRC" "$WORK/app"; cd "$WORK/app"
   cp -R "$HERE/overlay/." entry/
+  if [ "$DEVICE" = phone ]; then sed -i "s/'deviceType': 'tv'/'deviceType': 'phone'/; s/Previewer TV/Previewer Phone/" entry/src/mock/deviceinfo.mock.ets; fi
   python3 "$HERE/patch_index.py" entry/src/main/ets/pages/Index.ets
   python3 "$HERE/patch_prefs.py" entry/src/main/ets/auth/SettingsStore.ets
   python3 "$HERE/patch_pairing.py" entry/src/main/ets/pages/Pairing.ets
   python3 "$HERE/patch_route.py" entry/src/main/ets/pages/Index.ets "$CTL"
+  python3 "$HERE/patch_state.py" entry/src/main/ets
+  python3 "$HERE/patch_artwork.py" entry/src/main/ets/data/ArtworkRepository.ets "$CTL"
+  python3 "$HERE/patch_http.py" entry/src/main/ets/net/HttpTransport.ets entry/src/main/ets/data/ArtworkRepository.ets entry/src/main/ets/util/PreviewState.ets
+  sed -i "s/PREVIEW_PORT: number = 40017/PREVIEW_PORT: number = $CTL/" entry/src/main/ets/util/PreviewState.ets
   python3 -c "import json;p='entry/src/main/resources/base/profile/main_pages.json';d=json.load(open(p));d['src'].append('pages/PreviewBoot');json.dump(d,open(p,'w'),indent=2)"
   ohpm install --all
   # PreviewBuild keeps watching after it succeeds: stop it once it reports the result.
@@ -34,7 +39,7 @@ build() {
   local pid=$!
   for _ in $(seq 1 600); do grep -q -E "BUILD (SUCCESSFUL|FAILED)" "$WORK/hvigor.log" && break; sleep 1; done
   kill "$pid" 2>/dev/null || true
-  grep -E "ERROR|BUILD" "$WORK/hvigor.log" | tail -20 || true
+  grep -E -A2 "ERROR|BUILD|Error Message" "$WORK/hvigor.log" | tail -30 || true
   grep -q "BUILD SUCCESSFUL" "$WORK/hvigor.log"
   mkdir -p "$I/loader_out/default/ets/apiMock"
   cp "$DEFAULT_SDK/hms/previewer/apiMock/jsMockHmos.abc" "$I/loader_out/default/ets/apiMock/"

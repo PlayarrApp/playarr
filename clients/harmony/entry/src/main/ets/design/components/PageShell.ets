@@ -8,7 +8,8 @@
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
-import { tv, TvGeometry } from '../Metrics';
+import { isTvMetrics, tv, TvGeometry } from '../Metrics';
+import { TouchNavBar } from './TouchNavBar';
 import { NavRail } from './NavRail';
 import type { NavRailItem } from './NavRail';
 import { PlayarrLogo } from './PlayarrLogo';
@@ -41,6 +42,11 @@ export struct PageShell {
 
   /** The page's own content, laid out in 1920x1080 coordinates, below the chrome. */
   @BuilderParam content: () => void = this.emptyContent;
+  /** Phone: the page supplies `touchContent` (and `touchActions`, the round buttons at the right of the header) and gets the
+   * web phone shell: Back and title on top, the bottom nav bar below. False: the TV chrome is drawn (the page has no phone layout). */
+  @Prop touch: boolean = false;
+  @BuilderParam touchContent: () => void = this.emptyContent;
+  @BuilderParam touchActions: () => void = this.emptyContent;
   /** The page's extra header controls (Calendar's range, previous, Today and next), above the content. */
   @BuilderParam controls: () => void = this.emptyContent;
 
@@ -127,11 +133,69 @@ export struct PageShell {
     .backgroundColor(toResourceColor(activeColors().bg))
   }
 
+  @Builder
+  private touchChrome(): void {
+    Column() {
+      Row({ space: 12 }) {
+        if (this.showHeader) {
+          Text('←')
+            .fontSize(17)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(toResourceColor(activeColors().inkSoft))
+            .textAlign(TextAlign.Center)
+            .width(40)
+            .height(40)
+            .borderRadius(20)
+            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+            .onClick(() => {
+              popRoute(getNavStack());
+            })
+          Column() {
+            if (this.kicker.length > 0) {
+              Text(this.kicker)
+                .fontSize(10)
+                .fontWeight(FontWeight.Bolder)
+                .letterSpacing(0.8)
+                .textCase(TextCase.UpperCase)
+                .fontColor(toResourceColor(BRAND_PINK_SOFT))
+            }
+            Text(this.title)
+              .fontSize(22)
+              .fontWeight(FontWeight.Medium)
+              .letterSpacing(-0.5)
+              .fontColor(toResourceColor(activeColors().ink))
+              .maxLines(1)
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+          this.touchActions()
+        }
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+      .alignItems(VerticalAlign.Center)
+      Column() {
+        this.touchContent()
+      }
+      .layoutWeight(1)
+      .width('100%')
+      TouchNavBar({ selectedId: this.selectedId })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(toResourceColor(activeColors().bg))
+  }
+
   build() {
     // `activeColors()` is not tracked by ArkUI, so a theme change rebuilds the shell (keyed by the theme) to repaint it.
     Stack() {
       ForEach([this.themeSetting], (_theme: string) => {
-        this.chrome()
+        if (this.touch && !isTvMetrics()) {
+          this.touchChrome()
+        } else {
+          this.chrome()
+        }
       }, (theme: string): string => theme)
     }
     .width('100%')

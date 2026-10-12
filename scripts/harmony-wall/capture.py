@@ -3,10 +3,11 @@
 Usage: capture.py <tv|phone> <out-dir> <previewer.log>   Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD (approve_link.py).
 Signs in fresh (link code logged by the app, approved as the Device Test account), picks the "Device Test" profile, then captures
 dark and light. Aborts, writing nothing more, when a frame is too plain (an error or signed-out screen)."""
-import io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
+import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
+THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone only: the Previewer starts in this colour mode (-cm), one job per theme
 CTL = "http://127.0.0.1:" + ("40117" if device == "phone" else "40017")
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(out, exist_ok=True)
@@ -14,8 +15,14 @@ os.makedirs(out, exist_ok=True)
 
 def get(path, **q):
     url = CTL + path + ("?" + urllib.parse.urlencode(q) if q else "")
-    with urllib.request.urlopen(url, timeout=30) as r:
-        return r.read()
+    for attempt in range(6):  # the command channel can drop for a moment (503): retry
+        try:
+            with urllib.request.urlopen(url, timeout=30) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            if e.code != 503 or attempt == 5:
+                raise
+            time.sleep(4)
 
 
 def png() -> Image.Image:
@@ -32,6 +39,10 @@ def click(x, y):
     get("/click", x=x, y=y)
 
 
+def longclick(x, y):
+    get("/longclick", x=x, y=y)
+
+
 def route(name, wait=12):
     get("/setroute", name=name)
     time.sleep(wait)
@@ -43,9 +54,25 @@ def too_plain(img: Image.Image, floor: int) -> bool:
     return buf.tell() < floor
 
 
+class Skip(Exception):
+    pass
+
+
+MISSING = []
+
+
 def abort(msg):
     print("ABORT: " + msg, flush=True)
     sys.exit(1)
+
+
+def guarded(name, fn):
+    """Phone walk: a screen whose guard fails is skipped and listed as missing; the others still publish."""
+    try:
+        fn()
+    except (Skip, SystemExit) as e:
+        print(f"SKIP {name}: {e}", flush=True)
+        MISSING.append(name)
 
 
 def settle(limit=45):
@@ -59,9 +86,35 @@ def settle(limit=45):
         time.sleep(4)
 
 
+SEEN = {}
+
+
 def snap(name, folder, floor=60000):
+    try:
+        snap_checked(name, folder, floor)
+    except SystemExit:
+        if device != "phone":
+            raise
+        raise Skip(name)
+
+
+def snap_checked(name, folder, floor):
     settle()
+    if b"[JsEngine Crash]" in open(log, "rb").read():
+        debug("crash-" + name)
+        raise RuntimeError("the Previewer's JS engine crashed: every later frame would be the frozen last one")
     img = png()
+    debug('snap-' + name)
+    digest = hashlib.md5(img.tobytes()).hexdigest()
+    if device == "phone" and digest in SEEN and not os.environ.get("CALIBRATE"):
+        img.save(os.path.join(out, "_rejected-" + name + ".png"))
+        abort(f"{name} is identical to {SEEN[digest]}: the navigation did not change the screen")
+    SEEN[digest] = name
+    if device == "phone" and name != "player-controls":  # the player is black in both themes
+        lum = sum(img.convert("L").resize((54, 117)).tobytes()) / (54 * 117)
+        if (THEME == "light") != (lum > 110):
+            img.save(os.path.join(out, "_rejected-" + name + ".png"))
+            abort(f"{name} has mean luminance {lum:.0f}, not a {THEME} frame")
     os.makedirs(folder, exist_ok=True)
     if too_plain(img, floor) and not os.environ.get("CALIBRATE"):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
@@ -87,9 +140,10 @@ else:
 # its user code; approve it as the Device Test account (fresh device id each run)
 route("serversetup", 8)
 debug("serversetup")
-click(960, 549); time.sleep(1)
+FIELD, CONNECT = {"tv": ((960, 549), (960, 627)), "phone": ((540, 1290), (540, 1483))}[device]
+click(*FIELD); time.sleep(1)
 get("/type", text=os.environ["SERVER_URL"].strip()); time.sleep(1)
-click(960, 627); time.sleep(8)
+click(*CONNECT); time.sleep(8)
 code = None
 for _ in range(60):
     found = re.findall(rb"PLAYARR_LINKCODE=([A-Z0-9-]+) END", open(log, "rb").read())
@@ -105,7 +159,9 @@ time.sleep(20)
 debug("after-approve")
 
 # 2. the profile picker: pick Device Test (alien avatar). Position found by looking at the picker, see PROFILE_CLICK.
-PROFILE_CLICK = {"tv": (846, 505), "phone": (540, 900)}[device]
+PROFILE_CLICK = {"tv": (846, 505), "phone": (330, 1150)}[device]
+if device == "phone":
+    route("profiles", 8); debug("phone-profiles")
 click(*PROFILE_CLICK)
 time.sleep(20)
 debug("after-profile")
@@ -130,6 +186,14 @@ def walk(folder, suffix):
     route("settings", 8); snap(n("settings"), folder)
 
 
+if device == "tv" and os.environ.get("KEYCHECK"):
+    click(*PROFILE_CLICK); time.sleep(20)
+    debug("k0-home"); print("state", get("/state"), flush=True); print(get("/health"), flush=True)
+    click(1000, 40); time.sleep(2)
+    for i, k in enumerate(("tab", "right", "down", "right")):
+        key(k); time.sleep(2); debug(f"k{i + 1}-{k}"); print("state", get("/state"), flush=True); print(get("/health"), flush=True)
+    key("left"); key("down"); key("ok"); time.sleep(8); debug("k-nav-select"); print("state", get("/state"), flush=True)
+    sys.exit(0)
 if device == "tv":
     folder = os.path.join(out, "dark")
     route("profiles", 6); snap("profiles", folder)
@@ -142,10 +206,64 @@ if device == "tv":
     click(*PROFILE_CLICK); time.sleep(20)
     walk(os.path.join(out, "light"), "")
 else:
-    debug("phone-home")
-    route("profiles", 6); debug("phone-profiles")
+    # phone: the web phone shell. Pages by route; the phone's own controls (the header filter button, a card tap or long press)
+    # inside a page. Coordinates are px at density 480 (3 px per vp): the header's round buttons sit at the right, 16 vp in.
+    folder = os.path.join(out, THEME)
+    FILTER_BTN = (972, 100)
+    CLOSE_DRAWER = (870, 234)
+    VIEW_CHOICE = {"week": (540, 645), "month": (816, 645)}
+    CARDS = ((540, 470), (540, 600), (540, 900), (270, 600))
+
+    def open_filters(name):
+        click(*FILTER_BTN); time.sleep(4); debug(name + "-filters-open")
+
+    def open_detail(kind, name):
+        route("library:" + kind, 15); settle()
+        before = png().tobytes()
+        for x, y in CARDS:
+            click(x, y); time.sleep(10)
+            if png().tobytes() != before:
+                snap(name, folder, 100000)
+                return
+            debug(f"{name}-miss-{x}-{y}")
+        abort(f"no card tap at {CARDS} opened a {kind} detail page")
+
+    def calendar_view(view):
+        route("calendar", 18); settle()
+        open_filters("calendar-" + view)
+        click(*VIEW_CHOICE[view]); time.sleep(8)
+        click(*CLOSE_DRAWER); time.sleep(3)
+        snap("calendar-" + view, folder, 60000)
+
+    for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
+                           ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
+                           ("settings", "settings", 40000), ("profiles", "profiles", 40000)):
+        guarded(name, lambda: (route(r, 40 if name == 'home' else 15), snap(name, folder, floor)))
+    route("library:movie", 15); settle()
+    open_filters("movies"); guarded("filters", lambda: snap("filters", folder, 40000)); click(*CLOSE_DRAWER); time.sleep(3)
+    longclick(*CARDS[0]); time.sleep(5); debug("movies-actions-open"); guarded("actions", lambda: snap("actions", folder, 40000))
+    guarded("calendar-week", lambda: calendar_view("week"))
+    guarded("calendar-month", lambda: calendar_view("month"))
+    guarded("film-detail", lambda: open_detail("movie", "film-detail"))
+    guarded("series-detail", lambda: open_detail("series", "series-detail"))
+    # extras beyond the 15: search with results, the period picker (calibration), the three settings panels
+    def search_results():
+        route("search", 12); click(540, 276); time.sleep(1); get("/type", text="the"); time.sleep(12); snap("search-results", folder, 60000)
+
+    def settings_panel(name, y):
+        route("profiles", 8); route("settings", 12); click(540, y); time.sleep(6); snap(name, folder, 40000)
+
+    def period_picker():
+        route("calendar", 18); click(270, 258); time.sleep(4); debug("calendar-period-picker"); snap("calendar-period", folder, 40000)
+
+    guarded("search-results", search_results)
+    guarded("calendar-period", period_picker)
+    for nm, yy in (("settings-appearance", 300), ("settings-player", 510), ("settings-server", 720)):
+        guarded(nm, lambda nm=nm, yy=yy: settings_panel(nm, yy))
+    # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
+    guarded("player-controls", lambda: (route("player:b9a68b2c-8382-4c34-a6f0-c4dd58f55093", 20), snap("player-controls", folder, 30000)))
 import datetime
 json.dump({"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
-           "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")},
+           "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")},
           open(os.path.join(out, "build.json"), "w"))
 print("done")

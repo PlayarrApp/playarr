@@ -10,7 +10,8 @@ import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
-import { tv, TvGeometry } from '../design/Metrics';
+import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
+import { TouchIconButton } from '../design/components/TouchIconButton';
 import { PageShell } from '../design/components/PageShell';
 import { PosterCard } from '../design/components/PosterCard';
 import { FeatureCopy } from '../design/components/FeatureCopy';
@@ -92,6 +93,8 @@ struct SearchResultCard {
   /** Web `WatchStateOverlay` (`core/WatchState.ts`). */
   @Prop unseen: boolean = false;
   @Prop progress: number = -1;
+  /** Phone: the card's width in vp (one column across the page); 0 on the TV. */
+  touchWidth: number = 0;
   onSelect: (workId: string) => void = () => {};
   /** The card took focus: the preview panel follows it (web `selectedId`). */
   onFocused: (workId: string) => void = () => {};
@@ -117,8 +120,8 @@ struct SearchResultCard {
   build() {
     PosterCard({
       artwork: this.artwork,
-      cardWidth: tv(CARD_WIDTH),
-      cardHeight: tv(CARD_HEIGHT),
+      cardWidth: this.touchWidth > 0 ? this.touchWidth : tv(CARD_WIDTH),
+      cardHeight: this.touchWidth > 0 ? this.touchWidth * CARD_HEIGHT / CARD_WIDTH : tv(CARD_HEIGHT),
       title: this.work !== undefined ? this.work.title : '',
       subtitle: this.work !== undefined ? resultCaption(this.work) : '',
       unseen: this.unseen,
@@ -154,6 +157,7 @@ export struct SearchScreen {
   /** Web's Type filter (Filters drawer): 'all' or a work kind. */
   @State private mediaType: string = 'all';
   @State private availableKinds: string[] = [];
+  @State private touchWidthVp: number = 328;
   @State private filtersOpen: boolean = false;
   /** The title whose long-press actions are open, or undefined. */
   @State private actionsWork: Work | undefined = undefined;
@@ -413,16 +417,154 @@ export struct SearchScreen {
     }
   }
 
+  @Builder
+  private touchFiltersButton(): void {
+    TouchIconButton({
+      icon: $r('app.media.action_filters'),
+      onTap: (): void => {
+        this.filtersOpen = true;
+      },
+    })
+  }
+
+  /** Phone: the search pill, then the results in one column (or the prompt). */
+  @Builder
+  private touchContentBody(): void {
+    Column({ space: 16 }) {
+      Row({ space: 12 }) {
+        Image($r('app.media.nav_search'))
+          .width(20)
+          .height(20)
+          .colorFilter(tintFilter(activeColors().inkSoft))
+        TextInput({ text: this.query, placeholder: 'Search your libraries and playlists' })
+          .fontSize(16)
+          .fontColor(toResourceColor(activeColors().ink))
+          .placeholderColor(toResourceColor(activeColors().inkMuted))
+          .backgroundColor(Color.Transparent)
+          .border({ width: 0 })
+          .borderRadius(0)
+          .padding(0)
+          .caretColor(toResourceColor(activeColors().ink))
+          .layoutWeight(1)
+          .onChange((value: string) => {
+            this.onQueryChange(value);
+          })
+      }
+      .width('100%')
+      .height(56)
+      .padding({ left: 20, right: 20 })
+      .borderRadius(28)
+      .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
+      .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
+      if (this.shownResults().length > 0) {
+        Grid() {
+          ForEach(this.shownResults(), (work: Work) => {
+            GridItem() {
+              SearchResultCard({
+                work: work,
+                touchWidth: this.touchWidthVp,
+                unseen: this.markFor(work).unseen,
+                progress: this.markFor(work).progress,
+                onSelect: (workId: string) => {
+                  this.openDetail(workId);
+                },
+                onLongPress: (pressed: Work) => {
+                  this.actionsWork = pressed;
+                },
+              })
+            }
+          }, (work: Work): string => work.id)
+        }
+        .columnsTemplate('1fr')
+        .rowsGap(20)
+        .layoutWeight(1)
+        .width('100%')
+        .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.None)
+        .onAreaChange((_old: Area, area: Area) => {
+          this.touchWidthVp = Number(area.width);
+        })
+      } else {
+        Row({ space: 20 }) {
+          Stack() {
+            Image($r('app.media.nav_search'))
+              .width(30)
+              .height(30)
+              .colorFilter(tintFilter(BRAND_PINK))
+          }
+          .width(72)
+          .height(72)
+          .borderRadius(36)
+          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
+          Text(this.searched ? 'No matching titles or playlists.' : 'Start typing to search.')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(toResourceColor(activeColors().ink))
+        }
+        .padding({ top: 12 })
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .padding({ left: 16, right: 16 })
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
+  private touchOverlays(): void {
+    if (this.actionsWork !== undefined) {
+      TitleActionsDrawer({
+        workId: this.actionsWork.id,
+        workTitle: this.actionsWork.title,
+        onClose: (): void => {
+          this.actionsWork = undefined;
+        },
+        onPlay: (workId: string): void => {
+          this.openDetail(workId);
+        },
+        onWatchedChanged: (): void => {
+          this.loadWatchProgress();
+        },
+      })
+    } else if (this.filtersOpen) {
+      Drawer({
+        kicker: 'Search controls',
+        title: 'Filters',
+        onClose: (): void => {
+          this.filtersOpen = false;
+        },
+        body: (): void => {
+          this.filtersBody();
+        },
+      })
+    }
+  }
+
   build() {
     NavDestination() {
+      Stack() {
       PageShell({
         title: 'Search',
+        touch: true,
+        touchContent: (): void => {
+          this.touchContentBody();
+        },
+        touchActions: (): void => {
+          this.touchFiltersButton();
+        },
         selectedId: SEARCH_NAV_ID,
         kicker: this.previewWork() !== undefined ? resultCountLabel(this.shownResults().length) : '',
         content: (): void => {
           this.pageContent();
         },
       })
+      if (!isTvMetrics()) {
+        this.touchOverlays()
+      }
+      }
+      .width('100%')
+      .height('100%')
     }
     .hideTitleBar(true)
   }

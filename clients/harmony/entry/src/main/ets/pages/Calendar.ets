@@ -29,8 +29,9 @@ import type { CalendarFilters } from '../core/CalendarFilters';
 import { BRAND_PINK } from '../core/Tokens';
 import type { RgbaColor } from '../core/Tokens';
 import type { ThemeModeSetting } from '../design/Theme';
-import { tv, TvGeometry } from '../design/Metrics';
+import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
 import { PageShell } from '../design/components/PageShell';
+import { TouchIconButton } from '../design/components/TouchIconButton';
 import { Stage } from '../design/components/Stage';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 
@@ -139,6 +140,9 @@ const MONTH_DOT_SIZE: number = 9;
 const MONTH_FOOT_HEIGHT: number = 44;
 const MONTH_CELL_PADDING: number = 5;
 const MONTH_DAY_SIZE: number = 12.8;
+
+/** Phone month cell height: two event lines and the day footer. */
+const TOUCH_MONTH_CELL_HEIGHT: number = 112;
 
 // Web drawer: 30 px between filter sections; choice tiles 56 px, 12 px radius, 10.56 px labels, 268 wide.
 const FILTER_SECTION_GAP: number = 30;
@@ -362,7 +366,7 @@ export struct ReleaseCalendar {
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
     }
-    .width(tv(width))
+    .width(isTvMetrics() ? tv(width) : '100%')
     .height(tv(ENTRY_HEIGHT))
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
@@ -405,7 +409,7 @@ export struct ReleaseCalendar {
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
       }
     }
-    .width(tv(LIST_WIDTH))
+    .width(isTvMetrics() ? tv(LIST_WIDTH) : '100%')
     .height(tv(DAY_HEADING_HEIGHT))
     .alignItems(VerticalAlign.Center)
     .backgroundColor(toResourceColor(activeColors().bg))
@@ -496,13 +500,13 @@ export struct ReleaseCalendar {
     Column() {
       Column() {
         ForEach(groupSeriesEpisodes(cell.entries).slice(0, this.monthLinesFor(cellHeight)), (item: CalendarItem) => {
-          Row({ space: tv(7) }) {
+          Row({ space: isTvMetrics() ? tv(7) : 3 }) {
             Circle()
-              .width(tv(MONTH_DOT_SIZE))
-              .height(tv(MONTH_DOT_SIZE))
+              .width(isTvMetrics() ? tv(MONTH_DOT_SIZE) : 5)
+              .height(isTvMetrics() ? tv(MONTH_DOT_SIZE) : 5)
               .fill(toResourceColor(toneColor(itemPillTone(item, this.today))))
             Text(itemLineText(item))
-              .fontSize(tv(MONTH_LINE_SIZE))
+              .fontSize(isTvMetrics() ? tv(MONTH_LINE_SIZE) : 9)
               .fontWeight(item.grouped ? FontWeight.Bold : FontWeight.Normal)
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
@@ -511,7 +515,7 @@ export struct ReleaseCalendar {
           }
           .height(tv(MONTH_LINE_HEIGHT))
           .width('100%')
-          .padding({ left: tv(6) })
+          .padding({ left: isTvMetrics() ? tv(6) : 2 })
         }, (item: CalendarItem): string => item.key)
       }
       .layoutWeight(1)
@@ -533,7 +537,7 @@ export struct ReleaseCalendar {
     }
     .layoutWeight(1)
     .height(tv(cellHeight))
-    .padding({ left: tv(MONTH_CELL_PADDING), right: tv(MONTH_CELL_PADDING), top: tv(2) })
+    .padding({ left: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, right: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, top: tv(2) })
     .backgroundColor(cell.inMonth ? Color.Transparent : toResourceColorWithAlpha(activeColors().surfaceSoft, 0.4))
     .border({
       width: cell.isToday ? 2 : 1,
@@ -872,10 +876,253 @@ export struct ReleaseCalendar {
     }
   }
 
+
+  /** Phone: the range, back, Today and forward controls above the view. */
+  @Builder
+  private touchControls(): void {
+    Row({ space: 8 }) {
+      Text(rangeLabel(this.view, this.anchor))
+        .fontSize(14)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .height(44)
+        .padding({ left: 18, right: 18 })
+        .borderRadius(22)
+        .backgroundColor(toResourceColor(activeColors().bg))
+        .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+        .onClick(() => {
+          this.periodOpen = !this.periodOpen;
+        })
+      this.touchControl('←', 44, (): void => {
+        this.page(-1);
+      })
+      this.touchControl('Today', 80, (): void => {
+        this.page(0);
+      })
+      this.touchControl('→', 44, (): void => {
+        this.page(1);
+      })
+    }
+    .width('100%')
+    .justifyContent(FlexAlign.Center)
+    .padding({ bottom: 12 })
+  }
+
+  @Builder
+  private touchControl(label: string, width: number, onTap: () => void): void {
+    Text(label)
+      .fontSize(14)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(toResourceColor(activeColors().inkSoft))
+      .textAlign(TextAlign.Center)
+      .width(width)
+      .height(44)
+      .borderRadius(22)
+      .backgroundColor(toResourceColor(activeColors().bg))
+      .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+      .onClick(() => {
+        onTap();
+      })
+  }
+
+  @Builder
+  private touchAgenda(): void {
+    if (this.loading) {
+      AsyncState({ kind: AsyncStateKind.Loading })
+        .width('100%')
+        .layoutWeight(1)
+    } else if (this.groups.length === 0) {
+      AsyncState({
+        kind: this.errorMessage.length > 0 ? AsyncStateKind.Error : AsyncStateKind.Empty,
+        message: this.errorMessage.length > 0 ? this.errorMessage : 'Nothing is scheduled for these 30 days.',
+      })
+        .width('100%')
+        .layoutWeight(1)
+    } else {
+      List({ space: 16 }) {
+        ForEach(this.groups, (group: DayGroup) => {
+          ListItem() {
+            Column({ space: tv(ENTRY_GAP) }) {
+              this.dayHeader(group.day)
+              ForEach(groupSeriesEpisodes(group.entries), (item: CalendarItem) => {
+                this.entryCard(item, 0)
+              }, (item: CalendarItem): string => item.key)
+            }
+            .alignItems(HorizontalAlign.Start)
+          }
+        }, (group: DayGroup): string => group.day + ':' + group.entries.map((entry: CalendarEntry): string => entry.id).join(','))
+      }
+      .width('100%')
+      .layoutWeight(1)
+      .padding({ left: 16, right: 16, bottom: 16 })
+      .scrollBar(BarState.Off)
+      .edgeEffect(EdgeEffect.None)
+    }
+  }
+
+  @Builder
+  private touchWeek(): void {
+    Scroll() {
+      Row({ space: 12 }) {
+        ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
+          Column({ space: tv(WEEK_HEADING_GAP) }) {
+            Text(dayHeading(cell.day))
+              .fontSize(tv(DAY_HEADING_SIZE))
+              .fontWeight(FontWeight.Medium)
+              .fontColor(toResourceColor(activeColors().ink))
+              .height(tv(WEEK_HEADING_HEIGHT))
+            Scroll() {
+              Column({ space: tv(ENTRY_GAP + 1) }) {
+                ForEach(groupSeriesEpisodes(cell.entries), (item: CalendarItem) => {
+                  this.entryCard(item, 0)
+                }, (item: CalendarItem): string => item.key)
+              }
+            }
+            .layoutWeight(1)
+            .align(Alignment.Top)
+            .scrollBar(BarState.Off)
+            .edgeEffect(EdgeEffect.None)
+          }
+          .width(300)
+          .height('100%')
+          .alignItems(HorizontalAlign.Start)
+        }, (cell: CalendarCell): string => cellKey(cell))
+      }
+      .height('100%')
+      .padding({ left: 16, right: 16 })
+    }
+    .scrollable(ScrollDirection.Horizontal)
+    .scrollBar(BarState.Off)
+    .edgeEffect(EdgeEffect.None)
+    .align(Alignment.TopStart)
+    .width('100%')
+    .layoutWeight(1)
+  }
+
+  @Builder
+  private touchMonth(): void {
+    Scroll() {
+      Column() {
+        Row() {
+          ForEach(WEEKDAY_SHORT, (name: string) => {
+            Text(name)
+              .fontSize(tv(MONTH_WEEKDAY_SIZE))
+              .letterSpacing(tv(0.96))
+              .textCase(TextCase.UpperCase)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .textAlign(TextAlign.Center)
+              .layoutWeight(1)
+          }, (name: string): string => name)
+        }
+        .width('100%')
+        .height(tv(MONTH_HEAD_HEIGHT))
+        ForEach(buildMonthGrid(this.anchor, this.groups, this.today), (week: CalendarCell[]) => {
+          Row() {
+            ForEach(week, (cell: CalendarCell) => {
+              this.monthCell(cell, TOUCH_MONTH_CELL_HEIGHT)
+            }, (cell: CalendarCell): string => cellKey(cell))
+          }
+          .width('100%')
+        }, (week: CalendarCell[]): string => week.map((cell: CalendarCell): string => cellKey(cell)).join('|'))
+      }
+      .width('100%')
+      .padding({ left: 8, right: 8, bottom: 16 })
+    }
+    .scrollBar(BarState.Off)
+    .edgeEffect(EdgeEffect.None)
+    .align(Alignment.TopStart)
+    .width('100%')
+    .layoutWeight(1)
+  }
+
+  @Builder
+  private touchContentBody(): void {
+    Column() {
+      this.touchControls()
+      if (this.view === 'week') {
+        this.touchWeek()
+      } else if (this.view === 'month') {
+        this.touchMonth()
+      } else {
+        this.touchAgenda()
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
+  private touchActionButtons(): void {
+    Row({ space: 8 }) {
+      TouchIconButton({
+        icon: $r('app.media.action_bell'),
+        onTap: (): void => {
+          this.linkOpen = true;
+        },
+      })
+      TouchIconButton({
+        icon: $r('app.media.action_filters'),
+        onTap: (): void => {
+          this.filtersOpen = true;
+        },
+      })
+    }
+  }
+
+  @Builder
+  private touchOverlays(): void {
+    if (this.periodOpen) {
+      // Web hangs the jump panel under the range button.
+      PeriodPicker({
+        value: this.anchor,
+        onChange: (day: string): void => {
+          this.anchor = day;
+          this.load();
+        },
+        onClose: (): void => {
+          this.periodOpen = false;
+        },
+      })
+        .position({ x: 16, y: 116 })
+        .zIndex(2)
+    }
+    if (this.linkOpen) {
+      Drawer({
+        kicker: 'Calendar',
+        title: 'Calendar link',
+        onClose: (): void => {
+          this.linkOpen = false;
+        },
+        body: (): void => {
+          this.linkBody();
+        },
+      })
+    } else if (this.filtersOpen) {
+      Drawer({
+        kicker: 'Calendar',
+        title: 'Filters',
+        onClose: (): void => {
+          this.filtersOpen = false;
+        },
+        body: (): void => {
+          this.filtersBody();
+        },
+      })
+    }
+  }
+
   build() {
     NavDestination() {
+      Stack() {
       PageShell({
         title: 'Calendar',
+        touch: true,
+        touchContent: (): void => {
+          this.touchContentBody();
+        },
+        touchActions: (): void => {
+          this.touchActionButtons();
+        },
         selectedId: CALENDAR_NAV_ID,
         content: (): void => {
           this.pageContent();
@@ -884,6 +1131,12 @@ export struct ReleaseCalendar {
           this.pageControls();
         },
       })
+      if (!isTvMetrics()) {
+        this.touchOverlays()
+      }
+      }
+      .width('100%')
+      .height('100%')
     }
     .hideTitleBar(true)
   }

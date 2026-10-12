@@ -115,6 +115,7 @@ import type { NavRailItem } from '../design/components/NavRail';
 import { HOME_NAV_ID, buildNavRailItems, navigateFromRail } from '../navigation/NavItems';
 import { PageShell } from '../design/components/PageShell';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
+import { TouchNavBar } from '../design/components/TouchNavBar';
 import { NavPill } from '../design/components/NavPill';
 import type { NavPillItem } from '../design/components/NavPill';
 import { PosterCard } from '../design/components/PosterCard';
@@ -184,7 +185,12 @@ const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 10;
  * where one is reasonably close" instinct `pages/Library.ets`'s own
  * `TOUCH_GRID_GAP_VP` already follows for an analogous gap brief 5.10 does
  * not name. */
-const TOUCH_RAIL_GAP: number = Spacing.xl;
+const TOUCH_RAIL_GAP: number = 38;
+/** The touch rail's card row: the 16:9 card plus its two caption lines (a `List` with no height fills its parent). */
+const TOUCH_RAIL_LIST_HEIGHT: number = 232;
+/** Web phone Home: 328 vp cards (the 360 vp page less 16 each side) and 16 px rail headings. */
+const TOUCH_HOME_CARD_WIDTH: number = 328;
+const TOUCH_RAIL_HEADING_SIZE: number = 16;
 
 /** Extra bottom clearance under the touch rails column so the last rail's
  * cards are never obscured by the floating `NavPill` (brief 9: "rails
@@ -224,6 +230,8 @@ interface HomeCardItem {
   /** `undefined` until `startArtworkLoading()`'s own fetch for this card
    * resolves; `PosterCard` renders a `Skeleton` placeholder meanwhile. */
   artwork: image.PixelMap | undefined;
+  /** `'art'` once the artwork is patched in, so the rail rebuilds the card (see `MediaRailItem.stamp`). */
+  stamp?: string;
 }
 
 /** A card's subtitle: the release year, or `''` (hidden by `PosterCard`)
@@ -336,6 +344,7 @@ function patchOneCardArtwork(item: HomeCardItem, pixelMap: image.PixelMap): Home
     progress: item.progress,
     applyTopRailFocus: item.applyTopRailFocus,
     artwork: pixelMap,
+    stamp: 'art',
   };
   return patched;
 }
@@ -763,8 +772,8 @@ export struct Home {
       subtitle: (item as HomeCardItem).subtitle,
       progress: (item as HomeCardItem).progress,
       artwork: (item as HomeCardItem).artwork,
-      cardWidth: TouchGeometry.homeRailCardWidthLandscape,
-      cardHeight: (Math.round((TouchGeometry.homeRailCardWidthLandscape * 9) / 16)),
+      cardWidth: TOUCH_HOME_CARD_WIDTH,
+      cardHeight: Math.round((TOUCH_HOME_CARD_WIDTH * 9) / 16),
       artworkRadius: Radii.homeCardArtworkTouch,
       titleFontSize: TOUCH_CARD_TITLE_FONT_SIZE,
       subtitleFontSize: TOUCH_CARD_SUBTITLE_FONT_SIZE,
@@ -866,67 +875,34 @@ export struct Home {
   @Builder
   private touchRailsColumn(): void {
 
+    // Web phone Home: "On deck", then the server's rails (Recently Added in Movies ...), every card as wide as the page less its margins.
     Column({ space: TOUCH_RAIL_GAP }) {
       if (this.continueWatchingItems.length > 0) {
         MediaRail({
           railId: 'home-continue-watching-touch',
-          heading: 'Continue Watching',
+          heading: 'On deck',
           items: this.continueWatchingItems,
           itemGap: TouchGeometry.railItemGap,
-          headingSize: TouchGeometry.railHeadingSize,
+          listHeight: TOUCH_RAIL_LIST_HEIGHT,
+          headingSize: TOUCH_RAIL_HEADING_SIZE,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
         })
       }
-      if (this.newMovieItems.length > 0) {
+      ForEach(this.serverRails, (rail: HomeServerRail) => {
         MediaRail({
-          railId: 'home-new-movies-touch',
-          heading: 'New Movies',
-          items: this.newMovieItems,
+          railId: `home-${rail.id}-touch`,
+          heading: rail.title,
+          items: rail.items,
           itemGap: TouchGeometry.railItemGap,
-          headingSize: TouchGeometry.railHeadingSize,
+          listHeight: TOUCH_RAIL_LIST_HEIGHT,
+          headingSize: TOUCH_RAIL_HEADING_SIZE,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
         })
-      }
-      if (this.newSeriesItems.length > 0) {
-        MediaRail({
-          railId: 'home-new-series-touch',
-          heading: 'New Series',
-          items: this.newSeriesItems,
-          itemGap: TouchGeometry.railItemGap,
-          headingSize: TouchGeometry.railHeadingSize,
-          itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
-            this.touchCardItemBuilder(item, index, activeRailFactor);
-          },
-        })
-      }
-      if (this.moreMovieItems.length > 0) {
-        MediaRail({
-          railId: 'home-more-movies-touch',
-          heading: 'More Movies',
-          items: this.moreMovieItems,
-          itemGap: TouchGeometry.railItemGap,
-          headingSize: TouchGeometry.railHeadingSize,
-          itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
-            this.touchCardItemBuilder(item, index, activeRailFactor);
-          },
-        })
-      }
-      if (this.moreSeriesItems.length > 0) {
-        MediaRail({
-          railId: 'home-more-series-touch',
-          heading: 'More Series',
-          items: this.moreSeriesItems,
-          itemGap: TouchGeometry.railItemGap,
-          headingSize: TouchGeometry.railHeadingSize,
-          itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
-            this.touchCardItemBuilder(item, index, activeRailFactor);
-          },
-        })
-      }
+      }, (rail: HomeServerRail): string => rail.id)
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
@@ -984,20 +960,15 @@ export struct Home {
   @Builder
   private touchContent(): void {
 
-    Stack() {
+    Column() {
       Scroll() {
         this.touchRailsColumn()
       }
       .width('100%')
-      .height('100%')
+      .layoutWeight(1)
 
-      NavPill({
-        items: toNavPillItems(this.navItems),
-        selectedId: HOME_NAV_ID,
-        onSelect: ((id: string): void => {
-      this.handleNavSelect(id);
-    }),
-      })
+      // Web phone shell: the full-width bottom bar, not a floating pill.
+      TouchNavBar({ selectedId: HOME_NAV_ID })
     }
     .width('100%')
     .height('100%')

@@ -120,6 +120,7 @@ import { Drawer } from '../design/components/Drawer';
 import { libraryViews, libraryViewLabel, normaliseLibraryView, COVER_COLUMNS, COVER_CARD_WIDTH, COVER_CARD_HEIGHT, COVER_GAP_X, COVER_GAP_Y } from '../core/LibraryView';
 import { loadLibraryView, saveLibraryView } from '../AppContainer';
 import { PageShell } from '../design/components/PageShell';
+import { TouchIconButton } from '../design/components/TouchIconButton';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import type { Choice } from '../design/components/ChoiceSegments';
@@ -150,6 +151,8 @@ const PAGINATION_LOOKAHEAD: number = 10;
 
 /** Poster/cover artwork is 2:3 (width:height), so height = width * 1.5. */
 const COVER_ASPECT_RATIO: number = 1.5;
+/** Web phone Screen view card: 16:9 art. */
+const TOUCH_LANDSCAPE_RATIO: number = 9 / 16;
 
 /** A defensive floor so a not-yet-measured or pathologically narrow layout
  * never computes a zero/negative card size. Not a `core/Tokens.ts` field --
@@ -713,53 +716,72 @@ export struct Library {
     .hideTitleBar(true)
   }
 
+  /** Phone (web phone shell): Back, the title with its count and the Filters button on top, the bottom nav bar below; the
+   * Filters and long-press drawers are the TV ones (they are as wide as the phone). */
   @Builder
   private touchLayout(): void {
-      Column() {
-        Row({ space: Spacing.sm }) {
-          LibraryChip({
-            label: '‹ Back',
-            selected: false,
-            onActivate: () => {
-              popRoute(getNavStack());
-            },
-          })
+    Stack() {
+      PageShell({
+        title: libraryKindTitle(this.kind),
+        kicker: this.total >= 0 ? titleCountLabel(this.total) : '',
+        selectedId: this.kind,
+        touch: true,
+        touchActions: (): void => {
+          this.touchFiltersButton();
+        },
+        touchContent: (): void => {
+          this.touchBody();
+        },
+      })
+      this.touchOverlays()
+    }
+    .width('100%')
+    .height('100%')
+  }
 
-          Text(libraryKindTitle(this.kind))
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().ink))
-            .layoutWeight(1)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
+  @Builder
+  private touchFiltersButton(): void {
+    TouchIconButton({
+      icon: $r('app.media.action_filters'),
+      onTap: (): void => {
+        this.filtersOpen = true;
+      },
+    })
+  }
 
-          Row({ space: Spacing.xs }) {
-            ForEach(
-              SORT_OPTIONS,
-              (option: LibrarySortOption) => {
-                LibraryChip({
-                  label: option.label,
-                  selected: option.value === this.sort,
-                  onActivate: () => {
-                    this.setSort(option.value);
-                  },
-                })
-              },
-              (option: LibrarySortOption): string => option.value
-            )
-          }
+  @Builder
+  private touchOverlays(): void {
+    if (this.actionsWork !== undefined) {
+      TitleActionsDrawer({
+        workId: this.actionsWork.id,
+        workTitle: this.actionsWork.title,
+        onClose: (): void => {
+          this.actionsWork = undefined;
+        },
+        onPlay: (workId: string): void => {
+          this.openDetail(workId);
+        },
+        onWatchedChanged: (): void => {
+          this.loadWatchProgress();
+        },
+      })
+    } else if (this.filtersOpen) {
+      Drawer({
+        kicker: 'Library controls',
+        title: 'Filters',
+        onClose: (): void => {
+          this.filtersOpen = false;
+        },
+        body: (): void => {
+          this.filtersBody();
+        },
+      })
+    }
+  }
 
-          LibraryChip({
-            label: (this.order === 'asc' ? 'Order: Asc' : 'Order: Desc'),
-            selected: true,
-            onActivate: () => {
-              this.toggleOrder();
-            },
-          })
-        }
-        .width('100%')
-        .padding({ left: Spacing.lg, right: Spacing.lg, top: Spacing.md, bottom: Spacing.md })
-
+  @Builder
+  private touchBody(): void {
+    Column() {
         if (this.isLoadingMore) {
           Row() {
             AsyncState({ kind: AsyncStateKind.Loading })
@@ -804,13 +826,17 @@ export struct Library {
                 GridItem() {
                   LibraryGridCell({
                     work: work,
-                    cardWidth: this.gridCardWidthVp(),
-                    cardHeight: this.gridCardHeightVp(),
+                    cardWidth: this.touchCardWidthVp(),
+                    cardHeight: this.touchCardHeightVp(),
                     cardRadius: this.gridCardRadiusVp(),
+                    landscape: this.view !== 'cover',
                     unseen: this.markFor(work).unseen,
                     progress: this.markFor(work).progress,
                     onSelect: (workId: string) => {
                       this.openDetail(workId);
+                    },
+                    onLongPress: (pressed: Work) => {
+                      this.actionsWork = pressed;
                     },
                   })
                 }
@@ -818,7 +844,7 @@ export struct Library {
               (work: Work): string => work.id
             )
           }
-          .columnsTemplate((columnsTemplateFor(this.gridColumnCount())))
+          .columnsTemplate(this.view === 'cover' ? columnsTemplateFor(this.gridColumnCount()) : '1fr')
           .columnsGap(this.gridColumnGapVp())
           .rowsGap(this.gridRowGapVp())
           .edgeEffect(EdgeEffect.Spring)
@@ -835,11 +861,19 @@ export struct Library {
           .layoutWeight(1)
           .width('100%')
         }
-      }
-      .width('100%')
-      .height('100%')
-      .alignItems(HorizontalAlign.Start)
-      .backgroundColor(toResourceColor(activeColors().bg))
+    }
+    .width('100%')
+    .height('100%')
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  /** Web phone "Screen" view: one landscape card per row across the width; "Cover" keeps the portrait columns. */
+  private touchCardWidthVp(): number {
+    return this.view === 'cover' ? this.gridCardWidthVp() : this.availableGridWidthVp();
+  }
+
+  private touchCardHeightVp(): number {
+    return this.view === 'cover' ? this.gridCardHeightVp() : this.availableGridWidthVp() * TOUCH_LANDSCAPE_RATIO;
   }
 
   /** The right panel by View: the landscape grid (screen), a portrait cover wall (cover) or title rows (list). */

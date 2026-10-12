@@ -138,6 +138,8 @@ const DEFAULT_UNFOCUSED_RAIL_FACTOR: number = 0;
  * generic `<T>` or `ESObject`. */
 export interface MediaRailItem {
   id: string;
+  /** Changes when the item's content does (an artwork that arrived late): ForEach rebuilds a card only when its key changes. */
+  stamp?: string;
 }
 
 /** Brief 5.10: home-rail item gap is `railItemGapHome` (25) on TV /
@@ -281,7 +283,7 @@ export struct MediaRail {
               this.itemBuilder(item, index, this.activeRailFactor)
             }
           },
-          (item: MediaRailItem): string => item.id
+          (item: MediaRailItem): string => item.id + ':' + (item.stamp ?? '')
         )
       }
       .listDirection(Axis.Horizontal)

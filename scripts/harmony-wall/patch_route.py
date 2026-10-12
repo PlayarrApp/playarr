@@ -15,21 +15,29 @@ methods = """
   private startPreviewRoutePoll(): void {
     this.previewTimer = setInterval((): void => {
       this.previewPollOnce();
-    }, 700);
+    }, 1500);
   }
 
+  // One request object, one call in flight, never destroyed mid-flight: the Previewer's libhttp crashed (access violation in
+  // HttpExec::ReadResponse, freezing the whole app) when a timed-out poll was destroyed while the bridge was busy.
+  private previewReq: http.HttpRequest = http.createHttp();
+  private previewBusy: boolean = false;
+
   private previewPollOnce(): void {
-    const req = http.createHttp();
-    req.request('http://127.0.0.1:%s/route', { method: http.RequestMethod.GET, connectTimeout: 800, readTimeout: 800 })
+    if (this.previewBusy) {
+      return;
+    }
+    this.previewBusy = true;
+    this.previewReq.request('http://127.0.0.1:%s/route', { method: http.RequestMethod.GET, connectTimeout: 5000, readTimeout: 5000 })
       .then((r: http.HttpResponse): void => {
+        this.previewBusy = false;
         const name: string = String(r.result);
         if (name.length > 0) {
           this.previewGo(name);
         }
-        req.destroy();
       })
       .catch((): void => {
-        req.destroy();
+        this.previewBusy = false;
       });
   }
 
@@ -37,6 +45,10 @@ methods = """
     if (name.indexOf('library:') === 0) {
       const params: PreviewRouteParams = new PreviewRouteParams(name.substring(8));
       this.navPathStack.replacePathByName('Library', params);
+      return;
+    }
+    if (name.indexOf('player:') === 0) {
+      this.navPathStack.replacePathByName('Player', new PreviewPlayerParams(name.substring(7)));
       return;
     }
     const map: Map<string, string> = new Map<string, string>();
@@ -50,7 +62,7 @@ methods = """
     }
   }
 """ % port
-s = s.replace("\n@Entry", "\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\n@Entry", 1)
+s = s.replace("\n@Entry", "\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
 s = s.replace("\n  @Builder\n  previewRoutes(", methods + "\n  @Builder\n  previewRoutes(", 1)
 s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { ROUTES } from '../navigation/Routes';", 1)
 s = s.replace("  aboutToAppear(): void {\n", "  aboutToAppear(): void {\n    this.startPreviewRoutePoll();\n", 1)
