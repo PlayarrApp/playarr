@@ -36,6 +36,10 @@ ROUTE_BOX = {"name": ""}
 IMAGES: dict = {}  # id -> bytes, posted by the patched app (the Previewer cannot decode images itself)
 STATE = {"route": "", "kind": "", "focused": None, "lib_kind": ""}
 DEBUG_SEQUENCE = 0
+DETAIL_IMAGE_STAGES = {
+    "source", "fetch-start", "fetch-ok", "fetch-error", "bridge-source-ready",
+    "assigned", "on-complete", "on-error",
+}
 
 
 def append_debug_event(category: str, *, route: str = "", work_id: str = "", parent_work_id: str = "",
@@ -45,6 +49,7 @@ def append_debug_event(category: str, *, route: str = "", work_id: str = "", par
     event = {
         "sequence": DEBUG_SEQUENCE,
         "category": category,
+        "timestamp": time.monotonic(),
         "route": route or STATE.get("route", ""),
         "work_id": work_id or STATE.get("work_id", ""),
         "generation": generation or STATE.get("route_generation", 0),
@@ -74,6 +79,31 @@ def append_row_image_event(body: dict) -> bool:
             and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
         return False
     append_debug_event("detail-row-image-complete", route=route, work_id=work_id,
+                       parent_work_id=parent_work_id, row_id=row_id, generation=generation)
+    return True
+
+
+def append_detail_image_stage(body: dict) -> bool:
+    """Accept a scoped preview-only image stage without exposing IDs in logs/artifacts."""
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    parent_work_id = str(body.get("parent_work_id", ""))
+    row_id = str(body.get("row_id", ""))
+    stage = str(body.get("stage", ""))
+    try:
+        generation = int(body.get("generation", 0))
+    except (TypeError, ValueError):
+        return False
+    if (route != "Detail" or not work_id or work_id != parent_work_id or not row_id
+            or generation <= 0 or stage not in DETAIL_IMAGE_STAGES):
+        return False
+    current_generation = STATE.get("route_generation", 0)
+    if generation < current_generation:
+        return False
+    if (generation == current_generation and current_generation > 0
+            and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
+        return False
+    append_debug_event("detail-row-image-" + stage, route=route, work_id=work_id,
                        parent_work_id=parent_work_id, row_id=row_id, generation=generation)
     return True
 
@@ -474,7 +504,11 @@ def main():
                 })
                 return self._reply(200, b"ok")
             if url.path == "/row-image":
+                # Compatibility for older local overlays; capture.py gates on the staged on-complete event below.
                 append_row_image_event(body)
+                return self._reply(200, b"ok")
+            if url.path == "/row-image-stage":
+                append_detail_image_stage(body)
                 return self._reply(200, b"ok")
             ok = commands.send(body["command"], body.get("args"), body.get("type", "action"))
             return self._reply(200 if ok else 503, b"ok")

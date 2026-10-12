@@ -67,6 +67,21 @@ class PreviewEventTests(unittest.TestCase):
             "row_id": "", "generation": 7,
         }))
 
+    def test_detail_image_stages_require_valid_scope_and_allowlisted_stage(self):
+        harmony_vnc.apply_state({
+            "route": ["Detail"], "kind": [""], "work": ["work-a"], "generation": ["7"],
+        })
+        body = {
+            "route": "Detail", "work_id": "work-a", "parent_work_id": "work-a",
+            "row_id": "row-a", "generation": 7, "stage": "fetch-error",
+        }
+        self.assertTrue(harmony_vnc.append_detail_image_stage(body))
+        event = harmony_vnc.STATE["debug_events"][-1]
+        self.assertEqual(event["category"], "detail-row-image-fetch-error")
+        self.assertIsInstance(event["timestamp"], float)
+        self.assertFalse(harmony_vnc.append_detail_image_stage(dict(body, stage="bad", row_id="row-b")))
+        self.assertFalse(harmony_vnc.append_detail_image_stage(dict(body, generation=6)))
+
     def test_debug_sequence_stays_monotonic_when_window_is_capped(self):
         for _ in range(305):
             harmony_vnc.append_debug_event("test")

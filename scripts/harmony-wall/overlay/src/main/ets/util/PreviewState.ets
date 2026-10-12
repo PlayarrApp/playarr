@@ -71,6 +71,22 @@ export function reportDetailRowImageComplete(context: DetailRowImageContext): vo
   previewPost('/row-image', body);
 }
 
+export function reportDetailRowImageStage(context: DetailRowImageContext, stage: string): void {
+  if (context.route !== 'Detail' || context.parentWorkId.length === 0 || context.rowId.length === 0 ||
+      context.parentWorkId !== PREVIEW_WORK_ID || context.generation !== PREVIEW_ROUTE_GENERATION) {
+    return;
+  }
+  const body: string = JSON.stringify({
+    route: context.route,
+    work_id: context.parentWorkId,
+    parent_work_id: context.parentWorkId,
+    row_id: context.rowId,
+    generation: context.generation,
+    stage: stage,
+  });
+  previewPost('/row-image-stage', body);
+}
+
 export function reportCardFocus(title: string, subtitle: string): void {
   previewReport('title=' + encodeURIComponent(title) + '&sub=' + encodeURIComponent(subtitle));
 }

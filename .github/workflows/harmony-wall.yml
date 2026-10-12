@@ -210,6 +210,7 @@ jobs:
           path: |
             capture/_debug
             capture/_rejected-*.png
+            capture/build.json
             bridge.log
             previewer.log
           if-no-files-found: ignore

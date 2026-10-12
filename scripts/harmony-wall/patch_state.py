@@ -13,12 +13,12 @@ def edit(rel, fn):
 
 def card(s):
     s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { reportCardFocus, previewReport } from '../../util/PreviewState';", 1)
-    s = s.replace("  onLongPress: () => void = () => {};", "  onLongPress: () => void = () => {};\n  onPreviewRowImageComplete: () => void = () => {};", 1)
+    s = s.replace("  onLongPress: () => void = () => {};", "  onLongPress: () => void = () => {};\n  onPreviewRowImageComplete: () => void = () => {};\n  onPreviewRowImageError: () => void = () => {};", 1)
     old = "      this.setFocused(true);\n      this.onFocused();\n"
     assert old in s
     s = s.replace(old, old + "      reportCardFocus(this.title, this.subtitle);\n", 1)
     s = s.replace("    .focusable(true)\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", "    .focusable(true)\n    .focusOnTouch(true)\n    .id('pcard')\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", 1)
-    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onComplete(() => { previewReport('dbg=' + encodeURIComponent('poster-image-complete')); this.onPreviewRowImageComplete(); })\n            .onError(() => { previewReport('dbg=' + encodeURIComponent('poster-image-error')); })\n            .width('100%')", 1)
+    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onComplete(() => { previewReport('dbg=' + encodeURIComponent('poster-image-complete')); this.onPreviewRowImageComplete(); })\n            .onError(() => { previewReport('dbg=' + encodeURIComponent('poster-image-error')); this.onPreviewRowImageError(); })\n            .width('100%')", 1)
     return s.replace("    .onClick(() => {\n      if (this.longPressFired) {", "    .onClick(() => {\n      reportCardFocus('click:' + this.title, '');\n      if (this.longPressFired) {", 1)
 
 def nav(s):
@@ -58,11 +58,16 @@ def home(s):
     return s.replace(old, "    previewReport('dbg=' + encodeURIComponent('home-card-artwork-' + result.kind));\n" + old, 1)
 
 def detail(s):
-    s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { captureDetailRowImageContext, reportDetailRowImageComplete } from '../util/PreviewState';", 1)
+    s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { captureDetailRowImageContext, reportDetailRowImageStage } from '../util/PreviewState';", 1)
     marker = "// -- UI-only constants"
     helper = """function createDetailRowImageCompletion(parentWorkId: string, rowId: string): () => void {
   const context = captureDetailRowImageContext(parentWorkId, rowId);
-  return (): void => { reportDetailRowImageComplete(context); };
+  return (): void => { reportDetailRowImageStage(context, 'on-complete'); };
+}
+
+function createDetailRowImageError(parentWorkId: string, rowId: string): () => void {
+  const context = captureDetailRowImageContext(parentWorkId, rowId);
+  return (): void => { reportDetailRowImageStage(context, 'on-error'); };
 }
 
 """
@@ -73,8 +78,26 @@ def detail(s):
     start = s.index("  private rowItem(item: MediaRailItem")
     end = s.index("  /** Similar-title row content", start)
     row = s[start:end]
-    row = row.replace("        variant: 'titleEpisode',\n", "        variant: 'titleEpisode',\n        onPreviewRowImageComplete: createDetailRowImageCompletion(this.workId, (item as DetailRow).id),\n")
-    return s[:start] + row + s[end:]
+    row = row.replace("        variant: 'titleEpisode',\n", "        variant: 'titleEpisode',\n        onPreviewRowImageComplete: createDetailRowImageCompletion(this.workId, (item as DetailRow).id),\n        onPreviewRowImageError: createDetailRowImageError(this.workId, (item as DetailRow).id),\n")
+    s = s[:start] + row + s[end:]
+    old = """        const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
+        if (thumb.kind === 'ok') {
+          this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
+        }"""
+    assert old in s
+    new = """        const previewContext = captureDetailRowImageContext(this.workId, item.id);
+        reportDetailRowImageStage(previewContext, 'source');
+        reportDetailRowImageStage(previewContext, 'fetch-start');
+        const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
+        if (thumb.kind === 'ok') {
+          reportDetailRowImageStage(previewContext, 'fetch-ok');
+          reportDetailRowImageStage(previewContext, 'bridge-source-ready');
+          this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
+          reportDetailRowImageStage(previewContext, 'assigned');
+        } else {
+          reportDetailRowImageStage(previewContext, 'fetch-error');
+        }"""
+    return s.replace(old, new, 1)
 
 def card_dbg(s):
     old = "        if (this.artwork !== undefined) {\n          Image(this.artwork)"
