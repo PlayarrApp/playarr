@@ -5,6 +5,7 @@ import android.content.Intent
 import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.IntentCompat
@@ -38,6 +39,8 @@ internal fun playarrMediaControlAction(keyCode: Int): PlayarrMediaControlAction?
 @Composable
 internal fun PlayarrMediaSession(
     player: Player,
+    title: String,
+    subtitle: String?,
     canPrevious: Boolean,
     canNext: Boolean,
     onPlay: () -> Unit,
@@ -60,6 +63,14 @@ internal fun PlayarrMediaSession(
     val currentOnSeekForward = rememberUpdatedState(onSeekForward)
     val currentOnPrevious = rememberUpdatedState(onPrevious)
     val currentOnNext = rememberUpdatedState(onNext)
+
+    // The now-playing entry needs a title: put it on the current item (same source, so no re-prepare).
+    LaunchedEffect(player, title, subtitle, player.currentMediaItem?.mediaId) {
+        val item = player.currentMediaItem ?: return@LaunchedEffect
+        if (item.mediaMetadata.title?.toString() == title && item.mediaMetadata.subtitle?.toString() == subtitle) return@LaunchedEffect
+        val meta = item.mediaMetadata.buildUpon().setTitle(title).setSubtitle(subtitle).build()
+        player.replaceMediaItem(player.currentMediaItemIndex, item.buildUpon().setMediaMetadata(meta).build())
+    }
 
     DisposableEffect(player) {
         val callback = object : MediaSession.Callback {

@@ -78,7 +78,21 @@ export function createDriver() {
     }
     throw new Error("still signed out after linking");
   };
+  // The app's MediaSession as the now-playing entry: state PLAYING, a title in its metadata, and the system's pause command pauses it.
+  const nowPlaying = async () => {
+    const session = async () => {
+      const t = await shell("dumpsys", "media_session");
+      const block = t.split(/\n(?=\s{4}\S)/).find((b) => b.includes(`package=${pkg}`) && /active=true/.test(b)) ?? "";
+      return { state: /state=PlaybackState \{state=(\w+)/.exec(block)?.[1] ?? "", title: (/metadata: size=\d+, description=([^,\n]*)/.exec(block)?.[1] ?? "").replace(/^null$/, "") };
+    };
+    const a = await session();
+    await shell("cmd", "media_session", "dispatch", "pause"); await sleep(1500);
+    const pausedOk = (await session()).state.startsWith("PAUSED");
+    await shell("cmd", "media_session", "dispatch", "play"); await sleep(1500);
+    return { title: a.title, state: a.state, pausedOk, ok: !!a.title && a.state.startsWith("PLAYING") && pausedOk };
+  };
   return {
+    supports: { nowPlaying: true },
     async start() {
       const touch = await shell("dumpsys", "input");
       // A tap (the USB-debugging prompt watcher taps) puts the device in touch mode, which hides every focus state; a key press leaves it.
@@ -168,7 +182,10 @@ export function createDriver() {
         const p1 = await pos();
         advancedSeconds = p1 === null ? 0 : (p1 - p0) / 1000;
       }
-      return { state: advancedSeconds >= expect.advanceSeconds ? "playing" : "stalled", startSeconds, advancedSeconds };
+      const state = advancedSeconds >= expect.advanceSeconds ? "playing" : "stalled";
+      const r = { state, startSeconds, advancedSeconds };
+      if (c.nowPlaying && state === "playing") r.nowPlaying = await nowPlaying();
+      return r;
     },
   };
 }

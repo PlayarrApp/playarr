@@ -1662,6 +1662,8 @@ internal fun PlayarrExperience(
     if (activePlaybackItem != null && persistentPlayerState is ExperienceLoad.Ready) {
         PlayarrMediaSession(
             player = playerViewModel.player.rawPlayer,
+            title = activePlaybackItem.displayTitle(LocalPlayarrLanguage.current),
+            subtitle = activePlaybackItem.subtitle,
             canPrevious = playbackQueue.canPrevious,
             canNext = playbackQueue.canNext,
             onPlay = playerViewModel.player::play,
@@ -2303,9 +2305,9 @@ private fun ExperienceNavHost(
     playerViewModel: ExperiencePlayerViewModel,
 ) {
     val playbackQueue by viewModel.playbackQueue.collectAsState()
-    // Debug parity launches on a detail route sit on top of Home, as web's history does, so BACK returns to Home.
+    // Debug parity launches on a detail route sit on top of Movies (on Home), as web's Back from a deep-linked film does.
     val detailOnHome = parityRoute != null && initialRoute.startsWith("experience-detail")
-    if (detailOnHome) LaunchedEffect(Unit) { navController.navigate(initialRoute) }
+    if (detailOnHome) LaunchedEffect(Unit) { navController.navigate("movies"); navController.navigate(initialRoute) }
     NavHost(navController, startDestination = if (detailOnHome) "home" else initialRoute, modifier = Modifier.fillMaxSize()) {
         composable("home") {
             ExperienceOnlineGate(isOnline, isTelevision, "home") {
