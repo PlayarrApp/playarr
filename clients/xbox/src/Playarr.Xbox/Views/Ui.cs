@@ -109,7 +109,7 @@ namespace Playarr.Xbox.Views
         /// <summary>The detail page's secondary pill: a faint ink-tinted fill and no outline, as the web draws it.</summary>
         public static Button Filled(Button pill)
         {
-            pill.Background = new SolidColorBrush(Theme.IsLight ? Windows.UI.Color.FromArgb(18, 56, 38, 33) : Windows.UI.Color.FromArgb(15, 255, 255, 255));
+            pill.Background = new SolidColorBrush(Theme.IsLight ? Windows.UI.Color.FromArgb(235, 255, 255, 255) : Windows.UI.Color.FromArgb(15, 255, 255, 255));
             pill.BorderThickness = new Thickness(0);
             return pill;
         }

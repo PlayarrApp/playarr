@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: the film detail page has the web structure: a narrower two-line title, runtime and Released in the meta line, and a Chapters rail with a frame per chapter that plays from there.
 - Fire TV parity control: opening a title by id resets the stack so Back goes to its library page, as the web's URL does (suite check detail-back).
 - Fire TV: the player shows the title's length while an HLS stream is still being written (it read 0:00), and draws the web's missing controls: previous and next, volume, queue, info, cast and the Minimise pill (dimmed where nothing is behind them yet).
 - Fire TV: the resting card shadow is a soft ramp like the web's instead of a hard grey slab under every poster (light theme most of all).
@@ -327,6 +328,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- HarmonyOS TV: Settings > Profile lock sets, replaces and removes the profile PIN, as web does.
 - HarmonyOS TV player: an info button opens a drawer with the title, its synopsis and how the stream reaches the device (delivery, quality, audio, subtitles).
 - HarmonyOS TV player: the control bar shows the negotiated quality; selecting it opens a drawer to switch quality (the stream renegotiates from the current position, keeping the chosen audio).
 - HarmonyOS TV detail page: Add to watchlist (and Remove), the Resume-from time on the primary pill for a part-watched movie, and a Playback button that opens the movie's saved quality, audio and subtitle settings.
@@ -530,6 +532,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: the letter rail has the web's 44 px spacing and scrolls to keep the active letter centred; the grid scrolls only as far as the focused card needs, as on the web.
+- webOS parity driver waits once per player entry for the video to be playing before the first key, as the simulator opens the player slower than web.
 - Fire TV: hero titles wrap as Chrome's text-wrap: balance does, from measured word widths.
 - VIDAA: the stage is now scaled with a transform instead of CSS zoom, so rects, scrolling and spatial navigation share one coordinate space on its Chrome 111 engine (Home first card and left-to-nav focus now land where web's do).
 - HarmonyOS TV: Settings > Appearance Home screen artwork and Artwork size now change Home's rails and the Library's screen and cover grids, as web's card size does.

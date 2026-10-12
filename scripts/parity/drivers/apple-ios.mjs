@@ -6,7 +6,7 @@
 // Documents/parity-state.json (signedIn, playback). A launch costs seconds, so route() only records the suite route and
 // screenshot() launches the native screen named by the file (suite ids are unique, routes are not: actions and movies).
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,11 +58,51 @@ export async function createDriver() {
     for (let i = 0; i < 60 && !state().signedIn; i += 1) await sleep(1000);
     if (!state().signedIn) throw new Error("signed out");
   };
+  let seq = 0, touched = new Set();
+  const cmd = (action, m) => { // the debug app polls Documents/parity-cmd.json (ParityDownloads.swift)
+    touched.add(m.file);
+    writeFileSync(join(statePath(), "..", "parity-cmd.json"), JSON.stringify({ seq: (seq += 1), action, file: m.file, work: m.work, title: m.title }));
+  };
+  const rec = (m) => (state().downloads ?? []).find((d) => d.file.toLowerCase() === m.file.toLowerCase());
+  const until = async (m, ok, seconds) => {
+    for (let t = 0; t < seconds; t += 2) { const d = rec(m); if (d?.state === "failed") return { state: "failed", detail: d.error || "download failed" }; if (ok(d)) return { state: "ok" }; await sleep(2000); }
+    return { state: "failed", detail: `timed out after ${seconds} s: ${JSON.stringify(rec(m) ?? null)}` };
+  };
   return {
+    supports: { downloads: true }, // no notifications (the app posts none) and no grouped Downloads page on iOS
+    async cleanupDownloads() { for (const file of touched) { try { cmd("cancel", { file }); await sleep(1500); } catch { /* app gone */ } } },
+    async download(c, expect) {
+      const m = c.media;
+      if (!state().signedIn) await launch("home");
+      const within = expect.withinSeconds;
+      const start = async () => { cmd("start", m); return until(m, (d) => !!d, 60); };
+      const done = (d) => d?.state === "completed";
+      let r;
+      switch (c.action) {
+        case "start": r = await start(); if (r.state === "ok") r = await until(m, done, within); cmd("delete", m); return r;
+        case "pause-resume": r = await start(); if (r.state !== "ok") return r;
+          r = await until(m, (d) => d.state === "downloading" && d.bytes > 0, 120); if (r.state !== "ok") return r;
+          cmd("pause", m); r = await until(m, (d) => d.state === "paused", 30); if (r.state !== "ok") return r;
+          cmd("resume", m); r = await until(m, done, within); cmd("delete", m); return r;
+        case "cancel": r = await start(); if (r.state !== "ok") return r;
+          r = await until(m, (d) => d.state === "downloading" && d.bytes > 0, 120); if (r.state !== "ok") return r;
+          cmd("cancel", m); return until(m, (d) => !d, 30);
+        case "delete": r = await start(); if (r.state === "ok") r = await until(m, done, within); if (r.state !== "ok") { cmd("delete", m); return r; }
+          cmd("delete", m); return until(m, (d) => !d, 30);
+        case "offline-play": r = await start(); if (r.state === "ok") r = await until(m, done, within); if (r.state !== "ok") { cmd("delete", m); return r; }
+          // Plays the stored file: the player reads it from the repository before it asks the network (isPlayingLocalFile).
+          await launch("play", ["--playarr-parity-play", m.file]);
+          for (let t = 0; t < 40; t += 1) { const p = state().playback; if (p?.state === "playing" && p.position > 0) { const p0 = p.position; await sleep(5000); const adv = (state().playback?.position ?? 0) - p0; cmd("delete", m); return adv >= 3 ? { state: "ok", detail: `advanced ${adv.toFixed(1)} s` } : { state: "failed", detail: "frames did not advance" }; } await sleep(1000); }
+          cmd("delete", m); return { state: "failed", detail: "the downloaded title did not play" };
+        case "edit": return { state: "failed", detail: "iOS has no edit-download screen (keep-until and quality are fixed when a download starts)" };
+        case "notification": return { state: "failed", detail: "iOS posts no download notification yet" };
+        default: return { state: "failed", detail: `unknown action ${c.action}` };
+      }
+    },
     async start() {
       run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
       await sleep(60000); // a fresh simulator shows one-off system banners (Apple Intelligence) in the first minute: let them go
-      await resetProgress([...new Set([...suite.playback.map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // pinned files come from suite.json, never a copy here
+      await resetProgress([...new Set([...(suite.playback ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // pinned files come from suite.json, never a copy here
     },
     async stop() {},
     async setTheme(t) { theme = t; },

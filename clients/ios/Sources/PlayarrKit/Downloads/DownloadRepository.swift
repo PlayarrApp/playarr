@@ -224,6 +224,27 @@ public final class DownloadRepository {
         cancel(mediaFileID: mediaFileID)
     }
 
+    /// Changes when a stored download may be removed (web's edit drawer: keep-until).
+    public func updateKeepUntil(mediaFileID: UUID, _ policy: KeepUntilPolicy) {
+        guard let record = record(forMediaFileID: mediaFileID) else { return }
+        record.keepUntil = policy
+        record.updatedAt = Date()
+        try? modelContext.save()
+    }
+
+    /// Changes a download's quality by re-converting, as web does: the old copy goes and a new ticket is requested for the
+    /// same media file with the same keep-until. `profile` is the chosen option's `profile` (nil = original).
+    public func changeQuality(mediaFileID: UUID, profile: String?) {
+        guard let record = record(forMediaFileID: mediaFileID) else { return }
+        let candidate = DownloadCandidate(
+            mediaFileID: record.mediaFileID, workID: record.workID, title: record.title,
+            subtitle: record.subtitle, posterURLString: record.posterURLString
+        )
+        let keepUntil = record.keepUntil
+        cancel(mediaFileID: mediaFileID)
+        enqueue(candidates: [candidate], profile: profile, keepUntil: keepUntil)
+    }
+
     public func markWatched(mediaFileID: UUID, at date: Date = Date()) {
         guard let record = record(forMediaFileID: mediaFileID), record.watchedAt == nil else { return }
         record.watchedAt = date
@@ -292,7 +313,12 @@ public final class DownloadRepository {
     private func handleFailed(mediaFileID: UUID, error: Error, resumeData: Data?) {
         guard let record = record(forMediaFileID: mediaFileID) else { return }
         record.resumeData = resumeData
-        fail(record, message: (error as NSError).localizedDescription)
+        let ns = error as NSError
+        #if DEBUG
+        fail(record, message: "\(ns.localizedDescription) (\(ns.domain) \(ns.code))") // the parity downloads cases show why a transfer failed
+        #else
+        fail(record, message: ns.localizedDescription)
+        #endif
     }
 
     private func handlePaused(mediaFileID: UUID, resumeData: Data?) {

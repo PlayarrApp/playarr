@@ -28,6 +28,7 @@ import {
   verifyPinUrl,
   capabilitiesUrl,
   playerPreferencesUrl,
+  profilePinUrl,
 } from '../core/Endpoints.ts';
 import {
   AvailableProfileResponse,
@@ -35,6 +36,8 @@ import {
   VerifyPinResponse,
   Capabilities,
   PlayerPreferences,
+  ProfilePinSetting,
+  UpdateProfilePinRequest,
 } from '../core/Types/Profiles.ts';
 
 /**
@@ -99,4 +102,14 @@ export function getPlayerPreferences(): Promise<ApiResult<PlayerPreferences>> {
  */
 export function updatePlayerPreferences(preferences: PlayerPreferences): Promise<ApiResult<PlayerPreferences>> {
   return getPlayarrClient().patchJson<PlayerPreferences, PlayerPreferences>(playerPreferencesUrl(), preferences);
+}
+
+/** `GET /api/v1/users/me/profile-pin`: is this profile PIN-locked? */
+export function getProfilePinSetting(): Promise<ApiResult<ProfilePinSetting>> {
+  return getPlayarrClient().getJson<ProfilePinSetting>(profilePinUrl());
+}
+
+/** `PATCH /api/v1/users/me/profile-pin`: a four-digit PIN sets or replaces the lock, `null` removes it. */
+export function updateProfilePinSetting(pin: string | null): Promise<ApiResult<ProfilePinSetting>> {
+  return getPlayarrClient().patchJson<UpdateProfilePinRequest, ProfilePinSetting>(profilePinUrl(), { pin: pin });
 }

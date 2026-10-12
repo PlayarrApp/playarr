@@ -167,6 +167,47 @@ namespace Playarr.Xbox.Views
             return group;
         }
 
+        /// <summary>A labelled select as a vertical list (many or long options), the selected row filled.</summary>
+        public static StackPanel Choice(string label, string[] options, int selected, Action<int> onSelect)
+        {
+            var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
+            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
+            caption.CharacterSpacing = 120;
+            group.Children.Add(caption);
+            for (var i = 0; i < options.Length; i++)
+            {
+                var index = i;
+                var isSelected = i == selected;
+                var button = new Button
+                {
+                    Height = 46,
+                    Margin = new Thickness(0, 0, 0, 6),
+                    Padding = new Thickness(18, 0, 16, 0),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    HorizontalContentAlignment = HorizontalAlignment.Left,
+                    CornerRadius = new CornerRadius(6),
+                    Background = isSelected ? Ui.Res("PlayarrInk") : new SolidColorBrush(Colors.Transparent),
+                    BorderBrush = Ui.Res("PlayarrLineStrong"),
+                    BorderThickness = new Thickness(1),
+                    Content = new TextBlock
+                    {
+                        Text = options[i],
+                        FontSize = 12,
+                        FontWeight = FontWeights.SemiBold,
+                        TextTrimming = TextTrimming.CharacterEllipsis,
+                        Foreground = isSelected ? Ui.Res("PlayarrSurfaceStrong") : Ui.Res("PlayarrInkSoft"),
+                    },
+                    FocusVisualPrimaryBrush = Theme.FocusRing,
+                    FocusVisualPrimaryThickness = new Thickness(3),
+                    FocusVisualSecondaryThickness = new Thickness(0),
+                };
+                button.Click += (s, e) => onSelect(index);
+                group.Children.Add(button);
+            }
+
+            return group;
+        }
+
         /// <summary>An action row ("Play", "Mark as Watched"): icon in brand pink and label, as the web actions panel.</summary>
         public static Button Action(string glyph, string label, Action onClick)
         {

@@ -16,7 +16,7 @@ import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
 import type { AudioLanguage } from '../core/AudioLanguages';
 import { AUDIO_LANGUAGES, normaliseAudioLanguage, audioLanguageLabel } from '../core/AudioLanguages';
-import { getPlayerPreferences, updatePlayerPreferences } from '../data/ProfileRepository';
+import { getPlayerPreferences, updatePlayerPreferences, getProfilePinSetting, updateProfilePinSetting } from '../data/ProfileRepository';
 import type { Choice } from '../design/components/ChoiceSegments';
 
 import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance } from '../AppContainer';
@@ -111,6 +111,11 @@ export struct SettingsScreen {
   @State private subtitleMode: string = 'off';
   @State private subtitleLanguage: string = 'en';
   @State private audioError: string = '';
+  /** Profile lock: 'loading', 'ready', 'saving', 'saved' or an error message in `lockError`. */
+  @State private lockStatus: string = 'loading';
+  @State private pinLocked: boolean = false;
+  @State private pinDraft: string = '';
+  @State private lockError: string = '';
   @State private homeView: string = 'thumbnail';
   @State private artworkSize: string = 'medium';
 
@@ -118,6 +123,53 @@ export struct SettingsScreen {
     this.loadAudioLanguage();
     this.loadDefaults();
     this.loadAppearanceChoices();
+    this.loadPinSetting();
+  }
+
+  private async loadPinSetting(): Promise<void> {
+    const result = await getProfilePinSetting();
+    if (result.kind === 'ok') {
+      this.pinLocked = result.value.pin_locked;
+      this.lockStatus = 'ready';
+    } else {
+      this.lockStatus = 'error';
+      this.lockError = 'The server could not be reached.';
+    }
+  }
+
+  /** Web `handleProfilePinSave` / `handleProfilePinRemove`: four digits set or replace the PIN, null removes it. */
+  private async savePin(remove: boolean): Promise<void> {
+    if (this.lockStatus === 'loading' || this.lockStatus === 'saving') {
+      return;
+    }
+    if (!remove && this.pinDraft.length !== 4) {
+      this.lockStatus = 'error';
+      this.lockError = 'Enter exactly four digits.';
+      return;
+    }
+    this.lockStatus = 'saving';
+    const result = await updateProfilePinSetting(remove ? null : this.pinDraft);
+    if (result.kind === 'ok') {
+      this.pinLocked = result.value.pin_locked;
+      this.pinDraft = '';
+      this.lockStatus = 'saved';
+    } else {
+      this.lockStatus = 'error';
+      this.lockError = 'The server could not be reached.';
+    }
+  }
+
+  private lockStatusText(): string {
+    if (this.lockStatus === 'loading') {
+      return 'Loading profile lock…';
+    }
+    if (this.lockStatus === 'saving') {
+      return 'Updating profile lock…';
+    }
+    if (this.lockStatus === 'error') {
+      return this.lockError;
+    }
+    return this.pinLocked ? 'PIN lock is on.' : 'PIN lock is off.';
   }
 
   private async loadAppearanceChoices(): Promise<void> {
@@ -351,6 +403,63 @@ export struct SettingsScreen {
     .align(Alignment.TopStart)
   }
 
+  /** Web's Profile lock: a label, a four-digit PIN field with Set PIN / Replace, the lock status and Remove PIN. */
+  @Builder
+  private profileLockPanel(): void {
+    Column({ space: tv(16) }) {
+      Text(this.pinLocked ? 'Replace PIN' : 'New PIN')
+        .fontSize(tv(PANEL_TEXT_SIZE))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().ink))
+      Row({ space: tv(12) }) {
+        TextInput({ text: this.pinDraft, placeholder: '••••' })
+          .type(InputType.NUMBER_PASSWORD)
+          .maxLength(4)
+          .fontSize(tv(15.36))
+          .fontColor(toResourceColor(activeColors().ink))
+          .placeholderColor(toResourceColor(activeColors().inkMuted))
+          .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+          .width(tv(268))
+          .height(tv(48))
+          .enabled(this.lockStatus !== 'loading' && this.lockStatus !== 'saving')
+          .onChange((value: string) => {
+            this.pinDraft = value;
+          })
+        Text(this.lockStatus === 'saving' ? 'Saving…' : this.pinLocked ? 'Replace' : 'Set PIN')
+          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontWeight(FontWeight.Bold)
+          .fontColor(toResourceColor(this.pinDraft.length === 4 ? activeColors().bg : activeColors().inkMuted))
+          .backgroundColor(this.pinDraft.length === 4 ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().surfaceSoft, 0.64))
+          .borderRadius(tv(24))
+          .padding({ left: tv(24), right: tv(24), top: tv(14), bottom: tv(14) })
+          .focusable(true)
+          .onClick(() => {
+            this.savePin(false);
+          })
+      }
+      Row({ space: tv(16) }) {
+        Text(this.lockStatusText())
+          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontColor(toResourceColor(this.lockStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
+        if (this.pinLocked) {
+          Text('Remove PIN')
+            .fontSize(tv(PANEL_TEXT_SIZE))
+            .fontWeight(FontWeight.Bold)
+            .fontColor(toResourceColor(activeColors().ink))
+            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceSoft, 0.64))
+            .borderRadius(tv(20))
+            .padding({ left: tv(18), right: tv(18), top: tv(10), bottom: tv(10) })
+            .focusable(true)
+            .onClick(() => {
+              this.savePin(true);
+            })
+        }
+      }
+    }
+    .width(tv(this.panelWidth()))
+    .alignItems(HorizontalAlign.Start)
+  }
+
   /** A section whose controls are not built yet: its title and web's one-line description. */
   @Builder
   private pendingPanel(): void {
@@ -399,6 +508,8 @@ export struct SettingsScreen {
         this.playerPanel()
       } else if (this.openSection === SERVER) {
         this.serverPanel()
+      } else if (this.openSection === 'profile-lock') {
+        this.profileLockPanel()
       } else {
         this.pendingPanel()
       }
@@ -418,6 +529,8 @@ export struct SettingsScreen {
             this.playerPanel()
           } else if (this.openSection === SERVER) {
             this.serverPanel()
+          } else if (this.openSection === 'profile-lock') {
+            this.profileLockPanel()
           } else {
             this.pendingPanel()
           }

@@ -40,6 +40,7 @@ export async function createDriver() {
   if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos required");
   const display = device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
   const cdpPort = process.env.WEBOS_CDP ?? "9226";
+  let playerStarted = false;
   let ws, seq = 0, pending = new Map(), evalSeq = 0;
 
   async function cdpConnect() {
@@ -128,6 +129,12 @@ export async function createDriver() {
     },
     async route(r) { await load(r); await settle(); },
     async key(k, { long } = {}) {
+      // The simulator opens the player slower than web: a key sent while the title is still loading toggles or opens the wrong thing.
+      if (device === "webos") {
+        const onPlayer = await ev(`/^#\\/player\\//.test(location.hash)`).catch(() => false);
+        if (onPlayer && !playerStarted) { await until(`(() => { const v = document.querySelector("video"); return !!v && !v.paused && v.currentTime > 1; })()`, 30000); playerStarted = true; }
+        if (!onPlayer) playerStarted = false;
+      }
       if (device === "tizen") xkey(k, long);
       else {
         const c = { key: KEYNAME[k], code: KEYNAME[k], windowsVirtualKeyCode: KEYCODE[k], nativeVirtualKeyCode: KEYCODE[k] };
@@ -135,7 +142,7 @@ export async function createDriver() {
         if (long) await sleep(900);
         await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c });
       }
-      await sleep(device === "webos" ? 1000 : 350); // the simulator drops presses that come faster than it renders
+      await sleep(device === "webos" ? 1000 : 350);
     },
     async location() { return (await ev("location.hash.replace(/^#/, '')")) ?? null; },
     async focused() {

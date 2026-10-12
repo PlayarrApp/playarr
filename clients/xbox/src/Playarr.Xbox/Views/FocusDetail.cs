@@ -18,8 +18,8 @@ namespace Playarr.Xbox.Views
     {
         private readonly Image _backdrop = new Image { Width = 960, HorizontalAlignment = HorizontalAlignment.Left, Stretch = Stretch.UniformToFill, Opacity = 0.35 };
         private readonly TextBlock _eyebrow = new TextBlock { FontSize = 12, FontWeight = FontWeights.Bold, CharacterSpacing = 120 };
-        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69, FontWeight = FontWeights.SemiBold, CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 22, 0, 0) };
-        private readonly TextBlock _meta = new TextBlock { FontSize = 14, Margin = new Thickness(0, 24, 0, 0) };
+        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69, FontWeight = FontWeights.SemiBold, CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 34, 0, 0) };
+        private readonly TextBlock _meta = new TextBlock { FontSize = 14, Margin = new Thickness(0, 12, 0, 0) };
         private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 14, LineHeight = 22, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 20, 0, 0) };
         private readonly StackPanel _panel;
 
@@ -52,9 +52,9 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>
-        /// The web wraps the title with <c>text-wrap: pretty</c>: greedy lines, but the last line never holds a single word
-        /// when the line above could give one up ("2 Fast / 2 Furious", not "2 Fast 2 / Furious"). Lines are built by
-        /// measuring and set with explicit breaks.
+        /// The web balances the title (<c>text-wrap: balance</c>); the shared rule measured against Chrome (android/balance/NOTES.md):
+        /// keep the greedy line count at the 9ch box, then among the break sets with that many lines (each fitting the box)
+        /// take the smallest sum of squared line widths, plus 5000 when the last line is one word. Breaks are after spaces only.
         /// </summary>
         private void WrapTitle(string title)
         {
@@ -63,31 +63,69 @@ namespace Playarr.Xbox.Views
             zero.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
             var max = zero.DesiredSize.Width * 9;
             var words = title.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            var lines = new List<List<string>> { new List<string>() };
+            var lineCount = 1;
+            var current = string.Empty;
+            var greedy = new List<string>();
             foreach (var word in words)
             {
-                var line = lines[lines.Count - 1];
-                if (line.Count > 0 && Width(string.Join(" ", line.Concat(new[] { word }))) > max)
+                var next = current.Length == 0 ? word : current + " " + word;
+                if (current.Length > 0 && Width(next) > max)
                 {
-                    lines.Add(new List<string>());
-                    line = lines[lines.Count - 1];
+                    lineCount++;
+                    greedy.Add(current);
+                    current = word;
                 }
-
-                line.Add(word);
+                else
+                {
+                    current = next;
+                }
             }
 
-            if (lines.Count >= 2 && lines[lines.Count - 1].Count == 1 && lines[lines.Count - 2].Count >= 2)
+            greedy.Add(current);
+
+            // Best break set with exactly lineCount lines: recursion over where each line ends (titles have few words).
+            var best = double.MaxValue;
+            var bestLines = greedy; // kept when a single word is wider than the box and no break set fits
+            void Search(int start, List<string> lines, double cost)
             {
-                var previous = lines[lines.Count - 2];
-                var moved = previous[previous.Count - 1];
-                if (Width(moved + " " + lines[lines.Count - 1][0]) <= max)
+                if (lines.Count == lineCount - 1)
                 {
-                    previous.RemoveAt(previous.Count - 1);
-                    lines[lines.Count - 1].Insert(0, moved);
+                    var last = string.Join(" ", words.Skip(start));
+                    var w = Width(last);
+                    if (words.Length - start == 0 || w > max)
+                    {
+                        return;
+                    }
+
+                    var total = cost + w * w + (lineCount > 1 && words.Length - start == 1 ? 5000 : 0);
+                    if (total < best)
+                    {
+                        best = total;
+                        bestLines = lines.Concat(new[] { last }).ToList();
+                    }
+
+                    return;
+                }
+
+                for (var end = start + 1; end < words.Length; end++)
+                {
+                    var text = string.Join(" ", words.Skip(start).Take(end - start));
+                    var w = Width(text);
+                    if (w > max)
+                    {
+                        break;
+                    }
+
+                    Search(end, lines.Concat(new[] { text }).ToList(), cost + w * w);
                 }
             }
 
-            _title.Text = string.Join("\n", lines.Select(l => string.Join(" ", l)));
+            if (lineCount > 1)
+            {
+                Search(0, new List<string>(), 0);
+            }
+
+            _title.Text = string.Join("\n", bestLines);
         }
 
         private double Width(string text)
@@ -108,6 +146,8 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
+            // The web all but hides the backdrop behind the light page.
+            _backdrop.Opacity = Theme.IsLight ? 0.1 : 0.35;
             Artwork.Load(_backdrop, work, 960, new[] { ImageKind.Backdrop }, requestWidth: 1280);
             var eyebrow = new List<string>();
             if (withKind)

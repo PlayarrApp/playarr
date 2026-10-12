@@ -52,6 +52,32 @@ namespace Playarr.Core.Networking
 
         Task<HomeRailsResponse> GetHomeRailsAsync(CancellationToken cancellationToken = default);
 
+        Task<IList<MediaChapter>> GetMediaChaptersAsync(Guid mediaFileId, CancellationToken cancellationToken = default);
+
+        /// <summary><c>GET /api/v1/catalog/{id}/resume-plan</c>: where a series' Start / Resume / Watch again button goes.</summary>
+        Task<ResumePlan> GetResumePlanAsync(Guid seriesWorkId, CancellationToken cancellationToken = default);
+
+        /// <summary><c>POST /api/v1/catalog/{id}/resume-plan/choice</c>: records the option the viewer picked.</summary>
+        Task RecordResumeChoiceAsync(Guid seriesWorkId, ResumeOption option, CancellationToken cancellationToken = default);
+
+        /// <summary><c>DELETE /api/v1/catalog/{id}/resume-plan/choices</c>: forgets every recorded answer ("Ask again").</summary>
+        Task ClearResumeChoicesAsync(Guid seriesWorkId, CancellationToken cancellationToken = default);
+
+        /// <summary><c>GET /api/v1/catalog/{id}/credits</c>: the work's cast and crew.</summary>
+        Task<WorkCredits> GetWorkCreditsAsync(Guid workId, CancellationToken cancellationToken = default);
+
+        /// <summary>A cast or crew headshot through the server's resizing proxy (the web asks for 240 px).</summary>
+        Task<byte[]> GetPersonArtworkAsync(Guid personId, int width, CancellationToken cancellationToken = default);
+
+        /// <summary><c>GET /api/v1/media/{id}/playback-options</c>: the quality, audio and subtitle choices and the viewer's remembered ones.</summary>
+        Task<MediaPlaybackOptions> GetMediaPlaybackOptionsAsync(Guid mediaFileId, CancellationToken cancellationToken = default);
+
+        /// <summary><c>PATCH /api/v1/media/{id}/playback-options</c>: remember the viewer's selections (null audio or subtitle = automatic / off).</summary>
+        Task SaveMediaPlaybackPreferencesAsync(Guid mediaFileId, MediaPlaybackPreferences preferences, CancellationToken cancellationToken = default);
+
+        /// <summary>A frame of the file at <paramref name="positionMs"/> (the web's chapter thumbnails); empty when it has nothing to extract.</summary>
+        Task<byte[]> GetMediaThumbnailAsync(Guid mediaFileId, long positionMs, CancellationToken cancellationToken = default);
+
         Task<RailPreferencesResponse> GetRailPreferencesAsync(CancellationToken cancellationToken = default);
 
         Task SaveRailPreferencesAsync(IEnumerable<RailPreferenceEntry> rails, CancellationToken cancellationToken = default);
@@ -282,6 +308,44 @@ namespace Playarr.Core.Networking
         /// <summary><c>DELETE /api/v1/home/rails/preferences</c>: back to the admin's default rails.</summary>
         public Task ResetRailPreferencesAsync(CancellationToken cancellationToken = default) =>
             SendNoBodyAsync(HttpMethod.Delete, "/api/v1/home/rails/preferences", null!, cancellationToken);
+
+        public Task<IList<MediaChapter>> GetMediaChaptersAsync(Guid mediaFileId, CancellationToken cancellationToken = default) =>
+            GetAsync<IList<MediaChapter>>($"/api/v1/media/{mediaFileId:D}/chapters", null, authenticated: true, cancellationToken);
+
+        public Task<ResumePlan> GetResumePlanAsync(Guid seriesWorkId, CancellationToken cancellationToken = default) =>
+            GetAsync<ResumePlan>($"/api/v1/catalog/{seriesWorkId:D}/resume-plan", null, authenticated: true, cancellationToken);
+
+        public Task RecordResumeChoiceAsync(Guid seriesWorkId, ResumeOption option, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(HttpMethod.Post, $"/api/v1/catalog/{seriesWorkId:D}/resume-plan/choice",
+                "{\"kind\":\"" + option.Kind + "\",\"episode_id\":\"" + option.EpisodeId.ToString("D") + "\"}", cancellationToken);
+
+        public Task ClearResumeChoicesAsync(Guid seriesWorkId, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(HttpMethod.Delete, $"/api/v1/catalog/{seriesWorkId:D}/resume-plan/choices", null!, cancellationToken);
+
+        public Task<WorkCredits> GetWorkCreditsAsync(Guid workId, CancellationToken cancellationToken = default) =>
+            GetAsync<WorkCredits>($"/api/v1/catalog/{workId:D}/credits", null, authenticated: true, cancellationToken);
+
+        public Task<byte[]> GetPersonArtworkAsync(Guid personId, int width, CancellationToken cancellationToken = default) =>
+            FetchArtworkAsync($"/api/v1/artwork/person/{personId:D}", width, null, cancellationToken);
+
+        public Task<MediaPlaybackOptions> GetMediaPlaybackOptionsAsync(Guid mediaFileId, CancellationToken cancellationToken = default) =>
+            GetAsync<MediaPlaybackOptions>($"/api/v1/media/{mediaFileId:D}/playback-options", null, authenticated: true, cancellationToken);
+
+        public Task SaveMediaPlaybackPreferencesAsync(Guid mediaFileId, MediaPlaybackPreferences preferences, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(new HttpMethod("PATCH"), $"/api/v1/media/{mediaFileId:D}/playback-options", Newtonsoft.Json.JsonConvert.SerializeObject(preferences), cancellationToken);
+
+        public async Task<byte[]> GetMediaThumbnailAsync(Guid mediaFileId, long positionMs, CancellationToken cancellationToken = default)
+        {
+            var query = new Dictionary<string, string> { ["position_ms"] = positionMs.ToString(CultureInfo.InvariantCulture) };
+            try
+            {
+                return await SendBytesOnceAsync($"/api/v1/media/{mediaFileId:D}/thumbnail", query, false, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ApiException error) when (error.Kind == ApiErrorKind.Unauthorized && _tokens != null)
+            {
+                return await SendBytesOnceAsync($"/api/v1/media/{mediaFileId:D}/thumbnail", query, true, cancellationToken).ConfigureAwait(false);
+            }
+        }
 
         public Task<byte[]> GetEpisodeArtworkAsync(
             Guid seriesId, Guid episodeId, ImageKind kind, int width, string? version = null, CancellationToken cancellationToken = default) =>
