@@ -126,8 +126,11 @@ class NavigationContractTests(unittest.TestCase):
         assert clients_action is not None
         self.assertIs(profile_group.find("./Group[@id='profilesClientsAction']"), clients_action)
 
+        clients_poster = clients_action.find("./Poster[@id='profilesClientsBtn']")
         clients_hit = clients_action.find("./Rectangle[@id='profilesClientsHit']")
+        self.assertIsNotNone(clients_poster)
         self.assertIsNotNone(clients_hit)
+        assert clients_poster is not None
         assert clients_hit is not None
         self.assertIsNone(profile_actions.find(".//*[@id='profilesClientsHit']"))
 
@@ -136,12 +139,24 @@ class NavigationContractTests(unittest.TestCase):
             return float(values[0]), float(values[1])
 
         group_x, group_y = translation(clients_action)
-        hit_x, hit_y = translation(clients_hit)
-        width = float(clients_hit.attrib["width"])
-        height = float(clients_hit.attrib["height"])
-        left, top = group_x + hit_x, group_y + hit_y
         stage_width = float(stage.attrib["width"])
         stage_height = float(stage.attrib["height"])
+        poster_x, poster_y = translation(clients_poster)
+        poster = (
+            group_x + poster_x,
+            group_y + poster_y,
+            float(clients_poster.attrib["width"]),
+            float(clients_poster.attrib["height"]),
+        )
+        hit_x, hit_y = translation(clients_hit)
+        hitbox = (
+            group_x + hit_x,
+            group_y + hit_y,
+            float(clients_hit.attrib["width"]),
+            float(clients_hit.attrib["height"]),
+        )
+        self.assertEqual(hitbox, poster)
+        left, top, width, height = hitbox
         self.assertGreaterEqual(left, 0)
         self.assertGreaterEqual(top, 0)
         self.assertLessEqual(left + width, stage_width)

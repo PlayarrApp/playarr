@@ -69,8 +69,7 @@ sub init()
     m.profilesSignOutBtn = m.top.findNode("profilesSignOutBtn")
     m.profilesSettingsHit = m.top.findNode("profilesSettingsHit")
     m.profilesSignOutHit = m.top.findNode("profilesSignOutHit")
-    m.profilesClientsFocus = m.top.findNode("profilesClientsFocus")
-    m.profilesClientsLabel = m.top.findNode("profilesClientsLabel")
+    m.profilesClientsBtn = m.top.findNode("profilesClientsBtn")
     m.profilesClientsHit = m.top.findNode("profilesClientsHit")
     m.profilesFocusIndex = 0
     m.settingsGroup = m.top.findNode("settingsGroup")
@@ -1643,15 +1642,11 @@ sub applyProfilesChromeFocus()
             m.profilesSignOutBtn.uri = "pkg:/images/profiles-signout" + suffix + ".png"
         end if
     end if
-    if m.profilesClientsFocus <> invalid
-        m.profilesClientsFocus.visible = clientsF
-        m.profilesClientsFocus.blendColor = ThemeColor("focusRing")
-    end if
-    if m.profilesClientsLabel <> invalid
+    if m.profilesClientsBtn <> invalid
         if clientsF
-            m.profilesClientsLabel.color = ThemeColor("brandInk")
+            m.profilesClientsBtn.uri = "pkg:/images/profiles-clients-focus.png"
         else
-            m.profilesClientsLabel.color = ThemeColor("ink")
+            m.profilesClientsBtn.uri = "pkg:/images/profiles-clients" + suffix + ".png"
         end if
     end if
 end sub

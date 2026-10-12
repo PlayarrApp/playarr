@@ -135,10 +135,9 @@
         <Rectangle id="profilesSignOutHit" translation="[54,0]" width="104" height="44" color="0x00000000" focusable="true" />
       </Group>
       <!-- Web .profile-clients-link: independent footer action, not part of avatar actions. -->
-      <Group id="profilesClientsAction" translation="[1745,994]">
-        <Poster id="profilesClientsFocus" translation="[-5,-3]" width="140" height="50" uri="pkg:/images/round-outline-r12.9.png" visible="false" />
-        <Label id="profilesClientsLabel" translation="[5,0]" width="130" height="44" text="Clients   →" vertAlign="center" horizAlign="center" scale="[0.48,0.48]" color="0xF4F0F1FF" />
-        <Rectangle id="profilesClientsHit" translation="[0,0]" width="130" height="44" color="0x00000000" focusable="true" />
+      <Group id="profilesClientsAction" translation="[1784,1005]">
+        <Poster id="profilesClientsBtn" translation="[0,0]" width="88" height="44" uri="pkg:/images/profiles-clients.png" loadDisplayMode="scaleToFill" />
+        <Rectangle id="profilesClientsHit" translation="[0,0]" width="88" height="44" color="0x00000000" focusable="true" />
       </Group>
 
     </Group>
