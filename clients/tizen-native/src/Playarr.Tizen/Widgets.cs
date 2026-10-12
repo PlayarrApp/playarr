@@ -70,6 +70,11 @@ internal sealed class MediaCard
     public static MediaCard Search(AppEnv env, WorkCard card, float x, float y)
     {
         var c = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.015f, lift: -6, blur: 52, shadowY: 22, shadowAlpha: 0.28f);
+        if (card.Kind == WorkKind.Unknown)
+        {
+            var icon = card.Kicker == "Playlist" ? "playlists" : "games";
+            c.Art.Add(Ui.Icon(icon, Width / 2 - 32, Height / 2 - 32, 64, env.Theme.InkMuted));
+        }
         var kind = card.Sub.ToUpperInvariant();
         c.Box.Add(Ui.Text(kind, 0, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, Width, 12.672f, HorizontalAlignment.End));
         return c;
