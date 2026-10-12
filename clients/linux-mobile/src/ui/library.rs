@@ -33,14 +33,70 @@ fn letter_of(title: &str) -> char {
         .unwrap_or('#')
 }
 
-pub fn grid() -> gtk4::Box {
-    gtk4::Box::builder()
-        .orientation(gtk4::Orientation::Vertical)
-        .spacing(24)
-        .margin_start(16)
-        .margin_end(16)
-        .margin_top(1)
-        .build()
+/// The web phone's card grid: two columns of `CARD_W` cards, `COL_GAP` apart, clear of the 52 px letter rail on the right.
+pub struct CardGrid {
+    pub widget: gtk4::Box,
+    /// The row being filled and how many cards it holds.
+    row: RefCell<Option<(gtk4::Box, usize)>>,
+}
+
+pub const COL_GAP: i32 = 12;
+const COLS: usize = 2;
+
+impl CardGrid {
+    pub fn new() -> Self {
+        CardGrid {
+            widget: gtk4::Box::builder()
+                .orientation(gtk4::Orientation::Vertical)
+                .spacing(24)
+                .margin_start(16)
+                .margin_end(52)
+                .margin_top(1)
+                .build(),
+            row: RefCell::default(),
+        }
+    }
+
+    pub fn append(&self, card: &impl IsA<gtk4::Widget>) {
+        let mut cur = self.row.borrow_mut();
+        if cur.as_ref().map_or(true, |(_, n)| *n >= COLS) {
+            let row = gtk4::Box::builder().spacing(COL_GAP).build();
+            self.widget.append(&row);
+            *cur = Some((row, 0));
+        }
+        if let Some((row, n)) = cur.as_mut() {
+            row.append(card);
+            *n += 1;
+        }
+    }
+
+    /// A full-width child (the spacer that stands in for skipped rows); the next card starts a new row.
+    pub fn append_block(&self, w: &impl IsA<gtk4::Widget>) {
+        self.widget.append(w);
+        self.row.replace(None);
+    }
+
+    pub fn clear(&self) {
+        while let Some(c) = self.widget.first_child() {
+            self.widget.remove(&c);
+        }
+        self.row.replace(None);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.widget.first_child().is_none()
+    }
+
+    /// Height of one drawn row, if any.
+    pub fn row_height(&self) -> Option<i32> {
+        self.row.borrow().as_ref().map(|(r, _)| r.height()).filter(|h| *h > 0)
+    }
+}
+
+impl Default for CardGrid {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// "1,754" style thousands grouping.
@@ -60,9 +116,14 @@ pub fn group_digits(n: i64) -> String {
     }
 }
 
-/// Sort key: lower case, leading "the/a/an" dropped, digit runs compared as numbers.
+/// Sort key: lower case, leading "the/a/an" dropped, punctuation ignored ("9-1-1" is 911, "10,000 BC" is 10000), digit
+/// runs compared as numbers.
 pub fn natural_key(title: &str) -> Vec<(u8, u64, String)> {
-    let t = title.to_lowercase();
+    let t: String = title
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+        .collect();
     let t = ["the ", "a ", "an "]
         .iter()
         .find_map(|a| t.strip_prefix(a))
@@ -100,7 +161,7 @@ struct Lib {
     app: Rc<App>,
     client: Client,
     imgs: Images,
-    flow: gtk4::Box,
+    flow: CardGrid,
     head: header::Header,
     backdrop: gtk4::Picture,
     noun: &'static str,
@@ -135,9 +196,7 @@ impl Lib {
         self.spacer.replace(None);
         self.total.set(usize::MAX);
         self.busy.set(false);
-        while let Some(c) = self.flow.first_child() {
-            self.flow.remove(&c);
-        }
+        self.flow.clear();
         self.load_more();
     }
 
@@ -149,7 +208,7 @@ impl Lib {
             };
             self.genres.borrow_mut().extend(w.genres.iter().cloned());
             let a = self.app.clone();
-            let first = self.flow.first_child().is_none();
+            let first = self.flow.is_empty();
             if first {
                 if let Some(k) = ["backdrop", "poster"].iter().find(|k| w.has_image(k)) {
                     self.imgs.load(Client::artwork_path(&w.id, k, 780), &self.backdrop);
@@ -267,14 +326,12 @@ impl Lib {
             let pitch = self.pitch();
             skipped + ((idx - self.skipped_cards()) as f64 * pitch) as i32
         } else {
-            while let Some(c) = self.flow.first_child() {
-                self.flow.remove(&c);
-            }
+            self.flow.clear();
             let pitch = self.pitch();
             let spacer = gtk4::Box::builder()
                 .height_request((idx as f64 * pitch) as i32 - 24)
                 .build();
-            self.flow.append(&spacer);
+            self.flow.append_block(&spacer);
             self.spacer.replace(Some(spacer));
             for _ in drawn..idx {
                 self.buffer.borrow_mut().pop_front();
@@ -291,14 +348,12 @@ impl Lib {
         0
     }
 
-    /// Card height plus the gap between cards.
+    /// Height one card adds to the list: half a row plus half the gap between rows.
     fn pitch(&self) -> f64 {
-        let h = self
-            .flow
-            .first_child()
-            .filter(|c| c.height() > 0 && c.is::<gtk4::Button>())
-            .map(|c| c.height());
-        h.map(|h| h as f64 + 24.0).unwrap_or(257.0)
+        self.flow
+            .row_height()
+            .map(|h| (h as f64 + 24.0) / COLS as f64)
+            .unwrap_or(71.0)
     }
 
     fn mark_letter(&self, letter: char) {
@@ -464,8 +519,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
     page.set_margin_bottom(110);
     let head = header::build(&app, title, "filters");
     page.append(&head.widget);
-    let flow = grid();
-    page.append(&flow);
+    let flow = CardGrid::new();
+    page.append(&flow.widget);
     let status = gtk4::Label::builder()
         .label("Loading…")
         .css_classes(["pa-muted"])
@@ -502,9 +557,10 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         .homogeneous(true)
         .halign(gtk4::Align::End)
         .valign(gtk4::Align::Fill)
-        .width_request(16)
+        .width_request(44)
+        .margin_end(4)
         .margin_top(87)
-        .margin_bottom(88)
+        .margin_bottom(83)
         .build();
     let lib = Rc::new(Lib {
         scroll: scroll.clone(),
@@ -551,6 +607,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         let b = gtk4::Button::builder()
             .label(c.to_string())
             .css_classes(["pa-letter"])
+            .halign(gtk4::Align::Center)
             .build();
         let lib = lib.clone();
         b.connect_clicked(move |_| lib.jump(c));
@@ -597,6 +654,9 @@ mod tests {
             "9 Bullets",
             "6 Underground",
             "12 Strong",
+            "9-1-1",
+            "666 Park Avenue",
+            "10,000 BC",
         ];
         v.sort_by_key(|t| natural_key(t));
         assert_eq!(
@@ -607,7 +667,10 @@ mod tests {
                 "6 Underground",
                 "9 Bullets",
                 "10 Cloverfield Lane",
-                "12 Strong"
+                "12 Strong",
+                "666 Park Avenue",
+                "9-1-1",
+                "10,000 BC"
             ]
         );
     }
