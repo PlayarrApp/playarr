@@ -3,7 +3,7 @@
  * babel.config.js); a normal build has none of it. Vega has no debug server to attach to, so the channel is the platform's own
  * message bus: `vmsgr send 'pkg://com.streamarr.firetv.main?cmd=...'` reaches the running app as a Linking `url` event, and the
  * app answers on its log (`PARITY {json}`), which the driver reads with `loggingctl`. Commands:
- *   cmd=state                      log the route, the focused item, the player and the theme
+ *   cmd=state                      log the route, focus label/event tag, native focus tag, player and theme
  *   cmd=route&path=/movies         go to a web route (library pages, calendar views, settings, profiles)
  *   cmd=open&kind=movies&id=<id>   open a title's detail page by work id
  *   cmd=play&file=<media file id>  start playback of a media file
@@ -11,20 +11,28 @@
  *   cmd=theme&name=dark|light      set the in-app theme preference
  */
 import {Linking} from 'react-native';
+import {FocusManager} from '@amazon-devices/react-native-kepler';
 
 export const PARITY_CONTROL = process.env.PLAYARR_PARITY_CONTROL === '1';
 
 export interface FocusReport {
   label: string;
   position?: {rail: number | 'nav'; index: number};
+  eventTag?: number;
+}
+
+/** Hide media identifiers in the diagnostic route while keeping its route shape visible. */
+export function safeParityRoute(route: string | null): string | null {
+  if (route === null) return null;
+  return route.replace(/^(\/(?:movies|series|player)\/)[^/?]+(?=\/|\?|$)/, '$1:id');
 }
 
 let lastFocus: FocusReport | null = null;
 
 /** Screens call this from their focus handlers; a no-op unless the control channel is built in. */
-export function reportFocus(label: string, position?: FocusReport['position']): void {
+export function reportFocus(label: string, position?: FocusReport['position'], eventTag?: number): void {
   if (!PARITY_CONTROL) return;
-  lastFocus = {label: label.trim().toLowerCase().replace(/\s+/g, ' '), ...(position ? {position} : {})};
+  lastFocus = {label: label.trim().toLowerCase().replace(/\s+/g, ' '), ...(position ? {position} : {}), ...(eventTag === undefined ? {} : {eventTag})};
 }
 
 const queries: Record<string, string | null> = {};
@@ -103,7 +111,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
       return;
     }
     // Every command answers with the state, so the driver needs one read after it.
-    setTimeout(() => console.log('PARITY ' + JSON.stringify({cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus: lastFocus, player: hooks.player(), theme: hooks.theme()})), command.cmd === 'state' ? 0 : 1500);
+    setTimeout(() => console.log('PARITY ' + JSON.stringify({cmd: command.cmd, seq: command.seq ?? null, route: safeParityRoute(hooks.location()), focus: lastFocus, nativeFocusTag: FocusManager.getFocused(), player: hooks.player(), theme: hooks.theme()})), command.cmd === 'state' ? 0 : 1500);
   };
   void Linking.getInitialURL().then(handle, () => undefined);
   const subscription = Linking.addEventListener('url', (event: {url: string}) => handle(event.url));

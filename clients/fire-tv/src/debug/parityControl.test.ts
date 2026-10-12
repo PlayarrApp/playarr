@@ -1,10 +1,20 @@
-import {currentQuery, parseCommand, reportQuery, setPendingQuery, takePendingQuery} from './parityControl';
+jest.mock('@amazon-devices/react-native-kepler', () => ({FocusManager: {getFocused: jest.fn()}}));
+
+import {currentQuery, parseCommand, reportQuery, safeParityRoute, setPendingQuery, takePendingQuery} from './parityControl';
 
 describe('parityControl', () => {
   it('parses a command url and ignores messages without one', () => {
     expect(parseCommand('pkg://com.streamarr.firetv.main?cmd=route&path=%2Fcalendar%3Fview%3Dmonth&seq=a-1')).toEqual({cmd: 'route', path: '/calendar?view=month', seq: 'a-1'});
     expect(parseCommand('pkg://com.streamarr.firetv.main')).toBeNull();
     expect(parseCommand('pkg://com.streamarr.firetv.main?x=1')).toBeNull();
+  });
+
+  it('masks media identifiers in diagnostic routes', () => {
+    expect(safeParityRoute('/movies/private-work-id')).toBe('/movies/:id');
+    expect(safeParityRoute('/series/private-work-id')).toBe('/series/:id');
+    expect(safeParityRoute('/player/private-file-id')).toBe('/player/:id');
+    expect(safeParityRoute('/calendar?view=month')).toBe('/calendar?view=month');
+    expect(safeParityRoute(null)).toBeNull();
   });
 
   // Jest keeps the live process.env, so the channel is off here: reports and pending queries are inert, as in a normal build.
