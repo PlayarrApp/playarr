@@ -198,6 +198,8 @@ public protocol PlayarrAPIClient: PlayarrRequestTransport {
     func fetchProfileAvatarPreset() async throws -> String?
     /// `GET /api/v1/catalog/{id}/resume-plan`: the episode a Start/Resume press plays (`nil` when none).
     func fetchSeriesResumeTarget(seriesID: UUID) async throws -> SeriesResumeTarget?
+    /// `GET /api/v1/catalog/{id}/resume-plan`: the action and selected episode for series detail.
+    func fetchSeriesResumePlan(seriesID: UUID) async throws -> SeriesResumePlan
     /// `GET /api/v1/watchlist`.
     func listWatchlistItems() async throws -> [WatchlistItem]
     /// `GET /api/v1/requests?mine=true`.
@@ -484,8 +486,12 @@ public final class APIClient: PlayarrAPIClient, PlayarrUploadTransport {
     }
 
     public func fetchSeriesResumeTarget(seriesID: UUID) async throws -> SeriesResumeTarget? {
-        let plan: SeriesResumePlan = try await get("/api/v1/catalog/\(seriesID.uuidString)/resume-plan")
+        let plan = try await fetchSeriesResumePlan(seriesID: seriesID)
         return plan.target
+    }
+
+    public func fetchSeriesResumePlan(seriesID: UUID) async throws -> SeriesResumePlan {
+        try await get("/api/v1/catalog/\(seriesID.uuidString)/resume-plan")
     }
 
     public func fetchAvailabilityLag(id: UUID) async throws -> AvailabilityLag? {
@@ -1201,6 +1207,9 @@ public extension PlayarrAPIClient {
     func fetchHouseholdStatus() async throws -> HouseholdStatus? { nil }
     func fetchProfileAvatarPreset() async throws -> String? { nil }
     func fetchSeriesResumeTarget(seriesID: UUID) async throws -> SeriesResumeTarget? { nil }
+    func fetchSeriesResumePlan(seriesID: UUID) async throws -> SeriesResumePlan {
+        SeriesResumePlan(target: try await fetchSeriesResumeTarget(seriesID: seriesID))
+    }
     func listWatchlistItems() async throws -> [WatchlistItem] { [] }
     func listMyRequests() async throws -> [RequestSummary] { [] }
     func fetchMediaThumbnail(mediaFileID: UUID, positionMs: Int?) async throws -> Data { Data() }
@@ -1219,8 +1228,21 @@ public struct SeriesResumeTarget: Decodable, Sendable, Hashable {
     }
 }
 
-struct SeriesResumePlan: Decodable, Sendable {
-    var target: SeriesResumeTarget?
+public struct SeriesResumePlan: Decodable, Sendable {
+    public var action: String?
+    public var needsChoice: Bool?
+    public var target: SeriesResumeTarget?
+
+    enum CodingKeys: String, CodingKey {
+        case action, target
+        case needsChoice = "needs_choice"
+    }
+
+    public init(action: String? = nil, needsChoice: Bool? = nil, target: SeriesResumeTarget? = nil) {
+        self.action = action
+        self.needsChoice = needsChoice
+        self.target = target
+    }
 }
 
 /// The signed-in profile's household state (`allowed`, `outside_schedule`, `budget_exhausted`, ...).

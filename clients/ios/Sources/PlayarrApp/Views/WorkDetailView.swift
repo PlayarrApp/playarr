@@ -10,8 +10,17 @@ struct WorkDetailView: View {
     @Environment(\.colorScheme) private var scheme
     @State private var playlists: [Playlist] = []
     @State private var playlistMessage: String?
+    @State private var actionMessageTitle = "Playlists"
+    @State private var watchlistListed = false
+    @State private var watchlistTitleKey: String?
+    @State private var watchlistBusy = false
+    @State private var watchlistLoaded = false
+    @State private var watchlistLoadFailed = false
     @State private var selectedAlbumID: UUID?
     @State private var selectedTabletEpisodeID: UUID?
+    @State private var tabletResumeEpisodeID: UUID?
+    @State private var tabletResumeAction: String?
+    @State private var tabletResumePlanLoaded = false
     @State private var tabletEpisodeSelectionTouched = false
     @FocusState private var focusedTabletEpisodeID: UUID?
 
@@ -60,7 +69,7 @@ struct WorkDetailView: View {
                 selectedAlbumID = albums.first?.album.id
             }
         }
-        .alert("Playlists", isPresented: Binding(
+        .alert(actionMessageTitle, isPresented: Binding(
             get: { playlistMessage != nil },
             set: { if !$0 { playlistMessage = nil } }
         )) { Button("OK") { playlistMessage = nil } } message: { Text(playlistMessage ?? "") }
@@ -191,29 +200,36 @@ struct WorkDetailView: View {
                     .offset(x: proxy.size.width * 0.38)
                     .task(id: detail.work.id) {
                         guard case .series(let seasons) = detail.children else { return }
+                        let firstPaint = WorkDetailViewModel.initialSeriesEpisode(seasons: seasons, resumeTarget: nil)
                         if selectedTabletEpisodeID == nil, !tabletEpisodeSelectionTouched {
-                            let firstPaint = WorkDetailViewModel.initialSeriesEpisode(
-                                seasons: seasons,
-                                resumeTarget: nil
-                            )
                             selectedTabletEpisodeID = firstPaint?.episode.id
                             await Task.yield()
-                            guard !Task.isCancelled, !tabletEpisodeSelectionTouched else { return }
-                            centreTabletEpisode(scrollProxy, seasons: seasons)
-
-                            let resumeTarget = try? await apiClient.fetchSeriesResumeTarget(seriesID: detail.work.id)
-                            guard !Task.isCancelled, !tabletEpisodeSelectionTouched else { return }
-                            let initial = WorkDetailViewModel.initialSeriesEpisode(
-                                seasons: seasons,
-                                resumeTarget: resumeTarget
-                            )
-                            selectedTabletEpisodeID = initial?.episode.id
-                            if initial?.episode.id != firstPaint?.episode.id {
-                                await Task.yield()
-                                guard !Task.isCancelled, !tabletEpisodeSelectionTouched else { return }
+                            guard !Task.isCancelled else { return }
+                            if !tabletEpisodeSelectionTouched {
                                 centreTabletEpisode(scrollProxy, seasons: seasons)
                             }
                         }
+
+                        let resumePlan = try? await apiClient.fetchSeriesResumePlan(seriesID: detail.work.id)
+                        guard !Task.isCancelled else { return }
+                        tabletResumeAction = resumePlan?.action
+                        let initial = WorkDetailViewModel.initialSeriesEpisode(
+                            seasons: seasons,
+                            resumeTarget: resumePlan?.target
+                        )
+                        tabletResumeEpisodeID = initial?.episode.id
+                        tabletResumePlanLoaded = true
+                        if !tabletEpisodeSelectionTouched {
+                            selectedTabletEpisodeID = initial?.episode.id
+                            if initial?.episode.id != firstPaint?.episode.id {
+                                await Task.yield()
+                                guard !Task.isCancelled else { return }
+                                if !tabletEpisodeSelectionTouched {
+                                    centreTabletEpisode(scrollProxy, seasons: seasons)
+                                }
+                            }
+                        }
+                        await loadTabletWatchlist(detail.work)
                     }
                     .onChange(of: focusedTabletEpisodeID) { _, episodeID in
                         guard let episodeID else { return }
@@ -393,6 +409,7 @@ struct WorkDetailView: View {
         let seasonNumber = selected.season.season.seasonNumber
         let episode = selected.episode.episode
         let episodeTitle = episode.title ?? "Episode \(episode.episodeNumber)"
+        let resumeEpisode = resumeTabletEpisode(in: detail)
         let runtime = selected.episode.runtimeMs ?? episode.runtimeMinutes.map { Int64($0) * 60_000 }
         let dateValue = episode.airDate ?? detail.work.releaseDate
         let dateLabel = dateValue.flatMap(Self.airDateLabel)
@@ -442,39 +459,95 @@ struct WorkDetailView: View {
                     .lineLimit(6)
                     .padding(.top, 14)
             }
-            if let mediaFileID = selected.episode.mediaFileID {
-                HStack(spacing: 12) {
+            if let resumeEpisode, let mediaFileID = resumeEpisode.episode.mediaFileID {
+                VStack(alignment: .leading, spacing: 9) {
                     NavigationLink {
                         PlayerView(
                             apiClient: apiClient,
                             downloadRepository: downloadRepository,
                             initialMediaFileID: mediaFileID.uuidString,
-                            initialTitle: episodeTitle,
+                            initialTitle: resumeEpisode.episode.episode.title ?? "Episode \(resumeEpisode.episode.episode.episodeNumber)",
                             suggestionsWorkID: detail.work.id,
-                            queue: episodeFollowing(selected.episode.id),
+                            queue: episodeFollowing(resumeEpisode.episode.id),
                             subtitle: PlaybackQueueBuilder.episodeSubtitle(
                                 series: detail.work.title,
-                                season: seasonNumber,
-                                episode: episode.episodeNumber
+                                season: resumeEpisode.season.season.seasonNumber,
+                                episode: resumeEpisode.episode.episode.episodeNumber
                             )
                         )
                     } label: {
-                        Label("Play episode", systemImage: "play.fill").frame(minWidth: 150)
+                        Label(tabletResumeLabel, systemImage: "play.fill").frame(minWidth: 130, minHeight: 46)
                     }
                     .buttonStyle(PlayarrPrimaryButtonStyle())
-                    DownloadTriggerButton(
-                        candidates: [candidate(mediaFileID: mediaFileID, title: episodeTitle, subtitle: "S\(seasonNumber) · E\(episode.episodeNumber)")],
-                        apiClient: apiClient,
-                        downloadRepository: downloadRepository
-                    )
-                    .frame(width: 46, height: 46)
-                    .foregroundStyle(PlayarrStyle.ink)
-                    .background(PlayarrStyle.surfaceStrong.opacity(0.82), in: Circle())
-                    .overlay { Circle().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
+                    .disabled(!tabletResumePlanLoaded)
+                    .opacity(!tabletResumePlanLoaded ? 0.55 : 1)
+
+                    HStack(spacing: 8) {
+                        if watchlistLoaded {
+                            Button {
+                                Task { await toggleWatchlist(detail.work) }
+                            } label: {
+                                tabletSeriesActionLabel(
+                                    watchlistListed ? "Remove from watchlist" : "Add to watchlist",
+                                    systemImage: watchlistListed ? "checkmark" : "plus"
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(watchlistBusy)
+                        } else {
+                            Button {
+                                Task { await loadTabletWatchlist(detail.work) }
+                            } label: {
+                                tabletSeriesActionLabel(
+                                    watchlistLoadFailed ? "Retry watchlist" : "Loading watchlist",
+                                    systemImage: watchlistLoadFailed ? "arrow.clockwise" : "ellipsis"
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(watchlistBusy || !watchlistLoadFailed)
+                        }
+
+                        Menu {
+                            let availablePlaylists = writablePlaylists(for: detail.work)
+                            if availablePlaylists.isEmpty { Text("No playlists yet") }
+                            ForEach(availablePlaylists) { playlist in
+                                Button(playlist.name) { add(detail.work, to: playlist) }
+                            }
+                        } label: {
+                            tabletSeriesActionLabel("Add to Playlist", systemImage: "plus")
+                        }
+                    }
                 }
                 .padding(.top, 20)
             }
         }
+    }
+
+    private var tabletResumeLabel: String {
+        switch tabletResumeAction {
+        case .some("resume"): "Resume"
+        case .some("restart"): "Watch again"
+        default: "Start"
+        }
+    }
+
+    private func resumeTabletEpisode(in detail: WorkDetail) -> (season: SeasonDetail, episode: EpisodeDetail)? {
+        guard let id = tabletResumeEpisodeID, case .series(let seasons) = detail.children else { return nil }
+        return seasons.first { season in
+            season.episodes.contains { $0.id == id }
+        }.flatMap { season in
+            season.episodes.first { $0.id == id }.map { (season, $0) }
+        }
+    }
+
+    private func tabletSeriesActionLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
+            .foregroundStyle(PlayarrStyle.ink)
+            .padding(.horizontal, 12)
+            .frame(height: 42)
+            .background(PlayarrStyle.surfaceStrong.opacity(0.82), in: Capsule())
+            .overlay { Capsule().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
     }
 
     static func runtimeLabel(_ runtimeMs: Int64) -> String {
@@ -519,6 +592,7 @@ struct WorkDetailView: View {
 
     private func add(_ work: Work, to playlist: Playlist) {
         Task {
+            actionMessageTitle = "Playlists"
             do {
                 _ = try await apiClient.addPlaylistItem(
                     playlistID: playlist.id,
@@ -530,6 +604,62 @@ struct WorkDetailView: View {
             } catch {
                 playlistMessage = error.localizedDescription
             }
+        }
+    }
+
+    private func toggleWatchlist(_ work: Work) async {
+        guard !watchlistBusy else { return }
+        watchlistBusy = true
+        defer { watchlistBusy = false }
+        let client = WatchlistClient(transport: apiClient)
+        let snapshot = TitleSnapshot(work: work)
+        do {
+            if watchlistListed {
+                var key = watchlistTitleKey
+                if key == nil {
+                    key = try await client.resolve(snapshot).title.titleKey
+                    guard !Task.isCancelled else { return }
+                }
+                if let key { try await client.remove(titleKey: key) }
+                guard !Task.isCancelled else { return }
+                watchlistListed = false
+                watchlistTitleKey = key
+            } else {
+                let added = try await client.add(snapshot)
+                guard !Task.isCancelled else { return }
+                watchlistListed = true
+                watchlistTitleKey = added.title.titleKey
+            }
+        } catch let error as APIError {
+            actionMessageTitle = "Watchlist"
+            playlistMessage = error.displayMessage
+        } catch {
+            actionMessageTitle = "Watchlist"
+            playlistMessage = error.localizedDescription
+        }
+    }
+
+    private func loadTabletWatchlist(_ work: Work) async {
+        guard !watchlistBusy, !watchlistLoaded else { return }
+        watchlistBusy = true
+        defer { watchlistBusy = false }
+        do {
+            let resolved = try await WatchlistClient(transport: apiClient).resolve(TitleSnapshot(work: work))
+            guard !Task.isCancelled else { return }
+            watchlistListed = resolved.inWatchlist
+            watchlistTitleKey = resolved.title.titleKey
+            watchlistLoaded = true
+            watchlistLoadFailed = false
+        } catch let error as APIError {
+            guard !Task.isCancelled else { return }
+            watchlistLoadFailed = true
+            actionMessageTitle = "Watchlist"
+            playlistMessage = error.displayMessage
+        } catch {
+            guard !Task.isCancelled else { return }
+            watchlistLoadFailed = true
+            actionMessageTitle = "Watchlist"
+            playlistMessage = error.localizedDescription
         }
     }
 

@@ -7,6 +7,18 @@ import XCTest
 
 @MainActor
 final class WorkDetailViewModelTests: XCTestCase {
+    func testSeriesResumePlanDecodesActionAndChoiceRequirement() throws {
+        let episodeID = UUID()
+        let plan = try JSONDecoder().decode(
+            SeriesResumePlan.self,
+            from: Data("{\"action\":\"resume\",\"needs_choice\":true,\"target\":{\"episode_id\":\"\(episodeID.uuidString)\",\"media_file_id\":null}}".utf8)
+        )
+
+        XCTAssertEqual(plan.action, "resume")
+        XCTAssertEqual(plan.needsChoice, true)
+        XCTAssertEqual(plan.target?.episodeID, episodeID)
+    }
+
     func testTabletEpisodeRuntimeRoundsToNearestMinute() {
         XCTAssertEqual(WorkDetailView.runtimeLabel(41 * 60_000 + 29_000), "41 min")
         XCTAssertEqual(WorkDetailView.runtimeLabel(41 * 60_000 + 30_000), "42 min")
