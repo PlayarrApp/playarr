@@ -4,6 +4,27 @@ import XCTest
 
 /// Locks the pieces of the web parity work that are pure functions.
 final class TVWebParityTests: XCTestCase {
+    func testStageLeftChoosesNearestMeasuredNavTab() {
+        let frames: [TVNavTab: CGRect] = [
+            .home: CGRect(x: 0, y: 300, width: 64, height: 64),
+            .movies: CGRect(x: 0, y: 430, width: 64, height: 64),
+            .music: CGRect(x: 0, y: 560, width: 64, height: 64)
+        ]
+
+        XCTAssertEqual(TVNavFocusGeometry.nearestTab(toY: 548, frames: frames), .music)
+        XCTAssertEqual(TVNavFocusGeometry.nearestTab(toY: 428, frames: frames), .movies)
+        XCTAssertNil(TVNavFocusGeometry.nearestTab(toY: 428, frames: [:]))
+        XCTAssertEqual(
+            TVNavFocusGeometry.nearestTab(toY: 431, frames: [
+                .home: CGRect(x: 0, y: 368, width: 64, height: 64),
+                .movies: CGRect(x: 0, y: 430, width: 64, height: 64),
+                .music: .null
+            ]),
+            .home,
+            "equal-distance ties use stable nav order and ignore invalid frames"
+        )
+    }
+
     /// Web `orderWorks`: numeric, case-insensitive order on the sort title ("2" before "10").
     func testLibraryTitleOrderIsNumericLikeTheWeb() {
         func work(_ title: String) -> Work {

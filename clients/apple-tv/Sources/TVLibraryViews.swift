@@ -339,29 +339,31 @@ struct TVHomeView: View {
                 HStack(alignment: .top, spacing: gap) {
                     ForEach(Array(works.enumerated()), id: \.element.id) { index, work in
                         let focus = HomeRailCardFocus(rail: railID, workID: work.id)
-                        NavigationLink {
-                            TVWorkDetailView(work: work, apiClient: environment.apiClient)
-                        } label: {
-                            TVHomeCard(
-                                work: work,
-                                apiClient: environment.apiClient,
-                                isSelected: focusedCard == focus
-                            )
-                            .frame(
-                                width: artW,
-                                height: artH + titleBlock,
-                                alignment: .topLeading
-                            )
-                        }
-                        .buttonStyle(.card)
-                        .focused($focusedCard, equals: focus)
-                        .onMoveCommand { direction in
-                            // Per-card Left at the rail head → dock.
-                            if direction == .left, index == 0 {
-                                focusedCard = nil
-                                requestNavFocus()
+                        GeometryReader { cardProxy in
+                            NavigationLink {
+                                TVWorkDetailView(work: work, apiClient: environment.apiClient)
+                            } label: {
+                                TVHomeCard(
+                                    work: work,
+                                    apiClient: environment.apiClient,
+                                    isSelected: focusedCard == focus
+                                )
+                                .frame(
+                                    width: artW,
+                                    height: artH + titleBlock,
+                                    alignment: .topLeading
+                                )
+                            }
+                            .buttonStyle(.card)
+                            .focused($focusedCard, equals: focus)
+                            .onMoveCommand { direction in
+                                // Per-card Left at the rail head hands focus to the nearest nav item.
+                                if direction == .left, index == 0 {
+                                    requestNavFocus(cardProxy.frame(in: .global).midY)
+                                }
                             }
                         }
+                        .frame(width: artW, height: artH + titleBlock)
                     }
                 }
                 .padding(.vertical, 12)
@@ -1675,7 +1677,7 @@ struct TVLibraryKindView: View {
             guard !parityMode, direction == .left else { return }
             guard leadingColumnIDs.contains(work.id) else { return }
             selectedID = nil
-            requestNavFocus()
+            requestNavFocus(nil)
         }
 
     }

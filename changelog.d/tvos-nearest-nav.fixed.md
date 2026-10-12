@@ -1,0 +1,1 @@
+- tvOS Home D-pad Left now selects the nearest visible navigation item from measured layout geometry.

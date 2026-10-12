@@ -539,14 +539,39 @@ enum TVShellFocus: Hashable {
     case stage
 }
 
+enum TVNavFocusGeometry {
+    static func nearestTab(toY y: CGFloat, frames: [TVNavTab: CGRect]) -> TVNavTab? {
+        guard y.isFinite else { return nil }
+        let candidates = TVNavTab.allCases.compactMap { tab -> (tab: TVNavTab, distance: CGFloat)? in
+            guard let frame = frames[tab], !frame.isNull, !frame.isEmpty,
+                  frame.minY.isFinite, frame.maxY.isFinite else { return nil }
+            return (tab, abs(frame.midY - y))
+        }
+        return candidates.min { lhs, rhs in
+            if lhs.distance == rhs.distance {
+                return TVNavTab.allCases.firstIndex(of: lhs.tab)! < TVNavTab.allCases.firstIndex(of: rhs.tab)!
+            }
+            return lhs.distance < rhs.distance
+        }?.tab
+    }
+}
+
+struct TVNavFocusFramesPreferenceKey: PreferenceKey {
+    static let defaultValue: [TVNavTab: CGRect] = [:]
+
+    static func reduce(value: inout [TVNavTab: CGRect], nextValue: () -> [TVNavTab: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, newer in newer })
+    }
+}
+
 /// Called when the stage wants the remote to land on the left nav (Left on a
 /// leading card). The shell owns the FocusState and performs the move.
 private struct RequestNavFocusKey: EnvironmentKey {
-    static let defaultValue: () -> Void = {}
+    static let defaultValue: (CGFloat?) -> Void = { _ in }
 }
 
 extension EnvironmentValues {
-    var requestNavFocus: () -> Void {
+    var requestNavFocus: (CGFloat?) -> Void {
         get { self[RequestNavFocusKey.self] }
         set { self[RequestNavFocusKey.self] = newValue }
     }
@@ -562,8 +587,8 @@ struct TVFloatingNav: View {
     var externalFocus: FocusState<TVShellFocus?>.Binding
     /// Shared shell namespace for prefersDefaultFocus / resetFocus hand-off.
     var focusNamespace: Namespace.ID? = nil
-    /// When true, the active tab is the preferred default focus target.
-    var preferDefaultFocus: Bool = false
+    /// The one nav item preferred during an explicit stage-to-nav hand-off.
+    var preferredFocusTab: TVNavTab? = nil
 
     /// Same three groups as the web shell (`.app-nav`). Music joins the browse group only when
     /// the library has music (`showMusic`).
@@ -660,6 +685,7 @@ struct TVFloatingNav: View {
     private func navButton(_ tab: TVNavTab) -> some View {
         let isActive = selection == tab
         let isFocused = externalFocus.wrappedValue == .nav(tab)
+        let isPermittedStageTarget = preferredFocusTab.map { $0 == tab } ?? isActive
         let button = Button {
             selection = tab
             externalFocus.wrappedValue = .nav(tab)
@@ -702,16 +728,23 @@ struct TVFloatingNav: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .accessibilityLabel(tab.title)
         .focused(externalFocus, equals: .nav(tab))
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: TVNavFocusFramesPreferenceKey.self,
+                    value: [tab: proxy.frame(in: .global)]
+                )
+            }
+        }
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: isFocused) { _, now in TVParityState.setFocus(tab.title, now, id: "nav-" + tab.rawValue, rail: "nav", index: TVNavTab.allCases.firstIndex(of: tab)) }
         #endif
-        // not .focusable: on a Button it adds a second, inert focus target. While focus is outside the nav only the
-        // active tab can take it, so Left from the page lands on the active tab (web), not the nearest one.
+        // tvOS enables the measured hand-off target, with the active tab as fallback when no source frame is available.
         #if os(macOS)
-        // The mouse must reach every tab (hover, click); only the remote needs the one-active-tab rule above.
+        // The mouse must reach every tab for hover and click.
         .disabled(suppressFocusChrome)
         #else
-        .disabled(suppressFocusChrome || (!navHasFocus && !isActive))
+        .disabled(suppressFocusChrome || (!navHasFocus && !isPermittedStageTarget))
         #endif
         .focusEffectDisabled(suppressFocusChrome)
         .onMoveCommand { direction in
@@ -721,7 +754,7 @@ struct TVFloatingNav: View {
             }
         }
 
-        if let focusNamespace, preferDefaultFocus, isActive {
+        if let focusNamespace, preferredFocusTab == tab {
             button.prefersDefaultFocus(true, in: focusNamespace)
         } else {
             button

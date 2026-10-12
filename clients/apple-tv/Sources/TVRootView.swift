@@ -10,6 +10,7 @@ struct TVRootView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Environment(TVDisplayPreferences.self) private var displayPreferences
     @State private var selectedTab: TVNavTab = .home
+    @State private var parityNavFocusFrames: [TVNavTab: CGRect] = [:]
     /// Shared focus so the shell can move between nav and stage with arrows.
     @FocusState private var shellFocus: TVShellFocus?
 
@@ -200,6 +201,13 @@ struct TVRootView: View {
             .zIndex(50)
             }
         }
+        .onPreferenceChange(TVNavFocusFramesPreferenceKey.self) { parityNavFocusFrames = $0 }
+        .environment(\.requestNavFocus) { sourceY in
+            let target = sourceY.flatMap {
+                TVNavFocusGeometry.nearestTab(toY: $0, frames: parityNavFocusFrames)
+            } ?? tab
+            shellFocus.wrappedValue = .nav(target)
+        }
         .ignoresSafeArea()
     }
 
@@ -272,7 +280,8 @@ private struct TVProductionShell<Stage: View>: View {
 
     @Environment(TVAppEnvironment.self) private var environment
     @Namespace private var shellFocusNamespace
-    @State private var preferNavDefault = false
+    @State private var preferredNavFocus: TVNavTab?
+    @State private var navFocusFrames: [TVNavTab: CGRect] = [:]
     /// Who's watching, opened from the nav's profile tile (web `/profiles`).
     @State private var showProfiles = false
     /// A full-screen page (the player) is showing: no nav, no clock.
@@ -305,7 +314,7 @@ private struct TVProductionShell<Stage: View>: View {
                     showSettings: false,
                     externalFocus: shellFocus,
                     focusNamespace: shellFocusNamespace,
-                    preferDefaultFocus: preferNavDefault,
+                    preferredFocusTab: preferredNavFocus,
                     browseKinds: environment.catalogKinds,
                     profile: TVNavProfile(
                         name: environment.profileName ?? "Viewer",
@@ -370,21 +379,23 @@ private struct TVProductionShell<Stage: View>: View {
             // One scope for dock + stage so resetFocus / prefersDefaultFocus
             // can pull the remote out of ScrollView rails into the dock.
             .focusScope(shellFocusNamespace)
-            .environment(\.requestNavFocus) {
-                preferNavDefault = true
-                let target = TVShellFocus.nav(tab)
+            .environment(\.requestNavFocus) { sourceY in
+                let targetTab = sourceY.flatMap {
+                    TVNavFocusGeometry.nearestTab(toY: $0, frames: navFocusFrames)
+                } ?? tab
+                preferredNavFocus = targetTab
+                let target = TVShellFocus.nav(targetTab)
                 Task { @MainActor in
                     shellFocus.wrappedValue = target
                     resetFocus(in: shellFocusNamespace)
-                    // Prefer-nav is a one-shot entry hint; clear so Right can
-                    // re-enter the stage on the next move.
+                    // Keep the measured target preferred through resetFocus, then clear the one-shot hint.
                     try? await Task.sleep(for: .milliseconds(80))
-                    preferNavDefault = false
+                    preferredNavFocus = nil
                 }
             }
             .onChange(of: shellFocus.wrappedValue) { _, newValue in
-                if case .nav = newValue {
-                    preferNavDefault = false
+                if case .nav(let focusedTab) = newValue, preferredNavFocus != focusedTab {
+                    preferredNavFocus = nil
                 }
             }
 
@@ -406,6 +417,7 @@ private struct TVProductionShell<Stage: View>: View {
         .environment(\.openActions) { actionsWork = $0 }
         .environment(\.actionsWorkID, actionsWork?.id)
         .ignoresSafeArea()
+        .onPreferenceChange(TVNavFocusFramesPreferenceKey.self) { navFocusFrames = $0 }
         .fullScreenCover(item: $playing) { request in
             TVPlayerView(mediaFileID: request.id, title: request.title, apiClient: environment.apiClient)
         }
