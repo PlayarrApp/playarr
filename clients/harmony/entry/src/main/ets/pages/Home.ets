@@ -105,7 +105,7 @@ import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
-import { tv, TvGeometry, TouchGeometry } from '../design/Metrics';
+import { isTvMetrics, tv, TvGeometry, TouchGeometry } from '../design/Metrics';
 import { Spacing, Radii } from '../core/Tokens';
 
 import { Stage } from '../design/components/Stage';
@@ -347,6 +347,20 @@ function patchOneCardArtwork(item: HomeCardItem, pixelMap: image.PixelMap): Home
     stamp: 'art',
   };
   return patched;
+}
+
+/** A rail's ForEach key: `MediaRail` reads its items once, so the rail is rebuilt each time one more card's artwork arrives. */
+function railKey(railId: string, items: HomeCardItem[]): string {
+  if (isTvMetrics()) {
+    return railId; // a rebuild would drop the D-pad focus inside the rail
+  }
+  let loaded = 0;
+  for (const item of items) {
+    if (item.stamp !== undefined) {
+      loaded += 1;
+    }
+  }
+  return railId + ':' + loaded.toString();
 }
 
 /** Returns a fresh array with the one item whose `id === workId` patched via
@@ -794,6 +808,7 @@ export struct Home {
 
     Column({ space: tv(TvGeometry.homeRailsRowGap) }) {
       if (this.continueWatchingItems.length > 0) {
+        ForEach([railKey('continue', this.continueWatchingItems)], (_key: string) => {
         MediaRail({
           railId: 'home-continue-watching-tv',
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
@@ -804,6 +819,7 @@ export struct Home {
             this.tvCardItemBuilder(item, index, activeRailFactor);
           },
         })
+        }, (key: string): string => key)
       }
       ForEach(this.serverRails, (rail: HomeServerRail) => {
         MediaRail({
@@ -816,7 +832,7 @@ export struct Home {
             this.tvCardItemBuilder(item, index, activeRailFactor);
           },
         })
-      }, (rail: HomeServerRail): string => rail.id)
+      }, (rail: HomeServerRail): string => railKey(rail.id, rail.items))
       if (this.serverRails.length === 0 && this.newMovieItems.length > 0) {
         MediaRail({
           railId: 'home-new-movies-tv',
@@ -878,6 +894,7 @@ export struct Home {
     // Web phone Home: "On deck", then the server's rails (Recently Added in Movies ...), every card as wide as the page less its margins.
     Column({ space: TOUCH_RAIL_GAP }) {
       if (this.continueWatchingItems.length > 0) {
+        ForEach([railKey('continue', this.continueWatchingItems)], (_key: string) => {
         MediaRail({
           railId: 'home-continue-watching-touch',
           heading: 'On deck',
@@ -889,6 +906,7 @@ export struct Home {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
         })
+        }, (key: string): string => key)
       }
       ForEach(this.serverRails, (rail: HomeServerRail) => {
         MediaRail({
@@ -902,7 +920,7 @@ export struct Home {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
         })
-      }, (rail: HomeServerRail): string => rail.id)
+      }, (rail: HomeServerRail): string => railKey(rail.id, rail.items))
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)

@@ -152,14 +152,6 @@ export struct PageShell {
               popRoute(getNavStack());
             })
           Column() {
-            if (this.kicker.length > 0) {
-              Text(this.kicker)
-                .fontSize(10)
-                .fontWeight(FontWeight.Bolder)
-                .letterSpacing(0.8)
-                .textCase(TextCase.UpperCase)
-                .fontColor(toResourceColor(BRAND_PINK_SOFT))
-            }
             Text(this.title)
               .fontSize(22)
               .fontWeight(FontWeight.Medium)
@@ -173,8 +165,19 @@ export struct PageShell {
         }
       }
       .width('100%')
-      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+      .padding({ left: 16, right: 16, top: 12, bottom: this.kicker.length > 0 ? 2 : 12 })
       .alignItems(VerticalAlign.Center)
+      if (this.kicker.length > 0) {
+        // Web phone: the pink count or section line sits under the title, level with it.
+        Text(this.kicker)
+          .fontSize(10)
+          .fontWeight(FontWeight.Bolder)
+          .letterSpacing(0.8)
+          .textCase(TextCase.UpperCase)
+          .fontColor(toResourceColor(BRAND_PINK_SOFT))
+          .width('100%')
+          .padding({ left: 68, bottom: 10 })
+      }
       Column() {
         this.touchContent()
       }

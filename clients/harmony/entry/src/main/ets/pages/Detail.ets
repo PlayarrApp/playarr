@@ -134,6 +134,7 @@ import { PosterCard } from '../design/components/PosterCard';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 import { Skeleton } from '../design/components/Skeleton';
 
+import { BRAND_PINK_SOFT } from '../core/Tokens';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { tv, isTvMetrics, TvGeometry, TouchGeometry } from '../design/Metrics';
@@ -145,7 +146,7 @@ import type { QueueItem } from '../core/EndOfPlayback.ts';
 
 import { ROUTES } from '../navigation/Routes';
 import type { DetailRouteParams, PlayerRouteParams } from '../navigation/Routes';
-import { getNavStack, pushRoute } from '../navigation/NavStack';
+import { getNavStack, popRoute, pushRoute } from '../navigation/NavStack';
 
 // -- UI-only constants (not brief/Tokens.ts literals -- see design/components/
 // AsyncState.ets's/Skeleton.ets's own header comments for this documented
@@ -156,6 +157,8 @@ const PLAY_BUTTON_HEIGHT_TOUCH: number = 48;
 const PLAY_BUTTON_ICON_SIZE: number = 18;
 const PLAY_BUTTON_LABEL_SIZE: number = 16;
 const HERO_TOUCH_HEIGHT: number = 340;
+/** Phone: where the text block starts (the backdrop's lower part is under it, faded). */
+const TOUCH_TEXT_TOP: number = 330;
 
 /** Glass "browser" panel recipe -- brief 5.6 documents this exact glass
  * treatment for the rail panel; not a `core/Tokens.ts` field, matching
@@ -973,10 +976,12 @@ struct Detail {
     .backgroundColor(toResourceColor(activeColors().surface))
   }
 
+  /** Phone (web phone detail): the backdrop fading into the page at the top, Back over it, then the pink kind line, the title, the
+   * meta line, three lines of synopsis, the Play pill and the rails. */
   @Builder
   private touchLayout(): void {
 
-    Stack({ alignContent: Alignment.Top }) {
+    Stack({ alignContent: Alignment.TopStart }) {
       if (this.heroArtwork !== undefined) {
         Image(this.heroArtwork)
           .width('100%')
@@ -987,11 +992,38 @@ struct Detail {
       } else {
         Skeleton({ blockWidth: TouchGeometry.homeRailCardWidthLandscape * 4, blockHeight: HERO_TOUCH_HEIGHT, radius: 0 })
       }
+      Column()
+        .width('100%')
+        .height(HERO_TOUCH_HEIGHT)
+        .linearGradient({
+          direction: GradientDirection.Bottom,
+          colors: [[toResourceColorWithAlpha(activeColors().bg, 0.35), 0.0], [toResourceColor(activeColors().bg), 1.0]],
+        })
 
       Scroll() {
         Column({ space: TouchGeometry.detailListSpacing }) {
-          Column({ space: Spacing.md }) {
-            FeatureCopy({ kicker: (this.detail !== null ? kindLabel(this.detail.work.kind) : ''), title: (this.detail !== null ? this.detail.work.title : ''), metaLines: (this.detail !== null ? buildMetaLines(this.detail) : []), synopsis: this.synopsisText() })
+          Column({ space: 8 }) {
+            Text(this.detail !== null ? kindLabel(this.detail.work.kind) : '')
+              .fontSize(10)
+              .fontWeight(FontWeight.Bolder)
+              .letterSpacing(0.8)
+              .textCase(TextCase.UpperCase)
+              .fontColor(toResourceColor(BRAND_PINK_SOFT))
+            Text(this.detail !== null ? this.detail.work.title : '')
+              .fontSize(24)
+              .fontWeight(FontWeight.Bold)
+              .letterSpacing(-0.5)
+              .fontColor(toResourceColor(activeColors().ink))
+            Text(this.detail !== null ? buildMetaLines(this.detail).join('  ') : '')
+              .fontSize(11)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .maxLines(2)
+            Text(this.synopsisText())
+              .fontSize(12)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .lineHeight(18)
+              .maxLines(3)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
             this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
           }
           .width('100%')
@@ -1000,7 +1032,7 @@ struct Detail {
           this.railsColumn()
         }
         .padding({
-          top: TouchGeometry.detailListTop,
+          top: TOUCH_TEXT_TOP,
           bottom: TouchGeometry.detailListBottom,
           left: Spacing.lg,
           right: Spacing.lg,
@@ -1010,6 +1042,28 @@ struct Detail {
       }
       .width('100%')
       .height('100%')
+
+      Row({ space: 12 }) {
+        Text('←')
+          .fontSize(17)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(toResourceColor(activeColors().inkSoft))
+          .textAlign(TextAlign.Center)
+          .width(40)
+          .height(40)
+          .borderRadius(20)
+          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+          .onClick(() => {
+            popRoute(getNavStack());
+          })
+        Text(this.detail !== null ? kindLabel(this.detail.work.kind) + 's' : '')
+          .fontSize(22)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(toResourceColor(activeColors().ink))
+      }
+      .padding({ left: 16, top: 12 })
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
     .height('100%')

@@ -153,6 +153,8 @@ const PAGINATION_LOOKAHEAD: number = 10;
 const COVER_ASPECT_RATIO: number = 1.5;
 /** Web phone Screen view card: 16:9 art. */
 const TOUCH_LANDSCAPE_RATIO: number = 9 / 16;
+/** Web phone Screen view: 232 vp between card tops with a 185 vp card and its caption. */
+const TOUCH_LANDSCAPE_ROW_GAP: number = 36;
 
 /** A defensive floor so a not-yet-measured or pathologically narrow layout
  * never computes a zero/negative card size. Not a `core/Tokens.ts` field --
@@ -565,7 +567,7 @@ export struct Library {
   }
 
   private gridRowGapVp(): number {
-    return isTvMetrics() ? tv(TvGeometry.libraryGridRowGap) : TOUCH_GRID_GAP_VP;
+    return isTvMetrics() ? tv(TvGeometry.libraryGridRowGap) : (this.view === 'cover' ? TOUCH_GRID_GAP_VP : TOUCH_LANDSCAPE_ROW_GAP);
   }
 
   private gridCardRadiusVp(): number {

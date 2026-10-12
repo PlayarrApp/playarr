@@ -125,7 +125,7 @@ def snap_checked(name, folder, floor):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
         abort(f"{name} is too plain: an error or signed-out screen")
     img.save(os.path.join(folder, name + ".png"))
-    print("captured", name, flush=True)
+    print("captured", name, get("/health").decode().strip()[:80], flush=True)
 
 
 def debug(name):
