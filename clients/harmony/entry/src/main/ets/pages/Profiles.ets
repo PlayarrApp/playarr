@@ -34,11 +34,8 @@
  * the server address list) or, defensively, `ROUTES.ServerSetup` if
  * `ServerDirectory` reports no active server at all.
  *
- * There is no create-profile endpoint anywhere in brief section 4.7, or
- * anywhere else in the implementation brief. The "Add Profile" tile below
- * is therefore a disabled placeholder with no `onClick` handler, not a
- * call to an invented endpoint; profile management stays on Playarr
- * Server's own admin surface.
+ * The TV "Sign in / Add another profile" tile opens the QR sign-in (`ROUTES.Pairing`), as web's TV does; a successful
+ * link replaces the route with the picker. Profiles themselves are managed on Playarr Server.
  *
  * Wired into `profile/router_map.json` as the `Profiles` route (name ->
  * `pages/Profiles.ets` -> `ProfilesBuilder`, below), matching
@@ -441,7 +438,7 @@ struct Profiles {
           .width(tv(TV_CHOICE_WIDTH))
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
-        // No create-profile endpoint exists (brief 4.7): the add tile stays a disabled placeholder.
+        // Web on TV: the tile opens the QR sign-in (/login/qr); a successful link returns to the picker.
         Column() {
           // Web `.profile-add`: the avatar gradient from surface-strong mixed 16% with the brand to #a82655,
           // under the avatar's top-left highlight, with a dashed ring.
@@ -468,12 +465,12 @@ struct Profiles {
           .borderRadius(tv(TV_CHOICE_WIDTH / 2))
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
-          Text($r('app.string.profiles_add_profile'))
+          Text($r('app.string.profiles_sign_in'))
             .fontSize(tv(17.28))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: tv(9) })
-          Text($r('app.string.profiles_add_profile_hint'))
+          Text($r('app.string.profiles_add_another_profile'))
             .fontSize(tv(9.408))
             .fontWeight(FontWeight.Bold)
             .letterSpacing(tv(0.423))
@@ -483,7 +480,10 @@ struct Profiles {
             .margin({ top: tv(9) })
         }
         .width(tv(TV_CHOICE_WIDTH))
-        .enabled(false)
+        .focusable(true)
+        .onClick(() => {
+          pushRoute(getNavStack(), ROUTES.Pairing);
+        })
       }
       .alignItems(VerticalAlign.Top)
       .margin({ top: tv(TV_CHOICES_TOP - 242) })

@@ -81,6 +81,14 @@
       "value": "Manage profiles from Playarr Server"
     },
     {
+      "name": "profiles_sign_in",
+      "value": "Sign in"
+    },
+    {
+      "name": "profiles_add_another_profile",
+      "value": "Add another profile"
+    },
+    {
       "name": "profiles_pin_title",
       "value": "Enter PIN"
     },
