@@ -529,6 +529,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV: Settings > Appearance Home screen artwork and Artwork size now change Home's rails and the Library's screen and cover grids, as web's card size does.
 - Roku player: subtitle picker, queue and info panels beside the quality pill; arrows move between the controls as on web.
 - HarmonyOS TV: the Profiles picker's last tile is "Sign in / Add another profile" and opens the QR sign-in, as web does.
 - HarmonyOS: Settings lists web's ten sections and Appearance has Home screen artwork and Artwork size (saved on the device; the other new sections show their description until built).
