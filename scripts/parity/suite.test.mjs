@@ -50,6 +50,7 @@ test("Roku suite driver refuses to interrupt an active media session", () => {
   assert.equal(isActivePlayerResponse('<player state="close" error="false"/>'), false);
   assert.equal(isActivePlayerResponse('<player state="play" error="false"/>'), true);
   assert.equal(isActivePlayerResponse('<player state="pause" error="false"/>'), true);
+  assert.equal(isActivePlayerResponse("<query/>"), true);
 });
 
 test("focus-order checks keep play/pause role semantics while toggle checks keep state", () => {

@@ -51,7 +51,7 @@ export function validateRunArgs(args) {
 
 export function isActivePlayerResponse(xml) {
   const state = /<player\b[^>]*\bstate="([^"]+)"/i.exec(xml)?.[1]?.toLowerCase();
-  return state !== undefined && !["close", "closed", "stopped", "none", "idle"].includes(state);
+  return state === undefined || !["close", "closed", "stopped", "none", "idle"].includes(state);
 }
 
 function parseKeySequence(keys = []) {
