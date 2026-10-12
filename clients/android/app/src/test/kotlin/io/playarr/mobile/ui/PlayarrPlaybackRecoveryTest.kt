@@ -12,6 +12,19 @@ class PlayarrPlaybackRecoveryTest {
     private fun source(name: String) = File("src/main/kotlin/io/playarr/mobile/ui/$name").readText()
 
     @Test
+    fun `recovery keeps a paused player paused and a playing one playing`() {
+        assertFalse(playarrShouldPlayAfterRecovery(playWhenReadyBeforeError = false))
+        assertTrue(playarrShouldPlayAfterRecovery(playWhenReadyBeforeError = true))
+        // Neither recovery path hard-codes playing any more.
+        val experience = source("PlayarrExperience.kt")
+        assertFalse(experience.contains("shouldPlayOverride = true"))
+        assertEquals(
+            2,
+            Regex("shouldPlayOverride = playarrShouldPlayAfterRecovery\\(").findAll(experience).count(),
+        )
+    }
+
+    @Test
     fun `controls auto-hide after five seconds`() {
         assertEquals(5_000L, PLAYER_CONTROLS_TIMEOUT_MS)
     }

@@ -8682,7 +8682,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             requestedSourcePositionMs = currentSourcePositionMs(),
             stopReason = PlaybackStopReason.Error,
             errorMessage = errorMessage,
-            shouldPlayOverride = true,
+            shouldPlayOverride = playarrShouldPlayAfterRecovery(player.state.value.playWhenReady),
         )
     }
 
@@ -8697,7 +8697,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             requestedSourcePositionMs = currentSourcePositionMs(),
             stopReason = PlaybackStopReason.Error,
             errorMessage = errorMessage,
-            shouldPlayOverride = true,
+            shouldPlayOverride = playarrShouldPlayAfterRecovery(player.state.value.playWhenReady),
         )
     }
 

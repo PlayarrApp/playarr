@@ -14,6 +14,13 @@ internal val PLAYER_AUTO_RETRY_DELAYS_MS: List<Long> = listOf(1_500L, 3_000L, 6_
 internal fun playarrAutoRetryDelayMs(attemptsSoFar: Int): Long? = PLAYER_AUTO_RETRY_DELAYS_MS.getOrNull(attemptsSoFar)
 
 /**
+ * Whether the replacement session starts playing after the server session was lost (reaped, evicted, expired)
+ * or the source could not be decoded. A paused player stays paused: the error does not change the viewer's play
+ * state, so it follows `playWhenReady` as it was when the error arrived.
+ */
+internal fun playarrShouldPlayAfterRecovery(playWhenReadyBeforeError: Boolean): Boolean = playWhenReadyBeforeError
+
+/**
  * Waits before retrying a start the server refused for lack of transcode capacity (HTTP 503 with a Retry-After
  * header): a slot frees when another device stops or the idle reaper runs, up to about 75 s, so wait longer than
  * for other errors. 2 s, 4 s, 8 s, then 10 s steps, ten tries in all.
