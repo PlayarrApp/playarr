@@ -26,6 +26,21 @@ export function spawnSyncBinary(command, args, options = {}) {
   return spawnSync(command, args, { ...options, encoding: null });
 }
 
+export function sampleBackgroundPixel(jpeg) {
+  const result = spawnSyncBinary("ffmpeg", [
+    "-hide_banner", "-loglevel", "error", "-threads", "2", "-filter_threads", "2",
+    "-i", "pipe:0", "-vf", "format=rgb24,crop=1:1:10:500", "-frames:v", "1",
+    "-threads", "2", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1",
+  ], {
+    input: jpeg,
+    timeout: 12000,
+    maxBuffer: 4096,
+    stdio: ["pipe", "pipe", "ignore"],
+  });
+  if (result.error || result.status !== 0 || result.stdout?.length !== 3) throw new Error("Roku theme verification could not sample the background pixel");
+  return { r: result.stdout[0], g: result.stdout[1], b: result.stdout[2] };
+}
+
 export function splitDebugFrames(buffer, chunk) {
   const frames = (buffer + chunk).split("\n");
   const remainder = frames.pop() ?? "";
@@ -420,7 +435,7 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   const pngFromJpeg = (jpeg) => {
-    const result = spawnSyncBinary("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-f", "image2pipe", "-vcodec", "png", "pipe:1"], {
+    const result = spawnSyncBinary("ffmpeg", ["-hide_banner", "-loglevel", "error", "-threads", "2", "-filter_threads", "2", "-i", "pipe:0", "-threads", "2", "-f", "image2pipe", "-vcodec", "png", "pipe:1"], {
       input: jpeg,
       timeout: 20000,
       maxBuffer: 64 << 20,
@@ -428,17 +443,6 @@ export function createDriver({ out, args = [] } = {}) {
     });
     if (result.error || result.status !== 0 || !result.stdout?.length) throw new Error("Roku screenshot conversion failed");
     return result.stdout;
-  };
-
-  const sampleBackgroundPixel = (jpeg) => {
-    const result = spawnSyncBinary("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-vf", "crop=1:1:10:500", "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"], {
-      input: jpeg,
-      timeout: 12000,
-      maxBuffer: 4096,
-      stdio: ["pipe", "pipe", "ignore"],
-    });
-    if (result.error || result.status !== 0 || result.stdout?.length !== 3) throw new Error("Roku theme verification could not sample the background pixel");
-    return { r: result.stdout[0], g: result.stdout[1], b: result.stdout[2] };
   };
 
   const captureFrame = () => {

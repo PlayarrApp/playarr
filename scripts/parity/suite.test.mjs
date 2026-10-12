@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { applyParityLine, createParityState, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { applyParityLine, createParityState, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
@@ -61,6 +61,14 @@ test("Roku theme verification distinguishes measured light and dark background p
   assert.equal(themePixelMatches({ r: 251, g: 250, b: 248 }, "dark"), false);
   assert.equal(themePixelMatches({ r: 26, g: 24, b: 27 }, "light"), false);
   assert.equal(themePixelMatches(null, "dark"), false);
+});
+
+test("Roku samples a 1x1 pixel from an encoded JPEG after converting to RGB", () => {
+  const jpeg = readFileSync(new URL("./fixtures/roku-pixel-probe.jpg", import.meta.url));
+  const pixel = sampleBackgroundPixel(jpeg);
+  assert.ok(Math.abs(pixel.r - 0x33) <= 12);
+  assert.ok(Math.abs(pixel.g - 0x55) <= 12);
+  assert.ok(Math.abs(pixel.b - 0x77) <= 12);
 });
 
 test("Roku does not report a calendar view it cannot observe", () => {
