@@ -407,6 +407,9 @@ export struct PlayerChrome {
   onSeekBack: () => void = () => {};
   onSeekForward: () => void = () => {};
   onBack: () => void = () => {};
+  /** Subtitles and audio: the CC button (TV) shows only when the file has something to choose. */
+  @Prop hasTracks: boolean = false;
+  onOpenTracks: () => void = () => {};
   onVisibilityChanged: (visible: boolean) => void = () => {};
 
   @State private chromeOpacity: number = 1;
@@ -609,6 +612,20 @@ export struct PlayerChrome {
             Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
               .fontSize(tv(TV_TIME_FONT_SIZE))
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+          }
+          Blank()
+          if (this.hasTracks) {
+            ChromeButton({
+              label: 'CC',
+              circle: true,
+              buttonWidth: tv(TV_SEEK_SIZE),
+              buttonHeight: tv(TV_SEEK_SIZE),
+              fontSize: tv(13),
+              onActivate: this.onOpenTracks,
+              notifyFocusChanged: ((focused: boolean): void => {
+                this.setChildFocused(focused);
+              }),
+            })
           }
         }
         .width('100%')

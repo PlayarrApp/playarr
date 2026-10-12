@@ -125,6 +125,7 @@ import { PlaybackSessionReporter } from '../player/PlaybackSessionReporter';
 import type { PlaybackTeardownOutcome } from '../player/PlaybackSessionReporter';
 import { PlayerChrome } from '../player/PlayerChrome';
 import { EndScreen } from '../player/EndScreen';
+import { PlayerTracksDrawer } from '../player/PlayerTracksDrawer';
 import { MediaRail } from '../design/components/MediaRail';
 import type { MediaRailItem } from '../design/components/MediaRail';
 import { PosterCard } from '../design/components/PosterCard';
@@ -245,6 +246,14 @@ struct Player {
   /** Mirrors `PlayerChrome`'s own visibility, reported through `onVisibilityChanged`. */
   private controlsVisible: boolean = true;
   @State private subtitleCueText: string = '';
+  /** The CC drawer (subtitles and audio) is open. */
+  @State private tracksOpen: boolean = false;
+  /** Whether the negotiated file has anything to choose in the CC drawer (a subtitle track, or more than one audio track). */
+  @State private hasTracks: boolean = false;
+  @State private selectedSubtitleId: string = '';
+  @State private selectedAudioId: string = '';
+  /** The viewer's own subtitle pick for this session: null until they pick; '' is Off. It outlives renegotiations (an audio change). */
+  private userSubtitleChoice: string | null = null;
   /** The saved Settings > Player subtitle default, read when playback starts. */
   private defaultSubtitleMode: string = 'off';
   private defaultSubtitleLanguage: string = 'en';
@@ -587,8 +596,14 @@ struct Player {
 
   private async attachDefaultSubtitleIfNamed(info: PlaybackInfoResponse): Promise<void> {
     // A track the server already chose wins; otherwise the saved default (web `selectDefaultSubtitleTrackId`).
-    const selectedId = info.selected_subtitle_track_id !== null ? info.selected_subtitle_track_id :
-      selectDefaultSubtitleTrackId(info.subtitle_tracks, this.defaultSubtitleMode, this.defaultSubtitleLanguage);
+    this.hasTracks = info.subtitle_tracks.length > 0 || info.audio_tracks.length > 1;
+    this.selectedAudioId = info.selected_audio_track_id !== null ? info.selected_audio_track_id : '';
+    // The viewer's own pick wins over the server's choice and the saved default.
+    const choice = this.userSubtitleChoice;
+    const selectedId = choice !== null ? (choice.length > 0 ? choice : null) :
+      (info.selected_subtitle_track_id !== null ? info.selected_subtitle_track_id :
+        selectDefaultSubtitleTrackId(info.subtitle_tracks, this.defaultSubtitleMode, this.defaultSubtitleLanguage));
+    this.selectedSubtitleId = selectedId !== null ? selectedId : '';
     if (selectedId === null) {
       return;
     }
@@ -603,6 +618,44 @@ struct Player {
       return;
     }
     await this.controller.attachSubtitle(match);
+  }
+
+  /** The CC drawer's subtitle pick. Off hides the cue text; a track is fetched and attached (the engine offers no way to detach one, so
+   * a second pick adds to the first: the cue shown is whichever track last reported). */
+  private async pickSubtitle(id: string): Promise<void> {
+    this.userSubtitleChoice = id;
+    this.selectedSubtitleId = id;
+    this.subtitleCueText = '';
+    const info = this.currentInfo;
+    if (id.length === 0 || info === null) {
+      return;
+    }
+    for (const track of info.subtitle_tracks) {
+      if (track.id === id) {
+        await this.controller.attachSubtitle(track);
+        return;
+      }
+    }
+  }
+
+  /** The CC drawer's audio pick: renegotiates the same file with that audio stream, from where playback is now. */
+  private async pickAudio(id: string): Promise<void> {
+    const info = this.currentInfo;
+    if (info === null || id === this.selectedAudioId) {
+      return;
+    }
+    for (const track of info.audio_tracks) {
+      if (track.id === id) {
+        this.tracksOpen = false;
+        const nowMs = reportedPositionMs(this.controller.getCurrentPositionMs(), info.source_offset_ms);
+        const options: PlaybackNegotiationOptions = { startPositionMs: nowMs, audioStreamIndex: track.stream_index };
+        if (info.selected_quality_id !== ORIGINAL_QUALITY) {
+          options.profile = info.selected_quality_id;
+        }
+        await this.renegotiate(options);
+        return;
+      }
+    }
   }
 
   // -- Seeking / renegotiation-on-seek (brief 9 Slice 7) ----------------------
@@ -1015,6 +1068,9 @@ struct Player {
    * boundary event, and the only sane way to ever hide a cue again once
    * shown, given this event is the only signal this page has. */
   private handleSubtitleUpdate(info: media.SubtitleInfo): void {
+    if (this.selectedSubtitleId.length === 0) {
+      return;
+    }
     const text = info.text ?? '';
     this.subtitleCueText = text;
   }
@@ -1263,6 +1319,28 @@ struct Player {
             onBack: () => {
               this.handleBack();
             },
+            hasTracks: this.hasTracks,
+            onOpenTracks: () => {
+              this.tracksOpen = true;
+            },
+          })
+        }
+
+        if (this.tracksOpen && this.currentInfo !== null) {
+          PlayerTracksDrawer({
+            subtitleTracks: this.currentInfo.subtitle_tracks,
+            selectedSubtitleId: this.selectedSubtitleId,
+            audioTracks: this.currentInfo.audio_tracks,
+            selectedAudioId: this.selectedAudioId,
+            onPickSubtitle: (id: string): void => {
+              void this.pickSubtitle(id);
+            },
+            onPickAudio: (id: string): void => {
+              void this.pickAudio(id);
+            },
+            onClose: (): void => {
+              this.tracksOpen = false;
+            },
           })
         }
 
@@ -1282,6 +1360,11 @@ struct Player {
       })
       .onKeyEvent((event: KeyEvent) => {
         const action = resolvePlayerAction(event);
+        if ((action === 'back' || action === 'stop') && this.tracksOpen) {
+          this.tracksOpen = false;
+          event.stopPropagation();
+          return;
+        }
         // BACK closes the visible controls first; the next BACK exits.
         if (action === 'back' && this.endPhase === 'playing' && this.phase === 'ready'
           && resolveBack(this.controlsVisible) === 'hide-controls') {
