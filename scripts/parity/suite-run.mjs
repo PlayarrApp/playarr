@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Runs the shared parity suite (suite.json) through a per-platform driver (docs/parity/SUITE.md).
 //   node suite-run.mjs --driver ./drivers/web.mjs --out <dir> [--themes dark,light] [--only screens,dpad,downloads,performance]
-//                      [--screens home,movies] [--cases movie-download,cancel] [--checks home-right,player-right] [--reset-progress] [--via keys|route] [--reference | --expected <expected.json>]
+//                      [--screens home,movies] [--cases movie-download,cancel] [--checks home-right,player-right] [--player | --skip-player] [--reset-progress] [--via keys|route] [--reference | --expected <expected.json>]
 // Writes <out>/<theme>/<id>.png, <out>/dpad.json, <out>/downloads.json (and <out>/performance.json with --only performance) (and expected.json with --reference).
 // A screen is never written unless its end state matches the suite route: a wrong or signed-out screen aborts it.
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -20,6 +20,10 @@ const wantScreens = opt("screens", "").split(",").filter(Boolean);
 const wantCases = opt("cases", "").split(",").filter(Boolean);
 const reset = args.includes("--reset-progress");
 const pinned = () => [...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file)];
+// Player checks play a title, which changes On deck on the shared account: they run only in the PLAYBACK-PHASE window (the file named by
+// PLAYARR_PLAYBACK_PHASE_FILE exists) or with --player, and never with --skip-player.
+const isPlayerCheck = (d) => d.id.startsWith("player-");
+const playerAllowed = !args.includes("--skip-player") && (args.includes("--player") || (!!process.env.PLAYARR_PLAYBACK_PHASE_FILE && existsSync(process.env.PLAYARR_PLAYBACK_PHASE_FILE)));
 const wantChecks = opt("checks", "").split(",").filter(Boolean);
 const via = opt("via", "keys");
 const reference = args.includes("--reference");
@@ -36,7 +40,9 @@ const norm = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 // Labels differ in wording per platform ("open x", "x movie · 2003", "x"): same item when one holds the other.
 // focused() answers a label string or { label, position: { rail, index } }. Position is the stable check: Home rails reorder
 // when other devices play on the shared account, so a `compare: "position"` check ignores the label (kept as info).
-const asFocus = (f) => (f && typeof f === "object" ? { label: norm(f.label), position: f.position ?? null } : { label: norm(f), position: null });
+// The play/pause button reads "Play" or "Pause" depending on the playback state at that moment: one role, "play-pause".
+const role = (s) => (/^(play|pause)$/.test(s) ? "play-pause" : s);
+const asFocus = (f) => (f && typeof f === "object" ? { label: role(norm(f.label)), position: f.position ?? null } : { label: role(norm(f)), position: null });
 const samePosition = (a, b) => !!a && !!b && String(a.rail) === String(b.rail) && Number(a.index) === Number(b.index);
 const sameItem = (a, b) => { const t = (s) => s.replace(/^open /, ""); return !!a && !!b && (a === b || t(a).includes(t(b)) || t(b).includes(t(a))); };
 
@@ -86,6 +92,11 @@ if (only.includes("dpad")) {
   const results = [];
   const unstable = [];
   for (const d of suite.dpad.filter((x) => !wantChecks.length || wantChecks.includes(x.id))) {
+    if (isPlayerCheck(d) && !playerAllowed) { // skipped, not failed: no playback outside the window
+      results.push({ id: d.id, pass: null, state: "skipped: no PLAYBACK-PHASE" });
+      console.log(`skip dpad ${d.id}: no PLAYBACK-PHASE (use --player to force, --skip-player to silence)`);
+      continue;
+    }
     let actual = null, startOk = true, lastKey = null, agreed = false;
     // A check starts from a known focus position (`start`): a wrong start or a lost first key gives a wrong answer, so retry up to 3 times.
     for (let attempt = 1; attempt <= (reference ? 5 : 3); attempt += 1) {
@@ -93,7 +104,8 @@ if (only.includes("dpad")) {
       try {
         const from = suite.screens.find((x) => x.id === d.from);
         await reach(from);
-        if (d.wait) await sleep(d.wait); // the player needs time to load and show its controls
+        // The player needs a known state before the first key: playing, controls up, focus on play/pause (driver.playerReady), else a fixed wait.
+        if (d.wait) { if (driver.playerReady) await driver.playerReady(); else await sleep(d.wait); }
         if (d.start) {
           const at = asFocus(await driver.focused()).position;
           startOk = !at || samePosition(at, d.start); // a driver without position cannot assert the start

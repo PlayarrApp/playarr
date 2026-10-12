@@ -316,6 +316,14 @@ export async function createDriver() {
       }
       throw new Error("Home focus system not ready after 4 loads: " + why);
     },
+    // Known state for the player checks: video playing, controls visible, focus on the play/pause button (waits up to 30 s, else throws).
+    async playerReady() {
+      await page.waitForFunction(() => {
+        const v = document.querySelector("video"), c = document.querySelector(".player-controls");
+        if (v && v.paused && v.readyState >= 2) v.play().catch(() => {});
+        return !!v && v.readyState >= 2 && !v.paused && v.currentTime > 0.5 && !!c && !c.classList.contains("is-hidden") && !!document.activeElement?.closest("[data-player-default-focus]");
+      }, null, { timeout: 30000, polling: 250 });
+    },
     async route(r) { await page.goto(web + r, { waitUntil: "load" }); await settle(); },
     async key(k, { long } = {}) {
       if (long) { await page.keyboard.down(KEYS[k]); await page.waitForTimeout(900); await page.keyboard.up(KEYS[k]); }
