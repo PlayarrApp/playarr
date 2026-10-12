@@ -128,6 +128,13 @@ pub struct TranscodeSession {
     /// past this deadline is eligible for cleanup regardless of whether
     /// the owning node has otherwise noticed the client disconnected.
     pub expires_at: DateTime<Utc>,
+    /// When the session was created.
+    #[serde(default = "Utc::now")]
+    pub created_at: DateTime<Utc>,
+    /// When a media segment was last requested. A client that only polls the playlist (a paused or
+    /// abandoned player) never moves this, so such a session is not kept alive by its polling.
+    #[serde(default)]
+    pub last_segment_at: Option<DateTime<Utc>>,
 }
 
 /// A resolved ffmpeg target: the concrete codec/bitrate settings a named
@@ -327,6 +334,14 @@ pub const HLS_SEGMENT_SECONDS: u32 = 4;
 /// Audio layouts with a standard AAC channel configuration (6, 2, 1).
 const AAC_CHANNEL_LAYOUTS_FILTER: &str = "aformat=channel_layouts=5.1|stereo|mono";
 const DEFAULT_FFMPEG_THREADS: usize = 2;
+
+/// Safety cap: a session that only polls its playlist (no segment fetched; a paused or abandoned player)
+/// is kept this long while the node has free capacity, then reaped. 30 minutes.
+pub const DEFAULT_SEGMENT_IDLE: Duration = Duration::from_secs(1800);
+
+/// Under capacity pressure, a session with no segment request for this long (it has only polled its
+/// playlist) may be evicted to admit a new viewer.
+pub const DEFAULT_PRESSURE_IDLE: Duration = Duration::from_secs(120);
 
 /// On-demand renditions produced before this instant were encoded without HDR tone mapping.
 static TONE_MAP_EPOCH: std::sync::LazyLock<DateTime<Utc>> = std::sync::LazyLock::new(|| {
@@ -1287,6 +1302,10 @@ pub struct TranscodeOrchestrator {
     /// `output_root/<session-id>/` subdirectory.
     output_root: PathBuf,
     session_ttl: Duration,
+    /// How long a session lives on playlist polling alone, without any segment request.
+    segment_idle: Duration,
+    /// How long without a segment request before a session can be evicted to admit someone else.
+    pressure_idle: Duration,
     /// Node-local atomic admission for on-demand FFmpeg jobs; independent
     /// from a user's `Policy::max_concurrent_sessions`.
     transcode_slots: Arc<Semaphore>,
@@ -1382,6 +1401,8 @@ impl TranscodeOrchestrator {
             ffmpeg_binary: "ffmpeg".to_string(),
             output_root: std::env::temp_dir().join("playarr-transcode"),
             session_ttl: Duration::from_secs(60),
+            segment_idle: DEFAULT_SEGMENT_IDLE,
+            pressure_idle: DEFAULT_PRESSURE_IDLE,
             transcode_slots: Arc::new(Semaphore::new(PERMITS_PER_SLOT as usize)),
             total_permits: PERMITS_PER_SLOT as usize,
             download: Arc::new(std::sync::Mutex::new(None)),
@@ -1422,6 +1443,20 @@ impl TranscodeOrchestrator {
 
     pub fn with_output_root(mut self, output_root: impl Into<PathBuf>) -> Self {
         self.output_root = output_root.into();
+        self
+    }
+
+    /// Playlist polling alone keeps a session alive this long after its last segment request (or its
+    /// creation) while the node has free capacity: a long safety cap, not the eviction rule.
+    pub fn with_segment_idle(mut self, segment_idle: Duration) -> Self {
+        self.segment_idle = segment_idle;
+        self
+    }
+
+    /// Sets how long a session must have gone without a segment request before it can be evicted to
+    /// admit a new viewer when the node is full.
+    pub fn with_pressure_idle(mut self, pressure_idle: Duration) -> Self {
+        self.pressure_idle = pressure_idle;
         self
     }
 
@@ -1932,9 +1967,9 @@ impl TranscodeOrchestrator {
     }
 
     async fn reserve_capacity(&self, permits: u32) -> Result<Slot, TranscodeError> {
-        // Release permits for children that exited naturally before trying
-        // the non-blocking admission check.
-        self.reap_finished_children().await;
+        // Release permits for children that exited naturally, and stop the ones whose session already
+        // lapsed, before trying the non-blocking admission check (a lapsed session is free capacity).
+        self.reap_idle_sessions().await;
         if let Ok(permit) = self.transcode_slots.clone().try_acquire_many_owned(permits) {
             return Ok(Slot {
                 permit: Some(permit),
@@ -1951,7 +1986,97 @@ impl TranscodeOrchestrator {
                 });
             }
         }
+        // Under pressure, evict sessions that have only polled their playlist (a paused or abandoned
+        // player), oldest first, but only when together with the free permits they cover the request: a
+        // refusal must not cost anyone their session. Sessions with a recent segment request are never
+        // evicted.
+        if self.evict_for_pressure(permits).await {
+            if let Ok(permit) = self.transcode_slots.clone().try_acquire_many_owned(permits) {
+                return Ok(Slot {
+                    permit: Some(permit),
+                });
+            }
+        }
         Err(TranscodeError::NoCapacity)
+    }
+
+    /// Evicts the sessions that have gone longest without a segment request (at least `pressure_idle`,
+    /// so they have only polled their playlist), oldest first, when the free permits plus theirs cover
+    /// `needed`. Sessions that borrow admission (no permit of their own) are never candidates. Returns
+    /// `true` when an eviction was attempted, so the caller tries to admit again; a failed `expire_session`
+    /// does not stop that, because ffmpeg is stopped before it can fail on cleanup.
+    async fn evict_for_pressure(&self, needed: u32) -> bool {
+        let candidates: Vec<(Uuid, u32)> = {
+            let active = self.active_children.lock().await;
+            active
+                .iter()
+                .filter_map(|(id, child)| {
+                    let permits = child.slot.as_ref()?.permit.as_ref()?.num_permits();
+                    Some((*id, u32::try_from(permits).unwrap_or(u32::MAX)))
+                })
+                .collect()
+        };
+        let idle =
+            chrono::Duration::from_std(self.pressure_idle).unwrap_or(chrono::Duration::zero());
+        let last_activity =
+            |session: &TranscodeSession| session.last_segment_at.unwrap_or(session.created_at);
+        let now = Utc::now();
+        let mut idle_sessions: Vec<(DateTime<Utc>, Uuid, u32)> = Vec::new();
+        for (id, permits) in candidates {
+            let Ok(Some(bytes)) = self.cache.get(&Self::session_cache_key(id)).await else {
+                continue;
+            };
+            let Ok(session) = serde_json::from_slice::<TranscodeSession>(&bytes) else {
+                continue;
+            };
+            let last = last_activity(&session);
+            if now - last >= idle {
+                idle_sessions.push((last, id, permits));
+            }
+        }
+        idle_sessions.sort_by_key(|(last, _, _)| *last);
+        // The smallest oldest-first set that frees enough; none at all when even all of them do not.
+        let mut available =
+            u32::try_from(self.transcode_slots.available_permits()).unwrap_or(u32::MAX);
+        let mut chosen: Vec<(Uuid, u32)> = Vec::new();
+        for (_, id, permits) in &idle_sessions {
+            if available >= needed {
+                break;
+            }
+            available = available.saturating_add(*permits);
+            chosen.push((*id, *permits));
+        }
+        if available < needed {
+            return false;
+        }
+        // Re-check every chosen session before evicting any: one fetched since it was listed means the set
+        // may no longer cover the request, and then nobody loses their session.
+        let mut still_idle = Vec::new();
+        let mut freed = u32::try_from(self.transcode_slots.available_permits()).unwrap_or(u32::MAX);
+        for (id, permits) in chosen {
+            let fresh = match self.cache.get(&Self::session_cache_key(id)).await {
+                Ok(Some(bytes)) => serde_json::from_slice::<TranscodeSession>(&bytes)
+                    .ok()
+                    .is_some_and(|s| Utc::now() - last_activity(&s) < idle),
+                _ => false,
+            };
+            if !fresh {
+                freed = freed.saturating_add(permits);
+                still_idle.push(id);
+            }
+        }
+        if freed < needed {
+            return false;
+        }
+        let mut attempted = false;
+        for id in still_idle {
+            tracing::info!(session_id = %id, "evicting an idle playlist-only transcode session to admit a viewer");
+            if let Err(error) = self.expire_session(id).await {
+                tracing::warn!(session_id = %id, %error, "evicted session was not cleaned up completely");
+            }
+            attempted = true;
+        }
+        attempted
     }
 
     /// Pauses the running (or still starting) download and releases its permits; `true` when it gave a
@@ -2078,6 +2203,8 @@ impl TranscodeOrchestrator {
             profile: profile.to_string(),
             owning_node_id: owning_node_id.to_string(),
             current_segment: 0,
+            created_at: now,
+            last_segment_at: None,
             expires_at: now
                 + chrono::Duration::from_std(self.session_ttl).unwrap_or(chrono::Duration::zero()),
         };
@@ -2151,12 +2278,12 @@ impl TranscodeOrchestrator {
     /// creation. Confirmed live: a real on-demand transcode played its
     /// first few segments successfully, then started 404ing mid-playback
     /// once the fixed 60s window elapsed -- indistinguishable from "can't
-    /// play anything" for any title longer than a minute. `playarr-api`'s
-    /// `serve_session_file_handler` (manifest + every segment request) is
-    /// the only caller, and gets called continuously by a real player for
-    /// the entire time it's actively watching -- exactly the activity this
-    /// needs to key off of, so no separate heartbeat/keepalive endpoint is
-    /// needed. An abandoned session (client stopped requesting: tab closed,
+    /// play anything" for any title longer than a minute. The HLS file
+    /// handlers call [`Self::lookup_session_for_file`] (which also records
+    /// segment requests); this plain form refreshes unconditionally. A real
+    /// player calls them continuously for the entire time it's actively
+    /// watching -- exactly the activity this needs to key off of, so no
+    /// separate heartbeat/keepalive endpoint is needed. An abandoned session (client stopped requesting: tab closed,
     /// navigated away, network dropped) still naturally expires and frees
     /// its capacity slot roughly `session_ttl` after the last real request.
     pub async fn lookup_session(
@@ -2171,6 +2298,43 @@ impl TranscodeOrchestrator {
         session.expires_at = Utc::now()
             + chrono::Duration::from_std(self.session_ttl).unwrap_or(chrono::Duration::zero());
         self.store_session(&session).await?;
+        Ok(Some(session))
+    }
+
+    /// [`Self::lookup_session`] for a request of `file_name`. A segment request keeps the session alive and
+    /// is recorded (`last_segment_at`). A playlist request refreshes it too, but only while the last
+    /// segment (or the creation) is within `segment_idle`, a long safety cap: a paused player keeps its
+    /// session while the node has room, and an abandoned one whose poller lives on is reaped at the cap.
+    /// When the node is full, [`Self::reserve_capacity`] evicts the longest-idle playlist-only session
+    /// instead (see `pressure_idle`).
+    ///
+    /// The read-modify-write of the cached row is not atomic: a playlist request that read the row just
+    /// before a segment request wrote `last_segment_at` can overwrite it with the older value. That only
+    /// moves the idle clock back by the gap between two requests and the next segment request restamps it,
+    /// so it is harmless to both the cap and the eviction order.
+    pub async fn lookup_session_for_file(
+        &self,
+        session_id: Uuid,
+        file_name: &str,
+    ) -> Result<Option<TranscodeSession>, TranscodeError> {
+        let key = Self::session_cache_key(session_id);
+        let Some(bytes) = self.cache.get(&key).await? else {
+            return Ok(None);
+        };
+        let mut session: TranscodeSession = serde_json::from_slice(&bytes)?;
+        let now = Utc::now();
+        let ttl = chrono::Duration::from_std(self.session_ttl).unwrap_or(chrono::Duration::zero());
+        let is_playlist = file_name.ends_with(".m3u8");
+        if !is_playlist {
+            session.last_segment_at = Some(now);
+        }
+        let last_activity = session.last_segment_at.unwrap_or(session.created_at);
+        let idle =
+            chrono::Duration::from_std(self.segment_idle).unwrap_or(chrono::Duration::zero());
+        if !is_playlist || now - last_activity < idle {
+            session.expires_at = now + ttl;
+            self.store_session(&session).await?;
+        }
         Ok(Some(session))
     }
 
@@ -2221,8 +2385,9 @@ impl TranscodeOrchestrator {
 
     /// Stops every ffmpeg process this node spawned whose session has aged
     /// out of the cache (no client requested the playlist or a segment for
-    /// a full `session_ttl`: tab closed, network dropped, or the player
-    /// replaced the session without sending a stop). Without this the cache
+    /// a full `session_ttl`, or only the playlist was polled for longer than
+    /// `segment_idle`: tab closed, network dropped, the player replaced the
+    /// session without sending a stop, or a paused player gave up). Without this the cache
     /// row vanished but the process kept encoding, competing for CPU.
     /// Returns how many sessions were reaped.
     pub async fn reap_idle_sessions(&self) -> usize {
@@ -4807,6 +4972,265 @@ mod tests {
                 two.reserve_download(),
                 Err(TranscodeError::NoCapacity)
             ));
+        }
+
+        fn sample_sdr_session_file() -> MediaFile {
+            sample_media_file()
+        }
+
+        /// With free capacity a paused player (playlist polling only) keeps its session far beyond the
+        /// 120 s eviction age; the safety cap, not the TTL, ends it. Margins are generous (no timing races).
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_paused_session_survives_while_the_node_has_room() {
+            let orchestrator = sleeper_orchestrator(2)
+                .await
+                .with_session_ttl(Duration::from_secs(1))
+                .with_segment_idle(Duration::from_secs(60))
+                // Treat any idle time as eligible: it must still not be evicted without pressure.
+                .with_pressure_idle(Duration::ZERO);
+            let session = orchestrator
+                .spawn_on_demand_transcode(&sample_sdr_session_file(), "p", "n")
+                .await
+                .unwrap();
+            // Polling only the playlist for 2.5 TTLs: still alive.
+            for _ in 0..5 {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                assert!(orchestrator
+                    .lookup_session_for_file(session.id, "playlist.m3u8")
+                    .await
+                    .unwrap()
+                    .is_some());
+                assert_eq!(orchestrator.reap_idle_sessions().await, 0);
+            }
+            assert_eq!(orchestrator.active_session_count(), 1);
+        }
+
+        /// A playlist-only session is not kept forever: the safety cap lets its deadline lapse.
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn the_safety_cap_ends_a_session_that_only_polls_its_playlist() {
+            let orchestrator = sleeper_orchestrator(2)
+                .await
+                .with_session_ttl(Duration::from_secs(1))
+                .with_segment_idle(Duration::from_secs(2));
+            let session = orchestrator
+                .spawn_on_demand_transcode(&sample_sdr_session_file(), "p", "n")
+                .await
+                .unwrap();
+            let mut gone = false;
+            for _ in 0..30 {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                if orchestrator
+                    .lookup_session_for_file(session.id, "playlist.m3u8")
+                    .await
+                    .unwrap()
+                    .is_none()
+                {
+                    gone = true;
+                    break;
+                }
+            }
+            assert!(gone, "playlist polling alone must not outlive the cap");
+            orchestrator.reap_idle_sessions().await;
+            assert_eq!(orchestrator.active_session_count(), 0);
+        }
+
+        /// A full node admits a new viewer by evicting the session that has only polled its playlist for
+        /// longest; a session with a recent segment request is never evicted.
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_full_node_evicts_the_oldest_playlist_only_session_to_admit_a_viewer() {
+            let orchestrator = sleeper_orchestrator(2)
+                .await
+                .with_session_ttl(Duration::from_secs(30))
+                .with_pressure_idle(Duration::from_secs(2));
+            let paused = orchestrator
+                .spawn_on_demand_transcode(&sample_sdr_session_file(), "p", "n")
+                .await
+                .unwrap();
+            let watching = orchestrator
+                .spawn_on_demand_transcode(&sample_sdr_session_file(), "q", "n")
+                .await
+                .unwrap();
+            // The node is full.
+            assert_eq!(orchestrator.transcode_slots.available_permits(), 0);
+            // Before anyone has been idle long enough: refused.
+            assert!(matches!(
+                orchestrator
+                    .spawn_on_demand_transcode(&sample_sdr_session_file(), "r", "n")
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+            // `paused` goes quiet; `watching` keeps fetching segments.
+            tokio::time::sleep(Duration::from_millis(2300)).await;
+            orchestrator
+                .lookup_session_for_file(watching.id, "segment_00009.ts")
+                .await
+                .unwrap();
+            let admitted = orchestrator
+                .spawn_on_demand_transcode(&sample_sdr_session_file(), "r", "n")
+                .await
+                .expect("the idle playlist-only session is evicted to admit the new viewer");
+            assert!(orchestrator
+                .lookup_session(paused.id)
+                .await
+                .unwrap()
+                .is_none());
+            assert!(orchestrator
+                .lookup_session(watching.id)
+                .await
+                .unwrap()
+                .is_some());
+            assert!(orchestrator
+                .lookup_session(admitted.id)
+                .await
+                .unwrap()
+                .is_some());
+            // Everyone left is actively watching: a further viewer is refused, nothing else is evicted.
+            orchestrator
+                .lookup_session_for_file(admitted.id, "segment_00001.ts")
+                .await
+                .unwrap();
+            assert!(matches!(
+                orchestrator
+                    .spawn_on_demand_transcode(&sample_sdr_session_file(), "s", "n")
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+        }
+
+        /// A refusal must not cost anyone their session: when the idle sessions plus the free permits cannot
+        /// cover the request, nothing is evicted.
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn an_eviction_that_cannot_make_room_evicts_nobody() {
+            let orchestrator = sleeper_orchestrator(1)
+                .await
+                .with_session_ttl(Duration::from_secs(60))
+                .with_pressure_idle(Duration::from_secs(2));
+            let file = sample_sdr_session_file();
+            let mut copies = Vec::new();
+            for _ in 0..4 {
+                copies.push(
+                    orchestrator
+                        .spawn_video_copy_at_with_audio(
+                            &file,
+                            "p",
+                            "n",
+                            0,
+                            None,
+                            VideoCopy { hevc: true },
+                            StreamHints::default(),
+                        )
+                        .await
+                        .expect("a copy takes one permit"),
+                );
+            }
+            assert_eq!(orchestrator.transcode_slots.available_permits(), 0);
+            tokio::time::sleep(Duration::from_millis(2300)).await;
+            // Three keep fetching segments; one has only polled its playlist.
+            for copy in &copies[1..] {
+                orchestrator
+                    .lookup_session_for_file(copy.id, "segment_00001.ts")
+                    .await
+                    .unwrap();
+            }
+            // A full transcode needs 4 permits; the one idle copy frees only 1.
+            assert!(matches!(
+                orchestrator
+                    .spawn_on_demand_transcode(&file, "q", "n")
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+            assert!(orchestrator
+                .lookup_session(copies[0].id)
+                .await
+                .unwrap()
+                .is_some());
+            assert_eq!(orchestrator.active_session_count(), 4);
+        }
+
+        /// A session that borrows admission holds no permit of its own: evicting it would free nothing,
+        /// so it is never a candidate.
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_borrowed_session_is_never_evicted() {
+            let orchestrator = sleeper_orchestrator(1)
+                .await
+                .with_session_ttl(Duration::from_secs(60))
+                .with_pressure_idle(Duration::from_secs(2));
+            let file = sample_sdr_session_file();
+            let holder = orchestrator
+                .spawn_on_demand_transcode(&file, "p", "n")
+                .await
+                .unwrap();
+            let borrowed =
+                with_borrowed_admission(orchestrator.spawn_on_demand_transcode(&file, "q", "n"))
+                    .await
+                    .expect("a seek borrows the viewer's admission");
+            tokio::time::sleep(Duration::from_millis(2300)).await;
+            orchestrator
+                .lookup_session_for_file(holder.id, "segment_00001.ts")
+                .await
+                .unwrap();
+            // The only idle session is the borrowed one: nothing to evict, the request is refused.
+            assert!(matches!(
+                orchestrator
+                    .spawn_on_demand_transcode(&file, "r", "n")
+                    .await,
+                Err(TranscodeError::NoCapacity)
+            ));
+            assert!(orchestrator
+                .lookup_session(borrowed.id)
+                .await
+                .unwrap()
+                .is_some());
+        }
+
+        /// A session whose cache row already lapsed is free capacity: admission reaps it first, no eviction.
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_lapsed_session_is_reaped_at_admission() {
+            let orchestrator = sleeper_orchestrator(1)
+                .await
+                .with_session_ttl(Duration::from_millis(100))
+                .with_pressure_idle(Duration::from_secs(3600));
+            let file = sample_sdr_session_file();
+            orchestrator
+                .spawn_on_demand_transcode(&file, "p", "n")
+                .await
+                .unwrap();
+            tokio::time::sleep(Duration::from_millis(400)).await;
+            assert!(orchestrator
+                .spawn_on_demand_transcode(&file, "q", "n")
+                .await
+                .is_ok());
+        }
+
+        /// "Stop" releases the slot at once (the leaked-session fix must not depend on the reaper).
+        #[cfg(unix)]
+        #[tokio::test]
+        async fn a_stop_releases_the_slot_immediately() {
+            let orchestrator = sleeper_orchestrator(1).await;
+            let session = orchestrator
+                .spawn_on_demand_transcode(&sample_media_file(), "p", "n")
+                .await
+                .unwrap();
+            let playback = Uuid::new_v4();
+            orchestrator
+                .associate_playback_session(playback, session.id)
+                .await
+                .unwrap();
+            orchestrator
+                .expire_playback_session(playback)
+                .await
+                .unwrap();
+            assert_eq!(orchestrator.active_session_count(), 0);
+            assert!(orchestrator
+                .spawn_on_demand_transcode(&sample_media_file(), "p", "n")
+                .await
+                .is_ok());
         }
 
         /// A caller that gives up must neither cancel detection nor cause a second run.

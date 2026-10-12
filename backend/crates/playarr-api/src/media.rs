@@ -2147,7 +2147,7 @@ async fn peer_hls_file(
         PeerHlsResource::Session => {
             let session = state
                 .transcode
-                .lookup_session(resource_id)
+                .lookup_session_for_file(resource_id, &file_name)
                 .await?
                 .ok_or_else(|| {
                     ApiError::not_found(format!("unknown or expired session {resource_id}"))
@@ -2988,7 +2988,7 @@ pub async fn serve_session_file_handler(
 
     let session = state
         .transcode
-        .lookup_session(session_id)
+        .lookup_session_for_file(session_id, &file_name)
         .await?
         .ok_or_else(|| ApiError::not_found(format!("unknown or expired session {session_id}")))?;
     let tracking_session_id = hls_tracking_session_id(

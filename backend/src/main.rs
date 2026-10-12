@@ -812,6 +812,25 @@ fn refresh_reuse_grace_from_env() -> chrono::Duration {
     chrono::Duration::seconds(secs)
 }
 
+/// Safety cap on how long a session may live on playlist polling alone (no segment requested) while the
+/// node has free capacity: `PLAYARR_TRANSCODE_SEGMENT_IDLE_SECS`, default 1800 (30 minutes). Under pressure
+/// the longest-idle such session is evicted instead (after two minutes without a segment).
+fn transcode_segment_idle_from_env() -> std::time::Duration {
+    match std::env::var("PLAYARR_TRANSCODE_SEGMENT_IDLE_SECS") {
+        Ok(raw) => match raw.parse::<u64>() {
+            Ok(secs) if secs > 0 => std::time::Duration::from_secs(secs),
+            _ => {
+                tracing::warn!(
+                    value = %raw,
+                    "PLAYARR_TRANSCODE_SEGMENT_IDLE_SECS is not a positive integer; falling back to the default"
+                );
+                playarr_transcode::DEFAULT_SEGMENT_IDLE
+            }
+        },
+        Err(_) => playarr_transcode::DEFAULT_SEGMENT_IDLE,
+    }
+}
+
 /// How long an on-demand [`playarr_transcode::TranscodeSession`] survives
 /// without being accessed before it's eligible for cleanup -- an *idle*
 /// deadline (every real manifest/segment request slides it forward, see
@@ -1691,6 +1710,7 @@ async fn boot_api(
         playarr_transcode::TranscodeOrchestrator::new(rendition_repo, cache, active_sessions)
             .with_output_root(std::env::temp_dir().join("playarr-transcode"))
             .with_session_ttl(transcode_session_idle_ttl_from_env())
+            .with_segment_idle(transcode_segment_idle_from_env())
             .with_max_concurrent_sessions(transcode_max_concurrent_jobs_from_env())
             .with_ffmpeg_threads(ffmpeg_threads_from_env())
             .with_tdarr_notify(tdarr_notify_tx),
