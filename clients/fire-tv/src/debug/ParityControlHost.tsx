@@ -87,6 +87,19 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
     });
   }, [navRef, playerRef]);
 
+  // While the player is up the app logs heavily and the device log drops lines, so a one-off answer can go missing: repeat
+  // the player's state every 2 s then, stamped with the device clock, for the driver to take the latest one.
+  useEffect(() => {
+    if (!PARITY_CONTROL) return undefined;
+    const engine = getSharedVegaPlaybackEngine();
+    const timer = setInterval(() => {
+      if (!playerRef.current?.isVisible()) return;
+      const state = engine.getState();
+      console.log('PARITY ' + JSON.stringify({cmd: 'tick', t: Date.now(), route: `/player/${lastPlayed}`, player: {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message}}));
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [playerRef]);
+
   return null;
 }
 

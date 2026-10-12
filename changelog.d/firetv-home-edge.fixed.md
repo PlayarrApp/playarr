@@ -1,0 +1,1 @@
+- Fire TV: RIGHT stops at the end of a Home rail instead of jumping to a card in another rail, as on the web. The suite driver (scripts/parity/drivers/firetv.mjs) repeats a dropped key and waits for the screen to settle.

@@ -4,7 +4,7 @@
  * (the merged "Start watching" rail first, then the server's rails, then the sites rails).
  */
 import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Animated, Easing, Pressable, View} from 'react-native';
+import {Animated, Easing, findNodeHandle, Pressable, View} from 'react-native';
 import {useNavigation, type NavigationProp, type ParamListBase} from '@amazon-devices/react-navigation__native';
 import type {ResumePlan, WatchProgress, Work} from '@playarr-tv/api-client';
 import {useCatalogBrowse, useHomeRails, useWorkDetail} from '@playarr-tv/api-client/react';
@@ -408,6 +408,7 @@ const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.Re
               progress={entry?.progress ?? progressByWork.get(work.id)}
               progressReady={progressReady}
               first={railIndex === 0 && itemIndex === 0}
+              last={itemIndex === rail.items.length - 1}
               cardRef={selected ? cardRef : undefined}
               index={itemIndex}
               railIndex={railIndex}
@@ -448,6 +449,8 @@ const HomeCard = memo(function HomeCard(props: {
   progress: WatchProgress | undefined;
   progressReady: boolean;
   first: boolean;
+  /** The last card of its rail: RIGHT stops here, as on the web, instead of jumping to a card in another rail. */
+  last: boolean;
   cardRef?: React.Ref<View>;
   index: number;
   railIndex: number;
@@ -459,11 +462,22 @@ const HomeCard = memo(function HomeCard(props: {
   onOpen: (work: Work) => void;
   onActions: (work: Work) => void;
 }): React.ReactElement {
-  const {work, mediaFileId, title, progress, progressReady, first, cardRef, index, railIndex, baseUrl, token, selected, subtitle, onFocusItem, onOpen, onActions} = props;
+  const {work, mediaFileId, title, progress, progressReady, first, last, cardRef, index, railIndex, baseUrl, token, selected, subtitle, onFocusItem, onOpen, onActions} = props;
   const onFocus = useCallback(() => {
     reportFocus(work.title, {rail: railIndex, index});
     onFocusItem(railIndex, index);
   }, [onFocusItem, railIndex, index, work.title]);
+  const selfRef = useRef<View | null>(null);
+  const [selfTag, setSelfTag] = useState<number | undefined>(undefined);
+  const setRefs = useCallback(
+    (node: View | null) => {
+      selfRef.current = node;
+      if (typeof cardRef === 'function') cardRef(node);
+      else if (cardRef) (cardRef as React.MutableRefObject<View | null>).current = node;
+      if (last && node) setSelfTag(findNodeHandle(node) ?? undefined);
+    },
+    [cardRef, last],
+  );
   const onPress = useCallback(() => onOpen(work), [onOpen, work]);
   const onLongPress = useCallback(() => onActions(work), [onActions, work]);
   const {colour} = useTheme();
@@ -471,7 +485,8 @@ const HomeCard = memo(function HomeCard(props: {
   const uri = mediaFileId ? mediaThumbnailUrl(baseUrl, mediaFileId) : kind ? workArtworkUrl(baseUrl, work.id, kind) : undefined;
   return (
     <Pressable
-      ref={cardRef}
+      ref={setRefs}
+      {...(last && selfTag !== undefined ? ({nextFocusRight: selfTag} as object) : {})}
       accessibilityRole="button"
       accessibilityLabel={work.title}
       hasTVPreferredFocus={first}

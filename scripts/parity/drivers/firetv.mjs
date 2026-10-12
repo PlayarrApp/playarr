@@ -11,6 +11,9 @@
 //   ANDROID_ADB_SERVER_PORT  the adb server the vega CLI uses, if it is not the default one
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const execFileP = promisify(execFile);
 const VEGA = (process.env.PLAYARR_FIRETV_VEGA ?? "vega").split(" ");
@@ -34,6 +37,26 @@ async function press(key) {
 }
 const KEYS = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
 
+const scratch = mkdtempSync(join(tmpdir(), "firetv-"));
+// A small frame of the emulator display (the clock painted out), for telling when the screen has stopped changing.
+async function frame(name) {
+  const file = join(scratch, name);
+  await execFileP("sh", ["-c", `import -window root -crop 1920x1080+0+0 +repage png:- | magick png:- -resize 320x180! -fill black -draw 'rectangle 75,6,135,22' ${file}`], { env });
+  return file;
+}
+// Waits until two frames 0.8 s apart are the same (at most maxMs): a key sent while a page is still drawing is often dropped.
+async function settled(maxMs = 8000) {
+  const t0 = Date.now();
+  let before = await frame("a.png");
+  while (Date.now() - t0 < maxMs) {
+    await sleep(800);
+    const now = await frame("b.png");
+    const diff = await execFileP("sh", ["-c", `magick compare -metric AE -fuzz 2% ${before} ${now} null: 2>&1 || true`], { env });
+    if (Number(String(diff.stdout).trim().split(" ")[0]) <= 4) return;
+    before = await frame("a.png");
+  }
+}
+
 export async function createDriver({ out } = {}) {
   let seq = 0;
   const answers = new Map();
@@ -41,23 +64,29 @@ export async function createDriver({ out } = {}) {
   // The vega CLI prints a command's output only when it ends, so a log cannot be streamed: read what the app has logged since
   // the run began (`loggingctl log -S`, its own lines only) until the answer with our sequence number shows up.
   const runId = Date.now().toString(36);
-  let since = null;
-  const deviceTime = async () => (await onDevice("date +'%Y-%m-%d %H:%M:%S'")).trim().split("\n").pop();
+  const ticks = [];
+  let offsetMs = null; // device clock minus host clock
+  const fmt = (ms) => new Date(ms).toISOString().replace("T", " ").slice(0, 19);
   async function readAnswers() {
-    since ??= await deviceTime();
-    const text = await onDevice(`loggingctl log -S '${since}' -v ${APP.replace(/\.main$/, "")}`);
+    if (offsetMs === null) {
+      const text = (await onDevice("date -u +'%Y-%m-%d %H:%M:%S'")).trim().split("\n").pop();
+      offsetMs = Date.parse(text.replace(" ", "T") + "Z") - Date.now();
+    }
+    // Only the last 25 s: during playback the app logs heavily, and the whole run's log would be megabytes per poll.
+    const from = fmt(Date.now() + offsetMs - 25000);
+    const text = await onDevice(`loggingctl log -S '${from}' -v ${APP.replace(/\.main$/, "")}`);
     for (const line of text.split("\n")) {
       const hit = line.indexOf("PARITY {");
       if (hit < 0) continue;
       try {
         const state = JSON.parse(line.slice(hit + 7).replace(/'?\s*$/, ""));
         if (state.seq != null) answers.set(String(state.seq), state);
+        if (state.cmd === "tick") ticks.push(state);
       } catch { /* a line cut off */ }
     }
   }
 
   async function send(params) {
-    since ??= await deviceTime();
     const n = `${runId}-${++seq}`;
     const query = Object.entries({ ...params, seq: n }).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
     await onDevice(`vmsgr send 'pkg://${APP}?${query}'`);
@@ -70,6 +99,9 @@ export async function createDriver({ out } = {}) {
       await sleep(1200);
       await readAnswers();
       if (answers.has(n)) return answers.get(n);
+      // the player's repeated state (the app sends it every 2 s while the player is up) stands in for a lost answer
+      const tick = ticks.filter((x) => x.t >= t0 + (offsetMs ?? 0) - 500).pop();
+      if (tick) return { ...tick, focus: null, theme: null };
     }
     throw new Error("the app did not answer the state request (is it built with PLAYARR_PARITY_CONTROL=1 and in the foreground?)");
   }
@@ -95,7 +127,7 @@ export async function createDriver({ out } = {}) {
     await press("Return");
     for (let i = 0; i < 20; i++) {
       await sleep(2500);
-      const s = await state().catch(() => null);
+      const s = await state(7000).catch(() => null);
       if (s && s.route && s.route !== "/profiles") return s;
     }
     throw new Error("the app did not reach Home after choosing the profile (signed out?)");
@@ -107,6 +139,8 @@ export async function createDriver({ out } = {}) {
 
   return {
     supports: { nowPlaying: false },
+    /** For one-off scripts (player captures): the raw control-channel calls. */
+    raw: { command, state, press },
     async start() {
       await launch();
       await intoHome();
@@ -119,26 +153,53 @@ export async function createDriver({ out } = {}) {
       await command({ cmd: "theme", name: theme }, 6000);
     },
     async home() {
+      // A relaunch: Home is only drawn with its first card focused when it is the first page after the profile is chosen
+      // (reaching it through the nav leaves focus on the nav item).
       await launch();
       await intoHome();
-      await sleep(8000);
+      // Home draws its rails after the data arrives; a key before a card holds focus is spent on claiming focus, not moving it.
+      for (let i = 0; i < 15; i++) {
+        const s = await state(8000).catch(() => null);
+        if (s?.focus) break;
+        await sleep(2000);
+      }
+      await settled(12000);
     },
     async key(name, { long } = {}) {
       const key = KEYS[name];
       if (!key) throw new Error(`unknown key ${name}`);
+      await settled();
       if (long) {
         // Menu is the long press on Vega (opens the title actions drawer)
         await press("F2");
-      } else {
-        await press(key);
+        await sleep(2500);
+        return;
       }
-      await sleep(long ? 2500 : 1200);
+      const arrow = name !== "select" && name !== "back";
+      const before = arrow ? JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null) : null;
+      await press(key);
+      await sleep(900);
+      if (!arrow) return;
+      // The virtual device drops a key now and then; an arrow that changed nothing is sent once more (at a rail's edge that is
+      // harmless: the focus stays put).
+      await settled(5000);
+      const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
+      if (after === before) {
+        await press(key);
+        await sleep(900);
+      }
     },
     async route(path) {
       const title = path.match(/^\/(movies|series)\/([0-9a-f-]{36})/);
       if (title) await command({ cmd: "open", kind: title[1], id: title[2] }, 9000);
       else await command({ cmd: "route", path }, 4000);
       await waitSettled();
+      if (path === "/search") {
+        // The search field opens the system keyboard on arrival; the suite captures the page with it dismissed (as on web).
+        await press("Escape");
+        await sleep(2500);
+        if ((await state()).route !== "/search") await command({ cmd: "route", path }, 4000);
+      }
     },
     async location() {
       return (await state()).route;
