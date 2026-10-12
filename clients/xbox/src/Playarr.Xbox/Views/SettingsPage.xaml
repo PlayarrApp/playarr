@@ -48,65 +48,16 @@
                 Margin="0,6,0,0" />
         </StackPanel>
 
-        <Button
-            x:Name="AppearanceTab"
+        <ScrollViewer
+            x:Name="TabsScroll"
             Width="480"
-            Height="92"
+            Height="900"
             Margin="154,162,0,0"
-            Padding="32,0,32,0"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
-            HorizontalContentAlignment="Stretch"
-            CornerRadius="0"
-            BorderThickness="0"
-            Background="Transparent"
-            Click="AppearanceTab_Click">
-            <Grid>
-                <TextBlock Text="01" FontSize="10" FontWeight="Bold" Margin="0,-22,0,0" VerticalAlignment="Center" />
-                <TextBlock Text="Appearance" FontSize="30" Margin="60,0,0,0" VerticalAlignment="Center" />
-                <TextBlock Text="&#x2192;" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" />
-            </Grid>
-        </Button>
-
-        <Button
-            x:Name="PlayerTab"
-            Width="480"
-            Height="92"
-            Margin="154,254,0,0"
-            Padding="32,0,32,0"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            HorizontalContentAlignment="Stretch"
-            CornerRadius="0"
-            BorderThickness="0"
-            Background="Transparent"
-            Click="PlayerTab_Click">
-            <Grid>
-                <TextBlock Text="04" FontSize="10" FontWeight="Bold" Margin="0,-22,0,0" VerticalAlignment="Center" />
-                <TextBlock Text="Player" FontSize="30" Margin="60,0,0,0" VerticalAlignment="Center" />
-                <TextBlock Text="&#x2192;" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" />
-            </Grid>
-        </Button>
-
-        <Button
-            x:Name="ServerTab"
-            Width="480"
-            Height="92"
-            Margin="154,346,0,0"
-            Padding="32,0,32,0"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            HorizontalContentAlignment="Stretch"
-            CornerRadius="0"
-            BorderThickness="0"
-            Background="Transparent"
-            Click="ServerTab_Click">
-            <Grid>
-                <TextBlock Text="05" FontSize="10" FontWeight="Bold" Margin="0,-22,0,0" VerticalAlignment="Center" />
-                <TextBlock Text="Server connection" FontSize="30" Margin="60,0,0,0" VerticalAlignment="Center" />
-                <TextBlock Text="&#x2192;" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" />
-            </Grid>
-        </Button>
+            VerticalScrollBarVisibility="Hidden">
+            <StackPanel x:Name="TabsPanel" />
+        </ScrollViewer>
 
     <ScrollViewer x:Name="AppearanceSection" Margin="774,200,0,0" Padding="0,0,106,48" VerticalScrollBarVisibility="Hidden">
         <StackPanel x:Name="AppearancePanel" Width="1040" HorizontalAlignment="Left" Spacing="8" />
@@ -114,6 +65,10 @@
 
     <ScrollViewer x:Name="PlayerSection" Visibility="Collapsed" Margin="774,200,0,0" Padding="0,0,106,48" VerticalScrollBarVisibility="Hidden">
         <StackPanel x:Name="PlayerPanel" Width="1040" HorizontalAlignment="Left" Spacing="8" />
+    </ScrollViewer>
+
+    <ScrollViewer x:Name="ExtraSection" Visibility="Collapsed" Margin="774,200,0,0" Padding="0,0,106,48" VerticalScrollBarVisibility="Hidden">
+        <StackPanel x:Name="ExtraPanel" Width="1040" HorizontalAlignment="Left" Spacing="8" />
     </ScrollViewer>
 
     <ScrollViewer x:Name="ServerSection" Visibility="Collapsed" Margin="774,200,0,0" Padding="0,0,106,48" VerticalScrollBarVisibility="Hidden">

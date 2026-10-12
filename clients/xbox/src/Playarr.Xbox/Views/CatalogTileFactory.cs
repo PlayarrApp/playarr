@@ -48,8 +48,10 @@ namespace Playarr.Xbox.Views
         private const double TileWidth = 180;
         private const double TileHeight = 270;
 
-        internal const double CardWidth = 328;
-        internal const double CardHeight = 184;
+        /// <summary>The landscape card size follows Settings > Appearance > Artwork size (328 x 184 at the default).</summary>
+        internal static double CardWidth => Appearance.CardWidth;
+
+        internal static double CardHeight => Appearance.CardHeight;
 
         private static Style? _cardContainerStyle;
 
@@ -108,17 +110,19 @@ namespace Playarr.Xbox.Views
         /// Web TV Home card: 328x184 landscape art (thumb, else backdrop; a titled placeholder without art),
         /// then the title and the "Kind · year" caption.
         /// </summary>
-        public static FrameworkElement CreateLandscapeCard(Work work, bool caption = true)
+        public static FrameworkElement CreateLandscapeCard(Work work, bool caption = true, bool cover = false)
         {
+            var width = cover ? Appearance.CoverWidth : CardWidth;
+            var height = cover ? Appearance.CoverHeight : CardHeight;
             var art = new Grid
             {
-                Width = CardWidth,
-                Height = CardHeight,
+                Width = width,
+                Height = height,
                 CornerRadius = new CornerRadius(12),
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
             var episode = work.OnDeckEpisode;
-            if (episode == null && work.Image(ImageKind.Thumb) == null && work.Image(ImageKind.Backdrop) == null)
+            if (episode == null && work.Image(cover ? ImageKind.Poster : ImageKind.Thumb) == null && work.Image(ImageKind.Backdrop) == null && work.Image(ImageKind.Thumb) == null)
             {
                 art.Children.Add(new TextBlock
                 {
@@ -135,15 +139,15 @@ namespace Playarr.Xbox.Views
                 art.Children.Add(image);
                 if (episode != null)
                 {
-                    Artwork.LoadEpisode(image, work, episode, (int)CardWidth);
+                    Artwork.LoadEpisode(image, work, episode, (int)width);
                 }
                 else
                 {
-                    Artwork.Load(image, work, (int)CardWidth, new[] { ImageKind.Thumb, ImageKind.Backdrop });
+                    Artwork.Load(image, work, (int)width, cover ? new[] { ImageKind.Poster, ImageKind.Thumb } : new[] { ImageKind.Thumb, ImageKind.Backdrop });
                 }
             }
 
-            var root = new StackPanel { Width = CardWidth, Spacing = 0, Tag = work.Id };
+            var root = new StackPanel { Width = width, Spacing = 0, Tag = work.Id };
             root.Children.Add(art);
             root.Children.Add(new TextBlock
             {

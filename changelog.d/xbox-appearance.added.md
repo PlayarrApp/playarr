@@ -1,0 +1,1 @@
+- Xbox: Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) choices; the card size and columns follow them.

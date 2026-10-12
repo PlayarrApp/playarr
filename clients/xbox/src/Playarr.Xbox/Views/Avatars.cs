@@ -16,13 +16,35 @@ namespace Playarr.Xbox.Views
     /// </summary>
     internal static class Avatars
     {
-        private static readonly string[] Presets = { "astronaut", "cat", "dinosaur", "robot", "pirate", "alien" };
+        internal static readonly string[] Presets = { "astronaut", "cat", "dinosaur", "robot", "pirate", "alien" };
         private static Task<ImageSource?>? _current;
 
         /// <summary>The current profile's avatar; one fetch per sign-in (call <see cref="Reset"/> on sign-out).</summary>
         public static Task<ImageSource?> CurrentAsync() => _current ??= LoadAsync();
 
         public static void Reset() => _current = null;
+
+        /// <summary>The preset plate for the settings grid (the same art the shell and profile picker draw).</summary>
+        public static ImageSource Plate(string preset) => new BitmapImage(new Uri($"ms-appx:///Assets/Avatars/{preset}.png"));
+
+        /// <summary>The preset currently chosen, or null when the profile uses a custom photo.</summary>
+        public static async Task<string?> CurrentPresetAsync()
+        {
+            var api = App.Environment.ApiClient;
+            var preference = (await api.GetProfileAvatarAsync()).Preference;
+            if (preference != null && preference.Kind == "custom")
+            {
+                return null;
+            }
+
+            if (preference != null && preference.Kind == "preset" && Presets.Contains(preference.Value))
+            {
+                return preference.Value;
+            }
+
+            var profile = (await api.ListProfilesAsync()).FirstOrDefault(p => p.IsCurrent);
+            return DefaultPreset(profile?.Id.ToString("D") ?? string.Empty);
+        }
 
         private static async Task<ImageSource?> LoadAsync()
         {

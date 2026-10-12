@@ -375,6 +375,11 @@ namespace Playarr.Core.Models
         [JsonProperty("value")] public string Value { get; set; } = string.Empty;
     }
 
+    public sealed class ProfilePinSettingResponse
+    {
+        [JsonProperty("pin_locked")] public bool PinLocked { get; set; }
+    }
+
     public sealed class ProfileAvatarSettingResponse
     {
         [JsonProperty("preference")] public ProfileAvatarPreference? Preference { get; set; }
@@ -390,6 +395,19 @@ namespace Playarr.Core.Models
         [JsonProperty("title")] public string Title { get; set; } = string.Empty;
 
         [JsonProperty("items")] public IList<Work> Items { get; set; } = new List<Work>();
+    }
+
+    /// <summary>One rail of <c>GET /api/v1/home/rails/preferences</c>: every rail the admin enabled, in the caller's order.</summary>
+    public sealed class RailPreferenceEntry
+    {
+        [JsonProperty("id")] public Guid Id { get; set; }
+        [JsonProperty("title")] public string Title { get; set; } = string.Empty;
+        [JsonProperty("hidden")] public bool Hidden { get; set; }
+    }
+
+    public sealed class RailPreferencesResponse
+    {
+        [JsonProperty("rails")] public IList<RailPreferenceEntry> Rails { get; set; } = new List<RailPreferenceEntry>();
     }
 
     public sealed class HomeRailsResponse

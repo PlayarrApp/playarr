@@ -184,7 +184,7 @@ namespace Playarr.Xbox.Views
             };
             foreach (var work in rail.Items)
             {
-                list.Items.Add(CatalogTileFactory.CreateLandscapeCard(work));
+                list.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, cover: Appearance.HomeCover));
             }
 
             var section = new StackPanel { Spacing = 22 };

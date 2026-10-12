@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
@@ -51,6 +52,12 @@ namespace Playarr.Core.Networking
 
         Task<HomeRailsResponse> GetHomeRailsAsync(CancellationToken cancellationToken = default);
 
+        Task<RailPreferencesResponse> GetRailPreferencesAsync(CancellationToken cancellationToken = default);
+
+        Task SaveRailPreferencesAsync(IEnumerable<RailPreferenceEntry> rails, CancellationToken cancellationToken = default);
+
+        Task ResetRailPreferencesAsync(CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Server-cached, resized artwork (<c>/api/v1/artwork/work/{id}/{kind}</c>), the only route that serves
         /// art the source stores behind a private scheme. Needs the bearer token, so an Image cannot load it by URL.
@@ -66,6 +73,13 @@ namespace Playarr.Core.Networking
         Task<IList<AvailableProfile>> ListProfilesAsync(CancellationToken cancellationToken = default);
 
         Task<ProfileAvatarSettingResponse> GetProfileAvatarAsync(CancellationToken cancellationToken = default);
+
+        Task<ProfilePinSettingResponse> GetProfilePinSettingAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Sets an exactly four-digit PIN, or removes the lock with <c>null</c>.</summary>
+        Task SetProfilePinAsync(string? pin, CancellationToken cancellationToken = default);
+
+        Task SetProfileAvatarPresetAsync(string preset, CancellationToken cancellationToken = default);
 
         Task<IList<WatchProgress>> ListWatchProgressAsync(CancellationToken cancellationToken = default);
 
@@ -234,6 +248,26 @@ namespace Playarr.Core.Networking
         public Task<HomeRailsResponse> GetHomeRailsAsync(CancellationToken cancellationToken = default) =>
             GetAsync<HomeRailsResponse>("/api/v1/home/rails", null, authenticated: true, cancellationToken);
 
+        /// <summary><c>GET /api/v1/home/rails/preferences</c>: Settings > Customise Home.</summary>
+        public Task<RailPreferencesResponse> GetRailPreferencesAsync(CancellationToken cancellationToken = default) =>
+            GetAsync<RailPreferencesResponse>("/api/v1/home/rails/preferences", null, authenticated: true, cancellationToken);
+
+        /// <summary><c>PUT /api/v1/home/rails/preferences</c> with the full order and the hidden set.</summary>
+        public Task SaveRailPreferencesAsync(IEnumerable<RailPreferenceEntry> rails, CancellationToken cancellationToken = default)
+        {
+            var list = rails.ToList();
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                order = list.Select(r => r.Id),
+                hidden = list.Where(r => r.Hidden).Select(r => r.Id),
+            });
+            return SendNoBodyAsync(HttpMethod.Put, "/api/v1/home/rails/preferences", json, cancellationToken);
+        }
+
+        /// <summary><c>DELETE /api/v1/home/rails/preferences</c>: back to the admin's default rails.</summary>
+        public Task ResetRailPreferencesAsync(CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(HttpMethod.Delete, "/api/v1/home/rails/preferences", null!, cancellationToken);
+
         public Task<byte[]> GetEpisodeArtworkAsync(
             Guid seriesId, Guid episodeId, ImageKind kind, int width, string? version = null, CancellationToken cancellationToken = default) =>
             FetchArtworkAsync($"/api/v1/artwork/episode/{seriesId:D}/{episodeId:D}/{kind.ToString().ToLowerInvariant()}", width, version, cancellationToken);
@@ -324,6 +358,18 @@ namespace Playarr.Core.Networking
 
         public Task<ProfileAvatarSettingResponse> GetProfileAvatarAsync(CancellationToken cancellationToken = default) =>
             GetAsync<ProfileAvatarSettingResponse>("/api/v1/users/me/profile-avatar", null, authenticated: true, cancellationToken);
+        public Task<ProfilePinSettingResponse> GetProfilePinSettingAsync(CancellationToken cancellationToken = default) =>
+            GetAsync<ProfilePinSettingResponse>("/api/v1/users/me/profile-pin", null, authenticated: true, cancellationToken);
+
+        /// <summary><c>PATCH /api/v1/users/me/profile-pin</c>: a four-digit PIN, or null to remove the lock.</summary>
+        public Task SetProfilePinAsync(string? pin, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(new HttpMethod("PATCH"), "/api/v1/users/me/profile-pin",
+                pin == null ? "{\"pin\":null}" : "{\"pin\":\"" + pin + "\"}", cancellationToken);
+
+        /// <summary><c>PUT /api/v1/users/me/profile-avatar</c> with one of the shared preset ids.</summary>
+        public Task SetProfileAvatarPresetAsync(string preset, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(HttpMethod.Put, "/api/v1/users/me/profile-avatar", "{\"preference\":{\"kind\":\"preset\",\"value\":\"" + preset + "\"}}", cancellationToken);
+
         public Task<WatchlistResponse> GetWatchlistAsync(CancellationToken cancellationToken = default) =>
             GetAsync<WatchlistResponse>("/api/v1/watchlist", null, authenticated: true, cancellationToken);
 
