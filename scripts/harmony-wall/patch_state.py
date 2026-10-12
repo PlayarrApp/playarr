@@ -13,7 +13,7 @@ def edit(rel, fn):
 
 def card(s):
     s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { reportCardFocus, previewReport } from '../../util/PreviewState';", 1)
-    s = s.replace("  onLongPress: () => void = () => {};", "  onLongPress: () => void = () => {};\n  onPreviewRowImageSource: () => void = () => {};\n  onPreviewRowImageArea: (positive: boolean) => void = (_positive: boolean) => {};\n  onPreviewRowImageComplete: () => void = () => {};\n  onPreviewRowImageError: () => void = () => {};", 1)
+    s = s.replace("  onLongPress: () => void = () => {};", "  onLongPress: () => void = () => {};\n  @Prop onPreviewRowImageSource: () => void = () => {};\n  @Prop onPreviewRowImageArea: (positive: boolean) => void = (_positive: boolean) => {};\n  @Prop onPreviewRowImageComplete: () => void = () => {};\n  @Prop onPreviewRowImageError: () => void = () => {};", 1)
     old = "      this.setFocused(true);\n      this.onFocused();\n"
     assert old in s
     s = s.replace(old, old + "      reportCardFocus(this.title, this.subtitle);\n", 1)
