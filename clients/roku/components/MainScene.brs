@@ -73,6 +73,7 @@ sub init()
     m.profilesClientsFocus = m.top.findNode("profilesClientsFocus")
     m.profilesClientsHit = m.top.findNode("profilesClientsHit")
     m.profilesFocusIndex = 0
+    m.profilesAddIndex = -1
     m.settingsGroup = m.top.findNode("settingsGroup")
     m.settingsSectionList = m.top.findNode("settingsSectionList")
     m.settingsDetail = m.top.findNode("settingsDetail")
@@ -1800,8 +1801,7 @@ sub buildProfileAvatarContent(profiles as Object)
     ' Real tv-web's own "+" circle (confirmed live: Profiles.tsx renders it
     ' as a genuine extra avatar-shaped button in the same row, titled "Sign
     ' in" / "ADD ANOTHER PROFILE"), not a separate text menu item -- this
-    ' was "Link another profile" in profileActions below until this pass;
-    ' onProfileSelected (below) detects this by index = list.Count().
+    ' was "Link another profile" in profileActions below until this pass.
     addItem = rowNode.CreateChild("ContentNode")
     addItem.title = "Sign in"
     addItem.AddField("presetId", "string", false)
@@ -1813,6 +1813,9 @@ sub buildProfileAvatarContent(profiles as Object)
     addItem.AddField("statusText", "string", false)
     addItem.statusText = "ADD ANOTHER PROFILE"
     ' Keep full status line (was truncating as "ADD ANOTHER…").
+    ' Capture the row index after the zero-profile fallback viewer has been
+    ' added, so D-pad routing identifies the actual synthetic Sign in item.
+    m.profilesAddIndex = list.Count()
     list.Push(addItem)
 
     ' 368px item boxes contain the translated 336px shadow at 1.09 scale,
@@ -6785,6 +6788,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             applyProfilesChromeFocus()
             return true
         else if m.profilesRow.HasFocus()
+            if m.profilesFocusIndex = m.profilesAddIndex and m.profilesClientsHit <> invalid
+                m.profilesClientsHit.SetFocus(true)
+                applyProfilesChromeFocus()
+                return true
+            end if
             if m.profileActionsGroup <> invalid and m.profileActionsGroup.visible
                 if m.profilesSettingsHit <> invalid then m.profilesSettingsHit.SetFocus(true)
                 applyProfilesChromeFocus()
