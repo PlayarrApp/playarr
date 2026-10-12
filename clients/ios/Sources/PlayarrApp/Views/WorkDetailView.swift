@@ -545,7 +545,7 @@ struct WorkDetailView: View {
                         )
                     )
                 } label: {
-                    episodeCardLabel(title: title, label: label, playable: true)
+                    episodeCardLabel(detail: detail, title: title, label: label, playable: true)
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
@@ -558,16 +558,18 @@ struct WorkDetailView: View {
                     }
                 }
             } else {
-                episodeCardLabel(title: title, label: label, playable: false)
+                episodeCardLabel(detail: detail, title: title, label: label, playable: false)
             }
         }
     }
 
-    private func episodeCardLabel(title: String, label: String, playable: Bool) -> some View {
+    private func episodeCardLabel(detail: EpisodeDetail, title: String, label: String, playable: Bool) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             ZStack(alignment: .bottomLeading) {
                 if let work = viewModel.detail?.work {
-                    PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
+                    WMRemoteImage(apiClient: apiClient, sources: episodeArtworkSources(detail, workID: work.id))
+                        .frame(width: 210, height: 118)
+                        .background(PlayarrStyle.surfaceStrong.opacity(0.7))
                 } else {
                     PlayarrStyle.surfaceStrong
                 }
@@ -598,6 +600,16 @@ struct WorkDetailView: View {
                 .foregroundStyle(PlayarrStyle.muted)
         }
         .frame(width: 210, alignment: .leading)
+    }
+
+    private func episodeArtworkSources(_ episode: EpisodeDetail, workID: UUID) -> [WMRemoteImage.Source] {
+        var sources = [WMRemoteImage.Source(
+            path: "/api/v1/artwork/episode/\(workID.uuidString.lowercased())/\(episode.id.uuidString.lowercased())/thumb"
+        )]
+        if let mediaFileID = episode.mediaFileID {
+            sources.append(WMRemoteImage.Source(path: "/api/v1/media/\(mediaFileID.uuidString.lowercased())/thumbnail"))
+        }
+        return sources
     }
 
     @ViewBuilder

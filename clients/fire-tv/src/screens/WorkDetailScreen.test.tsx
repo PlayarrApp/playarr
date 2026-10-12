@@ -19,6 +19,12 @@ import {ROUTES} from '../navigation/routes';
 // See LibraryScreen.test.tsx's own comment for exactly why this is needed.
 (globalThis as unknown as {React: typeof React}).React = React;
 
+const renderers: ReactTestRenderer[] = [];
+function trackRenderer(renderer: ReactTestRenderer): ReactTestRenderer {
+  renderers.push(renderer);
+  return renderer;
+}
+
 function work(overrides: Partial<Work> & Pick<Work, 'id' | 'title'>): Work {
   return {
     added_at: '2026-01-01T00:00:00Z',
@@ -74,13 +80,13 @@ function mockDetailFetch(options: {
 async function renderDetail(navigation: WorkDetailScreenNavigation, workId = 'w1'): Promise<ReactTestRenderer> {
   let renderer!: ReactTestRenderer;
   await act(async () => {
-    renderer = create(
+    renderer = trackRenderer(create(
       <ApiClientProvider>
         <LanguageProvider>
           <WorkDetailScreen route={{params: {workId}}} navigation={navigation} />
         </LanguageProvider>
       </ApiClientProvider>
-    );
+    ));
     await Promise.resolve();
     await Promise.resolve();
   });
@@ -89,6 +95,9 @@ async function renderDetail(navigation: WorkDetailScreenNavigation, workId = 'w1
 
 describe('WorkDetailScreen', () => {
   afterEach(() => {
+    act(() => {
+      for (const renderer of renderers.splice(0)) renderer.unmount();
+    });
     jest.restoreAllMocks();
   });
 
@@ -218,13 +227,13 @@ describe('WorkDetailScreen', () => {
 
     let renderer!: ReactTestRenderer;
     await act(async () => {
-      renderer = create(
+      renderer = trackRenderer(create(
         <ApiClientProvider>
           <LanguageProvider>
             <WorkDetailScreen route={{params: {workId: 'w1'}}} navigation={fakeNavigation()} onPlay={onPlay} />
           </LanguageProvider>
         </ApiClientProvider>
-      );
+      ));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -247,13 +256,13 @@ describe('WorkDetailScreen', () => {
 
     let renderer!: ReactTestRenderer;
     await act(async () => {
-      renderer = create(
+      renderer = trackRenderer(create(
         <ApiClientProvider>
           <LanguageProvider>
             <WorkDetailScreen route={{params: {workId: 'w1'}}} navigation={fakeNavigation()} />
           </LanguageProvider>
         </ApiClientProvider>
-      );
+      ));
       await Promise.resolve();
     });
 

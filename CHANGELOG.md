@@ -13,6 +13,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV tests now unmount rendered screens and stop their finite animations before Jest tears down the test environment.
+- iPad series details now show episode-specific artwork with a media-thumbnail fallback.
+- Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
 - Match the Roku profile picker avatar focus bounds and Sign out pill size to the live web layout.
 - Xbox: the film detail page has the web structure: a narrower two-line title, runtime and Released in the meta line, and a Chapters rail with a frame per chapter that plays from there.
 - Fire TV parity control: opening a title by id resets the stack so Back goes to its library page, as the web's URL does (suite check detail-back).
@@ -2887,6 +2890,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- The macOS D-pad parity driver can report engine focus, SwiftUI bindings, and the current window responder.
 - Harmony phone capture jobs now fail when required screens are missing and verify title-detail navigation through Previewer route state.
 - The player OK toggle parity check now compares the exact Play or Pause state from its generated web reference, while focus-order checks continue to compare the shared play-pause role.
 - The macOS Apple driver reads its parity state from an explicit file (-PlayarrParityState).

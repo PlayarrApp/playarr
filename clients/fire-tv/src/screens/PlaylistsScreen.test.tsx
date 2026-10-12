@@ -10,6 +10,12 @@ import {PlaylistsScreen, type PlaylistsScreenNavigation} from './PlaylistsScreen
 
 (globalThis as unknown as {React: typeof React}).React = React;
 
+const renderers: ReactTestRenderer[] = [];
+function trackRenderer(renderer: ReactTestRenderer): ReactTestRenderer {
+  renderers.push(renderer);
+  return renderer;
+}
+
 jest.mock('../navigation/backPolicy', () => ({useTvBackNavigation: jest.fn(), useBackLayer: jest.fn()}));
 
 function work(overrides: Partial<Work> & Pick<Work, 'id' | 'title'>): Work {
@@ -45,20 +51,25 @@ function mockFetch(handlers: {playlists?: unknown[]; items?: unknown[]; work?: u
 async function render(navigation: PlaylistsScreenNavigation): Promise<ReactTestRenderer> {
   let renderer!: ReactTestRenderer;
   await act(async () => {
-    renderer = create(
+    renderer = trackRenderer(create(
       <ApiClientProvider>
         <LanguageProvider>
           <PlaylistsScreen navigation={navigation} />
         </LanguageProvider>
       </ApiClientProvider>,
-    );
+    ));
     for (let i = 0; i < 6; i += 1) await Promise.resolve();
   });
   return renderer;
 }
 
 describe('PlaylistsScreen', () => {
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => {
+    act(() => {
+      for (const renderer of renderers.splice(0)) renderer.unmount();
+    });
+    jest.restoreAllMocks();
+  });
 
   it('shows the empty state when there are no playlists', async () => {
     mockFetch({playlists: []});

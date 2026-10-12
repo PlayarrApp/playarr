@@ -13,6 +13,12 @@ import {MusicDetailScreen, type MusicDetailScreenNavigation} from './MusicDetail
 // See LibraryScreen.test.tsx's own comment for exactly why this is needed.
 (globalThis as unknown as {React: typeof React}).React = React;
 
+const renderers: ReactTestRenderer[] = [];
+function trackRenderer(renderer: ReactTestRenderer): ReactTestRenderer {
+  renderers.push(renderer);
+  return renderer;
+}
+
 jest.mock('../navigation/backPolicy', () => ({useTvBackNavigation: jest.fn(), useBackLayer: jest.fn()}));
 
 function work(overrides: Partial<Work> & Pick<Work, 'id' | 'title'>): Work {
@@ -103,6 +109,9 @@ const ARTIST_DETAIL = {
 
 describe('MusicDetailScreen', () => {
   afterEach(() => {
+    act(() => {
+      for (const renderer of renderers.splice(0)) renderer.unmount();
+    });
     jest.restoreAllMocks();
   });
 
@@ -111,13 +120,13 @@ describe('MusicDetailScreen', () => {
 
     let renderer!: ReactTestRenderer;
     await act(async () => {
-      renderer = create(
+      renderer = trackRenderer(create(
         <ApiClientProvider>
           <LanguageProvider>
             <MusicDetailScreen route={{params: {workId: 'artist-1'}}} navigation={fakeNavigation()} />
           </LanguageProvider>
         </ApiClientProvider>
-      );
+      ));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -136,13 +145,13 @@ describe('MusicDetailScreen', () => {
 
     let renderer!: ReactTestRenderer;
     await act(async () => {
-      renderer = create(
+      renderer = trackRenderer(create(
         <ApiClientProvider>
           <LanguageProvider>
             <MusicDetailScreen route={{params: {workId: 'artist-1'}}} navigation={fakeNavigation()} onPlay={onPlay} />
           </LanguageProvider>
         </ApiClientProvider>
-      );
+      ));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -158,13 +167,13 @@ describe('MusicDetailScreen', () => {
 
     let renderer!: ReactTestRenderer;
     await act(async () => {
-      renderer = create(
+      renderer = trackRenderer(create(
         <ApiClientProvider>
           <LanguageProvider>
             <MusicDetailScreen route={{params: {workId: 'artist-1'}}} navigation={fakeNavigation()} />
           </LanguageProvider>
         </ApiClientProvider>
-      );
+      ));
       await Promise.resolve();
       await Promise.resolve();
     });
