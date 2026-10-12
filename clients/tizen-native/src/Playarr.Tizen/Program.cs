@@ -59,7 +59,7 @@ internal sealed class Program : NUIApplication
         var env = _env;
         if (env is null) return;
         env.Theme = PlayarrTheme.ByName(store.Theme());
-        if (_shell is not null) { window.Remove(_shell); _shell.Dispose(); }
+        if (_shell is not null) { (_shell.Page as SearchScreen)?.OnRemoved(); window.Remove(_shell); _shell.Dispose(); }
         var shell = _shell = new Shell(env, Exit);
         window.Add(shell);
         shell.Navigate(route);
@@ -68,7 +68,7 @@ internal sealed class Program : NUIApplication
         {
             store.ClearSessionAsync().GetAwaiter().GetResult();
             if (_keys is not null) window.KeyEvent -= _keys;
-            if (_shell is not null) { window.Remove(_shell); _shell.Dispose(); _shell = null; }
+            if (_shell is not null) { (_shell.Page as SearchScreen)?.OnRemoved(); window.Remove(_shell); _shell.Dispose(); _shell = null; }
             _env = null;
             StartSignIn(window, store);
         };
