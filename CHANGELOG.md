@@ -483,6 +483,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Linux phone client: lock-screen Next and Previous move through a series' episodes or an album's tracks.
+- Linux phone client: Profiles page, episode rails and On deck match the web phone more closely.
+- Linux phone client: one token refresh at a time with the new pair flushed to disk before use, and text drawn unhinted with grayscale anti-aliasing as the browser does.
 - Linux phone client: light theme page colour and shadows from the web tokens, On deck loads like the web (one entry per title, ten at most), series show their year range and dates as the web writes them.
 - Samsung Tizen native client: drawers use the web strong surface with the soft left shadow, the title-actions panel and library details panel sit where web puts them, and the series cast row follows the web gap.
 - Linux phone client: one token refresh at a time with the new pair flushed to disk before use, and text drawn unhinted with grayscale anti-aliasing as the browser does.
