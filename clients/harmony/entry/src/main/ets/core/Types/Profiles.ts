@@ -59,3 +59,13 @@ export interface Capabilities {
 export interface PlayerPreferences {
   preferred_audio_language: string;
 }
+
+/** `GET`/`PATCH /api/v1/users/me/profile-pin` response: whether the profile asks for a PIN. */
+export interface ProfilePinSetting {
+  pin_locked: boolean;
+}
+
+/** `PATCH /api/v1/users/me/profile-pin` body: a four-digit PIN, or `null` to remove the lock. */
+export interface UpdateProfilePinRequest {
+  pin: string | null;
+}

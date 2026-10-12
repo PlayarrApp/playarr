@@ -60,6 +60,11 @@ export function playerPreferencesUrl(): string {
   return "/api/v1/users/me/player-preferences";
 }
 
+/** `GET`/`PATCH` the signed-in profile's PIN lock (web `getProfilePinSetting` / `updateProfilePinSetting`). */
+export function profilePinUrl(): string {
+  return "/api/v1/users/me/profile-pin";
+}
+
 // -- 4.8 Catalog -----------------------------------------------------------
 
 export function catalogUrl(): string {

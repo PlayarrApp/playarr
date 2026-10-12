@@ -328,6 +328,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- HarmonyOS TV: Settings > Profile lock sets, replaces and removes the profile PIN, as web does.
 - HarmonyOS TV player: an info button opens a drawer with the title, its synopsis and how the stream reaches the device (delivery, quality, audio, subtitles).
 - HarmonyOS TV player: the control bar shows the negotiated quality; selecting it opens a drawer to switch quality (the stream renegotiates from the current position, keeping the chosen audio).
 - HarmonyOS TV detail page: Add to watchlist (and Remove), the Resume-from time on the primary pill for a part-watched movie, and a Playback button that opens the movie's saved quality, audio and subtitle settings.
