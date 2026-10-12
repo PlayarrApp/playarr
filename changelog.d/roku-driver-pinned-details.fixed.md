@@ -1,1 +1,0 @@
-- The Roku suite driver opens the pinned film and series details (the first item of each library), so the detail-back check compares the same title as the web.

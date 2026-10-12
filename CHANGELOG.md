@@ -13,6 +13,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- iOS and Apple TV: when the server reaps or evicts an idle on-demand session, the player now asks for a replacement session at the same position (up to three times) and keeps a paused player paused, instead of failing.
+- Roku media cards draw the web's focus ring and soft glow (brand ink in dark, brand strong in light); series detail's focused episode, Home and library cards now show a ring as the web does.
+- The Roku suite driver opens the pinned film and series details (the first item of each library), so the detail-back check compares the same title as the web.
 - Tizen native: when the server reaps or evicts an idle on-demand session, the player now requests a replacement session at the same position (up to three tries) and keeps a paused player paused, instead of stopping.
 - A full transcode node now makes room for a new viewer by stopping the on-demand session that has gone longest (at least two minutes) without a media segment request, i.e. a paused or abandoned player that only polls its playlist; sessions with recent segment requests are never evicted. While the node has room, a paused session keeps its slot up to a 30-minute safety cap (`PLAYARR_TRANSCODE_SEGMENT_IDLE_SECS`).
 - Xbox wall: debug frames of the calendar view picker are uploaded.
@@ -314,6 +317,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Downloads (web): the edit drawer now changes quality as well as keep-until; a new quality re-converts through a new ticket and replaces the old download.
 - Xbox: Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) choices; the card size and columns follow them.
 - Xbox: Settings has the web's Profile avatar section (the six built-in avatars, saved to the profile).
 - Xbox: Settings has the web's Customise Home section (show, hide and reorder Home rails, saved to the account), and the section list is data-driven.
