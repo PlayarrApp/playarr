@@ -208,7 +208,6 @@ button.pa-letter.active { background: alpha(@pa_ink, 0.85); color: @pa_bg; }
 .pa-row-glyph { color: #cf3157; font-size: 18px; min-width: 22px; }
 .pa-meta-flow flowboxchild { padding: 0; }
 .pa-search text { caret-color: transparent; }
-searchentry.pa-search > image.right { opacity: 0; }
 
 /* Month grid, as the web's calendar-month cells */
 .pa-mday { font-size: 12px; letter-spacing: 1px; color: @pa_muted; padding: 15px 6px 6px; }

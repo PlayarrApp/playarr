@@ -12,8 +12,10 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     page.set_margin_bottom(110);
     let head = Rc::new(header::build(&app, "Search", "filters"));
     page.append(&head.widget);
-    let entry = gtk4::SearchEntry::builder()
+    // A plain entry: the web's field has no clear icon, and GtkSearchEntry's cannot be hidden by CSS.
+    let entry = gtk4::Entry::builder()
         .placeholder_text("Search")
+        .primary_icon_name("edit-find-symbolic")
         .css_classes(["pa-search"])
         .margin_start(16)
         .margin_end(16)
@@ -67,7 +69,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
             .insert("search", Rc::new(move |q: &str| entry.set_text(q)));
     }
     let seq = Rc::new(Cell::new(0u32));
-    entry.connect_search_changed(move |e| {
+    entry.connect_changed(move |e| {
         let q = e.text().trim().to_string();
         let n = seq.get() + 1;
         seq.set(n);

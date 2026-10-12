@@ -157,7 +157,15 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
     let tone = if primary { Tone::OnAccent } else { Tone::Brand };
     row.append(&icons::image(icon, if small { 9 } else { 12 }, tone));
     let class = if small { "pa-action-label-s" } else { "pa-action-label" };
-    row.append(&gtk4::Label::builder().label(label).css_classes([class]).build());
+    // The large pills wrap ("Resume / from 0:23") as the web's do; the small ones fit on one line.
+    row.append(
+        &gtk4::Label::builder()
+            .label(label)
+            .css_classes([class])
+            .wrap(!small)
+            .justify(gtk4::Justification::Center)
+            .build(),
+    );
     let b = gtk4::Button::builder()
         .child(&row)
         .css_classes(if primary {
