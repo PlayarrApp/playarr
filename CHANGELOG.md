@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: the nav rail uses the web icons, label weight and tint, and the profile entry shows the first word of the name.
 - Xbox: the detail page's primary action is the web's filled pill and its secondary pills are filled, not outlined.
 - Xbox: card focus shows only the web lift, art scale and glow ring (no grey selection fill).
 - iOS and Apple TV: when the server reaps or evicts an idle on-demand session, the player now asks for a replacement session at the same position (up to three times) and keeps a paused player paused, instead of failing.

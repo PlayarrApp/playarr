@@ -1,1 +1,0 @@
-- Xbox: the nav rail uses the web icons, label weight and tint, and the profile entry shows the first word of the name.
