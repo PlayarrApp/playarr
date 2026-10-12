@@ -3,8 +3,8 @@ import Foundation
 /// Presentation helpers for `AvailabilityLag` (`GET /api/v1/catalog/{id}/availability-lag`).
 public extension AvailabilityLag {
     /// The headline shown on a title page.
-    var primaryLine: String {
-        guard let averageSeconds else { return "No availability data yet" }
+    var primaryLine: String? {
+        guard let averageSeconds else { return nil }
         return "Usually available about \(Self.humanDuration(seconds: averageSeconds)) after release"
     }
 

@@ -1,1 +1,0 @@
-- iPad series details now show episode-specific artwork with a media-thumbnail fallback.

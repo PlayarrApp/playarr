@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import re
+import struct
 import unittest
 from pathlib import Path
 
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = (ROOT / "components" / "MainScene.brs").read_text(encoding="utf-8")
 SCENE = (ROOT / "components" / "MainScene.xml").read_text(encoding="utf-8")
 CONFIG = (ROOT / "source" / "Config.brs").read_text(encoding="utf-8")
+WEB_GLOBAL_CSS = (ROOT.parent / "tv-web" / "web" / "src" / "styles" / "global.css").read_text(encoding="utf-8")
 
 
 class ApiContractTests(unittest.TestCase):
@@ -74,8 +77,9 @@ class NavigationContractTests(unittest.TestCase):
         # gradient PNGs standing in for a runtime circle mask, and an
         # initial letter standing in for tv-web's SVG mascot icon set).
         self.assertRegex(SCENE, r'itemComponentName="ProfileAvatar"')
-        self.assertRegex(SCENE, r'<Label id="profilesKicker"[^>]*text="PROFILES"')
-        self.assertIn("Who’s watching?", SCENE)
+        self.assertRegex(SCENE, r'<TrackedText id="profilesKicker"')
+        self.assertRegex(SCENE, r'<TrackedText id="profilesTitle"')
+        self.assertIn('text: "Who’s watching?"', MAIN)
         self.assertIn('m.profilesRow.ObserveField("rowItemSelected", "onProfileSelected")', MAIN)
         self.assertIn("sub buildProfileAvatarContent(profiles as Object)", MAIN)
         self.assertIn("function profileAvatarPresetId(id as String) as String", MAIN)
@@ -103,6 +107,78 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn("position = event.GetData()", position_unpack.group(0))
         self.assertIn("index = position[1]", position_unpack.group(0))
 
+    def test_profile_heading_typography_tracks_web_clamps_and_weights(self) -> None:
+        vw_match = re.search(r"--vw:\s*([\d.]+)vw", WEB_GLOBAL_CSS)
+        self.assertIsNotNone(vw_match)
+        assert vw_match is not None
+        vw = 1920 * float(vw_match.group(1)) / 100
+        specs = {
+            "profilesKicker": ".profiles-heading p",
+            "profilesTitle": ".profiles-heading h1",
+        }
+        for node, selector in specs.items():
+            with self.subTest(node=node):
+                rules = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", WEB_GLOBAL_CSS)
+                self.assertIsNotNone(rules)
+                assert rules is not None
+                body = rules.group(1)
+                clamp = re.search(
+                    r"font-size:\s*clamp\(([\d.]+)rem,\s*calc\(([\d.]+)\s*\*\s*var\(--vw\)\),\s*([\d.]+)rem\)",
+                    body,
+                )
+                css_weight = re.search(r"font-weight:\s*([\d.]+)", body)
+                css_tracking = re.search(r"letter-spacing:\s*(-?[\d.]+)em", body)
+                self.assertIsNotNone(clamp)
+                self.assertIsNotNone(css_weight)
+                self.assertIsNotNone(css_tracking)
+                assert clamp is not None and css_weight is not None and css_tracking is not None
+                lower, fluid, upper = (float(value) for value in clamp.groups())
+                font_size = min(max(lower * 16, fluid * vw), upper * 16)
+                native = re.search(rf"m\.{node}\.spec = \{{([^}}]+)\}}", MAIN)
+                self.assertIsNotNone(native)
+                assert native is not None
+                native_size = int(re.search(r"size: (\d+)", native.group(1)).group(1))
+                native_weight = int(re.search(r"weight: (\d+)", native.group(1)).group(1))
+                native_tracking = float(re.search(r"tracking: (-?[\d.]+)", native.group(1)).group(1))
+                target_weight = min(800, int(float(css_weight.group(1))))
+                self.assertEqual(round(font_size), native_size)
+                self.assertEqual(target_weight, native_weight)
+                self.assertAlmostEqual(font_size * float(css_tracking.group(1)), native_tracking, delta=0.03)
+
+    def test_profile_labels_track_web_clamps_and_weights(self) -> None:
+        vw_match = re.search(r"--vw:\s*([\d.]+)vw", WEB_GLOBAL_CSS)
+        self.assertIsNotNone(vw_match)
+        assert vw_match is not None
+        vw = 1920 * float(vw_match.group(1)) / 100
+        cases = (
+            (".profile-avatar-button > strong", "name"),
+            (".profile-avatar-button > small", "status"),
+        )
+        avatar = (ROOT / "components" / "ProfileAvatar.brs").read_text(encoding="utf-8")
+        for selector, node in cases:
+            with self.subTest(node=node):
+                rule = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", WEB_GLOBAL_CSS)
+                self.assertIsNotNone(rule)
+                assert rule is not None
+                clamp = re.search(
+                    r"font-size:\s*clamp\(([\d.]+)rem,\s*calc\(([\d.]+)\s*\*\s*var\(--vw\)\),\s*([\d.]+)rem\)",
+                    rule.group(1),
+                )
+                weight = re.search(r"font-weight:\s*([\d.]+)", rule.group(1))
+                self.assertIsNotNone(clamp)
+                self.assertIsNotNone(weight)
+                assert clamp is not None and weight is not None
+                lower, fluid, upper = (float(value) for value in clamp.groups())
+                css_size = min(max(lower * 16, fluid * vw), upper * 16)
+                native = re.search(rf"m\.{node}\.font = PlayarrMakeFont\((\d+), (\d+)\)", avatar)
+                self.assertIsNotNone(native)
+                assert native is not None
+                self.assertEqual(round(css_size), int(native.group(2)))
+                self.assertEqual(700, int(native.group(1)))
+                css_weight = int(float(weight.group(1)))
+                static_weight = 600 if css_weight <= 650 else 700 if css_weight <= 750 else 800
+                self.assertEqual(static_weight, int(native.group(1)))
+
     def test_profile_avatar_component_is_a_circular_gradient_item_renderer(self) -> None:
         component_path = ROOT / "components" / "ProfileAvatar.xml"
         self.assertTrue(component_path.is_file())
@@ -125,6 +201,123 @@ class NavigationContractTests(unittest.TestCase):
                     f"missing avatar-{preset}.png referenced by ProfileAvatar.brs",
                 )
 
+    def test_focused_profile_ring_fits_inside_its_row_item(self) -> None:
+        component_xml = (ROOT / "components" / "ProfileAvatar.xml").read_text(encoding="utf-8")
+        component_brs = (ROOT / "components" / "ProfileAvatar.brs").read_text(encoding="utf-8")
+        builder = re.search(
+            r"sub buildProfileAvatarContent\(profiles as Object\)(.*?)end sub", MAIN, flags=re.DOTALL
+        )
+        self.assertIsNotNone(builder)
+        assert builder is not None
+        row_width = int(re.search(r"itemWidth = (\d+)", builder.group(1)).group(1))
+        row_height = int(
+            re.search(r"itemHeight = (\d+)", builder.group(1)).group(1)
+        )
+        position = re.search(
+            r'm\.circleGroup\.translation = \[(-?\d+), (-?\d+) \+ lift\]', component_brs
+        )
+        self.assertIsNotNone(position)
+        assert position is not None
+        inset_x, inset_y = (int(value) for value in position.groups())
+        scale_factor = float(re.search(r"scale = 1 \+ \(effective \* ([\d.]+)\)", component_brs).group(1))
+        lift_amount = int(re.search(r"lift = Int\((-?\d+) \* effective\)", component_brs).group(1))
+        ring = re.search(
+            r'<Poster id="focusRing" translation="\[(-?\d+),(-?\d+)\]" width="(\d+)" height="(\d+)"',
+            component_xml,
+        )
+        pivot = re.search(r'<Group id="circleGroup"[^>]*scaleRotateCenter="\[(\d+),(\d+)\]"', component_xml)
+        self.assertIsNotNone(ring)
+        self.assertIsNotNone(pivot)
+        assert ring is not None and pivot is not None
+        ring_x, ring_y, ring_width, ring_height = (int(value) for value in ring.groups())
+        pivot_x, pivot_y = (int(value) for value in pivot.groups())
+        focus_scale = 1 + scale_factor
+        left = inset_x + (ring_x - pivot_x) * focus_scale + pivot_x
+        right = inset_x + (ring_x + ring_width - pivot_x) * focus_scale + pivot_x
+        top = inset_y + lift_amount + (ring_y - pivot_y) * focus_scale + pivot_y
+        bottom = inset_y + lift_amount + (ring_y + ring_height - pivot_y) * focus_scale + pivot_y
+        self.assertGreaterEqual(left, 0)
+        self.assertGreaterEqual(top, 0)
+        self.assertLessEqual(right, row_width)
+        self.assertLessEqual(bottom, row_height)
+
+        shadow = re.search(
+            r'<Poster id="focusShadow" translation="\[(-?\d+),(-?\d+)\]" width="(\d+)" height="(\d+)"',
+            component_xml,
+        )
+        self.assertIsNotNone(shadow)
+        assert shadow is not None
+        shadow_x, shadow_y, shadow_width, shadow_height = (int(value) for value in shadow.groups())
+        shadow_left = inset_x + (shadow_x - pivot_x) * focus_scale + pivot_x
+        shadow_right = inset_x + (shadow_x + shadow_width - pivot_x) * focus_scale + pivot_x
+        shadow_top = inset_y + lift_amount + (shadow_y - pivot_y) * focus_scale + pivot_y
+        shadow_bottom = inset_y + lift_amount + (shadow_y + shadow_height - pivot_y) * focus_scale + pivot_y
+        self.assertGreaterEqual(shadow_left, 0)
+        self.assertGreaterEqual(shadow_top, 0)
+        self.assertLessEqual(shadow_right, row_width)
+        self.assertLessEqual(shadow_bottom, row_height)
+
+    def test_profile_signout_assets_match_web_control_size(self) -> None:
+        for name in (
+            "profiles-signout.png",
+            "profiles-signout-light.png",
+            "profiles-signout-focus.png",
+            "profiles-signout-focus-light.png",
+        ):
+            with self.subTest(name=name):
+                data = (ROOT / "images" / name).read_bytes()
+                self.assertEqual((104, 44), struct.unpack(">II", data[16:24]))
+
+    def test_profile_visual_assets_support_theme_tint_and_light_add_avatar(self) -> None:
+        ring = Image.open(ROOT / "images" / "avatar-ring.png").convert("RGBA")
+        pixels = ring.tobytes()
+        alpha = pixels[3::4]
+        self.assertGreater(sum(value > 0 for value in alpha), 0)
+        self.assertLess(ring.getpixel((ring.width // 2, ring.height // 2))[3], max(alpha))
+        self.assertTrue(
+            all(pixels[index : index + 3] == b"\xff\xff\xff" for index in range(0, len(pixels), 4) if pixels[index + 3] > 0),
+            "the outline must stay an alpha mask so card glow uses the active theme colour",
+        )
+
+        light = Image.open(ROOT / "images" / "avatar-add-light.png").convert("RGBA")
+        dark = Image.open(ROOT / "images" / "avatar-add.png").convert("RGBA")
+        self.assertEqual((240, 240), light.size)
+        self.assertEqual(light.size, dark.size)
+        light_sample = light.getpixel((45, 45))
+        dark_sample = dark.getpixel((45, 45))
+        self.assertGreater(sum(light_sample[:3]), sum(dark_sample[:3]))
+        self.assertTrue((ROOT / "images" / "avatar-add-light.png").is_file())
+
+    def test_profile_page_background_and_settings_glyph_match_web_scale(self) -> None:
+        for name in ("profiles-bg.png", "profiles-bg-light.png"):
+            with self.subTest(background=name):
+                background = Image.open(ROOT / "images" / name).convert("RGB")
+                self.assertEqual((1920, 1080), background.size)
+                centre = background.getpixel((960, 518))
+                corner = background.getpixel((0, 0))
+                self.assertGreater(centre[0] - centre[1], corner[0] - corner[1])
+
+        for name in (
+            "profiles-gear.png",
+            "profiles-gear-light.png",
+            "profiles-gear-focus.png",
+            "profiles-gear-focus-light.png",
+        ):
+            with self.subTest(glyph=name):
+                button = Image.open(ROOT / "images" / name).convert("RGBA")
+                self.assertEqual((48, 48), button.size)
+                pixels = button.load()
+                glyph = [
+                    (x, y)
+                    for y in range(12, 36)
+                    for x in range(12, 36)
+                    if pixels[x, y][0] > 150 and pixels[x, y][1] < 100 and pixels[x, y][2] > 40
+                ]
+                self.assertGreater(len(glyph), 10)
+                width = max(x for x, _ in glyph) - min(x for x, _ in glyph) + 1
+                height = max(y for _, y in glyph) - min(y for _, y in glyph) + 1
+                self.assertLessEqual(width, 22)
+                self.assertLessEqual(height, 22)
     def test_every_client_renders_the_server_avatar_preference(self) -> None:
         # The same account must show the same avatar on every device: the server preference (a preset id or a custom
         # JPEG), the shared preset art, and the id-hash default only when nothing is set.

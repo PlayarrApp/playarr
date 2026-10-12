@@ -4,8 +4,30 @@ using Tizen.NUI.BaseComponents;
 
 namespace Playarr.Tizen;
 
-/// <summary>One section of the Filters drawer: a segmented choice, a select (display only for now) or a toggle.</summary>
-internal sealed record FilterSection(string Heading, string[] Options, int Selected, Action<int> Changed, bool IsSelect = false, bool IsToggle = false);
+/// <summary>One section of the Filters drawer: a choice grid, a select or a toggle.</summary>
+internal sealed class FilterSection
+{
+    public string Heading { get; }
+    public string[] Options { get; }
+    public int Selected { get; set; }
+    public Func<int, bool> Changed { get; }
+    public bool IsSelect { get; }
+    public bool IsToggle { get; }
+    public bool KeepFocusAfterChange { get; }
+
+    public FilterSection(string Heading, string[] Options, int Selected, Action<int> Changed, bool IsSelect = false, bool IsToggle = false)
+    {
+        this.Heading = Heading; this.Options = Options; this.Selected = Selected;
+        this.Changed = index => { Changed(index); return true; };
+        this.IsSelect = IsSelect; this.IsToggle = IsToggle;
+    }
+
+    public FilterSection(string Heading, string[] Options, int Selected, Func<int, bool> Changed, bool KeepFocusAfterChange = false)
+    {
+        this.Heading = Heading; this.Options = Options; this.Selected = Selected; this.Changed = Changed;
+        this.KeepFocusAfterChange = KeepFocusAfterChange;
+    }
+}
 
 /// <summary>Web .tv-filter-drawer: a 360 px right panel (kicker, title, close, sections). Measured at 1920x1080.</summary>
 internal sealed class FiltersDrawer
@@ -62,19 +84,33 @@ internal sealed class FiltersDrawer
             }
             else
             {
-                var n = s.Options.Length; var gap = 8f; var w = (268 - gap * (n - 1)) / n;
+                var n = s.Options.Length; var columns = n > 3 ? 3 : n; var gap = 8f; var w = (268 - gap * (columns - 1)) / columns;
+                var choices = new List<(View Box, TextLabel Label)>();
                 for (var i = 0; i < n; i++)
                 {
-                    var idx = i; var bx = 1606 + i * (w + gap); var active = i == s.Selected;
-                    var b = Ui.Box(bx, top, w, 56, active ? t.Ink : t.SurfaceSoft, 12);
+                    var idx = i; var bx = 1606 + i % columns * (w + gap); var by = top + i / columns * 64; var active = i == s.Selected;
+                    var b = Ui.Box(bx, by, w, 56, active ? t.Ink : t.SurfaceSoft, 12);
                     b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(t, 0.15f);
-                    b.Add(Ui.Text(s.Options[i], 0, n == 3 ? 33 : 22.2f, 10.56f, 800, active ? t.OnAccent : t.InkMuted, w, 11.6f, HorizontalAlignment.Center));
+                    var label = Ui.Text(s.Options[i], 0, n == 3 ? 33 : 22.2f, 10.56f, 800, active ? t.OnAccent : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
+                    b.Add(label);
                     var ring = Ring.Make(w, 56, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
                     Root.Add(b);
-                    var yy = top; var ww = w; var sec = s;
-                    _focus.Items.Add(new Focusable { Rect = () => new Box(bx, yy, ww, 56), Label = $"{s.Heading} {s.Options[i]}".ToLowerInvariant(), Style = f => ring.Show(f), Select = () => { sec.Changed(idx); _focus.Set(0); } });
+                    choices.Add((b, label));
+                    var yy = by; var ww = w; var sec = s; var focusIndex = _focus.Items.Count;
+                    _focus.Items.Add(new Focusable { Rect = () => new Box(bx, yy, ww, 56), Label = $"{s.Heading} {s.Options[i]}".ToLowerInvariant(), Style = f => ring.Show(f), Select = () =>
+                    {
+                        if (sec.Changed(idx)) sec.Selected = idx;
+                        for (var choiceIndex = 0; choiceIndex < choices.Count; choiceIndex++)
+                        {
+                            var (choice, text) = choices[choiceIndex];
+                            var selected = choiceIndex == sec.Selected;
+                            choice.BackgroundColor = Ui.C(selected ? t.Ink : t.SurfaceSoft);
+                            text.TextColor = Ui.C(selected ? t.OnAccent : t.InkMuted);
+                        }
+                        _focus.Set(sec.KeepFocusAfterChange ? focusIndex : 0);
+                    } });
                 }
-                y += 112.6f;
+                y += 112.6f + Math.Max(0, (int)Math.Ceiling(n / (float)columns) - 1) * 64;
             }
         }
         _focus.Set(0); // web opens with the close button focused

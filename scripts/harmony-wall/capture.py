@@ -250,15 +250,28 @@ else:
         click(*FILTER_BTN); time.sleep(4); debug(name + "-filters-open")
 
     def open_detail(kind, name):
-        route("library:" + kind, 15); settle()
-        before = png().tobytes()
-        for x, y in CARDS:
-            click(x, y); time.sleep(10)
-            if png().tobytes() != before:
+        screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))['screens']
+        spec = next((s for s in screens if s.get("id") == name), None)
+        opened = spec.get("open", "") if spec is not None else ""
+        prefix = "/" + ("movies" if kind == "movie" else "series") + "/"
+        if not opened.startswith(prefix):
+            raise Skip(f"shared suite has no pinned {kind} detail route for {name}")
+        work_id = opened[len(prefix):]
+        if not re.fullmatch(r"[0-9a-fA-F-]{36}", work_id):
+            raise Skip(f"shared suite has an invalid pinned work id for {name}")
+
+        # Deep-link to the shared suite's pinned work id and verify that the
+        # Previewer route state reports that same id before saving the frame.
+        route("detail:" + work_id, 5)
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            state = json.loads(get("/state"))
+            if state.get("route") == "Detail" and state.get("work_id") == work_id:
                 snap(name, folder, 100000)
                 return
-            debug(f"{name}-miss-{x}-{y}")
-        abort(f"no card tap at {CARDS} opened a {kind} detail page")
+            time.sleep(0.5)
+        debug(f"{name}-route-timeout")
+        raise Skip(f"pinned {kind} detail route did not settle for {name}: {state}")
 
     def calendar_view(view):
         route("calendar", 18); settle()
@@ -298,4 +311,7 @@ import datetime
 json.dump({"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
            "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")},
           open(os.path.join(out, "build.json"), "w"))
+if MISSING:
+    print("INCOMPLETE: missing required screens: " + ", ".join(MISSING), flush=True)
+    sys.exit(2)
 print("done")

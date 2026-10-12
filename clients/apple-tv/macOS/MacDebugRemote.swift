@@ -59,6 +59,16 @@ enum MacDebugRemote {
             for t in MacFocusEngine.shared.targets.values.sorted(by: { ($0.frame.minY, $0.frame.minX) < ($1.frame.minY, $1.frame.minX) }) {
                 NSLog("PlayarrMac targets: %@ layer=%d", NSStringFromRect(t.frame), t.layer)
             }
+        case "focus":
+            let engine = MacFocusEngine.shared
+            let focused = engine.focusedID.flatMap { id in engine.targets[id].map { (id, $0) } }
+            let bindings = engine.targets.filter { $0.value.isFocused() }
+                .map { "\($0.key.uuidString) \(NSStringFromRect($0.value.frame))" }
+                .joined(separator: ";")
+            NSLog("PlayarrMac focus: engine=%@ live=[%@] key=%d top=%d targets=%d responder=%@",
+                  focused.map { "\($0.0.uuidString) \(NSStringFromRect($0.1.frame))" } ?? "none",
+                  bindings, window.isKeyWindow ? 1 : 0, engine.topLayer, engine.targets.count,
+                  String(describing: window.firstResponder.map { type(of: $0) }))
         case "hover" where parts.count > 1, "rclick" where parts.count > 1:
             // The hover and right-click paths without moving the person's real pointer (a synthetic CGEvent would):
             // hover marks the target under a stage point as hovered and focused; rclick then runs its secondary action.
@@ -72,14 +82,6 @@ enum MacDebugRemote {
             engine.didHover(id, true)
             target.focus()
             if parts[0] == "rclick" { NSLog("PlayarrMac debug: rclick handled=%d", engine.secondary(hovered: true) ? 1 : 0) }
-        case "targets":
-            let engine = MacFocusEngine.shared
-            let focused = engine.focusedID.flatMap { engine.targets[$0] }
-            NSLog("PlayarrMac debug: key=%d bounds=%@ targets=%d top=%d focused=%@ responder=%@",
-                  window.isKeyWindow ? 1 : 0, NSStringFromRect(window.contentView?.bounds ?? .zero),
-                  engine.targets.count, engine.topLayer,
-                  focused.map { NSStringFromRect($0.frame) } ?? "none",
-                  String(describing: window.firstResponder.map { type(of: $0) }))
         default:
             NSLog("PlayarrMac debug: unknown command %@", command)
         }

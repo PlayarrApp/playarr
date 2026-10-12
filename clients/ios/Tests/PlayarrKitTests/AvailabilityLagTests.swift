@@ -7,9 +7,9 @@ final class AvailabilityLagTests: XCTestCase {
         try JSONDecoder().decode(AvailabilityLag.self, from: Data(json.utf8))
     }
 
-    func testNoSamplesSaysSo() throws {
+    func testNoSamplesHaveNoPrimaryLine() throws {
         let empty = try lag(#"{"average_seconds":null,"sample_count":0,"backfill_count":0,"unknown_count":0,"backfill_threshold_days":14}"#)
-        XCTAssertEqual(empty.primaryLine, "No availability data yet")
+        XCTAssertNil(empty.primaryLine)
     }
 
     func testHeadlineUsesTheLargestWholeUnit() throws {

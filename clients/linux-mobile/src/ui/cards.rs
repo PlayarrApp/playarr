@@ -1,4 +1,4 @@
-//! The one title card: 16:9 art with a caption, as the web's mobile layout draws it (328 wide on a 360 phone).
+//! The one title card: 16:9 art with a caption, as the web's mobile layout draws it (140 wide on a 360 phone, two to a row in grids).
 use super::images::Images;
 use crate::api::Client;
 use crate::model::Work;
@@ -15,12 +15,12 @@ pub fn set_actions_handler(f: impl Fn(&Work) + 'static) {
     ACTIONS.with(|a| *a.borrow_mut() = Some(Box::new(f)));
 }
 
-/// Art ratio of the web card (328 x 185).
-pub const ART_H: i32 = 185;
-pub const RAIL_W: i32 = 328;
+/// The web's one poster card width (--card-w on a 360 phone) and its 16:9 art height.
+pub const ART_H: i32 = 79;
+pub const RAIL_W: i32 = 140;
 
 pub struct CardOpts<'a> {
-    /// Fixed card width (rails); `None` fills the parent (grids).
+    /// Card width; `None` fills the parent. Defaults to the web's one poster card width.
     pub width: Option<i32>,
     /// Second caption line, for example `Movie · 2008`.
     pub meta: Option<String>,
@@ -36,7 +36,7 @@ pub struct CardOpts<'a> {
 impl Default for CardOpts<'_> {
     fn default() -> Self {
         CardOpts {
-            width: None,
+            width: Some(RAIL_W),
             meta: None,
             progress: None,
             selected: false,

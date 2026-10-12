@@ -90,14 +90,9 @@
       standing in for a runtime circle mask, and an initial letter standing
       in for tv-web's SVG mascot icon set).
 
-      Kicker/title use width="1920" translation.x="0" rather than a
-      Theme.screenX-margined box: horizAlign="center" already centers the
-      text within the label's own box, and scaleRotateCenter's x lands
-      exactly on the canvas's horizontal centre (1920/2=960) at any scale
-      factor, so this stays centered without the width/scale centering-math
-      needed for profilesRow below (see MainScene.brs's showProfiles, which
-      centers that RowList's translation by hand since its width varies with
-      profile count).
+      TrackedText measures the web type metrics in pixels and centres each
+      heading from its measured width. The avatar row below is centred by
+      its content width because a RowList has no native centre mode.
     -->
     <!--
       Profiles = web /profiles (Profiles.tsx + .profiles-page): rose wash stage,
@@ -105,39 +100,39 @@
       horizontal avatar row, gear + Sign out under the focused profile.
     -->
     <Group id="profilesGroup" visible="false">
-      <Poster id="profilesAuthBg" translation="[0,0]" width="1920" height="1080" uri="pkg:/images/pairing-auth-bg.png" loadDisplayMode="scaleToFill" />
-      <Poster id="profilesLogo" translation="[34,40]" width="42" height="42" uri="pkg:/images/pairing-logo.png" loadDisplayMode="scaleToFit" />
+      <Poster id="profilesAuthBg" translation="[0,0]" width="1920" height="1080" uri="pkg:/images/profiles-bg.png" loadDisplayMode="scaleToFill" />
+      <Poster id="profilesLogo" translation="[61,59]" width="42" height="42" uri="pkg:/images/pairing-logo.png" loadDisplayMode="scaleToFit" />
       <!-- TvStageChrome theme + language (same square triggers as pairing / web). -->
-      <Group id="profilesChromeControls" translation="[1520,40]">
+      <Group id="profilesChromeControls" translation="[1552,50]">
         <Poster id="profilesThemePill" translation="[0,0]" width="144" height="48" uri="pkg:/images/pairing-chrome-dd-theme.png" />
         <Poster id="profilesThemeIcon" translation="[14,16]" width="16" height="16" uri="pkg:/images/pairing-icon-theme.png" />
         <Label id="profilesThemeLabel" translation="[36,0]" width="84" height="48" text="Dark" horizAlign="left" vertAlign="center" scale="[0.42,0.42]" scaleRotateCenter="[0,24]" color="0xF4F0F1FF" />
         <Poster id="profilesThemeChevron" translation="[118,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
         <Rectangle id="profilesThemeHit" translation="[0,0]" width="144" height="48" color="0x00000000" focusable="true" />
-        <Poster id="profilesLangPill" translation="[156,0]" width="168" height="48" uri="pkg:/images/pairing-chrome-dd.png" />
-        <Poster id="profilesLangIcon" translation="[170,16]" width="16" height="16" uri="pkg:/images/pairing-icon-lang.png" />
-        <Label id="profilesLangLabel" translation="[194,0]" width="100" height="48" text="Auto" horizAlign="left" vertAlign="center" scale="[0.42,0.42]" scaleRotateCenter="[0,24]" color="0xF4F0F1FF" />
-        <Poster id="profilesLangChevron" translation="[298,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
-        <Rectangle id="profilesLangHit" translation="[156,0]" width="168" height="48" color="0x00000000" focusable="true" />
+        <Poster id="profilesLangPill" translation="[158,0]" width="168" height="48" uri="pkg:/images/pairing-chrome-dd.png" />
+        <Poster id="profilesLangIcon" translation="[172,16]" width="16" height="16" uri="pkg:/images/pairing-icon-lang.png" />
+        <Label id="profilesLangLabel" translation="[196,0]" width="100" height="48" text="Auto" horizAlign="left" vertAlign="center" scale="[0.42,0.42]" scaleRotateCenter="[0,24]" color="0xF4F0F1FF" />
+        <Poster id="profilesLangChevron" translation="[300,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
+        <Rectangle id="profilesLangHit" translation="[158,0]" width="168" height="48" color="0x00000000" focusable="true" />
       </Group>
 
       <!-- .profiles-heading -->
-      <Label id="profilesKicker" translation="[0,120]" width="1920" height="30" text="PROFILES" horizAlign="center" scale="[0.38,0.38]" scaleRotateCenter="[960,15]" color="0xCF3157FF" />
-      <Label id="profilesTitle" translation="[0,170]" width="1920" height="110" text="Who’s watching?" horizAlign="center" scale="[2.66,2.66]" scaleRotateCenter="[960,0]" color="0xF4F0F1FF" />
+      <TrackedText id="profilesKicker" translation="[0,162]" />
+      <TrackedText id="profilesTitle" translation="[0,169]" />
 
-      <!-- Avatar row: item 280×360 (circle 240 + ring pad + labels). Transparent focus rect. -->
-      <RowList id="profilesRow" translation="[86,300]" itemComponentName="ProfileAvatar"
-        numRows="1" itemSize="[1800,360]" rowItemSize="[[280,360]]"
-        rowItemSpacing="[[32,0]]" rowHeights="[360]" showRowLabel="false"
+      <!-- Avatar row: 368×392 item bounds contain the focused shadow and glow. -->
+      <RowList id="profilesRow" translation="[86,328]" itemComponentName="ProfileAvatar"
+        numRows="1" itemSize="[1800,392]" rowItemSize="[[368,392]]"
+        rowItemSpacing="[[-82,0]]" rowHeights="[392]" showRowLabel="false"
         focusXOffset="[0]" rowFocusAnimationStyle="fixedFocusWrap"
         focusBitmapBlendColor="0x00000000" />
 
       <!-- .profile-actions under focused/current avatar: gear + Sign out (always above row). -->
       <Group id="profileActionsGroup" translation="[852,655]" visible="true">
-        <Poster id="profilesSettingsBtn" translation="[0,0]" width="48" height="48" uri="pkg:/images/profiles-gear.png" loadDisplayMode="scaleToFit" />
-        <Rectangle id="profilesSettingsHit" translation="[0,0]" width="48" height="48" color="0x00000000" focusable="true" />
-        <Poster id="profilesSignOutBtn" translation="[60,0]" width="172" height="48" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFit" />
-        <Rectangle id="profilesSignOutHit" translation="[60,0]" width="172" height="48" color="0x00000000" focusable="true" />
+        <Poster id="profilesSettingsBtn" translation="[0,0]" width="44" height="44" uri="pkg:/images/profiles-gear.png" loadDisplayMode="scaleToFit" />
+        <Rectangle id="profilesSettingsHit" translation="[0,0]" width="44" height="44" color="0x00000000" focusable="true" />
+        <Poster id="profilesSignOutBtn" translation="[54,0]" width="104" height="44" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFit" />
+        <Rectangle id="profilesSignOutHit" translation="[54,0]" width="104" height="44" color="0x00000000" focusable="true" />
       </Group>
 
     </Group>

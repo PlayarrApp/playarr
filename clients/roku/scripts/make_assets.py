@@ -8,12 +8,14 @@ Nav icons are drawn from the web's NavIcons.tsx paths (24 box, stroke 1.8, round
 """
 from __future__ import annotations
 
+import math
 import shutil
 import subprocess
 import tempfile
+from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 IMAGES = Path(__file__).resolve().parents[1] / "images"
 SS = 8  # supersampling
@@ -127,8 +129,223 @@ def avatars() -> None:
     mask.save(IMAGES / "avatar-mask.png")
 
 
+def profile_focus_ring() -> None:
+    """The web profile focus ring: a 3 px outline plus a 20 px blur at 45%, tinted by the active theme token."""
+    size = 320
+    big = Image.new("L", (size * SS, size * SS), 0)
+    centre = size * SS / 2
+    radius = 133 * SS
+    circle_box = (centre - radius, centre - radius, centre + radius, centre + radius)
+    stroke = Image.new("L", big.size, 0)
+    ImageDraw.Draw(stroke).ellipse(circle_box, outline=255, width=3 * SS)
+    # CSS box-shadow blurs the filled circle with a 4 px spread, not the outline itself.
+    ImageDraw.Draw(big).ellipse(circle_box, fill=255)
+    # SceneGraph scales this mask to the 304 px Poster, and the avatar group scales by 1.09.
+    glow = big.filter(ImageFilter.GaussianBlur(10 * SS)).point(lambda alpha: round(alpha * 0.45))
+    alpha = ImageChops.lighter(stroke, glow).resize((size, size), Image.Resampling.LANCZOS)
+    mask = Image.new("RGBA", (size, size), (255, 255, 255, 0))
+    mask.putalpha(alpha)
+    mask.save(IMAGES / "avatar-ring.png")
+
+
+def profile_focus_shadow() -> None:
+    """The web avatar's 0 22px 52px rgba(31,14,20,.28) focus shadow as a tintable mask."""
+    size = 400
+    scale = 4
+    big = Image.new("L", (size * scale, size * scale), 0)
+    centre = size * scale / 2
+    radius = 146 * scale
+    centre_y = 188 * scale
+    ImageDraw.Draw(big).ellipse(
+        (centre - radius, centre_y - radius, centre + radius, centre_y + radius),
+        fill=255,
+    )
+    alpha = big.filter(ImageFilter.GaussianBlur(34 * scale)).resize(
+        (size, size), Image.Resampling.LANCZOS
+    )
+    mask = Image.new("RGBA", (size, size), (255, 255, 255, 0))
+    mask.putalpha(alpha)
+    mask.save(IMAGES / "avatar-shadow.png")
+
+
+def profiles_background(theme: str) -> None:
+    """Rasterise the web profile page's 145-degree base and centred 13% brand wash."""
+    width, height = 1920, 1080
+    if theme == "light":
+        surface, background, brand = (251, 250, 249), (245, 243, 242), (207, 49, 87)
+        filename = "profiles-bg-light.png"
+    else:
+        surface, background, brand = (27, 24, 27), (21, 19, 21), (207, 49, 87)
+        filename = "profiles-bg.png"
+
+    # CSS circle-at 50% 48%, farthest-corner radius, with its colour stop at 34%.
+    centre_x, centre_y = width / 2, height * 0.48
+    radius = ((width / 2) ** 2 + max(centre_y, height - centre_y) ** 2) ** 0.5 * 0.34
+    angle = math.radians(145)
+    gx, gy = math.sin(angle), math.cos(angle)
+    length = (width - 1) * gx + (height - 1) * gy
+    pixels = bytearray(width * height * 4)
+    offset = 0
+    for y in range(height):
+        row_projection = y * gy
+        dy = y - centre_y
+        for x in range(width):
+            t = min(1.0, max(0.0, (x * gx + row_projection) / length / 0.72))
+            base = tuple(round(surface[c] * (1 - t) + background[c] * t) for c in range(3))
+            distance = ((x - centre_x) ** 2 + dy ** 2) ** 0.5
+            alpha = 0.13 * max(0.0, 1 - distance / radius)
+            for channel in range(3):
+                pixels[offset + channel] = round(base[channel] * (1 - alpha) + brand[channel] * alpha)
+            pixels[offset + 3] = 255
+            offset += 4
+    Image.frombytes("RGBA", (width, height), bytes(pixels)).save(IMAGES / filename)
+
+
+def profile_settings_buttons() -> None:
+    """Render 44 px settings buttons with the web's 18 px gear glyph."""
+    size, scale = 48, SS
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" '
+        'fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'
+        '<circle cx="12" cy="12" r="3"/>'
+        '<path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l2-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.7 7.7 0 0 0 0 3l-2 1.5 2 3.4 2.3-.9c.77.66 1.65 1.17 2.6 1.5l.5 2.5h4l.5-2.5a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4z"/>'
+        '</svg>'
+    )
+    rendered = subprocess.run(
+        ["rsvg-convert", "-w", str(18 * scale), "-h", str(18 * scale), "-"],
+        input=svg.encode("utf-8"),
+        capture_output=True,
+        check=True,
+    ).stdout
+    icon = Image.open(BytesIO(rendered)).convert("RGBA")
+    icon_alpha = icon.getchannel("A")
+    variants = {
+        "profiles-gear.png": ((33, 29, 33, 163), (223, 220, 221, 41), (207, 49, 87)),
+        "profiles-gear-light.png": ((255, 255, 255, 163), (56, 38, 33, 50), (207, 49, 87)),
+        "profiles-gear-focus.png": ((244, 240, 241, 255), (244, 240, 241, 255), (207, 49, 87)),
+        "profiles-gear-focus-light.png": ((56, 38, 33, 255), (56, 38, 33, 255), (207, 49, 87)),
+    }
+    for name, (fill, outline, foreground) in variants.items():
+        image = Image.new("RGBA", (size * scale, size * scale), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((2 * scale, 2 * scale, 46 * scale - 1, 46 * scale - 1), fill=fill, outline=outline, width=scale)
+        coloured_icon = Image.new("RGBA", icon.size, (*foreground, 0))
+        coloured_icon.putalpha(icon_alpha)
+        image.alpha_composite(coloured_icon, ((size * scale - icon.width) // 2, (size * scale - icon.height) // 2))
+        image.resize((size, size), Image.Resampling.LANCZOS).save(IMAGES / name)
+
+
+def profile_add_avatar(theme: str) -> None:
+    """Render web .profile-add's theme-specific gradient, dashed border and plus glyph."""
+    size = 240
+    scale = SS
+    width = height = size * scale
+    if theme == "light":
+        start, ink, border = (247, 222, 228), (68, 58, 64), (56, 38, 33, 47)
+        filename = "avatar-add-light.png"
+    else:
+        start, ink, border = (61, 32, 42), (205, 193, 198), (223, 220, 221, 39)
+        filename = "avatar-add.png"
+    end = (168, 38, 85)
+    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    pixels = image.load()
+    cx, cy = width * 0.34, height * 0.26
+    highlight_radius = width * 0.27
+    angle = math.radians(145)
+    gradient_x, gradient_y = math.sin(angle), -math.cos(angle)
+    gradient_length = (width - 1) * (gradient_x + gradient_y)
+    for y in range(height):
+        for x in range(width):
+            t = min(1.0, max(0.0, (x * gradient_x + y * gradient_y) / gradient_length))
+            r = round(start[0] * (1 - t) + end[0] * t)
+            g = round(start[1] * (1 - t) + end[1] * t)
+            b = round(start[2] * (1 - t) + end[2] * t)
+            distance = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+            amount = 0.28 * max(0.0, 1 - distance / highlight_radius)
+            pixels[x, y] = (
+                round(r * (1 - amount) + 255 * amount),
+                round(g * (1 - amount) + 255 * amount),
+                round(b * (1 - amount) + 255 * amount),
+                255,
+            )
+    circle = Image.new("L", (width, height), 0)
+    ImageDraw.Draw(circle).ellipse((0, 0, width - 1, height - 1), fill=255)
+    image.putalpha(circle)
+
+    # The web's 1 px dashed --line-strong border is subtle against both palettes.
+    border_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    border_draw = ImageDraw.Draw(border_layer)
+    centre = (width - 1) / 2
+    radius = (size / 2 - 1) * scale
+    for start_degrees in range(0, 360, 16):
+        border_draw.arc(
+            (centre - radius, centre - radius, centre + radius, centre + radius),
+            start=start_degrees,
+            end=start_degrees + 9,
+            fill=border,
+            width=1 * scale,
+        )
+    image = Image.alpha_composite(image, border_layer)
+
+    font = ImageFont.truetype(str(IMAGES.parent / "fonts" / "NunitoSans-300.ttf"), 77 * scale)
+    plus_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    plus_draw = ImageDraw.Draw(plus_layer)
+    plus_draw.text((centre, centre), "+", font=font, fill=ink, anchor="mm")
+    image = Image.alpha_composite(image, plus_layer)
+    image.resize((size, size), Image.Resampling.LANCZOS).save(IMAGES / filename)
+
+
+def profile_visual_assets() -> None:
+    profile_focus_ring()
+    profile_focus_shadow()
+    profiles_background("light")
+    profiles_background("dark")
+    profile_settings_buttons()
+    profile_add_avatar("light")
+    profile_add_avatar("dark")
+
+
+def profile_signout_buttons() -> None:
+    """Render the Roku Sign out pill at the live TV web size (104 x 44)."""
+    scale = SS
+    width, height = 104, 44
+    font_path = Path(__file__).resolve().parents[1] / "fonts" / "NunitoSans-700.ttf"
+    font = ImageFont.truetype(str(font_path), round(11 * scale))
+    variants = {
+        "profiles-signout.png": ((33, 29, 33, 163), (223, 220, 221, 41), (205, 193, 198, 255)),
+        "profiles-signout-light.png": ((255, 255, 255, 163), (56, 38, 33, 50), (68, 58, 64, 255)),
+        "profiles-signout-focus.png": ((207, 49, 87, 255), (207, 49, 87, 255), (255, 255, 255, 255)),
+        "profiles-signout-focus-light.png": ((207, 49, 87, 255), (207, 49, 87, 255), (27, 24, 27, 255)),
+    }
+    for name, (fill, outline, foreground) in variants.items():
+        image = Image.new("RGBA", (width * scale, height * scale), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle(
+            (scale, scale, (width - 1) * scale, (height - 1) * scale),
+            radius=21 * scale,
+            fill=fill,
+            outline=outline,
+            width=scale,
+        )
+        # Same 24px path and 18px SVG size as tv-web's SignOutIcon.
+        icon_x, icon_y, icon_scale = 16 * scale, 13 * scale, 0.75 * scale
+        def point(x: float, y: float) -> tuple[float, float]:
+            return (icon_x + x * icon_scale, icon_y + y * icon_scale)
+
+        stroke = max(1, round(1.7 * icon_scale))
+        draw.line([point(10, 5), point(5, 5), point(5, 19), point(10, 19)], fill=foreground, width=stroke, joint="curve")
+        draw.line([point(13, 8), point(17, 12), point(13, 16)], fill=foreground, width=stroke, joint="curve")
+        draw.line([point(8, 12), point(17, 12)], fill=foreground, width=stroke)
+        bbox = draw.textbbox((0, 0), "Sign out", font=font)
+        text_y = (height * scale - (bbox[3] - bbox[1])) // 2 - bbox[1]
+        draw.text((41 * scale, text_y), "Sign out", font=font, fill=foreground)
+        image.resize((width, height), Image.LANCZOS).save(IMAGES / name)
+
+
 def main() -> None:
     avatars()
+    profile_visual_assets()
+    profile_signout_buttons()
     for name in ICONS:
         icon(name, 40 if name == "icon-empty" else 20)
     for r in (6, 12, 25):
