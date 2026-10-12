@@ -248,6 +248,8 @@ struct PlayarrMediaCard: View {
     let apiClient: PlayarrAPIClient
     var progress: WatchProgress?
     var width: CGFloat = 178
+    /// The web tablet library shows the title only; Home keeps the "Movie · 2016" line.
+    var showsSubtitle = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -272,13 +274,17 @@ struct PlayarrMediaCard: View {
                     }
                 }
 
-            Text(work.title)
-                .font(.custom("Avenir Next", fixedSize: width <= 210 ? 12.5 : 11).weight(.semibold))
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(1)
-            Text(work.kindYearLabel)
-                .font(.custom("Avenir Next", fixedSize: width <= 210 ? 10 : 8.5).weight(.semibold))
-                .foregroundStyle(PlayarrStyle.muted)
+            if showsSubtitle {
+                Text(work.title)
+                    .font(.custom("Avenir Next", fixedSize: width <= 210 ? 12.5 : 11).weight(.semibold))
+                    .foregroundStyle(PlayarrStyle.ink)
+                    .lineLimit(1)
+                Text(work.kindYearLabel)
+                    .font(.custom("Avenir Next", fixedSize: width <= 210 ? 10 : 8.5).weight(.semibold))
+                    .foregroundStyle(PlayarrStyle.muted)
+            } else {
+                WMText(work.title, 11.2, 600, lh: 17, ls: -0.1).padding(.top, 3)
+            }
         }
         .frame(width: width, alignment: .leading)
     }

@@ -7,6 +7,7 @@ struct WorkDetailView: View {
     let apiClient: PlayarrAPIClient
     let downloadRepository: DownloadRepository
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var scheme
     @State private var playlists: [Playlist] = []
     @State private var playlistMessage: String?
     @State private var selectedAlbumID: UUID?
@@ -58,7 +59,7 @@ struct WorkDetailView: View {
         )) { Button("OK") { playlistMessage = nil } } message: { Text(playlistMessage ?? "") }
         .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
-        .playarrChromeHidden(!(viewModel.detail.map(usesWebLayout) ?? false))
+        .playarrChromeHidden(!(viewModel.detail.map { $0.work.kind == .movie || $0.work.kind == .series } ?? false))
     }
 
     private func detailContent(_ detail: WorkDetail) -> some View {
@@ -79,7 +80,9 @@ struct WorkDetailView: View {
                     tabletDetail(detail, proxy: proxy)
                 }
 
-                if !(phone && usesWebLayout(detail)) { Button { dismiss() } label: {
+                if !phone && (detail.work.kind == .movie || detail.work.kind == .series) {
+                    tabletDetailHeader(detail, proxy: proxy)
+                } else if !(phone && usesWebLayout(detail)) { Button { dismiss() } label: {
                     Image(systemName: "arrow.left")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(PlayarrStyle.inkSoft)
@@ -129,11 +132,22 @@ struct WorkDetailView: View {
         .scrollIndicators(.hidden)
     }
 
+    /// Web tablet title page header (1366 pt): back circle at x 122, the library name at x 182, the title as a pink kicker below.
+    private func tabletDetailHeader(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
+        let scale = proxy.size.width / 1366
+        return ZStack(alignment: .topLeading) {
+            WMHeaderCircleButton(width: 43, height: 43, glyph: "←") { dismiss() }.offset(x: 122 * scale, y: 55 * scale)
+            WMText(detail.work.kind.displayName == "Movie" ? "Movies" : "Series", 24, 520, lh: 36, ls: -1).offset(x: 182 * scale, y: 57 * scale)
+            WMText(detail.work.title.uppercased(), 8.6, 800, color: WM.pink, lh: 13, ls: 1.1).offset(x: 181 * scale, y: 101 * scale)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
     private func tabletDetail(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
         ZStack(alignment: .topLeading) {
             PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
                 .frame(width: proxy.size.width, height: proxy.size.height)
-                .opacity(0.7)
+                .opacity(scheme == .dark ? 0.3 : 0.14)
                 .overlay {
                     LinearGradient(
                         colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
@@ -143,8 +157,8 @@ struct WorkDetailView: View {
                 }
 
             detailCopy(detail, phone: false)
-                .frame(width: proxy.size.width * 0.24, alignment: .leading)
-                .padding(.leading, max(102, proxy.size.width * 0.08))
+                .frame(width: proxy.size.width * 0.205, alignment: .leading)
+                .padding(.leading, proxy.size.width * 0.088)
                 .padding(.top, proxy.size.height * 0.24)
 
             if hasVisibleChildren(detail.children) || hasDiscoveryContent {

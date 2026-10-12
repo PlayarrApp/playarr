@@ -22,6 +22,9 @@ function readState(work) {
 
 // Watch progress on the shared account changes Home and detail: put the pinned files back to unwatched.
 async function resetProgress(files) {
+  try { await resetProgressOnce(files); } catch (e) { console.log(`  progress reset skipped: ${String(e.cause?.code ?? e.message)}`); } // a network blip must not end the run
+}
+async function resetProgressOnce(files) {
   const e = process.env, server = e.SERVER_URL.replace(/\/$/, "");
   const post = (path, method, body, token) => fetch(server + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
   const login = await post("/api/v1/auth/login", "POST", { client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: e.TEST_USERNAME, password: e.TEST_PASSWORD });
@@ -55,6 +58,7 @@ export async function createDriver() {
   return {
     async start() {
       run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
+      await sleep(60000); // a fresh simulator shows one-off system banners (Apple Intelligence) in the first minute: let them go
       await resetProgress(["b9a68b2c-8382-4c34-a6f0-c4dd58f55093", "c9a9f905-3037-4bd7-9c73-2250e8aa347d"]);
     },
     async stop() {},

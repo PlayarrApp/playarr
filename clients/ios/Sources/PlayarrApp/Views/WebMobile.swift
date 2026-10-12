@@ -518,16 +518,16 @@ struct WMLibraryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
-                .frame(width: 173, height: 97.3)
+                .frame(width: 175, height: 98.4)
                 .background(WM.artFill)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
-            WMText(work.title, 8.8, 610, lh: 13.2, ls: -0.132).padding(.top, 12)
+            WMText(work.title, 10.4, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
         }
-        .frame(width: 173, height: 122.5, alignment: .topLeading)
+        .frame(width: 175, height: 126, alignment: .topLeading)
 
     }
 }
@@ -585,26 +585,28 @@ struct WMLibraryHeader: View {
     var body: some View {
         let top = WM.topInset + 2
         ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: onBack)
-                .offset(x: 16, y: top)
-            HStack(spacing: 10) {
-                WMText(title, 17.6, 580, lh: 26.4, ls: -0.792)
-                if let detail {
-                    WMText(detail, 8, 680, color: WM.muted, lh: 12, ls: 0.36)
+            WMHeaderCircleButton(width: 43, height: 43, glyph: "←", action: onBack)
+                .offset(x: 17, y: top)
+            WMText(title, 22, 520, lh: 33, ls: -1)
+                .offset(x: 71, y: top + 5)
+            if let detail {
+                WMText(detail.uppercased(), 11.5, 760, color: Color(red: 0.93, green: 0.69, blue: 0.78), lh: 17, ls: 1.1)
+                    .offset(x: 71, y: 64.5)
+            }
+            HStack {
+                Spacer()
+                Button(action: onFilters) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(WM.inkSoft)
+                        .frame(width: 44, height: 44)
+                        .background(WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
+                .buttonStyle(.plain)
             }
-            .frame(height: 38)
-            .offset(x: 68, y: top)
-            Button(action: onFilters) {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(WM.inkSoft)
-                    .frame(width: 44, height: 38)
-                    .background(WM.chip.opacity(0.66), in: Capsule())
-                    .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .offset(x: 274, y: top)
+            .padding(.trailing, 16)
+            .offset(y: top - 2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }

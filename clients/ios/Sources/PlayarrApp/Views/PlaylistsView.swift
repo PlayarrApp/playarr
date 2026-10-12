@@ -289,7 +289,6 @@ struct PlaylistsView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .presentationDetents([.medium, .large])
     }
 

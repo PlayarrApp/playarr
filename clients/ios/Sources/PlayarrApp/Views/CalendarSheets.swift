@@ -60,7 +60,6 @@ struct CalendarFiltersSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }
-        .preferredColorScheme(.dark)
         .presentationDetents([.medium, .large])
     }
 
@@ -130,7 +129,6 @@ struct CalendarSubscriptionSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }
-        .preferredColorScheme(.dark)
         .presentationDetents([.medium, .large])
         .task { await viewModel.loadFeedStatus() }
     }

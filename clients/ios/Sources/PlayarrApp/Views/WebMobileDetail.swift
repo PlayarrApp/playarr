@@ -823,7 +823,6 @@ struct PlaybackSettingsSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .presentationDetents([.medium])
         .task { await load() }
     }

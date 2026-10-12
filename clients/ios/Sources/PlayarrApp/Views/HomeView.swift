@@ -14,11 +14,11 @@ enum HomeLayout {
     }
 
     static func railWidth(viewportWidth: CGFloat, phone: Bool) -> CGFloat {
-        phone ? viewportWidth : viewportWidth * 0.62
+        phone ? viewportWidth : viewportWidth * 0.549 // web tablet: rails start at 616 pt of 1366 (cards at 640)
     }
 
     static func cardWidth(viewportWidth: CGFloat, phone: Bool) -> CGFloat {
-        phone ? min(210, viewportWidth * 0.46) : min(225, max(150, viewportWidth * 0.114))
+        phone ? min(210, viewportWidth * 0.46) : viewportWidth * 0.167 // 228 pt at 1366
     }
 }
 
@@ -130,8 +130,8 @@ struct HomeView: View {
 
                 if !phone, let featured = viewModel.featuredWork {
                     featuredCopy(featured)
-                        .frame(width: proxy.size.width * 0.36, alignment: .leading)
-                        .padding(.leading, max(112, proxy.size.width * 0.085))
+                        .frame(width: proxy.size.width * 0.205, alignment: .leading)
+                        .padding(.leading, proxy.size.width * 0.088)
                         .padding(.top, proxy.size.height * 0.24)
                 }
 
@@ -145,7 +145,7 @@ struct HomeView: View {
                         height: proxy.size.height,
                         alignment: .topLeading
                     )
-                    .offset(x: phone ? 0 : proxy.size.width * 0.38)
+                    .offset(x: phone ? 0 : proxy.size.width * 0.451)
                     .zIndex(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -160,7 +160,7 @@ struct HomeView: View {
                 PlayarrArtwork(work: featured, kind: .backdrop, apiClient: apiClient)
                     .frame(maxWidth: .infinity)
                     .frame(height: HomeLayout.backdropHeight(viewportHeight: height, phone: phone))
-                    .opacity(phone ? 0.42 : 0.72)
+                    .opacity(phone ? 0.42 : (scheme == .dark ? 0.22 : 0.12))
             }
             LinearGradient(
                 stops: phone
@@ -193,25 +193,25 @@ struct HomeView: View {
             )
         } label: {
             VStack(alignment: .leading, spacing: 13) {
-                Text(work.kind.displayName.uppercased())
-                    .font(.custom("Avenir Next", fixedSize: 10).weight(.heavy))
-                    .tracking(1.3)
+                Text(([work.kind.displayName] + work.genres.prefix(1)).joined(separator: " · ").uppercased())
+                    .font(WM.font(8.6, 800))
+                    .tracking(1.1)
                     .foregroundStyle(PlayarrStyle.pink)
 
                 Text(work.title)
-                    .font(.custom("Avenir Next", fixedSize: 52).weight(.medium))
-                    .tracking(-3.7)
-                    .lineSpacing(-5)
+                    .font(WM.font(46, 400))
+                    .tracking(-1.6)
+                    .lineSpacing(-4)
                     .foregroundStyle(PlayarrStyle.ink)
                     .lineLimit(3)
 
                 if let overview = work.overview {
                     Text(overview)
-                        .font(.custom("Avenir Next", fixedSize: 13))
+                        .font(WM.font(11.5, 500))
                         .foregroundStyle(PlayarrStyle.inkSoft)
-                        .lineSpacing(5)
+                        .lineSpacing(2.5)
                         .lineLimit(4)
-                        .frame(maxWidth: 420, alignment: .leading)
+                        .frame(maxWidth: 232, alignment: .leading)
                 }
             }
         }
@@ -224,13 +224,13 @@ struct HomeView: View {
     private func rails(phone: Bool, width: CGFloat, height: CGFloat) -> some View {
         let railWidth = HomeLayout.railWidth(viewportWidth: width, phone: phone)
         return ScrollView(.vertical) {
-            LazyVStack(alignment: .leading, spacing: phone ? 24 : 48) {
+            LazyVStack(alignment: .leading, spacing: phone ? 24 : 80) {
                 ForEach(viewModel.rails) { rail in
                     mediaRail(rail, phone: phone, width: width)
                 }
             }
             .frame(width: railWidth, alignment: .leading)
-            .padding(.top, phone ? HomeLayout.phoneTopOffset : height * 0.5)
+            .padding(.top, phone ? HomeLayout.phoneTopOffset : height * 0.395)
             .padding(.bottom, phone ? 112 : height * 0.5)
         }
         .refreshable { await viewModel.load() }
@@ -260,15 +260,15 @@ struct HomeView: View {
     private func mediaRail(_ rail: HomeViewModel.Rail, phone: Bool, width: CGFloat) -> some View {
         let mediaCardWidth = HomeLayout.cardWidth(viewportWidth: width, phone: phone)
         let railWidth = HomeLayout.railWidth(viewportWidth: width, phone: phone)
-        return VStack(alignment: .leading, spacing: phone ? 8 : 12) {
+        return VStack(alignment: .leading, spacing: phone ? 8 : 22) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(rail.title)
-                    .font(.custom("Avenir Next", fixedSize: phone ? 16 : 14).weight(.semibold))
-                    .tracking(-0.4)
+                    .font(phone ? .custom("Avenir Next", fixedSize: 16).weight(.semibold) : WM.font(13.5, 500))
+                    .tracking(phone ? -0.4 : -0.2)
                     .foregroundStyle(PlayarrStyle.ink)
-                Text("\(rail.works.count) titles")
+                if phone { Text("\(rail.works.count) titles")
                     .font(.custom("Avenir Next", fixedSize: phone ? 10.5 : 8.5).weight(.semibold))
-                    .foregroundStyle(PlayarrStyle.muted)
+                    .foregroundStyle(PlayarrStyle.muted) }
             }
             .padding(.horizontal, phone ? HomeLayout.phoneGutter : 24)
 

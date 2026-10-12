@@ -11,6 +11,10 @@ struct LibraryView: View {
     @State private var showingFilters = false
     @State private var filtersOpen = false
     @State private var downloadTarget: Work?
+    @Environment(\.colorScheme) private var scheme
+    @State private var actionsWork: Work?
+    @State private var openWork: Work?
+    private var isPhoneIdiom: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
     init(kind: WorkKind?, apiClient: PlayarrAPIClient, downloadRepository: DownloadRepository, title: String? = nil, initialQuery: String? = nil) {
         let viewModel = LibraryViewModel(apiClient: apiClient)
@@ -56,11 +60,33 @@ struct LibraryView: View {
             if case .idle = viewModel.loadState { await viewModel.load() }
             #if DEBUG
             // Parity "actions": the first card's actions sheet, which a long press opens.
-            if ParityLaunch.screen == "actions", downloadTarget == nil { downloadTarget = viewModel.works.first }
+            if ParityLaunch.screen == "actions", actionsWork == nil { actionsWork = viewModel.works.first }
             #endif
         }
         .navigationBarHidden(true)
-        .sheet(isPresented: $showingFilters) { filterSheet }
+        .overlay {
+            // Phones: a full-page panel; iPad: the web tablet's 352 pt drawer on the right.
+            HStack(spacing: 0) {
+                if !isPhoneIdiom { Spacer(minLength: 0) }
+                if showingFilters {
+                    WMLibraryFiltersPanel(viewModel: viewModel) { showingFilters = false; Task { await viewModel.load() } }
+                        .frame(maxWidth: isPhoneIdiom ? .infinity : 352)
+                } else if let work = actionsWork {
+                    WMTitleActionsPanel(
+                        work: work, apiClient: apiClient,
+                        onPlay: { actionsWork = nil; openWork = work },
+                        onDownload: { actionsWork = nil; downloadTarget = work },
+                        onClose: { actionsWork = nil }
+                    )
+                    .frame(maxWidth: isPhoneIdiom ? .infinity : 352)
+                }
+            }
+        }
+        .navigationDestination(isPresented: Binding(get: { openWork != nil }, set: { if !$0 { openWork = nil } })) {
+            if let work = openWork {
+                WorkDetailView(viewModel: WorkDetailViewModel(apiClient: apiClient, workID: work.id), apiClient: apiClient, downloadRepository: downloadRepository)
+            }
+        }
         .sheet(item: $downloadTarget) { work in
             WorkDownloadSheet(work: work, apiClient: apiClient, downloadRepository: downloadRepository)
         }
@@ -213,7 +239,7 @@ struct LibraryView: View {
                 if !phone, let preview = viewModel.works.first {
                     PlayarrArtwork(work: preview, kind: .backdrop, apiClient: apiClient)
                         .frame(width: proxy.size.width * 0.52, height: proxy.size.height)
-                        .opacity(0.68)
+                        .opacity(scheme == .dark ? 0.3 : 0.14)
                         .overlay {
                             LinearGradient(
                                 colors: [PlayarrStyle.surface.opacity(0.2), PlayarrStyle.surface],
@@ -222,8 +248,8 @@ struct LibraryView: View {
                             )
                         }
                     previewCopy(preview)
-                        .frame(width: proxy.size.width * 0.24, alignment: .leading)
-                        .padding(.leading, max(102, proxy.size.width * 0.08))
+                        .frame(width: proxy.size.width * 0.205, alignment: .leading)
+                        .padding(.leading, proxy.size.width * 0.088)
                         .padding(.top, proxy.size.height * 0.24)
                         .zIndex(2)
                 }
@@ -233,11 +259,13 @@ struct LibraryView: View {
                 if phone && !viewModel.isSearchMode {
                     WMLibraryHeader(
                         title: title,
-                        detail: "\(viewModel.total ?? Int64(viewModel.works.count)) titles",
+                        detail: "\((viewModel.total ?? Int64(viewModel.works.count)).formatted(.number.grouping(.automatic))) titles",
                         onBack: goHome,
                         onFilters: { showingFilters = true }
                     )
                     .zIndex(3)
+                } else if !phone && title != "Search" {
+                    tabletHeader(proxy: proxy).zIndex(3)
                 } else {
                     pageHeading(phone: phone, proxy: proxy).zIndex(3)
                 }
@@ -260,22 +288,77 @@ struct LibraryView: View {
 
     /// Web mobile library: two 173x97 columns under the page header.
     private var phoneGrid: some View {
-        ZStack(alignment: .topLeading) {
-            WMKeyArt(work: viewModel.works.first, apiClient: apiClient, lightOpacity: 0)
-            phoneGridScroll
+        ScrollViewReader { proxy in
+            ZStack(alignment: .topLeading) {
+                WMKeyArt(work: viewModel.works.first, apiClient: apiClient, lightOpacity: 0)
+                phoneGridScroll
+                alphabetRail(proxy)
+            }
         }
         .ignoresSafeArea()
+    }
+
+    /// Web tablet letter rail: 44 pt targets that scroll when the 27 letters do not fit (the first 16 show).
+    private func tabletAlphabetRail(_ proxy: ScrollViewProxy, height: CGFloat) -> some View {
+        let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
+        return ScrollView(.vertical) {
+            VStack(spacing: 0) {
+                ForEach(letters, id: \.self) { letter in
+                    ZStack {
+                        if letter == "#" { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
+                        Text(letter).font(WM.font(8.8, 700)).foregroundStyle(letter == "#" ? PlayarrStyle.background : WM.muted)
+                    }
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        let first = viewModel.works.first { work in
+                            let initial = work.title.first.map { String($0).uppercased() } ?? "#"
+                            return letter == "#" ? !("A"..."Z").contains(initial) : initial == letter
+                        }
+                        if let first { withAnimation { proxy.scrollTo(first.id, anchor: .top) } }
+                    }
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
+        .frame(width: 44, height: max(0, height))
+    }
+
+    /// Web phone letter rail: 27 letters share the height between the page header and the bottom nav, in the 15 pt gutter.
+    private func alphabetRail(_ proxy: ScrollViewProxy) -> some View {
+        let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
+        return GeometryReader { geo in
+            VStack(spacing: 0) {
+                ForEach(letters, id: \.self) { letter in
+                    ZStack {
+                        if letter == "#" { Circle().fill(WM.ink.opacity(0.78)).frame(width: 15, height: 15) }
+                        Text(letter).font(WM.font(9.5, 700)).foregroundStyle(letter == "#" ? PlayarrStyle.background : WM.muted)
+                    }
+                    .frame(width: 15).frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        let first = viewModel.works.first { work in
+                            let initial = work.title.first.map { String($0).uppercased() } ?? "#"
+                            return letter == "#" ? !("A"..."Z").contains(initial) : initial == letter
+                        }
+                        if let first { withAnimation { proxy.scrollTo(first.id, anchor: .top) } }
+                    }
+                }
+            }
+            .frame(width: 15, height: max(0, geo.size.height - 88 - 84))
+            .offset(x: geo.size.width - 15, y: 88)
+        }
     }
 
     private var phoneGridScroll: some View {
         ScrollView(.vertical) {
             LazyVGrid(
                 columns: [
-                    GridItem(.fixed(173), spacing: 12, alignment: .top),
-                    GridItem(.fixed(173), spacing: 12, alignment: .top),
+                    GridItem(.fixed(175), spacing: 12, alignment: .top),
+                    GridItem(.fixed(175), spacing: 12, alignment: .top),
                 ],
                 alignment: .leading,
-                spacing: 23.5
+                spacing: 21
             ) {
                 ForEach(Array(viewModel.works.enumerated()), id: \.element.id) { index, work in
                     NavigationLink {
@@ -288,9 +371,7 @@ struct LibraryView: View {
                         WMLibraryCard(work: work, apiClient: apiClient, focused: index == 0)
                     }
                     .buttonStyle(.plain)
-                    .contextMenu {
-                        Button("Download", systemImage: "arrow.down.circle") { downloadTarget = work }
-                    }
+                    .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                     .task {
                         if work.id == viewModel.works.last?.id { await viewModel.loadMore() }
                     }
@@ -310,7 +391,8 @@ struct LibraryView: View {
             let phone = PlayarrLayout.isPhone(proxy.size)
             let panelWidth = phone ? proxy.size.width : proxy.size.width * 0.65
             let columnCount = viewModel.viewMode == .list ? 1 : (viewModel.viewMode == .cover ? (phone ? 3 : 5) : (phone ? 2 : 3))
-            let gutter: CGFloat = phone ? 16 : max(28, proxy.size.width * 0.028)
+            // Web tablet: the grid starts at 557 of 1366 pt and the three 229 pt columns end 85 pt before the panel edge.
+            let gutter: CGFloat = phone ? 16 : max(28, proxy.size.width * 0.058)
             let trailing: CGFloat = phone ? 16 : max(80, proxy.size.width * 0.065)
             let gap: CGFloat = phone ? 12 : min(28, proxy.size.width * 0.0135)
             let cardWidth = (panelWidth - gutter - trailing - gap * CGFloat(columnCount - 1)) / CGFloat(columnCount)
@@ -341,9 +423,7 @@ struct LibraryView: View {
                                         .shadow(color: .black.opacity(0.34), radius: 18, y: 10)
                                 }
                                 .buttonStyle(.plain)
-                                .contextMenu {
-                                    Button("Download", systemImage: "arrow.down.circle") { downloadTarget = work }
-                                }
+                                .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                                 .task { if work.id == viewModel.works.last?.id { await viewModel.loadMore() } }
                             }
                         }
@@ -354,11 +434,12 @@ struct LibraryView: View {
                     .contentMargins(.bottom, phone ? 130 : 70, for: .scrollContent)
                     .scrollTargetBehavior(.viewAligned)
                 } else {
+                    ScrollViewReader { scrollProxy in
                     ScrollView(.vertical) {
                         LazyVGrid(
                     columns: Array(repeating: GridItem(.fixed(cardWidth), spacing: gap, alignment: .top), count: columnCount),
                     alignment: .leading,
-                    spacing: phone ? 24 : min(36, proxy.size.height * 0.025)
+                    spacing: phone ? 24 : 28
                         ) {
                     ForEach(viewModel.playlists) { playlist in
                         NavigationLink {
@@ -379,13 +460,11 @@ struct LibraryView: View {
                             if viewModel.viewMode == .list {
                                 libraryListRow(work, width: cardWidth)
                             } else {
-                                PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth)
+                                PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false)
                             }
                         }
                         .buttonStyle(.plain)
-                        .contextMenu {
-                            Button("Download", systemImage: "arrow.down.circle") { downloadTarget = work }
-                        }
+                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                         .task {
                             if work.id == viewModel.works.last?.id { await viewModel.loadMore() }
                         }
@@ -396,6 +475,13 @@ struct LibraryView: View {
                         .padding(.trailing, trailing)
                         .padding(.top, phone ? 92 : max(128, proxy.size.height * 0.15))
                         .padding(.bottom, phone ? 118 : max(48, proxy.size.height * 0.06))
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        if !phone && !viewModel.isSearchMode && viewModel.viewMode != .list {
+                            tabletAlphabetRail(scrollProxy, height: proxy.size.height - 263 - 24)
+                                .padding(.trailing, 16).padding(.top, 263)
+                        }
+                    }
                     }
                 }
             }
@@ -418,31 +504,58 @@ struct LibraryView: View {
     }
 
     private func previewCopy(_ work: Work) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(work.kind.displayName.uppercased())
-                .font(.custom("Avenir Next", fixedSize: 10).weight(.heavy))
-                .tracking(1.1)
-                .foregroundStyle(PlayarrStyle.pink)
-                .padding(.bottom, 24)
+        let year = work.releaseDate.map { String($0.prefix(4)) }.flatMap { Int($0) != nil ? $0 : nil }
+        let meta = ([year].compactMap { $0 } + [work.genres.prefix(2).joined(separator: " · ")].filter { !$0.isEmpty }).joined(separator: "   |   ")
+        return VStack(alignment: .leading, spacing: 0) {
+            WMText((work.genres.first ?? work.kind.displayName).uppercased(), 8.6, 800, color: PlayarrStyle.pink, lh: 13, ls: 1.1)
+                .padding(.bottom, 20)
             Text(work.title)
-                .font(.custom("Avenir Next", fixedSize: 48).weight(.medium))
-                .tracking(-3.45)
-                .lineSpacing(-5)
+                .font(WM.font(46, 400))
+                .tracking(-1.6)
+                .lineSpacing(-4)
                 .foregroundStyle(PlayarrStyle.ink)
                 .lineLimit(3)
-            Text(work.genres.prefix(2).joined(separator: "  •  "))
-                .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
-                .foregroundStyle(PlayarrStyle.inkSoft)
-                .padding(.top, 22)
+            WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
+                .padding(.top, 26)
             if let overview = work.overview {
                 Text(overview)
-                    .font(.custom("Avenir Next", fixedSize: 11))
+                    .font(WM.font(11.5, 500))
                     .foregroundStyle(PlayarrStyle.muted)
-                    .lineSpacing(5)
+                    .lineSpacing(2.5)
                     .lineLimit(5)
-                    .padding(.top, 18)
+                    .padding(.top, 20)
             }
         }
+    }
+
+    /// Web tablet page header (measured at 1366 pt): back circle at x 122, title at x 182, "N TITLES" below, and the
+    /// Filters button (icon over its label) at the right edge.
+    private func tabletHeader(proxy: GeometryProxy) -> some View {
+        let scale = proxy.size.width / 1366
+        return ZStack(alignment: .topLeading) {
+            WMHeaderCircleButton(width: 43, height: 43, glyph: "←", action: goHome).offset(x: 122 * scale, y: 55 * scale)
+            WMText(title, 24, 520, lh: 36, ls: -1).offset(x: 182 * scale, y: 57 * scale)
+            if let total = viewModel.total {
+                WMText("\(total.formatted(.number.grouping(.automatic))) TITLES", 9, 760, color: WM.inkSoft, lh: 14, ls: 0.6)
+                    .offset(x: 181 * scale, y: 101 * scale)
+            }
+            HStack {
+                Spacer()
+                Button { showingFilters = true } label: {
+                    VStack(spacing: 7) {
+                        Image(systemName: "slider.horizontal.3").font(.system(size: 15, weight: .semibold))
+                        Text("Filters").font(WM.font(8, 700))
+                    }
+                    .foregroundStyle(WM.inkSoft)
+                    .frame(width: 45, height: 70)
+                    .background(WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.trailing, 16 * scale).offset(y: 83 * scale)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func pageHeading(phone: Bool, proxy: GeometryProxy) -> some View {
@@ -592,7 +705,6 @@ struct LibraryView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .presentationDetents([.medium])
     }
 

@@ -79,7 +79,7 @@ public final class LibraryViewModel {
                         limit: pageSize, offset: 0
                     )
                 }
-                works = page.items
+                works = selectedKind == nil ? page.items : ordered(page.items)
                 total = page.total
             } else {
                 async let foundWorks = apiClient.searchCatalog(query: trimmedQuery, limit: pageSize)
@@ -109,6 +109,20 @@ public final class LibraryViewModel {
         }
     }
 
+    /// The web orders a library on the client: numeric, case and accent blind on `sort_title`, so "2 Fast 2 Furious" comes
+    /// before "10 Cloverfield Lane" (the server's plain string order puts it after).
+    private func ordered(_ items: [Work]) -> [Work] {
+        let ascending = order == "asc"
+        if sort == "date_added" {
+            return items.sorted { ascending ? $0.addedAt < $1.addedAt : $0.addedAt > $1.addedAt }
+        }
+        let options: String.CompareOptions = [.numeric, .caseInsensitive, .diacriticInsensitive]
+        return items.sorted {
+            let result = ($0.sortTitle.isEmpty ? $0.title : $0.sortTitle).compare($1.sortTitle.isEmpty ? $1.title : $1.sortTitle, options: options)
+            return ascending ? result == .orderedAscending : result == .orderedDescending
+        }
+    }
+
     public func loadMore() async {
         guard !isLoadingMore, canLoadMore, let selectedKind else { return }
         isLoadingMore = true
@@ -124,6 +138,7 @@ public final class LibraryViewModel {
             )
             let existing = Set(works.map(\.id))
             works.append(contentsOf: page.items.filter { !existing.contains($0.id) })
+            works = ordered(works)
             total = page.total ?? total
         } catch {
             // Keep the loaded page visible; pull-to-refresh remains available.

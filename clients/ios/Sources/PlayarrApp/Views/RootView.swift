@@ -40,6 +40,9 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(preferredColourScheme)
+        #if DEBUG
+        .statusBarHidden(ParityLaunch.isActive) // the web references have no system status bar
+        #endif
         .updateGate(updateViewModel)
         .task {
             #if DEBUG
@@ -391,21 +394,12 @@ private struct AuthenticatedPlayarrShell: View {
     /// 58pt nav pill 10pt from each side (`app-nav` and `app-user-identity`).
     private func phoneChrome(proxy: GeometryProxy) -> some View {
         ZStack(alignment: .topLeading) {
-            profileButton(size: 42, avatarSize: 32)
-                .offset(x: proxy.size.width - 16 - 42, y: WM.topInset)
-            Text("v \(InstalledAppVersion.current)")
-                .font(WM.mono(6.08, 700))
-                .tracking(0.2432)
-                .foregroundStyle(WM.muted)
-                .fixedSize()
-                .frame(width: 42)
-                .offset(x: proxy.size.width - 16 - 42, y: WM.topInset + 45.6)
-                .allowsHitTesting(false)
-
             VStack {
                 Spacer()
                 ScrollView(.horizontal) {
                     HStack(spacing: 2) {
+                        // The web phone nav starts with the profile avatar (there is no avatar at the top right).
+                        profileButton(size: 44, avatarSize: 32, ring: false).frame(width: 44, height: 46)
                         ForEach(destinations, id: \.self) { destination in
                             Button { select(destination) } label: {
                                 WMIconView(
@@ -445,20 +439,20 @@ private struct AuthenticatedPlayarrShell: View {
         return ZStack(alignment: .topLeading) {
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 HStack(alignment: .firstTextBaseline, spacing: 11) {
-                    Text(context.date.formatted(date: .omitted, time: .shortened))
-                        .font(.custom("Avenir Next", fixedSize: 14).weight(.heavy))
-                    Text(context.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
-                        .font(.custom("Avenir Next", fixedSize: 9).weight(.semibold))
-                        .foregroundStyle(PlayarrStyle.muted)
+                    Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute()))
+                        .font(WM.font(12.5, 800))
+                    Text(context.date.formatted(.dateTime.weekday(.abbreviated).day().month(.wide)).uppercased())
+                        .font(WM.font(8, 700)).tracking(0.6)
+                        .foregroundStyle(PlayarrStyle.inkSoft)
                 }
                 .foregroundStyle(PlayarrStyle.ink)
-                .offset(x: 150, y: chromeTop + 10)
+                .offset(x: proxy.size.width * 0.24, y: chromeTop + 14)
             }
 
             PlayarrLogo(size: 30)
                 .offset(x: navEdge + 24.4, y: chromeTop)
 
-            VStack(spacing: 14) {
+            VStack(spacing: 18) {
                 navGroup(Array(destinations.prefix(2)))
                 if destinations.count > 2 {
                     navGroup(Array(destinations.dropFirst(2)))
@@ -472,14 +466,13 @@ private struct AuthenticatedPlayarrShell: View {
     }
 
     private func navGroup(_ group: [Destination]) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 4) {
             ForEach(group, id: \.self) { destination in
                 Button { select(destination) } label: {
-                    VStack(spacing: 5) {
-                        Image(systemName: destination.icon)
-                            .font(.system(size: 20, weight: .medium))
+                    VStack(spacing: 6) {
+                        WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.muted, size: 18)
                         Text(destination.title)
-                            .font(.custom("Avenir Next", fixedSize: 8).weight(.semibold))
+                            .font(WM.font(8.5, 700))
                             .lineLimit(1)
                     }
                     .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.muted)
@@ -488,13 +481,12 @@ private struct AuthenticatedPlayarrShell: View {
                         selected == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                     )
-                    .scaleEffect(selected == destination ? 1.05 : 1)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(destination.title)
             }
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, 6)
         .padding(.horizontal, 6)
         .background(
             PlayarrStyle.surfaceStrong.opacity(0.56),
@@ -507,15 +499,15 @@ private struct AuthenticatedPlayarrShell: View {
         .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 21, y: 14)
     }
 
-    private func profileButton(size: CGFloat, avatarSize: CGFloat) -> some View {
+    private func profileButton(size: CGFloat, avatarSize: CGFloat, ring: Bool = true) -> some View {
         Button { select(.profiles) } label: {
             ZStack {
                 currentAvatar(size: avatarSize)
             }
             .frame(width: avatarSize, height: avatarSize)
             .frame(width: size, height: size)
-            .background(PlayarrStyle.surfaceStrong.opacity(0.66), in: Circle())
-            .overlay { Circle().stroke(PlayarrStyle.line.opacity(0.7), lineWidth: 1) }
+            .background(ring ? PlayarrStyle.surfaceStrong.opacity(0.66) : .clear, in: Circle())
+            .overlay { if ring { Circle().stroke(PlayarrStyle.line.opacity(0.7), lineWidth: 1) } }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Open profile and settings")
@@ -545,9 +537,9 @@ private struct AuthenticatedPlayarrShell: View {
     private var stageNavigationHeight: CGFloat {
         let first = min(2, destinations.count)
         let second = max(0, destinations.count - 2)
-        let firstHeight = CGFloat(first) * 64 + CGFloat(max(0, first - 1)) * 10 + 14
-        let secondHeight = second > 0 ? CGFloat(second) * 64 + CGFloat(max(0, second - 1)) * 10 + 14 : 0
-        return firstHeight + secondHeight + (second > 0 ? 14 : 0)
+        let firstHeight = CGFloat(first) * 64 + CGFloat(max(0, first - 1)) * 4 + 12
+        let secondHeight = second > 0 ? CGFloat(second) * 64 + CGFloat(max(0, second - 1)) * 4 + 12 : 0
+        return firstHeight + secondHeight + (second > 0 ? 18 : 0)
     }
 
     private var destinations: [Destination] {

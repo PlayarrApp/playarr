@@ -67,7 +67,6 @@ struct DownloadOptionsSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .presentationDetents([.medium, .large])
         .task { await load() }
     }
@@ -228,7 +227,6 @@ struct WorkDownloadSheet: View {
                         Task { await resolve() }
                     }
                 }
-                .preferredColorScheme(.dark)
             } else {
                 PlayarrLoadingView(title: "Preparing download…")
             }
