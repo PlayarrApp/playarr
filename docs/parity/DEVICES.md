@@ -53,6 +53,11 @@ this note.
 - **Image resampling.** Chromium 94 scales and filters card artwork slightly differently from Chromium 120, so every
   poster edge differs by a pixel or less. This is most of the remaining 2 to 3% on image-heavy screens (movies, series,
   music).
+- **Fractional line-height.** Chromium 94 truncates a fractional `line-height` to whole pixels when it lays out text lines
+  (21.84 px becomes 21 px per line; an explicit `22px` gives 22), with or without `-webkit-line-clamp`. Multi-line text
+  (synopses, descriptions) drifts up to about 3 px over five lines and everything below sits higher than on web. Nothing
+  in the stylesheet can restore fractional line boxes, and a build-time rewrite cannot know the computed line-height, so
+  it is left as an engine difference.
 - **On-screen keyboard.** A focused text field opens the platform keyboard; the suite captures search with it dismissed.
 
 ## Mobile (gated by 17.10022; reference: web mobile at the device's size)

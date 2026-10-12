@@ -32,6 +32,9 @@ export async function createDriver() {
     pending = new Map();
     ws.onmessage = (m) => { const msg = JSON.parse(m.data); if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); } };
     await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+    // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
+    await cdp("Page.enable");
+    await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__mediaHandlers = {}; (() => { const ms = navigator.mediaSession; if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; } })();" });
   }
   const cdp = (method, params = {}) => new Promise((r) => { const i = ++seq; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
   async function ev(expr) {
@@ -79,6 +82,8 @@ export async function createDriver() {
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
   return {
+    // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
+    supports: device === "webos" ? { nowPlaying: true, downloads: true } : {},
     async start() {
       if (device === "webos") await cdpConnect();
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
@@ -99,8 +104,8 @@ export async function createDriver() {
         const now = await ev(`[...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label") || c.textContent.trim().slice(0, 40)).join("|")`).catch(() => "");
         still = now && now === last ? still + 1 : 0; last = now; await sleep(1500);
       }
-      await sleep(3500); // the key handler attaches a moment after the first focus
       console.log(`  home first card: ${last.split("|")[0]}`);
+      await sleep(3500); // the key handler attaches a moment after the first focus
       await settle();
     },
     async route(r) { await load(r); await settle(); },
@@ -133,6 +138,102 @@ export async function createDriver() {
       execFileSync("magick", [`xwd:${xwd}`, `png:${file}`]);
       rmSync(xwd);
     },
+    // ---- Downloads cases (webOS only): the same steps as the web driver, as page code over CDP (Playwright cannot attach to Chromium 94).
+    async download(c, expect) {
+      if (device !== "webos") return { state: "failed", detail: "not supported by this driver" };
+      const m = c.media;
+      let step = "";
+      const q = (js) => ev(`(() => { ${js} })()`);
+      const rowSel = m.episode ? `li.tv-download-group[data-level='1'] > .tv-download-group-row` : `.tv-download-row:not(.tv-download-group-row)`;
+      const rowJs = `const rows = [...document.querySelectorAll(${JSON.stringify(rowSel)})].filter((x) => x.textContent.includes(${JSON.stringify(m.title)})); const row = rows[0];`;
+      const status = async () => (await q(`${rowJs} return row ? (row.querySelector(".tv-download-row-meta")?.textContent ?? "").replace(/\\s+/g, " ") : null;`)) ?? "";
+      const has = async () => !!(await q(`${rowJs} return !!row;`));
+      const press = async (name) => q(`${rowJs} const b = row && [...row.querySelectorAll("button")].find((x) => new RegExp("^${name}$", "i").test((x.getAttribute("aria-label") || x.textContent).trim())); if (!b) return false; b.click(); return true;`);
+      const waitFor = async (re, ms) => {
+        const t0 = Date.now();
+        while (Date.now() - t0 < ms) { const st = await status(); if (re.test(st)) return st; if (/failed/i.test(st)) throw new Error("download failed: " + st); await sleep(1500); }
+        throw new Error(`timed out waiting for ${re}: ${await status()}`);
+      };
+      const throttle = (on) => device === "webos" && cdp("Network.emulateNetworkConditions", on ? { offline: false, latency: 50, downloadThroughput: 300 * 1024, uploadThroughput: -1 } : { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      const list = async () => { await load("/downloads"); await sleep(2500); };
+      const confirmDrawer = () => q(`const b = document.querySelector(".download-quality-drawer .is-primary"); if (!b) return false; b.click(); return true;`);
+      const start = async (again = true) => {
+        step = "load";
+        await load(m.episode ? `/series/${m.work}` : `/movies/${m.work}`);
+        await until(m.episode ? `!!document.querySelector('a.tv-episode-card[href$="${m.file}"]')` : `!!document.querySelector("button.tv-detail-download")`, 30000);
+        step = "card";
+        if (m.episode) {
+          // Long press = Enter held on the focused card, with real key events as a remote sends them.
+          await ev(`(() => { const a = document.querySelector('a.tv-episode-card[href$="${m.file}"]'); a.scrollIntoView({ block: "center" }); a.focus(); return true; })()`);
+          await sleep(1200);
+          const kc = { key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
+          await cdp("Input.dispatchKeyEvent", { type: "rawKeyDown", ...kc }); await sleep(1000); await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...kc });
+          await until(`!!document.querySelector(".media-context-drawer")`, 10000);
+          step = "drawer"; await sleep(600);
+          // Choose Download in the actions drawer.
+          await ev(`(([...document.querySelectorAll(".media-context-drawer button, .media-context-drawer [role=button], .media-context-drawer [tabindex], .media-context-drawer a, .media-context-drawer li")].find((b) => /^\\W*download\\W*$/i.test(b.textContent.trim())) || { click() { throw new Error("no Download action"); } }).click(), true)`);
+          await sleep(1500);
+        } else for (let i = 0; i < 4 && !(await ev(`!!document.querySelector(".download-quality-drawer")`)); i += 1) { await ev(`document.querySelector("button.tv-detail-download").click()`); await sleep(2000); }
+        await until(`!!document.querySelector(".download-quality-drawer .ui-select-trigger")`, 20000);
+        step = "quality";
+        for (let i = 0; i < 4 && !(await until(`!!document.querySelector(".ui-select-option")`, 3000)); i += 1) { await ev(`document.querySelector(".ui-select-trigger").click()`); await sleep(800); }
+        await ev(`document.querySelector(".ui-select-option").click()`); // original: ready at once
+        await sleep(500); await confirmDrawer(); await sleep(1500);
+        await list();
+        if (!(await has())) { if (again) return start(false); throw new Error("no row on the Downloads page after starting"); }
+      };
+      const gone = async () => { for (let i = 0; i < 20; i += 1) { if (!(await has())) return true; await sleep(1000); } return false; };
+      const del = async () => { await press("delete"); await until(`!!document.querySelector(".download-quality-drawer .is-primary")`, 8000); await confirmDrawer(); };
+      const clean = async () => { await list(); for (let i = 0; i < 5 && (await has()); i += 1) { await del(); await sleep(1500); } };
+      const ready = /downloaded/i, limit = (expect?.withinSeconds ?? 300) * 1000;
+      const ok = (detail) => ({ state: "ok", detail }), bad = (detail) => ({ state: "failed", detail });
+      try {
+        await clean();
+        switch (c.action) {
+          case "start": { await start(); return ok(await waitFor(ready, limit)); }
+          case "pause-resume": {
+            await throttle(true); await start();
+            if (!(await press("pause"))) return bad("no Pause control on the Downloads page");
+            await waitFor(/paused/i, 15000); await press("resume"); await waitFor(/downloading|queued|processing/i, 15000);
+            await throttle(false); await waitFor(ready, limit); return ok("paused, resumed, completed");
+          }
+          case "cancel": {
+            await throttle(true); await start(); await waitFor(/queued|processing|downloading/i, 60000); await press("cancel");
+            const st = await status(); return (await gone()) || /cancel/i.test(st) ? ok("cancelled") : bad("still downloading after Cancel: " + st);
+          }
+          case "delete": { await start(); await waitFor(ready, limit); await del(); return (await gone()) ? ok("row removed") : bad("row still listed after Delete"); }
+          case "edit": {
+            await start(); await waitFor(ready, limit); await press("edit");
+            await until(`!!document.querySelector(".download-quality-drawer")`, 10000);
+            await q(`document.querySelectorAll(".download-quality-drawer .tv-segmented")[0].querySelectorAll("button")[2].click()`);
+            const hasQuality = await q(`return !!document.querySelector(".download-quality-drawer .ui-select-trigger")`);
+            await confirmDrawer(); await sleep(1000);
+            const meta = await status();
+            if (/keep forever/i.test(meta)) return bad("keep-until did not change: " + meta);
+            return hasQuality ? ok("keep-until and quality editable") : bad("keep-until edited; the edit drawer has no quality control");
+          }
+          case "offline-play": {
+            await start(); await waitFor(ready, limit);
+            await cdp("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
+            try {
+              await ev(`(history.pushState({}, "", "#/player/${m.file}"), window.dispatchEvent(new PopStateEvent("popstate")), true)`);
+              await sleep(6000);
+              await ev(`(([...document.querySelectorAll("button")].find((b) => /try again/i.test(b.textContent)) || { click() {} }).click(), true)`);
+              await sleep(1500); await ev(`(document.querySelector("video")?.play().catch(() => {}), true)`);
+              const pos = `(() => { const v = document.querySelector("video"); return v && !v.error && v.readyState >= 2 ? v.currentTime : null; })()`;
+              const t0 = Date.now(); let p0 = null;
+              while (p0 === null && Date.now() - t0 < 30000) { await sleep(500); p0 = (await ev(pos)) ?? null; }
+              if (p0 === null) return bad("no frames offline");
+              await sleep(4000); const p1 = (await ev(pos)) ?? p0;
+              return p1 - p0 >= 3 ? ok(`offline frames advanced ${(p1 - p0).toFixed(1)}s`) : bad(`stalled offline (${(p1 - p0).toFixed(1)}s)`);
+            } finally { await cdp("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }); }
+          }
+          default: return bad(`driver has no steps for ${c.action}`);
+        }
+      } catch (e) { return bad(`${step}: ${String(e.message).split("\n")[0]}`); }
+      finally { await throttle(false).catch(() => {}); await clean().catch(() => {}); }
+    },
+    async cleanupDownloads() {},
     // Opens the file's player by deep link (as the web driver does), samples the playhead of <video> or Tizen AVPlay.
     async play(c, expect) {
       const pos = `(() => { const v = document.querySelector("video"); if (v && !v.error && v.readyState >= 2) return v.currentTime;
@@ -149,6 +250,14 @@ export async function createDriver() {
         let p1 = p0;
         for (let i = 0; i < (expect.advanceSeconds + 6) * 2 && p1 - p0 < expect.advanceSeconds; i += 1) { await sleep(500); p1 = (await ev(pos).catch(() => null)) ?? p1; }
         out = { state: p1 - p0 >= expect.advanceSeconds ? "playing" : "stalled", startSeconds, advancedSeconds: p1 - p0 };
+      }
+      if (device === "webos" && c.nowPlaying && out.state === "playing") {
+        const info = await ev(`(() => { const m = navigator.mediaSession; return { title: m.metadata?.title ?? "", state: m.playbackState, pause: !!window.__mediaHandlers?.pause }; })()`);
+        let pausedOk = false;
+        if (info.pause) {
+          pausedOk = await ev(`(async () => { window.__mediaHandlers.pause({ action: "pause" }); await new Promise((r) => setTimeout(r, 800)); const ok = document.querySelector("video")?.paused === true; document.querySelector("video")?.play(); return ok; })()`);
+        }
+        out.nowPlaying = { ...info, pausedOk, ok: !!info.title && info.state === "playing" && pausedOk };
       }
       // AVPlay hangs the app if the page reloads while it plays: stop it first.
       await ev(`(() => { try { webapis.avplay.stop(); webapis.avplay.close(); } catch (e) {} return true; })()`).catch(() => {});
