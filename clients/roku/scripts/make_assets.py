@@ -86,6 +86,20 @@ def nine_patch(name: str, r: int, outline: float = 0) -> None:
     img.save(IMAGES / f"{name}.9.png")
 
 
+def card_glow() -> None:
+    """Web --card-glow: a 20 px blur at 45% around the 4 px spread of a 220 x 124 card art, in a 400 x 304 bitmap (white mask)."""
+    from PIL import ImageFilter
+    w, h = 400, 304
+    big = Image.new("L", (w * SS, h * SS), 0)
+    x0, y0, x1, y1 = (v * SS for v in (90, 90, 310, 214))
+    sp = 4 * SS
+    ImageDraw.Draw(big).rounded_rectangle([x0 - sp, y0 - sp, x1 + sp, y1 + sp], radius=18 * SS, fill=255)
+    glow = big.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(10)).point(lambda v: int(v * 0.45))
+    out = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    out.putalpha(glow)
+    out.save(IMAGES / "card-glow.png")
+
+
 def group(n: int) -> None:
     # Web dock group: 77.5 wide, 73.6 per item plus 5.8 padding; fill is --surface at .56 (token tint, alpha baked).
     h = round(73.6 * n + 5.8)
@@ -123,6 +137,7 @@ def main() -> None:
     nine_patch("round-ring-r25", 25, 3)
     nine_patch("round-r32", 32)
     nine_patch("round-ring-r32", 32, 3)
+    card_glow()
     for n in range(1, 5):
         group(n)
     # Page shell: the right-hand panel fades in over 260 px (white ramp, tinted by the panel token).

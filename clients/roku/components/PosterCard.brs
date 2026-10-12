@@ -4,7 +4,11 @@ sub init()
     for each id in ["cornerTL", "cornerTR", "cornerBL", "cornerBR"]
         ThemeSetRole(m.top.findNode(id), "surface")
     end for
+    ThemeSetRole(m.top.findNode("focusRing"), "cardGlow")
+    ThemeSetRole(m.top.findNode("focusGlow"), "cardGlow")
     ThemeInitComponent()
+    m.focusRing = m.top.findNode("focusRing")
+    m.focusGlow = m.top.findNode("focusGlow")
     m.poster = m.top.findNode("poster")
     m.title = m.top.findNode("title")
     m.overlayNumber = m.top.findNode("overlayNumber")
@@ -126,7 +130,6 @@ sub onContentChanged()
         m.title.width = 587
         m.kind.horizAlign = "left"
         m.kind.width = 815
-        m.kind.translation = [0, 152]
         ' The server serves 780 px (backdrop) or 540 px (poster) wide art; decode it at the card's own size so the stick resamples once.
         m.poster.loadWidth = Int(220 * cardScale + 0.5)
         if Instr(1, content.hdPosterUrl, "w=540") > 0
@@ -170,6 +173,11 @@ sub onFocusChanged()
     if shadowOpacity < 0 then shadowOpacity = 0
     m.focusShadow.opacity = shadowOpacity
     m.restShadow.opacity = 1 - shadowOpacity
+    ' Web --card-glow: a brand ring and soft glow on the focused media card (not the round cast headshots).
+    ringOn = shadowOpacity > 0.5 and not m.top.findNode("circleMask").visible
+    m.focusRing.visible = ringOn
+    m.focusGlow.opacity = 0
+    if ringOn then m.focusGlow.opacity = shadowOpacity
     liftY = -cardFocusLift() * effective
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
@@ -234,6 +242,13 @@ sub layoutCard(cardScale as Float)
     m.unwatchedBadge.translation = [artW - 23.5, 9.5]
     m.progressTrack.translation = [0, artH - 3]
     m.progressTrack.width = artW
+    ' Inside the art's edge: a list clips its items at its own bounds, so a ring outside the art would lose its top and left.
+    m.focusRing.translation = [0, 0]
+    m.focusRing.width = artW
+    m.focusRing.height = artH
+    m.focusGlow.translation = [-90, -90]
+    m.focusGlow.width = artW + 180
+    m.focusGlow.height = artH + 180
     m.restShadow.translation = [-90, -90]
     m.restShadow.width = artW + 180
     m.restShadow.height = artH + 180

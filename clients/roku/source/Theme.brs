@@ -44,6 +44,8 @@ function ThemeTokens(mode as String) as Object
             brand: &hCF3157FF
             ' --brand-ink: text in the brand hue (kickers, eyebrows), WCAG AAA.
             brandInk: &h821E36FF
+            ' --card-glow-color: the focus ring and glow of a media card (brand-strong in light, brand-ink in dark).
+            cardGlow: &hA52745FF
             ' Focus ring: ink in light, literal white in dark (owner ruling).
             focusRing: &h382621FF
             ' Right-hand content panel of the page shell (--surface blended with --surface-soft).
@@ -82,6 +84,7 @@ function ThemeTokens(mode as String) as Object
         lineStrong: &hDFDCDD3B
         brand: &hCF3157FF
         brandInk: &hEAA6B6FF
+        cardGlow: &hEAA6B6FF
         focusRing: &hFFFFFFFF
         panel: &h282227FF
         statusTint: &h5B7FD13D

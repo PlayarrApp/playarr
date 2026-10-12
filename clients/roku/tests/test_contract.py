@@ -648,7 +648,9 @@ class RokuDeviceBugfixTests(unittest.TestCase):
         self.assertIn('id="clockTime" translation="[481,', SCENE)
         card = (ROOT / "components" / "PosterCard.xml").read_text(encoding="utf-8")
         self.assertIn('id="focusShadow"', card)
-        self.assertNotIn('id="focusRing"', card)
+        # Owner 2026-10-09: a focused media card also draws the web's --card-glow ring and glow.
+        self.assertIn('id="focusRing"', card)
+        self.assertIn('id="focusGlow"', card)
         card_brs = (ROOT / "components" / "PosterCard.brs").read_text(encoding="utf-8")
         self.assertIn("m.focusShadow.opacity", card_brs)
 
