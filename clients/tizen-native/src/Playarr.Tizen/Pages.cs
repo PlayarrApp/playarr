@@ -19,7 +19,7 @@ internal static class Pages
         _ when route.StartsWith("/series/") && Guid.TryParse(route[8..], out var series) => new SeriesDetailScreen(env, series),
         _ when route.StartsWith("/movies/") && Guid.TryParse(route[8..], out var movie) => new DetailScreen(env, movie),
         "/downloads" => new DownloadsScreen(env),
-        "/playlists" => new UnavailableScreen(env, "Playlists", route),
+        _ when route == "/playlists" || route.StartsWith("/playlists?", StringComparison.Ordinal) => new PlaylistsScreen(env, route),
         "/watchlist" => new UnavailableScreen(env, "Watchlist", route),
         "/requests" => new UnavailableScreen(env, "Requests", route),
         _ => null,

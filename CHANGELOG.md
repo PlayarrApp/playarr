@@ -343,6 +343,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Tizen now provides a native Playlists directory with root and nested playlist navigation, preserving route state when returning to the directory.
 - Add a native Roku Clients route with sideload instructions and clear notes about Roku's browser and download limits.
 - HarmonyOS TV: Settings > Profile lock sets, replaces and removes the profile PIN, as web does.
 - HarmonyOS TV player: an info button opens a drawer with the title, its synopsis and how the stream reaches the device (delivery, quality, audio, subtitles).
