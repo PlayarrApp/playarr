@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Playarr.Core.Models;
@@ -65,6 +66,47 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        /// <summary>Loads a detail episode card with the TV web's still, frame, then series-art fallback order.</summary>
+        public static async void LoadEpisodeCard(Image image, Work series, Episode episode, Guid? mediaFileId, int displayWidth)
+        {
+            image.Source = null;
+            var still = episode.Images.FirstOrDefault(asset => asset.Kind == ImageKind.Thumb);
+            var seriesArtwork = series.Image(ImageKind.Backdrop) ?? series.Image(ImageKind.Poster);
+            await EpisodeArtworkResolver.TryLoadFirstAsync(
+                EpisodeArtworkResolver.Resolve(still != null, mediaFileId.HasValue, seriesArtwork != null),
+                async source =>
+                {
+                    switch (source)
+                    {
+                        case EpisodeArtworkSource.EpisodeStill when still != null:
+                            var stillVersion = Version(still.Url);
+                            var stillKey = $"{series.Id:N}:{episode.Id:N}:{ImageKind.Thumb}:{WebWidth(ImageKind.Thumb)}:{stillVersion}";
+                            return await SetEpisodeCardCandidateAsync(
+                                image,
+                                stillKey,
+                                () => App.Environment.ApiClient.GetEpisodeArtworkAsync(series.Id, episode.Id, ImageKind.Thumb, WebWidth(ImageKind.Thumb), stillVersion),
+                                displayWidth).ConfigureAwait(true);
+                        case EpisodeArtworkSource.MediaFrame when mediaFileId is { } file:
+                            const long framePositionMs = 30_000;
+                            return await SetEpisodeCardCandidateAsync(
+                                image,
+                                $"{file:N}:media-frame:{framePositionMs}",
+                                () => App.Environment.ApiClient.GetMediaThumbnailAsync(file, framePositionMs),
+                                displayWidth).ConfigureAwait(true);
+                        case EpisodeArtworkSource.SeriesArtwork when seriesArtwork != null:
+                            var artworkWidth = WebWidth(seriesArtwork.Kind);
+                            var artworkVersion = Version(seriesArtwork.Url);
+                            return await SetEpisodeCardCandidateAsync(
+                                image,
+                                $"{series.Id:N}:series-art:{seriesArtwork.Kind}:{artworkWidth}:{artworkVersion}",
+                                () => App.Environment.ApiClient.GetWorkArtworkAsync(series.Id, seriesArtwork.Kind, artworkWidth, artworkVersion),
+                                displayWidth).ConfigureAwait(true);
+                        default:
+                            return false;
+                    }
+                }).ConfigureAwait(true);
+        }
+
         private static async Task SetAsync(Image image, Guid id, ImageKind kind, int width, string version, int decodeWidth, Guid? episodeId = null)
         {
             var key = $"{id:N}:{episodeId:N}:{kind}:{width}:{version}";
@@ -104,6 +146,53 @@ namespace Playarr.Xbox.Views
             catch (Exception)
             {
                 // shortcut: a failed fetch leaves the placeholder; the web retries on focus, add that if it shows.
+            }
+        }
+
+        private static async Task<bool> SetEpisodeCardCandidateAsync(Image image, string key, Func<Task<byte[]>> fetch, int decodeWidth)
+        {
+            try
+            {
+                if (!Cache.TryGetValue(key, out var bytes))
+                {
+                    await Gate.WaitAsync().ConfigureAwait(true);
+                    try
+                    {
+                        bytes = await fetch().ConfigureAwait(true);
+                    }
+                    finally
+                    {
+                        Gate.Release();
+                    }
+
+                    if (bytes == null || bytes.Length == 0)
+                    {
+                        return false;
+                    }
+
+                    if (Cache.Count >= CacheLimit)
+                    {
+                        Cache.Clear();
+                    }
+
+                    Cache[key] = bytes;
+                }
+
+                using (var stream = new InMemoryRandomAccessStream())
+                {
+                    await stream.WriteAsync(bytes.AsBuffer());
+                    stream.Seek(0);
+                    var bitmap = new BitmapImage { DecodePixelWidth = decodeWidth };
+                    await bitmap.SetSourceAsync(stream);
+                    image.Source = bitmap;
+                }
+
+                return true;
+            }
+            catch (Exception)
+            {
+                // A failed source leaves the placeholder in place so the next candidate can be tried.
+                return false;
             }
         }
 
