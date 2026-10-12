@@ -187,3 +187,12 @@ export function shouldFallBackToTranscodeAfterDecodeError(
   if (!error || options.forceTranscode || options.alreadyAttempted) return false;
   return DECODE_ERROR_CODES.has(error.code);
 }
+
+/**
+ * Whether playback should start again after the server session was lost and replaced: it follows the last
+ * state the viewer actually had before the error. A paused player stays paused (the error itself carries no
+ * play state); unknown (never played) resumes, as a first load would.
+ */
+export function shouldResumeAfterRecovery(lastActiveState: string | undefined): boolean {
+  return lastActiveState !== "paused";
+}

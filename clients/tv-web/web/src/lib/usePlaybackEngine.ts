@@ -46,6 +46,7 @@ import {
   capacityRetryDelayMs,
   isCapacityError,
   isPermanentNegotiationError,
+  shouldResumeAfterRecovery,
   retryOnCapacityRefusal,
   isTransientNegotiationError,
   MAX_CAPACITY_RETRIES,
@@ -267,6 +268,8 @@ export function usePlaybackEngine(
     state: IDLE_ENGINE_STATE.state,
   });
   const previousPlaybackStateRef = useRef(IDLE_ENGINE_STATE.state);
+  // The last state the viewer actually had (playing, buffering or paused): an error carries no play state.
+  const lastActiveStateRef = useRef<string | undefined>(undefined);
   const progressGateRef = useRef(createProgressGate());
   const engineStateRef = useRef<PlaybackEngineState>(IDLE_ENGINE_STATE);
   const qualitySwitchRequestRef = useRef(0);
@@ -609,6 +612,7 @@ export function usePlaybackEngine(
       state: IDLE_ENGINE_STATE.state,
     };
     previousPlaybackStateRef.current = IDLE_ENGINE_STATE.state;
+    lastActiveStateRef.current = undefined;
     qualitySwitchRequestRef.current += 1;
     sourceSwitchBarrierRef.current = Promise.resolve();
     latestUserSeekRef.current = null;
@@ -898,7 +902,7 @@ export function usePlaybackEngine(
       engineState.currentTimeSeconds + negotiation.sourceOffsetSeconds;
     pendingQualitySwitchRef.current = {
       positionSeconds: absolutePositionSeconds,
-      shouldPlay: true,
+      shouldPlay: shouldResumeAfterRecovery(lastActiveStateRef.current),
     };
     negotiationRequestRef.current = {
       ...negotiationRequestRef.current,
@@ -948,7 +952,7 @@ export function usePlaybackEngine(
       engineState.currentTimeSeconds + negotiation.sourceOffsetSeconds;
     pendingQualitySwitchRef.current = {
       positionSeconds: absolutePositionSeconds,
-      shouldPlay: true,
+      shouldPlay: shouldResumeAfterRecovery(lastActiveStateRef.current),
     };
     negotiationRequestRef.current = {
       ...negotiationRequestRef.current,
@@ -1200,6 +1204,13 @@ export function usePlaybackEngine(
 
     const previousState = previousPlaybackStateRef.current;
     previousPlaybackStateRef.current = engineState.state;
+    if (
+      engineState.state === "playing" ||
+      engineState.state === "buffering" ||
+      engineState.state === "paused"
+    ) {
+      lastActiveStateRef.current = engineState.state;
+    }
     const plan = progressGateRef.current.plan({
       engineStateToken: engineState,
       state: engineState.state,

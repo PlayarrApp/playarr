@@ -7,6 +7,7 @@ import {
   isPermanentNegotiationError,
   isTransientNegotiationError,
   isUnsupportedColourError,
+  shouldResumeAfterRecovery,
   isRecoverableConnectionError,
   isUnhandledEngineError,
   sessionCloseForEngineState,
@@ -105,5 +106,21 @@ describe("unsupported colour format refusal", () => {
     expect(humanNegotiationMessage(refusal, "API request failed")).toBe(
       "This title's colour format can't be converted for this device."
     );
+  });
+});
+
+describe("recovery keeps the viewer's play state", () => {
+  it("stays paused when the player was paused before the session was lost", () => {
+    expect(shouldResumeAfterRecovery("paused")).toBe(false);
+  });
+  it("plays on after playing or buffering, and on a first load", () => {
+    expect(shouldResumeAfterRecovery("playing")).toBe(true);
+    expect(shouldResumeAfterRecovery("buffering")).toBe(true);
+    expect(shouldResumeAfterRecovery(undefined)).toBe(true);
+  });
+  it("never hard-codes playing in the recovery paths", () => {
+    const source = readFileSync(new URL("./usePlaybackEngine.ts", import.meta.url), "utf8");
+    expect(source).not.toMatch(/shouldPlay: true,\n\s*};/);
+    expect(source).toContain("shouldResumeAfterRecovery(lastActiveStateRef.current)");
   });
 });
