@@ -203,14 +203,11 @@ export struct MediaRail {
    * all -- see `DEFAULT_UNFOCUSED_RAIL_FACTOR`'s comment. */
   @Prop unfocusedRailFactor: number = DEFAULT_UNFOCUSED_RAIL_FACTOR;
 
-  /** The rail's items. Plain (non-`@Prop`) rather than copy-observed --
-   * `MediaRailItem` is a real interface (not an opaque/erased type), so a
-   * `@Prop` array-of-interface would work, but a rail's items are supplied
-   * once per catalogue page and re-set wholesale on reload, which a parent
-   * re-constructing this component (as e.g. `Stage.ets`'s own `railsSlot`
-   * caller would, once it exists) already handles without needing
-   * per-field observation here. */
-  items: MediaRailItem[] = [];
+  /** The rail's items. A `@Prop`, so a parent that sets a new array later (artwork arriving after the first render) reaches the rail: an
+   * undecorated property is read only when the child is created, and the Home rails stayed on their placeholders (seen in the Previewer
+   * frames: with this change the "On deck" poster appears, without it the card stays empty). `MediaRailItem` is a real interface, so a
+   * `@Prop` array of it is fine. */
+  @Prop items: MediaRailItem[] = [];
 
   /** Renders one item. Receives the rail-scoped `activeRailFactor` (this
    * file's whole point) as its third argument -- feed it straight into the
