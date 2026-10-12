@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { isActivePlayerResponse, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
@@ -25,6 +26,30 @@ test("routeMatches", () => {
   assert.ok(!routeMatches("/movies/:id", "/movies"));
   assert.ok(routeMatches("/calendar?view=week", "/calendar?view=week&x=1"));
   assert.ok(!routeMatches("/calendar?view=week", "/calendar?view=month"));
+});
+
+test("Roku suite driver requires explicit non-player screen and D-pad allowlists", () => {
+  assert.equal(validateRokuRunArgs([
+    "--only", "screens,dpad", "--via", "route", "--screens", "home,movies,calendar-month",
+    "--checks", "home-right,movies-grid-down",
+  ]), true);
+  assert.throws(() => validateRokuRunArgs(["--only", "screens,dpad"]), /explicit non-player --screens/);
+  assert.throws(() => validateRokuRunArgs([
+    "--only", "screens", "--screens", "home,player-controls",
+  ]), /refuses unsupported screen/);
+  assert.throws(() => validateRokuRunArgs([
+    "--only", "screens", "--via", "keys", "--screens", "calendar-month",
+  ]), /must use --via route/);
+  assert.throws(() => validateRokuRunArgs([
+    "--only", "dpad", "--checks", "home-right,player-right",
+  ]), /refuses unsupported D-pad check/);
+  assert.throws(() => validateRokuRunArgs(["--only", "downloads"]), /downloads and performance are unsupported/);
+});
+
+test("Roku suite driver refuses to interrupt an active media session", () => {
+  assert.equal(isActivePlayerResponse('<player state="close" error="false"/>'), false);
+  assert.equal(isActivePlayerResponse('<player state="play" error="false"/>'), true);
+  assert.equal(isActivePlayerResponse('<player state="pause" error="false"/>'), true);
 });
 
 test("focus-order checks keep play/pause role semantics while toggle checks keep state", () => {
