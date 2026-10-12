@@ -72,8 +72,9 @@ import {
   playbackProgressUrl,
   mediaChaptersUrl,
   mediaMetadataUrl,
+  mediaPlaybackOptionsUrl,
 } from '../core/Endpoints.ts';
-import { PlaybackInfoResponse, PlaybackEventKind, WatchProgress } from '../core/Types/Playback.ts';
+import { PlaybackInfoResponse, PlaybackEventKind, WatchProgress, MediaPlaybackOptions, MediaPlaybackPreferences } from '../core/Types/Playback.ts';
 import { MediaChapter, MediaMetadata } from '../core/Types/Media.ts';
 
 import { DEVICE_PROFILE_STORAGE_KEY } from '../device/DeviceProfileService';
@@ -262,6 +263,16 @@ export async function sendPlaybackSessionEvent(sessionId: string, event: Playbac
 /** `GET /api/v1/playback/progress` (brief 4.12): every media file with a durable watch-progress row for the current user. An empty list is a legitimate policy outcome (restricted libraries silently drop rows), not necessarily a bug. */
 export function listWatchProgress(): Promise<ApiResult<WatchProgress[]>> {
   return getPlayarrClient().getJson<WatchProgress[]>(playbackProgressListUrl());
+}
+
+/** `GET /api/v1/media/{id}/playback-options`: what the file offers and what is saved for it. */
+export function getMediaPlaybackOptions(mediaFileId: string): Promise<ApiResult<MediaPlaybackOptions>> {
+  return getPlayarrClient().getJson<MediaPlaybackOptions>(mediaPlaybackOptionsUrl(mediaFileId));
+}
+
+/** `PATCH /api/v1/media/{id}/playback-options`: saves the viewer's choices for the file; resolves to the updated options. */
+export function updateMediaPlaybackOptions(mediaFileId: string, preferences: MediaPlaybackPreferences): Promise<ApiResult<MediaPlaybackOptions>> {
+  return getPlayarrClient().patchJson<MediaPlaybackPreferences, MediaPlaybackOptions>(mediaPlaybackOptionsUrl(mediaFileId), preferences);
 }
 
 /** `GET /api/v1/playback/{media_file_id}/progress` (brief 4.12): synthesises `state: "unseen"`, `updated_at: null` server-side when no row exists yet, so this always resolves to a value rather than a 404 for an unseen item. */

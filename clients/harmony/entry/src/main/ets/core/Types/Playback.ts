@@ -189,3 +189,26 @@ export interface WatchProgress {
   state: WatchProgressState;
   updated_at: string | null;
 }
+
+/** `PATCH`/`GET /api/v1/media/{id}/playback-options` preferences: the saved quality, audio and subtitle choices for one file. */
+export interface MediaPlaybackPreferences {
+  quality_id: string;
+  audio_track_id?: string | null;
+  subtitle_track_id?: string | null;
+}
+
+/** A subtitle option of the playback-options response. */
+export interface PlaybackSubtitleOption {
+  id: string;
+  label: string;
+  language?: string | null;
+  codec?: string | null;
+}
+
+/** `GET /api/v1/media/{id}/playback-options` response. */
+export interface MediaPlaybackOptions {
+  audio_tracks: AudioTrack[];
+  subtitle_tracks: PlaybackSubtitleOption[];
+  quality_options: QualityOption[];
+  preferences: MediaPlaybackPreferences;
+}

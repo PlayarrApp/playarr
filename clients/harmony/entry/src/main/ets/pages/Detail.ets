@@ -103,7 +103,10 @@
 import { image } from '@kit.ImageKit';
 
 import { getWorkDetail, getSimilarWorks, getWorkCredits } from '../data/CatalogRepository';
-import { getMediaChapters } from '../data/PlaybackRepository';
+import { getMediaChapters, getWatchProgress } from '../data/PlaybackRepository';
+import { addToWatchlist, removeFromWatchlist, resolveTitle } from '../data/WatchlistRepository';
+import { snapshotFromWork } from '../core/TitleSnapshot';
+import { resumeStartMs } from '../core/PlaybackMath.ts';
 import {
   fetchWorkArtworkByPriority,
   fetchAlbumArtworkByPriority,
@@ -136,6 +139,7 @@ import type { MediaRailItem } from '../design/components/MediaRail';
 import { PosterCard } from '../design/components/PosterCard';
 import { PageShell } from '../design/components/PageShell';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
+import { PlaybackOptionsDrawer } from '../design/components/PlaybackOptionsDrawer';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 import { Skeleton } from '../design/components/Skeleton';
 
@@ -648,6 +652,13 @@ struct Detail {
   @State private actionsOpen: boolean = false;
   /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
   @State private touchActionsOpen: boolean = false;
+  @State private optionsOpen: boolean = false;
+  /** On this profile's watchlist: null until the server has answered. */
+  @State private listed: boolean | null = null;
+  private watchlistKey: string = '';
+  private watchlistBusy: boolean = false;
+  /** The saved resume point of a movie's file, 0 when there is none. */
+  @State private resumeMs: number = 0;
 
   aboutToAppear(): void {
     this.loadDetail();
@@ -664,6 +675,10 @@ struct Detail {
     this.chaptersRail = null;
     this.cast = [];
     this.actionsOpen = false;
+    this.optionsOpen = false;
+    this.listed = null;
+    this.watchlistKey = '';
+    this.resumeMs = 0;
 
     const workId = this.workId;
     const detailResult = await getWorkDetail(workId);
@@ -690,6 +705,10 @@ struct Detail {
     this.hydrateRailArtwork();
     this.loadSimilar(detail.work);
     this.loadCredits(detail.work.id);
+    this.loadWatchlistState(detail.work);
+    if (this.primaryMediaFileId !== null && detail.work.kind === 'movie') {
+      this.loadResume(this.primaryMediaFileId);
+    }
     if (this.primaryMediaFileId !== null && detail.work.kind === 'movie') {
       this.loadChapters(this.primaryMediaFileId);
     }
@@ -730,6 +749,54 @@ struct Detail {
           this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
         }
       }
+    }
+  }
+
+  /** Whether the title is on the watchlist (web `WatchlistToggle`: resolve the snapshot, the server owns the title key). */
+  private async loadWatchlistState(work: Work): Promise<void> {
+    const result = await resolveTitle(snapshotFromWork(work));
+    if (result.kind === 'ok') {
+      this.watchlistKey = result.value.title.title_key;
+      this.listed = result.value.in_watchlist === true;
+    } else {
+      this.listed = false;
+    }
+  }
+
+  private async toggleWatchlist(): Promise<void> {
+    const detail = this.detail;
+    if (detail === null || this.watchlistBusy) {
+      return;
+    }
+    this.watchlistBusy = true;
+    const snapshot = snapshotFromWork(detail.work);
+    if (this.listed === true) {
+      let key = this.watchlistKey;
+      if (key.length === 0) {
+        const resolved = await resolveTitle(snapshot);
+        key = resolved.kind === 'ok' ? resolved.value.title.title_key : '';
+      }
+      if (key.length > 0) {
+        const removed = await removeFromWatchlist(key);
+        if (removed.kind === 'ok') {
+          this.listed = false;
+        }
+      }
+    } else {
+      const added = await addToWatchlist(snapshot);
+      if (added.kind === 'ok') {
+        this.watchlistKey = added.value.title.title_key;
+        this.listed = true;
+      }
+    }
+    this.watchlistBusy = false;
+  }
+
+  /** A part-watched movie offers "Resume from m:ss" on its primary pill (the player itself resumes from the saved point). */
+  private async loadResume(mediaFileId: string): Promise<void> {
+    const saved = await getWatchProgress(mediaFileId);
+    if (saved.kind === 'ok') {
+      this.resumeMs = resumeStartMs(saved.value.state, saved.value.position_ms);
     }
   }
 
@@ -1059,17 +1126,36 @@ struct Detail {
         this.actionPill('Download', '\u21E9', false, this.primaryMediaFileId !== null, (): void => {
           this.actionsOpen = true;
         })
-        this.actionPill(this.primaryMediaFileId !== null ? 'Play' : 'Unavailable', '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+        if (this.primaryMediaFileId !== null && this.detail !== null && this.detail.work.kind === 'movie') {
+          this.actionPill('Playback', '\u2630', false, true, (): void => {
+            this.optionsOpen = true;
+          })
+        }
+        this.actionPill(this.primaryLabel(), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
       }
       Row({ space: tv(PILL_GAP) }) {
+        this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+          void this.toggleWatchlist();
+        })
         this.actionPill('Add to Playlist', '+', false, true, (): void => {
           this.actionsOpen = true;
         })
       }
     }
     .alignItems(HorizontalAlign.Start)
+  }
+
+  /** The primary pill's label: Resume from m:ss for a part-watched movie, else Play (Unavailable while nothing is playable). */
+  private primaryLabel(): string {
+    if (this.primaryMediaFileId === null) {
+      return 'Unavailable';
+    }
+    if (this.resumeMs > 0) {
+      return 'Resume from ' + chapterTimeLabel(this.resumeMs);
+    }
+    return 'Play';
   }
 
   /** Web's cast circle: the person's initials (their headshot over them when there is one) and their name under it. */
@@ -1281,6 +1367,15 @@ struct Detail {
         this.tvContent();
       },
     })
+    if (this.optionsOpen && this.primaryMediaFileId !== null && this.detail !== null) {
+      PlaybackOptionsDrawer({
+        mediaFileId: this.primaryMediaFileId,
+        workTitle: this.detail.work.title,
+        onClose: (): void => {
+          this.optionsOpen = false;
+        },
+      })
+    }
     if (this.actionsOpen && this.detail !== null) {
       TitleActionsDrawer({
         workId: this.detail.work.id,

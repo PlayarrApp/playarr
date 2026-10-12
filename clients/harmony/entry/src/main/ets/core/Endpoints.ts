@@ -163,6 +163,11 @@ export function catalogCreditsUrl(id: string): string {
   return "/api/v1/catalog/" + id + "/credits";
 }
 
+/** `GET` and `PATCH /api/v1/media/{media_file_id}/playback-options`: the file's quality, audio and subtitle choices and the saved preferences. */
+export function mediaPlaybackOptionsUrl(mediaFileId: string): string {
+  return "/api/v1/media/" + mediaFileId + "/playback-options";
+}
+
 export function catalogSimilarUrl(id: string): string {
   return "/api/v1/catalog/" + id + "/similar";
 }

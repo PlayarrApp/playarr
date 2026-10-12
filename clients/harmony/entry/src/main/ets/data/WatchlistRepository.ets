@@ -12,6 +12,8 @@ export interface TitleRef {
 
 export interface ResolvedTitleKey {
   title: TitleRef;
+  /** Set by the resolve call: whether the title is already on this profile's watchlist. */
+  in_watchlist?: boolean;
 }
 
 export function addToWatchlist(snapshot: TitleSnapshot): Promise<ApiResult<ResolvedTitleKey>> {
