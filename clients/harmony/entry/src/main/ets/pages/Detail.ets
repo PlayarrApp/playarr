@@ -1299,7 +1299,7 @@ struct Detail {
             },
           })
         },
-        (rail: DetailRail): string => rail.id
+        (rail: DetailRail): string => detailRailKey(rail)
       )
       if (this.chaptersRail !== null) {
         Column({ space: tv(12) }) {
