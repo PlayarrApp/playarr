@@ -26,7 +26,7 @@ export async function createDriver() {
 
   async function cdpConnect() {
     const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
-    const t = list.find((x) => /webos-stage/.test(x.url));
+    const t = list.find((x) => new RegExp(process.env.WEBOS_MATCH ?? "webos-stage").test(x.url));
     if (!t) throw new Error("webOS app page not found (launcher showing?)");
     ws = new WebSocket(t.webSocketDebuggerUrl);
     pending = new Map();
@@ -61,7 +61,8 @@ export async function createDriver() {
       }
       throw new Error(`tizen did not reach ${route}`);
     }
-    await ev(`(history.replaceState(null, "", "#" + ${JSON.stringify(route)}), setTimeout(() => location.reload(), 50), true)`).catch(() => {});
+    // The app restores focus and scroll from sessionStorage on reload; a fresh web page load has none.
+    await ev(`(sessionStorage.clear(), history.scrollRestoration = "manual", history.replaceState(null, "", "#" + ${JSON.stringify(route)}), setTimeout(() => location.reload(), 50), true)`).catch(() => {});
     await sleep(2500);
     ws = undefined;
     await cdpConnect();
@@ -115,7 +116,13 @@ export async function createDriver() {
     },
     async location() { return (await ev("location.hash.replace(/^#/, '')")) ?? null; },
     async focused() {
-      return ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null; return (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1"); })()`);
+      return ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null;
+        const label = (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \\d+:\\d+(?::\\d+)?$/i, "Open $1");
+        let position = null; const nav = e.closest(".app-nav-link"); const card = e.closest(".tv-home-card");
+        if (nav) position = { rail: "nav", index: [...document.querySelectorAll(".app-nav-link")].indexOf(nav) };
+        else if (card) { const rail = (c) => (c.getAttribute("data-navigation-focus-key") || "").split(":")[1]; const cards = [...document.querySelectorAll(".tv-home-card")]; const rails = [...new Set(cards.map(rail))];
+          position = { rail: rails.indexOf(rail(card)), index: cards.filter((c) => rail(c) === rail(card)).indexOf(card) }; }
+        return { label, position }; })()`);
     },
     async screenshot(file) {
       await ev("(document.activeElement && document.activeElement.blur && document.activeElement.blur(), true)");

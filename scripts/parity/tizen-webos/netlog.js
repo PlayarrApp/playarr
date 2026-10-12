@@ -59,7 +59,7 @@
     x.open("GET", "http://10.0.2.2:18733/cmd", true);
     x.onload = function () {
       var c = (x.responseText || "").trim();
-      if (c.indexOf("hash:") === 0) { history.replaceState(null, "", "#" + c.slice(5)); location.reload(); }
+      if (c.indexOf("hash:") === 0) { sessionStorage.clear(); history.replaceState(null, "", "#" + c.slice(5)); location.reload(); }
       else if (c === "blur" && document.activeElement) document.activeElement.blur();
       else if (c.indexOf("eval:") === 0) {
         var rest = c.slice(5), sep = rest.indexOf(":"), id = rest.slice(0, sep), code = rest.slice(sep + 1);

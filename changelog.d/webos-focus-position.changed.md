@@ -1,0 +1,1 @@
+- The Tizen and webOS parity driver reports the focus position (rail and index) as the suite now requires.
