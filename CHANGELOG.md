@@ -524,6 +524,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV: the Profiles picker's last tile is "Sign in / Add another profile" and opens the QR sign-in, as web does.
+- HarmonyOS: Settings lists web's ten sections and Appearance has Home screen artwork and Artwork size (saved on the device; the other new sections show their description until built).
+- HarmonyOS TV: the hero title is line-balanced like web's text-wrap: balance.
 - HarmonyOS TV: the artist library is titled "Music" and counts "35 artists", as on web.
 - HarmonyOS TV: the shared page header Back button has web's faint ring and a regular-weight arrow.
 - webOS parity driver: grouped series and season download cases, and the edit case waits for the quality control.

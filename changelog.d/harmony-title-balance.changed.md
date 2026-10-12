@@ -1,1 +1,0 @@
-- HarmonyOS TV: the hero title is line-balanced like web's text-wrap: balance.

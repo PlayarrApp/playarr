@@ -1,1 +1,0 @@
-- HarmonyOS TV: the Profiles picker's last tile is "Sign in / Add another profile" and opens the QR sign-in, as web does.
