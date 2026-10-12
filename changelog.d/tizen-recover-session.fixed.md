@@ -1,1 +1,0 @@
-- Tizen native: when the server reaps or evicts an idle on-demand session, the player now requests a replacement session at the same position (up to three tries) and keeps a paused player paused, instead of stopping.

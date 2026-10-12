@@ -1,1 +1,0 @@
-- Xbox wall: the calendar view picker retries and falls back to the keys.

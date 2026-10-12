@@ -1,1 +1,0 @@
-- Xbox wall: the dark job really sets the dark theme, a luminance guard refuses a frame of the wrong theme, and the playback job runs only on request.

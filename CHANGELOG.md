@@ -13,6 +13,11 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Tizen native: when the server reaps or evicts an idle on-demand session, the player now requests a replacement session at the same position (up to three tries) and keeps a paused player paused, instead of stopping.
+- A full transcode node now makes room for a new viewer by stopping the on-demand session that has gone longest (at least two minutes) without a media segment request, i.e. a paused or abandoned player that only polls its playlist; sessions with recent segment requests are never evicted. While the node has room, a paused session keeps its slot up to a 30-minute safety cap (`PLAYARR_TRANSCODE_SEGMENT_IDLE_SECS`).
+- Xbox wall: debug frames of the calendar view picker are uploaded.
+- Xbox wall: the calendar view picker retries and falls back to the keys.
+- Xbox wall: the dark job really sets the dark theme, a luminance guard refuses a frame of the wrong theme, and the playback job runs only on request.
 - HarmonyOS: the Home rails now show artwork that arrives after the first render (MediaRail takes its items as a @Prop).
 - Roku: when the server reaps or evicts an idle on-demand session, the player now asks for a replacement session at the same position (up to three times) and keeps a paused player paused, instead of ending playback with an error.
 - Web: after the server reaps or evicts a transcode session, the replacement session now keeps a paused player paused instead of always starting playback.
@@ -309,6 +314,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Xbox: Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) choices; the card size and columns follow them.
+- Xbox: Settings has the web's Profile avatar section (the six built-in avatars, saved to the profile).
+- Xbox: Settings has the web's Customise Home section (show, hide and reorder Home rails, saved to the account), and the section list is data-driven.
+- Xbox: Settings has the web's Profile lock section (set, replace or remove the four-digit profile PIN).
 - tvOS shows the poster and episode line on the system now-playing surface.
 - Xbox: Previous in the player and in the now-playing card plays the item played before this one, and puts the current one back up next, as the web playlist control does.
 - Xbox parity trace reports the focus position (rail and card, or nav item) for the suite Home D-pad checks.

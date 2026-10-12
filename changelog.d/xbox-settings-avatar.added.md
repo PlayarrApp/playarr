@@ -1,1 +1,0 @@
-- Xbox: Settings has the web's Profile avatar section (the six built-in avatars, saved to the profile).

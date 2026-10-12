@@ -1,1 +1,0 @@
-- Xbox: Settings has the web's Customise Home section (show, hide and reorder Home rails, saved to the account), and the section list is data-driven.

@@ -1,1 +1,0 @@
-- Xbox: Settings has the web's Profile lock section (set, replace or remove the four-digit profile PIN).
