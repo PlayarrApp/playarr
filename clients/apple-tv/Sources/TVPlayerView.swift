@@ -85,11 +85,10 @@ struct TVPlayerView: View {
         }
     }
 
-    /// The server's frame of the clip at the paused position, colour-matched to the browser's output.
+    /// The server's frame of the clip at the paused position.
     private var parityFrame: some View {
         TVAuthedImage(load: {
-            let data = try await apiClient.fetchMediaThumbnail(mediaFileID: mediaFileID, positionMs: Int((parity?.position ?? 0) * 1000))
-            return TVVideoFrameColour.matchingBrowser(data)
+            try await apiClient.fetchMediaThumbnail(mediaFileID: mediaFileID, positionMs: Int((parity?.position ?? 0) * 1000))
         }) { Color.black }
             .frame(width: 1920, height: 1080)
             .clipped()
