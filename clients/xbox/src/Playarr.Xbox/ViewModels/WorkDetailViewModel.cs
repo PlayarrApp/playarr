@@ -135,6 +135,26 @@ namespace Playarr.Xbox.ViewModels
 
         public bool CanPlay => PlayableMediaFileId.HasValue;
 
+        /// <summary>What a Download of the playable file records: the title, and for an episode its series, season and number.</summary>
+        public Playarr.Core.Models.DownloadRecord? DownloadTemplate()
+        {
+            if (PlayableMediaFileId is not { } id)
+            {
+                return null;
+            }
+
+            var record = new Playarr.Core.Models.DownloadRecord { WorkId = _workId, MediaFileId = id, Kind = IsSeries ? "series" : "movie", Title = Title };
+            if (IsSeries && SelectedEpisode is { } episode)
+            {
+                record.SeriesTitle = Title;
+                record.Title = string.IsNullOrEmpty(episode.Episode.Title) ? Title : episode.Episode.Title!;
+                record.EpisodeNumber = episode.Episode.EpisodeNumber;
+                record.SeasonNumber = Seasons.FirstOrDefault(season => season.Episodes.Contains(episode))?.Season.SeasonNumber;
+            }
+
+            return record;
+        }
+
         /// <summary>The work whose similar titles the end-of-playback screen suggests.</summary>
         public Guid WorkId => _workId;
 

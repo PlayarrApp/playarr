@@ -1,0 +1,1 @@
+- Xbox: offline downloads. A Download action on the detail page, local storage with resume, the server complete call, a toast that tracks progress with Pause, Resume and Cancel, and a Downloads page grouped series, season, episode with pause, cancel, delete and edit (keep-until and quality).

@@ -24,8 +24,10 @@ namespace Playarr.Xbox.Views
             string? title = null,
             Guid? workId = null,
             IList<PlaybackQueueItem>? upNext = null,
-            IList<PlaybackQueueItem>? previous = null)
+            IList<PlaybackQueueItem>? previous = null,
+            bool preferLocal = false)
         {
+            PreferLocal = preferLocal;
             Previous = previous ?? new List<PlaybackQueueItem>();
             WorkId = workId;
             UpNext = upNext ?? new List<PlaybackQueueItem>();
@@ -42,6 +44,9 @@ namespace Playarr.Xbox.Views
 
         /// <summary>Items already played in this session, oldest first; the last one is what Previous plays.</summary>
         public IList<PlaybackQueueItem> Previous { get; }
+
+        /// <summary>Play the finished download from local storage instead of asking the server.</summary>
+        public bool PreferLocal { get; }
 
         /// <summary>The media file to negotiate and play.</summary>
         public Guid MediaFileId { get; }

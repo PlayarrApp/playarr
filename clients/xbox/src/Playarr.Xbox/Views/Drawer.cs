@@ -121,10 +121,21 @@ namespace Playarr.Xbox.Views
             var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
             caption.CharacterSpacing = 120;
             group.Children.Add(caption);
-            var row = new Grid { ColumnSpacing = 6 };
-            for (var i = 0; i < options.Length; i++)
+            // More than four options wrap onto a second row so every label keeps room (5 options: 3 + 2).
+            var perRow = options.Length > 4 ? (options.Length + 1) / 2 : options.Length;
+            var row = new Grid { ColumnSpacing = 6, RowSpacing = 6 };
+            for (var c = 0; c < perRow; c++)
             {
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            }
+
+            for (var r = 0; r < (options.Length + perRow - 1) / perRow; r++)
+            {
+                row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            }
+
+            for (var i = 0; i < options.Length; i++)
+            {
                 var index = i;
                 var isSelected = i == selected;
                 var button = new Button
@@ -147,7 +158,8 @@ namespace Playarr.Xbox.Views
                     FocusVisualSecondaryThickness = new Thickness(0),
                 };
                 button.Click += (s, e) => onSelect(index);
-                Grid.SetColumn(button, i);
+                Grid.SetColumn(button, i % perRow);
+                Grid.SetRow(button, i / perRow);
                 row.Children.Add(button);
             }
 

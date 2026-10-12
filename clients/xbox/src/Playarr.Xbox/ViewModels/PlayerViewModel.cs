@@ -83,6 +83,28 @@ namespace Playarr.Xbox.ViewModels
         private PlaybackInfoResponse? _playbackInfo;
         private string? _selectedAudioTrackId;
         private string? _selectedSubtitleTrackId;
+        private readonly bool _preferLocal;
+
+        /// <summary>
+        /// Plays the finished download of this file from local storage: chosen from the Downloads page, or used when the
+        /// server cannot be reached (the web's synthetic "Downloaded" source).
+        /// </summary>
+        private async Task<bool> TryPlayLocalAsync()
+        {
+            await Services.DownloadService.Instance.LoadAsync();
+            if (Services.DownloadService.Instance.ForMediaFile(_mediaFileId) is not { State: DownloadState.Ready } record
+                || await Services.DownloadService.Instance.FileAsync(record) is not { } file)
+            {
+                return false;
+            }
+
+            var item = new MediaPlaybackItem(MediaSource.CreateFromStorageFile(file));
+            _playbackItem = item;
+            Player.Source = item;
+            LoadState = PlayerLoadState.Ready;
+            StartProgressTimer();
+            return true;
+        }
 
         public PlayerViewModel(
             XboxAppEnvironment environment,
@@ -90,8 +112,10 @@ namespace Playarr.Xbox.ViewModels
             long? resumePositionMs,
             string? title,
             Guid? workId = null,
-            PlaybackQueueItem? next = null)
+            PlaybackQueueItem? next = null,
+            bool preferLocal = false)
         {
+            _preferLocal = preferLocal;
             _workId = workId;
             EndOfPlayback = new EndOfPlaybackMachine(next);
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -493,6 +517,11 @@ namespace Playarr.Xbox.ViewModels
                 var model = XboxModelDetector.DetectModel();
                 var profile = XboxPlaybackProfile.ForModel(model);
 
+                if (_preferLocal && await TryPlayLocalAsync().ConfigureAwait(false))
+                {
+                    return;
+                }
+
                 // Resume from the server's saved point unless the caller passed one.
                 if (_resumePositionMs is null)
                 {
@@ -539,6 +568,12 @@ namespace Playarr.Xbox.ViewModels
             }
             catch (ApiException apiError)
             {
+                // The server could not be reached but the title is downloaded: it plays from local storage.
+                if (apiError.Kind == ApiErrorKind.Transport && await TryPlayLocalAsync().ConfigureAwait(false))
+                {
+                    return;
+                }
+
                 LoadState = PlayerLoadState.Failed;
                 // A 422 (for example unsupported_colour_format) is the server's final word for this title and device:
                 // show its message and offer no retry.

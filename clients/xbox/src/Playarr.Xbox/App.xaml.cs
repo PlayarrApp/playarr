@@ -59,7 +59,19 @@ namespace Playarr.Xbox
             Environment = new XboxAppEnvironment();
         }
 
-        protected override async void OnLaunched(LaunchActivatedEventArgs e)
+        protected override async void OnLaunched(LaunchActivatedEventArgs e) => await StartAsync(e.PrelaunchActivated, e.Arguments);
+
+        /// <summary>A download toast's button (Pause, Resume, Cancel) brings the app up and acts on that download.</summary>
+        protected override async void OnActivated(IActivatedEventArgs args)
+        {
+            if (args is Windows.ApplicationModel.Activation.ToastNotificationActivatedEventArgs toast)
+            {
+                await StartAsync(false, string.Empty);
+                await Services.DownloadService.Instance.HandleToastActionAsync(toast.Argument);
+            }
+        }
+
+        private async System.Threading.Tasks.Task StartAsync(bool prelaunchActivated, string arguments)
         {
             var rootFrame = RootFrame;
 
@@ -108,7 +120,7 @@ namespace Playarr.Xbox
                 };
             }
 
-            if (!e.PrelaunchActivated)
+            if (!prelaunchActivated)
             {
                 if (rootFrame.Content is null)
                 {
@@ -123,7 +135,7 @@ namespace Playarr.Xbox
                     // XboxAppEnvironment.HasPersistedSessionAsync.
                     var hasSession = await Environment.HasPersistedSessionAsync();
                     var startPageType = hasSession ? typeof(ProfilesPage) : typeof(LoginPage);
-                    rootFrame.Navigate(startPageType, e.Arguments);
+                    rootFrame.Navigate(startPageType, arguments);
                 }
 
                 Window.Current.Activate();

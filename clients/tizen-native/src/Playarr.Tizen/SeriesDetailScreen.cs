@@ -1,5 +1,6 @@
 using Playarr.Core.Models;
 using Playarr.Tizen.Logic;
+using DownloadRecord = Playarr.Tizen.Logic.DownloadRecord; // Playarr.Core now has its own
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
 

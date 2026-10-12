@@ -203,7 +203,8 @@ namespace Playarr.Xbox.Views
                 parameter.ResumePositionMs,
                 parameter.Title,
                 parameter.WorkId,
-                parameter.UpNext.Count > 0 ? parameter.UpNext[0] : null);
+                parameter.UpNext.Count > 0 ? parameter.UpNext[0] : null,
+                parameter.PreferLocal);
 
             PlayerElement.SetMediaPlayer(_viewModel.Player);
             Window.Current.VisibilityChanged += Window_VisibilityChanged;

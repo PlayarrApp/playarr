@@ -155,6 +155,34 @@ namespace Playarr.Xbox.Views
             _actionsInWatchlist = inWatchlist;
             ActionRow.Children.Clear();
             ActionRow.Visibility = Visibility.Visible;
+            var download = Ui.Filled(Ui.Pill("Download", null));
+            download.Click += async (s, e) =>
+            {
+                var template = _viewModel.DownloadTemplate();
+                if (template == null)
+                {
+                    return;
+                }
+
+                var service = Services.DownloadService.Instance;
+                await service.LoadAsync();
+                if (service.ForMediaFile(template.MediaFileId) is { } existing)
+                {
+                    Ui.SetPillText(download, existing.State == Playarr.Core.Models.DownloadState.Ready ? "Downloaded" : "Downloading\u2026");
+                    return;
+                }
+
+                try
+                {
+                    Ui.SetPillText(download, "Downloading\u2026");
+                    await service.StartAsync(template);
+                }
+                catch (Exception)
+                {
+                    Ui.SetPillText(download, "Download failed");
+                }
+            };
+            ActionRow.Children.Add(download);
             var watch = Ui.Filled(Ui.Pill(inWatchlist ? "\u2713  Remove from watchlist" : "+  Add to watchlist", null));
             watch.Click += async (s, e) =>
             {

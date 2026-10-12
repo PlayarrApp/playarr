@@ -74,6 +74,21 @@ namespace Playarr.Core.Networking
 
         Task<ProfileAvatarSettingResponse> GetProfileAvatarAsync(CancellationToken cancellationToken = default);
 
+        Task<DownloadOptionsResponse> GetDownloadOptionsAsync(Guid mediaFileId, CancellationToken cancellationToken = default);
+
+        Task<DownloadTicket> CreateDownloadAsync(Guid mediaFileId, string qualityId, CancellationToken cancellationToken = default);
+
+        Task<DownloadTicket> GetDownloadAsync(Guid id, CancellationToken cancellationToken = default);
+
+        /// <summary>Tells the server the device has the whole file, so its staged copy is deleted at once.</summary>
+        Task CompleteDownloadAsync(Guid id, CancellationToken cancellationToken = default);
+
+        /// <summary>Cancels or deletes a ticket and its server-side file.</summary>
+        Task CancelDownloadAsync(Guid id, CancellationToken cancellationToken = default);
+
+        /// <summary>Opens the ticket's file from <paramref name="from"/> (a <c>Range</c> request); the caller disposes the response.</summary>
+        Task<HttpResponseMessage> OpenDownloadFileAsync(Guid id, long from, CancellationToken cancellationToken = default);
+
         Task<ProfilePinSettingResponse> GetProfilePinSettingAsync(CancellationToken cancellationToken = default);
 
         /// <summary>Sets an exactly four-digit PIN, or removes the lock with <c>null</c>.</summary>
@@ -358,6 +373,69 @@ namespace Playarr.Core.Networking
 
         public Task<ProfileAvatarSettingResponse> GetProfileAvatarAsync(CancellationToken cancellationToken = default) =>
             GetAsync<ProfileAvatarSettingResponse>("/api/v1/users/me/profile-avatar", null, authenticated: true, cancellationToken);
+        public Task<DownloadOptionsResponse> GetDownloadOptionsAsync(Guid mediaFileId, CancellationToken cancellationToken = default) =>
+            GetAsync<DownloadOptionsResponse>($"/api/v1/media/{mediaFileId:D}/download-options", null, authenticated: true, cancellationToken);
+
+        public Task<DownloadTicket> CreateDownloadAsync(Guid mediaFileId, string qualityId, CancellationToken cancellationToken = default) =>
+            SendAsync<DownloadTicket>(HttpMethod.Post, "/api/v1/downloads",
+                "{\"media_file_id\":\"" + mediaFileId.ToString("D") + "\",\"quality_id\":" + Newtonsoft.Json.JsonConvert.ToString(qualityId) + "}", cancellationToken);
+
+        public Task<DownloadTicket> GetDownloadAsync(Guid id, CancellationToken cancellationToken = default) =>
+            GetAsync<DownloadTicket>($"/api/v1/downloads/{id:D}", null, authenticated: true, cancellationToken);
+
+        public Task CompleteDownloadAsync(Guid id, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(HttpMethod.Post, $"/api/v1/downloads/{id:D}/complete", null!, cancellationToken);
+
+        public Task CancelDownloadAsync(Guid id, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(HttpMethod.Delete, $"/api/v1/downloads/{id:D}", null!, cancellationToken);
+
+        public async Task<HttpResponseMessage> OpenDownloadFileAsync(Guid id, long from, CancellationToken cancellationToken = default)
+        {
+            async Task<HttpResponseMessage> Once(bool forceRefresh)
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, BuildUri($"/api/v1/downloads/{id:D}/file", null));
+                request.Headers.TryAddWithoutValidation(ClientPlatformHeader, _configuration.ClientPlatform.WireName());
+                request.Headers.TryAddWithoutValidation(ClientVersionHeader, _configuration.ClientVersion);
+                if (from > 0)
+                {
+                    request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(from, null);
+                }
+
+                if (_tokens != null)
+                {
+                    var token = await _tokens.GetAccessTokenAsync(forceRefresh, cancellationToken).ConfigureAwait(false);
+                    request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {token}");
+                }
+
+                try
+                {
+                    return await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception transport) when (transport is HttpRequestException or OperationCanceledException
+                                                  && !cancellationToken.IsCancellationRequested)
+                {
+                    throw new ApiException(ApiErrorKind.Transport, "the request could not be sent", innerException: transport);
+                }
+            }
+
+            var response = await Once(false).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.Unauthorized && _tokens != null)
+            {
+                response.Dispose();
+                response = await Once(true).ConfigureAwait(false);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var payload = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var status = response.StatusCode;
+                response.Dispose();
+                throw ApiException.ForStatus(status, JsonCoding.Deserialize<ApiErrorBody>(payload));
+            }
+
+            return response;
+        }
+
         public Task<ProfilePinSettingResponse> GetProfilePinSettingAsync(CancellationToken cancellationToken = default) =>
             GetAsync<ProfilePinSettingResponse>("/api/v1/users/me/profile-pin", null, authenticated: true, cancellationToken);
 
