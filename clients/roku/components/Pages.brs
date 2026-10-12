@@ -743,17 +743,21 @@ sub applyClientsChrome()
     end for
 end sub
 
+function clientPlatformIconRole(clientId as String) as String
+    if clientId = "vidaa" then return "brand"
+    if clientId = "android" then return "clientAndroid"
+    if clientId = "apple" or clientId = "harmony" or clientId = "server" then return "ink"
+    if clientId = "webos" then return "clientWebOS"
+    if clientId = "tizen" then return "clientTizen"
+    if clientId = "roku" then return "clientRoku"
+    if clientId = "chromecast" then return "clientChromecast"
+    if clientId = "xbox" then return "clientXbox"
+    if clientId = "firetv" then return "clientFireTV"
+    return "ink"
+end function
+
 function clientPlatformIconColor(clientId as String) as Integer
-    if clientId = "vidaa" then return ThemeColor("brand")
-    if clientId = "android" then return ThemeColor("clientAndroid")
-    if clientId = "apple" or clientId = "harmony" or clientId = "server" then return ThemeColor("ink")
-    if clientId = "webos" then return ThemeColor("clientWebOS")
-    if clientId = "tizen" then return ThemeColor("clientTizen")
-    if clientId = "roku" then return ThemeColor("clientRoku")
-    if clientId = "chromecast" then return ThemeColor("clientChromecast")
-    if clientId = "xbox" then return ThemeColor("clientXbox")
-    if clientId = "firetv" then return ThemeColor("clientFireTV")
-    return ThemeColor("ink")
+    return ThemeColor(clientPlatformIconRole(clientId))
 end function
 
 sub centerClientsKicker()
@@ -1060,6 +1064,7 @@ sub renderClientSummary(clientId as String, info as Object)
     logoMark.width = iconSize
     logoMark.height = iconSize
     logoMark.blendColor = clientPlatformIconColor(clientId)
+    ThemeSetRole(logoMark, clientPlatformIconRole(clientId))
     m.pageBody.AppendChild(logoMark)
     platform = info.platform
     if clientId = "server" then platform = "Server, not a playback app"
