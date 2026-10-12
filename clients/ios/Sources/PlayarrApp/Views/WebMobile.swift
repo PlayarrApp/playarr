@@ -509,7 +509,10 @@ struct WMRailCard: View {
 }
 
 /// Library grid card (`tv-title-card`): two columns of 173x97 art with a title line.
+/// Web phone library (#924): cards fit beside the 52 pt letter-rail pad, (393 - 16 gutter - 52 pad - 12 gap) / 2 on the 393 pt
+/// reference, never below 110 pt.
 struct WMLibraryCard: View {
+    static var width: CGFloat { max(110, (UIScreen.main.bounds.width - 16 - 52 - 12) / 2) }
     let work: Work
     let apiClient: PlayarrAPIClient
     var unseen = true
@@ -518,7 +521,7 @@ struct WMLibraryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
-                .frame(width: 175, height: 98.4)
+                .frame(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16)
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .wmCardShadow()
@@ -527,7 +530,7 @@ struct WMLibraryCard: View {
                 }
             WMText(work.title, 10.4, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
         }
-        .frame(width: 175, height: 126, alignment: .topLeading)
+        .frame(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16 + 28, alignment: .topLeading)
 
     }
 }

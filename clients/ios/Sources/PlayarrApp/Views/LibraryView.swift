@@ -328,13 +328,13 @@ struct LibraryView: View {
     private func alphabetRail(_ proxy: ScrollViewProxy) -> some View {
         let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
         return GeometryReader { geo in
-            VStack(spacing: 0) {
+            ScrollView(.vertical) { VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
                     ZStack {
-                        if letter == "#" { Circle().fill(WM.ink.opacity(0.78)).frame(width: 15, height: 15) }
+                        if letter == "#" { Circle().fill(WM.ink.opacity(0.78)).frame(width: 22, height: 22) }
                         Text(letter).font(WM.font(9.5, 700)).foregroundStyle(letter == "#" ? PlayarrStyle.background : WM.muted)
                     }
-                    .frame(width: 15).frame(maxHeight: .infinity)
+                    .frame(width: 44).frame(height: 25)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         let first = viewModel.works.first { work in
@@ -344,9 +344,10 @@ struct LibraryView: View {
                         if let first { withAnimation { proxy.scrollTo(first.id, anchor: .top) } }
                     }
                 }
-            }
-            .frame(width: 15, height: max(0, geo.size.height - 88 - 84))
-            .offset(x: geo.size.width - 15, y: 88)
+            } }
+            .scrollIndicators(.hidden)
+            .frame(width: 44, height: max(0, geo.size.height - 90 - 84), alignment: .top)
+            .offset(x: geo.size.width - 48, y: 90)
         }
     }
 
@@ -354,8 +355,8 @@ struct LibraryView: View {
         ScrollView(.vertical) {
             LazyVGrid(
                 columns: [
-                    GridItem(.fixed(175), spacing: 12, alignment: .top),
-                    GridItem(.fixed(175), spacing: 12, alignment: .top),
+                    GridItem(.fixed(WMLibraryCard.width), spacing: 12, alignment: .top),
+                    GridItem(.fixed(WMLibraryCard.width), spacing: 12, alignment: .top),
                 ],
                 alignment: .leading,
                 spacing: 21
