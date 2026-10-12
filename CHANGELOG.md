@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Match Android phone Search geometry, idle illustration and muted colour to web, and label generated detail chapter markers consistently with web.
 - D-pad parity failures now make the suite command fail, while explicitly skipped player checks remain non-failing.
 - Fire TV: replace stepped card-focus shadow and glow layers with Vega native blurred shadows.
 - Wait for the routed webOS view, finite page animations, visible content and decoded images to settle before capture; dismiss the Search keyboard through the real Filters and Back controls, retaining focus on Filters. Send a character event with CDP Enter so Calendar view buttons activate in the simulator.
