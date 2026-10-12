@@ -52,13 +52,19 @@ sub onSpecChange()
     end if
     for lineIndex = 0 to lines.Count() - 1
         line = lines[lineIndex]
+        lineOffset = 0.0
+        if wrapWidth > 0 and spec.horizAlign = "center"
+            lineOffset = (wrapWidth - lineWidth(line, tracking)) / 2
+        else if wrapWidth > 0 and spec.horizAlign = "right"
+            lineOffset = wrapWidth - lineWidth(line, tracking)
+        end if
         if wholeLines
             glyph = nextGlyph()
             glyph.font = font
             glyph.text = line
             glyph.color = ThemeColor(spec.role)
             ThemeSetRole(glyph, spec.role)
-            glyph.translation = [0, lineIndex * lineHeight]
+            glyph.translation = [lineOffset, lineIndex * lineHeight]
             glyph.visible = true
             line = ""
         end if
@@ -71,7 +77,7 @@ sub onSpecChange()
                 glyph.text = ch
                 glyph.color = ThemeColor(spec.role)
                 ThemeSetRole(glyph, spec.role)
-                glyph.translation = [x, lineIndex * lineHeight]
+                glyph.translation = [lineOffset + x, lineIndex * lineHeight]
                 glyph.visible = true
             end if
         end for

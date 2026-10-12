@@ -35,6 +35,7 @@ sub pagesInit()
     m.pageKind = ""
     m.clientGuideOpen = false
     m.clientActiveId = ""
+    m.clientsScrollBottom = 0
     m.pageData = invalid
     m.pageStatus = ""
     m.calendarAnchor = invalid
@@ -70,6 +71,21 @@ function pgLabel(parent as Object, x as Float, y as Float, w as Float, h as Floa
         if opts.lineSpacing <> invalid then label.lineSpacing = opts.lineSpacing
         if opts.mono = true then label.font = PlayarrMakeFont(weight, size, true)
     end if
+    parent.AppendChild(label)
+    return label
+end function
+
+function pgTrackedText(parent as Object, x as Float, y as Float, w as Float, text as String, size as Integer, weight as Integer, tracking as Float, role as String, upper = false as Boolean, horizAlign = "left" as String, maxLines = 1 as Integer, lineHeight = 0.0 as Float) as Object
+    label = CreateObject("roSGNode", "TrackedText")
+    label.translation = [x, y]
+    spec = { text: text, size: size, weight: weight, tracking: tracking, role: role, upper: upper }
+    if w > 0
+        spec.width = w
+        spec.horizAlign = horizAlign
+        spec.maxLines = maxLines
+        spec.lineHeight = lineHeight
+    end if
+    label.spec = spec
     parent.AppendChild(label)
     return label
 end function
@@ -150,11 +166,15 @@ sub pgFocusable(x as Float, y as Float, w as Float, h as Float, r as Float, acti
 end sub
 
 ' Pill button: width from the text. style "primary" (accent fill) or "secondary" (outlined). Returns the width.
-function pgButton(parent as Object, x as Float, y as Float, h as Float, text as String, style as String, action as String, data = invalid as Dynamic, padX = 21 as Float, scrolls = false as Boolean) as Float
-    probe = pgLabel(parent, x, y, 0, h, text, 15, 700, "inkSoft")
+function pgButtonWidth(parent as Object, text as String, padX as Float, h as Float, fontSize = 15 as Integer, fontWeight = 700 as Integer) as Float
+    probe = pgLabel(parent, 0, 0, 0, h, text, fontSize, fontWeight, "inkSoft")
     textW = probe.boundingRect().width
     parent.removeChild(probe)
-    w = textW + padX * 2
+    return textW + padX * 2
+end function
+
+function pgButton(parent as Object, x as Float, y as Float, h as Float, text as String, style as String, action as String, data = invalid as Dynamic, padX = 21 as Float, scrolls = false as Boolean, fontSize = 15 as Integer, fontWeight = 700 as Integer) as Float
+    w = pgButtonWidth(parent, text, padX, h, fontSize, fontWeight)
     textRole = "inkSoft"
     if style = "primary"
         pgRound(parent, x, y, w, h, h / 2, "accent")
@@ -163,7 +183,7 @@ function pgButton(parent as Object, x as Float, y as Float, h as Float, text as 
         pgRound(parent, x, y, w, h, h / 2, "surface")
         pgRound(parent, x, y, w, h, h / 2, "line", -1, true)
     end if
-    pgLabel(parent, x, y, w, h, text, 15, 700, textRole, { horizAlign: "center", vertAlign: "center" })
+    pgLabel(parent, x, y, w, h, text, fontSize, fontWeight, textRole, { horizAlign: "center", vertAlign: "center" })
     pgFocusable(x, y, w, h, h / 2, action, data, scrolls)
     return w
 end function
@@ -457,8 +477,8 @@ function pageOnKey(key as String) as Boolean
 end function
 
 sub scrollClientDetails(direction as String)
-    if m.clientsContentBottom = invalid then return
-    maxScroll = m.clientsContentBottom - 1030
+    if m.clientsScrollBottom = invalid then return
+    maxScroll = m.clientsScrollBottom - 1030
     if maxScroll < 0 then return
     oldY = m.pageScrollY
     if direction = "down"
@@ -520,6 +540,7 @@ sub openPage(kind as String)
         m.clientGuideOpen = false
         m.clientActiveId = ""
         m.clientsContentBottom = 0
+        m.clientsScrollBottom = 0
     end if
     parityEmit("page", kind)
     m.pageData = invalid
@@ -912,18 +933,37 @@ function clientMetadata(clientId as String) as Object
 end function
 
 function centeredClientButton(y as Float, label as String, url as String, style = "primary" as String) as Float
-    width = Len(label) * 8.8 + 42
+    width = pgButtonWidth(m.pageBody, label, 16, 44, 13, 720)
     x = 960 - width / 2
-    return pgButton(m.pageBody, x, y, 48, label, style, "clientOpenLink", { title: label, url: url }, 21, true)
+    return pgButton(m.pageBody, x, y, 44, label, style, "clientOpenLink", { title: label, url: url }, 16, true, 13, 720)
 end function
+
+sub clientActionPair(y as Float, firstLabel as String, firstUrl as String, secondLabel as String, secondUrl as String)
+    gap = 12.0
+    firstWidth = pgButtonWidth(m.pageBody, firstLabel, 16, 44, 13, 720)
+    secondWidth = pgButtonWidth(m.pageBody, secondLabel, 16, 44, 13, 720)
+    x = 960 - (firstWidth + gap + secondWidth) / 2
+    pgButton(m.pageBody, x, y, 44, firstLabel, "primary", "clientOpenLink", { title: firstLabel, url: firstUrl }, 16, true, 13, 720)
+    pgButton(m.pageBody, x + firstWidth + gap, y, 44, secondLabel, "secondary", "clientOpenLink", { title: secondLabel, url: secondUrl }, 16, true, 13, 720)
+end sub
 
 sub drawClientPanel(x as Float, y as Float, w as Float, h as Float, safety = false as Boolean)
     if safety
         pgRound(m.pageBody, x, y, w, h, 28, "surfaceStrong", 204)
     else
-        pgRound(m.pageBody, x, y, w, h, 28, "surfaceStrong", 174)
-        pgRound(m.pageBody, x, y, w, h, 28, "lineStrong", 174, true)
+        line = ThemeColor("lineStrong")
+        borderAlpha = Int((line and &hFF) * 0.68)
+        pgRound(m.pageBody, x, y, w, h, 28, "surfaceStrong", 184)
+        pgRound(m.pageBody, x, y, w, h, 28, "lineStrong", borderAlpha, true)
     end if
+end sub
+
+sub drawClientPackageNote(x as Float, y as Float, w as Float, h as Float, text as String, fontSize as Integer, maxLines as Integer)
+    line = ThemeColor("lineStrong")
+    borderAlpha = Int((line and &hFF) * 0.56)
+    pgRound(m.pageBody, x, y, w, h, 16, "surface", 184)
+    pgRound(m.pageBody, x, y, w, h, 16, "lineStrong", borderAlpha, true)
+    pgLabel(m.pageBody, x + 20, y + 14, w - 40, h - 28, text, fontSize, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: maxLines })
 end sub
 
 sub clientSectionHeading(y as Float, number as String, kicker as String, title as String)
@@ -932,9 +972,17 @@ sub clientSectionHeading(y as Float, number as String, kicker as String, title a
     pgLabel(m.pageBody, 580, y + 24, 920, 42, title, 30, 500, "ink")
 end sub
 
+sub serverSectionHeading(panelY as Float, number as String, kicker as String, title as String)
+    pgLabel(m.pageBody, 548, panelY + 51, 34, 20, number, 11, 700, "inkMuted", { mono: true })
+    pgTrackedText(m.pageBody, 598, panelY + 48, 770, kicker, 12, 780, 1.68, "brandInk", true, "left", 1, 16)
+    pgTrackedText(m.pageBody, 598, panelY + 58, 770, title, 59, 500, -3.54, "ink", false, "left", 2, 59)
+end sub
+
 sub clientInstallStep(x as Float, y as Float, number as String, title as String, description as String)
-    pgRound(m.pageBody, x, y, 430, 190, 18, "surface", 188)
-    pgRound(m.pageBody, x, y, 430, 190, 18, "lineStrong", 156, true)
+    line = ThemeColor("lineStrong")
+    lineAlpha = Int((line and &hFF) * 0.62)
+    pgRound(m.pageBody, x, y, 430, 190, 18, "surface", 189)
+    pgRound(m.pageBody, x, y, 430, 190, 18, "lineStrong", lineAlpha, true)
     pgLabel(m.pageBody, x + 22, y + 18, 38, 20, number, 11, 700, "inkMuted", { mono: true })
     pgLabel(m.pageBody, x + 74, y + 16, 326, 48, title, 17, 700, "ink", { wrap: true, maxLines: 2 })
     pgLabel(m.pageBody, x + 74, y + 70, 326, 108, description, 13, 400, "inkSoft", { wrap: true, maxLines: 6 })
@@ -973,62 +1021,94 @@ sub focusClientTile(clientId as String)
 end sub
 
 sub renderClientSummary(clientId as String, info as Object)
-    panelHeight = 560
-    if clientId = "webos" or clientId = "tizen" then panelHeight = 650
-    if clientId = "android" then panelHeight = 360
-    if clientId = "server" then panelHeight = 820
+    panelHeight = 495
+    if clientId = "roku" then panelHeight = 563
+    if clientId = "android" then panelHeight = 379
+    if clientId = "webos" then panelHeight = 674
+    if clientId = "tizen" then panelHeight = 760
+    if clientId = "server" then panelHeight = 967
     drawClientPanel(580, 700, 760, panelHeight)
     if clientId = "android"
-        pgLabel(m.pageBody, 700, 748, 520, 18, UCase(info.platform), 10, 800, "inkMuted", { horizAlign: "center" })
-        pgLabel(m.pageBody, 640, 778, 640, 60, "One Android app. Every screen.", 40, 500, "ink", { horizAlign: "center" })
-        pgLabel(m.pageBody, 640, 852, 640, 72, info.description, 14, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
-        pgLabel(m.pageBody, 700, 936, 520, 22, UCase(info.status), 10, 800, "inkMuted", { horizAlign: "center" })
+        pgTrackedText(m.pageBody, 629, 750, 662, "Android", 12, 760, 2.13, "inkMuted", true, "center", 1, 16)
+        pgTrackedText(m.pageBody, 629, 763, 662, "One Android app. Every screen.", 64, 500, -3.84, "ink", false, "center", 2, 64)
+        pgLabel(m.pageBody, 729, 919, 462, 44, info.description, 14, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 2 })
         return
     end if
 
     logo = CreateObject("roSGNode", "Poster")
     logo.uri = "pkg:/images/clients-bubble.png"
-    logo.translation = [868, 738]
+    logo.translation = [868, 750]
     logo.width = 184
     logo.height = 184
-    logo.blendColor = ThemeColor("surfaceStrong")
-    ThemeSetRole(logo, "surfaceStrong")
+    logo.blendColor = ThemeColor("surfaceStrong", 199)
+    ThemeSetRole(logo, "surfaceStrong", 199)
     m.pageBody.AppendChild(logo)
     logoBorder = CreateObject("roSGNode", "Poster")
     logoBorder.uri = "pkg:/images/clients-bubble-border.png"
-    logoBorder.translation = [868, 738]
+    logoBorder.translation = [868, 750]
     logoBorder.width = 184
     logoBorder.height = 184
+    line = ThemeColor("lineStrong")
+    borderAlpha = Int((line and &hFF) * 0.66)
+    logoBorder.blendColor = ThemeWithAlpha(line, borderAlpha)
+    ThemeSetRole(logoBorder, "lineStrong", borderAlpha)
     m.pageBody.AppendChild(logoBorder)
     logoMark = CreateObject("roSGNode", "Poster")
     logoMark.uri = "pkg:/images/client-icon-" + clientId + ".png"
     iconSize = 88
-    if clientId = "harmony" then iconSize = 114
-    logoMark.translation = [960 - iconSize / 2, 830 - iconSize / 2]
+    logoMark.translation = [960 - iconSize / 2, 842 - iconSize / 2]
     logoMark.width = iconSize
     logoMark.height = iconSize
     logoMark.blendColor = clientPlatformIconColor(clientId)
     m.pageBody.AppendChild(logoMark)
-    pgLabel(m.pageBody, 700, 950, 520, 18, UCase(info.platform), 10, 800, "inkMuted", { horizAlign: "center" })
+    platform = info.platform
+    if clientId = "server" then platform = "Server, not a playback app"
+    pgTrackedText(m.pageBody, 629, 958, 662, platform, 12, 760, 2.13, "inkMuted", true, "center", 1, 18)
 
     title = info.name
     if clientId = "webos" then title = "Playarr for LG webOS."
     if clientId = "tizen" then title = "Playarr for Samsung Tizen."
     if clientId = "server" then title = "Playarr Server."
-    pgLabel(m.pageBody, 640, 976, 640, 62, title, 42, 500, "ink", { horizAlign: "center" })
-    descriptionHeight = 96
-    statusY = 1142
-    if clientId = "webos" or clientId = "tizen"
-        descriptionHeight = 58
-        statusY = 1156
-        pgLabel(m.pageBody, 640, 1042, 640, descriptionHeight, info.description, 13, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
-        note = "A WGT must carry valid Samsung/Tizen signatures for its target install path. The package is shown when a compatible signed artifact has been published; otherwise build with your own certificate profile."
-        if clientId = "webos" then note = "The package button serves the latest developer IPK only after one has been published. If it is unavailable, build the same IPK from source with the commands below."
-        pgLabel(m.pageBody, 640, 1102, 640, 48, note, 12, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
-    else
-        pgLabel(m.pageBody, 640, 1042, 640, descriptionHeight, info.description, 14, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 4 })
+    titleHeight = 64
+    if clientId = "tizen" then titleHeight = 128
+    titleY = 983
+    ' SceneGraph Label top alignment includes more font ascent space than the Web line box.
+    ' Keep titleY as the CSS line-box anchor for following content, but offset visible glyphs up to match it.
+    pgTrackedText(m.pageBody, 629, titleY - 12, 662, title, 64, 500, -3.84, "ink", false, "center", 2, 64)
+
+    descriptionY = titleY + titleHeight + 16
+    descriptionW = 462
+    descriptionHeight = 44
+    descriptionSize = 14
+    descriptionLines = 2
+    if clientId = "webos" or clientId = "tizen" or clientId = "server"
+        descriptionW = 512
+        descriptionSize = 14
     end if
-    pgLabel(m.pageBody, 700, statusY, 520, 22, UCase(info.status), 10, 800, "inkMuted", { horizAlign: "center" })
+    if clientId = "server"
+        descriptionHeight = 88
+        descriptionLines = 4
+    else if clientId = "chromecast" or clientId = "xbox" or clientId = "harmony" or clientId = "firetv"
+        descriptionHeight = 88
+        descriptionLines = 4
+    end if
+    pgLabel(m.pageBody, 960 - descriptionW / 2, descriptionY, descriptionW, descriptionHeight, info.description, descriptionSize, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: descriptionLines })
+
+    statusText = info.status
+    if clientId = "webos" or clientId = "tizen" then statusText = "Developer preview"
+    statusY = descriptionY + descriptionHeight + 20
+    pgTrackedText(m.pageBody, 629, statusY, 662, statusText, 11, 780, 1.3, "inkSoft", true, "center", 1, 17)
+
+    if clientId = "webos" or clientId = "tizen"
+        note = "A WGT must carry valid Samsung/Tizen signatures for its target install path. The package is shown when a compatible signed artifact has been published; otherwise build with your own certificate profile."
+        noteHeight = 117
+        if clientId = "webos"
+            note = "The package button serves the latest developer IPK only after one has been published. If it is unavailable, build the same IPK from source with the commands below."
+            noteHeight = 95
+        end if
+        noteY = statusY + 36
+        drawClientPackageNote(729, noteY, 462, noteHeight, note, 14, 5)
+    end if
 end sub
 
 sub renderClientDetails(clientId as String)
@@ -1040,29 +1120,29 @@ sub renderClientDetails(clientId as String)
     if clientId <> "vidaa" then renderClientSummary(clientId, info)
 
     if clientId = "roku"
-        centeredClientButton(1184, "Download Roku ZIP", "https://playarr.app/downloads/roku/playarr-roku.zip")
+        centeredClientButton(1171, "Download Roku ZIP", "https://playarr.app/downloads/roku/playarr-roku.zip")
     else if clientId = "android"
-        centeredClientButton(988, "Download Android APK", "https://playarr.app/downloads/android/playarr-android.apk")
+        centeredClientButton(987, "Download Android APK", "https://playarr.app/downloads/android/playarr-android.apk")
     else if clientId = "webos"
-        centeredClientButton(1190, "Download LG webOS IPK", "https://playarr.app/downloads/webos/playarr-webos.ipk")
-        pgButton(m.pageBody, 1030, 1248, 48, "Open source and README", "secondary", "clientOpenLink", { title: "LG webOS source and README", url: "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-webos" }, 18, true)
+        clientActionPair(1282, "Download LG webOS IPK", "https://playarr.app/downloads/webos/playarr-webos.ipk", "Open source and README", "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-webos")
     else if clientId = "tizen"
-        centeredClientButton(1190, "Download signed Samsung WGT", "https://playarr.app/downloads/tizen/playarr-tizen.wgt")
-        pgButton(m.pageBody, 1030, 1248, 48, "Open source and README", "secondary", "clientOpenLink", { title: "Samsung Tizen source and README", url: "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-tizen" }, 18, true)
+        clientActionPair(1368, "Download signed Samsung WGT", "https://playarr.app/downloads/tizen/playarr-tizen.wgt", "Open source and README", "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-tizen")
     else if clientId = "server"
-        pgLabel(m.pageBody, 660, 1180, 600, 60, "Prebuilt Linux tarballs (x86-64 and ARM64) and a public container image are published with every release. Each tarball holds the server, the Admin UI, the licence and example systemd units. Pick the build for your CPU.", 12, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
-        centeredClientButton(1250, "Download Linux x86-64 (.tar.gz)", "https://playarr.app/downloads/server/playarr-server-linux-amd64.tar.gz")
-        centeredClientButton(1310, "Download Linux ARM64 (.tar.gz)", "https://playarr.app/downloads/server/playarr-server-linux-arm64.tar.gz", "secondary")
-        centeredClientButton(1370, "SHA-256 checksum file, x86-64", "https://playarr.app/downloads/server/playarr-server-linux-amd64.tar.gz.sha256", "secondary")
-        centeredClientButton(1430, "SHA-256 checksum file, ARM64", "https://playarr.app/downloads/server/playarr-server-linux-arm64.tar.gz.sha256", "secondary")
-        pgLabel(m.pageBody, 650, 1490, 620, 54, "Check the download with sha256sum before you run it. Needs 64-bit Linux with glibc 2.39 or newer and ffmpeg on the PATH; the container image includes everything.", 12, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 3 })
+        drawClientPackageNote(729, 1207, 462, 88, "Prebuilt Linux tarballs (x86-64 and ARM64) and a public container image are published with every release. Each tarball holds the server, the Admin UI, the licence and example systemd units. Pick the build for your CPU.", 12, 4)
+        clientActionPair(1318, "Download Linux x86-64 (.tar.gz)", "https://playarr.app/downloads/server/playarr-server-linux-amd64.tar.gz", "Download Linux ARM64 (.tar.gz)", "https://playarr.app/downloads/server/playarr-server-linux-arm64.tar.gz")
+        pgLabel(m.pageBody, 629, 1378, 662, 19, "LINUX-AMD64", 12, 760, "inkMuted")
+        pgButton(m.pageBody, 1110, 1380, 44, "SHA-256 checksum file", "secondary", "clientOpenLink", { title: "SHA-256 checksum file, x86-64", url: "https://playarr.app/downloads/server/playarr-server-linux-amd64.tar.gz.sha256" }, 16, true, 13, 720)
+        pgLabel(m.pageBody, 629, 1428, 662, 19, "LINUX-ARM64", 12, 760, "inkMuted")
+        pgButton(m.pageBody, 1110, 1430, 44, "SHA-256 checksum file", "secondary", "clientOpenLink", { title: "SHA-256 checksum file, ARM64", url: "https://playarr.app/downloads/server/playarr-server-linux-arm64.tar.gz.sha256" }, 16, true, 13, 720)
+        drawClientPackageNote(729, 1480, 462, 117, "Check the download with sha256sum before you run it. Needs 64-bit Linux with glibc 2.39 or newer (Debian 13, Ubuntu 24.04 or newer) and ffmpeg on the PATH; the container image has everything included.", 12, 5)
     end if
 
     m.clientsContentBottom = 1280
+    if clientId = "android" then m.clientsContentBottom = 1080
     if clientId = "roku" then m.clientsContentBottom = 2178
     if clientId = "vidaa" then m.clientsContentBottom = 2040
     if clientId = "webos" or clientId = "tizen" then m.clientsContentBottom = 2200
-    if clientId = "server" then m.clientsContentBottom = 4050
+    if clientId = "server" then m.clientsContentBottom = 4513
     if clientId = "roku"
         renderRokuClientGuide()
     else if clientId = "vidaa"
@@ -1073,6 +1153,7 @@ sub renderClientDetails(clientId as String)
         renderServerClientGuide()
     end if
     pgLabel(m.pageBody, 560, m.clientsContentBottom + 60, 800, 26, "One library. Every screen. Your server stays yours.", 12, 400, "inkSoft", { horizAlign: "center" })
+    m.clientsScrollBottom = m.clientsContentBottom + 86
     applyClientsChrome()
 end sub
 
@@ -1181,35 +1262,39 @@ sub renderSmartTvClientGuide(clientId as String)
 end sub
 
 sub renderServerClientGuide()
-    clientSectionHeading(1580, "01", "Before you install", "System requirements")
-    pgLabel(m.pageBody, 580, 1658, 840, 44, "Playarr Server reads from the library sources you already run and needs persistent storage, ffmpeg and a network path for your clients.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
-    drawClientPanel(500, 1718, 920, 432)
-    clientInstallStep(540, 1738, "01", "64-bit Linux", "x86-64 or ARM64. Docker is optional; the container image is built for both architectures. The server stores its SQLite database and artwork cache in a writable data directory, so it needs persistent storage.")
-    clientInstallStep(970, 1738, "02", "ffmpeg and ffprobe", "Required for thumbnails, track probing and on-demand transcoding. The Docker image includes them. On systemd or Kubernetes installs without that image, install ffmpeg (which provides ffprobe) on the host and make sure both are on the server's PATH.")
-    clientInstallStep(540, 1940, "03", "Your media apps", "Playarr Server reads from the library sources that you already run. Register each one through the server's admin API after it starts.")
-    clientInstallStep(970, 1940, "04", "Network port 8484", "The API listens on TCP 8484, plain HTTP by default. Clients on the same network can connect to it directly. Metrics are on 9090 and should stay on your private network.")
+    requirementsY = 1709
+    drawClientPanel(500, requirementsY, 920, 610)
+    serverSectionHeading(requirementsY, "01", "Before you install", "System requirements")
+    clientInstallStep(540, 1874, "01", "64-bit Linux", "x86-64 or ARM64. Docker is optional; the container image is built for both architectures. The server stores its SQLite database and artwork cache in a writable data directory, so it needs persistent storage.")
+    clientInstallStep(970, 1874, "02", "ffmpeg and ffprobe", "Required for thumbnails, track probing and on-demand transcoding. The Docker image includes them. On systemd or Kubernetes installs without that image, install ffmpeg (which provides ffprobe) on the host and make sure both are on the server's PATH.")
+    clientInstallStep(540, 2076, "03", "Your media apps", "Playarr Server reads from the library sources that you already run. Register each one through the server's admin API after it starts.")
+    clientInstallStep(970, 2076, "04", "Network port 8484", "The API listens on TCP 8484, plain HTTP by default. Clients on the same network can connect to it directly. Metrics are on 9090 and should stay on your private network.")
 
-    clientSectionHeading(2180, "02", "Supported install methods", "Choose one")
-    pgLabel(m.pageBody, 580, 2258, 860, 48, "Pick one. Each method runs the same single all-in-one server process. The Docker commands pull the public image; the other methods use the downloaded tarball or your own chart values.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
-    drawClientPanel(500, 2320, 920, 1120)
-    clientInstallStep(540, 2340, "01", "Docker", "Pulls the multi-arch image, ffmpeg included, and starts one container with SQLite state in a named volume. The generated PLAYARR_JWT_SECRET keeps sessions across restarts; save it if you recreate the container.")
-    clientInstallStep(970, 2340, "02", "Docker Compose", "The same image as a compose file. Replace the secret with a long random string, then start it and open port 8484.")
-    clientCommandBlock(540, 2542, 860, 120, "DOCKER", "docker pull ghcr.io/thomasmcfarlane/playarr:latest" + Chr(10) + "docker run -d --name playarr --restart unless-stopped -p 8484:8484 -v playarr-data:/data -e DATABASE_URL=sqlite:///data/playarr.db -e PLAYARR_JWT_SECRET=""$(openssl rand -hex 32)"" ghcr.io/thomasmcfarlane/playarr:latest" + Chr(10) + "curl http://localhost:8484/healthz")
-    clientCommandBlock(540, 2672, 860, 248, "DOCKER COMPOSE", "services:" + Chr(10) + "  playarr:" + Chr(10) + "    image: ghcr.io/thomasmcfarlane/playarr:latest" + Chr(10) + "    container_name: playarr" + Chr(10) + "    restart: unless-stopped" + Chr(10) + "    ports:" + Chr(10) + "      - ""8484:8484""" + Chr(10) + "    environment:" + Chr(10) + "      DATABASE_URL: sqlite:///data/playarr.db" + Chr(10) + "      PLAYARR_JWT_SECRET: change-me-to-a-long-random-string" + Chr(10) + "    volumes:" + Chr(10) + "      - playarr-data:/data" + Chr(10) + "volumes:" + Chr(10) + "  playarr-data:" + Chr(10) + "docker compose up -d")
-    clientInstallStep(540, 2930, "03", "systemd on a Linux host", "Unpack the tarball, then install.sh installs the playarr-server binary, the Admin UI, an unprivileged playarr user and the unit files. It does not enable or start anything until you do. Set DATABASE_URL in the env file first, for example sqlite:///var/lib/playarr/playarr.db.")
-    clientInstallStep(970, 2930, "04", "Kubernetes (Helm chart)", "The playarr-standalone chart runs one Pod with a Recreate strategy for a single SQLite-backed server. Point it at the public image, an existing Secret and persistent storage. The chart never creates Secrets and has no migration or deletion hooks. Render and review it before applying.")
-    clientCommandBlock(540, 3132, 860, 142, "SYSTEMD", "tar -xzf playarr-server-linux-amd64.tar.gz" + Chr(10) + "cd playarr-server-*-linux-amd64" + Chr(10) + "sudo ./systemd/install.sh" + Chr(10) + "sudoedit /etc/playarr/playarr.env" + Chr(10) + "sudo systemctl enable --now playarr.service" + Chr(10) + "journalctl -u playarr.service -f")
-    clientCommandBlock(540, 3282, 860, 90, "KUBERNETES HELM", "helm template playarr infra/kubernetes/helm/playarr-standalone --values my-values.yaml")
+    installY = 2361
+    drawClientPanel(500, installY, 920, 1330)
+    serverSectionHeading(installY, "02", "Supported install methods", "Choose one")
+    pgLabel(m.pageBody, 598, 2506, 860, 48, "Pick one. Each method runs the same single all-in-one server process. The Docker commands pull the public image; the other methods use the downloaded tarball or your own chart values.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
+    clientInstallStep(540, 2594, "01", "Docker", "Pulls the multi-arch image, ffmpeg included, and starts one container with SQLite state in a named volume. The generated PLAYARR_JWT_SECRET keeps sessions across restarts; save it if you recreate the container.")
+    clientInstallStep(970, 2594, "02", "Docker Compose", "The same image as a compose file. Replace the secret with a long random string, then start it and open port 8484.")
+    clientCommandBlock(540, 2796, 860, 120, "DOCKER", "docker pull ghcr.io/thomasmcfarlane/playarr:latest" + Chr(10) + "docker run -d --name playarr --restart unless-stopped -p 8484:8484 -v playarr-data:/data -e DATABASE_URL=sqlite:///data/playarr.db -e PLAYARR_JWT_SECRET=""$(openssl rand -hex 32)"" ghcr.io/thomasmcfarlane/playarr:latest" + Chr(10) + "curl http://localhost:8484/healthz")
+    clientCommandBlock(540, 2926, 860, 248, "DOCKER COMPOSE", "services:" + Chr(10) + "  playarr:" + Chr(10) + "    image: ghcr.io/thomasmcfarlane/playarr:latest" + Chr(10) + "    container_name: playarr" + Chr(10) + "    restart: unless-stopped" + Chr(10) + "    ports:" + Chr(10) + "      - ""8484:8484""" + Chr(10) + "    environment:" + Chr(10) + "      DATABASE_URL: sqlite:///data/playarr.db" + Chr(10) + "      PLAYARR_JWT_SECRET: change-me-to-a-long-random-string" + Chr(10) + "    volumes:" + Chr(10) + "      - playarr-data:/data" + Chr(10) + "volumes:" + Chr(10) + "  playarr-data:" + Chr(10) + "docker compose up -d")
+    clientInstallStep(540, 3189, "03", "systemd on a Linux host", "Unpack the tarball, then install.sh installs the playarr-server binary, the Admin UI, an unprivileged playarr user and the unit files. It does not enable or start anything until you do. Set DATABASE_URL in the env file first, for example sqlite:///var/lib/playarr/playarr.db.")
+    clientInstallStep(970, 3189, "04", "Kubernetes (Helm chart)", "The playarr-standalone chart runs one Pod with a Recreate strategy for a single SQLite-backed server. Point it at the public image, an existing Secret and persistent storage. The chart never creates Secrets and has no migration or deletion hooks. Render and review it before applying.")
+    clientCommandBlock(540, 3391, 860, 142, "SYSTEMD", "tar -xzf playarr-server-linux-amd64.tar.gz" + Chr(10) + "cd playarr-server-*-linux-amd64" + Chr(10) + "sudo ./systemd/install.sh" + Chr(10) + "sudoedit /etc/playarr/playarr.env" + Chr(10) + "sudo systemctl enable --now playarr.service" + Chr(10) + "journalctl -u playarr.service -f")
+    clientCommandBlock(540, 3541, 860, 90, "KUBERNETES HELM", "helm template playarr infra/kubernetes/helm/playarr-standalone --values my-values.yaml")
 
-    clientSectionHeading(3450, "03", "Connect your clients", "HTTPS and the playarr.app relay")
-    pgLabel(m.pageBody, 580, 3528, 860, 62, "Native apps can connect to the server's address on your network. The hosted web client at playarr.app is served over HTTPS, so it needs a browser-trusted certificate for the server. Bring your own, or use the optional relay.", 13, 400, "inkSoft", { wrap: true, maxLines: 3 })
-    drawClientPanel(500, 3602, 920, 252)
-    pgLabel(m.pageBody, 540, 3622, 840, 26, "OPTIONAL RELAY (OFF BY DEFAULT)", 10, 800, "brandInk")
-    pgLabel(m.pageBody, 540, 3658, 840, 92, "For a server with a public IPv4 address and TCP 8484 reachable from the internet. The server registers with playarr.app, which publishes a DNS-only name such as v4-203-0-113-10.relay.playarr.app pointing at your address. The server then obtains its own Let's Encrypt certificate over DNS-01, so port 80 is not needed. For a short period after start, typically under two minutes, the API is plain HTTP; it then switches to HTTPS on the same port.", 13, 400, "inkSoft", { wrap: true, maxLines: 5 })
-    clientCommandBlock(540, 3756, 840, 84, "RELAY ENVIRONMENT", "PLAYARR_RELAY_REGISTER=true" + Chr(10) + "PLAYARR_ACME_CHALLENGE=relay-dns-01" + Chr(10) + "PLAYARR_ACME_DOMAIN=v4-<A>-<B>-<C>-<D>.relay.playarr.app" + Chr(10) + "PLAYARR_ACME_ACCEPT_TERMS=true")
-    drawClientPanel(500, 3854, 920, 170, true)
-    pgLabel(m.pageBody, 540, 3874, 840, 22, "WHAT THE RELAY SHARES", 10, 800, "brandInk")
-    pgLabel(m.pageBody, 540, 3904, 840, 96, "Enabling the relay sends your public IPv4 address and a key fingerprint to playarr.app, and the name is public DNS data. No streaming or API traffic passes through Cloudflare. Registration proves control of the address, not who owns the server. Leave it off if you would rather use your own certificate and name.", 13, 400, "inkSoft", { wrap: true, maxLines: 5 })
+    connectY = 3733
+    drawClientPanel(500, connectY, 920, 480)
+    serverSectionHeading(connectY, "03", "Connect your clients", "HTTPS and the playarr.app relay")
+    pgLabel(m.pageBody, 598, 3888, 860, 62, "Native apps can connect to the server's address on your network. The hosted web client at playarr.app is served over HTTPS, so it needs a browser-trusted certificate for the server. Bring your own, or use the optional relay.", 13, 400, "inkSoft", { wrap: true, maxLines: 3 })
+    pgLabel(m.pageBody, 550, 3985, 840, 26, "OPTIONAL RELAY (OFF BY DEFAULT)", 10, 800, "brandInk")
+    pgLabel(m.pageBody, 550, 4019, 840, 92, "For a server with a public IPv4 address and TCP 8484 reachable from the internet. The server registers with playarr.app, which publishes a DNS-only name such as v4-203-0-113-10.relay.playarr.app pointing at your address. The server then obtains its own Let's Encrypt certificate over DNS-01, so port 80 is not needed. For a short period after start, typically under two minutes, the API is plain HTTP; it then switches to HTTPS on the same port.", 13, 400, "inkSoft", { wrap: true, maxLines: 5 })
+    clientCommandBlock(550, 4121, 840, 84, "RELAY ENVIRONMENT", "PLAYARR_RELAY_REGISTER=true" + Chr(10) + "PLAYARR_ACME_CHALLENGE=relay-dns-01" + Chr(10) + "PLAYARR_ACME_DOMAIN=v4-<A>-<B>-<C>-<D>.relay.playarr.app" + Chr(10) + "PLAYARR_ACME_ACCEPT_TERMS=true")
+    privacyY = 4243
+    drawClientPanel(500, privacyY, 920, 270, true)
+    pgLabel(m.pageBody, 580, privacyY + 32, 760, 16, "WHAT THE RELAY SHARES", 10, 800, "brandInk", { horizAlign: "center" })
+    pgTrackedText(m.pageBody, 560, privacyY + 42, 800, "Your address, not your media.", 59, 500, -3.54, "ink", false, "center", 1, 59)
+    pgLabel(m.pageBody, 580, privacyY + 119, 760, 128, "Enabling the relay sends your public IPv4 address and a key fingerprint to playarr.app, and the name is public DNS data. No streaming or API traffic passes through Cloudflare. Registration proves control of the address, not who owns the server. Leave it off if you would rather use your own certificate and name.", 13, 400, "inkSoft", { horizAlign: "center", wrap: true, maxLines: 5 })
 end sub
 
 sub leaveClientsToProfiles()
