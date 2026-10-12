@@ -103,6 +103,32 @@ def snap(name, folder, floor=60000):
             time.sleep(25)
 
 
+def save_episode_art_diagnostics(expected_work_id):
+    time.sleep(2)  # let the PreviewState reports finish their loopback requests
+    state = json.loads(get("/state"))
+    debug_events = state.get("dbglog", [])
+    first_episode_row = next((index for index, event in enumerate(debug_events) if event.startswith("episode-art:row:")), None)
+    if first_episode_row is not None:
+        debug_events = debug_events[first_episode_row:]
+    safe_events = []
+    for event in debug_events:
+        if re.fullmatch(r"episode-art:row:thumb=(yes|no):file=(yes|no)", event):
+            safe_events.append(event)
+        elif re.fullmatch(r"episode-art:(still|fallback):(ok|decode-failure|http-[0-9]{3}|network-(timeout|no_connection|unknown))", event):
+            safe_events.append(event)
+        elif event in ("card-image:ok", "card-image:error"):
+            safe_events.append(event)
+    diagnostics = {
+        "screen": "series-detail",
+        "theme": THEME,
+        "pinned_detail_verified": state.get("route") == "Detail" and state.get("work_id") == expected_work_id,
+        "events": safe_events,
+    }
+    path = os.path.join(out, "_debug", "series-art-diagnostics.json")
+    with open(path, "w") as f:
+        json.dump(diagnostics, f, indent=2)
+
+
 def snap_checked(name, folder, floor):
     settle()
     if b"[JsEngine Crash]" in open(log, "rb").read():
@@ -268,6 +294,8 @@ else:
             state = json.loads(get("/state"))
             if state.get("route") == "Detail" and state.get("work_id") == work_id:
                 snap(name, folder, 100000)
+                if name == "series-detail":
+                    save_episode_art_diagnostics(work_id)
                 return
             time.sleep(0.5)
         debug(f"{name}-route-timeout")
