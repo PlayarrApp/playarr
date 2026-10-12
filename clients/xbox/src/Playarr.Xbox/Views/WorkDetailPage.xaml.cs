@@ -839,6 +839,7 @@ namespace Playarr.Xbox.Views
             };
             if (series != null)
             {
+                var diagnosticCard = EpisodeArtworkDiagnostics.NewCard();
                 var still = new Image { Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
                 var requested = false;
                 var watchingViewport = false;
@@ -848,20 +849,34 @@ namespace Playarr.Xbox.Views
                 viewportChanged = (_, args) =>
                 {
                     var viewport = args.EffectiveViewport;
-                    if (requested || !EpisodeArtworkResolver.IntersectsCard(
+                    var intersects = EpisodeArtworkResolver.IntersectsCard(
                         viewport.X,
                         viewport.Y,
                         viewport.Width,
                         viewport.Height,
                         still.ActualWidth,
-                        still.ActualHeight))
+                        still.ActualHeight);
+                    EpisodeArtworkDiagnostics.Viewport(
+                        diagnosticCard,
+                        viewport.X,
+                        viewport.Y,
+                        viewport.Width,
+                        viewport.Height,
+                        still.ActualWidth,
+                        still.ActualHeight,
+                        art.ActualWidth,
+                        art.ActualHeight,
+                        intersects,
+                        requested);
+                    if (requested || !intersects)
                     {
                         return;
                     }
 
+                    EpisodeArtworkDiagnostics.RequestTransition(diagnosticCard, requested, true);
                     requested = true;
                     stopWatchingViewport();
-                    Artwork.LoadEpisodeCard(still, series, episode, detail.MediaFileId, 268);
+                    Artwork.LoadEpisodeCard(still, series, episode, detail.MediaFileId, 268, diagnosticCard);
                 };
                 startWatchingViewport = () =>
                 {
@@ -879,7 +894,11 @@ namespace Playarr.Xbox.Views
                         watchingViewport = false;
                     }
                 };
-                still.Loaded += (_, __) => startWatchingViewport();
+                still.Loaded += (_, __) =>
+                {
+                    EpisodeArtworkDiagnostics.ImageLoaded(diagnosticCard, still.ActualWidth, still.ActualHeight, art.ActualWidth, art.ActualHeight);
+                    startWatchingViewport();
+                };
                 still.Unloaded += (_, __) => stopWatchingViewport();
                 startWatchingViewport();
                 art.Children.Add(still);
