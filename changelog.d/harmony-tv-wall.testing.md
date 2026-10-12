@@ -1,1 +1,0 @@
-- HarmonyOS TV (hosted Windows runner, preview-only patches): all 15 parity screens in dark and light, with posters, the actions drawer and the player-controls overlay; suite driver for the Previewer (scripts/parity/drivers/harmony.mjs). D-pad and playback stay failures: the Previewer neither moves focus from key presses nor ships the media module.

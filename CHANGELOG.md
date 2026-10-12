@@ -304,6 +304,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- tvOS shows the poster and episode line on the system now-playing surface.
 - Xbox: Previous in the player and in the now-playing card plays the item played before this one, and puts the current one back up next, as the web playlist control does.
 - Xbox parity trace reports the focus position (rail and card, or nav item) for the suite Home D-pad checks.
 - Samsung Tizen native client: the Downloads page has Pause all, Resume all and Delete all on every series and season group, and the parity driver runs the downloads cases (start, pause and resume, cancel, delete, edit, offline play, series and season actions).
@@ -494,6 +495,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Downloads (web): a download keeps its title detail, credits and artwork on the device, so the offline detail page looks like the online one; music artist pages open offline from their downloaded tracks.
+- Web phone: the Library letter rail is a 44px-wide target column with a 4px margin each side (WCAG 2.5.5), touch-drag scrubs the letters, and the grid keeps clear of it.
+- The Tizen and webOS parity driver reports the focus position (rail and index) as the suite now requires.
 - Linux phone client: light theme page colour and shadows from the web tokens, On deck loads like the web (one entry per title, ten at most), series show their year range and dates as the web writes them.
 - Linux phone client: Preferences, the title actions sheet and series pages follow the web more closely.
 - Samsung Tizen native client: focused cards get the web ring in the dark theme too (pale brand pink), posters keep their rounded corners when focused, and the card behind the title-actions drawer loses its focus look.
@@ -2826,6 +2830,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- HarmonyOS TV (hosted Windows runner, preview-only patches): all 15 parity screens in dark and light, with posters, the actions drawer and the player-controls overlay; suite driver for the Previewer (scripts/parity/drivers/harmony.mjs). D-pad and playback stay failures: the Previewer neither moves focus from key presses nor ships the media module.
 - The Apple wall's web reference step takes the same --only list as the device run, so dpad and playback can be dispatched as parallel jobs.
 - tvOS (debug builds only): the app writes its current route and focused item label to parity-state.json in its Documents folder for the shared parity suite driver.
 - Parity driver labels Home cards by text when they carry no aria-label.

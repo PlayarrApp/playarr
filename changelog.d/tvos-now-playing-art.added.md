@@ -1,1 +1,0 @@
-- tvOS shows the poster and episode line on the system now-playing surface.

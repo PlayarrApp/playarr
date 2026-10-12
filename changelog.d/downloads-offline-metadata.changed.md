@@ -1,1 +1,0 @@
-- Downloads (web): a download keeps its title detail, credits and artwork on the device, so the offline detail page looks like the online one; music artist pages open offline from their downloaded tracks.

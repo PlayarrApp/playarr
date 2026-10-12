@@ -1,1 +1,0 @@
-- Web phone: the Library letter rail is a 44px-wide target column with a 4px margin each side (WCAG 2.5.5), touch-drag scrubs the letters, and the grid keeps clear of it.
