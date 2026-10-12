@@ -985,11 +985,12 @@ sub renderCalendarWeek(entries as Object)
         y = 208.0
         if list <> invalid
             for each entry in calendarDayList(list)
-                pgRound(m.pageBody, x, y, 440, 106, 14, "surfaceStrong")
-                pgRound(m.pageBody, x, y, 440, 106, 14, "line", -1, true)
+                ' Web's 4 px availability border follows the card's rounded corners: the accent shape under a card face shifted 4 px.
                 role = "inkMuted"
                 if entry.has_file = true then role = "success"
-                pgRect(m.pageBody, x, y + 8, 4, 90, role)
+                pgRound(m.pageBody, x, y, 440, 106, 14, role)
+                pgRound(m.pageBody, x + 4, y, 436, 106, 14, "surfaceStrong")
+                pgRound(m.pageBody, x, y, 440, 106, 14, "line", -1, true)
                 art = ""
                 if entry.work_id <> invalid then art = m.serverUrl + "/api/v1/artwork/work/" + UrlEncode(entry.work_id) + "/poster"
                 pgRound(m.pageBody, x + 16, y + 23, 40, 60, 6, "surfaceSoft")

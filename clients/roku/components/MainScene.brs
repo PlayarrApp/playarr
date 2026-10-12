@@ -4782,6 +4782,11 @@ sub showDetail(detail as Object)
     m.detailStage.callFunc("playEntrance")
     m.detailActions.watchlisted = false
     m.detailLagText = ""
+    ' The resume plan goes first: the requests are single-flight and the page's focus waits for it.
+    if isSeriesShaped and work <> invalid and work.id <> invalid
+        m.detailNextUpWorkId = work.id
+        sendApi("resumePlan", "GET", "/api/v1/catalog/" + UrlEncode(work.id) + "/resume-plan", invalid, true)
+    end if
     loadDetailWatchlist()
     if isSeriesShaped and work.kind = "series" then sendApi("detailLag", "GET", "/api/v1/catalog/" + UrlEncode(work.id) + "/availability-lag", invalid, true)
     ' Focus starts on the left-hand Play button (web's primary action); Right
@@ -4790,10 +4795,6 @@ sub showDetail(detail as Object)
     m.detailActions.SetFocus(true)
     ' A series opens on the next item to play (web series page): the resume plan's episode with its season selected and
     ' scrolled into view, or S1E1 when nothing was watched. The plan arrives asynchronously (see acceptResumePlan).
-    if isSeriesShaped and work <> invalid and work.id <> invalid
-        m.detailNextUpWorkId = work.id
-        sendApi("resumePlan", "GET", "/api/v1/catalog/" + UrlEncode(work.id) + "/resume-plan", invalid, true)
-    end if
 end sub
 
 ' [row, col] of the episode the series page should open on, or invalid when nothing is playable.

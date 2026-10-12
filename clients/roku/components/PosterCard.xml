@@ -120,7 +120,7 @@
         <Rectangle id="progressTrack" translation="[0,121]" width="220" height="3" color="0xFFFFFF33" visible="false">
           <Rectangle id="progressFill" width="3" height="3" color="0xCF3157FF" />
         </Rectangle>
-        <Poster id="unwatchedBadge" translation="[196,11]" width="13" height="13" uri="pkg:/images/badge-unwatched.png" visible="false" />
+        <Poster id="unwatchedBadge" translation="[196,10]" width="15" height="15" uri="pkg:/images/badge-unwatched.png" visible="false" />
         <!-- Cast (web .tv-cast-card): a 104 px round headshot centred in a 177 px slot, the name and character below. -->
         <MaskGroup id="circleMask" visible="false" translation="[36.5,0]" maskUri="pkg:/images/avatar-mask.png" maskSize="[104,104]">
           <Poster id="circlePoster" width="104" height="104" loadDisplayMode="scaleToZoom" />

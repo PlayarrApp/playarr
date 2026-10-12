@@ -231,7 +231,7 @@ sub layoutCard(cardScale as Float)
     m.top.findNode("cornerTR").translation = [artW - 12, 0]
     m.top.findNode("cornerBL").translation = [0, artH - 12]
     m.top.findNode("cornerBR").translation = [artW - 12, artH - 12]
-    m.unwatchedBadge.translation = [artW - 23.5, 10.5]
+    m.unwatchedBadge.translation = [artW - 23.5, 9.5]
     m.progressTrack.translation = [0, artH - 3]
     m.progressTrack.width = artW
     m.restShadow.translation = [-90, -90]

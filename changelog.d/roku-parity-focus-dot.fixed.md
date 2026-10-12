@@ -1,0 +1,1 @@
+- Roku series detail opens on the next-up episode (the resume plan is requested first), the unwatched dot has the web's white ring, and calendar week cards carry the rounded availability border.
