@@ -16,6 +16,8 @@ export interface NavRefLike {
   getCurrentRoute(): {name: string; params?: object} | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   navigate(...args: any[]): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  resetRoot(state: any): void;
 }
 
 const WEB_TO_ROUTE: Record<string, string> = {
@@ -72,7 +74,13 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         }
         else throw new Error(`no route for ${path}`);
       },
-      open: (kind, id) => navRef.navigate(APP_SHELL_ROUTE, {screen: ROUTES.workDetail, params: {workId: id, kind}}),
+      // The web opens a title by URL: nothing is behind it, so Back goes to its library page (the policy's parent). Reset the
+      // stack to the detail page alone, so Back sees no previous entry either.
+      open: (kind, id) =>
+        navRef.resetRoot({
+          index: 0,
+          routes: [{name: APP_SHELL_ROUTE, state: {index: 0, routes: [{name: ROUTES.workDetail, params: {workId: id, kind, backTo: kind === 'series' ? ROUTES.series : ROUTES.movies}}]}}],
+        }),
       play: (file) => {
         lastPlayed = file;
         playerRef.current?.show(file);
