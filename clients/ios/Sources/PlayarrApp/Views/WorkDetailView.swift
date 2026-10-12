@@ -147,7 +147,7 @@ struct WorkDetailView: View {
         ZStack(alignment: .topLeading) {
             PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
                 .frame(width: proxy.size.width, height: proxy.size.height)
-                .opacity(scheme == .dark ? 0.3 : 0.14)
+                .opacity(scheme == .dark ? 0.3 : 0.07)
                 .overlay {
                     LinearGradient(
                         colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
@@ -167,12 +167,12 @@ struct WorkDetailView: View {
                         children(for: detail.children)
                         discoveryContent
                     }
-                        .padding(.horizontal, max(28, proxy.size.width * 0.024))
-                        .padding(.top, proxy.size.height * 0.5)
+                        .padding(.leading, 0)
+                        .padding(.top, proxy.size.height * (detail.work.kind == .series ? 0.67 : 0.25)) // web tablet: Chapters at y 260, Season 1 at y 695 of 1024
                         .padding(.bottom, proxy.size.height * 0.5)
                 }
-                .frame(width: proxy.size.width * 0.62, height: proxy.size.height)
-                .offset(x: proxy.size.width * 0.38)
+                .frame(width: proxy.size.width * 0.267, height: proxy.size.height)
+                .offset(x: proxy.size.width * 0.733) // rails start at x 1002 of 1366 and run off the edge
                 .scrollIndicators(.hidden)
                 .background {
                     LinearGradient(
