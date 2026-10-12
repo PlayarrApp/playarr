@@ -5844,6 +5844,7 @@ sub onVideoStateChanged()
     if m.playbackEnded then return
     positionMs = Int(m.video.position * 1000)
     if state = "playing" then m.playbackStarted = true
+    if (state = "playing" or state = "paused" or state = "buffering") and m.video.position > 0 then m.lastKnownSeconds = m.video.position
     if state = "paused" and m.lastVideoState <> "paused"
         persistPlaybackProgress(false)
         sendPlaybackEvent({ kind: "pause", position_ms: positionMs })
@@ -5857,6 +5858,9 @@ sub onVideoStateChanged()
     else if state = "error" and ProgressRetryStart()
         ' A transcode started at the resume point is not ready for the first
         ' few seconds; the playlist answers 404 until then. Retry quietly.
+        m.playerSpinner.control = "start"
+    else if state = "error" and ProgressRecoverSession()
+        ' The server reaped or evicted the idle on-demand session: a replacement session starts at this position.
         m.playerSpinner.control = "start"
     else if state = "error"
         sendPlaybackEvent({ kind: "error", message: "Roku video playback failed" })

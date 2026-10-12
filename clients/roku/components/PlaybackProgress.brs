@@ -45,6 +45,11 @@ sub onResumeResult(event as Object)
     if m.resumeTask.request.mediaFileId <> m.currentMediaFileId then return
     m.resumeSeconds = invalid
     if result.ok then m.resumeSeconds = ProgressResumeSeconds(result.data)
+    ' A recovered session resumes where this player stopped, not at the last saved position.
+    if m.recoverPositionSeconds <> invalid
+        m.resumeSeconds = m.recoverPositionSeconds
+        m.recoverPositionSeconds = invalid
+    end if
     m.resumeTask = invalid
     if m.playbackEnded then return
     path = m.playbackPath
@@ -58,6 +63,15 @@ end sub
 ' The server reports source_offset_ms when it transcoded from the resume
 ' point, in which case the player position is relative to that offset.
 sub ProgressApplyResume(data as Object)
+    m.playbackMode = data.mode
+    ' A session replaced by recovery keeps the viewer's play state: a player that was paused stays paused.
+    if m.recoveringSession = true
+        m.recoveringSession = false
+        if m.recoverPaused = true then m.video.control = "pause"
+        m.recoverPaused = false
+    else
+        m.sessionRecoveries = 0
+    end if
     m.sourceOffsetSeconds = 0
     if data.source_offset_ms <> invalid then m.sourceOffsetSeconds = data.source_offset_ms / 1000
     m.playbackDurationMs = 0
@@ -93,6 +107,40 @@ sub persistPlaybackProgress(completed as Boolean)
     if m.progressTasks.Count() > 4 then m.progressTasks.Shift()
     task.control = "RUN"
 end sub
+
+' How many replacement sessions a player may ask for after the server reaped or evicted its idle on-demand session.
+function ProgressMaxSessionRecoveries() as Integer
+    return 3
+end function
+
+' Whether an error mid-playback is a lost on-demand session worth replacing: only a started HLS session of a
+' known title, within the retry limit. Direct play has no server session to lose.
+function ProgressCanRecoverSession(started as Boolean, ended as Boolean, mode as Dynamic, recoveries as Dynamic) as Boolean
+    if not started or ended then return false
+    if mode <> "hls" then return false
+    if recoveries = invalid then recoveries = 0
+    return recoveries < ProgressMaxSessionRecoveries()
+end function
+
+' A paused player stays paused after recovery; anything else plays on. An error carries no play state itself.
+function ProgressStartsPlayingAfterRecovery(lastState as Dynamic) as Boolean
+    return lastState <> "paused"
+end function
+
+' The player errored after playing: ask for a replacement session at the same position and keep the paused state.
+function ProgressRecoverSession() as Boolean
+    if m.currentMediaFileId = invalid or m.currentMediaFileId = "" then return false
+    if not ProgressCanRecoverSession(m.playbackStarted = true, m.playbackEnded = true, m.playbackMode, m.sessionRecoveries) then return false
+    if m.sessionRecoveries = invalid then m.sessionRecoveries = 0
+    m.sessionRecoveries = m.sessionRecoveries + 1
+    position = m.video.position
+    if position <= 0 and m.lastKnownSeconds <> invalid then position = m.lastKnownSeconds
+    m.recoverPositionSeconds = position + m.sourceOffsetSeconds
+    m.recoverPaused = not ProgressStartsPlayingAfterRecovery(m.lastVideoState)
+    m.recoveringSession = true
+    requestPlayback(m.currentMediaFileId)
+    return true
+end function
 
 ' Re-opens the stream after a start error while nothing has played yet.
 function ProgressRetryStart() as Boolean

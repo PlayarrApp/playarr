@@ -93,5 +93,46 @@ class ProgressWiringTests(unittest.TestCase):
         self.assertIn('CreateObject("roSGNode", "ApiTask")', body)
 
 
+def can_recover(started, ended, mode, recoveries):
+    """Python mirror of ProgressCanRecoverSession."""
+    if not started or ended:
+        return False
+    if mode != "hls":
+        return False
+    return (recoveries or 0) < 3
+
+
+class SessionRecoveryTests(unittest.TestCase):
+    def test_only_a_started_hls_session_is_recovered_a_limited_number_of_times(self) -> None:
+        self.assertTrue(can_recover(True, False, "hls", None))
+        self.assertTrue(can_recover(True, False, "hls", 2))
+        self.assertFalse(can_recover(True, False, "hls", 3))
+        self.assertFalse(can_recover(True, False, "direct", 0))
+        self.assertFalse(can_recover(False, False, "hls", 0))
+        self.assertFalse(can_recover(True, True, "hls", 0))
+
+    def test_source_matches_the_rules(self) -> None:
+        self.assertIn("if not started or ended then return false", PROGRESS)
+        self.assertIn('if mode <> "hls" then return false', PROGRESS)
+        self.assertIn("return recoveries < ProgressMaxSessionRecoveries()", PROGRESS)
+        self.assertIn("return 3", PROGRESS)
+
+    def test_paused_stays_paused_and_position_is_kept(self) -> None:
+        self.assertIn('return lastState <> "paused"', PROGRESS)
+        self.assertIn("m.recoverPaused = not ProgressStartsPlayingAfterRecovery(m.lastVideoState)", PROGRESS)
+        self.assertIn('if m.recoverPaused = true then m.video.control = "pause"', PROGRESS)
+        self.assertIn("m.recoverPositionSeconds = position + m.sourceOffsetSeconds", PROGRESS)
+        self.assertIn("m.resumeSeconds = m.recoverPositionSeconds", PROGRESS)
+
+    def test_error_after_playing_asks_for_a_replacement_session(self) -> None:
+        self.assertIn('state = "error" and ProgressRecoverSession()', MAIN)
+        # The recovery branch sits before the branch that ends playback with an error.
+        self.assertLess(
+            MAIN.index('state = "error" and ProgressRecoverSession()'),
+            MAIN.index('sendPlaybackEvent({ kind: "error", message: "Roku video playback failed" })'),
+        )
+        self.assertIn("requestPlayback(m.currentMediaFileId)", PROGRESS)
+
+
 if __name__ == "__main__":
     unittest.main()
