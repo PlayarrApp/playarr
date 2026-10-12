@@ -151,7 +151,7 @@ internal fun PlayarrFiltersSheet(
 ) {
     PlayarrSheetFrame(
         initialFocus = initialFocus,
-        titleContent = { if (playarrTvDrawer()) Text(title, modifier = Modifier.semantics { heading() }) else Text(title, color = WebInk, fontSize = 22.4.sp, lineHeight = 33.6.sp, fontWeight = FontWeight(590), modifier = Modifier.semantics { heading() }) },
+        titleContent = { if (playarrTvDrawer()) Text(title, modifier = Modifier.semantics { heading() }) else Text(title, color = WebInk, fontSize = 22.4.sp, lineHeight = 33.6.sp, fontWeight = FontWeight(590), letterSpacing = (-1.232).sp, modifier = Modifier.semantics { heading() }) },
         kicker = kicker,
         closeLabel = closeLabel,
         onClose = onClose,
@@ -228,7 +228,8 @@ private fun PlayarrSheetFrame(
             }
         }
         // Web phone `.drawer`: the whole 390 px viewport, 20 px padding, 7.04 px eyebrow, 22.4 px title, a 44 px round close button.
-        Box(Modifier.fillMaxSize().background(WebSurfaceStrong.copy(alpha = 0.94f)).clickable(interactionSource = null, indication = null, enabled = false) {}) {
+        // Web blurs what is behind the 94% drawer to a haze; Compose cannot, so the page stays almost hidden instead of showing sharp.
+        Box(Modifier.fillMaxSize().background(WebSurfaceStrong.copy(alpha = 0.985f)).clickable(interactionSource = null, indication = null, enabled = false) {}) {
             Column(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
             ) {
@@ -237,7 +238,7 @@ private fun PlayarrSheetFrame(
                         if (kicker != null) {
                             Text(kicker.uppercase(), color = WebInkSoft, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
                         }
-                        titleContent?.invoke()
+                        Box(Modifier.padding(top = if (kicker != null) 3.2.dp else 0.dp)) { titleContent?.invoke() }
                     }
                     if (dismissible) {
                         PlayarrIconButton(onClick = onClose, contentDescription = closeLabel, modifier = Modifier.focusRequester(focus), variant = PlayarrButtonVariant.Secondary) {
@@ -245,7 +246,7 @@ private fun PlayarrSheetFrame(
                         }
                     }
                 }
-                Spacer(Modifier.height(27.6.dp))
+                Spacer(Modifier.height(26.6.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     content()
                     if (footer != null) {
@@ -356,7 +357,7 @@ internal fun PlayarrFilterSection(title: String, content: @Composable () -> Unit
 }
 
 @Composable
-internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier = Modifier, icon: (@Composable (Color) -> Unit)? = null, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     if (playarrTvDrawer()) {
@@ -376,17 +377,21 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
         }
         return
     }
+    // Web phone `.tv-segment` button: 48 px, 12 px radius, hairline border, 11.52 px / 680 capitalised; the active one is ink and 1.025x.
     val shape = RoundedCornerShape(12.dp)
+    val content = if (selected) WebSurface else WebInkSoft
     Surface(
         onClick = onClick,
         interactionSource = source,
         color = if (selected) WebInk else WebSurfaceSoft.copy(alpha = 0.64f),
-        contentColor = if (selected) WebSurface else WebInkSoft,
+        contentColor = content,
         shape = shape,
-        modifier = modifier.heightIn(min = 44.dp).webFocusRing(focused, radius = 12.dp, offset = 0.dp),
+        border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.10f, 0.12f)),
+        modifier = modifier.height(48.dp).graphicsLayer { scaleX = if (selected) 1.025f else 1f; scaleY = scaleX }.webFocusRing(focused, radius = 12.dp, offset = 0.dp),
     ) {
-        Box(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-            Text(label.replaceFirstChar { it.titlecase() }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Column(Modifier.fillMaxHeight().padding(horizontal = 9.6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.8.dp, Alignment.CenterVertically)) {
+            icon?.invoke(content)
+            Text(label.split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }, fontSize = 11.52.sp, lineHeight = if (icon != null) 12.7.sp else 17.28.sp, fontWeight = FontWeight(if (icon != null) 900 else 680), maxLines = 1)
         }
     }
 }

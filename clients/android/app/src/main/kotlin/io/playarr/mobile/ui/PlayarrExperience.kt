@@ -3165,7 +3165,7 @@ internal fun ExperienceMediaRail(
                     // Web: Home cards are THE poster card, the Library grid card (owner request 2026-10-10): `--card-w`
                     // 327.2 dp and `--card-w-cover` 191.3 dp at 1920 x 1080.
                     width = when (homeView) {
-                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidth(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else 173.dp
+                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidth(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else phonePosterCardWidth()
                         PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidth(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else 118.dp
                     },
                     homeView = homeView,
@@ -3459,6 +3459,8 @@ internal fun LibraryResults(
     /** Television: the D-pad grid navigator (web title-grid rules) and the state of the grid it drives. */
     grid: TvGrid? = null,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
+    /** Phone: the letter rail's width, which the grid leaves clear (web `.tv-alphabet`, 52 px since #924). */
+    railWidth: Dp = 16.dp,
 ) {
     val fixedColumns = playarrLibraryGridColumns(viewMode, artworkSize, isTelevision)
     if (grid != null) {
@@ -3472,7 +3474,7 @@ internal fun LibraryResults(
         LibraryArtworkSize.Large -> if (isTelevision) 250.dp else 206.dp
     }
     // Web phone: first row 20 px under the 38 px header, which starts 2 px under the status bar inset.
-    val padding = PaddingValues(start = if (isTelevision) 32.dp else 16.dp, end = if (isTelevision) 82.dp else 16.dp, top = if (isTelevision) 18.dp else 60.dp, bottom = 104.dp)
+    val padding = PaddingValues(start = if (isTelevision) 32.dp else 16.dp, end = if (isTelevision) 82.dp else railWidth, top = if (isTelevision) 18.dp else 60.dp, bottom = 104.dp)
     // Web `.tv-title-grid-content` at 1920: 51.3 px start, 105.7 px end, 162 px first row, 25.92 x 27 gaps.
     // Television: web's first column starts at x 783.4 (measured on the live grid).
     val screenPadding = if (isTelevision) PaddingValues(start = 53.7.dp, end = 103.3.dp, top = 22.dp, bottom = 104.dp) else padding
@@ -3599,6 +3601,18 @@ private fun LibraryCoverCard(
     }
 }
 
+/**
+ * Web phone poster card width (`--card-w`, #924): the viewport less the 16 dp gutter and the 52 dp letter rail pad, split
+ * into as many columns as a 110 dp minimum card and the 12 dp gap allow (1 below 300 dp, 2 from 300, 3 from 540).
+ */
+@Composable
+internal fun phonePosterCardWidth(): Dp {
+    val viewport = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val available = viewport - 16 - 52
+    val columns = ((available + 12) / (110 + 12)).coerceAtLeast(1)
+    return ((available - (columns - 1) * 12f) / columns).dp
+}
+
 @Composable
 private fun LibraryFiltersDialog(
     kind: WorkKind,
@@ -3625,12 +3639,13 @@ private fun LibraryFiltersDialog(
         onClose = onDismiss,
     ) {
         run {
-            Column(verticalArrangement = Arrangement.spacedBy(if (playarrTvDrawer()) 30.dp else 14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(if (playarrTvDrawer()) 30.dp else 23.1.dp)) {
                 LibraryFilterChoices(
                     playarrString(PlayarrString.LibraryView),
                     availableViewModes,
                     viewMode,
                     onViewMode,
+                    icon = { mode, colour -> LibraryViewIcon(mode, colour) },
                 ) {
                     playarrString(
                         when (it) {
@@ -3695,6 +3710,10 @@ private fun LibraryLanguageChoices(
     val entries = facets + selected.filter { code -> facets.none { it.code == code } }
         .map { LanguageFacetEntry(code = it, count = -1) }
     val tv = playarrTvDrawer()
+    if (!tv) {
+        PhoneLanguageMultiSelect(title, entries, selected, onToggle)
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(if (tv) 13.dp else 6.dp)) {
         if (tv) PlayarrTvDrawerHeading(title) else Text(title.uppercase(language.locale), color = WebInkMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
         if (entries.isEmpty()) {
@@ -3713,12 +3732,46 @@ private fun LibraryLanguageChoices(
     }
 }
 
+/** Web `.ui-multiselect`: a 59 px field whose trigger reads "Any language" or the picked names; it opens the options as chips. */
+@Composable
+private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetEntry>, selected: Set<String>, onToggle: (String) -> Unit) {
+    val locale = LocalPlayarrLanguage.current.locale
+    var open by remember { mutableStateOf(false) }
+    val any = playarrString(PlayarrString.LibraryAnyLanguage)
+    val summary = entries.filter { it.code in selected }.joinToString(", ") { languageDisplayName(it.code, locale, it.name) }.ifEmpty { any }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LibraryFilterLabel(title)
+        Column(
+            Modifier.fillMaxWidth().background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
+                .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(6.4.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(10.dp)).clickable { open = !open }.padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
+            ) {
+                Text(summary, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text("\u2304", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680))
+            }
+            if (open) {
+                Spacer(Modifier.height(6.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(entries, key = { it.code }) { entry ->
+                        val name = languageDisplayName(entry.code, locale, entry.name)
+                        PlayarrChoice(if (entry.count >= 0) "$name · ${entry.count}" else name, entry.code in selected) { onToggle(entry.code) }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun <T> LibraryFilterChoices(
     title: String,
     values: List<T>,
     selected: T,
     onSelected: (T) -> Unit,
+    icon: (@Composable (T, Color) -> Unit)? = null,
     label: @Composable (T) -> String,
 ) {
     val language = LocalPlayarrLanguage.current
@@ -3733,12 +3786,34 @@ private fun <T> LibraryFilterChoices(
         return
     }
     // Web phone drawer: the same equal-width segments as the television one.
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(title.uppercase(language.locale), color = WebInkMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LibraryFilterLabel(title)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            values.forEach { value -> PlayarrChoice(label(value), value == selected, Modifier.weight(1f)) { onSelected(value) } }
+            values.forEach { value ->
+                PlayarrChoice(label(value), value == selected, Modifier.weight(1f), icon = icon?.let { draw -> { colour -> draw(value, colour) } }) { onSelected(value) }
+            }
         }
     }
+}
+
+/** Web phone drawer section label (`h3`): 7.04 px / 720, 0.07em, uppercase, muted. */
+@Composable
+private fun LibraryFilterLabel(title: String) {
+    Text(title.uppercase(LocalPlayarrLanguage.current.locale), color = WebInkMuted, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.4928.sp)
+}
+
+/** Web `.tv-view-icon`: three 1 px-radius bars (list), wide blocks (screen) or tall blocks (cover), 2 px apart. */
+@Composable
+private fun LibraryViewIcon(mode: LibraryViewMode, colour: Color) {
+    val (count, w, h) = when (mode) {
+        LibraryViewMode.List -> Triple(3, 20f, 2f)
+        LibraryViewMode.Screen -> Triple(3, 5.5f, 3.9f)
+        else -> Triple(3, 4f, 13f)
+    }
+    val list = mode == LibraryViewMode.List
+    val bar = Modifier.size(w.dp, h.dp).let { if (list) it.background(colour, RoundedCornerShape(1.dp)) else it.border(1.dp, colour, RoundedCornerShape(1.dp)) }
+    if (list) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
+    else Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
 }
 
 @Composable
@@ -3913,6 +3988,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         onContext = { contextWork = it },
                         grid = if (isTelevision) tvGrid else null,
                         gridState = gridState,
+                        railWidth = if (sortMode == "title") 52.dp else 16.dp,
                     )
                     if (isTelevision) {
                         // Web default focus: the selected card, else the first.
@@ -3923,21 +3999,21 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                     }
                 }
                 if (!isTelevision && sortMode == "title") {
-                    // Web phone `.tv-directory .tv-alphabet`: a fixed index strip on the right edge, as wide as the page gutter (16 dp),
-                    // between the header and the bottom nav; its 27 letters share the height (8.96 px, 700), the active one on an ink disc.
+                    // Web phone `.tv-directory .tv-alphabet`: a fixed 52 dp index strip on the right edge from 88 dp down, 27 buttons
+                    // of 44 x 25 dp, 4 dp from the edge (WCAG 2.5.5 since #924); 8.96 px / 700 letters, the active one on an ink disc.
                     val shownLetter = if (activeLetter == "#") selected.sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                     Column(
                         modifier = Modifier.align(Alignment.TopEnd)
-                            .padding(top = 74.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(), bottom = 80.dp)
-                            .width(16.dp).fillMaxHeight(),
+                            .padding(top = 88.dp)
+                            .width(52.dp).height(675.dp).padding(start = 4.dp, end = 4.dp),
                     ) {
                         (listOf("#") + ('A'..'Z').map(Char::toString)).forEach { letter ->
                             val active = shownLetter == letter
                             Box(
-                                Modifier.weight(1f).fillMaxWidth().clickable { activeLetter = letter },
+                                Modifier.height(25.dp).fillMaxWidth().clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (active) Box(Modifier.size(16.dp).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
+                                if (active) Box(Modifier.size(22.dp).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
                                 Text(letter, color = if (active) WebBackground else WebInkSoft, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
                             }
                         }

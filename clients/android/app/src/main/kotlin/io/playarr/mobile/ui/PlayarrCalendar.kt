@@ -219,13 +219,21 @@ private fun ExperienceCalendarScreen(
     )
     PlayarrPageLayout(
         pageId = PlayarrPageId.Calendar,
-        header = playarrPageHeader(title = playarrString(PlayarrString.CalendarTitle), onBack = onBack, filters = PlayarrFilterAction(
+        header = playarrPageHeader(title = playarrString(PlayarrString.CalendarTitle), largeTitle = true, onBack = onBack, filters = PlayarrFilterAction(
             label = filtersLabel,
             active = state.panel == CalendarPanel.Filters,
             badge = state.filters.activeCount,
             onClick = { holder.openPanel(CalendarPanel.Filters) },
         ), actions = if (isTelevision) listOf(navigation, bellAction) else listOf(bellAction)),
         body = if (!(isTelevision && state.mode == CalendarViewMode.Agenda)) PlayarrPageBody.Panel else PlayarrPageBody.Bleed,
+        // Web phone agenda sits on the key-art stack like the library pages (art needs a Work, which calendar entries lack).
+        backdrop = if (!isTelevision && state.mode == CalendarViewMode.Agenda) {
+            {
+                PhoneKeyArt(null, "", null, Modifier.fillMaxSize())
+                PhoneStageWash(Modifier.fillMaxSize())
+                Box(Modifier.fillMaxSize().background(phonePanelBrush()))
+            }
+        } else null,
     ) {
         if (!isTelevision) {
             PhoneCalendarHeader(state, language.locale, holder) { jumpOpen = true }
@@ -399,7 +407,7 @@ private fun PhoneCalendarAgenda(
     actions: CalendarActionsHolder,
     modifier: Modifier,
 ) {
-    LazyColumn(modifier.offset(y = (-16).dp), contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp)) {
+    LazyColumn(modifier.offset(y = (-15).dp), contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp)) {
         if (loading) {
             items(3) { Column(Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) { PlayarrSkeleton(Modifier.width(180.dp).height(18.dp)); Spacer(Modifier.height(8.dp)); CalendarRowSkeleton() } }
         } else {
@@ -413,7 +421,7 @@ private fun PhoneCalendarAgenda(
                         )
                         if (group.date == today) CalendarTodayBadge()
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(13.dp))
                 }
                 items(groupSeriesEpisodes(group.entries, zone), key = { "${group.date}-${it.key}" }) { item ->
                     // The web entry is 510.4 px wide and runs past the viewport edge.
@@ -567,7 +575,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
         border = if (selected) null else BorderStroke(1.dp, WebPillBorder),
     ) {
         Row(
-            Modifier.padding(start = if (selected) 16.dp else 14.dp, end = 12.dp),
+            Modifier.padding(start = if (selected) 16.dp else 15.6.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp).clip(RoundedCornerShape(6.dp)))
@@ -1909,17 +1917,17 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
     Box(
         Modifier.background(androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f), CircleShape)
             .border(1.dp, toneColour.copy(alpha = 0.6f), CircleShape)
-            .padding(horizontal = if (phone) 8.dp else 10.4.dp, vertical = if (phone) 2.dp else 2.9.dp),
+            .padding(horizontal = 10.4.dp, vertical = 2.88.dp),
     ) {
-        Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1)
+        Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.336.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1)
     }
 }
 
 /** Web `.calendar-today-badge`: the small outlined TODAY tag beside today's heading. */
 @Composable
 private fun CalendarTodayBadge() {
-    Box(Modifier.border(1.dp, WebInkSoft.copy(alpha = 0.6f), CircleShape).padding(horizontal = 7.dp, vertical = 1.dp)) {
-        Text(playarrString(PlayarrString.CalendarToday).uppercase(), color = WebInkSoft, fontSize = 9.6.sp, lineHeight = 14.sp, fontWeight = FontWeight(800), letterSpacing = 0.6.sp, style = WebTextStyle)
+    Box(Modifier.border(1.dp, WebInkSoft.copy(alpha = 0.6f), CircleShape).padding(horizontal = 8.dp, vertical = 1.6.dp)) {
+        Text(playarrString(PlayarrString.CalendarToday).uppercase(), color = WebInkSoft, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight(640), letterSpacing = 0.896.sp, style = WebTextStyle)
     }
 }
 
