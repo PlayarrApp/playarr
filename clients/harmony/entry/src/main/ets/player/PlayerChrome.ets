@@ -189,6 +189,7 @@ const TV_SEEK_SIZE: number = 48;
 const TV_ROW_GAP: number = 24;
 const TV_BAR_GAP: number = 28;
 const TV_TIME_FONT_SIZE: number = 12;
+const TV_QUALITY_WIDTH: number = 120;
 const BACK_BUTTON_WIDTH_TV: number = 96;
 
 function defaultChromePaddingH(): number {
@@ -410,6 +411,9 @@ export struct PlayerChrome {
   /** Subtitles and audio: the CC button (TV) shows only when the file has something to choose. */
   @Prop hasTracks: boolean = false;
   onOpenTracks: () => void = () => {};
+  /** Quality: the negotiated quality's name on a pill (TV); empty while the server offers no choice. */
+  @Prop qualityLabel: string = '';
+  onOpenQuality: () => void = () => {};
   onVisibilityChanged: (visible: boolean) => void = () => {};
 
   @State private chromeOpacity: number = 1;
@@ -614,6 +618,19 @@ export struct PlayerChrome {
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
           Blank()
+          if (this.qualityLabel.length > 0) {
+            ChromeButton({
+              label: this.qualityLabel,
+              circle: true,
+              buttonWidth: tv(TV_QUALITY_WIDTH),
+              buttonHeight: tv(TV_SEEK_SIZE),
+              fontSize: tv(13),
+              onActivate: this.onOpenQuality,
+              notifyFocusChanged: ((focused: boolean): void => {
+                this.setChildFocused(focused);
+              }),
+            })
+          }
           if (this.hasTracks) {
             ChromeButton({
               label: 'CC',

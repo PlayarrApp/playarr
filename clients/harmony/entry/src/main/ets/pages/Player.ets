@@ -126,6 +126,7 @@ import type { PlaybackTeardownOutcome } from '../player/PlaybackSessionReporter'
 import { PlayerChrome } from '../player/PlayerChrome';
 import { EndScreen } from '../player/EndScreen';
 import { PlayerTracksDrawer } from '../player/PlayerTracksDrawer';
+import { PlayerQualityDrawer } from '../player/PlayerQualityDrawer';
 import { MediaRail } from '../design/components/MediaRail';
 import type { MediaRailItem } from '../design/components/MediaRail';
 import { PosterCard } from '../design/components/PosterCard';
@@ -174,6 +175,19 @@ const HEARTBEAT_INTERVAL_MS: number = 10000;
 const UI_TICK_INTERVAL_MS: number = 500;
 
 /** brief 9 Slice 7 / player/PlayerInput.ets: "Seek amount is +/-10 s." */
+/** The negotiated quality's name for the control bar ('' when the server offers no choice). */
+function qualityLabelOf(info: PlaybackInfoResponse): string {
+  if (info.quality_options.length < 2) {
+    return '';
+  }
+  for (const option of info.quality_options) {
+    if (option.id === info.selected_quality_id) {
+      return option.label;
+    }
+  }
+  return '';
+}
+
 const SUBTITLE_FONT_SIZE: number = 16;
 const SUBTITLE_BADGE_RADIUS: number = 4;
 /** Not a brief literal -- a fixed clearance so the subtitle cue never
@@ -251,6 +265,11 @@ struct Player {
   /** Whether the negotiated file has anything to choose in the CC drawer (a subtitle track, or more than one audio track). */
   @State private hasTracks: boolean = false;
   @State private selectedSubtitleId: string = '';
+  /** The quality drawer is open; `qualityLabel` is the negotiated quality's name ('' while there is nothing to choose). */
+  @State private qualityOpen: boolean = false;
+  @State private qualityLabel: string = '';
+  /** The viewer's audio pick for this session (a stream index), kept across a quality change. */
+  private userAudioStreamIndex: number | null = null;
   @State private selectedAudioId: string = '';
   /** The viewer's own subtitle pick for this session: null until they pick; '' is Off. It outlives renegotiations (an audio change). */
   private userSubtitleChoice: string | null = null;
@@ -597,6 +616,7 @@ struct Player {
   private async attachDefaultSubtitleIfNamed(info: PlaybackInfoResponse): Promise<void> {
     // A track the server already chose wins; otherwise the saved default (web `selectDefaultSubtitleTrackId`).
     this.hasTracks = info.subtitle_tracks.length > 0 || info.audio_tracks.length > 1;
+    this.qualityLabel = qualityLabelOf(info);
     this.selectedAudioId = info.selected_audio_track_id !== null ? info.selected_audio_track_id : '';
     // The viewer's own pick wins over the server's choice and the saved default.
     const choice = this.userSubtitleChoice;
@@ -648,6 +668,7 @@ struct Player {
       if (track.id === id) {
         this.tracksOpen = false;
         const nowMs = reportedPositionMs(this.controller.getCurrentPositionMs(), info.source_offset_ms);
+        this.userAudioStreamIndex = track.stream_index;
         const options: PlaybackNegotiationOptions = { startPositionMs: nowMs, audioStreamIndex: track.stream_index };
         if (info.selected_quality_id !== ORIGINAL_QUALITY) {
           options.profile = info.selected_quality_id;
@@ -656,6 +677,24 @@ struct Player {
         return;
       }
     }
+  }
+
+  /** The quality drawer's pick: renegotiates the same file with that profile ("original" sends none), from where playback is now. */
+  private async pickQuality(id: string): Promise<void> {
+    const info = this.currentInfo;
+    if (info === null || id === info.selected_quality_id) {
+      return;
+    }
+    this.qualityOpen = false;
+    const nowMs = reportedPositionMs(this.controller.getCurrentPositionMs(), info.source_offset_ms);
+    const options: PlaybackNegotiationOptions = { startPositionMs: nowMs };
+    if (id !== ORIGINAL_QUALITY) {
+      options.profile = id;
+    }
+    if (this.userAudioStreamIndex !== null) {
+      options.audioStreamIndex = this.userAudioStreamIndex;
+    }
+    await this.renegotiate(options);
   }
 
   // -- Seeking / renegotiation-on-seek (brief 9 Slice 7) ----------------------
@@ -1323,6 +1362,10 @@ struct Player {
             onOpenTracks: () => {
               this.tracksOpen = true;
             },
+            qualityLabel: this.qualityLabel,
+            onOpenQuality: () => {
+              this.qualityOpen = true;
+            },
           })
         }
 
@@ -1344,6 +1387,19 @@ struct Player {
           })
         }
 
+        if (this.qualityOpen && this.currentInfo !== null) {
+          PlayerQualityDrawer({
+            options: this.currentInfo.quality_options,
+            selectedId: this.currentInfo.selected_quality_id,
+            onPick: (id: string): void => {
+              void this.pickQuality(id);
+            },
+            onClose: (): void => {
+              this.qualityOpen = false;
+            },
+          })
+        }
+
         if (this.phase === 'ready' && this.endPhase !== 'playing') {
           this.endScreenOverlay()
         }
@@ -1360,8 +1416,9 @@ struct Player {
       })
       .onKeyEvent((event: KeyEvent) => {
         const action = resolvePlayerAction(event);
-        if ((action === 'back' || action === 'stop') && this.tracksOpen) {
+        if ((action === 'back' || action === 'stop') && (this.tracksOpen || this.qualityOpen)) {
           this.tracksOpen = false;
+          this.qualityOpen = false;
           event.stopPropagation();
           return;
         }

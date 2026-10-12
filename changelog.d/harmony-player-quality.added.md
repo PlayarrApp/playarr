@@ -1,0 +1,1 @@
+- HarmonyOS TV player: the control bar shows the negotiated quality; selecting it opens a drawer to switch quality (the stream renegotiates from the current position, keeping the chosen audio).
