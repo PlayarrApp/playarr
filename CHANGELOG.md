@@ -2885,6 +2885,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Harmony phone capture jobs now fail when required screens are missing and verify title-detail navigation through Previewer route state.
 - The player OK toggle parity check now compares the exact Play or Pause state from its generated web reference, while focus-order checks continue to compare the shared play-pause role.
 - The macOS Apple driver reads its parity state from an explicit file (-PlayarrParityState).
 - Web tests: the card-size e2e also checks 430, 539 and 540px, so the 2 to 3 column boundary beside the letter rail is covered.
