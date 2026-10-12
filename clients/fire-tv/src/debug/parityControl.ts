@@ -21,12 +21,6 @@ export interface FocusReport {
   eventTag?: number;
 }
 
-/** Hide media identifiers in the diagnostic route while keeping its route shape visible. */
-export function safeParityRoute(route: string | null): string | null {
-  if (route === null) return null;
-  return route.replace(/^(\/(?:movies|series|player)\/)[^/?]+(?=\/|\?|$)/, '$1:id');
-}
-
 let lastFocus: FocusReport | null = null;
 
 /** Screens call this from their focus handlers; a no-op unless the control channel is built in. */
@@ -111,7 +105,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
       return;
     }
     // Every command answers with the state, so the driver needs one read after it.
-    setTimeout(() => console.log('PARITY ' + JSON.stringify({cmd: command.cmd, seq: command.seq ?? null, route: safeParityRoute(hooks.location()), focus: lastFocus, nativeFocusTag: FocusManager.getFocused(), player: hooks.player(), theme: hooks.theme()})), command.cmd === 'state' ? 0 : 1500);
+    setTimeout(() => console.log('PARITY ' + JSON.stringify({cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus: lastFocus, nativeFocusTag: FocusManager.getFocused(), player: hooks.player(), theme: hooks.theme()})), command.cmd === 'state' ? 0 : 1500);
   };
   void Linking.getInitialURL().then(handle, () => undefined);
   const subscription = Linking.addEventListener('url', (event: {url: string}) => handle(event.url));
