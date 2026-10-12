@@ -174,6 +174,8 @@ namespace Playarr.Xbox.Views
                 Height = 262,
                 Padding = new Thickness(0),
             };
+            // Match the web Home rail's 18 px focus headroom while keeping its card origin and rail pitch unchanged.
+            CardFocus.ReserveTopLiftRoom(list, 18);
             ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
             ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
             ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);

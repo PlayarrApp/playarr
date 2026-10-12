@@ -34,6 +34,17 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>
+        /// Expands a rail's top clip area for the focused-card lift without moving its resting cards or changing the
+        /// rail's contribution to its parent layout. This mirrors the web rails' top padding and compensating margin.
+        /// </summary>
+        public static void ReserveTopLiftRoom(ListView list, double pixels)
+        {
+            list.Height += pixels;
+            list.Margin = new Thickness(list.Margin.Left, list.Margin.Top - pixels, list.Margin.Right, list.Margin.Bottom);
+            list.Padding = new Thickness(list.Padding.Left, list.Padding.Top + pixels, list.Padding.Right, list.Padding.Bottom);
+        }
+
+        /// <summary>
         /// Web TV puts focus on a card when a page opens: the first one, or on Back the one that was focused when the
         /// viewer left. <paramref name="target"/> returns that card's container once it is realised (see
         /// <see cref="FocusClaim"/>, which keeps claiming it until focus sticks).
