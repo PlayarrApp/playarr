@@ -194,3 +194,24 @@ export interface WorkDetail {
   runtime_ms: number | null;
   available_on: AvailabilityBadge[];
 }
+
+/** One person on a work's cast or crew list (`GET /api/v1/catalog/{id}/credits`). */
+export interface CreditPerson {
+  id: string;
+  name: string;
+  headshot_url?: string | null;
+}
+
+export interface Credit {
+  id: string;
+  character?: string | null;
+  department?: string | null;
+  job?: string | null;
+  person: CreditPerson;
+}
+
+/** `GET /api/v1/catalog/{id}/credits` response. */
+export interface WorkCredits {
+  cast: Credit[];
+  crew: Credit[];
+}

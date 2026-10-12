@@ -102,7 +102,8 @@
 
 import { image } from '@kit.ImageKit';
 
-import { getWorkDetail, getSimilarWorks } from '../data/CatalogRepository';
+import { getWorkDetail, getSimilarWorks, getWorkCredits } from '../data/CatalogRepository';
+import { getMediaChapters } from '../data/PlaybackRepository';
 import {
   fetchWorkArtworkByPriority,
   fetchAlbumArtworkByPriority,
@@ -124,6 +125,8 @@ import type {
   BookDetail,
   Season,
 } from '../core/Types/WorkDetail';
+import type { Credit } from '../core/Types/WorkDetail';
+import type { MediaChapter } from '../core/Types/Media';
 import type { Work, Availability } from '../core/Types/Work';
 import type { WorkKind } from '../core/Types/Catalog';
 
@@ -131,6 +134,8 @@ import { FeatureCopy } from '../design/components/FeatureCopy';
 import { MediaRail } from '../design/components/MediaRail';
 import type { MediaRailItem } from '../design/components/MediaRail';
 import { PosterCard } from '../design/components/PosterCard';
+import { PageShell } from '../design/components/PageShell';
+import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 import { Skeleton } from '../design/components/Skeleton';
 
@@ -146,7 +151,6 @@ import type { QueueItem } from '../core/EndOfPlayback.ts';
 
 import { ROUTES } from '../navigation/Routes';
 import type { DetailRouteParams, PlayerRouteParams } from '../navigation/Routes';
-import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { getNavStack, popRoute, pushRoute } from '../navigation/NavStack';
 
 // -- UI-only constants (not brief/Tokens.ts literals -- see design/components/
@@ -160,6 +164,31 @@ const PLAY_BUTTON_LABEL_SIZE: number = 16;
 const HERO_TOUCH_HEIGHT: number = 340;
 /** Phone: where the text block starts (the backdrop's lower part is under it, faded). */
 const TOUCH_TEXT_TOP: number = 330;
+
+const PILL_HEIGHT: number = 62;
+const PILL_PADDING_X: number = 28;
+const PILL_GAP: number = 17;
+const PILL_ROW_GAP: number = 14;
+const PILL_FILL_ALPHA: number = 0.09;
+const COPY_GAP: number = 36;
+const BACKDROP_OPACITY: number = 0.09;
+const RIGHT_COLUMN_X: number = 882;
+const RIGHT_COLUMN_Y: number = 530;
+const RIGHT_COLUMN_WIDTH: number = 1038;
+const RIGHT_COLUMN_HEIGHT: number = 550;
+const RIGHT_COLUMN_GAP: number = 56;
+const CHAPTER_CARD_WIDTH: number = 268;
+const CHAPTER_CARD_HEIGHT: number = 150;
+const CAST_CIRCLE: number = 104;
+const CAST_GAP: number = 73;
+const CAST_INITIALS_SIZE: number = 36;
+
+/** One cast entry in a rail: the person's name and headshot link (empty for none). */
+interface CastRow {
+  id: string;
+  name: string;
+  headshot: string;
+}
 
 /** Glass "browser" panel recipe -- brief 5.6 documents this exact glass
  * treatment for the rail panel; not a `core/Tokens.ts` field, matching
@@ -194,6 +223,8 @@ interface DetailRow {
   artwork: image.PixelMap | undefined;
   mediaFileId: string | null;
   similarWorkId: string | null;
+  /** Where playback starts when the row is a chapter; absent plays from the beginning. */
+  startMs?: number;
 }
 
 /** One season/album/books/similar rail: a heading plus its rows. */
@@ -507,6 +538,7 @@ function applyRowArtworkInRail(rail: DetailRail, rowId: string, artwork: image.P
         artwork: artwork,
         mediaFileId: item.mediaFileId,
         similarWorkId: item.similarWorkId,
+        startMs: item.startMs,
       };
       items.push(next);
     } else {
@@ -552,6 +584,44 @@ function applyAlbumArtwork(rails: DetailRail[], railId: string, artwork: image.P
   return updated;
 }
 
+function chapterTimeLabel(ms: number): string {
+  const total = Math.floor(ms / 1000);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const ss = seconds < 10 ? '0' + seconds.toString() : seconds.toString();
+  if (hours > 0) {
+    const mm = minutes < 10 ? '0' + minutes.toString() : minutes.toString();
+    return hours.toString() + ':' + mm + ':' + ss;
+  }
+  return minutes.toString() + ':' + ss;
+}
+
+/** One chapter card (web Chapters rail): "Chapter 01" (or the chapter's own title) under the card, its start time as the caption. */
+function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
+  const number = chapter.index < 9 ? '0' + (chapter.index + 1).toString() : (chapter.index + 1).toString();
+  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : 'Chapter ' + number;
+  const row: DetailRow = {
+    id: 'chapter-' + chapter.index.toString(),
+    title: title,
+    subtitle: chapterTimeLabel(chapter.start_ms),
+    artwork: undefined,
+    mediaFileId: mediaFileId,
+    similarWorkId: null,
+    startMs: chapter.start_ms,
+  };
+  return row;
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(' ').filter((part: string): boolean => part.length > 0);
+  if (parts.length === 0) {
+    return '';
+  }
+  const first = parts[0].charAt(0).toUpperCase();
+  return parts.length === 1 ? first : first + parts[parts.length - 1].charAt(0).toUpperCase();
+}
+
 @Component
 struct Detail {
   @Prop workId: string = '';
@@ -573,6 +643,9 @@ struct Detail {
   @State private rails: DetailRail[] = [];
   @State private similarRail: DetailRail | null = null;
   @State private primaryMediaFileId: string | null = null;
+  @State private chaptersRail: DetailRail | null = null;
+  @State private cast: Credit[] = [];
+  @State private actionsOpen: boolean = false;
   /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
   @State private touchActionsOpen: boolean = false;
 
@@ -588,6 +661,9 @@ struct Detail {
     this.rails = [];
     this.similarRail = null;
     this.primaryMediaFileId = null;
+    this.chaptersRail = null;
+    this.cast = [];
+    this.actionsOpen = false;
 
     const workId = this.workId;
     const detailResult = await getWorkDetail(workId);
@@ -613,6 +689,10 @@ struct Detail {
     this.loadHeroArtwork(detail.work.id);
     this.hydrateRailArtwork();
     this.loadSimilar(detail.work);
+    this.loadCredits(detail.work.id);
+    if (this.primaryMediaFileId !== null && detail.work.kind === 'movie') {
+      this.loadChapters(this.primaryMediaFileId);
+    }
   }
 
   private async loadHeroArtwork(workId: string): Promise<void> {
@@ -650,6 +730,33 @@ struct Detail {
           this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
         }
       }
+    }
+  }
+
+  /** The movie's embedded chapters (web's Chapters rail): one card per chapter, thumbnail taken at its start. */
+  private async loadChapters(mediaFileId: string): Promise<void> {
+    const result = await getMediaChapters(mediaFileId);
+    if (result.kind !== 'ok' || result.value.length === 0) {
+      return;
+    }
+    const rows: DetailRow[] = [];
+    for (const chapter of result.value) {
+      rows.push(chapterRow(chapter, mediaFileId));
+    }
+    this.chaptersRail = { id: 'chapters', heading: 'Chapters', items: rows };
+    for (const chapter of result.value) {
+      const thumb = await fetchMediaThumbnail(mediaFileId, chapter.start_ms);
+      const current = this.chaptersRail;
+      if (thumb.kind === 'ok' && current !== null) {
+        this.chaptersRail = applyRowArtworkInRail(current, 'chapter-' + chapter.index.toString(), thumb.value);
+      }
+    }
+  }
+
+  private async loadCredits(workId: string): Promise<void> {
+    const result = await getWorkCredits(workId);
+    if (result.kind === 'ok') {
+      this.cast = result.value.cast;
     }
   }
 
@@ -735,6 +842,7 @@ struct Detail {
         mediaFileId: row.mediaFileId,
         workId: currentWorkId,
         queue: upNext,
+        startPositionMs: row.startMs,
       };
       pushRoute(stack, ROUTES.Player, params);
       return;
@@ -902,19 +1010,219 @@ struct Detail {
     return '';
   }
 
-  @Builder
-  private tvLayout(): void {
+  private shellTitle(): string {
+    const kind = this.detail !== null ? this.detail.work.kind : 'movie';
+    if (kind === 'series') {
+      return 'Series';
+    }
+    if (kind === 'artist') {
+      return 'Music';
+    }
+    return 'Movies';
+  }
 
+  /** The nav tile that stays marked on this page: the title's own kind (`movie`, `series`, `artist`). */
+  private shellNavId(): string {
+    return this.detail !== null ? this.detail.work.kind : '';
+  }
+
+  /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
+  @Builder
+  private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
+    Row({ space: tv(10) }) {
+      Text(glyph)
+        .fontSize(tv(12))
+        .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().accent))
+      Text(label)
+        .fontSize(tv(13))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().ink))
+        .maxLines(1)
+    }
+    .height(tv(PILL_HEIGHT))
+    .padding({ left: tv(PILL_PADDING_X), right: tv(PILL_PADDING_X) })
+    .borderRadius(tv(PILL_HEIGHT / 2))
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
+    .backgroundColor(primary ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
+    .opacity(enabled ? 1 : 0.5)
+    .focusable(enabled)
+    .onClick(() => {
+      onPress();
+    })
+  }
+
+  @Builder
+  private tvActions(): void {
+    Column({ space: tv(PILL_ROW_GAP) }) {
+      Row({ space: tv(PILL_GAP) }) {
+        this.actionPill('Download', '\u21E9', false, this.primaryMediaFileId !== null, (): void => {
+          this.actionsOpen = true;
+        })
+        this.actionPill(this.primaryMediaFileId !== null ? 'Play' : 'Unavailable', '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+          this.playPrimary();
+        })
+      }
+      Row({ space: tv(PILL_GAP) }) {
+        this.actionPill('Add to Playlist', '+', false, true, (): void => {
+          this.actionsOpen = true;
+        })
+      }
+    }
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  /** Web's cast circle: the person's initials (their headshot over them when there is one) and their name under it. */
+  @Builder
+  private castItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
+    Column({ space: tv(8) }) {
+      Stack() {
+        Text(initialsOf((item as CastRow).name))
+          .fontSize(tv(CAST_INITIALS_SIZE))
+          .fontWeight(FontWeight.Medium)
+          .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.6))
+        if ((item as CastRow).headshot.length > 0) {
+          Image((item as CastRow).headshot)
+            .width(tv(CAST_CIRCLE))
+            .height(tv(CAST_CIRCLE))
+            .objectFit(ImageFit.Cover)
+            .draggable(false)
+        }
+      }
+      .width(tv(CAST_CIRCLE))
+      .height(tv(CAST_CIRCLE))
+      .borderRadius(tv(CAST_CIRCLE / 2))
+      .clip(true)
+      .backgroundColor(toResourceColorWithAlpha(activeColors().ink, 0.08))
+      .focusable(true)
+
+      Text((item as CastRow).name)
+        .fontSize(tv(12))
+        .fontColor(toResourceColor(activeColors().ink))
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .width(tv(CAST_CIRCLE + 20))
+        .textAlign(TextAlign.Center)
+    }
+    .width(tv(CAST_CIRCLE + 20))
+  }
+
+  private castRows(): CastRow[] {
+    const rows: CastRow[] = [];
+    for (const credit of this.cast) {
+      const headshot = credit.person.headshot_url !== undefined && credit.person.headshot_url !== null ? credit.person.headshot_url : '';
+      const row: CastRow = { id: credit.id, name: credit.person.name, headshot: headshot };
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
+  @Builder
+  private railHeading(heading: string, count: string): void {
+    Column({ space: tv(4) }) {
+      Text(heading)
+        .fontSize(tv(TvGeometry.railHeadingSize))
+        .fontColor(toResourceColor(activeColors().ink))
+      Text(count)
+        .fontSize(tv(11))
+        .fontColor(toResourceColor(activeColors().inkMuted))
+    }
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  /** The right-hand column on web: the Chapters rail, then the Cast rail, straight on the page (no glass panel). */
+  @Builder
+  private tvRightColumn(): void {
+    Column({ space: tv(RIGHT_COLUMN_GAP) }) {
+      ForEach(
+        this.rails,
+        (rail: DetailRail) => {
+          MediaRail({
+            railId: rail.id,
+            heading: rail.heading,
+            itemGap: tv(TvGeometry.railItemGapTitle),
+            headingSize: tv(TvGeometry.railHeadingSize),
+            items: rail.items,
+            itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
+              this.rowItem(item, index, activeRailFactor);
+            },
+          })
+        },
+        (rail: DetailRail): string => rail.id
+      )
+      if (this.chaptersRail !== null) {
+        Column({ space: tv(12) }) {
+          this.railHeading('Chapters', this.chaptersRail.items.length.toString() + ' chapters')
+          MediaRail({
+            railId: 'chapters',
+            itemGap: tv(TvGeometry.railItemGapTitle),
+            items: this.chaptersRail.items,
+            itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
+              this.chapterItem(item, index, activeRailFactor);
+            },
+          })
+        }
+        .alignItems(HorizontalAlign.Start)
+      }
+      if (this.cast.length > 0) {
+        Column({ space: tv(12) }) {
+          this.railHeading('Cast', this.cast.length.toString() + ' people')
+          MediaRail({
+            railId: 'cast',
+            itemGap: tv(CAST_GAP),
+            items: this.castRows(),
+            itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
+              this.castItem(item, index, activeRailFactor);
+            },
+          })
+        }
+        .alignItems(HorizontalAlign.Start)
+      }
+      if (this.similarRail !== null) {
+        MediaRail({
+          railId: this.similarRail.id,
+          heading: this.similarRail.heading,
+          headingSize: tv(TvGeometry.railHeadingSize),
+          items: this.similarRail.items,
+          itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
+            this.similarItem(item, index, activeRailFactor);
+          },
+        })
+      }
+    }
+    .alignItems(HorizontalAlign.Start)
+    .width('100%')
+  }
+
+  @Builder
+  private chapterItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
+    PosterCard({
+      variant: 'titleEpisode',
+      title: (item as DetailRow).title,
+      subtitle: (item as DetailRow).subtitle,
+      artwork: (item as DetailRow).artwork,
+      cardWidth: tv(CHAPTER_CARD_WIDTH),
+      cardHeight: tv(CHAPTER_CARD_HEIGHT),
+      activeRailFactor: activeRailFactor,
+      onSelect: () => {
+        this.selectRow((item as DetailRow));
+      },
+    })
+  }
+
+  @Builder
+  private tvContent(): void {
     Stack() {
       if (this.heroArtwork !== undefined) {
         Image(this.heroArtwork)
           .width('100%')
           .height('100%')
           .objectFit(ImageFit.Cover)
+          .grayscale(1)
+          .opacity(BACKDROP_OPACITY)
           .draggable(false)
           .focusable(false)
-      } else {
-        Skeleton({ blockWidth: tv(1920), blockHeight: tv(1080), radius: 0 })
       }
 
       Row()
@@ -929,54 +1237,63 @@ struct Detail {
           ],
         })
 
-      Row()
-        .width('100%')
-        .height('100%')
-        .hitTestBehavior(HitTestMode.Transparent)
-        .linearGradient({
-          angle: 0,
-          colors: [
-            [toResourceColor(activeColors().surface), 0],
-            [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimVerticalFadeInPct)],
-            [
-              toResourceColorWithAlpha(activeColors().surface, 0),
-              pct100(TvGeometry.keyArtScrimVerticalFadeOutStartPct),
-            ],
-            [toResourceColor(activeColors().surface), 1],
-          ],
-        })
-
-      Column({ space: Spacing.lg }) {
-        FeatureCopy({ kicker: (this.detail !== null ? kindLabel(this.detail.work.kind) : ''), title: (this.detail !== null ? this.detail.work.title : ''), metaLines: (this.detail !== null ? buildMetaLines(this.detail) : []), synopsis: this.synopsisText() })
-        this.playButton(this.primaryMediaFileId !== null, tv(PLAY_BUTTON_HEIGHT_TV))
+      Column({ space: tv(COPY_GAP) }) {
+        FeatureCopy({ kicker: (this.detail !== null ? this.kickerLabel() : ''), title: (this.detail !== null ? this.detail.work.title : ''), metaLines: (this.detail !== null ? buildMetaLines(this.detail) : []), synopsis: this.synopsisText() })
+        this.tvActions()
       }
       .width(`${TvGeometry.detailCopyColumnWidthRatio * 100}%`)
       .alignItems(HorizontalAlign.Start)
       .position({ x: tv(TvGeometry.detailCopyColumnStart), y: tv(TvGeometry.detailCopyColumnTop) })
 
-      Row() {
-        Scroll() {
-          this.railsColumn()
-        }
-        .align(Alignment.Top)
-        .width('100%')
-        .height('100%')
-        .padding(tv(TvGeometry.railPanelPadding))
-        .borderRadius(Radii.railPanel)
-        .clip(true)
-        .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, this.railPanelSurfaceOpacity()))
-        .backdropBlur(tv(RAIL_PANEL_BLUR_RADIUS))
-        .border({ width: tv(1), color: toResourceColorWithAlpha(HAIRLINE_WHITE, RAIL_PANEL_HAIRLINE_ALPHA) })
+      Scroll() {
+        this.tvRightColumn()
       }
-      .width(`${TvGeometry.detailBrowserWidthRatio * 100}%`)
-      .height(`${TvGeometry.detailBrowserHeightRatio * 100}%`)
-      .justifyContent(FlexAlign.Center)
+      .align(Alignment.Top)
+      .width(tv(RIGHT_COLUMN_WIDTH))
+      .height(tv(RIGHT_COLUMN_HEIGHT))
+      .scrollBar(BarState.Off)
+      .position({ x: tv(RIGHT_COLUMN_X), y: tv(RIGHT_COLUMN_Y) })
     }
     .width('100%')
     .height('100%')
-    .alignContent(Alignment.TopEnd)
-    .padding({ right: tv(TvGeometry.detailBrowserEnd), top: 0 })
     .backgroundColor(toResourceColor(activeColors().surface))
+  }
+
+  /** Web's pink line over the title: the first genre when there is one, else the kind. */
+  private kickerLabel(): string {
+    if (this.detail === null) {
+      return '';
+    }
+    const genres = this.detail.work.genres;
+    if (genres !== undefined && genres !== null && genres.length > 0) {
+      return genres[0];
+    }
+    return kindLabel(this.detail.work.kind);
+  }
+
+  @Builder
+  private tvLayout(): void {
+    PageShell({
+      title: this.shellTitle(),
+      kicker: (this.detail !== null ? this.detail.work.title.toUpperCase() : ''),
+      selectedId: this.shellNavId(),
+      content: (): void => {
+        this.tvContent();
+      },
+    })
+    if (this.actionsOpen && this.detail !== null) {
+      TitleActionsDrawer({
+        workId: this.detail.work.id,
+        workTitle: this.detail.work.title,
+        onClose: (): void => {
+          this.actionsOpen = false;
+        },
+        onPlay: (workId: string): void => {
+          this.playPrimary();
+        },
+        onWatchedChanged: (): void => {},
+      })
+    }
   }
 
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */

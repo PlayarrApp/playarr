@@ -158,6 +158,11 @@ export function catalogDetailUrl(id: string): string {
   return "/api/v1/catalog/" + id;
 }
 
+/** `GET /api/v1/catalog/{id}/credits`: the work's cast and crew (empty, not 404, for a work with none). */
+export function catalogCreditsUrl(id: string): string {
+  return "/api/v1/catalog/" + id + "/credits";
+}
+
 export function catalogSimilarUrl(id: string): string {
   return "/api/v1/catalog/" + id + "/similar";
 }

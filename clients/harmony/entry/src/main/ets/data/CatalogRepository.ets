@@ -51,6 +51,7 @@ import {
   homeRailsUrl,
   catalogSearchUrl,
   catalogDetailUrl,
+  catalogCreditsUrl,
   catalogSimilarUrl,
   viewsUrl,
   viewResolveUrl,
@@ -65,7 +66,7 @@ import {
   RemoteOnlyWork,
   Work,
 } from '../core/Types/Work.ts';
-import { WorkDetail } from '../core/Types/WorkDetail.ts';
+import { WorkDetail, WorkCredits } from '../core/Types/WorkDetail.ts';
 import {
   BrowseQuery,
   CatalogPage,
@@ -244,6 +245,11 @@ export function searchCatalog(query: string, limit?: number): Promise<ApiResult<
 /** `GET /api/v1/catalog/{id}` (brief 4.8). */
 export function getWorkDetail(id: string): Promise<ApiResult<WorkDetail>> {
   return getPlayarrClient().getJson<WorkDetail>(catalogDetailUrl(id));
+}
+
+/** `GET /api/v1/catalog/{id}/credits`: the work's cast and crew. */
+export function getWorkCredits(id: string): Promise<ApiResult<WorkCredits>> {
+  return getPlayarrClient().getJson<WorkCredits>(catalogCreditsUrl(id));
 }
 
 /**
