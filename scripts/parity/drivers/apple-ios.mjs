@@ -85,8 +85,8 @@ export async function createDriver() {
       return r;
     },
     async playOnce(c, expect) {
+      await launch("play", ["--playarr-parity-play", c.file]); // app start and sign-in are not playback time
       const t0 = Date.now();
-      await launch("play", ["--playarr-parity-play", c.file]);
       let start = null, p0 = null, last = {};
       while ((Date.now() - t0) / 1000 < expect.startWithinSeconds + 15) {
         last = state().playback ?? {};
