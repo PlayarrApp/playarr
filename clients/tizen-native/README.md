@@ -54,3 +54,11 @@ Not supported on this platform, by design of the Tizen TV profile:
   media keys.
 - **Background transfers**: the app has no background service on the TV profile.
 - Season downloads create one ticket per episode and run two at a time; the keep-until presets are Forever, 1 week or 30 days after watched.
+
+## Running more than one emulator
+
+The suite can be split across emulator instances: `PLAYARR_TIZEN_SERIAL`, `PLAYARR_TIZEN_FORWARD` (the local port for `sdb forward`),
+`PLAYARR_TIZEN_DISPLAY` and `PLAYARR_TIZEN_WINDOW` (the emulator's X window id when it is not at 0,0 of its display) point the
+driver at another instance. A second instance is a copy of the TV emulator with its own qcow2 overlay, a launch conf with another
+`vm_name`, its own Xvnc display (enlarged with `xrandr --fb` so the 1920x1080 window fits at its offset), its own tpk install and a
+fresh sign-in. It runs in its own `systemd-run --user --scope` with memory limits.

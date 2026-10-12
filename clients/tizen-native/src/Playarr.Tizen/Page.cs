@@ -11,6 +11,8 @@ internal interface IPage
     string Route { get; }
     /// <summary>Accessible label of the focused item (the same text the web exposes), or null.</summary>
     string? FocusedLabel { get; }
+    /// <summary>Home only: where focus sits as (rail number, card number in it); the parity suite compares this rather than the label.</summary>
+    (int Rail, int Index)? FocusPosition => null;
     /// <summary>Handles a remote key; false when focus would leave the page to the left (the shell then focuses the nav).</summary>
     bool OnKey(RemoteKey key);
     /// <summary>True for pages that own the whole screen (the player): the shell hides its rail and background.</summary>

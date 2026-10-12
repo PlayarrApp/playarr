@@ -80,8 +80,20 @@ internal sealed class DownloadsScreen : IPage
         string? lastSeries = null; int? lastSeason = null;
         foreach (var r in rows)
         {
-            if (r.SeriesTitle is { } s && s != lastSeries) { lastSeries = s; lastSeason = null; _list.Add(Ui.Text($"{s}", 153.6f, y + 6, 15, 700, _t.InkSoft, 900, 22)); y += 32; }
-            if (r.SeriesTitle is not null && r.Season is { } sn && sn != lastSeason) { lastSeason = sn; _list.Add(Ui.Text($"Season {sn}", 173.6f, y + 4, 12, 700, _t.InkMuted, 400, 18)); y += 26; }
+            if (r.SeriesTitle is { } s && s != lastSeries)
+            {
+                lastSeries = s; lastSeason = null;
+                _list.Add(Ui.Text($"{s}", 153.6f, y + 12, 15, 700, _t.InkSoft, 900, 22));
+                GroupButtons(y, 1766 - 24, s, rows.Where(x => x.SeriesTitle == s).ToList(), $"series {s}");
+                y += 48;
+            }
+            if (r.SeriesTitle is not null && r.Season is { } sn && sn != lastSeason)
+            {
+                lastSeason = sn;
+                _list.Add(Ui.Text($"Season {sn}", 173.6f, y + 8, 12, 700, _t.InkMuted, 400, 18));
+                GroupButtons(y - 4, 1766 - 24, $"{r.SeriesTitle} season {sn}", rows.Where(x => x.SeriesTitle == r.SeriesTitle && x.Season == sn).ToList(), $"season {sn} of {r.SeriesTitle}", small: true);
+                y += 40;
+            }
             Row(r, y); y += RowH;
         }
         return y + 16;
@@ -136,6 +148,29 @@ internal sealed class DownloadsScreen : IPage
             _focus.Items.Add(new Focusable { Rect = () => new Box(absX, absY, bw, 48), Label = $"{it.Label} {r.Title}".ToLowerInvariant() + (r.Episode is { } e ? $" {e}" : ""), Style = f => ring.Show(f), Select = it.Do });
         }
         _list.Add(card);
+    }
+
+    /// <summary>Pause or resume all, and delete all, for a series or season header (web: actions at every level).</summary>
+    private void GroupButtons(float y, float right, string key, List<DownloadRecord> members, string label, bool small = false)
+    {
+        var ids = members.Select(m => m.Id).ToList();
+        var running = members.Any(m => m.State is DownloadState.Downloading or DownloadState.Queued or DownloadState.Processing);
+        var paused = members.Any(m => m.State is DownloadState.Paused);
+        var items = new List<(string Text, string Label, Action Do)>();
+        if (running) items.Add(("Pause all", $"pause {label}", () => { _env.Downloads.PauseMany(ids); Build(); }));
+        else if (paused) items.Add(("Resume all", $"resume {label}", () => { _env.Downloads.ResumeMany(ids); Build(); }));
+        items.Add(("Delete all", $"delete {label}", () => { _ = Task.Run(async () => { await _env.Downloads.RemoveManyAsync(ids); SynchronizationContextHolder.Post(() => Build()); }); }));
+        var h = small ? 34f : 40f; var x = right;
+        foreach (var it in Enumerable.Reverse(items))
+        {
+            var w = 24 + it.Text.Length * 7.4f; x -= w; var bx = x; var by = y;
+            var btn = Ui.Box(bx, by, w, h, _t.SurfaceSoft, h / 2);
+            btn.Add(Ui.Text(it.Text, 0, (h - 16) / 2, 11, 700, _t.Ink, w, 16, HorizontalAlignment.Center));
+            var ring = Ring.Make(w, h, h / 2, new Rgba(1, 1, 1)); ring.Show(false); btn.Add(ring);
+            _list.Add(btn);
+            _focus.Items.Add(new Focusable { Rect = () => new Box(bx, by, w, h), Label = it.Label.ToLowerInvariant(), Style = f => ring.Show(f), Select = it.Do });
+            x -= 10;
+        }
     }
 
     private void Remove(string id)

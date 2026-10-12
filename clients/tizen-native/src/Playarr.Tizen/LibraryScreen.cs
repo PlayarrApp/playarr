@@ -198,7 +198,9 @@ internal sealed class LibraryScreen : IPage
     private void OpenDrawer()
     {
         if (_focus < 0) return;
-        _drawer = new ActionsDrawer(_env, _items[_focus], () => { _root.Remove(_drawer!.Root); _drawer.Root.Dispose(); _drawer = null; }, msg => Toast(msg));
+        // web: with the drawer open the card behind it loses its focus look
+        if (_views.TryGetValue(_focus, out var behind)) behind.SetFocused(false);
+        _drawer = new ActionsDrawer(_env, _items[_focus], () => { _root.Remove(_drawer!.Root); _drawer.Root.Dispose(); _drawer = null; if (_focus >= 0 && _views.TryGetValue(_focus, out var again)) again.SetFocused(true); }, msg => Toast(msg));
         _root.Add(_drawer.Root);
     }
 

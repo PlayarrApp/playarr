@@ -276,6 +276,11 @@ public sealed class DownloadEngine(IDownloadsApi api, DownloadStore store)
         try { await api.CancelAsync(id).ConfigureAwait(false); } catch (Exception) { /* the server sweeps stale tickets */ }
     }
 
+    /// <summary>Group actions of the Downloads page (a whole series or season): the same single-download operations, applied to each member.</summary>
+    public void PauseMany(IEnumerable<string> ids) { foreach (var id in ids) if (Find(id) is { State: DownloadState.Downloading or DownloadState.Queued or DownloadState.Processing }) Pause(id); }
+    public void ResumeMany(IEnumerable<string> ids) { foreach (var id in ids) Resume(id); }
+    public async Task RemoveManyAsync(IEnumerable<string> ids) { foreach (var id in ids.ToList()) await RemoveAsync(id).ConfigureAwait(false); }
+
     public void EditKeep(string id, KeepUntil keep) { if (Find(id) is { } r) { r.Keep = keep; Persist(); } }
 
     /// <summary>Marks watched and drops downloads whose keep-until has passed (date, or N days/weeks after watched).</summary>

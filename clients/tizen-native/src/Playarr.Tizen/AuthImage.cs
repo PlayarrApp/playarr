@@ -10,14 +10,14 @@ namespace Playarr.Tizen;
 internal sealed class AuthImage(IPlayarrApiClient api)
 {
     /// <summary>Adds the image at <paramref name="path"/> to <paramref name="parent"/> when it has downloaded.</summary>
-    public void Apply(View parent, string? path, float w, float h)
+    public void Apply(View parent, string? path, float w, float h, float radius = 0)
     {
         if (path is null) return;
         _ = Task.Run(async () =>
         {
             var file = await GetAsync(path).ConfigureAwait(false);
             if (file is null) return;
-            SynchronizationContextHolder.Post(() => { try { parent.Add(Ui.Remote(file, w, h)); } catch (ObjectDisposedException) { /* page already gone */ } });
+            SynchronizationContextHolder.Post(() => { try { var img = Ui.Remote(file, w, h); if (radius > 0) img.CornerRadius = radius; parent.Add(img); img.LowerToBottom(); /* overlays (progress, focus ring) stay above a poster that loads later */ } catch (ObjectDisposedException) { /* page already gone */ } });
         });
     }
 

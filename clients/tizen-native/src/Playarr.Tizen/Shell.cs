@@ -50,6 +50,8 @@ internal sealed class Shell : View
     public IPage? Page => _page;
     public bool NavFocused => _navFocus >= 0;
     public bool Ready => _page?.IsReady ?? true;
+    /// <summary>{ rail, index }: "nav" and the item number from the top on the nav rail, else the page's own position (Home).</summary>
+    public (string Rail, int Index)? FocusPosition => _navFocus >= 0 ? ("nav", _navFocus) : _page?.FocusPosition is { } p ? (p.Rail.ToString(), p.Index) : null;
     public string? FocusedLabel => _navFocus >= 0 ? _nav[_navFocus].Item.Label.ToLowerInvariant() : _page?.FocusedLabel;
 
     public Shell(AppEnv env, Action exit)
@@ -127,6 +129,18 @@ internal sealed class Shell : View
     public void SetProfileName(string name) { if (_profileLabel is not null) _profileLabel.Text = name; }
 
     // ---- routing ----
+
+    /// <summary>
+    /// A title opened by its id with no origin (a deep link, the parity runner): web's Back then goes to the title's library, so the
+    /// history is that library rather than whatever page happened to be showing.
+    /// </summary>
+    public void NavigateDeepLink(string route)
+    {
+        var parent = route.StartsWith("/movies/") ? "/movies" : route.StartsWith("/series/") ? "/series" : null;
+        if (parent is null) { Navigate(route); return; }
+        _history.Clear(); _history.Push(parent);
+        Navigate(route, push: false);
+    }
 
     public void Navigate(string route, bool push = true)
     {

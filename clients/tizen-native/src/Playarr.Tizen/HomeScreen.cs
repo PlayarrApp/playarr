@@ -28,6 +28,7 @@ internal sealed class HomeScreen : IPage
     public string Route => "/";
     public string? FocusedLabel => _rails.Count == 0 ? null : (_rails[_rail].Model.Cards[_card].Title + _rails[_rail].Model.Cards[_card].Sub).ToLowerInvariant(); // web exposes the card text
     public bool HasFocusTarget => _rails.Count > 0;
+    public (int Rail, int Index)? FocusPosition => _rails.Count == 0 ? null : (_rail, _card);
 
     private sealed class RailView
     {

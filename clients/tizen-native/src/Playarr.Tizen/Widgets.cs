@@ -25,17 +25,17 @@ internal sealed class MediaCard
         Box.PositionX = x; Box.PositionY = y; Box.Size = new Size(Width, 230);
         Art.Size = new Size(Width, Height); Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
         Art.ClippingMode = ClippingModeType.ClipChildren;
-        env.Images.Apply(Art, card.ThumbUrl, Width, Height);
+        env.Images.Apply(Art, card.ThumbUrl, Width, Height, 12.48f);
         if (card.Progress > 0)
         {
             Art.Add(Ui.Box(0, Height - 3, Width, 3, new Rgba(1, 1, 1, 0.2f)));
             Art.Add(Ui.Box(0, Height - 3, Math.Max(3, Width * (float)card.Progress), 3, t.Brand));
         }
         Box.Add(Art);
-        if (t.Name != "dark")
         {
-            // web light keeps a 3 px brand ring on the focused card (the light theme's box-shadow ring)
-            _ring = new View { Size = new Size(Width, Height), CornerRadius = 12.48f, BorderlineWidth = 3, BorderlineColor = new Color(0.647f, 0.153f, 0.271f, 1), BorderlineOffset = -1 };
+            // web: a 3 px ring on the focused card, the brand red in light and the pale brand pink in dark
+            var rc = t.Name == "dark" ? new Color(t.BrandInk.R, t.BrandInk.G, t.BrandInk.B, 0.95f) : new Color(0.647f, 0.153f, 0.271f, 1);
+            _ring = new View { Size = new Size(Width, Height), CornerRadius = 12.48f, BorderlineWidth = 3, BorderlineColor = rc, BorderlineOffset = -1 };
             _ring.Show(false);
             Art.Add(_ring);
         }
@@ -55,7 +55,7 @@ internal sealed class MediaCard
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
         Art.PositionY = focused ? _lift : 0;
         Art.BoxShadow = focused ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
-        if (_ring is not null) { _ring.Show(focused && _t.Name != "dark"); if (focused) _ring.RaiseToTop(); } // the poster loads later and would otherwise sit on top of the ring
+        if (_ring is not null) { _ring.Show(focused); if (focused) _ring.RaiseToTop(); } // the poster loads later and would otherwise sit on top of the ring
         Title.TextColor = focused ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
     }
 
