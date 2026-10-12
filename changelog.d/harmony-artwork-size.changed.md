@@ -1,0 +1,1 @@
+- HarmonyOS TV: Settings > Appearance Home screen artwork and Artwork size now change Home's rails and the Library's screen and cover grids, as web's card size does.

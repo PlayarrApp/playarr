@@ -117,8 +117,10 @@ import { libraryCountLabel } from '../core/CountFormat';
 import { AlphabetRail } from '../design/components/AlphabetRail';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
-import { libraryViews, libraryViewLabel, normaliseLibraryView, COVER_COLUMNS, COVER_CARD_WIDTH, COVER_CARD_HEIGHT, COVER_GAP_X, COVER_GAP_Y } from '../core/LibraryView';
-import { loadLibraryView, saveLibraryView } from '../AppContainer';
+import { libraryViews, libraryViewLabel, normaliseLibraryView, COVER_GAP_Y } from '../core/LibraryView';
+import { loadLibraryView, saveLibraryView, loadAppearance } from '../AppContainer';
+import { cardGeometry, normaliseArtworkSize } from '../core/ArtworkSize';
+import type { ArtworkSizeName, CardGeometry } from '../core/ArtworkSize';
 import { PageShell } from '../design/components/PageShell';
 import { TouchIconButton } from '../design/components/TouchIconButton';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
@@ -486,6 +488,8 @@ export struct Library {
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
 
+  @State private artworkSize: ArtworkSizeName = 'medium';
+
   aboutToAppear(): void {
     this.loadPage(0);
     this.loadWatchProgress();
@@ -494,6 +498,12 @@ export struct Library {
 
   private async loadView(): Promise<void> {
     this.view = normaliseLibraryView(await loadLibraryView(this.kind), this.kind);
+    this.artworkSize = normaliseArtworkSize((await loadAppearance())[1]);
+  }
+
+  /** Settings > Appearance > Artwork size, as web's global `--card-size-step`: the screen and cover grids' columns and cards. */
+  private card(cover: boolean): CardGeometry {
+    return cardGeometry(cover, this.artworkSize);
   }
 
   private chooseView(value: string): void {
@@ -581,7 +591,7 @@ export struct Library {
 
   private gridColumnCount(): number {
     if (isTvMetrics()) {
-      return TvGeometry.libraryGridColumns;
+      return this.card(this.view === 'cover').columns;
     }
     const width = this.availableGridWidthVp();
     const gap = this.gridColumnGapVp();
@@ -925,8 +935,8 @@ export struct Library {
           GridItem() {
             LibraryGridCell({
               work: work,
-              cardWidth: tv(COVER_CARD_WIDTH),
-              cardHeight: tv(COVER_CARD_HEIGHT),
+              cardWidth: tv(this.card(true).width),
+              cardHeight: tv(this.card(true).height),
               cardRadius: tv(TvGeometry.libraryGridCardRadius),
               landscape: false,
               unseen: this.markFor(work).unseen,
@@ -946,10 +956,10 @@ export struct Library {
         (work: Work): string => work.id
       )
     }
-    .columnsTemplate(columnsTemplateFor(COVER_COLUMNS))
-    .columnsGap(tv(COVER_GAP_X))
+    .columnsTemplate(columnsTemplateFor(this.card(true).columns))
+    .columnsGap(tv(this.card(true).gap))
     .rowsGap(tv(COVER_GAP_Y))
-    .width(tv(COVER_CARD_WIDTH * COVER_COLUMNS + COVER_GAP_X * (COVER_COLUMNS - 1)))
+    .width(tv(this.card(true).width * this.card(true).columns + this.card(true).gap * (this.card(true).columns - 1)))
     .height('100%')
     .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop) })
     .margin({ left: tv(TvGeometry.libraryGridInsetLeft) })
@@ -1027,8 +1037,8 @@ export struct Library {
           GridItem() {
             LibraryGridCell({
               work: work,
-              cardWidth: tv(TvGeometry.libraryGridCardWidth),
-              cardHeight: tv(TvGeometry.libraryGridCardHeight),
+              cardWidth: tv(this.card(false).width),
+              cardHeight: tv(this.card(false).height),
               cardRadius: tv(TvGeometry.libraryGridCardRadius),
               landscape: true,
               unseen: this.markFor(work).unseen,
@@ -1048,11 +1058,10 @@ export struct Library {
         (work: Work): string => work.id
       )
     }
-    .columnsTemplate(columnsTemplateFor(TvGeometry.libraryGridColumns))
-    .columnsGap(tv(TvGeometry.libraryGridColumnGap))
+    .columnsTemplate(columnsTemplateFor(this.card(false).columns))
+    .columnsGap(tv(this.card(false).gap))
     .rowsGap(tv(TvGeometry.libraryGridRowGap))
-    .width(tv(TvGeometry.libraryGridCardWidth * TvGeometry.libraryGridColumns +
-      TvGeometry.libraryGridColumnGap * (TvGeometry.libraryGridColumns - 1)))
+    .width(tv(this.card(false).width * this.card(false).columns + this.card(false).gap * (this.card(false).columns - 1)))
     .height('100%')
     .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop) })
     .margin({ left: tv(TvGeometry.libraryGridInsetLeft) })

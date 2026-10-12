@@ -101,6 +101,9 @@
  * validator-enforced).
  */
 
+import { loadAppearance } from '../AppContainer';
+import { cardGeometry, normaliseArtworkSize } from '../core/ArtworkSize';
+import type { ArtworkSizeName, CardGeometry } from '../core/ArtworkSize';
 import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor } from '../design/Theme';
@@ -131,6 +134,7 @@ import type { ContinueWatchingEntry } from '../data/CatalogRepository';
 import {
   fetchWorkArtworkByPriority,
   LANDSCAPE_ARTWORK_PRIORITY,
+  COVER_ARTWORK_PRIORITY,
   HERO_ARTWORK_PRIORITY,
 } from '../data/ArtworkRepository';
 
@@ -440,6 +444,9 @@ export struct Home {
   @State private serverRails: HomeServerRail[] = [];
 
   @State private hero: HomeCardItem | undefined = undefined;
+  /** Settings > Appearance: Home screen artwork ('thumbnail' or 'cover') and the artwork size. */
+  @State private homeView: string = 'thumbnail';
+  @State private artworkSize: ArtworkSizeName = 'medium';
   /** Only non-null when `this.hero` came from continue-watching -- see this
    * file's header comment on the hero play button's resume-vs-detail split. */
   @State private heroResumeMediaFileId: string | null = null;
@@ -469,7 +476,29 @@ export struct Home {
     this.load();
   }
 
+  /** The card every rail uses (web `--card-w` / `--card-w-cover`): landscape thumbnails or portrait covers. */
+  private card(): CardGeometry {
+    return cardGeometry(this.homeView === 'cover', this.artworkSize);
+  }
+
+  /** The rail's list height: the landscape rail's, plus the extra height of a taller portrait card. */
+  private railListHeight(): number {
+    return tv(TvGeometry.homeRailsListHeight + Math.max(0, this.card().height - TvGeometry.libraryGridCardHeight));
+  }
+
+  /** Reads the saved appearance; true when it differs from what is showing. */
+  private async readAppearance(): Promise<boolean> {
+    const stored = await loadAppearance();
+    const view = stored[0] === 'cover' ? 'cover' : 'thumbnail';
+    const size = normaliseArtworkSize(stored[1]);
+    const changed = view !== this.homeView || size !== this.artworkSize;
+    this.homeView = view;
+    this.artworkSize = size;
+    return changed;
+  }
+
   private async load(): Promise<void> {
+    const appearanceRead = this.readAppearance();
     this.loading = true;
     this.showError = false;
     this.errorMessage = '';
@@ -601,6 +630,7 @@ export struct Home {
       this.heroResumeStartPositionMs = 0;
     }
 
+    await appearanceRead;
     this.loading = false;
     this.showError = false;
 
@@ -680,7 +710,7 @@ export struct Home {
     getItems: () => HomeCardItem[],
     setItems: (items: HomeCardItem[]) => void
   ): Promise<void> {
-    const result = await fetchWorkArtworkByPriority(workId, LANDSCAPE_ARTWORK_PRIORITY);
+    const result = await fetchWorkArtworkByPriority(workId, this.homeView === 'cover' ? COVER_ARTWORK_PRIORITY : LANDSCAPE_ARTWORK_PRIORITY);
     if (result.kind === 'ok') {
       setItems(patchCardArtwork(getItems(), workId, result.value));
     }
@@ -733,6 +763,8 @@ export struct Home {
     if (((item as HomeCardItem).applyTopRailFocus) && this.topRailFocusUpId.length > 0) {
       PosterCard({
         variant: 'home',
+        cardWidth: tv(this.card().width),
+        cardHeight: tv(this.card().height),
         title: ((item as HomeCardItem).title),
         subtitle: ((item as HomeCardItem).subtitle),
         progress: ((item as HomeCardItem).progress),
@@ -753,6 +785,8 @@ export struct Home {
     } else {
       PosterCard({
         variant: 'home',
+        cardWidth: tv(this.card().width),
+        cardHeight: tv(this.card().height),
         title: ((item as HomeCardItem).title),
         subtitle: ((item as HomeCardItem).subtitle),
         progress: ((item as HomeCardItem).progress),
@@ -812,7 +846,7 @@ export struct Home {
         MediaRail({
           railId: 'home-continue-watching-tv',
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
-          listHeight: tv(TvGeometry.homeRailsListHeight),
+          listHeight: this.railListHeight(),
           heading: 'On deck',
           items: this.continueWatchingItems,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -825,7 +859,7 @@ export struct Home {
         MediaRail({
           railId: `home-${rail.id}-tv`,
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
-          listHeight: tv(TvGeometry.homeRailsListHeight),
+          listHeight: this.railListHeight(),
           heading: rail.title,
           items: rail.items,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -837,7 +871,7 @@ export struct Home {
         MediaRail({
           railId: 'home-new-movies-tv',
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
-          listHeight: tv(TvGeometry.homeRailsListHeight),
+          listHeight: this.railListHeight(),
           heading: 'New Movies',
           items: this.newMovieItems,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -849,7 +883,7 @@ export struct Home {
         MediaRail({
           railId: 'home-new-series-tv',
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
-          listHeight: tv(TvGeometry.homeRailsListHeight),
+          listHeight: this.railListHeight(),
           heading: 'New Series',
           items: this.newSeriesItems,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -861,7 +895,7 @@ export struct Home {
         MediaRail({
           railId: 'home-more-movies-tv',
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
-          listHeight: tv(TvGeometry.homeRailsListHeight),
+          listHeight: this.railListHeight(),
           heading: 'More Movies',
           items: this.moreMovieItems,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -873,7 +907,7 @@ export struct Home {
         MediaRail({
           railId: 'home-more-series-tv',
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
-          listHeight: tv(TvGeometry.homeRailsListHeight),
+          listHeight: this.railListHeight(),
           heading: 'More Series',
           items: this.moreSeriesItems,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -1018,6 +1052,14 @@ export struct Home {
       .backgroundColor(toResourceColor(activeColors().bg))
     }
     .hideTitleBar(true)
+    .onShown(() => {
+      // Back from Settings: a changed Home artwork or size reloads the rails with the right art.
+      this.readAppearance().then((changed: boolean): void => {
+        if (changed && !this.loading) {
+          this.load();
+        }
+      });
+    })
   }
 }
 
