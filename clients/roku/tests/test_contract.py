@@ -127,10 +127,13 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIs(profile_group.find("./Group[@id='profilesClientsAction']"), clients_action)
 
         clients_poster = clients_action.find("./Poster[@id='profilesClientsBtn']")
+        clients_focus = clients_action.find("./Poster[@id='profilesClientsFocus']")
         clients_hit = clients_action.find("./Rectangle[@id='profilesClientsHit']")
         self.assertIsNotNone(clients_poster)
+        self.assertIsNotNone(clients_focus)
         self.assertIsNotNone(clients_hit)
         assert clients_poster is not None
+        assert clients_focus is not None
         assert clients_hit is not None
         self.assertIsNone(profile_actions.find(".//*[@id='profilesClientsHit']"))
 
@@ -148,6 +151,13 @@ class NavigationContractTests(unittest.TestCase):
             float(clients_poster.attrib["width"]),
             float(clients_poster.attrib["height"]),
         )
+        focus_x, focus_y = translation(clients_focus)
+        focus = (
+            group_x + focus_x,
+            group_y + focus_y,
+            float(clients_focus.attrib["width"]),
+            float(clients_focus.attrib["height"]),
+        )
         hit_x, hit_y = translation(clients_hit)
         hitbox = (
             group_x + hit_x,
@@ -156,6 +166,12 @@ class NavigationContractTests(unittest.TestCase):
             float(clients_hit.attrib["height"]),
         )
         self.assertEqual(hitbox, poster)
+        self.assertEqual(clients_focus.attrib.get("uri"), "pkg:/images/round-outline-r12.9.png")
+        self.assertLessEqual(focus[0], poster[0])
+        self.assertLessEqual(focus[1], poster[1])
+        self.assertGreaterEqual(focus[0] + focus[2], poster[0] + poster[2])
+        self.assertGreaterEqual(focus[1] + focus[3], poster[1] + poster[3])
+        self.assertEqual(clients_focus.attrib.get("visible"), "false")
         left, top, width, height = hitbox
         self.assertGreaterEqual(left, 0)
         self.assertGreaterEqual(top, 0)
@@ -169,9 +185,9 @@ class NavigationContractTests(unittest.TestCase):
         )
         self.assertIsNotNone(profiles_chrome)
         assert profiles_chrome is not None
-        self.assertIn('if suffix = "-light"', profiles_chrome.group(0))
-        self.assertIn('m.profilesClientsBtn.uri = "pkg:/images/profiles-clients.png"', profiles_chrome.group(0))
-        self.assertIn('m.profilesClientsBtn.uri = "pkg:/images/profiles-clients-focus.png"', profiles_chrome.group(0))
+        self.assertIn('m.profilesClientsFocus.visible = clientsF', profiles_chrome.group(0))
+        self.assertIn('m.profilesClientsFocus.blendColor = ThemeColor("focusRing")', profiles_chrome.group(0))
+        self.assertIn('m.profilesClientsBtn.uri = "pkg:/images/profiles-clients" + suffix + ".png"', profiles_chrome.group(0))
 
         down_navigation = re.search(
             r'state = "profiles" and key = "down"(.*?)else if state = "profiles" and key = "up"',
