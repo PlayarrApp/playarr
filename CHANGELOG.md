@@ -2887,6 +2887,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- The macOS D-pad parity driver can report engine focus, SwiftUI bindings, and the current window responder.
 - Harmony phone capture jobs now fail when required screens are missing and verify title-detail navigation through Previewer route state.
 - The player OK toggle parity check now compares the exact Play or Pause state from its generated web reference, while focus-order checks continue to compare the shared play-pause role.
 - The macOS Apple driver reads its parity state from an explicit file (-PlayarrParityState).

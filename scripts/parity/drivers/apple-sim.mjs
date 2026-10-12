@@ -35,6 +35,15 @@ export async function createDriver({ args = [] } = {}) {
   const notify = join(work, "notify"), wallSh = join(process.env.TRUSTED ?? "", "scripts/apple-wall/wall.sh");
   let theme = "dark";
   const hold = join(work, "hold-key");
+  const traceMacFocus = async () => {
+    run(notify, ["focus"]);
+    await sleep(150);
+    try {
+      const lines = readFileSync(join(work, "app.log"), "utf8").split("\n");
+      const line = lines.reverse().find((entry) => entry.includes("PlayarrMac focus:"));
+      if (line) console.log(`    ${line.trim()}`);
+    } catch { /* diagnosis only */ }
+  };
   const frontmost = () => { if (mac) return; try { run("osascript", ["-e", 'tell application "Simulator" to activate']); } catch { /* keep going: keys may still land */ } };
   const launch = async (extra = [], wait = 22000) => {
     if (mac) {
@@ -46,6 +55,7 @@ export async function createDriver({ args = [] } = {}) {
       if (process.env.DRIVER_TRACE && !globalThis.__targetsLogged) { // once: where the Mac's focus targets sit (diagnosis)
         globalThis.__targetsLogged = true; run(notify, ["targets"]); await sleep(1500);
         try { console.log(run("bash", ["-c", `grep "PlayarrMac targets" "${work}/app.log" | sort -u | head -60`]).trim()); } catch { /* diagnosis only */ }
+        await traceMacFocus();
       }
       return;
     }
@@ -122,7 +132,10 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       else if (long && existsSync(hold)) run(hold, [String(KEYCODE[name]), "1.1"]);
       else run("osascript", ["-e", `tell application "System Events" to key code ${KEYCODE[name]}`]);
       await sleep(600);
-      if (process.env.DRIVER_TRACE) { const s = state(); console.log(`    key ${name}${long ? ":long" : ""} -> ${s.route} | ${s.focused} | ${s.item}`); }
+      if (process.env.DRIVER_TRACE) {
+        const s = state(); console.log(`    key ${name}${long ? ":long" : ""} -> ${s.route} | ${s.focused} | ${s.item}`);
+        if (mac) await traceMacFocus();
+      }
     },
     async location() { await sleep(300); return state().route ?? "/"; },
     async focused() { const s = state(); return s.focused == null ? null : s.position ? { label: s.focused, position: s.position } : s.focused; },
