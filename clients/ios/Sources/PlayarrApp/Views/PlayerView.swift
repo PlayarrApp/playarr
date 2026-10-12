@@ -147,6 +147,22 @@ struct PlayerView: View {
             withAnimation(.easeInOut(duration: 0.24)) { controlsVisible = false }
         }
         #if DEBUG
+        .task(id: ParityLaunch.playFile) { @MainActor in
+            // Suite playback cases: publish the engine state and position for the simulator driver.
+            guard ParityLaunch.playFile != nil else { return }
+            while !Task.isCancelled {
+                if let viewModel {
+                    var playback: [String: Any] = ["position": viewModel.currentTime]
+                    switch (viewModel.loadState, viewModel.engineState) {
+                    case (.failed(let message), _), (_, .failed(let message)): playback["state"] = "failed"; playback["detail"] = message
+                    case (_, .playing): playback["state"] = "playing"
+                    default: playback["state"] = "loading"
+                    }
+                    ParityLaunch.record("playback", playback)
+                }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
         .task(id: viewModel?.loadState) { @MainActor in
             guard ParityLaunch.isPlayerRoute, let viewModel, case .playing = viewModel.loadState else { return }
             // Parity capture: the fixture clip paused at 2.0 s, controls up.

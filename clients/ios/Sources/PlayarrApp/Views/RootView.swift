@@ -45,11 +45,10 @@ struct RootView: View {
             #if DEBUG
             ParityLaunch.applyLandscape()
             if ParityLaunch.isActive, let server = ParityLaunch.server, let user = ParityLaunch.user {
-                try? await environment.signIn(
-                    serverURL: server,
-                    username: user,
-                    password: ParityLaunch.password ?? ""
-                )
+                do {
+                    try await environment.signIn(serverURL: server, username: user, password: ParityLaunch.password ?? "")
+                    ParityLaunch.record("signedIn", true)
+                } catch {}
                 return
             }
             #endif
@@ -180,6 +179,9 @@ private struct AuthenticatedPlayarrShell: View {
         ))
         if let screen = ParityLaunch.screen {
             switch screen {
+            case "music": _selected = State(initialValue: .library(.artist))
+            case "filters", "actions": _selected = State(initialValue: .library(.movie))
+            case "play": _selected = State(initialValue: .player)
             case "movies": _selected = State(initialValue: .library(.movie))
             case "series": _selected = State(initialValue: .library(.series))
             case "search": _selected = State(initialValue: .search)
@@ -227,7 +229,7 @@ private struct AuthenticatedPlayarrShell: View {
                 let page = try? await environment.apiClient.browseCatalog(
                     kind: kind, genre: nil, tag: nil, sort: nil, limit: 100, offset: nil
                 )
-                if let match = page?.items.first(where: { $0.title == title }) {
+                if let match = page?.items.first(where: { $0.title == title || title == "@first" }) {
                     demoDetailViewModel = WorkDetailViewModel(apiClient: environment.apiClient, workID: match.id)
                 }
             }

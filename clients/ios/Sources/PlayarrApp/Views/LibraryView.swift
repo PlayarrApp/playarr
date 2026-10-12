@@ -18,6 +18,9 @@ struct LibraryView: View {
         viewModel.selectedKind = kind
         viewModel.isSearchMode = kind == nil
         _viewModel = State(initialValue: viewModel)
+        #if DEBUG
+        _showingFilters = State(initialValue: ParityLaunch.screen == "filters")
+        #endif
         self.apiClient = apiClient
         self.downloadRepository = downloadRepository
         self.title = title ?? kind?.displayName ?? "Search"
@@ -51,6 +54,10 @@ struct LibraryView: View {
         }
         .task {
             if case .idle = viewModel.loadState { await viewModel.load() }
+            #if DEBUG
+            // Parity "actions": the first card's actions sheet, which a long press opens.
+            if ParityLaunch.screen == "actions", downloadTarget == nil { downloadTarget = viewModel.works.first }
+            #endif
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showingFilters) { filterSheet }

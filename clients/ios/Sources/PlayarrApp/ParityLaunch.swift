@@ -33,6 +33,7 @@ enum ParityLaunch {
         guard let head = parts.first, !head.isEmpty else { return nil }
         switch head {
         case "home-scrolled": return "home"
+        case "calendar-month", "calendar-week", "calendar-agenda": return "calendar"
         case "detail": return parts.count > 1 && parts[1] == "series" ? "detail-series" : "detail-film"
         default: return head
         }
@@ -41,6 +42,19 @@ enum ParityLaunch {
     static var homeScrollCard: Int? {
         guard parts.first == "home-scrolled" else { return nil }
         return parts.count > 1 ? Int(parts[1]) ?? 2 : 2
+    }
+    /// `--playarr-parity-play <media file id>` with route `play`: opens the player on that file and plays it (suite playback cases).
+    static var playFile: String? { value("--playarr-parity-play") }
+    /// Routes `calendar-month`, `calendar-week` and `calendar-agenda` open the calendar in that view.
+    static var calendarMode: CalendarViewMode? {
+        switch parts.first { case "calendar-month": .month; case "calendar-week": .week; case "calendar-agenda": .agenda; default: nil }
+    }
+    /// Merges one key into Documents/parity-state.json, which the simulator driver reads (signed in, playback state).
+    @MainActor static func record(_ key: String, _ value: Any) {
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("parity-state.json")
+        var state = (try? JSONSerialization.jsonObject(with: Data(contentsOf: url))) as? [String: Any] ?? [:]
+        state[key] = value
+        if let data = try? JSONSerialization.data(withJSONObject: state) { try? data.write(to: url) }
     }
     static var isPlayerRoute: Bool { parts.first == "player" || parts.first == "player-quality" }
     static var title: String? {
@@ -96,9 +110,10 @@ struct ParityPlayerHost: View {
             }
         }
         .task {
+            if target == nil, let file = ParityLaunch.playFile, let id = UUID(uuidString: file) { target = (id, ""); return }
             guard target == nil, let title = ParityLaunch.title else { return }
             let page = try? await apiClient.browseCatalog(kind: .movie, genre: nil, tag: nil, sort: nil, limit: 100, offset: nil)
-            guard let work = page?.items.first(where: { $0.title == title }),
+            guard let work = page?.items.first(where: { $0.title == title || title == "@first" }),
                   let detail = try? await apiClient.fetchWork(id: work.id),
                   let mediaFileID = detail.mediaFileID else { return }
             target = (mediaFileID, title)

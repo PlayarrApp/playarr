@@ -1,0 +1,148 @@
+name: Apple iOS wall
+
+# iPhone and iPad parity runs on GitHub-hosted macOS runners, one parallel job per device and part (dark screens, light
+# screens, playback cases): no chaining. Each job builds the app, boots a simulator, signs in as the device test account
+# and runs the shared suite (scripts/parity, docs/parity/SUITE.md) through drivers/apple-ios.mjs. Artifacts are named
+# apple-wall-<device>-<run id>-<part> and carry build.json plus the part's results. Touch devices skip the D-pad checks.
+#
+# Safety (public repository): workflow_dispatch only, no pull_request trigger, so forks never get a secret. Each secret is
+# passed to the one step that needs it.
+
+run-name: Apple iOS wall [${{ inputs.devices }}]
+
+on:
+  workflow_dispatch:
+    inputs:
+      devices:
+        description: Comma-separated devices (iphone, ipad)
+        type: string
+        default: iphone,ipad
+      ref:
+        description: Branch, tag or SHA of the apps to build (default - the default branch)
+        type: string
+        default: ""
+      parts:
+        description: Comma-separated parts (dark, light, playback)
+        type: string
+        default: dark,light,playback
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        env:
+          DEVICES: ${{ inputs.devices }}
+          PARTS: ${{ inputs.parts }}
+        run: |
+          python3 - <<'P' >> "$GITHUB_OUTPUT"
+          import json, os
+          ok = lambda v, allowed: [x for x in v.split(",") if x in allowed]
+          include = [{"device": d, "part": p} for d in ok(os.environ["DEVICES"], ("iphone", "ipad")) for p in ok(os.environ["PARTS"], ("dark", "light", "playback"))]
+          print("matrix=" + json.dumps({"include": include}))
+          P
+
+  run:
+    name: ${{ matrix.device }} ${{ matrix.part }}
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: macos-26
+    timeout-minutes: 120
+    # Both playback jobs share the server's two transcode slots per node: one at a time.
+    concurrency:
+      group: ${{ matrix.part == 'playback' && 'ios-wall-playback' || format('ios-wall-{0}-{1}-{2}', matrix.device, matrix.part, github.run_id) }}
+    env:
+      DEVICE: ${{ matrix.device }}
+      PART: ${{ matrix.part }}
+      TRUSTED: ${{ github.workspace }}/trusted
+      SRC: ${{ github.workspace }}/src
+    steps:
+      - name: Work directory
+        run: echo "WORK=$RUNNER_TEMP/wall" >> "$GITHUB_ENV"
+
+      - name: Check out the scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+
+      - name: Check out the ref under test
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.event.repository.default_branch }}
+          path: src
+          persist-credentials: false
+
+      # The iPad wall build needs an iOS 18 simulator (iPadOS 26 does not rotate); the runner image only has 26.
+      - name: Cache the iOS 18 simulator runtime
+        if: matrix.device == 'ipad'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ios18
+          key: ios-sim-runtime-18.5-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install the iOS 18 simulator runtime
+        if: matrix.device == 'ipad'
+        timeout-minutes: 40
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/ios18"; mkdir -p "$dir"
+          if ! ls "$dir"/*.dmg >/dev/null 2>&1; then xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir"; fi
+          xcodebuild -importPlatform "$(ls "$dir"/*.dmg | head -1)"
+          xcrun simctl list runtimes | grep 'iOS 18' || { echo "::error::iOS 18 runtime missing after import"; exit 1; }
+
+      - name: Build the app
+        timeout-minutes: 60
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" build "$DEVICE"
+
+      - name: Start the simulator
+        timeout-minutes: 15
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
+
+      - name: Parity suite (iOS driver)
+        id: suite
+        timeout-minutes: 60
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          REF: ${{ inputs.ref || github.event.repository.default_branch }}
+        run: |
+          set -uo pipefail
+          out="$RUNNER_TEMP/capture"; mkdir -p "$out"
+          printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
+            "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$out/build.json"
+          cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          case $PART in
+            playback) only=playback; themes=dark ;;
+            *) only=screens; themes=$PART ;;
+          esac
+          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --themes "$themes"
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apple-wall-${{ matrix.device }}-${{ github.run_id }}-${{ matrix.part }}
+          path: ${{ runner.temp }}/capture
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Delete the simulator
+        if: always()
+        run: |
+          [[ -f $WORK/state.env ]] && . "$WORK/state.env" || true
+          [[ -z ${UDID:-} ]] || xcrun simctl delete "$UDID" || true
