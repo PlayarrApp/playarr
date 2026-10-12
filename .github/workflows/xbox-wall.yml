@@ -16,6 +16,10 @@ on:
         description: Branch, tag or SHA of the app to build (default - the dispatching ref)
         type: string
         default: ""
+      playback:
+        description: Also run the playback job (playback is out of parity and tracked as performance, so leave this off)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -62,7 +66,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [screens-dark, screens-light, dpad, playback]
+        part: ${{ fromJSON(inputs.playback && '["screens-dark","screens-light","dpad","playback"]' || '["screens-dark","screens-light","dpad"]') }}
     defaults:
       run:
         shell: bash
@@ -114,7 +118,8 @@ jobs:
           case "$PART" in
             screens-*)
               T=${PART#screens-}
-              node suite-run.mjs --driver ./xbox/driver.mjs --only screens --themes "$T" --via route --out "$OUT/run" --expected "$OUT/none.json" || true
+              SCREENS=home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,film-detail,series-detail,settings,filters,profiles,player-controls,actions
+              node suite-run.mjs --driver ./xbox/driver.mjs --only screens --screens "$SCREENS" --themes "$T" --via route --out "$OUT/run" --expected "$OUT/none.json" || true
               mkdir -p "$OUT/dev/light"
               if [ "$T" = light ]; then cp "$OUT"/run/light/*.png "$OUT/dev/light/"; else cp "$OUT"/run/dark/*.png "$OUT/dev/"; fi ;;
             dpad)

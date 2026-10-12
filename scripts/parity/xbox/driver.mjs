@@ -31,7 +31,7 @@ export async function createDriver() {
     while (Date.now() - t0 < seconds * 1000) { if (fn(trace())) return; await sleep(700); }
     throw new Error(`timed out waiting for ${what}`);
   };
-  let theme = "dark";
+  let theme = null; // unknown until set: the app starts on the system theme (light on a fresh machine)
 
   const coldStart = async () => { run("restart"); await until((t) => t.screen === "profiles", 60, "the profile picker"); await sleep(1500); };
   const location = () => {
@@ -103,7 +103,8 @@ export async function createDriver() {
       if (t.screen === "pairing" || t.play === "error") throw new Error("signed out or error screen");
       run("move", 1919, 600); await sleep(500);
       mkdirSync(dirname(file), { recursive: true });
-      run("shot", file);
+      // Luminance guard (exit 4 from the helper): a light frame is refused in a dark run and the reverse. The player is black in both.
+      run("shot", file, ...(theme && t.screen !== "playback" ? [theme] : []));
     },
     // Plays media file `c.file` through the app's parity.play request; judged from the player's own position.
     async play(c, expect) {

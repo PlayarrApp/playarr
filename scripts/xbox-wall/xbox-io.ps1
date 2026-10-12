@@ -50,6 +50,13 @@ switch ($Cmd) {
     $out = New-Object System.Drawing.Bitmap 1920, 1080
     $g = [System.Drawing.Graphics]::FromImage($out); $g.InterpolationMode = 'HighQualityBicubic'; $g.DrawImage($bmp, 0, 0, 1920, 1080)
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent ([IO.Path]::GetFullPath($A))) | Out-Null
+    if ($B) {
+      # Page background strip at the top right: near-black in dark, near-white in light; anything else is the wrong theme or a non-app screen.
+      $sum = 0.0; $n = 0
+      for ($x = 1100; $x -lt 1800; $x += 10) { for ($y = 0; $y -lt 8; $y += 2) { $c = $out.GetPixel($x, $y); $sum += (0.299 * $c.R + 0.587 * $c.G + 0.114 * $c.B) / 255; $n++ } }
+      $mean = $sum / $n
+      if (($B -eq 'dark' -and $mean -ge 0.2) -or ($B -eq 'light' -and $mean -le 0.9)) { Write-Error "luminance guard: $B run but top strip mean is $([math]::Round($mean, 2))"; exit 4 }
+    }
     $out.Save([IO.Path]::GetFullPath($A), [System.Drawing.Imaging.ImageFormat]::Png)
   }
   'read' { Get-Content (Join-Path (State) 'parity.json') -Raw -Encoding UTF8 }
