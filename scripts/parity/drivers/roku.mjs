@@ -138,6 +138,7 @@ export function createDriver({ out, args = [] } = {}) {
   let lastScreenshotGeneration = 0;
 
   const resetObservedState = () => {
+    debugBuffer = "";
     screen = "";
     page = "";
     browse = "";
