@@ -20,6 +20,15 @@ namespace Playarr.Xbox.Views
 
         public static void Attach(ListViewBase list)
         {
+            // No selection, hover, press or focus fill: the web card shows only the lift, the scale and the glow ring.
+            list.ContainerContentChanging += (s, e) =>
+            {
+                if (e.ItemContainer is SelectorItem container)
+                {
+                    container.Loaded += (c, a) => ClearFill(container);
+                    ClearFill(container);
+                }
+            };
             list.GotFocus += (s, e) => Apply(e.OriginalSource, true);
             list.LostFocus += (s, e) => Apply(e.OriginalSource, false);
         }
@@ -34,6 +43,26 @@ namespace Playarr.Xbox.Views
         public static void FocusFirstWhenReady(ListViewBase list) =>
             FocusClaim.Start(list, () => list.ContainerFromIndex(0) as Control);
 
+        private static void ClearFill(DependencyObject container)
+        {
+            var count = VisualTreeHelper.GetChildrenCount(container);
+            for (var i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(container, i);
+                if (child is ListViewItemPresenter presenter)
+                {
+                    var none = new SolidColorBrush(Windows.UI.Colors.Transparent);
+                    presenter.SelectedBackground = presenter.SelectedPointerOverBackground = presenter.SelectedPressedBackground = none;
+                    presenter.PointerOverBackground = presenter.PressedBackground = presenter.FocusBorderBrush = none;
+                    presenter.FocusSecondaryBorderBrush = none;
+                    presenter.PointerOverBackground = none;
+                    return;
+                }
+
+                ClearFill(child);
+            }
+        }
+
         private static void Apply(object source, bool focused)
         {
             if (!(source is SelectorItem { ContentTemplateRoot: Panel card }) || card.Children.Count == 0 || !(card.Children[0] is Grid art))
@@ -42,8 +71,31 @@ namespace Playarr.Xbox.Views
             }
 
             // Dark theme --card-glow-color is --brand-ink; the ring is 3 px (WCAG 2.4.13).
-            art.BorderThickness = new Thickness(focused ? 3 : 0);
-            art.BorderBrush = focused ? (Brush)Application.Current.Resources["PlayarrBrandInk"] : null;
+            // A rounded 3 px ring over the art's edge (the art grid clips its children to its corners, so it cannot sit outside).
+            Border? ring = null;
+            foreach (var child in art.Children)
+            {
+                if (child is Border { Tag: "ring" } existing)
+                {
+                    ring = existing;
+                }
+            }
+
+            if (ring == null)
+            {
+                ring = new Border
+                {
+                    Tag = "ring",
+                    BorderThickness = new Thickness(3),
+                    BorderBrush = (Brush)Application.Current.Resources["PlayarrBrandInk"],
+                    CornerRadius = art.CornerRadius,
+                    IsHitTestVisible = false,
+                    Visibility = Visibility.Collapsed,
+                };
+                art.Children.Add(ring);
+            }
+
+            ring.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;
 
             if (!(card.RenderTransform is TranslateTransform move))
             {

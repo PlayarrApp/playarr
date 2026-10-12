@@ -1,0 +1,1 @@
+- Xbox: card focus shows only the web lift, art scale and glow ring (no grey selection fill).
