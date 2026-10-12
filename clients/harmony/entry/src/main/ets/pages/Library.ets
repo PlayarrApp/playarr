@@ -155,6 +155,11 @@ const COVER_ASPECT_RATIO: number = 1.5;
 const TOUCH_LANDSCAPE_RATIO: number = 9 / 16;
 /** Web phone Screen view: 232 vp between card tops with a 185 vp card and its caption. */
 const TOUCH_LANDSCAPE_ROW_GAP: number = 36;
+const TOUCH_GUTTER: number = 16;
+/** The letter rail's column: a 44 vp target with 4 vp of margin each side. */
+const TOUCH_ALPHA_RAIL: number = 52;
+const TOUCH_CARD_GAP: number = 12;
+const TOUCH_ROW_GAP: number = 24;
 
 /** A defensive floor so a not-yet-measured or pathologically narrow layout
  * never computes a zero/negative card size. Not a `core/Tokens.ts` field --
@@ -735,6 +740,15 @@ export struct Library {
           this.touchBody();
         },
       })
+      if (this.sort === 'title' && this.items.length > 0) {
+        AlphabetRail({
+          letters: alphabetFor(this.order),
+          activeLetter: this.activeLetter,
+          onJump: (letter: string): void => {
+            this.jumpToLetter(letter);
+          },
+        })
+      }
       this.touchOverlays()
     }
     .width('100%')
@@ -821,7 +835,7 @@ export struct Library {
             .layoutWeight(1)
             .width('100%')
         } else {
-          Grid() {
+          Grid(this.gridScroller) {
             ForEach(
               this.items,
               (work: Work) => {
@@ -846,15 +860,18 @@ export struct Library {
               (work: Work): string => work.id
             )
           }
-          .columnsTemplate(this.view === 'cover' ? columnsTemplateFor(this.gridColumnCount()) : '1fr')
-          .columnsGap(this.gridColumnGapVp())
-          .rowsGap(this.gridRowGapVp())
+          .columnsTemplate(columnsTemplateFor(this.touchColumns()))
+          .columnsGap(TOUCH_CARD_GAP)
+          .rowsGap(TOUCH_ROW_GAP)
           .edgeEffect(EdgeEffect.Spring)
-          .padding({ left: Spacing.lg, right: Spacing.lg, bottom: Spacing.lg })
+          .padding({ left: TOUCH_GUTTER, right: TOUCH_ALPHA_RAIL, bottom: Spacing.lg })
           .onAreaChange((_oldValue: Area, newValue: Area) => {
             this.measuredWidthVp = lengthToVp(newValue.width);
           })
-          .onScrollIndex((_first: number, last: number) => {
+          .onScrollIndex((first: number, last: number) => {
+            if (first >= 0 && first < this.items.length) {
+              this.activeLetter = workLetter(this.items[first].sort_title, this.items[first].title);
+            }
             this.maybeLoadMore(last);
           })
           .onReachEnd(() => {
@@ -869,13 +886,22 @@ export struct Library {
     .alignItems(HorizontalAlign.Start)
   }
 
-  /** Web phone "Screen" view: one landscape card per row across the width; "Cover" keeps the portrait columns. */
+  /** Web phone grid (the owner's 3/2/1 ruling, web `page-layout.css`): columns by the space between the 16 vp gutter and the
+   * 52 vp letter rail, 1 below 300 vp, 2 from 300, 3 from 540; the cards fill that space. A 360 vp phone therefore shows one. */
+  private touchColumns(): number {
+    const w = this.measuredWidthVp > 0 ? this.measuredWidthVp : FALLBACK_TOUCH_GRID_WIDTH_VP;
+    const space = w - TOUCH_GUTTER - TOUCH_ALPHA_RAIL;
+    return space < 300 ? 1 : (space < 540 ? 2 : 3);
+  }
+
   private touchCardWidthVp(): number {
-    return this.view === 'cover' ? this.gridCardWidthVp() : this.availableGridWidthVp();
+    const w = this.measuredWidthVp > 0 ? this.measuredWidthVp : FALLBACK_TOUCH_GRID_WIDTH_VP;
+    const cols = this.touchColumns();
+    return (w - TOUCH_GUTTER - TOUCH_ALPHA_RAIL - TOUCH_CARD_GAP * (cols - 1)) / cols;
   }
 
   private touchCardHeightVp(): number {
-    return this.view === 'cover' ? this.gridCardHeightVp() : this.availableGridWidthVp() * TOUCH_LANDSCAPE_RATIO;
+    return this.touchCardWidthVp() * (this.view === 'cover' ? COVER_ASPECT_RATIO : TOUCH_LANDSCAPE_RATIO);
   }
 
   /** The right panel by View: the landscape grid (screen), a portrait cover wall (cover) or title rows (list). */

@@ -165,7 +165,7 @@ export struct PageShell {
         }
       }
       .width('100%')
-      .padding({ left: 16, right: 16, top: 12, bottom: this.kicker.length > 0 ? 2 : 12 })
+      .padding({ left: 16, right: 16, top: 17, bottom: this.kicker.length > 0 ? 2 : 12 })
       .alignItems(VerticalAlign.Center)
       if (this.kicker.length > 0) {
         // Web phone: the pink count or section line sits under the title, level with it.
@@ -176,7 +176,7 @@ export struct PageShell {
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(BRAND_PINK_SOFT))
           .width('100%')
-          .padding({ left: 68, bottom: 10 })
+          .padding({ left: 68, top: 8, bottom: 3 })
       }
       Column() {
         this.touchContent()
