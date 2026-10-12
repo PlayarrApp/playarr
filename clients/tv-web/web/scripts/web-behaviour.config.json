@@ -35,6 +35,7 @@
     "artwork-size-setting-e2e",
     "download-flow-e2e",
     "downloads-offline-e2e",
+    "downloads-edit-quality-e2e",
     "drawer-consistency-e2e",
     "avatar-focus-circle-e2e",
     "checkbox-focus-e2e",
@@ -94,6 +95,7 @@
     "artwork-size-setting-e2e": 120,
     "download-flow-e2e": 120,
     "downloads-offline-e2e": 30,
+    "downloads-edit-quality-e2e": 30,
     "drawer-consistency-e2e": 180
   }
 }

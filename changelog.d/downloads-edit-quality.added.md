@@ -1,0 +1,1 @@
+- Downloads (web): the edit drawer now changes quality as well as keep-until; a new quality re-converts through a new ticket and replaces the old download.

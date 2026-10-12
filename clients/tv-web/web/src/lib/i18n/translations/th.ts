@@ -1298,6 +1298,7 @@ export const th: Translations = {
   "pages.downloads.delete": "ลบ",
   "pages.downloads.edit": "แก้ไข",
   "pages.downloads.save": "บันทึก",
+  "pages.downloads.changeQualityHint": "การเปลี่ยนคุณภาพจะดาวน์โหลดใหม่ด้วยคุณภาพที่เลือก แล้วลบสำเนาเดิมออก",
   "pages.downloads.editKeepUntilDialogLabel": "แก้ไขระยะเวลาเก็บของ {{title}}",
   "pages.downloads.typeMovie": "ภาพยนตร์",
   "pages.downloads.typeEpisode": "ตอน",

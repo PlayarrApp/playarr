@@ -585,6 +585,7 @@ export function DownloadsPage() {
     resume,
     notifications,
     updateKeepUntil,
+    changeQuality,
     canDownload,
   } = useDownloads();
   useDocumentTitle(t("pages.downloads.title"));
@@ -619,10 +620,17 @@ export function DownloadsPage() {
     onFocusRow: setFocusedId,
   };
 
-  const confirmEditKeepUntil = (keepUntil: DownloadKeepUntilPolicy) => {
+  const confirmEditKeepUntil = (keepUntil: DownloadKeepUntilPolicy, quality: { qualityId: string; qualityLabel: string } | null) => {
     if (!editingRecords) return;
     setEditingBusy(true);
-    void Promise.all(editingRecords.map((record) => updateKeepUntil(record.id, keepUntil))).finally(() => {
+    // A new quality re-converts through a new ticket; a record already at it only takes the keep-until.
+    void Promise.all(
+      editingRecords.map((record) =>
+        quality && record.qualityId !== quality.qualityId
+          ? changeQuality(record.id, quality, keepUntil).then(() => undefined)
+          : updateKeepUntil(record.id, keepUntil)
+      )
+    ).catch(() => undefined).finally(() => {
       setEditingBusy(false);
       setEditingRecords(null);
     });
@@ -911,6 +919,8 @@ export function DownloadsPage() {
         <EditKeepUntilDrawer
           title={editingRecords.length === 1 ? editingRecords[0].title : t("pages.downloads.editManyTitle", { count: editingRecords.length })}
           keepUntil={editingRecords[0].keepUntil}
+          qualityId={editingRecords[0].qualityId}
+          mediaFileId={editingRecords[0].mediaFileId}
           busy={editingBusy}
           onClose={() => setEditingRecords(null)}
           onConfirm={confirmEditKeepUntil}

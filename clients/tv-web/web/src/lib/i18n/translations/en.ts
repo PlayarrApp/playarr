@@ -287,6 +287,7 @@ export const en = {
   "pages.downloads.progressAriaLabel": "Downloading {{title}}",
   "pages.downloads.retry": "Retry",
   "pages.downloads.save": "Save",
+  "pages.downloads.changeQualityHint": "Changing the quality downloads this again at the new quality, then removes the old copy.",
   "pages.downloads.statusCanceled": "Canceled",
   "pages.downloads.statusDownloading": "Downloading",
   "pages.downloads.statusExpired": "Expired",

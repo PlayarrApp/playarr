@@ -1294,6 +1294,7 @@ export const ja: Translations = {
   "pages.downloads.delete": "削除",
   "pages.downloads.edit": "編集",
   "pages.downloads.save": "保存",
+  "pages.downloads.changeQualityHint": "画質を変更すると、新しい画質でもう一度ダウンロードし、古いコピーを削除します。",
   "pages.downloads.editKeepUntilDialogLabel": "{{title}} の保存期限を編集",
   "pages.downloads.typeMovie": "映画",
   "pages.downloads.typeEpisode": "エピソード",

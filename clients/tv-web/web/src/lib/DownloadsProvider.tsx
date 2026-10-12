@@ -156,6 +156,15 @@ interface DownloadsContextValue {
   notifications: ReturnType<typeof useDownloadNotificationOptIn>;
   updateKeepUntil: (id: string, keepUntil: DownloadKeepUntilPolicy) => Promise<void>;
   /**
+   * Changes a download's quality by re-converting: a new ticket is requested for the same media file first (a failed
+   * request leaves the current download untouched), then the old download is removed. Resolves to the new record.
+   */
+  changeQuality: (
+    id: string,
+    quality: { qualityId: string; qualityLabel: string },
+    keepUntil: DownloadKeepUntilPolicy
+  ) => Promise<DownloadRecord>;
+  /**
    * A completed local download's playable source, as a `blob:` URL --
    * `usePlaybackEngine` builds a `"direct"` `NegotiationState` from this
    * with zero player-engine changes (`ShakaPlaybackEngine`'s direct mode is
@@ -787,6 +796,34 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [patchRecord]
   );
 
+  const changeQuality = useCallback(
+    async (
+      id: string,
+      quality: { qualityId: string; qualityLabel: string },
+      keepUntil: DownloadKeepUntilPolicy
+    ): Promise<DownloadRecord> => {
+      const old = downloadsRef.current.find((candidate) => candidate.id === id);
+      if (!old) throw new Error("download not found");
+      const next = await enqueue({
+        workId: old.workId,
+        workKind: old.workKind,
+        mediaFileId: old.mediaFileId,
+        title: old.title,
+        subtitle: old.subtitle,
+        seriesTitle: old.seriesTitle,
+        seasonNumber: old.seasonNumber,
+        episodeNumber: old.episodeNumber,
+        runtimeMs: old.runtimeMs,
+        qualityId: quality.qualityId,
+        qualityLabel: quality.qualityLabel,
+        keepUntil,
+      });
+      await remove(id);
+      return next;
+    },
+    [enqueue, remove]
+  );
+
   const getLocalPlaybackSource = useCallback(
     async (mediaFileId: string): Promise<LocalPlaybackSource | null> => {
       const record = downloadsRef.current.find(
@@ -957,6 +994,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       resume,
       notifications,
       updateKeepUntil,
+      changeQuality,
       getLocalPlaybackSource,
       queueWatchMutation,
       canDownload,
@@ -979,6 +1017,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       storageSupported,
       storageUsage,
       updateKeepUntil,
+      changeQuality,
     ]
   );
 
