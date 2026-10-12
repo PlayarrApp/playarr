@@ -166,7 +166,7 @@ class NavigationContractTests(unittest.TestCase):
             float(clients_hit.attrib["height"]),
         )
         self.assertEqual(hitbox, poster)
-        self.assertEqual(clients_focus.attrib.get("uri"), "pkg:/images/round-outline-r25.9.png")
+        self.assertEqual(clients_focus.attrib.get("uri"), "pkg:/images/round-ring-r25.9.png")
         self.assertLessEqual(focus[0], poster[0])
         self.assertLessEqual(focus[1], poster[1])
         self.assertGreaterEqual(focus[0] + focus[2], poster[0] + poster[2])
