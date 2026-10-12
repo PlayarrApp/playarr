@@ -41,10 +41,10 @@ export function validateSuite(s, legendScreens) {
     if (!from) bad.push(`${d.id}: unknown from ${d.from}`);
     else if (!from.keys) bad.push(`${d.id}: start screen ${d.from} has no keys`);
     try { expandKeys(d.keys); } catch (e) { bad.push(`${d.id}: ${e.message}`); }
-    if (!d.keys?.length) bad.push(`${d.id}: empty keys`);
+    if (!Array.isArray(d.keys)) bad.push(`${d.id}: keys must be an array (empty = no key, read the initial focus)`);
   }
-  if (JSON.stringify((s.playback ?? []).map((x) => x.id)) !== '["a","b","c"]') bad.push("playback cases must be a, b, c");
-  for (const p of s.playback ?? []) if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(p.file ?? "")) bad.push(`${p.id}: file must be a media file id`);
+  if (JSON.stringify((s.performance ?? []).map((x) => x.id)) !== '["a","b","c"]') bad.push("performance cases must be a, b, c");
+  for (const p of s.performance ?? []) if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(p.file ?? "")) bad.push(`${p.id}: file must be a media file id`);
   const dl = s.downloads ?? [];
   const dlids = dl.map((x) => x.id);
   if (!dl.length) bad.push("no downloads cases");

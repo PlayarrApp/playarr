@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Runs the shared parity suite (suite.json) through a per-platform driver (docs/parity/SUITE.md).
-//   node suite-run.mjs --driver ./drivers/web.mjs --out <dir> [--themes dark,light] [--only screens,dpad,playback]
-//                      [--screens home,movies] [--cases movie-download,cancel] [--reset-progress] [--via keys|route] [--reference | --expected <expected.json>]
-// Writes <out>/<theme>/<id>.png, <out>/dpad.json, <out>/playback.json and <out>/downloads.json (and expected.json with --reference).
+//   node suite-run.mjs --driver ./drivers/web.mjs --out <dir> [--themes dark,light] [--only screens,dpad,downloads,performance]
+//                      [--screens home,movies] [--cases movie-download,cancel] [--checks home-right,player-right] [--reset-progress] [--via keys|route] [--reference | --expected <expected.json>]
+// Writes <out>/<theme>/<id>.png, <out>/dpad.json, <out>/downloads.json (and <out>/performance.json with --only performance) (and expected.json with --reference).
 // A screen is never written unless its end state matches the suite route: a wrong or signed-out screen aborts it.
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -15,14 +15,18 @@ const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : d; };
 const out = resolve(opt("out", "suite-out"));
 const themes = opt("themes", suite.themes.join(",")).split(",");
-const only = opt("only", "screens,dpad,playback,downloads").split(",");
+const only = opt("only", "screens,dpad,downloads").split(",");
 const wantScreens = opt("screens", "").split(",").filter(Boolean);
 const wantCases = opt("cases", "").split(",").filter(Boolean);
 const reset = args.includes("--reset-progress");
-const pinned = () => [...suite.playback.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file)];
+const pinned = () => [...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file)];
+const wantChecks = opt("checks", "").split(",").filter(Boolean);
 const via = opt("via", "keys");
 const reference = args.includes("--reference");
-const expectedFile = resolve(opt("expected", join(out, "..", "web", "expected.json")));
+// Without --expected: the web run next to this one, else the committed reference (expected.web.json, the pinned Device Test state).
+const committedExpected = join(here, "expected.web.json");
+const siblingExpected = join(out, "..", "web", "expected.json");
+const expectedFile = resolve(opt("expected", existsSync(siblingExpected) || !existsSync(committedExpected) ? siblingExpected : committedExpected));
 const problems = validateSuite(suite);
 if (problems.length) throw new Error(`suite.json invalid: ${problems.join("; ")}`);
 if (!opt("driver")) throw new Error("--driver <module> is required");
@@ -71,24 +75,45 @@ if (only.includes("screens")) {
 }
 const expSrc = reference ? join(out, "expected.json") : expectedFile;
 const expected = existsSync(expSrc) ? JSON.parse(readFileSync(expSrc, "utf8")) : {};
-expected.dpad ??= {}; expected.playback ??= {};
-// A scored run without the web expected file would write expected: null for every result and overwrite a good dpad.json/playback.json.
-if (!reference && ((only.includes("dpad") && !Object.keys(expected.dpad).length) || (only.includes("playback") && !Object.keys(expected.playback).length))) {
-  throw new Error(`no expected values for dpad/playback in ${expSrc}: pass --expected <web expected.json> (or --reference) before scoring`);
+expected.dpad ??= {}; expected.performance ??= {};
+// A scored run without the web expected file would write expected: null for every result and overwrite a good dpad.json/performance.json.
+if (!reference && ((only.includes("dpad") && !Object.keys(expected.dpad).length) || (only.includes("performance") && !Object.keys(expected.performance).length))) {
+  throw new Error(`no expected values for dpad/performance in ${expSrc}: pass --expected <web expected.json> (or --reference) before scoring`);
 }
 const stamp = { suite: suite.version, checked_at: new Date().toISOString() };
 if (only.includes("dpad")) {
   await driver.setTheme("dark");
   const results = [];
-  for (const d of suite.dpad) {
-    let actual = null;
-    try {
-      const from = suite.screens.find((x) => x.id === d.from);
-      await reach(from);
-      await press(d.keys);
-      await sleep(800);
-      actual = asFocus(await driver.focused());
-    } catch (e) { console.log(`ERR dpad ${d.id}: ${e.message.split("\n")[0]}`); }
+  const unstable = [];
+  for (const d of suite.dpad.filter((x) => !wantChecks.length || wantChecks.includes(x.id))) {
+    let actual = null, startOk = true, lastKey = null, agreed = false;
+    // A check starts from a known focus position (`start`): a wrong start or a lost first key gives a wrong answer, so retry up to 3 times.
+    for (let attempt = 1; attempt <= (reference ? 5 : 3); attempt += 1) {
+      actual = null; startOk = true;
+      try {
+        const from = suite.screens.find((x) => x.id === d.from);
+        await reach(from);
+        if (d.wait) await sleep(d.wait); // the player needs time to load and show its controls
+        if (d.start) {
+          const at = asFocus(await driver.focused()).position;
+          startOk = !at || samePosition(at, d.start); // a driver without position cannot assert the start
+          if (!startOk) { console.log(`  dpad ${d.id}: start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index} (attempt ${attempt})`); continue; }
+        }
+        await press(d.keys);
+        await sleep(800);
+        actual = asFocus(await driver.focused());
+        // observe "state": where the app is (route shape, ids dropped), for Back out of the player: the focus label there varies with timing.
+        if (d.observe === "state") actual = { ...actual, label: `${(await driver.location()).split("?")[0].split("/").filter(Boolean).map((s, i) => (i ? ":id" : s)).join("/")}` };
+      } catch (e) { console.log(`ERR dpad ${d.id}: ${e.message.split("\n")[0]}`); }
+      if (!actual?.label) continue;
+      // The reference needs two identical answers in a row: Home rails re-sort while other devices play, which moves a card
+      // between positions mid-check. A device run needs one answer.
+      if (!reference) { agreed = true; break; }
+      const key = JSON.stringify(d.compare === "position" ? actual.position ?? actual.label : actual.label);
+      if (key === lastKey) { agreed = true; break; }
+      lastKey = key;
+    }
+    if (reference && !agreed) unstable.push(d.id);
     if (reference) expected.dpad[d.id] = actual && (d.compare === "position" ? actual : actual.label);
     const w = asFocus(expected.dpad[d.id]);
     const byPosition = d.compare === "position" && w.position && actual?.position; // a driver without position falls back to the label
@@ -96,12 +121,14 @@ if (only.includes("dpad")) {
     results.push({ id: d.id, pass, compared: byPosition ? "position" : "label", expected: expected.dpad[d.id] ?? null, actual: actual && (actual.position ? actual : actual.label) });
     console.log(`${pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual?.label}${actual?.position ? ` @${actual.position.rail}:${actual.position.index}` : ""}${pass ? "" : ` (expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""})`}`);
   }
+  // The reference must never record a null or a wrong-start answer: fail the run and leave the old expected.json alone.
+  if (unstable.length) throw new Error(`reference D-pad checks not stable after 3 attempts: ${unstable.join(", ")}`);
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, "dpad.json"), JSON.stringify({ ...stamp, results }, null, 2));
 }
-if (only.includes("playback")) {
+if (only.includes("performance")) { // the former playback cases a, b, c: a later performance suite, not parity
   const results = [];
-  for (const p of suite.playback) {
+  for (const p of suite.performance) {
     let r;
     try {
       r = await driver.play(p, p.expect);
@@ -110,13 +137,13 @@ if (only.includes("playback")) {
     const np = p.nowPlaying && driver.supports?.nowPlaying ? r.nowPlaying?.ok === true : true;
     if (p.nowPlaying && !driver.supports?.nowPlaying) r.nowPlaying = "not supported";
     const pass = np && r.state === p.expect.state && (r.advancedSeconds ?? 0) >= p.expect.advanceSeconds && (r.startSeconds ?? 1e9) <= p.expect.startWithinSeconds;
-    if (reference) expected.playback[p.id] = { state: r.state };
+    if (reference) expected.performance[p.id] = { state: r.state };
     if (reset) await resetProgress([p.file]).catch((e) => console.log(`reset-progress: ${e.message}`));
     results.push({ id: p.id, pass, ...r });
-    console.log(`${pass ? "pass" : "FAIL"} playback ${p.id}: ${JSON.stringify(r)}`);
+    console.log(`${pass ? "pass" : "FAIL"} performance ${p.id}: ${JSON.stringify(r)}`);
   }
   mkdirSync(out, { recursive: true });
-  writeFileSync(join(out, "playback.json"), JSON.stringify({ ...stamp, results }, null, 2));
+  writeFileSync(join(out, "performance.json"), JSON.stringify({ ...stamp, results }, null, 2));
 }
 if (only.includes("downloads")) {
   // pass: null means skipped (not supported / not built yet): not a failure and not counted.

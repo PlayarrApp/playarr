@@ -1,0 +1,54 @@
+{
+  "suite": 1,
+  "dpad": {
+    "home-right": {
+      "label": "the 5th wavemovie \u00b7 2016",
+      "position": {
+        "rail": 0,
+        "index": 0
+      }
+    },
+    "home-down": {
+      "label": "brothersmovie \u00b7 2024",
+      "position": {
+        "rail": 1,
+        "index": 0
+      }
+    },
+    "home-down-right": {
+      "label": "brothersmovie \u00b7 2009",
+      "position": {
+        "rail": 1,
+        "index": 1
+      }
+    },
+    "home-left-nav": {
+      "label": "music",
+      "position": {
+        "rail": "nav",
+        "index": 5
+      }
+    },
+    "nav-down": "calendar",
+    "movies-grid-right": "open 6 underground",
+    "movies-grid-down": "open 10 cloverfield lane",
+    "movies-grid-left-nav": "open 2 fast 2 furious",
+    "series-grid-down": "open 86: eighty six",
+    "detail-back": "open 2 fast 2 furious",
+    "long-press-actions": "\u25b6play",
+    "player-initial-focus": "pause",
+    "player-right": "audio: english \u00b7 eng \u00b7 truehd atmos 7.1 \u00b7 truehd atmos \u00b7 7.1",
+    "player-right-3": "playlist: 1 item",
+    "player-right-end": "play on another device",
+    "player-left-edge": "pause",
+    "player-up-seek": "seek",
+    "player-up-down": "pause",
+    "player-ok-toggle": "pause",
+    "player-panel-open": "offno subtitles\u2713",
+    "player-panel-close": "subtitles: off",
+    "player-back": "movies/:id",
+    "player-back-back": "movies"
+  },
+  "performance": {},
+  "note": "Web reference for the pinned Device Test state (12 Oct 2026). Home positions depend on the account: On deck currently holds one card, so home-right stays on 0:0. Regenerate with: node suite-run.mjs --driver drivers/web.mjs --reference --only dpad --out <dir>, then copy <dir>/expected.json here."
+}

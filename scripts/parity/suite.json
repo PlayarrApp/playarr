@@ -188,7 +188,11 @@
       "keys": [
         "right"
       ],
-      "compare": "position"
+      "compare": "position",
+      "start": {
+        "rail": 0,
+        "index": 0
+      }
     },
     {
       "id": "home-down",
@@ -196,7 +200,11 @@
       "keys": [
         "down"
       ],
-      "compare": "position"
+      "compare": "position",
+      "start": {
+        "rail": 0,
+        "index": 0
+      }
     },
     {
       "id": "home-down-right",
@@ -205,7 +213,11 @@
         "down",
         "right"
       ],
-      "compare": "position"
+      "compare": "position",
+      "start": {
+        "rail": 0,
+        "index": 0
+      }
     },
     {
       "id": "home-left-nav",
@@ -213,7 +225,11 @@
       "keys": [
         "left"
       ],
-      "compare": "position"
+      "compare": "position",
+      "start": {
+        "rail": 0,
+        "index": 0
+      }
     },
     {
       "id": "nav-down",
@@ -270,40 +286,107 @@
         "right",
         "select:long"
       ]
-    }
-  ],
-  "playback": [
-    {
-      "id": "a",
-      "file": "b9a68b2c-8382-4c34-a6f0-c4dd58f55093",
-      "label": "normal 1080p",
-      "expect": {
-        "state": "playing",
-        "startWithinSeconds": 30,
-        "advanceSeconds": 3
-      },
-      "nowPlaying": true
     },
     {
-      "id": "b",
-      "file": "feabc8ba-712f-4816-b7b0-a0bb58aa1e94",
-      "label": "high-bitrate H.264 (about 15 Mbps) the server serves without a live re-encode",
-      "expect": {
-        "state": "playing",
-        "startWithinSeconds": 15,
-        "advanceSeconds": 3
-      }
+      "id": "player-initial-focus",
+      "from": "player-controls",
+      "keys": [],
+      "wait": 6000
     },
     {
-      "id": "c",
-      "file": "b9a68b2c-8382-4c34-a6f0-c4dd58f55093",
-      "label": "title served by the other server",
-      "expect": {
-        "state": "playing",
-        "startWithinSeconds": 45,
-        "advanceSeconds": 3
-      },
-      "setup": "needs the admin routing rule that prefers the other node for this library; web serves it through /media/proxy/ then"
+      "id": "player-right",
+      "from": "player-controls",
+      "keys": [
+        "right"
+      ],
+      "wait": 6000
+    },
+    {
+      "id": "player-right-3",
+      "from": "player-controls",
+      "keys": [
+        "right*3"
+      ],
+      "wait": 6000
+    },
+    {
+      "id": "player-right-end",
+      "from": "player-controls",
+      "keys": [
+        "right*8"
+      ],
+      "wait": 6000
+    },
+    {
+      "id": "player-left-edge",
+      "from": "player-controls",
+      "keys": [
+        "left"
+      ],
+      "wait": 6000
+    },
+    {
+      "id": "player-up-seek",
+      "from": "player-controls",
+      "keys": [
+        "up"
+      ],
+      "wait": 6000
+    },
+    {
+      "id": "player-up-down",
+      "from": "player-controls",
+      "keys": [
+        "up",
+        "down"
+      ],
+      "wait": 6000
+    },
+    {
+      "id": "player-ok-toggle",
+      "from": "player-controls",
+      "keys": [
+        "select"
+      ],
+      "wait": 6000
+    },
+    {
+      "id": "player-back",
+      "from": "player-controls",
+      "keys": [
+        "back"
+      ],
+      "wait": 2500,
+      "observe": "state"
+    },
+    {
+      "id": "player-back-back",
+      "from": "player-controls",
+      "keys": [
+        "back",
+        "back"
+      ],
+      "wait": 2500,
+      "observe": "state"
+    },
+    {
+      "id": "player-panel-open",
+      "from": "player-controls",
+      "keys": [
+        "right*2",
+        "select"
+      ],
+      "wait": 6000
+    },
+    {
+      "id": "player-panel-close",
+      "from": "player-controls",
+      "keys": [
+        "right*2",
+        "select",
+        "back"
+      ],
+      "wait": 6000
     }
   ],
   "downloadMedia": {
@@ -447,6 +530,40 @@
         "withinSeconds": 300
       },
       "requires": "grouped-downloads"
+    }
+  ],
+  "performance": [
+    {
+      "id": "a",
+      "file": "b9a68b2c-8382-4c34-a6f0-c4dd58f55093",
+      "label": "normal 1080p",
+      "expect": {
+        "state": "playing",
+        "startWithinSeconds": 30,
+        "advanceSeconds": 3
+      },
+      "nowPlaying": true
+    },
+    {
+      "id": "b",
+      "file": "feabc8ba-712f-4816-b7b0-a0bb58aa1e94",
+      "label": "high-bitrate H.264 (about 15 Mbps) the server serves without a live re-encode",
+      "expect": {
+        "state": "playing",
+        "startWithinSeconds": 15,
+        "advanceSeconds": 3
+      }
+    },
+    {
+      "id": "c",
+      "file": "b9a68b2c-8382-4c34-a6f0-c4dd58f55093",
+      "label": "title served by the other server",
+      "expect": {
+        "state": "playing",
+        "startWithinSeconds": 45,
+        "advanceSeconds": 3
+      },
+      "setup": "needs the admin routing rule that prefers the other node for this library; web serves it through /media/proxy/ then"
     }
   ]
 }

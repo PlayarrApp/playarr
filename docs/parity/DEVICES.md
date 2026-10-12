@@ -62,7 +62,7 @@ this note.
 
 ## Mobile (gated by 17.10022; reference: web mobile at the device's size)
 
-Mobile devices have no D-pad: they run the screen and theme captures and the playback cases, and the legend shows the
+Mobile devices have no D-pad: they run the screen and theme captures, and the legend shows the
 D-pad column as n/a.
 
 | Device | How it runs | How it is driven | How captures are taken | Known limits | Legend dir |
@@ -106,7 +106,7 @@ Notifications (a live system notification per download) and the now-playing entr
   the UNMERGED badge.
 - Never publish an error or signed-out screen as a capture: abort instead (the suite runner does).
 - The device test account, "Device Test" profile, is signed in on Home, dark by default.
-- Result files `dpad.json`, `playback.json` and `downloads.json` sit beside the captures (schema in `SUITE.md`).
+- Result files `dpad.json` and `downloads.json` (and `performance.json` for the later performance suite) sit beside the captures (schema in `SUITE.md`).
 - The score per client: Dark % and Light % are the mean per-screen similarity over the screens captured in that theme;
-  D-pad is checks passed of 11 and playback is cases passed of 3; overall is the mean of the parts that have results
+  D-pad is checks passed of the suite's D-pad checks (playback is no longer scored: it moved to the performance suite); overall is the mean of the parts that have results
   (mobile has no D-pad). Coverage (captured screens out of 15 per theme) is shown beside, never mixed into a percentage.

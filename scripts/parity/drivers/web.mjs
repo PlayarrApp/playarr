@@ -23,10 +23,12 @@ export async function createDriver() {
     ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, userAgent: UA, colorScheme: theme, locale: "en-GB", timezoneId: "Asia/Bangkok",
       ...(session ? { storageState: session } : {}) });
     await ctx.addInitScript((t) => localStorage.setItem("playarr-theme", t), theme);
+    // Restored sessionStorage (scroll positions, focus memory) changes what a route shows: every document starts with it empty.
+    await ctx.addInitScript(() => { try { sessionStorage.clear(); } catch {} });
     await ctx.grantPermissions(["notifications"], { origin: web }).catch(() => {});
-    // Records system notifications (Notifications API) and Media Session handlers; kept in sessionStorage across reloads.
+    // Records system notifications (Notifications API) and Media Session handlers; kept in localStorage across reloads.
     await ctx.addInitScript(() => {
-      const log = (n) => { try { const a = JSON.parse(sessionStorage.getItem("__notes") || "[]"); a.push({ ...n, at: Date.now() }); sessionStorage.setItem("__notes", JSON.stringify(a)); } catch {} };
+      const log = (n) => { try { const a = JSON.parse(localStorage.getItem("__notes") || "[]"); a.push({ ...n, at: Date.now() }); localStorage.setItem("__notes", JSON.stringify(a)); } catch {} };
       const N = window.Notification;
       if (N) {
         window.Notification = function (title, o) { log({ title, body: o?.body ?? "", tag: o?.tag ?? "" }); return new N(title, o); };
@@ -84,6 +86,60 @@ export async function createDriver() {
     return { mode: info?.mode ?? null, playMethod: health.play_method ?? null, quality: q ? { id: q.id, height: q.height, bitrate: q.video_bitrate_bps } : null, health, decoded: size,
       timeToFirstFrameSeconds: r.startSeconds ?? null, negotiationStatuses: neg.statuses, no_transcode_capacity: neg.statuses.includes(503), stalled: r.state === "stalled" };
   };
+  async function homeOnce() {
+    await page.goto(web + "/", { waitUntil: "load" });
+    await page.waitForTimeout(2500);
+    // Signed out (the server can drop a session when other devices sign in): sign in again once.
+    if (!(await page.locator(".app-nav").count())) { try { session = undefined; await open(false); } finally { await page.goto(web + "/", { waitUntil: "load" }); } }
+    await page.waitForFunction(() => document.querySelectorAll(".app-nav-link").length >= 6 && !document.querySelector(".app-nav-link-placeholder") && document.querySelector(".tv-home-card"), null, { timeout: 30000 });
+    // Home rails fill in asynchronously and reorder the cards: wait until the list holds still, then log the first card
+    // so Home-rail drift (other clients' activity on the shared account) is visible next to the D-pad results.
+    let last = "", still = 0;
+    for (let i = 0; i < 40 && still < 3; i += 1) {
+      const now = await page.evaluate(() => [...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label") || c.textContent.trim().slice(0, 40)).join("|"));
+      still = now && now === last ? still + 1 : 0; last = now; await page.waitForTimeout(1500);
+    }
+    console.log(`  home first card: ${last.split("|")[0]}`);
+    await settle();
+    const at = async () => (await focusInfo())?.position;
+    const is = (p, rail, index) => p?.rail === rail && p.index === index;
+    // The app puts focus on the first card by itself; wait for it (focus() by script only as a last resort).
+    for (let i = 0; i < 20 && !is(await at(), 0, 0); i += 1) await page.waitForTimeout(500);
+    if (!is(await at(), 0, 0)) { await page.evaluate(() => document.querySelector(".tv-home-card")?.focus()); await page.waitForTimeout(1500); }
+    if (!is(await at(), 0, 0)) throw new Error("focus is not on the first Home card: " + JSON.stringify(await at()));
+    // Prove the key handler with Left (into the nav rail) and Right (back to the card): a round trip that works however many
+    // cards the first rail holds (it can hold one: On deck shrinks when progress is reset). The first Left may be the lost key.
+    let nav = null;
+    for (let i = 0; i < 2 && nav?.rail !== "nav"; i += 1) { await page.keyboard.press("ArrowLeft"); await page.waitForTimeout(700); nav = await at(); }
+    if (nav?.rail !== "nav") throw new Error("Left did not move focus into the nav rail: " + JSON.stringify(nav));
+    await page.keyboard.press("ArrowRight"); await page.waitForTimeout(700);
+    const back = await at();
+    await page.waitForTimeout(700);
+    const held = await at(); // a rail that re-sorts under focus (other devices playing) shows up here
+    if (!is(back, 0, 0) || !is(held, 0, 0)) throw new Error("Right did not return focus to 0:0 and hold: " + JSON.stringify({ back, held }));
+  }
+  // The focused item as { label, position } (see focused() in docs/parity/SUITE.md), or null.
+  const focusInfo = () => page.evaluate(() => {
+    const e = document.activeElement;
+    if (!e || e === document.body) return null;
+    let label = (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/\s+/g, " ");
+    // Resume progress is per account and changes between runs: "Resume X from 2:14" and "Open X" are the same item.
+    label = label.replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1");
+    // A card's text is its title twice (visible and hidden copy): "9 bullets9 bullets" is "9 bullets".
+    const half = label.length / 2;
+    if (Number.isInteger(half) && half > 0 && label.slice(0, half) === label.slice(half)) label = label.slice(0, half);
+    let position = null;
+    const nav = e.closest(".app-nav-link");
+    const card = e.closest(".tv-home-card");
+    if (nav) position = { rail: "nav", index: [...document.querySelectorAll(".app-nav-link")].indexOf(nav) };
+    else if (card) {
+      const rail = (c) => (c.getAttribute("data-navigation-focus-key") || "").split(":")[1];
+      const cards = [...document.querySelectorAll(".tv-home-card")];
+      const rails = [...new Set(cards.map(rail))];
+      position = { rail: rails.indexOf(rail(card)), index: cards.filter((c) => rail(c) === rail(card)).indexOf(card) };
+    }
+    return { label, position };
+  });
   // ---- Downloads page helpers. A TV episode lives under a series group (series > season > episode); a movie is one row.
   const touchedNote = "touched";
   const dl = (m) => {
@@ -201,9 +257,9 @@ export async function createDriver() {
         await on.waitFor({ timeout: 10000 }).catch(() => {});
         if (!(await on.count())) return bad("no notifications switch on the Downloads page");
         await on.click(); await page.waitForTimeout(1000);
-        await page.evaluate(() => sessionStorage.removeItem("__notes"));
+        await page.evaluate(() => localStorage.removeItem("__notes"));
         await r.throttle(true); await r.start();
-        const read = async () => JSON.parse((await page.evaluate(() => sessionStorage.getItem("__notes"))) || "[]");
+        const read = async () => JSON.parse((await page.evaluate(() => localStorage.getItem("__notes"))) || "[]");
         await page.waitForTimeout(8000);
         await r.button(r.row(), "pause").click().catch(() => {});
         await page.waitForTimeout(3000);
@@ -250,52 +306,28 @@ export async function createDriver() {
     async start() { browser = await chromium.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}); await open().catch(async () => { await new Promise((r) => setTimeout(r, 15000)); await open(false); }); }, // one retry: sign-in can time out when many devices sign in at once
     async stop() { await browser?.close(); },
     async setTheme(t) { if (t !== theme) { theme = t; await open(); } },
+    // Home with focus on the first card and a key handler that has proved itself. The app's first directional key after a load
+    // can be lost, and a script focus() does not help (the app tracks its own focus), so: leave focus to the app, spend the lost
+    // key on a Left/Right round trip (card 0 -> nav -> card 0), and reload and retry if that does not work.
     async home() {
-      await page.goto(web + "/", { waitUntil: "load" });
-      await page.waitForTimeout(2500);
-      // Signed out (the server can drop a session when other devices sign in): sign in again once.
-      if (!(await page.locator(".app-nav").count())) { try { session = undefined; await open(false); } finally { await page.goto(web + "/", { waitUntil: "load" }); } }
-      await page.waitForFunction(() => document.querySelectorAll(".app-nav-link").length >= 6 && !document.querySelector(".app-nav-link-placeholder") && document.querySelector(".tv-home-card"), null, { timeout: 30000 });
-      // Home rails fill in asynchronously and reorder the cards: wait until the list holds still, then log the first card
-      // so Home-rail drift (other clients' activity on the shared account) is visible next to the D-pad results.
-      let last = "", still = 0;
-      for (let i = 0; i < 40 && still < 3; i += 1) {
-        const now = await page.evaluate(() => [...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label") || c.textContent.trim().slice(0, 40)).join("|"));
-        still = now && now === last ? still + 1 : 0; last = now; await page.waitForTimeout(1500);
+      let why = "";
+      for (let attempt = 1; attempt <= 4; attempt += 1) {
+        try { return await homeOnce(); } catch (e) { why = e.message; console.log(`  home attempt ${attempt}: ${why.split("\n")[0]}`); }
       }
-      console.log(`  home first card: ${last.split("|")[0]}`);
-      // The key handler attaches a moment after the first focus: a key sent sooner is lost (the web checks then fail at random).
-      await page.waitForTimeout(3500);
-      await settle();
+      throw new Error("Home focus system not ready after 4 loads: " + why);
     },
     async route(r) { await page.goto(web + r, { waitUntil: "load" }); await settle(); },
     async key(k, { long } = {}) {
       if (long) { await page.keyboard.down(KEYS[k]); await page.waitForTimeout(900); await page.keyboard.up(KEYS[k]); }
       else await page.keyboard.press(KEYS[k]);
       await page.waitForTimeout(350);
+      // The app applies directional keys once per animation frame: let two frames pass before anything reads focus.
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     },
     async location() { const u = new URL(page.url()); return u.pathname + u.search; },
     // { label, position } of the focused item, or null when the page body has focus (a check then fails).
     // position: { rail, index } = Home rail number and card number in it, or { rail: "nav", index } for a nav item; null elsewhere.
-    async focused() {
-      return page.evaluate(() => {
-        const e = document.activeElement;
-        if (!e || e === document.body) return null;
-        // Resume progress is per account and changes between runs: "Resume X from 2:14" and "Open X" are the same item.
-        const label = (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1");
-        let position = null;
-        const nav = e.closest(".app-nav-link");
-        const card = e.closest(".tv-home-card");
-        if (nav) position = { rail: "nav", index: [...document.querySelectorAll(".app-nav-link")].indexOf(nav) };
-        else if (card) {
-          const rail = (c) => (c.getAttribute("data-navigation-focus-key") || "").split(":")[1];
-          const cards = [...document.querySelectorAll(".tv-home-card")];
-          const rails = [...new Set(cards.map(rail))];
-          position = { rail: rails.indexOf(rail(card)), index: cards.filter((c) => rail(c) === rail(card)).indexOf(card) };
-        }
-        return { label, position };
-      });
-    },
+    focused: focusInfo,
     async screenshot(file) {
       await page.waitForFunction(() => ![...document.querySelectorAll("[class*=card-art]")].some((e) => !e.querySelector("img") && e.getBoundingClientRect().top < innerHeight), null, { timeout: 20000 }).catch(() => {});
       // Loading placeholders (skeletons, spinners) must be gone: a half-loaded screen is not a capture.
