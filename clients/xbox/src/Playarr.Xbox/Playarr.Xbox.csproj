@@ -227,6 +227,7 @@
     <Compile Include="Views\CatalogTileFactory.cs" />
     <Compile Include="Views\ShellChrome.cs" />
     <Compile Include="Views\Ui.cs" />
+    <Compile Include="Views\NavIcons.cs" />
     <Compile Include="Views\Appearance.cs" />
     <Compile Include="Views\Theme.cs" />
     <Compile Include="Views\Avatars.cs" />
@@ -331,6 +332,7 @@
     <!-- Tile, logo and splash images referenced by Package.appxmanifest. -->
     <Content Include="Assets\Square150x150Logo.png" />
     <Content Include="Assets\Square44x44Logo.png" />
+    <Content Include="Assets\PlayarrIcon.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.png" />
     <Content Include="Assets\SplashScreen.png" />

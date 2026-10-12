@@ -31,7 +31,7 @@ namespace Playarr.Xbox.Views
         private readonly List<(Button Button, Type Page, WorkKind? Kind)> _items = new List<(Button, Type, WorkKind?)>();
         private readonly TextBlock _time = new TextBlock { FontSize = 18, FontWeight = FontWeights.Bold };
         private readonly TextBlock _date = new TextBlock { FontSize = 12.5, FontWeight = FontWeights.SemiBold, CharacterSpacing = 60, VerticalAlignment = VerticalAlignment.Center };
-        private readonly TextBlock _profileName = new TextBlock { FontSize = 10.5, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center };
+        private readonly TextBlock _profileName = new TextBlock { FontSize = 10, FontWeight = FontWeights.Medium, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
         private Border _avatar = null!;
         private bool _avatarLoaded;
         private readonly DispatcherTimer _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
@@ -102,12 +102,12 @@ namespace Playarr.Xbox.Views
         {
             _chrome.Children.Add(new Image
             {
-                Source = new BitmapImage(new Uri("ms-appx:///Assets/Square44x44Logo.png")),
-                Width = 40,
-                Height = 40,
+                Source = new BitmapImage(new Uri("ms-appx:///Assets/PlayarrIcon.png")),
+                Width = 42,
+                Height = 42,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(RailLeft + (RailWidth - 40) / 2, 60, 0, 0),
+                Margin = new Thickness(RailLeft + (RailWidth - 42) / 2, 59, 0, 0),
             });
 
             var groups = new StackPanel
@@ -118,17 +118,17 @@ namespace Playarr.Xbox.Views
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(RailLeft, 118, 0, 0),
             };
-            groups.Children.Add(Group(Item("", "Downloads", typeof(DownloadsPage), null), Item("", "Search", typeof(SearchPage), null)));
+            groups.Children.Add(Group(Item("Downloads", typeof(DownloadsPage), null), Item("Search", typeof(SearchPage), null)));
             groups.Children.Add(Group(
-                Item("", "Home", typeof(HomePage), null),
-                Item("", "Series", typeof(LibraryPage), WorkKind.Series),
-                Item("", "Movies", typeof(LibraryPage), WorkKind.Movie),
-                Item("", "Music", typeof(LibraryPage), WorkKind.Artist)));
+                Item("Home", typeof(HomePage), null),
+                Item("Series", typeof(LibraryPage), WorkKind.Series),
+                Item("Movies", typeof(LibraryPage), WorkKind.Movie),
+                Item("Music", typeof(LibraryPage), WorkKind.Artist)));
             groups.Children.Add(Group(
-                Item("", "Playlists", typeof(PlaylistsPage), null),
-                Item("", "Watchlist", typeof(WatchlistPage), null),
-                Item("", "Requests", typeof(RequestsPage), null),
-                Item("", "Calendar", typeof(CalendarPage), null)));
+                Item("Playlists", typeof(PlaylistsPage), null),
+                Item("Watchlist", typeof(WatchlistPage), null),
+                Item("Requests", typeof(RequestsPage), null),
+                Item("Calendar", typeof(CalendarPage), null)));
             _chrome.Children.Add(groups);
 
             _avatar = new Border
@@ -198,12 +198,30 @@ namespace Playarr.Xbox.Views
             };
         }
 
-        private Button Item(string glyph, string label, Type? page, WorkKind? kind)
+        private Button Item(string label, Type? page, WorkKind? kind)
         {
             var content = new StackPanel { Spacing = 6 };
-            content.Children.Add(new FontIcon { Glyph = glyph, FontSize = 18, FontFamily = new FontFamily("Segoe MDL2 Assets") });
-            content.Children.Add(new TextBlock { Text = label, FontSize = 10.5, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center });
+            content.Children.Add(NavIcons.Create(label, (Brush)Application.Current.Resources["PlayarrInkMuted"]));
+            content.Children.Add(new TextBlock { Text = label, FontSize = 10, FontWeight = FontWeights.Medium, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center });
             return RailButton(content, page, kind);
+        }
+
+        /// <summary>The web tints the current item with the page ink and the others with the muted ink.</summary>
+        private static void Tint(Button button, bool current)
+        {
+            if (!(button.Content is StackPanel { Children: { Count: 2 } children }) || !(children[0] is Viewbox { Child: Canvas canvas }) || !(children[1] is TextBlock label))
+            {
+                return;
+            }
+
+            var brush = (Brush)Application.Current.Resources[current ? "PlayarrInk" : "PlayarrInkMuted"];
+            foreach (var path in canvas.Children.OfType<Windows.UI.Xaml.Shapes.Path>())
+            {
+                if (path.Stroke != null) { path.Stroke = brush; }
+                if (path.Fill != null) { path.Fill = brush; }
+            }
+
+            label.Foreground = brush;
         }
 
         private Button RailButton(UIElement content, Type? page, WorkKind? kind)
@@ -247,7 +265,8 @@ namespace Playarr.Xbox.Views
                 _avatarLoaded = true;
                 LoadAvatar();
             }
-            _profileName.Text = string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName;
+            // The web shows the first word of the profile name under the avatar.
+            _profileName.Text = string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName.Split(' ')[0];
 
             var kind = e.Parameter as WorkKind?;
             foreach (var (button, page, itemKind) in _items)
@@ -256,6 +275,7 @@ namespace Playarr.Xbox.Views
                 button.Background = current
                     ? (Brush)Application.Current.Resources["PlayarrSurfaceSoft"]
                     : new SolidColorBrush(Colors.Transparent);
+                Tint(button, current);
             }
         }
 
