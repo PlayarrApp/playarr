@@ -153,6 +153,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -4348,7 +4349,6 @@ private fun PhoneSearchContent(
         HeroBackdropStack {
             PhoneKeyArt(selectedWork, serverUrl, accessToken, Modifier.fillMaxSize())
             PhoneStageWash(Modifier.fillMaxSize())
-            Box(Modifier.padding(top = 320.7.dp).fillMaxSize().background(phonePanelBrush(fadeFraction = 0.1f)))
         }
         Column(Modifier.fillMaxSize().windowInsetsPadding(webPhoneInsets())) {
             Spacer(Modifier.height(76.dp))
@@ -4381,13 +4381,14 @@ private fun PhoneSearchContent(
                     innerWidthFill = true,
                 ) {
                 Row(
-                    Modifier.fillMaxWidth().height(50.dp)
+                    // Web's 50px min-height grows to 60px from the 44px input plus 14px padding and 2px border.
+                    Modifier.fillMaxWidth().height(60.dp)
                         .background(WebSurfaceStrong.copy(alpha = 0.88f), pillShape)
                         .border(1.dp, if (fieldFocused) rose.copy(alpha = 0.72f) else WebSearchBorder, pillShape)
                         .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(PlayarrWebIcons.Search, contentDescription = null, tint = WebInkMuted, modifier = Modifier.size(18.dp))
+                    Icon(PlayarrWebIcons.Search, contentDescription = null, tint = PlayarrWebTheme.palette.phoneInkMuted, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     androidx.compose.foundation.text.BasicTextField(
                         value = query,
@@ -4401,7 +4402,7 @@ private fun PhoneSearchContent(
                         decorationBox = { inner ->
                             Box(contentAlignment = Alignment.CenterStart) {
                                 if (query.isEmpty()) {
-                                    Text(playarrString(PlayarrString.SearchPlaceholder), color = WebInkMuted, fontSize = 16.sp, lineHeight = 24.sp, maxLines = 1)
+                                    Text(playarrString(PlayarrString.SearchPlaceholder), color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 16.sp, lineHeight = 24.sp, maxLines = 1)
                                 }
                                 inner()
                             }
@@ -4409,17 +4410,18 @@ private fun PhoneSearchContent(
                     )
                 }
                 }
-                Spacer(Modifier.height(10.dp))
                 filterPanel()
             }
             // The web results area does not follow the top inset: it starts where a 24 dp status bar leaves it.
             val topInset = webPhoneInsets().asPaddingValues().calculateTopPadding()
-            Box(Modifier.padding(top = (24.dp - topInset).coerceAtLeast(0.dp)).weight(1f).fillMaxWidth()) {
+            // Web starts the copy at 14px + 58px, then the 18px form margin places its 60px field at y=90px.
+            // The results rail starts at y=154px, four pixels below that field.
+            Box(Modifier.padding(top = (18.dp - topInset).coerceAtLeast(0.dp)).weight(1f).fillMaxWidth()) {
                 when (val current = state) {
                     ExperienceLoad.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = WebAccent) }
                     is ExperienceLoad.Failed -> PlayarrErrorState(current.message, onSubmit)
                     is ExperienceLoad.Ready -> if (query_.isBlank()) {
-                        PlayarrEmptyState(playarrString(PlayarrString.SearchIdleTitle), playarrString(PlayarrString.SearchEmptyPrompt))
+                        PhoneSearchIdleState(Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp))
                     } else if (gamesOnly) {
                         DiscoveryExtrasSection(
                             query = query_.trim(),
@@ -4478,6 +4480,40 @@ private fun PhoneSearchContent(
                 }
             }
         }
+    }
+}
+
+/** Phone Search idle row matching the web mobile search illustration and copy. */
+@Composable
+private fun PhoneSearchIdleState(modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(86.dp)
+                .background(WebSurfaceStrong.copy(alpha = 0.54f), CircleShape)
+                .border(1.dp, if (webIsDark) Color(0xFFDFDCDD).copy(alpha = 0.115f) else Color(0xFF382621).copy(alpha = 0.14f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(Modifier.size(width = 34.dp, height = (34f * 32f / 48f).dp)) {
+                val pink = Color(0xFFCF3157)
+                val scale = size.width / 48f
+                val strokeWidth = 1.8f * scale
+                val style = androidx.compose.ui.graphics.drawscope.Stroke(strokeWidth, cap = StrokeCap.Round)
+                drawCircle(pink, radius = 9f * scale, center = Offset(21f * scale, 14f * scale), style = style)
+                drawLine(pink, Offset(17f * scale, 14f * scale), Offset(25f * scale, 14f * scale), strokeWidth, cap = StrokeCap.Round)
+                drawLine(pink, Offset(28f * scale, 21f * scale), Offset(37f * scale, 29f * scale), strokeWidth, cap = StrokeCap.Round)
+            }
+        }
+        Spacer(Modifier.width(22.dp))
+        Text(
+            playarrString(PlayarrString.SearchIdleTitle),
+            color = WebInk,
+            fontSize = 11.52.sp,
+            fontWeight = FontWeight(650),
+            letterSpacing = (-0.2304).sp,
+            lineHeight = 13.824.sp,
+            style = WebTextStyle,
+            maxLines = 1,
+        )
     }
 }
 
@@ -5803,6 +5839,7 @@ private fun ExperienceVideoDetailContent(
                 progressByMedia = progressByMedia,
                 movieRuntimeMs = movieMetadata?.durationMs,
                 chapters = playarrDisplayedMovieChapters(movieChapters, movieMetadata?.durationMs ?: 0L),
+                generatedChapters = movieChapters.isEmpty(),
                 credits = credits,
                 similarWorks = similarWorks,
                 availabilityLag = availabilityLag,
@@ -5847,6 +5884,7 @@ private fun PhoneVideoDetailBody(
     progressByMedia: Map<String, WatchProgress>,
     movieRuntimeMs: Long?,
     chapters: List<MediaChapter>,
+    generatedChapters: Boolean,
     credits: WorkCreditsResponse,
     similarWorks: List<Work>,
     availabilityLag: io.playarr.shared.data.model.AvailabilityLag?,
@@ -5999,7 +6037,10 @@ private fun PhoneVideoDetailBody(
                 } else if (mediaFileId != null && chapters.isNotEmpty()) {
                     PhoneDetailRail(
                         title = playarrString(PlayarrString.DetailChapters),
-                        subtitle = playarrString(PlayarrString.DetailSceneMarkersCount, "count" to chapters.size),
+                        subtitle = playarrString(
+                            if (generatedChapters) PlayarrString.DetailSceneMarkersCount else PlayarrString.DetailChaptersCount,
+                            "count" to chapters.size,
+                        ),
                     ) {
                         items(chapters, key = MediaChapter::index) { chapter ->
                             PhoneChapterCard(chapter, mediaFileId, serverUrl, accessToken) { onPlay(mediaFileId, chapter.startMs, launchSettings) }

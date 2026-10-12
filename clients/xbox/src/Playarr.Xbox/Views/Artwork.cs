@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Playarr.Core.Models;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Storage.Streams;
+using Windows.Graphics.Imaging;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media.Imaging;
 
@@ -21,6 +24,7 @@ namespace Playarr.Xbox.Views
         private const int CacheLimit = 300;
         private static readonly SemaphoreSlim Gate = new SemaphoreSlim(6);
         private static readonly ConcurrentDictionary<string, byte[]> Cache = new ConcurrentDictionary<string, byte[]>();
+        private static readonly ConditionalWeakTable<Image, RequestVersion> Versions = new ConditionalWeakTable<Image, RequestVersion>();
 
         /// <summary>
         /// The width the web requests for a kind (<c>defaultArtworkWidth</c> in lib/artwork.tsx); the server snaps it to
@@ -42,14 +46,16 @@ namespace Playarr.Xbox.Views
         /// at exactly <paramref name="displayWidth"/> device pixels, so the decoder does the one resample and the
         /// compositor draws it 1:1 with the same cover crop (UniformToFill) as the web's object-fit.
         /// </summary>
-        public static async void Load(Image image, Work work, int displayWidth, ImageKind[] kinds, int? requestWidth = null)
+        public static async void Load(Image image, Work work, int displayWidth, ImageKind[] kinds, int? requestWidth = null, bool applyKeyArtFilter = false)
         {
+            var requestVersion = BeginRequest(image);
             image.Source = null;
             foreach (var kind in kinds)
             {
                 if (work.Image(kind) is { } asset)
                 {
-                    await SetAsync(image, work.Id, kind, requestWidth ?? WebWidth(kind), Version(asset.Url), displayWidth).ConfigureAwait(true);
+                    await SetAsync(image, work.Id, kind, requestWidth ?? WebWidth(kind), Version(asset.Url), displayWidth, requestVersion,
+                        applyKeyArtFilter: applyKeyArtFilter, keyArtContrast: Theme.KeyArtContrast, keyArtBrightness: Theme.KeyArtBrightness).ConfigureAwait(true);
                     return;
                 }
             }
@@ -58,11 +64,12 @@ namespace Playarr.Xbox.Views
         /// <summary>An episode's still: requested like a web thumb (540), decoded at the display width.</summary>
         public static async void LoadEpisode(Image image, Work series, Episode episode, int displayWidth)
         {
+            var requestVersion = BeginRequest(image);
             image.Source = null;
             var asset = episode.Images.Count > 0 ? episode.Images[0] : null;
             if (asset != null)
             {
-                await SetAsync(image, series.Id, ImageKind.Thumb, WebWidth(ImageKind.Thumb), Version(asset.Url), displayWidth, episode.Id).ConfigureAwait(true);
+                await SetAsync(image, series.Id, ImageKind.Thumb, WebWidth(ImageKind.Thumb), Version(asset.Url), displayWidth, requestVersion, episode.Id).ConfigureAwait(true);
             }
         }
 
@@ -107,7 +114,8 @@ namespace Playarr.Xbox.Views
                 }).ConfigureAwait(true);
         }
 
-        private static async Task SetAsync(Image image, Guid id, ImageKind kind, int width, string version, int decodeWidth, Guid? episodeId = null)
+        private static async Task SetAsync(Image image, Guid id, ImageKind kind, int width, string version, int decodeWidth, long requestVersion,
+            Guid? episodeId = null, bool applyKeyArtFilter = false, double keyArtContrast = 1, double keyArtBrightness = 1)
         {
             var key = $"{id:N}:{episodeId:N}:{kind}:{width}:{version}";
             try
@@ -134,13 +142,32 @@ namespace Playarr.Xbox.Views
                     Cache[key] = bytes;
                 }
 
-                using (var stream = new InMemoryRandomAccessStream())
+                if (!IsCurrentRequest(image, requestVersion))
                 {
-                    await stream.WriteAsync(bytes.AsBuffer());
-                    stream.Seek(0);
-                    var bitmap = new BitmapImage { DecodePixelWidth = decodeWidth };
-                    await bitmap.SetSourceAsync(stream);
-                    image.Source = bitmap;
+                    return;
+                }
+
+                if (applyKeyArtFilter)
+                {
+                    var filtered = await CreateFilteredKeyArtAsync(bytes, decodeWidth, requestVersion, image, keyArtContrast, keyArtBrightness).ConfigureAwait(true);
+                    if (filtered != null && IsCurrentRequest(image, requestVersion))
+                    {
+                        image.Source = filtered;
+                    }
+                }
+                else
+                {
+                    using (var stream = new InMemoryRandomAccessStream())
+                    {
+                        await stream.WriteAsync(bytes.AsBuffer());
+                        stream.Seek(0);
+                        var bitmap = new BitmapImage { DecodePixelWidth = decodeWidth };
+                        await bitmap.SetSourceAsync(stream);
+                        if (IsCurrentRequest(image, requestVersion))
+                        {
+                            image.Source = bitmap;
+                        }
+                    }
                 }
             }
             catch (Exception)
@@ -194,6 +221,65 @@ namespace Playarr.Xbox.Views
                 // A failed source leaves the placeholder in place so the next candidate can be tried.
                 return false;
             }
+        }
+
+
+        private static async Task<WriteableBitmap?> CreateFilteredKeyArtAsync(byte[] encoded, int decodeWidth, long requestVersion, Image image,
+            double contrast, double brightness)
+        {
+            using (var stream = new InMemoryRandomAccessStream())
+            {
+                await stream.WriteAsync(encoded.AsBuffer());
+                stream.Seek(0);
+                var decoder = await BitmapDecoder.CreateAsync(stream);
+                var width = Math.Max(1, decodeWidth);
+                var height = Math.Max(1, (int)Math.Round(decoder.OrientedPixelHeight * (width / (double)decoder.OrientedPixelWidth)));
+                var transform = new BitmapTransform
+                {
+                    ScaledWidth = (uint)width,
+                    ScaledHeight = (uint)height,
+                    InterpolationMode = BitmapInterpolationMode.Fant,
+                };
+                var pixelData = await decoder.GetPixelDataAsync(
+                    BitmapPixelFormat.Bgra8,
+                    BitmapAlphaMode.Straight,
+                    transform,
+                    ExifOrientationMode.RespectExifOrientation,
+                    ColorManagementMode.ColorManageToSRgb);
+                var pixels = pixelData.DetachPixelData();
+                if (!IsCurrentRequest(image, requestVersion))
+                {
+                    return null;
+                }
+
+                await Task.Run(() => BackdropPixelFilter.Apply(pixels, contrast, brightness)).ConfigureAwait(true);
+
+                var bitmap = new WriteableBitmap(width, height);
+                using (var pixelStream = bitmap.PixelBuffer.AsStream())
+                {
+                    pixelStream.Write(pixels, 0, pixels.Length);
+                }
+
+                bitmap.Invalidate();
+                return bitmap;
+            }
+        }
+
+        private static long BeginRequest(Image image)
+        {
+            var request = Versions.GetValue(image, _ => new RequestVersion());
+            return Interlocked.Increment(ref request.Value);
+        }
+
+        private static bool IsCurrentRequest(Image image, long version)
+        {
+            var request = Versions.GetValue(image, _ => new RequestVersion());
+            return Interlocked.Read(ref request.Value) == version;
+        }
+
+        private sealed class RequestVersion
+        {
+            public long Value;
         }
 
         /// <summary>The web's cache-busting version: FNV-1a over the source URL, 8 hex digits (lib/artwork.tsx).</summary>

@@ -1,16 +1,113 @@
 // Reference driver: the web TV client in Playwright (Chromium, 1920x1080, TV user agent). Contract: docs/parity/SUITE.md.
 //   PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD,
-//   PARITY_CHROME (browser path, default Playwright's). Sessions are never shared: every run signs in fresh (new
+//   PARITY_CHROME (browser path, default Playwright's), PLAYARR_WEB_MOBILE=1, PLAYARR_WEB_USER_AGENT, and
+//   PLAYARR_WEB_VIEWPORT_WIDTH/HEIGHT/DPR (TV defaults 1920/1080/1; mobile defaults 390/844/3). Sessions are never shared: every run signs in fresh (new
 //   browser profile, so a new device id) and keeps the session in memory only; nothing is written to disk.
 import { chromium } from "playwright-core";
 
 const KEYS = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", select: "Enter", back: "Escape" };
 const UA = "Mozilla/5.0 (Linux; Android 12; BRAVIA) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 PlayarrAndroidTV/1.0";
+const MOBILE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
 export async function createDriver() {
   const env = process.env, web = (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
-  let cdp, browser, ctx, page, theme = "dark", session; // session: this run's own storage state, in memory
+  const mobile = env.PLAYARR_WEB_MOBILE === "1";
+  const positiveInteger = (name, fallback) => {
+    const value = env[name] === undefined ? fallback : Number(env[name]);
+    if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${name} must be a positive integer`);
+    return value;
+  };
+  const positiveNumber = (name, fallback) => {
+    const value = env[name] === undefined ? fallback : Number(env[name]);
+    if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} must be a positive number`);
+    return value;
+  };
+  const viewport = {
+    width: positiveInteger("PLAYARR_WEB_VIEWPORT_WIDTH", mobile ? 390 : 1920),
+    height: positiveInteger("PLAYARR_WEB_VIEWPORT_HEIGHT", mobile ? 844 : 1080),
+  };
+  const deviceScaleFactor = positiveNumber("PLAYARR_WEB_VIEWPORT_DPR", mobile ? 3 : 1);
+  let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false; // session: this run's own storage state, in memory
   const touched = new Set(); // downloadMedia entries the downloads cases used
+  const detailReadyTimeoutMs = 30000;
+  const waitForDetailReady = async ({ requireHeroAction = false } = {}) => {
+    const path = new URL(page.url()).pathname;
+    const match = /^\/(movies|series)\/([^/]+)\/?$/.exec(path);
+    if (!match) return;
+    const [kind, workId] = [match[1] === "movies" ? "movie" : "series", match[2]];
+    const kindHeading = match[1] === "movies" ? "Movies" : "Series";
+    try {
+      await page.waitForFunction(async ({ workId: expectedWorkId, kindHeading: expectedKindHeading, needsAction }) => {
+        const detail = document.querySelector(".tv-detail");
+        const copy = detail?.querySelector(".tv-detail-copy");
+        if (!copy || copy.classList.contains("is-resolving") || copy.getAttribute("aria-busy") === "true") return false;
+        if (detail.querySelector(".is-resolving, [aria-busy='true'], .tv-detail-play-pending")) return false;
+        const heading = detail.querySelector(".page-header-title-block h1")?.textContent?.trim().replace(/\s+/g, " ");
+        if (heading !== expectedKindHeading) return false;
+        const title = copy.querySelector(".tv-detail-title")?.textContent?.trim().replace(/\s+/g, " ");
+        if (!title || detail.getAttribute("aria-label")?.trim().replace(/\s+/g, " ") !== title) return false;
+        if (![...detail.querySelectorAll("[data-navigation-focus-key]")].some((node) =>
+          node.getAttribute("data-navigation-focus-key")?.startsWith(`detail:${expectedWorkId}:`))) return false;
+        const artImages = [...(detail.querySelector(".tv-key-art")?.querySelectorAll("img") ?? [])];
+        const hasVisibleDecodedArt = (await Promise.all(artImages.map(async (image) => {
+          if (!image.complete || image.naturalWidth === 0) return false;
+          try { await image.decode(); } catch { return false; }
+          const style = getComputedStyle(image);
+          const rect = image.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" &&
+            Number(style.opacity) > 0 && rect.width > 0 && rect.height > 0;
+        }))).some(Boolean);
+        if ((needsAction || artImages.length > 0) && !hasVisibleDecodedArt) return false;
+        if (!needsAction) return true;
+        return [...detail.querySelectorAll(".tv-detail-actions .tv-detail-play")].some((action) => {
+          if (!action.matches("button, a, [role='button']") || action.matches(":disabled") || action.classList.contains("is-disabled") ||
+              action.getAttribute("aria-disabled") === "true") return false;
+          const style = getComputedStyle(action);
+          const rect = action.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0 && rect.width > 0 && rect.height > 0;
+        });
+      }, { workId, kindHeading, needsAction: requireHeroAction }, { timeout: detailReadyTimeoutMs, polling: 250 });
+    } catch (error) {
+      if (error?.name !== "TimeoutError") throw error;
+      const missing = await page.evaluate(async ({ workId: expectedWorkId, kindHeading: expectedKindHeading, needsAction }) => {
+        const detail = document.querySelector(".tv-detail");
+        const copy = detail?.querySelector(".tv-detail-copy");
+        const unresolved = !copy ? [".tv-detail-copy"] : [];
+        if (copy?.classList.contains("is-resolving") || copy?.getAttribute("aria-busy") === "true") unresolved.push("detail copy still resolving or busy");
+        if (detail?.querySelector(".is-resolving, [aria-busy='true']")) unresolved.push("detail contains a resolving or busy element");
+        if (detail?.querySelector(".tv-detail-play-pending")) unresolved.push(".tv-detail-play-pending");
+        const heading = detail?.querySelector(".page-header-title-block h1")?.textContent?.trim().replace(/\s+/g, " ");
+        if (heading !== expectedKindHeading) unresolved.push(`route kind mismatch: expected ${expectedKindHeading} detail`);
+        const title = copy?.querySelector(".tv-detail-title")?.textContent?.trim().replace(/\s+/g, " ");
+        if (!title) unresolved.push("non-empty .tv-detail-title");
+        else if (detail?.getAttribute("aria-label")?.trim().replace(/\s+/g, " ") !== title) unresolved.push("detail title and accessible identity do not match");
+        if (![...(detail?.querySelectorAll("[data-navigation-focus-key]") ?? [])].some((node) =>
+          node.getAttribute("data-navigation-focus-key")?.startsWith(`detail:${expectedWorkId}:`))) {
+          unresolved.push("route identity mismatch: no detail-owned focus key matches the requested work id");
+        }
+        const artImages = [...(detail?.querySelector(".tv-key-art")?.querySelectorAll("img") ?? [])];
+        const hasVisibleDecodedArt = (await Promise.all(artImages.map(async (image) => {
+          if (!image.complete || image.naturalWidth === 0) return false;
+          try { await image.decode(); } catch { return false; }
+          const style = getComputedStyle(image);
+          const rect = image.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" &&
+            Number(style.opacity) > 0 && rect.width > 0 && rect.height > 0;
+        }))).some(Boolean);
+        if ((needsAction || artImages.length > 0) && !hasVisibleDecodedArt) unresolved.push("visible decoded image in .tv-key-art");
+        const action = [...(detail?.querySelectorAll(".tv-detail-actions .tv-detail-play") ?? [])].some((candidate) => {
+          if (!candidate.matches("button, a, [role='button']") || candidate.matches(":disabled") || candidate.classList.contains("is-disabled") ||
+              candidate.getAttribute("aria-disabled") === "true") return false;
+          const style = getComputedStyle(candidate);
+          const rect = candidate.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0 && rect.width > 0 && rect.height > 0;
+        });
+        if (needsAction && !action) unresolved.push("visible enabled hero action in .tv-detail-actions");
+        return unresolved.length ? unresolved : ["readiness condition changed before timeout diagnostic"];
+      }, { workId, kindHeading, needsAction: requireHeroAction });
+      throw new Error(`Timed out after ${detailReadyTimeoutMs}ms waiting for ${kind} detail readiness: ${missing.join(", ")}`);
+    }
+  };
   const settle = async () => {
     await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
     await page.waitForFunction(() => [...document.images].every((i) => i.complete), null, { timeout: 15000 }).catch(() => {});
@@ -20,7 +117,8 @@ export async function createDriver() {
     // Refresh tokens rotate: carry this run's live session into the next context (theme switch), or it comes up signed out.
     if (ctx && keep) session = await ctx.storageState();
     cdp = undefined; await ctx?.close();
-    ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, userAgent: UA, colorScheme: theme, locale: "en-GB", timezoneId: "Asia/Bangkok",
+    ctx = await browser.newContext({ viewport, deviceScaleFactor, userAgent: env.PLAYARR_WEB_USER_AGENT ?? (mobile ? MOBILE_UA : UA), colorScheme: theme, locale: "en-GB", timezoneId: "Asia/Bangkok",
+      ...(mobile ? { isMobile: true, hasTouch: true } : {}),
       ...(session ? { storageState: session } : {}) });
     await ctx.addInitScript((t) => localStorage.setItem("playarr-theme", t), theme);
     // Restored sessionStorage (scroll positions, focus memory) changes what a route shows: every document starts with it empty.
@@ -92,6 +190,7 @@ export async function createDriver() {
     // Signed out (the server can drop a session when other devices sign in): sign in again once.
     if (!(await page.locator(".app-nav").count())) { try { session = undefined; await open(false); } finally { await page.goto(web + "/", { waitUntil: "load" }); } }
     await page.waitForFunction(() => document.querySelectorAll(".app-nav-link").length >= 6 && !document.querySelector(".app-nav-link-placeholder") && document.querySelector(".tv-home-card"), null, { timeout: 30000 });
+    if (mobile) { await settle(); return; }
     // Home rails fill in asynchronously and reorder the cards: wait until the list holds still, then log the first card
     // so Home-rail drift (other clients' activity on the shared account) is visible next to the D-pad results.
     let last = "", still = 0;
@@ -306,9 +405,7 @@ export async function createDriver() {
     async start() { browser = await chromium.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}); await open().catch(async () => { await new Promise((r) => setTimeout(r, 15000)); await open(false); }); }, // one retry: sign-in can time out when many devices sign in at once
     async stop() { await browser?.close(); },
     async setTheme(t) { if (t !== theme) { theme = t; await open(); } },
-    // Home with focus on the first card and a key handler that has proved itself. The app's first directional key after a load
-    // can be lost, and a script focus() does not help (the app tracks its own focus), so: leave focus to the app, spend the lost
-    // key on a Left/Right round trip (card 0 -> nav -> card 0), and reload and retry if that does not work.
+    // TV Home proves first-card focus and the Left/Right nav round trip. Mobile Home waits for populated content and settles without TV focus keys.
     async home() {
       let why = "";
       for (let attempt = 1; attempt <= 4; attempt += 1) {
@@ -324,7 +421,12 @@ export async function createDriver() {
         return !!v && v.readyState >= 2 && !v.paused && v.currentTime > 0.5 && !!c && !c.classList.contains("is-hidden") && !!document.activeElement?.closest("[data-player-default-focus]");
       }, null, { timeout: 30000, polling: 250 });
     },
-    async route(r) { await page.goto(web + r, { waitUntil: "load" }); await settle(); },
+    async route(r, { requireHeroAction = false } = {}) {
+      await page.goto(web + r, { waitUntil: "load" });
+      detailActionRequired = requireHeroAction && /^\/(?:movies|series)\/[^/]+\/?(?:\?.*)?$/.test(r);
+      await waitForDetailReady({ requireHeroAction: detailActionRequired });
+      await settle();
+    },
     async key(k, { long } = {}) {
       if (long) { await page.keyboard.down(KEYS[k]); await page.waitForTimeout(900); await page.keyboard.up(KEYS[k]); }
       else await page.keyboard.press(KEYS[k]);
@@ -337,11 +439,26 @@ export async function createDriver() {
     // position: { rail, index } = Home rail number and card number in it, or { rail: "nav", index } for a nav item; null elsewhere.
     focused: focusInfo,
     async screenshot(file) {
+      await waitForDetailReady({ requireHeroAction: detailActionRequired });
       await page.waitForFunction(() => ![...document.querySelectorAll("[class*=card-art]")].some((e) => !e.querySelector("img") && e.getBoundingClientRect().top < innerHeight), null, { timeout: 20000 }).catch(() => {});
       // Loading placeholders (skeletons, spinners) must be gone: a half-loaded screen is not a capture.
       await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader"), null, { timeout: 20000 }).catch(() => {});
       await page.waitForTimeout(500);
       if (new URL(page.url()).pathname.startsWith("/login") || (await page.getByText("API request failed").count())) throw new Error("signed out or error page");
+      const detailRoute = /^\/(movies|series)\/[^/]+\/?$/.test(new URL(page.url()).pathname);
+      if (detailRoute) {
+        try {
+          await page.waitForFunction(() => {
+            const detail = document.querySelector(".tv-detail");
+            return !!detail && !detail.getAnimations({ subtree: true }).some((animation) =>
+              animation.playState === "running" && Number.isFinite(animation.effect?.getComputedTiming().endTime ?? Infinity));
+          }, null, { timeout: 8000, polling: 100 });
+        } catch (error) {
+          if (error?.name !== "TimeoutError") throw error;
+          throw new Error("Timed out after 8000ms waiting for finite detail animations to finish");
+        }
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      }
       await page.screenshot({ path: file });
     },
     // Plays media file `c.file` (a deep link on web; devices open it by their own means), returns {state, startSeconds, advancedSeconds, proxied}.

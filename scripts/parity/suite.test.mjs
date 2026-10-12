@@ -73,12 +73,14 @@ test("player toggle reference records exact web state and rejects an unchanged p
     assert.equal(expected.dpad["player-ok-toggle"], "play");
 
     const scored = run("no", ["--expected", join(out, "expected.json")]);
-    assert.equal(scored.status, 0, scored.stderr || scored.stdout);
+    assert.equal(scored.status, 1, scored.stderr || scored.stdout);
+    assert.match(scored.stdout, /failed D-pad checks 1: player-ok-toggle/);
     const result = JSON.parse(readFileSync(join(out, "dpad.json"), "utf8"));
     assert.equal(result.results.find((x) => x.id === "player-ok-toggle").pass, false);
 
     const roleOnly = run("role", ["--expected", join(out, "expected.json")]);
-    assert.equal(roleOnly.status, 0, roleOnly.stderr || roleOnly.stdout);
+    assert.equal(roleOnly.status, 1, roleOnly.stderr || roleOnly.stdout);
+    assert.match(roleOnly.stdout, /failed D-pad checks 1: player-ok-toggle/);
     const roleResult = JSON.parse(readFileSync(join(out, "dpad.json"), "utf8"));
     assert.equal(roleResult.results.find((x) => x.id === "player-ok-toggle").pass, false);
 
