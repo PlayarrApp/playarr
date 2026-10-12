@@ -166,7 +166,7 @@ struct WorkDetailView: View {
                 if hasVisibleChildren(detail.children) || hasDiscoveryContent {
                     ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: 30) {
-                            children(for: detail.children)
+                            children(for: detail.children, tabletScale: proxy.size.width / 1366)
                             discoveryContent
                         }
                         .padding(.leading, proxy.size.width * 0.088)
@@ -370,14 +370,15 @@ struct WorkDetailView: View {
     }
 
     @ViewBuilder
-    private func children(for children: WorkChildren) -> some View {
+    private func children(for children: WorkChildren, tabletScale: CGFloat? = nil) -> some View {
         switch children {
         case .movie:
             EmptyView()
         case .series(let seasons):
-            VStack(alignment: .leading, spacing: 34) {
+            let spacing = tabletScale.map { (251.46875 - 304.28125) * $0 } ?? 34
+            VStack(alignment: .leading, spacing: spacing) {
                 ForEach(seasons, id: \.season.id) { season in
-                    seasonEpisodeTrack(season)
+                    seasonEpisodeTrack(season, tabletScale: tabletScale)
                         .id(season.season.id)
                 }
             }
@@ -497,8 +498,10 @@ struct WorkDetailView: View {
         return PlaybackQueueBuilder.episodes(after: episodeID, seriesTitle: detail.work.title, seasons: seasons)
     }
 
-    private func seasonEpisodeTrack(_ season: SeasonDetail) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private func seasonEpisodeTrack(_ season: SeasonDetail, tabletScale: CGFloat? = nil) -> some View {
+        let cardWidth = tabletScale.map { 196.015 * $0 } ?? 210
+        let cardHeight = tabletScale.map { 110.252 * $0 } ?? 118
+        return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text(season.season.title ?? "Season \(season.season.seasonNumber)")
                     .font(.custom("Avenir Next", fixedSize: 18).weight(.semibold))
@@ -527,17 +530,29 @@ struct WorkDetailView: View {
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(season.episodes) { episode in
-                        episodeCard(episode, seasonNumber: season.season.seasonNumber)
+                        episodeCard(
+                            episode,
+                            seasonNumber: season.season.seasonNumber,
+                            cardWidth: cardWidth,
+                            cardHeight: cardHeight
+                        )
                     }
                 }
                 .padding(.vertical, 8)
             }
             .scrollIndicators(.hidden)
         }
+        .padding(.top, tabletScale.map { 20 * $0 } ?? 0)
+        .frame(height: tabletScale.map { 304.28 * $0 }, alignment: .topLeading)
     }
 
     @ViewBuilder
-    private func episodeCard(_ detail: EpisodeDetail, seasonNumber: Int32) -> some View {
+    private func episodeCard(
+        _ detail: EpisodeDetail,
+        seasonNumber: Int32,
+        cardWidth: CGFloat = 210,
+        cardHeight: CGFloat = 118
+    ) -> some View {
         let episode = detail.episode
         let title = episode.title ?? "Episode \(episode.episodeNumber)"
         let label = "S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))"
@@ -559,7 +574,14 @@ struct WorkDetailView: View {
                         )
                     )
                 } label: {
-                    episodeCardLabel(detail: detail, title: title, label: label, playable: true)
+                    episodeCardLabel(
+                        detail: detail,
+                        title: title,
+                        label: label,
+                        playable: true,
+                        cardWidth: cardWidth,
+                        cardHeight: cardHeight
+                    )
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
@@ -572,17 +594,31 @@ struct WorkDetailView: View {
                     }
                 }
             } else {
-                episodeCardLabel(detail: detail, title: title, label: label, playable: false)
+                episodeCardLabel(
+                    detail: detail,
+                    title: title,
+                    label: label,
+                    playable: false,
+                    cardWidth: cardWidth,
+                    cardHeight: cardHeight
+                )
             }
         }
     }
 
-    private func episodeCardLabel(detail: EpisodeDetail, title: String, label: String, playable: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+    private func episodeCardLabel(
+        detail: EpisodeDetail,
+        title: String,
+        label: String,
+        playable: Bool,
+        cardWidth: CGFloat = 210,
+        cardHeight: CGFloat = 118
+    ) -> some View {
+        return VStack(alignment: .leading, spacing: 7) {
             ZStack(alignment: .bottomLeading) {
                 if let work = viewModel.detail?.work {
                     WMRemoteImage(apiClient: apiClient, sources: episodeArtworkSources(detail, workID: work.id))
-                        .frame(width: 210, height: 118)
+                        .frame(width: cardWidth, height: cardHeight)
                         .background(PlayarrStyle.surfaceStrong.opacity(0.7))
                 } else {
                     PlayarrStyle.surfaceStrong
@@ -601,7 +637,7 @@ struct WorkDetailView: View {
                 }
                 .padding(10)
             }
-            .frame(width: 210, height: 118)
+            .frame(width: cardWidth, height: cardHeight)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
 
@@ -613,7 +649,7 @@ struct WorkDetailView: View {
                 .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
                 .foregroundStyle(PlayarrStyle.muted)
         }
-        .frame(width: 210, alignment: .leading)
+        .frame(width: cardWidth, alignment: .leading)
     }
 
     private func episodeArtworkSources(_ episode: EpisodeDetail, workID: UUID) -> [WMRemoteImage.Source] {
