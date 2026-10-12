@@ -242,7 +242,7 @@ struct HomeView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-            } else {
+            } else if scheme == .dark {
                 LinearGradient(
                     colors: [.clear, PlayarrStyle.surface.opacity(0.9), PlayarrStyle.surface],
                     startPoint: .leading,

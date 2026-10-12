@@ -493,13 +493,13 @@ struct LibraryView: View {
             .background {
                 if phone {
                     PlayarrStyle.surface.opacity(0.96)
-                } else {
+                } else if scheme == .dark {
                     LinearGradient(
                         colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
-                }
+                } // light: web has no tinted panel behind the grid
             }
         }
     }
