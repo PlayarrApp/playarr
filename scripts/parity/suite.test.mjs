@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { isActivePlayerResponse, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { hasFreshScreenFocus, isActivePlayerResponse, routeForState as rokuRouteForState, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
@@ -30,7 +30,7 @@ test("routeMatches", () => {
 
 test("Roku suite driver requires explicit non-player screen and D-pad allowlists", () => {
   assert.equal(validateRokuRunArgs([
-    "--only", "screens,dpad", "--via", "route", "--screens", "home,movies,calendar-month",
+    "--only", "screens,dpad", "--via", "route", "--screens", "home,movies",
     "--checks", "home-right,movies-grid-down",
   ]), true);
   assert.throws(() => validateRokuRunArgs(["--only", "screens,dpad"]), /explicit non-player --screens/);
@@ -38,12 +38,33 @@ test("Roku suite driver requires explicit non-player screen and D-pad allowlists
     "--only", "screens", "--screens", "home,player-controls",
   ]), /refuses unsupported screen/);
   assert.throws(() => validateRokuRunArgs([
-    "--only", "screens", "--via", "keys", "--screens", "calendar-month",
-  ]), /must use --via route/);
+    "--only", "screens", "--via", "route", "--screens", "calendar-month",
+  ]), /refuses unsupported screen/);
   assert.throws(() => validateRokuRunArgs([
     "--only", "dpad", "--checks", "home-right,player-right",
   ]), /refuses unsupported D-pad check/);
   assert.throws(() => validateRokuRunArgs(["--only", "downloads"]), /downloads and performance are unsupported/);
+});
+
+test("Roku profile launch accepts only a fresh profile screen and its subsequent focus event", () => {
+  const state = { screen: "profiles", screenSeq: 8, focus: "Device Test", focusSeq: 13, focusScreenSeq: 8 };
+  assert.equal(hasFreshScreenFocus(state, "profiles", "Device Test", 7, 12), true);
+  assert.equal(hasFreshScreenFocus({ ...state, screenSeq: 7, focusScreenSeq: 7 }, "profiles", "Device Test", 7, 12), false);
+  assert.equal(hasFreshScreenFocus({ ...state, focusSeq: 12 }, "profiles", "Device Test", 7, 12), false);
+  assert.equal(hasFreshScreenFocus({ ...state, focusScreenSeq: 7 }, "profiles", "Device Test", 7, 12), false);
+  assert.equal(hasFreshScreenFocus({ ...state, focus: "Clients" }, "profiles", "Device Test", 7, 12), false);
+});
+
+test("Roku theme verification distinguishes measured light and dark background pixels", () => {
+  assert.equal(themePixelMatches({ r: 26, g: 24, b: 27 }, "dark"), true);
+  assert.equal(themePixelMatches({ r: 251, g: 250, b: 248 }, "light"), true);
+  assert.equal(themePixelMatches({ r: 251, g: 250, b: 248 }, "dark"), false);
+  assert.equal(themePixelMatches({ r: 26, g: 24, b: 27 }, "light"), false);
+  assert.equal(themePixelMatches(null, "dark"), false);
+});
+
+test("Roku does not report a calendar view it cannot observe", () => {
+  assert.equal(rokuRouteForState("page", "calendar", "", ""), null);
 });
 
 test("Roku suite driver refuses to interrupt an active media session", () => {

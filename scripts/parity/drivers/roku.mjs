@@ -11,7 +11,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SAFE_SCREENS = new Set([
-  "home", "movies", "series", "music", "calendar-month", "search", "settings", "filters", "profiles", "actions",
+  "home", "movies", "series", "music", "search", "settings", "filters", "profiles", "actions",
 ]);
 const SAFE_CHECKS = new Set([
   "home-right", "home-down", "home-down-right", "home-left-nav", "nav-down",
@@ -36,9 +36,6 @@ export function validateRunArgs(args) {
     if (!screens.length) throw new Error("Roku driver requires an explicit non-player --screens allowlist");
     const unsafe = screens.filter((x) => !SAFE_SCREENS.has(x));
     if (unsafe.length) throw new Error(`Roku driver refuses unsupported screen(s): ${unsafe.join(", ")}`);
-    if (screens.includes("calendar-month") && option(args, "via") !== "route") {
-      throw new Error("Roku calendar-month must use --via route so the default Month state is verified without selecting media");
-    }
   }
   if (only.includes("dpad")) {
     const checks = option(args, "checks").split(",").filter(Boolean);
@@ -47,6 +44,21 @@ export function validateRunArgs(args) {
     if (unsafe.length) throw new Error(`Roku driver refuses unsupported D-pad check(s): ${unsafe.join(", ")}`);
   }
   return true;
+}
+
+export function hasFreshScreenFocus(state, expectedScreen, expectedFocus, afterScreenSeq, afterFocusSeq) {
+  return state.screenSeq > afterScreenSeq
+    && state.screen === expectedScreen
+    && state.focusSeq > afterFocusSeq
+    && state.focusScreenSeq === state.screenSeq
+    && state.focus === expectedFocus;
+}
+
+export function themePixelMatches(pixel, theme) {
+  if (!pixel || ![pixel.r, pixel.g, pixel.b].every(Number.isFinite)) return false;
+  if (theme === "dark") return pixel.r < 80 && pixel.g < 80 && pixel.b < 80;
+  if (theme === "light") return pixel.r > 220 && pixel.g > 220 && pixel.b > 210;
+  return false;
 }
 
 export function isActivePlayerResponse(xml) {
@@ -65,7 +77,7 @@ function parseKeySequence(keys = []) {
   return out;
 }
 
-function routeForState(screen, page, browse, drawerSource) {
+export function routeForState(screen, page, browse, drawerSource) {
   if (screen === "home") return "/";
   if (screen === "profiles") return "/profiles";
   if (screen === "search") return "/search";
@@ -80,7 +92,8 @@ function routeForState(screen, page, browse, drawerSource) {
     return null;
   }
   if (screen === "page") {
-    if (page === "calendar") return "/calendar?view=month";
+    // Roku reports only the Calendar page name, not its persisted month/week/agenda view.
+    if (page === "calendar") return null;
     if (["watchlist", "requests", "clients", "household"].includes(page)) return `/${page}`;
     if (page === "settings") return "/settings";
     return null;
@@ -112,12 +125,26 @@ export function createDriver({ out, args = [] } = {}) {
   let socket;
   let debugBuffer = "";
   let screen = "";
+  let screenSeq = 0;
   let page = "";
   let browse = "";
   let focus = null;
+  let focusSeq = 0;
+  let focusScreenSeq = 0;
+  let focusFloorAtScreen = 0;
   let drawerSource = "";
   let lastRoute = null;
   let debugFailure = false;
+  let lastScreenshotGeneration = 0;
+
+  const resetObservedState = () => {
+    screen = "";
+    page = "";
+    browse = "";
+    focus = null;
+    drawerSource = "";
+    lastRoute = null;
+  };
 
   const assertDebug = () => {
     if (!socket || socket.destroyed || debugFailure) throw new Error("Roku debug console is unavailable; refusing to infer route or focus state");
@@ -135,6 +162,8 @@ export function createDriver({ out, args = [] } = {}) {
     const [, kind, value] = match;
     if (kind === "screen") {
       screen = value.trim();
+      screenSeq += 1;
+      focusFloorAtScreen = focusSeq;
       focus = null;
       if (screen === "home" || screen === "profiles") drawerSource = "";
       if (screen === "drawer" && !drawerSource) drawerSource = "actions";
@@ -147,6 +176,8 @@ export function createDriver({ out, args = [] } = {}) {
       focus = positioned
         ? { label: positioned[1], position: { rail: Number(positioned[2]), index: Number(positioned[3]) } }
         : value.trim();
+      focusSeq += 1;
+      focusScreenSeq = screenSeq;
     }
   };
 
@@ -178,18 +209,23 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   const launchProfiles = async () => {
+    const beforeScreenSeq = screenSeq;
+    const beforeFocusSeq = focusSeq;
+    resetObservedState();
     await sendEcp("keypress/Home").catch(() => {});
     await sleep(900);
     await sendEcp("launch/dev");
-    await waitFor(() => screen === "profiles" || screen === "pairing" || screen === "status", "profile picker", 30000);
+    await waitFor(() => screenSeq > beforeScreenSeq && (screen === "profiles" || screen === "pairing" || screen === "status"), "fresh profile picker event", 30000);
     if (screen !== "profiles") throw new Error(`Roku is on ${screen}; expected signed-in Profiles`);
     // Resume can retain focus on a bottom-row action. This deterministic path restores the first profile.
     for (const key of ["down", "down", "left", "up"]) {
       await sendEcp(`keypress/${KEY_NAMES[key]}`);
       await sleep(650);
     }
-    await waitFor(() => typeof focus === "string" && focus.length > 0, "profile focus", 5000);
-    if (focus !== "Device Test") throw new Error("Roku focus is not the Device Test profile; refusing to select another profile");
+    await waitFor(() => focusSeq > beforeFocusSeq && focusSeq > focusFloorAtScreen && focusScreenSeq === screenSeq, "fresh profile focus", 5000);
+    if (!hasFreshScreenFocus({ screen, screenSeq, focus, focusSeq, focusScreenSeq }, "profiles", "Device Test", beforeScreenSeq, beforeFocusSeq)) {
+      throw new Error("Roku did not report fresh Device Test profile focus; refusing to select another profile");
+    }
   };
 
   const toHome = async () => {
@@ -207,6 +243,16 @@ export function createDriver({ out, args = [] } = {}) {
     await sendEcp("keypress/Select");
     await sleep(700);
     const index = theme === "light" ? 1 : 2;
+    // Dialog buttons are a vertical list. Drive to the last button and back to the first
+    // so the target index is independent of any retained button focus from a prior dialog.
+    for (let i = 0; i < 6; i += 1) {
+      await sendEcp("keypress/Down");
+      await sleep(250);
+    }
+    for (let i = 0; i < 6; i += 1) {
+      await sendEcp("keypress/Up");
+      await sleep(250);
+    }
     for (let i = 0; i < index; i += 1) {
       await sendEcp("keypress/Down");
       await sleep(500);
@@ -214,6 +260,11 @@ export function createDriver({ out, args = [] } = {}) {
     await sendEcp("keypress/Select");
     await sleep(1500);
     if (screen !== "profiles") throw new Error("Theme picker left the profile screen unexpectedly");
+    const { jpeg } = captureFrame();
+    const pixel = sampleBackgroundPixel(jpeg);
+    if (!themePixelMatches(pixel, theme)) {
+      throw new Error(`Roku did not apply requested ${theme} theme (background pixel ${pixel.r},${pixel.g},${pixel.b})`);
+    }
   };
 
   const curlConfig = (url, form = "") => {
@@ -255,6 +306,32 @@ export function createDriver({ out, args = [] } = {}) {
     return result.stdout;
   };
 
+  const sampleBackgroundPixel = (jpeg) => {
+    const result = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-vf", "crop=1:1:10:500", "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"], {
+      input: jpeg,
+      encoding: "buffer",
+      timeout: 12000,
+      maxBuffer: 4096,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    if (result.error || result.status !== 0 || result.stdout?.length !== 3) throw new Error("Roku theme verification could not sample the background pixel");
+    return { r: result.stdout[0], g: result.stdout[1], b: result.stdout[2] };
+  };
+
+  const captureFrame = () => {
+    const html = curl(curlConfig(`http://${target}/plugin_inspect`, "mysubmit=Screenshot")).toString("utf8");
+    const match = /pkgs\/dev\.[a-z]+\?time=(\d+)/.exec(html);
+    if (!match) throw new Error("Roku dev installer did not return a screenshot path");
+    const generation = Number(match[1]);
+    if (!Number.isSafeInteger(generation) || generation <= lastScreenshotGeneration) {
+      throw new Error("Roku screenshot generation is stale or did not advance");
+    }
+    const jpeg = curl(curlConfig(`http://${target}/${match[0]}`));
+    if (jpeg.length < 10000 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8) throw new Error("Roku screenshot was not a valid JPEG frame");
+    lastScreenshotGeneration = generation;
+    return { jpeg, generation };
+  };
+
   const exactSuiteScreen = (path) => {
     return SUITE_SCREENS.find((item) => item.route === path || item.match === path);
   };
@@ -267,13 +344,7 @@ export function createDriver({ out, args = [] } = {}) {
     await toHome();
     if (entry.id === "filters") drawerSource = "filters";
     else if (entry.id === "actions") drawerSource = "actions";
-    if (entry.id === "calendar-month") {
-      // The Roku calendar's default is Month. The shared web path reaches a view dialog via a different focus model,
-      // so open the native Calendar page directly through its normal D-pad path and verify the default route.
-      for (const item of parseKeySequence(["left", "down*12", "up", "select"])) await press(item.key, { long: item.long });
-    } else {
-      for (const item of parseKeySequence(entry.keys)) await press(item.key, { long: item.long });
-    }
+    for (const item of parseKeySequence(entry.keys)) await press(item.key, { long: item.long });
     const actual = routeForState(screen, page, browse, drawerSource);
     if (actual !== (entry.match ?? entry.route)) throw new Error(`Roku route ended on ${actual}; expected ${entry.match ?? entry.route}`);
     lastRoute = actual;
@@ -282,6 +353,7 @@ export function createDriver({ out, args = [] } = {}) {
   return {
     supports: { downloads: false, notifications: false, nowPlaying: false, "grouped-downloads": false },
     async start() {
+      resetObservedState();
       socket = net.createConnection({ host: target, port: 8085 });
       socket.setEncoding("utf8");
       socket.setTimeout(60000);
@@ -325,17 +397,24 @@ export function createDriver({ out, args = [] } = {}) {
       if (!out) throw new Error("suite runner output path is required");
       if (!screen || ["pairing", "status"].includes(screen)) throw new Error(`Roku screenshot refused on ${screen || "unknown"} screen`);
       if (screen === "playback") throw new Error("Roku parity driver refuses player screenshots");
-      const html = curl(curlConfig(`http://${target}/plugin_inspect`, "mysubmit=Screenshot")).toString("utf8");
-      const path = /pkgs\/dev\.[a-z]+\?time=\d+/.exec(html)?.[0];
-      if (!path) throw new Error("Roku dev installer did not return a screenshot path");
-      const jpg = curl(curlConfig(`http://${target}/${path}`));
-      if (jpg.length < 10000 || jpg[0] !== 0xff || jpg[1] !== 0xd8) throw new Error("Roku screenshot was not a valid JPEG frame");
+      const { jpeg, generation } = captureFrame();
       mkdirSync(dirname(resolve(file)), { recursive: true });
-      const png = pngFromJpeg(jpg);
+      const png = pngFromJpeg(jpeg);
       if (png.length < 24 || png.readUInt32BE(16) !== 1920 || png.readUInt32BE(20) !== 1080) {
         throw new Error("Roku screenshot was not a 1920x1080 frame");
       }
       writeFileSync(file, png);
+      writeFileSync(`${file}.capture.json`, JSON.stringify({
+        captured_at: new Date().toISOString(),
+        screenshot_generation: generation,
+        screen_seq: screenSeq,
+        focus_seq: focusSeq,
+        screen,
+        page,
+        browse,
+        route: routeForState(screen, page, browse, drawerSource),
+        focus,
+      }, null, 2));
     },
     async download() { throw new Error("Roku parity driver does not support Downloads"); },
     async cleanupDownloads() {},
