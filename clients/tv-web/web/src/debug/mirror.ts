@@ -10,6 +10,8 @@ const MIRROR_SENTINEL = "PLAYARR_DEBUG_MIRROR_SENTINEL";
 const TOKEN_KEY = "playarr.debugMirrorToken";
 const INTERVAL_MS = 2000;
 // Full TV viewport width (1280): the frame is the picture the parity suite scores, so no downscale. Override with ?mirrorWidth=.
+// ?mirrorPng=1: lossless frames (about 1 MB each) instead of JPEG, for pixel-exact parity scoring.
+const usePng = new URLSearchParams(window.location.search).get("mirrorPng") === "1";
 const TARGET_WIDTH = Number(new URLSearchParams(window.location.search).get("mirrorWidth")) || 1280;
 
 function readToken(): string | null {
@@ -122,7 +124,7 @@ export function startDebugMirror(): void {
     let image: string | null = null;
     let captureError: string | null = null;
     try {
-      const { toJpeg, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
+      const { toJpeg, toPng, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
       // The TV stage scale (tvStageScale.ts) zooms <html>, which html-to-image does not see (it clones
       // <body> with computed styles in stage units): render the stage size, not the zoomed viewport.
       const zoom = parseFloat(document.documentElement.style.getPropertyValue("zoom")) || 1;
@@ -141,7 +143,7 @@ export function startDebugMirror(): void {
         }
       }
       image = await withTimeout(
-        toJpeg(document.body, {
+        (usePng ? toPng : toJpeg)(document.body, {
           // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
           // native scrollbars the TV does not show: hide them in the rendered copy.
           fontEmbedCSS: `${fontCss}\n*::-webkit-scrollbar{display:none}*{scrollbar-width:none}`,
