@@ -319,7 +319,8 @@ struct TVWorkDetailView: View {
                     mediaFileID: mediaFileID,
                     title: detail.work.title,
                     apiClient: apiClient,
-                    suggestionsWorkID: detail.work.id
+                    suggestionsWorkID: detail.work.id,
+                    artworkPath: detail.work.images.first(where: { $0.kind == .poster })?.url ?? detail.work.images.first?.url
                 )
             } label: {
                 label
@@ -343,6 +344,7 @@ struct TVWorkDetailView: View {
                     title: first.episode.title ?? "Episode \(first.episode.episodeNumber)",
                     apiClient: apiClient,
                     suggestionsWorkID: detail.work.id,
+                    artworkPath: detail.work.images.first(where: { $0.kind == .poster })?.url ?? detail.work.images.first?.url,
                     queue: PlaybackQueueBuilder.episodes(after: first.id, seriesTitle: detail.work.title, seasons: ordered),
                     subtitle: PlaybackQueueBuilder.episodeSubtitle(
                         series: detail.work.title,
@@ -646,6 +648,7 @@ struct TVWorkDetailView: View {
                     title: title,
                     apiClient: apiClient,
                     suggestionsWorkID: detail.work.id,
+                    artworkPath: detail.work.images.first(where: { $0.kind == .poster })?.url ?? detail.work.images.first?.url,
                     queue: PlaybackQueueBuilder.episodes(after: episode.id, seriesTitle: detail.work.title, seasons: ordered),
                     subtitle: PlaybackQueueBuilder.episodeSubtitle(
                         series: detail.work.title,

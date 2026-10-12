@@ -245,6 +245,8 @@ final class TVPlayerViewModel {
     private(set) var playbackMode: PlaybackMode?
     private(set) var currentTitle = ""
     private(set) var currentSubtitle: String?
+    /// Poster path of the title being played: the now-playing surface shows it.
+    @ObservationIgnored var artworkPath: String?
     /// Playback position, duration and play state, for the chrome.
     private(set) var position: Double = 0
     private(set) var duration: Double = 0
@@ -322,7 +324,7 @@ final class TVPlayerViewModel {
     }
 
     private func reportParity() {
-        #if DEBUG && os(tvOS)
+        #if DEBUG && (os(tvOS) || os(macOS))
         if TVParityLaunch.playFile != nil {
             var failed: String?
             if case .failed(let message) = state { failed = message }
@@ -380,7 +382,8 @@ final class TVPlayerViewModel {
             // gives up on the first 404, so wait for it like the web player does.
             await Self.waitForPlaylist(streamURL, headers: headers)
             try await engine.load(PlayableItem(id: mediaFileID, streamURL: streamURL, title: title,
-                                               startPositionSeconds: resumeSeconds, httpHeaders: headers))
+                                               startPositionSeconds: resumeSeconds, httpHeaders: headers,
+                                               subtitle: currentSubtitle, artworkURL: artworkPath.flatMap { apiClient.artworkURL(forPath: $0) }))
             // `-PlayarrMuted` (shared test simulators, e.g. the device wall Mac): the player never makes a sound.
             if ProcessInfo.processInfo.arguments.contains("-PlayarrMuted") {
                 engine.isMuted = true

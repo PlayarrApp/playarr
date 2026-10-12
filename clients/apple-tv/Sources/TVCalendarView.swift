@@ -21,7 +21,7 @@ struct TVCalendarView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea()
-        #if DEBUG && os(tvOS)
+        #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: viewModel?.mode) { _, mode in TVParityState.setCalendarView(mode?.rawValue) }
         .onChange(of: panel) { _, p in TVParityState.setPanel(p == .filters ? "filters" : nil) }
         #endif

@@ -345,10 +345,20 @@ private struct TVProductionShell<Stage: View>: View {
                 .environment(\.openRoute) { path.append($0) }
                 .disabled(actionsWork != nil) // the actions drawer is modal
                 .onChange(of: tab) { _, _ in path = [] }
-                #if DEBUG && os(tvOS)
+                #if DEBUG && (os(tvOS) || os(macOS))
                 .onChange(of: tab) { _, new in TVParityState.setRoute(tab: new, path: []) }
                 .onChange(of: path) { _, new in TVParityState.setRoute(tab: tab, path: new) }
                 .onAppear { TVParityState.start(); TVParityState.setRoute(tab: tab, path: path) }
+                .task {
+                    // `-PlayarrOpenWork <id>`: the suite's pinned detail screens open that exact title.
+                    let args = ProcessInfo.processInfo.arguments
+                    guard let i = args.firstIndex(of: "-PlayarrOpenWork"), args.indices.contains(i + 1), let id = UUID(uuidString: args[i + 1]),
+                          path.isEmpty, let detail = try? await environment.apiClient.fetchWork(id: id) else { return }
+                    // From the library, so Back returns to its grid like the web's history does.
+                    nav = detail.work.kind == .series ? .series : .movies
+                    try? await Task.sleep(for: .milliseconds(1500))
+                    path = [.work(detail.work)]
+                }
                 .onChange(of: showProfiles) { _, open in if open { TVParityState.setProfiles(true) } else { TVParityState.setRoute(tab: tab, path: path) } }
                 #endif
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

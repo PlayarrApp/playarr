@@ -425,6 +425,8 @@ struct TVDrawer<Content: View>: View {
     let kicker: String
     let title: String
     let onClose: () -> Void
+    /// The content takes the first focus (web: the actions drawer opens on Play), not the close button.
+    var focusesContent = false
     @ViewBuilder var content: () -> Content
     /// Focus moves into the drawer when it opens (web: the panel takes focus; Back closes it).
     @FocusState private var closeFocused: Bool
@@ -457,7 +459,7 @@ struct TVDrawer<Content: View>: View {
                 .focusEffectDisabled()
                 .focused($closeFocused)
                 #if os(macOS)
-                .macPreferredFocus() // the drawer opens with the close button focused, as on tvOS
+                .macPreferredFocus(!focusesContent) // the drawer opens with the close button focused, as on tvOS
                 #endif
                 .accessibilityLabel("Close")
             }
@@ -475,8 +477,8 @@ struct TVDrawer<Content: View>: View {
         .macFocusLayer() // every drawer keeps keyboard focus inside it on the Mac (macOS/MacFocus.swift)
         #endif
         .onExitCommand(perform: onClose)
-        .task { closeFocused = true }
-        #if DEBUG && os(tvOS)
+        .task { if !focusesContent { closeFocused = true } }
+        #if DEBUG && (os(tvOS) || os(macOS))
         .onAppear { TVParityState.setPanel(title) }
         .onDisappear { TVParityState.setPanel(nil) }
         #endif
@@ -568,6 +570,8 @@ extension EnvironmentValues {
 struct TVCardButton<Label: View>: View {
     let work: Work
     var route: TVRoute? = nil
+    /// Debug parity only: the card's Home rail and its place in it.
+    var parityPosition: (rail: Int, index: Int)? = nil
     @ViewBuilder var label: () -> Label
     @Environment(\.openActions) private var openActions
     @Environment(\.openRoute) private var openRoute
@@ -582,8 +586,8 @@ struct TVCardButton<Label: View>: View {
             label()
         }
         .focused($focused)
-        #if DEBUG && os(tvOS)
-        .onChange(of: focused) { _, now in TVParityState.setFocus(work.title, now) }
+        #if DEBUG && (os(tvOS) || os(macOS))
+        .onChange(of: focused) { _, now in TVParityState.setFocus(work.title, now, rail: parityPosition?.rail, index: parityPosition?.index) }
         #endif
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.65).onEnded { _ in
             longPressed = true
@@ -603,7 +607,7 @@ struct TVCardButton<Label: View>: View {
 extension View {
     /// Debug-only: names the focused control for the parity driver (see `TVParityState.setFocus`). Apply inside a button's label.
     @ViewBuilder func parityFocusTag(_ title: String) -> some View {
-        #if DEBUG && os(tvOS)
+        #if DEBUG && (os(tvOS) || os(macOS))
         modifier(TVParityFocusTag(title: title))
         #else
         self
@@ -611,12 +615,15 @@ extension View {
     }
 }
 
-#if DEBUG && os(tvOS)
+#if DEBUG && (os(tvOS) || os(macOS))
 private struct TVParityFocusTag: ViewModifier {
     let title: String
     @Environment(\.isFocused) private var isFocused
     func body(content: Content) -> some View {
-        content.onChange(of: isFocused) { _, now in TVParityState.setFocus(title, now) }
+        content
+            .onChange(of: isFocused) { _, now in TVParityState.setFocus(title, now) }
+            // A control that starts focused (the drawer's first action) never changes.
+            .onAppear { if isFocused { TVParityState.setFocus(title, true) } }
     }
 }
 #endif
@@ -625,7 +632,9 @@ private struct TVParityFocusTag: ViewModifier {
 struct TVActionRow: View {
     let glyph: String
     let label: String
+    var preferred = false
     let action: () -> Void
+    @FocusState private var focused: Bool
 
     var body: some View {
         Button(action: action) {
@@ -647,6 +656,11 @@ struct TVActionRow: View {
         }
         .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
         .focusEffectDisabled()
+        .focused($focused)
+        .task { if preferred { focused = true } }
+        #if os(macOS)
+        .macPreferredFocus(preferred)
+        #endif
     }
 }
 

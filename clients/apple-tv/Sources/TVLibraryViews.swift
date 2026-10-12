@@ -132,9 +132,9 @@ struct TVHomeView: View {
                 .padding(.leading, Self.cardBleed)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 24.9) {
-                    ForEach(works) { work in
+                    ForEach(Array(works.enumerated()), id: \.element.id) { index, work in
                         let focus = HomeRailCardFocus(rail: id, workID: work.id)
-                        TVCardButton(work: work) {
+                        TVCardButton(work: work, parityPosition: (Int(id.dropFirst()) ?? 0, index)) {
                             TVWebHomeCard(work: work, apiClient: environment.apiClient, focused: focusedCard == focus,
                                           progress: id == "r0" ? viewModel?.progress[work.id] : nil,
                                           artWidth: displayPreferences.cardWidth)
@@ -1962,7 +1962,7 @@ struct TVActionsDrawer: View {
     @State private var busy = false
 
     var body: some View {
-        TVDrawer(kicker: playlists == nil ? "Title actions" : "Add to Playlist", title: work.title, onClose: onClose) {
+        TVDrawer(kicker: playlists == nil ? "Title actions" : "Add to Playlist", title: work.title, onClose: onClose, focusesContent: true) {
             VStack(alignment: .leading, spacing: 14) {
                 if let playlists {
                     ForEach(playlists) { list in
@@ -1973,7 +1973,7 @@ struct TVActionsDrawer: View {
                     }
                     TVActionRow(glyph: "\u{2190}", label: "Back") { self.playlists = nil }
                 } else {
-                    TVActionRow(glyph: "\u{25B6}\u{FE0E}", label: "Play") { Task { await play() } }
+                    TVActionRow(glyph: "\u{25B6}\u{FE0E}", label: "Play", preferred: true) { Task { await play() } }
                     TVActionRow(glyph: "\u{FF0B}", label: "Add to Playlist") {
                         Task { playlists = (try? await environment.apiClient.listPlaylists()) ?? [] }
                     }

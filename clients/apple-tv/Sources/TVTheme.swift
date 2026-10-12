@@ -663,6 +663,11 @@ struct TVFloatingNav: View {
         let button = Button {
             selection = tab
             externalFocus.wrappedValue = .nav(tab)
+            // Web: Select on a tab opens the page and puts focus on its first item (the page loads a moment later).
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(700))
+                if case .nav(tab) = externalFocus.wrappedValue { externalFocus.wrappedValue = .stage }
+            }
         } label: {
             VStack(spacing: 5) {
                 Image(systemName: tab.systemImage)
@@ -695,8 +700,8 @@ struct TVFloatingNav: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .accessibilityLabel(tab.title)
         .focused(externalFocus, equals: .nav(tab))
-        #if DEBUG && os(tvOS)
-        .onChange(of: isFocused) { _, now in TVParityState.setFocus(tab.title, now) }
+        #if DEBUG && (os(tvOS) || os(macOS))
+        .onChange(of: isFocused) { _, now in TVParityState.setFocus(tab.title, now, rail: "nav", index: TVNavTab.allCases.firstIndex(of: tab)) }
         #endif
         // not .focusable: on a Button it adds a second, inert focus target. While focus is outside the nav only the
         // active tab can take it, so Left from the page lands on the active tab (web), not the nearest one.

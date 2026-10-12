@@ -134,11 +134,14 @@ launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route 
       mkdir -p "$WORK/machome"; pin_device
       open -n -g -j "$APP" --env CFFIXED_USER_HOME="$WORK/machome" --stdout "$WORK/app.log" --stderr "$WORK/app.log" \
         --args -PlayarrInvisible -PlayarrMuted -PlayarrTheme "$theme" -ApplePersistenceIgnoreState YES \
-        -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrRefreshToken "$REFRESH_TOKEN" -PlayarrParityRoute "$route" ;;
+        -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrRefreshToken "$REFRESH_TOKEN" \
+        $([[ $route != - ]] && echo "-PlayarrParityRoute $route") ${LAUNCH_EXTRA:-} ;; # route "-": a keys-driven launch (the Apple driver)
   esac
 }
 
 case $cmd in
+launch) # <theme> [route|-]: used by the Apple driver (drivers/apple-sim.mjs) to restart the Mac app signed in; LAUNCH_EXTRA adds app arguments
+  . "$STATE"; ACCESS_TOKEN=1 launch "${3:-dark}" "${4:--}" ;;
 build)
   case $DEVICE in
     tvos) xcodebuild build -project "$SRC/clients/apple-tv/PlayarrTV.xcodeproj" -scheme PlayarrTV -configuration Debug \

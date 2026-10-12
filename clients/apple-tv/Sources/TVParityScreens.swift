@@ -443,9 +443,11 @@ struct TVNotYetOnTVView: View {
     }
 }
 
-#if DEBUG && os(tvOS)
+#if DEBUG && (os(tvOS) || os(macOS))
 import Foundation
+#if os(tvOS)
 import UIKit
+#endif
 
 /// Debug-only state for the shared parity suite's driver (docs/parity/SUITE.md): the current route in web terms and the
 /// focused item's label, written as JSON to `parity-state.json` in the app's Documents folder after every focus or route
@@ -462,6 +464,7 @@ enum TVParityState {
     }
 
     private static var tag: String?
+    private static var position: [String: Any]?
     private static var playback: [String: Any]?
 
     /// The player's state for the driver's playback cases: `playing`, `buffering` or `failed`, and the position.
@@ -472,8 +475,9 @@ enum TVParityState {
 
     /// The focused card or nav tile's title, set by the tile itself: SwiftUI's focus item is not a view, so the
     /// accessibility tree cannot name it reliably.
-    static func setFocus(_ title: String, _ focused: Bool) {
-        if focused { tag = title } else if tag == title { tag = nil }
+    static func setFocus(_ title: String, _ focused: Bool, rail: Any? = nil, index: Int? = nil) {
+        if focused { tag = title; position = rail.flatMap { r in index.map { ["rail": r, "index": $0] } } }
+        else if tag == title { tag = nil; position = nil }
         write()
     }
 
@@ -508,12 +512,15 @@ enum TVParityState {
     static func start() {
         guard !started else { return }
         started = true
+        #if os(tvOS)
         NotificationCenter.default.addObserver(forName: UIFocusSystem.didUpdateNotification, object: nil, queue: .main) { _ in
             Task { @MainActor in write() }
         }
+        #endif
         write()
     }
 
+    #if os(tvOS)
     /// The label of the focused item. SwiftUI's focus item is not a view, so match its frame against the accessibility
     /// elements of the window (the one with the best overlap and a label), then fall back to the view tree.
     private static func label(of item: UIFocusItem?, in window: UIWindow?) -> String? {
@@ -549,12 +556,21 @@ enum TVParityState {
         return nil
     }
 
-    private static func write() {
+    private static func focusState() -> (label: String?, item: String?) {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow) ?? scenes.first?.windows.first
         let focused = window.flatMap { UIFocusSystem.focusSystem(for: $0)?.focusedItem }
-        let state: [String: Any] = ["route": route, "focused": (tag ?? label(of: focused, in: window)) as Any, "item": focused.map { String(String(describing: $0).prefix(160)) } as Any,
-                                    "at": Date().timeIntervalSince1970, "playback": playback as Any]
+        return (label(of: focused, in: window), focused.map { String(String(describing: $0).prefix(160)) })
+    }
+    #else
+    // The Mac has no focus-system item to read: the tiles' own tags are the focus.
+    private static func focusState() -> (label: String?, item: String?) { (nil, nil) }
+    #endif
+
+    private static func write() {
+        let found = focusState()
+        let state: [String: Any] = ["route": route, "focused": (tag ?? found.label) as Any, "item": found.item as Any,
+                                    "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any]
         guard let data = try? JSONSerialization.data(withJSONObject: state),
               let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         try? data.write(to: dir.appendingPathComponent("parity-state.json"), options: .atomic)

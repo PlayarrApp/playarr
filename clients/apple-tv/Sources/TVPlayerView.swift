@@ -31,6 +31,7 @@ struct TVPlayerView: View {
         title: String,
         apiClient: PlayarrAPIClient,
         suggestionsWorkID: UUID? = nil,
+        artworkPath: String? = nil,
         queue: [PlaybackQueueEntry] = [],
         advance: EndOfPlaybackMachine.Advance = .countdown,
         subtitle: String? = nil,
@@ -44,6 +45,7 @@ struct TVPlayerView: View {
         let model = TVPlayerViewModel(apiClient: apiClient)
         model.endOfPlayback.setQueue(queue, advance: advance)
         model.setSubtitle(subtitle)
+        model.artworkPath = artworkPath
         _viewModel = State(initialValue: model)
     }
 

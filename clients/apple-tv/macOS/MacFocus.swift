@@ -247,7 +247,7 @@ extension View {
     func macFocusTarget(activate: (() -> Void)? = nil) -> some View { modifier(MacFocusTarget(activate: activate)) }
 
     /// The button inside takes focus first when its layer opens (the tvOS drawer focuses its close button).
-    func macPreferredFocus() -> some View { environment(\.macPreferredFocus, true) }
+    func macPreferredFocus(_ preferred: Bool = true) -> some View { environment(\.macPreferredFocus, preferred) }
 
     /// The long-press action (actions drawer) of the button inside: right click while hovered, or Shift+Return.
     func macSecondaryAction(_ action: @escaping () -> Void) -> some View {

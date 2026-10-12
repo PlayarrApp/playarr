@@ -216,7 +216,7 @@ jobs:
       # expectations. Written to $RUNNER_TEMP/web, where the suite looks for expected.json.
       - name: Web reference (fresh sign-in)
         id: webref
-        if: env.DEVICE == 'tvos'
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
         continue-on-error: true
         timeout-minutes: 25
         env:
@@ -235,7 +235,7 @@ jobs:
       # over the interim captures above), the D-pad checks against the web reference, playback (not yet).
       - name: Parity suite (Apple driver)
         id: suite
-        if: env.DEVICE == 'tvos'
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
         continue-on-error: true
         timeout-minutes: 60
         env:
