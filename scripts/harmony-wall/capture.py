@@ -131,7 +131,7 @@ def save_episode_art_diagnostics(expected_work_id):
         json.dump(diagnostics, f, indent=2)
 
 
-def wait_for_episode_art(expected_work_id, timeout=45):
+def wait_for_episode_art(expected_work_id, event_cursor, timeout=45):
     """Do not capture the pinned series detail until a fetched image completes in an episode card."""
     deadline = time.time() + timeout
     state = {}
@@ -139,9 +139,10 @@ def wait_for_episode_art(expected_work_id, timeout=45):
         state = json.loads(get("/state"))
         if state.get("route") == "Detail" and state.get("work_id") == expected_work_id:
             events = state.get("dbglog", [])
-            first_row = next((index for index, event in enumerate(events) if event.startswith("episode-art:row:")), None)
+            new_events = events[event_cursor:]
+            first_row = next((index for index, event in enumerate(new_events) if event.startswith("episode-art:row:")), None)
             if first_row is not None:
-                detail_events = events[first_row:]
+                detail_events = new_events[first_row:]
                 fetched = any(event in ("episode-art:still:ok", "episode-art:fallback:ok") for event in detail_events)
                 assigned = any(event in ("episode-art:assigned:still", "episode-art:assigned:fallback") for event in detail_events)
                 displayed = "episode-art:card-image:ok" in detail_events
@@ -311,13 +312,14 @@ else:
 
         # Deep-link to the shared suite's pinned work id and verify that the
         # Previewer route state reports that same id before saving the frame.
+        event_cursor = len(json.loads(get("/state")).get("dbglog", []))
         route("detail:" + work_id, 5)
         deadline = time.time() + 15
         while time.time() < deadline:
             state = json.loads(get("/state"))
             if state.get("route") == "Detail" and state.get("work_id") == work_id:
                 if name == "series-detail":
-                    wait_for_episode_art(work_id)
+                    wait_for_episode_art(work_id, event_cursor)
                 snap(name, folder, 100000)
                 if name == "series-detail":
                     save_episode_art_diagnostics(work_id)

@@ -62,6 +62,9 @@ def detail(s):
     old = "@Component\nstruct Detail {"
     assert old in s
     s = s.replace(old, "let PREVIEW_EPISODE_ART_DIAG_COUNT: number = 0;\n\n" + old, 1)
+    old_load = "  private async loadDetail(): Promise<void> {\n"
+    assert old_load in s
+    s = s.replace(old_load, old_load + "    PREVIEW_EPISODE_ART_DIAG_COUNT = 0;\n", 1)
     old = """      for (const item of rail.items) {
         if (item.hasEpisodeStill) {
           const still = await fetchEpisodeArtwork(artistWorkId, item.id, 'thumb');
@@ -74,7 +77,9 @@ def detail(s):
           continue;
         }
         const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
-        if (thumb.kind === 'ok') {"""
+        if (thumb.kind === 'ok') {
+          this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
+        }"""
     new = """      for (const item of rail.items) {
         const diagnoseEpisodeArt: boolean = rail.id.indexOf('season-') === 0 && PREVIEW_EPISODE_ART_DIAG_COUNT < 4;
         if (diagnoseEpisodeArt) {
