@@ -1,1 +1,0 @@
-- Fire TV parity control: opening a title by id resets the stack so Back goes to its library page, as the web's URL does (suite check detail-back).

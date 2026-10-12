@@ -1,1 +1,0 @@
-- The macOS Apple driver reads its parity state from an explicit file (-PlayarrParityState).

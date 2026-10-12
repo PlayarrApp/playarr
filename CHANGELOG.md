@@ -13,6 +13,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV parity control: opening a title by id resets the stack so Back goes to its library page, as the web's URL does (suite check detail-back).
+- Fire TV: the player shows the title's length while an HLS stream is still being written (it read 0:00), and draws the web's missing controls: previous and next, volume, queue, info, cast and the Minimise pill (dimmed where nothing is behind them yet).
+- Fire TV: the resting card shadow is a soft ramp like the web's instead of a hard grey slab under every poster (light theme most of all).
+- tvOS: Left from the page lands on the nav tile nearest in height (web); the parity focus tag tells apart titles that repeat.
 - Harmony wall capture: the player screen reads its title from the suite's performance cases (the playback key was removed).
 - Fire TV: RIGHT stops at the end of a Home rail instead of jumping to a card in another rail, as on the web. The suite driver (scripts/parity/drivers/firetv.mjs) repeats a dropped key and waits for the screen to settle.
 - Roku media cards draw the web's focus ring and soft glow (brand ink in dark, brand strong in light); series detail's focused episode, Home and library cards now show a ring as the web does.
@@ -525,6 +529,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Roku player: subtitle picker, queue and info panels beside the quality pill; arrows move between the controls as on web.
 - HarmonyOS TV: the Profiles picker's last tile is "Sign in / Add another profile" and opens the QR sign-in, as web does.
 - HarmonyOS: Settings lists web's ten sections and Appearance has Home screen artwork and Artwork size (saved on the device; the other new sections show their description until built).
 - HarmonyOS TV: the hero title is line-balanced like web's text-wrap: balance.
@@ -2871,6 +2876,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- The macOS Apple driver reads its parity state from an explicit file (-PlayarrParityState).
 - Web tests: the card-size e2e also checks 430, 539 and 540px, so the 2 to 3 column boundary beside the letter rail is covered.
 - HarmonyOS TV (hosted Windows runner, preview-only patches): all 15 parity screens in dark and light, with posters, the actions drawer and the player-controls overlay; suite driver for the Previewer (scripts/parity/drivers/harmony.mjs). D-pad and playback stay failures: the Previewer neither moves focus from key presses nor ships the media module.
 - The Apple wall's web reference step takes the same --only list as the device run, so dpad and playback can be dispatched as parallel jobs.

@@ -1,1 +1,0 @@
-- Fire TV: the resting card shadow is a soft ramp like the web's instead of a hard grey slab under every poster (light theme most of all).
