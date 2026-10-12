@@ -59,7 +59,7 @@ async function reach(screen, tries = 2) {
 async function reachOnce(screen) {
   await driver.home();
   // A pinned `open` path is always used (every device shows the same title); otherwise keys, or the route as a fallback.
-  if (screen.open) await driver.route(screen.open);
+  if (screen.open) await driver.route(screen.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(screen.open) });
   else if (via === "route" || !screen.keys) {
     if (via === "keys" && !screen.keys) console.log(`  ${screen.id}: no keys in the suite, deep linking`);
     await driver.route(screen.route);
