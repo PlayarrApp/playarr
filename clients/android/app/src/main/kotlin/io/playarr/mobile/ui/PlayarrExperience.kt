@@ -3169,12 +3169,23 @@ internal fun ExperienceMediaRail(
         // television, the 16 dp page gutter on a phone) ahead of the content start line. A card at rest sits on that line;
         // scrolled-past cards fade away over the gutter only.
         val trackGutter = if (isTelevision) tvTrackGutter() else 16.dp
+        // Web `.tv-media-track-scroll` reserves 18px of normal spacing plus 24px for focused-card shadow above its
+        // viewport. Move the extra 36px from the outer spacing into LazyRow content padding, keeping the resting card
+        // origin fixed while giving the focus lift, scale and shadow the same unclipped headroom.
+        val tvTrackHeadroom = 42.dp
+        val tvHeadroomAdjustment = tvTrackHeadroom - 6.dp
+        val tvOuterTopPadding = (if (railIndex == 0) 43.2.dp else 41.2.dp) - tvHeadroomAdjustment
+        val trackModifier = if (isTelevision) {
+            Modifier.fillMaxWidth().extendStart(trackGutter).padding(top = tvOuterTopPadding)
+        } else {
+            Modifier.fillMaxWidth().padding(end = 5.dp)
+        }
         PlayarrLazyRow(
             state = railState,
             fade = if (isTelevision) PlayarrFadeKind.Rail else PlayarrFadeKind.PhoneRail,
             startGutter = trackGutter,
-            modifier = (if (isTelevision) Modifier.fillMaxWidth().extendStart(trackGutter) else Modifier.fillMaxWidth().padding(end = 5.dp)).then(if (isTelevision) Modifier.padding(top = if (railIndex == 0) 43.2.dp else 41.2.dp) else Modifier),
-            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = 20.dp, top = 6.dp, bottom = 12.dp) else PaddingValues(start = 16.dp, end = 20.dp, top = 10.dp),
+            modifier = trackModifier,
+            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = 20.dp, top = tvTrackHeadroom, bottom = 12.dp) else PaddingValues(start = 16.dp, end = 20.dp, top = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp else 12.dp),
         ) {
             itemsIndexed(rail.works, key = { _, work -> work.id }) { itemIndex, work ->
