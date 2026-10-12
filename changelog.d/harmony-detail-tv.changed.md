@@ -1,1 +1,0 @@
-- HarmonyOS TV: the detail page follows web: the shared page header and nav rail, a dimmed backdrop, Download / Play / Add to Playlist pills, and Chapters and Cast rails straight on the page instead of a glass panel (new credits and chapters calls).

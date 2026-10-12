@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Roku media cards draw the web's focus ring and soft glow (brand ink in dark, brand strong in light); series detail's focused episode, Home and library cards now show a ring as the web does.
 - Xbox: the nav rail uses the web icons, label weight and tint, and the profile entry shows the first word of the name.
 - Xbox: the detail page's primary action is the web's filled pill and its secondary pills are filled, not outlined.
 - Xbox: card focus shows only the web lift, art scale and glow ring (no grey selection fill).
@@ -320,6 +321,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- webOS shell forwards download notifications to the TV's system toast, and the webOS parity driver checks them.
 - Xbox: Home cards show the web's watch-state overlay: a progress line on part-watched titles and the brand dot on titles with no history.
 - Downloads (web): the edit drawer now changes quality as well as keep-until; a new quality re-converts through a new ticket and replaces the old download.
 - Xbox: Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) choices; the card size and columns follow them.
@@ -517,6 +519,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV: the detail page follows web: the shared page header and nav rail, a dimmed backdrop, Download / Play / Add to Playlist pills, and Chapters and Cast rails straight on the page instead of a glass panel (new credits and chapters calls).
+- HarmonyOS TV player: the control bar follows web: the close button at the top right, a thin progress track over one row (round -10 / play / +10 buttons and the time) at the bottom.
+- Roku library Filters drawer follows the web: segmented View (List, Screen, Cover, with the list and cover layouts), Sort, Order and the Audio and Subtitle language pickers, working against the catalog; the browse grid has top padding so the card lift and ring are not clipped; cards draw no focus under an open drawer; the player controls stay up while paused and hide after 5 s while playing, as the web does.
 - HarmonyOS TV Home: the hero key art is grey and dimmed as on web (grayscale, contrast, brightness and opacity per theme).
 - Tizen/webOS parity driver: now-playing check, downloads cases on webOS via raw DevTools, focus position, session restore reset.
 - Downloads (web): a download keeps its title detail, credits and artwork on the device, so the offline detail page looks like the online one; music artist pages open offline from their downloaded tracks.

@@ -1,1 +1,0 @@
-- HarmonyOS TV player: the control bar follows web: the close button at the top right, a thin progress track over one row (round -10 / play / +10 buttons and the time) at the bottom.

@@ -494,6 +494,8 @@ End-of-playback screen, playback health screens and player resilience.
 | 10109 | Xbox/Windows: Settings > Language with the web's translated strings (real i18n, not placeholders) | todo | | | | | Parity gap, not N/A. The web's string tables are web-side only, so the Xbox app needs them ported into resources first. Xbox row 10088. |
 | 10110 | Xbox/Windows: Settings > Your data (export, unmatched data and delete) as the web's Settings > Your data | todo | | | | | Parity gap, not N/A. Needs the user-data export endpoints in the Xbox API client; spec is clients/tv-web/web/src/pages/settings/YourData.tsx. Xbox row 10088. |
 | 10111 | Xbox/Windows: Settings > Invite a friend as the web's Settings > Invite | todo | | | | | Parity gap, not N/A. Spec is clients/tv-web/web/src/pages/settings/Invite.tsx; needs the invite endpoints in the Xbox API client. Xbox row 10088. |
+| 10112 | Harmony TV player: Minimise (shrink the player to a corner while browsing, as web) | todo | | | | | Web shows a Minimise button next to Close in the TV player; Harmony has no mini-player. Needs a floating player surface that survives page navigation, so it is a feature in its own right. The rest of the TV player controls are tracked in the Harmony player PRs. |
+| 10113 | Harmony TV player: Cast (send playback to a cast device, as web) | todo | | | | | Web shows a Cast button at the right of the TV player bar; Harmony has none. Needs a HarmonyOS cast target API (Cast+ or DLNA) and the cast protocol the server expects; research first. |
 
 ## 21. Unsorted folders (2026-10-06)
 
