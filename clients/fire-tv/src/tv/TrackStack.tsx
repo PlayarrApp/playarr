@@ -88,11 +88,16 @@ export function TrackStack(props: TrackStackProps): React.ReactElement {
   const shiftTarget = focus ? FOCUS_Y - trackY(tracks, restY, focus.track) : 0;
   const shift = useRef(new Animated.Value(shiftTarget)).current;
   useEffect(() => {
-    Animated.timing(shift, {toValue: shiftTarget, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false}).start();
+    const animation = Animated.timing(shift, {toValue: shiftTarget, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false});
+    animation.start();
+    return () => animation.stop();
   }, [shiftTarget, shift]);
 
   // Each track scrolls through its own left offset, so the focus engine sees real frames (UP and DOWN stay geometric).
   const scrolls = useRef<Record<string, Animated.Value>>({});
+  useEffect(() => () => {
+    for (const value of Object.values(scrolls.current)) value.stopAnimation();
+  }, []);
   const scrollTargets = useRef<Record<string, number>>({});
   const [offsets, setOffsets] = useState<Record<string, number>>({});
   const leftValue = (id: string): Animated.Value => {

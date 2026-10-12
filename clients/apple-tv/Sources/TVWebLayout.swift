@@ -1,6 +1,4 @@
 import PlayarrKit
-import CoreImage
-import CoreImage.CIFilterBuiltins
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
@@ -373,27 +371,6 @@ struct TVHeroTitle: View {
         }
     }
 }
-
-/// Chrome shows a decoded video frame through its own colour conversion; the server's JPEG frame is
-/// converted differently (a BT.601 against BT.709 luma split that moves only the green channel).
-/// This applies the fitted correction so the parity route's picture matches what the browser shows.
-enum TVVideoFrameColour {
-    static func matchingBrowser(_ data: Data) -> Data {
-        guard let image = CIImage(data: data) else { return data }
-        let filter = CIFilter.colorMatrix()
-        filter.inputImage = image
-        filter.rVector = CIVector(x: 1, y: 0, z: 0, w: 0)
-        filter.gVector = CIVector(x: 0.094, y: 0.847, z: 0.055, w: 0)
-        filter.bVector = CIVector(x: 0, y: 0, z: 1, w: 0)
-        filter.aVector = CIVector(x: 0, y: 0, z: 0, w: 1)
-        // No colour management: the matrix is fitted on gamma-encoded values.
-        let context = CIContext(options: [.workingColorSpace: NSNull(), .outputColorSpace: NSNull()])
-        guard let output = filter.outputImage,
-              let cg = context.createCGImage(output, from: output.extent) else { return data }
-        return UIImage(cgImage: cg).pngData() ?? data
-    }
-}
-
 
 /// Web control focus (`--page-focus-ring`): a 3 px ring 2 px outside the control, never a fill. Buttons, pills, tiles.
 struct TVRingButtonStyle: ButtonStyle {

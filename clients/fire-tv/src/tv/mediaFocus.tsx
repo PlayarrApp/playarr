@@ -122,9 +122,11 @@ export function MediaFocus({focused, width, height, radius, variant = 'default',
   const [shadowMounted, setShadowMounted] = useState(focused);
   useEffect(() => {
     if (focused) setShadowMounted(true);
-    Animated.timing(progress, {toValue: focused ? 1 : 0, duration: MEDIA_FOCUS.durationMs, easing: MEDIA_FOCUS.easing, useNativeDriver: true}).start(({finished}) => {
+    const animation = Animated.timing(progress, {toValue: focused ? 1 : 0, duration: MEDIA_FOCUS.durationMs, easing: MEDIA_FOCUS.easing, useNativeDriver: true});
+    animation.start(({finished}) => {
       if (finished && !focused) setShadowMounted(false);
     });
+    return () => animation.stop();
   }, [focused, progress]);
   const lift = progress.interpolate({inputRange: [0, 1], outputRange: [0, -u(spec.lift)]});
   const scale = progress.interpolate({inputRange: [0, 1], outputRange: [1, spec.scale * MEDIA_FOCUS.artScale]});
