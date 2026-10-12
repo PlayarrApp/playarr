@@ -109,15 +109,46 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn("index = position[1]", position_unpack.group(0))
 
     def test_clients_link_is_a_bottom_right_footer_action(self) -> None:
-        profile_actions = re.search(
-            r'<Group id="profileActionsGroup".*?</Group>', SCENE, flags=re.DOTALL
-        )
+        import xml.etree.ElementTree as ET
+
+        scene = ET.fromstring(SCENE)
+        stage = scene.find("./children/Rectangle")
+        profile_group = scene.find(".//Group[@id='profilesGroup']")
+        profile_actions = scene.find(".//Group[@id='profileActionsGroup']")
+        clients_action = scene.find(".//Group[@id='profilesClientsAction']")
+        self.assertIsNotNone(stage)
+        self.assertIsNotNone(profile_group)
         self.assertIsNotNone(profile_actions)
+        self.assertIsNotNone(clients_action)
+        assert stage is not None
+        assert profile_group is not None
         assert profile_actions is not None
-        self.assertNotIn('id="profilesClientsHit"', profile_actions.group(0))
-        self.assertIn('translation="[1745,994]"', SCENE)
-        self.assertIn('id="profilesClientsHit"', SCENE)
-        self.assertIn("actionsW = 158", MAIN)
+        assert clients_action is not None
+        self.assertIs(profile_group.find("./Group[@id='profilesClientsAction']"), clients_action)
+
+        clients_hit = clients_action.find("./Rectangle[@id='profilesClientsHit']")
+        self.assertIsNotNone(clients_hit)
+        assert clients_hit is not None
+        self.assertIsNone(profile_actions.find(".//*[@id='profilesClientsHit']"))
+
+        def translation(node: ET.Element) -> tuple[float, float]:
+            values = node.attrib.get("translation", "[0,0]").strip("[]").split(",")
+            return float(values[0]), float(values[1])
+
+        group_x, group_y = translation(clients_action)
+        hit_x, hit_y = translation(clients_hit)
+        width = float(clients_hit.attrib["width"])
+        height = float(clients_hit.attrib["height"])
+        left, top = group_x + hit_x, group_y + hit_y
+        stage_width = float(stage.attrib["width"])
+        stage_height = float(stage.attrib["height"])
+        self.assertGreaterEqual(left, 0)
+        self.assertGreaterEqual(top, 0)
+        self.assertLessEqual(left + width, stage_width)
+        self.assertLessEqual(top + height, stage_height)
+        self.assertGreater(left + width / 2, stage_width * 3 / 4)
+        self.assertGreater(top + height / 2, stage_height * 4 / 5)
+
         down_navigation = re.search(
             r'state = "profiles" and key = "down"(.*?)else if state = "profiles" and key = "up"',
             MAIN,
