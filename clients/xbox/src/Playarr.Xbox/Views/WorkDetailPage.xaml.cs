@@ -840,7 +840,7 @@ namespace Playarr.Xbox.Views
             if (series != null)
             {
                 var diagnosticCard = EpisodeArtworkDiagnostics.NewCard();
-                var still = new Image { Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
+                var still = new Image { Width = 268, Height = 151, Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
                 var requested = false;
                 var watchingViewport = false;
                 Windows.Foundation.TypedEventHandler<FrameworkElement, EffectiveViewportChangedEventArgs> viewportChanged = null!;
