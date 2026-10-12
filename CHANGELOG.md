@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Roku: when the server reaps or evicts an idle on-demand session, the player now asks for a replacement session at the same position (up to three times) and keeps a paused player paused, instead of ending playback with an error.
+- Web: after the server reaps or evicts a transcode session, the replacement session now keeps a paused player paused instead of always starting playback.
 - Xbox wall: debug frames of the calendar view picker are uploaded.
 - Xbox wall: the dark job really sets the dark theme, a luminance guard refuses a frame of the wrong theme, and the playback job runs only on request.
 - Android: after the server reaps or evicts a transcode session (or the source cannot be decoded), the replacement session keeps a paused player paused instead of always starting playback.

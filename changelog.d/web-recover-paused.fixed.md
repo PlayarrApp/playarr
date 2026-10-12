@@ -1,1 +1,0 @@
-- Web: after the server reaps or evicts a transcode session, the replacement session now keeps a paused player paused instead of always starting playback.
