@@ -34,6 +34,28 @@ test("focus-order checks keep play/pause role semantics while toggle checks keep
   assert.equal(focusForCheck("Play", "player-ok-toggle").label, "play");
 });
 
+test("long-press-actions matches the committed web Play glyph to the native Play label", () => {
+  const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
+  if (testRoot) mkdirSync(testRoot, { recursive: true });
+  const out = mkdtempSync(join(testRoot || tmpdir(), "playarr-parity-actions-"));
+  const driver = new URL("./test-drivers/long-press-actions.mjs", import.meta.url).pathname;
+  const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
+  try {
+    const expected = new URL("./expected.web.json", import.meta.url).pathname;
+    const result = spawnSync(process.execPath, [runner, "--driver", driver, "--out", out, "--only", "dpad", "--checks", "long-press-actions", "--via", "route", "--expected", expected], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const scored = JSON.parse(readFileSync(join(out, "dpad.json"), "utf8"));
+    assert.equal(scored.results.find((check) => check.id === "long-press-actions").expected, "▶play");
+    assert.equal(scored.results.find((check) => check.id === "long-press-actions").actual, "play");
+    assert.equal(scored.results.find((check) => check.id === "long-press-actions").pass, true);
+    const webExpected = JSON.parse(readFileSync(new URL("./expected.web.json", import.meta.url), "utf8"));
+    assert.equal(focusForCheck(webExpected.dpad["long-press-actions"], "long-press-actions").label, "play");
+    assert.equal(focusForCheck("play-pause", "long-press-actions").label, "play");
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
 test("player toggle reference records exact web state and rejects an unchanged pause control", () => {
   const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
   if (testRoot) mkdirSync(testRoot, { recursive: true });
