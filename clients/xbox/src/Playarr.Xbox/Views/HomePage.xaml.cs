@@ -41,6 +41,16 @@ namespace Playarr.Xbox.Views
 
         private void RailsScroll_PreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
+            // Right on a rail's last card stays put, as on the web (XAML would jump to a card in the next rail).
+            if ((e.Key == Windows.System.VirtualKey.Right || e.Key == Windows.System.VirtualKey.GamepadDPadRight)
+                && Windows.UI.Xaml.Input.FocusManager.GetFocusedElement() is ListViewItem { } item
+                && ItemsControl.ItemsControlFromItemContainer(item) is ListView rail
+                && rail.IndexFromContainer(item) == rail.Items.Count - 1)
+            {
+                e.Handled = true;
+                return;
+            }
+
             var direction = e.Key switch
             {
                 Windows.System.VirtualKey.Down or Windows.System.VirtualKey.GamepadDPadDown => Windows.UI.Xaml.Input.FocusNavigationDirection.Down,

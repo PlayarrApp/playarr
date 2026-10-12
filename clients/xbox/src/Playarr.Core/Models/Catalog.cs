@@ -416,6 +416,106 @@ namespace Playarr.Core.Models
         [JsonProperty("rails")] public IList<RailPreferenceEntry> Rails { get; set; } = new List<RailPreferenceEntry>();
     }
 
+    /// <summary>A chapter embedded in the media container (<c>GET /api/v1/media/{id}/chapters</c>).</summary>
+    public sealed class MediaChapter
+    {
+        [JsonProperty("index")] public int Index { get; set; }
+
+        [JsonProperty("title")] public string? Title { get; set; }
+
+        [JsonProperty("start_ms")] public long StartMs { get; set; }
+
+        [JsonProperty("end_ms")] public long? EndMs { get; set; }
+    }
+
+    /// <summary>One place to pick a series up: the plan's target and each chooser option.</summary>
+    public sealed class ResumeOption
+    {
+        [JsonProperty("kind")] public string Kind { get; set; } = string.Empty;
+
+        [JsonProperty("episode_id")] public Guid EpisodeId { get; set; }
+
+        [JsonProperty("media_file_id")] public Guid? MediaFileId { get; set; }
+
+        [JsonProperty("label")] public string Label { get; set; } = string.Empty;
+
+        [JsonProperty("title")] public string? Title { get; set; }
+
+        [JsonProperty("position_ms")] public long PositionMs { get; set; }
+
+        [JsonProperty("progress_percent")] public int ProgressPercent { get; set; }
+
+        [JsonProperty("last_watched_at")] public string? LastWatchedAt { get; set; }
+    }
+
+    /// <summary>The server's plan for a series' primary button: <c>action</c> is "start", "restart" or "resume".</summary>
+    public sealed class ResumePlan
+    {
+        [JsonProperty("action")] public string Action { get; set; } = string.Empty;
+
+        [JsonProperty("needs_choice")] public bool NeedsChoice { get; set; }
+
+        [JsonProperty("target")] public ResumeOption? Target { get; set; }
+
+        [JsonProperty("options")] public IList<ResumeOption> Options { get; set; } = new List<ResumeOption>();
+    }
+
+    public sealed class Person
+    {
+        [JsonProperty("id")] public Guid Id { get; set; }
+
+        [JsonProperty("name")] public string Name { get; set; } = string.Empty;
+
+        [JsonProperty("headshot_url")] public string? HeadshotUrl { get; set; }
+    }
+
+    public sealed class Credit
+    {
+        [JsonProperty("id")] public Guid Id { get; set; }
+
+        [JsonProperty("person")] public Person Person { get; set; } = new Person();
+
+        [JsonProperty("character")] public string? Character { get; set; }
+
+        [JsonProperty("job")] public string? Job { get; set; }
+    }
+
+    /// <summary><c>GET /api/v1/catalog/{id}/credits</c>.</summary>
+    public sealed class WorkCredits
+    {
+        [JsonProperty("cast")] public IList<Credit> Cast { get; set; } = new List<Credit>();
+
+        [JsonProperty("crew")] public IList<Credit> Crew { get; set; } = new List<Credit>();
+    }
+
+    /// <summary>A choice in the playback-options drawer: a quality, audio track or subtitle track.</summary>
+    public sealed class PlaybackChoice
+    {
+        [JsonProperty("id")] public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("label")] public string Label { get; set; } = string.Empty;
+    }
+
+    public sealed class MediaPlaybackPreferences
+    {
+        [JsonProperty("quality_id")] public string? QualityId { get; set; }
+
+        [JsonProperty("audio_track_id")] public string? AudioTrackId { get; set; }
+
+        [JsonProperty("subtitle_track_id")] public string? SubtitleTrackId { get; set; }
+    }
+
+    public sealed class MediaPlaybackOptions
+    {
+        [JsonProperty("quality_options")] public IList<PlaybackChoice> QualityOptions { get; set; } = new List<PlaybackChoice>();
+
+        [JsonProperty("audio_tracks")] public IList<PlaybackChoice> AudioTracks { get; set; } = new List<PlaybackChoice>();
+
+        [JsonProperty("subtitle_tracks")] public IList<PlaybackChoice> SubtitleTracks { get; set; } = new List<PlaybackChoice>();
+
+        [JsonProperty("preferences")] public MediaPlaybackPreferences Preferences { get; set; } = new MediaPlaybackPreferences();
+    }
+
     public sealed class HomeRailsResponse
     {
         [JsonProperty("rails")] public IList<HomeRail> Rails { get; set; } = new List<HomeRail>();

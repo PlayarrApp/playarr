@@ -135,6 +135,9 @@ namespace Playarr.Xbox.ViewModels
 
         public bool CanPlay => PlayableMediaFileId.HasValue;
 
+        /// <summary>A film's runtime from its media file (null for a series, or before a file has synced).</summary>
+        public long? RuntimeMs => IsSeries ? null : _detail?.RuntimeMs;
+
         /// <summary>What a Download of the playable file records: the title, and for an episode its series, season and number.</summary>
         public Playarr.Core.Models.DownloadRecord? DownloadTemplate()
         {
