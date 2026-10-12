@@ -34,7 +34,7 @@ KEYSYM = {0xFF52: "up", 0xFF54: "down", 0xFF51: "left", 0xFF53: "right", 0xFF0D:
 ROUTE_BOX = {"name": ""}
 # Parity state the patched app reports (route, library kind, last focused item); GET /state returns it with the derived label.
 IMAGES: dict = {}  # id -> bytes, posted by the patched app (the Previewer cannot decode images itself)
-STATE = {"route": "", "kind": "", "focused": None, "lib_kind": ""}
+STATE = {"route": "", "kind": "", "focused": None, "lib_kind": "", "dbgseq": 0}
 
 
 def apply_state(q):
@@ -47,6 +47,7 @@ def apply_state(q):
             STATE["lib_kind"] = STATE["kind"]
     if "dbg" in q:
         STATE["dbg"] = q["dbg"][0]
+        STATE["dbgseq"] += 1
         STATE.setdefault("dbglog", []).append(q["dbg"][0])
         del STATE["dbglog"][:-300]
     if "nav" in q:

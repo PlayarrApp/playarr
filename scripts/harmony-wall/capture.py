@@ -59,6 +59,7 @@ class Skip(Exception):
 
 
 MISSING = []
+MISSING_REASONS = {}
 
 
 def abort(msg):
@@ -71,7 +72,9 @@ def guarded(name, fn):
     try:
         fn()
     except (Skip, SystemExit) as e:
-        print(f"SKIP {name}: {e}", flush=True)
+        reason = str(e) if isinstance(e, Skip) else "screen capture aborted before completion"
+        MISSING_REASONS[name] = reason
+        print(f"SKIP {name}: {reason}", flush=True)
         MISSING.append(name)
 
 
@@ -139,7 +142,8 @@ def wait_for_episode_art(expected_work_id, event_cursor, timeout=45):
         state = json.loads(get("/state"))
         if state.get("route") == "Detail" and state.get("work_id") == expected_work_id:
             events = state.get("dbglog", [])
-            new_events = events[event_cursor:]
+            new_count = state.get("dbgseq", 0) - event_cursor
+            new_events = events[-new_count:] if 0 < new_count <= len(events) else []
             first_row = next((index for index, event in enumerate(new_events) if event.startswith("episode-art:row:")), None)
             if first_row is not None:
                 detail_events = new_events[first_row:]
@@ -312,7 +316,7 @@ else:
 
         # Deep-link to the shared suite's pinned work id and verify that the
         # Previewer route state reports that same id before saving the frame.
-        event_cursor = len(json.loads(get("/state")).get("dbglog", []))
+        event_cursor = json.loads(get("/state")).get("dbgseq", 0)
         route("detail:" + work_id, 5)
         deadline = time.time() + 15
         while time.time() < deadline:
@@ -326,7 +330,7 @@ else:
                 return
             time.sleep(0.5)
         debug(f"{name}-route-timeout")
-        raise Skip(f"pinned {kind} detail route did not settle for {name}: {state}")
+        raise Skip(f"pinned {kind} detail route did not settle for {name}")
 
     def calendar_view(view):
         route("calendar", 18); settle()
@@ -364,7 +368,8 @@ else:
     guarded("player-controls", lambda: (route("player:b9a68b2c-8382-4c34-a6f0-c4dd58f55093", 20), snap("player-controls", folder, 30000)))
 import datetime
 json.dump({"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
-           "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")},
+           "theme": THEME, "missing": MISSING, "missing_reasons": MISSING_REASONS,
+           "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")},
           open(os.path.join(out, "build.json"), "w"))
 if MISSING:
     print("INCOMPLETE: missing required screens: " + ", ".join(MISSING), flush=True)
