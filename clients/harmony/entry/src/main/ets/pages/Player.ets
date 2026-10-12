@@ -127,6 +127,8 @@ import { PlayerChrome } from '../player/PlayerChrome';
 import { EndScreen } from '../player/EndScreen';
 import { PlayerTracksDrawer } from '../player/PlayerTracksDrawer';
 import { PlayerQualityDrawer } from '../player/PlayerQualityDrawer';
+import { PlayerInfoDrawer } from '../player/PlayerInfoDrawer';
+import type { InfoFact } from '../player/PlayerInfoDrawer';
 import { MediaRail } from '../design/components/MediaRail';
 import type { MediaRailItem } from '../design/components/MediaRail';
 import { PosterCard } from '../design/components/PosterCard';
@@ -186,6 +188,34 @@ function qualityLabelOf(info: PlaybackInfoResponse): string {
     }
   }
   return '';
+}
+
+/** Plain facts about how the negotiated stream reaches this device, for the info drawer. */
+function streamFacts(info: PlaybackInfoResponse, subtitleId: string): InfoFact[] {
+  const facts: InfoFact[] = [];
+  facts.push({ label: 'Delivery', value: info.mode === 'direct' ? 'Direct play' : 'Transcoded (HLS)' });
+  for (const option of info.quality_options) {
+    if (option.id === info.selected_quality_id) {
+      facts.push({ label: 'Quality', value: option.label });
+    }
+  }
+  for (const track of info.audio_tracks) {
+    if (track.id === info.selected_audio_track_id) {
+      let detail = track.label;
+      if (track.codec !== undefined && track.codec !== null && track.codec.length > 0) {
+        detail = detail + ' (' + track.codec.toUpperCase() + ')';
+      }
+      facts.push({ label: 'Audio', value: detail });
+    }
+  }
+  let subtitle = 'Off';
+  for (const track of info.subtitle_tracks) {
+    if (track.id === subtitleId) {
+      subtitle = track.label;
+    }
+  }
+  facts.push({ label: 'Subtitles', value: subtitle });
+  return facts;
 }
 
 const SUBTITLE_FONT_SIZE: number = 16;
@@ -267,6 +297,8 @@ struct Player {
   @State private selectedSubtitleId: string = '';
   /** The quality drawer is open; `qualityLabel` is the negotiated quality's name ('' while there is nothing to choose). */
   @State private qualityOpen: boolean = false;
+  /** The info drawer (title and stream facts) is open. */
+  @State private infoOpen: boolean = false;
   @State private qualityLabel: string = '';
   /** The viewer's audio pick for this session (a stream index), kept across a quality change. */
   private userAudioStreamIndex: number | null = null;
@@ -695,6 +727,16 @@ struct Player {
       options.audioStreamIndex = this.userAudioStreamIndex;
     }
     await this.renegotiate(options);
+  }
+
+  /** The info drawer's meta line: the kind and release year of what is playing. */
+  private infoMeta(): string {
+    const work = this.currentWork;
+    if (work === null) {
+      return '';
+    }
+    const year = work.release_date !== null && work.release_date !== undefined && work.release_date.length >= 4 ? work.release_date.substring(0, 4) : '';
+    return year.length > 0 ? work.kind + ' \u00B7 ' + year : work.kind;
   }
 
   // -- Seeking / renegotiation-on-seek (brief 9 Slice 7) ----------------------
@@ -1362,6 +1404,9 @@ struct Player {
             onOpenTracks: () => {
               this.tracksOpen = true;
             },
+            onOpenInfo: () => {
+              this.infoOpen = true;
+            },
             qualityLabel: this.qualityLabel,
             onOpenQuality: () => {
               this.qualityOpen = true;
@@ -1383,6 +1428,18 @@ struct Player {
             },
             onClose: (): void => {
               this.tracksOpen = false;
+            },
+          })
+        }
+
+        if (this.infoOpen && this.currentInfo !== null) {
+          PlayerInfoDrawer({
+            title: this.title,
+            meta: this.infoMeta(),
+            synopsis: this.currentWork !== null && this.currentWork.overview !== null ? this.currentWork.overview : '',
+            facts: streamFacts(this.currentInfo, this.selectedSubtitleId),
+            onClose: (): void => {
+              this.infoOpen = false;
             },
           })
         }
@@ -1416,9 +1473,10 @@ struct Player {
       })
       .onKeyEvent((event: KeyEvent) => {
         const action = resolvePlayerAction(event);
-        if ((action === 'back' || action === 'stop') && (this.tracksOpen || this.qualityOpen)) {
+        if ((action === 'back' || action === 'stop') && (this.tracksOpen || this.qualityOpen || this.infoOpen)) {
           this.tracksOpen = false;
           this.qualityOpen = false;
+          this.infoOpen = false;
           event.stopPropagation();
           return;
         }

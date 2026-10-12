@@ -414,6 +414,8 @@ export struct PlayerChrome {
   /** Quality: the negotiated quality's name on a pill (TV); empty while the server offers no choice. */
   @Prop qualityLabel: string = '';
   onOpenQuality: () => void = () => {};
+  /** Info: the title and stream facts drawer (TV). */
+  onOpenInfo: () => void = () => {};
   onVisibilityChanged: (visible: boolean) => void = () => {};
 
   @State private chromeOpacity: number = 1;
@@ -644,6 +646,17 @@ export struct PlayerChrome {
               }),
             })
           }
+          ChromeButton({
+            label: 'i',
+            circle: true,
+            buttonWidth: tv(TV_SEEK_SIZE),
+            buttonHeight: tv(TV_SEEK_SIZE),
+            fontSize: tv(16),
+            onActivate: this.onOpenInfo,
+            notifyFocusChanged: ((focused: boolean): void => {
+              this.setChildFocused(focused);
+            }),
+          })
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)
