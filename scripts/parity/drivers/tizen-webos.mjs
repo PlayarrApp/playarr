@@ -17,6 +17,24 @@ const KEYNAME = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "A
 const XKEY = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
 const BAD = "/could not be loaded|not signed in|link code/i.test(document.body.innerText)";
 
+// Runs on every new document: records Media Session action handlers, and system toasts (Luna createToast) in sessionStorage.__notes.
+function pageHook() {
+  window.__mediaHandlers = {};
+  try {
+    const log = (kind, o) => { const a = JSON.parse(sessionStorage.getItem("__notes") || "[]"); a.push({ kind, ...o }); sessionStorage.setItem("__notes", JSON.stringify(a)); };
+    const B = window.PalmServiceBridge;
+    if (B) {
+      const c = B.prototype.call;
+      B.prototype.call = function (uri, payload) {
+        if (/createToast/.test(uri)) { try { log("toast", { title: JSON.parse(payload).message, body: "" }); } catch (e) { /* ignore */ } }
+        return c.apply(this, arguments);
+      };
+    }
+  } catch (e) { /* ignore */ }
+  const ms = navigator.mediaSession;
+  if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; }
+}
+
 export async function createDriver() {
   const device = process.env.DEVICE;
   if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos required");
@@ -34,7 +52,7 @@ export async function createDriver() {
     await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
-    await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__mediaHandlers = {}; (() => { const ms = navigator.mediaSession; if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; } })();" });
+    await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
   }
   const cdp = (method, params = {}) => new Promise((r) => { const i = ++seq; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
   async function ev(expr) {
@@ -83,7 +101,7 @@ export async function createDriver() {
 
   return {
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
-    supports: device === "webos" ? { nowPlaying: true, downloads: true } : {},
+    supports: device === "webos" ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
     async start() {
       if (device === "webos") await cdpConnect();
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
@@ -144,15 +162,19 @@ export async function createDriver() {
       const m = c.media;
       let step = "";
       const q = (js) => ev(`(() => { ${js} })()`);
-      const rowSel = m.episode ? `li.tv-download-group[data-level='1'] > .tv-download-group-row` : `.tv-download-row:not(.tv-download-group-row)`;
+      const scope = c.action.startsWith("season-") ? "season" : "series"; // the row the case acts on: a season group, a series group, else the item row
+      const lvlSel = (n) => `li.tv-download-group[data-level='${n}'] > .tv-download-group-row`;
+      const rowSel = m.episode ? lvlSel(1) : `.tv-download-row:not(.tv-download-group-row)`;
       const rowJs = `const rows = [...document.querySelectorAll(${JSON.stringify(rowSel)})].filter((x) => x.textContent.includes(${JSON.stringify(m.title)})); const row = rows[0];`;
-      const status = async () => (await q(`${rowJs} return row ? (row.querySelector(".tv-download-row-meta")?.textContent ?? "").replace(/\\s+/g, " ") : null;`)) ?? "";
-      const has = async () => !!(await q(`${rowJs} return !!row;`));
-      const press = async (name) => q(`${rowJs} const b = row && [...row.querySelectorAll("button")].find((x) => new RegExp("^${name}$", "i").test((x.getAttribute("aria-label") || x.textContent).trim())); if (!b) return false; b.click(); return true;`);
-      const waitFor = async (re, ms) => {
+      const seasonJs = `const row = [...document.querySelectorAll(${JSON.stringify(lvlSel(2))})].find((x) => x.textContent.includes("Season ${m.season}"));`;
+      const jsFor = (level) => (level === "season" ? seasonJs : rowJs);
+      const status = async (lvl) => (await q(`${jsFor(lvl)} return row ? (row.querySelector(".tv-download-row-meta")?.textContent ?? "").replace(/\\s+/g, " ") : null;`)) ?? "";
+      const has = async (lvl) => !!(await q(`${jsFor(lvl)} return !!row;`));
+      const press = async (name, lvl) => q(`${jsFor(lvl)} const b = row && [...row.querySelectorAll("button")].find((x) => new RegExp("^${name}$", "i").test((x.getAttribute("aria-label") || x.textContent).trim())); if (!b) return false; b.click(); return true;`);
+      const waitFor = async (re, ms, lvl) => {
         const t0 = Date.now();
-        while (Date.now() - t0 < ms) { const st = await status(); if (re.test(st)) return st; if (/failed/i.test(st)) throw new Error("download failed: " + st); await sleep(1500); }
-        throw new Error(`timed out waiting for ${re}: ${await status()}`);
+        while (Date.now() - t0 < ms) { const st = await status(lvl); if (re.test(st)) return st; if (/failed/i.test(st)) throw new Error("download failed: " + st); await sleep(1500); }
+        throw new Error(`timed out waiting for ${re}: ${await status(lvl)}`);
       };
       const throttle = (on) => device === "webos" && cdp("Network.emulateNetworkConditions", on ? { offline: false, latency: 50, downloadThroughput: 300 * 1024, uploadThroughput: -1 } : { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
       const list = async () => { await load("/downloads"); await sleep(2500); };
@@ -206,7 +228,8 @@ export async function createDriver() {
             await start(); await waitFor(ready, limit); await press("edit");
             await until(`!!document.querySelector(".download-quality-drawer")`, 10000);
             await q(`document.querySelectorAll(".download-quality-drawer .tv-segmented")[0].querySelectorAll("button")[2].click()`);
-            const hasQuality = await q(`return !!document.querySelector(".download-quality-drawer .ui-select-trigger")`);
+            // The quality options load after the drawer opens.
+            const hasQuality = await until(`!!document.querySelector(".download-quality-drawer .ui-select-trigger")`, 8000);
             await confirmDrawer(); await sleep(1000);
             const meta = await status();
             if (/keep forever/i.test(meta)) return bad("keep-until did not change: " + meta);
@@ -227,6 +250,36 @@ export async function createDriver() {
               await sleep(4000); const p1 = (await ev(pos)) ?? p0;
               return p1 - p0 >= 3 ? ok(`offline frames advanced ${(p1 - p0).toFixed(1)}s`) : bad(`stalled offline (${(p1 - p0).toFixed(1)}s)`);
             } finally { await cdp("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }); }
+          }
+          case "notification": {
+            await list();
+            const on = await until(`[...document.querySelectorAll("button")].some((b) => /turn on notifications/i.test(b.textContent))`, 10000);
+            if (!on) return bad("no notifications switch on the Downloads page");
+            await ev(`(([...document.querySelectorAll("button")].find((b) => /turn on notifications/i.test(b.textContent)) || { click() {} }).click(), true)`); await sleep(1000);
+            await ev(`(sessionStorage.removeItem("__notes"), true)`);
+            await throttle(true); await start();
+            const read = async () => JSON.parse((await ev(`sessionStorage.getItem("__notes")`)) || "[]");
+            await sleep(8000); await press("pause"); await sleep(3000);
+            const mid = await read();
+            await press("resume"); await throttle(false); await waitFor(ready, limit); await sleep(3000);
+            const notes = await read(); const toasts = notes.filter((n) => n.kind === "toast"); const last = toasts.at(-1);
+            if (!toasts.length) return bad("no system toast raised");
+            const sawPaused = mid.some((n) => n.kind === "toast" && /paused/i.test(n.title));
+            return new Set(toasts.map((n) => n.title)).size > 1 && sawPaused && /complete|downloaded|done/i.test(last.title) ? ok(`${toasts.length} toasts: progress, paused, completed`) : bad(`toasts incomplete (paused ${sawPaused}): ${JSON.stringify(toasts.slice(-2))}`);
+          }
+          case "series-pause": case "season-pause": {
+            await throttle(true); await start();
+            if (scope === "season") { await q(`${rowJs} const t = row && row.querySelector("button[aria-expanded]"); if (t && t.getAttribute("aria-expanded") === "false") t.click(); return true;`); await sleep(800); }
+            if (!(await has(scope))) return bad(`no ${scope} row`);
+            await press("pause", scope); await waitFor(/paused/i, 15000, scope);
+            await press("resume", scope); await throttle(false); await waitFor(ready, limit, scope);
+            return ok(`paused, resumed, completed at ${scope} level`);
+          }
+          case "series-delete": case "season-delete": {
+            await start(); await waitFor(ready, limit);
+            if (scope === "season") { await q(`${rowJs} const t = row && row.querySelector("button[aria-expanded]"); if (t && t.getAttribute("aria-expanded") === "false") t.click(); return true;`); await sleep(800); }
+            await press("delete", scope); await until(`!!document.querySelector(".download-quality-drawer .is-primary")`, 8000); await confirmDrawer();
+            return (await gone()) ? ok("group removed") : bad("group still listed after Delete");
           }
           default: return bad(`driver has no steps for ${c.action}`);
         }

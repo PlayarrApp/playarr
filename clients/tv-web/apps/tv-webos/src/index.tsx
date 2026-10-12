@@ -2,6 +2,7 @@ import {
   installWebOsLifecycle,
   loadWebOsRuntimeConfig,
 } from "./webosLifecycle.mjs";
+import { installWebOsDownloadToasts } from "./webosNotifications.mjs";
 import { installWebOsDynamicRange, queryWebOsHdr } from "./webosCaps.mjs";
 import { installLegacyHas } from "../../../tooling/legacy-has.mjs";
 
@@ -14,6 +15,8 @@ async function startPlayarr(): Promise<void> {
   await loadWebOsRuntimeConfig(`${import.meta.env.BASE_URL}playarr-config.json`);
   // Before the shared media-capability detection runs: the engine cannot answer (dynamic-range: high).
   installWebOsDynamicRange(window, await queryWebOsHdr(window));
+  // Download notifications reach the TV as system toasts.
+  installWebOsDownloadToasts(window);
 
   // Import the real Playarr application after platform lifecycle and runtime
   // config are in place. This is the same routed profiles/home/search/library/

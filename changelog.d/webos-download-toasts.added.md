@@ -1,0 +1,1 @@
+- webOS shell forwards download notifications to the TV's system toast, and the webOS parity driver checks them.
