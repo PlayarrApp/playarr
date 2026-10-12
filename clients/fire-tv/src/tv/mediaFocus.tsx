@@ -47,8 +47,12 @@ export const MEDIA_FOCUS = {
   easing: Easing.bezier(0.2, 0.8, 0.2, 1),
 } as const;
 
+/** The resting shadow is a short soft ramp in the web (about 40 px, from a 14% edge): many thin layers read as a blur, one reads as a slab. */
+const REST_STEPS = [0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1, 1.15];
+const REST_STRENGTH = 0.8;
+
 /** A CSS box-shadow as concentric rounded rectangles; `scale` grows the layers as the focused shadow fades in. */
-function ShadowLayers({shadows, radius, steps = [0.5, 0.34, 0.18]}: {shadows: readonly Shadow[]; radius: number; steps?: number[]}): React.ReactElement {
+function ShadowLayers({shadows, radius, steps = [0.5, 0.34, 0.18], strength = 1}: {shadows: readonly Shadow[]; radius: number; steps?: number[]; strength?: number}): React.ReactElement {
   return (
     <>
       {shadows.flatMap((shadow) =>
@@ -64,7 +68,7 @@ function ShadowLayers({shadows, radius, steps = [0.5, 0.34, 0.18]}: {shadows: re
                 top: -u(spread) + u(shadow.y),
                 bottom: -u(spread) - u(shadow.y),
                 borderRadius: u(radius + spread),
-                backgroundColor: `rgba(${shadow.rgb},${(shadow.alpha / steps.length).toFixed(3)})`,
+                backgroundColor: `rgba(${shadow.rgb},${(strength * shadow.alpha / steps.length).toFixed(3)})`,
               }}
             />
           );
@@ -128,7 +132,7 @@ export function MediaFocus({focused, width, height, radius, variant = 'default',
   return (
     <Animated.View style={[{width: u(width), height: u(height), transform: [{translateY: lift}, {scale}]}, style]}>
       <Animated.View pointerEvents="none" style={{position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, opacity: restOpacity}}>
-        <ShadowLayers shadows={MEDIA_FOCUS.rest} radius={radius} steps={[0.4]} />
+        <ShadowLayers shadows={MEDIA_FOCUS.rest} radius={radius} steps={REST_STEPS} strength={REST_STRENGTH} />
       </Animated.View>
       {shadowMounted ? (
         <Animated.View pointerEvents="none" style={{position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, opacity: progress}}>
