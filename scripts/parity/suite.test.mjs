@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { applyParityLine, createParityState, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { applyParityLine, createParityState, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
@@ -112,6 +112,22 @@ test("Roku waits through transient pairing until a fresh Profiles screen arrives
   assert.equal(hasFreshProfilesScreen({ screen: "pairing", screenSeq: 4 }, 3), false);
   assert.equal(hasFreshProfilesScreen({ screen: "profiles", screenSeq: 5 }, 3), true);
   assert.equal(hasFreshProfilesScreen({ screen: "profiles", screenSeq: 3 }, 3), false);
+});
+
+test("Roku waits for fresh positioned Home content focus, not the Home shell or nav focus", () => {
+  const state = {
+    ...createParityState(),
+    screen: "home",
+    screenSeq: 6,
+    focus: { label: "Item", position: { rail: 0, index: 0 } },
+    focusSeq: 14,
+    focusScreenSeq: 6,
+  };
+  assert.equal(hasFreshHomeContentFocus(state, 5, 13), true);
+  assert.equal(hasFreshHomeContentFocus({ ...state, focus: "Home" }, 5, 13), false);
+  assert.equal(hasFreshHomeContentFocus({ ...state, focusScreenSeq: 5 }, 5, 13), false);
+  assert.equal(hasFreshHomeContentFocus({ ...state, focusSeq: 13 }, 5, 13), false);
+  assert.equal(hasFreshHomeContentFocus({ ...state, focus: { label: "Item", position: { rail: -1, index: 0 } } }, 5, 13), false);
 });
 
 test("Roku ECP requests close the connection and never retry ambiguous transport failures", async () => {

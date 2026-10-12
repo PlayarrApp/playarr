@@ -139,6 +139,16 @@ export function hasFreshProfilesScreen(state, afterScreenSeq) {
   return state.screenSeq > afterScreenSeq && state.screen === "profiles";
 }
 
+export function hasFreshHomeContentFocus(state, afterScreenSeq, afterFocusSeq) {
+  const position = state.focus?.position;
+  return state.screen === "home"
+    && state.screenSeq > afterScreenSeq
+    && state.focusSeq > afterFocusSeq
+    && state.focusScreenSeq === state.screenSeq
+    && Number.isInteger(position?.rail) && position.rail >= 0
+    && Number.isInteger(position?.index) && position.index >= 0;
+}
+
 export function themePixelMatches(pixel, theme) {
   if (!pixel || ![pixel.r, pixel.g, pixel.b].every(Number.isFinite)) return false;
   if (theme === "dark") return pixel.r < 80 && pixel.g < 80 && pixel.b < 80;
@@ -376,8 +386,16 @@ export function createDriver({ out, args = [] } = {}) {
 
   const toHome = async () => {
     await launchProfiles();
+    const beforeHomeScreenSeq = screenSeq;
+    const beforeHomeFocusSeq = focusSeq;
     await sendEcp("keypress/Select");
-    await waitFor(() => screen === "home", "signed-in Home");
+    try {
+      await waitFor(() => hasFreshHomeContentFocus({ screen, screenSeq, focus, focusSeq, focusScreenSeq }, beforeHomeScreenSeq, beforeHomeFocusSeq), "fresh positioned Home content focus", 20000);
+    } catch {
+      if (screen === "pairing") throw new Error("Roku returned to pairing while opening Home");
+      if (screen === "home") throw new Error("Roku Home did not report fresh positioned content focus");
+      throw new Error(`Roku did not reach fresh Home content focus (screen=${screen || "none"}, newScreenEvents=${screenSeq - beforeHomeScreenSeq})`);
+    }
     lastRoute = "/";
     await sleep(1500);
   };
