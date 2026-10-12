@@ -1600,7 +1600,7 @@ sub applyProfilesChromeFocus()
     signOutF = m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
     if m.profilesThemePill <> invalid then m.profilesThemePill.uri = pairingChromeUri("theme", themeF)
     if m.profilesLangPill <> invalid then m.profilesLangPill.uri = pairingChromeUri("lang", langF)
-    ' The gear and Sign out bitmaps have a light-theme twin (greys inverted, brand red kept).
+    ' Gear and Sign out images have a light-theme twin (theme tokens, brand red kept).
     suffix = ""
     if ResolvePairingTheme(m.themePreference) = "light" then suffix = "-light"
     if m.profilesSettingsBtn <> invalid
@@ -1661,8 +1661,8 @@ sub updateProfileActionsLayout()
         end for
     end if
 
-    itemWidth = 246
-    spacing = 40
+    itemWidth = 304
+    spacing = -18
     rowX = 0
     rowY = 365
     if m.profilesRow <> invalid and m.profilesRow.translation <> invalid
@@ -1670,12 +1670,12 @@ sub updateProfileActionsLayout()
         rowY = m.profilesRow.translation[1]
     end if
     centerX = rowX + targetIndex * (itemWidth + spacing) + Int(itemWidth / 2)
-    actionsW = 232 ' 48 gear + 12 gap + 172 pill
-    x = centerX - 77
+    actionsW = 158 ' 44 gear + 10 gap + 104 Sign out pill
+    x = centerX - Int(actionsW / 2)
     if x < 40 then x = 40
     if x > 1920 - actionsW - 40 then x = 1920 - actionsW - 40
     ' Sit just under name/status (circle+labels ~ 328px from row top).
-    y = rowY + 339
+    y = rowY + 362
     if y > 980 then y = 980
     m.profileActionsGroup.translation = [x, y]
     m.profileActionsGroup.opacity = 1
@@ -1783,15 +1783,15 @@ sub buildProfileAvatarContent(profiles as Object)
     ' Keep full status line (was truncating as "ADD ANOTHER…").
     list.Push(addItem)
 
-    ' Equal item boxes 280×360 (240 circle + ring pad + labels). Gap 32.
-    ' Circles centre on a shared baseline; focus scales from circle centre.
-    itemWidth = 246
-    spacing = 40
+    ' 304px item boxes contain the 278px ring at 1.09 focus scale, with 29px
+    ' inset. Negative gap preserves the existing 286px centre-to-centre step.
+    itemWidth = 304
+    spacing = -18
     count = list.Count()
     rowWidth = count * itemWidth + (count - 1) * spacing
     x = 960 - Int(rowWidth / 2)
     if x < 40 then x = 40
-    m.profilesRow.translation = [x, 365]
+    m.profilesRow.translation = [x, 342]
     m.profilesRow.rowItemSize = [[itemWidth, 360]]
     m.profilesRow.rowItemSpacing = [[spacing, 0]]
     m.profilesRow.rowHeights = [360]

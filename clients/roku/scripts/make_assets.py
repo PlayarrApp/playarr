@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 IMAGES = Path(__file__).resolve().parents[1] / "images"
 SS = 8  # supersampling
@@ -127,8 +127,46 @@ def avatars() -> None:
     mask.save(IMAGES / "avatar-mask.png")
 
 
+def profile_signout_buttons() -> None:
+    """Render the Roku Sign out pill at the live TV web size (104 x 44)."""
+    scale = SS
+    width, height = 104, 44
+    font_path = Path(__file__).resolve().parents[1] / "fonts" / "NunitoSans-700.ttf"
+    font = ImageFont.truetype(str(font_path), round(11 * scale))
+    variants = {
+        "profiles-signout.png": ((33, 29, 33, 163), (223, 220, 221, 41), (205, 193, 198, 255)),
+        "profiles-signout-light.png": ((255, 255, 255, 163), (56, 38, 33, 50), (68, 58, 64, 255)),
+        "profiles-signout-focus.png": ((207, 49, 87, 255), (207, 49, 87, 255), (255, 255, 255, 255)),
+        "profiles-signout-focus-light.png": ((207, 49, 87, 255), (207, 49, 87, 255), (27, 24, 27, 255)),
+    }
+    for name, (fill, outline, foreground) in variants.items():
+        image = Image.new("RGBA", (width * scale, height * scale), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle(
+            (scale, scale, (width - 1) * scale, (height - 1) * scale),
+            radius=21 * scale,
+            fill=fill,
+            outline=outline,
+            width=scale,
+        )
+        # Same 24px path and 18px SVG size as tv-web's SignOutIcon.
+        icon_x, icon_y, icon_scale = 16 * scale, 13 * scale, 0.75 * scale
+        def point(x: float, y: float) -> tuple[float, float]:
+            return (icon_x + x * icon_scale, icon_y + y * icon_scale)
+
+        stroke = max(1, round(1.7 * icon_scale))
+        draw.line([point(10, 5), point(5, 5), point(5, 19), point(10, 19)], fill=foreground, width=stroke, joint="curve")
+        draw.line([point(13, 8), point(17, 12), point(13, 16)], fill=foreground, width=stroke, joint="curve")
+        draw.line([point(8, 12), point(17, 12)], fill=foreground, width=stroke)
+        bbox = draw.textbbox((0, 0), "Sign out", font=font)
+        text_y = (height * scale - (bbox[3] - bbox[1])) // 2 - bbox[1]
+        draw.text((41 * scale, text_y), "Sign out", font=font, fill=foreground)
+        image.resize((width, height), Image.LANCZOS).save(IMAGES / name)
+
+
 def main() -> None:
     avatars()
+    profile_signout_buttons()
     for name in ICONS:
         icon(name, 40 if name == "icon-empty" else 20)
     for r in (6, 12, 25):

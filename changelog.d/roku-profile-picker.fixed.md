@@ -1,0 +1,1 @@
+- Match the Roku profile picker avatar focus bounds and Sign out pill size to the live web layout.

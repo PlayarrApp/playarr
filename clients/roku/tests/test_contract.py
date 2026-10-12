@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import struct
 import unittest
 from pathlib import Path
 
@@ -124,6 +125,46 @@ class NavigationContractTests(unittest.TestCase):
                     (ROOT / "images" / f"avatar-{preset}.png").is_file(),
                     f"missing avatar-{preset}.png referenced by ProfileAvatar.brs",
                 )
+
+    def test_focused_profile_ring_fits_inside_its_row_item(self) -> None:
+        component_xml = (ROOT / "components" / "ProfileAvatar.xml").read_text(encoding="utf-8")
+        component_brs = (ROOT / "components" / "ProfileAvatar.brs").read_text(encoding="utf-8")
+        self.assertIn('rowItemSize="[[304,360]]"', SCENE)
+        self.assertIn('rowItemSpacing="[[-18,0]]"', SCENE)
+        self.assertIn("itemWidth = 304", MAIN)
+        self.assertIn("spacing = -18", MAIN)
+        self.assertIn('translation="[29,39]"', component_xml)
+        self.assertIn("m.circleGroup.translation = [29, 39 + lift]", component_brs)
+
+        # SceneGraph scales the 278px ring by 1.09 around the avatar centre
+        # (123,123). The 29px inset must contain those focused bounds in the
+        # 304px row slot, including the ten-pixel vertical lift.
+        scale = 1.09
+        inset_x = 29
+        inset_y = 39
+        ring_start = -16
+        ring_size = 278
+        centre = 123
+        left = inset_x + (ring_start - centre) * scale + centre
+        right = inset_x + (ring_start + ring_size - centre) * scale + centre
+        top = inset_y - 10 + (ring_start - centre) * scale + centre
+        bottom = inset_y - 10 + (ring_start + ring_size - centre) * scale + centre
+        self.assertGreaterEqual(left, 0)
+        self.assertGreaterEqual(top, 0)
+        self.assertLessEqual(right, 304)
+        self.assertLessEqual(bottom, 304)
+
+    def test_profile_signout_assets_match_web_control_size(self) -> None:
+        for name in (
+            "profiles-signout.png",
+            "profiles-signout-light.png",
+            "profiles-signout-focus.png",
+            "profiles-signout-focus-light.png",
+        ):
+            with self.subTest(name=name):
+                data = (ROOT / "images" / name).read_bytes()
+                self.assertEqual((104, 44), struct.unpack(">II", data[16:24]))
+        self.assertIn("def profile_signout_buttons()", (ROOT / "scripts" / "make_assets.py").read_text(encoding="utf-8"))
 
     def test_every_client_renders_the_server_avatar_preference(self) -> None:
         # The same account must show the same avatar on every device: the server preference (a preset id or a custom
