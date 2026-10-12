@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { hasFreshScreenFocus, isActivePlayerResponse, routeForState as rokuRouteForState, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, routeForState as rokuRouteForState, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
@@ -65,6 +65,14 @@ test("Roku theme verification distinguishes measured light and dark background p
 
 test("Roku does not report a calendar view it cannot observe", () => {
   assert.equal(rokuRouteForState("page", "calendar", "", ""), null);
+});
+
+test("Roku launch response guard detects HTTP-200 ECP error bodies", () => {
+  assert.equal(isLaunchErrorBody(""), false);
+  assert.equal(isLaunchErrorBody("OK"), false);
+  assert.equal(isLaunchErrorBody('<error>App not found</error>'), true);
+  assert.equal(isLaunchErrorBody("Unable to launch developer app"), true);
+  assert.equal(isLaunchErrorBody('{"error":"not found"}'), true);
 });
 
 test("Roku suite driver refuses to interrupt an active media session", () => {

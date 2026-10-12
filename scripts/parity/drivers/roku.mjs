@@ -66,6 +66,12 @@ export function isActivePlayerResponse(xml) {
   return state === undefined || !["close", "closed", "stopped", "none", "idle"].includes(state);
 }
 
+export function isLaunchErrorBody(body) {
+  return /<\s*(?:error|failure)\b/i.test(body)
+    || /^\s*(?:error|failed|failure|unable|cannot|can't|not found)\b/i.test(body)
+    || /["'](?:error|failure)["']\s*:/i.test(body);
+}
+
 function parseKeySequence(keys = []) {
   const out = [];
   for (const token of keys) {
@@ -151,9 +157,48 @@ export function createDriver({ out, args = [] } = {}) {
     if (!socket || socket.destroyed || debugFailure) throw new Error("Roku debug console is unavailable; refusing to infer route or focus state");
   };
 
+  const closeDebug = async () => {
+    const previous = socket;
+    socket = null;
+    if (!previous || previous.closed) return;
+    await new Promise((resolveClose) => {
+      previous.once("close", resolveClose);
+      if (!previous.destroyed) previous.destroy();
+    });
+  };
+
+  const connectDebug = async () => {
+    await closeDebug();
+    debugBuffer = "";
+    debugFailure = false;
+    const connection = net.createConnection({ host: target, port: 8085 });
+    socket = connection;
+    connection.setEncoding("utf8");
+    connection.setTimeout(60000);
+    connection.on("data", (chunk) => {
+      if (socket !== connection) return;
+      debugBuffer += chunk;
+      const lines = debugBuffer.split("\n");
+      debugBuffer = lines.pop() ?? "";
+      for (const line of lines) ingest(line);
+    });
+    connection.on("error", () => { if (socket === connection) debugFailure = true; });
+    connection.on("timeout", () => {
+      if (socket === connection) debugFailure = true;
+      connection.destroy(new Error("Roku debug console timed out"));
+    });
+    await new Promise((resolveConnect, rejectConnect) => {
+      connection.once("connect", resolveConnect);
+      connection.once("error", rejectConnect);
+    });
+  };
+
   const sendEcp = async (path, method = "POST") => {
     const response = await fetch(`${ecp}/${path}`, { method, signal: AbortSignal.timeout(8000) });
     if (!response.ok) throw new Error(`Roku ECP request failed (${response.status})`);
+    if (path === "launch/dev" && isLaunchErrorBody(await response.text())) {
+      throw new Error("Roku ECP launch/dev returned an error response body");
+    }
     return response;
   };
 
@@ -210,6 +255,8 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   const launchProfiles = async () => {
+    await closeDebug();
+    resetObservedState();
     await sendEcp("keypress/Home").catch(() => {});
     // Match the established device cold-start: Roku needs time to background the channel
     // before `launch/dev` reliably emits a new screen event on the debug console.
@@ -218,6 +265,7 @@ export function createDriver({ out, args = [] } = {}) {
     const beforeFocusSeq = focusSeq;
     resetObservedState();
     await sendEcp("launch/dev");
+    await connectDebug();
     try {
       await waitFor(() => screenSeq > beforeScreenSeq && (screen === "profiles" || screen === "pairing" || screen === "status"), "fresh profile picker event", 40000);
     } catch {
@@ -362,29 +410,18 @@ export function createDriver({ out, args = [] } = {}) {
     supports: { downloads: false, notifications: false, nowPlaying: false, "grouped-downloads": false },
     async start() {
       resetObservedState();
-      socket = net.createConnection({ host: target, port: 8085 });
-      socket.setEncoding("utf8");
-      socket.setTimeout(60000);
-      socket.on("data", (chunk) => {
-        debugBuffer += chunk;
-        const lines = debugBuffer.split("\n");
-        debugBuffer = lines.pop() ?? "";
-        for (const line of lines) ingest(line);
-      });
-      socket.on("error", () => { debugFailure = true; });
-      socket.on("timeout", () => socket?.destroy(new Error("Roku debug console timed out")));
-      await new Promise((resolveConnect, reject) => {
-        socket.once("connect", resolveConnect);
-        socket.once("error", reject);
-      });
-      if (screen === "playback") throw new Error("Roku is already on a player screen; refusing this non-player run");
       const media = await sendEcp("query/media-player", "GET");
       const playerXml = await media.text();
       if (isActivePlayerResponse(playerXml)) throw new Error("Roku media player is active; refusing to interrupt it");
+      try {
+        await connectDebug();
+        await sleep(700);
+        if (screen === "playback") throw new Error("Roku is already on a player screen; refusing this non-player run");
+      } finally {
+        await closeDebug();
+      }
     },
-    async stop() {
-      if (socket && !socket.destroyed) socket.destroy();
-    },
+    async stop() { await closeDebug(); },
     async setTheme(theme) {
       if (!["dark", "light"].includes(theme)) throw new Error(`Roku parity theme unsupported: ${theme}`);
       await setThemeFromProfiles(theme);

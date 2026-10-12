@@ -1571,6 +1571,16 @@ sub focusProfilesRowOnCurrent()
     ' Jump before SetFocus so the first paint is under the current avatar.
     m.profilesRow.jumpToRowItem = [0, idx]
     m.profilesRow.SetFocus(true)
+    emitProfileFocusTelemetry(idx)
+end sub
+
+' Private parity diagnostics report the visible profile label, never account ids or credentials.
+sub emitProfileFocusTelemetry(index as Integer)
+    if m.profiles = invalid or index < 0 or index >= m.profiles.Count() then return
+    profile = m.profiles[index]
+    if profile <> invalid and profile.display_name <> invalid and profile.display_name <> ""
+        parityEmit("focus", profile.display_name)
+    end if
 end sub
 
 ' Web TvStageChrome + profile-actions under the focused avatar.
@@ -1724,6 +1734,7 @@ sub onProfilesRowFocused(event as Object)
     position = event.GetData()
     if position = invalid or position.Count() < 2 then return
     m.profilesFocusIndex = position[1]
+    emitProfileFocusTelemetry(position[1])
     updateProfileActionsLayout()
 end sub
 
