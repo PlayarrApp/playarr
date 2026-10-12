@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- HarmonyOS: the Home rails now show artwork that arrives after the first render (MediaRail takes its items as a @Prop).
 - Roku: when the server reaps or evicts an idle on-demand session, the player now asks for a replacement session at the same position (up to three times) and keeps a paused player paused, instead of ending playback with an error.
 - Web: after the server reaps or evicts a transcode session, the replacement session now keeps a paused player paused instead of always starting playback.
 - Xbox wall: debug frames of the calendar view picker are uploaded.
@@ -499,6 +500,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Tizen/webOS parity driver: now-playing check, downloads cases on webOS via raw DevTools, focus position, session restore reset.
 - Downloads (web): a download keeps its title detail, credits and artwork on the device, so the offline detail page looks like the online one; music artist pages open offline from their downloaded tracks.
 - Web phone: the Library letter rail is a 44px-wide target column with a 4px margin each side (WCAG 2.5.5), touch-drag scrubs the letters, and the grid keeps clear of it.
 - The Tizen and webOS parity driver reports the focus position (rail and index) as the suite now requires.

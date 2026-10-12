@@ -1,1 +1,0 @@
-- Tizen/webOS parity driver: now-playing check, downloads cases on webOS via raw DevTools, focus position, session restore reset.

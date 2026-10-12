@@ -1,1 +1,0 @@
-- HarmonyOS: the Home rails now show artwork that arrives after the first render (MediaRail takes its items as a @Prop).
