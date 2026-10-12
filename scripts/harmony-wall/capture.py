@@ -106,13 +106,22 @@ def snap(name, folder, floor=60000):
             time.sleep(25)
 
 
-def save_episode_art_diagnostics(expected_work_id):
+def post_cursor_events(state, event_cursor):
+    events = state.get("dbglog", [])
+    new_count = state.get("dbgseq", 0) - event_cursor
+    if new_count <= 0 or new_count > len(events):
+        return []
+    new_events = events[-new_count:]
+    first_episode_row = next((index for index, event in enumerate(new_events) if event.startswith("episode-art:row:")), None)
+    if first_episode_row is not None:
+        return new_events[first_episode_row:]
+    return []
+
+
+def save_episode_art_diagnostics(expected_work_id, event_cursor, readiness):
     time.sleep(2)  # let the PreviewState reports finish their loopback requests
     state = json.loads(get("/state"))
-    debug_events = state.get("dbglog", [])
-    first_episode_row = next((index for index, event in enumerate(debug_events) if event.startswith("episode-art:row:")), None)
-    if first_episode_row is not None:
-        debug_events = debug_events[first_episode_row:]
+    debug_events = post_cursor_events(state, event_cursor)
     safe_events = []
     for event in debug_events:
         if re.fullmatch(r"episode-art:row:thumb=(yes|no):file=(yes|no)", event):
@@ -126,6 +135,7 @@ def save_episode_art_diagnostics(expected_work_id):
     diagnostics = {
         "screen": "series-detail",
         "theme": THEME,
+        "readiness": readiness,
         "pinned_detail_verified": state.get("route") == "Detail" and state.get("work_id") == expected_work_id,
         "events": safe_events,
     }
@@ -141,19 +151,16 @@ def wait_for_episode_art(expected_work_id, event_cursor, timeout=45):
     while time.time() < deadline:
         state = json.loads(get("/state"))
         if state.get("route") == "Detail" and state.get("work_id") == expected_work_id:
-            events = state.get("dbglog", [])
-            new_count = state.get("dbgseq", 0) - event_cursor
-            new_events = events[-new_count:] if 0 < new_count <= len(events) else []
-            first_row = next((index for index, event in enumerate(new_events) if event.startswith("episode-art:row:")), None)
-            if first_row is not None:
-                detail_events = new_events[first_row:]
-                fetched = any(event in ("episode-art:still:ok", "episode-art:fallback:ok") for event in detail_events)
-                assigned = any(event in ("episode-art:assigned:still", "episode-art:assigned:fallback") for event in detail_events)
-                displayed = "episode-art:card-image:ok" in detail_events
-                if fetched and assigned and displayed:
-                    print("series-detail artwork ready: pinned route, fetch, assignment, and episode image decode verified", flush=True)
-                    return
+            detail_events = post_cursor_events(state, event_cursor)
+            fetched = any(event in ("episode-art:still:ok", "episode-art:fallback:ok") for event in detail_events)
+            assigned = any(event in ("episode-art:assigned:still", "episode-art:assigned:fallback") for event in detail_events)
+            displayed = "episode-art:card-image:ok" in detail_events
+            if fetched and assigned and displayed:
+                print("series-detail artwork ready: pinned route, fetch, assignment, and episode image decode verified", flush=True)
+                return
         time.sleep(0.5)
+    save_episode_art_diagnostics(expected_work_id, event_cursor, "timeout")
+    debug("series-detail-art-timeout")
     raise Skip("pinned series detail did not render a fetched episode image before the bounded capture wait expired")
 
 
@@ -326,7 +333,7 @@ else:
                     wait_for_episode_art(work_id, event_cursor)
                 snap(name, folder, 100000)
                 if name == "series-detail":
-                    save_episode_art_diagnostics(work_id)
+                    save_episode_art_diagnostics(work_id, event_cursor, "ready")
                 return
             time.sleep(0.5)
         debug(f"{name}-route-timeout")
