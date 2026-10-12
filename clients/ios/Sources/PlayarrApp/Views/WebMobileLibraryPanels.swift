@@ -24,6 +24,7 @@ private struct WMPanelFrame<Content: View>: View {
 }
 
 private struct WMChoice: View {
+    @Environment(\.colorScheme) private var scheme
     let label: String
     var symbol: String?
     let selected: Bool
@@ -38,7 +39,7 @@ private struct WMChoice: View {
             }
             .foregroundStyle(selected ? WM.page : WM.inkSoft)
             .frame(maxWidth: .infinity).frame(height: height)
-            .background(selected ? WM.ink : WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(selected ? WM.ink : (scheme == .light ? WM.ink.opacity(0.12) : WM.chip.opacity(0.66)), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
         .buttonStyle(.plain)
@@ -98,6 +99,7 @@ struct WMLibraryFiltersPanel: View {
 }
 
 struct WMTitleActionsPanel: View {
+    @Environment(\.colorScheme) private var scheme
     let work: Work
     let apiClient: PlayarrAPIClient
     let onPlay: () -> Void
@@ -113,7 +115,7 @@ struct WMTitleActionsPanel: View {
             }
             .padding(.horizontal, 17)
             .frame(height: 67)
-            .background(WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(scheme == .light ? WM.ink.opacity(0.17) : WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
         }
         .buttonStyle(.plain)
