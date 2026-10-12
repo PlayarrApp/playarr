@@ -435,7 +435,16 @@ class PlayerChromeTests(unittest.TestCase):
         for fragment in ("QUALITY", "Source quality", "sub playerMenuOpen", "sub playerApplyQuality"):
             self.assertIn(fragment, chrome)
         self.assertIn("hidePlayerControls()", MAIN)
-        self.assertIn("playerMenuOpen()", MAIN)
+        self.assertIn("playerChromeKey(key)", MAIN)
+
+    def test_player_has_subtitle_queue_and_info_panels(self) -> None:
+        chrome = (ROOT / "components" / "PlayerChrome.brs").read_text(encoding="utf-8")
+        for fragment in ("AUDIO", "SUBTITLES", "UP NEXT", "PLAYBACK INFO", "globalCaptionMode", "subtitleTrack"):
+            self.assertIn(fragment, chrome)
+        self.assertIn("content.SubtitleTracks", MAIN)
+        self.assertIn("audio_stream_index", MAIN)
+        for icon in ("player-audio", "player-subtitles", "player-playlist", "player-health"):
+            self.assertTrue((ROOT / "images" / f"{icon}.png").exists())
 
     def test_household_gate_uses_the_status_endpoint(self) -> None:
         pages = (ROOT / "components" / "Pages.brs").read_text(encoding="utf-8")

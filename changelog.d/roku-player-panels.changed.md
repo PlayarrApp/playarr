@@ -1,0 +1,1 @@
+- Roku player: subtitle picker, queue and info panels beside the quality pill; arrows move between the controls as on web.

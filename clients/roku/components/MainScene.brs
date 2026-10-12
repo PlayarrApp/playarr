@@ -5724,6 +5724,7 @@ end function
 
 sub requestPlayback(mediaFileId as String)
     if mediaFileId = "" then return
+    if mediaFileId <> m.currentMediaFileId then m.audioStreamIndex = invalid
     m.currentMediaFileId = mediaFileId
     config = AppConfig()
     path = "/api/v1/playback/" + UrlEncode(mediaFileId)
@@ -5732,6 +5733,7 @@ sub requestPlayback(mediaFileId as String)
     if m.deviceCaps = invalid then m.deviceCaps = DeviceMediaCaps()
     path += DeviceCapsQuery(m.deviceCaps, m.forceDirectVideo = true, m.forceDirectAudio = true)
     path += "&max_bitrate_bps=" + QualityMaxBitrate(m.qualityPref, config.maxBitrateBps).ToStr()
+    if m.audioStreamIndex <> invalid then path += "&audio_stream_index=" + m.audioStreamIndex.ToStr()
     ' Play opens the player directly: black stage, title, small spinner. No
     ' interstitial or fullscreen status page while the session negotiates.
     enterPlayerStage()
@@ -5776,6 +5778,8 @@ sub startPlayback(data as Object)
     content.streamFormat = PlaybackStreamFormat(data)
     content.httpHeaders = contentHeadersForUrl(content.url)
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
+    if m.pcMenuOpen = true then playerMenuClose()
+    content.SubtitleTracks = playerSubtitleContent(data)
     m.playbackSessionId = data.session_id
     m.playbackEnded = false
     m.playbackStarted = false
@@ -5799,6 +5803,7 @@ sub startPlayback(data as Object)
     ' already false, so there is no native trick-play chrome relying on it.
     m.top.SetFocus(true)
     m.video.control = "play"
+    playerSubtitleApply(data)
     ' Chapters rail (see onDetailChapterSelected): starts this same
     ' request-a-session-then-seek path "Play" already uses, just with a
     ' non-zero starting position queued up first.
@@ -6431,30 +6436,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             end if
             finishPlayback("user_stopped")
             return true
-        else if key = "up"
-            playerMenuOpen()
-            return true
-        else if key = "OK" or key = "play"
-            togglePlayPause()
-            resetPlayerAutoHide()
-            return true
-        else if key = "left"
-            seekPlayback(-10)
-            resetPlayerAutoHide()
-            return true
-        else if key = "right"
-            seekPlayback(10)
-            resetPlayerAutoHide()
-            return true
+        else if key = "up" or key = "down" or key = "left" or key = "right" or key = "OK" or key = "play"
+            return playerChromeKey(key)
         else if key = "rewind"
             playAdjacentEpisode(-1)
             resetPlayerAutoHide()
             return true
         else if key = "fastforward"
             playAdjacentEpisode(1)
-            resetPlayerAutoHide()
-            return true
-        else if key = "up" or key = "down"
             resetPlayerAutoHide()
             return true
         end if
