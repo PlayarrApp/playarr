@@ -529,6 +529,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- VIDAA: the stage is now scaled with a transform instead of CSS zoom, so rects, scrolling and spatial navigation share one coordinate space on its Chrome 111 engine (Home first card and left-to-nav focus now land where web's do).
 - HarmonyOS TV: Settings > Appearance Home screen artwork and Artwork size now change Home's rails and the Library's screen and cover grids, as web's card size does.
 - Roku player: subtitle picker, queue and info panels beside the quality pill; arrows move between the controls as on web.
 - HarmonyOS TV: the Profiles picker's last tile is "Sign in / Add another profile" and opens the QR sign-in, as web does.
