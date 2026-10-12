@@ -6,6 +6,7 @@ using Playarr.Core.Networking;
 namespace Playarr.Tizen.Logic;
 
 public sealed record PlaylistTreeEntry(PlaylistInfo Playlist, Guid? ParentPlaylistId);
+public sealed record PlaylistItemFocus(Guid TrackId, Guid WorkId);
 
 public sealed record PlaylistRouteState(Guid? PlaylistId = null, Guid? TrackId = null)
 {
@@ -53,6 +54,60 @@ public static class PlaylistDirectoryModel
 
     public static IReadOnlyList<PlaylistTreeEntry> Children(IEnumerable<PlaylistTreeEntry> entries, Guid parentId) =>
         Sort(entries.Where(entry => entry.ParentPlaylistId == parentId));
+
+    /// <summary>The selected playlist followed by every descendant track in natural sibling order.</summary>
+    public static IReadOnlyList<PlaylistTreeEntry> DetailTracks(IEnumerable<PlaylistTreeEntry> entries, Guid rootId)
+    {
+        var all = entries.ToList();
+        var byId = all.ToDictionary(entry => entry.Playlist.Id);
+        if (!byId.TryGetValue(rootId, out var root)) return Array.Empty<PlaylistTreeEntry>();
+        var result = new List<PlaylistTreeEntry> { root };
+        var visited = new HashSet<Guid> { rootId };
+        void AddChildren(Guid parentId)
+        {
+            foreach (var child in Children(all, parentId))
+            {
+                if (!visited.Add(child.Playlist.Id)) continue;
+                result.Add(child);
+                AddChildren(child.Playlist.Id);
+            }
+        }
+        AddChildren(rootId);
+        return result;
+    }
+
+    /// <summary>Writable parent choices for a playlist, matching the web picker constraints.</summary>
+    public static IReadOnlyList<PlaylistTreeEntry> EligibleParents(IEnumerable<PlaylistTreeEntry> entries, Guid? playlistId, string mediaType)
+    {
+        var all = entries.ToList();
+        var excluded = new HashSet<Guid>();
+        if (playlistId is { } id)
+        {
+            excluded.Add(id);
+            void AddDescendants(Guid parentId)
+            {
+                foreach (var child in Children(all, parentId))
+                {
+                    if (!excluded.Add(child.Playlist.Id)) continue;
+                    AddDescendants(child.Playlist.Id);
+                }
+            }
+            AddDescendants(id);
+        }
+        return Sort(all.Where(entry => !entry.Playlist.IsSystem
+            && !excluded.Contains(entry.Playlist.Id)
+            && string.Equals(entry.Playlist.MediaType, mediaType, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public static int ResolveFocusIndex(IReadOnlyList<PlaylistItemFocus> items, PlaylistItemFocus? saved, int fallbackIndex)
+    {
+        if (saved is { } focus)
+        {
+            var match = items.ToList().FindIndex(item => item == focus);
+            if (match >= 0) return match;
+        }
+        return fallbackIndex >= 0 && fallbackIndex < items.Count ? fallbackIndex : items.Count == 0 ? -1 : 0;
+    }
 
     public static PlaylistRouteState RouteForSelection(IEnumerable<PlaylistTreeEntry> entries, Guid selectedId)
     {
@@ -147,6 +202,37 @@ public sealed class PlaylistDirectoryApi(IPlayarrApiClient api, HttpClient http)
         response.EnsureSuccessStatusCode();
         var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return ParseResponse(json);
+    }
+
+    public Task CreateAsync(string name, string mediaType, Guid? parentPlaylistId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Post, "/api/v1/playlists", new
+        {
+            name,
+            parent_playlist_id = parentPlaylistId,
+            is_system = false,
+            media_type = mediaType,
+        }, cancellationToken);
+
+    public Task UpdateAsync(Guid playlistId, string name, Guid? parentPlaylistId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Put, $"/api/v1/playlists/{playlistId:D}", new
+        {
+            name,
+            parent_playlist_id = parentPlaylistId,
+        }, cancellationToken);
+
+    public Task DeleteAsync(Guid playlistId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Delete, $"/api/v1/playlists/{playlistId:D}", null, cancellationToken);
+
+    private async Task SendAsync(HttpMethod method, string path, object? body, CancellationToken cancellationToken)
+    {
+        var uri = api.ResolveUrl(path) ?? throw new InvalidOperationException("The Playlists endpoint URL is invalid.");
+        using var request = new HttpRequestMessage(method, uri);
+        foreach (var header in await api.GetPlaybackRequestHeadersAsync(cancellationToken).ConfigureAwait(false))
+            request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        if (body is not null)
+            request.Content = new StringContent(JsonConvert.SerializeObject(body), System.Text.Encoding.UTF8, "application/json");
+        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
     }
 
     public static IReadOnlyList<PlaylistTreeEntry> ParseResponse(string json)

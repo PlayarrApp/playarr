@@ -170,11 +170,14 @@ internal static class Ui
     }
 
     /// <summary>An ImageView drawn through a grayscale/contrast/brightness shader (web's filter on the Home key art).</summary>
-    public static ImageView FilteredImage(string url, float x, float y, float w, float h, float contrast, float brightness)
+    public static ImageView FilteredImage(string url, float x, float y, float w, float h, float contrast, float brightness, float fadeStartX = 1f)
     {
+        var alphaMask = fadeStartX >= 1f
+            ? "1.0"
+            : $"clamp((1.0 - vTexCoord.x) / {1f - fadeStartX:0.###}, 0.0, 1.0)";
         var frag = "precision mediump float;\nvarying mediump vec2 vTexCoord;\nuniform sampler2D sTexture;\nuniform lowp vec4 uColor;\n" +
                    "void main(){ vec4 c = texture2D(sTexture, vTexCoord); float g = dot(c.rgb, vec3(0.299, 0.587, 0.114)); " +
-                   $"g = ((g - 0.5) * {contrast:0.###} + 0.5) * {brightness:0.###}; gl_FragColor = vec4(vec3(g), c.a) * uColor; }}";
+                   $"g = ((g - 0.5) * {contrast:0.###} + 0.5) * {brightness:0.###}; float mask = {alphaMask}; gl_FragColor = vec4(vec3(g), c.a * mask) * uColor; }}";
         var shader = new PropertyMap();
         shader.Add("fragmentShader", new PropertyValue(frag));
         var map = new PropertyMap();
