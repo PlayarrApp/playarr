@@ -116,7 +116,9 @@ def save_episode_art_diagnostics(expected_work_id):
             safe_events.append(event)
         elif re.fullmatch(r"episode-art:(still|fallback):(ok|decode-failure|http-[0-9]{3}|network-(timeout|no_connection|unknown))", event):
             safe_events.append(event)
-        elif event in ("card-image:ok", "card-image:error"):
+        elif re.fullmatch(r"episode-art:assigned:(still|fallback)", event):
+            safe_events.append(event)
+        elif re.fullmatch(r"episode-art:card-image:(ok|error)", event):
             safe_events.append(event)
     diagnostics = {
         "screen": "series-detail",
@@ -127,6 +129,27 @@ def save_episode_art_diagnostics(expected_work_id):
     path = os.path.join(out, "_debug", "series-art-diagnostics.json")
     with open(path, "w") as f:
         json.dump(diagnostics, f, indent=2)
+
+
+def wait_for_episode_art(expected_work_id, timeout=45):
+    """Do not capture the pinned series detail until a fetched image completes in an episode card."""
+    deadline = time.time() + timeout
+    state = {}
+    while time.time() < deadline:
+        state = json.loads(get("/state"))
+        if state.get("route") == "Detail" and state.get("work_id") == expected_work_id:
+            events = state.get("dbglog", [])
+            first_row = next((index for index, event in enumerate(events) if event.startswith("episode-art:row:")), None)
+            if first_row is not None:
+                detail_events = events[first_row:]
+                fetched = any(event in ("episode-art:still:ok", "episode-art:fallback:ok") for event in detail_events)
+                assigned = any(event in ("episode-art:assigned:still", "episode-art:assigned:fallback") for event in detail_events)
+                displayed = "episode-art:card-image:ok" in detail_events
+                if fetched and assigned and displayed:
+                    print("series-detail artwork ready: pinned route, fetch, assignment, and episode image decode verified", flush=True)
+                    return
+        time.sleep(0.5)
+    raise Skip("pinned series detail did not render a fetched episode image before the bounded capture wait expired")
 
 
 def snap_checked(name, folder, floor):
@@ -293,6 +316,8 @@ else:
         while time.time() < deadline:
             state = json.loads(get("/state"))
             if state.get("route") == "Detail" and state.get("work_id") == work_id:
+                if name == "series-detail":
+                    wait_for_episode_art(work_id)
                 snap(name, folder, 100000)
                 if name == "series-detail":
                     save_episode_art_diagnostics(work_id)

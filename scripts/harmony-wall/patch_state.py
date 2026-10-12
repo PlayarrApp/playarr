@@ -17,7 +17,7 @@ def card(s):
     assert old in s
     s = s.replace(old, old + "      reportCardFocus(this.title, this.subtitle);\n", 1)
     s = s.replace("    .focusable(true)\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", "    .focusable(true)\n    .focusOnTouch(true)\n    .id('pcard')\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", 1)
-    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onComplete(() => { previewReport('dbg=' + encodeURIComponent('card-image:ok')); })\n            .onError(() => { previewReport('dbg=' + encodeURIComponent('card-image:error')); })\n            .width('100%')", 1)
+    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onComplete(() => { if (this.variant === 'titleEpisode') { previewReport('dbg=' + encodeURIComponent('episode-art:card-image:ok')); } })\n            .onError(() => { if (this.variant === 'titleEpisode') { previewReport('dbg=' + encodeURIComponent('episode-art:card-image:error')); } })\n            .width('100%')", 1)
     s = s.replace("import { reportCardFocus } from '../../util/PreviewState';", "import { reportCardFocus, previewReport } from '../../util/PreviewState';", 1)
     return s.replace("    .onClick(() => {\n      if (this.longPressFired) {", "    .onClick(() => {\n      reportCardFocus('click:' + this.title, '');\n      if (this.longPressFired) {", 1)
 
@@ -94,6 +94,9 @@ def detail(s):
           }
           if (still.kind === 'ok') {
             this.rails = applyRowArtworkAcrossRails(this.rails, item.id, still.value);
+            if (diagnoseEpisodeArt) {
+              previewReport('dbg=' + encodeURIComponent('episode-art:assigned:still'));
+            }
             continue;
           }
         }
@@ -110,7 +113,12 @@ def detail(s):
           }
           previewReport('dbg=' + encodeURIComponent('episode-art:fallback:' + thumbCategory));
         }
-        if (thumb.kind === 'ok') {"""
+        if (thumb.kind === 'ok') {
+          this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
+          if (diagnoseEpisodeArt) {
+            previewReport('dbg=' + encodeURIComponent('episode-art:assigned:fallback'));
+          }
+        }"""
     assert old in s
     return s.replace(old, new, 1)
 
