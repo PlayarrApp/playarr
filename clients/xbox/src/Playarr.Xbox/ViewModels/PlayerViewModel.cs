@@ -133,6 +133,9 @@ namespace Playarr.Xbox.ViewModels
         /// <summary>Raised when the next queued item should start. Not guaranteed to be on the UI thread.</summary>
         public event EventHandler<PlaybackQueueItem>? NextRequested;
 
+        /// <summary>Raised by the remote's or the now-playing card's Previous; the page owns the history and decides.</summary>
+        public event EventHandler? PreviousRequested;
+
         /// <summary>Raised when the viewer chose Exit on the end screen.</summary>
         public event EventHandler? ExitRequested;
 
@@ -754,7 +757,7 @@ namespace Playarr.Xbox.ViewModels
         /// not get.
         /// </summary>
         /// <remarks>
-        /// <c>PreviousBehavior</c> is disabled. <c>NextBehavior</c> routes to
+        /// <c>PreviousBehavior</c> raises <see cref="PreviousRequested"/> (the page plays the item before this one). <c>NextBehavior</c> routes to
         /// the end screen's Play now (see end-of-playback.md section 6); a
         /// press while the video is still playing does nothing.
         /// </remarks>
@@ -773,7 +776,12 @@ namespace Playarr.Xbox.ViewModels
                     PlayNextNow();
                 }
             };
-            Player.CommandManager.PreviousBehavior.EnablingRule = MediaCommandEnablingRule.Never;
+            Player.CommandManager.PreviousBehavior.EnablingRule = MediaCommandEnablingRule.Always;
+            Player.CommandManager.PreviousReceived += (sender, args) =>
+            {
+                args.Handled = true;
+                PreviousRequested?.Invoke(this, EventArgs.Empty);
+            };
 
             var updater = Player.SystemMediaTransportControls.DisplayUpdater;
             updater.Type = MediaPlaybackType.Video;

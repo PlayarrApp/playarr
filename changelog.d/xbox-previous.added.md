@@ -1,0 +1,1 @@
+- Xbox: Previous in the player and in the now-playing card plays the item played before this one, and puts the current one back up next, as the web playlist control does.

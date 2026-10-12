@@ -128,6 +128,9 @@ namespace Playarr.Xbox.Views
             var hasNext = _parameter != null && _parameter.UpNext.Count > 0;
             NextButton.IsEnabled = hasNext;
             NextButton.Opacity = hasNext ? 1 : 0.35;
+            var hasPrevious = _parameter != null && _parameter.Previous.Count > 0;
+            PrevButton.IsEnabled = hasPrevious;
+            PrevButton.Opacity = hasPrevious ? 1 : 0.35;
             PlayPauseIcon.Glyph = session.PlaybackState == Windows.Media.Playback.MediaPlaybackState.Playing ? "\uE769" : "\uE768";
         }
 
@@ -206,6 +209,7 @@ namespace Playarr.Xbox.Views
             Window.Current.VisibilityChanged += Window_VisibilityChanged;
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             _viewModel.NextRequested += ViewModel_NextRequested;
+            _viewModel.PreviousRequested += ViewModel_PreviousRequested;
             _viewModel.ExitRequested += ViewModel_ExitRequested;
             _viewModel.RestartRequested += ViewModel_RestartRequested;
             Render();
@@ -226,6 +230,7 @@ namespace Playarr.Xbox.Views
             ReleaseKeepAwake();
             _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
             _viewModel.NextRequested -= ViewModel_NextRequested;
+            _viewModel.PreviousRequested -= ViewModel_PreviousRequested;
             _viewModel.ExitRequested -= ViewModel_ExitRequested;
             _viewModel.RestartRequested -= ViewModel_RestartRequested;
 
@@ -252,6 +257,8 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        private void ViewModel_PreviousRequested(object sender, EventArgs e) => PlayPrevious();
+
         private void ViewModel_NextRequested(object sender, PlaybackQueueItem next) => RunOnUi(() =>
         {
             if (_parameter is null)
@@ -269,7 +276,8 @@ namespace Playarr.Xbox.Views
                 next.MediaFileId,
                 title: next.Title,
                 workId: next.WorkId ?? _parameter.WorkId,
-                upNext: remaining));
+                upNext: remaining,
+                previous: new List<PlaybackQueueItem>(_parameter.Previous) { AsQueueItem(_parameter) }));
         });
 
         private void ViewModel_ExitRequested(object sender, EventArgs e) => RunOnUi(() =>
@@ -285,7 +293,7 @@ namespace Playarr.Xbox.Views
             if (_parameter is { } current)
             {
                 StartSession(new PlayerNavigationParameter(
-                    current.MediaFileId, title: current.Title, workId: current.WorkId, upNext: current.UpNext));
+                    current.MediaFileId, title: current.Title, workId: current.WorkId, upNext: current.UpNext, previous: current.Previous));
             }
         });
 
@@ -607,9 +615,26 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private void PrevButton_Click(object sender, RoutedEventArgs e)
+        private static PlaybackQueueItem AsQueueItem(PlayerNavigationParameter p) => new PlaybackQueueItem(p.MediaFileId, p.Title, p.WorkId);
+
+        /// <summary>Previous plays the item before this one in the session, as the web's playlist control does; the current item goes back up next.</summary>
+        private void PrevButton_Click(object sender, RoutedEventArgs e) => PlayPrevious();
+
+        private void PlayPrevious() => RunOnUi(() =>
         {
-        }
+            if (_parameter is not { } current || current.Previous.Count == 0)
+            {
+                return;
+            }
+
+            var history = new List<PlaybackQueueItem>(current.Previous);
+            var previous = history[history.Count - 1];
+            history.RemoveAt(history.Count - 1);
+            var queue = new List<PlaybackQueueItem>(current.UpNext);
+            queue.Insert(0, AsQueueItem(current));
+            StartSession(new PlayerNavigationParameter(
+                previous.MediaFileId, title: previous.Title, workId: previous.WorkId ?? current.WorkId, upNext: queue, previous: history));
+        });
 
         private void NextButton_Click(object sender, RoutedEventArgs e) => _viewModel?.PlayNextNow();
 

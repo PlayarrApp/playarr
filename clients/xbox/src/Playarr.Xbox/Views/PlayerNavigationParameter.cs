@@ -23,8 +23,10 @@ namespace Playarr.Xbox.Views
             long? resumePositionMs = null,
             string? title = null,
             Guid? workId = null,
-            IList<PlaybackQueueItem>? upNext = null)
+            IList<PlaybackQueueItem>? upNext = null,
+            IList<PlaybackQueueItem>? previous = null)
         {
+            Previous = previous ?? new List<PlaybackQueueItem>();
             WorkId = workId;
             UpNext = upNext ?? new List<PlaybackQueueItem>();
             MediaFileId = mediaFileId;
@@ -37,6 +39,9 @@ namespace Playarr.Xbox.Views
 
         /// <summary>Items queued after this one (next episodes). Empty means a plain end card.</summary>
         public IList<PlaybackQueueItem> UpNext { get; }
+
+        /// <summary>Items already played in this session, oldest first; the last one is what Previous plays.</summary>
+        public IList<PlaybackQueueItem> Previous { get; }
 
         /// <summary>The media file to negotiate and play.</summary>
         public Guid MediaFileId { get; }
