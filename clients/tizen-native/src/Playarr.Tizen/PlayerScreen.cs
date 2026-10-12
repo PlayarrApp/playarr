@@ -35,6 +35,9 @@ internal sealed class PlayerScreen : IPage
     private PlaybackInfoResponse? _info;
     private bool _controlsVisible = true, _stopped;
     private int _sinceReport;
+    // Session recovery: the viewer's play state (an error carries none), whether playback ever started, and the retry count.
+    private bool _paused, _started, _recovering;
+    private int _recoveries;
 
     public View Root => _root;
     public string Route => $"/player/{_file}";
@@ -145,7 +148,7 @@ internal sealed class PlayerScreen : IPage
         }
     }
 
-    private async void Begin(PlaybackInfoResponse info, long start)
+    private async void Begin(PlaybackInfoResponse info, long start, bool startPaused = false)
     {
         try
         {
@@ -153,7 +156,11 @@ internal sealed class PlayerScreen : IPage
             _total.Text = DetailModel.Clock(info.DurationMs);
             _player = new Player();
             if (info.SessionId is { } sid) _player.Cookie = PlaybackClient.SessionCookie(sid);
-            _player.ErrorOccurred += (_, e) => Dbg.Log("PLAY error " + e.Error);
+            _player.ErrorOccurred += (_, e) =>
+            {
+                Dbg.Log("PLAY error " + e.Error);
+                SynchronizationContextHolder.Post(() => _ = RecoverSessionAsync());
+            };
             _player.PlaybackCompleted += (_, _) => SynchronizationContextHolder.Post(OnCompleted);
             _player.SetSource(new MediaUriSource(_local is not null ? info.Url : _env.Abs(info.Url)));
             _player.Display = new Display(Window.Default);
@@ -163,10 +170,47 @@ internal sealed class PlayerScreen : IPage
             if (_info.DurationMs <= 0) { try { _info.DurationMs = _player.StreamInfo.GetDuration(); _total.Text = DetailModel.Clock(_info.DurationMs); } catch (Exception) { /* keeps the unknown length */ } }
             if (start > info.SourceOffsetMs && info.Mode != PlaybackMode.Hls) await _player.SetPlayPositionAsync((int)start, false);
             _player.Start();
+            _started = true;
+            // A recovered session keeps the viewer's play state: a player that was paused shows its frame and stays paused.
+            if (!PlaybackRecovery.StartPlaying(startPaused)) { _player.Pause(); _paused = true; _playIcon.ResourceUrl = Ui.ResPath("icons/play.svg"); }
+            else { _paused = false; _playIcon.ResourceUrl = Ui.ResPath("icons/pause.svg"); }
             Dbg.Log("PLAY started");
             _tick.Start(); _hide.Start();
         }
         catch (Exception e) { Dbg.Log("PLAY begin failed: " + e); }
+    }
+
+    /// <summary>
+    /// The server reaped or evicted the idle on-demand session (a long pause, a full node): the HLS requests 404 and the
+    /// player errors. Ask for a replacement session at the same position and keep the paused/playing state.
+    /// </summary>
+    private async Task RecoverSessionAsync()
+    {
+        if (_stopped || _recovering || _info is null) return;
+        if (!PlaybackRecovery.ShouldRecover(_info.Mode, _local is not null, _started, _recoveries)) return;
+        _recovering = true;
+        try
+        {
+            var position = PositionMs;
+            var wasPaused = _paused;
+            var attempt = _recoveries++;
+            _tick.Stop();
+            try { _player?.Stop(); _player?.Unprepare(); _player?.Dispose(); } catch (Exception) { /* already stopped */ }
+            _player = null;
+            await Task.Delay(PlaybackRecovery.Delay(attempt)).ConfigureAwait(false);
+            if (_stopped) return;
+            var force = _env.Store.ForceDirect();
+            var client = new PlaybackClient(_env.Api, new HttpClient(), _env.Caps, force.Video, force.Audio);
+            var info = await client.GetInfoAsync(_file, position).ConfigureAwait(false);
+            Dbg.Log($"PLAY recovered session at {position} ms, paused={wasPaused}");
+            SynchronizationContextHolder.Post(() => { _recovering = false; if (!_stopped) Begin(info, position, wasPaused); });
+        }
+        catch (PlaybackRefusedException e) { SynchronizationContextHolder.Post(() => { _recovering = false; ShowError(e.Message); }); }
+        catch (Exception e)
+        {
+            Dbg.Log("PLAY recovery failed: " + e.Message);
+            SynchronizationContextHolder.Post(() => { _recovering = false; ShowError("This title can't be played right now."); });
+        }
     }
 
     private long PositionMs
@@ -224,8 +268,8 @@ internal sealed class PlayerScreen : IPage
         if (_player is null) return;
         try
         {
-            if (_player.State == PlayerState.Playing) { _player.Pause(); _playIcon.ResourceUrl = Ui.ResPath("icons/play.svg"); }
-            else { _player.Start(); _playIcon.ResourceUrl = Ui.ResPath("icons/pause.svg"); _hide.Restart(); }
+            if (_player.State == PlayerState.Playing) { _player.Pause(); _paused = true; _playIcon.ResourceUrl = Ui.ResPath("icons/play.svg"); }
+            else { _player.Start(); _paused = false; _playIcon.ResourceUrl = Ui.ResPath("icons/pause.svg"); _hide.Restart(); }
         }
         catch (Exception e) { Dbg.Log("PLAY toggle failed: " + e.Message); }
     }
