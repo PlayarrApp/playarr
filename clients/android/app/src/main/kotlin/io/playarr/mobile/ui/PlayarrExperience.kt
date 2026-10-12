@@ -5937,7 +5937,7 @@ private fun PhoneVideoDetailBody(
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Text(
                     (episodeCode ?: work.genres.firstOrNull() ?: work.kind.playarrSingularLabel()).uppercase(language.locale),
-                    color = WebKicker, fontSize = 10.56.sp, lineHeight = 15.84.sp, fontWeight = FontWeight(820), letterSpacing = 0.8448.sp, style = WebTextStyle,
+                    color = PlayarrWebTheme.palette.brandInk, fontSize = 10.56.sp, lineHeight = 15.84.sp, fontWeight = FontWeight(820), letterSpacing = 0.8448.sp, style = WebTextStyle,
                 )
                 Spacer(Modifier.height(10.dp))
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
@@ -5962,7 +5962,7 @@ private fun PhoneVideoDetailBody(
                 FlowRow(Modifier.offset(y = (-1.3).dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     metaItems.forEachIndexed { index, item ->
                         Text(
-                            item, color = if (index == 0) WebInkSoft else WebInkMuted, fontSize = 10.24.sp, lineHeight = 15.36.sp,
+                            item, color = if (index == 0) WebInkSoft else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 10.24.sp, lineHeight = 15.36.sp,
                             fontWeight = if (index == 0) FontWeight(680) else FontWeight.Normal, style = WebTextStyle, maxLines = 1,
                         )
                     }
@@ -5978,7 +5978,7 @@ private fun PhoneVideoDetailBody(
                 } else {
                     Spacer(Modifier.height(10.dp))
                 }
-                Text(synopsis, color = WebInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, style = WebTextStyle, maxLines = 3, minLines = if (episode != null) 3 else 1, overflow = TextOverflow.Ellipsis)
+                Text(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, style = WebTextStyle, maxLines = 3, minLines = if (episode != null) 3 else 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(if (episode != null) 11.67.dp else 14.dp))
                 PhoneDetailActions(
                     work = work, episode = selectedEpisode, mediaFileId = mediaFileId, progress = progress, canDownload = canDownload,

@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Match Android phone Search geometry, idle illustration and muted colour to web, and label generated detail chapter markers consistently with web.
 - Tizen offline downloads now report Ready only after the complete output file has been flushed and closed.
 - Run hosted macOS D-pad checks with a real key window and observed startup focus, while regular Mac captures stay invisible.
 - Route D-pad Down from the synthetic Add profile avatar to Clients while preserving Settings below real profiles.
