@@ -26,6 +26,7 @@ import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
 import { BRAND_PINK } from '../../core/Tokens';
 import type { RgbaColor } from '../../core/Tokens';
+import { balanceTitle } from '../../core/TitleBalance';
 
 // Web TV stage copy (`.tv-provider`, `.details-panel-title`, `.tv-preview-meta`, `.tv-preview-overview`),
 // measured from the live web DOM at 1920x1080.
@@ -64,8 +65,7 @@ export struct FeatureCopy {
   /** The work/hero title. Wraps naturally within whatever width the
    * caller (`Stage.ets`'s title panel, or later Detail's copy column)
    * gives this component -- the source CSS never line-clamps the title,
-   * only `text-wrap: balance`s it, which has no ArkUI equivalent and is
-   * a documented, deliberate divergence. */
+   * only `text-wrap: balance`s it, which `balancedTitle()` reproduces. */
   @Prop title: string = '';
   /** Short stacked meta lines (e.g. "2024 - Drama - 2h 15m", then a
    * secondary line). The LAST entry always renders in the smaller, muted
@@ -93,6 +93,22 @@ export struct FeatureCopy {
     return toResourceColorWithAlpha(activeColors().ink, COPY_TEXT_INK_ALPHA);
   }
 
+  /** Chrome's `text-wrap: balance` for the title (web `.details-panel-title`): ArkUI has none, so the breaks are
+   * worked out from measured widths (`core/TitleBalance.ts`) and put into the string. */
+  private balancedTitle(): string {
+    const ui = this.getUIContext();
+    const measureUtils = ui.getMeasureUtils();
+    const size = tv(HERO_TITLE_FONT_SIZE);
+    return balanceTitle(this.title, (text: string): number => {
+      return measureUtils.measureText({
+        textContent: text,
+        fontSize: size,
+        fontWeight: HERO_TITLE_FONT_WEIGHT,
+        letterSpacing: tv(HERO_TITLE_LETTER_SPACING),
+      });
+    }, ui.vp2px(tv(HERO_TITLE_MAX_WIDTH)));
+  }
+
   build() {
     Column() {
       if (this.kicker.length > 0) {
@@ -106,7 +122,7 @@ export struct FeatureCopy {
       }
 
       if (this.title.length > 0) {
-        Text(this.title)
+        Text(this.balancedTitle())
           .fontSize(tv(HERO_TITLE_FONT_SIZE))
           .fontWeight(HERO_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
