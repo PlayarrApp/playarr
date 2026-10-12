@@ -9,6 +9,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = (ROOT / "components" / "MainScene.brs").read_text(encoding="utf-8")
+PAGES = (ROOT / "components" / "Pages.brs").read_text(encoding="utf-8")
 SCENE = (ROOT / "components" / "MainScene.xml").read_text(encoding="utf-8")
 CONFIG = (ROOT / "source" / "Config.brs").read_text(encoding="utf-8")
 WEB_GLOBAL_CSS = (ROOT.parent / "tv-web" / "web" / "src" / "styles" / "global.css").read_text(encoding="utf-8")
@@ -106,6 +107,105 @@ class NavigationContractTests(unittest.TestCase):
         assert position_unpack is not None
         self.assertIn("position = event.GetData()", position_unpack.group(0))
         self.assertIn("index = position[1]", position_unpack.group(0))
+
+    def test_clients_link_is_a_bottom_right_footer_action(self) -> None:
+        import xml.etree.ElementTree as ET
+
+        scene = ET.fromstring(SCENE)
+        stage = scene.find("./children/Rectangle")
+        profile_group = scene.find(".//Group[@id='profilesGroup']")
+        profile_actions = scene.find(".//Group[@id='profileActionsGroup']")
+        clients_action = scene.find(".//Group[@id='profilesClientsAction']")
+        self.assertIsNotNone(stage)
+        self.assertIsNotNone(profile_group)
+        self.assertIsNotNone(profile_actions)
+        self.assertIsNotNone(clients_action)
+        assert stage is not None
+        assert profile_group is not None
+        assert profile_actions is not None
+        assert clients_action is not None
+        self.assertIs(profile_group.find("./Group[@id='profilesClientsAction']"), clients_action)
+
+        clients_poster = clients_action.find("./Poster[@id='profilesClientsBtn']")
+        clients_focus = clients_action.find("./Poster[@id='profilesClientsFocus']")
+        clients_hit = clients_action.find("./Rectangle[@id='profilesClientsHit']")
+        self.assertIsNotNone(clients_poster)
+        self.assertIsNotNone(clients_focus)
+        self.assertIsNotNone(clients_hit)
+        assert clients_poster is not None
+        assert clients_focus is not None
+        assert clients_hit is not None
+        self.assertIsNone(profile_actions.find(".//*[@id='profilesClientsHit']"))
+
+        def translation(node: ET.Element) -> tuple[float, float]:
+            values = node.attrib.get("translation", "[0,0]").strip("[]").split(",")
+            return float(values[0]), float(values[1])
+
+        group_x, group_y = translation(clients_action)
+        stage_width = float(stage.attrib["width"])
+        stage_height = float(stage.attrib["height"])
+        poster_x, poster_y = translation(clients_poster)
+        poster = (
+            group_x + poster_x,
+            group_y + poster_y,
+            float(clients_poster.attrib["width"]),
+            float(clients_poster.attrib["height"]),
+        )
+        focus_x, focus_y = translation(clients_focus)
+        focus = (
+            group_x + focus_x,
+            group_y + focus_y,
+            float(clients_focus.attrib["width"]),
+            float(clients_focus.attrib["height"]),
+        )
+        hit_x, hit_y = translation(clients_hit)
+        hitbox = (
+            group_x + hit_x,
+            group_y + hit_y,
+            float(clients_hit.attrib["width"]),
+            float(clients_hit.attrib["height"]),
+        )
+        self.assertEqual(hitbox, poster)
+        self.assertEqual(clients_focus.attrib.get("uri"), "pkg:/images/round-ring-r25.9.png")
+        self.assertLessEqual(focus[0], poster[0])
+        self.assertLessEqual(focus[1], poster[1])
+        self.assertGreaterEqual(focus[0] + focus[2], poster[0] + poster[2])
+        self.assertGreaterEqual(focus[1] + focus[3], poster[1] + poster[3])
+        self.assertGreater(focus[2], hitbox[2])
+        self.assertGreater(focus[3], hitbox[3])
+        self.assertEqual(clients_focus.attrib.get("visible"), "false")
+        left, top, width, height = hitbox
+        self.assertGreaterEqual(left, 0)
+        self.assertGreaterEqual(top, 0)
+        self.assertLessEqual(left + width, stage_width)
+        self.assertLessEqual(top + height, stage_height)
+        self.assertGreater(left + width / 2, stage_width * 3 / 4)
+        self.assertGreater(top + height / 2, stage_height * 4 / 5)
+
+        profiles_chrome = re.search(
+            r"sub applyProfilesChromeFocus\(\).*?end sub", MAIN, flags=re.DOTALL
+        )
+        self.assertIsNotNone(profiles_chrome)
+        assert profiles_chrome is not None
+        self.assertIn('m.profilesClientsFocus.visible = clientsF', profiles_chrome.group(0))
+        self.assertIn('m.profilesClientsFocus.blendColor = ThemeColor("focusRing")', profiles_chrome.group(0))
+        self.assertIn('m.profilesClientsBtn.uri = "pkg:/images/profiles-clients" + suffix + ".png"', profiles_chrome.group(0))
+
+        down_navigation = re.search(
+            r'state = "profiles" and key = "down"(.*?)else if state = "profiles" and key = "up"',
+            MAIN,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(down_navigation)
+        assert down_navigation is not None
+        self.assertIn("m.profilesSignOutHit", down_navigation.group(1))
+        self.assertIn("m.profilesClientsHit.SetFocus(true)", down_navigation.group(1))
+        return_to_opener = re.search(
+            r"sub leaveClientsToProfiles\(\).*?end sub", PAGES, flags=re.DOTALL
+        )
+        self.assertIsNotNone(return_to_opener)
+        assert return_to_opener is not None
+        self.assertIn("m.profilesClientsHit.SetFocus(true)", return_to_opener.group(0))
 
     def test_profile_heading_typography_tracks_web_clamps_and_weights(self) -> None:
         vw_match = re.search(r"--vw:\s*([\d.]+)vw", WEB_GLOBAL_CSS)

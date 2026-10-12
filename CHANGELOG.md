@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Route D-pad Down from the synthetic Add profile avatar to Clients while preserving Settings below real profiles.
+- Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
 - Fix Apple TV startup so D-pad navigation begins on the first Home card.
 - Xbox/UWP shared key art now matches the TV web's grayscale, contrast and brightness filters, measured image geometry and stage wash across Home, library and detail pages in both themes.
 - Hide legacy Chromium scrollbars in the webOS Calendar week view without changing scroll behaviour.
@@ -340,6 +342,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add a native Roku Clients route with sideload instructions and clear notes about Roku's browser and download limits.
 - HarmonyOS TV: Settings > Profile lock sets, replaces and removes the profile PIN, as web does.
 - HarmonyOS TV player: an info button opens a drawer with the title, its synopsis and how the stream reaches the device (delivery, quality, audio, subtitles).
 - HarmonyOS TV player: the control bar shows the negotiated quality; selecting it opens a drawer to switch quality (the stream renegotiates from the current position, keeping the chosen audio).

@@ -134,6 +134,12 @@
         <Poster id="profilesSignOutBtn" translation="[54,0]" width="104" height="44" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFit" />
         <Rectangle id="profilesSignOutHit" translation="[54,0]" width="104" height="44" color="0x00000000" focusable="true" />
       </Group>
+      <!-- Web .profile-clients-link: independent footer action, not part of avatar actions. -->
+      <Group id="profilesClientsAction" translation="[1784,1005]">
+        <Poster id="profilesClientsBtn" translation="[0,0]" width="88" height="44" uri="pkg:/images/profiles-clients.png" loadDisplayMode="scaleToFill" />
+        <Poster id="profilesClientsFocus" translation="[-5,-5]" width="98" height="54" uri="pkg:/images/round-ring-r25.9.png" visible="false" />
+        <Rectangle id="profilesClientsHit" translation="[0,0]" width="88" height="44" color="0x00000000" focusable="true" />
+      </Group>
 
     </Group>
 

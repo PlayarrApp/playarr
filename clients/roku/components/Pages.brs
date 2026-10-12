@@ -20,6 +20,7 @@ sub pagesInit()
     m.pageItems = []
     m.pageFocusIdx = 0
     m.pageKind = ""
+    m.clientGuideOpen = false
     m.pageData = invalid
     m.pageStatus = ""
     m.calendarAnchor = invalid
@@ -338,6 +339,12 @@ function pageOnKey(key as String) as Boolean
     if key = "back"
         if m.pageKind = "household"
             loadProfiles()
+        else if m.pageKind = "clients"
+            if m.clientGuideOpen
+                leaveRokuGuideToClientList()
+            else
+                leaveClientsToProfiles()
+            end if
         else
             pageLeaveToHome()
         end if
@@ -364,7 +371,15 @@ end function
 sub pageActivate(item as Object)
     action = item.action
     if action = "back"
-        pageLeaveToHome()
+        if m.pageKind = "clients"
+            if m.clientGuideOpen
+                leaveRokuGuideToClientList()
+            else
+                leaveClientsToProfiles()
+            end if
+        else
+            pageLeaveToHome()
+        end if
     else if m.pageKind = "watchlist"
         watchlistAction(item)
     else if m.pageKind = "calendar"
@@ -375,6 +390,18 @@ sub pageActivate(item as Object)
         customiseAction(item)
     else if m.pageKind = "household"
         householdAction(item)
+    else if m.pageKind = "clients" and action = "clientChoice"
+        clientId = item.data
+        if clientId = "roku"
+            m.clientGuideOpen = true
+            renderRokuInstallGuide()
+            m.pageFocusIdx = 0
+            pageFocusRender()
+        else
+            showClientGuideUnavailable(clientId)
+        end if
+    else if m.pageKind = "clients" and action = "clientsGuideInfo"
+        showClientGuideUnavailable("roku")
     end if
 end sub
 
@@ -415,6 +442,10 @@ sub openPage(kind as String)
         m.settingsPanel = "appearance"
         renderSettings()
         pageSettingsFocusDefault()
+    else if kind = "clients"
+        m.pageStatus = "ready"
+        m.clientGuideOpen = false
+        renderClientsIndex()
     end if
     pageFocusRender()
     m.top.SetFocus(true)
@@ -541,6 +572,101 @@ function requestStatusLabel(status as Dynamic) as String
     if status = "failed" then return "Failed"
     return "Unknown"
 end function
+
+' Native equivalent of the tv-web /clients index. Keep every current platform choice visible; only Roku has a native guide on
+' this client, so other choices explain how to open their web guide on a phone or computer.
+sub renderClientsIndex()
+    pageBegin("Clients", 0)
+    pgLabel(m.pageBody, 224, 126, 900, 18, "PLAYARR CLIENTS", 10, 800, "brandInk")
+    pgLabel(m.pageBody, 224, 153, 1400, 55, "Watch your way.", 40, 500, "ink")
+    pgLabel(m.pageBody, 224, 215, 1460, 42, "Choose a platform to see availability and installation details.", 15, 400, "inkSoft", { wrap: true, maxLines: 2 })
+
+    ids = ["vidaa", "android", "apple", "webos", "tizen", "roku", "chromecast", "xbox", "harmony", "firetv", "server"]
+    names = ["Hisense VIDAA", "Android", "Apple TV", "LG webOS", "Samsung Tizen", "Roku TV", "Chromecast", "Xbox", "HarmonyOS", "Fire TV", "Server"]
+    platforms = ["Hisense smart TVs", "Phones, tablets and TVs", "Apple TV", "LG smart TVs", "Samsung smart TVs", "Roku televisions", "Chromecast built-in devices", "Xbox consoles", "HarmonyOS devices", "Fire TV devices", "Your Playarr server"]
+    availability = ["Experimental install", "Available", "Coming soon", "Experimental install", "Experimental install", "Experimental install", "Coming soon", "Coming soon", "Coming soon", "Coming soon", "Experimental install"]
+    for i = 0 to ids.Count() - 1
+        row = Int(i / 3)
+        col = i - row * 3
+        x = 224 + col * 506
+        y = 332 + row * 132
+        pgRound(m.pageBody, x, y, 470, 112, 18, "surfaceStrong", 174)
+        pgRound(m.pageBody, x, y, 470, 112, 18, "line", 138, true)
+        pgLabel(m.pageBody, x + 24, y + 20, 420, 26, names[i], 19, 700, "ink")
+        pgLabel(m.pageBody, x + 24, y + 53, 420, 18, platforms[i], 12, 400, "inkSoft")
+        pgLabel(m.pageBody, x + 24, y + 78, 420, 16, availability[i], 10, 700, "brandInk")
+        pgFocusable(x, y, 470, 112, 18, "clientChoice", ids[i], true)
+    end for
+end sub
+
+' The native /clients/roku guide. Roku has no in-app browser or download handoff, so show the install steps directly and expose
+' the official guide through an explanatory dialog.
+sub renderRokuInstallGuide()
+    pageBegin("Clients", 0)
+    pgLabel(m.pageBody, 224, 126, 900, 18, "PLAYARR CLIENTS", 10, 800, "brandInk")
+    pgLabel(m.pageBody, 224, 153, 1400, 55, "Roku TV", 40, 500, "ink")
+    pgLabel(m.pageBody, 224, 215, 1460, 46, "The preview ZIP is the complete Roku channel bundle. Roku's development installer expects the archive itself, so keep it zipped.", 15, 400, "inkSoft", { wrap: true, maxLines: 2 })
+
+    pgLabel(m.pageBody, 224, 287, 900, 18, "DEVELOPER-MODE SIDELOAD", 10, 800, "brandInk")
+    pgLabel(m.pageBody, 224, 311, 1400, 43, "Install Playarr on your Roku", 30, 500, "ink")
+    pgLabel(m.pageBody, 224, 360, 1440, 40, "Keep the Roku and the phone or computer used for installation on the same local network. The Roku app cannot download the ZIP, so save it on that other device first.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
+
+    clientInstallStep(224, 420, "01", "Enable Developer Mode", "On the Roku remote, press Home three times, Up twice, then Right, Left, Right, Left, Right. Note the URL shown, enable the Development Application Installer, accept the agreement and create a password. The Roku will restart.")
+    clientInstallStep(996, 420, "02", "Open the web installer", "From a phone or computer on the same network, open the URL shown on the TV. Sign in with the username rokudev and the developer password you created.")
+    clientInstallStep(224, 568, "03", "Upload the ZIP unchanged", "Choose Upload, select playarr-roku.zip without extracting it, then choose Install. Roku launches Playarr when the sideload finishes.")
+    clientInstallStep(996, 568, "04", "Connect Playarr", "Enter your Playarr Server base URL, follow the code shown on the TV to authorise the Roku, then choose a household profile.")
+
+    pgRound(m.pageBody, 224, 734, 1488, 54, 27, "surface", 204)
+    pgRound(m.pageBody, 224, 734, 1488, 54, 27, "line", -1, true)
+    pgLabel(m.pageBody, 248, 734, 820, 54, "Official guide: https://developer.roku.com/dev/docs/developer-setup", 13, 700, "ink", { vertAlign: "center" })
+    pgButton(m.pageBody, 1480, 740, 42, "About this link", "secondary", "clientsGuideInfo", invalid, 14)
+
+    pgRound(m.pageBody, 224, 812, 1488, 124, 18, "surfaceStrong", 205)
+    pgLabel(m.pageBody, 256, 834, 1400, 16, "IMPORTANT", 10, 800, "brandInk")
+    pgLabel(m.pageBody, 256, 858, 1400, 34, "Only one sideloaded app can be installed.", 22, 650, "ink")
+    pgLabel(m.pageBody, 256, 899, 1400, 30, "Installing another development app replaces Playarr. If Roku rejects an identical version, remove the existing sideloaded app and install the ZIP again.", 13, 400, "inkSoft", { wrap: true, maxLines: 2 })
+end sub
+
+sub showClientGuideUnavailable(clientId as String)
+    link = "https://playarr.app/clients/" + clientId
+    title = "Client guide on another device"
+    message = "Roku apps cannot open a web browser. On a phone or computer, visit " + link + "."
+    if clientId = "roku"
+        title = "Roku official developer guide"
+        message = "Roku apps cannot open a web browser. On a phone or computer, visit https://developer.roku.com/dev/docs/developer-setup."
+    end if
+    dialog = CreateObject("roSGNode", "Dialog")
+    dialog.title = title
+    dialog.message = message
+    dialog.buttons = ["OK"]
+    dialog.ObserveField("buttonSelected", "onSimpleDialogButton")
+    m.top.dialog = dialog
+end sub
+
+sub clientInstallStep(x as Float, y as Float, number as String, title as String, description as String)
+    pgRound(m.pageBody, x, y, 716, 132, 18, "surfaceStrong", 174)
+    pgRound(m.pageBody, x, y, 716, 132, 18, "line", 138, true)
+    pgLabel(m.pageBody, x + 22, y + 18, 38, 20, number, 11, 700, "inkMuted", { mono: true })
+    pgLabel(m.pageBody, x + 74, y + 16, 620, 25, title, 17, 700, "ink")
+    pgLabel(m.pageBody, x + 74, y + 50, 620, 72, description, 13, 400, "inkSoft", { wrap: true, maxLines: 4 })
+end sub
+
+sub leaveClientsToProfiles()
+    m.pageScrollY = 0
+    m.navDockMode = false
+    showOnly("profiles")
+    m.top.screenState = "profiles"
+    if m.profilesClientsHit <> invalid then m.profilesClientsHit.SetFocus(true)
+    updateProfileActionsLayout()
+    applyProfilesChromeFocus()
+end sub
+
+sub leaveRokuGuideToClientList()
+    m.clientGuideOpen = false
+    renderClientsIndex()
+    m.pageFocusIdx = 6 ' the Roku tile follows the page back control and five earlier client choices
+    pageFocusRender()
+end sub
 
 ' ---------------------------------------------------------------------------
 ' Release calendar
