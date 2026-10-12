@@ -1,0 +1,1 @@
+- HarmonyOS: Settings lists web's ten sections and Appearance has Home screen artwork and Artwork size (saved on the device; the other new sections show their description until built).

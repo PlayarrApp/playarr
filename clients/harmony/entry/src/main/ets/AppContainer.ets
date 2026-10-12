@@ -57,6 +57,10 @@ import { DeviceProfile } from './core/DeviceProfile.ts';
 import {
   getCalendarLink,
   getLibraryView,
+  getHomeView,
+  setHomeView,
+  getArtworkSize,
+  setArtworkSize,
   getPlayerDefaultQuality,
   getPlayerSubtitleLanguage,
   getPlayerSubtitleMode,
@@ -194,4 +198,17 @@ export async function loadLibraryView(kind: string): Promise<string> {
 
 export async function saveLibraryView(kind: string, view: string): Promise<void> {
   await setLibraryView(kind, view);
+}
+
+/** Settings > Appearance: Home screen artwork and artwork size, kept on this device. Pages may not import `auth/`. */
+export async function loadAppearance(): Promise<string[]> {
+  return [await getHomeView(), await getArtworkSize()];
+}
+
+export async function saveAppearance(which: string, value: string): Promise<void> {
+  if (which === 'homeView') {
+    await setHomeView(value);
+  } else {
+    await setArtworkSize(value);
+  }
 }

@@ -295,6 +295,23 @@ export async function setLibraryView(kind: string, view: string): Promise<void> 
   await putString('library_view:' + kind, view);
 }
 
+/** Settings > Appearance: Home screen artwork ('thumbnail' or 'cover') and the global artwork size ('small', 'medium' or 'large'). */
+export async function getHomeView(): Promise<string> {
+  return getString('home_view', 'thumbnail');
+}
+
+export async function setHomeView(value: string): Promise<void> {
+  await putString('home_view', value);
+}
+
+export async function getArtworkSize(): Promise<string> {
+  return getString('artwork_size', 'medium');
+}
+
+export async function setArtworkSize(value: string): Promise<void> {
+  await putString('artwork_size', value);
+}
+
 function toLibrarySortField(value: string): LibrarySortField {
   if (value === 'date_added' || value === 'recent') {
     return value;

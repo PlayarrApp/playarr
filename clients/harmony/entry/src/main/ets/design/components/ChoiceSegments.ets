@@ -20,6 +20,7 @@ const CHOICE_HEIGHT: number = 56;
 const CHOICE_GAP: number = 8;
 const CHOICE_RADIUS: number = 12;
 const CHOICE_LABEL_SIZE: number = 10.56;
+const DESCRIPTION_SIZE: number = 13.824;
 const SECTION_GAP: number = 30;
 const LARGE_HEADING_SIZE: number = 26.4;
 const LARGE_HEADING_LETTER_SPACING: number = -0.924;
@@ -34,6 +35,8 @@ export struct ChoiceSegments {
   @Prop selected: string = '';
   /** Settings panels (web `.appearance-setting`): a 26.4 px heading over choices across `width`. */
   @Prop large: boolean = false;
+  /** Settings panels: one line of copy under the large heading (web `.appearance-setting-heading p`). */
+  @Prop description: string = '';
   @Prop sectionWidth: number = SECTION_WIDTH;
   onChoose: (value: string) => void = () => {};
 
@@ -54,6 +57,11 @@ export struct ChoiceSegments {
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
+        if (this.description !== '') {
+          Text(this.description)
+            .fontSize(tv(DESCRIPTION_SIZE))
+            .fontColor(toResourceColor(activeColors().inkSoft))
+        }
       } else {
         Text(this.heading)
           .fontSize(tv(HEADING_SIZE))

@@ -19,7 +19,7 @@ import { AUDIO_LANGUAGES, normaliseAudioLanguage, audioLanguageLabel } from '../
 import { getPlayerPreferences, updatePlayerPreferences } from '../data/ProfileRepository';
 import type { Choice } from '../design/components/ChoiceSegments';
 
-import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault } from '../AppContainer';
+import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance } from '../AppContainer';
 import { QualityMatrix } from '../design/components/QualityMatrix';
 import { ORIGINAL_QUALITY, normaliseQuality, normaliseSubtitleMode, normaliseSubtitleLanguage } from '../core/PlayerDefaults';
 
@@ -33,16 +33,40 @@ interface SettingsSection {
 const APPEARANCE: string = 'appearance';
 const PLAYER: string = 'player';
 const SERVER: string = 'server';
+// Web `PRODUCT_SETTINGS_SECTIONS` without the admin-only Request latency (08), in web's order.
 const SECTIONS: SettingsSection[] = [
   { id: APPEARANCE, number: '01', title: 'Appearance' },
+  { id: 'profile-avatar', number: '02', title: 'Profile avatar' },
+  { id: 'language', number: '03', title: 'Language' },
   { id: PLAYER, number: '04', title: 'Player' },
   { id: SERVER, number: '05', title: 'Server connection' },
+  { id: 'profile-lock', number: '06', title: 'Profile lock' },
+  { id: 'invite', number: '07', title: 'Invite a friend' },
+  { id: 'remote', number: '09', title: 'Phone remote' },
+  { id: 'your-data', number: '10', title: 'Your data' },
+  { id: 'home', number: '11', title: 'Customise Home' },
 ];
 const SECTION_COPY: Map<string, string> = new Map<string, string>([
   [APPEARANCE, "Choose this device's theme and home screen layout."],
   [PLAYER, 'Choose how Playarr should start quality, subtitles and audio.'],
   [SERVER, 'The server this device is connected to.'],
+  ['profile-avatar', 'Choose how your profile appears on this device.'],
+  ['language', 'Follow this device or keep a language fixed.'],
+  ['profile-lock', 'Require a four-digit PIN before switching profiles.'],
+  ['invite', 'Ask your Playarr Server admin for one friend-invite QR code.'],
+  ['remote', 'Control this device from your phone, or control another device.'],
+  ['your-data', 'Export your watch progress, playlists and preferences, or import them from another Playarr Server.'],
+  ['home', 'Choose which rails appear on Home and in what order.'],
 ]);
+const HOME_VIEW_CHOICES: Choice[] = [
+  { value: 'thumbnail', label: 'Thumbnails' },
+  { value: 'cover', label: 'Covers' },
+];
+const ARTWORK_SIZE_CHOICES: Choice[] = [
+  { value: 'small', label: 'Small' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'large', label: 'Large' },
+];
 const SUBTITLE_MODE_CHOICES: Choice[] = [
   { value: 'off', label: 'Off' },
   { value: 'forced', label: 'Forced only' },
@@ -87,10 +111,19 @@ export struct SettingsScreen {
   @State private subtitleMode: string = 'off';
   @State private subtitleLanguage: string = 'en';
   @State private audioError: string = '';
+  @State private homeView: string = 'thumbnail';
+  @State private artworkSize: string = 'medium';
 
   aboutToAppear(): void {
     this.loadAudioLanguage();
     this.loadDefaults();
+    this.loadAppearanceChoices();
+  }
+
+  private async loadAppearanceChoices(): Promise<void> {
+    const stored = await loadAppearance();
+    this.homeView = stored[0] === 'cover' ? 'cover' : 'thumbnail';
+    this.artworkSize = stored[1] === 'small' || stored[1] === 'large' ? stored[1] : 'medium';
   }
 
   private async loadDefaults(): Promise<void> {
@@ -209,6 +242,42 @@ export struct SettingsScreen {
         saveThemeChoice(value as ThemeModeSetting);
       },
     })
+    this.settingDivider()
+    ChoiceSegments({
+      heading: 'Home screen artwork',
+      description: 'Show portrait covers instead of wide media thumbnails on the home screen.',
+      choices: HOME_VIEW_CHOICES,
+      selected: this.homeView,
+      large: true,
+      sectionWidth: this.panelWidth(),
+      onChoose: (value: string) => {
+        this.homeView = value;
+        saveAppearance('homeView', value);
+      },
+    })
+    this.settingDivider()
+    ChoiceSegments({
+      heading: 'Artwork size',
+      description: 'Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.',
+      choices: ARTWORK_SIZE_CHOICES,
+      selected: this.artworkSize,
+      large: true,
+      sectionWidth: this.panelWidth(),
+      onChoose: (value: string) => {
+        this.artworkSize = value;
+        saveAppearance('artworkSize', value);
+      },
+    })
+  }
+
+  /** Web `.appearance-setting + .appearance-setting`: a 1 px rule between settings. */
+  @Builder
+  private settingDivider(): void {
+    Divider()
+      .width(tv(this.panelWidth()))
+      .strokeWidth(1)
+      .color(toResourceColorWithAlpha(activeColors().ink, 0.083))
+      .margin({ bottom: tv(49) })
   }
 
   @Builder
@@ -282,6 +351,23 @@ export struct SettingsScreen {
     .align(Alignment.TopStart)
   }
 
+  /** A section whose controls are not built yet: its title and web's one-line description. */
+  @Builder
+  private pendingPanel(): void {
+    Column({ space: tv(16) }) {
+      Text(this.sectionTitle())
+        .fontSize(tv(26.4))
+        .fontWeight(FontWeight.Medium)
+        .letterSpacing(tv(-0.924))
+        .fontColor(toResourceColor(activeColors().ink))
+      Text(SECTION_COPY.get(this.openSection) ?? '')
+        .fontSize(tv(PANEL_TEXT_SIZE))
+        .fontColor(toResourceColor(activeColors().inkSoft))
+    }
+    .width(tv(this.panelWidth()))
+    .alignItems(HorizontalAlign.Start)
+  }
+
   @Builder
   private serverPanel(): void {
     Column({ space: tv(16) }) {
@@ -311,8 +397,10 @@ export struct SettingsScreen {
         this.appearancePanel()
       } else if (this.openSection === PLAYER) {
         this.playerPanel()
-      } else {
+      } else if (this.openSection === SERVER) {
         this.serverPanel()
+      } else {
+        this.pendingPanel()
       }
     }
     .position({ x: tv(PANEL_LEFT), y: tv(PANEL_TOP) })
@@ -328,8 +416,10 @@ export struct SettingsScreen {
             this.appearancePanel()
           } else if (this.openSection === PLAYER) {
             this.playerPanel()
-          } else {
+          } else if (this.openSection === SERVER) {
             this.serverPanel()
+          } else {
+            this.pendingPanel()
           }
         }
         .width('100%')
