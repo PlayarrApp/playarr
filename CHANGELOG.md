@@ -2905,6 +2905,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Android TV parity captures now bound ADB calls and fail when screen focus does not become ready before the deadline.
 - Web parity captures wait for a matching detail route identity and cleared pending state, decode available hero art, and wait for finite detail entrance animations. Mobile Home waits for populated cards without TV focus keys; opt-in mobile emulation supports viewport and DPR overrides.
 - The player OK toggle parity check now compares the exact Play or Pause state from its generated web reference, while focus-order checks continue to compare the shared play-pause role.
 - The macOS D-pad parity driver can report engine focus, SwiftUI bindings, and the current window responder.
