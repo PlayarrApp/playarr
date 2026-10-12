@@ -20,6 +20,8 @@ PlayarrPage {
     function openFirst(kind) { firstWork(kind, open) }
     function loaderItem() { return loader.item }   // for the PLAYARR_STEPS smoke scripts
     function actionsFirst(kind) { firstWork(kind, actions) }
+    // The web opens its actions panel on the first card of Home; the suite driver does the same.
+    function actionsHome() { var h = loader.item; if (h && h.rails && h.rails.length && h.rails[0].items.length) actions(h.rails[0].items[0]) }
     function actions(work) { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: work }) }
     function open(work) { pageStack.push(Qt.resolvedUrl("DetailPage.qml"), { work: work }) }
 

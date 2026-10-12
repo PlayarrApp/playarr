@@ -67,19 +67,25 @@ PlayarrPage {
             spacing: 13.5 * Tokens.u
             Item {
                 width: parent.width
-                height: 79.5 * Tokens.u
+                height: 47.4 * Tokens.u + Math.min(2, titleLbl.lineCount) * 33 * Tokens.u
                 Column {
-                    anchors { left: parent.left; leftMargin: Tokens.pad; verticalCenter: parent.verticalCenter; right: closeBtn.left; rightMargin: 8 * Tokens.u }
-                    Label { text: qsTr("TITLE ACTIONS"); color: Tokens.inkMuted; font.family: Tokens.family820; font.pixelSize: 8 * Tokens.u; font.letterSpacing: 0.8 * Tokens.u }
-                    Label { width: parent.width; text: page.work.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -0.6 * Tokens.u; font.pixelSize: 24 * Tokens.u }
+                    anchors { left: parent.left; leftMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 18 * Tokens.u; right: closeBtn.left; rightMargin: 8 * Tokens.u }
+                    spacing: 4 * Tokens.u
+                    Label { text: qsTr("TITLE ACTIONS"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 0.8 * Tokens.u }
+                    Label {
+                        id: titleLbl
+                        width: parent.width; text: page.work.title; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                        lineHeightMode: Text.FixedHeight; lineHeight: 33 * Tokens.u
+                        color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -0.6 * Tokens.u; font.pixelSize: 24 * Tokens.u
+                    }
                 }
                 MouseArea {
                     id: closeBtn
-                    anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: parent.verticalCenter }
-                    width: 44 * Tokens.u; height: width
+                    anchors { right: parent.right; rightMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 20.3 * Tokens.u }
+                    width: 43.7 * Tokens.u; height: width
                     onClicked: pageStack.pop()
-                    Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border.width: 1; border.color: Tokens.lineStrong }
-                    Label { anchors.centerIn: parent; text: "✕"; color: Tokens.ink; font.pixelSize: 16 * Tokens.u }
+                    Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.dark ? "#262226" : "#dedcdd"; border.width: 1; border.color: Tokens.lineStrong }
+                    Label { anchors.centerIn: parent; text: "\u2715"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10 * Tokens.u }
                 }
             }
             ActionRow { glyph: "▶"; text: qsTr("Play"); primary: Tokens.dark; onClicked: page.play() }

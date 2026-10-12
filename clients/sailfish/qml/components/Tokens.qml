@@ -14,8 +14,8 @@ QtObject {
     readonly property color surfaceStrong: dark ? "#211d21" : "#ffffff"
     readonly property color surfaceSoft: dark ? "#312a30" : "#dfdcdd"
     readonly property color ink: dark ? "#f4f0f1" : "#382621"
-    readonly property color inkSoft: dark ? "#c5b8bd" : "#675961"
-    readonly property color inkMuted: dark ? "#887a82" : "#a5969e"
+    readonly property color inkSoft: dark ? "#c5b8bd" : "#4d4248"
+    readonly property color inkMuted: dark ? "#c2b5bb" : "#4d4248"
     readonly property color line: dark ? Qt.rgba(223/255, 220/255, 221/255, 0.11) : Qt.rgba(56/255, 38/255, 33/255, 0.14)
     readonly property color lineStrong: dark ? Qt.rgba(223/255, 220/255, 221/255, 0.23) : Qt.rgba(56/255, 38/255, 33/255, 0.28)
     readonly property color accent: dark ? "#dfdcdd" : "#675961"

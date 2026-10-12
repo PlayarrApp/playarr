@@ -47,7 +47,7 @@ export async function createDriver() {
   function plan(route, screenId) {
     const [path, q] = route.split("?");
     const view = new URLSearchParams(q ?? "").get("view");
-    if (screenId === "actions") return [["wait", "js:pageStack.currentPage.actionsFirst('movie')"], 16];
+    if (screenId === "actions") return [["wait", "wait", "js:pageStack.currentPage.actionsHome()"], 16];
     if (path === "/") return [["wait"], 12];
     if (path === "/movies" && q?.includes("panel=filters")) return [["wait", ...section("movies"), "wait", `js:pageStack.push('${PAGES}/FiltersPage.qml')`], 16];
     if (path === "/movies") return [["wait", ...section("movies")], 14];
