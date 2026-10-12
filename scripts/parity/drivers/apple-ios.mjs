@@ -7,7 +7,10 @@
 // screenshot() launches the native screen named by the file (suite ids are unique, routes are not: actions and movies).
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, statSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "suite.json"), "utf8"));
 
 const NATIVE = { "film-detail": "detail:movie:@first", "series-detail": "detail:series:@first", "player-controls": "player:movie:@first" };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -59,7 +62,7 @@ export async function createDriver() {
     async start() {
       run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
       await sleep(60000); // a fresh simulator shows one-off system banners (Apple Intelligence) in the first minute: let them go
-      await resetProgress(["b9a68b2c-8382-4c34-a6f0-c4dd58f55093", "c9a9f905-3037-4bd7-9c73-2250e8aa347d"]);
+      await resetProgress([...new Set([...suite.playback.map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // pinned files come from suite.json, never a copy here
     },
     async stop() {},
     async setTheme(t) { theme = t; },
