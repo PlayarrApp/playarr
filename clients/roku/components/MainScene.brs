@@ -1317,6 +1317,7 @@ sub setThemePreference(preference as String)
     applyAppTheme()
     applyPairingChrome()
     applyProfilesChrome()
+    applyClientsChrome()
 end sub
 
 ' Recolour the whole scene for the resolved theme. The XML is authored with the dark literals; ThemeApplyTree maps each
@@ -1347,6 +1348,8 @@ sub onPairingThemeDialogButton(event as Object)
     if m.top.screenState = "profiles"
         if m.profilesThemeHit <> invalid then m.profilesThemeHit.SetFocus(true)
         applyProfilesChromeFocus()
+    else if m.top.screenState = "page" and m.pageKind = "clients" and m.clientGuideOpen <> true
+        focusClientsHeader("clientsTheme")
     else if m.pairingThemeHit <> invalid
         m.pairingThemeHit.SetFocus(true)
     end if
@@ -1360,9 +1363,12 @@ sub onPairingLanguageDialogButton(event as Object)
     settingsRefresh()
     refreshPairingCopy()
     applyProfilesChrome()
+    applyClientsChrome()
     if m.top.screenState = "profiles"
         if m.profilesLangHit <> invalid then m.profilesLangHit.SetFocus(true)
         applyProfilesChromeFocus()
+    else if m.top.screenState = "page" and m.pageKind = "clients" and m.clientGuideOpen <> true
+        focusClientsHeader("clientsLanguage")
     else if m.pairingLangHit <> invalid
         m.pairingLangHit.SetFocus(true)
     end if
@@ -6413,7 +6419,8 @@ sub showOnly(name as String)
     parityEmit("screen", name)
     ' tv-web Profiles is a full-canvas picker with no left nav dock / clock chrome.
     ' Hide the signed-in shell on pre-auth and profiles so those screens match web.
-    m.persistentHeader.visible = name <> "status" and name <> "pairing" and name <> "profiles"
+    clientsIndex = name = "page" and m.pageKind = "clients" and m.clientGuideOpen <> true
+    m.persistentHeader.visible = name <> "status" and name <> "pairing" and name <> "profiles" and not clientsIndex
     m.statusGroup.visible = name = "status"
     m.pairingGroup.visible = name = "pairing"
     m.profilesGroup.visible = name = "profiles"
