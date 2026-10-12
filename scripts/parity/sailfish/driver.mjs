@@ -74,6 +74,24 @@ export async function createDriver() {
     return [env.PLAYARR_SF_VNCDO, ["--delay", "20", "-s", `${h}::${p}`, "-p", readFileSync(env.PLAYARR_SF_VNC_PW_FILE, "utf8").trim()]];
   };
 
+  // The app's MPRIS entry: a title, status Playing, and Pause from the bus really pauses (then Play resumes).
+  function mpris() {
+    const bus = "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/100000/dbus/user_bus_socket";
+    const call = (m, args = "") => `dbus-send --session --print-reply --dest=$N /org/mpris/MediaPlayer2 ${m} ${args}`;
+    const get = (prop) => call("org.freedesktop.DBus.Properties.Get", `string:org.mpris.MediaPlayer2.Player string:${prop}`);
+    try {
+      const out = ssh("defaultuser", `${bus}; N=$(dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep -o 'org.mpris.MediaPlayer2.harbour-playarr[^"]*' | head -1); [ -n "$N" ] || exit 3
+${get("Metadata")} | grep -A1 xesam:title | tail -1; ${get("PlaybackStatus")} | tail -1
+${call("org.mpris.MediaPlayer2.Player.Pause")} >/dev/null; sleep 2; echo AFTER; ${get("PlaybackStatus")} | tail -1
+${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
+      const [before, after] = out.split("AFTER");
+      const title = (before.match(/string "([^"]*)"/g) || [])[0] ?? "";
+      const status = (before.match(/string "(\w+)"/g) || []).at(-1) ?? "";
+      const pausedOk = /Paused/.test(after || "");
+      return { title, state: status, pausedOk, ok: title.length > 9 && /Playing/.test(status) && pausedOk };
+    } catch (e) { return { ok: false, error: String(e.message).split("\n")[0] }; }
+  }
+
   return {
     async start() { ssh("defaultuser", "test -s ~/.config/harbour-playarr/harbour-playarr.conf && grep -q refresh ~/.config/harbour-playarr/harbour-playarr.conf"); },
     async stop() { rmSync(tmp, { recursive: true, force: true }); },
@@ -99,17 +117,22 @@ export async function createDriver() {
       if (!existsSync(file)) throw new Error("capture failed");
     },
     // Plays case.file straight in the player and reads the engine position from the app's own log.
+    supports: { nowPlaying: true },
     async play(c) {
       const t0 = Date.now();
       const probe = "js:console.log('PLAYPOS',Date.now(),pageStack.currentPage.engine.position)";
-      launch(["wait", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${c.file}',title:'case ${c.id}',startMs:0})`, ...Array(36).fill(probe)]);
-      await sleep(70000);
+      launch(["wait", "js:console.log('PLAYSTART',Date.now())", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${c.file}',title:'case ${c.id}',startMs:0})`, ...Array(36).fill(probe)]);
+      await sleep(40000);
+      const np = mpris();
+      await sleep(30000);
       const log = ssh("root", `journalctl -b --no-pager | grep PLAYPOS | tail -60`);
+      // Time to first frame counts from the play action, not from the app launch.
+      const t1 = Number(ssh("root", "journalctl -b --no-pager | grep PLAYSTART | tail -1").match(/PLAYSTART (\d+)/)?.[1] ?? t0);
       const samples = [...log.matchAll(/PLAYPOS (\d+) (-?\d+)/g)].map((m) => ({ t: Number(m[1]), pos: Number(m[2]) })).filter((s) => s.t >= t0 - 5000);
       const moving = samples.filter((s) => s.pos > 0);
-      if (!moving.length) return { state: samples.length ? "stalled" : "error", detail: "position never advanced" };
+      if (!moving.length) return { state: samples.length ? "stalled" : "error", detail: "position never advanced", nowPlaying: np };
       const first = moving[0], last = moving.at(-1);
-      return { state: last.pos > first.pos ? "playing" : "stalled", startSeconds: (first.t - t0) / 1000, advancedSeconds: (last.pos - first.pos) / 1000 };
+      return { state: last.pos > first.pos ? "playing" : "stalled", startSeconds: (first.t - t1) / 1000, advancedSeconds: (last.pos - first.pos) / 1000, nowPlaying: np };
     },
   };
 }

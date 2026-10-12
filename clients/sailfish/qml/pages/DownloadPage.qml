@@ -36,7 +36,7 @@ PlayarrPage {
         var old = edit
         Api.request("POST", "/api/v1/downloads", { media_file_id: mediaFileId, quality_id: quality }, function (st, t) {
             busy = false
-            console.log("download ticket request", st, quality)
+            console.log("download ticket request", st, quality, t ? t.id : "")
             if (st !== 200 && st !== 201) { note = st === 403 ? qsTr("Downloads are not allowed") : qsTr("Download failed"); return }
             Api.setSetting("dlmeta-" + t.id, JSON.stringify({ title: title, keepUntil: p, kind: info.kind || "movie", series: info.series, season: info.season, episode: info.episode }))
             if (old) { Downloads.remove(old.id); Api.request("DELETE", "/api/v1/downloads/" + old.id, null, null) }
