@@ -1,0 +1,1 @@
+- Xbox: the detail page's primary action is the web's filled pill and its secondary pills are filled, not outlined.

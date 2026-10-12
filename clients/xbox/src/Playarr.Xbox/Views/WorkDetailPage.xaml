@@ -93,16 +93,15 @@
                 Padding="26,0,26,0"
                 CornerRadius="33"
                 Margin="0,36,0,0"
-                Background="{StaticResource PlayarrSurfaceStrong}"
-                BorderBrush="{StaticResource PlayarrLine}"
-                BorderThickness="1"
+                Background="{StaticResource PlayarrInk}"
+                BorderThickness="0"
                 FocusVisualPrimaryBrush="{StaticResource PlayarrFocusRing}"
                 FocusVisualPrimaryThickness="3"
                 FocusVisualSecondaryThickness="0"
                 Click="PlayButton_Click">
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                    <FontIcon Glyph="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="11" />
-                    <TextBlock x:Name="PlayLabel" Text="Play" FontSize="12" FontWeight="SemiBold" />
+                    <FontIcon Glyph="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource PlayarrSurfaceStrong}" />
+                    <TextBlock x:Name="PlayLabel" Text="Play" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PlayarrSurfaceStrong}" />
                 </StackPanel>
             </Button>
 

@@ -155,7 +155,7 @@ namespace Playarr.Xbox.Views
             _actionsInWatchlist = inWatchlist;
             ActionRow.Children.Clear();
             ActionRow.Visibility = Visibility.Visible;
-            var watch = Ui.Pill(inWatchlist ? "\u2713  Remove from watchlist" : "+  Add to watchlist", null);
+            var watch = Ui.Filled(Ui.Pill(inWatchlist ? "\u2713  Remove from watchlist" : "+  Add to watchlist", null));
             watch.Click += async (s, e) =>
             {
                 try
@@ -170,7 +170,7 @@ namespace Playarr.Xbox.Views
                 RenderActions();
             };
             ActionRow.Children.Add(watch);
-            var playlist = Ui.Pill("+  Add to Playlist", OpenPlaylistDrawer);
+            var playlist = Ui.Filled(Ui.Pill("+  Add to Playlist", OpenPlaylistDrawer));
             ActionRow.Children.Add(playlist);
         }
 
