@@ -22,6 +22,10 @@ const SUITE_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../suite.js
 const SUITE_SCREENS = JSON.parse(readFileSync(SUITE_FILE, "utf8")).screens;
 const MAX_DEBUG_FRAME_BYTES = 16 * 1024;
 
+export function spawnSyncBinary(command, args, options = {}) {
+  return spawnSync(command, args, { ...options, encoding: null });
+}
+
 export function splitDebugFrames(buffer, chunk) {
   const frames = (buffer + chunk).split("\n");
   const remainder = frames.pop() ?? "";
@@ -265,8 +269,14 @@ export function createDriver({ out, args = [] } = {}) {
   const sendEcp = async (path, method = "POST") => {
     const response = await requestEcp(`${ecp}/${path}`, method);
     if (!response.ok) throw new Error(`Roku ECP request failed (${response.status})`);
-    if (path === "launch/dev" && isLaunchErrorBody(await response.text())) {
-      throw new Error("Roku ECP launch/dev returned an error response body");
+    if (path === "launch/dev") {
+      let body;
+      try {
+        body = await response.text();
+      } catch {
+        throw new Error("Roku ECP launch response could not be read; device outcome may be unknown");
+      }
+      if (isLaunchErrorBody(body)) throw new Error("Roku ECP launch/dev returned an error response body");
     }
     return response;
   };
@@ -399,9 +409,8 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   const curl = (config) => {
-    const result = spawnSync("curl", ["--config", "-"], {
+    const result = spawnSyncBinary("curl", ["--config", "-"], {
       input: config,
-      encoding: "buffer",
       timeout: 35000,
       maxBuffer: 64 << 20,
       stdio: ["pipe", "pipe", "ignore"],
@@ -411,9 +420,8 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   const pngFromJpeg = (jpeg) => {
-    const result = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-f", "image2pipe", "-vcodec", "png", "pipe:1"], {
+    const result = spawnSyncBinary("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-f", "image2pipe", "-vcodec", "png", "pipe:1"], {
       input: jpeg,
-      encoding: "buffer",
       timeout: 20000,
       maxBuffer: 64 << 20,
       stdio: ["pipe", "pipe", "ignore"],
@@ -423,9 +431,8 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   const sampleBackgroundPixel = (jpeg) => {
-    const result = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-vf", "crop=1:1:10:500", "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"], {
+    const result = spawnSyncBinary("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-vf", "crop=1:1:10:500", "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"], {
       input: jpeg,
-      encoding: "buffer",
       timeout: 12000,
       maxBuffer: 4096,
       stdio: ["pipe", "pipe", "ignore"],
