@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.IntentCompat
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
@@ -41,6 +42,7 @@ internal fun PlayarrMediaSession(
     player: Player,
     title: String,
     subtitle: String?,
+    artwork: ByteArray?,
     canPrevious: Boolean,
     canNext: Boolean,
     onPlay: () -> Unit,
@@ -64,11 +66,14 @@ internal fun PlayarrMediaSession(
     val currentOnPrevious = rememberUpdatedState(onPrevious)
     val currentOnNext = rememberUpdatedState(onNext)
 
-    // The now-playing entry needs a title: put it on the current item (same source, so no re-prepare).
-    LaunchedEffect(player, title, subtitle, player.currentMediaItem?.mediaId) {
+    // The now-playing entry needs a title and cover: put them on the current item (same source, so no re-prepare).
+    LaunchedEffect(player, title, subtitle, artwork, player.currentMediaItem?.mediaId) {
         val item = player.currentMediaItem ?: return@LaunchedEffect
-        if (item.mediaMetadata.title?.toString() == title && item.mediaMetadata.subtitle?.toString() == subtitle) return@LaunchedEffect
-        val meta = item.mediaMetadata.buildUpon().setTitle(title).setSubtitle(subtitle).build()
+        val current = item.mediaMetadata
+        if (current.title?.toString() == title && current.subtitle?.toString() == subtitle && (artwork == null || current.artworkData != null)) return@LaunchedEffect
+        val meta = current.buildUpon().setTitle(title).setSubtitle(subtitle)
+            .apply { if (artwork != null) setArtworkData(artwork, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
+            .build()
         player.replaceMediaItem(player.currentMediaItemIndex, item.buildUpon().setMediaMetadata(meta).build())
     }
 
@@ -113,6 +118,13 @@ internal fun PlayarrMediaSession(
             )
         }
         val session = builder.build()
-        onDispose { session.release() }
+        // The service adopts the session: media-style notification and media-button routing.
+        PlayarrPlaybackService.session = session
+        runCatching { context.applicationContext.startService(Intent(context.applicationContext, PlayarrPlaybackService::class.java)) }
+        onDispose {
+            PlayarrPlaybackService.service?.let { service -> if (service.sessions.contains(session)) service.removeSession(session); if (service.sessions.isEmpty()) service.stopSelf() }
+            if (PlayarrPlaybackService.session === session) PlayarrPlaybackService.session = null
+            session.release()
+        }
     }
 }

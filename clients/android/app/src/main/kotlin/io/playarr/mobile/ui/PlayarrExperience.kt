@@ -1664,6 +1664,7 @@ internal fun PlayarrExperience(
             player = playerViewModel.player.rawPlayer,
             title = activePlaybackItem.displayTitle(LocalPlayarrLanguage.current),
             subtitle = activePlaybackItem.subtitle,
+            artwork = rememberPlayarrNowPlayingArtwork(activePlaybackItem.artworkWork, serverUrl, token),
             canPrevious = playbackQueue.canPrevious,
             canNext = playbackQueue.canNext,
             onPlay = playerViewModel.player::play,
@@ -9922,4 +9923,25 @@ internal fun io.playarr.shared.domain.model.PlayarrError.userMessageForExperienc
         PlayarrString.ErrorSomethingWrongLoading,
         mapOf("subject" to subject),
     )
+}
+
+/** The playing work's poster as JPEG bytes for the now-playing notification (null until loaded or when there is none). */
+@Composable
+private fun rememberPlayarrNowPlayingArtwork(work: Work?, fallbackServerUrl: String, fallbackToken: String?): ByteArray? {
+    val context = LocalContext.current
+    val access = work?.let { rememberPlayarrWorkServerAccess(it.id, fallbackServerUrl, fallbackToken) }
+    var bytes by remember(work?.id) { mutableStateOf<ByteArray?>(null) }
+    LaunchedEffect(work?.id, access) {
+        if (work == null || access == null) return@LaunchedEffect
+        val url = playarrArtworkCandidates(work.id, work.images, listOf(ImageKind.Poster, ImageKind.Backdrop), access.serverUrl) { 342 }.firstOrNull() ?: return@LaunchedEffect
+        val token = playarrAccessTokenForUrl(access, url)
+        val request = ImageRequest.Builder(context).data(url).size(coil3.size.Size(512, 512))
+            .apply { if (!token.isNullOrBlank()) httpHeaders(NetworkHeaders.Builder().set("Authorization", "Bearer $token").build()) }
+            .build()
+        val image = (coil3.SingletonImageLoader.get(context).execute(request) as? coil3.request.SuccessResult)?.image ?: return@LaunchedEffect
+        bytes = runCatching {
+            java.io.ByteArrayOutputStream().also { image.toBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
+        }.getOrNull()
+    }
+    return bytes
 }

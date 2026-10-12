@@ -13,6 +13,8 @@
          respectively. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- PlayarrPlaybackService: the now-playing media notification while a title plays. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -79,6 +81,15 @@
             android:name=".download.PlayarrDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".ui.PlayarrPlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
         <activity
             android:name=".MainActivity"
