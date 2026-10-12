@@ -56,7 +56,7 @@ export struct TouchNavBar {
         .width(ICON_SIZE)
         .height(ICON_SIZE)
         .objectFit(ImageFit.Contain)
-        .colorFilter(tintFilter(item.id === this.selectedId ? activeColors().ink : activeColors().inkMuted))
+        .colorFilter(tintFilter(item.id === this.selectedId ? activeColors().bg : activeColors().inkMuted))
         .draggable(false)
         .focusable(false)
     }
@@ -64,7 +64,7 @@ export struct TouchNavBar {
     .height(TILE_HEIGHT)
     .justifyContent(FlexAlign.Center)
     .borderRadius(TILE_RADIUS)
-    .backgroundColor(item.id === this.selectedId ? toResourceColor(activeColors().surfaceStrong) : Color.Transparent)
+    .backgroundColor(item.id === this.selectedId ? toResourceColor(activeColors().ink) : Color.Transparent)
     .onClick(() => {
       navigateFromRail(item.id, this.selectedId);
     })

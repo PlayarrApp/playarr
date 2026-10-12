@@ -5,7 +5,7 @@
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
-import { tv } from '../Metrics';
+import { isTvMetrics, tv } from '../Metrics';
 
 export interface Choice {
   value: string;
@@ -18,6 +18,7 @@ const HEADING_LETTER_SPACING: number = 0.672;
 const HEADING_GAP: number = 13;
 const CHOICE_HEIGHT: number = 56;
 const CHOICE_GAP: number = 8;
+const TOUCH_DRAWER_SECTION_WIDTH: number = 320;
 const CHOICE_RADIUS: number = 12;
 const CHOICE_LABEL_SIZE: number = 10.56;
 const DESCRIPTION_SIZE: number = 13.824;
@@ -46,7 +47,9 @@ export struct ChoiceSegments {
 
   private choiceWidth(): number {
     const count = Math.max(1, this.choices.length);
-    return (this.sectionWidth - CHOICE_GAP * (count - 1)) / count;
+    // Phone drawers are the page wide (360 vp less 20 padding each side), not the TV's 268.
+    const total = !isTvMetrics() && this.sectionWidth === SECTION_WIDTH ? TOUCH_DRAWER_SECTION_WIDTH : this.sectionWidth;
+    return (total - CHOICE_GAP * (count - 1)) / count;
   }
 
   build() {

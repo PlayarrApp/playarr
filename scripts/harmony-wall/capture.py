@@ -242,9 +242,9 @@ else:
     # inside a page. Coordinates are px at density 480 (3 px per vp): the header's round buttons sit at the right, 16 vp in.
     folder = os.path.join(out, THEME)
     FILTER_BTN = (972, 100)
-    CLOSE_DRAWER = (870, 234)
-    VIEW_CHOICE = {"week": (540, 645), "month": (816, 645)}
-    CARDS = ((540, 470), (540, 600), (540, 900), (270, 600))
+    CLOSE_DRAWER = (955, 135)
+    VIEW_CHOICE = {"week": (540, 438), "month": (864, 438)}
+    CARDS = ((258, 366), (258, 480), (258, 610), (258, 760))  # the first column of the two-column grid
 
     def open_filters(name):
         click(*FILTER_BTN); time.sleep(4); debug(name + "-filters-open")

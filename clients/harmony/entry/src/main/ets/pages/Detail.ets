@@ -101,8 +101,12 @@
  */
 
 import { image } from '@kit.ImageKit';
+import { LengthMetrics } from '@kit.ArkUI';
 
-import { getWorkDetail, getSimilarWorks, getWorkCredits } from '../data/CatalogRepository';
+import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan } from '../data/CatalogRepository';
+import { resumeButtonLabel, resumeKicker, resumeTargetFile } from '../core/ResumePlan';
+import { metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
+import type { ResumePlan } from '../core/Types/ResumePlan';
 import { getMediaChapters, getWatchProgress } from '../data/PlaybackRepository';
 import { addToWatchlist, removeFromWatchlist, resolveTitle } from '../data/WatchlistRepository';
 import { snapshotFromWork } from '../core/TitleSnapshot';
@@ -167,7 +171,7 @@ const PLAY_BUTTON_ICON_SIZE: number = 18;
 const PLAY_BUTTON_LABEL_SIZE: number = 16;
 const HERO_TOUCH_HEIGHT: number = 340;
 /** Phone: where the text block starts (the backdrop's lower part is under it, faded). */
-const TOUCH_TEXT_TOP: number = 330;
+const TOUCH_TEXT_TOP: number = 343;
 
 const PILL_HEIGHT: number = 62;
 const PILL_PADDING_X: number = 28;
@@ -648,6 +652,8 @@ struct Detail {
   @State private similarRail: DetailRail | null = null;
   @State private primaryMediaFileId: string | null = null;
   @State private chaptersRail: DetailRail | null = null;
+  /** A series' resume plan (null for a film, or until the server answers): its target is what the primary button plays. */
+  @State private resumePlan: ResumePlan | null = null;
   @State private cast: Credit[] = [];
   @State private actionsOpen: boolean = false;
   /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
@@ -673,6 +679,7 @@ struct Detail {
     this.similarRail = null;
     this.primaryMediaFileId = null;
     this.chaptersRail = null;
+    this.resumePlan = null;
     this.cast = [];
     this.actionsOpen = false;
     this.optionsOpen = false;
@@ -700,6 +707,10 @@ struct Detail {
     const rails = buildRailsFromChildren(detail.children);
     this.rails = rails;
     this.primaryMediaFileId = resolvePrimaryMediaFileId(detail, rails);
+
+    if (detail.work.kind === 'series') {
+      this.loadResumePlan(detail.work.id);
+    }
 
     this.loadHeroArtwork(detail.work.id);
     this.hydrateRailArtwork();
@@ -1015,11 +1026,14 @@ struct Detail {
       Text('▶')
         .fontSize(PLAY_BUTTON_ICON_SIZE)
         .fontColor(toResourceColor(activeColors().onAccent))
-      Text((enabled ? 'Play' : 'Unavailable'))
+      Text(this.primaryLabel())
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
         .fontSize(PLAY_BUTTON_LABEL_SIZE)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().onAccent))
     }
+    .layoutWeight(1)
     .height(height)
     .padding({ left: Spacing.lg, right: Spacing.lg })
     .borderRadius(Radii.pillFull)
@@ -1147,10 +1161,26 @@ struct Detail {
     .alignItems(HorizontalAlign.Start)
   }
 
+  /** The series' resume plan (web's Resume / Start button): the kicker and the label follow it, and it plays the plan's target. */
+  private async loadResumePlan(seriesId: string): Promise<void> {
+    const result = await getResumePlan(seriesId);
+    if (result.kind !== 'ok') {
+      return;
+    }
+    this.resumePlan = result.value;
+    const target = resumeTargetFile(result.value);
+    if (target !== null) {
+      this.primaryMediaFileId = target;
+    }
+  }
+
   /** The primary pill's label: Resume from m:ss for a part-watched movie, else Play (Unavailable while nothing is playable). */
   private primaryLabel(): string {
     if (this.primaryMediaFileId === null) {
       return 'Unavailable';
+    }
+    if (this.resumePlan !== null) {
+      return resumeButtonLabel(this.resumePlan);
     }
     if (this.resumeMs > 0) {
       return 'Resume from ' + chapterTimeLabel(this.resumeMs);
@@ -1391,6 +1421,20 @@ struct Detail {
     }
   }
 
+  /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
+  @Builder
+  private touchMetaChips(): void {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(12), cross: LengthMetrics.vp(4) } }) {
+      ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
+        Text(chip)
+          .fontSize(11)
+          .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
+          .fontColor(toResourceColor(index === 0 ? activeColors().ink : activeColors().inkSoft))
+      }, (chip: string, index: number): string => index.toString() + chip)
+    }
+    .width('100%')
+  }
+
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
   private touchActionButton(label: string, onTap: () => void): void {
@@ -1398,9 +1442,9 @@ struct Detail {
       .fontSize(11)
       .fontWeight(FontWeight.Medium)
       .fontColor(toResourceColor(activeColors().inkSoft))
-      .height(40)
+      .height(44)
       .padding({ left: 16, right: 16 })
-      .borderRadius(20)
+      .borderRadius(22)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       .onClick(() => {
@@ -1420,10 +1464,14 @@ struct Detail {
       this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
     }
     Row({ space: 8 }) {
+      this.touchActionButton(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
+        this.toggleWatchlist();
+      })
       this.touchActionButton('Add to Playlist', (): void => {
         this.touchActionsOpen = true;
       })
     }
+    .margin({ top: 4 })
   }
 
   /** Phone (web phone detail): the backdrop fading into the page at the top, Back over it, then the pink kind line, the title, the
@@ -1452,23 +1500,29 @@ struct Detail {
 
       Scroll() {
         Column({ space: TouchGeometry.detailListSpacing }) {
-          Column({ space: 8 }) {
-            Text(this.detail !== null ? kindLabel(this.detail.work.kind) : '')
-              .fontSize(10)
+          Column({ space: 10 }) {
+            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? kindLabel(this.detail.work.kind) : ''))
+              .fontSize(10.56)
+              .height(16)
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(BRAND_PINK_SOFT))
             Text(this.detail !== null ? this.detail.work.title : '')
-              .fontSize(24)
-              .fontWeight(FontWeight.Bold)
-              .letterSpacing(-0.5)
+              .fontSize(36)
+              .fontWeight(FontWeight.Medium)
+              .letterSpacing(-1.6)
+              .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
-            Text(this.detail !== null ? buildMetaLines(this.detail).join('  ') : '')
-              .fontSize(11)
-              .fontColor(toResourceColor(activeColors().inkSoft))
-              .maxLines(2)
-            Text(this.synopsisText())
+            if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
+              Text(planEpisodeTitle(this.detail, this.resumePlan))
+                .fontSize(14.4)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(toResourceColor(activeColors().ink))
+                .maxLines(1)
+            }
+            this.touchMetaChips()
+            Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '')
               .fontSize(12)
               .fontColor(toResourceColor(activeColors().inkSoft))
               .lineHeight(18)
@@ -1479,7 +1533,8 @@ struct Detail {
           .width('100%')
           .alignItems(HorizontalAlign.Start)
 
-          this.railsColumn()
+          // the TV page's rails, Chapters and Cast column, one copy: its sizes are web CSS px, which are vp here
+          this.tvRightColumn()
         }
         .padding({
           top: TOUCH_TEXT_TOP,
@@ -1507,7 +1562,7 @@ struct Detail {
           .onClick(() => {
             popRoute(getNavStack());
           })
-        Text(this.detail !== null ? kindLabel(this.detail.work.kind) + 's' : '')
+        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? 'Series' : kindLabel(this.detail.work.kind) + 's') : '')
           .fontSize(22)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))

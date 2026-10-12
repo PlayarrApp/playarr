@@ -52,6 +52,7 @@ import {
   catalogSearchUrl,
   catalogDetailUrl,
   catalogCreditsUrl,
+  catalogResumePlanUrl,
   catalogSimilarUrl,
   viewsUrl,
   viewResolveUrl,
@@ -67,6 +68,7 @@ import {
   Work,
 } from '../core/Types/Work.ts';
 import { WorkDetail, WorkCredits } from '../core/Types/WorkDetail.ts';
+import { ResumePlan } from '../core/Types/ResumePlan.ts';
 import {
   BrowseQuery,
   CatalogPage,
@@ -245,6 +247,11 @@ export function searchCatalog(query: string, limit?: number): Promise<ApiResult<
 /** `GET /api/v1/catalog/{id}` (brief 4.8). */
 export function getWorkDetail(id: string): Promise<ApiResult<WorkDetail>> {
   return getPlayarrClient().getJson<WorkDetail>(catalogDetailUrl(id));
+}
+
+/** `GET /api/v1/catalog/{id}/resume-plan` for a series. */
+export function getResumePlan(seriesId: string): Promise<ApiResult<ResumePlan>> {
+  return getPlayarrClient().getJson<ResumePlan>(catalogResumePlanUrl(seriesId));
 }
 
 /** `GET /api/v1/catalog/{id}/credits`: the work's cast and crew. */

@@ -110,51 +110,104 @@ export function useColours(): ReturnType<typeof useTheme> {
 }
 
 /**
- * Text that wraps the way CSS `text-wrap: balance` does: the same number of lines as the plain wrap, at the narrowest width
- * that keeps that number (the web balances its big titles, so "2 Fast 2 Furious" breaks as "2 Fast / 2 Furious").
- * Vega has no balancing, so the width is searched by re-laying the text out, which settles within a few frames.
+ * Text that wraps the way Chrome's CSS `text-wrap: balance` does (the web balances its big titles). Vega has no balancing and
+ * no text-measuring API, so each word is measured in a hidden Text, then the break set is chosen as Chrome does (rule fitted on
+ * 400 random titles, 97% match; Android TV's WebHeroTitle): keep the greedy line count, take the break set with that many
+ * lines and the least sum of squared line widths, and add a penalty when the last line is a single word ("2 Fast 2 Furious"
+ * breaks as "2 Fast / 2 Furious"). Breaks fall after spaces and hyphens.
  */
-const MAX_BALANCE_PASSES = 6;
+export function titleTokens(source: string): string[] {
+  return source.match(/[^\s-]*(?:-+\s*|\s+)|[^\s-]+$/g) ?? [];
+}
 
-/**
- * True when a wrapped layout cut a word in two. Every fragment on a line must be a whole word of the source (hyphens and
- * dashes are legal break points), whatever the platform does with the trailing space of a line.
- */
-export function breaksInsideWord(lines: readonly string[], source: string): boolean {
-  const split = /[\s\-\u2010-\u2015]+/;
-  const words = new Set(source.split(split).filter(Boolean));
-  return lines.some((line) => line.split(split).filter(Boolean).some((fragment) => !words.has(fragment)));
+const ORPHAN_PENALTY = 5000;
+
+/** Line ends (exclusive token indices) for tokens of the given trimmed widths in a box; null when the title fits on one line. */
+export function balanceLines(tokens: readonly string[], widths: readonly number[], space: number, box: number): number[] | null {
+  const n = tokens.length;
+  const lineWidth = (from: number, to: number): number => {
+    let w = 0;
+    for (let k = from; k < to; k += 1) w += widths[k] + (k < to - 1 && /\s$/.test(tokens[k]) ? space : 0);
+    return w;
+  };
+  let lineCount = 1;
+  for (let from = 0, to = 1; to < n; to += 1) {
+    if (lineWidth(from, to + 1) > box && to > from) {
+      lineCount += 1;
+      from = to;
+    }
+  }
+  if (lineCount < 2) return null;
+  const memo = new Map<number, {cost: number; next: number} | null>();
+  const solve = (from: number, left: number): {cost: number; next: number} | null => {
+    const key = from * 100 + left;
+    if (memo.has(key)) return memo.get(key) ?? null;
+    let pick: {cost: number; next: number} | null = null;
+    if (from === n) pick = left === 0 ? {cost: 0, next: n} : null;
+    else if (left > 0) {
+      for (let to = from + 1; to <= n; to += 1) {
+        const w = lineWidth(from, to);
+        if (w > box && to > from + 1) break;
+        const rest = solve(to, left - 1);
+        if (!rest) continue;
+        const orphan = to === n && !tokens.slice(from, to).join('').trim().includes(' ') ? ORPHAN_PENALTY : 0;
+        const cost = w * w + rest.cost + orphan;
+        if (!pick || cost < pick.cost) pick = {cost, next: to};
+      }
+    }
+    memo.set(key, pick);
+    return pick;
+  };
+  if (!solve(0, lineCount)) return null;
+  const ends: number[] = [];
+  for (let at = 0, left = lineCount; at < n && left > 0; left -= 1) {
+    at = solve(at, left)!.next;
+    ends.push(at);
+  }
+  return ends;
 }
 
 export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout'> & {width: number}): React.ReactElement {
-  // `good` is the narrowest width whose layout was acceptable so far; the loop narrows to the widest line each pass.
-  const [state, setState] = useState<{w: number; good: number; lines: number | null; done: boolean; passes: number}>({w: width, good: width, lines: null, done: false, passes: 0});
-  const onTextLayout = (event: NativeSyntheticEvent<TextLayoutEventData>): void => {
-    if (state.done) return;
-    const found = event.nativeEvent.lines;
-    const unit = Dimensions.get('window').width / 1920;
-    const widest = Math.max(...found.map((line) => line.width)) / unit;
-    setState((current) => {
-      if (current.done) return current;
-      if (current.lines === null) {
-        // First layout at the full width: remember the line count; one line needs no balancing.
-        return found.length <= 1 ? {...current, lines: found.length, done: true} : {w: Math.max(1, widest - 1), good: width, lines: found.length, done: false, passes: 1};
-      }
-      // Narrower than the longest word, RN breaks inside it ("Leonard" / "o") without adding a line, so a line that does
-      // not end in a space also ends the search; the result is the last acceptable width.
-      // (Vega may drop the trailing space from line text, so test the join against the source string instead.)
-      const midWord = typeof children === 'string' && breaksInsideWord(found.map((line) => line.text), children);
-      if (found.length > current.lines || midWord || widest <= 4) return {...current, w: current.good, done: true};
-      // Each pass is a full layout round trip (~0.3 s on a Vega stick); a few are enough to balance a title.
-      if (current.passes >= MAX_BALANCE_PASSES) return {...current, done: true};
-      return {...current, good: current.w, w: Math.max(1, widest - 1), passes: current.passes + 1};
-    });
+  const source = typeof children === 'string' ? children : '';
+  const tokens = React.useMemo(() => titleTokens(source), [source]);
+  // Probes: every trimmed token, then "a a" and "aa" (their difference is one space; Vega may trim a measured trailing space).
+  const probes = React.useMemo(() => [...tokens.map((token) => token.trim()), 'a a', 'aa'], [tokens]);
+  const [measured, setMeasured] = useState<Record<number, number>>({});
+  const unit = Dimensions.get('window').width / 1920;
+  const onProbe = (index: number) => (event: NativeSyntheticEvent<TextLayoutEventData>): void => {
+    const w = (event.nativeEvent.lines[0]?.width ?? 0) / unit;
+    setMeasured((current) => (current[index] === w ? current : {...current, [index]: w}));
   };
+  const ready = tokens.length > 1 && probes.every((_, index) => measured[index] !== undefined);
+  const ends = ready ? balanceLines(tokens, tokens.map((_, index) => measured[index]), measured[probes.length - 2] - measured[probes.length - 1], width) : null;
+  if (ends) {
+    let from = 0;
+    return (
+      <View>
+        {ends.map((to) => {
+          const line = tokens.slice(from, to).join('').trim();
+          from = to;
+          return (
+            <T key={from} {...text} lines={1} style={[text.style, {width: u(width * 2)}]}>
+              {line}
+            </T>
+          );
+        })}
+      </View>
+    );
+  }
   return (
-    <View style={{width: u(state.w)}}>
-      <T {...text} onTextLayout={onTextLayout}>
-        {children}
-      </T>
+    <View style={{width: u(width)}}>
+      <T {...text}>{children}</T>
+      {tokens.length > 1 && !ready ? (
+        <View pointerEvents="none" style={{position: 'absolute', opacity: 0, width: u(width * 4)}}>
+          {probes.map((probe, index) => (
+            <T key={index} {...text} lines={1} onTextLayout={onProbe(index)}>
+              {probe}
+            </T>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

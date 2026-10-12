@@ -1,53 +1,56 @@
-/** BalancedT: narrows a wrapped title to its widest line, but never below a whole word. */
+/** BalancedT: Chrome's text-wrap: balance, fitted on measured word widths. */
 import React from 'react';
 import {act, create, type ReactTestRenderer} from 'react-test-renderer';
-import {Dimensions, Text, View} from 'react-native';
+import {Dimensions, Text} from 'react-native';
 import {ThemeProvider} from '../theme/ThemeProvider';
-import {BalancedT, breaksInsideWord} from './kit';
+import {BalancedT, balanceLines, titleTokens} from './kit';
 
 (globalThis as unknown as {React: typeof React}).React = React;
 
-function layout(renderer: ReactTestRenderer, lines: Array<{text: string; width: number}>): void {
-  const unit = Dimensions.get('window').width / 1920;
-  act(() => renderer.root.findByType(Text).props.onTextLayout({nativeEvent: {lines: lines.map((line) => ({...line, width: line.width * unit}))}}));
-}
-const width = (renderer: ReactTestRenderer): number => renderer.root.findAllByType(View)[0].props.style.width;
+const BOX = 373;
+const lines = (title: string, per: number, space = 10): string[] | null => {
+  const tokens = titleTokens(title);
+  const ends = balanceLines(tokens, tokens.map((token) => token.trim().length * per), space, BOX);
+  if (!ends) return null;
+  let from = 0;
+  return ends.map((to) => tokens.slice(from, (from = to)).join('').trim());
+};
 
-test('stops at the last whole-word width when the next pass breaks inside a word', () => {
+describe('titleTokens', () => {
+  it('breaks after spaces and hyphens', () => {
+    expect(titleTokens('2 Fast 2 Furious')).toEqual(['2 ', 'Fast ', '2 ', 'Furious']);
+    expect(titleTokens('Spider-Man')).toEqual(['Spider-', 'Man']);
+    expect(titleTokens('A - B')).toEqual(['A ', '- ', 'B']);
+  });
+});
+
+describe('balanceLines', () => {
+  it('leaves a title that fits on one line alone', () => {
+    expect(lines('Heat', 20)).toBeNull();
+  });
+  it('avoids a one-word last line: "2 Fast / 2 Furious"', () => {
+    expect(lines('2 Fast 2 Furious', 28)).toEqual(['2 Fast', '2 Furious']);
+  });
+  it('balances the lines, keeping the greedy line count', () => {
+    expect(lines('The Lord of the Rings', 20)).toEqual(['The Lord of', 'the Rings']);
+  });
+});
+
+test('BalancedT measures each word, then draws the balanced lines', () => {
+  const unit = Dimensions.get('window').width / 1920;
   let renderer!: ReactTestRenderer;
   act(() => {
     renderer = create(
       <ThemeProvider>
-        <BalancedT width={373} size={69} color="#fff">
-          Wordy (2021)
+        <BalancedT width={BOX} size={69} color="#fff">
+          2 Fast 2 Furious
         </BalancedT>
       </ThemeProvider>,
     );
   });
-  const full = width(renderer);
-  layout(renderer, [{text: 'Wordy ', width: 290}, {text: '(2021)', width: 200}]);
-  expect(width(renderer)).toBeLessThan(full);
-  layout(renderer, [{text: 'Wordy ', width: 280}, {text: '(2021)', width: 200}]);
-  const lastWhole = width(renderer);
-  // A line without its trailing space is still a whole-word break (Vega may trim it), so the search goes on.
-  layout(renderer, [{text: 'Wordy', width: 275}, {text: '(2021)', width: 200}]);
-  expect(width(renderer)).toBeLessThan(lastWhole);
-  // "Word" / "y (2021)" breaks inside a word: back to the last width laid out with whole words.
-  layout(renderer, [{text: 'Word', width: 250}, {text: 'y (2021)', width: 270}]);
-  const good = width(renderer);
-  expect(good).toBe(lastWhole);
-  // Done: later layouts change nothing.
-  layout(renderer, [{text: 'Wordy ', width: 100}, {text: '(2021)', width: 100}]);
-  expect(width(renderer)).toBe(good);
-});
-
-describe('breaksInsideWord', () => {
-  it('accepts breaks between words and at hyphens', () => {
-    expect(breaksInsideWord(['2 Fast', '2 Furious'], '2 Fast 2 Furious')).toBe(false);
-    expect(breaksInsideWord(['Spider-', 'Man'], 'Spider-Man')).toBe(false);
-  });
-  it('flags a word cut in two, however the line ends', () => {
-    expect(breaksInsideWord(['The Leonard', 'o Story'], 'The Leonardo Story')).toBe(true);
-    expect(breaksInsideWord(['Extraordina', 'ry Tales'], 'Extraordinary Tales')).toBe(true);
-  });
+  const probes = renderer.root.findAllByType(Text).filter((node) => typeof node.props.onTextLayout === 'function');
+  const widths: Record<string, number> = {'2': 28, Fast: 112, Furious: 196, 'a a': 50, aa: 40};
+  act(() => probes.forEach((node) => node.props.onTextLayout({nativeEvent: {lines: [{text: '', width: (widths[node.props.children as string] ?? 0) * unit}]}})));
+  const drawn = renderer.root.findAllByType(Text).map((node) => node.props.children);
+  expect(drawn).toEqual(['2 Fast', '2 Furious']);
 });
