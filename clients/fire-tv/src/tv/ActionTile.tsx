@@ -9,6 +9,7 @@ import {Icon, type IconName} from '../shell/icons';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {T, u} from './kit';
+import {reportFocus} from '../debug/parityControl';
 
 export const ACTION_COLUMN_X = 1846;
 export const ACTION_COLUMN_Y = 152;
@@ -22,7 +23,10 @@ export function ActionTile({icon, label, slot = 0, onPress, active, focusable = 
       accessibilityRole="button"
       accessibilityLabel={label}
       focusable={focusable}
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        reportFocus(label);
+        setFocused(true);
+      }}
       onBlur={() => setFocused(false)}
       onPress={onPress}
       style={{

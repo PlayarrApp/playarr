@@ -6,6 +6,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {focusDefaultTarget, focusNode, getFocusedTag, TvFocusScope, useRemoteKey} from '../platform';
 import {findNodeHandle, Pressable, StyleSheet, Text, View} from 'react-native';
 import type {WorkKind} from '@playarr-tv/api-client';
+import {reportFocus} from '../debug/parityControl';
 import {ProfileAvatar} from '../components/ProfileAvatar';
 import {mix} from '../theme/color';
 import {textRun} from '../theme/fonts';
@@ -94,8 +95,10 @@ function RailLink({
   onNode,
   up,
   down,
+  index,
 }: {
   item: RailItem;
+  index: number;
   active: boolean;
   onSelect: (target: RailTarget) => void;
   onActiveNode: (node: unknown) => void;
@@ -123,7 +126,10 @@ function RailLink({
       accessibilityLabel={item.label}
       accessibilityState={{selected: active}}
       {...({nextFocusUp: up, nextFocusDown: down} as object)}
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        reportFocus(item.label, {rail: 'nav', index});
+        setFocused(true);
+      }}
       onBlur={() => setFocused(false)}
       onPress={() => onSelect(item.target)}
       style={{
@@ -210,6 +216,7 @@ function Rail({
               <View key={item.target} style={{marginTop: index === 0 ? 0 : sw(GROUP_GAP)}}>
                 <RailLink
                   item={item}
+                  index={order.indexOf(item.target)}
                   active={active === item.target}
                   onSelect={onSelect}
                   onActiveNode={setActiveNode}
@@ -223,7 +230,7 @@ function Rail({
         );
       })}
       {React.isValidElement(children)
-        ? React.cloneElement(children as React.ReactElement<Partial<ProfileChipProps>>, {onNode, up: tags[order[order.length - 1] ?? '']})
+        ? React.cloneElement(children as React.ReactElement<Partial<ProfileChipProps>>, {onNode, up: tags[order[order.length - 1] ?? ''], navCount: order.length})
         : children}
     </TvFocusScope>
   );
@@ -260,9 +267,11 @@ export interface ProfileChipProps {
   /** Set by the rail: registers this node and names the item above it. */
   onNode?: (key: string, node: unknown) => void;
   up?: number;
+  /** The number of items above the profile entry: its index in the rail. */
+  navCount?: number;
 }
 
-function ProfileChip({profileId, name, version, onPress, onNode, up}: ProfileChipProps): React.ReactElement {
+function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 0}: ProfileChipProps): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   const ink = focused ? colour.ink : colour.inkMuted;
@@ -292,7 +301,10 @@ function ProfileChip({profileId, name, version, onPress, onNode, up}: ProfileChi
           {...({nextFocusUp: up} as object)}
           accessibilityRole="button"
           accessibilityLabel={`Profile ${name}`}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            reportFocus('device', {rail: 'nav', index: navCount});
+            setFocused(true);
+          }}
           onBlur={() => setFocused(false)}
           onPress={onPress}
           style={{

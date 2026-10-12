@@ -6,8 +6,9 @@
 // `undefined` when unset), so a bench or capture build is configured by the environment and needs no source patch:
 //   PLAYARR_HOSTED_LINK_ORIGIN=http://broker.example:8080  the hosted-link broker (default https://playarr.app)
 //   PLAYARR_PARITY_CLOCK=2026-10-07T12:00:00Z              freeze the app clock (parity captures only)
+//   PLAYARR_PARITY_CONTROL=1                               compile in the parity suite's control channel (src/debug/parityControl.ts)
 // Jest keeps the live process.env (no inlining under Jest), so tests can set them.
-const BUILD_TIME_SETTINGS = ['PLAYARR_HOSTED_LINK_ORIGIN', 'PLAYARR_PARITY_CLOCK'];
+const BUILD_TIME_SETTINGS = ['PLAYARR_HOSTED_LINK_ORIGIN', 'PLAYARR_PARITY_CLOCK', 'PLAYARR_PARITY_CONTROL'];
 
 function inlineBuildTimeSettings({types: t}) {
   return {

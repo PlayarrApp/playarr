@@ -82,6 +82,7 @@ import {colour} from '../theme/tokens';
 import {layout, text} from '../theme/styles';
 import {sh, sw} from '../theme/scale';
 import {ROUTES, type RouteName} from '../navigation/routes';
+import {reportFocus, reportQuery, takePendingQuery} from '../debug/parityControl';
 
 export type LibraryKind = Extract<WorkKind, 'movie' | 'series' | 'site' | 'artist'>;
 
@@ -318,7 +319,10 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
   const [look, setLook] = useState(() => storedLibraryView(kind));
   const [audioLangs, setAudioLangs] = useState<string[]>([]);
   const [subtitleLangs, setSubtitleLangs] = useState<string[]>([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(() => takePendingQuery('panel') === 'filters');
+  useEffect(() => {
+    reportQuery('panel', filtersOpen ? 'filters' : null);
+  }, [filtersOpen]);
   const [languagePicker, setLanguagePicker] = useState<'audio' | 'subs' | null>(null);
   const [actionsWork, setActionsWork] = useState<Work | null>(null);
   const [playlistWork, setPlaylistWork] = useState<Work | null>(null);
@@ -635,7 +639,10 @@ function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.Re
       accessibilityRole="button"
       accessibilityLabel={work.title}
       hasTVPreferredFocus={first}
-      onFocus={onFocus}
+      onFocus={() => {
+        reportFocus(`open ${work.title}`);
+        onFocus();
+      }}
       onPress={onPress}
       onLongPress={props.onLongPress}
       style={{position: 'absolute', left: u(x), top: u(y), width: u(card.cardW)}}
@@ -667,7 +674,10 @@ function ListRow(props: CardProps): React.ReactElement {
       accessibilityRole="button"
       accessibilityLabel={work.title}
       hasTVPreferredFocus={first}
-      onFocus={onFocus}
+      onFocus={() => {
+        reportFocus(`open ${work.title}`);
+        onFocus();
+      }}
       onPress={onPress}
       onLongPress={props.onLongPress}
       style={{position: 'absolute', left: u(GRID_X + 4), top: u(y + 0.9), width: u(1034), height: u(LIST_ROW_PITCH - 3), borderRadius: u(16), backgroundColor: selected ? mix(colour.surfaceSoft, 0.55) : 'transparent'}}

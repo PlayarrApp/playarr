@@ -39,6 +39,7 @@ import {Box, T, u} from '../tv/kit';
 import {Stage} from '../tv/Stage';
 import {DetailSheet, FiltersPanel, LinkPanel, PeriodPicker} from './calendar/CalendarPanels';
 import {AgendaView, MonthView, WeekView, type ViewShared} from './calendar/CalendarViews';
+import {reportQuery, takePendingQuery} from '../debug/parityControl';
 
 export function CalendarScreen(): React.ReactElement {
   const client = useApiClient();
@@ -48,7 +49,10 @@ export function CalendarScreen(): React.ReactElement {
   const locale = language === 'en' ? 'en-GB' : language;
   const firstDay = weekStartsOn(locale);
   const today = useMemo(() => localDayOf(new Date()), []);
-  const [view, setView] = useState<CalendarView>('agenda');
+  const [view, setView] = useState<CalendarView>(() => (takePendingQuery('view') as CalendarView | undefined) ?? 'agenda');
+  useEffect(() => {
+    reportQuery('view', view);
+  }, [view]);
   const [anchor, setAnchor] = useState<Day>(today);
   const [panel, setPanelState] = useState<'filters' | 'link' | null>(null);
   // The action column stays out of the D-pad's reach once a drawer holds focus.

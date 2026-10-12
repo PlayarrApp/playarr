@@ -12,6 +12,7 @@ import {useTheme} from '../theme/ThemeProvider';
 import {FilterDrawer} from './FilterDrawer';
 import {FocusRing} from './FocusRing';
 import {T, u} from './kit';
+import {reportFocus} from '../debug/parityControl';
 
 export interface Leaf {
   mediaFileId: string;
@@ -118,6 +119,7 @@ function ActionRow({glyph, label, y, first, onPress, onReveal}: {glyph: string; 
       accessibilityLabel={label}
       hasTVPreferredFocus={first}
       onFocus={() => {
+        reportFocus(`${glyph}${label}`);
         setFocused(true);
         onReveal(y, ROW_H);
       }}

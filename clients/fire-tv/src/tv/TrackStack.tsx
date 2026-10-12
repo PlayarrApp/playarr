@@ -14,6 +14,7 @@ import {EdgeFade, TRACK_GUTTER} from './EdgeFade';
 import {Box, T, u} from './kit';
 import {MediaFocus} from './mediaFocus';
 import {WatchState} from './WatchState';
+import {reportFocus} from '../debug/parityControl';
 
 const TRACK_X = 881.6;
 const TRACK_VIEW_X = 729.6;
@@ -101,6 +102,7 @@ export function TrackStack(props: TrackStackProps): React.ReactElement {
   const focusItem = (trackIndex: number, itemIndex: number): void => {
     const track = tracks[trackIndex];
     if (!track) return;
+    reportFocus(`open ${track.items[itemIndex]?.title ?? ''}`, {rail: trackIndex, index: itemIndex});
     props.onFocus({track: trackIndex, item: itemIndex});
     const visible = 1920 - TRACK_X;
     const person = isPersonTrack(track);

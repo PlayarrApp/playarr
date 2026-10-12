@@ -64,7 +64,9 @@ import React, {useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, StyleSheet, View} from 'react-native';
 import {GestureHandlerRootView} from '@amazon-devices/react-native-gesture-handler';
 import {SafeAreaProvider} from '@amazon-devices/react-native-safe-area-context';
-import {NavigationContainer} from '@amazon-devices/react-navigation__native';
+import {createNavigationContainerRef, NavigationContainer} from '@amazon-devices/react-navigation__native';
+import {ParityControlHost} from './debug/ParityControlHost';
+import {PARITY_CONTROL} from './debug/parityControl';
 import {hydrate} from './bootstrap/hydrate';
 import {LanguageProvider} from './i18n/LanguageProvider';
 import {ApiClientProvider} from './api/ApiClientProvider';
@@ -102,6 +104,8 @@ function LoadingScreen(): JSX.Element {
     </View>
   );
 }
+
+const navigationRef = createNavigationContainerRef();
 
 export default function App(): JSX.Element {
   // Synchronising with an external system (AsyncStorage, via the
@@ -156,7 +160,8 @@ export default function App(): JSX.Element {
           <ApiClientProvider>
             <PlayerHandleContext.Provider value={playerRef}>
               <View style={playerUp ? styles.hidden : styles.fill}>
-                <NavigationContainer>
+                <NavigationContainer ref={navigationRef}>
+                  {PARITY_CONTROL ? <ParityControlHost navRef={navigationRef} playerRef={playerRef} /> : null}
                   <ThemeBoundary>
                     <RootNavigator />
                   </ThemeBoundary>

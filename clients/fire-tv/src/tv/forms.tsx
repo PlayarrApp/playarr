@@ -6,6 +6,7 @@ import {sans} from '../theme/fonts';
 import {FocusRing} from './FocusRing';
 import {useTheme} from '../theme/ThemeProvider';
 import {Box, T, u} from './kit';
+import {reportFocus} from '../debug/parityControl';
 
 /** `h3` of a settings card: 26.4px/560, 39.6px line. */
 export function SectionTitle({children, small}: {children: React.ReactNode; small?: boolean}): React.ReactElement {
@@ -74,7 +75,10 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
       accessibilityLabel={label}
       disabled={disabled}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        reportFocus(label);
+        setFocused(true);
+      }}
       onBlur={() => setFocused(false)}
       onPress={onPress}
       style={{

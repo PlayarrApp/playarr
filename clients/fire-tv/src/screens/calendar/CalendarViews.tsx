@@ -7,7 +7,8 @@ import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {Animated, Pressable, View, type LayoutChangeEvent} from 'react-native';
 import type {CalendarEntry} from '@playarr-tv/api-client';
 import {useLanguage} from '../../i18n/LanguageProvider';
-import {type CalendarItem, type Day, type DayGroup, type MonthCell, buildMonthGrid, buildWeekDays, groupSeriesEpisodes, itemAvailability, parseDay} from '../../lib/calendar';
+import {type CalendarItem, type Day, type DayGroup, type MonthCell, buildMonthGrid, buildWeekDays, groupSeriesEpisodes, itemAvailability, itemPillTone, parseDay} from '../../lib/calendar';
+import {reportFocus} from '../../debug/parityControl';
 import {mix} from '../../theme/color';
 import {useTheme} from '../../theme/ThemeProvider';
 import {EdgeFade} from '../../tv/EdgeFade';
@@ -232,18 +233,25 @@ function WeekEdges({scrolled, max, top, height}: {scrolled: number; max: number;
 
 const MONTH_X = 153.6;
 const MONTH_W = 1689.6;
-const MONTH_HEAD_Y = 236;
-const MONTH_GRID_Y = 266.8;
+const MONTH_GRID_Y = 205.2;
+const MONTH_HEAD_Y = MONTH_GRID_Y - 30.8;
 const CELL_W = MONTH_W / 7;
-const CHIP_LIMIT = 3;
+// The web's month cell (tv-web Calendar.css and monthChipsThatFit): entries are plain text lines with a status dot above a
+// 44 px bottom row holding the day number and, when entries overflow, "+N more". The lines share the room above the
+// bottom row (22 px at least, 44 px at most).
+const MONTH_FOOT = 44;
+const MONTH_LINE_MIN = 22;
+const MONTH_LINE_MAX = 44;
+const MONTH_LINES_GAP = 2;
+const CELL_BORDER = 1;
+const CELL_PAD_Y = 0.8;
+const CELL_PAD_X = 4.8;
 
-/** Month: a seven-column grid whose cells show as many release chips as fit, then "+N more". */
 function MonthViewImpl({groups, anchor, firstDay, shared, onMore}: {groups: readonly DayGroup[]; anchor: Day; firstDay: number; shared: ViewShared; onMore: (day: Day) => void}): React.ReactElement {
   const {colour} = useTheme();
   const {t, language} = useLanguage();
   const weeks = useMemo(() => buildMonthGrid(anchor, firstDay, groups, shared.today), [anchor, firstDay, groups, shared.today]);
   const rowH = (BODY_BOTTOM - MONTH_GRID_Y) / weeks.length;
-  const chipLimit = Math.max(1, Math.min(CHIP_LIMIT + 2, Math.floor((rowH - 52) / 26)));
   const weekday = new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : language, {weekday: 'short', timeZone: 'UTC'});
   return (
     <>
@@ -258,19 +266,30 @@ function MonthViewImpl({groups, anchor, firstDay, shared, onMore}: {groups: read
       ))}
       {weeks.map((week, weekIndex) =>
         week.map((cell, cellIndex) => (
-          <MonthCellView key={cell.day} cell={cell} x={MONTH_X + cellIndex * CELL_W} y={MONTH_GRID_Y + weekIndex * rowH} h={rowH} chipLimit={chipLimit} shared={shared} onMore={onMore} t={t} />
+          <MonthCellView key={cell.day} cell={cell} x={MONTH_X + cellIndex * CELL_W} y={MONTH_GRID_Y + weekIndex * rowH} h={rowH} shared={shared} onMore={onMore} t={t} />
         )),
       )}
     </>
   );
 }
 
-const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, chipLimit, shared, onMore, t}: {cell: MonthCell; x: number; y: number; h: number; chipLimit: number; shared: ViewShared; onMore: (day: Day) => void; t: ReturnType<typeof useLanguage>['t']}): React.ReactElement {
+const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, shared, onMore, t}: {cell: MonthCell; x: number; y: number; h: number; shared: ViewShared; onMore: (day: Day) => void; t: ReturnType<typeof useLanguage>['t']}): React.ReactElement {
   const {colour} = useTheme();
   const items = groupSeriesEpisodes(cell.entries);
-  const overflow = items.length > chipLimit;
-  const shown = overflow ? items.slice(0, Math.max(1, chipLimit - 1)) : items;
+  const room = Math.floor(h - 2 * CELL_BORDER - 2 * CELL_PAD_Y);
+  const fit = Math.max(0, Math.floor((room - MONTH_FOOT - MONTH_LINES_GAP) / MONTH_LINE_MIN));
+  const shown = items.slice(0, Math.min(items.length, fit));
   const hidden = items.length - shown.length;
+  const linesTop = y + CELL_BORDER + CELL_PAD_Y;
+  const lineH = Math.min(MONTH_LINE_MAX, (room - MONTH_FOOT - MONTH_LINES_GAP) / Math.max(1, shown.length));
+  const left = x + CELL_BORDER + CELL_PAD_X;
+  const innerW = CELL_W - 2 * (CELL_BORDER + CELL_PAD_X);
+  const footY = y + h - CELL_BORDER - CELL_PAD_Y - MONTH_FOOT;
+  const day = (
+    <T size={12.8} weight={640} lh={19.2} color={cell.inMonth ? colour.ink : colour.inkMuted}>
+      {String(parseDay(cell.day).getUTCDate())}
+    </T>
+  );
   return (
     <>
       <View
@@ -287,59 +306,80 @@ const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, chipLimi
         }}
       />
       {cell.isToday ? <View pointerEvents="none" style={{position: 'absolute', left: u(x), top: u(y), width: u(CELL_W), height: u(h), borderWidth: u(2), borderColor: colour.accent}} /> : null}
-      <Box x={x + 5.8} y={y + 5.8} w={CELL_W - 12}>
-        <T size={12.8} weight={640} lh={19.2} dy={-1} color={cell.inMonth ? colour.ink : colour.inkMuted}>
-          {String(parseDay(cell.day).getUTCDate())}
-        </T>
-      </Box>
       {shown.map((item, index) => (
-        <Chip key={item.key} item={item} x={x + 5.8} y={y + 32.2 + index * 30.8} w={CELL_W - 12} onSelect={shared.onSelect} />
+        <Line key={item.key} item={item} x={left} y={linesTop + index * lineH} w={innerW} h={lineH} today={shared.today} onSelect={shared.onSelect} />
       ))}
-      {hidden > 0 ? <MoreButton label={t('pages.calendar.more', {count: hidden})} x={x + 5.8} y={y + 32.2 + shown.length * 30.8 - 2} w={CELL_W - 12} onPress={() => onMore(cell.day)} /> : null}
+      {hidden > 0 ? (
+        <MoreFoot label={t('pages.calendar.more', {count: hidden})} x={left} y={footY} w={innerW} onPress={() => onMore(cell.day)}>
+          {day}
+        </MoreFoot>
+      ) : (
+        <Box x={left + 3} y={footY} w={innerW - 3} h={MONTH_FOOT}>
+          <View style={{height: u(MONTH_FOOT), justifyContent: 'center'}}>{day}</View>
+        </Box>
+      )}
     </>
   );
 });
 
-const Chip = React.memo(function Chip({item, x, y, w, onSelect}: {item: CalendarItem; x: number; y: number; w: number; onSelect: (item: CalendarItem) => void}): React.ReactElement {
+/** The web's --brand (global.css). */
+const BRAND = '#cf3157';
+const TONE_NAMES = {available: 'success', upcoming: 'brand', missing: 'danger', neutral: 'soft'} as const;
+
+function useToneColour(tone: 'available' | 'upcoming' | 'missing' | 'neutral'): string {
+  const {colour} = useTheme();
+  const name = TONE_NAMES[tone];
+  return name === 'success' ? colour.success : name === 'danger' ? colour.danger : name === 'brand' ? BRAND : colour.inkSoft;
+}
+
+/** An entry: a plain text line with a status dot; focus underlines it. */
+const Line = React.memo(function Line({item, x, y, w, h, today, onSelect}: {item: CalendarItem; x: number; y: number; w: number; h: number; today: Day; onSelect: (item: CalendarItem) => void}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
-  const available = itemAvailability(item) === 'available';
-  const entry: CalendarEntry = itemEntry(item);
-  void entry;
+  const dot = useToneColour(itemPillTone(item, today));
   const label = item.kind === 'series' ? `${item.title} · ${item.entries.length}×` : itemTitle(item);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={itemTitle(item)}
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        reportFocus(label);
+        setFocused(true);
+      }}
       onBlur={() => setFocused(false)}
       onPress={() => onSelect(item)}
-      style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(24), borderRadius: u(4), borderLeftWidth: u(3), borderLeftColor: available ? colour.success : colour.inkMuted, backgroundColor: colour.surfaceSoft, justifyContent: 'center', paddingLeft: u(5.6), paddingRight: u(5.6), overflow: 'visible'}}
+      style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(h), borderRadius: u(4), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(5.6)}}
     >
-      <T size={12} weight={item.kind === 'series' ? 680 : 400} lh={18} color={colour.ink} lines={1}>
-        {label}
-      </T>
-      {focused ? <View pointerEvents="none" style={{position: 'absolute', left: u(-5), top: u(-5), right: u(-5), bottom: u(-5), borderRadius: u(9), borderWidth: u(3), borderColor: colour.ink}} /> : null}
+      <View style={{width: u(8.8), height: u(8.8), borderRadius: u(4.4), backgroundColor: dot}} />
+      <View style={{marginLeft: u(7.2), flex: 1}}>
+        <T size={12.48} weight={item.kind === 'series' ? 700 : 400} lh={18} color={colour.ink} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
+          {label}
+        </T>
+      </View>
     </Pressable>
   );
 });
 
-function MoreButton({label, x, y, w, onPress}: {label: string; x: number; y: number; w: number; onPress: () => void}): React.ReactElement {
+/** The bottom row when entries overflow: the day number with "+N more" beside it, one target. */
+function MoreFoot({label, x, y, w, onPress, children}: {label: string; x: number; y: number; w: number; onPress: () => void; children: React.ReactNode}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        reportFocus(label);
+        setFocused(true);
+      }}
       onBlur={() => setFocused(false)}
       onPress={onPress}
-      style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(24), borderRadius: u(4), justifyContent: 'center', paddingLeft: u(8.6)}}
+      style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(MONTH_FOOT), borderRadius: u(4), flexDirection: 'row', alignItems: 'center', paddingLeft: u(3), gap: u(5.6)}}
     >
-      <T size={12} weight={400} lh={18} color={colour.inkSoft} lines={1}>
+      {children}
+      <T size={12.48} weight={400} lh={18} color={colour.inkSoft} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
         {label}
       </T>
-      {focused ? <View pointerEvents="none" style={{position: 'absolute', left: u(-5), top: u(-5), right: u(-5), bottom: u(-5), borderRadius: u(9), borderWidth: u(3), borderColor: colour.ink}} /> : null}
     </Pressable>
   );
 }

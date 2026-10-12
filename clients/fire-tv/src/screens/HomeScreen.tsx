@@ -28,6 +28,7 @@ import {RailFrost, Stage} from '../tv/Stage';
 import {ActionsDrawer} from '../tv/ActionsDrawer';
 import {PlaylistSheet} from '../tv/PlaylistSheet';
 import {useAccessToken} from './LibraryScreen';
+import {reportFocus} from '../debug/parityControl';
 
 interface HomeRail {
   id: string;
@@ -459,7 +460,10 @@ const HomeCard = memo(function HomeCard(props: {
   onActions: (work: Work) => void;
 }): React.ReactElement {
   const {work, mediaFileId, title, progress, progressReady, first, cardRef, index, railIndex, baseUrl, token, selected, subtitle, onFocusItem, onOpen, onActions} = props;
-  const onFocus = useCallback(() => onFocusItem(railIndex, index), [onFocusItem, railIndex, index]);
+  const onFocus = useCallback(() => {
+    reportFocus(work.title, {rail: railIndex, index});
+    onFocusItem(railIndex, index);
+  }, [onFocusItem, railIndex, index, work.title]);
   const onPress = useCallback(() => onOpen(work), [onOpen, work]);
   const onLongPress = useCallback(() => onActions(work), [onActions, work]);
   const {colour} = useTheme();
