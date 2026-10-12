@@ -516,6 +516,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV Home: the hero key art is grey and dimmed as on web (grayscale, contrast, brightness and opacity per theme).
 - Tizen/webOS parity driver: now-playing check, downloads cases on webOS via raw DevTools, focus position, session restore reset.
 - Downloads (web): a download keeps its title detail, credits and artwork on the device, so the offline detail page looks like the online one; music artist pages open offline from their downloaded tracks.
 - Web phone: the Library letter rail is a 44px-wide target column with a 4px margin each side (WCAG 2.5.5), touch-drag scrubs the letters, and the grid keeps clear of it.
