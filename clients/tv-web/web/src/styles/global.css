@@ -8482,6 +8482,8 @@ html.is-native-scroll-root .profile-auth-scroll {
   (max-width: 920px) and (max-height: 500px) and (pointer: coarse) {
   :root {
     --mobile-page-gutter: 16px;
+    /* The library letter rail: a 44px target column (WCAG 2.5.5) with 4px of margin each side; the grid keeps clear of it. */
+    --mobile-alpha-rail: 52px;
     --mobile-top-inset: max(14px, env(safe-area-inset-top));
     /* Top edge of the floating bar above the viewport bottom: its 58px height plus its offset (see .app-nav). */
     --mobile-nav-height: calc(58px + max(8px, env(safe-area-inset-bottom)));
@@ -8884,8 +8886,8 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
   .tv-playlist-directory-panel .tv-title-grid-content {
     grid-template-columns: repeat(var(--card-cols), var(--card-w));
     gap: 24px var(--card-grid-gap);
-    padding: 84px var(--mobile-page-gutter)
-      var(--mobile-bottom-clearance);
+    padding: 84px var(--directory-rail-pad, var(--mobile-page-gutter))
+      var(--mobile-bottom-clearance) var(--mobile-page-gutter);
   }
 
   .tv-library-grid-panel.is-list .tv-title-grid-content {
@@ -11202,8 +11204,10 @@ body[data-input-mode="remote"] .circle-focus-host[data-remote-active] .circle-fo
 }
 
 /* Phones keep the letter jump rail on the right edge, as TV web has it (owner, 11 Oct 2026). It is fixed between the
-   page header and the bottom nav, its 27 letters share that height (an index strip, not 44px targets), and it is as
-   wide as the page gutter, so the cards (whose width comes from the shared --card-pad-right) are never covered. */
+   page header and the bottom nav. The 27 letters share that height, so each is 44px wide but shorter than 44px tall
+   (WCAG 2.5.5 Target Size (Enhanced), owner 12 Oct 2026): the column is one control, and a touch drag across it scrubs
+   the letters (touch-action: none). It has 4px of margin each side (--mobile-alpha-rail wide), and the library grid
+   reserves exactly that width on its right, so the cards are never covered. */
 @media (max-width: 760px),
   (max-width: 920px) and (max-height: 500px) and (pointer: coarse) {
   .tv-directory .tv-alphabet {
@@ -11213,10 +11217,11 @@ body[data-input-mode="remote"] .circle-focus-host[data-remote-active] .circle-fo
     right: 0;
     bottom: calc(var(--mobile-nav-height) + var(--mobile-page-gutter));
     left: auto;
-    width: var(--mobile-page-gutter);
+    width: var(--mobile-alpha-rail);
     height: auto;
     display: flex;
     padding: 0;
+    touch-action: none;
     overflow: hidden;
     transform: none;
     --edge-fade-start-floor: 0;
@@ -11228,7 +11233,7 @@ body[data-input-mode="remote"] .circle-focus-host[data-remote-active] .circle-fo
   }
 
   .tv-directory .tv-alphabet button {
-    width: var(--mobile-page-gutter);
+    width: 44px;
     height: auto;
     min-height: 0;
     flex: 1 1 0;
@@ -11238,6 +11243,6 @@ body[data-input-mode="remote"] .circle-focus-host[data-remote-active] .circle-fo
 
   .tv-directory .tv-alphabet button::before,
   .tv-directory .tv-alphabet button.is-active::before {
-    width: var(--mobile-page-gutter);
+    width: 22px;
   }
 }

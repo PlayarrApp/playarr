@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { flushSync } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
@@ -128,6 +129,15 @@ function AlphabetRail({
 }) {
   const ref = useRef<HTMLElement>(null);
   useScrollEdges(ref, "vertical", refreshKey);
+  // Phones: the letters are shorter than 44px, so the whole column is one control; dragging a finger down it scrubs the letters.
+  const scrubbed = useRef<string | null>(null);
+  const scrub = (event: ReactPointerEvent<HTMLElement>) => {
+    if (event.pointerType !== "touch") return;
+    const letter = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("button[data-letter]")?.dataset.letter;
+    if (!letter || letter === scrubbed.current) return;
+    scrubbed.current = letter;
+    onJump(letter);
+  };
   useEffect(() => {
     const rail = ref.current;
     if (!rail || rail.contains(document.activeElement)) return;
@@ -135,12 +145,20 @@ function AlphabetRail({
     if (active) smoothScrollIntoView(active, { block: "center" });
   }, [activeLetter, refreshKey]);
   return (
-    <nav ref={ref} className="tv-alphabet" aria-label={label}>
+    <nav
+      ref={ref}
+      className="tv-alphabet"
+      aria-label={label}
+      onPointerMove={scrub}
+      onPointerUp={() => { scrubbed.current = null; }}
+      onPointerCancel={() => { scrubbed.current = null; }}
+    >
       {alphabet.map((letter) => (
         <button
           key={letter}
           type="button"
           className={activeLetter === letter ? "is-active" : ""}
+          data-letter={letter}
           onClick={() => onJump(letter)}
           onFocus={(event) => smoothScrollIntoView(event.currentTarget)}
           aria-current={activeLetter === letter ? "true" : undefined}

@@ -11,7 +11,7 @@ const TOL = 1;
 const THEMES_ALL = ["dark", "light"];
 // The two TV stage sizes in both themes, plus the tablet-landscape and phone layouts (dark only) which size the card on
 // their own columns.
-const SIZES = [[1920, 1080, THEMES_ALL], [1280, 720, THEMES_ALL], [1024, 768, ["dark"]], [390, 844, ["dark"]]];
+const SIZES = [[1920, 1080, THEMES_ALL], [1280, 720, THEMES_ALL], [1024, 768, ["dark"]], [320, 640, ["dark"]], [360, 740, ["dark"]], [390, 845, ["dark"]], [414, 896, ["dark"]], [480, 854, ["dark"]], [600, 900, ["dark"]]];
 const table = process.argv.includes("--table");
 const shots = opt("shots", "");
 if (shots) mkdirSync(shots, { recursive: true });
@@ -81,6 +81,20 @@ for (const theme of THEMES_ALL) {
         await page.screenshot({ path: join(shots, `${s.name.replace(/\W+/g, "-").toLowerCase()}-${theme}-${width}.png`) });
       }
       if (s.canonical) canon = m;
+      // Phones: a whole number of columns fills the space beside the 52px letter rail exactly (16px gutter, 52px rail pad).
+      if (width <= 760 && s.name === "Library movies") {
+        const fit = await page.evaluate(() => {
+          const g = document.querySelector(".tv-title-grid-content");
+          const cs = getComputedStyle(g);
+          const cols = cs.gridTemplateColumns.split(" ").map(parseFloat);
+          const gap = parseFloat(cs.columnGap) || 0;
+          const rail = document.querySelector(".tv-alphabet button")?.getBoundingClientRect();
+          return { cols: cols.length, used: cols.reduce((a, b) => a + b, 0) + gap * (cols.length - 1) + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight), width: g.clientWidth, minCard: Math.min(...cols), railW: rail?.width };
+        });
+        const want = width < 300 ? 1 : width < 540 ? 2 : 3;
+        check(`${label}: ${want} column(s) fill the width beside the rail exactly (${fit.cols} cols, ${fit.used.toFixed(1)} of ${fit.width})`, fit.cols === want && Math.abs(fit.used - fit.width) <= 1 && fit.minCard >= 110 - 1, JSON.stringify(fit));
+        check(`${label}: the rail target is 44px wide (${fit.railW})`, fit.railW >= 44);
+      }
       rows.push({ label, m, canon });
       if (table) console.log(label.padEnd(44), m ? `card ${m.card.w.toFixed(1)}x${m.card.h.toFixed(1)} art ${m.art?.w.toFixed(1)}x${m.art?.h.toFixed(1)} font ${m.font} gap ${m.gap?.toFixed(1)}` : "NOT FOUND");
       if (!m) { check(`${label}: card present`, false, "no card rendered"); continue; }

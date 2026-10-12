@@ -153,7 +153,7 @@ for (const [w, h] of [[1920, 1080], [1280, 720]]) {
 // card, and a tap on a letter jumps the grid there.
 for (const theme of ["dark", "light"]) {
   for (const route of ["movies", "series"]) {
-    const tag = `390x844 ${theme} /${route}`;
+    const tag = `390x845 ${theme} /${route}`;
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
     await context.addInitScript(({ base, userId, theme }) => {
       localStorage.setItem("playarr:apiBaseUrl", base);
@@ -173,10 +173,13 @@ for (const theme of ["dark", "light"]) {
       const nav = document.querySelector(".app-nav")?.getBoundingClientRect();
       const header = document.querySelector(".page-header")?.getBoundingClientRect();
       const letters = [...n.querySelectorAll("button")].map((b) => b.getBoundingClientRect());
-      return { visible: getComputedStyle(n).display !== "none" && r.width > 0, left: r.left, right: r.right, top: r.top, bottom: r.bottom, cardsRight: Math.max(...cards.map((c) => c.right)), navTop: nav?.top ?? 844, headerBottom: header?.bottom ?? 0, count: letters.length, fit: letters.every((l) => l.height >= 14 && l.bottom <= r.bottom + 1 && l.top >= r.top - 1) };
+      return { visible: getComputedStyle(n).display !== "none" && r.width > 0, left: r.left, right: r.right, top: r.top, bottom: r.bottom, cardsRight: Math.max(...cards.map((c) => c.right)), navTop: nav?.top ?? 845, headerBottom: header?.bottom ?? 0, count: letters.length, minW: Math.min(...letters.map((l) => l.width)), marginL: Math.min(...letters.map((l) => l.left - r.left)), marginR: Math.min(...letters.map((l) => r.right - l.right)), fit: letters.every((l) => l.height >= 14 && l.bottom <= r.bottom + 1 && l.top >= r.top - 1) };
     });
-    check(`${tag}: the letter rail is shown on the right edge`, m.visible && m.right <= 390.5 && m.left >= 340, JSON.stringify(m));
+    check(`${tag}: the letter rail is shown on the right edge`, m.visible && m.right <= 390.5 && m.left >= 330, JSON.stringify(m));
     check(`${tag}: all 27 letters fit in the rail`, m.count === 27 && m.fit, JSON.stringify(m));
+    // WCAG 2.5.5 (owner 2026-10-12): 44px wide targets (the column is one control, scrubbed by touch drag since 27 x 44 does not fit) with a small margin each side.
+    check(`${tag}: every letter target is at least 44px wide`, m.minW >= 44, JSON.stringify(m));
+    check(`${tag}: the rail has a 4px margin on both sides of the letters`, m.marginL >= 4 - 0.5 && m.marginR >= 4 - 0.5, JSON.stringify(m));
     check(`${tag}: the rail does not cover a card`, m.cardsRight <= m.left + 0.5, `cards end ${m.cardsRight}, rail starts ${m.left}`);
     check(`${tag}: the rail sits between the header and the bottom nav`, m.top >= m.headerBottom - 1 && m.bottom <= m.navTop + 1, JSON.stringify(m));
     const before = await page.evaluate(() => document.querySelector(".tv-title-grid").scrollTop);
@@ -184,6 +187,21 @@ for (const theme of ["dark", "light"]) {
     await page.waitForTimeout(1500);
     const after = await page.evaluate(() => ({ top: document.querySelector(".tv-title-grid").scrollTop, active: document.querySelector(".tv-alphabet button.is-active")?.textContent }));
     check(`${tag}: tapping a letter jumps the grid`, route === "series" ? true : after.top > before, `scrollTop ${before} -> ${after.top}, active ${after.active}`);
+    // Touch-drag scrubbing: a finger down the column jumps through the letters it crosses.
+    if (route === "movies") {
+      const cdp = await context.newCDPSession(page);
+      const centre = (L) => page.evaluate((L) => { const r = [...document.querySelectorAll(".tv-alphabet button")].find((b) => b.textContent === L).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, L);
+      const from = await centre("A");
+      const to = await centre("T");
+      await page.evaluate(() => { document.querySelector(".tv-title-grid").scrollTop = 0; });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [from] });
+      for (let k = 1; k <= 10; k += 1) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from.x, y: from.y + ((to.y - from.y) * k) / 10 }] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForTimeout(2500);
+      const scrubbed = await page.evaluate(() => ({ top: document.querySelector(".tv-title-grid").scrollTop, active: document.querySelector(".tv-alphabet button.is-active")?.textContent }));
+      check(`${tag}: dragging down the column scrubs the grid to the letters it crosses (A to T)`, scrubbed.top > 0 && scrubbed.active >= "R" && scrubbed.active <= "T", JSON.stringify(scrubbed));
+      if (OUT && theme === "light") await page.screenshot({ path: join(OUT, "alphabet-phone-390x845.png") });
+    }
     await context.close();
   }
 }

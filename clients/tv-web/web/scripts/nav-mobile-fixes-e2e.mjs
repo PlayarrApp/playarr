@@ -112,7 +112,8 @@ for (const theme of ["dark", "light"]) {
   await page.waitForTimeout(500);
   const action = await rect(page, ".shell-action-column .action-pill");
   const cards = await page.evaluate(() => [...document.querySelectorAll(".tv-title-card")].slice(0, 2).map((c) => c.getBoundingClientRect().right));
-  check(`${theme} library: header action flush with the last grid column`, action !== null && Math.abs(action.right - Math.max(...cards)) <= 1, `${action?.right} vs ${Math.max(...cards)}`);
+  // The grid ends beside the 52px letter rail (owner 2026-10-12); the header action keeps the page gutter like every other page.
+  check(`${theme} library: header action sits at the page gutter, grid ends beside the letter rail`, action !== null && Math.abs(action.right - 374) <= 1 && Math.max(...cards) <= 338.5, `${action?.right} vs ${Math.max(...cards)}`);
   await page.locator(".shell-action-column .action-pill").first().click();
   await page.waitForSelector(".drawer .drawer-close", { timeout: 5000 });
   await page.waitForTimeout(700);

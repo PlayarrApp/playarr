@@ -130,15 +130,29 @@
   :root {
     --card-rail-vw: 100;
     --card-pad-left: var(--mobile-page-gutter);
-    --card-pad-right: var(--mobile-page-gutter);
+    /* Clears the library letter rail; the poster card is one size everywhere, so every phone card takes this width. */
+    --card-pad-right: var(--mobile-alpha-rail);
     --card-cols: calc(2 + var(--card-size-step));
     --card-cols-cover: calc(2 + var(--card-size-step));
     --card-grid-gap: 12px;
     --card-grid-gap-cover: 12px;
   }
+
+  /* The Library grid also clears the letter rail (--mobile-alpha-rail) on its right; other pages keep the gutter. */
+  .tv-library-grid-panel {
+    --directory-rail-pad: var(--mobile-alpha-rail);
+  }
 }
 
-@media (max-width: 380px) {
+/* Phone columns by minimum card width (110px) in the space beside the letter rail: 1 below 300px, 2 from 300px, 3 from 540px. */
+@media (min-width: 540px) and (max-width: 760px) {
+  :root {
+    --card-cols: calc(3 + var(--card-size-step));
+    --card-cols-cover: calc(3 + var(--card-size-step));
+  }
+}
+
+@media (max-width: 299px) {
   :root {
     --card-cols: 1;
     --card-cols-cover: 1;
@@ -961,7 +975,7 @@ body[data-input-mode="remote"] .action-pill {
 @media (max-width: 760px) {
   .tv-library-grid-panel.page-layout-state .skeleton-grid-set {
     grid-template-columns: repeat(var(--card-cols), var(--card-w));
-    padding: 84px var(--mobile-page-gutter) 0;
+    padding: 84px var(--directory-rail-pad, var(--mobile-page-gutter)) 0 var(--mobile-page-gutter);
     gap: 24px var(--card-grid-gap);
   }
 }
