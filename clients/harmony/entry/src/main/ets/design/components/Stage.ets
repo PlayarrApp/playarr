@@ -62,7 +62,7 @@
  */
 
 import { image } from '@kit.ImageKit';
-import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
+import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
 import { TvGeometry } from '../../core/Tokens';
@@ -88,6 +88,12 @@ const WASH_RIGHT_ANGLE: number = 270;
  * `MotionTokens` (that table only holds durations/delays/curves). */
 const KEY_ART_ENTRY_TRANSLATE_X_PCT: number = 0.025; // translateX(-2.5%) of the key art's own width
 const KEY_ART_ENTRY_SCALE_FROM: number = 1.06;
+const KEY_ART_CONTRAST_DARK: number = 0.82;
+const KEY_ART_CONTRAST_LIGHT: number = 0.88;
+const KEY_ART_BRIGHTNESS_DARK: number = 0.6;
+const KEY_ART_BRIGHTNESS_LIGHT: number = 1.1;
+const KEY_ART_OPACITY_DARK: number = 0.72;
+const KEY_ART_OPACITY_LIGHT: number = 0.24;
 const KEY_ART_ENTRY_BLUR_FROM: number = 12;
 const COPY_ENTRY_TRANSLATE_X: number = 34; // translateX(-34px)
 const RAILS_ENTRY_TRANSLATE_X: number = 60; // translateX(60px)
@@ -177,6 +183,12 @@ export struct Stage {
         .width(tv(TvGeometry.keyArtWidthPx))
         .height(tv(TvGeometry.keyArtHeightPx))
         .objectFit(ImageFit.Cover)
+        // Web `.tv-key-art img`: grey, flattened and dimmed so the copy stays readable (dark theme: contrast .82, brightness .6,
+        // opacity .72; light: contrast .88, brightness 1.1, opacity .24).
+        .grayscale(1)
+        .contrast(resolvedThemeMode() === 'dark' ? KEY_ART_CONTRAST_DARK : KEY_ART_CONTRAST_LIGHT)
+        .brightness(resolvedThemeMode() === 'dark' ? KEY_ART_BRIGHTNESS_DARK : KEY_ART_BRIGHTNESS_LIGHT)
+        .opacity(resolvedThemeMode() === 'dark' ? KEY_ART_OPACITY_DARK : KEY_ART_OPACITY_LIGHT)
         .scale({ x: TvGeometry.keyArtScale, y: TvGeometry.keyArtScale })
         .draggable(false)
         .focusable(false)

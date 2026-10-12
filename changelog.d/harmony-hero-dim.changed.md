@@ -1,0 +1,1 @@
+- HarmonyOS TV Home: the hero key art is grey and dimmed as on web (grayscale, contrast, brightness and opacity per theme).
