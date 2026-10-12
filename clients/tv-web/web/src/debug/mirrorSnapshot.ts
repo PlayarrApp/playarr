@@ -5,6 +5,8 @@ export interface FocusInfo {
   text: string;
   /** aria-label when present: what the parity suite compares for the focused item. */
   label: string | null;
+  /** Home rail and card index, or the nav item index, as the parity suite's focus position (null elsewhere). */
+  position: { rail: number | "nav"; index: number } | null;
   bbox: { x: number; y: number; w: number; h: number } | null;
 }
 
@@ -28,6 +30,17 @@ export function selectorFor(el: Element | null): string {
   return parts.join(" > ");
 }
 
+function focusPosition(el: Element, doc: Document): FocusInfo["position"] {
+  const nav = el.closest(".app-nav-link");
+  if (nav) return { rail: "nav", index: Array.from(doc.querySelectorAll(".app-nav-link")).indexOf(nav) };
+  const card = el.closest(".tv-home-card");
+  if (!card) return null;
+  const rail = (c: Element) => (c.getAttribute("data-navigation-focus-key") || "").split(":")[1];
+  const cards = Array.from(doc.querySelectorAll(".tv-home-card"));
+  const rails = Array.from(new Set(cards.map(rail)));
+  return { rail: rails.indexOf(rail(card)), index: cards.filter((c) => rail(c) === rail(card)).indexOf(card) };
+}
+
 export function focusInfo(doc: Document = document): FocusInfo | null {
   const el = doc.activeElement;
   if (!el || el === doc.body || el === doc.documentElement) return null;
@@ -36,6 +49,7 @@ export function focusInfo(doc: Document = document): FocusInfo | null {
     selector: selectorFor(el),
     text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 200),
     label: el.getAttribute("aria-label"),
+    position: focusPosition(el, doc),
     bbox: { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) },
   };
 }
