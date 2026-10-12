@@ -1,0 +1,1 @@
+- Tizen now provides a native Playlists directory with root and nested playlist navigation, preserving route state when returning to the directory.
