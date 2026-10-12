@@ -22,6 +22,7 @@ import {
   type WorkChildren,
 } from "@playarr-tv/api-client";
 import { useWorkDetail } from "@playarr-tv/api-client/react";
+import { useOfflineAwareDetail } from "../lib/offlineWorkDetail";
 import { useMediaContextMenu } from "../components/MediaContextMenu";
 import { MediaThumbnailArtwork } from "../components/MediaThumbnailArtwork";
 import { ServerChoiceModal } from "../components/ServerChoiceModal";
@@ -490,7 +491,8 @@ export function MusicDetailPage() {
   const liveWork = useLiveSubscription(liveWorkScope);
   const liveProgressRevision = useLiveRevision(liveWorkScope);
   const [detailAttempt, setDetailAttempt] = useState(0);
-  const state = useWorkDetail(client, workId, { subscribe: liveWork, retryKey: detailAttempt });
+  const serverState = useWorkDetail(client, workId, { subscribe: liveWork, retryKey: detailAttempt });
+  const state = useOfflineAwareDetail(serverState, workId);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const restoredMediaFileIdRef = useRef<string | null>(null);

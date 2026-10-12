@@ -29,8 +29,7 @@ import { knownWork } from "../lib/knownWorks";
 import { SkeletonBlock, SkeletonLines, SkeletonRails } from "../components/shell";
 import { CachedArtworkImage, PersonHeadshot, useCachedArtwork } from "../lib/artwork";
 import { useDownloads } from "../lib/DownloadsProvider";
-import { useOnlineStatus } from "../lib/useOnlineStatus";
-import { offlineWorkDetail } from "../lib/offlineWorkDetail";
+import { useOfflineAwareDetail } from "../lib/offlineWorkDetail";
 import type { PlayableLeaf } from "../lib/playableLeaves";
 import type { PlaybackLaunchSettings } from "../lib/usePlaybackEngine";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -991,15 +990,7 @@ export function WorkDetailPage() {
   const [detailAttempt, setDetailAttempt] = useState(0);
   const serverState = useWorkDetail(client, workId, { subscribe: liveWork, retryKey: detailAttempt });
   // Offline the server cannot answer: the page renders from the local downloads so Play stays reachable.
-  const online = useOnlineStatus();
-  const offlineDetail = useMemo(
-    () => ((online && serverState.status !== "error") || !workId ? null : offlineWorkDetail(downloads.downloads, workId)),
-    [online, serverState.status, workId, downloads.downloads]
-  );
-  const state = useMemo(
-    (): typeof serverState => (offlineDetail && serverState.status !== "ready" ? { status: "ready", data: offlineDetail } : serverState),
-    [offlineDetail, serverState]
-  );
+  const state = useOfflineAwareDetail(serverState, workId);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | null>(null);
   const [selectedEpisodeId, setSelectedEpisodeId] = useState<string | null>(null);
   const [progressByMedia, setProgressByMedia] = useState<Map<string, WatchProgress>>(new Map());

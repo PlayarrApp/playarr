@@ -31,4 +31,17 @@ describe("offlineWorkDetail", () => {
     const seasons = (d?.children as { Series: { season: { season_number: number }; episodes: { media_file_id: string }[] }[] }).Series;
     expect(seasons.map((s) => s.episodes.map((e) => e.media_file_id))).toEqual([["e1", "e2"], ["e3"]]);
   });
+  it("groups an artist's tracks by album", () => {
+    const d = offlineWorkDetail(
+      [
+        rec({ id: "t1", mediaFileId: "t1", workKind: "artist", title: "Song A", subtitle: "Band · First LP", requestedAt: "2026-10-01T00:00:01Z" }),
+        rec({ id: "t2", mediaFileId: "t2", workKind: "artist", title: "Song B", subtitle: "Band · First LP", requestedAt: "2026-10-01T00:00:02Z" }),
+        rec({ id: "t3", mediaFileId: "t3", workKind: "artist", title: "Song C", subtitle: "Band · Second LP" }),
+      ],
+      "w"
+    );
+    const albums = (d?.children as { Artist: { album: { title: string }; tracks: { track: { title: string; track_number: number } }[] }[] }).Artist;
+    expect(albums.map((a) => [a.album.title, a.tracks.map((t) => t.track.title)])).toEqual([["First LP", ["Song A", "Song B"]], ["Second LP", ["Song C"]]]);
+    expect(albums[0]!.tracks.map((t) => t.track.track_number)).toEqual([1, 2]);
+  });
 });

@@ -46,6 +46,7 @@ import {
   createJoinedApiClient,
   type ConnectedServerClient,
 } from "./joinedServers";
+import { withOfflineMeta } from "./offlineMeta";
 import { clearProfileDirectory } from "./profileDirectoryCache";
 import { useLanguage } from "./i18n/LanguageProvider";
 
@@ -482,7 +483,7 @@ export function createManagedApiClient(config: ApiClientConfig): ApiClient {
     ...config,
     fetchImpl: withServerSuccessTracking(config.fetchImpl ?? browserFetch, config.baseUrl),
   });
-  return withPeerAddressSelfHealing(instance, config.baseUrl);
+  return withOfflineMeta(withPeerAddressSelfHealing(instance, config.baseUrl));
 }
 
 /** Credentials for the real username/password login flow -- see `ApiClientContextValue.login`. */

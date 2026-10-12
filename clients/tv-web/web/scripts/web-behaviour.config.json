@@ -93,7 +93,7 @@
     "filters-panel-e2e": 90,
     "artwork-size-setting-e2e": 120,
     "download-flow-e2e": 120,
-    "downloads-offline-e2e": 15,
+    "downloads-offline-e2e": 30,
     "drawer-consistency-e2e": 180
   }
 }

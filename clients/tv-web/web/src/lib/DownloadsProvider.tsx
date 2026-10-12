@@ -37,6 +37,7 @@ import { leafSubtitle, playableLeaves } from "./playableLeaves";
 import { isRunning } from "./downloadGroups";
 import { useDownloadNotificationOptIn, useDownloadNotifications } from "./downloadNotifications";
 import { useOnlineStatus } from "./useOnlineStatus";
+import { cacheWorkForOffline, deleteWorkMeta, setDownloadedMediaFiles } from "./offlineMeta";
 import { useToast } from "./toast";
 
 const MAX_CONCURRENT_DOWNLOADS = 2;
@@ -258,6 +259,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const downloadsRef = useRef<DownloadRecord[]>([]);
   downloadsRef.current = downloads;
+  // A stored detail tree lists only the leaves that are downloaded.
+  setDownloadedMediaFiles(() => new Set(downloadsRef.current.filter((r) => r.status === "ready").map((r) => r.mediaFileId)));
   const activeEngineRunsRef = useRef(new Set<string>());
   const pendingQueueRef = useRef<string[]>([]);
   const pollTimersRef = useRef(new Map<string, number>());
@@ -683,6 +686,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         mimeType: mimeTypeForContainer(ticket.container),
       };
       upsertRecord(record);
+      // Detail, credits and artwork stay on the device with the download, so its detail page looks the same offline.
+      void cacheWorkForOffline(client, params.workId);
       if (ticket.status === "ready") {
         beginFetch(record.id);
       } else if (ticket.status === "queued" || ticket.status === "processing") {
@@ -714,6 +719,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       }
       downloadsRef.current = downloadsRef.current.filter((candidate) => candidate.id !== id);
       setDownloads(downloadsRef.current);
+      // The work's stored detail and artwork go with its last download.
+      if (record && !downloadsRef.current.some((other) => other.workId === record.workId)) {
+        void deleteWorkMeta(record.workId).catch(() => undefined);
+      }
       refreshStorageUsage();
     },
     [clearPoll, client, refreshStorageUsage]

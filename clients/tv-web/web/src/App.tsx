@@ -267,7 +267,7 @@ function AppShell() {
   // network it was already built around, so it shows a plain offline
   // empty-state instead of a half-broken screen full of failed requests.
   // A downloaded title's own detail page (the Downloads row's link) renders from the local metadata, so it is not gated.
-  const detailWorkId = matchPath("/library/:workId", location.pathname)?.params.workId;
+  const detailWorkId = (matchPath("/library/:workId", location.pathname) ?? matchPath("/music/:workId", location.pathname))?.params.workId;
   const isDownloadedDetail =
     detailWorkId !== undefined && downloadRecords.some((r) => r.workId === detailWorkId && r.status === "ready");
   const isOfflineGated = !online && !isPlayerRoute && !isDownloadedDetail && location.pathname !== "/downloads";
