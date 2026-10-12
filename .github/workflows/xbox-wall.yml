@@ -85,6 +85,7 @@ jobs:
         run: npm ci --silent && npx playwright-core install chromium
       - name: Start the app with the parity trace on
         run: |
+          "$XBOX_IO" res
           "$XBOX_IO" restart                        # first launch creates the app's LocalState
           "$XBOX_IO" write parity.on 1
           "$XBOX_IO" restart

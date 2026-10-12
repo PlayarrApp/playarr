@@ -4,7 +4,7 @@ job's own device id. Env: XBOX_IO, SERVER_URL, TEST_USERNAME, TEST_PASSWORD. Pri
 import json, os, subprocess, sys, time, urllib.request, uuid
 srv = os.environ['SERVER_URL'].rstrip('/')
 def call(method, url, body=None, token=None):
-    h = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+    h = {'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'playarr-xbox-wall'}
     if token: h['Authorization'] = 'Bearer ' + token
     req = urllib.request.Request(url, method=method, headers=h, data=json.dumps(body).encode() if body is not None else None)
     try:
@@ -25,8 +25,17 @@ st, out = call('POST', srv + '/api/v1/auth/login', {'username': os.environ['TEST
     'device_id': str(uuid.uuid4()), 'device_name': 'xbox wall approver', 'client_platform': 'web', 'client_version': '1.0'})
 print('login', st)
 if st != 200: sys.exit(1)
-st, out = call('POST', srv + '/api/v1/oauth/device/authorize', {'user_code': code}, json.loads(out)['access_token'])
-print('authorize', st)
+tok = json.loads(out)['access_token']
+# The app shows a hosted-link code: mint a server device code, approve it, then hand it to the link service (as the web's /link page does).
+st, out = call('POST', srv + '/api/v1/oauth/device/code', {'client_platform': 'xbox'}, tok)
+print('server code', st)
+if st != 200: sys.exit(1)
+sc = json.loads(out)
+st, _ = call('POST', srv + '/api/v1/oauth/device/authorize', {'user_code': sc['user_code']}, tok)
+print('server authorize', st)
+if st >= 300: sys.exit(1)
+st, _ = call('POST', 'https://playarr.app/api/link/authorize', {'user_code': code, 'server_url': srv, 'server_device_code': sc['device_code'], 'server_urls': [srv]})
+print('link authorize', st)
 if st >= 300: sys.exit(1)
 for _ in range(60):
     if trace().get('screen') == 'profiles': print('signed in'); sys.exit(0)

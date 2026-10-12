@@ -72,8 +72,15 @@ export async function createDriver() {
       if (base.startsWith("/calendar")) {
         await click(...RAIL["/calendar"], 8);
         const view = new URLSearchParams(query ?? "").get("view");
-        if (view === "week") { await click(1570, 76, 2); await click(1570, 157); }
-        if (view === "month") { await click(1570, 76, 2); await click(1570, 189); }
+        if (view === "week") { await click(1570, 76, 5); await click(1570, 157, 8); }
+        if (view === "month") { await click(1570, 76, 5); await click(1570, 189, 8); }
+        return;
+      }
+      if (base.startsWith("/player")) {
+        // Movies > first card > Play, then pause on web's frame (0:03) so both clients show the same picture.
+        await click(...RAIL["/movies"], 25); await click(...FIRST_CARD, 10); await click(232, 622, 4);
+        await until((t) => t.screen === "playback" && t.play === "playing" && t.pos >= 3, 90, "playback at 0:03");
+        run("write", "parity.pause", "3"); await sleep(3000);
         return;
       }
       const lib = base.split("/").slice(0, 2).join("/");
@@ -89,7 +96,7 @@ export async function createDriver() {
       await sleep(name === "select" && !long ? 9000 : 1200);
     },
     async location() { return location(); },
-    async focused() { return trace().focus ?? null; },
+    async focused() { const t = trace(); return t.focus && t.position ? { label: t.focus, position: t.position } : (t.focus ?? null); },
     async screenshot(file) {
       const t = trace();
       if (t.screen === "pairing" || t.play === "error") throw new Error("signed out or error screen");

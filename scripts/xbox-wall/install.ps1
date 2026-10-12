@@ -17,3 +17,4 @@ $m = "$stage\AppxManifest.xml"; (Get-Content $m -Raw) -replace 'Publisher="CN=Pl
 robocopy $stage $app /MIR /NFL /NDL /NJH /NJS | Out-Null
 Add-AppxPackage -Register "$app\AppxManifest.xml" -ForceApplicationShutdown -ForceUpdateFromAnyVersion
 Get-AppxPackage Playarr.PlayarrXbox | Select-Object Name, Version | Format-List | Out-String
+exit 0   # robocopy leaves exit code 1 (files copied), which pwsh would report as failure

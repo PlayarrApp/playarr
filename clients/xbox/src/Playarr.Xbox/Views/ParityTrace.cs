@@ -104,7 +104,7 @@ namespace Playarr.Xbox.Views
                 var panel = Drawer.Current?.Title ?? string.Empty;
                 var focus = Describe(FocusManager.GetFocusedElement() as DependencyObject, frame.Content);
                 var play = frame.Content is PlayerPage player ? player.Probe() : ("", 0.0);
-                var json = Newtonsoft.Json.JsonConvert.SerializeObject(new { screen, kind, panel, focus, play = play.Item1, pos = Math.Round(play.Item2, 1), code = (frame.Content as LoginPage)?.PairingCode });
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(new { screen, kind, panel, focus, play = play.Item1, pos = Math.Round(play.Item2, 1), code = (frame.Content as LoginPage)?.PairingCode, position = Position(FocusManager.GetFocusedElement() as DependencyObject, frame.Content) });
                 if (json == _last)
                 {
                     return;
@@ -112,7 +112,7 @@ namespace Playarr.Xbox.Views
 
                 _last = json;
                 _seq++;
-                System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "parity.json"), json.TrimEnd('}') + ",\"seq\":" + _seq + "}");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "parity.json"), json.Substring(0, json.Length - 1) + ",\"seq\":" + _seq + "}");
             }
             catch (Exception)
             {
@@ -155,6 +155,26 @@ namespace Playarr.Xbox.Views
                     var texts = Texts(button).Select(t => new string(t.Where(c => c < '\ue000' || c > '\uf8ff').ToArray()).Trim()).Where(t => t.Length > 0).ToList();
                     var label = string.Join(" ", texts);
                     return texts.Count == 1 && texts[0] == "Play" && Drawer.Current != null ? "\u25b6" + label : label;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>Where focus sits (docs/parity/SUITE.md): on the nav rail { "nav", item from the top }, on Home { rail, card }.</summary>
+        private static object? Position(DependencyObject? element, object? page)
+        {
+            for (var node = element; node != null; node = VisualTreeHelper.GetParent(node))
+            {
+                if (node is Button { Tag: string tag } && tag.StartsWith("nav:", StringComparison.Ordinal))
+                {
+                    return new { rail = "nav", index = int.Parse(tag.Substring(4), System.Globalization.CultureInfo.InvariantCulture) };
+                }
+
+                if (page is HomePage && node is SelectorItem item && ItemsControl.ItemsControlFromItemContainer(item) is ListView list
+                    && VisualTreeHelper.GetParent(list) is StackPanel section && VisualTreeHelper.GetParent(section) is StackPanel rails)
+                {
+                    return new { rail = rails.Children.IndexOf(section), index = list.IndexFromContainer(item) };
                 }
             }
 

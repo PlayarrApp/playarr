@@ -1,0 +1,1 @@
+- Xbox parity trace reports the focus position (rail and card, or nav item) for the suite Home D-pad checks.

@@ -231,6 +231,7 @@ namespace Playarr.Xbox.Views
                 button.Click += (s, e) => _frame.Navigate(page, kind);
             }
 
+            button.Tag = "nav:" + _items.Count; // top-to-bottom order, read by the parity trace
             _items.Add((button, page ?? typeof(object), kind));
             return button;
         }
