@@ -1,1 +1,0 @@
-- webOS parity driver: grouped series and season download cases, and the edit case waits for the quality control.

@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV: RIGHT stops at the end of a Home rail instead of jumping to a card in another rail, as on the web. The suite driver (scripts/parity/drivers/firetv.mjs) repeats a dropped key and waits for the screen to settle.
 - Roku media cards draw the web's focus ring and soft glow (brand ink in dark, brand strong in light); series detail's focused episode, Home and library cards now show a ring as the web does.
 - Xbox: the nav rail uses the web icons, label weight and tint, and the profile entry shows the first word of the name.
 - Xbox: the detail page's primary action is the web's filled pill and its secondary pills are filled, not outlined.
@@ -321,6 +322,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- HarmonyOS TV player: a CC button opens a drawer to pick the subtitle track (or Off) and, for files with several, the audio track (audio renegotiates the stream from the current position).
 - webOS shell forwards download notifications to the TV's system toast, and the webOS parity driver checks them.
 - Xbox: Home cards show the web's watch-state overlay: a progress line on part-watched titles and the brand dot on titles with no history.
 - Downloads (web): the edit drawer now changes quality as well as keep-until; a new quality re-converts through a new ticket and replaces the old download.
@@ -519,6 +521,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- webOS parity driver: grouped series and season download cases, and the edit case waits for the quality control.
 - HarmonyOS TV: the detail page follows web: the shared page header and nav rail, a dimmed backdrop, Download / Play / Add to Playlist pills, and Chapters and Cast rails straight on the page instead of a glass panel (new credits and chapters calls).
 - HarmonyOS TV player: the control bar follows web: the close button at the top right, a thin progress track over one row (round -10 / play / +10 buttons and the time) at the bottom.
 - Roku library Filters drawer follows the web: segmented View (List, Screen, Cover, with the list and cover layouts), Sort, Order and the Audio and Subtitle language pickers, working against the catalog; the browse grid has top padding so the card lift and ring are not clipped; cards draw no focus under an open drawer; the player controls stay up while paused and hide after 5 s while playing, as the web does.

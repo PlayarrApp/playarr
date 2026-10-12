@@ -1,1 +1,0 @@
-- HarmonyOS TV player: a CC button opens a drawer to pick the subtitle track (or Off) and, for files with several, the audio track (audio renegotiates the stream from the current position).
