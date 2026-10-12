@@ -133,6 +133,9 @@
         <Rectangle id="profilesSettingsHit" translation="[0,0]" width="44" height="44" color="0x00000000" focusable="true" />
         <Poster id="profilesSignOutBtn" translation="[54,0]" width="104" height="44" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFit" />
         <Rectangle id="profilesSignOutHit" translation="[54,0]" width="104" height="44" color="0x00000000" focusable="true" />
+        <Poster id="profilesClientsFocus" translation="[168,-3]" width="118" height="50" uri="pkg:/images/round-outline-r12.9.png" visible="false" />
+        <Label id="profilesClientsLabel" translation="[174,0]" width="230" height="44" text="Clients" vertAlign="center" scale="[0.48,0.48]" color="0xF4F0F1FF" />
+        <Rectangle id="profilesClientsHit" translation="[168,0]" width="118" height="44" color="0x00000000" focusable="true" />
       </Group>
 
     </Group>

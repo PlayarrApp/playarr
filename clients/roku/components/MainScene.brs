@@ -69,6 +69,9 @@ sub init()
     m.profilesSignOutBtn = m.top.findNode("profilesSignOutBtn")
     m.profilesSettingsHit = m.top.findNode("profilesSettingsHit")
     m.profilesSignOutHit = m.top.findNode("profilesSignOutHit")
+    m.profilesClientsFocus = m.top.findNode("profilesClientsFocus")
+    m.profilesClientsLabel = m.top.findNode("profilesClientsLabel")
+    m.profilesClientsHit = m.top.findNode("profilesClientsHit")
     m.profilesFocusIndex = 0
     m.settingsGroup = m.top.findNode("settingsGroup")
     m.settingsSectionList = m.top.findNode("settingsSectionList")
@@ -1620,6 +1623,7 @@ sub applyProfilesChromeFocus()
     langF = m.profilesLangHit <> invalid and m.profilesLangHit.IsInFocusChain()
     settingsF = m.profilesSettingsHit <> invalid and m.profilesSettingsHit.IsInFocusChain()
     signOutF = m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
+    clientsF = m.profilesClientsHit <> invalid and m.profilesClientsHit.IsInFocusChain()
     if m.profilesThemePill <> invalid then m.profilesThemePill.uri = pairingChromeUri("theme", themeF)
     if m.profilesLangPill <> invalid then m.profilesLangPill.uri = pairingChromeUri("lang", langF)
     ' Gear and Sign out images have a light-theme twin (theme tokens, brand red kept).
@@ -1637,6 +1641,17 @@ sub applyProfilesChromeFocus()
             m.profilesSignOutBtn.uri = "pkg:/images/profiles-signout-focus" + suffix + ".png"
         else
             m.profilesSignOutBtn.uri = "pkg:/images/profiles-signout" + suffix + ".png"
+        end if
+    end if
+    if m.profilesClientsFocus <> invalid
+        m.profilesClientsFocus.visible = clientsF
+        m.profilesClientsFocus.blendColor = ThemeColor("focusRing")
+    end if
+    if m.profilesClientsLabel <> invalid
+        if clientsF
+            m.profilesClientsLabel.color = ThemeColor("brandInk")
+        else
+            m.profilesClientsLabel.color = ThemeColor("ink")
         end if
     end if
 end sub
@@ -1668,6 +1683,10 @@ sub updateProfileActionsLayout()
         m.profilesSignOutHit.visible = true
         m.profilesSignOutHit.focusable = true
     end if
+    if m.profilesClientsHit <> invalid
+        m.profilesClientsHit.visible = true
+        m.profilesClientsHit.focusable = true
+    end if
 
     targetIndex = m.profilesFocusIndex
     if targetIndex = invalid then targetIndex = 0
@@ -1692,7 +1711,7 @@ sub updateProfileActionsLayout()
         rowY = m.profilesRow.translation[1]
     end if
     centerX = rowX + targetIndex * (itemWidth + spacing) + Int(itemWidth / 2)
-    actionsW = 158 ' 44 gear + 10 gap + 104 Sign out pill
+    actionsW = 286 ' 44 gear + 10 gap + 104 Sign out pill + 10 gap + 118 Clients link
     x = centerX - Int(actionsW / 2)
     if x < 40 then x = 40
     if x > 1920 - actionsW - 40 then x = 1920 - actionsW - 40
@@ -6737,6 +6756,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         else if m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
             signOutFromProfiles()
             return true
+        else if m.profilesClientsHit <> invalid and m.profilesClientsHit.IsInFocusChain()
+            openPage("clients")
+            return true
         end if
     else if state = "profiles" and key = "right"
         if m.profilesThemeHit <> invalid and m.profilesThemeHit.IsInFocusChain()
@@ -6747,6 +6769,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             if m.profilesSignOutHit <> invalid then m.profilesSignOutHit.SetFocus(true)
             applyProfilesChromeFocus()
             return true
+        else if m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
+            if m.profilesClientsHit <> invalid then m.profilesClientsHit.SetFocus(true)
+            applyProfilesChromeFocus()
+            return true
         end if
     else if state = "profiles" and key = "left"
         if m.profilesLangHit <> invalid and m.profilesLangHit.IsInFocusChain()
@@ -6755,6 +6781,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             return true
         else if m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
             if m.profilesSettingsHit <> invalid then m.profilesSettingsHit.SetFocus(true)
+            applyProfilesChromeFocus()
+            return true
+        else if m.profilesClientsHit <> invalid and m.profilesClientsHit.IsInFocusChain()
+            if m.profilesSignOutHit <> invalid then m.profilesSignOutHit.SetFocus(true)
             applyProfilesChromeFocus()
             return true
         end if
@@ -6771,7 +6801,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             end if
         end if
     else if state = "profiles" and key = "up"
-        if m.profilesSettingsHit <> invalid and m.profilesSettingsHit.IsInFocusChain() or (m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain())
+        if m.profilesSettingsHit <> invalid and m.profilesSettingsHit.IsInFocusChain() or (m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()) or (m.profilesClientsHit <> invalid and m.profilesClientsHit.IsInFocusChain())
             if m.profilesRow <> invalid then m.profilesRow.SetFocus(true)
             applyProfilesChromeFocus()
             return true
