@@ -70,7 +70,8 @@ export async function createDriver() {
     async focused() { return null; },
     async screenshot(file) {
       const id = basename(file, ".png");
-      await launch(NATIVE[id] ?? id);
+      const open = /^\/(movies|series)\/([0-9a-f-]{36})$/.exec(wanted); // film-detail and series-detail are opened by the suite's pinned id
+      await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (NATIVE[id] ?? id));
       await sleep(id.startsWith("player") ? 30000 : 14000);
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);

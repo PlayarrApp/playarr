@@ -227,7 +227,10 @@ private struct AuthenticatedPlayarrShell: View {
         .background(PlayarrStyle.background.ignoresSafeArea())
         .task {
             #if DEBUG
-            if let title = ParityLaunch.title {
+            // `detail:movie:id=<work id>` opens that exact title (the suite pins film-detail and series-detail by id).
+            if let title = ParityLaunch.title, title.hasPrefix("id="), let id = UUID(uuidString: String(title.dropFirst(3))) {
+                demoDetailViewModel = WorkDetailViewModel(apiClient: environment.apiClient, workID: id)
+            } else if let title = ParityLaunch.title {
                 let kind: WorkKind = ParityLaunch.screen == "detail-series" ? .series : .movie
                 let page = try? await environment.apiClient.browseCatalog(
                     kind: kind, genre: nil, tag: nil, sort: nil, limit: 100, offset: nil
