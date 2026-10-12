@@ -53,6 +53,10 @@ public final class PlayerViewModel {
     public private(set) var currentTime: Double = 0
     public private(set) var duration: Double = 0
     public private(set) var playbackMode: PlaybackMode?
+    /// Replacement sessions asked for since playback last started normally (the server reaped or evicted the idle one).
+    private var sessionRecoveries = 0
+    /// The last engine state that was not a failure: a failure carries no play state of its own.
+    private var lastActiveState: PlayerPlaybackState = .idle
     public private(set) var errorMessage: String?
     public private(set) var qualityOptions: [PlaybackQualityOption] = []
     public private(set) var audioTracks: [PlaybackAudioTrackOption] = []
@@ -150,7 +154,13 @@ public final class PlayerViewModel {
     /// ever reaching the network `playbackInfo()` negotiation below.
     /// `title` is display-only (the API has nothing else to show while
     /// negotiating/loading).
-    public func play(mediaFileID: UUID, title: String, startFromBeginning: Bool = false) async {
+    public func play(
+        mediaFileID: UUID,
+        title: String,
+        startFromBeginning: Bool = false,
+        resumeAtSeconds: Double? = nil,
+        startPaused: Bool = false
+    ) async {
         await finishActiveSession(reason: "user_stopped")
         endOfPlayback.playbackResumed()
         currentTitle = title
@@ -202,7 +212,8 @@ public final class PlayerViewModel {
                 id: mediaFileID,
                 streamURL: streamURL,
                 title: title,
-                startPositionSeconds: progress.map { Double(PlaybackQueueBuilder.resumeMS(positionMS: $0.positionMS, durationMS: $0.durationMS)) / 1_000 } ?? 0,
+                // A recovered session resumes where this player stopped, not at the last saved position.
+                startPositionSeconds: resumeAtSeconds ?? progress.map { Double(PlaybackQueueBuilder.resumeMS(positionMS: $0.positionMS, durationMS: $0.durationMS)) / 1_000 } ?? 0,
                 preferredAudioLanguageCode: defaults.audioLanguage,
                 preferredSubtitleLanguageCode: defaults.subtitleMode == "off" ? nil : defaults.subtitleLanguage,
                 httpHeaders: requestHeaders
@@ -210,8 +221,10 @@ public final class PlayerViewModel {
             try await engine.load(item)
             await applyTrackDefaults(defaults)
             duration = engine.duration > 0 ? engine.duration : Double(info.durationMS) / 1_000
-            engine.play()
+            // A recovered session keeps the viewer's play state: a paused player stays paused.
+            if !startPaused { engine.play() }
             loadState = .playing
+            if resumeAtSeconds == nil { sessionRecoveries = 0 }
             if let sessionID = info.sessionID {
                 try? await apiClient.recordPlaybackEvent(sessionID: sessionID, event: PlaybackEventRequest(kind: "start"))
             }
@@ -420,17 +433,41 @@ public final class PlayerViewModel {
 
     // MARK: - Private
 
+    /// The player failed mid-playback because the server reaped or evicted the idle on-demand session: ask for a
+    /// replacement session at the same position and keep the paused/playing state. `false` when this is not that case.
+    private func recoverLostSession() -> Bool {
+        guard let mediaFileID = activeMediaFileID,
+              PlaybackSessionRecovery.shouldRecover(
+                  mode: playbackMode,
+                  isLocalFile: isPlayingLocalFile,
+                  hasStarted: loadState == .playing,
+                  attemptsSoFar: sessionRecoveries
+              ) else { return false }
+        let attempt = sessionRecoveries
+        sessionRecoveries += 1
+        let position = max(0, currentTime)
+        let paused = !PlaybackSessionRecovery.startsPlaying(lastState: lastActiveState)
+        let title = activeTitle
+        Task { [weak self] in
+            try? await Task.sleep(for: PlaybackSessionRecovery.delay(attemptsSoFar: attempt))
+            await self?.play(mediaFileID: mediaFileID, title: title, resumeAtSeconds: position, startPaused: paused)
+        }
+        return true
+    }
+
     private func bind() {
         engine.statePublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
                 guard let self else { return }
                 self.engineState = state
+                if case .failed = state {} else { self.lastActiveState = state }
                 switch state {
                 case .ended:
                     self.endOfPlayback.mediaEnded()
                     Task { await self.completeActiveSession() }
                 case .failed(let message):
+                    if self.recoverLostSession() { break }
                     self.errorMessage = message
                     self.loadState = .failed(message)
                     Task { await self.failActiveSession(message: message) }

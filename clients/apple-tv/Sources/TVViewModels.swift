@@ -243,6 +243,10 @@ final class TVPlayerViewModel {
     /// False after the 422 `unsupported_colour_format` refusal: Try again would only get the same answer.
     private(set) var canRetryFailure = true
     private(set) var playbackMode: PlaybackMode?
+    /// Replacement sessions asked for since playback last started normally (the server reaped or evicted the idle one).
+    @ObservationIgnored private var sessionRecoveries = 0
+    /// The last engine state that was not a failure: a failure carries no play state of its own.
+    @ObservationIgnored private var lastActiveState: PlayerPlaybackState = .idle
     private(set) var currentTitle = ""
     private(set) var currentSubtitle: String?
     /// Poster path of the title being played: the now-playing surface shows it.
@@ -309,10 +313,35 @@ final class TVPlayerViewModel {
             }
     }
 
+    /// The player failed mid-playback because the server reaped or evicted the idle on-demand session: ask for a
+    /// replacement session at the same position and keep the paused/playing state. `false` when this is not that case.
+    private func recoverLostSession() -> Bool {
+        guard let mediaFileID = activeMediaFileID,
+              PlaybackSessionRecovery.shouldRecover(
+                  mode: playbackMode,
+                  isLocalFile: false,
+                  hasStarted: state == .ready,
+                  attemptsSoFar: sessionRecoveries
+              ) else { return false }
+        let attempt = sessionRecoveries
+        sessionRecoveries += 1
+        let resumeAt = max(0, position)
+        let paused = !PlaybackSessionRecovery.startsPlaying(lastState: lastActiveState)
+        let title = currentTitle
+        Task { [weak self] in
+            try? await Task.sleep(for: PlaybackSessionRecovery.delay(attemptsSoFar: attempt))
+            await self?.play(mediaFileID: mediaFileID, title: title, resumeAtSeconds: resumeAt, startPaused: paused)
+        }
+        return true
+    }
+
     private func handle(_ playback: PlayerPlaybackState) {
         isPlaying = playback == .playing
+        if case .failed = playback {} else { lastActiveState = playback }
         reportParity()
         switch playback {
+        case .failed:
+            _ = recoverLostSession()
         case .ended:
             endOfPlayback.mediaEnded()
             heartbeatTask?.cancel()
@@ -350,7 +379,13 @@ final class TVPlayerViewModel {
         await play(mediaFileID: mediaFileID, title: currentTitle, startFromBeginning: true)
     }
 
-    func play(mediaFileID: UUID, title: String, startFromBeginning: Bool = false) async {
+    func play(
+        mediaFileID: UUID,
+        title: String,
+        startFromBeginning: Bool = false,
+        resumeAtSeconds: Double? = nil,
+        startPaused: Bool = false
+    ) async {
         endOfPlayback.playbackResumed()
         currentTitle = title
         lastMediaFileID = mediaFileID
@@ -373,7 +408,8 @@ final class TVPlayerViewModel {
 
             playbackMode = info.mode
             applyQuality(info)
-            let resumeSeconds = saved.map {
+            // A recovered session resumes where this player stopped, not at the last saved position.
+            let resumeSeconds = resumeAtSeconds ?? saved.map {
                 Double(PlaybackQueueBuilder.resumeMS(positionMS: $0.positionMS, durationMS: $0.durationMS)) / 1_000
             } ?? 0
             // The stream needs the session like every API call (AVPlayer does not send it on its own).
@@ -389,9 +425,11 @@ final class TVPlayerViewModel {
                 engine.isMuted = true
                 NSLog("PlayarrTV: player muted by -PlayarrMuted (isMuted=%@)", engine.isMuted ? "true" : "false")
             }
-            engine.play()
+            // A recovered session keeps the viewer's play state: a paused player stays paused.
+            if !startPaused { engine.play() }
             state = .ready
             activeMediaFileID = mediaFileID
+            if resumeAtSeconds == nil { sessionRecoveries = 0 }
             startHeartbeat()
         } catch let error as APIError {
             // 422 unsupported_colour_format: the server's message, and no retry (a retry changes nothing).

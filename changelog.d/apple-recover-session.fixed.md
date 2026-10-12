@@ -1,0 +1,1 @@
+- iOS and Apple TV: when the server reaps or evicts an idle on-demand session, the player now asks for a replacement session at the same position (up to three times) and keeps a paused player paused, instead of failing.
