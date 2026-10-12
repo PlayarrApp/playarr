@@ -31,6 +31,9 @@ internal sealed class SearchScreen : IPage
     private readonly View _clear;
     private readonly TextLabel _count;
     private readonly TextLabel _notice;
+    private readonly TextLabel _prompt;
+    private readonly TextLabel _gameHeading;
+    private readonly TextLabel _gameNotice;
     private readonly List<MediaCard> _cards = new();
     private readonly List<WorkCard> _items = new();
     private readonly List<SearchResultTarget> _targets = new();
@@ -39,6 +42,7 @@ internal sealed class SearchScreen : IPage
     private readonly List<DiscoveryTitle> _games = new();
     private readonly List<Focusable> _side = new();
     private View? _filterTile;
+    private View? _filterCount;
     private int _focus = -1;       // -1 = on the query field
     private int _sideFocus = -1;
     private float _scroll;
@@ -88,6 +92,12 @@ internal sealed class SearchScreen : IPage
         _notice = Ui.Text("", 153.6f, 266, 13.5f, 500, _t.InkMuted, 590, 54, multiline: true, maxLines: 2);
         _notice.Show(false);
         _root.Add(_notice);
+        _gameHeading = Ui.Text("GAMES", 825.6f, 207.7f, 12.288f, 800, _t.InkMuted, 455, 18.432f, upper: true, spacing: 0.86f);
+        _gameHeading.Show(false);
+        _root.Add(_gameHeading);
+        _gameNotice = Ui.Text("", 825.6f, 240f, 13.5f, 500, _t.InkMuted, 455, 44, multiline: true, maxLines: 2);
+        _gameNotice.Show(false);
+        _root.Add(_gameNotice);
         BuildSide();
 
         // query pill
@@ -107,6 +117,9 @@ internal sealed class SearchScreen : IPage
         _root.Add(form);
         _root.Add(_empty);
         BuildEmpty();
+        _prompt = Ui.Text("", 153.6f, 302.8f, 13.824f, 400, _t.InkMuted, 590, 42.86f, multiline: true, maxLines: 3);
+        _prompt.Show(false);
+        _root.Add(_prompt);
         var clip = new View { PositionX = 729.6f, Size = new Size(TizenClient.DesignWidth - 729.6f, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _results.PositionX = -729.6f;
         clip.Add(_results);
@@ -137,6 +150,11 @@ internal sealed class SearchScreen : IPage
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
         tile.Add(Ui.Icon("filters", 19, 15, 24, _t.InkMuted));
         tile.Add(Ui.Text("Filters", 0, 44.6f, 8.256f, 700, _t.InkMuted, 62, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));
+        var count = Ui.Box(26.328125f, 55.7375f, 9.40625f, 9.90625f, _t.Accent, 4.953125f);
+        count.Add(Ui.Text("1", 0, 0, 6.6048f, 800, _t.Bg, 9.40625f, 9.90625f, HorizontalAlignment.Center));
+        count.Show(_mediaType != "all");
+        _filterCount = count;
+        tile.Add(count);
         var ring = Ring.Make(62, 72, 14, new Rgba(1, 1, 1)); ring.Show(false); tile.Add(ring);
         _root.Add(tile);
         _side.Add(new Focusable { Rect = () => new Box(1845.5f, 151.2f, 62, 72), Label = "filters", Style = f => ring.Show(f), Select = OpenFilters });
@@ -205,6 +223,7 @@ internal sealed class SearchScreen : IPage
     {
         if (index < 0 || index >= MediaTypes.Length) return false;
         _mediaType = MediaTypes[index].Value;
+        _filterCount?.Show(_mediaType != "all");
         _ = RunSearchAsync(_query);
         return true;
     }
@@ -326,7 +345,7 @@ internal sealed class SearchScreen : IPage
         _searchResults.Clear(); _searchResults.AddRange(works);
         _playlists.Clear(); _playlists.AddRange(playlists);
         _games.Clear(); _games.AddRange(games);
-        _notice.Text = notice ?? "";
+        _notice.Text = CleanProviderReason(notice ?? "");
         _notice.Show(!string.IsNullOrWhiteSpace(notice));
         _query = q;
         RenderResults();
@@ -337,8 +356,15 @@ internal sealed class SearchScreen : IPage
         foreach (var c in _cards) { _results.Remove(c.Box); c.Box.Dispose(); }
         _cards.Clear(); _items.Clear(); _targets.Clear(); _focus = -1; _scroll = 0; _results.PositionY = 0;
         var targets = SearchResults.Build(_query, _mediaType, _searchResults, _playlists, _games);
+        var gameEmpty = _mediaType == "game" && _query.Length > 0 && targets.Count == 0;
         _empty.Show(targets.Count == 0 && _query.Length == 0);
-        _count.Text = targets.Count > 0 ? $"{targets.Count} results".ToUpperInvariant() : "";
+        _prompt.Text = gameEmpty ? "Choose a different title or refine your search." : "";
+        _prompt.Show(gameEmpty);
+        _count.Text = _query.Length > 0 ? $"{targets.Count} results".ToUpperInvariant() : "";
+        _gameHeading.Show(gameEmpty);
+        _gameNotice.Text = gameEmpty ? CleanProviderReason(_notice.Text) : "";
+        _gameNotice.Show(gameEmpty && !string.IsNullOrWhiteSpace(_gameNotice.Text));
+        _notice.Show(!gameEmpty && !string.IsNullOrWhiteSpace(_notice.Text));
         var progress = HomeModel.IndexByWork(Array.Empty<WatchProgress>());
         for (var i = 0; i < targets.Count; i++)
         {
@@ -361,6 +387,9 @@ internal sealed class SearchScreen : IPage
         var mediaCard = MediaCard.Search(_env, card, ColX[index % Columns], FirstRowY + (index / Columns) * RowPitch);
         _results.Add(mediaCard.Box); _cards.Add(mediaCard);
     }
+
+    private static string CleanProviderReason(string reason) =>
+        System.Text.RegularExpressions.Regex.Replace(reason, @"\s*\(task\s+\d+\)\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant).Trim();
 
     private static string DiscoveryCaption(DiscoveryTitle title)
     {
