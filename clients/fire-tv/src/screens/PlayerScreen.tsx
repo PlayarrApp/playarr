@@ -68,6 +68,7 @@ import {ensureFireTvAccessToken} from '../auth/session';
 import {useAppForeground, useRemoteKey} from '../platform';
 import {TvFocusScope, focusNode} from '../platform/focus';
 import {useBackLayer} from '../navigation/backPolicy';
+import {DarkSurface} from '../theme/ThemeProvider';
 import {PlayerChrome, type ChromeControl} from '../player/PlayerChrome';
 import {QualityMenu, originalLabel} from '../player/QualityMenu';
 import {Sheet, SheetOption} from '../tv/Sheet';
@@ -589,6 +590,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
       ) : null}
 
       <TvFocusScope autoFocus trap={['up', 'down', 'left', 'right']} style={StyleSheet.absoluteFill}>
+        <DarkSurface>
         <PlayerChrome
           visible={controlsVisible}
           playing={engineState.state === 'playing'}
@@ -612,6 +614,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
           playRef={playRef}
           subtitlesRef={subtitlesRef}
         />
+        </DarkSurface>
       </TvFocusScope>
 
       {menu === 'quality' ? <QualityMenu options={qualityOptions} selectedId={selectedQualityId} onSelect={selectQuality} onClose={closeMenu} /> : null}
