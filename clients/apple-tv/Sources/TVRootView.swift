@@ -206,7 +206,7 @@ struct TVRootView: View {
             let target = sourceY.flatMap {
                 TVNavFocusGeometry.nearestTab(toY: $0, frames: parityNavFocusFrames)
             } ?? tab
-            shellFocus.wrappedValue = .nav(target)
+            shellFocus = .nav(target)
         }
         .ignoresSafeArea()
     }

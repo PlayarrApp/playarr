@@ -359,7 +359,11 @@ struct TVHomeView: View {
                             .onMoveCommand { direction in
                                 // Per-card Left at the rail head hands focus to the nearest nav item.
                                 if direction == .left, index == 0 {
+                                    #if os(tvOS)
                                     requestNavFocus(cardProxy.frame(in: .global).midY)
+                                    #else
+                                    requestNavFocus(nil)
+                                    #endif
                                 }
                             }
                         }
