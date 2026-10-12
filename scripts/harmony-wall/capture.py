@@ -250,25 +250,28 @@ else:
         click(*FILTER_BTN); time.sleep(4); debug(name + "-filters-open")
 
     def open_detail(kind, name):
-        route("library:" + kind, 15); settle()
-        state = json.loads(get("/state"))
-        if state.get("route") != "Library" or state.get("kind") != kind:
-            raise Skip(f"library route did not settle: {state}")
+        screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))['screens']
+        spec = next((s for s in screens if s.get("id") == name), None)
+        opened = spec.get("open", "") if spec is not None else ""
+        prefix = "/" + ("movies" if kind == "movie" else "series") + "/"
+        if not opened.startswith(prefix):
+            raise Skip(f"shared suite has no pinned {kind} detail route for {name}")
+        work_id = opened[len(prefix):]
+        if not re.fullmatch(r"[0-9a-fA-F-]{36}", work_id):
+            raise Skip(f"shared suite has an invalid pinned work id for {name}")
 
-        # The hosted phone Previewer renders a 1080x2340 surface at density 480.
-        # The first landscape card is centred at (270, 360) in that surface.
-        # Use its stable first-result position, then require the patched route
-        # state to report Detail; pixel changes alone also count focus/animation.
-        click(270, 360)
+        # Deep-link to the shared suite's pinned work id and verify that the
+        # Previewer route state reports that same id before saving the frame.
+        route("detail:" + work_id, 5)
         deadline = time.time() + 15
         while time.time() < deadline:
             state = json.loads(get("/state"))
-            if state.get("route") == "Detail":
+            if state.get("route") == "Detail" and state.get("work_id") == work_id:
                 snap(name, folder, 100000)
                 return
             time.sleep(0.5)
         debug(f"{name}-route-timeout")
-        raise Skip(f"first {kind} card tap did not open Detail: {state}")
+        raise Skip(f"pinned {kind} detail route did not settle for {name}: {state}")
 
     def calendar_view(view):
         route("calendar", 18); settle()
