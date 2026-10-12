@@ -35,20 +35,70 @@ ROUTE_BOX = {"name": ""}
 # Parity state the patched app reports (route, library kind, last focused item); GET /state returns it with the derived label.
 IMAGES: dict = {}  # id -> bytes, posted by the patched app (the Previewer cannot decode images itself)
 STATE = {"route": "", "kind": "", "focused": None, "lib_kind": ""}
+DEBUG_SEQUENCE = 0
+
+
+def append_debug_event(category: str, *, route: str = "", work_id: str = "", parent_work_id: str = "",
+                       row_id: str = "", generation: int = 0) -> None:
+    global DEBUG_SEQUENCE
+    DEBUG_SEQUENCE += 1
+    event = {
+        "sequence": DEBUG_SEQUENCE,
+        "category": category,
+        "route": route or STATE.get("route", ""),
+        "work_id": work_id or STATE.get("work_id", ""),
+        "generation": generation or STATE.get("route_generation", 0),
+    }
+    if parent_work_id and row_id:
+        event["parent_work_id"] = parent_work_id
+        event["row_id"] = row_id
+    STATE["debug_events"] = (STATE.get("debug_events", []) + [event])[-300:]
+    STATE["debug_sequence"] = DEBUG_SEQUENCE
+
+
+def append_row_image_event(body: dict) -> bool:
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    parent_work_id = str(body.get("parent_work_id", ""))
+    row_id = str(body.get("row_id", ""))
+    try:
+        generation = int(body.get("generation", 0))
+    except (TypeError, ValueError):
+        return False
+    if route != "Detail" or not work_id or work_id != parent_work_id or not row_id or generation <= 0:
+        return False
+    current_generation = STATE.get("route_generation", 0)
+    if generation < current_generation:
+        return False
+    if (generation == current_generation and current_generation > 0
+            and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
+        return False
+    append_debug_event("detail-row-image-complete", route=route, work_id=work_id,
+                       parent_work_id=parent_work_id, row_id=row_id, generation=generation)
+    return True
 
 
 def apply_state(q):
     if "route" in q:
-        STATE["route"] = q["route"][0]
+        route = q["route"][0]
+        work_id = q.get("work", [""])[0] if route == "Detail" else ""
+        try:
+            generation = int(q.get("generation", ["0"])[0])
+        except (TypeError, ValueError):
+            generation = 0
+        if "generation" in q and generation < STATE.get("route_generation", 0):
+            return
+        STATE["route"] = route
         STATE["kind"] = q.get("kind", [""])[0]
-        if STATE["route"] == "Detail":
-            STATE["work_id"] = q.get("work", [""])[0]
+        STATE["work_id"] = work_id
+        STATE["route_generation"] = max(STATE.get("route_generation", 0), generation)
         if STATE["route"] == "Library":
             STATE["lib_kind"] = STATE["kind"]
     if "dbg" in q:
         STATE["dbg"] = q["dbg"][0]
         STATE.setdefault("dbglog", []).append(q["dbg"][0])
         del STATE["dbglog"][:-300]
+        append_debug_event(q["dbg"][0].split(":", 1)[0][:64])
     if "nav" in q:
         STATE["focused"] = q["nav"][0]
     if "title" in q:
@@ -415,6 +465,17 @@ def main():
                 IMAGES[urllib.parse.parse_qs(url.query)["id"][0]] = raw
                 return self._reply(200, b"ok")
             body = json.loads(raw or b"{}")
+            if url.path == "/preview-state":
+                apply_state({
+                    "route": [str(body.get("route", ""))],
+                    "kind": [str(body.get("kind", ""))],
+                    "work": [str(body.get("work_id", ""))],
+                    "generation": [str(body.get("generation", "0"))],
+                })
+                return self._reply(200, b"ok")
+            if url.path == "/row-image":
+                append_row_image_event(body)
+                return self._reply(200, b"ok")
             ok = commands.send(body["command"], body.get("args"), body.get("type", "action"))
             return self._reply(200 if ok else 503, b"ok")
 

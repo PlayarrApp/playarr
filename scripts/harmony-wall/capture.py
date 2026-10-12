@@ -5,9 +5,12 @@ Signs in fresh (link code logged by the app, approved as the Device Test account
 dark and light. Aborts, writing nothing more, when a frame is too plain (an error or signed-out screen)."""
 import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
+from screen_selection import TV_SCREEN_IDS, parse_tv_screens, player_is_skipped
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
+TV_SCREENS_RAW = os.environ.get("TV_SCREENS", "all").strip()
+SKIP_PLAYER_REQUESTED = os.environ.get("SKIP_PLAYER", "false").lower() == "true"
 CTL = "http://127.0.0.1:" + ("40117" if device == "phone" else "40017")
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(out, exist_ok=True)
@@ -64,6 +67,13 @@ MISSING = []
 def abort(msg):
     print("ABORT: " + msg, flush=True)
     sys.exit(1)
+
+
+try:
+    TV_SELECTION = parse_tv_screens(TV_SCREENS_RAW) if device == "tv" else None
+except ValueError as error:
+    abort(str(error))
+SKIP_PLAYER = player_is_skipped(TV_SELECTION, SKIP_PLAYER_REQUESTED)
 
 
 def guarded(name, fn):
@@ -182,11 +192,14 @@ def extra_screens(folder):
         key("back"); time.sleep(3)
     except SystemExit:
         print("actions not captured", flush=True)
-    try:
-        route("player:" + json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["performance"][0]["file"], 20)
-        click(960, 540); time.sleep(3); snap("player-controls", folder, 30000)
-    except SystemExit:
-        print("player-controls not captured", flush=True)
+    if SKIP_PLAYER:
+        print("player-controls skipped by request", flush=True)
+    else:
+        try:
+            route("player:" + json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["performance"][0]["file"], 20)
+            click(960, 540); time.sleep(3); snap("player-controls", folder, 30000)
+        except SystemExit:
+            print("player-controls not captured", flush=True)
 
 
 def walk(folder, suffix):
@@ -194,8 +207,9 @@ def walk(folder, suffix):
     n = lambda s: s + suffix
     snap(n("home"), folder, 150000)
     if os.environ.get("POSTERDBG"):
-        log_ = json.loads(get("/state")).get("dbglog", [])
-        print("dbgsum", {k: sum(1 for x in log_ if x.startswith(k)) for k in ("cardart", "imgok", "imgerr")}, [x[:160] for x in log_ if x.startswith("imgerr")][:3], flush=True)
+        events = json.loads(get("/state")).get("debug_events", [])
+        print("dbgsum", {k: sum(1 for event in events if event.get("category") == k)
+                          for k in ("home-card-artwork-ok", "poster-image-complete", "poster-image-error")}, flush=True)
     route("library:movie", 15); snap(n("movies"), folder, 150000)
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
     click(946, 254); time.sleep(12); snap(n("film-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
@@ -227,16 +241,99 @@ if device == "tv" and THEME == "dpad":
     key("down"); time.sleep(2); print("after nav down", get("/state"), flush=True)
     sys.exit(0)
 if device == "tv":
+    if TV_SELECTION is not None:
+        suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
+        detail_sources = {}
+        decoded_art = {"dark": False, "light": False}
+
+        def route_state():
+            return json.loads(get("/state"))
+
+        def capture_selected_detail(name, folder, theme):
+            spec = next((screen for screen in suite_screens if screen.get("id") == name), None)
+            prefix = "/movies/" if name == "film-detail" else "/series/"
+            opened = spec.get("open", "") if spec is not None else ""
+            if not opened.startswith(prefix):
+                raise Skip(f"shared suite has no pinned route for {name}")
+            work_id = opened[len(prefix):]
+            if not re.fullmatch(r"[0-9a-fA-F-]{36}", work_id):
+                raise Skip(f"shared suite has an invalid pinned work ID for {name}")
+
+            cursor = route_state().get("debug_sequence", 0)
+            route("detail:" + work_id, 5)
+            deadline = time.time() + 15
+            state = {}
+            while time.time() < deadline:
+                state = route_state()
+                if state.get("route") == "Detail" and state.get("work_id") == work_id:
+                    break
+                time.sleep(0.5)
+            if state.get("route") != "Detail" or state.get("work_id") != work_id:
+                raise Skip(f"pinned route did not settle for {name}")
+
+            if name == "series-detail":
+                generation = state.get("route_generation", 0)
+                if generation <= 0:
+                    raise Skip("pinned detail route has no preview generation")
+                deadline = time.time() + 12
+                while time.time() < deadline:
+                    current = route_state()
+                    if (current.get("route") != "Detail" or current.get("work_id") != work_id
+                            or current.get("route_generation") != generation):
+                        raise Skip("pinned detail route changed while waiting for row artwork")
+                    events = current.get("debug_events", [])
+                    if any(
+                        event.get("sequence", 0) > cursor
+                        and event.get("category") == "detail-row-image-complete"
+                        and event.get("route") == "Detail"
+                        and event.get("work_id") == work_id
+                        and event.get("parent_work_id") == work_id
+                        and bool(event.get("row_id"))
+                        and event.get("generation") == generation
+                        for event in events
+                    ):
+                        decoded_art[theme] = True
+                        break
+                    time.sleep(0.25)
+                if not decoded_art[theme]:
+                    raise Skip("no fresh matching detail-row image completion was reported")
+
+            detail_sources[name] = {"route": "Detail", "source": "suite.json:open", "route_confirmed": True}
+            snap(name, folder, 100000)
+
+        def capture_selected(folder, theme):
+            for name in TV_SELECTION:
+                def capture_one():
+                    if name == "home":
+                        route("home", 8)
+                        snap(name, folder, 150000)
+                    elif name == "movies":
+                        route("library:movie", 15)
+                        snap(name, folder, 150000)
+                    else:
+                        capture_selected_detail(name, folder, theme)
+                guarded(name, capture_one)
+
+        capture_selected(os.path.join(out, "dark"), "dark")
+        route("settings", 8); click(394, 207); time.sleep(3); click(1295, 285); time.sleep(4)
+        capture_selected(os.path.join(out, "light"), "light")
+        for name in TV_SELECTION:
+            if name in ("film-detail", "series-detail") and name not in detail_sources:
+                detail_sources[name] = {"route": "Detail", "source": "suite.json:open", "route_confirmed": False}
+    else:
+        detail_sources = None
+        decoded_art = None
     folder = os.path.join(out, "dark")
-    route("profiles", 6); snap("profiles", folder)
-    # profiles picker -> home needs the same click as the first time
-    click(*PROFILE_CLICK); time.sleep(20)
-    walk(folder, "")
-    # light: Settings theme toggle (coordinates of the Mac scripts), then the same walk
-    route("settings", 8); click(394, 207); time.sleep(3); click(1295, 285); time.sleep(4)
-    route("profiles", 6); snap("profiles", os.path.join(out, "light"))
-    click(*PROFILE_CLICK); time.sleep(20)
-    walk(os.path.join(out, "light"), "")
+    if TV_SELECTION is None:
+        route("profiles", 6); snap("profiles", folder)
+        # profiles picker -> home needs the same click as the first time
+        click(*PROFILE_CLICK); time.sleep(20)
+        walk(folder, "")
+        # light: Settings theme toggle (coordinates of the Mac scripts), then the same walk
+        route("settings", 8); click(394, 207); time.sleep(3); click(1295, 285); time.sleep(4)
+        route("profiles", 6); snap("profiles", os.path.join(out, "light"))
+        click(*PROFILE_CLICK); time.sleep(20)
+        walk(os.path.join(out, "light"), "")
 else:
     # phone: the web phone shell. Pages by route; the phone's own controls (the header filter button, a card tap or long press)
     # inside a page. Coordinates are px at density 480 (3 px per vp): the header's round buttons sit at the right, 16 vp in.
@@ -308,9 +405,27 @@ else:
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
     guarded("player-controls", lambda: (route("player:b9a68b2c-8382-4c34-a6f0-c4dd58f55093", 20), snap("player-controls", folder, 30000)))
 import datetime
-json.dump({"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
-           "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")},
-          open(os.path.join(out, "build.json"), "w"))
+manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
+            "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
+if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
+    suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
+    requested = TV_SELECTION if TV_SELECTION is not None else [
+        screen["id"] for screen in suite_screens if not (SKIP_PLAYER and screen["id"] == "player-controls")
+    ]
+    manifest["missing"] = list(dict.fromkeys(MISSING))
+    manifest["screen_selection"] = {
+        "mode": "selected" if TV_SELECTION is not None else "all",
+        "skip_player": SKIP_PLAYER,
+        "requested": requested,
+        "captured": {
+            theme: [name for name in requested if os.path.isfile(os.path.join(out, theme, name + ".png"))]
+            for theme in ("dark", "light")
+        },
+    }
+    if TV_SELECTION is not None:
+        manifest["screen_selection"]["pinned_detail_sources"] = detail_sources
+        manifest["screen_selection"]["decoded_art"] = decoded_art
+json.dump(manifest, open(os.path.join(out, "build.json"), "w"))
 if MISSING:
     print("INCOMPLETE: missing required screens: " + ", ".join(MISSING), flush=True)
     sys.exit(2)

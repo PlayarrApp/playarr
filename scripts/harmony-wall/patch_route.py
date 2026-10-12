@@ -44,11 +44,13 @@ methods = """
   private previewGo(name: string): void {
     if (name.indexOf('library:') === 0) {
       const params: PreviewRouteParams = new PreviewRouteParams(name.substring(8));
+      setPreviewRouteContext('Library', params.kind, '');
       this.navPathStack.replacePathByName('Library', params);
       return;
     }
     if (name.indexOf('detail:') === 0) {
       const params: PreviewDetailParams = new PreviewDetailParams(name.substring(7));
+      setPreviewRouteContext('Detail', '', params.workId);
       this.navPathStack.replacePathByName('Detail', params);
       return;
     }
@@ -74,6 +76,7 @@ methods = """
     }
     const target: string | undefined = map.get(name);
     if (target !== undefined) {
+      setPreviewRouteContext(target, '', '');
       this.navPathStack.replacePathByName(target, undefined);
     }
   }
