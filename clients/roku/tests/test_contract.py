@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import struct
 import unittest
 from pathlib import Path
 
@@ -124,6 +125,57 @@ class NavigationContractTests(unittest.TestCase):
                     (ROOT / "images" / f"avatar-{preset}.png").is_file(),
                     f"missing avatar-{preset}.png referenced by ProfileAvatar.brs",
                 )
+
+    def test_focused_profile_ring_fits_inside_its_row_item(self) -> None:
+        component_xml = (ROOT / "components" / "ProfileAvatar.xml").read_text(encoding="utf-8")
+        component_brs = (ROOT / "components" / "ProfileAvatar.brs").read_text(encoding="utf-8")
+        builder = re.search(
+            r"sub buildProfileAvatarContent\(profiles as Object\)(.*?)end sub", MAIN, flags=re.DOTALL
+        )
+        self.assertIsNotNone(builder)
+        assert builder is not None
+        row_width = int(re.search(r"itemWidth = (\d+)", builder.group(1)).group(1))
+        row_height = int(
+            re.search(r"m\.profilesRow\.rowItemSize = \[\[itemWidth, (\d+)\]\]", builder.group(1)).group(1)
+        )
+        position = re.search(
+            r'm\.circleGroup\.translation = \[(-?\d+), (-?\d+) \+ lift\]', component_brs
+        )
+        self.assertIsNotNone(position)
+        assert position is not None
+        inset_x, inset_y = (int(value) for value in position.groups())
+        scale_factor = float(re.search(r"scale = 1 \+ \(effective \* ([\d.]+)\)", component_brs).group(1))
+        lift_amount = int(re.search(r"lift = Int\((-?\d+) \* effective\)", component_brs).group(1))
+        ring = re.search(
+            r'<Poster id="focusRing" translation="\[(-?\d+),(-?\d+)\]" width="(\d+)" height="(\d+)"',
+            component_xml,
+        )
+        pivot = re.search(r'<Group id="circleGroup"[^>]*scaleRotateCenter="\[(\d+),(\d+)\]"', component_xml)
+        self.assertIsNotNone(ring)
+        self.assertIsNotNone(pivot)
+        assert ring is not None and pivot is not None
+        ring_x, ring_y, ring_width, ring_height = (int(value) for value in ring.groups())
+        pivot_x, pivot_y = (int(value) for value in pivot.groups())
+        focus_scale = 1 + scale_factor
+        left = inset_x + (ring_x - pivot_x) * focus_scale + pivot_x
+        right = inset_x + (ring_x + ring_width - pivot_x) * focus_scale + pivot_x
+        top = inset_y + lift_amount + (ring_y - pivot_y) * focus_scale + pivot_y
+        bottom = inset_y + lift_amount + (ring_y + ring_height - pivot_y) * focus_scale + pivot_y
+        self.assertGreaterEqual(left, 0)
+        self.assertGreaterEqual(top, 0)
+        self.assertLessEqual(right, row_width)
+        self.assertLessEqual(bottom, row_height)
+
+    def test_profile_signout_assets_match_web_control_size(self) -> None:
+        for name in (
+            "profiles-signout.png",
+            "profiles-signout-light.png",
+            "profiles-signout-focus.png",
+            "profiles-signout-focus-light.png",
+        ):
+            with self.subTest(name=name):
+                data = (ROOT / "images" / name).read_bytes()
+                self.assertEqual((104, 44), struct.unpack(">II", data[16:24]))
 
     def test_every_client_renders_the_server_avatar_preference(self) -> None:
         # The same account must show the same avatar on every device: the server preference (a preset id or a custom

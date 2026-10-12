@@ -125,19 +125,19 @@
       <Label id="profilesKicker" translation="[0,120]" width="1920" height="30" text="PROFILES" horizAlign="center" scale="[0.38,0.38]" scaleRotateCenter="[960,15]" color="0xCF3157FF" />
       <Label id="profilesTitle" translation="[0,170]" width="1920" height="110" text="Who’s watching?" horizAlign="center" scale="[2.66,2.66]" scaleRotateCenter="[960,0]" color="0xF4F0F1FF" />
 
-      <!-- Avatar row: item 280×360 (circle 240 + ring pad + labels). Transparent focus rect. -->
-      <RowList id="profilesRow" translation="[86,300]" itemComponentName="ProfileAvatar"
-        numRows="1" itemSize="[1800,360]" rowItemSize="[[280,360]]"
-        rowItemSpacing="[[32,0]]" rowHeights="[360]" showRowLabel="false"
+      <!-- Avatar row: 304×360 item bounds contain the expanded focus ring. -->
+      <RowList id="profilesRow" translation="[86,342]" itemComponentName="ProfileAvatar"
+        numRows="1" itemSize="[1800,360]" rowItemSize="[[304,360]]"
+        rowItemSpacing="[[-18,0]]" rowHeights="[360]" showRowLabel="false"
         focusXOffset="[0]" rowFocusAnimationStyle="fixedFocusWrap"
         focusBitmapBlendColor="0x00000000" />
 
       <!-- .profile-actions under focused/current avatar: gear + Sign out (always above row). -->
       <Group id="profileActionsGroup" translation="[852,655]" visible="true">
-        <Poster id="profilesSettingsBtn" translation="[0,0]" width="48" height="48" uri="pkg:/images/profiles-gear.png" loadDisplayMode="scaleToFit" />
-        <Rectangle id="profilesSettingsHit" translation="[0,0]" width="48" height="48" color="0x00000000" focusable="true" />
-        <Poster id="profilesSignOutBtn" translation="[60,0]" width="172" height="48" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFit" />
-        <Rectangle id="profilesSignOutHit" translation="[60,0]" width="172" height="48" color="0x00000000" focusable="true" />
+        <Poster id="profilesSettingsBtn" translation="[0,0]" width="44" height="44" uri="pkg:/images/profiles-gear.png" loadDisplayMode="scaleToFit" />
+        <Rectangle id="profilesSettingsHit" translation="[0,0]" width="44" height="44" color="0x00000000" focusable="true" />
+        <Poster id="profilesSignOutBtn" translation="[54,0]" width="104" height="44" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFit" />
+        <Rectangle id="profilesSignOutHit" translation="[54,0]" width="104" height="44" color="0x00000000" focusable="true" />
       </Group>
 
     </Group>

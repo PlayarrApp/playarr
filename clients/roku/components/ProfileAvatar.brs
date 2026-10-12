@@ -44,5 +44,5 @@ sub onFocusChanged()
     m.circleGroup.scale = [scale, scale]
     ' Subtle lift (web translateY(-8px)) without shifting RowList slot.
     lift = Int(-10 * effective)
-    m.circleGroup.translation = [0, 16 + lift]
+    m.circleGroup.translation = [29, 39 + lift]
 end sub
