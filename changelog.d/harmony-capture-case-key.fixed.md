@@ -1,0 +1,1 @@
+- Harmony wall capture: the player screen reads its title from the suite's performance cases (the playback key was removed).

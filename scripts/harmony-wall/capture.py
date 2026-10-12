@@ -183,7 +183,7 @@ def extra_screens(folder):
     except SystemExit:
         print("actions not captured", flush=True)
     try:
-        route("player:" + json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["playback"][0]["file"], 20)
+        route("player:" + json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["performance"][0]["file"], 20)
         click(960, 540); time.sleep(3); snap("player-controls", folder, 30000)
     except SystemExit:
         print("player-controls not captured", flush=True)
