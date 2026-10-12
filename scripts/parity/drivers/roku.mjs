@@ -210,14 +210,21 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   const launchProfiles = async () => {
+    await sendEcp("keypress/Home").catch(() => {});
+    // Match the established device cold-start: Roku needs time to background the channel
+    // before `launch/dev` reliably emits a new screen event on the debug console.
+    await sleep(4000);
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
     resetObservedState();
-    await sendEcp("keypress/Home").catch(() => {});
-    await sleep(900);
     await sendEcp("launch/dev");
-    await waitFor(() => screenSeq > beforeScreenSeq && (screen === "profiles" || screen === "pairing" || screen === "status"), "fresh profile picker event", 30000);
+    try {
+      await waitFor(() => screenSeq > beforeScreenSeq && (screen === "profiles" || screen === "pairing" || screen === "status"), "fresh profile picker event", 40000);
+    } catch {
+      throw new Error(`Roku did not reach a fresh profile picker event after cold launch (screen=${screen || "none"}, newScreenEvents=${screenSeq - beforeScreenSeq}, debugConnected=${!!socket && !socket.destroyed && !debugFailure})`);
+    }
     if (screen !== "profiles") throw new Error(`Roku is on ${screen}; expected signed-in Profiles`);
+    await sleep(3000);
     // Resume can retain focus on a bottom-row action. This deterministic path restores the first profile.
     for (const key of ["down", "down", "left", "up"]) {
       await sendEcp(`keypress/${KEY_NAMES[key]}`);
