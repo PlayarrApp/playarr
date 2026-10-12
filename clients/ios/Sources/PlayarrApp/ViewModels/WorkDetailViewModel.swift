@@ -41,22 +41,14 @@ public final class WorkDetailViewModel {
         self.workID = workID
     }
 
-    /// Resolves the tablet detail selection using the same precedence as the web page:
-    /// an explicitly requested playable episode/media file, then the resume target,
-    /// then the first playable episode in catalogue order.
+    /// Resolves the tablet's initial series detail selection from the resume target,
+    /// falling back to the first playable episode in catalogue order.
     static func initialSeriesEpisode(
         seasons: [SeasonDetail],
-        requestedEpisodeID: UUID?,
-        requestedMediaFileID: UUID?,
         resumeTarget: SeriesResumeTarget?
     ) -> (season: SeasonDetail, episode: EpisodeDetail)? {
         let playable = seasons.flatMap { season in
             season.episodes.filter { $0.mediaFileID != nil }.map { (season, $0) }
-        }
-        if let requested = playable.first(where: { pair in
-            pair.1.id == requestedEpisodeID || pair.1.mediaFileID == requestedMediaFileID
-        }) {
-            return (requested.0, requested.1)
         }
         if let target = resumeTarget,
            let next = playable.first(where: { $0.1.id == target.episodeID })

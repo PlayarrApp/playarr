@@ -7,47 +7,25 @@ import XCTest
 
 @MainActor
 final class WorkDetailViewModelTests: XCTestCase {
-    func testInitialSeriesEpisodePrefersExplicitRequestOverResumeTarget() throws {
-        let seriesID = UUID()
-        let seasonID = UUID()
-        let requestedID = UUID()
-        let nextUpID = UUID()
-        let requestedMediaID = UUID()
-        let nextUpMediaID = UUID()
-        let season = Season(
-            id: seasonID,
-            seriesWorkID: seriesID,
-            seasonNumber: 2,
-            monitored: true,
-            availability: .available
-        )
-        let episodes = [
-            EpisodeDetail(episode: Episode(id: nextUpID, seasonID: seasonID, episodeNumber: 1, monitored: true, availability: .available), mediaFileID: nextUpMediaID),
-            EpisodeDetail(episode: Episode(id: requestedID, seasonID: seasonID, episodeNumber: 2, monitored: true, availability: .available), mediaFileID: requestedMediaID)
-        ]
-        let seasons = [SeasonDetail(season: season, episodes: episodes)]
-        let target = try JSONDecoder().decode(
-            SeriesResumeTarget.self,
-            from: Data("{\"episode_id\":\"\(nextUpID.uuidString)\",\"media_file_id\":\"\(nextUpMediaID.uuidString)\",\"season_number\":2}".utf8)
-        )
+    func testTabletEpisodeRuntimeRoundsToNearestMinute() {
+        XCTAssertEqual(WorkDetailView.runtimeLabel(41 * 60_000 + 29_000), "41 min")
+        XCTAssertEqual(WorkDetailView.runtimeLabel(41 * 60_000 + 30_000), "42 min")
+        XCTAssertEqual(WorkDetailView.runtimeLabel(59 * 60_000 + 30_000), "1h")
+        XCTAssertEqual(WorkDetailView.runtimeLabel(90 * 60_000), "1h 30m")
+    }
 
-        let selected = WorkDetailViewModel.initialSeriesEpisode(
-            seasons: seasons,
-            requestedEpisodeID: requestedID,
-            requestedMediaFileID: nil,
-            resumeTarget: target
-        )
+    func testTabletEpisodeAirDateUsesCurrentLocaleAndUTC() throws {
+        let input = "2026-01-02"
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withFullDate]
+        parser.timeZone = TimeZone(secondsFromGMT: 0)!
+        let date = try XCTUnwrap(parser.date(from: input))
+        let expected = DateFormatter()
+        expected.locale = Locale.current
+        expected.timeZone = TimeZone(secondsFromGMT: 0)!
+        expected.setLocalizedDateFormatFromTemplate("dMMMy")
 
-        XCTAssertEqual(selected?.episode.id, requestedID)
-        XCTAssertEqual(selected?.season.season.id, seasonID)
-
-        let selectedByMedia = WorkDetailViewModel.initialSeriesEpisode(
-            seasons: seasons,
-            requestedEpisodeID: nil,
-            requestedMediaFileID: requestedMediaID,
-            resumeTarget: target
-        )
-        XCTAssertEqual(selectedByMedia?.episode.id, requestedID)
+        XCTAssertEqual(WorkDetailView.airDateLabel(input), expected.string(from: date))
     }
 
     func testInitialSeriesEpisodeUsesResumeTargetThenFirstPlayableFallback() throws {
@@ -74,19 +52,25 @@ final class WorkDetailViewModelTests: XCTestCase {
 
         let resumed = WorkDetailViewModel.initialSeriesEpisode(
             seasons: seasons,
-            requestedEpisodeID: nil,
-            requestedMediaFileID: nil,
             resumeTarget: target
         )
         let fallback = WorkDetailViewModel.initialSeriesEpisode(
             seasons: seasons,
-            requestedEpisodeID: nil,
-            requestedMediaFileID: nil,
             resumeTarget: nil
         )
 
         XCTAssertEqual(resumed?.episode.id, nextID)
         XCTAssertEqual(fallback?.episode.id, firstID)
+
+        let staleEpisodeTarget = try JSONDecoder().decode(
+            SeriesResumeTarget.self,
+            from: Data("{\"episode_id\":\"\(UUID().uuidString)\",\"media_file_id\":\"\(nextMediaID.uuidString)\"}".utf8)
+        )
+        let mediaFileFallback = WorkDetailViewModel.initialSeriesEpisode(
+            seasons: seasons,
+            resumeTarget: staleEpisodeTarget
+        )
+        XCTAssertEqual(mediaFileFallback?.episode.id, nextID)
     }
 
     func testLoadPublishesFetchedDetail() async {

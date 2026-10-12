@@ -14,21 +14,15 @@ struct WorkDetailView: View {
     @State private var selectedTabletEpisodeID: UUID?
     @State private var tabletEpisodeSelectionTouched = false
     @FocusState private var focusedTabletEpisodeID: UUID?
-    private let requestedEpisodeID: UUID?
-    private let requestedMediaFileID: UUID?
 
     init(
         viewModel: WorkDetailViewModel,
         apiClient: PlayarrAPIClient,
-        downloadRepository: DownloadRepository,
-        requestedEpisodeID: UUID? = nil,
-        requestedMediaFileID: UUID? = nil
+        downloadRepository: DownloadRepository
     ) {
         _viewModel = State(initialValue: viewModel)
         self.apiClient = apiClient
         self.downloadRepository = downloadRepository
-        self.requestedEpisodeID = requestedEpisodeID
-        self.requestedMediaFileID = requestedMediaFileID
     }
 
     /// Builds the `DownloadCandidate` `DownloadOptionsSheet`/
@@ -200,8 +194,6 @@ struct WorkDetailView: View {
                         if selectedTabletEpisodeID == nil, !tabletEpisodeSelectionTouched {
                             let firstPaint = WorkDetailViewModel.initialSeriesEpisode(
                                 seasons: seasons,
-                                requestedEpisodeID: requestedEpisodeID,
-                                requestedMediaFileID: requestedMediaFileID,
                                 resumeTarget: nil
                             )
                             selectedTabletEpisodeID = firstPaint?.episode.id
@@ -213,8 +205,6 @@ struct WorkDetailView: View {
                             guard !Task.isCancelled, !tabletEpisodeSelectionTouched else { return }
                             let initial = WorkDetailViewModel.initialSeriesEpisode(
                                 seasons: seasons,
-                                requestedEpisodeID: requestedEpisodeID,
-                                requestedMediaFileID: requestedMediaFileID,
                                 resumeTarget: resumeTarget
                             )
                             selectedTabletEpisodeID = initial?.episode.id
@@ -404,6 +394,9 @@ struct WorkDetailView: View {
         let episode = selected.episode.episode
         let episodeTitle = episode.title ?? "Episode \(episode.episodeNumber)"
         let runtime = selected.episode.runtimeMs ?? episode.runtimeMinutes.map { Int64($0) * 60_000 }
+        let dateValue = episode.airDate ?? detail.work.releaseDate
+        let dateLabel = dateValue.flatMap(Self.airDateLabel)
+        let dateQualifier = episode.airDate == nil ? "Premiered" : "Aired"
         let synopsis = episode.overview ?? selected.season.season.overview ?? detail.work.overview
         return VStack(alignment: .leading, spacing: 0) {
             Text("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))")
@@ -429,7 +422,7 @@ struct WorkDetailView: View {
                 }
                 HStack(spacing: 8) {
                     if let runtime, runtime > 0 { Text(Self.runtimeLabel(runtime)) }
-                    if let airDate = episode.airDate { Text("Aired \(airDate)") }
+                    if let dateLabel { Text("\(dateQualifier) \(dateLabel)") }
                 }
             }
             .font(.custom("Avenir Next", fixedSize: 10).weight(.medium))
@@ -484,9 +477,25 @@ struct WorkDetailView: View {
         }
     }
 
-    private static func runtimeLabel(_ runtimeMs: Int64) -> String {
-        let minutes = runtimeMs / 60_000
-        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
+    static func runtimeLabel(_ runtimeMs: Int64) -> String {
+        let totalMinutes = max(1, Int((Double(runtimeMs) / 60_000).rounded()))
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours == 0 { return "\(totalMinutes) min" }
+        return minutes == 0 ? "\(hours)h" : "\(hours)h \(minutes)m"
+    }
+
+    static func airDateLabel(_ value: String) -> String? {
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withFullDate]
+        parser.timeZone = TimeZone(secondsFromGMT: 0)!
+        guard let date = parser.date(from: String(value.prefix(10))) else { return nil }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)!
+        formatter.setLocalizedDateFormatFromTemplate("dMMMy")
+        return formatter.string(from: date)
     }
 
     private func centreTabletEpisode(_ proxy: ScrollViewProxy, seasons: [SeasonDetail]) {
@@ -531,8 +540,11 @@ struct WorkDetailView: View {
             EmptyView()
         case .series(let seasons):
             let spacing = tabletScale.map { (251.46875 - 304.28125) * $0 } ?? 34
+            let displayedSeasons = tabletScale == nil
+                ? seasons
+                : seasons.filter { $0.episodes.contains { $0.mediaFileID != nil } }
             VStack(alignment: .leading, spacing: spacing) {
-                ForEach(seasons, id: \.season.id) { season in
+                ForEach(displayedSeasons, id: \.season.id) { season in
                     seasonEpisodeTrack(
                         season,
                         tabletScale: tabletScale,
@@ -671,6 +683,7 @@ struct WorkDetailView: View {
     ) -> some View {
         let cardWidth = tabletScale.map { 196.015 * $0 } ?? 210
         let cardHeight = tabletScale.map { 110.252 * $0 } ?? 118
+        let playableEpisodes = season.episodes.filter { $0.mediaFileID != nil }
         // At 1366x1024 the web track heading is 33.875pt, its scroller starts 26.25pt below it, and artwork starts 42pt into the scroller.
         let tabletHeadingHeight: CGFloat = 33.875
         let tabletScrollTop: CGFloat = 26.25
@@ -683,7 +696,7 @@ struct WorkDetailView: View {
                         .font(DesignFont.font(12.567 * tabletScale, 610))
                         .tracking(-0.377 * tabletScale)
                         .foregroundStyle(PlayarrStyle.ink)
-                    Text("\(season.episodes.count) episodes")
+                    Text("\(playableEpisodes.count) episodes")
                         .font(DesignFont.font(7.36 * tabletScale, 400))
                         .foregroundStyle(PlayarrStyle.muted)
                 }
@@ -705,7 +718,7 @@ struct WorkDetailView: View {
 
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 12) {
-                    ForEach(season.episodes) { episode in
+                    ForEach(playableEpisodes) { episode in
                         episodeCard(
                             episode,
                             seasonNumber: season.season.seasonNumber,
