@@ -14,6 +14,19 @@ final class TVWebParityTests: XCTestCase {
         XCTAssertEqual(TVLibraryKindView.ordered(titles, sort: "title", order: "desc").map(\.title), ["Title 10", "title 2", "Title 1"])
     }
 
+    func testHomeFocusHandoffRunsOnceAtTheHomeRootPerTabEntry() {
+        var handoff = TVHomeFocusHandoff()
+
+        XCTAssertFalse(handoff.claim(isHomeRoot: false), "a detail page must not consume the Home handoff")
+        XCTAssertTrue(handoff.claim(isHomeRoot: true), "the first Home rail appearance requests focus")
+        XCTAssertFalse(handoff.claim(isHomeRoot: true), "rail refreshes must not steal focus")
+
+        handoff.tabChanged(to: .movies)
+        XCTAssertFalse(handoff.claim(isHomeRoot: false))
+        handoff.tabChanged(to: .home)
+        XCTAssertTrue(handoff.claim(isHomeRoot: true), "entering Home again starts one new handoff")
+    }
+
     /// Same values as the web's `defaultProfileAvatarPreset` (hash of the user id modulo six presets).
     /// Every client renders the account's server preference; the id hash is only the fallback when none is set.
     func testAvatarSourceFollowsTheServerPreference() throws {

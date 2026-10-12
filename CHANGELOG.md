@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fix Apple TV startup so D-pad navigation begins on the first Home card.
 - Xbox/UWP shared key art now matches the TV web's grayscale, contrast and brightness filters, measured image geometry and stage wash across Home, library and detail pages in both themes.
 - Hide legacy Chromium scrollbars in the webOS Calendar week view without changing scroll behaviour.
 - Match Android phone Search geometry, idle illustration and muted colour to web, and label generated detail chapter markers consistently with web.
