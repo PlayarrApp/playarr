@@ -113,7 +113,7 @@ import { FOCUS_LIFT, effectiveFocusPercent, DEFAULT_ACTIVE_RAIL_FACTOR } from '.
 import { PosterCard } from '../design/components/PosterCard';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 import { Stage } from '../design/components/Stage';
-import { titleCountLabel } from '../core/CountFormat';
+import { libraryCountLabel } from '../core/CountFormat';
 import { AlphabetRail } from '../design/components/AlphabetRail';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
@@ -253,7 +253,7 @@ function libraryKindTitle(kind: string): string {
     return 'Sites';
   }
   if (kind === 'artist') {
-    return 'Artists';
+    return 'Music';
   }
   if (kind === 'author') {
     return 'Authors';
@@ -730,7 +730,7 @@ export struct Library {
     Stack() {
       PageShell({
         title: libraryKindTitle(this.kind),
-        kicker: this.total >= 0 ? titleCountLabel(this.total) : '',
+        kicker: this.total >= 0 ? libraryCountLabel(this.kind, this.total) : '',
         selectedId: this.kind,
         touch: true,
         touchActions: (): void => {
@@ -1130,7 +1130,7 @@ export struct Library {
   private tvLayout(): void {
     PageShell({
       title: libraryKindTitle(this.kind),
-      kicker: this.total >= 0 ? titleCountLabel(this.total) : '',
+      kicker: this.total >= 0 ? libraryCountLabel(this.kind, this.total) : '',
       selectedId: this.kind,
       content: (): void => {
         this.tvContent();
