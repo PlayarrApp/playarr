@@ -1,1 +1,0 @@
-- Samsung Tizen native client: the Downloads page has Pause all, Resume all and Delete all on every series and season group, and the parity driver runs the downloads cases (start, pause and resume, cancel, delete, edit, offline play, series and season actions).

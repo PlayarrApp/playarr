@@ -1,1 +1,0 @@
-- Downloads (web): offline play uses the local copy on the first try (no "Try again"), and a downloaded title's detail page opens offline from its local metadata with Play reachable.

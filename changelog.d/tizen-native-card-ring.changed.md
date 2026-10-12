@@ -1,1 +1,0 @@
-- Samsung Tizen native client: focused cards get the web ring in the dark theme too (pale brand pink), posters keep their rounded corners when focused, and the card behind the title-actions drawer loses its focus look.

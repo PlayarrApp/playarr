@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Downloads (web): offline play uses the local copy on the first try (no "Try again"), and a downloaded title's detail page opens offline from its local metadata with Play reachable.
+- A single pick in the Start/Resume chooser now resolves the whole plan: with several unfinished episodes (or a missed episode on top) the chooser no longer returns after the answer. The unfinished episodes the viewer passed over are declined until they are played again, a pick that is finished carries on with the series, and a pick that later play has superseded is deleted.
 - Roku follows the web's refreshed palette (ink-soft, ink-muted, brand-ink, danger, success), shows the profile tile and build label at the foot of the dock, puts the page subtitle under the heading, keeps the clock fixed, titles grid cards below the art after recycling, and lays series rails out as the web does.
 - Fire TV: HLS playback now starts on the Vega player. Shaka's media source needs the video surface mounted before it attaches, text display and blob URLs are set up for Vega, and a failing sidecar subtitle no longer leaves a loaded title paused.
 - Library: on phones the list view no longer scrolls past its last row into blank space; the spacer under unmounted rows now uses the real row pitch (a 120px floor over-sized it).
@@ -296,6 +298,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Samsung Tizen native client: the Downloads page has Pause all, Resume all and Delete all on every series and season group, and the parity driver runs the downloads cases (start, pause and resume, cancel, delete, edit, offline play, series and season actions).
 - Linux phone client: offline downloads with pause, resume, cancel, delete, keep-until and quality, offline playback and freedesktop notifications.
 - Xbox wall workflow: builds the UWP app on a hosted Windows runner and runs the parity screens (dark, light), D-pad and playback as parallel jobs, signed in fresh as Device Test; the app's parity trace now reports the pairing code so a test can approve it.
 - Samsung Tizen native client: series episode downloads. Long-press an episode to download that episode or the whole season (quality and keep-until), at most two transfers at a time; the Downloads page groups by series and season.
@@ -483,6 +486,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Samsung Tizen native client: focused cards get the web ring in the dark theme too (pale brand pink), posters keep their rounded corners when focused, and the card behind the title-actions drawer loses its focus look.
 - Linux phone client: lock-screen Next and Previous move through a series' episodes or an album's tracks.
 - Linux phone client: Profiles page, episode rails and On deck match the web phone more closely.
 - Linux phone client: one token refresh at a time with the new pair flushed to disk before use, and text drawn unhinted with grayscale anti-aliasing as the browser does.
