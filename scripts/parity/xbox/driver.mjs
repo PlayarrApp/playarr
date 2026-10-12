@@ -74,7 +74,11 @@ export async function createDriver() {
         const view = new URLSearchParams(query ?? "").get("view");
         const dbg = (n) => { if (process.env.XBOX_DEBUG_DIR) run("shot", `${process.env.XBOX_DEBUG_DIR}/${view}-${n}.png`); };
         dbg("1-calendar");
-        if (view === "week" || view === "month") { await click(1570, 76, 5); dbg("2-picker"); await click(1570, view === "week" ? 157 : 189, 8); dbg("3-chosen"); }
+        if (view === "week" || view === "month") { await click(1570, 76, 5); dbg("2-picker"); await click(1570, view === "week" ? 157 : 189, 4); dbg("3-chosen");
+          // Hosted runners sometimes only hover the menu item: click again, then pick it with the keys (week = 1 down, month = 2 down).
+          for (let i = 0; i < 2 && trace().kind !== view; i++) { await click(1570, view === "week" ? 157 : 189, 4); }
+          if (trace().kind !== view) { run("key", "down"); await sleep(400); if (view === "month") { run("key", "down"); await sleep(400); } run("key", "ret"); await sleep(4000); }
+          dbg("4-final"); }
         return;
       }
       if (base.startsWith("/player")) {
