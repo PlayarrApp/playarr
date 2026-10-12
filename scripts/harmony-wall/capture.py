@@ -5,6 +5,7 @@ Signs in fresh (link code logged by the app, approved as the Device Test account
 dark and light. Aborts, writing nothing more, when a frame is too plain (an error or signed-out screen)."""
 import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
+from episode_art_guard import episode_art_crop_stddev, has_visible_episode_art, stable_episode_card_crop
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
@@ -92,10 +93,10 @@ def settle(limit=45):
 SEEN = {}
 
 
-def snap(name, folder, floor=60000):
+def snap(name, folder, floor=60000, frame=None):
     for attempt in range(3 if device == "tv" else 1):
         try:
-            snap_checked(name, folder, floor)
+            snap_checked(name, folder, floor, frame)
             return
         except SystemExit:
             if device == "phone":
@@ -118,12 +119,9 @@ def post_cursor_events(state, event_cursor):
     return []
 
 
-def save_episode_art_diagnostics(expected_work_id, event_cursor, readiness):
-    time.sleep(2)  # let the PreviewState reports finish their loopback requests
-    state = json.loads(get("/state"))
-    debug_events = post_cursor_events(state, event_cursor)
+def safe_episode_art_events(events):
     safe_events = []
-    for event in debug_events:
+    for event in events:
         if re.fullmatch(r"episode-art:row:thumb=(yes|no):file=(yes|no)", event):
             safe_events.append(event)
         elif re.fullmatch(r"episode-art:card-state:artwork=(yes|no)", event):
@@ -134,6 +132,11 @@ def save_episode_art_diagnostics(expected_work_id, event_cursor, readiness):
             safe_events.append(event)
         elif re.fullmatch(r"episode-art:card-image:(ok|error)", event):
             safe_events.append(event)
+    return safe_events
+
+
+def save_episode_art_diagnostics(expected_work_id, safe_events, readiness):
+    state = json.loads(get("/state"))
     diagnostics = {
         "screen": "series-detail",
         "theme": THEME,
@@ -150,29 +153,67 @@ def wait_for_episode_art(expected_work_id, event_cursor, timeout=45):
     """Do not capture the pinned series detail until a fetched image completes in an episode card."""
     deadline = time.time() + timeout
     state = {}
+    detail_events = []
     while time.time() < deadline:
         state = json.loads(get("/state"))
         if state.get("route") == "Detail" and state.get("work_id") == expected_work_id:
-            detail_events = post_cursor_events(state, event_cursor)
-            fetched = any(event in ("episode-art:still:ok", "episode-art:fallback:ok") for event in detail_events)
-            assigned = any(event in ("episode-art:assigned:still", "episode-art:assigned:fallback") for event in detail_events)
-            displayed = "episode-art:card-image:ok" in detail_events
+            current_events = post_cursor_events(state, event_cursor)
+            if current_events:
+                detail_events = current_events
+            else:
+                current_events = detail_events
+            fetched = any(event in ("episode-art:still:ok", "episode-art:fallback:ok") for event in current_events)
+            assigned = any(event in ("episode-art:assigned:still", "episode-art:assigned:fallback") for event in current_events)
+            displayed = "episode-art:card-image:ok" in current_events
             if fetched and assigned and displayed:
                 print("series-detail artwork ready: pinned route, fetch, assignment, and episode image decode verified", flush=True)
-                return
+                return safe_episode_art_events(detail_events)
         time.sleep(0.5)
-    save_episode_art_diagnostics(expected_work_id, event_cursor, "timeout")
+    save_episode_art_diagnostics(expected_work_id, safe_episode_art_events(detail_events), "decode-timeout")
     debug("series-detail-art-timeout")
     raise Skip("pinned series detail did not render a fetched episode image before the bounded capture wait expired")
 
 
-def snap_checked(name, folder, floor):
-    settle()
+def wait_for_episode_art_frame(expected_work_id, timeout=12):
+    """Return a stable frame with visible still texture in the pinned first-episode card crop."""
+    deadline = time.time() + timeout
+    previous = None
+    last_frame = None
+    failure_reason = "episode still was decoded but the pinned phone card crop remained a placeholder"
+    while time.time() < deadline:
+        state = json.loads(get("/state"))
+        if state.get("route") == "Detail" and state.get("work_id") == expected_work_id:
+            failure_reason = "episode still was decoded but the pinned phone card crop remained a placeholder"
+            frame = png()
+            last_frame = frame
+            score = episode_art_crop_stddev(frame)
+            if score is None:
+                failure_reason = "pinned series-detail frame dimensions do not match 1080x2340"
+                previous = None
+            elif has_visible_episode_art(frame):
+                if previous is not None and stable_episode_card_crop(previous, frame):
+                    print("series-detail frame ready: visible episode still crop is stable", flush=True)
+                    return frame
+                previous = frame
+            else:
+                previous = None
+        else:
+            failure_reason = "pinned Detail route was not current during episode-art frame validation"
+            previous = None
+        time.sleep(0.25)
+    if last_frame is not None:
+        last_frame.save(os.path.join(out, "_rejected-series-detail-art.png"))
+    raise Skip(failure_reason + "; bounded stable-frame wait expired")
+
+
+def snap_checked(name, folder, floor, frame=None):
+    if frame is None:
+        settle()
     if b"[JsEngine Crash]" in open(log, "rb").read():
         debug("crash-" + name)
         raise RuntimeError("the Previewer's JS engine crashed: every later frame would be the frozen last one")
-    img = png()
-    debug('snap-' + name)
+    img = frame if frame is not None else png()
+    debug('snap-' + name, img)
     digest = hashlib.md5(img.tobytes()).hexdigest()
     if device == "phone" and digest in SEEN and not os.environ.get("CALIBRATE"):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
@@ -191,10 +232,10 @@ def snap_checked(name, folder, floor):
     print("captured", name, get("/health").decode().strip()[:80], flush=True)
 
 
-def debug(name):
+def debug(name, frame=None):
     d = os.path.join(out, "_debug")
     os.makedirs(d, exist_ok=True)
-    png().save(os.path.join(d, name + ".png"))
+    (frame if frame is not None else png()).save(os.path.join(d, name + ".png"))
 
 
 for _ in range(30):
@@ -331,11 +372,16 @@ else:
         while time.time() < deadline:
             state = json.loads(get("/state"))
             if state.get("route") == "Detail" and state.get("work_id") == work_id:
+                frame = None
                 if name == "series-detail":
-                    wait_for_episode_art(work_id, event_cursor)
-                snap(name, folder, 100000)
-                if name == "series-detail":
-                    save_episode_art_diagnostics(work_id, event_cursor, "ready")
+                    episode_events = wait_for_episode_art(work_id, event_cursor)
+                    try:
+                        frame = wait_for_episode_art_frame(work_id)
+                    except Skip:
+                        save_episode_art_diagnostics(work_id, episode_events, "visual-timeout")
+                        raise
+                    save_episode_art_diagnostics(work_id, episode_events, "ready")
+                snap(name, folder, 100000, frame)
                 return
             time.sleep(0.5)
         debug(f"{name}-route-timeout")
