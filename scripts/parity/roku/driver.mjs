@@ -136,10 +136,11 @@ export async function createDriver({ out }) {
           st.view = view;
         }
       } else if (pathname.startsWith("/movies/") || pathname.startsWith("/series/") || pathname.startsWith("/player/") || pathname === "/movies") {
-        // Detail pages open the second library item, as the suite's keys do (right, select); the player plays that title.
+        // The pinned detail titles (2 Fast 2 Furious, 2 Broke Girls) are the first A-Z item of their library; the player plays the second.
         const series = pathname.startsWith("/series/");
         await library(series ? 7 : 6, series ? "series" : "movie");
-        await press("Right", 0.8); await press("Select", 1);
+        if (pathname.startsWith("/player/")) await press("Right", 0.8);
+        await press("Select", 1);
         await until(() => st.screen === "detail", 30, "the detail page"); await wait(12);
         if (pathname.startsWith("/player/")) {
           await press("Select", 1);
