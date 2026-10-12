@@ -69,7 +69,7 @@ async function reachOnce(screen) {
   if (!routeMatches(screen.match ?? screen.route, at)) throw new Error(`${screen.id}: ended on ${at}, expected ${screen.route}`);
 }
 
-const summary = { screens: 0, failed: [] };
+const summary = { screens: 0, failed: [], dpadFailed: [] };
 if (reset) await resetProgress(pinned()); // before any capture: On deck and Resume start from the same state on every device
 await driver.start?.({ theme: themes[0] });
 if (only.includes("screens")) {
@@ -132,6 +132,7 @@ if (only.includes("dpad")) {
     const pass = byPosition ? samePosition(actual.position, w.position) : d.id === "player-ok-toggle"
       ? !!actual?.label && actual.label === w.label
       : !!actual?.label && sameItem(actual.label, w.label);
+    if (pass === false) summary.dpadFailed.push(d.id);
     results.push({ id: d.id, pass, compared: byPosition ? "position" : "label", expected: expected.dpad[d.id] ?? null, actual: actual && (actual.position ? actual : actual.label) });
     console.log(`${pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual?.label}${actual?.position ? ` @${actual.position.rail}:${actual.position.index}` : ""}${pass ? "" : ` (expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""})`}`);
   }
@@ -182,4 +183,5 @@ if (only.includes("downloads")) {
 if (reference) { mkdirSync(out, { recursive: true }); writeFileSync(join(out, "expected.json"), JSON.stringify({ suite: suite.version, ...expected }, null, 2)); }
 await driver.stop?.();
 console.log(`captured ${summary.screens}, failed ${summary.failed.length}${summary.failed.length ? `: ${summary.failed.join(", ")}` : ""}`);
-process.exit(summary.failed.length ? 1 : 0);
+if (summary.dpadFailed.length) console.log(`failed D-pad checks ${summary.dpadFailed.length}: ${summary.dpadFailed.join(", ")}`);
+process.exit(summary.failed.length || summary.dpadFailed.length ? 1 : 0);

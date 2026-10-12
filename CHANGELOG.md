@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- D-pad parity failures now make the suite command fail, while explicitly skipped player checks remain non-failing.
 - Fire TV: replace stepped card-focus shadow and glow layers with Vega native blurred shadows.
 - Wait for the routed webOS view, finite page animations, visible content and decoded images to settle before capture; dismiss the Search keyboard through the real Filters and Back controls, retaining focus on Filters. Send a character event with CDP Enter so Calendar view buttons activate in the simulator.
 - Normalize the D-pad scorer's long-press Play action label across web and native clients.
@@ -2896,6 +2897,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- The player OK toggle parity check now compares the exact Play or Pause state from its generated web reference, while focus-order checks continue to compare the shared play-pause role.
 - The macOS D-pad parity driver can report engine focus, SwiftUI bindings, and the current window responder.
 - Harmony phone capture jobs now fail when required screens are missing and verify title-detail navigation through Previewer route state.
 - The player OK toggle parity check now compares the exact Play or Pause state from its generated web reference, while focus-order checks continue to compare the shared play-pause role.
