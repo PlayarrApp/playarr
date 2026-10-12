@@ -26,6 +26,7 @@ struct DownloadsView: View {
     }
 
     @Environment(\.playarrGoHome) private var goHome
+    @State private var editing: DownloadRecord?
 
     private var isPhone: Bool { PlayarrLayout.isPhone(UIScreen.main.bounds.size) }
 
@@ -46,6 +47,9 @@ struct DownloadsView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .task { viewModel.refresh() }
         .onAppear { viewModel.refresh() }
+        .sheet(item: $editing) { record in
+            DownloadEditSheet(record: record, apiClient: apiClient, downloadRepository: downloadRepository)
+        }
     }
 
     /// Web mobile Downloads page with nothing downloaded: storage line and bar, then the empty state.
@@ -122,11 +126,13 @@ struct DownloadsView: View {
             }
             .swipeActions(edge: .trailing) {
                 Button("Delete", systemImage: "trash", role: .destructive) { viewModel.delete(record) }
+                Button("Edit", systemImage: "slider.horizontal.3") { editing = record }.tint(PlayarrStyle.pink)
             }
         } else {
             DownloadRow(record: record)
                 .swipeActions(edge: .trailing) {
                     Button("Delete", systemImage: "trash", role: .destructive) { viewModel.delete(record) }
+                    Button("Edit", systemImage: "slider.horizontal.3") { editing = record }.tint(PlayarrStyle.pink)
                 }
                 .swipeActions(edge: .leading) {
                     if record.state == .paused || record.state == .failed {
