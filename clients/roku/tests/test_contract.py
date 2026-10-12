@@ -129,8 +129,10 @@ class NavigationContractTests(unittest.TestCase):
         self.assertNotIn("accessToken", focus_telemetry.group(0))
         self.assertIn("m.profilesRow.SetFocus(true)", focus_current.group(0))
         self.assertNotIn("emitProfileFocusTelemetry", focus_current.group(0))
-        self.assertIn("m.profilesRow.HasFocus()", focus_change.group(0))
+        self.assertIn("m.profilesFocusIndex = position[1]", focus_change.group(0))
+        self.assertIn("if m.profilesRow <> invalid and m.profilesRow.HasFocus()", focus_change.group(0))
         self.assertIn("emitProfileFocusTelemetry(position[1])", focus_change.group(0))
+        self.assertIn("updateProfileActionsLayout()", focus_change.group(0))
 
     def test_clients_link_is_a_bottom_right_footer_action(self) -> None:
         import xml.etree.ElementTree as ET

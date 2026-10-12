@@ -1732,9 +1732,10 @@ end sub
 sub onProfilesRowFocused(event as Object)
     position = event.GetData()
     if position = invalid or position.Count() < 2 then return
-    if m.profilesRow = invalid or not m.profilesRow.HasFocus() then return
     m.profilesFocusIndex = position[1]
-    emitProfileFocusTelemetry(position[1])
+    if m.profilesRow <> invalid and m.profilesRow.HasFocus()
+        emitProfileFocusTelemetry(position[1])
+    end if
     updateProfileActionsLayout()
 end sub
 
