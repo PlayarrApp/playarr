@@ -1,5 +1,6 @@
 import PlayarrKit
 import SwiftUI
+import CoreText
 import UIKit
 
 struct WorkDetailView: View {
@@ -173,7 +174,12 @@ struct WorkDetailView: View {
                         )
                     }
 
-                detailCopy(detail, phone: false, tabletScale: proxy.size.width / 1366)
+                detailCopy(
+                    detail,
+                    phone: false,
+                    tabletScale: proxy.size.width / 1366,
+                    tabletVerticalScale: proxy.size.height / 1024
+                )
                     .frame(width: min(proxy.size.width * 0.24, 455), alignment: .leading)
                     .padding(.leading, proxy.size.width * 0.088)
                     .padding(.top, proxy.size.height * 0.24)
@@ -317,9 +323,19 @@ struct WorkDetailView: View {
     }
 
     @ViewBuilder
-    private func detailCopy(_ detail: WorkDetail, phone: Bool, tabletScale: CGFloat = 1) -> some View {
+    private func detailCopy(
+        _ detail: WorkDetail,
+        phone: Bool,
+        tabletScale: CGFloat = 1,
+        tabletVerticalScale: CGFloat = 1
+    ) -> some View {
         if !phone, detail.work.kind == .series, let selected = selectedTabletEpisode(in: detail) {
-            tabletSeriesCopy(detail, selected: selected, tabletScale: tabletScale)
+            tabletSeriesCopy(
+                detail,
+                selected: selected,
+                tabletScale: tabletScale,
+                tabletVerticalScale: tabletVerticalScale
+            )
         } else {
         VStack(alignment: .leading, spacing: 0) {
             Text(detail.work.kind.displayName.uppercased())
@@ -408,7 +424,8 @@ struct WorkDetailView: View {
     private func tabletSeriesCopy(
         _ detail: WorkDetail,
         selected: (season: SeasonDetail, episode: EpisodeDetail),
-        tabletScale: CGFloat
+        tabletScale: CGFloat,
+        tabletVerticalScale: CGFloat
     ) -> some View {
         let seasonNumber = selected.season.season.seasonNumber
         let episode = selected.episode.episode
@@ -440,29 +457,33 @@ struct WorkDetailView: View {
                 .foregroundStyle(PlayarrStyle.inkSoft)
                 .lineLimit(1)
                 .padding(.top, 10 * tabletScale)
-            FlexWrapLayout(horizontalSpacing: 13.6 * tabletScale, verticalSpacing: 6.4 * tabletScale) {
+            HStack(alignment: .firstTextBaseline, spacing: 13.6 * tabletScale) {
                 Text(selected.season.season.title ?? "Season \(seasonNumber)")
-                    .font(DesignFont.font(7.513 * tabletScale, 680))
+                    .font(DesignFont.font(7.68 * tabletScale, 680))
                     .foregroundStyle(PlayarrStyle.inkSoft)
+                    .fixedSize(horizontal: true, vertical: false)
                 Text("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))")
-                if let runtime, runtime > 0 { Text(Self.runtimeLabel(runtime)) }
-                if let yearRange { Text(yearRange) }
-                if let dateLabel { Text("\(dateQualifier) \(dateLabel)") }
+                    .fixedSize(horizontal: true, vertical: false)
+                if let runtime, runtime > 0 { Text(Self.runtimeLabel(runtime)).fixedSize(horizontal: true, vertical: false) }
+                if let yearRange { Text(yearRange).fixedSize(horizontal: true, vertical: false) }
+                if let dateLabel { Text("\(dateQualifier) \(dateLabel)").fixedSize(horizontal: true, vertical: false) }
                 ForEach(Array(detail.work.genres.prefix(3).enumerated()), id: \.offset) { _, genre in
-                    Text(genre)
+                    Text(genre).fixedSize(horizontal: true, vertical: false)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .font(DesignFont.font(7.513 * tabletScale, 400))
+            .font(DesignFont.font(7.68 * tabletScale, 400))
             .foregroundStyle(PlayarrStyle.muted)
-            .padding(.top, 12 * tabletScale)
+            .padding(.top, 25.6 * tabletVerticalScale)
             if let synopsis, !synopsis.isEmpty {
+                let synopsisFontSize = 9.28 * tabletScale
                 Text(synopsis)
-                    .font(DesignFont.font(9.15 * tabletScale, 400))
+                    .font(DesignFont.font(synopsisFontSize, 400))
                     .foregroundStyle(PlayarrStyle.muted)
                     .lineSpacing(3.5 * tabletScale)
                     .lineLimit(5)
-                    .padding(.top, 12 * tabletScale)
+                    .frame(maxWidth: Self.nunitoChWidth(42, pointSize: synopsisFontSize) ?? .infinity, alignment: .leading)
+                    .padding(.top, 20.48 * tabletVerticalScale)
             }
             if let resumeEpisode, let mediaFileID = resumeEpisode.episode.mediaFileID {
                 // Guarded web geometry measured a 116.109 x 57.359px primary action, 104px secondary minimum and 12.294px gap.
@@ -531,7 +552,7 @@ struct WorkDetailView: View {
                     .fixedSize()
                 }
                 .fixedSize(horizontal: true, vertical: false)
-                .padding(.top, 18 * tabletScale)
+                .padding(.top, 35.84 * tabletVerticalScale)
             }
         }
     }
@@ -577,6 +598,23 @@ struct WorkDetailView: View {
         guard let releaseDate, let start = Int(releaseDate.prefix(4)) else { return nil }
         guard let endDate, let end = Int(endDate.prefix(4)), end > start else { return String(start) }
         return "\(start)–\(end)"
+    }
+
+    private static func nunitoChWidth(_ characterCount: Int, pointSize: CGFloat) -> CGFloat? {
+        guard let font = DesignFont.uiFont(
+            family: "Nunito Sans",
+            postScriptName: DesignFont.nunitoPostScriptName,
+            size: pointSize,
+            weight: 400,
+            fixedAxes: DesignFont.nunitoAxes
+        ) else { return nil }
+
+        var character: UniChar = 48
+        var glyph: CGGlyph = 0
+        guard CTFontGetGlyphsForCharacters(font as CTFont, &character, &glyph, 1) else { return nil }
+        var advance = CGSize.zero
+        guard CTFontGetAdvancesForGlyphs(font as CTFont, .horizontal, &glyph, &advance, 1) > 0 else { return nil }
+        return CGFloat(characterCount) * advance.width
     }
 
     static func airDateLabel(_ value: String) -> String? {
@@ -887,6 +925,7 @@ struct WorkDetailView: View {
             }
             .frame(height: tabletScale.map { 278.03125 * $0 }, alignment: .topLeading)
             .scrollIndicators(.hidden)
+            .scrollClipDisabled(tabletScale != nil)
         }
         .frame(height: tabletScale.map { 304.28125 * $0 }, alignment: .topLeading)
     }
