@@ -175,26 +175,32 @@ final class TVAppEnvironment {
         let configuration = Self.apiConfiguration(serverURL: effectiveURL, deviceID: resolvedDeviceID)
         // Optional parity bootstrap: `-PlayarrAccessToken <jwt>` forces signed-in
         // so visual captures hit the production shell with a real catalogue.
+        #if DEBUG
         let launchToken: String? = {
             guard let idx = args.firstIndex(of: "-PlayarrAccessToken"),
                   args.indices.contains(idx + 1) else { return nil }
             return args[idx + 1]
         }()
+        // `-PlayarrRefreshToken` is the refresh token issued with that access token (the wall passes the pair
+        // from one real sign-in); without it the access token is used as given and never refreshed, as the fixture-server
+        // parity runs need. Debug builds only: a release build never honours injected tokens.
+        let launchRefresh: String? = args.firstIndex(of: "-PlayarrRefreshToken")
+            .flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
         if let launchToken {
             currentUserID = Self.subject(ofJWT: launchToken) ?? ""
             pairingState = .signedIn
             apiClient = APIClient(
                 configuration: configuration,
-                tokenProvider: StaticTokenProvider(accessToken: launchToken),
+                tokenProvider: InjectedSessionProvider(accessToken: launchToken, refreshToken: launchRefresh),
                 serverGroupStore: serverGroupStore
             )
         } else {
-            apiClient = APIClient(
-                configuration: configuration,
-                tokenProvider: store,
-                serverGroupStore: serverGroupStore
-            )
+            apiClient = APIClient(configuration: configuration, tokenProvider: store, serverGroupStore: serverGroupStore)
         }
+        #else
+        let launchToken: String? = nil
+        apiClient = APIClient(configuration: configuration, tokenProvider: store, serverGroupStore: serverGroupStore)
+        #endif
         deviceAuthorizer = DeviceFlowClient(
             configuration: DeviceFlowConfiguration(
                 baseURL: effectiveURL,
@@ -237,6 +243,19 @@ final class TVAppEnvironment {
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         return object["sub"] as? String
     }
+
+    #if DEBUG
+    nonisolated static func expiry(ofJWT token: String) -> Date? {
+        let parts = token.split(separator: ".")
+        guard parts.count >= 2 else { return nil }
+        var payload = String(parts[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while payload.count % 4 != 0 { payload += "=" }
+        guard let data = Data(base64Encoded: payload),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let exp = object["exp"] as? Double else { return nil }
+        return Date(timeIntervalSince1970: exp)
+    }
+    #endif
 
     private func applyAvatar(_ preference: ProfileAvatarPreference?) {
         currentAvatar = preference
@@ -666,22 +685,29 @@ final class TVAppEnvironment {
     }
 }
 
-/// Minimal token provider for parity-suite bootstrap (static access token).
-private struct StaticTokenProvider: AccessTokenProviding {
-    let accessToken: String
+#if DEBUG
+/// In-memory session for parity/wall bootstrap. With a refresh token it behaves like a real sign-in: the
+/// access token expires when its JWT says, and a refresh the API client performs is kept (the server rotates
+/// refresh tokens, so dropping the new one would force a credential-less login on the next refresh).
+/// Without one it is a static 24-hour token.
+private actor InjectedSessionProvider: AccessTokenProviding {
+    private var session: StoredAuthSession
 
-    func currentSession() async -> StoredAuthSession? {
-        StoredAuthSession(
+    init(accessToken: String, refreshToken: String?) {
+        let expiry = refreshToken.flatMap { _ in TVAppEnvironment.expiry(ofJWT: accessToken) }
+        session = StoredAuthSession(
             accessToken: accessToken,
-            refreshToken: accessToken,
+            refreshToken: refreshToken ?? accessToken,
             tokenType: "Bearer",
-            expiresAt: Date().addingTimeInterval(86_400)
+            expiresAt: expiry ?? Date().addingTimeInterval(86_400)
         )
     }
 
-    func storeSession(_ session: StoredAuthSession) async throws {}
-    func clearSession() async throws {}
+    func currentSession() -> StoredAuthSession? { session }
+    func storeSession(_ session: StoredAuthSession) { self.session = session }
+    func clearSession() {}
 }
+#endif
 
 /// UserDefaults-backed session store for Apple TV (simulator-safe; no
 /// Keychain entitlement required for unsigned local builds).

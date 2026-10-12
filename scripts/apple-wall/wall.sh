@@ -51,9 +51,10 @@ print(t["identifier"], r["identifier"])
 P
 }
 
-token() { # a fresh access token for the Device Test profile, masked in the log
-  local t; t=$(DEVICE_NAME="wall-$DEVICE" python3 "$TRUSTED/scripts/apple-wall/login.py")
-  echo "::add-mask::$t" >&2; printf '%s' "$t"
+token() { # a fresh sign-in for the Device Test profile: sets ACCESS_TOKEN and REFRESH_TOKEN (the pair one login issued), masked in the log
+  local t; t=$(DEVICE_NAME="wall-$DEVICE" python3 "$TRUSTED/scripts/apple-wall/login.py") || return 1
+  read -r ACCESS_TOKEN REFRESH_TOKEN <<<"$t"
+  echo "::add-mask::$ACCESS_TOKEN" >&2; echo "::add-mask::$REFRESH_TOKEN" >&2
 }
 
 crashes() { # recent crash reports and a memory snapshot for the diagnosis artifact
@@ -74,7 +75,16 @@ shot() { # <file.png|jpg>: one frame of the device, never the desktop
     ipad) xcrun simctl io "$UDID" screenshot --type=png "$raw" >/dev/null 2>&1 && sips -r 90 "$raw" --out "$f" >/dev/null 2>&1; rm -f "$raw" ;;
     macos)
       rm -f "$WORK/mac-snap.png"; "$WORK/notify" "snapshot:$WORK/mac-snap.png"
-      for _ in $(seq 40); do [[ -s $WORK/mac-snap.png ]] && break; sleep 0.25; done
+      for n in $(seq 360); do
+        [[ -s $WORK/mac-snap.png ]] && break
+        if [[ $n == 100 && $cmd == capture && ! -e $WORK/sampled ]]; then # once per capture, diagnosis: where the app spends the time, and the memory state (no credentials in either)
+          touch "$WORK/sampled"
+          sample "$(pgrep -x PlayarrMac | head -1)" 3 -file "$WORK/sample.txt" >/dev/null 2>&1 || true
+          grep -m1 -A40 "Call graph" "$WORK/sample.txt" 2>/dev/null | cut -c1-170 | sed 's/^/  sample: /' >&2 || true
+          vm_stat | head -8 | sed 's/^/  vm: /' >&2
+        fi
+        sleep 0.25
+      done # a busy screen (the Movies grid) renders for tens of seconds on the hosted runner
       [[ -s $WORK/mac-snap.png ]] && { if [[ $f == *.jpg ]]; then sips -s format jpeg -s formatOptions 80 "$WORK/mac-snap.png" --out "$f" >/dev/null 2>&1; else cp "$WORK/mac-snap.png" "$f"; fi; } ;;
   esac
   [[ -s $f ]]
@@ -108,9 +118,9 @@ launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route 
   case $KIND in
     tvos)
       xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
-      [[ -n ${ACCESS_TOKEN:-} ]] && pin_device
       if [[ -n ${ACCESS_TOKEN:-} ]]; then
-        xcrun simctl launch "$UDID" "$BUNDLE" -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrParityRoute "$route" -PlayarrTheme "$theme" -PlayarrMuted >/dev/null
+        token || return 1; pin_device # a fresh sign-in per launch: a refresh token reused across launches revokes its family
+        xcrun simctl launch "$UDID" "$BUNDLE" -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrRefreshToken "$REFRESH_TOKEN" -PlayarrParityRoute "$route" -PlayarrTheme "$theme" -PlayarrMuted >/dev/null
       else xcrun simctl launch "$UDID" "$BUNDLE" -PlayarrTheme "$theme" -PlayarrMuted >/dev/null; fi ;;
     ios)
       xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
@@ -119,11 +129,12 @@ launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route 
         --playarr-parity-password "$TEST_PASSWORD" --playarr-parity-route "$route" --playarr-parity-theme "$theme" \
         $([[ $DEVICE == ipad ]] && echo --playarr-parity-landscape) >/dev/null ;;
     macos)
+      token || return 1 # fresh sign-in per launch (see tvOS above); a failure leaves the running app alone
       pkill -x PlayarrMac 2>/dev/null || true; sleep 1
       mkdir -p "$WORK/machome"; pin_device
       open -n -g -j "$APP" --env CFFIXED_USER_HOME="$WORK/machome" --stdout "$WORK/app.log" --stderr "$WORK/app.log" \
         --args -PlayarrInvisible -PlayarrMuted -PlayarrTheme "$theme" -ApplePersistenceIgnoreState YES \
-        -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "${ACCESS_TOKEN:-$(token)}" -PlayarrParityRoute "$route" ;;
+        -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrRefreshToken "$REFRESH_TOKEN" -PlayarrParityRoute "$route" ;;
   esac
 }
 
@@ -160,15 +171,14 @@ up)
   fi ;;
 capture)
   : "${OUT:?}" "${REF:?}"
-  ACCESS_TOKEN=$(token)
-  rm -rf "$OUT"; mkdir -p "$OUT"
+  rm -rf "$OUT" "$WORK/sampled"; mkdir -p "$OUT"
   for theme in ${THEMES:-dark light}; do
     mkdir -p "$OUT/$theme"; restart_sim # the runner swaps hard: a fresh simulator per theme keeps SimLaunchHost alive
     bad=
     for pair in $SCREENS; do
       id=${pair%%:*}; route=${pair#*:}; f="$OUT/$theme/$id.png"
       for attempt in 1 2; do
-        ACCESS_TOKEN=$ACCESS_TOKEN launch "$theme" "$route" || true
+        ACCESS_TOKEN=1 launch "$theme" "$route" || true
         sleep 14
         if shot "$f" && [[ $(stat -f %z "$f") -gt 20000 ]]; then bad=; break; fi
         bad="$theme/$id"; rm -f "$f"; log "no usable frame for $bad (attempt $attempt)"; restart_sim
@@ -191,7 +201,7 @@ capture)
   printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
     "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$OUT/build.json"
   # Back to Home, dark, for the stream.
-  ACCESS_TOKEN= launch dark ;;
+  ACCESS_TOKEN= launch dark || true ;;
 stream)
   : "${STREAM_BIND:?}" "${PLAYARR_VNC_PASSWORD:?}" "${DEADLINE:?}"
   frame="$WORK/frame.jpg"; health="$WORK/health.txt"
@@ -222,7 +232,7 @@ stream)
       if bash -c "$CHAIN_CMD"; then dispatched=1; log "successor dispatched"; else log "successor dispatch failed, retrying"; DISPATCH_AT=$(( $(date +%s) + 60 )); fi
     fi
     # A signed-in token for the macOS app only lives about 15 minutes: relaunch it every 10.
-    if [[ $DEVICE == macos && $(( $(date +%s) - last_launch )) -gt 600 ]]; then ACCESS_TOKEN=$(token) launch dark; last_launch=$(date +%s); sleep 15; fi
+    if [[ $DEVICE == macos && $(( $(date +%s) - last_launch )) -gt 600 ]]; then ACCESS_TOKEN= launch dark || true; last_launch=$(date +%s); sleep 15; fi
     sleep 1
   done
   kill $VNC 2>/dev/null || true; log "stream ended" ;;

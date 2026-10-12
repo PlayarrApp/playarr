@@ -10,6 +10,14 @@ import UIKit
 @MainActor
 @Observable
 final class TVHomeViewModel {
+    /// A parity launch injected a session (Debug builds only; a release build never honours the argument).
+    private static var tokenInjected: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-PlayarrAccessToken")
+        #else
+        false
+        #endif
+    }
     enum State: Equatable {
         case idle
         case loading
@@ -64,7 +72,7 @@ final class TVHomeViewModel {
         // Offline fixture catalogue only when no access token was injected
         // (ATS/tunnel unavailable). Prefer live API when signed in.
         if TVParityLaunch.requestedScreen != nil,
-           !ProcessInfo.processInfo.arguments.contains("-PlayarrAccessToken") {
+           !Self.tokenInjected {
             works = TVParityFixtures.sampleWorks()
             state = .loaded
             return

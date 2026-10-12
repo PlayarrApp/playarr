@@ -21,6 +21,7 @@ enum MacDebugRemote {
             forName: Notification.Name("app.playarr.macos.debug"), object: nil, queue: .main
         ) { note in
             let command = note.object as? String ?? ""
+            NSLog("PlayarrMac debug: command %@", command)
             MainActor.assumeIsolated { run(command, window: window) }
         }
     }
@@ -86,7 +87,10 @@ enum MacDebugRemote {
 
     /// Renders the window's content layer tree at 1920x1080.
     private static func snapshot(window: NSWindow, to url: URL) {
-        guard let view = window.contentView, let layer = view.layer, view.bounds.width > 0 else { return }
+        guard let view = window.contentView, let layer = view.layer, view.bounds.width > 0 else {
+            NSLog("PlayarrMac debug: snapshot skipped, window content %@", NSStringFromRect(window.contentView?.bounds ?? .zero))
+            return
+        }
         let width = 1920, height = 1080
         guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prints an access token for the device test account on its "Device Test" profile (the token only, to stdout).
+"""Prints an access token for the device test account on its "Device Test" profile ("<access> <refresh>" on one line, to stdout).
 
 Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD, optional DEVICE_NAME. Errors name the step, never a value.
 """
@@ -42,4 +42,4 @@ if wanted is None:
 print("login: user_id match=%s is_current=%s pin_locked=%s" % (wanted["id"] == login.get("user_id"), wanted.get("is_current"), wanted.get("pin_locked")), file=sys.stderr)
 if wanted["id"] != login.get("user_id"):
     login = call("/api/v1/auth/login", dict(device, profile_user_id=wanted["id"]), token=login["access_token"], what="profile switch")
-print(login["access_token"])
+print(login["access_token"], login["refresh_token"])  # the refresh token belongs to the same session: an app that refreshes needs it

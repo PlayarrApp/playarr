@@ -1,0 +1,38 @@
+name: Apple release guard
+
+# A Release build of the Mac app must not honour the debug launch arguments that inject a session
+# (-PlayarrAccessToken, -PlayarrRefreshToken). Dispatch only; no secrets.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build PlayarrMac and PlayarrTV (Release)
+        run: |
+          for pair in "PlayarrMac:platform=macOS" "PlayarrTV:generic/platform=tvOS Simulator"; do
+            xcodebuild build -project clients/apple-tv/PlayarrTV.xcodeproj -scheme "${pair%%:*}" -configuration Release \
+              -destination "${pair#*:}" -derivedDataPath "$RUNNER_TEMP/dd-${pair%%:*}" CODE_SIGNING_ALLOWED=NO | tail -n 3
+          done
+      - name: No injected-session arguments in the binaries
+        run: |
+          bad=0
+          for name in PlayarrMac PlayarrTV; do
+            app=$(find "$RUNNER_TEMP/dd-$name/Build/Products" -maxdepth 2 -name "$name.app" | head -1)
+            [[ -n $app ]] || { echo "no Release $name.app"; exit 1; }
+            while IFS= read -r f; do
+              for arg in -PlayarrAccessToken -PlayarrRefreshToken; do
+                if strings -a "$f" | grep -q -- "$arg"; then echo "found $arg in $name: ${f#"$app"/}"; bad=1; fi
+              done
+            done < <(find "$app" -type f \( -perm -u+x -o -name '*.dylib' \))
+            echo "checked $name"
+          done
+          exit $bad

@@ -43,7 +43,7 @@ if [ -n "${CHANGED_FILES+x}" ]; then
 else
   base="${BASE_REF:-main}"
   git fetch -q --no-tags origin "$base"
-  head=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD)
+  head=$(git rev-parse --verify -q HEAD^2 || git rev-parse HEAD) # --verify: without it a non-merge HEAD prints "HEAD^2" before failing
   changed=$(git diff --name-only "origin/$base...$head")
 fi
 
