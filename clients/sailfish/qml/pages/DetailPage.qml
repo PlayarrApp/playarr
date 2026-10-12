@@ -276,19 +276,25 @@ PlayarrPage {
                     visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.overview
                     text: page.target && page.target.episode ? (page.target.episode.episode.overview || "") : ""
                     wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 12 * Tokens.u; lineHeight: 0.94
+                    color: Tokens.inkSoft; font.family: Tokens.family580; font.pixelSize: 12 * Tokens.u; lineHeight: 0.94
                 }
                 // The web lays the actions over a faded slice of the series backdrop.
                 Item {
                     width: parent.width; height: 68 * Tokens.u
                     z: -1   // the slice starts above the row, under the overview text
-                    HeroArt {
-                        y: -12.7 * Tokens.u
-                        work: page.work; kinds: ["backdrop", "poster", "thumb"]
-                        boxH: 95 * Tokens.u; imgH: 120 * Tokens.u; artOpacity: Tokens.dark ? 0.2 : 0.42; fadeFrom: 0.4; fadeTo: 1
+                    // The web's key art is pinned to the top of the screen (sticky); only the part below the copy shows.
+                    Item {
+                        id: stripWindow
+                        y: -2.5 * Tokens.u; width: parent.width; height: 100 * Tokens.u; clip: true
+                        HeroArt {
+                            id: stickyArt
+                            y: { flick.contentY; return -stripWindow.mapToItem(page, 0, 0).y }
+                            work: page.work; kinds: ["backdrop", "poster", "thumb"]
+                            artOpacity: Tokens.dark ? 0.2 : 0.42
+                        }
                     }
                     Row {
-                        y: 1 * Tokens.u
+                        y: 2.5 * Tokens.u
                         x: Tokens.pad
                         spacing: 8 * Tokens.u
                         PillButton {
@@ -312,7 +318,7 @@ PlayarrPage {
                         PillButton {
                             id: wlBtn
                             icon: page.inWatchlist ? "\u2713" : "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
-                            fontSize: 8.5 * Tokens.u
+                            fontSize: 8.0 * Tokens.u
                             implicitHeight: 43.5 * Tokens.u
                             text: page.inWatchlist ? qsTr("Remove from watchlist") : qsTr("Add to watchlist")
                             onClicked: page.toggleWatchlist()
@@ -320,7 +326,7 @@ PlayarrPage {
                         PillButton {
                             id: plBtn
                             icon: "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
-                            fontSize: 8.5 * Tokens.u
+                            fontSize: 8.0 * Tokens.u
                             implicitHeight: 43.5 * Tokens.u
                             text: qsTr("Add to Playlist")
                             onClicked: pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work })
@@ -486,6 +492,7 @@ PlayarrPage {
 
     // The web keeps its nav on title pages; selecting a tab returns to the shell on that section.
     NavBar {
+        blurSource: flick
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 10 * Tokens.u; rightMargin: 10 * Tokens.u; bottomMargin: 7 * Tokens.u }
         section: page.work.kind === "movie" ? "movies" : page.work.kind === "series" ? "series" : "music"
         onSelected: {

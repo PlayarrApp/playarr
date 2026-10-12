@@ -7,6 +7,8 @@ MouseArea {
     id: root
     property alias text: label.text
     property bool primary: false
+    property color fill: "transparent"   // a solid fill other than the primary one (transparent = the standard look)
+    property color fillInk: Tokens.ink
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
@@ -19,8 +21,8 @@ MouseArea {
     Rectangle {
         anchors.fill: parent
         radius: height / 2
-        color: root.primary ? Tokens.primary : Tokens.surfaceStrong
-        border.width: root.primary ? 0 : 1
+        color: root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
+        border.width: root.primary || root.fill.a > 0 ? 0 : 1
         border.color: Tokens.line
         opacity: root.pressed ? 0.7 : 1
     }
@@ -34,7 +36,7 @@ MouseArea {
             id: iconLbl
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
-            color: root.primary ? Tokens.primaryInk : Tokens.brandPinkSoft
+            color: root.primary ? Tokens.primaryInk : (Tokens.dark ? Tokens.brandPinkSoft : Tokens.brandPink)
             font.pixelSize: root.iconSize
         }
         Label {
@@ -46,7 +48,7 @@ MouseArea {
             maximumLineCount: 2
             font.family: root.labelFamily
             font.pixelSize: root.fontSize
-            color: root.primary ? Tokens.primaryInk : Tokens.ink
+            color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.ink
         }
     }
     Label {
@@ -60,6 +62,6 @@ MouseArea {
         maximumLineCount: 2
         horizontalAlignment: Text.AlignHCenter
         font.weight: Font.DemiBold
-        color: root.primary ? Tokens.primaryInk : Tokens.ink
+        color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.ink
     }
 }

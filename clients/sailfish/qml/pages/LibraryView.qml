@@ -122,13 +122,13 @@ Item {
     }
     Column {
         visible: root.railOn
-        anchors { right: parent.right; rightMargin: -4.9 * Tokens.u; top: parent.top; topMargin: 87 * Tokens.u }
+        anchors { right: parent.right; rightMargin: 13 * Tokens.u; top: parent.top; topMargin: 87.5 * Tokens.u }
         Repeater {
             model: root.alphabet
             MouseArea {
                 width: 26 * Tokens.u; height: 19 * Tokens.u
                 onClicked: root.jumpTo(modelData)
-                Rectangle { anchors.centerIn: parent; width: 15.5 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
+                Rectangle { anchors.centerIn: parent; width: 21.5 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.dark ? "#d4d1d4" : Tokens.ink }
                 Label { anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.6 * Tokens.u
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#1b181b" : "#ffffff") : Tokens.inkSoft }

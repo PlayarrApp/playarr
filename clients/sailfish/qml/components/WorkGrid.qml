@@ -18,8 +18,8 @@ SilicaGridView {
     cellWidth: width / columns
     // Scrolls so the row holding `index` is at the top (positionViewAtIndex does not move a SilicaGridView).
     function scrollToIndex(index) { contentY = originY + Math.floor(index / columns) * cellHeight; returnToBounds() }
-    // Web phone grid: 173 CSS px cards, 12 px gap, 16 px side padding.
-    readonly property real cardW: columns === 2 ? Tokens.px(189) - Tokens.px(16) : cellWidth - Tokens.pad - gap / 2
+    // Web phone grid (#924): cards fit beside the 52 px letter rail pad: (viewport - 16 gutter - 52 rail - 12 gap) / 2.
+    readonly property real cardW: columns === 2 ? Math.round((width - Tokens.px(16 + 52 + 12)) / 2) : cellWidth - Tokens.pad - gap / 2
     cellHeight: mode === "list" ? 76 * Tokens.u
               : mode === "cover" ? cardW * 3 / 2 + 62 * Tokens.u
               : cardW * 9 / 16 + 49 * Tokens.u
@@ -29,7 +29,7 @@ SilicaGridView {
         width: root.cellWidth
         height: root.cellHeight
         Loader {
-            x: root.columns === 1 ? 0 : (index % root.columns === 0 ? Tokens.pad : (root.columns === 2 ? Tokens.px(201) - Math.round(root.cellWidth) : root.gap / 2))
+            x: root.columns === 1 ? 0 : (index % root.columns === 0 ? Tokens.pad : (root.columns === 2 ? Tokens.px(16 + 12) + root.cardW - Math.round(root.cellWidth) : root.gap / 2))
             sourceComponent: root.mode === "list" ? rowComp : cardComp
         }
         Component {

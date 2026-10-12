@@ -66,7 +66,7 @@ Item {
 
     PageTitle {
         id: head
-        y: 4 * Tokens.u
+        y: (root.mode === "agenda" ? 5 : 4) * Tokens.u
         title: qsTr("Calendar")
         onBackClicked: root.goHome()
     }
@@ -81,17 +81,18 @@ Item {
         Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
         Image { anchors.centerIn: parent; width: 20 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("filter", Tokens.ink) }
     }
-    // The web's calendar-feed (subscription) button; the feed panel itself is not built here yet.
+    // The web's calendar-feed (subscription) button.
     MouseArea {
         id: bellBtn
         anchors { right: filterBtn.left; rightMargin: 9.7 * Tokens.u; verticalCenter: head.verticalCenter }
         width: 43.7 * Tokens.u; height: width
+        onClicked: pageStack.push(Qt.resolvedUrl("CalendarLinkPage.qml"))
         Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: bellBtn.pressed ? 0.5 : 1 }
         Image { anchors.centerIn: parent; width: 20 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("bell", Tokens.ink) }
     }
     Row {
         id: nav
-        anchors { top: head.bottom; topMargin: (root.mode === "agenda" ? -1.4 : 16.4) * Tokens.u; right: parent.right; rightMargin: Tokens.pad }
+        anchors { top: head.bottom; topMargin: (root.mode === "agenda" ? -3.2 : 16.4) * Tokens.u; right: parent.right; rightMargin: Tokens.pad }
         spacing: 10 * Tokens.u
         PillButton { text: root.range.label; labelFamily: Tokens.family610; fontSize: 11.5 * Tokens.u; implicitHeight: 43.7 * Tokens.u; implicitWidth: (root.mode === "week" ? 103.6 : root.mode === "month" ? 91.4 : 126) * Tokens.u }
         PillButton { text: "←"; fontSize: 9 * Tokens.u; implicitHeight: 43.7 * Tokens.u; implicitWidth: 41.6 * Tokens.u; onClicked: root.page-- }

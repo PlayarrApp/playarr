@@ -144,6 +144,7 @@ PlayarrPage {
         VerticalScrollDecorator {}
     }
     NavBar {
+        blurSource: flick
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 10 * Tokens.u; rightMargin: 10 * Tokens.u; bottomMargin: 7 * Tokens.u }
         section: page.calendar ? "" : "movies"
         onSelected: {
