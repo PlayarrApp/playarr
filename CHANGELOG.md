@@ -298,6 +298,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Xbox parity trace reports the focus position (rail and card, or nav item) for the suite Home D-pad checks.
 - Samsung Tizen native client: the Downloads page has Pause all, Resume all and Delete all on every series and season group, and the parity driver runs the downloads cases (start, pause and resume, cancel, delete, edit, offline play, series and season actions).
 - Linux phone client: offline downloads with pause, resume, cancel, delete, keep-until and quality, offline playback and freedesktop notifications.
 - Xbox wall workflow: builds the UWP app on a hosted Windows runner and runs the parity screens (dark, light), D-pad and playback as parallel jobs, signed in fresh as Device Test; the app's parity trace now reports the pairing code so a test can approve it.
@@ -486,6 +487,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Linux phone client: light theme page colour and shadows from the web tokens, On deck loads like the web (one entry per title, ten at most), series show their year range and dates as the web writes them.
+- Linux phone client: Preferences, the title actions sheet and series pages follow the web more closely.
 - Samsung Tizen native client: focused cards get the web ring in the dark theme too (pale brand pink), posters keep their rounded corners when focused, and the card behind the title-actions drawer loses its focus look.
 - Linux phone client: lock-screen Next and Previous move through a series' episodes or an album's tracks.
 - Linux phone client: Profiles page, episode rails and On deck match the web phone more closely.
