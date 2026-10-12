@@ -330,6 +330,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
   const [facets, setFacets] = useState<LanguageFacets | null>(null);
   const loadingMore = useRef(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+  useEffect(() => () => scrollY.stopAnimation(), [scrollY]);
   const detailRoute = kind === 'artist' ? ROUTES.musicDetail : ROUTES.workDetail;
   const label = KIND_LABEL[kind];
   const noun = kind === 'movie' ? 'titles' : kind === 'series' ? 'titles' : kind === 'artist' ? 'artists' : 'titles';
@@ -428,6 +429,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
     next = Math.max(0, next);
     if (next !== gridOffset.current) {
       gridOffset.current = next;
+      scrollY.stopAnimation();
       Animated.timing(scrollY, {toValue: -next, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
     }
     if (items && focusIndex > items.length - cols * 4) loadMore();
@@ -725,7 +727,9 @@ function Alphabet({active, onJump}: {active: string | null; onJump: (letter: str
   useEffect(() => {
     if (at < 0) return;
     const to = Math.min(RAIL_SCROLL_MAX, Math.max(0, 8 + at * RAIL_ROW + RAIL_ROW / 2 - (1080 - RAIL_TOP) / 2));
-    Animated.timing(scroll, {toValue: -to, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+    const animation = Animated.timing(scroll, {toValue: -to, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true});
+    animation.start();
+    return () => animation.stop();
   }, [at, scroll]);
   return (
     <Box x={1851.5} y={RAIL_TOP} w={56} h={1080 - RAIL_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">

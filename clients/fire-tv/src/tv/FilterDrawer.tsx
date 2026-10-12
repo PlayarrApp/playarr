@@ -100,7 +100,9 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
 
   const slide = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(slide, {toValue: 1, duration: 360, easing: Easing.bezier(0.16, 1, 0.3, 1), useNativeDriver: true}).start();
+    const animation = Animated.timing(slide, {toValue: 1, duration: 360, easing: Easing.bezier(0.16, 1, 0.3, 1), useNativeDriver: true});
+    animation.start();
+    return () => animation.stop();
   }, [slide]);
 
   return (

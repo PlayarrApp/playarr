@@ -26,6 +26,8 @@ final class MacFocusEngine {
         var secondary: (() -> Void)?
         /// Where focus starts when its layer opens (a drawer's close button), before the first page content.
         var preferred = false
+        /// The SwiftUI focus binding itself, for parity diagnostics independent of the state file tag.
+        var isFocused: () -> Bool = { false }
     }
 
     private(set) var targets: [UUID: Target] = [:]
@@ -316,7 +318,8 @@ struct MacFocusTarget: ViewModifier {
         }
         let binding = $focused
         MacFocusEngine.shared.update(id, .init(frame: frame, layer: layer, focus: { binding.wrappedValue = true },
-                                               activate: activate, secondary: secondary?.action, preferred: preferred))
+                                               activate: activate, secondary: secondary?.action, preferred: preferred,
+                                               isFocused: { binding.wrappedValue }))
     }
 }
 

@@ -41,6 +41,8 @@ def index(s):
     let query: string = 'route=' + top;
     if (top === 'Library') {
       query = query + '&kind=' + (this.navPathStack.getParamByIndex(names.length - 1) as PreviewRouteParams).kind;
+    } else if (top === 'Detail') {
+      query = query + '&work=' + encodeURIComponent((this.navPathStack.getParamByIndex(names.length - 1) as PreviewDetailParams).workId);
     }
     previewReport(query);
   }

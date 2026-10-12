@@ -18,6 +18,16 @@ export function routeMatches(pattern, url) {
   return !pq || [...new URLSearchParams(pq)].every(([k, v]) => u.searchParams.get(k) === v);
 }
 
+// D-pad labels share semantic roles across platforms. The action-list Play entry and play/pause
+// control represent different checks: one names the action, while the toggle preserves exact state.
+export function focusForCheck(f, checkId) {
+  const norm = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  const raw = norm(f && typeof f === "object" ? f.label : f);
+  const label = checkId === "long-press-actions" && ["▶play", "play-pause", "play"].includes(raw) ? "play"
+    : checkId === "player-ok-toggle" ? raw : /^(play|pause)$/.test(raw) ? "play-pause" : raw;
+  return { label, position: f && typeof f === "object" ? f.position ?? null : null };
+}
+
 // Returns a list of problems (empty when valid).
 export function validateSuite(s, legendScreens) {
   const bad = [];

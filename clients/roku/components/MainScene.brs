@@ -56,6 +56,14 @@ sub init()
     m.profilesLangLabel = m.top.findNode("profilesLangLabel")
     m.profilesKicker = m.top.findNode("profilesKicker")
     m.profilesTitle = m.top.findNode("profilesTitle")
+    if m.profilesKicker <> invalid
+        m.profilesKicker.ObserveField("textWidth", "centerProfilesKicker")
+        m.profilesKicker.spec = { text: "PROFILES", size: 10, weight: 800, tracking: 1.35, role: "brandInk", upper: true }
+    end if
+    if m.profilesTitle <> invalid
+        m.profilesTitle.ObserveField("textWidth", "centerProfilesTitle")
+        m.profilesTitle.spec = { text: "Who’s watching?", size: 81, weight: 500, tracking: -5.806, role: "ink" }
+    end if
     m.profileActionsGroup = m.top.findNode("profileActionsGroup")
     m.profilesSettingsBtn = m.top.findNode("profilesSettingsBtn")
     m.profilesSignOutBtn = m.top.findNode("profilesSignOutBtn")
@@ -1560,9 +1568,10 @@ sub applyProfilesChrome()
     theme = ResolvePairingTheme(m.themePreference)
     lang = ResolvePairingLanguage(m.languagePreference)
     isLight = theme = "light"
-    ' The web profile picker sits on the flat page background (measured: 21 19 21 away from the avatars in dark); only the
-    ' pairing screen carries the radial wash.
-    if m.profilesAuthBg <> invalid then m.profilesAuthBg.visible = false
+    if m.profilesAuthBg <> invalid
+        m.profilesAuthBg.visible = true
+        if isLight then m.profilesAuthBg.uri = "pkg:/images/profiles-bg-light.png" else m.profilesAuthBg.uri = "pkg:/images/profiles-bg.png"
+    end if
     tokens = ThemeTokens(theme)
     ink = tokens.ink
     inkSoft = tokens.inkSoft
@@ -1574,7 +1583,6 @@ sub applyProfilesChrome()
         m.profilesLangLabel.color = ink
         m.profilesLangLabel.text = PairingLanguageChromeLabel(m.languagePreference)
     end if
-    if m.profilesTitle <> invalid then m.profilesTitle.color = ink
     if m.profilesThemeIcon <> invalid
         if isLight
             m.profilesThemeIcon.uri = "pkg:/images/pairing-icon-theme-light.png"
@@ -1593,6 +1601,20 @@ sub applyProfilesChrome()
     updateProfileActionsLayout()
 end sub
 
+sub centerProfilesKicker()
+    if m.profilesKicker = invalid then return
+    width = m.profilesKicker.textWidth
+    if width <= 0 then return
+    m.profilesKicker.translation = [Int((1920 - width) / 2), 162]
+end sub
+
+sub centerProfilesTitle()
+    if m.profilesTitle = invalid then return
+    width = m.profilesTitle.textWidth
+    if width <= 0 then return
+    m.profilesTitle.translation = [Int((1920 - width) / 2), 169]
+end sub
+
 sub applyProfilesChromeFocus()
     themeF = m.profilesThemeHit <> invalid and m.profilesThemeHit.IsInFocusChain()
     langF = m.profilesLangHit <> invalid and m.profilesLangHit.IsInFocusChain()
@@ -1600,7 +1622,7 @@ sub applyProfilesChromeFocus()
     signOutF = m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
     if m.profilesThemePill <> invalid then m.profilesThemePill.uri = pairingChromeUri("theme", themeF)
     if m.profilesLangPill <> invalid then m.profilesLangPill.uri = pairingChromeUri("lang", langF)
-    ' The gear and Sign out bitmaps have a light-theme twin (greys inverted, brand red kept).
+    ' Gear and Sign out images have a light-theme twin (theme tokens, brand red kept).
     suffix = ""
     if ResolvePairingTheme(m.themePreference) = "light" then suffix = "-light"
     if m.profilesSettingsBtn <> invalid
@@ -1661,21 +1683,21 @@ sub updateProfileActionsLayout()
         end for
     end if
 
-    itemWidth = 246
-    spacing = 40
+    itemWidth = 368
+    spacing = -82
     rowX = 0
-    rowY = 365
+    rowY = 351
     if m.profilesRow <> invalid and m.profilesRow.translation <> invalid
         rowX = m.profilesRow.translation[0]
         rowY = m.profilesRow.translation[1]
     end if
     centerX = rowX + targetIndex * (itemWidth + spacing) + Int(itemWidth / 2)
-    actionsW = 232 ' 48 gear + 12 gap + 172 pill
-    x = centerX - 77
+    actionsW = 158 ' 44 gear + 10 gap + 104 Sign out pill
+    x = centerX - Int(actionsW / 2)
     if x < 40 then x = 40
     if x > 1920 - actionsW - 40 then x = 1920 - actionsW - 40
-    ' Sit just under name/status (circle+labels ~ 328px from row top).
-    y = rowY + 339
+    ' Sit just under the name/status block (web profile-actions margin below it).
+    y = rowY + 376
     if y > 980 then y = 980
     m.profileActionsGroup.translation = [x, y]
     m.profileActionsGroup.opacity = 1
@@ -1783,19 +1805,20 @@ sub buildProfileAvatarContent(profiles as Object)
     ' Keep full status line (was truncating as "ADD ANOTHER…").
     list.Push(addItem)
 
-    ' Equal item boxes 280×360 (240 circle + ring pad + labels). Gap 32.
-    ' Circles centre on a shared baseline; focus scales from circle centre.
-    itemWidth = 246
-    spacing = 40
+    ' 368px item boxes contain the translated 336px shadow at 1.09 scale,
+    ' with 61px inset. Negative gap preserves the existing 286px centre step.
+    itemWidth = 368
+    spacing = -82
     count = list.Count()
     rowWidth = count * itemWidth + (count - 1) * spacing
     x = 960 - Int(rowWidth / 2)
     if x < 40 then x = 40
-    m.profilesRow.translation = [x, 365]
-    m.profilesRow.rowItemSize = [[itemWidth, 360]]
+    m.profilesRow.translation = [x, 328]
+    itemHeight = 392
+    m.profilesRow.rowItemSize = [[itemWidth, itemHeight]]
     m.profilesRow.rowItemSpacing = [[spacing, 0]]
-    m.profilesRow.rowHeights = [360]
-    m.profilesRow.itemSize = [1800, 360]
+    m.profilesRow.rowHeights = [itemHeight]
+    m.profilesRow.itemSize = [1800, itemHeight]
     m.profilesRow.content = root
     ' Prefer current profile for under-avatar actions on first paint.
     m.profilesFocusIndex = 0

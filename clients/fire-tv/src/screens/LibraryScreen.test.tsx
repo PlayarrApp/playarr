@@ -41,6 +41,12 @@ jest.mock('../platform/remote', () => ({useRemoteKey: jest.fn()}));
  */
 (globalThis as unknown as {React: typeof React}).React = React;
 
+const renderers: ReactTestRenderer[] = [];
+function trackRenderer(renderer: ReactTestRenderer): ReactTestRenderer {
+  renderers.push(renderer);
+  return renderer;
+}
+
 function work(overrides: Partial<Work> & Pick<Work, 'id' | 'title'>): Work {
   return {
     added_at: '2026-01-01T00:00:00Z',
@@ -80,13 +86,13 @@ async function renderLibrary(
 ): Promise<ReactTestRenderer> {
   let renderer!: ReactTestRenderer;
   await act(async () => {
-    renderer = create(
+    renderer = trackRenderer(create(
       <ApiClientProvider>
         <LanguageProvider>
           <LibraryScreen kind={kind} navigation={navigation} />
         </LanguageProvider>
       </ApiClientProvider>
-    );
+    ));
   });
   return renderer;
 }
@@ -114,6 +120,9 @@ function allText(renderer: ReactTestRenderer): string {
 
 describe('LibraryScreen', () => {
   afterEach(() => {
+    act(() => {
+      for (const renderer of renderers.splice(0)) renderer.unmount();
+    });
     jest.restoreAllMocks();
   });
 

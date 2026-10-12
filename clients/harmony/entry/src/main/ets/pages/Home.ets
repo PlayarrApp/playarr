@@ -131,6 +131,8 @@ import {
   getHomeRails,
 } from '../data/CatalogRepository';
 import type { ContinueWatchingEntry } from '../data/CatalogRepository';
+import { getWorkDetail } from '../data/CatalogRepository';
+import { formatRuntimeLabel } from '../core/RuntimeLabel';
 import {
   fetchWorkArtworkByPriority,
   LANDSCAPE_ARTWORK_PRIORITY,
@@ -422,13 +424,9 @@ function heroTitleFor(hero: HomeCardItem | undefined): string {
   return hero.title;
 }
 
-/** Web's TV Home meta line is the runtime; list works carry no runtime, so the release year stands in. */
-function heroMetaLinesFor(hero: HomeCardItem | undefined): string[] {
-  if (hero === undefined) {
-    return [];
-  }
-  const year = releaseYearLabel(hero.releaseDate);
-  return year.length > 0 ? [year] : [];
+/** Web's TV Home meta line is the focused work's runtime, shown once its detail has loaded and nothing before. */
+function heroMetaLinesFor(runtime: string): string[] {
+  return runtime.length > 0 ? [runtime] : [];
 }
 
 @Component
@@ -447,6 +445,9 @@ export struct Home {
   @State private serverRails: HomeServerRail[] = [];
 
   @State private hero: HomeCardItem | undefined = undefined;
+  /** The hero's runtime label, from its work detail ('' until it loads), keyed by `heroRuntimeId`. */
+  @State private heroRuntime: string = '';
+  private heroRuntimeId: string = '';
   /** Settings > Appearance: Home screen artwork ('thumbnail' or 'cover') and the artwork size. */
   @State private homeView: string = 'thumbnail';
   @State private artworkSize: ArtworkSizeName = 'medium';
@@ -648,6 +649,7 @@ export struct Home {
     const hero = this.hero;
     if (hero !== undefined) {
       this.loadHeroArtwork(hero.id);
+      this.loadHeroRuntime(hero.id);
     }
     for (const rail of this.serverRails) {
       const railId = rail.id;
@@ -722,6 +724,15 @@ export struct Home {
     // whenever a card's `artwork` stays `undefined`.
   }
 
+  private async loadHeroRuntime(workId: string): Promise<void> {
+    this.heroRuntimeId = workId;
+    this.heroRuntime = '';
+    const result = await getWorkDetail(workId);
+    if (result.kind === 'ok' && this.heroRuntimeId === workId) {
+      this.heroRuntime = formatRuntimeLabel(result.value.runtime_ms ?? null);
+    }
+  }
+
   private async loadHeroArtwork(workId: string): Promise<void> {
     const result = await fetchWorkArtworkByPriority(workId, HERO_ARTWORK_PRIORITY);
     if (result.kind === 'ok') {
@@ -739,6 +750,7 @@ export struct Home {
     }
     this.hero = item;
     this.loadHeroArtwork(item.id);
+    this.loadHeroRuntime(item.id);
   }
 
   private openDetail(workId: string): void {
@@ -975,7 +987,7 @@ export struct Home {
       keyArt: heroKeyArtFor(this.hero),
       kicker: heroKickerFor(this.hero),
       title: heroTitleFor(this.hero),
-      metaLines: heroMetaLinesFor(this.hero),
+      metaLines: heroMetaLinesFor(this.heroRuntime),
       synopsis: this.hero !== undefined ? this.hero.overview : '',
       // Arrow wrapper keeps `this` = Home; a bare method reference runs with Stage as `this`.
       railsSlot: (): void => {
