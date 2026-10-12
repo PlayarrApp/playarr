@@ -1,1 +1,0 @@
-- Xbox: Home cards show the web's watch-state overlay: a progress line on part-watched titles and the brand dot on titles with no history.

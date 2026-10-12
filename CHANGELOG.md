@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: the detail page's primary action is the web's filled pill and its secondary pills are filled, not outlined.
+- Xbox: card focus shows only the web lift, art scale and glow ring (no grey selection fill).
 - iOS and Apple TV: when the server reaps or evicts an idle on-demand session, the player now asks for a replacement session at the same position (up to three times) and keeps a paused player paused, instead of failing.
 - Roku media cards draw the web's focus ring and soft glow (brand ink in dark, brand strong in light); series detail's focused episode, Home and library cards now show a ring as the web does.
 - The Roku suite driver opens the pinned film and series details (the first item of each library), so the detail-back check compares the same title as the web.
@@ -317,6 +319,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Xbox: Home cards show the web's watch-state overlay: a progress line on part-watched titles and the brand dot on titles with no history.
 - Downloads (web): the edit drawer now changes quality as well as keep-until; a new quality re-converts through a new ticket and replaces the old download.
 - Xbox: Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) choices; the card size and columns follow them.
 - Xbox: Settings has the web's Profile avatar section (the six built-in avatars, saved to the profile).
@@ -2849,6 +2852,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Web tests: the card-size e2e also checks 430, 539 and 540px, so the 2 to 3 column boundary beside the letter rail is covered.
 - HarmonyOS TV (hosted Windows runner, preview-only patches): all 15 parity screens in dark and light, with posters, the actions drawer and the player-controls overlay; suite driver for the Previewer (scripts/parity/drivers/harmony.mjs). D-pad and playback stay failures: the Previewer neither moves focus from key presses nor ships the media module.
 - The Apple wall's web reference step takes the same --only list as the device run, so dpad and playback can be dispatched as parallel jobs.
 - tvOS (debug builds only): the app writes its current route and focused item label to parity-state.json in its Documents folder for the shared parity suite driver.
