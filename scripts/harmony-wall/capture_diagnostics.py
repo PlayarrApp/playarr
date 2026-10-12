@@ -45,25 +45,27 @@ def summarize_detail_events(events, *, sequence_after, work_id, generation, star
     return result
 
 
-def save_rejected_frame(image, out_dir, screen="series-detail"):
+def save_rejected_frame(image, out_dir, theme, screen="series-detail"):
     debug_dir = os.path.join(out_dir, "_debug")
     os.makedirs(debug_dir, exist_ok=True)
-    filename = "rejected-" + screen + ".png"
+    filename = "rejected-" + screen + "-" + theme + ".png"
     image.save(os.path.join(debug_dir, filename))
     return os.path.join("_debug", filename)
 
 
-def write_detail_summary(out_dir, *, accepted, failure, frame_path, stages):
+def write_detail_summary(out_dir, *, theme, accepted, failure, frame_path, stages):
     debug_dir = os.path.join(out_dir, "_debug")
     os.makedirs(debug_dir, exist_ok=True)
     summary = {
         "schema_version": 1,
         "screen": "series-detail",
+        "theme": theme,
         "accepted": bool(accepted),
         "failure": failure,
         "frame": frame_path,
         "stages": stages,
     }
-    with open(os.path.join(debug_dir, "series-detail-diagnostics.json"), "w", encoding="utf-8") as stream:
+    filename = "series-detail-" + theme + "-diagnostics.json"
+    with open(os.path.join(debug_dir, filename), "w", encoding="utf-8") as stream:
         json.dump(summary, stream, sort_keys=True)
     return summary

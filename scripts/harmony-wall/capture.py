@@ -273,11 +273,11 @@ if device == "tv":
                 time.sleep(0.5)
             if state.get("route") != "Detail" or state.get("work_id") != work_id:
                 if name == "series-detail":
-                    frame_path = save_rejected_frame(png(), out, name)
+                    frame_path = save_rejected_frame(png(), out, theme, name)
                     stages = summarize_detail_events(state.get("debug_events", []), sequence_after=cursor,
                                                      work_id=work_id, generation=state.get("route_generation", 0),
                                                      started_at=started_at)
-                    write_detail_summary(out, accepted=False, failure="route-not-settled", frame_path=frame_path, stages=stages)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="route-not-settled", frame_path=frame_path, stages=stages)
                 raise Skip(f"pinned route did not settle for {name}")
 
             if name == "series-detail":
@@ -290,11 +290,11 @@ if device == "tv":
                     if (current.get("route") != "Detail" or current.get("work_id") != work_id
                             or current.get("route_generation") != generation):
                         if name == "series-detail":
-                            frame_path = save_rejected_frame(png(), out, name)
+                            frame_path = save_rejected_frame(png(), out, theme, name)
                             stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                              work_id=work_id, generation=generation,
                                                              started_at=started_at)
-                            write_detail_summary(out, accepted=False, failure="route-changed", frame_path=frame_path, stages=stages)
+                            write_detail_summary(out, theme=theme, accepted=False, failure="route-changed", frame_path=frame_path, stages=stages)
                         raise Skip("pinned detail route changed while waiting for row artwork")
                     events = current.get("debug_events", [])
                     stages = summarize_detail_events(events, sequence_after=cursor, work_id=work_id,
@@ -304,11 +304,11 @@ if device == "tv":
                         break
                     time.sleep(0.25)
                 if not decoded_art[theme]:
-                    frame_path = save_rejected_frame(png(), out, name)
+                    frame_path = save_rejected_frame(png(), out, theme, name)
                     current = route_state()
                     stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                      work_id=work_id, generation=generation, started_at=started_at)
-                    write_detail_summary(out, accepted=False, failure="row-artwork-timeout", frame_path=frame_path, stages=stages)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="row-artwork-timeout", frame_path=frame_path, stages=stages)
                     raise Skip("no fresh matching detail-row image completion was reported")
 
             detail_sources[name] = {"route": "Detail", "source": "suite.json:open", "route_confirmed": True}
@@ -316,17 +316,17 @@ if device == "tv":
                 snap(name, folder, 100000)
             except SystemExit:
                 if name == "series-detail":
-                    frame_path = save_rejected_frame(png(), out, name)
+                    frame_path = save_rejected_frame(png(), out, theme, name)
                     current = route_state()
                     stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                      work_id=work_id, generation=generation, started_at=started_at)
-                    write_detail_summary(out, accepted=False, failure="frame-rejected", frame_path=frame_path, stages=stages)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="frame-rejected", frame_path=frame_path, stages=stages)
                 raise
             if name == "series-detail":
                 current = route_state()
                 stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                  work_id=work_id, generation=generation, started_at=started_at)
-                write_detail_summary(out, accepted=True, failure=None,
+                write_detail_summary(out, theme=theme, accepted=True, failure=None,
                                      frame_path=os.path.relpath(os.path.join(folder, name + ".png"), out), stages=stages)
 
         def capture_selected(folder, theme):
