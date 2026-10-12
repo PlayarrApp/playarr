@@ -1,0 +1,1 @@
+- Harmony phone capture jobs now fail when required screens are missing and verify title-detail navigation through Previewer route state.

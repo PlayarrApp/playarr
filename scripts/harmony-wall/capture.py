@@ -251,14 +251,24 @@ else:
 
     def open_detail(kind, name):
         route("library:" + kind, 15); settle()
-        before = png().tobytes()
-        for x, y in CARDS:
-            click(x, y); time.sleep(10)
-            if png().tobytes() != before:
+        state = json.loads(get("/state"))
+        if state.get("route") != "Library" or state.get("kind") != kind:
+            raise Skip(f"library route did not settle: {state}")
+
+        # The hosted phone Previewer renders a 1080x2340 surface at density 480.
+        # The first landscape card is centred at (270, 360) in that surface.
+        # Use its stable first-result position, then require the patched route
+        # state to report Detail; pixel changes alone also count focus/animation.
+        click(270, 360)
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            state = json.loads(get("/state"))
+            if state.get("route") == "Detail":
                 snap(name, folder, 100000)
                 return
-            debug(f"{name}-miss-{x}-{y}")
-        abort(f"no card tap at {CARDS} opened a {kind} detail page")
+            time.sleep(0.5)
+        debug(f"{name}-route-timeout")
+        raise Skip(f"first {kind} card tap did not open Detail: {state}")
 
     def calendar_view(view):
         route("calendar", 18); settle()
@@ -298,4 +308,7 @@ import datetime
 json.dump({"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
            "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")},
           open(os.path.join(out, "build.json"), "w"))
+if MISSING:
+    print("INCOMPLETE: missing required screens: " + ", ".join(MISSING), flush=True)
+    sys.exit(2)
 print("done")
