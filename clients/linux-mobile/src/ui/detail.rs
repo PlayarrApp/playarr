@@ -157,14 +157,7 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
     let tone = if primary { Tone::OnAccent } else { Tone::Brand };
     row.append(&icons::image(icon, if small { 9 } else { 12 }, tone));
     let class = if small { "pa-action-label-s" } else { "pa-action-label" };
-    row.append(
-        &gtk4::Label::builder()
-            .label(label)
-            .css_classes([class])
-            .wrap(true)
-            .justify(gtk4::Justification::Center)
-            .build(),
-    );
+    row.append(&gtk4::Label::builder().label(label).css_classes([class]).build());
     let b = gtk4::Button::builder()
         .child(&row)
         .css_classes(if primary {
@@ -182,7 +175,8 @@ fn meta_row(parts: &[(String, bool)]) -> gtk4::FlowBox {
     let f = gtk4::FlowBox::builder()
         .selection_mode(gtk4::SelectionMode::None)
         .column_spacing(10)
-        .row_spacing(4)
+        .row_spacing(6)
+        .css_classes(["pa-meta-flow"])
         .homogeneous(false)
         .max_children_per_line(10)
         .build();
@@ -343,22 +337,26 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         None => download.set_sensitive(false),
     }
     if series {
-        if let Some((file, pos, label)) = &l.resume {
+        let started = l.resume.as_ref().map(|(_, pos, _)| *pos > 0).unwrap_or(false);
+        if let Some((file, pos, label)) = l.resume.as_ref().filter(|_| started) {
             let b = action_pill("play", "Resume", 32, true, false);
             let (file, pos, play, t) = (file.clone(), *pos, play.clone(), format!("{title} {label}"));
             b.connect_clicked(move |_| play(file.clone(), pos, t.clone()));
             row1.append(&b);
         } else if let Some((_, e)) = &focus_ep {
             if let Some(file) = e.media_file_id.clone() {
-                let b = action_pill("play", "Play", 32, true, false);
+                // Nothing watched yet: the web says Start and has no Ask again.
+                let b = action_pill("play", "Start", 100, true, false);
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), 0, t.clone()));
                 row1.append(&b);
             }
         }
-        let again = action_pill("back", "Ask again", 104, false, true);
-        again.set_sensitive(false);
-        row1.append(&again);
+        if started {
+            let again = action_pill("back", "Ask again", 104, false, true);
+            again.set_sensitive(false);
+            row1.append(&again);
+        }
     } else {
         row1.append(&download);
         let playback = action_pill("list", "Playback", 104, false, false);
@@ -427,7 +425,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         body.append(&albums(&l.detail.children.albums, &title, play.clone()));
     }
     let seasons = &l.detail.children.seasons;
-    gap(&body, 28);
+    gap(&body, if series { 53 } else { 28 });
     let mut focus_index = 0;
     // Next and Previous (on the lock screen or a headset) walk the episodes in order.
     let queue: Vec<(String, String)> = seasons
@@ -460,7 +458,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     if series && !seasons.is_empty() {
         // Open scrolled to the next-up episode's season, as the web does.
         let adj = scroll.vadjustment();
-        let target = 399.0 + 235.0 * focus_index as f64;
+        let target = 417.5 + 235.0 * focus_index as f64;
         gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(900), move || adj.set_value(target));
     }
 }

@@ -277,13 +277,16 @@ impl Cal {
         match self.view.get() {
             View::Agenda => (a, add_days(a, 29)),
             View::Week => (a, add_days(a, 6)),
-            View::Month => (
-                a,
-                Date {
+            View::Month => {
+                let last = Date {
                     d: days_in_month(a.y, a.m),
                     ..a
-                },
-            ),
+                };
+                (
+                    add_days(a, -(weekday(a) as i64)),
+                    add_days(last, 6 - weekday(last) as i64),
+                )
+            }
         }
     }
 
@@ -293,7 +296,11 @@ impl Cal {
         let (from, to) = self.range();
         let short = |d: Date| format!("{} {}", d.d, &MONTHS[d.m as usize - 1][..3]);
         self.range_label.set_label(&match self.view.get() {
-            View::Month => format!("{} {}", &MONTHS[from.m as usize - 1][..3], from.y),
+            View::Month => format!(
+                "{} {}",
+                &MONTHS[self.anchor.get().m as usize - 1][..3],
+                self.anchor.get().y
+            ),
             View::Week if from.m == to.m => format!("{} – {}", from.d, short(to)),
             _ => format!("{} – {}", short(from), short(to)),
         });
@@ -407,6 +414,9 @@ impl Cal {
 
     fn render(self: &Rc<Self>) {
         let days = self.by_day();
+        // The web lays the month out 720 px wide and the other views 510 px, inside a 360 px page.
+        self.body
+            .set_size_request(if self.view.get() == View::Month { 720 } else { 510 }, -1);
         match self.view.get() {
             View::Agenda => {
                 if days.is_empty() {
@@ -433,18 +443,18 @@ impl Cal {
         }
     }
 
+    /// The web's month grid: a 720 px track of seven columns (the page clips the overflow), each cell holding the
+    /// chips that fit above its bottom row (day number, "+N more"), as `MonthGrid` in tv-web.
     fn render_month(self: &Rc<Self>, days: &BTreeMap<Date, Vec<CalendarEntry>>) {
         let first = self.anchor.get();
-        let grid = gtk4::Grid::builder()
-            .column_homogeneous(true)
-            .row_spacing(2)
-            .hexpand(true)
-            .build();
+        let start = add_days(first, -(weekday(first) as i64));
+        let weeks = (weekday(first) + days_in_month(first.y, first.m)).div_ceil(7) as i64;
+        let grid = gtk4::Grid::builder().column_homogeneous(true).hexpand(true).build();
         for (i, n) in DAYS.iter().enumerate() {
             grid.attach(
                 &gtk4::Label::builder()
                     .label(n.to_uppercase())
-                    .css_classes(["pa-day"])
+                    .css_classes(["pa-mday"])
                     .build(),
                 i as i32,
                 0,
@@ -452,54 +462,91 @@ impl Cal {
                 1,
             );
         }
-        let offset = weekday(first) as i64;
-        let selected = self.selected.get().unwrap_or_else(|| {
-            if today().y == first.y && today().m == first.m {
-                today()
-            } else {
-                first
-            }
-        });
-        self.selected.set(Some(selected));
-        for n in 0..days_in_month(first.y, first.m) {
-            let d = Date { d: n + 1, ..first };
-            let idx = offset + n as i64;
-            let overlay = gtk4::Overlay::new();
-            let b = gtk4::Button::builder()
-                .label(d.d.to_string())
-                .css_classes(["pa-cell"])
-                .build();
-            if d == selected {
-                b.add_css_class("selected");
-            }
-            overlay.set_child(Some(&b));
-            if let Some(es) = days.get(&d) {
-                let have = es.iter().any(|e| e.has_file);
-                overlay.add_overlay(
-                    &gtk4::Box::builder()
-                        .css_classes(["pa-dot", if have { "have" } else { "missing" }])
-                        .halign(gtk4::Align::Center)
-                        .valign(gtk4::Align::End)
-                        .margin_bottom(5)
+        let today_date = today();
+        // The web's body fills the page; on the phone five rows come to about 82 px each.
+        let cell_h = 410 / weeks as i32;
+        let chips = ((cell_h - 2 - 44 - 2) / 22).max(0) as usize;
+        for w in 0..weeks {
+            for c in 0..7 {
+                let d = add_days(start, w * 7 + c);
+                let cell = gtk4::Box::builder()
+                    .orientation(gtk4::Orientation::Vertical)
+                    .css_classes(["pa-mcell"])
+                    .height_request(cell_h)
+                    .build();
+                if d.m != first.m {
+                    cell.add_css_class("outside");
+                }
+                if d == today_date {
+                    cell.add_css_class("today");
+                }
+                // Same-day episodes of one series collapse into one "Title · N×" chip.
+                let mut items: Vec<(String, &CalendarEntry, usize)> = Vec::new();
+                for e in days.get(&d).map(Vec::as_slice).unwrap_or(&[]) {
+                    let grouped = e.media_kind == "episode" && e.season_number.is_some() && e.episode_number.is_some();
+                    let key = if grouped {
+                        e.work_id.clone().unwrap_or_else(|| e.title.clone())
+                    } else {
+                        e.id.clone()
+                    };
+                    match items.iter_mut().find(|(k, _, _)| *k == key) {
+                        Some(it) => it.2 += 1,
+                        None => items.push((key, e, 1)),
+                    }
+                }
+                let shown = items.len().min(chips);
+                for (_, e, n) in items.iter().take(shown) {
+                    let row = gtk4::Box::builder().spacing(7).css_classes(["pa-mline"]).build();
+                    let tone = match status_chip(e, today_date).1 {
+                        "ok" => "have",
+                        "soon" => "soon",
+                        _ => "missing",
+                    };
+                    row.append(
+                        &gtk4::Box::builder()
+                            .css_classes(["pa-dot", tone])
+                            .valign(gtk4::Align::Center)
+                            .build(),
+                    );
+                    let text = if *n > 1 {
+                        format!("{} · {n}×", e.title)
+                    } else {
+                        e.title.clone()
+                    };
+                    row.append(
+                        &gtk4::Label::builder()
+                            .label(text)
+                            .ellipsize(gtk4::pango::EllipsizeMode::End)
+                            .xalign(0.0)
+                            .build(),
+                    );
+                    cell.append(&row);
+                }
+                let foot = gtk4::Box::builder()
+                    .spacing(6)
+                    .valign(gtk4::Align::End)
+                    .vexpand(true)
+                    .css_classes(["pa-mfoot"])
+                    .build();
+                foot.append(
+                    &gtk4::Label::builder()
+                        .label(d.d.to_string())
+                        .css_classes(["pa-mdaynum"])
                         .build(),
                 );
-            }
-            let me = self.clone();
-            b.connect_clicked(move |_| {
-                me.selected.set(Some(d));
-                while let Some(c) = me.body.first_child() {
-                    me.body.remove(&c);
+                if items.len() > shown {
+                    foot.append(
+                        &gtk4::Label::builder()
+                            .label(format!("+{} more", items.len() - shown))
+                            .css_classes(["pa-mmore"])
+                            .build(),
+                    );
                 }
-                me.render();
-            });
-            grid.attach(&overlay, (idx % 7) as i32, 1 + (idx / 7) as i32, 1, 1);
+                cell.append(&foot);
+                grid.attach(&cell, c as i32, 1 + w as i32, 1, 1);
+            }
         }
         self.body.append(&grid);
-        self.day_section(
-            selected,
-            days.get(&selected).map(Vec::as_slice).unwrap_or(&[]),
-            Some("Nothing on this day"),
-        );
     }
 
     fn set_view(self: &Rc<Self>, v: View) {

@@ -5,7 +5,6 @@ use super::images::Images;
 use super::{bg, App};
 use crate::api::{CatalogQuery, Client};
 use gtk4::prelude::*;
-use libadwaita as adw;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::rc::Rc;
@@ -14,6 +13,9 @@ use std::rc::Rc;
 const PAGE: usize = 200;
 /// Cards drawn per step; the rest of a page waits until the list is scrolled to its end.
 const CHUNK: usize = 24;
+
+/// (code, name) pairs for the audio and subtitle filters.
+type Languages = Vec<Vec<(String, String)>>;
 
 const ALPHABET: &str = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -313,7 +315,7 @@ impl Lib {
         }
     }
 
-    /// Filters panel: sort, order, availability and genre.
+    /// Filters panel as the web's: view, sort, order and the audio and subtitle language filters.
     fn show_filters(self: &Rc<Self>) {
         let col = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
         col.set_margin_start(16);
@@ -321,112 +323,138 @@ impl Lib {
         col.set_margin_bottom(24);
         let q = self.query.borrow().clone();
 
-        let tiles = |label: &str, a: &str, b: &str, first: bool| {
+        let label = |text: &str| {
             col.append(
                 &gtk4::Label::builder()
-                    .label(label.to_uppercase())
+                    .label(text.to_uppercase())
                     .css_classes(["pa-section-label"])
                     .xalign(0.0)
                     .build(),
             );
-            let row = gtk4::Box::builder().spacing(10).homogeneous(true).build();
-            let t1 = gtk4::ToggleButton::builder()
-                .label(a)
-                .css_classes(["pa-seg-tile"])
-                .active(first)
-                .build();
-            let t2 = gtk4::ToggleButton::builder()
-                .label(b)
-                .css_classes(["pa-seg-tile"])
-                .group(&t1)
-                .active(!first)
-                .build();
-            row.append(&t1);
-            row.append(&t2);
-            col.append(&row);
-            (t1, t2)
         };
-        let (_by_title, by_added) = tiles("Sort by", "Title", "Date Added", q.sort != "date_added");
-        let (_asc, desc) = tiles("Order", "A-Z", "Z-A", !q.descending);
-
-        let avail = adw::SwitchRow::builder()
-            .title("Available to play only")
-            .active(q.available_only)
-            .build();
-        let list = gtk4::ListBox::builder()
-            .selection_mode(gtk4::SelectionMode::None)
-            .css_classes(["boxed-list"])
-            .margin_top(8)
-            .build();
-        list.append(&avail);
-        col.append(&list);
-
-        let genre_box = gtk4::FlowBox::builder()
-            .selection_mode(gtk4::SelectionMode::None)
-            .max_children_per_line(3)
-            .row_spacing(6)
-            .column_spacing(6)
-            .build();
-        let chosen: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(q.genre.clone()));
-        let chips: Rc<RefCell<Vec<(String, gtk4::ToggleButton)>>> = Rc::default();
-        for g in self.genres.borrow().iter() {
-            let b = gtk4::ToggleButton::builder()
-                .label(g)
-                .active(q.genre.as_deref() == Some(g))
-                .css_classes(["pa-chip-btn"])
-                .build();
-            let (chosen, all_chips, name) = (chosen.clone(), chips.clone(), g.clone());
-            b.connect_toggled(move |b| {
-                if b.is_active() {
-                    *chosen.borrow_mut() = Some(name.clone());
-                    for (n, other) in all_chips.borrow().iter() {
-                        if *n != name && other.is_active() {
-                            other.set_active(false);
-                        }
-                    }
-                } else if chosen.borrow().as_deref() == Some(name.as_str()) {
-                    *chosen.borrow_mut() = None;
+        let tiles = |names: &[&str], active: usize| -> Vec<gtk4::ToggleButton> {
+            let row = gtk4::Box::builder().spacing(10).homogeneous(true).build();
+            let mut group: Option<gtk4::ToggleButton> = None;
+            let mut out = Vec::new();
+            for (i, n) in names.iter().enumerate() {
+                let t = gtk4::ToggleButton::builder()
+                    .label(*n)
+                    .css_classes(["pa-seg-tile"])
+                    .active(i == active)
+                    .build();
+                match &group {
+                    Some(g) => t.set_group(Some(g)),
+                    None => group = Some(t.clone()),
+                }
+                row.append(&t);
+                out.push(t);
+            }
+            col.append(&row);
+            out
+        };
+        label("View");
+        // Only the screen view exists in this app; the other two go back to it.
+        let views = tiles(&["List", "Screen", "Cover"], 1);
+        for (i, v) in views.iter().enumerate() {
+            let screen = views[1].clone();
+            v.set_tooltip_text(Some("This app shows titles in the screen view."));
+            v.connect_toggled(move |b| {
+                if b.is_active() && i != 1 {
+                    screen.set_active(true);
                 }
             });
-            chips.borrow_mut().push((g.clone(), b.clone()));
-            genre_box.append(&b);
         }
-        if !self.genres.borrow().is_empty() {
-            col.append(
-                &gtk4::Label::builder()
-                    .label("GENRE")
-                    .css_classes(["pa-section-label"])
-                    .xalign(0.0)
-                    .build(),
+        label("Sort by");
+        let sort = tiles(&["Title", "Date Added"], usize::from(q.sort == "date_added"));
+        label("Order");
+        let order = tiles(&["A-Z", "Z-A"], usize::from(q.descending));
+
+        // Languages come from the server's facets for this kind.
+        let langs: Rc<RefCell<Languages>> = Rc::new(RefCell::new(vec![Vec::new(), Vec::new()]));
+        let ready = Rc::new(std::cell::Cell::new(false));
+        let mut drops = Vec::new();
+        for (i, heading) in ["Audio language", "Subtitle language"].iter().enumerate() {
+            label(heading);
+            let dd = gtk4::DropDown::from_strings(&["Any language"]);
+            dd.add_css_class("pa-dropdown");
+            dd.add_css_class("pa-filter");
+            col.append(&dd);
+            drops.push(dd);
+            let _ = i;
+        }
+        {
+            let (c, kind, drops, langs) = (self.client.clone(), q.kind.clone(), drops.clone(), langs.clone());
+            let (cur_a, cur_s) = (q.audio_lang.clone(), q.subtitle_lang.clone());
+            let ready_f = ready.clone();
+            bg(
+                move || c.catalog_languages(&kind),
+                move |facets| {
+                    ready_f.set(false);
+                    for (i, (dd, cur)) in drops.iter().zip([cur_a, cur_s]).enumerate() {
+                        let list = facets.get(i).cloned().unwrap_or_default();
+                        let mut names = vec!["Any language".to_string()];
+                        names.extend(list.iter().map(|(_, n)| n.clone()));
+                        let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+                        dd.set_model(Some(&gtk4::StringList::new(&refs)));
+                        dd.set_selected(
+                            cur.and_then(|c| list.iter().position(|(code, _)| *code == c))
+                                .map(|p| p as u32 + 1)
+                                .unwrap_or(0),
+                        );
+                        langs.borrow_mut()[i] = list;
+                    }
+                    ready_f.set(true);
+                },
             );
-            col.append(&genre_box);
         }
 
-        let apply = gtk4::Button::builder()
-            .label("Apply")
-            .css_classes(["pa-primary"])
-            .halign(gtk4::Align::Center)
-            .margin_top(14)
-            .build();
-        {
-            let me = self.clone();
-            apply.connect_clicked(move |_| {
+        // Like the web, every change applies at once.
+        let commit: Rc<dyn Fn()> = {
+            let (me, sort, order, drops, langs, ready) = (
+                self.clone(),
+                sort.clone(),
+                order.clone(),
+                drops.clone(),
+                langs.clone(),
+                ready.clone(),
+            );
+            Rc::new(move || {
+                if !ready.get() {
+                    return;
+                }
                 {
                     let mut q = me.query.borrow_mut();
-                    q.sort = if by_added.is_active() {
+                    q.sort = if sort[1].is_active() {
                         "date_added".into()
                     } else {
                         "title".into()
                     };
-                    q.descending = desc.is_active();
-                    q.available_only = avail.is_active();
-                    q.genre = chosen.borrow().clone();
+                    q.descending = order[1].is_active();
+                    let pick = |i: usize| {
+                        let n = drops[i].selected() as usize;
+                        (n > 0)
+                            .then(|| langs.borrow()[i].get(n - 1).map(|(code, _)| code.clone()))
+                            .flatten()
+                    };
+                    q.audio_lang = pick(0);
+                    q.subtitle_lang = pick(1);
                 }
-                me.app.close_panel();
                 me.reset();
+            })
+        };
+        for t in sort.iter().chain(order.iter()) {
+            let commit = commit.clone();
+            t.connect_toggled(move |b| {
+                if b.is_active() {
+                    commit()
+                }
             });
         }
-        col.append(&apply);
+        for d in &drops {
+            let commit = commit.clone();
+            d.connect_selected_notify(move |_| commit());
+        }
+        ready.set(true);
         self.app.present_panel("Library controls", "Filters", &col, true);
     }
 }

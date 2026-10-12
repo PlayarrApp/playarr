@@ -24,6 +24,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
 
     // Top bar: brand mark at the left, theme chooser (and the language chooser, not wired) at the right.
     let top = gtk4::Box::builder()
+        .css_classes(["pa-topbar"])
         .spacing(8)
         .margin_top(14)
         .margin_start(21)
@@ -36,7 +37,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .halign(gtk4::Align::Start)
         .valign(gtk4::Align::Center)
         .build();
-    mark.append(&icons::image("play", 14, Tone::OnAccent));
+    mark.append(&icons::image("play", 14, Tone::Brand));
     top.append(&mark);
     let names: Vec<&str> = THEMES.iter().map(|t| t.1).collect();
     let theme_pick = gtk4::DropDown::from_strings(&names);
@@ -53,7 +54,6 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     let lang = gtk4::DropDown::from_strings(&["Auto"]);
     lang.add_css_class("pa-dropdown");
     lang.set_size_request(112, 48);
-    lang.set_sensitive(false);
     lang.set_tooltip_text(Some("The app follows this device's language."));
     top.append(&lang);
     root.append(&top);

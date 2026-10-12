@@ -97,7 +97,7 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                 .all_progress()
                 .unwrap_or_default()
                 .into_iter()
-                .filter(|p| p.state == "part_watched" && !p.work_id.is_empty())
+                .filter(|p| p.state == "part_watched" && !p.work_id.is_empty() && p.position_ms > 0)
                 .collect();
             started.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
             // One entry per title (the newest episode wins), ten at most, as the web's On deck loader.

@@ -9,18 +9,22 @@ use std::rc::Rc;
 const THEMES: [(&str, &str); 3] = [("dark", "Dark"), ("light", "Light"), ("system", "Follow system")];
 
 fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
-    let row = gtk4::Box::builder().spacing(14).build();
+    let row = gtk4::Box::builder().spacing(0).build();
     row.append(
         &gtk4::Label::builder()
             .label(format!("{n:02}"))
-            .css_classes(["pa-tiny"])
+            .css_classes(["pa-pref-num"])
             .valign(gtk4::Align::Start)
-            .margin_top(6)
+            .halign(gtk4::Align::Start)
+            .width_request(44)
+            .xalign(0.0)
+            .margin_top(20)
             .build(),
     );
     let col = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
         .spacing(3)
+        .valign(gtk4::Align::Center)
         .hexpand(true)
         .build();
     col.append(
@@ -35,7 +39,9 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .label(desc)
             .css_classes(["pa-pref-desc"])
             .xalign(0.0)
-            .wrap(true)
+            .ellipsize(gtk4::pango::EllipsizeMode::End)
+            .max_width_chars(1)
+            .hexpand(true)
             .build(),
     );
     row.append(&col);
@@ -54,10 +60,16 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
     page.set_margin_bottom(110);
     let head = header::build(&app, "Preferences", "filters");
     head.action.set_visible(false);
+    // The web focuses the back button when the page opens, which draws its ring.
+    if let Some(back) = head.widget.first_child() {
+        back.add_css_class("ring");
+    }
     page.append(&head.widget);
     let list = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .margin_top(14)
+        .margin_top(19)
+        .margin_start(16)
+        .margin_end(16)
         .build();
     page.append(&list);
 

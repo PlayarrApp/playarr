@@ -1,0 +1,1 @@
+- Linux phone client: Preferences, the title actions sheet and series pages follow the web more closely.

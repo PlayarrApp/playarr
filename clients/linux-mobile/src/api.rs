@@ -69,6 +69,9 @@ pub struct CatalogQuery {
     pub genre: Option<String>,
     pub available_only: bool,
     pub descending: bool,
+    /// ISO 639 codes from the language facets.
+    pub audio_lang: Option<String>,
+    pub subtitle_lang: Option<String>,
 }
 
 impl CatalogQuery {
@@ -82,6 +85,12 @@ impl CatalogQuery {
         );
         if let Some(g) = &self.genre {
             q.push_str(&format!("&genre={}", urlenc(g)));
+        }
+        if let Some(l) = &self.audio_lang {
+            q.push_str(&format!("&audio_lang={}", urlenc(l)));
+        }
+        if let Some(l) = &self.subtitle_lang {
+            q.push_str(&format!("&subtitle_lang={}", urlenc(l)));
         }
         if self.available_only {
             q.push_str("&available_only=true");
@@ -273,6 +282,30 @@ impl Client {
             q.query_string()
         ))
     }
+    /// Audio and subtitle languages the catalogue has for `kind`, as (code, name) lists.
+    pub fn catalog_languages(&self, kind: &str) -> Vec<Vec<(String, String)>> {
+        let v: serde_json::Value = self
+            .get(&format!("/api/v1/catalog/languages?kind={kind}&available_only=true"))
+            .unwrap_or_default();
+        ["audio", "subtitle"]
+            .iter()
+            .map(|k| {
+                v.get(k)
+                    .and_then(|a| a.as_array())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|l| {
+                                Some((
+                                    l.get("code")?.as_str()?.to_string(),
+                                    l.get("name")?.as_str()?.to_string(),
+                                ))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            })
+            .collect()
+    }
     pub fn calendar(&self, start: &str, end: &str) -> Result<Vec<CalendarEntry>> {
         Ok(self
             .get::<CalendarResponse>(&format!("/api/v1/calendar?start={start}&end={end}"))?
@@ -453,10 +486,12 @@ mod tests {
             genre: Some("Sci Fi".into()),
             available_only: true,
             descending: false,
+            audio_lang: Some("it".into()),
+            subtitle_lang: None,
         };
         assert_eq!(
             q.query_string(),
-            "kind=movie&sort=date_added&order=asc&genre=Sci%20Fi&available_only=true"
+            "kind=movie&sort=date_added&order=asc&genre=Sci%20Fi&audio_lang=it&available_only=true"
         );
         assert_eq!(
             CatalogQuery {

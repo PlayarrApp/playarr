@@ -83,28 +83,13 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         .margin_bottom(8)
         .build();
     let select = {
-        let (pages, items, nav_scroll) = (pages.clone(), items.clone(), nav_scroll.clone());
+        let (pages, items) = (pages.clone(), items.clone());
         Rc::new(move |name: &str| {
             pages.set_visible_child_name(name);
             for it in items.iter() {
                 let active = it.name == name;
                 if active {
                     it.button.add_css_class("active");
-                    // Keep the active tile in view when the strip is wider than the screen.
-                    let adj = nav_scroll.hadjustment();
-                    let idx = items.iter().position(|i| i.name == name).unwrap_or(0) as f64;
-                    let (page, tile) = (adj.page_size(), 44.0);
-                    let (left, right) = ((idx + 1.0) * tile, (idx + 2.0) * tile);
-                    // Before the first layout the page size is 0; leave the strip at its start.
-                    if page > 0.0 {
-                        if right <= page {
-                            adj.set_value(0.0);
-                        } else if left < adj.value() {
-                            adj.set_value(left - 8.0);
-                        } else if right > adj.value() + page {
-                            adj.set_value((right - page + 8.0).clamp(0.0, (adj.upper() - page).max(0.0)));
-                        }
-                    }
                 } else {
                     it.button.remove_css_class("active");
                 }

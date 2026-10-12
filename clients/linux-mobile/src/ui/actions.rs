@@ -1,13 +1,29 @@
 //! Title actions panel (long-press a card): play, download (not yet), add to playlist, mark watched or unwatched.
 use super::{bg, App};
-use crate::icons::{self, Tone};
+use crate::icons::Tone;
 use crate::model::Work;
 use gtk4::prelude::*;
 use std::rc::Rc;
 
-fn row(icon: &str, label: &str, tone: Tone) -> gtk4::Button {
-    let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 16);
-    content.append(&icons::image(icon, 16, tone));
+/// The web draws these rows' icons as brand-red text glyphs.
+fn glyph(icon: &str) -> &'static str {
+    match icon {
+        "play" => "▶",
+        "downloads" => "⇩",
+        "add" => "+",
+        "check" => "✓",
+        _ => "○",
+    }
+}
+
+fn row(icon: &str, label: &str, _tone: Tone) -> gtk4::Button {
+    let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 20);
+    content.append(
+        &gtk4::Label::builder()
+            .label(glyph(icon))
+            .css_classes(["pa-row-glyph"])
+            .build(),
+    );
     content.append(&gtk4::Label::builder().label(label).xalign(0.0).hexpand(true).build());
     gtk4::Button::builder().child(&content).css_classes(["pa-row"]).build()
 }
@@ -16,7 +32,7 @@ pub fn show(app: &Rc<App>, work: &Work) {
     let Some(client) = app.client.borrow().clone() else {
         return;
     };
-    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 14);
     col.set_margin_start(16);
     col.set_margin_end(16);
     col.set_margin_bottom(24);
@@ -151,7 +167,7 @@ pub fn show(app: &Rc<App>, work: &Work) {
     if work.kind == "movie" {
         for (label, icon, watched) in [
             ("Mark as Watched", "check", true),
-            ("Mark as Unwatched", "close", false),
+            ("Mark as Unwatched", "circle", false),
         ] {
             let b = row(icon, label, Tone::Brand);
             let (app, client, id) = (app.clone(), client.clone(), work.id.clone());
@@ -173,4 +189,5 @@ pub fn show(app: &Rc<App>, work: &Work) {
         }
     }
     app.present_panel("Title actions", &work.title, &col, false);
+    app.cover_nav();
 }

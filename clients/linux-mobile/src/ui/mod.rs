@@ -111,7 +111,10 @@ impl App {
                 // The player is full screen: hide the navigation while it is the visible page.
                 let m2 = me.clone();
                 me.nav.connect_visible_page_notify(move |n| {
-                    let player = n.visible_page().and_then(|p| p.tag()).as_deref() == Some("player");
+                    let player = matches!(
+                        n.visible_page().and_then(|p| p.tag()).as_deref(),
+                        Some("player" | "profiles")
+                    );
                     if let Some(b) = m2.nav_bar.borrow().as_ref() {
                         b.set_visible(!player);
                     }
@@ -148,7 +151,12 @@ impl App {
     }
 
     pub fn push_profiles(self: &Rc<Self>, client: Client) {
-        self.push_bare("Profiles", &profiles::build(self.clone(), client, true));
+        let page = adw::NavigationPage::builder()
+            .title("Profiles")
+            .tag("profiles")
+            .child(&profiles::build(self.clone(), client, true))
+            .build();
+        self.nav.push(&page);
     }
 
     pub fn push_settings(self: &Rc<Self>, client: Client) {
@@ -206,12 +214,12 @@ impl App {
             .margin_top(20)
             .margin_start(20)
             .margin_end(20)
-            .margin_bottom(22)
+            .margin_bottom(25)
             .build();
         let block = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
             .hexpand(true)
-            .spacing(2)
+            .spacing(5)
             .valign(gtk4::Align::Start)
             .build();
         block.append(
@@ -261,12 +269,20 @@ impl App {
                 .build(),
         );
         self.layer.add_overlay(&panel);
-        // The navigation stays on top of the panel, as on the web.
+        // The navigation stays on top of the panel, as on the web (the title actions sheet covers it: `cover_nav`).
         if let Some(nb) = self.nav_bar.borrow().as_ref() {
             self.layer.remove_overlay(nb);
             self.layer.add_overlay(nb);
         }
         self.panel.replace(Some(panel.upcast()));
+    }
+
+    /// Lifts the open panel above the navigation.
+    pub fn cover_nav(&self) {
+        if let Some(p) = self.panel.borrow().as_ref() {
+            self.layer.remove_overlay(p);
+            self.layer.add_overlay(p);
+        }
     }
 
     pub fn close_panel(&self) {
@@ -350,8 +366,13 @@ impl App {
                 let kind = if name == "series-detail" { "series" } else { "movie" };
                 let (me, c) = (self.clone(), client.clone());
                 let route = name.to_string();
+                let pinned = arg.to_string();
                 bg(
                     move || {
+                        // `film:<work id>` opens that title directly (one request); without an id, the first title by name.
+                        if !pinned.is_empty() {
+                            return c.work(&pinned).ok().map(|d| d.work);
+                        }
                         c.catalog(kind, 0, 200, "title")
                             .ok()
                             .and_then(|p| p.items.into_iter().min_by_key(|w| library::natural_key(&w.title)))
