@@ -632,9 +632,26 @@ function calendarRangeLabel() as String
     return calendarShortDay(r.start) + " – " + calendarShortDay(r.finish)
 end function
 
+' Web releaseInstant: a release has a time of day unless it is missing or exactly midnight UTC (a date-only release).
+function calendarHasTime(entry as Object) as Boolean
+    if entry.release_at = invalid or entry.release_at = "" then return false
+    dt = CreateObject("roDateTime")
+    dt.FromISO8601String(entry.release_at)
+    return dt.AsSeconds() mod 86400 <> 0
+end function
+
+' Web entryLocalDay: the local day of a timed release, else the entry's own date.
+function calendarEntryLocalDay(entry as Object) as String
+    if calendarHasTime(entry)
+        dt = calendarEntryDate(entry)
+        return dt.GetYear().ToStr() + "-" + calendarTwo(dt.GetMonth()) + "-" + calendarTwo(dt.GetDayOfMonth())
+    end if
+    return JsonString(entry.date)
+end function
+
 function calendarEntryDate(entry as Object) as Object
     dt = CreateObject("roDateTime")
-    if entry.release_at <> invalid and entry.release_at <> ""
+    if calendarHasTime(entry)
         dt.FromISO8601String(entry.release_at)
         dt.ToLocalTime()
     else if entry.date <> invalid
@@ -647,7 +664,7 @@ end function
 function calendarStatusText(entry as Object) as String
     if entry.has_file = true then return "Available"
     if entry.monitored <> true then return "Not tracked"
-    if entry.date <> invalid and entry.date < calendarTodayString() then return "Missing"
+    if calendarEntryLocalDay(entry) <= calendarTodayString() then return "Missing"
     return "Upcoming"
 end function
 
@@ -658,7 +675,7 @@ end function
 
 ' "All day" when the release has no time of day (web), else HH:MM.
 function calendarTimeText(entry as Object) as String
-    if entry.release_at = invalid or entry.release_at = "" then return "All day"
+    if not calendarHasTime(entry) then return "All day"
     return calendarTime(calendarEntryDate(entry))
 end function
 
@@ -667,7 +684,7 @@ function calendarDayList(list as Object) as Object
     allDay = []
     timed = []
     for each e in list
-        if e.release_at = invalid or e.release_at = "" then allDay.Push(e) else timed.Push(e)
+        if calendarHasTime(e) then timed.Push(e) else allDay.Push(e)
     end for
     timed.SortBy("release_at")
     for each e in timed
@@ -683,7 +700,7 @@ function calendarMetaRow(parent as Object, x as Float, y as Float, entry as Obje
         probe = pgLabel(parent, cx, y, 0, size + 6, part, size, 400, "inkMuted")
         cx = cx + probe.boundingRect().width + 12
     end for
-    return cx + calendarBadge(parent, cx, y, size + 7, calendarStatusText(entry), size)
+    return cx + calendarBadge(parent, cx, y, size * 2, calendarStatusText(entry), size)
 end function
 
 function calendarTime(dt as Object) as String
@@ -840,7 +857,7 @@ sub renderCalendarAgenda(entries as Object)
     ' Right: the agenda, grouped by day; within a day the releases without a time come first, then by time (web order).
     for each e in entries
         key = "1" + JsonString(e.release_at)
-        if e.release_at = invalid or e.release_at = "" then key = "0"
+        if not calendarHasTime(e) then key = "0"
         e.sortKey = JsonString(e.date) + key
     end for
     entries.SortBy("sortKey")
@@ -956,22 +973,30 @@ sub renderCalendarWeek(entries as Object)
         day = calAddDays(r.start, c)
         x = 154.0 + c * 460
         dt = calDate(day)
-        pgLabel(m.pageBody, x, 176, 440, 28, dt.GetWeekday() + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false), 18, 600, "ink")
+        heading = dt.GetWeekday() + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false)
+        headLabel = pgLabel(m.pageBody, x, 176, 0, 28, heading, 18, 600, "ink")
+        if day = today
+            ' Web's TODAY chip beside the day heading.
+            hx = x + headLabel.boundingRect().width + 10
+            pgRound(m.pageBody, hx, 177, 61, 22, 11, "lineStrong", -1, true)
+            pgLabel(m.pageBody, hx, 177, 61, 22, "TODAY", 11, 700, "ink", { horizAlign: "center", vertAlign: "center" })
+        end if
         list = byDay[day]
-        y = 216.0
+        y = 208.0
         if list <> invalid
             for each entry in calendarDayList(list)
                 pgRound(m.pageBody, x, y, 440, 106, 14, "surfaceStrong")
+                pgRound(m.pageBody, x, y, 440, 106, 14, "line", -1, true)
                 role = "inkMuted"
                 if entry.has_file = true then role = "success"
-                pgRect(m.pageBody, x, y + 10, 3, 86, role)
+                pgRect(m.pageBody, x, y + 8, 4, 90, role)
                 art = ""
                 if entry.work_id <> invalid then art = m.serverUrl + "/api/v1/artwork/work/" + UrlEncode(entry.work_id) + "/poster"
-                pgRound(m.pageBody, x + 16, y + 13, 54, 80, 6, "surfaceSoft")
-                pgArtwork(m.pageBody, x + 16, y + 13, 54, 80, art)
-                pgLabel(m.pageBody, x + 84, y + 8, 340, 26, entry.title, 19, 600, "ink", { maxLines: 1 })
-                pgLabel(m.pageBody, x + 84, y + 38, 340, 24, calendarEntrySubtitle(entry), 15, 400, "inkSoft", { maxLines: 1 })
-                calendarMetaRow(m.pageBody, x + 84, y + 72, entry, 12)
+                pgRound(m.pageBody, x + 16, y + 23, 40, 60, 6, "surfaceSoft")
+                pgArtwork(m.pageBody, x + 16, y + 23, 40, 60, art)
+                pgLabel(m.pageBody, x + 70, y + 9, 360, 26, entry.title, 20, 600, "ink", { maxLines: 1 })
+                pgLabel(m.pageBody, x + 70, y + 40, 360, 26, calendarEntrySubtitle(entry), 20, 400, "inkSoft", { maxLines: 1 })
+                calendarMetaRow(m.pageBody, x + 70, y + 70, entry, 13)
                 pgFocusable(x, y, 440, 106, 14, "entry", entry.id, true)
                 m.pageItems[m.pageItems.Count() - 1].sx = true
                 y = y + 120
@@ -983,11 +1008,17 @@ end sub
 
 ' Status chip (web .calendar-badge): tinted pill with the status text. Returns its width.
 function calendarBadge(parent as Object, x as Float, y as Float, h as Float, text as String, size as Integer) as Float
-    probe = pgLabel(parent, x, y, 0, h, text, size, 600, "ink")
-    w = probe.boundingRect().width + 16
+    ' Web .status-pill: the tone tints the fill (14%) and the border (60%); the text is the theme ink.
+    tone = "inkSoft"
+    if text = "Available" then tone = "success"
+    if text = "Upcoming" then tone = "brand"
+    if text = "Missing" then tone = "danger"
+    probe = pgLabel(parent, x, y, 0, h, text, size, 700, "ink")
+    w = probe.boundingRect().width + 27
     parent.removeChild(probe)
-    pgRound(parent, x, y, w, h, 12, "statusTint")
-    pgLabel(parent, x, y, w, h, text, size, 600, "ink", { horizAlign: "center", vertAlign: "center" })
+    pgRound(parent, x, y, w, h, 13, tone, 36)
+    pgRound(parent, x, y, w, h, 13, tone, 153, true)
+    pgLabel(parent, x, y, w, h, text, size, 700, "ink", { horizAlign: "center", vertAlign: "center" })
     return w
 end function
 

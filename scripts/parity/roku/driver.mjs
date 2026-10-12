@@ -41,8 +41,8 @@ export async function createDriver({ out }) {
         if (!m) continue;
         const [, kind, text] = m;
         st.seq += 1;
-        if (kind === "screen") { st.screen = text; st.panel = ""; st.focus = null; if (text !== "page") st.view = ""; }
-        else if (kind === "focus") st.focus = text;
+        if (kind === "screen") { st.screen = text; st.panel = ""; st.focus = null; st.position = null; if (text !== "page") st.view = ""; }
+        else if (kind === "focus") { const [label, pos] = text.split("|@"); st.focus = label; st.position = pos ? { rail: Number(pos.split(":")[0]), index: Number(pos.split(":")[1]) } : null; }
         else st[kind] = text;
       }
     });
@@ -127,10 +127,12 @@ export async function createDriver({ out }) {
         // The range switcher (left of Previous) chooses the view: Month is the default, Week and Agenda are one and two rows down.
         const view = /view=(week|agenda)/.exec(query)?.[1];
         if (view) {
-          for (const k of ["Up", "Up", "Up", "Up", "Left", "Left", "Select"]) await press(k, 0.8);
+          for (const k of ["Up", "Up", ...Array(6).fill("Right"), "Up", "Left", "Left", "Select"]) await press(k, 0.8);
           await wait(3);
           for (const k of view === "week" ? ["Down", "Select"] : ["Down", "Down", "Select"]) await press(k, 1);
           await wait(14);
+          // The web opens a view with Today focused: from the range switcher that is two to the right.
+          for (const k of ["Right", "Right"]) await press(k, 1);
           st.view = view;
         }
       } else if (pathname.startsWith("/movies/") || pathname.startsWith("/series/") || pathname.startsWith("/player/") || pathname === "/movies") {
@@ -175,7 +177,7 @@ export async function createDriver({ out }) {
     async focused() {
       let seen = st.seq;
       for (let i = 0; i < 8; i += 1) { await sleep(1500); if (st.seq === seen) break; seen = st.seq; }
-      return st.focus;
+      return st.position && st.focus ? { label: st.focus, position: st.position } : st.focus;
     },
     async screenshot(file) {
       if (st.screen === "pairing" || st.screen === "status") throw new Error("signed out or error screen");

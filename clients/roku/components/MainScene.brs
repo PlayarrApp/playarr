@@ -173,7 +173,7 @@ sub init()
     m.detailContent.AppendChild(m.detailSimilar)
     ' Rail headings (web .tv-media-track h2 and its count line) live beside the rails, inside the scrolling content panel.
     m.detailHeads = []
-    for headIndex = 0 to 1
+    for headIndex = 0 to 2
         head = CreateObject("roSGNode", "TrackedText")
         creditLine = CreateObject("roSGNode", "TrackedText")
         m.detailContent.AppendChild(head)
@@ -4129,7 +4129,11 @@ sub onHomeItemFocused(event as Object)
     works = worksForRow(event.GetRoSGNode())
     if works = invalid or itemIndex < 0 or itemIndex >= works.Count() then return
     m.homeColIndex = itemIndex
-    parityEmit("focus", parityWorkLabel(works[itemIndex]))
+    railIndex = m.homeFocusIndex
+    for r = 0 to m.visibleRails.Count() - 1
+        if m.visibleRails[r].row.isSameNode(event.GetRoSGNode()) then railIndex = r
+    end for
+    parityEmit("focus", parityWorkLabel(works[itemIndex]) + "|@" + railIndex.ToStr() + ":" + itemIndex.ToStr())
     homeRailTrack(event.GetRoSGNode(), itemIndex)
     homeFadesUpdate(itemIndex, works.Count())
     updateHeroFromWork(works[itemIndex])
@@ -4269,7 +4273,7 @@ function moveHomeFocus(delta as Integer) as Boolean
     ' A rail that already sat on the chosen index raises no focus event: show the card's hero and report it here.
     if desired >= 0 and desired < newRail.works.Count()
         updateHeroFromWork(newRail.works[desired])
-        parityEmit("focus", parityWorkLabel(newRail.works[desired]))
+        parityEmit("focus", parityWorkLabel(newRail.works[desired]) + "|@" + newIndex.ToStr() + ":" + desired.ToStr())
     end if
     return true
 end function
@@ -4507,7 +4511,8 @@ sub enterNavDock()
         idx = m.homeFocusIndex
         if idx < 0 or idx >= m.visibleRails.Count() then idx = 0
         rect = m.visibleRails[idx].row.sceneBoundingRect()
-        m.navDockIndex = navDockIndexNearestY(rect.y + rect.height / 2)
+        ' The card art's centre (108 px under the rail's top), not the rail's, picks the nav item, as web's geometric move does.
+        m.navDockIndex = navDockIndexNearestY(rect.y + 108)
     end if
     renderNavDockFocus()
     m.top.SetFocus(true)
@@ -4967,7 +4972,7 @@ sub layoutDetailRails()
         m.detailEpisodes.translation = [0, 69]
         updateSeasonHeads()
         visibleRows = m.detailSeasons.Count()
-        if visibleRows > 2 then visibleRows = 2
+        if visibleRows > 3 then visibleRows = 3
         if visibleRows < 1 then visibleRows = 1
         m.detailEpisodes.itemSize = [1038, visibleRows * 315]
         m.detailEpisodes.numRows = visibleRows
@@ -7062,7 +7067,7 @@ sub updateSeasonHeads()
     if m.detailGroupKind <> "series" or m.detailSeasons = invalid then return
     first = 0
     if m.detailEpisodePos <> invalid and m.detailEpisodePos[0] > 1 then first = m.detailEpisodePos[0] - 1
-    for slot = 0 to 1
+    for slot = 0 to 2
         index = first + slot
         if index < m.detailSeasons.Count()
             group = m.detailSeasons[index]
