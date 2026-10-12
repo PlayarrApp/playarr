@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Harmony wall capture: the player screen reads its title from the suite's performance cases (the playback key was removed).
 - Fire TV: RIGHT stops at the end of a Home rail instead of jumping to a card in another rail, as on the web. The suite driver (scripts/parity/drivers/firetv.mjs) repeats a dropped key and waits for the screen to settle.
 - Roku media cards draw the web's focus ring and soft glow (brand ink in dark, brand strong in light); series detail's focused episode, Home and library cards now show a ring as the web does.
 - Xbox: the nav rail uses the web icons, label weight and tint, and the profile entry shows the first word of the name.
@@ -322,6 +323,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- HarmonyOS TV detail page: Add to watchlist (and Remove), the Resume-from time on the primary pill for a part-watched movie, and a Playback button that opens the movie's saved quality, audio and subtitle settings.
+- Xbox: offline downloads. A Download action on the detail page, local storage with resume, the server complete call, a toast that tracks progress with Pause, Resume and Cancel, and a Downloads page grouped series, season, episode with pause, cancel, delete and edit (keep-until and quality).
 - HarmonyOS TV player: a CC button opens a drawer to pick the subtitle track (or Off) and, for files with several, the audio track (audio renegotiates the stream from the current position).
 - webOS shell forwards download notifications to the TV's system toast, and the webOS parity driver checks them.
 - Xbox: Home cards show the web's watch-state overlay: a progress line on part-watched titles and the brand dot on titles with no history.
@@ -521,6 +524,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV: the artist library is titled "Music" and counts "35 artists", as on web.
+- HarmonyOS TV: the shared page header Back button has web's faint ring and a regular-weight arrow.
 - webOS parity driver: grouped series and season download cases, and the edit case waits for the quality control.
 - HarmonyOS TV: the detail page follows web: the shared page header and nav rail, a dimmed backdrop, Download / Play / Add to Playlist pills, and Chapters and Cast rails straight on the page instead of a glass panel (new credits and chapters calls).
 - HarmonyOS TV player: the control bar follows web: the close button at the top right, a thin progress track over one row (round -10 / play / +10 buttons and the time) at the bottom.
