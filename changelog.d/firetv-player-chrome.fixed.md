@@ -1,0 +1,1 @@
+- Fire TV: the player shows the title's length while an HLS stream is still being written (it read 0:00), and draws the web's missing controls: previous and next, volume, queue, info, cast and the Minimise pill (dimmed where nothing is behind them yet).

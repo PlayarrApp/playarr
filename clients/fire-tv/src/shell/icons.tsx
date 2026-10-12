@@ -29,7 +29,14 @@ export type IconName =
   | 'hd'
   | 'check'
   | 'bell'
-  | 'plus';
+  | 'plus'
+  | 'skipPrev'
+  | 'skipNext'
+  | 'volume'
+  | 'queue'
+  | 'info'
+  | 'cast'
+  | 'minimise';
 
 export interface IconProps {
   name: IconName;
@@ -207,6 +214,59 @@ export function Icon({name, size, color, strokeWidth = 1.8}: IconProps): React.R
       break;
     case 'bell':
       body = <Path {...line} d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0" />;
+      break;
+    case 'skipPrev':
+      body = (
+        <>
+          <Path {...line} d="M6 5v14" />
+          <Path {...solid} d="M19 5.5v13L9 12z" />
+        </>
+      );
+      break;
+    case 'skipNext':
+      body = (
+        <>
+          <Path {...line} d="M18 5v14" />
+          <Path {...solid} d="M5 5.5v13L15 12z" />
+        </>
+      );
+      break;
+    case 'volume':
+      body = (
+        <>
+          <Path {...solid} d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+          <Path {...line} d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+        </>
+      );
+      break;
+    case 'queue':
+      body = (
+        <>
+          <Path {...line} d="M4 6h12M4 11h12M4 16h6" />
+          <Path {...solid} d="M14 14.5v6l5.5-3z" />
+        </>
+      );
+      break;
+    case 'info':
+      body = (
+        <>
+          <Circle {...line} cx={12} cy={12} r={9} />
+          <Path {...line} d="M12 11v5.5" />
+          <Circle {...solid} cx={12} cy={7.8} r={1.1} />
+        </>
+      );
+      break;
+    case 'cast':
+      body = (
+        <>
+          <Rect {...line} x={2.5} y={5} width={14} height={10} rx={1.5} />
+          <Path {...line} d="M7 19h5M9.5 15v4" />
+          <Rect {...line} x={15.5} y={9} width={6} height={10} rx={1.5} />
+        </>
+      );
+      break;
+    case 'minimise':
+      body = <Path {...line} d="M14 10V4M14 10h6M10 14v6M10 14H4M20.5 3.5 14 10M3.5 20.5 10 14" />;
       break;
     case 'check':
       body = <Path {...line} d="m5 12.5 4.5 4.5L19 7.5" />;

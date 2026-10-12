@@ -78,9 +78,12 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
 
       <Animated.View style={{...StyleSheet.absoluteFillObject, opacity: rise}} pointerEvents={props.visible ? 'box-none' : 'none'}>
         <RoundButton icon="close" label="Close" size={46} x={1815} y={39} control="close" {...props} onPress={props.onClose} />
+        <MinimisePill />
 
         <Scrubber {...props} played={played} buffered={buffered} targetShown={props.seekTargetSeconds !== null} shownSeconds={shown} />
 
+        <Decor icon="skipPrev" x={101} y={989} size={18} />
+        <Decor icon="skipNext" x={257} y={989} size={18} />
         <RoundButton icon={props.playing ? 'pause' : 'play'} label={props.playing ? 'Pause' : 'Play'} size={64} x={148} y={958} iconSize={20} control="play" {...props} nodeRef={props.playRef} onPress={props.onTogglePlay} filled />
         <View style={{position: 'absolute', left: u(303), top: u(978), flexDirection: 'row'}} pointerEvents="none">
           <T size={11.136} weight={600} color={colour.ink} lh={22}>
@@ -96,16 +99,22 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
           </T>
         </View>
 
-        {props.hasSubtitles ? (
-          <RoundButton icon="subtitles" label="Subtitles" size={46} x={1389} y={967} iconSize={22} control="subtitles" {...props} nodeRef={props.subtitlesRef} onPress={props.onOpenSubtitles} dim={!props.subtitlesOn} />
-        ) : null}
-        <QualityPill {...props} />
+        {/* The right group is right-aligned like the web's, so it follows the quality label's width. Volume, queue, info and
+            cast are drawn dimmed: this player has no control behind them yet (the remote's own keys set the volume). */}
+        <View style={{position: 'absolute', right: u(79), top: u(959), height: u(60), flexDirection: 'row', alignItems: 'center'}} pointerEvents="box-none">
+          <InlineIcon icon="volume" />
+          <RoundButton inline focusable={props.hasSubtitles} icon="subtitles" label="Subtitles" size={46} iconSize={22} control="subtitles" {...props} nodeRef={props.subtitlesRef} onPress={props.onOpenSubtitles} dim={!props.subtitlesOn} />
+          <InlineIcon icon="queue" />
+          <QualityPill {...props} />
+          <InlineIcon icon="info" bright />
+          <InlineIcon icon="cast" bright />
+        </View>
       </Animated.View>
     </View>
   );
 }
 
-function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>; icon: IconName; label: string; size: number; x: number; y: number; iconSize?: number; control: ChromeControl; onPress: () => void; filled?: boolean; dim?: boolean}): React.ReactElement {
+function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>; icon: IconName; label: string; size: number; x?: number; y?: number; iconSize?: number; control: ChromeControl; onPress: () => void; filled?: boolean; dim?: boolean; inline?: boolean; focusable?: boolean}): React.ReactElement {
   const {colour} = useTheme();
   const focused = props.focused === props.control;
   return (
@@ -113,19 +122,18 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
       ref={props.nodeRef}
       accessibilityRole="button"
       accessibilityLabel={props.label}
+      focusable={props.focusable}
       hasTVPreferredFocus={props.control === 'play'}
       onFocus={() => props.onFocusControl(props.control)}
       onPress={props.onPress}
       style={{
-        position: 'absolute',
-        left: u(props.x),
-        top: u(props.y),
+        ...(props.inline ? {marginHorizontal: u(15.5)} : {position: 'absolute', left: u(props.x ?? 0), top: u(props.y ?? 0)}),
         width: u(props.size),
         height: u(props.size),
         borderRadius: 999,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: props.filled ? 'rgba(255,255,255,0.16)' : mix('#000000', 0.42),
+        backgroundColor: props.filled ? 'rgba(255,255,255,0.16)' : props.inline ? 'transparent' : mix('#000000', 0.42),
       }}
     >
       <Icon name={props.icon} size={u(props.iconSize ?? 16)} color={props.dim ? colour.inkMuted : '#ffffff'} strokeWidth={2} />
@@ -180,11 +188,8 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
       onPressOut={() => setPressed(false)}
       onPress={props.onOpenQuality}
       style={{
-        position: 'absolute',
-        left: u(1528),
-        top: u(960),
-        width: u(173),
         height: u(60),
+        paddingHorizontal: u(14),
         borderRadius: 999,
         flexDirection: 'row',
         alignItems: 'center',
@@ -200,5 +205,38 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
       </View>
       {focused ? <FocusRing /> : null}
     </Pressable>
+  );
+}
+
+/** A drawn-only icon centred on (x, y), dimmed like a disabled control. */
+function Decor({icon, x, y, size}: {icon: IconName; x: number; y: number; size: number}): React.ReactElement {
+  return (
+    <View pointerEvents="none" style={{position: 'absolute', left: u(x - size), top: u(y - size), width: u(2 * size), height: u(2 * size), alignItems: 'center', justifyContent: 'center'}}>
+      <Icon name={icon} size={u(size)} color="rgba(255,255,255,0.34)" strokeWidth={2} />
+    </View>
+  );
+}
+
+function InlineIcon({icon, bright}: {icon: IconName; bright?: boolean}): React.ReactElement {
+  return (
+    <View pointerEvents="none" style={{width: u(46), height: u(46), marginHorizontal: u(15.5), alignItems: 'center', justifyContent: 'center'}}>
+      <Icon name={icon} size={u(19)} color={bright ? '#ffffff' : 'rgba(255,255,255,0.34)'} strokeWidth={2} />
+    </View>
+  );
+}
+
+function MinimisePill(): React.ReactElement {
+  return (
+    <View
+      pointerEvents="none"
+      style={{position: 'absolute', left: u(1678), top: u(38), width: u(124), height: u(48), borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}
+    >
+      <Icon name="minimise" size={u(15)} color="#ffffff" strokeWidth={2} />
+      <View style={{marginLeft: u(10)}}>
+        <T size={11.136} weight={700} color="#ffffff" lh={20} lines={1}>
+          Minimise
+        </T>
+      </View>
+    </View>
   );
 }

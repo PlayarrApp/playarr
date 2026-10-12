@@ -340,3 +340,13 @@ describe('VegaPlaybackEngine', () => {
     expect(state.error?.fatal).toBe(true);
   });
 });
+
+describe('setDurationHint', () => {
+  it('shows the negotiated length while the playlist reports none', () => {
+    const engine = new VegaPlaybackEngine();
+    engine.setDurationHint(6454);
+    expect(engine.getState().durationSeconds).toBe(6454);
+    engine.setDurationHint(Number.NaN);
+    expect(engine.getState().durationSeconds).toBe(6454);
+  });
+});

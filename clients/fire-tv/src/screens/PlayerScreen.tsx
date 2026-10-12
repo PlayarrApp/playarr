@@ -259,6 +259,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     closeSession({kind: 'stop', position_ms: latestPlaybackRef.current.positionMs, reason: 'user_stopped'}, false);
 
     engine.setPlaybackSessionId(info.session_id);
+    engine.setDurationHint(info.duration_ms / 1000);
     sessionRef.current = {sessionId: info.session_id, mediaFileId, startedEvent: false, closed: false};
 
     playbackStartedRef.current = false;

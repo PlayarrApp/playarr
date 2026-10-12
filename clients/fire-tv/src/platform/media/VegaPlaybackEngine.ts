@@ -193,7 +193,16 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
     return normalized;
   }
 
+  private durationHintSeconds = 0;
+
+  /** The title's length from the negotiation: an HLS EVENT playlist reports no duration (or a growing one) while it is still being written. */
+  setDurationHint(seconds: number): void {
+    this.durationHintSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+    if (this.durationHintSeconds > 0) this.setState({durationSeconds: this.durationHintSeconds});
+  }
+
   private readDuration(player: VegaVideoPlayerLike): number {
+    if (this.durationHintSeconds > 0) return this.durationHintSeconds;
     return Number.isFinite(player.duration) && player.duration > 0 ? player.duration : this.state.durationSeconds;
   }
 
@@ -472,7 +481,7 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
     this.setState({
       state: 'loading',
       currentTimeSeconds: source.startPositionSeconds ?? 0,
-      durationSeconds: 0,
+      durationSeconds: this.durationHintSeconds,
       bufferedSeconds: 0,
       audioTracks: [],
       subtitleTracks: [],
