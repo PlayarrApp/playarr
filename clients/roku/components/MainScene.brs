@@ -1568,9 +1568,10 @@ sub applyProfilesChrome()
     theme = ResolvePairingTheme(m.themePreference)
     lang = ResolvePairingLanguage(m.languagePreference)
     isLight = theme = "light"
-    ' The web profile picker sits on the flat page background (measured: 21 19 21 away from the avatars in dark); only the
-    ' pairing screen carries the radial wash.
-    if m.profilesAuthBg <> invalid then m.profilesAuthBg.visible = false
+    if m.profilesAuthBg <> invalid
+        m.profilesAuthBg.visible = true
+        if isLight then m.profilesAuthBg.uri = "pkg:/images/profiles-bg-light.png" else m.profilesAuthBg.uri = "pkg:/images/profiles-bg.png"
+    end if
     tokens = ThemeTokens(theme)
     ink = tokens.ink
     inkSoft = tokens.inkSoft

@@ -145,6 +145,40 @@ class NavigationContractTests(unittest.TestCase):
                 self.assertEqual(target_weight, native_weight)
                 self.assertAlmostEqual(font_size * float(css_tracking.group(1)), native_tracking, delta=0.03)
 
+    def test_profile_labels_track_web_clamps_and_weights(self) -> None:
+        vw_match = re.search(r"--vw:\s*([\d.]+)vw", WEB_GLOBAL_CSS)
+        self.assertIsNotNone(vw_match)
+        assert vw_match is not None
+        vw = 1920 * float(vw_match.group(1)) / 100
+        cases = (
+            (".profile-avatar-button > strong", "name"),
+            (".profile-avatar-button > small", "status"),
+        )
+        avatar = (ROOT / "components" / "ProfileAvatar.brs").read_text(encoding="utf-8")
+        for selector, node in cases:
+            with self.subTest(node=node):
+                rule = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", WEB_GLOBAL_CSS)
+                self.assertIsNotNone(rule)
+                assert rule is not None
+                clamp = re.search(
+                    r"font-size:\s*clamp\(([\d.]+)rem,\s*calc\(([\d.]+)\s*\*\s*var\(--vw\)\),\s*([\d.]+)rem\)",
+                    rule.group(1),
+                )
+                weight = re.search(r"font-weight:\s*([\d.]+)", rule.group(1))
+                self.assertIsNotNone(clamp)
+                self.assertIsNotNone(weight)
+                assert clamp is not None and weight is not None
+                lower, fluid, upper = (float(value) for value in clamp.groups())
+                css_size = min(max(lower * 16, fluid * vw), upper * 16)
+                native = re.search(rf"m\.{node}\.font = PlayarrMakeFont\((\d+), (\d+)\)", avatar)
+                self.assertIsNotNone(native)
+                assert native is not None
+                self.assertEqual(round(css_size), int(native.group(2)))
+                self.assertEqual(700, int(native.group(1)))
+                css_weight = int(float(weight.group(1)))
+                static_weight = 600 if css_weight <= 650 else 700 if css_weight <= 750 else 800
+                self.assertEqual(static_weight, int(native.group(1)))
+
     def test_profile_avatar_component_is_a_circular_gradient_item_renderer(self) -> None:
         component_path = ROOT / "components" / "ProfileAvatar.xml"
         self.assertTrue(component_path.is_file())
@@ -253,6 +287,37 @@ class NavigationContractTests(unittest.TestCase):
         dark_sample = dark.getpixel((45, 45))
         self.assertGreater(sum(light_sample[:3]), sum(dark_sample[:3]))
         self.assertTrue((ROOT / "images" / "avatar-add-light.png").is_file())
+
+    def test_profile_page_background_and_settings_glyph_match_web_scale(self) -> None:
+        for name in ("profiles-bg.png", "profiles-bg-light.png"):
+            with self.subTest(background=name):
+                background = Image.open(ROOT / "images" / name).convert("RGB")
+                self.assertEqual((1920, 1080), background.size)
+                centre = background.getpixel((960, 518))
+                corner = background.getpixel((0, 0))
+                self.assertGreater(centre[0] - centre[1], corner[0] - corner[1])
+
+        for name in (
+            "profiles-gear.png",
+            "profiles-gear-light.png",
+            "profiles-gear-focus.png",
+            "profiles-gear-focus-light.png",
+        ):
+            with self.subTest(glyph=name):
+                button = Image.open(ROOT / "images" / name).convert("RGBA")
+                self.assertEqual((48, 48), button.size)
+                pixels = button.load()
+                glyph = [
+                    (x, y)
+                    for y in range(12, 36)
+                    for x in range(12, 36)
+                    if pixels[x, y][0] > 150 and pixels[x, y][1] < 100 and pixels[x, y][2] > 40
+                ]
+                self.assertGreater(len(glyph), 10)
+                width = max(x for x, _ in glyph) - min(x for x, _ in glyph) + 1
+                height = max(y for _, y in glyph) - min(y for _, y in glyph) + 1
+                self.assertLessEqual(width, 22)
+                self.assertLessEqual(height, 22)
 
     def test_every_client_renders_the_server_avatar_preference(self) -> None:
         # The same account must show the same avatar on every device: the server preference (a preset id or a custom

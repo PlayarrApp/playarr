@@ -1,1 +1,1 @@
-- Improved Roku profile picker heading typography, focused-avatar glow and theme-aware add-profile avatar in light and dark themes.
+- Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.

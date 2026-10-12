@@ -8,10 +8,11 @@ Nav icons are drawn from the web's NavIcons.tsx paths (24 box, stroke 1.8, round
 """
 from __future__ import annotations
 
+import math
 import shutil
 import subprocess
 import tempfile
-import math
+from io import BytesIO
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
@@ -167,6 +168,73 @@ def profile_focus_shadow() -> None:
     mask.save(IMAGES / "avatar-shadow.png")
 
 
+def profiles_background(theme: str) -> None:
+    """Rasterise the web profile page's 145-degree base and centred 13% brand wash."""
+    width, height = 1920, 1080
+    if theme == "light":
+        surface, background, brand = (251, 250, 249), (245, 243, 242), (207, 49, 87)
+        filename = "profiles-bg-light.png"
+    else:
+        surface, background, brand = (27, 24, 27), (21, 19, 21), (207, 49, 87)
+        filename = "profiles-bg.png"
+
+    # CSS circle-at 50% 48%, farthest-corner radius, with its colour stop at 34%.
+    centre_x, centre_y = width / 2, height * 0.48
+    radius = ((width / 2) ** 2 + max(centre_y, height - centre_y) ** 2) ** 0.5 * 0.34
+    angle = math.radians(145)
+    gx, gy = math.sin(angle), math.cos(angle)
+    length = (width - 1) * gx + (height - 1) * gy
+    pixels = bytearray(width * height * 4)
+    offset = 0
+    for y in range(height):
+        row_projection = y * gy
+        dy = y - centre_y
+        for x in range(width):
+            t = min(1.0, max(0.0, (x * gx + row_projection) / length / 0.72))
+            base = tuple(round(surface[c] * (1 - t) + background[c] * t) for c in range(3))
+            distance = ((x - centre_x) ** 2 + dy ** 2) ** 0.5
+            alpha = 0.13 * max(0.0, 1 - distance / radius)
+            for channel in range(3):
+                pixels[offset + channel] = round(base[channel] * (1 - alpha) + brand[channel] * alpha)
+            pixels[offset + 3] = 255
+            offset += 4
+    Image.frombytes("RGBA", (width, height), bytes(pixels)).save(IMAGES / filename)
+
+
+def profile_settings_buttons() -> None:
+    """Render 44 px settings buttons with the web's 18 px gear glyph."""
+    size, scale = 48, SS
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" '
+        'fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'
+        '<circle cx="12" cy="12" r="3"/>'
+        '<path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l2-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.7 7.7 0 0 0 0 3l-2 1.5 2 3.4 2.3-.9c.77.66 1.65 1.17 2.6 1.5l.5 2.5h4l.5-2.5a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4z"/>'
+        '</svg>'
+    )
+    rendered = subprocess.run(
+        ["rsvg-convert", "-w", str(18 * scale), "-h", str(18 * scale), "-"],
+        input=svg.encode("utf-8"),
+        capture_output=True,
+        check=True,
+    ).stdout
+    icon = Image.open(BytesIO(rendered)).convert("RGBA")
+    icon_alpha = icon.getchannel("A")
+    variants = {
+        "profiles-gear.png": ((33, 29, 33, 163), (223, 220, 221, 41), (207, 49, 87)),
+        "profiles-gear-light.png": ((255, 255, 255, 163), (56, 38, 33, 50), (207, 49, 87)),
+        "profiles-gear-focus.png": ((244, 240, 241, 255), (244, 240, 241, 255), (207, 49, 87)),
+        "profiles-gear-focus-light.png": ((56, 38, 33, 255), (56, 38, 33, 255), (207, 49, 87)),
+    }
+    for name, (fill, outline, foreground) in variants.items():
+        image = Image.new("RGBA", (size * scale, size * scale), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((2 * scale, 2 * scale, 46 * scale - 1, 46 * scale - 1), fill=fill, outline=outline, width=scale)
+        coloured_icon = Image.new("RGBA", icon.size, (*foreground, 0))
+        coloured_icon.putalpha(icon_alpha)
+        image.alpha_composite(coloured_icon, ((size * scale - icon.width) // 2, (size * scale - icon.height) // 2))
+        image.resize((size, size), Image.Resampling.LANCZOS).save(IMAGES / name)
+
+
 def profile_add_avatar(theme: str) -> None:
     """Render web .profile-add's theme-specific gradient, dashed border and plus glyph."""
     size = 240
@@ -230,6 +298,9 @@ def profile_add_avatar(theme: str) -> None:
 def profile_visual_assets() -> None:
     profile_focus_ring()
     profile_focus_shadow()
+    profiles_background("light")
+    profiles_background("dark")
+    profile_settings_buttons()
     profile_add_avatar("light")
     profile_add_avatar("dark")
 

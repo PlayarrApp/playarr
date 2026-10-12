@@ -10,6 +10,8 @@ sub init()
     m.initial = m.top.findNode("initial")
     m.name = m.top.findNode("name")
     m.status = m.top.findNode("status")
+    m.name.font = PlayarrMakeFont(700, 17)
+    m.status.font = PlayarrMakeFont(700, 9)
     ThemeSetRole(m.focusRing, "cardGlow")
     m.focusRing.blendColor = ThemeColor("cardGlow")
     ThemeSetRole(m.focusShadow, "profileShadow")
@@ -61,6 +63,9 @@ sub onFocusChanged()
     effective = m.top.focusPercent * m.top.activeRailFactor
     m.focusRing.opacity = effective
     m.focusShadow.opacity = effective * 0.28
+    if m.name <> invalid
+        if effective > 0 then m.name.color = ThemeColor("ink") else m.name.color = ThemeColor("inkSoft")
+    end if
     if m.circleGroup = invalid then return
     scale = 1 + (effective * 0.09)
     m.circleGroup.scale = [scale, scale]
