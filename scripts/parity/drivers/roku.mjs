@@ -32,6 +32,45 @@ export function splitDebugFrames(buffer, chunk) {
   return { frames, remainder, overflow: false };
 }
 
+export function parseParityLine(line) {
+  const match = /PARITY\|([A-Za-z0-9_-]+)\|(.*)$/.exec(line.replace(/\r$/, ""));
+  if (!match) return null;
+  return { kind: match[1], value: match[2] };
+}
+
+export function createParityState() {
+  return {
+    screen: "", screenSeq: 0, page: "", browse: "", focus: null,
+    focusSeq: 0, focusScreenSeq: 0, focusFloorAtScreen: 0, drawerSource: "",
+  };
+}
+
+export function applyParityLine(state, line) {
+  const parsed = parseParityLine(line);
+  if (!parsed) return false;
+  const { kind, value } = parsed;
+  if (kind === "screen") {
+    state.screen = value.trim();
+    state.screenSeq += 1;
+    state.focusFloorAtScreen = state.focusSeq;
+    state.focus = null;
+    if (state.screen === "home" || state.screen === "profiles") state.drawerSource = "";
+    if (state.screen === "drawer" && !state.drawerSource) state.drawerSource = "actions";
+  } else if (kind === "page") {
+    state.page = value.trim();
+  } else if (kind === "browse") {
+    state.browse = value.trim();
+  } else if (kind === "focus") {
+    const positioned = /^(.*)\|@([0-9]+):([0-9]+)$/.exec(value.trim());
+    state.focus = positioned
+      ? { label: positioned[1], position: { rail: Number(positioned[2]), index: Number(positioned[3]) } }
+      : value.trim();
+    state.focusSeq += 1;
+    state.focusScreenSeq = state.screenSeq;
+  }
+  return true;
+}
+
 function option(args, name) {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] ?? "" : "";
@@ -139,6 +178,7 @@ export function createDriver({ out, args = [] } = {}) {
   const keyDelay = Math.max(300, Number(env.ROKU_PARITY_KEY_DELAY_MS ?? 850));
   const selectDelay = Math.max(1000, Number(env.ROKU_PARITY_SELECT_DELAY_MS ?? 2600));
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const parityState = createParityState();
   let socket;
   let debugBuffer = "";
   let screen = "";
@@ -156,6 +196,7 @@ export function createDriver({ out, args = [] } = {}) {
 
   const resetObservedState = () => {
     debugBuffer = "";
+    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "" });
     screen = "";
     page = "";
     browse = "";
@@ -219,28 +260,16 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   const ingest = (line) => {
-    const match = /PARITY\|([A-Za-z0-9_-]+)\|(.*)$/.exec(line);
-    if (!match) return;
-    const [, kind, value] = match;
-    if (kind === "screen") {
-      screen = value.trim();
-      screenSeq += 1;
-      focusFloorAtScreen = focusSeq;
-      focus = null;
-      if (screen === "home" || screen === "profiles") drawerSource = "";
-      if (screen === "drawer" && !drawerSource) drawerSource = "actions";
-    } else if (kind === "page") {
-      page = value.trim();
-    } else if (kind === "browse") {
-      browse = value.trim();
-    } else if (kind === "focus") {
-      const positioned = /^(.*)\|@([0-9]+):([0-9]+)$/.exec(value.trim());
-      focus = positioned
-        ? { label: positioned[1], position: { rail: Number(positioned[2]), index: Number(positioned[3]) } }
-        : value.trim();
-      focusSeq += 1;
-      focusScreenSeq = screenSeq;
-    }
+    if (!applyParityLine(parityState, line)) return;
+    screen = parityState.screen;
+    screenSeq = parityState.screenSeq;
+    page = parityState.page;
+    browse = parityState.browse;
+    focus = parityState.focus;
+    focusSeq = parityState.focusSeq;
+    focusScreenSeq = parityState.focusScreenSeq;
+    focusFloorAtScreen = parityState.focusFloorAtScreen;
+    drawerSource = parityState.drawerSource;
   };
 
   const press = async (key, { long = false } = {}) => {
@@ -254,7 +283,10 @@ export function createDriver({ out, args = [] } = {}) {
       await sendEcp(`keypress/${ecpName}`);
     }
     await sleep(key === "select" || key === "back" ? selectDelay : keyDelay);
-    if (long && key === "select") drawerSource = "actions";
+    if (long && key === "select") {
+      drawerSource = "actions";
+      parityState.drawerSource = drawerSource;
+    }
     const actual = routeForState(screen, page, browse, drawerSource);
     if (actual) lastRoute = actual;
     if (screen === "playback") throw new Error("Roku parity driver stopped before capturing a player screen");
@@ -416,6 +448,7 @@ export function createDriver({ out, args = [] } = {}) {
     await toHome();
     if (entry.id === "filters") drawerSource = "filters";
     else if (entry.id === "actions") drawerSource = "actions";
+    parityState.drawerSource = drawerSource;
     for (const item of parseKeySequence(entry.keys)) await press(item.key, { long: item.long });
     const actual = routeForState(screen, page, browse, drawerSource);
     if (actual !== (entry.match ?? entry.route)) throw new Error(`Roku route ended on ${actual}; expected ${entry.match ?? entry.route}`);

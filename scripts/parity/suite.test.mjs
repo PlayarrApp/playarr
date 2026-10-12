@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, routeForState as rokuRouteForState, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { applyParityLine, createParityState, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, routeForState as rokuRouteForState, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
@@ -85,6 +85,19 @@ test("Roku debug stream keeps partial frames bounded and rejects oversized frame
   assert.deepEqual(splitDebugFrames("", `${"x".repeat(16 * 1024 + 1)}\n`), {
     frames: [], remainder: "", overflow: true,
   });
+});
+
+test("Roku PARITY ingest records fresh screen and focus from CRLF events", () => {
+  const state = createParityState();
+  assert.equal(applyParityLine(state, "PARITY|screen|profiles\r"), true);
+  assert.equal(applyParityLine(state, "PARITY|focus|Device Test\r"), true);
+  assert.equal(applyParityLine(state, "unrelated console output\r"), false);
+  assert.equal(state.screen, "profiles");
+  assert.equal(state.screenSeq, 1);
+  assert.equal(state.focus, "Device Test");
+  assert.equal(state.focusSeq, 1);
+  assert.equal(state.focusScreenSeq, state.screenSeq);
+  assert.equal(hasFreshScreenFocus(state, "profiles", "Device Test", 0, 0), true);
 });
 
 test("Roku suite driver refuses to interrupt an active media session", () => {
