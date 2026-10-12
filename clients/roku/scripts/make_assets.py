@@ -11,9 +11,10 @@ from __future__ import annotations
 import shutil
 import subprocess
 import tempfile
+import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 IMAGES = Path(__file__).resolve().parents[1] / "images"
 SS = 8  # supersampling
@@ -127,6 +128,112 @@ def avatars() -> None:
     mask.save(IMAGES / "avatar-mask.png")
 
 
+def profile_focus_ring() -> None:
+    """The web profile focus ring: a 3 px outline plus a 20 px blur at 45%, tinted by the active theme token."""
+    size = 320
+    big = Image.new("L", (size * SS, size * SS), 0)
+    centre = size * SS / 2
+    radius = 133 * SS
+    circle_box = (centre - radius, centre - radius, centre + radius, centre + radius)
+    stroke = Image.new("L", big.size, 0)
+    ImageDraw.Draw(stroke).ellipse(circle_box, outline=255, width=3 * SS)
+    # CSS box-shadow blurs the filled circle with a 4 px spread, not the outline itself.
+    ImageDraw.Draw(big).ellipse(circle_box, fill=255)
+    # SceneGraph scales this mask to the 304 px Poster, and the avatar group scales by 1.09.
+    glow = big.filter(ImageFilter.GaussianBlur(10 * SS)).point(lambda alpha: round(alpha * 0.45))
+    alpha = ImageChops.lighter(stroke, glow).resize((size, size), Image.Resampling.LANCZOS)
+    mask = Image.new("RGBA", (size, size), (255, 255, 255, 0))
+    mask.putalpha(alpha)
+    mask.save(IMAGES / "avatar-ring.png")
+
+
+def profile_focus_shadow() -> None:
+    """The web avatar's 0 22px 52px rgba(31,14,20,.28) focus shadow as a tintable mask."""
+    size = 400
+    scale = 4
+    big = Image.new("L", (size * scale, size * scale), 0)
+    centre = size * scale / 2
+    radius = 146 * scale
+    centre_y = 188 * scale
+    ImageDraw.Draw(big).ellipse(
+        (centre - radius, centre_y - radius, centre + radius, centre_y + radius),
+        fill=255,
+    )
+    alpha = big.filter(ImageFilter.GaussianBlur(34 * scale)).resize(
+        (size, size), Image.Resampling.LANCZOS
+    )
+    mask = Image.new("RGBA", (size, size), (255, 255, 255, 0))
+    mask.putalpha(alpha)
+    mask.save(IMAGES / "avatar-shadow.png")
+
+
+def profile_add_avatar(theme: str) -> None:
+    """Render web .profile-add's theme-specific gradient, dashed border and plus glyph."""
+    size = 240
+    scale = SS
+    width = height = size * scale
+    if theme == "light":
+        start, ink, border = (247, 222, 228), (68, 58, 64), (56, 38, 33, 47)
+        filename = "avatar-add-light.png"
+    else:
+        start, ink, border = (61, 32, 42), (205, 193, 198), (223, 220, 221, 39)
+        filename = "avatar-add.png"
+    end = (168, 38, 85)
+    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    pixels = image.load()
+    cx, cy = width * 0.34, height * 0.26
+    highlight_radius = width * 0.27
+    angle = math.radians(145)
+    gradient_x, gradient_y = math.sin(angle), -math.cos(angle)
+    gradient_length = (width - 1) * (gradient_x + gradient_y)
+    for y in range(height):
+        for x in range(width):
+            t = min(1.0, max(0.0, (x * gradient_x + y * gradient_y) / gradient_length))
+            r = round(start[0] * (1 - t) + end[0] * t)
+            g = round(start[1] * (1 - t) + end[1] * t)
+            b = round(start[2] * (1 - t) + end[2] * t)
+            distance = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+            amount = 0.28 * max(0.0, 1 - distance / highlight_radius)
+            pixels[x, y] = (
+                round(r * (1 - amount) + 255 * amount),
+                round(g * (1 - amount) + 255 * amount),
+                round(b * (1 - amount) + 255 * amount),
+                255,
+            )
+    circle = Image.new("L", (width, height), 0)
+    ImageDraw.Draw(circle).ellipse((0, 0, width - 1, height - 1), fill=255)
+    image.putalpha(circle)
+
+    # The web's 1 px dashed --line-strong border is subtle against both palettes.
+    border_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    border_draw = ImageDraw.Draw(border_layer)
+    centre = (width - 1) / 2
+    radius = (size / 2 - 1) * scale
+    for start_degrees in range(0, 360, 16):
+        border_draw.arc(
+            (centre - radius, centre - radius, centre + radius, centre + radius),
+            start=start_degrees,
+            end=start_degrees + 9,
+            fill=border,
+            width=1 * scale,
+        )
+    image = Image.alpha_composite(image, border_layer)
+
+    font = ImageFont.truetype(str(IMAGES.parent / "fonts" / "NunitoSans-300.ttf"), 77 * scale)
+    plus_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    plus_draw = ImageDraw.Draw(plus_layer)
+    plus_draw.text((centre, centre), "+", font=font, fill=ink, anchor="mm")
+    image = Image.alpha_composite(image, plus_layer)
+    image.resize((size, size), Image.Resampling.LANCZOS).save(IMAGES / filename)
+
+
+def profile_visual_assets() -> None:
+    profile_focus_ring()
+    profile_focus_shadow()
+    profile_add_avatar("light")
+    profile_add_avatar("dark")
+
+
 def profile_signout_buttons() -> None:
     """Render the Roku Sign out pill at the live TV web size (104 x 44)."""
     scale = SS
@@ -166,6 +273,7 @@ def profile_signout_buttons() -> None:
 
 def main() -> None:
     avatars()
+    profile_visual_assets()
     profile_signout_buttons()
     for name in ICONS:
         icon(name, 40 if name == "icon-empty" else 20)

@@ -1,0 +1,1 @@
+- Improved Roku profile picker heading typography, focused-avatar glow and theme-aware add-profile avatar in light and dark themes.

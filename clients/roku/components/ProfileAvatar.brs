@@ -2,6 +2,7 @@ sub init()
     PlayarrFontifyTree(m.top)
     ThemeInitComponent()
     m.circleGroup = m.top.findNode("circleGroup")
+    m.focusShadow = m.top.findNode("focusShadow")
     m.focusRing = m.top.findNode("focusRing")
     m.avatarImage = m.top.findNode("avatarImage")
     m.customMask = m.top.findNode("customMask")
@@ -9,6 +10,11 @@ sub init()
     m.initial = m.top.findNode("initial")
     m.name = m.top.findNode("name")
     m.status = m.top.findNode("status")
+    ThemeSetRole(m.focusRing, "cardGlow")
+    m.focusRing.blendColor = ThemeColor("cardGlow")
+    ThemeSetRole(m.focusShadow, "profileShadow")
+    m.focusShadow.blendColor = ThemeColor("profileShadow")
+    m.global.observeField("themeMode", "onProfileThemeChanged")
 end sub
 
 ' itemContent fields set by buildProfileAvatarContent() in MainScene.brs:
@@ -22,6 +28,9 @@ sub onContentChanged()
         m.customImage.uri = customUri
         m.customMask.visible = true
         m.avatarImage.uri = ""
+    else if content.presetId = "add"
+        m.customMask.visible = false
+        m.avatarImage.uri = profileAddAvatarUri()
     else
         m.customMask.visible = false
         m.avatarImage.uri = "pkg:/images/avatar-" + content.presetId + ".png"
@@ -33,16 +42,29 @@ sub onContentChanged()
     m.status.text = content.statusText
 end sub
 
+function profileAddAvatarUri() as String
+    if m.global.themeMode = "light" then return "pkg:/images/avatar-add-light.png"
+    return "pkg:/images/avatar-add.png"
+end function
+
+sub onProfileThemeChanged()
+    content = m.top.itemContent
+    if content <> invalid and content.presetId = "add" and m.avatarImage <> invalid
+        m.avatarImage.uri = profileAddAvatarUri()
+    end if
+end sub
+
 ' Web: focused avatar scales from its centre and lifts slightly. Scale the
 ' circle group only (labels stay put) with pivot at the circle centre so
 ' neighbours stay on one horizontal baseline.
 sub onFocusChanged()
     effective = m.top.focusPercent * m.top.activeRailFactor
     m.focusRing.opacity = effective
+    m.focusShadow.opacity = effective * 0.28
     if m.circleGroup = invalid then return
     scale = 1 + (effective * 0.09)
     m.circleGroup.scale = [scale, scale]
     ' Subtle lift (web translateY(-8px)) without shifting RowList slot.
     lift = Int(-10 * effective)
-    m.circleGroup.translation = [29, 39 + lift]
+    m.circleGroup.translation = [61, 53 + lift]
 end sub
