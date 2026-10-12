@@ -5,7 +5,7 @@ import os
 
 STAGES = (
     "source", "fetch-start", "fetch-ok", "fetch-error", "bridge-source-ready",
-    "assigned", "on-complete", "on-error",
+    "assigned", "image-source", "image-area-positive", "image-area-zero", "on-complete", "on-error",
 )
 
 

@@ -38,7 +38,7 @@ STATE = {"route": "", "kind": "", "focused": None, "lib_kind": ""}
 DEBUG_SEQUENCE = 0
 DETAIL_IMAGE_STAGES = {
     "source", "fetch-start", "fetch-ok", "fetch-error", "bridge-source-ready",
-    "assigned", "on-complete", "on-error",
+    "assigned", "image-source", "image-area-positive", "image-area-zero", "on-complete", "on-error",
 }
 
 

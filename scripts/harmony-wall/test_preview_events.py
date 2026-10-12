@@ -79,6 +79,11 @@ class PreviewEventTests(unittest.TestCase):
         event = harmony_vnc.STATE["debug_events"][-1]
         self.assertEqual(event["category"], "detail-row-image-fetch-error")
         self.assertIsInstance(event["timestamp"], float)
+        self.assertTrue(harmony_vnc.append_detail_image_stage(dict(body, stage="image-source")))
+        self.assertTrue(harmony_vnc.append_detail_image_stage(dict(body, stage="image-area-positive")))
+        self.assertTrue(harmony_vnc.append_detail_image_stage(dict(body, stage="image-area-zero")))
+        self.assertNotIn("width", harmony_vnc.STATE["debug_events"][-1])
+        self.assertNotIn("height", harmony_vnc.STATE["debug_events"][-1])
         self.assertFalse(harmony_vnc.append_detail_image_stage(dict(body, stage="bad", row_id="row-b")))
         self.assertFalse(harmony_vnc.append_detail_image_stage(dict(body, generation=6)))
 

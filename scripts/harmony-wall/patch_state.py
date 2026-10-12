@@ -13,12 +13,12 @@ def edit(rel, fn):
 
 def card(s):
     s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { reportCardFocus, previewReport } from '../../util/PreviewState';", 1)
-    s = s.replace("  onLongPress: () => void = () => {};", "  onLongPress: () => void = () => {};\n  onPreviewRowImageComplete: () => void = () => {};\n  onPreviewRowImageError: () => void = () => {};", 1)
+    s = s.replace("  onLongPress: () => void = () => {};", "  onLongPress: () => void = () => {};\n  onPreviewRowImageSource: () => void = () => {};\n  onPreviewRowImageArea: (positive: boolean) => void = (_positive: boolean) => {};\n  onPreviewRowImageComplete: () => void = () => {};\n  onPreviewRowImageError: () => void = () => {};", 1)
     old = "      this.setFocused(true);\n      this.onFocused();\n"
     assert old in s
     s = s.replace(old, old + "      reportCardFocus(this.title, this.subtitle);\n", 1)
     s = s.replace("    .focusable(true)\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", "    .focusable(true)\n    .focusOnTouch(true)\n    .id('pcard')\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", 1)
-    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onComplete(() => { previewReport('dbg=' + encodeURIComponent('poster-image-complete')); this.onPreviewRowImageComplete(); })\n            .onError(() => { previewReport('dbg=' + encodeURIComponent('poster-image-error')); this.onPreviewRowImageError(); })\n            .width('100%')", 1)
+    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onAppear(() => { this.onPreviewRowImageSource(); })\n            .onAreaChange((_old: Area, area: Area) => { this.onPreviewRowImageArea(Number(area.width) > 0 && Number(area.height) > 0); })\n            .onComplete(() => { previewReport('dbg=' + encodeURIComponent('poster-image-complete')); this.onPreviewRowImageComplete(); })\n            .onError(() => { previewReport('dbg=' + encodeURIComponent('poster-image-error')); this.onPreviewRowImageError(); })\n            .width('100%')", 1)
     return s.replace("    .onClick(() => {\n      if (this.longPressFired) {", "    .onClick(() => {\n      reportCardFocus('click:' + this.title, '');\n      if (this.longPressFired) {", 1)
 
 def nav(s):
@@ -60,14 +60,16 @@ def home(s):
 def detail(s):
     s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { captureDetailRowImageContext, reportDetailRowImageStage } from '../util/PreviewState';", 1)
     marker = "// -- UI-only constants"
-    helper = """function createDetailRowImageCompletion(parentWorkId: string, rowId: string): () => void {
+    helper = """function createDetailRowImageStageCallback(parentWorkId: string, rowId: string, stage: string): () => void {
   const context = captureDetailRowImageContext(parentWorkId, rowId);
-  return (): void => { reportDetailRowImageStage(context, 'on-complete'); };
+  return (): void => { reportDetailRowImageStage(context, stage); };
 }
 
-function createDetailRowImageError(parentWorkId: string, rowId: string): () => void {
+function createDetailRowImageAreaCallback(parentWorkId: string, rowId: string): (positive: boolean) => void {
   const context = captureDetailRowImageContext(parentWorkId, rowId);
-  return (): void => { reportDetailRowImageStage(context, 'on-error'); };
+  return (positive: boolean): void => {
+    reportDetailRowImageStage(context, positive ? 'image-area-positive' : 'image-area-zero');
+  };
 }
 
 """
@@ -78,7 +80,7 @@ function createDetailRowImageError(parentWorkId: string, rowId: string): () => v
     start = s.index("  private rowItem(item: MediaRailItem")
     end = s.index("  /** Similar-title row content", start)
     row = s[start:end]
-    row = row.replace("        variant: 'titleEpisode',\n", "        variant: 'titleEpisode',\n        onPreviewRowImageComplete: createDetailRowImageCompletion(this.workId, (item as DetailRow).id),\n        onPreviewRowImageError: createDetailRowImageError(this.workId, (item as DetailRow).id),\n")
+    row = row.replace("        variant: 'titleEpisode',\n", "        variant: 'titleEpisode',\n        onPreviewRowImageSource: createDetailRowImageStageCallback(this.workId, (item as DetailRow).id, 'image-source'),\n        onPreviewRowImageArea: createDetailRowImageAreaCallback(this.workId, (item as DetailRow).id),\n        onPreviewRowImageComplete: createDetailRowImageStageCallback(this.workId, (item as DetailRow).id, 'on-complete'),\n        onPreviewRowImageError: createDetailRowImageStageCallback(this.workId, (item as DetailRow).id, 'on-error'),\n")
     s = s[:start] + row + s[end:]
     old = """        const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
         if (thumb.kind === 'ok') {
