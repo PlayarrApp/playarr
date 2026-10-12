@@ -96,13 +96,15 @@ export struct PageShell {
         Row({ space: tv(HEADER_GAP) }) {
           Text('←')
             .fontSize(tv(BACK_GLYPH_SIZE))
-            .fontWeight(FontWeight.Bold)
+            .fontWeight(FontWeight.Normal)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .textAlign(TextAlign.Center)
             .width(tv(HEADER_SIZE))
             .height(tv(HEADER_SIZE))
             .borderRadius(tv(HEADER_SIZE / 2))
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+            // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
+            .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
             .focusable(true)
             .onClick(() => {
               popRoute(getNavStack());

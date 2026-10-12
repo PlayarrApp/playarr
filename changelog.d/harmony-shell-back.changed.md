@@ -1,0 +1,1 @@
+- HarmonyOS TV: the shared page header Back button has web's faint ring and a regular-weight arrow.

@@ -206,7 +206,11 @@ def walk(folder, suffix):
     click(1877, 272); time.sleep(4); click(1740, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-week"), folder)
     click(1877, 272); time.sleep(4); click(1830, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-month"), folder)
     route("search", 12); snap(n("search"), folder)
-    route("settings", 8); snap(n("settings"), folder)
+    route("settings", 8)
+    if folder.endswith("dark") and device == "tv":
+        # web's reference has Dark chosen explicitly (the colour theme row shows it selected); the Previewer starts on System
+        click(394, 207); time.sleep(3); click(1645, 285); time.sleep(4)
+    snap(n("settings"), folder)
     extra_screens(folder)
 
 
