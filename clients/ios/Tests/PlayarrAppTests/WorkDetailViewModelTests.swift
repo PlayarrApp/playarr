@@ -7,6 +7,88 @@ import XCTest
 
 @MainActor
 final class WorkDetailViewModelTests: XCTestCase {
+    func testInitialSeriesEpisodePrefersExplicitRequestOverResumeTarget() throws {
+        let seriesID = UUID()
+        let seasonID = UUID()
+        let requestedID = UUID()
+        let nextUpID = UUID()
+        let requestedMediaID = UUID()
+        let nextUpMediaID = UUID()
+        let season = Season(
+            id: seasonID,
+            seriesWorkID: seriesID,
+            seasonNumber: 2,
+            monitored: true,
+            availability: .available
+        )
+        let episodes = [
+            EpisodeDetail(episode: Episode(id: nextUpID, seasonID: seasonID, episodeNumber: 1, monitored: true, availability: .available), mediaFileID: nextUpMediaID),
+            EpisodeDetail(episode: Episode(id: requestedID, seasonID: seasonID, episodeNumber: 2, monitored: true, availability: .available), mediaFileID: requestedMediaID)
+        ]
+        let seasons = [SeasonDetail(season: season, episodes: episodes)]
+        let target = try JSONDecoder().decode(
+            SeriesResumeTarget.self,
+            from: Data("{\"episode_id\":\"\(nextUpID.uuidString)\",\"media_file_id\":\"\(nextUpMediaID.uuidString)\",\"season_number\":2}".utf8)
+        )
+
+        let selected = WorkDetailViewModel.initialSeriesEpisode(
+            seasons: seasons,
+            requestedEpisodeID: requestedID,
+            requestedMediaFileID: nil,
+            resumeTarget: target
+        )
+
+        XCTAssertEqual(selected?.episode.id, requestedID)
+        XCTAssertEqual(selected?.season.season.id, seasonID)
+
+        let selectedByMedia = WorkDetailViewModel.initialSeriesEpisode(
+            seasons: seasons,
+            requestedEpisodeID: nil,
+            requestedMediaFileID: requestedMediaID,
+            resumeTarget: target
+        )
+        XCTAssertEqual(selectedByMedia?.episode.id, requestedID)
+    }
+
+    func testInitialSeriesEpisodeUsesResumeTargetThenFirstPlayableFallback() throws {
+        let seriesID = UUID()
+        let seasonID = UUID()
+        let firstID = UUID()
+        let nextID = UUID()
+        let nextMediaID = UUID()
+        let season = Season(
+            id: seasonID,
+            seriesWorkID: seriesID,
+            seasonNumber: 1,
+            monitored: true,
+            availability: .available
+        )
+        let seasons = [SeasonDetail(season: season, episodes: [
+            EpisodeDetail(episode: Episode(id: firstID, seasonID: seasonID, episodeNumber: 1, monitored: true, availability: .available), mediaFileID: UUID()),
+            EpisodeDetail(episode: Episode(id: nextID, seasonID: seasonID, episodeNumber: 2, monitored: true, availability: .available), mediaFileID: nextMediaID)
+        ])]
+        let target = try JSONDecoder().decode(
+            SeriesResumeTarget.self,
+            from: Data("{\"episode_id\":\"\(nextID.uuidString)\",\"media_file_id\":\"\(nextMediaID.uuidString)\"}".utf8)
+        )
+
+        let resumed = WorkDetailViewModel.initialSeriesEpisode(
+            seasons: seasons,
+            requestedEpisodeID: nil,
+            requestedMediaFileID: nil,
+            resumeTarget: target
+        )
+        let fallback = WorkDetailViewModel.initialSeriesEpisode(
+            seasons: seasons,
+            requestedEpisodeID: nil,
+            requestedMediaFileID: nil,
+            resumeTarget: nil
+        )
+
+        XCTAssertEqual(resumed?.episode.id, nextID)
+        XCTAssertEqual(fallback?.episode.id, firstID)
+    }
+
     func testLoadPublishesFetchedDetail() async {
         let workID = UUID()
         let detail = WorkDetail(

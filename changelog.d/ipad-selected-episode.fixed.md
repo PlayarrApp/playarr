@@ -1,0 +1,1 @@
+- On iPad series detail, focusing an episode updates the detail copy and applicable actions; tapping a playable episode still starts playback directly. Initial selection follows an explicit episode request, the series resume target, then the first playable episode, with its season and card centred in the rail.
