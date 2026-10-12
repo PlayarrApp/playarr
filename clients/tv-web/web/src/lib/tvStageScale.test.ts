@@ -39,12 +39,12 @@ describe("computeTvStageScale", () => {
 describe("applyTvStageScale", () => {
   function fakeRoot() {
     const values = new Map<string, string>();
-    const root = {
-      style: {
-        setProperty: (name: string, value: string) => void values.set(name, value),
-        removeProperty: (name: string) => void values.delete(name),
-      },
-    } as unknown as HTMLElement;
+    const style = {
+      setProperty: (name: string, value: string) => void values.set(name, value),
+      removeProperty: (name: string) => void values.delete(name),
+    };
+    // Root and body share one map: the tests only care which properties are set after a call.
+    const root = { style, ownerDocument: { body: { style } } } as unknown as HTMLElement;
     return { root, values };
   }
 
@@ -54,6 +54,26 @@ describe("applyTvStageScale", () => {
     expect(Number(values.get("zoom"))).toBeCloseTo(2 / 3, 5);
     expect(values.get("--vw")).toMatch(/px$/);
     expect(values.get("--viewport-unit")).toMatch(/px$/);
+  });
+
+  it("transform mode lays the root out at stage size and scales it, with no zoom", () => {
+    const { root, values } = fakeRoot();
+    applyTvStageScale(root, 1280, 720, "transform");
+    expect(values.has("zoom")).toBe(false);
+    expect(parseFloat(values.get("width") ?? "")).toBeCloseTo(1920, 3);
+    expect(parseFloat(values.get("height") ?? "")).toBeCloseTo(1080, 3);
+    expect(values.get("transform-origin")).toBe("0 0");
+    expect(values.get("transform")).toMatch(/^scale\(0\.666/);
+    expect(Number(values.get("--stage-zoom"))).toBeCloseTo(2 / 3, 5);
+  });
+
+  it("switching mode or returning to the stage size clears the other mode's properties", () => {
+    const { root, values } = fakeRoot();
+    applyTvStageScale(root, 1280, 720, "transform");
+    applyTvStageScale(root, 1280, 720, "zoom");
+    expect(values.has("transform")).toBe(false);
+    expect(values.has("width")).toBe(false);
+    expect(Number(values.get("zoom"))).toBeCloseTo(2 / 3, 5);
   });
 
   it("clears them again once the viewport is the stage", () => {

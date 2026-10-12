@@ -68,7 +68,7 @@ function layoutEnv(): Record<string, unknown> {
   const root = document.documentElement;
   const mq = (q: string) => window.matchMedia(q).matches;
   return {
-    zoom: root.style.getPropertyValue("zoom"),
+    zoom: root.style.getPropertyValue("--stage-zoom") || root.style.getPropertyValue("zoom"),
     vw: root.style.getPropertyValue("--vw"),
     viewportUnit: root.style.getPropertyValue("--viewport-unit"),
     artwork: root.dataset.artworkSize ?? null,
@@ -82,6 +82,17 @@ function layoutEnv(): Record<string, unknown> {
         : null;
     })(),
     keys: keyLog.slice(),
+    // Rects the TV browser reports (stage scale debugging): first Home card and the nav items, plus scroll offsets.
+    geo: (() => {
+      const r4 = (e: Element | null) => { if (!e) return null; const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(Math.round); };
+      const main = document.querySelector(".app-main");
+      return {
+        card: r4(document.querySelector(".tv-home-card")),
+        nav: Array.from(document.querySelectorAll(".app-nav-link")).map(r4),
+        scroll: [window.scrollY, main ? (main as HTMLElement).scrollTop : null, document.documentElement.scrollTop],
+        vv: window.visualViewport ? [window.visualViewport.width, window.visualViewport.height, window.visualViewport.scale] : null,
+      };
+    })(),
     mq: { w1100: mq("(max-width: 1100px)"), h700: mq("(max-height: 700px)"), w760: mq("(max-width: 760px)"), w920: mq("(max-width: 920px)") },
   };
 }
@@ -127,7 +138,7 @@ export function startDebugMirror(): void {
       const { toJpeg, toPng, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
       // The TV stage scale (tvStageScale.ts) zooms <html>, which html-to-image does not see (it clones
       // <body> with computed styles in stage units): render the stage size, not the zoomed viewport.
-      const zoom = parseFloat(document.documentElement.style.getPropertyValue("zoom")) || 1;
+      const zoom = parseFloat(document.documentElement.style.getPropertyValue("--stage-zoom")) || 1;
       const stageW = Math.round(window.innerWidth / zoom);
       const stageH = Math.round(window.innerHeight / zoom);
       const scale = Math.min(1, TARGET_WIDTH / Math.max(1, stageW));

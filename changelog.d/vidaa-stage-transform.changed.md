@@ -1,0 +1,1 @@
+- VIDAA: the stage is now scaled with a transform instead of CSS zoom, so rects, scrolling and spatial navigation share one coordinate space on its Chrome 111 engine (Home first card and left-to-nav focus now land where web's do).

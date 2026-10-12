@@ -63,7 +63,7 @@ installScrollEdgeFades();
 
 // Smart-TV browsers report assorted viewports and cannot scroll: fit the 1920x1080 TV stage to them.
 if (IS_VIDAA || IS_WEBOS || IS_TIZEN) {
-  installTvStageScale();
+  installTvStageScale(window, IS_VIDAA ? "transform" : "zoom");
 }
 
 // VIDAA's remote service sends a long press of OK as an instant burst: make it a real hold (VIDAA only).

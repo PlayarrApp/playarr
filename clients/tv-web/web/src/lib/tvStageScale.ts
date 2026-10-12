@@ -40,29 +40,50 @@ export function computeTvStageScale(viewportWidth: number, viewportHeight: numbe
   };
 }
 
+/**
+ * How the stage is fitted. "zoom" is CSS `zoom` on the root (webOS, Tizen). "transform" lays the body out at the full
+ * stage size and scales it with a transform (VIDAA): old Chromium engines (VIDAA's is Chrome 111) report element rects
+ * of a zoomed root in unscaled stage pixels but scroll and viewport values in scaled ones, so the spatial navigation and
+ * the rail centring, which mix them, land in the wrong place; with a transform every rect is in the one scaled space.
+ */
+export type TvStageMode = "zoom" | "transform";
+
 export function applyTvStageScale(
   root: HTMLElement,
   viewportWidth: number,
-  viewportHeight: number
+  viewportHeight: number,
+  mode: TvStageMode = "zoom"
 ): TvStageScale {
   const scale = computeTvStageScale(viewportWidth, viewportHeight);
+  // The transform goes on <body>, not <html>: the document then still scrolls (and measures) as the real viewport size,
+  // because scrollable overflow counts a transformed box at its scaled size.
+  const body = root.ownerDocument?.body;
+  for (const key of ["zoom", "--stage-zoom"]) root.style.removeProperty(key);
+  for (const key of ["transform", "transform-origin", "width", "height"]) body?.style.removeProperty(key);
   if (scale.zoom === 1 || scale.vw === 0) {
-    root.style.removeProperty("zoom");
     root.style.removeProperty("--vw");
     root.style.removeProperty("--viewport-unit");
     return scale;
   }
-  root.style.setProperty("zoom", String(scale.zoom));
+  root.style.setProperty("--stage-zoom", String(scale.zoom));
+  if (mode === "transform") {
+    body?.style.setProperty("width", `${viewportWidth / scale.zoom}px`);
+    body?.style.setProperty("height", `${viewportHeight / scale.zoom}px`);
+    body?.style.setProperty("transform-origin", "0 0");
+    body?.style.setProperty("transform", `scale(${scale.zoom})`);
+  } else {
+    root.style.setProperty("zoom", String(scale.zoom));
+  }
   root.style.setProperty("--vw", `${scale.vw}px`);
   root.style.setProperty("--viewport-unit", `${scale.vh}px`);
   return scale;
 }
 
 /** Applies the scale now and again whenever the viewport changes. Returns a disposer. */
-export function installTvStageScale(win: Window = window): () => void {
+export function installTvStageScale(win: Window = window, mode: TvStageMode = "zoom"): () => void {
   const root = win.document.documentElement;
   const apply = () => {
-    applyTvStageScale(root, win.innerWidth, win.innerHeight);
+    applyTvStageScale(root, win.innerWidth, win.innerHeight, mode);
   };
   apply();
   win.addEventListener("resize", apply);
