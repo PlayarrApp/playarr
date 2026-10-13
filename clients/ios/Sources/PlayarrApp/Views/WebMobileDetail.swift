@@ -322,6 +322,7 @@ struct WMDetailPage: View {
     private var header: some View {
         ZStack(alignment: .topLeading) {
             WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: onBack)
+                .accessibilityIdentifier("detail-back")
                 .offset(x: 16, y: WM.topInset + 2)
             WMText(work.kind.displayName, 21.6, 580, lh: 32.4, ls: -0.972)
                 .offset(x: 68, y: WM.topInset + 5)

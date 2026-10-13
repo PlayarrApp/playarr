@@ -117,6 +117,16 @@ enum AppDestination: Hashable {
     case player
     #endif
 
+    var phoneAccessibilityIdentifier: String {
+        switch self {
+        case .home: "phone-tab-home"
+        case .search: "phone-tab-search"
+        case .library(.series): "phone-tab-series"
+        case .library(.movie): "phone-tab-movies"
+        default: "phone-tab-\(title.lowercased().replacingOccurrences(of: " ", with: "-"))"
+        }
+    }
+
     var title: String {
         switch self {
         case .downloads: "Downloads"
@@ -467,6 +477,8 @@ private struct AuthenticatedPlayarrShell: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(destination.title)
+                            .accessibilityIdentifier(destination.phoneAccessibilityIdentifier)
+                            .accessibilityAddTraits(phoneSelectedDestination == destination ? .isSelected : [])
                         }
                     }
                     .padding(5)
