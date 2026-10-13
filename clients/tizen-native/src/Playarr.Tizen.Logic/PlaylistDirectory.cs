@@ -7,22 +7,36 @@ namespace Playarr.Tizen.Logic;
 
 public sealed record PlaylistTreeEntry(PlaylistInfo Playlist, Guid? ParentPlaylistId);
 
-public sealed record PlaylistRouteState(Guid? PlaylistId = null, Guid? TrackId = null)
+public enum PlaylistVisibility { All, Personal, Shared }
+public enum PlaylistOrder { Ascending, Descending }
+
+public sealed record PlaylistRouteState(
+    Guid? PlaylistId = null,
+    Guid? TrackId = null,
+    PlaylistVisibility Visibility = PlaylistVisibility.All,
+    PlaylistOrder Order = PlaylistOrder.Ascending,
+    string? Panel = null)
 {
     public string ToRoute()
     {
-        if (PlaylistId is not { } playlistId) return "/playlists";
-        var route = "/playlists?playlist=" + playlistId.ToString("D");
-        return TrackId is { } trackId ? route + "&track=" + trackId.ToString("D") : route;
+        var query = new List<string>();
+        if (PlaylistId is { } playlistId) query.Add("playlist=" + playlistId.ToString("D"));
+        if (Visibility != PlaylistVisibility.All) query.Add("visibility=" + Visibility.ToString().ToLowerInvariant());
+        if (Order == PlaylistOrder.Descending) query.Add("order=desc");
+        if (Panel is "create" or "filters") query.Add("panel=" + Panel);
+        if (TrackId is { } trackId) query.Add("track=" + trackId.ToString("D"));
+        return "/playlists" + (query.Count == 0 ? "" : "?" + string.Join("&", query));
     }
 
     public static PlaylistRouteState Parse(string route)
     {
         Guid? playlist = null;
         Guid? track = null;
+        var visibility = PlaylistVisibility.All;
+        var order = PlaylistOrder.Ascending;
+        string? panel = null;
         var queryIndex = route.IndexOf('?');
-        if (queryIndex < 0) return new PlaylistRouteState();
-        foreach (var part in route[(queryIndex + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries))
+        if (queryIndex >= 0) foreach (var part in route[(queryIndex + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
             var pair = part.Split('=', 2);
             if (pair.Length != 2) continue;
@@ -30,20 +44,75 @@ public sealed record PlaylistRouteState(Guid? PlaylistId = null, Guid? TrackId =
             var value = Uri.UnescapeDataString(pair[1].Replace('+', ' '));
             if (key == "playlist" && Guid.TryParse(value, out var playlistId)) playlist = playlistId;
             if (key == "track" && Guid.TryParse(value, out var trackId)) track = trackId;
+            if (key == "visibility") visibility = value switch
+            {
+                "personal" => PlaylistVisibility.Personal,
+                "shared" => PlaylistVisibility.Shared,
+                _ => PlaylistVisibility.All,
+            };
+            if (key == "order") order = value == "desc" ? PlaylistOrder.Descending : PlaylistOrder.Ascending;
+            if (key == "panel" && (value is "create" or "filters")) panel = value;
         }
-        return new PlaylistRouteState(playlist, track);
+        return new PlaylistRouteState(playlist, track, visibility, order, panel);
     }
 
-    public PlaylistRouteState Back() => TrackId is not null
+    public PlaylistRouteState Back() => Panel is not null
+        ? this with { Panel = null }
+        : TrackId is not null
         ? this with { TrackId = null }
         : PlaylistId is not null
-            ? new PlaylistRouteState()
+            ? new PlaylistRouteState(Visibility: Visibility, Order: Order)
             : this;
 }
 
 /// <summary>Root, child and route rules shared by the native directory and Search activation.</summary>
 public static class PlaylistDirectoryModel
 {
+    public const int CreateActionIndex = 0;
+    public const int FiltersActionIndex = 1;
+
+    /// <summary>Returns the paired vertical neighbour in the directory action column, leaving other moves geometric.</summary>
+    public static int? ActionColumnNeighbor(int actionIndex, bool moveDown) => (actionIndex, moveDown) switch
+    {
+        (CreateActionIndex, true) => FiltersActionIndex,
+        (FiltersActionIndex, false) => CreateActionIndex,
+        _ => null,
+    };
+
+    /// <summary>Chooses the nearest directory card by the web shell action column's edge-distance rule.</summary>
+    public static int? NearestDirectoryCardIndex(Box from, IReadOnlyList<Box> cards)
+    {
+        var bestIndex = -1;
+        var bestDistance = float.PositiveInfinity;
+        var best = default(Box);
+        for (var index = 0; index < cards.Count; index++)
+        {
+            var candidate = cards[index];
+            var dx = Math.Max(0f, Math.Max(candidate.X - (from.X + from.Width), from.X - (candidate.X + candidate.Width)));
+            var dy = Math.Max(0f, Math.Max(candidate.Y - (from.Y + from.Height), from.Y - (candidate.Y + candidate.Height)));
+            var distance = MathF.Sqrt(dx * dx + dy * dy);
+            if (bestIndex < 0 || distance < bestDistance - 0.5f ||
+                (Math.Abs(distance - bestDistance) <= 0.5f &&
+                    (candidate.Y < best.Y || (candidate.Y == best.Y && candidate.X < best.X))))
+            {
+                bestIndex = index;
+                bestDistance = distance;
+                best = candidate;
+            }
+        }
+        return bestIndex >= 0 ? bestIndex : null;
+    }
+
+    /// <summary>Cycles the None option and parent indices, returning a valid index for every parent count.</summary>
+    public static int CycleParentIndex(int currentIndex, int parentCount, int direction)
+    {
+        if (parentCount <= 0) return -1;
+        if (currentIndex < -1 || currentIndex >= parentCount) currentIndex = -1;
+        var optionCount = parentCount + 1;
+        var next = (currentIndex + 1 + Math.Sign(direction) + optionCount) % optionCount;
+        return next - 1;
+    }
+
     public static IReadOnlyList<PlaylistTreeEntry> Roots(IEnumerable<PlaylistTreeEntry> entries)
     {
         var all = entries.ToList();
@@ -53,6 +122,37 @@ public static class PlaylistDirectoryModel
 
     public static IReadOnlyList<PlaylistTreeEntry> Children(IEnumerable<PlaylistTreeEntry> entries, Guid parentId) =>
         Sort(entries.Where(entry => entry.ParentPlaylistId == parentId));
+
+    /// <summary>Applies the playlist directory's Show and Order query filters to top-level playlists.</summary>
+    public static IReadOnlyList<PlaylistTreeEntry> DirectoryRoots(
+        IEnumerable<PlaylistTreeEntry> entries,
+        PlaylistVisibility visibility,
+        PlaylistOrder order)
+    {
+        var roots = Roots(entries).Where(entry => visibility switch
+        {
+            PlaylistVisibility.Personal => !entry.Playlist.IsSystem,
+            PlaylistVisibility.Shared => entry.Playlist.IsSystem,
+            _ => true,
+        });
+        return order == PlaylistOrder.Descending ? roots.Reverse().ToList() : roots.ToList();
+    }
+
+    /// <summary>Personal top-level parents of the same media type, excluding a playlist and its descendants.</summary>
+    public static IReadOnlyList<PlaylistTreeEntry> EligibleParents(
+        IEnumerable<PlaylistTreeEntry> entries,
+        string mediaType,
+        Guid? excludedPlaylistId = null)
+    {
+        var all = entries.ToList();
+        var excluded = excludedPlaylistId is { } id
+            ? new HashSet<Guid>(new[] { id }.Concat(Descendants(all, id).Select(entry => entry.Playlist.Id)))
+            : new HashSet<Guid>();
+        return Roots(all).Where(entry =>
+            !entry.Playlist.IsSystem &&
+            string.Equals(entry.Playlist.MediaType, mediaType, StringComparison.OrdinalIgnoreCase) &&
+            !excluded.Contains(entry.Playlist.Id)).ToList();
+    }
 
     /// <summary>Child playlists in the web directory's depth-first order, with cycles ignored.</summary>
     public static IReadOnlyList<PlaylistTreeEntry> Descendants(IEnumerable<PlaylistTreeEntry> entries, Guid playlistId)
@@ -90,14 +190,18 @@ public static class PlaylistDirectoryModel
 
     public static PlaylistRouteState NormalizeRoute(IEnumerable<PlaylistTreeEntry> entries, PlaylistRouteState route)
     {
-        if (route.PlaylistId is not { } playlistId) return new PlaylistRouteState();
+        if (route.PlaylistId is not { } playlistId)
+            return new PlaylistRouteState(Visibility: route.Visibility, Order: route.Order, Panel: route.Panel);
         var all = entries.ToList();
         if (route.TrackId is { } trackId && all.Any(entry => entry.Playlist.Id == trackId))
-            return RouteForSelection(all, trackId);
+            return PreserveQuery(RouteForSelection(all, trackId), route);
         if (all.Any(entry => entry.Playlist.Id == playlistId))
-            return RouteForSelection(all, playlistId);
-        return new PlaylistRouteState(playlistId);
+            return PreserveQuery(RouteForSelection(all, playlistId), route);
+        return new PlaylistRouteState(playlistId, Visibility: route.Visibility, Order: route.Order, Panel: route.Panel);
     }
+
+    private static PlaylistRouteState PreserveQuery(PlaylistRouteState normalized, PlaylistRouteState original) =>
+        normalized with { Visibility = original.Visibility, Order = original.Order, Panel = original.Panel };
 
     private static IReadOnlyList<PlaylistTreeEntry> Sort(IEnumerable<PlaylistTreeEntry> entries) =>
         entries.OrderBy(entry => entry.Playlist.Name, NaturalNameComparer.Instance).ToList();
@@ -212,6 +316,36 @@ public sealed class PlaylistDirectoryApi(IPlayarrApiClient api, HttpClient http)
         var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return ParseResponse(json);
     }
+
+    public async Task<PlaylistTreeEntry> CreateAsync(
+        string name,
+        Guid? parentPlaylistId,
+        string mediaType,
+        CancellationToken cancellationToken = default)
+    {
+        var uri = api.ResolveUrl("/api/v1/playlists") ?? throw new InvalidOperationException("The Playlists endpoint URL is invalid.");
+        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+        {
+            Content = new StringContent(CreateRequestJson(name, parentPlaylistId, mediaType), System.Text.Encoding.UTF8, "application/json"),
+        };
+        foreach (var header in await api.GetPlaybackRequestHeadersAsync(cancellationToken).ConfigureAwait(false))
+            request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        var row = JsonConvert.DeserializeObject<PlaylistResponseDto>(await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false))
+            ?? throw new JsonSerializationException("The created playlist response is empty.");
+        if (!Guid.TryParse(row.Id, out var id)) throw new JsonSerializationException("The created playlist id is invalid.");
+        return new PlaylistTreeEntry(new PlaylistInfo { Id = id, Name = row.Name, IsSystem = row.IsSystem, MediaType = row.MediaType }, parentPlaylistId);
+    }
+
+    public static string CreateRequestJson(string name, Guid? parentPlaylistId, string mediaType) =>
+        new Newtonsoft.Json.Linq.JObject
+        {
+            ["name"] = name,
+            ["parent_playlist_id"] = parentPlaylistId?.ToString("D"),
+            ["is_system"] = false,
+            ["media_type"] = mediaType,
+        }.ToString(Formatting.None);
 
     public static IReadOnlyList<PlaylistTreeEntry> ParseResponse(string json)
     {

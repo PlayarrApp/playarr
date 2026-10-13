@@ -21,6 +21,9 @@ internal sealed class MediaCard
     private bool _playlistCollage;
     private bool _playlistCoverSet;
     private bool _focused;
+    private TextLabel? _playlistMetadata;
+    private string _playlistMediaType = "video";
+    private bool _playlistShared;
 
     /// <param name="scale">Focus scale (home 1.025, library 1.04).</param>
     /// <param name="lift">Focus lift in px (negative = up).</param>
@@ -78,6 +81,15 @@ internal sealed class MediaCard
         var width = Width * _boxScale;
         var height = _focusHeight * _boxScale;
         return new Box(x + (Width - width) / 2, y + _boxLift + (_focusHeight - height) / 2, width, height);
+    }
+
+    public void SetPlaylistItemCount(int count)
+    {
+        if (_playlistMetadata is null) return;
+        var mediaType = _playlistMediaType.Equals("audio", StringComparison.OrdinalIgnoreCase) ? "Audio" : "Video";
+        var ownership = _playlistShared ? "Shared" : "Personal";
+        _playlistMetadata.Text = $"{mediaType} · {ownership} · {count} {(count == 1 ? "title" : "titles")}";
+        _playlistMetadata.Show(true);
     }
 
     /// <summary>Replaces the directory placeholder with the web's poster-first, backdrop-fallback cover stack.</summary>
@@ -168,7 +180,7 @@ internal sealed class MediaCard
         var media = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.025f, lift: 0,
             blur: 52, shadowY: 24, shadowAlpha: 0.30f, boxHeight: 213.4f, boxScale: 1.015f, boxLift: -5f, focusHeight: 213.4f);
         media._playlistCollage = true;
-        AddPlaylistKind(media, env, card);
+        AddPlaylistKind(media, env, card, directory: true);
         return media;
     }
 
@@ -181,7 +193,7 @@ internal sealed class MediaCard
         return media;
     }
 
-    private static void AddPlaylistKind(MediaCard media, AppEnv env, WorkCard card)
+    private static void AddPlaylistKind(MediaCard media, AppEnv env, WorkCard card, bool directory = false)
     {
         if (card.Kind == WorkKind.Unknown)
         {
@@ -189,7 +201,18 @@ internal sealed class MediaCard
             media._playlistIcon = icon;
             media.Art.Add(icon);
         }
-        media.Box.Add(Ui.Text(card.Sub.ToUpperInvariant(), 0, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, Width, 12.672f, HorizontalAlignment.End));
+        if (directory)
+        {
+            media._playlistMediaType = card.Kicker;
+            media._playlistShared = card.Sub.Equals("Shared", StringComparison.OrdinalIgnoreCase);
+            media._playlistMetadata = Ui.Text("", 1.9f, Height + 31.9f, 8.832f, 400, env.Theme.InkMuted, Width - 3.8f, 13.248f);
+            media._playlistMetadata.Show(false);
+            media.Box.Add(media._playlistMetadata);
+        }
+        else
+        {
+            media.Box.Add(Ui.Text(card.Sub.ToUpperInvariant(), 0, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, Width, 12.672f, HorizontalAlignment.End));
+        }
     }
 }
 
