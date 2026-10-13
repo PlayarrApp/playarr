@@ -7,6 +7,33 @@ namespace Playarr.Tizen.Logic.Tests;
 public sealed class DiscoverySearchTests
 {
     [Fact]
+    public void SearchFocusStateRestoresTheSelectedResultAndScrollAfterRouteRoundTrip()
+    {
+        var saved = new SearchFocusState(ResultIndex: 7, ScrollOffset: 502.4f);
+        object roundTrippedState = saved;
+
+        var restored = Assert.IsType<SearchFocusState>(roundTrippedState);
+        Assert.Equal(7, restored.ResolveResultIndex(resultCount: 12));
+        Assert.Equal(502.4f, restored.ScrollOffset);
+        Assert.Equal(-1, restored.ResolveResultIndex(resultCount: 4));
+    }
+
+    [Fact]
+    public void NestedPlaylistSearchResultOpensItsRootWithTheSelectedChild()
+    {
+        var root = new PlaylistTreeEntry(new PlaylistInfo { Id = Guid.NewGuid(), Name = "Root folder" }, null);
+        var child = new PlaylistTreeEntry(new PlaylistInfo { Id = Guid.NewGuid(), Name = "Nested selection" }, root.Playlist.Id);
+        var entries = new[] { root, child };
+
+        var result = Assert.Single(SearchResults.Build(
+            "nested", "all", Array.Empty<Work>(), entries.Select(entry => entry.Playlist), Array.Empty<DiscoveryTitle>()));
+        var route = PlaylistDirectoryModel.RouteForSelection(entries, Assert.IsType<PlaylistInfo>(result.Playlist).Id);
+
+        Assert.Equal(new PlaylistRouteState(root.Playlist.Id, child.Playlist.Id), route);
+        Assert.Equal(route, PlaylistRouteState.Parse(route.ToRoute()));
+    }
+
+    [Fact]
     public void AllSearchIncludesSupportedWorksAndMatchingPlaylistsButNotGames()
     {
         var movie = new Work { Kind = WorkKind.Movie, Title = "Test Movie A" };
