@@ -651,8 +651,15 @@ private struct HomeCardFocusReturnRequestKey: EnvironmentKey {
     static let defaultValue: TVHomeCardFocusRequest? = nil
 }
 
+struct TVHomeStageFocusRequest {
+    let parityID: String
+    let rail: Int
+    let index: Int
+    let completion: (Bool) -> Void
+}
+
 private struct RequestStageFocusKey: EnvironmentKey {
-    static let defaultValue: (String, Int, Int, (Bool) -> Void) -> Void = { _, _, _, completion in completion(false) }
+    static let defaultValue: (TVHomeStageFocusRequest) -> Void = { $0.completion(false) }
 }
 
 private struct CancelStageFocusRequestKey: EnvironmentKey {
@@ -675,7 +682,7 @@ extension EnvironmentValues {
         set { self[RequestNavFocusKey.self] = newValue }
     }
 
-    var requestStageFocus: (String, Int, Int, (Bool) -> Void) -> Void {
+    var requestStageFocus: (TVHomeStageFocusRequest) -> Void {
         get { self[RequestStageFocusKey.self] }
         set { self[RequestStageFocusKey.self] = newValue }
     }

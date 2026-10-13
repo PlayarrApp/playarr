@@ -8,10 +8,7 @@ import UIKit
 
 #if os(macOS)
 private struct PendingMacHomeFocusRequest {
-    let parityID: String
-    let rail: Int
-    let index: Int
-    let completion: (Bool) -> Void
+    let request: TVHomeStageFocusRequest
 }
 #endif
 
@@ -480,9 +477,9 @@ private struct TVProductionShell<Stage: View>: View {
         .onAppear {
             MacFocusEngine.shared.pushTargetRegistrationObserver(macFocusRegistrationObserverID) { identity in
                 guard identity == nil || (
-                    identity?.parityID == pendingMacHomeFocusRequest?.parityID
-                        && identity?.rail == pendingMacHomeFocusRequest?.rail
-                        && identity?.index == pendingMacHomeFocusRequest?.index
+                    identity?.parityID == pendingMacHomeFocusRequest?.request.parityID
+                        && identity?.rail == pendingMacHomeFocusRequest?.request.rail
+                        && identity?.index == pendingMacHomeFocusRequest?.request.index
                 ) else { return }
                 attemptPendingMacHomeFocus()
             }
@@ -494,34 +491,24 @@ private struct TVProductionShell<Stage: View>: View {
 #endif
     }
 
-    private func handleStageFocusRequest(
-        parityID: String,
-        rail: Int,
-        index: Int,
-        completion: @escaping (Bool) -> Void
-    ) {
+    private func handleStageFocusRequest(_ request: TVHomeStageFocusRequest) {
         #if os(tvOS)
         guard homeFocusHandoff.claim(isHomeRoot: tab == .home && path.isEmpty) else {
-            completion(false)
+            request.completion(false)
             return
         }
         shellFocus.wrappedValue = .stage
         resetFocus(in: shellFocusNamespace)
-        completion(true)
+        request.completion(true)
         #elseif os(macOS)
         guard tab == .home, path.isEmpty, homeFocusHandoff.pending else {
-            completion(false)
+            request.completion(false)
             return
         }
-        pendingMacHomeFocusRequest = PendingMacHomeFocusRequest(
-            parityID: parityID,
-            rail: rail,
-            index: index,
-            completion: completion
-        )
+        pendingMacHomeFocusRequest = PendingMacHomeFocusRequest(request: request)
         attemptPendingMacHomeFocus()
         #else
-        completion(false)
+        request.completion(false)
         #endif
     }
 
@@ -534,9 +521,9 @@ private struct TVProductionShell<Stage: View>: View {
         }
 
         let focused = MacFocusEngine.shared.focusTarget(
-            parityID: request.parityID,
-            rail: request.rail,
-            index: request.index,
+            parityID: request.request.parityID,
+            rail: request.request.rail,
+            index: request.request.index,
             inActiveLayer: 0 // MacFocusLayerKey defaults the shell to layer 0; drawers bump their own targets.
         ) {
             guard homeFocusHandoff.claim(isHomeRoot: true, targetRegistered: true) else { return false }
@@ -544,7 +531,7 @@ private struct TVProductionShell<Stage: View>: View {
             return true
         }
         if focused {
-            request.completion(true)
+            request.request.completion(true)
         } else if !homeFocusHandoff.pending {
             finishPendingMacHomeFocus(false)
         }
@@ -553,7 +540,7 @@ private struct TVProductionShell<Stage: View>: View {
     private func finishPendingMacHomeFocus(_ claimed: Bool) {
         guard let request = pendingMacHomeFocusRequest else { return }
         pendingMacHomeFocusRequest = nil
-        request.completion(claimed)
+        request.request.completion(claimed)
     }
 #endif
 
