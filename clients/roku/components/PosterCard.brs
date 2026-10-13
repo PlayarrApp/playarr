@@ -8,6 +8,8 @@ sub init()
     ThemeSetRole(m.top.findNode("focusGlow"), "cardGlow")
     ThemeInitComponent()
     m.focusRingInset = 0
+    m.cardContentInsetX = 0
+    m.cardContentInsetY = 0
     m.focusRing = m.top.findNode("focusRing")
     m.focusGlow = m.top.findNode("focusGlow")
     m.poster = m.top.findNode("poster")
@@ -67,10 +69,15 @@ sub onContentChanged()
     if content.focusRingOutsideArt <> invalid
         if content.focusRingOutsideArt = true then m.focusRingOutsideArt = true
     end if
-    focusInset = 0
-    if m.focusRingOutsideArt then focusInset = 3
-    m.focusRingInset = focusInset
-    m.cardRoot.translation = [focusInset, m.padTop + focusInset]
+    m.focusRingInset = 0
+    m.cardContentInsetX = 0
+    m.cardContentInsetY = 0
+    if m.focusRingOutsideArt
+        m.focusRingInset = 3
+        m.cardContentInsetX = 8
+        m.cardContentInsetY = 15
+    end if
+    m.cardRoot.translation = [m.cardContentInsetX, m.padTop + m.cardContentInsetY]
     layoutCard(cardScale, artW, artH, listMode)
     ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
     m.titleY = m.cardTitleY
@@ -213,7 +220,7 @@ sub onFocusChanged()
     liftY = -cardFocusLift() * effective
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
-    m.liftInterp.keyValue = [m.cardRoot.translation, [m.focusRingInset, m.padTop + m.focusRingInset + liftY]]
+    m.liftInterp.keyValue = [m.cardRoot.translation, [m.cardContentInsetX, m.padTop + m.cardContentInsetY + liftY]]
     m.scaleInterp.key = [0, 1]
     m.scaleInterp.keyValue = [m.artGroup.scale, [artScale, artScale]]
     m.focusAnim.control = "stop"
