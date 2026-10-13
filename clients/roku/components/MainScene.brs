@@ -2449,9 +2449,21 @@ sub openBrowse(kind as String, label as String)
 end sub
 
 sub onBrowseGridAlphabetHandoff(event as Object)
+    emitBrowseGridObserverDiagnostic("entry")
     if m.top.screenState <> "browse" or m.browseKind <> "movie" then return
     if m.browseAlphabetMode or m.browseFiltersButtonFocused then return
     enterBrowseAlphabet(true)
+    emitBrowseGridObserverDiagnostic("after")
+end sub
+
+sub emitBrowseGridObserverDiagnostic(phase as String)
+    if not m.artTelemetryEnabled or m.browseGrid = invalid then return
+    if phase <> "entry" and phase <> "after" then return
+    gridFocus = "0"
+    if m.browseGrid.isInFocusChain() then gridFocus = "1"
+    sceneFocus = "0"
+    if m.top.isInFocusChain() then sceneFocus = "1"
+    parityEmit("browseGridObserver", phase + "|" + gridFocus + "|" + sceneFocus)
 end sub
 
 sub loadBrowseCatalog(append as Boolean)

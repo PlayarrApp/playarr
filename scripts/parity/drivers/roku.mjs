@@ -105,6 +105,27 @@ export function parseBrowseAlphabetFocusDiagnostic(value, seq) {
   return { action, index, gridInFocusChain: gridFocus === "1", sceneInFocusChain: sceneFocus === "1", seq };
 }
 
+export function parseBrowseGridHandoffDiagnostic(value, seq) {
+  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
+  const parts = value.trim().split("|");
+  if (parts.length !== 4) return null;
+  const [action, rawIndex, rawColumns, edgeMatch] = parts;
+  const itemIndex = Number(rawIndex);
+  const columns = Number(rawColumns);
+  if (action !== "right" || !Number.isSafeInteger(itemIndex) || itemIndex < 0 || itemIndex > 1000) return null;
+  if (!Number.isSafeInteger(columns) || columns < 1 || columns > 100 || !/^[01]$/.test(edgeMatch)) return null;
+  return { action, itemIndex, columns, edgeMatch: edgeMatch === "1", seq };
+}
+
+export function parseBrowseGridObserverDiagnostic(value, seq) {
+  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
+  const parts = value.trim().split("|");
+  if (parts.length !== 3) return null;
+  const [phase, gridFocus, sceneFocus] = parts;
+  if (!["entry", "after"].includes(phase) || !/^[01]$/.test(gridFocus) || !/^[01]$/.test(sceneFocus)) return null;
+  return { phase, gridInFocusChain: gridFocus === "1", sceneInFocusChain: sceneFocus === "1", seq };
+}
+
 export function parseCalendarFocus(value) {
   const match = /^([A-Za-z]+)\|(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/.exec(value.trim());
   if (!match || !CALENDAR_ACTIONS.has(match[1])) return null;
@@ -181,7 +202,7 @@ export function createParityState() {
     calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
     calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
     calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(), browseKeyArtDiagnostics: [], browseAlphabetFocusDiagnostics: [],
+    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(), browseKeyArtDiagnostics: [], browseAlphabetFocusDiagnostics: [], browseGridHandoffDiagnostics: [], browseGridObserverDiagnostics: [],
   };
 }
 
@@ -256,6 +277,16 @@ export function applyParityLine(state, line) {
     if (!diagnostic) return false;
     state.browseAlphabetFocusDiagnostics.push(diagnostic);
     if (state.browseAlphabetFocusDiagnostics.length > 32) state.browseAlphabetFocusDiagnostics.shift();
+  } else if (kind === "browseGridHandoff") {
+    const diagnostic = parseBrowseGridHandoffDiagnostic(value, state.eventSeq);
+    if (!diagnostic) return false;
+    state.browseGridHandoffDiagnostics.push(diagnostic);
+    if (state.browseGridHandoffDiagnostics.length > 32) state.browseGridHandoffDiagnostics.shift();
+  } else if (kind === "browseGridObserver") {
+    const diagnostic = parseBrowseGridObserverDiagnostic(value, state.eventSeq);
+    if (!diagnostic) return false;
+    state.browseGridObserverDiagnostics.push(diagnostic);
+    if (state.browseGridObserverDiagnostics.length > 32) state.browseGridObserverDiagnostics.shift();
   } else if (kind === "focus") {
     const positioned = /^(.*)\|@([0-9]+):([0-9]+)$/.exec(value.trim());
     state.focus = positioned
@@ -721,6 +752,8 @@ export function createDriver({ out, args = [] } = {}) {
       parityState.artMarkers = { home: 0, movies: 0, series: 0, calendar: 0 };
       parityState.browseKeyArtDiagnostics = [];
       parityState.browseAlphabetFocusDiagnostics = [];
+      parityState.browseGridHandoffDiagnostics = [];
+      parityState.browseGridObserverDiagnostics = [];
     }
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
@@ -1071,6 +1104,8 @@ export function createDriver({ out, args = [] } = {}) {
     async focused() { assertDebug(); return focus; },
     async browseKeyArtDiagnostics() { assertDebug(); return parityState.browseKeyArtDiagnostics.map((event) => ({ ...event })); },
     async browseAlphabetFocusDiagnostics() { assertDebug(); return parityState.browseAlphabetFocusDiagnostics.map((event) => ({ ...event })); },
+    async browseGridHandoffDiagnostics() { assertDebug(); return parityState.browseGridHandoffDiagnostics.map((event) => ({ ...event })); },
+    async browseGridObserverDiagnostics() { assertDebug(); return parityState.browseGridObserverDiagnostics.map((event) => ({ ...event })); },
     async screenshot(file) {
       assertDebug();
       if (!out) throw new Error("suite runner output path is required");

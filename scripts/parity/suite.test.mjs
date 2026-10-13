@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseBrowseAlphabetFocusDiagnostic, parseBrowseKeyArtDiagnostic, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseBrowseAlphabetFocusDiagnostic, parseBrowseGridHandoffDiagnostic, parseBrowseGridObserverDiagnostic, parseBrowseKeyArtDiagnostic, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
 
@@ -426,6 +426,36 @@ test("Roku alphabet focus diagnostics allowlist actions, indices, focus booleans
   assert.equal(state.browseAlphabetFocusDiagnostics[0].seq, 10);
   assert.equal(state.browseAlphabetFocusDiagnostics.at(-1).index, 12);
   assert.doesNotMatch(JSON.stringify(state.browseAlphabetFocusDiagnostics), /private|https?:|title|uri|token/i);
+});
+
+test("Roku browse-grid handoff diagnostics retain numeric edge state and observer focus booleans", () => {
+  assert.deepEqual(parseBrowseGridHandoffDiagnostic("right|14|3|1", 1), {
+    action: "right", itemIndex: 14, columns: 3, edgeMatch: true, seq: 1,
+  });
+  assert.equal(parseBrowseGridHandoffDiagnostic("right|13|3|0", 2)?.edgeMatch, false);
+  assert.equal(parseBrowseGridHandoffDiagnostic("right|1001|3|1", 3), null);
+  assert.equal(parseBrowseGridHandoffDiagnostic("right|14|0|1", 4), null);
+  assert.equal(parseBrowseGridHandoffDiagnostic("right|14|3|1|private title", 5), null);
+  assert.deepEqual(parseBrowseGridObserverDiagnostic("entry|1|1", 6), {
+    phase: "entry", gridInFocusChain: true, sceneInFocusChain: true, seq: 6,
+  });
+  assert.deepEqual(parseBrowseGridObserverDiagnostic("after|0|1", 7), {
+    phase: "after", gridInFocusChain: false, sceneInFocusChain: true, seq: 7,
+  });
+  assert.equal(parseBrowseGridObserverDiagnostic("callback|0|1", 8), null);
+
+  const state = createParityState();
+  assert.equal(applyParityLine(state, "PARITY|browseGridHandoff|right|14|3|1"), true);
+  assert.equal(applyParityLine(state, "PARITY|browseGridObserver|entry|1|1"), true);
+  for (let index = 0; index < 40; index += 1) {
+    assert.equal(applyParityLine(state, `PARITY|browseGridHandoff|right|${index}|3|${index === 39 ? 1 : 0}`), true);
+    assert.equal(applyParityLine(state, `PARITY|browseGridObserver|${index % 2 ? "after" : "entry"}|0|1`), true);
+  }
+  assert.equal(state.browseGridHandoffDiagnostics.length, 32);
+  assert.equal(state.browseGridHandoffDiagnostics.at(-1).itemIndex, 39);
+  assert.equal(state.browseGridHandoffDiagnostics.at(-1).edgeMatch, true);
+  assert.equal(state.browseGridObserverDiagnostics.length, 32);
+  assert.doesNotMatch(JSON.stringify({ handoff: state.browseGridHandoffDiagnostics, observer: state.browseGridObserverDiagnostics }), /private|https?:|title|uri|token/i);
 });
 
 test("Roku waits through transient pairing until a fresh Profiles screen arrives", () => {
