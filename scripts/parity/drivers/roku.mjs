@@ -268,14 +268,6 @@ export function hasFreshCalendarFocus(state, afterScreenSeq, afterFocusSeq) {
     && state.calendarFocusScreenSeq === state.screenSeq;
 }
 
-export function calendarViewFocusKey(action) {
-  if (action === "calView") return null;
-  if (["cell", "entry", "calPlay", "calOpen", "calWatch", "calLink", "calFilters"].includes(action)) return "up";
-  if (action === "back") return "right";
-  if (["calNext", "calToday", "calPrev"].includes(action)) return "left";
-  return null;
-}
-
 export function calendarCellLeftEdgeAction(focus) {
   if (!focus || focus.action !== "cell" || !Number.isFinite(focus.rect?.x)) return "unknown";
   if (focus.rect.x < CALENDAR_CONTENT_LEFT_EDGE) return "unknown";
@@ -285,11 +277,14 @@ export function calendarCellLeftEdgeAction(focus) {
 
 export function calendarFocusTransitionError(from, key, to) {
   if (!from || !to || !CALENDAR_ACTIONS.has(from.action) || !CALENDAR_ACTIONS.has(to.action)) return null;
-  if (from.action === "back" && key === "right" && to.action !== "calView") return "back-right-did-not-reach-view-selector";
   const fromX = from.rect.x + from.rect.w / 2;
   const fromY = from.rect.y + from.rect.h / 2;
   const toX = to.rect.x + to.rect.w / 2;
   const toY = to.rect.y + to.rect.h / 2;
+  if (from.action === "cell" && key === "right" &&
+      (to.action !== "cell" || Math.abs(toY - fromY) > 2 || toX <= fromX + 1)) {
+    return "calendar-right-did-not-move-to-a-later-cell-in-the-same-row";
+  }
   if (from.action === "cell" && key === "left" &&
       (to.action !== "cell" || Math.abs(toY - fromY) > 2 || toX >= fromX - 1)) {
     return "calendar-left-did-not-move-to-an-earlier-cell-in-the-same-row";
@@ -773,34 +768,57 @@ export function createDriver({ out, args = [] } = {}) {
           if (transitionError) throw new Error(traceFailure(`${transitionError}: ${JSON.stringify({ from, key, to })}`));
           return to;
         };
-        for (let step = 0; step < 64 && parityState.calendarFocus !== "calView"; step += 1) {
-          if (parityState.calendarFocus === "cell") {
-            let next = await observeCalendarKey("up", { allowBoundary: true });
+        const initialFocus = currentCalendarFocus();
+        if (!initialFocus) throw new Error(traceFailure("Calendar initial focus has no usable rectangle"));
+        if (initialFocus.action === "cell") {
+          let reachedBack = false;
+          let reachedTopBoundary = false;
+          for (let step = 0; step < 32; step += 1) {
+            const next = await observeCalendarKey("up", { allowBoundary: true });
             if (next === null) {
-              let reachedLeftEdge = false;
-              for (let leftStep = 0; leftStep < 32; leftStep += 1) {
-                const decision = calendarCellLeftEdgeAction(currentCalendarFocus());
-                if (decision === "unknown") throw new Error(traceFailure(`Calendar left edge is not proven by the focused rectangle: ${JSON.stringify(currentCalendarFocus())}`));
-                if (decision === "edge") {
-                  reachedLeftEdge = true;
-                  break;
-                }
-                const left = await observeCalendarKey("left");
-                if (left.action !== "cell") throw new Error(traceFailure(`Calendar left scan left the date row: ${JSON.stringify(left)}`));
+              reachedTopBoundary = true;
+              break;
+            }
+            if (next.action === "cell") continue;
+            if (next.action === "back") {
+              reachedBack = true;
+              break;
+            }
+            throw new Error(traceFailure(`Calendar Up reached an unexpected control while finding Back: ${JSON.stringify(next)}`));
+          }
+          if (!reachedBack && reachedTopBoundary) {
+            let reachedLeftEdge = false;
+            for (let leftStep = 0; leftStep < 32; leftStep += 1) {
+              const decision = calendarCellLeftEdgeAction(currentCalendarFocus());
+              if (decision === "unknown") throw new Error(traceFailure(`Calendar left edge is not proven by the focused rectangle: ${JSON.stringify(currentCalendarFocus())}`));
+              if (decision === "edge") {
+                reachedLeftEdge = true;
+                break;
               }
-              if (!reachedLeftEdge) throw new Error(traceFailure("Calendar left scan did not reach a geometrically proven edge within its safe bound"));
-              next = await observeCalendarKey("up");
+              const left = await observeCalendarKey("left");
+              if (left.action !== "cell") throw new Error(traceFailure(`Calendar left scan left the date row: ${JSON.stringify(left)}`));
             }
-            if (next.action !== "cell" && !CALENDAR_HEADER_ACTIONS.has(next.action)) {
-              throw new Error(traceFailure(`Calendar Up reached an unexpected control: ${JSON.stringify(next)}`));
-            }
-          } else {
-            const key = calendarViewFocusKey(parityState.calendarFocus);
-            if (!key) throw new Error(traceFailure(`Calendar focus cannot reach the view selector from ${parityState.calendarFocus || "unknown"}`));
-            await observeCalendarKey(key);
+            if (!reachedLeftEdge) throw new Error(traceFailure("Calendar left scan did not reach a geometrically proven edge within its safe bound"));
+            const back = await observeCalendarKey("up");
+            if (back.action !== "back") throw new Error(traceFailure(`Calendar top-left Up did not focus Back: ${JSON.stringify(back)}`));
+            reachedBack = true;
+          }
+          if (!reachedBack) throw new Error(traceFailure(`Calendar did not reach Back within the bounded upward route: ${JSON.stringify(currentCalendarFocus())}`));
+        } else if (initialFocus.action !== "back") {
+          throw new Error(traceFailure(`Calendar route must start from a date cell or Back: ${JSON.stringify(initialFocus)}`));
+        }
+
+        for (let step = 0; step < 5; step += 1) {
+          const from = currentCalendarFocus();
+          const next = await observeCalendarKey("right");
+          if (!from || (step === 0 && from.action !== "back") || next.action !== "cell") {
+            throw new Error(traceFailure(`Calendar Back-to-range path left the expected cell route at step ${step + 1}: ${JSON.stringify({ from, to: next })}`));
           }
         }
-        if (parityState.calendarFocus !== "calView") throw new Error(traceFailure(`Roku did not reach the Calendar view selector; last observed focus=${JSON.stringify(currentCalendarFocus())}`));
+        const selector = await observeCalendarKey("up");
+        if (selector.action !== "calView") {
+          throw new Error(traceFailure(`Calendar measured Back + Right x5 + Up path did not focus the range selector: ${JSON.stringify(selector)}`));
+        }
         await press("select");
         const targetIndex = ["month", "week", "agenda"].indexOf(targetView);
         for (let i = 0; i < targetIndex; i += 1) await press("down");
