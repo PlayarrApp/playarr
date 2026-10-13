@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Hide legacy Chromium scrollbars in the webOS Calendar week view without changing scroll behaviour.
 - Android phone Home card metadata now uses the same muted text colour as the web client in both themes.
 - Android phone Home rails now preserve the focused artwork glow above and below cards without shifting the rail or extending its edge fade into surrounding content.
 - Align Android TV Home rail headings with the measured web positions without moving their cards.

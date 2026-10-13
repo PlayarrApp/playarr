@@ -10,3 +10,14 @@ html[data-platform="tv-webos"] .calendar-week-scroll .calendar-day::-webkit-scro
   width: 0;
   height: 0;
 }
+
+/* Measured webOS calendar line boxes need the web reference minima; the status pill's 26.56px reference is its 1.4em line, .36rem vertical padding and 2px borders. */
+html[data-platform="tv-webos"] .calendar-day h3,
+html[data-platform="tv-webos"] .calendar-entry-title,
+html[data-platform="tv-webos"] .calendar-entry-subtitle {
+  min-block-size: 1.5em;
+}
+
+html[data-platform="tv-webos"] .calendar-entry-meta .status-pill {
+  min-block-size: calc(1.4em + 0.36rem + 2px);
+}
