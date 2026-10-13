@@ -359,6 +359,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Android phone drawers blur the page beneath them on Android 12 and later. Filters keep the bottom navigation above the panel; the Actions global backdrop overlays and blocks it, matching the web layout.
 - Linux phone users can switch between profiles already linked on the device and unlock a saved PIN-protected profile.
 - Show the selected playlist type and name in the native Tizen Search preview, with display-only line breaks for long names.
 - Open playlist Search results in the native Tizen playlist directory and restore Search focus on Back.
