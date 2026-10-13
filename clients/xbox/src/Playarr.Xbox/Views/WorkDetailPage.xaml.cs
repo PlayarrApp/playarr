@@ -782,6 +782,8 @@ namespace Playarr.Xbox.Views
                     Height = 210,
                     ItemContainerStyle = CatalogTileFactory.CardContainerStyle,
                 };
+                // Match the web episode rail's compensated 12 px top bleed without moving cards or season rails.
+                CardFocus.ReserveTopLiftRoom(list, 12);
                 ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
                 ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
                 ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);
