@@ -366,6 +366,7 @@ private struct TVProductionShell<Stage: View>: View {
                     path = []
 #if os(macOS)
                     finishPendingMacHomeFocus(false)
+                    MacFocusEngine.shared.cancelHomeCardRestore()
 #endif
                     homeFocusHandoff.tabChanged(to: newTab)
                     homeNavFocusHandoff.reset()
@@ -376,6 +377,7 @@ private struct TVProductionShell<Stage: View>: View {
                         homeFocusHandoff.cancel()
 #if os(macOS)
                         finishPendingMacHomeFocus(false)
+                        MacFocusEngine.shared.cancelHomeCardRestore()
 #endif
                         homeNavFocusHandoff.reset()
                         homeCardFocusReturnRequest = nil
@@ -459,6 +461,17 @@ private struct TVProductionShell<Stage: View>: View {
         }
         .environment(\.openActions) { actionsWork = $0 }
         .environment(\.actionsWorkID, actionsWork?.id)
+        #if os(macOS)
+        .onChange(of: actionsWork?.id) { _, newID in
+            if newID != nil { MacFocusEngine.shared.cancelHomeCardRestore() }
+        }
+        .onChange(of: playing?.id) { _, id in
+            if id != nil { MacFocusEngine.shared.cancelHomeCardRestore() }
+        }
+        .onChange(of: showProfiles) { _, isPresented in
+            if isPresented { MacFocusEngine.shared.cancelHomeCardRestore() }
+        }
+        #endif
         .ignoresSafeArea()
         .fullScreenCover(item: $playing) { request in
             TVPlayerView(mediaFileID: request.id, title: request.title, apiClient: environment.apiClient)

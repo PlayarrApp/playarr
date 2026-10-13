@@ -99,6 +99,202 @@ final class MacFocusEngineTests: XCTestCase {
         XCTAssertEqual(railOneFocusCount, 0, "a duplicate work ID in another rail must not receive focus")
     }
 
+    @MainActor
+    func testHomeFocusBindingBridgeTracksExactRailAndRespectsOverlayLayerOnRestore() async throws {
+        let engine = MacFocusEngine()
+        let railZeroID = UUID()
+        let railOneID = UUID()
+        let overlayID = UUID()
+        let focusRailZero = HomeRailCardFocus(rail: "r0", workID: UUID())
+        let focusRailOne = HomeRailCardFocus(rail: "r1", workID: focusRailZero.workID)
+        var selected: HomeRailCardFocus? = focusRailOne
+        let bridge = MacFocusBindingBridge(
+            focus: { selected = focusRailOne },
+            isFocused: { selected == focusRailOne },
+            restore: {
+                engine.requestHomeCardRestore(
+                    parityID: focusRailOne.workID.uuidString, rail: 1, index: 0
+                )
+            }
+        )
+        let railZeroTarget = MacFocusEngine.Target(
+            frame: card(300, 200), layer: 0, focus: { selected = focusRailZero },
+            parityID: focusRailZero.workID.uuidString, parityRail: 0, parityIndex: 0,
+            homeRailFocus: true,
+            isFocused: { selected == focusRailZero }
+        )
+        let railOneTarget = MacFocusEngine.Target(
+            frame: card(550, 200), layer: 0, focus: bridge.focus,
+            parityID: focusRailOne.workID.uuidString, parityRail: 1, parityIndex: 0,
+            homeRailFocus: true,
+            isFocused: bridge.isFocused
+        )
+        engine.update(railZeroID, railZeroTarget)
+        engine.update(railOneID, railOneTarget)
+        engine.didFocus(parityID: focusRailOne.workID.uuidString, rail: 1, index: 0, focused: true)
+        XCTAssertEqual(engine.focusedID, railOneID)
+
+        engine.update(overlayID, .init(frame: card(20, 100), layer: 1, focus: {}))
+        engine.didFocus(overlayID, true)
+        bridge.restore()
+        XCTAssertEqual(selected, focusRailOne, "restore cannot change the opener while an overlay is active")
+        XCTAssertEqual(engine.focusedID, overlayID)
+        engine.didFocus(parityID: focusRailOne.workID.uuidString, rail: 1, index: 0, focused: true)
+        XCTAssertEqual(engine.focusedID, overlayID, "Home state cannot overwrite focus while an overlay is active")
+        engine.requestHomeCardRestore(
+            parityID: focusRailZero.workID.uuidString, rail: 0, index: 0
+        ) // A same-work sibling also observes the drawer closing, but did not open it.
+
+        engine.remove(overlayID)
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(selected, focusRailOne, "the opener wins over a same-work sibling callback")
+        engine.didFocus(parityID: focusRailOne.workID.uuidString, rail: 1, index: 0, focused: true)
+        bridge.restore()
+        XCTAssertEqual(selected, focusRailOne, "restore requests the exact rail identity for a duplicate work ID")
+        engine.didFocus(parityID: focusRailOne.workID.uuidString, rail: 1, index: 0, focused: true)
+        XCTAssertEqual(engine.focusedID, railOneID)
+        XCTAssertTrue(engine.targets[railOneID]?.isFocused() == true)
+        XCTAssertFalse(engine.targets[railZeroID]?.isFocused() == true)
+
+        engine.remove(railZeroID)
+        engine.remove(railOneID)
+    }
+
+    @MainActor
+    func testPendingHomeCardRestoreIsCancelledByNewOverlayOrOtherFocus() async throws {
+        let engine = MacFocusEngine()
+        let homeID = UUID()
+        let navID = UUID()
+        let firstOverlayID = UUID()
+        let nextOverlayID = UUID()
+        var homeFocusCount = 0
+        var navFocusCount = 0
+        engine.update(homeID, .init(
+            frame: card(300, 200), layer: 0, focus: { homeFocusCount += 1 },
+            parityID: "home-card", parityRail: 0, parityIndex: 0, homeRailFocus: true
+        ))
+        engine.update(navID, .init(frame: card(20, 100), layer: 0, focus: { navFocusCount += 1 }))
+        engine.didFocus(homeID, true)
+        engine.didFocus(navID, true)
+        engine.update(firstOverlayID, .init(frame: card(20, 100), layer: 1, focus: {}))
+        engine.didFocus(firstOverlayID, true)
+        engine.requestHomeCardRestore(parityID: "home-card", rail: 0, index: 0)
+        engine.update(nextOverlayID, .init(frame: card(40, 100), layer: 2, focus: {}))
+        engine.didFocus(nextOverlayID, true)
+        engine.remove(nextOverlayID)
+        engine.remove(firstOverlayID)
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(homeFocusCount, 0, "opening another overlay cancels the pending one-shot return")
+        XCTAssertEqual(navFocusCount, 1, "normal layer restoration still prefers the last focused nav item")
+
+        engine.update(firstOverlayID, .init(frame: card(20, 100), layer: 1, focus: {}))
+        engine.didFocus(homeID, true)
+        engine.didFocus(firstOverlayID, true)
+        engine.requestHomeCardRestore(parityID: "home-card", rail: 0, index: 0)
+        engine.update(nextOverlayID, .init(frame: card(40, 100), layer: 1, focus: {}))
+        engine.didFocus(nextOverlayID, true)
+        engine.remove(nextOverlayID)
+        engine.remove(firstOverlayID)
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(homeFocusCount, 0, "user focus movement cancels the pending one-shot return")
+        engine.remove(homeID)
+        engine.remove(navID)
+    }
+
+    @MainActor
+    func testHomeHorizontalMovesStayInRailAndLeadingLeftCanReachNav() {
+        let engine = MacFocusEngine()
+        let leadingID = UUID()
+        let secondID = UUID()
+        let navID = UUID()
+        let lowerRailID = UUID()
+        var focusCounts: [UUID: Int] = [:]
+
+        func target(_ id: UUID, _ frame: CGRect, rail: Int?, index: Int?, home: Bool) -> MacFocusEngine.Target {
+            MacFocusEngine.Target(
+                frame: frame, layer: 0, focus: { focusCounts[id, default: 0] += 1 },
+                parityID: id.uuidString, parityRail: rail, parityIndex: index, homeRailFocus: home
+            )
+        }
+
+        engine.update(leadingID, target(leadingID, card(180, 200), rail: 0, index: 0, home: true))
+        engine.update(secondID, target(secondID, card(400, 200), rail: 0, index: 1, home: true))
+        engine.update(navID, target(navID, card(20, 180, w: 60, h: 60), rail: nil, index: nil, home: false))
+        engine.update(lowerRailID, target(lowerRailID, card(400, 520), rail: 1, index: 0, home: true))
+
+        engine.didFocus(leadingID, true)
+        engine.move(.right)
+        XCTAssertEqual(focusCounts[secondID], 1, "Right follows the next card in the same Home rail")
+        XCTAssertEqual(focusCounts[lowerRailID], nil, "horizontal movement cannot jump to another rail")
+
+        engine.didFocus(secondID, true)
+        engine.move(.left)
+        XCTAssertEqual(focusCounts[leadingID], 1, "ordinary Left follows the previous card in the same Home rail")
+
+        engine.didFocus(leadingID, true)
+        engine.move(.left)
+        XCTAssertEqual(focusCounts[navID], 1, "Left from the leading card keeps the measured nav handoff")
+
+        engine.remove(leadingID)
+        engine.remove(secondID)
+        engine.remove(navID)
+        engine.remove(lowerRailID)
+    }
+
+    @MainActor
+    func testOneCardHomeRailRightClampsWhileDownCanCrossRails() {
+        let engine = MacFocusEngine()
+        let homeID = UUID()
+        let lowerRailID = UUID()
+        var lowerRailFocusCount = 0
+        engine.update(homeID, .init(
+            frame: card(300, 100), layer: 0, focus: {}, parityID: "home", parityRail: 0,
+            parityIndex: 0, homeRailFocus: true
+        ))
+        engine.update(lowerRailID, .init(
+            frame: card(520, 450), layer: 0, focus: { lowerRailFocusCount += 1 }, parityID: "lower",
+            parityRail: 1, parityIndex: 0, homeRailFocus: true
+        ))
+        engine.didFocus(homeID, true)
+
+        engine.move(.right)
+        XCTAssertEqual(lowerRailFocusCount, 0, "Right clamps at the end of a one-card rail")
+        engine.move(.down)
+        XCTAssertEqual(lowerRailFocusCount, 1, "Down retains geometric movement across Home rails")
+
+        engine.remove(homeID)
+        engine.remove(lowerRailID)
+    }
+
+    @MainActor
+    func testExplicitArrowCancelsPendingHomeRestoreEvenWithoutCandidate() async throws {
+        let engine = MacFocusEngine()
+        let homeID = UUID()
+        let navID = UUID()
+        let overlayID = UUID()
+        var homeFocusCount = 0
+        var navFocusCount = 0
+        engine.update(homeID, .init(
+            frame: card(300, 200), layer: 0, focus: { homeFocusCount += 1 },
+            parityID: "home", parityRail: 0, parityIndex: 0, homeRailFocus: true
+        ))
+        engine.didFocus(homeID, true)
+        engine.update(navID, .init(frame: card(20, 100), layer: 0, focus: { navFocusCount += 1 }))
+        engine.didFocus(navID, true)
+        engine.update(overlayID, .init(frame: card(300, 100), layer: 1, focus: {}))
+        engine.didFocus(overlayID, true)
+        engine.requestHomeCardRestore(parityID: "home", rail: 0, index: 0)
+
+        engine.move(.right) // No right-hand target exists in the active overlay.
+        engine.remove(overlayID)
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(homeFocusCount, 0, "an explicit arrow cancels the pending Home return")
+        XCTAssertEqual(navFocusCount, 1, "ordinary layer restoration still uses the prior nav focus")
+
+        engine.remove(homeID)
+        engine.remove(navID)
+    }
+
     func testDownLandsOnTheCardVisuallyBelowNotTheSameIndex() {
         // The top rail is scrolled: the focused card sits at x 900. The lower rail starts at x 100.
         let focused = card(900, 100)

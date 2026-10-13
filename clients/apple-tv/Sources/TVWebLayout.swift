@@ -555,14 +555,16 @@ struct TVCardButton<Label: View>: View {
     @Environment(\.actionsWorkID) private var actionsWorkID
     @State private var longPressed = false
     @FocusState private var focused: Bool
+    #if os(macOS)
+    @Environment(\.macFocusBindingBridge) private var macFocusBindingBridge
+    #endif
 
-    var body: some View {
+    private var buttonContent: some View {
         Button {
             if longPressed { longPressed = false } else { openRoute(route ?? .work(work)) }
         } label: {
             label().parityFocusTag(work.title, id: work.id.uuidString, rail: parityPosition?.rail, index: parityPosition?.index)
         }
-        .focused($focused)
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: focused) { _, now in TVParityState.setFocus(work.title, now, id: work.id.uuidString, rail: parityPosition?.rail, index: parityPosition?.index) }
         #endif
@@ -575,9 +577,33 @@ struct TVCardButton<Label: View>: View {
         .macSecondaryAction { openActions(work) }
         .environment(\.macParityTag, MacParityTag(title: work.title, id: work.id.uuidString, rail: parityPosition?.rail, index: parityPosition?.index))
         #endif
+    }
+
+    @ViewBuilder
+    private var focusBoundButton: some View {
+        #if os(macOS)
+        if macFocusBindingBridge == nil {
+            buttonContent.focused($focused)
+        } else {
+            buttonContent
+        }
+        #else
+        buttonContent.focused($focused)
+        #endif
+    }
+
+    var body: some View {
+        focusBoundButton
         // Web: closing the actions drawer returns focus to the card that opened it.
         .onChange(of: actionsWorkID) { previous, current in
-            if previous == work.id, current == nil { focused = true }
+            if previous == work.id, current == nil {
+                #if os(macOS)
+                if let macFocusBindingBridge { macFocusBindingBridge.restore() }
+                else { focused = true }
+                #else
+                focused = true
+                #endif
+            }
         }
     }
 }

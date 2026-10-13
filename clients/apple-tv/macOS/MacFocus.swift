@@ -69,6 +69,7 @@ final class MacFocusEngine {
         var parityID: String? = nil
         var parityRail: Int? = nil
         var parityIndex: Int? = nil
+        var homeRailFocus = false
         var activate: (() -> Void)?
         /// The long press (a media card's actions).
         var secondary: (() -> Void)?
@@ -83,6 +84,7 @@ final class MacFocusEngine {
     private(set) var hoveredID: UUID?
     /// The last focused target per layer, so closing a cover returns focus where it was (tvOS does the same).
     private var lastFocused: [Int: UUID] = [:]
+    private var lastFocusedHomeCard: TargetIdentity?
     struct TargetIdentity: Equatable {
         let parityID: String
         let rail: Int
@@ -92,6 +94,7 @@ final class MacFocusEngine {
     private var targetRegistrationObservers: [(UUID, (TargetIdentity?) -> Void)] = []
     /// Right from the nav can arrive before a lazy stage target registers; carry that entry intent through settle.
     private var pendingStageFocus = false
+    private var pendingHomeCardRestore: TargetIdentity?
 
     func update(_ id: UUID, _ target: Target) {
         let previous = targets[id]
@@ -104,6 +107,7 @@ final class MacFocusEngine {
             }
         }
         if isNew { scheduleSettle() }
+        if isNew, target.layer > 0, pendingHomeCardRestore != nil { pendingHomeCardRestore = nil }
         // A preferred target that appears (a drawer's close button) takes focus once its layer has settled, even where
         // the system already focused another button.
         if isNew, target.preferred {
@@ -129,16 +133,55 @@ final class MacFocusEngine {
 
     func didFocus(_ id: UUID, _ focused: Bool) {
         if focused {
+            if let pendingHomeCardRestore, targets[id].flatMap({ Self.identity(of: $0) }) != pendingHomeCardRestore {
+                self.pendingHomeCardRestore = nil
+            }
             pendingStageFocus = false
             focusedID = id
-            if let layer = targets[id]?.layer { lastFocused[layer] = id }
+            if let target = targets[id] {
+                lastFocused[target.layer] = id
+                if target.homeRailFocus { lastFocusedHomeCard = Self.identity(of: target) }
+            }
         } else if focusedID == id {
             focusedID = nil
         }
     }
 
+    func didFocus(parityID: String, rail: Int, index: Int, focused: Bool) {
+        if focused, topLayer != 0 { return }
+        guard let id = targets.first(where: {
+            $0.value.parityID == parityID && $0.value.parityRail == rail && $0.value.parityIndex == index
+                && (!focused || $0.value.layer == 0)
+        })?.key else { return }
+        if !focused, focusedID != id { return }
+        didFocus(id, focused)
+    }
+
+    func requestHomeCardRestore(parityID: String, rail: Int, index: Int) {
+        let identity = TargetIdentity(parityID: parityID, rail: rail, index: index)
+        guard lastFocusedHomeCard == identity else { return }
+        pendingHomeCardRestore = identity
+        if topLayer == 0 { attemptPendingHomeCardRestore() }
+    }
+
+    func cancelHomeCardRestore() { pendingHomeCardRestore = nil }
+
+    private func attemptPendingHomeCardRestore() {
+        guard let identity = pendingHomeCardRestore, topLayer == 0,
+              let (id, target) = targets.first(where: {
+                  $0.value.parityID == identity.parityID && $0.value.parityRail == identity.rail
+                      && $0.value.parityIndex == identity.index && $0.value.layer == 0
+              }) else { return }
+        pendingHomeCardRestore = nil
+        autoFocusedID = id
+        target.focus()
+    }
+
     func didHover(_ id: UUID, _ inside: Bool) {
         if inside {
+            if let pendingHomeCardRestore, targets[id].flatMap({ Self.identity(of: $0) }) != pendingHomeCardRestore {
+                self.pendingHomeCardRestore = nil
+            }
             pendingStageFocus = false
             hoveredID = id
         } else if hoveredID == id {
@@ -220,6 +263,7 @@ final class MacFocusEngine {
     /// Moves focus to the nearest target in `direction` in the top layer. With nothing focused it focuses the
     /// layer's first target.
     func move(_ direction: MacMoveDirection) {
+        pendingHomeCardRestore = nil
         let layer = topLayer
         let candidates = targets.filter { $0.value.layer == layer }
         autoFocusedID = nil
@@ -239,7 +283,18 @@ final class MacFocusEngine {
             #endif
             return
         }
-        let geometricCandidates = candidates.filter { $0.key != fromID }.map { ($0.key, $0.value.frame) }
+        var geometricTargets = candidates.filter { $0.key != fromID }
+        if from.homeRailFocus && (direction == .left || direction == .right) {
+            geometricTargets = geometricTargets.filter { _, target in
+                if target.homeRailFocus {
+                    return target.parityRail == from.parityRail
+                }
+                // The web leaves a Home rail only when Left is pressed from its leading card.
+                return direction == .left && from.parityIndex == 0
+                    && target.frame.midX < Self.contentArea.minX
+            }
+        }
+        let geometricCandidates = geometricTargets.map { ($0.key, $0.value.frame) }
         let next = Self.nearest(from: from.frame, direction: direction, in: geometricCandidates)
         if let next, let target = candidates[next] {
             target.focus()
@@ -353,6 +408,16 @@ final class MacFocusEngine {
                 target.focus()
                 return
             }
+            if layer == 0, let identity = self.pendingHomeCardRestore,
+               let (id, target) = candidates.first(where: {
+                   $0.value.parityID == identity.parityID && $0.value.parityRail == identity.rail
+                       && $0.value.parityIndex == identity.index
+               }) {
+                self.pendingHomeCardRestore = nil
+                self.autoFocusedID = id
+                target.focus()
+                return
+            }
             if let id = self.focusedID, let current = candidates[id] {
                 // Keep focus unless the settle step put it on a header tile and page content has since appeared.
                 guard id == self.autoFocusedID, !Self.isContent(current.frame),
@@ -372,6 +437,12 @@ private struct MacFocusLayerKey: EnvironmentKey { static let defaultValue = 0 }
 struct MacSecondary { let action: () -> Void }
 private struct MacSecondaryKey: EnvironmentKey { static let defaultValue: MacSecondary? = nil }
 private struct MacPreferredKey: EnvironmentKey { static let defaultValue = false }
+struct MacFocusBindingBridge {
+    let focus: () -> Void
+    let isFocused: () -> Bool
+    let restore: () -> Void
+}
+private struct MacFocusBindingBridgeKey: EnvironmentKey { static let defaultValue: MacFocusBindingBridge? = nil }
 /// Debug parity: what a focus target names itself in parity-state.json (the Mac's focus is not a SwiftUI focus the tiles can read).
 struct MacParityTag { let title: String; let id: String; let rail: Int?; let index: Int? }
 private struct MacParityTagKey: EnvironmentKey { static let defaultValue: MacParityTag? = nil }
@@ -385,6 +456,11 @@ extension EnvironmentValues {
     var macPreferredFocus: Bool {
         get { self[MacPreferredKey.self] }
         set { self[MacPreferredKey.self] = newValue }
+    }
+
+    var macFocusBindingBridge: MacFocusBindingBridge? {
+        get { self[MacFocusBindingBridgeKey.self] }
+        set { self[MacFocusBindingBridgeKey.self] = newValue }
     }
 
     var macParityTag: MacParityTag? {
@@ -426,48 +502,72 @@ struct MacFocusTarget: ViewModifier {
     @Environment(\.macSecondaryAction) private var secondary
     @Environment(\.macPreferredFocus) private var preferred
     @Environment(\.macParityTag) private var parityTag
+    @Environment(\.macFocusBindingBridge) private var focusBridge
     @FocusState private var focused: Bool
     @State private var id = UUID()
 
     func body(content: Content) -> some View {
-        content
-            // `.edit`, not `.activate`: activation focus needs the system "keyboard navigation" setting on.
-            .focusable(isEnabled, interactions: .edit)
-            .focused($focused)
-            .focusEffectDisabled()
-            .onHover { inside in
-                MacFocusEngine.shared.didHover(id, inside)
-                if inside, isEnabled { focused = true }
-            }
-            .onChange(of: focused) { _, now in
-                MacFocusEngine.shared.didFocus(id, now)
-                #if DEBUG
-                if let t = parityTag { TVParityState.setFocus(t.title, now, id: t.id, rail: t.rail, index: t.index) }
-                #endif
-            }
-            .background {
-                GeometryReader { proxy in
-                    let frame = proxy.frame(in: .named(macStageSpace))
-                    Color.clear
-                        .onAppear { register(frame) }
-                        .onChange(of: frame) { _, new in register(new) }
-                        .onChange(of: isEnabled) { _, _ in register(frame) }
-                        .onChange(of: layer) { _, _ in register(frame) }
-                }
-            }
-            .onDisappear { MacFocusEngine.shared.remove(id) }
+        targetContent(content, bridge: focusBridge)
     }
 
-    private func register(_ frame: CGRect) {
+    @ViewBuilder
+    private func targetContent(_ content: Content, bridge: MacFocusBindingBridge?) -> some View {
+        if let bridge {
+            content
+                .focusable(isEnabled, interactions: .edit)
+                .focusEffectDisabled()
+                .onHover { inside in
+                    MacFocusEngine.shared.didHover(id, inside)
+                    if inside, isEnabled { bridge.focus() }
+                }
+                .background { geometry(bridge: bridge) }
+                .onDisappear { MacFocusEngine.shared.remove(id) }
+        } else {
+            content
+                // `.edit`, not `.activate`: activation focus needs the system "keyboard navigation" setting on.
+                .focusable(isEnabled, interactions: .edit)
+                .focused($focused)
+                .focusEffectDisabled()
+                .onHover { inside in
+                    MacFocusEngine.shared.didHover(id, inside)
+                    if inside, isEnabled { focused = true }
+                }
+                .onChange(of: focused) { _, now in
+                    MacFocusEngine.shared.didFocus(id, now)
+                    #if DEBUG
+                    if let t = parityTag { TVParityState.setFocus(t.title, now, id: t.id, rail: t.rail, index: t.index) }
+                    #endif
+                }
+                .background { geometry(bridge: nil) }
+                .onDisappear { MacFocusEngine.shared.remove(id) }
+        }
+    }
+
+    @ViewBuilder
+    private func geometry(bridge: MacFocusBindingBridge?) -> some View {
+        GeometryReader { proxy in
+            let frame = proxy.frame(in: .named(macStageSpace))
+            Color.clear
+                .onAppear { register(frame, bridge: bridge) }
+                .onChange(of: frame) { _, new in register(new, bridge: bridge) }
+                .onChange(of: isEnabled) { _, _ in register(frame, bridge: bridge) }
+                .onChange(of: layer) { _, _ in register(frame, bridge: bridge) }
+        }
+    }
+
+    private func register(_ frame: CGRect, bridge: MacFocusBindingBridge?) {
         guard isEnabled, frame.width > 0, frame.height > 0 else {
             MacFocusEngine.shared.remove(id)
             return
         }
         let binding = $focused
-        MacFocusEngine.shared.update(id, .init(frame: frame, layer: layer, focus: { binding.wrappedValue = true },
+        let focusAction: () -> Void = { if let bridge { bridge.focus() } else { binding.wrappedValue = true } }
+        let focusQuery: () -> Bool = { if let bridge { bridge.isFocused() } else { binding.wrappedValue } }
+        MacFocusEngine.shared.update(id, .init(frame: frame, layer: layer, focus: focusAction,
                                                parityID: parityTag?.id, parityRail: parityTag?.rail, parityIndex: parityTag?.index,
+                                               homeRailFocus: bridge != nil,
                                                activate: activate, secondary: secondary?.action, preferred: preferred,
-                                               isFocused: { binding.wrappedValue }))
+                                               isFocused: focusQuery))
     }
 }
 

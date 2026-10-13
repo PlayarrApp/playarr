@@ -210,7 +210,35 @@ struct TVHomeView: View {
                 requestStageFocus(request)
             }
         }
+        #if os(macOS)
+        .onChange(of: focusedCard) { previous, current in
+            reportMacHomeFocusChange(from: previous, to: current, rails: rails)
+        }
+        #endif
     }
+
+    #if os(macOS)
+    private func reportMacHomeFocusChange(
+        from previous: HomeRailCardFocus?,
+        to current: HomeRailCardFocus?,
+        rails: [(title: String, works: [Work])]
+    ) {
+        guard previous != current, MacFocusEngine.shared.topLayer == 0 else { return }
+        func report(_ focus: HomeRailCardFocus, focused: Bool) {
+            guard let rail = Int(focus.rail.dropFirst()), rails.indices.contains(rail),
+                  let index = rails[rail].works.firstIndex(where: { $0.id == focus.workID }) else { return }
+            let work = rails[rail].works[index]
+            MacFocusEngine.shared.didFocus(
+                parityID: focus.workID.uuidString, rail: rail, index: index, focused: focused
+            )
+            #if DEBUG
+            TVParityState.setFocus(work.title, focused, id: focus.workID.uuidString, rail: rail, index: index)
+            #endif
+        }
+        if let previous { report(previous, focused: false) }
+        if let current { report(current, focused: true) }
+    }
+    #endif
 
     /// Web: an 8 px left bleed keeps the first card's focus glow unclipped.
     private static let cardBleed: CGFloat = 8
@@ -248,6 +276,18 @@ struct TVHomeView: View {
                         .buttonStyle(TVFocusableCardButtonStyle())
                         .focusEffectDisabled()
                         .focused($focusedCard, equals: focus)
+                        #if os(macOS)
+                        .environment(\.macFocusBindingBridge, MacFocusBindingBridge(
+                            focus: { focusedCard = focus },
+                            isFocused: { focusedCard == focus },
+                            restore: {
+                                let engine = MacFocusEngine.shared
+                                engine.requestHomeCardRestore(
+                                    parityID: work.id.uuidString, rail: Int(id.dropFirst()) ?? 0, index: index
+                                )
+                            }
+                        ))
+                        #endif
                         .background {
                             GeometryReader { proxy in
                                 Color.clear.preference(
