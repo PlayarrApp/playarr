@@ -339,12 +339,25 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         m.focusGlow.width = artW + 180
         m.focusGlow.height = artH + 180
     end if
-    m.restShadow.translation = [-90, -90]
-    m.restShadow.width = artW + 180
-    m.restShadow.height = artH + 180
-    m.focusShadow.translation = [-90, -90]
-    m.focusShadow.width = artW + 180
-    m.focusShadow.height = artH + 180
+    if m.homeCardFocusStyle
+        ' The shadow masks share the same 400x304 canvas and 90px margins as
+        ' the Home glow. Scale the full canvas so its opaque shape remains
+        ' aligned with the card art at Home's larger layout scale.
+        shadowScale = cardScale
+        m.restShadow.translation = [-90 * shadowScale, -90 * shadowScale]
+        m.restShadow.width = 400 * shadowScale
+        m.restShadow.height = 304 * shadowScale
+        m.focusShadow.translation = [-90 * shadowScale, -90 * shadowScale]
+        m.focusShadow.width = 400 * shadowScale
+        m.focusShadow.height = 304 * shadowScale
+    else
+        m.restShadow.translation = [-90, -90]
+        m.restShadow.width = artW + 180
+        m.restShadow.height = artH + 180
+        m.focusShadow.translation = [-90, -90]
+        m.focusShadow.width = artW + 180
+        m.focusShadow.height = artH + 180
+    end if
     titleGap = 9.9
     if cardScale > 1 then titleGap = 11.5
     m.titleY = artH + titleGap
