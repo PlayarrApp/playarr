@@ -3345,6 +3345,7 @@ internal fun ExperienceLandscapeCard(
             shadows = if (webPhone) webCardShadows(selected || focused, webHome, webSearch) else if (webTvStyle) (if (focused) webRemoteFocusShadows else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),
             focusGlow = (webPhone && (selected || focused)) || (webTvStyle && focused),
+            focusGlowColor = if (webPhone) PlayarrWebTheme.palette.phoneCardGlow else null,
             modifier = Modifier.fillMaxWidth()
                 .aspectRatio(if (homeView == PlayarrHomeViewPreference.Cover) 2f / 3f else 16f / 9f)
                 .then(
