@@ -248,14 +248,32 @@ interface DetailRow {
 @Component
 struct DetailRowArtworkCard {
   @ObjectLink artworkState: DetailArtworkState;
+  @Prop variant: 'home' | 'titleEpisode' = 'titleEpisode';
+  @Prop title: string = '';
+  @Prop subtitle: string = '';
+  @Prop cardWidth: number = 0;
+  @Prop cardHeight: number = 0;
+  @Prop artworkRadius: number = -1;
+  @Prop titleFontSize: number = 11.904;
+  @Prop subtitleFontSize: number = 8.832;
+  @Prop activeRailFactor: number = 1;
 
-  @Builder
-  private emptyCardBuilder(artwork: image.PixelMap | undefined): void {}
-
-  @BuilderParam cardBuilder: (artwork: image.PixelMap | undefined) => void = this.emptyCardBuilder;
+  onSelect: () => void = () => {};
 
   build() {
-    this.cardBuilder(this.artworkState.pixelMap);
+    PosterCard({
+      variant: this.variant,
+      title: this.title,
+      subtitle: this.subtitle,
+      artwork: this.artworkState.pixelMap,
+      cardWidth: this.cardWidth,
+      cardHeight: this.cardHeight,
+      artworkRadius: this.artworkRadius,
+      titleFontSize: this.titleFontSize,
+      subtitleFontSize: this.subtitleFontSize,
+      activeRailFactor: this.activeRailFactor,
+      onSelect: this.onSelect,
+    })
   }
 }
 
@@ -956,40 +974,26 @@ struct Detail {
     if (isTvMetrics()) {
       DetailRowArtworkCard({
         artworkState: (item as DetailRow).artworkState,
-        cardBuilder: (artwork: image.PixelMap | undefined): void => {
-          PosterCard({
-            variant: 'titleEpisode',
-            title: (item as DetailRow).title,
-            subtitle: (item as DetailRow).subtitle,
-            artwork: artwork,
-            cardWidth: tv(TvGeometry.railPanelCardWidth),
-            cardHeight: Math.round((tv(TvGeometry.railPanelCardWidth) * 9) / 16),
-            activeRailFactor: activeRailFactor,
-            onSelect: () => {
-              this.selectRow((item as DetailRow));
-            },
-          })
-        },
+        variant: 'titleEpisode',
+        title: (item as DetailRow).title,
+        subtitle: (item as DetailRow).subtitle,
+        cardWidth: tv(TvGeometry.railPanelCardWidth),
+        cardHeight: Math.round((tv(TvGeometry.railPanelCardWidth) * 9) / 16),
+        activeRailFactor: activeRailFactor,
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     } else {
       DetailRowArtworkCard({
         artworkState: (item as DetailRow).artworkState,
-        cardBuilder: (artwork: image.PixelMap | undefined): void => {
-          PosterCard({
-            variant: 'titleEpisode',
-            title: (item as DetailRow).title,
-            subtitle: (item as DetailRow).subtitle,
-            artwork: artwork,
-            cardWidth: TouchGeometry.homeRailCardWidthLandscape,
-            cardHeight: Math.round((TouchGeometry.homeRailCardWidthLandscape * 9) / 16),
-            titleFontSize: 12,
-            subtitleFontSize: 10,
-            activeRailFactor: activeRailFactor,
-            onSelect: () => {
-              this.selectRow((item as DetailRow));
-            },
-          })
-        },
+        variant: 'titleEpisode',
+        title: (item as DetailRow).title,
+        subtitle: (item as DetailRow).subtitle,
+        cardWidth: TouchGeometry.homeRailCardWidthLandscape,
+        cardHeight: Math.round((TouchGeometry.homeRailCardWidthLandscape * 9) / 16),
+        titleFontSize: 12,
+        subtitleFontSize: 10,
+        activeRailFactor: activeRailFactor,
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     }
   }
@@ -1002,42 +1006,28 @@ struct Detail {
     if (isTvMetrics()) {
       DetailRowArtworkCard({
         artworkState: (item as DetailRow).artworkState,
-        cardBuilder: (artwork: image.PixelMap | undefined): void => {
-          PosterCard({
-            variant: 'home',
-            title: (item as DetailRow).title,
-            subtitle: (item as DetailRow).subtitle,
-            artwork: artwork,
-            cardWidth: tv(TvGeometry.homeRailCardWidthCover),
-            cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthCover) * 3) / 2),
-            artworkRadius: Radii.homeCardArtworkTv,
-            activeRailFactor: activeRailFactor,
-            onSelect: () => {
-              this.selectRow((item as DetailRow));
-            },
-          })
-        },
+        variant: 'home',
+        title: (item as DetailRow).title,
+        subtitle: (item as DetailRow).subtitle,
+        cardWidth: tv(TvGeometry.homeRailCardWidthCover),
+        cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthCover) * 3) / 2),
+        artworkRadius: Radii.homeCardArtworkTv,
+        activeRailFactor: activeRailFactor,
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     } else {
       DetailRowArtworkCard({
         artworkState: (item as DetailRow).artworkState,
-        cardBuilder: (artwork: image.PixelMap | undefined): void => {
-          PosterCard({
-            variant: 'home',
-            title: (item as DetailRow).title,
-            subtitle: (item as DetailRow).subtitle,
-            artwork: artwork,
-            cardWidth: TouchGeometry.homeRailCardWidthCover,
-            cardHeight: Math.round((TouchGeometry.homeRailCardWidthCover * 3) / 2),
-            artworkRadius: Radii.homeCardArtworkTouch,
-            titleFontSize: 12,
-            subtitleFontSize: 10,
-            activeRailFactor: activeRailFactor,
-            onSelect: () => {
-              this.selectRow((item as DetailRow));
-            },
-          })
-        },
+        variant: 'home',
+        title: (item as DetailRow).title,
+        subtitle: (item as DetailRow).subtitle,
+        cardWidth: TouchGeometry.homeRailCardWidthCover,
+        cardHeight: Math.round((TouchGeometry.homeRailCardWidthCover * 3) / 2),
+        artworkRadius: Radii.homeCardArtworkTouch,
+        titleFontSize: 12,
+        subtitleFontSize: 10,
+        activeRailFactor: activeRailFactor,
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     }
   }
@@ -1346,20 +1336,13 @@ struct Detail {
   private chapterItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     DetailRowArtworkCard({
       artworkState: (item as DetailRow).artworkState,
-      cardBuilder: (artwork: image.PixelMap | undefined): void => {
-        PosterCard({
-          variant: 'titleEpisode',
-          title: (item as DetailRow).title,
-          subtitle: (item as DetailRow).subtitle,
-          artwork: artwork,
-          cardWidth: tv(CHAPTER_CARD_WIDTH),
-          cardHeight: tv(CHAPTER_CARD_HEIGHT),
-          activeRailFactor: activeRailFactor,
-          onSelect: () => {
-            this.selectRow((item as DetailRow));
-          },
-        })
-      },
+      variant: 'titleEpisode',
+      title: (item as DetailRow).title,
+      subtitle: (item as DetailRow).subtitle,
+      cardWidth: tv(CHAPTER_CARD_WIDTH),
+      cardHeight: tv(CHAPTER_CARD_HEIGHT),
+      activeRailFactor: activeRailFactor,
+      onSelect: () => { this.selectRow((item as DetailRow)); },
     })
   }
 

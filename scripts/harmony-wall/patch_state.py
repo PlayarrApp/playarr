@@ -71,13 +71,15 @@ def home(s):
 
 def detail(s):
     s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { currentPreviewRouteGeneration, reportDetailLayoutStageForScope, captureDetailRowImageContext, reportDetailRowImageStage } from '../util/PreviewState';", 1)
-    old = "  private rowItem(item: MediaRailItem, index: number, activeRailFactor: number): void {\n    if (isTvMetrics()) {"
-    assert old in s
-    start = s.index("  private rowItem(item: MediaRailItem")
-    end = s.index("  /** Similar-title row content", start)
-    row = s[start:end]
-    row = row.replace("        variant: 'titleEpisode',\n", "        variant: 'titleEpisode',\n        previewRoute: 'Detail',\n        previewWorkId: this.workId,\n        previewRowId: (item as DetailRow).id,\n        previewGeneration: currentPreviewRouteGeneration(),\n")
-    s = s[:start] + row + s[end:]
+    artwork_state = "  @ObjectLink artworkState: DetailArtworkState;\n"
+    assert artwork_state in s
+    s = s.replace(artwork_state, artwork_state + "  @Prop previewRoute: string = '';\n  @Prop previewWorkId: string = '';\n  @Prop previewRowId: string = '';\n  @Prop previewGeneration: number = 0;\n", 1)
+    card_variant = "      variant: this.variant,\n"
+    assert card_variant in s
+    s = s.replace(card_variant, card_variant + "      previewRoute: this.previewRoute,\n      previewWorkId: this.previewWorkId,\n      previewRowId: this.previewRowId,\n      previewGeneration: this.previewGeneration,\n", 1)
+    artwork_state_arg = "artworkState: (item as DetailRow).artworkState,\n"
+    assert s.count(artwork_state_arg) == 5
+    s = s.replace(artwork_state_arg, artwork_state_arg + "        previewRoute: 'Detail',\n        previewWorkId: this.workId,\n        previewRowId: (item as DetailRow).id,\n        previewGeneration: currentPreviewRouteGeneration(),\n")
     old = """        const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
         if (thumb.kind === 'ok') {
           this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);

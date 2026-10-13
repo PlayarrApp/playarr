@@ -146,7 +146,8 @@ function checkDetailObservedArtwork(harmonyDir, errors, warnings) {
       requiredSubstrings: [
         '@Observed\nclass DetailArtworkState',
         '@ObjectLink artworkState: DetailArtworkState;',
-        '@BuilderParam cardBuilder: (artwork: image.PixelMap | undefined) => void',
+        'PosterCard({\n      variant: this.variant,',
+        'artwork: this.artworkState.pixelMap,',
         'item.artworkState.pixelMap = artwork;',
         'artworkState: item.artworkState,',
         'DetailRowArtworkCard({',

@@ -84,14 +84,20 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertNotRegex(card_transform + self.patch_rail, r"@Prop\s+\w+\s*:\s*\([^\n]*=>")
 
 
-    def test_observed_detail_artwork_state_is_the_instrumented_builder_source(self):
+    def test_observed_detail_artwork_state_is_rendered_by_concrete_poster_child(self):
         self.assertIn("@Observed\nclass DetailArtworkState", self.detail_source)
         self.assertIn("@ObjectLink artworkState: DetailArtworkState", self.detail_source)
-        self.assertIn("this.cardBuilder(this.artworkState.pixelMap)", self.detail_source)
+        self.assertIn("artwork: this.artworkState.pixelMap", self.detail_source)
+        self.assertIn("PosterCard({\n      variant: this.variant,", self.detail_source)
         self.assertIn("artworkState: item.artworkState", self.detail_source)
         self.assertIn("item.artworkState.pixelMap = artwork", self.detail_source)
-        self.assertIn("DetailRowArtworkCard({\n        artworkState: (item as DetailRow).artworkState,\n        cardBuilder:", self.detail_source)
+        self.assertIn("DetailRowArtworkCard({\n        artworkState: (item as DetailRow).artworkState,\n        variant: 'titleEpisode',", self.detail_source)
+        self.assertEqual(self.detail_source.count("DetailRowArtworkCard({"), 5)
+        self.assertNotIn("@BuilderParam cardBuilder", self.detail_source)
+        self.assertNotIn("cardBuilder: (artwork:", self.detail_source)
         self.assertIn("previewRowId: (item as DetailRow).id", self.patch_state)
+        self.assertIn("artwork_state_arg", self.patch_state)
+        self.assertIn("card_variant", self.patch_state)
         self.assertIn("artworkState.pixelMap !== undefined", self.patch_state)
         self.assertNotIn("visible-item-stamp-", self.patch_rail + self.patch_state)
 
