@@ -1,0 +1,1 @@
+- Match Tizen empty-playlist cover line breaks to the web by adding display-only wrap opportunities after hyphens while preserving the playlist's original text and accessibility name.

@@ -8,6 +8,27 @@ namespace Playarr.Tizen.Logic.Tests;
 public sealed class PlaylistDirectoryTests
 {
     [Fact]
+    public void EmptyCoverDisplayNameAddsBreakOpportunitiesToTimestampAndHexGroups()
+    {
+        const string playlistName = "QA20261013010928-abcdef01-23456789-0123-4567-89ab-cdef01234567-8901abcd";
+
+        Assert.Equal(
+            "QA20261013010928-\u200Babcdef01-\u200B23456789-\u200B0123-\u200B4567-\u200B89ab-\u200Bcdef01234567-\u200B8901abcd",
+            PlaylistDirectoryModel.EmptyCoverDisplayName(playlistName));
+        Assert.Equal("QA20261013010928-abcdef01-23456789-0123-4567-89ab-cdef01234567-8901abcd", playlistName);
+    }
+
+    [Theory]
+    [InlineData("Ordinary playlist", "Ordinary playlist")]
+    [InlineData("Ordinary-list - notes", "Ordinary-\u200Blist -\u200B notes")]
+    [InlineData("Already-\u200Bmarked", "Already-\u200Bmarked")]
+    [InlineData("", "")]
+    public void EmptyCoverDisplayNameLeavesOrdinaryNamesOtherwiseIntact(string original, string expected)
+    {
+        Assert.Equal(expected, PlaylistDirectoryModel.EmptyCoverDisplayName(original));
+    }
+
+    [Fact]
     public void ParseResponseKeepsPlaylistFieldsAndParentFromTheSameRow()
     {
         var rootId = Guid.NewGuid();
