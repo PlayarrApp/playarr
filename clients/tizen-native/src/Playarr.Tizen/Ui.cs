@@ -10,7 +10,7 @@ internal static class Ui
     private static TextLabel? _measure;
     private static bool? _fontDirectoryAdded;
     private static int _bundledNunitoFontCount;
-    private static IReadOnlyList<Tizen.NUI.Text.FontInfo> _bundledNunitoFonts = Array.Empty<Tizen.NUI.Text.FontInfo>();
+    private static IReadOnlyList<global::Tizen.NUI.Text.FontInfo> _bundledNunitoFonts = Array.Empty<global::Tizen.NUI.Text.FontInfo>();
 
     internal static object FontRegistrationMetrics => new
     {
