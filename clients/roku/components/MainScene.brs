@@ -2746,20 +2746,38 @@ sub enterBrowseAlphabet(preserveCurrent as Boolean)
     renderBrowseAlphabetFocus()
     scrollBrowseAlphabetToIndex(m.browseAlphabetIndex, false)
     m.top.SetFocus(true)
+    emitBrowseAlphabetFocusDiagnostic("enter")
 end sub
 
 sub exitBrowseAlphabet()
     m.browseAlphabetMode = false
     renderBrowseAlphabetFocus()
     m.browseGrid.SetFocus(true)
+    emitBrowseAlphabetFocusDiagnostic("exit")
+end sub
+
+sub emitBrowseAlphabetFocusDiagnostic(action as String)
+    if not m.artTelemetryEnabled or m.browseGrid = invalid then return
+    if action <> "enter" and action <> "move" and action <> "exit" then return
+    index = m.browseAlphabetIndex
+    if index < 0 or index > 26 then return
+    gridFocus = "0"
+    if m.browseGrid.isInFocusChain() then gridFocus = "1"
+    sceneFocus = "0"
+    if m.top.isInFocusChain() then sceneFocus = "1"
+    parityEmit("browseAlphabetFocus", action + "|" + index.ToStr() + "|" + gridFocus + "|" + sceneFocus)
 end sub
 
 function moveBrowseAlphabetFocus(delta as Integer) as Boolean
     newIndex = m.browseAlphabetIndex + delta
-    if newIndex < 0 or newIndex >= m.alphabetLabels.Count() then return true
+    if newIndex < 0 or newIndex >= m.alphabetLabels.Count()
+        emitBrowseAlphabetFocusDiagnostic("move")
+        return true
+    end if
     m.browseAlphabetIndex = newIndex
     renderBrowseAlphabetFocus()
     scrollBrowseAlphabetToIndex(newIndex, false)
+    emitBrowseAlphabetFocusDiagnostic("move")
     return true
 end function
 
@@ -2854,6 +2872,7 @@ sub focusBrowseFiltersButton()
     m.browseFiltersButtonFocused = true
     m.browseFiltersButton.color = ThemeColor("ink")
     m.browseFiltersRing.visible = true
+    emitBrowseAlphabetFocusDiagnostic("exit")
 end sub
 
 sub focusBrowseAlphabetFromButton()
@@ -2864,6 +2883,7 @@ sub focusBrowseAlphabetFromButton()
     m.browseAlphabetIndex = 0
     renderBrowseAlphabetFocus()
     scrollBrowseAlphabetToIndex(m.browseAlphabetIndex, false)
+    emitBrowseAlphabetFocusDiagnostic("enter")
 end sub
 
 sub openBrowseFiltersPanel()

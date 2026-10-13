@@ -94,6 +94,17 @@ export function parseBrowseKeyArtDiagnostic(value, seq) {
   };
 }
 
+export function parseBrowseAlphabetFocusDiagnostic(value, seq) {
+  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
+  const parts = value.trim().split("|");
+  if (parts.length !== 4) return null;
+  const [action, rawIndex, gridFocus, sceneFocus] = parts;
+  const index = Number(rawIndex);
+  if (!["enter", "move", "exit"].includes(action) || !Number.isSafeInteger(index) || index < 0 || index > 26) return null;
+  if (!/^[01]$/.test(gridFocus) || !/^[01]$/.test(sceneFocus)) return null;
+  return { action, index, gridInFocusChain: gridFocus === "1", sceneInFocusChain: sceneFocus === "1", seq };
+}
+
 export function parseCalendarFocus(value) {
   const match = /^([A-Za-z]+)\|(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/.exec(value.trim());
   if (!match || !CALENDAR_ACTIONS.has(match[1])) return null;
@@ -170,7 +181,7 @@ export function createParityState() {
     calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
     calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
     calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(), browseKeyArtDiagnostics: [],
+    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(), browseKeyArtDiagnostics: [], browseAlphabetFocusDiagnostics: [],
   };
 }
 
@@ -240,6 +251,11 @@ export function applyParityLine(state, line) {
     if (!diagnostic) return false;
     state.browseKeyArtDiagnostics.push(diagnostic);
     if (state.browseKeyArtDiagnostics.length > 32) state.browseKeyArtDiagnostics.shift();
+  } else if (kind === "browseAlphabetFocus") {
+    const diagnostic = parseBrowseAlphabetFocusDiagnostic(value, state.eventSeq);
+    if (!diagnostic) return false;
+    state.browseAlphabetFocusDiagnostics.push(diagnostic);
+    if (state.browseAlphabetFocusDiagnostics.length > 32) state.browseAlphabetFocusDiagnostics.shift();
   } else if (kind === "focus") {
     const positioned = /^(.*)\|@([0-9]+):([0-9]+)$/.exec(value.trim());
     state.focus = positioned
@@ -704,6 +720,7 @@ export function createDriver({ out, args = [] } = {}) {
       resetArtReadinessState(parityState.artState);
       parityState.artMarkers = { home: 0, movies: 0, series: 0, calendar: 0 };
       parityState.browseKeyArtDiagnostics = [];
+      parityState.browseAlphabetFocusDiagnostics = [];
     }
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
@@ -1053,6 +1070,7 @@ export function createDriver({ out, args = [] } = {}) {
     },
     async focused() { assertDebug(); return focus; },
     async browseKeyArtDiagnostics() { assertDebug(); return parityState.browseKeyArtDiagnostics.map((event) => ({ ...event })); },
+    async browseAlphabetFocusDiagnostics() { assertDebug(); return parityState.browseAlphabetFocusDiagnostics.map((event) => ({ ...event })); },
     async screenshot(file) {
       assertDebug();
       if (!out) throw new Error("suite runner output path is required");
