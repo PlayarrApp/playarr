@@ -357,6 +357,21 @@ test("Roku artwork readiness gates a fresh current population with explicit empt
   assert.equal(artReadiness(generation, { scope: "home", afterSeq: generation.beginSeq }).reason, "no-fresh-generation");
 });
 
+test("Roku Calendar art readiness is scoped to the current view generation", () => {
+  const state = createParityState();
+  applyParityLine(state, "PARITY|screen|page");
+  applyParityLine(state, "PARITY|page|calendar");
+  applyParityLine(state, "PARITY|calendarView|week");
+  const marker = state.artMarkers.calendar;
+  applyParityLine(state, "PARITY|art|slot|3|calendar|calendar-r0-c0|1|802.4|259.8|40|60|0");
+  applyParityLine(state, "PARITY|art|status|3|calendar|calendar-r0-c0|ready|0");
+  applyParityLine(state, "PARITY|art|begin|3|calendar|1|1");
+  applyParityLine(state, "PARITY|art|finish|3|calendar");
+  const generation = state.artState.generations.get("calendar:3");
+  assert.deepEqual(artReadiness(generation, { scope: "calendar", afterSeq: marker }), { ready: true, reason: "ready" });
+  assert.equal(artReadiness(generation, { scope: "calendar", afterSeq: state.eventSeq }).reason, "no-fresh-generation");
+});
+
 test("Roku Movies readiness does not treat a recoverable retry as terminal failure", () => {
   const state = createParityState();
   applyParityLine(state, "PARITY|browse|movie");

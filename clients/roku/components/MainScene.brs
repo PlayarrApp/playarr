@@ -6559,7 +6559,7 @@ end sub
 
 function beginArtGeneration(scope as String) as Integer
     if not m.artTelemetryEnabled then return 0
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return 0
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return 0
     m.artGeneration += 1
     m.artActiveGeneration = m.artGeneration
     m.artActiveScope = scope
@@ -6569,7 +6569,7 @@ end function
 
 sub announceArtGeneration(generation as Integer, scope as String, hasArt as Boolean)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
     hasArtText = "0"
     if hasArt then hasArtText = "1"
     parityEmit("art", "begin|" + generation.ToStr() + "|" + scope + "|" + hasArtText + "|" + m.artExpectedSlots.Count().ToStr())
@@ -6577,13 +6577,13 @@ end sub
 
 sub finishArtGeneration(generation as Integer, scope as String)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
     parityEmit("art", "finish|" + generation.ToStr() + "|" + scope)
 end sub
 
 sub emitArtSlot(generation as Integer, scope as String, slot as String, hasSource as Boolean, x as Float, y as Float, width as Float, height as Float, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
     if not artRectVisible(x, y, width, height) then return
     hasSourceText = "0"
     if hasSource then hasSourceText = "1"
@@ -6597,7 +6597,7 @@ end sub
 
 sub emitArtStatus(generation as Integer, scope as String, slot as String, status as String, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
     if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
     parityEmit("art", "status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr())
 end sub

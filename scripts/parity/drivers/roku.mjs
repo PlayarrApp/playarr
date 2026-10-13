@@ -147,7 +147,7 @@ export function createParityState() {
     calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
     calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
     calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0 }, artState: createArtReadinessState(),
+    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(),
   };
 }
 
@@ -168,6 +168,7 @@ export function applyParityLine(state, line) {
     if (state.screen === "home") state.artMarkers.home = state.eventSeq;
   } else if (kind === "page") {
     state.page = value.trim();
+    if (state.page === "calendar") state.artMarkers.calendar = state.eventSeq;
     if (state.page !== "calendar") {
       state.calendarView = "";
       state.calendarContent = null;
@@ -179,6 +180,7 @@ export function applyParityLine(state, line) {
     state.calendarView = view;
     state.calendarViewSeq += 1;
     state.calendarViewScreenSeq = state.screenSeq;
+    state.artMarkers.calendar = state.eventSeq;
   } else if (kind === "calendarFocus") {
     const focus = parseCalendarFocus(value);
     if (!focus) return false;
@@ -656,7 +658,7 @@ export function createDriver({ out, args = [] } = {}) {
         const result = artReadiness(candidates[0], { scope, afterSeq });
         if (result.ready) return;
         lastReason = result.reason;
-        if (result.reason === "art-failed" || result.reason === "no-required-art-slots") break;
+        if (result.reason === "art-failed" || result.reason === "no-required-art-slots" || result.reason === "telemetry-incomplete") break;
       }
       await sleep(250);
     }
@@ -672,7 +674,7 @@ export function createDriver({ out, args = [] } = {}) {
     await sleep(4000);
     if (artEnabled) {
       resetArtReadinessState(parityState.artState);
-      parityState.artMarkers = { home: 0, movies: 0, series: 0 };
+      parityState.artMarkers = { home: 0, movies: 0, series: 0, calendar: 0 };
     }
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
@@ -1029,6 +1031,7 @@ export function createDriver({ out, args = [] } = {}) {
       if (artEnabled && screen === "home") { await waitForArt("home"); await sleep(1000); }
       if (artEnabled && screen === "browse" && ["movie", "movies"].includes(browse)) await waitForArt("movies");
       if (artEnabled && screen === "browse" && browse === "series") await waitForArt("series");
+      if (artEnabled && screen === "page" && page === "calendar" && (parityState.calendarView === "week" || parityState.calendarView === "agenda")) await waitForArt("calendar");
       const { jpeg, generation } = captureFrame();
       mkdirSync(dirname(resolve(file)), { recursive: true });
       const png = pngFromJpeg(jpeg);
