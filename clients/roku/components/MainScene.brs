@@ -3977,9 +3977,9 @@ function createHomeRail(contentTarget as Object) as Object
     group = CreateObject("roSGNode", "Group")
     group.visible = false
 
-    ' Rail heading (web .tv-rail h2: 17.7 px, weight 610, -0.03em tracking), drawn glyph by glyph (TrackedText).
+    ' Rail heading matches Web's uniform .tv-rail h2 typography; focus changes the card, not the heading.
     title = CreateObject("roSGNode", "TrackedText")
-    title.translation = [0, 0]
+    title.translation = [0, -21]
     group.AppendChild(title)
 
     row = CreateObject("roSGNode", "RowList")
@@ -4479,7 +4479,7 @@ sub finishHomeLoad()
         rail.group.visible = true
         rail.group.translation = [0, y]
         rail.label = candidate.label
-        setRailTitle(rail, railIndex = 0)
+        setRailTitle(rail)
         isActiveRail = false
         if railIndex = 0 then isActiveRail = true
         buildRailContent(rail.row, rail.works, isActiveRail, 1.4864, m.artActiveGeneration, "home", railIndex)
@@ -4625,26 +4625,11 @@ sub homeRailTrack(row as Object, idx as Integer)
     end for
 end sub
 
-' The focused rail's heading is drawn 1.158 times larger (web scales the active rail's h2); the others use the base size.
-sub setRailTitle(rail as Object, active as Boolean)
+' Home headings keep the same Web typography regardless of which rail owns card focus.
+sub setRailTitle(rail as Object)
     if rail.label = invalid then return
-    if active
-        rail.title.spec = { text: rail.label, size: 20, weight: 600, tracking: -0.614, role: "ink" }
-        rail.title.translation = [0, -2]
-    else
-        rail.title.spec = { text: rail.label, size: 18, weight: 600, tracking: -0.53, role: "ink" }
-        rail.title.translation = [0, 3]
-    end if
-end sub
-
-sub homeRailTitleFocus(railIndex as Integer, active as Boolean)
-    if railIndex < 0 or railIndex >= m.visibleRails.Count() then return
-    for each rail in m.homeRailPool
-        if rail.row.isSameNode(m.visibleRails[railIndex].row)
-            setRailTitle(rail, active)
-            return
-        end if
-    end for
+    rail.title.spec = { text: rail.label, size: 18, weight: 600, tracking: -0.53, role: "ink" }
+    rail.title.translation = [0, -21]
 end sub
 
 sub onHomeItemSelected(event as Object)
@@ -4689,7 +4674,6 @@ function moveHomeFocus(delta as Integer) as Boolean
         oldRail = m.visibleRails[oldIndex]
         oldRail.row.SetFocus(false)
         buildRailContent(oldRail.row, oldRail.works, false)
-        homeRailTitleFocus(oldIndex, false)
     end if
     m.homeFocusIndex = newIndex
     newRail = m.visibleRails[newIndex]
@@ -4707,7 +4691,6 @@ function moveHomeFocus(delta as Integer) as Boolean
         newRail.row.jumpToRowItem = [0, desired]
     end if
     buildRailContent(newRail.row, newRail.works, true)
-    homeRailTitleFocus(newIndex, true)
     newRail.row.SetFocus(true)
     if desired = 0 and m.homeLeftProxy <> invalid then m.homeLeftProxy.SetFocus(true)
     scrollHomeToFocusedRail()
