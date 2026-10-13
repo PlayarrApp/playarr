@@ -3253,7 +3253,9 @@ internal fun ExperienceMediaRail(
         // origin fixed while giving the focus lift, scale and shadow the same unclipped headroom.
         val tvTrackHeadroom = 42.dp
         val tvHeadroomAdjustment = tvTrackHeadroom - 6.dp
-        val tvOuterTopPadding = (if (railIndex == 0) 43.2.dp else 41.2.dp) - tvHeadroomAdjustment
+        // Matched 1920x1080 captures put focused artwork 2px below the web reference in both themes; trim the TV
+        // track's outer top offset without changing its content headroom or artwork transform.
+        val tvOuterTopPadding = (if (railIndex == 0) 43.2.dp else 41.2.dp) - tvHeadroomAdjustment - 2.dp
         // Keep the pre-existing 10dp card origin exact: integer-pixel headroom avoids a fractional-density rounding drift.
         val phoneFocusTopHeadroomPx = with(density) { 24.dp.roundToPx() }
         val phoneFocusBottomHeadroomPx = with(density) { 80.dp.roundToPx() }
