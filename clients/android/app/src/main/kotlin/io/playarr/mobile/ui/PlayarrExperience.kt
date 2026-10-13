@@ -3461,7 +3461,7 @@ internal fun ExperienceLandscapeCard(
                 modifier = Modifier.padding(start = 1.9.dp, top = 9.7.dp),
             )
             Text(
-                resolvedSubtitle, color = WebInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
+                resolvedSubtitle, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 1.9.dp, top = 2.56.dp),
             )
