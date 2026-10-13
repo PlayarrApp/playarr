@@ -143,7 +143,11 @@ struct PlayarrTabletDetailArtwork: View {
 
     @State private var loader = ArtworkLoader()
     private static let filteredCache = NSCache<NSString, UIImage>()
-    private static let context = CIContext(options: [.cacheIntermediates: true])
+    private static let sRGB = CGColorSpace(name: CGColorSpace.sRGB)!
+    private static let context = CIContext(options: [
+        .cacheIntermediates: true,
+        .workingColorSpace: sRGB
+    ])
 
     private var parameters: (contrast: CGFloat, brightness: CGFloat, opacity: Double) {
         dark ? (0.82, 0.6, 0.72) : (0.88, 1.1, 0.24)
@@ -169,7 +173,12 @@ struct PlayarrTabletDetailArtwork: View {
         filter.aVector = CIVector(x: 0, y: 0, z: 0, w: 1)
         filter.biasVector = CIVector(x: bias, y: bias, z: bias, w: 0)
         guard let output = filter.outputImage,
-              let cgImage = Self.context.createCGImage(output, from: output.extent) else { return image }
+              let cgImage = Self.context.createCGImage(
+                output,
+                from: output.extent,
+                format: .RGBA8,
+                colorSpace: Self.sRGB
+              ) else { return image }
         let result = UIImage(cgImage: cgImage, scale: image.scale, orientation: .up)
         Self.filteredCache.setObject(result, forKey: key)
         return result
@@ -184,6 +193,9 @@ struct PlayarrTabletDetailArtwork: View {
                     Color.clear
                 }
             }
+            // The 780x438 artwork fills this 52%x106% box by height, so it
+            // overflows horizontally only; CSS object-position's 20% y value
+            // has no effect, while centered horizontal positioning is retained.
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
             .mask(LinearGradient(
