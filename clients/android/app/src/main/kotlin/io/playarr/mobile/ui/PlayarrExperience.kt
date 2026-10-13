@@ -5934,7 +5934,9 @@ private fun ExperienceVideoDetailContent(
                     activeProgress,
                     movieMetadata?.durationMs,
                     true,
-                    afterMeta = availabilityLag?.let { lag -> { PlayarrAvailabilityLagLine(lag, webTv = true) } },
+                    afterMeta = availabilityLag
+                        ?.takeIf { it.averageSeconds != null }
+                        ?.let { lag -> { PlayarrAvailabilityLagLine(lag, webTv = true) } },
                 )
                 VideoDetailActions(
                     work = detail.work,
