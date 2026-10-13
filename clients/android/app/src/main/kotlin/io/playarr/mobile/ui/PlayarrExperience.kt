@@ -2200,7 +2200,7 @@ private fun TvNavTile(
         onClick = onClick,
         // Focus is a ring, never a fill: only the current page keeps the soft fill.
         color = if (selected) WebInk.copy(alpha = 0.09f) else Color.Transparent,
-        contentColor = if (selected || focused) WebInk else WebInkMuted,
+        contentColor = if (selected || focused) WebInk else PlayarrWebTheme.palette.webInkMuted,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .size(64.dp)
