@@ -1,0 +1,1 @@
+- Improved the focused Tizen playlist collage shadow in light theme; shadow-profile parity remains under review.

@@ -268,10 +268,10 @@ internal sealed class MediaCard
 
         EnsurePlaylistSecondaryShadow();
         var brown = new Rgba(56 / 255f, 38 / 255f, 33 / 255f);
-        // Carry the web filter's layer parameters separately. NUI's replaceable BoxShadow holds one layer, so the
-        // second view carries the small layer while Art carries the focused wide layer. Blur-radius rendering needs capture calibration.
+        // Keep the web filter's two brown layers separate because NUI BoxShadow replaces rather than stacks layers.
+        // NUI blur radius is renderer-specific; the focused wide layer is capture-calibrated independently of CSS sigma.
         Art.BoxShadow = _focused
-            ? new Shadow(12, Ui.C(new Rgba(brown.R, brown.G, brown.B, 0.3f)), new Vector2(0, 12), new Vector2(0, 0))
+            ? new Shadow(36, Ui.C(new Rgba(brown.R, brown.G, brown.B, 0.3f)), new Vector2(0, 12), new Vector2(0, 0))
             : null;
         _playlistSecondaryShadow!.BoxShadow = new Shadow(5,
             Ui.C(new Rgba(brown.R, brown.G, brown.B, _focused ? 0.2f : 0.14f)),
