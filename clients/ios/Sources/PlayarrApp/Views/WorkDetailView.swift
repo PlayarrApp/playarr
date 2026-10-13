@@ -164,16 +164,7 @@ struct WorkDetailView: View {
     private func tabletDetail(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
         ScrollViewReader { scrollProxy in
             ZStack(alignment: .topLeading) {
-                PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .opacity(scheme == .dark ? 0.3 : 0.07)
-                    .overlay {
-                        LinearGradient(
-                            colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    }
+                tabletDetailBackdrop(detail, proxy: proxy)
 
                 detailCopy(
                     detail,
@@ -247,6 +238,63 @@ struct WorkDetailView: View {
             }
             .coordinateSpace(name: "tabletDetailLayoutDiagnostics")
         }
+    }
+
+    private func tabletDetailBackdrop(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
+        ZStack {
+            PlayarrStyle.surface
+
+            PlayarrTabletDetailArtwork(
+                work: detail.work,
+                apiClient: apiClient,
+                dark: scheme == .dark
+            )
+            .frame(width: proxy.size.width * 0.52, height: proxy.size.height * 1.06)
+
+            LinearGradient(
+                stops: [
+                    .init(color: PlayarrStyle.surface, location: 0),
+                    .init(color: .clear, location: 0.22),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+
+            LinearGradient(
+                stops: [
+                    .init(color: PlayarrStyle.surface, location: 0),
+                    .init(color: .clear, location: 0.22),
+                    .init(color: .clear, location: 0.82),
+                    .init(color: PlayarrStyle.surface, location: 1)
+                ],
+                startPoint: .bottom,
+                endPoint: .top
+            )
+
+            LinearGradient(
+                stops: [
+                    .init(color: PlayarrStyle.surface.opacity(0.94), location: 0),
+                    .init(color: PlayarrStyle.surface.opacity(0.90), location: 0.36),
+                    .init(color: .clear, location: 0.52),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+
+            LinearGradient(
+                stops: [
+                    .init(color: PlayarrStyle.surface.opacity(0.50), location: 0),
+                    .init(color: .clear, location: 0.34),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .trailing,
+                endPoint: .leading
+            )
+        }
+        .frame(width: proxy.size.width, height: proxy.size.height)
+        .clipped()
     }
 
     private var hasDiscoveryContent: Bool {

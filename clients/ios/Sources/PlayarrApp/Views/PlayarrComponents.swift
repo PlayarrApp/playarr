@@ -1,4 +1,6 @@
 import Observation
+import CoreImage
+import CoreImage.CIFilterBuiltins
 import PlayarrKit
 import SwiftUI
 import UIKit
@@ -128,6 +130,71 @@ struct PlayarrArtwork: View {
         .clipped()
         .task(id: "\(work.id)-\(kind.rawValue)") {
             await loader.load(work: work, kind: kind, apiClient: apiClient)
+        }
+    }
+}
+
+/// Theme-tuned artwork used only by the iPad detail stage. The source image
+/// still comes from ArtworkLoader, so URL/API fallback and caching stay shared.
+struct PlayarrTabletDetailArtwork: View {
+    let work: Work
+    let apiClient: PlayarrAPIClient
+    let dark: Bool
+
+    @State private var loader = ArtworkLoader()
+    private static let filteredCache = NSCache<NSString, UIImage>()
+    private static let context = CIContext(options: [.cacheIntermediates: true])
+
+    private var parameters: (contrast: CGFloat, brightness: CGFloat, opacity: Double) {
+        dark ? (0.82, 0.6, 0.72) : (0.88, 1.1, 0.24)
+    }
+
+    private var filteredImage: UIImage? {
+        guard let image = loader.image else { return nil }
+        let key = "tablet-detail:\(work.id.uuidString):\(dark ? "dark" : "light")" as NSString
+        if let cached = Self.filteredCache.object(forKey: key) { return cached }
+        guard let input = CIImage(image: image) else { return image }
+
+        // CSS grayscale(1) -> contrast(c) -> brightness(b), where CSS
+        // brightness multiplies RGB. Fold those operations into one matrix.
+        let (contrast, brightness, _) = parameters
+        let scale = contrast * brightness
+        let bias = 0.5 * (1 - contrast) * brightness
+        let filter = CIFilter.colorMatrix()
+        filter.inputImage = input
+        filter.rVector = CIVector(x: 0.2126 * scale, y: 0.2126 * scale, z: 0.2126 * scale, w: 0)
+        filter.gVector = CIVector(x: 0.7152 * scale, y: 0.7152 * scale, z: 0.7152 * scale, w: 0)
+        filter.bVector = CIVector(x: 0.0722 * scale, y: 0.0722 * scale, z: 0.0722 * scale, w: 0)
+        filter.aVector = CIVector(x: 0, y: 0, z: 0, w: 1)
+        filter.biasVector = CIVector(x: bias, y: bias, z: bias, w: 0)
+        guard let output = filter.outputImage,
+              let cgImage = Self.context.createCGImage(output, from: output.extent) else { return image }
+        let result = UIImage(cgImage: cgImage, scale: image.scale, orientation: .up)
+        Self.filteredCache.setObject(result, forKey: key)
+        return result
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            Group {
+                if let image = filteredImage {
+                    Image(uiImage: image).resizable().scaledToFill()
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
+            .scaleEffect(1.04)
+            .mask(LinearGradient(
+                stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.72), .init(color: .clear, location: 1)],
+                startPoint: .leading,
+                endPoint: .trailing
+            ))
+            .opacity(parameters.opacity)
+        }
+        .task(id: "\(work.id)-tablet-detail-backdrop") {
+            await loader.load(work: work, kind: .backdrop, apiClient: apiClient)
         }
     }
 }
