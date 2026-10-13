@@ -245,6 +245,7 @@ struct WorkDetailView: View {
                     }
                 }
             }
+            .coordinateSpace(name: "tabletDetailLayoutDiagnostics")
         }
     }
 
@@ -454,6 +455,9 @@ struct WorkDetailView: View {
                 .font(DesignFont.font(8.75 * tabletScale, 820))
                 .tracking(0.08 * 8.75 * tabletScale)
                 .foregroundStyle(PlayarrStyle.brandInk)
+                .overlay {
+                    TabletDetailFrameDiagnostic(element: "kicker", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
+                }
                 .padding(.bottom, 18 * tabletScale)
             Text(detail.work.title)
                 .font(DesignFont.font(titleFont, 560))
@@ -486,6 +490,9 @@ struct WorkDetailView: View {
                 .tracking(-0.035 * 15.026 * tabletScale)
                 .foregroundStyle(PlayarrStyle.inkSoft)
                 .lineLimit(1)
+                .overlay {
+                    TabletDetailFrameDiagnostic(element: "subtitle", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
+                }
                 .padding(.top, 10 * tabletScale)
             HStack(alignment: .firstTextBaseline, spacing: 13.6 * tabletScale) {
                 Text(selected.season.season.title ?? "Season \(seasonNumber)")
@@ -504,6 +511,9 @@ struct WorkDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .font(DesignFont.font(7.68 * tabletScale, 400))
             .foregroundStyle(PlayarrStyle.muted)
+            .overlay {
+                TabletDetailFrameDiagnostic(element: "metadata", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
+            }
             .padding(.top, 25.6 * tabletVerticalScale)
             if let synopsis, !synopsis.isEmpty {
                 let synopsisFontSize = 9.28 * tabletScale
@@ -513,6 +523,9 @@ struct WorkDetailView: View {
                     .lineSpacing(3.5 * tabletScale)
                     .lineLimit(5)
                     .frame(maxWidth: Self.nunitoChWidth(42, pointSize: synopsisFontSize) ?? .infinity, alignment: .leading)
+                    .overlay {
+                        TabletDetailFrameDiagnostic(element: "synopsis", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
+                    }
                     .padding(.top, 20.48 * tabletVerticalScale)
             }
             if let resumeEpisode, let mediaFileID = resumeEpisode.episode.mediaFileID {
@@ -582,6 +595,9 @@ struct WorkDetailView: View {
                     .fixedSize()
                 }
                 .fixedSize(horizontal: true, vertical: false)
+                .overlay {
+                    TabletDetailFrameDiagnostic(element: "actions", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
+                }
                 .padding(.top, 12 * tabletVerticalScale)
             }
         }
@@ -1288,13 +1304,13 @@ private struct TabletTitleLayoutDiagnostic: View {
     var body: some View {
         GeometryReader { proxy in
             Color.clear
-                .onAppear { record(proxy.size) }
-                .onChange(of: proxy.size) { _, size in record(size) }
-                .onChange(of: isSettled) { _, _ in record(proxy.size) }
+                .onAppear { record(proxy.size, frame: proxy.frame(in: .named("tabletDetailLayoutDiagnostics"))) }
+                .onChange(of: proxy.size) { _, size in record(size, frame: proxy.frame(in: .named("tabletDetailLayoutDiagnostics"))) }
+                .onChange(of: isSettled) { _, _ in record(proxy.size, frame: proxy.frame(in: .named("tabletDetailLayoutDiagnostics"))) }
         }
     }
 
-    private func record(_ size: CGSize) {
+    private func record(_ size: CGSize, frame: CGRect) {
         #if DEBUG
         guard ProcessInfo.processInfo.environment["PLAYARR_LAYOUT_DIAGNOSTICS"] == "1",
               isSettled, size.width > 0, size.height > 0 else { return }
@@ -1306,10 +1322,39 @@ private struct TabletTitleLayoutDiagnostic: View {
             fixedAxes: DesignFont.nunitoAxes
         ) ?? UIFont.systemFont(ofSize: fontSize)
         let estimatedLineCount = max(1, Int((size.height / max(uiFont.lineHeight, 1)).rounded()))
-        let signature = String(format: "%@|%.2f|%.2f|%.2f|%.2f|%.2f", stage, size.width, size.height, fontSize, uiFont.lineHeight, appliedCorrection)
+        let signature = String(format: "%@|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f", stage, frame.minX, frame.minY, size.width, size.height, fontSize, uiFont.lineHeight, appliedCorrection)
         guard signature != lastMeasurement else { return }
         lastMeasurement = signature
-        Self.logger.info("PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC stage=\(stage, privacy: .public) width=\(Double(size.width), format: .fixed(precision: 2), privacy: .public) height=\(Double(size.height), format: .fixed(precision: 2), privacy: .public) fontSize=\(Double(fontSize), format: .fixed(precision: 2), privacy: .public) ascender=\(Double(uiFont.ascender), format: .fixed(precision: 2), privacy: .public) descender=\(Double(uiFont.descender), format: .fixed(precision: 2), privacy: .public) leading=\(Double(uiFont.leading), format: .fixed(precision: 2), privacy: .public) lineHeight=\(Double(uiFont.lineHeight), format: .fixed(precision: 2), privacy: .public) webTargetLineHeight=\(Double(fontSize * 0.9), format: .fixed(precision: 2), privacy: .public) appliedCorrection=\(Double(appliedCorrection), format: .fixed(precision: 2), privacy: .public) estimatedLineCount=\(estimatedLineCount, privacy: .public) theme=\(colorScheme == .dark ? "dark" : "light", privacy: .public)")
+        Self.logger.info("PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC element=title stage=\(stage, privacy: .public) x=\(Double(frame.minX), format: .fixed(precision: 2), privacy: .public) y=\(Double(frame.minY), format: .fixed(precision: 2), privacy: .public) width=\(Double(size.width), format: .fixed(precision: 2), privacy: .public) height=\(Double(size.height), format: .fixed(precision: 2), privacy: .public) fontSize=\(Double(fontSize), format: .fixed(precision: 2), privacy: .public) ascender=\(Double(uiFont.ascender), format: .fixed(precision: 2), privacy: .public) descender=\(Double(uiFont.descender), format: .fixed(precision: 2), privacy: .public) leading=\(Double(uiFont.leading), format: .fixed(precision: 2), privacy: .public) lineHeight=\(Double(uiFont.lineHeight), format: .fixed(precision: 2), privacy: .public) webTargetLineHeight=\(Double(fontSize * 0.9), format: .fixed(precision: 2), privacy: .public) appliedCorrection=\(Double(appliedCorrection), format: .fixed(precision: 2), privacy: .public) estimatedLineCount=\(estimatedLineCount, privacy: .public) theme=\(colorScheme == .dark ? "dark" : "light", privacy: .public)")
+        #endif
+    }
+}
+
+private struct TabletDetailFrameDiagnostic: View {
+    private static let logger = Logger(subsystem: "PlayarrApp", category: "TitleLayoutDiagnostic")
+
+    let element: String
+    let isSettled: Bool
+    let colorScheme: ColorScheme
+    @State private var lastMeasurement: String?
+
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear
+                .onAppear { record(proxy.frame(in: .named("tabletDetailLayoutDiagnostics"))) }
+                .onChange(of: proxy.size) { _, _ in record(proxy.frame(in: .named("tabletDetailLayoutDiagnostics"))) }
+                .onChange(of: isSettled) { _, _ in record(proxy.frame(in: .named("tabletDetailLayoutDiagnostics"))) }
+        }
+    }
+
+    private func record(_ frame: CGRect) {
+        #if DEBUG
+        guard ProcessInfo.processInfo.environment["PLAYARR_LAYOUT_DIAGNOSTICS"] == "1",
+              isSettled, frame.width > 0, frame.height > 0 else { return }
+        let signature = String(format: "%@|%.2f|%.2f|%.2f|%.2f", element, frame.minX, frame.minY, frame.width, frame.height)
+        guard signature != lastMeasurement else { return }
+        lastMeasurement = signature
+        Self.logger.info("PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC element=\(element, privacy: .public) x=\(Double(frame.minX), format: .fixed(precision: 2), privacy: .public) y=\(Double(frame.minY), format: .fixed(precision: 2), privacy: .public) width=\(Double(frame.width), format: .fixed(precision: 2), privacy: .public) height=\(Double(frame.height), format: .fixed(precision: 2), privacy: .public) theme=\(colorScheme == .dark ? "dark" : "light", privacy: .public)")
         #endif
     }
 }

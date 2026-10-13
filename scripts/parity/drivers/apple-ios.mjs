@@ -129,11 +129,23 @@ export async function createDriver() {
           diagnostics = run("xcrun", ["simctl", "spawn", udid, "log", "show", "--info", "--last", "5m", "--style", "compact",
             "--predicate", 'eventMessage CONTAINS "PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC"']);
         } catch { /* absence of the optional diagnostic must not fail the screenshot */ }
-        const markerLines = diagnostics.split("\n").filter((line) => line.includes("PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC") && line.includes(`theme=${theme}`)).slice(-10);
+        const requiredMarkers = [
+          "element=kicker",
+          "element=title stage=natural",
+          "element=title stage=adjusted",
+          "element=subtitle",
+          "element=metadata",
+          "element=synopsis",
+          "element=actions",
+        ];
+        const diagnosticLines = diagnostics.split("\n");
+        const markerLines = requiredMarkers.map((marker) => [...diagnosticLines].reverse().find((line) =>
+          line.includes("PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC") && line.includes(`theme=${theme}`) && line.includes(marker)
+        )).filter(Boolean);
         const sidecar = markerLines.join("\n").slice(-4000);
         writeFileSync(`${file}.layout-diagnostic.log`, sidecar);
-        if (!sidecar || !sidecar.includes("stage=natural") || !sidecar.includes("stage=adjusted")) {
-          throw new Error("title layout diagnostics missing natural or adjusted stage");
+        if (!sidecar || requiredMarkers.some((marker) => !sidecar.includes(marker))) {
+          throw new Error("tablet detail geometry diagnostics are incomplete for the current theme");
         }
       }
     },
