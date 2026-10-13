@@ -32,6 +32,35 @@ final class WorkDetailViewModelTests: XCTestCase {
         XCTAssertNil(WorkDetailView.tabletYearRangeLabel(releaseDate: nil, endDate: "2019-01-01"))
     }
 
+    func testTabletSynopsisLineBoxTracksWebLeadingAcrossLineCountsAndAbsentSynopsis() {
+        for fontSize: CGFloat in [9.28, 18.56] {
+            let nativeLineHeight = fontSize * 1.364
+            let metrics = WorkDetailView.tabletSynopsisLayoutMetrics(
+                fontSize: fontSize,
+                nativeLineHeight: nativeLineHeight,
+                hasSynopsis: true
+            )
+            let webLineHeight = fontSize * 1.58
+
+            for lineCount in 1...5 {
+                let nativeTextAndFinalLineBox = CGFloat(lineCount) * nativeLineHeight
+                    + CGFloat(lineCount - 1) * metrics.lineSpacing
+                    + metrics.trailingPadding
+                XCTAssertEqual(nativeTextAndFinalLineBox, CGFloat(lineCount) * webLineHeight, accuracy: 0.001)
+            }
+            XCTAssertEqual(metrics.actionsTopMargin, 12, accuracy: 0.001)
+        }
+
+        let absentSynopsis = WorkDetailView.tabletSynopsisLayoutMetrics(
+            fontSize: 9.28,
+            nativeLineHeight: 12.66,
+            hasSynopsis: false
+        )
+        XCTAssertEqual(absentSynopsis.lineSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(absentSynopsis.trailingPadding, 0, accuracy: 0.001)
+        XCTAssertEqual(absentSynopsis.actionsTopMargin, 12, accuracy: 0.001)
+    }
+
     func testTabletEpisodeAirDateUsesCurrentLocaleAndUTC() throws {
         let input = "2026-01-02"
         let parser = ISO8601DateFormatter()

@@ -450,6 +450,25 @@ struct WorkDetailView: View {
             fixedAxes: DesignFont.nunitoAxes
         )?.lineHeight ?? UIFont(name: "AvenirNext-Medium", size: titleFont)?.lineHeight ?? titleFont
         let titleLineHeightCorrection = titleWebLineHeight - titleNativeLineHeight
+        // Calibrated from run 38358999998 native frames against the guarded 1366×1024 web rectangles.
+        // Each gap targets the web element's y-coordinate after accounting for the preceding native box height.
+        let kickerToTitleGap = 26.484 * tabletScale // web title.y - web kicker.y - native kicker.height
+        let titleToSubtitleGap = 17.982 * tabletScale // web subtitle.y - native title bottom after the measured kicker/title gap
+        let subtitleToMetadataGap = 22.375 * tabletVerticalScale // web metadata.y - web subtitle.y - native subtitle.height
+        let metadataToSynopsisGap = 21.5 * tabletVerticalScale // web synopsis.y - web metadata.y - native metadata.height
+        let synopsisFontSize = 9.28 * tabletScale
+        let synopsisUIFont = DesignFont.uiFont(
+            family: "Nunito Sans",
+            postScriptName: DesignFont.nunitoPostScriptName,
+            size: synopsisFontSize,
+            weight: 400,
+            fixedAxes: DesignFont.nunitoAxes
+        )
+        let synopsisLayout = Self.tabletSynopsisLayoutMetrics(
+            fontSize: synopsisFontSize,
+            nativeLineHeight: synopsisUIFont?.lineHeight ?? synopsisFontSize,
+            hasSynopsis: synopsis?.isEmpty == false
+        )
         return VStack(alignment: .leading, spacing: 0) {
             Text("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))")
                 .font(DesignFont.font(8.75 * tabletScale, 820))
@@ -458,7 +477,7 @@ struct WorkDetailView: View {
                 .overlay {
                     TabletDetailFrameDiagnostic(element: "kicker", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
                 }
-                .padding(.bottom, 18 * tabletScale)
+                .padding(.bottom, kickerToTitleGap)
             Text(detail.work.title)
                 .font(DesignFont.font(titleFont, 560))
                 .tracking(-0.072 * titleFont)
@@ -493,7 +512,7 @@ struct WorkDetailView: View {
                 .overlay {
                     TabletDetailFrameDiagnostic(element: "subtitle", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
                 }
-                .padding(.top, 10 * tabletScale)
+                .padding(.top, titleToSubtitleGap)
             HStack(alignment: .firstTextBaseline, spacing: 13.6 * tabletScale) {
                 Text(selected.season.season.title ?? "Season \(seasonNumber)")
                     .font(DesignFont.font(7.68 * tabletScale, 680))
@@ -514,19 +533,19 @@ struct WorkDetailView: View {
             .overlay {
                 TabletDetailFrameDiagnostic(element: "metadata", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
             }
-            .padding(.top, 25.6 * tabletVerticalScale)
+            .padding(.top, subtitleToMetadataGap)
             if let synopsis, !synopsis.isEmpty {
-                let synopsisFontSize = 9.28 * tabletScale
                 Text(synopsis)
                     .font(DesignFont.font(synopsisFontSize, 400))
                     .foregroundStyle(PlayarrStyle.muted)
-                    .lineSpacing(3.5 * tabletScale)
+                    .lineSpacing(synopsisLayout.lineSpacing)
                     .lineLimit(5)
                     .frame(maxWidth: Self.nunitoChWidth(42, pointSize: synopsisFontSize) ?? .infinity, alignment: .leading)
                     .overlay {
                         TabletDetailFrameDiagnostic(element: "synopsis", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
                     }
-                    .padding(.top, 20.48 * tabletVerticalScale)
+                    .padding(.top, metadataToSynopsisGap)
+                    .padding(.bottom, synopsisLayout.trailingPadding)
             }
             if let resumeEpisode, let mediaFileID = resumeEpisode.episode.mediaFileID {
                 // Guarded web geometry measured a 116.109 x 57.359px primary action, 104px secondary minimum and 12.294px gap.
@@ -598,7 +617,7 @@ struct WorkDetailView: View {
                 .overlay {
                     TabletDetailFrameDiagnostic(element: "actions", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
                 }
-                .padding(.top, 12 * tabletVerticalScale)
+                .padding(.top, synopsisLayout.actionsTopMargin * tabletVerticalScale)
             }
         }
     }
@@ -644,6 +663,17 @@ struct WorkDetailView: View {
         guard let releaseDate, let start = Int(releaseDate.prefix(4)) else { return nil }
         guard let endDate, let end = Int(endDate.prefix(4)), end > start else { return String(start) }
         return "\(start)–\(end)"
+    }
+
+    static func tabletSynopsisLayoutMetrics(
+        fontSize: CGFloat,
+        nativeLineHeight: CGFloat,
+        hasSynopsis: Bool
+    ) -> (lineSpacing: CGFloat, trailingPadding: CGFloat, actionsTopMargin: CGFloat) {
+        guard hasSynopsis else { return (0, 0, 12) }
+        // SwiftUI lineSpacing separates baselines; match the CSS line box and supply its final-line remainder.
+        let lineSpacing = fontSize * 1.58 - nativeLineHeight
+        return (lineSpacing, lineSpacing, 12)
     }
 
     private static func nunitoChWidth(_ characterCount: Int, pointSize: CGFloat) -> CGFloat? {
