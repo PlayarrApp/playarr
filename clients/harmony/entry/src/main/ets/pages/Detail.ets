@@ -56,11 +56,11 @@
  * `media_file_id` -- exactly the "on-deck episode art" use
  * `data/ArtworkRepository.ets`'s own header comment documents that endpoint
  * for. Every fetch happens AFTER the rail/row skeletons are already on
- * screen (never blocking first paint), and each success rebuilds the
- * `@State` array it belongs to with a fresh reference (ArkTS `@State`
- * reactivity needs a new array/object identity, never an in-place mutation
- * -- the same discipline `data/ArtworkRepository.ets`'s own LRU cache uses
- * for its `removeCacheKey` rebuild).
+ * screen (never blocking first paint). Resolved PixelMaps live in a
+ * Detail-owned `@Observed` store keyed by stable row ID. Each store update
+ * increments its `@Track` revision; row-card children receive the store
+ * directly through `@ObjectLink` and read their artwork by row ID, without
+ * changing the rail or item keys.
  *
  * ## Layout
  *
@@ -217,6 +217,50 @@ function pct100(value: number): number {
 
 // -- Row/rail view models ----------------------------------------------------
 
+@Observed
+class DetailArtworkStore {
+  @Track revision: number = 0;
+  @Track private pixelMaps: Map<string, image.PixelMap> = new Map<string, image.PixelMap>();
+  private generation: number = 0;
+
+  beginGeneration(): number {
+    this.generation += 1;
+    this.pixelMaps.clear();
+    this.revision += 1;
+    return this.generation;
+  }
+
+  isCurrentGeneration(generation: number): boolean {
+    return generation === this.generation;
+  }
+
+  setArtwork(generation: number, rowId: string, pixelMap: image.PixelMap): void {
+    if (!this.isCurrentGeneration(generation)) {
+      return;
+    }
+    this.pixelMaps.set(rowId, pixelMap);
+    this.revision += 1;
+  }
+
+  setArtworkForRows(generation: number, rowIds: string[], pixelMap: image.PixelMap): void {
+    if (!this.isCurrentGeneration(generation)) {
+      return;
+    }
+    for (const rowId of rowIds) {
+      this.pixelMaps.set(rowId, pixelMap);
+    }
+    this.revision += 1;
+  }
+
+  getArtwork(rowId: string): image.PixelMap | undefined {
+    const revision = this.revision;
+    if (revision === 0) {
+      return undefined;
+    }
+    return this.pixelMaps.get(rowId);
+  }
+}
+
 /**
  * One playable-or-navigable row inside a rail: an episode, a track, a book,
  * or a similar-title. Deliberately ONE shape for all four -- every one of
@@ -229,11 +273,43 @@ interface DetailRow {
   id: string;
   title: string;
   subtitle: string;
-  artwork: image.PixelMap | undefined;
   mediaFileId: string | null;
   similarWorkId: string | null;
   /** Where playback starts when the row is a chapter; absent plays from the beginning. */
   startMs?: number;
+}
+
+@Component
+struct DetailRowArtworkCard {
+  @ObjectLink artworkStore: DetailArtworkStore;
+  @Prop rowId: string = '';
+  @Prop variant: 'home' | 'titleEpisode' = 'titleEpisode';
+  @Prop title: string = '';
+  @Prop subtitle: string = '';
+  @Prop cardWidth: number = 0;
+  @Prop cardHeight: number = 0;
+  @Prop artworkRadius: number = -1;
+  @Prop titleFontSize: number = 11.904;
+  @Prop subtitleFontSize: number = 8.832;
+  @Prop activeRailFactor: number = 1;
+
+  onSelect: () => void = () => {};
+
+  build() {
+    PosterCard({
+      variant: this.variant,
+      title: this.title,
+      subtitle: this.subtitle,
+      artwork: this.artworkStore.getArtwork(this.rowId),
+      cardWidth: this.cardWidth,
+      cardHeight: this.cardHeight,
+      artworkRadius: this.artworkRadius,
+      titleFontSize: this.titleFontSize,
+      subtitleFontSize: this.subtitleFontSize,
+      activeRailFactor: this.activeRailFactor,
+      onSelect: this.onSelect,
+    })
+  }
 }
 
 /** One season/album/books/similar rail: a heading plus its rows. */
@@ -329,7 +405,6 @@ function buildEpisodeRow(detail: EpisodeDetail): DetailRow {
     id: episode.id,
     title: title,
     subtitle: 'Episode ' + String(episode.episode_number),
-    artwork: undefined,
     mediaFileId: episodeMediaFileId(detail),
     similarWorkId: null,
   };
@@ -377,7 +452,6 @@ function buildTrackRow(detail: TrackDetail): DetailRow {
     id: track.id,
     title: track.title,
     subtitle: 'Track ' + String(track.track_number),
-    artwork: undefined,
     mediaFileId: trackMediaFileId(detail),
     similarWorkId: null,
   };
@@ -425,7 +499,6 @@ function buildBookRow(detail: BookDetail): DetailRow {
     id: book.id,
     title: book.title,
     subtitle: subtitle,
-    artwork: undefined,
     mediaFileId: bookMediaFileId(detail),
     similarWorkId: null,
   };
@@ -503,7 +576,6 @@ function buildSimilarRail(works: Work[]): DetailRail {
       id: work.id,
       title: work.title,
       subtitle: kindLabel(work.kind),
-      artwork: undefined,
       mediaFileId: null,
       similarWorkId: work.id,
     };
@@ -511,70 +583,6 @@ function buildSimilarRail(works: Work[]): DetailRail {
   }
   const rail: DetailRail = { id: 'similar', heading: 'Similar Titles', items: items };
   return rail;
-}
-
-/** Rebuilds `rail` with `rowId`'s row's `artwork` replaced -- every other
- * row is returned unchanged. Used both for a flat similar-titles rail and,
- * via `applyRowArtworkAcrossRails` below, for a specific row somewhere
- * inside a list of season/book rails. Never mutates `rail`/its rows in
- * place -- ArkTS `@State` reactivity needs a fresh reference, matching
- * `data/ArtworkRepository.ets`'s own rebuild-rather-than-mutate cache
- * eviction discipline. */
-function applyRowArtworkInRail(rail: DetailRail, rowId: string, artwork: image.PixelMap): DetailRail {
-  const items: DetailRow[] = [];
-  for (const item of rail.items) {
-    if (item.id === rowId) {
-      const next: DetailRow = {
-        id: item.id,
-        title: item.title,
-        subtitle: item.subtitle,
-        artwork: artwork,
-        mediaFileId: item.mediaFileId,
-        similarWorkId: item.similarWorkId,
-        startMs: item.startMs,
-      };
-      items.push(next);
-    } else {
-      items.push(item);
-    }
-  }
-  const next: DetailRail = { id: rail.id, heading: rail.heading, items: items };
-  return next;
-}
-
-function applyRowArtworkAcrossRails(rails: DetailRail[], rowId: string, artwork: image.PixelMap): DetailRail[] {
-  const updated: DetailRail[] = [];
-  for (const rail of rails) {
-    updated.push(applyRowArtworkInRail(rail, rowId, artwork));
-  }
-  return updated;
-}
-
-/** Applies ONE artwork to EVERY row inside the rail identified by `railId`
- * -- used for an album, whose cover is fetched once and shown on every
- * track row (brief 4.9: there is no per-track artwork endpoint). */
-function applyAlbumArtwork(rails: DetailRail[], railId: string, artwork: image.PixelMap): DetailRail[] {
-  const updated: DetailRail[] = [];
-  for (const rail of rails) {
-    if (rail.id !== railId) {
-      updated.push(rail);
-      continue;
-    }
-    const items: DetailRow[] = [];
-    for (const item of rail.items) {
-      const next: DetailRow = {
-        id: item.id,
-        title: item.title,
-        subtitle: item.subtitle,
-        artwork: artwork,
-        mediaFileId: item.mediaFileId,
-        similarWorkId: item.similarWorkId,
-      };
-      items.push(next);
-    }
-    updated.push({ id: rail.id, heading: rail.heading, items: items });
-  }
-  return updated;
 }
 
 function chapterTimeLabel(ms: number): string {
@@ -598,7 +606,6 @@ function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
     id: 'chapter-' + chapter.index.toString(),
     title: title,
     subtitle: chapterTimeLabel(chapter.start_ms),
-    artwork: undefined,
     mediaFileId: mediaFileId,
     similarWorkId: null,
     startMs: chapter.start_ms,
@@ -634,6 +641,7 @@ struct Detail {
   @State private errorMessage: string = '';
   @State private heroArtwork: image.PixelMap | undefined = undefined;
   @State private rails: DetailRail[] = [];
+  @State private artworkStore: DetailArtworkStore = new DetailArtworkStore();
   @State private similarRail: DetailRail | null = null;
   @State private primaryMediaFileId: string | null = null;
   @State private chaptersRail: DetailRail | null = null;
@@ -660,6 +668,7 @@ struct Detail {
     this.loadFailed = false;
     this.errorMessage = '';
     this.heroArtwork = undefined;
+    const artworkGeneration = this.artworkStore.beginGeneration();
     this.rails = [];
     this.similarRail = null;
     this.primaryMediaFileId = null;
@@ -674,6 +683,9 @@ struct Detail {
 
     const workId = this.workId;
     const detailResult = await getWorkDetail(workId);
+    if (!this.artworkStore.isCurrentGeneration(artworkGeneration)) {
+      return;
+    }
     if (detailResult.kind !== 'ok') {
       this.loadFailed = true;
       if (detailResult.kind === 'network_failure') {
@@ -697,22 +709,22 @@ struct Detail {
       this.loadResumePlan(detail.work.id);
     }
 
-    this.loadHeroArtwork(detail.work.id);
-    this.hydrateRailArtwork();
-    this.loadSimilar(detail.work);
+    this.loadHeroArtwork(detail.work.id, artworkGeneration);
+    this.hydrateRailArtwork(artworkGeneration);
+    this.loadSimilar(detail.work, artworkGeneration);
     this.loadCredits(detail.work.id);
     this.loadWatchlistState(detail.work);
     if (this.primaryMediaFileId !== null && detail.work.kind === 'movie') {
       this.loadResume(this.primaryMediaFileId);
     }
     if (this.primaryMediaFileId !== null && detail.work.kind === 'movie') {
-      this.loadChapters(this.primaryMediaFileId);
+      this.loadChapters(this.primaryMediaFileId, artworkGeneration);
     }
   }
 
-  private async loadHeroArtwork(workId: string): Promise<void> {
+  private async loadHeroArtwork(workId: string, generation: number): Promise<void> {
     const result = await fetchWorkArtworkByPriority(workId, HERO_ARTWORK_PRIORITY);
-    if (result.kind === 'ok') {
+    if (this.artworkStore.isCurrentGeneration(generation) && result.kind === 'ok') {
       this.heroArtwork = result.value;
     }
   }
@@ -721,7 +733,7 @@ struct Detail {
    * to every track row at once; every other rail (season/books) hydrates
    * its rows individually via `fetchMediaThumbnail`, skipping any row whose
    * `media_file_id` has not resolved yet. */
-  private async hydrateRailArtwork(): Promise<void> {
+  private async hydrateRailArtwork(generation: number): Promise<void> {
     const detail = this.detail;
     const artistWorkId = detail !== null ? detail.work.id : '';
     const rails = this.rails;
@@ -730,8 +742,18 @@ struct Detail {
       if (rail.id.startsWith('album-')) {
         const albumId = rail.id.slice('album-'.length);
         const albumArt = await fetchAlbumArtworkByPriority(artistWorkId, albumId, COVER_ARTWORK_PRIORITY);
+        if (!this.artworkStore.isCurrentGeneration(generation)) {
+          return;
+        }
         if (albumArt.kind === 'ok') {
-          this.rails = applyAlbumArtwork(this.rails, rail.id, albumArt.value);
+          const currentRail = this.rails.find((item: DetailRail): boolean => item.id === rail.id);
+          if (currentRail !== undefined) {
+            const rowIds: string[] = [];
+            for (const item of currentRail.items) {
+              rowIds.push(item.id);
+            }
+            this.artworkStore.setArtworkForRows(generation, rowIds, albumArt.value);
+          }
         }
         continue;
       }
@@ -741,8 +763,11 @@ struct Detail {
           continue;
         }
         const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
+        if (!this.artworkStore.isCurrentGeneration(generation)) {
+          return;
+        }
         if (thumb.kind === 'ok') {
-          this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
+          this.artworkStore.setArtwork(generation, item.id, thumb.value);
         }
       }
     }
@@ -797,8 +822,11 @@ struct Detail {
   }
 
   /** The movie's embedded chapters (web's Chapters rail): one card per chapter, thumbnail taken at its start. */
-  private async loadChapters(mediaFileId: string): Promise<void> {
+  private async loadChapters(mediaFileId: string, generation: number): Promise<void> {
     const result = await getMediaChapters(mediaFileId);
+    if (!this.artworkStore.isCurrentGeneration(generation)) {
+      return;
+    }
     if (result.kind !== 'ok' || result.value.length === 0) {
       return;
     }
@@ -809,9 +837,12 @@ struct Detail {
     this.chaptersRail = { id: 'chapters', heading: 'Chapters', items: rows };
     for (const chapter of result.value) {
       const thumb = await fetchMediaThumbnail(mediaFileId, chapter.start_ms);
+      if (!this.artworkStore.isCurrentGeneration(generation)) {
+        return;
+      }
       const current = this.chaptersRail;
       if (thumb.kind === 'ok' && current !== null) {
-        this.chaptersRail = applyRowArtworkInRail(current, 'chapter-' + chapter.index.toString(), thumb.value);
+        this.artworkStore.setArtwork(generation, 'chapter-' + chapter.index.toString(), thumb.value);
       }
     }
   }
@@ -826,16 +857,19 @@ struct Detail {
   /** Brief 4.8: a 404 here is normal and already handled inside
    * `getSimilarWorks` itself (the genre-query fallback) -- this method only
    * ever sees the final, already-reconciled result. */
-  private async loadSimilar(work: Work): Promise<void> {
+  private async loadSimilar(work: Work, generation: number): Promise<void> {
     const result = await getSimilarWorks(work);
+    if (!this.artworkStore.isCurrentGeneration(generation)) {
+      return;
+    }
     if (result.kind !== 'ok' || result.value.length === 0) {
       return;
     }
     this.similarRail = buildSimilarRail(result.value);
-    this.hydrateSimilarArtwork();
+    this.hydrateSimilarArtwork(generation);
   }
 
-  private async hydrateSimilarArtwork(): Promise<void> {
+  private async hydrateSimilarArtwork(generation: number): Promise<void> {
     const rail = this.similarRail;
     if (rail === null) {
       return;
@@ -845,10 +879,13 @@ struct Detail {
         continue;
       }
       const result = await fetchWorkArtworkByPriority(item.similarWorkId, COVER_ARTWORK_PRIORITY);
+      if (!this.artworkStore.isCurrentGeneration(generation)) {
+        return;
+      }
       if (result.kind === 'ok') {
         const current = this.similarRail;
         if (current !== null) {
-          this.similarRail = applyRowArtworkInRail(current, item.id, result.value);
+          this.artworkStore.setArtwork(generation, item.id, result.value);
         }
       }
     }
@@ -928,32 +965,30 @@ struct Detail {
   @Builder
   private rowItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     if (isTvMetrics()) {
-      PosterCard({
+      DetailRowArtworkCard({
+        artworkStore: this.artworkStore,
+        rowId: (item as DetailRow).id,
         variant: 'titleEpisode',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
         cardWidth: tv(TvGeometry.railPanelCardWidth),
         cardHeight: Math.round((tv(TvGeometry.railPanelCardWidth) * 9) / 16),
         activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
-        },
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     } else {
-      PosterCard({
+      DetailRowArtworkCard({
+        artworkStore: this.artworkStore,
+        rowId: (item as DetailRow).id,
         variant: 'titleEpisode',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
         cardWidth: TouchGeometry.homeRailCardWidthLandscape,
         cardHeight: Math.round((TouchGeometry.homeRailCardWidthLandscape * 9) / 16),
         titleFontSize: 12,
         subtitleFontSize: 10,
         activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
-        },
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     }
   }
@@ -964,34 +999,32 @@ struct Detail {
   @Builder
   private similarItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     if (isTvMetrics()) {
-      PosterCard({
+      DetailRowArtworkCard({
+        artworkStore: this.artworkStore,
+        rowId: (item as DetailRow).id,
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
         cardWidth: tv(TvGeometry.homeRailCardWidthCover),
         cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthCover) * 3) / 2),
         artworkRadius: Radii.homeCardArtworkTv,
         activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
-        },
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     } else {
-      PosterCard({
+      DetailRowArtworkCard({
+        artworkStore: this.artworkStore,
+        rowId: (item as DetailRow).id,
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
         cardWidth: TouchGeometry.homeRailCardWidthCover,
         cardHeight: Math.round((TouchGeometry.homeRailCardWidthCover * 3) / 2),
         artworkRadius: Radii.homeCardArtworkTouch,
         titleFontSize: 12,
         subtitleFontSize: 10,
         activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
-        },
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     }
   }
@@ -1298,17 +1331,16 @@ struct Detail {
 
   @Builder
   private chapterItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
-    PosterCard({
+    DetailRowArtworkCard({
+      artworkStore: this.artworkStore,
+      rowId: (item as DetailRow).id,
       variant: 'titleEpisode',
       title: (item as DetailRow).title,
       subtitle: (item as DetailRow).subtitle,
-      artwork: (item as DetailRow).artwork,
       cardWidth: tv(CHAPTER_CARD_WIDTH),
       cardHeight: tv(CHAPTER_CARD_HEIGHT),
       activeRailFactor: activeRailFactor,
-      onSelect: () => {
-        this.selectRow((item as DetailRow));
-      },
+      onSelect: () => { this.selectRow((item as DetailRow)); },
     })
   }
 
