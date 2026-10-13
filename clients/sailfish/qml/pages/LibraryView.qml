@@ -79,7 +79,7 @@ Item {
         anchors { top: heading.bottom; topMargin: -4 * Tokens.u; left: parent.left; leftMargin: 70 * Tokens.u }
         visible: root.total > 0
         text: (root.kind === "artist" ? qsTr("%1 artists") : qsTr("%1 titles")).arg(Number(root.total).toLocaleString(Qt.locale(), "f", 0)).toUpperCase()
-        color: Tokens.brandPinkSoft
+        color: Tokens.brandInk
         font.family: Tokens.family820
         font.letterSpacing: 1 * Tokens.u
         font.pixelSize: 10.2 * Tokens.u
