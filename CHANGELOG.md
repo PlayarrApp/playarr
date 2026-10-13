@@ -359,6 +359,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Linux phone users can switch between profiles already linked on the device and unlock a saved PIN-protected profile.
 - Show the selected playlist type and name in the native Tizen Search preview, with display-only line breaks for long names.
 - Open playlist Search results in the native Tizen playlist directory and restore Search focus on Back.
 - Tizen's Playlists directory now previews the first three unique poster or backdrop covers from each playlist and its descendants.
