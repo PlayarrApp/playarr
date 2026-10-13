@@ -90,7 +90,11 @@ struct TVHomeView: View {
     @Environment(\.cancelStageFocusRequest) private var cancelStageFocusRequest
     @State private var viewModel: TVHomeViewModel?
     /// Focus target is rail+work so the same title never lights up on two rails.
+    #if os(macOS)
+    @State private var focusedCard: HomeRailCardFocus?
+    #else
     @FocusState private var focusedCard: HomeRailCardFocus?
+    #endif
     /// Freeze the default target on first Home appearance; late On Deck updates must not move focus.
     @State private var initialFocus = TVHomeInitialFocus()
     /// Leading work ids per rail — Left on these hands focus to the dock.
@@ -185,7 +189,9 @@ struct TVHomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        #if !os(macOS)
         .defaultFocus($focusedCard, initialFocus.wasCaptured ? initialFocus.target : firstFocus)
+        #endif
         .onPreferenceChange(HomeCardFramesPreferenceKey.self) { homeCardFrames = $0 }
         .onAppear { initialFocus.capture(firstFocus) }
         // The lead rail can change after the first paint (On deck arrives): keep focus on a card that still exists.
@@ -201,23 +207,19 @@ struct TVHomeView: View {
                     parityID: target.workID.uuidString,
                     rail: rail,
                     index: 0,
-                    completion: { claimed in
-                        #if os(macOS)
-                        if claimed { focusedCard = target }
-                        #endif
-                    }
+                    completion: { _ in }
                 )
                 requestStageFocus(request)
             }
         }
-        #if os(macOS)
+        #if DEBUG && os(macOS)
         .onChange(of: focusedCard) { previous, current in
             reportMacHomeFocusChange(from: previous, to: current, rails: rails)
         }
         #endif
     }
 
-    #if os(macOS)
+    #if DEBUG && os(macOS)
     private func reportMacHomeFocusChange(
         from previous: HomeRailCardFocus?,
         to current: HomeRailCardFocus?,
@@ -228,12 +230,7 @@ struct TVHomeView: View {
             guard let rail = Int(focus.rail.dropFirst()), rails.indices.contains(rail),
                   let index = rails[rail].works.firstIndex(where: { $0.id == focus.workID }) else { return }
             let work = rails[rail].works[index]
-            MacFocusEngine.shared.didFocus(
-                parityID: focus.workID.uuidString, rail: rail, index: index, focused: focused
-            )
-            #if DEBUG
             TVParityState.setFocus(work.title, focused, id: focus.workID.uuidString, rail: rail, index: index)
-            #endif
         }
         if let previous { report(previous, focused: false) }
         if let current { report(current, focused: true) }
@@ -275,11 +272,12 @@ struct TVHomeView: View {
                         }
                         .buttonStyle(TVFocusableCardButtonStyle())
                         .focusEffectDisabled()
-                        .focused($focusedCard, equals: focus)
                         #if os(macOS)
                         .environment(\.macFocusBindingBridge, MacFocusBindingBridge(
-                            focus: { focusedCard = focus },
-                            isFocused: { focusedCard == focus },
+                            focusChanged: { isFocused in
+                                if isFocused { focusedCard = focus }
+                                else if focusedCard == focus { focusedCard = nil }
+                            },
                             restore: {
                                 let engine = MacFocusEngine.shared
                                 engine.requestHomeCardRestore(
@@ -287,6 +285,8 @@ struct TVHomeView: View {
                                 )
                             }
                         ))
+                        #else
+                        .focused($focusedCard, equals: focus)
                         #endif
                         .background {
                             GeometryReader { proxy in
@@ -471,7 +471,9 @@ struct TVHomeView: View {
         .padding(.leading, leadingPad)
         .padding(.top, y1 - headingH)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        #if !os(macOS)
         .defaultFocus($focusedCard, defaultFocus)
+        #endif
         .onAppear {
             if focusedCard == nil {
                 focusedCard = defaultFocus
@@ -516,7 +518,9 @@ struct TVHomeView: View {
                             )
                         }
                         .buttonStyle(.card)
+                        #if !os(macOS)
                         .focused($focusedCard, equals: focus)
+                        #endif
                         .background {
                             GeometryReader { proxy in
                                 Color.clear.preference(

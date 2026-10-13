@@ -438,8 +438,7 @@ struct MacSecondary { let action: () -> Void }
 private struct MacSecondaryKey: EnvironmentKey { static let defaultValue: MacSecondary? = nil }
 private struct MacPreferredKey: EnvironmentKey { static let defaultValue = false }
 struct MacFocusBindingBridge {
-    let focus: () -> Void
-    let isFocused: () -> Bool
+    let focusChanged: (Bool) -> Void
     let restore: () -> Void
 }
 private struct MacFocusBindingBridgeKey: EnvironmentKey { static let defaultValue: MacFocusBindingBridge? = nil }
@@ -515,10 +514,16 @@ struct MacFocusTarget: ViewModifier {
         if let bridge {
             content
                 .focusable(isEnabled, interactions: .edit)
+                .focused($focused)
                 .focusEffectDisabled()
                 .onHover { inside in
                     MacFocusEngine.shared.didHover(id, inside)
-                    if inside, isEnabled { bridge.focus() }
+                    if inside, isEnabled { focused = true }
+                }
+                .onChange(of: focused) { _, now in
+                    if now, MacFocusEngine.shared.topLayer != layer { return }
+                    MacFocusEngine.shared.didFocus(id, now)
+                    if MacFocusEngine.shared.topLayer == layer { bridge.focusChanged(now) }
                 }
                 .background { geometry(bridge: bridge) }
                 .onDisappear { MacFocusEngine.shared.remove(id) }
@@ -561,8 +566,8 @@ struct MacFocusTarget: ViewModifier {
             return
         }
         let binding = $focused
-        let focusAction: () -> Void = { if let bridge { bridge.focus() } else { binding.wrappedValue = true } }
-        let focusQuery: () -> Bool = { if let bridge { bridge.isFocused() } else { binding.wrappedValue } }
+        let focusAction: () -> Void = { binding.wrappedValue = true }
+        let focusQuery: () -> Bool = { binding.wrappedValue }
         MacFocusEngine.shared.update(id, .init(frame: frame, layer: layer, focus: focusAction,
                                                parityID: parityTag?.id, parityRail: parityTag?.rail, parityIndex: parityTag?.index,
                                                homeRailFocus: bridge != nil,

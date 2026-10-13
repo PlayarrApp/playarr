@@ -108,9 +108,13 @@ final class MacFocusEngineTests: XCTestCase {
         let focusRailZero = HomeRailCardFocus(rail: "r0", workID: UUID())
         let focusRailOne = HomeRailCardFocus(rail: "r1", workID: focusRailZero.workID)
         var selected: HomeRailCardFocus? = focusRailOne
+        var childFocused = [focusRailZero: false, focusRailOne: true]
         let bridge = MacFocusBindingBridge(
-            focus: { selected = focusRailOne },
-            isFocused: { selected == focusRailOne },
+            focusChanged: { isFocused in
+                childFocused[focusRailOne] = isFocused
+                if isFocused { selected = focusRailOne }
+                else if selected == focusRailOne { selected = nil }
+            },
             restore: {
                 engine.requestHomeCardRestore(
                     parityID: focusRailOne.workID.uuidString, rail: 1, index: 0
@@ -118,16 +122,22 @@ final class MacFocusEngineTests: XCTestCase {
             }
         )
         let railZeroTarget = MacFocusEngine.Target(
-            frame: card(300, 200), layer: 0, focus: { selected = focusRailZero },
+            frame: card(300, 200), layer: 0, focus: {
+                childFocused[focusRailZero] = true
+                selected = focusRailZero
+            },
             parityID: focusRailZero.workID.uuidString, parityRail: 0, parityIndex: 0,
             homeRailFocus: true,
-            isFocused: { selected == focusRailZero }
+            isFocused: { childFocused[focusRailZero] == true }
         )
         let railOneTarget = MacFocusEngine.Target(
-            frame: card(550, 200), layer: 0, focus: bridge.focus,
+            frame: card(550, 200), layer: 0, focus: {
+                childFocused[focusRailOne] = true
+                bridge.focusChanged(true)
+            },
             parityID: focusRailOne.workID.uuidString, parityRail: 1, parityIndex: 0,
             homeRailFocus: true,
-            isFocused: bridge.isFocused
+            isFocused: { childFocused[focusRailOne] == true }
         )
         engine.update(railZeroID, railZeroTarget)
         engine.update(railOneID, railOneTarget)
@@ -158,6 +168,50 @@ final class MacFocusEngineTests: XCTestCase {
 
         engine.remove(railZeroID)
         engine.remove(railOneID)
+    }
+
+    @MainActor
+    func testCrossRailFocusSetsChildBindingAndHomeSelectionMirror() {
+        let engine = MacFocusEngine()
+        let firstID = UUID()
+        let lowerID = UUID()
+        let firstFocus = HomeRailCardFocus(rail: "r0", workID: UUID())
+        let lowerFocus = HomeRailCardFocus(rail: "r1", workID: UUID())
+        var selected: HomeRailCardFocus? = firstFocus
+        var childFocused = [firstFocus: true, lowerFocus: false]
+        let bridge = MacFocusBindingBridge(focusChanged: { focused in
+            childFocused[lowerFocus] = focused
+            if focused { selected = lowerFocus }
+            else if selected == lowerFocus { selected = nil }
+        }, restore: {})
+
+        engine.update(firstID, .init(
+            frame: card(300, 100), layer: 0, focus: { childFocused[firstFocus] = true },
+            parityID: firstFocus.workID.uuidString, parityRail: 0, parityIndex: 0,
+            homeRailFocus: true, isFocused: { childFocused[firstFocus] == true }
+        ))
+        engine.update(lowerID, .init(
+            frame: card(300, 450), layer: 0, focus: {
+                childFocused[firstFocus] = false
+                engine.didFocus(firstID, false)
+                childFocused[lowerFocus] = true
+                engine.didFocus(lowerID, true)
+                bridge.focusChanged(true)
+            },
+            parityID: lowerFocus.workID.uuidString, parityRail: 1, parityIndex: 0,
+            homeRailFocus: true, isFocused: { childFocused[lowerFocus] == true }
+        ))
+        engine.didFocus(firstID, true)
+
+        engine.move(.down)
+
+        XCTAssertTrue(childFocused[lowerFocus], "the actual child focus binding follows the geometric target")
+        XCTAssertEqual(selected, lowerFocus, "the Home mirror follows the child focus callback")
+        XCTAssertEqual(engine.focusedID, lowerID, "engine focus is updated by the observed child focus callback")
+        XCTAssertTrue(engine.targets[lowerID]?.isFocused() == true)
+        XCTAssertFalse(engine.targets[firstID]?.isFocused() == true)
+        engine.remove(firstID)
+        engine.remove(lowerID)
     }
 
     @MainActor
