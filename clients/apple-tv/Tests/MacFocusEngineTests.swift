@@ -120,7 +120,7 @@ final class MacFocusEngineTests: XCTestCase {
             attachment.name = "mac-focus-safe-diagnostic"
             attachment.lifetime = .keepAlways
             XCTContext.runActivity(named: "mac-focus-\(stage.rawValue)") { activity in
-                activity.add(attachment: attachment)
+                activity.add(attachment)
             }
         }
         guard await wait({ window.isKeyWindow }) else { throw XCTSkip("no key window in this session") }
