@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseBrowseKeyArtDiagnostic, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
 
@@ -384,6 +384,27 @@ test("Roku Movies readiness does not treat a recoverable retry as terminal failu
   assert.equal(artReadiness(generation, { scope: "movies", afterSeq: marker }).reason, "art-pending");
   applyParityLine(state, "PARITY|art|status|3|movies|movies-r0-c0|ready|0");
   assert.deepEqual(artReadiness(generation, { scope: "movies", afterSeq: marker }), { ready: true, reason: "ready" });
+});
+
+test("Roku browse key-art diagnostics retain only bounded safe status and URI booleans", () => {
+  const state = createParityState();
+  const first = "movies|4|2|request|ready|1|0";
+  assert.deepEqual(parseBrowseKeyArtDiagnostic(first, 7), {
+    scope: "movies", generation: 4, version: 2, point: "request", loadStatus: "ready",
+    pendingUriNonempty: true, currentUriMatchesPending: false, seq: 7,
+  });
+  assert.equal(parseBrowseKeyArtDiagnostic("movies|4|2|timer|loading|1|1", 8)?.currentUriMatchesPending, true);
+  assert.equal(parseBrowseKeyArtDiagnostic("movies|4|2|observer|failed|1|0", 9)?.loadStatus, "failed");
+  assert.equal(parseBrowseKeyArtDiagnostic("movies|4|2|request|https://private.invalid/poster|1|0", 10), null);
+  assert.equal(parseBrowseKeyArtDiagnostic("movies|4|2|request|ready|0|1", 11), null);
+  assert.equal(applyParityLine(state, "PARITY|browseKeyArt|movies|4|2|request|ready|1|0"), true);
+  for (let version = 1; version <= 40; version += 1) {
+    assert.equal(applyParityLine(state, `PARITY|browseKeyArt|series|9|${version}|observer|loading|1|1`), true);
+  }
+  assert.equal(state.browseKeyArtDiagnostics.length, 32);
+  assert.equal(state.browseKeyArtDiagnostics[0].version, 9);
+  assert.equal(state.browseKeyArtDiagnostics.at(-1).version, 40);
+  assert.doesNotMatch(JSON.stringify(state.browseKeyArtDiagnostics), /private|https?:|token|title/i);
 });
 
 test("Roku waits through transient pairing until a fresh Profiles screen arrives", () => {

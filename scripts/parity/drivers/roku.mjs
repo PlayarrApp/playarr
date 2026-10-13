@@ -71,6 +71,29 @@ export function parseParityLine(line) {
   return { kind: match[1], value: match[2] };
 }
 
+export function parseBrowseKeyArtDiagnostic(value, seq) {
+  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
+  const parts = value.trim().split("|");
+  if (parts.length !== 7) return null;
+  const [scope, rawGeneration, rawVersion, point, loadStatus, pendingUriNonempty, currentUriMatchesPending] = parts;
+  const generation = Number(rawGeneration);
+  const version = Number(rawVersion);
+  if (!["movies", "series"].includes(scope) || !Number.isSafeInteger(generation) || generation < 1 || !Number.isSafeInteger(version) || version < 1) return null;
+  if (!["request", "timer", "observer"].includes(point) || !["none", "loading", "ready", "failed", "unknown"].includes(loadStatus)) return null;
+  if (!/^[01]$/.test(pendingUriNonempty) || !/^[01]$/.test(currentUriMatchesPending)) return null;
+  if (currentUriMatchesPending === "1" && pendingUriNonempty !== "1") return null;
+  return {
+    scope,
+    generation,
+    version,
+    point,
+    loadStatus,
+    pendingUriNonempty: pendingUriNonempty === "1",
+    currentUriMatchesPending: currentUriMatchesPending === "1",
+    seq,
+  };
+}
+
 export function parseCalendarFocus(value) {
   const match = /^([A-Za-z]+)\|(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/.exec(value.trim());
   if (!match || !CALENDAR_ACTIONS.has(match[1])) return null;
@@ -147,7 +170,7 @@ export function createParityState() {
     calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
     calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
     calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(),
+    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(), browseKeyArtDiagnostics: [],
   };
 }
 
@@ -212,6 +235,11 @@ export function applyParityLine(state, line) {
   } else if (kind === "art") {
     const event = parseArtEvent(value, state.eventSeq);
     if (!event || event.type !== "slot" || intersectingSlots([event]).length > 0) reduceArtEvent(state.artState, event);
+  } else if (kind === "browseKeyArt") {
+    const diagnostic = parseBrowseKeyArtDiagnostic(value, state.eventSeq);
+    if (!diagnostic) return false;
+    state.browseKeyArtDiagnostics.push(diagnostic);
+    if (state.browseKeyArtDiagnostics.length > 32) state.browseKeyArtDiagnostics.shift();
   } else if (kind === "focus") {
     const positioned = /^(.*)\|@([0-9]+):([0-9]+)$/.exec(value.trim());
     state.focus = positioned
@@ -675,6 +703,7 @@ export function createDriver({ out, args = [] } = {}) {
     if (artEnabled) {
       resetArtReadinessState(parityState.artState);
       parityState.artMarkers = { home: 0, movies: 0, series: 0, calendar: 0 };
+      parityState.browseKeyArtDiagnostics = [];
     }
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
@@ -1023,6 +1052,7 @@ export function createDriver({ out, args = [] } = {}) {
       return lastRoute;
     },
     async focused() { assertDebug(); return focus; },
+    async browseKeyArtDiagnostics() { assertDebug(); return parityState.browseKeyArtDiagnostics.map((event) => ({ ...event })); },
     async screenshot(file) {
       assertDebug();
       if (!out) throw new Error("suite runner output path is required");

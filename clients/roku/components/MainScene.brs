@@ -2971,6 +2971,7 @@ sub updateBrowsePreview(work as Object)
         if m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
             m.browseArtTelemetryVersion += 1
             m.browseArtTelemetryArmed = false
+            emitBrowseKeyArtDiagnostic("request")
             previewSlot = m.artActiveScope + "-preview"
             if uri <> ""
                 emitArtSlot(m.artActiveGeneration, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
@@ -3012,6 +3013,7 @@ sub onBrowseKeyArtTimer()
     m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
     m.browseKeyArt.uri = uri
     if m.browseArtTelemetryArmed
+        emitBrowseKeyArtDiagnostic("timer")
         emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "pending", m.browseArtTelemetryVersion)
         sampleBrowseKeyArtStatus()
     end if
@@ -3021,7 +3023,31 @@ sub onBrowseKeyArtTimer()
 end sub
 
 sub onBrowseKeyArtLoadStatus()
+    emitBrowseKeyArtDiagnostic("observer")
     sampleBrowseKeyArtStatus()
+end sub
+
+sub emitBrowseKeyArtDiagnostic(point as String)
+    if not m.artTelemetryEnabled or m.browseKeyArt = invalid then return
+    if (m.artActiveScope <> "movies" and m.artActiveScope <> "series") or m.artActiveGeneration < 1 or m.browseArtTelemetryVersion < 1 then return
+    if point <> "request" and point <> "timer" and point <> "observer" then return
+
+    loadStatus = "unknown"
+    if m.browseKeyArt.loadStatus = "none" then loadStatus = "none"
+    if m.browseKeyArt.loadStatus = "loading" then loadStatus = "loading"
+    if m.browseKeyArt.loadStatus = "ready" then loadStatus = "ready"
+    if m.browseKeyArt.loadStatus = "failed" then loadStatus = "failed"
+
+    pendingUri = ""
+    if m.browseKeyArtPendingUri <> invalid then pendingUri = m.browseKeyArtPendingUri
+    currentUri = ""
+    if m.browseKeyArt.uri <> invalid then currentUri = m.browseKeyArt.uri
+    pendingNonempty = "0"
+    if pendingUri <> "" then pendingNonempty = "1"
+    matchesPending = "0"
+    if pendingUri <> "" and currentUri <> "" and currentUri = pendingUri then matchesPending = "1"
+
+    parityEmit("browseKeyArt", m.artActiveScope + "|" + m.artActiveGeneration.ToStr() + "|" + m.browseArtTelemetryVersion.ToStr() + "|" + point + "|" + loadStatus + "|" + pendingNonempty + "|" + matchesPending)
 end sub
 
 sub sampleBrowseKeyArtStatus()
