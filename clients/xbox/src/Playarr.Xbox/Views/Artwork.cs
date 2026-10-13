@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -72,6 +73,48 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        /// <summary>Loads a detail episode card with the TV web's still, frame, then series-art fallback order.</summary>
+        public static async void LoadEpisodeCard(Image image, Work series, Episode episode, Guid? mediaFileId, int displayWidth, long diagnosticCard = 0)
+        {
+            image.Source = null;
+            var still = episode.Images.FirstOrDefault(asset => asset.Kind == ImageKind.Thumb);
+            var seriesArtwork = series.Image(ImageKind.Backdrop) ?? series.Image(ImageKind.Poster);
+            await EpisodeArtworkResolver.TryLoadFirstAsync(
+                EpisodeArtworkResolver.Resolve(still != null, mediaFileId.HasValue, seriesArtwork != null),
+                async source =>
+                {
+                    EpisodeArtworkDiagnostics.Candidate(diagnosticCard, source.ToString());
+                    switch (source)
+                    {
+                        case EpisodeArtworkSource.EpisodeStill when still != null:
+                            var stillVersion = Version(still.Url);
+                            var stillKey = $"{series.Id:N}:{episode.Id:N}:{ImageKind.Thumb}:{WebWidth(ImageKind.Thumb)}:{stillVersion}";
+                            return await SetEpisodeCardCandidateAsync(
+                                image,
+                                stillKey,
+                                () => App.Environment.ApiClient.GetEpisodeArtworkAsync(series.Id, episode.Id, ImageKind.Thumb, WebWidth(ImageKind.Thumb), stillVersion),
+                                displayWidth, diagnosticCard, source.ToString()).ConfigureAwait(true);
+                        case EpisodeArtworkSource.MediaFrame when mediaFileId is { } file:
+                            const long framePositionMs = 30_000;
+                            return await SetEpisodeCardCandidateAsync(
+                                image,
+                                $"{file:N}:media-frame:{framePositionMs}",
+                                () => App.Environment.ApiClient.GetMediaThumbnailAsync(file, framePositionMs),
+                                displayWidth, diagnosticCard, source.ToString()).ConfigureAwait(true);
+                        case EpisodeArtworkSource.SeriesArtwork when seriesArtwork != null:
+                            var artworkWidth = WebWidth(seriesArtwork.Kind);
+                            var artworkVersion = Version(seriesArtwork.Url);
+                            return await SetEpisodeCardCandidateAsync(
+                                image,
+                                $"{series.Id:N}:series-art:{seriesArtwork.Kind}:{artworkWidth}:{artworkVersion}",
+                                () => App.Environment.ApiClient.GetWorkArtworkAsync(series.Id, seriesArtwork.Kind, artworkWidth, artworkVersion),
+                                displayWidth, diagnosticCard, source.ToString()).ConfigureAwait(true);
+                        default:
+                            return false;
+                    }
+                }).ConfigureAwait(true);
+        }
+
         private static async Task SetAsync(Image image, Guid id, ImageKind kind, int width, string version, int decodeWidth, long requestVersion,
             Guid? episodeId = null, bool applyKeyArtFilter = false, double keyArtContrast = 1, double keyArtBrightness = 1)
         {
@@ -131,6 +174,75 @@ namespace Playarr.Xbox.Views
             catch (Exception)
             {
                 // shortcut: a failed fetch leaves the placeholder; the web retries on focus, add that if it shows.
+            }
+        }
+
+        private static async Task<bool> SetEpisodeCardCandidateAsync(Image image, string key, Func<Task<byte[]>> fetch, int decodeWidth,
+            long diagnosticCard, string source)
+        {
+            var inFetch = true;
+            try
+            {
+                byte[] bytes;
+                if (!Cache.TryGetValue(key, out bytes))
+                {
+                    EpisodeArtworkDiagnostics.Fetch(diagnosticCard, source, "started", "none");
+                    await Gate.WaitAsync().ConfigureAwait(true);
+                    try
+                    {
+                        bytes = await fetch().ConfigureAwait(true);
+                    }
+                    finally
+                    {
+                        Gate.Release();
+                    }
+
+                    if (bytes == null || bytes.Length == 0)
+                    {
+                        EpisodeArtworkDiagnostics.Fetch(diagnosticCard, source, "failed", "empty_response");
+                        return false;
+                    }
+
+                    if (Cache.Count >= CacheLimit)
+                    {
+                        Cache.Clear();
+                    }
+
+                    Cache[key] = bytes;
+                    EpisodeArtworkDiagnostics.Fetch(diagnosticCard, source, "success", "http_2xx");
+                }
+                else
+                {
+                    EpisodeArtworkDiagnostics.Fetch(diagnosticCard, source, "cache_hit", "cache");
+                }
+
+                inFetch = false;
+                EpisodeArtworkDiagnostics.Decode(diagnosticCard, source, "started");
+                using (var stream = new InMemoryRandomAccessStream())
+                {
+                    await stream.WriteAsync(bytes.AsBuffer());
+                    stream.Seek(0);
+                    var bitmap = new BitmapImage { DecodePixelWidth = decodeWidth };
+                    await bitmap.SetSourceAsync(stream);
+                    image.Source = bitmap;
+                }
+
+                EpisodeArtworkDiagnostics.Decode(diagnosticCard, source, "success");
+                return true;
+            }
+            catch (Exception error)
+            {
+                if (inFetch)
+                {
+                    EpisodeArtworkDiagnostics.Fetch(diagnosticCard, source, "failed", EpisodeArtworkDiagnostics.FailureCategory(error), error.GetType().Name);
+                }
+                else
+                {
+                    EpisodeArtworkDiagnostics.Decode(diagnosticCard, source, "failed", error.GetType().Name);
+                }
+
+                // A failed source leaves the placeholder in place so the next candidate can be tried.
+                return false;
             }
         }
 

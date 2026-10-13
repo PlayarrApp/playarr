@@ -837,12 +837,71 @@ namespace Playarr.Xbox.Views
                 CornerRadius = new CornerRadius(12),
                 Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
-            if (series != null && episode.Images.Count > 0)
+            if (series != null)
             {
-                // The server's cached, resized episode still (the source URL may sit behind a private scheme).
-                var still = new Image { Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
+                var diagnosticCard = EpisodeArtworkDiagnostics.NewCard();
+                var still = new Image { Width = 268, Height = 151, Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
+                var requested = false;
+                var watchingViewport = false;
+                Windows.Foundation.TypedEventHandler<FrameworkElement, EffectiveViewportChangedEventArgs> viewportChanged = null!;
+                Action startWatchingViewport = null!;
+                Action stopWatchingViewport = null!;
+                viewportChanged = (_, args) =>
+                {
+                    var viewport = args.EffectiveViewport;
+                    var intersects = EpisodeArtworkResolver.IntersectsCard(
+                        viewport.X,
+                        viewport.Y,
+                        viewport.Width,
+                        viewport.Height,
+                        still.ActualWidth,
+                        still.ActualHeight);
+                    EpisodeArtworkDiagnostics.Viewport(
+                        diagnosticCard,
+                        viewport.X,
+                        viewport.Y,
+                        viewport.Width,
+                        viewport.Height,
+                        still.ActualWidth,
+                        still.ActualHeight,
+                        art.ActualWidth,
+                        art.ActualHeight,
+                        intersects,
+                        requested);
+                    if (requested || !intersects)
+                    {
+                        return;
+                    }
+
+                    EpisodeArtworkDiagnostics.RequestTransition(diagnosticCard, requested, true);
+                    requested = true;
+                    stopWatchingViewport();
+                    Artwork.LoadEpisodeCard(still, series, episode, detail.MediaFileId, 268, diagnosticCard);
+                };
+                startWatchingViewport = () =>
+                {
+                    if (!requested && !watchingViewport)
+                    {
+                        still.EffectiveViewportChanged += viewportChanged;
+                        watchingViewport = true;
+                    }
+                };
+                stopWatchingViewport = () =>
+                {
+                    if (watchingViewport)
+                    {
+                        still.EffectiveViewportChanged -= viewportChanged;
+                        watchingViewport = false;
+                    }
+                };
+                still.Loaded += (_, __) =>
+                {
+                    EpisodeArtworkDiagnostics.ImageLoaded(diagnosticCard, still.ActualWidth, still.ActualHeight, art.ActualWidth, art.ActualHeight);
+                    startWatchingViewport();
+                };
+                still.Unloaded += (_, __) => stopWatchingViewport();
+                startWatchingViewport();
                 art.Children.Add(still);
-                Artwork.LoadEpisode(still, series, episode, 268);
             }
 
             art.Children.Add(new TextBlock
