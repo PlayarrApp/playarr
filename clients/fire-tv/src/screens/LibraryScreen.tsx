@@ -72,7 +72,7 @@ import {
 } from '../lib/libraryView';
 import {languageDisplayName, toggleLanguage} from '../lib/languageFilters';
 import type {LanguageFacets} from '@playarr-tv/api-client';
-import {useCatalogBrowse} from '@playarr-tv/api-client/react';
+import {useCatalogBrowse, useWorkDetail} from '@playarr-tv/api-client/react';
 import {useApiClient} from '../api/ApiClientProvider';
 import {artworkAuthHeaders, preferredArtworkKind, workArtworkUrl} from '../api/artworkUrl';
 import {CAPABILITIES} from '../platform/capabilities';
@@ -84,6 +84,7 @@ import {sh, sw} from '../theme/scale';
 import {ROUTES, type RouteName} from '../navigation/routes';
 import {reportFocus, reportQuery, takePendingQuery} from '../debug/parityControl';
 import {computeLibraryWindow, nextLibraryScrollOffset} from './libraryWindow';
+import {runtimeLabel} from '../lib/runtimeLabel';
 
 export type LibraryKind = Extract<WorkKind, 'movie' | 'series' | 'site' | 'artist'>;
 
@@ -521,6 +522,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
           title={selected.title}
           meta={[releaseYearOf(selected), selected.genres.join(' \u00b7 ')].filter((run): run is string => Boolean(run))}
           overview={selected.overview}
+          metaContent={<LibraryRuntime key={selected.id} workId={selected.id} />}
         />
       ) : null}
       <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} />
@@ -640,6 +642,23 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
 /** The release year (or "2011–2019" for an ended series), never the added date: web's `yearRangeLabel`. */
 function releaseYearOf(work: Work): string | undefined {
   return yearRangeLabel(work) ?? undefined;
+}
+
+/** Shows detail-sourced runtime for the selected work; the key resets async state when focus changes. */
+function LibraryRuntime({workId}: {workId: string}): React.ReactElement | null {
+  const client = useApiClient();
+  const {t} = useLanguage();
+  const {colour} = useTheme();
+  const state = useWorkDetail(client, workId);
+  const label = state.status === 'ready' ? runtimeLabel(state.data.runtime_ms, t) : null;
+  if (!label) return null;
+  return (
+    <View style={{marginRight: u(12.8)}}>
+      <T size={12.096} weight={400} lh={18.1} color={colour.inkMuted} lines={1}>
+        {label}
+      </T>
+    </View>
+  );
 }
 
 interface CardProps {
