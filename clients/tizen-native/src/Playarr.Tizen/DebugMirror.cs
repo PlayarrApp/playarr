@@ -93,7 +93,7 @@ internal sealed class DebugMirror
                         case "/theme": _env().SetTheme(q["name"] ?? "dark"); break;
                     }
                     var st = (_shell().Page as PlayerScreen)?.Status ?? (false, 0L);
-                    done.SetResult(new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().Images.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name });
+                    done.SetResult(new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().Images.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name, emptyCoverTextMetrics = (_shell().Page as PlaylistsScreen)?.EmptyCoverTextMetrics });
                 }
                 catch (Exception e) { done.SetException(e); }
             });

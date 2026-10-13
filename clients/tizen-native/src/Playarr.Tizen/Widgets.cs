@@ -25,6 +25,8 @@ internal sealed class MediaCard
     private bool _playlistCoverSet;
     private bool _focused;
     private TextLabel? _playlistMetadata;
+    private TextLabel? _playlistEmptyLabel;
+    private float? _playlistEmptySingleLineWidth;
     private string _playlistMediaType = "video";
     private bool _playlistShared;
 
@@ -106,6 +108,25 @@ internal sealed class MediaCard
         _playlistMetadata.Show(true);
     }
 
+    internal object? EmptyCoverTextMetrics(int index)
+    {
+        if (_playlistEmptyLabel is not { } label) return null;
+        var natural = label.NaturalSize;
+        return new
+        {
+            index,
+            lineCount = label.LineCount,
+            width = label.Size.Width,
+            height = label.Size.Height,
+            naturalWidth = natural.Width,
+            naturalHeight = natural.Height,
+            pixelSize = label.PixelSize,
+            characterSpacing = label.CharacterSpacing,
+            lineWrapMode = label.LineWrapMode.ToString(),
+            singleLineMeasuredWidth = _playlistEmptySingleLineWidth,
+        };
+    }
+
     /// <summary>Replaces the directory placeholder with the web's poster-first, backdrop-fallback cover stack.</summary>
     public void SetPlaylistCovers(AppEnv env, string playlistName, IReadOnlyList<Work> works)
     {
@@ -133,7 +154,7 @@ internal sealed class MediaCard
             Art.Add(empty);
             const float nameFontSize = 10.88f; // web: 0.68rem at the 16px root size
             const float nameLineHeight = 1.5f; // inherited web body line-height
-            Art.Add(new TextLabel(playlistName)
+            _playlistEmptyLabel = new TextLabel(playlistName)
             {
                 PositionX = 16,
                 PositionY = 16,
@@ -150,7 +171,9 @@ internal sealed class MediaCard
                 Ellipsis = false,
                 // Match Ui.Text's conversion: NUI relative line height multiplies its 1.364x native glyph height.
                 RelativeLineHeight = nameLineHeight / 1.364f,
-            });
+            };
+            _playlistEmptySingleLineWidth = Ui.TextWidth(playlistName, nameFontSize, 400, 0);
+            Art.Add(_playlistEmptyLabel);
             if (_focused) _ring?.RaiseToTop();
             return;
         }
