@@ -117,7 +117,7 @@ internal static class Ui
     /// <summary>Registers the bundled Nunito Sans weights so TextLabel can use them by family name.</summary>
     public static void RegisterFonts()
     {
-        var fontDirectory = Path.GetFullPath(ResPath("fonts")) + Path.DirectorySeparatorChar;
+        var fontDirectory = System.IO.Path.GetFullPath(ResPath("fonts")) + System.IO.Path.DirectorySeparatorChar;
         _fontDirectoryAdded = FontClient.Instance.AddCustomFontDirectory(ResPath("fonts"));
         _bundledNunitoFontCount = FontClient.Instance.GetSystemFonts()
             .Count(font => font.Family.Contains("Nunito Sans", StringComparison.OrdinalIgnoreCase)
