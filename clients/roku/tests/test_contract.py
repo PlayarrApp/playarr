@@ -108,6 +108,32 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn("position = event.GetData()", position_unpack.group(0))
         self.assertIn("index = position[1]", position_unpack.group(0))
 
+    def test_profile_focus_parity_event_reports_only_the_visible_label(self) -> None:
+        # The non-player driver needs a post-launch focus event to prove which profile Select will enter.
+        focus_telemetry = re.search(
+            r"sub emitProfileFocusTelemetry\(index as Integer\).*?end sub", MAIN, flags=re.DOTALL
+        )
+        focus_current = re.search(
+            r"sub focusProfilesRowOnCurrent\(\).*?end sub", MAIN, flags=re.DOTALL
+        )
+        focus_change = re.search(
+            r"sub onProfilesRowFocused\(event as Object\).*?end sub", MAIN, flags=re.DOTALL
+        )
+        self.assertIsNotNone(focus_telemetry)
+        self.assertIsNotNone(focus_current)
+        self.assertIsNotNone(focus_change)
+        assert focus_telemetry is not None and focus_current is not None and focus_change is not None
+        self.assertIn("profile = m.profiles[index]", focus_telemetry.group(0))
+        self.assertIn('parityEmit("focus", profile.display_name)', focus_telemetry.group(0))
+        self.assertNotIn("profile.id", focus_telemetry.group(0))
+        self.assertNotIn("accessToken", focus_telemetry.group(0))
+        self.assertIn("m.profilesRow.SetFocus(true)", focus_current.group(0))
+        self.assertNotIn("emitProfileFocusTelemetry", focus_current.group(0))
+        self.assertIn("m.profilesFocusIndex = position[1]", focus_change.group(0))
+        self.assertIn("if m.profilesRow <> invalid and m.profilesRow.HasFocus()", focus_change.group(0))
+        self.assertIn("emitProfileFocusTelemetry(position[1])", focus_change.group(0))
+        self.assertIn("updateProfileActionsLayout()", focus_change.group(0))
+
     def test_clients_link_is_a_bottom_right_footer_action(self) -> None:
         import xml.etree.ElementTree as ET
 

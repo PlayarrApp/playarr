@@ -40,6 +40,7 @@ sub pagesInit()
     m.pageStatus = ""
     m.calendarAnchor = invalid
     m.calendarView = "month"
+    m.calendarViewDialogPendingClose = false
     m.calendarKinds = []
     m.pageScrollY = 0
     m.settingsPanel = "appearance"
@@ -313,6 +314,11 @@ sub pageFocusRender()
         m.pageRing.width = item.w + 6
         m.pageRing.height = item.h + 6
     end if
+    if m.pageKind = "calendar"
+        focusX = item.x + ox
+        focusY = item.y + oy
+        parityEmit("calendarFocus", item.action + "|" + focusX.ToStr() + "," + focusY.ToStr() + "," + item.w.ToStr() + "," + item.h.ToStr())
+    end if
     m.pageRing.visible = not m.navDockMode
     pageOnFocus(item)
 end sub
@@ -341,6 +347,8 @@ function pageMoveFocus(dir as String) as Boolean
     cy = cur.y + cur.h / 2
     best = -1
     bestScore = 1000000.0
+    forwardDeadZone = 4
+    if m.pageKind = "calendar" then forwardDeadZone = 2
     for i = 0 to m.pageItems.Count() - 1
         if i <> m.pageFocusIdx
             it = m.pageItems[i]
@@ -351,17 +359,48 @@ function pageMoveFocus(dir as String) as Boolean
             ok = false
             primary = 0.0
             cross = 0.0
-            if dir = "right" and dx > 4
+            if dir = "right" and dx > forwardDeadZone
                 ok = true : primary = dx : cross = Abs(dy)
-            else if dir = "left" and dx < -4
+            else if dir = "left" and dx < -forwardDeadZone
                 ok = true : primary = -dx : cross = Abs(dy)
-            else if dir = "down" and dy > 4
+            else if dir = "down" and dy > forwardDeadZone
                 ok = true : primary = dy : cross = Abs(dx)
-            else if dir = "up" and dy < -4
+            else if dir = "up" and dy < -forwardDeadZone
                 ok = true : primary = -dy : cross = Abs(dx)
             end if
             if ok
-                score = primary + cross * 2.5
+                if m.pageKind = "calendar"
+                    overlapStart = cur.y
+                    overlapEnd = cur.y + cur.h
+                    crossAxisSize = cur.h
+                    if dir = "up" or dir = "down"
+                        overlapStart = cur.x
+                        overlapEnd = cur.x + cur.w
+                        candidateStart = it.x
+                        candidateEnd = it.x + it.w
+                        crossAxisSize = cur.w
+                        if it.w < crossAxisSize then crossAxisSize = it.w
+                    else
+                        candidateStart = it.y
+                        candidateEnd = it.y + it.h
+                        if it.h < crossAxisSize then crossAxisSize = it.h
+                    end if
+                    if candidateStart > overlapStart then overlapStart = candidateStart
+                    if candidateEnd < overlapEnd then overlapEnd = candidateEnd
+                    overlap = overlapEnd - overlapStart
+                    if overlap < 0 then overlap = 0
+                    coneAllowance = primary * 0.85 + crossAxisSize * 0.2
+                    if overlap <= 0 and cross > coneAllowance then
+                        ok = false
+                    else
+                        if overlap > 180 then overlap = 180
+                        score = primary + cross * 4 - overlap * 0.55
+                    end if
+                else
+                    score = primary + cross * 2.5
+                end if
+            end if
+            if ok
                 if score < bestScore
                     bestScore = score
                     best = i
@@ -558,11 +597,12 @@ sub openPage(kind as String)
     else if kind = "calendar"
         m.calendarAnchor = invalid
         m.calendarView = "month"
+        parityEmit("calendarView", m.calendarView)
         m.calendarFocusAction = ""
         m.calendarPlaceFirst = true
         m.calendarSelected = ""
-        renderCalendar()
         loadCalendar()
+        renderCalendar()
     else if kind = "household"
         m.householdNote = ""
         renderHousehold()
@@ -1591,6 +1631,15 @@ sub renderCalendarBody()
     else
         renderCalendarAgenda(entries)
     end if
+    if m.artTelemetryEnabled = true and m.pageStatus = "ready"
+        if m.calendarView = "agenda"
+            renderedState = "entries"
+            if entries.Count() = 0 then renderedState = "empty"
+            parityEmit("calendarContent", "agenda|" + renderedState)
+        else if m.calendarView = "month" or m.calendarView = "week"
+            parityEmit("calendarContent", m.calendarView + "|ready")
+        end if
+    end if
 end sub
 
 sub renderCalendarAgenda(entries as Object)
@@ -1831,26 +1880,30 @@ sub calendarAction(item as Object)
         else
             m.calendarAnchor = calAddDays(m.calendarAnchor, 30 * dir)
         end if
-        renderCalendar()
         loadCalendar()
+        renderCalendar()
     else if a = "calToday"
         m.calendarAnchor = invalid
         calendarEnsureRange()
-        renderCalendar()
         loadCalendar()
+        renderCalendar()
     else if a = "calView"
         dialog = CreateObject("roSGNode", "Dialog")
         dialog.title = "Calendar view"
         dialog.buttons = ["Month", "Week", "Agenda"]
         dialog.ObserveField("buttonSelected", "onCalendarViewButton")
+        dialog.ObserveField("wasClosed", "onCalendarViewDialogClosed")
+        m.calendarViewDialogPendingClose = false
         m.top.dialog = dialog
+        if m.artTelemetryEnabled = true then parityEmit("calendarDialog", "open")
     else if a = "cell"
         m.calendarFocusAction = ""
         m.calendarPlaceFirst = true
         m.calendarAnchor = item.data
         m.calendarView = "agenda"
-        renderCalendar()
+        parityEmit("calendarView", m.calendarView)
         loadCalendar()
+        renderCalendar()
     else if a = "calPlay"
         requestPlayback(item.data)
     else if a = "calOpen"
@@ -1866,15 +1919,26 @@ sub calendarAction(item as Object)
     if a = "calPrev" or a = "calNext" or a = "calToday" or a = "cell" then pageFocusRender()
 end sub
 
+sub onCalendarViewDialogClosed()
+    if m.artTelemetryEnabled <> true then return
+    if m.calendarViewDialogPendingClose <> true then return
+    m.calendarViewDialogPendingClose = false
+    parityEmit("calendarDialog", "closed")
+end sub
+
 sub onCalendarViewButton(event as Object)
     index = event.GetData()
-    if m.top.dialog <> invalid then m.top.dialog.close = true
+    if m.top.dialog <> invalid
+        m.calendarViewDialogPendingClose = true
+        m.top.dialog.close = true
+    end if
     views = ["month", "week", "agenda"]
     if index >= 0 and index < views.Count()
         m.calendarView = views[index]
+        parityEmit("calendarView", m.calendarView)
         m.calendarFocusAction = "calView"
-        renderCalendar()
         loadCalendar()
+        renderCalendar()
         pageFocusRender()
     end if
 end sub

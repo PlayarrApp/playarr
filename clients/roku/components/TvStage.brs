@@ -79,6 +79,8 @@ sub onKeyArtUriChange()
     m.keyArtRetries = 0
     m.keyArtRetryTimer.control = "stop"
     m.keyArt.uri = uri
+    emitStageArtStatus("pending")
+    sampleStageArtStatus()
     ' The server bake is already greyscale and faded; the web draws it fainter still. Measured against the live web (mean luminance of
     ' the art zone over the page background): dark 0.3, light 0.15.
     if Instr(1, uri, "style=stage-light") > 0
@@ -140,10 +142,34 @@ sub playEntrance()
 end sub
 
 sub onKeyArtLoadStatus()
+    sampleStageArtStatus()
     if m.keyArt.loadStatus = "ready" then m.keyArtRetryTimer.control = "stop"
     if m.keyArt.loadStatus = "failed" and m.keyArtBase <> "" and m.keyArtRetries < 8
         m.keyArtRetryTimer.control = "start"
     end if
+end sub
+
+sub sampleStageArtStatus()
+    if m.keyArt.loadStatus = "ready" then emitStageArtStatus("ready")
+    if m.keyArt.loadStatus = "failed"
+        if m.keyArtBase <> "" and m.keyArtRetries < 8
+            emitStageArtStatus("pending")
+        else
+            emitStageArtStatus("failed")
+        end if
+    end if
+end sub
+
+sub emitStageArtStatus(status as String)
+    if m.top.artTelemetryActive <> true or m.top.keyArtUri = "" then return
+    generation = m.top.artTelemetryGeneration
+    scope = m.top.artTelemetryScope
+    slot = m.top.artTelemetrySlot
+    version = m.top.artTelemetryVersion
+    if generation < 1 or version < 0 then return
+    if scope <> "home" or slot <> "home-hero" then return
+    if status <> "pending" and status <> "ready" and status <> "failed" then return
+    print "PARITY|art|status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr()
 end sub
 
 sub onKeyArtRetry()
@@ -152,6 +178,7 @@ sub onKeyArtRetry()
     sep = "?"
     if Instr(1, m.keyArtBase, "?") > 0 then sep = "&"
     m.keyArt.uri = m.keyArtBase + sep + "retry=" + m.keyArtRetries.ToStr()
+    emitStageArtStatus("pending")
     ' Keep watching: a request that hangs without failing is tried again after 10 s.
     m.keyArtRetryTimer.duration = 10
     m.keyArtRetryTimer.control = "start"

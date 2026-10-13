@@ -157,6 +157,12 @@ sub onContentChanged()
         m.posterRetries = 0
         m.retryTimer.control = "stop"
         m.poster.uri = content.hdPosterUrl
+        emitPosterArtStatus("pending")
+        if content.hdPosterUrl = ""
+            emitPosterArtStatus("empty")
+        else
+            samplePosterArtStatus()
+        end if
     end if
     ' A field literally named rowFocusPercent turned out to be reserved --
     ' RowList silently overwrites it on its own after content binds,
@@ -229,9 +235,34 @@ end function
 ' The relay drops or times out some artwork requests under load: a failed poster is requested again (up to 8 times, 2 s apart,
 ' with a cache-busting query so the failure is not reused).
 sub onPosterLoadStatus()
+    samplePosterArtStatus()
     if m.poster.loadStatus = "failed" and m.posterUri <> "" and m.posterRetries < 8
         m.retryTimer.control = "start"
     end if
+end sub
+
+sub samplePosterArtStatus()
+    if m.poster.loadStatus = "ready" then emitPosterArtStatus("ready")
+    if m.poster.loadStatus = "failed"
+        if m.posterUri <> "" and m.posterRetries < 8
+            emitPosterArtStatus("pending")
+        else
+            emitPosterArtStatus("failed")
+        end if
+    end if
+end sub
+
+sub emitPosterArtStatus(status as String)
+    content = m.top.itemContent
+    if content = invalid or content.parityArtRequired <> true then return
+    generation = content.parityArtGeneration
+    scope = content.parityArtScope
+    slot = content.parityArtSlot
+    version = content.parityArtVersion
+    if generation = invalid or generation < 1 or version = invalid or version < 0 then return
+    if (scope <> "home" and scope <> "movies" and scope <> "series") or slot = invalid or slot = "" then return
+    if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
+    print "PARITY|art|status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr()
 end sub
 
 sub onPosterRetry()
@@ -239,6 +270,7 @@ sub onPosterRetry()
     sep = "?"
     if Instr(1, m.posterUri, "?") > 0 then sep = "&"
     m.poster.uri = m.posterUri + sep + "retry=" + m.posterRetries.ToStr()
+    emitPosterArtStatus("pending")
 end sub
 
 ' Card geometry for the art size: the art, corner masks, watch overlays and text are laid out at their own web sizes (a 1.5 grid
