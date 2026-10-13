@@ -118,12 +118,21 @@ final class TVWebParityTests: XCTestCase {
         let initial = HomeRailCardFocus(rail: "r0", workID: UUID())
         let lateOnDeck = HomeRailCardFocus(rail: "r0", workID: UUID())
         var latch = TVHomeInitialFocus()
+        var handoff = TVHomeFocusHandoff()
 
         latch.capture(initial)
+        XCTAssertFalse(handoff.claim(isHomeRoot: true, targetRegistered: false), "the Mac claim waits for the target registration event")
+        XCTAssertTrue(handoff.pending, "an unavailable lazy target leaves the one-shot pending")
         latch.capture(lateOnDeck)
 
         XCTAssertTrue(latch.wasCaptured)
         XCTAssertEqual(latch.target, initial)
+        XCTAssertTrue(handoff.claim(isHomeRoot: true, targetRegistered: true), "the frozen registered target can claim focus")
+
+        var cancelled = TVHomeFocusHandoff()
+        XCTAssertFalse(cancelled.claim(isHomeRoot: true, targetRegistered: false))
+        cancelled.cancel()
+        XCTAssertFalse(cancelled.claim(isHomeRoot: true, targetRegistered: true), "user movement cancels a late registration claim")
     }
 
     func testHomeOnDeckMembershipMatchesTheWebPrimaryAndKeepsServerShelves() {

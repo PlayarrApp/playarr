@@ -195,7 +195,14 @@ struct TVHomeView: View {
             guard !Task.isCancelled else { return }
             initialFocus.capture(firstFocus)
             // The shell's tab-change observer arms the one-shot. User movement cancels it; late rail updates never reset focus.
-            if initialFocus.target != nil { requestStageFocus() }
+            if let target = initialFocus.target {
+                guard let rail = Int(target.rail.dropFirst()) else { return }
+                requestStageFocus(target.workID.uuidString, rail, 0) { claimed in
+                    #if os(macOS)
+                    if claimed { focusedCard = target }
+                    #endif
+                }
+            }
         }
     }
 

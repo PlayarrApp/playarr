@@ -21,6 +21,9 @@ final class MacFocusEngine {
         var frame: CGRect
         var layer: Int
         var focus: () -> Void
+        var parityID: String? = nil
+        var parityRail: Int? = nil
+        var parityIndex: Int? = nil
         var activate: (() -> Void)?
         /// The long press (a media card's actions).
         var secondary: (() -> Void)?
@@ -35,12 +38,26 @@ final class MacFocusEngine {
     private(set) var hoveredID: UUID?
     /// The last focused target per layer, so closing a cover returns focus where it was (tvOS does the same).
     private var lastFocused: [Int: UUID] = [:]
+    struct TargetIdentity: Equatable {
+        let parityID: String
+        let rail: Int
+        let index: Int
+    }
+
+    private var targetRegistrationObservers: [(UUID, (TargetIdentity?) -> Void)] = []
     /// Right from the nav can arrive before a lazy stage target registers; carry that entry intent through settle.
     private var pendingStageFocus = false
 
     func update(_ id: UUID, _ target: Target) {
-        let isNew = targets[id] == nil
+        let previous = targets[id]
+        let isNew = previous == nil
         targets[id] = target
+        if isNew || previous?.parityID != target.parityID || previous?.parityRail != target.parityRail
+            || previous?.parityIndex != target.parityIndex || previous?.layer != target.layer {
+            if let identity = Self.identity(of: target) {
+                for observer in targetRegistrationObservers.map(\.1) { observer(identity) }
+            }
+        }
         if isNew { scheduleSettle() }
         // A preferred target that appears (a drawer's close button) takes focus once its layer has settled, even where
         // the system already focused another button.
@@ -54,7 +71,9 @@ final class MacFocusEngine {
     }
 
     func remove(_ id: UUID) {
+        guard targets[id] != nil else { return }
         targets[id] = nil
+        for observer in targetRegistrationObservers.map(\.1) { observer(nil) }
         if hoveredID == id { hoveredID = nil }
         if focusedID == id {
             focusedID = nil
@@ -83,6 +102,35 @@ final class MacFocusEngine {
     }
 
     var topLayer: Int { targets.values.map(\.layer).max() ?? 0 }
+
+    func pushTargetRegistrationObserver(_ id: UUID, _ action: @escaping (TargetIdentity?) -> Void) {
+        targetRegistrationObservers.removeAll { $0.0 == id }
+        targetRegistrationObservers.append((id, action))
+    }
+
+    func popTargetRegistrationObserver(_ id: UUID) {
+        targetRegistrationObservers.removeAll { $0.0 == id }
+    }
+
+    @discardableResult
+    func focusTarget(parityID: String, rail: Int, index: Int, inActiveLayer layer: Int, claim: () -> Bool) -> Bool {
+        guard topLayer == layer,
+              let (id, target) = targets.first(where: {
+                  $0.value.parityID == parityID && $0.value.parityRail == rail
+                      && $0.value.parityIndex == index && $0.value.layer == layer
+              }) else {
+            return false
+        }
+        guard claim() else { return false }
+        autoFocusedID = id
+        target.focus()
+        return true
+    }
+
+    private static func identity(of target: Target) -> TargetIdentity? {
+        guard let parityID = target.parityID, let rail = target.parityRail, let index = target.parityIndex else { return nil }
+        return TargetIdentity(parityID: parityID, rail: rail, index: index)
+    }
 
     /// Return: the focused target's action, or a click on it when it has none (a navigation link).
     func activateFocused(in window: NSWindow?) -> Bool {
@@ -343,6 +391,7 @@ struct MacFocusTarget: ViewModifier {
         }
         let binding = $focused
         MacFocusEngine.shared.update(id, .init(frame: frame, layer: layer, focus: { binding.wrappedValue = true },
+                                               parityID: parityTag?.id, parityRail: parityTag?.rail, parityIndex: parityTag?.index,
                                                activate: activate, secondary: secondary?.action, preferred: preferred,
                                                isFocused: { binding.wrappedValue }))
     }

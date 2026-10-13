@@ -12,6 +12,70 @@ final class MacFocusEngineTests: XCTestCase {
         CGRect(x: x, y: y, width: w, height: h)
     }
 
+    @MainActor
+    func testHomeFocusClaimMatchesTheFrozenRailAndCardForDuplicateWorkIDs() {
+        let engine = MacFocusEngine()
+        let railOneID = UUID()
+        let railZeroID = UUID()
+        let overlayID = UUID()
+        var railOneFocusCount = 0
+        var railZeroFocusCount = 0
+        var claims = 0
+        var claimPending = true
+        let observerID = UUID()
+
+        func attemptClaim() {
+            _ = engine.focusTarget(
+                parityID: "sample-work-id", rail: 0, index: 0, inActiveLayer: 0,
+                claim: {
+                    claims += 1
+                    guard claimPending else { return false }
+                    claimPending = false
+                    return true
+                }
+            )
+        }
+
+        engine.pushTargetRegistrationObserver(observerID) { identity in
+            guard identity == nil || identity == MacFocusEngine.TargetIdentity(
+                parityID: "sample-work-id", rail: 0, index: 0
+            ) else { return }
+            attemptClaim()
+        }
+        defer {
+            engine.popTargetRegistrationObserver(observerID)
+            engine.remove(railOneID)
+            engine.remove(railZeroID)
+            engine.remove(overlayID)
+        }
+
+        attemptClaim()
+        XCTAssertTrue(claimPending, "the request waits without consuming a claim before registration")
+
+        engine.update(railOneID, .init(
+            frame: card(500, 200), layer: 0, focus: { railOneFocusCount += 1 },
+            parityID: "sample-work-id", parityRail: 1, parityIndex: 0
+        ))
+        engine.update(railZeroID, .init(
+            frame: card(300, 200), layer: 0, focus: { railZeroFocusCount += 1 },
+            parityID: "sample-work-id", parityRail: 0, parityIndex: 0
+        ))
+        engine.update(overlayID, .init(frame: card(20, 100), layer: 1, focus: {}))
+        engine.update(railZeroID, .init(
+            frame: card(300, 200), layer: 0, focus: { railZeroFocusCount += 1 },
+            parityID: "sample-work-id", parityRail: 0, parityIndex: 0
+        ))
+
+        XCTAssertTrue(claimPending, "a matching card cannot claim while another focus layer is active")
+        XCTAssertEqual(claims, 0)
+        engine.remove(overlayID) // Registration notification retries the exact pending candidate.
+
+        XCTAssertFalse(claimPending, "the exact registered Home card consumes the pending claim")
+        XCTAssertEqual(claims, 1)
+        XCTAssertEqual(railZeroFocusCount, 1)
+        XCTAssertEqual(railOneFocusCount, 0, "a duplicate work ID in another rail must not receive focus")
+    }
+
     func testDownLandsOnTheCardVisuallyBelowNotTheSameIndex() {
         // The top rail is scrolled: the focused card sits at x 900. The lower rail starts at x 100.
         let focused = card(900, 100)

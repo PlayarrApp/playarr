@@ -6,6 +6,15 @@ import SwiftUI
 import UIKit
 #endif
 
+#if os(macOS)
+private struct PendingMacHomeFocusRequest {
+    let parityID: String
+    let rail: Int
+    let index: Int
+    let completion: (Bool) -> Void
+}
+#endif
+
 struct TVRootView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Environment(TVDisplayPreferences.self) private var displayPreferences
@@ -277,6 +286,10 @@ private struct TVProductionShell<Stage: View>: View {
     @State private var homeNavFocusHandoff = TVHomeNavFocusHandoff()
     @State private var navFrames: [TVNavTab: CGRect] = [:]
     @State private var homeCardFocusReturnRequest: TVHomeCardFocusRequest?
+#if os(macOS)
+    @State private var macFocusRegistrationObserverID = UUID()
+    @State private var pendingMacHomeFocusRequest: PendingMacHomeFocusRequest?
+#endif
     /// Who's watching, opened from the nav's profile tile (web `/profiles`).
     @State private var showProfiles = false
     /// A full-screen page (the player) is showing: no nav, no clock.
@@ -354,6 +367,9 @@ private struct TVProductionShell<Stage: View>: View {
                 .disabled(actionsWork != nil) // the actions drawer is modal
                 .onChange(of: tab) { _, newTab in
                     path = []
+#if os(macOS)
+                    finishPendingMacHomeFocus(false)
+#endif
                     homeFocusHandoff.tabChanged(to: newTab)
                     homeNavFocusHandoff.reset()
                     homeCardFocusReturnRequest = nil
@@ -361,6 +377,9 @@ private struct TVProductionShell<Stage: View>: View {
                 .onChange(of: path) { _, newPath in
                     if !newPath.isEmpty {
                         homeFocusHandoff.cancel()
+#if os(macOS)
+                        finishPendingMacHomeFocus(false)
+#endif
                         homeNavFocusHandoff.reset()
                         homeCardFocusReturnRequest = nil
                     }
@@ -390,15 +409,36 @@ private struct TVProductionShell<Stage: View>: View {
             // One scope for dock + stage so resetFocus / prefersDefaultFocus
             // can pull the remote out of ScrollView rails into the dock.
             .focusScope(shellFocusNamespace)
-            .environment(\.requestStageFocus) {
+            .environment(\.requestStageFocus) { parityID, rail, index, completion in
                 #if os(tvOS)
-                guard homeFocusHandoff.claim(isHomeRoot: tab == .home && path.isEmpty) else { return }
+                guard homeFocusHandoff.claim(isHomeRoot: tab == .home && path.isEmpty) else {
+                    completion(false)
+                    return
+                }
                 shellFocus.wrappedValue = .stage
                 resetFocus(in: shellFocusNamespace)
+                completion(true)
+                #elseif os(macOS)
+                guard tab == .home, path.isEmpty, homeFocusHandoff.pending else {
+                    completion(false)
+                    return
+                }
+                pendingMacHomeFocusRequest = PendingMacHomeFocusRequest(
+                    parityID: parityID,
+                    rail: rail,
+                    index: index,
+                    completion: completion
+                )
+                attemptPendingMacHomeFocus()
+                #else
+                completion(false)
                 #endif
             }
             .environment(\.cancelStageFocusRequest) {
                 homeFocusHandoff.cancel()
+#if os(macOS)
+                finishPendingMacHomeFocus(false)
+#endif
             }
             .environment(\.requestNavFocus) {
                 homeNavFocusHandoff.reset()
@@ -460,7 +500,55 @@ private struct TVProductionShell<Stage: View>: View {
                 }
             )
         }
+#if os(macOS)
+        .onAppear {
+            MacFocusEngine.shared.pushTargetRegistrationObserver(macFocusRegistrationObserverID) { identity in
+                guard identity == nil || (
+                    identity?.parityID == pendingMacHomeFocusRequest?.parityID
+                        && identity?.rail == pendingMacHomeFocusRequest?.rail
+                        && identity?.index == pendingMacHomeFocusRequest?.index
+                ) else { return }
+                attemptPendingMacHomeFocus()
+            }
+        }
+        .onDisappear {
+            MacFocusEngine.shared.popTargetRegistrationObserver(macFocusRegistrationObserverID)
+            finishPendingMacHomeFocus(false)
+        }
+#endif
     }
+
+#if os(macOS)
+    private func attemptPendingMacHomeFocus() {
+        guard let request = pendingMacHomeFocusRequest else { return }
+        guard tab == .home, path.isEmpty, homeFocusHandoff.pending else {
+            finishPendingMacHomeFocus(false)
+            return
+        }
+
+        let focused = MacFocusEngine.shared.focusTarget(
+            parityID: request.parityID,
+            rail: request.rail,
+            index: request.index,
+            inActiveLayer: 0 // MacFocusLayerKey defaults the shell to layer 0; drawers bump their own targets.
+        ) {
+            guard homeFocusHandoff.claim(isHomeRoot: true, targetRegistered: true) else { return false }
+            pendingMacHomeFocusRequest = nil
+            return true
+        }
+        if focused {
+            request.completion(true)
+        } else if !homeFocusHandoff.pending {
+            finishPendingMacHomeFocus(false)
+        }
+    }
+
+    private func finishPendingMacHomeFocus(_ claimed: Bool) {
+        guard let request = pendingMacHomeFocusRequest else { return }
+        pendingMacHomeFocusRequest = nil
+        request.completion(claimed)
+    }
+#endif
 
     private func requestHomeCardReturn() {
         #if os(tvOS)

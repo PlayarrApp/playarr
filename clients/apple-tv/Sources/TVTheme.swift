@@ -630,8 +630,8 @@ struct TVHomeFocusHandoff {
 
     mutating func cancel() { pending = false }
 
-    mutating func claim(isHomeRoot: Bool) -> Bool {
-        guard pending, isHomeRoot else { return false }
+    mutating func claim(isHomeRoot: Bool, targetRegistered: Bool = true) -> Bool {
+        guard pending, isHomeRoot, targetRegistered else { return false }
         pending = false
         return true
     }
@@ -652,7 +652,7 @@ private struct HomeCardFocusReturnRequestKey: EnvironmentKey {
 }
 
 private struct RequestStageFocusKey: EnvironmentKey {
-    static let defaultValue: () -> Void = {}
+    static let defaultValue: (String, Int, Int, (Bool) -> Void) -> Void = { _, _, _, completion in completion(false) }
 }
 
 private struct CancelStageFocusRequestKey: EnvironmentKey {
@@ -675,7 +675,7 @@ extension EnvironmentValues {
         set { self[RequestNavFocusKey.self] = newValue }
     }
 
-    var requestStageFocus: () -> Void {
+    var requestStageFocus: (String, Int, Int, (Bool) -> Void) -> Void {
         get { self[RequestStageFocusKey.self] }
         set { self[RequestStageFocusKey.self] = newValue }
     }
