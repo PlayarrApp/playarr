@@ -65,7 +65,7 @@ export function createParityState() {
     focusSeq: 0, focusScreenSeq: 0, focusFloorAtScreen: 0, drawerSource: "",
     calendarView: "", calendarViewSeq: 0, calendarViewScreenSeq: 0,
     calendarFocus: "", calendarFocusSeq: 0, calendarFocusScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0 }, artState: createArtReadinessState(),
+    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0 }, artState: createArtReadinessState(),
   };
 }
 
@@ -100,6 +100,7 @@ export function applyParityLine(state, line) {
   } else if (kind === "browse") {
     state.browse = value.trim();
     if (state.browse === "movie" || state.browse === "movies") state.artMarkers.movies = state.eventSeq;
+    if (state.browse === "series") state.artMarkers.series = state.eventSeq;
   } else if (kind === "art") {
     const event = parseArtEvent(value, state.eventSeq);
     if (!event || event.type !== "slot" || intersectingSlots([event]).length > 0) reduceArtEvent(state.artState, event);
@@ -447,7 +448,7 @@ export function createDriver({ out, args = [] } = {}) {
     await sleep(4000);
     if (artEnabled) {
       resetArtReadinessState(parityState.artState);
-      parityState.artMarkers = { home: 0, movies: 0 };
+      parityState.artMarkers = { home: 0, movies: 0, series: 0 };
     }
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
@@ -694,6 +695,7 @@ export function createDriver({ out, args = [] } = {}) {
       if (screen === "playback") throw new Error("Roku parity driver refuses player screenshots");
       if (artEnabled && screen === "home") { await waitForArt("home"); await sleep(1000); }
       if (artEnabled && screen === "browse" && ["movie", "movies"].includes(browse)) await waitForArt("movies");
+      if (artEnabled && screen === "browse" && browse === "series") await waitForArt("series");
       const { jpeg, generation } = captureFrame();
       mkdirSync(dirname(resolve(file)), { recursive: true });
       const png = pngFromJpeg(jpeg);

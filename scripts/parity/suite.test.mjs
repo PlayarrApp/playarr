@@ -120,6 +120,13 @@ test("Roku requires fresh Movies grid focus before the Filters route", () => {
   assert.equal(hasFreshBrowseFocus(state, "series", 0, 0), false);
 });
 
+test("Roku Series route marks a fresh art-readiness boundary", () => {
+  const state = createParityState();
+  applyParityLine(state, "PARITY|browse|series");
+  assert.equal(state.artMarkers.series, state.eventSeq);
+  assert.equal(state.artMarkers.movies, 0);
+});
+
 test("Roku launch response guard detects HTTP-200 ECP error bodies", () => {
   assert.equal(isLaunchErrorBody(""), false);
   assert.equal(isLaunchErrorBody("OK"), false);

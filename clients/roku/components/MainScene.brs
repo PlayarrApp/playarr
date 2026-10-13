@@ -2477,8 +2477,8 @@ sub acceptBrowseCatalog(data as Object, append as Boolean)
         declareCurrentBrowsePreviewArt(m.artActiveGeneration)
     end if
     if m.artActiveGeneration > 0
-        announceArtGeneration(m.artActiveGeneration, "movies", m.artActiveHasArt)
-        finishArtGeneration(m.artActiveGeneration, "movies")
+        announceArtGeneration(m.artActiveGeneration, m.artActiveScope, m.artActiveHasArt)
+        finishArtGeneration(m.artActiveGeneration, m.artActiveScope)
     end if
 end sub
 
@@ -2496,10 +2496,11 @@ sub rebuildBrowseContent()
     end if
     m.artActiveGeneration = 0
     m.artActiveScope = ""
-    if m.artTelemetryEnabled and m.browseKind = "movie"
+    if m.artTelemetryEnabled and (m.browseKind = "movie" or m.browseKind = "series")
         m.artActiveScope = "movies"
+        if m.browseKind = "series" then m.artActiveScope = "series"
         m.artActiveHasArt = worksHaveCardArt(m.browseItems)
-        m.artActiveGeneration = beginArtGeneration("movies")
+        m.artActiveGeneration = beginArtGeneration(m.artActiveScope)
     end if
     buildGridContent(m.browseGrid, m.browseItems, browseCardScale())
     ' Web heading: h1 = "Movies", span = "1,730 TITLES" (not "50 of 1730").
@@ -2823,14 +2824,15 @@ sub updateBrowsePreview(work as Object)
     if m.browseKeyArt <> invalid
         uri = heroArtworkUrl(work)
         m.browseKeyArtPendingUri = uri
-        if m.artTelemetryEnabled and m.artActiveScope = "movies" and m.artActiveGeneration > 0
+        if m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
             m.browseArtTelemetryVersion += 1
             m.browseArtTelemetryArmed = false
+            previewSlot = m.artActiveScope + "-preview"
             if uri <> ""
-                emitArtSlot(m.artActiveGeneration, "movies", "movies-preview", true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
-                emitArtStatus(m.artActiveGeneration, "movies", "movies-preview", "pending", m.browseArtTelemetryVersion)
+                emitArtSlot(m.artActiveGeneration, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+                emitArtStatus(m.artActiveGeneration, m.artActiveScope, previewSlot, "pending", m.browseArtTelemetryVersion)
             else
-                emitArtOptionalEmpty(m.artActiveGeneration, "movies", "movies-preview", m.browseArtTelemetryVersion)
+                emitArtOptionalEmpty(m.artActiveGeneration, m.artActiveScope, previewSlot, m.browseArtTelemetryVersion)
             end if
         end if
         if uri = ""
@@ -2863,10 +2865,10 @@ sub onBrowseKeyArtTimer()
     m.browseKeyArt.SetHttpAgent(agent)
     m.browseKeyArt.loadWidth = 1038
     m.browseKeyArt.loadHeight = 1191
-    m.browseArtTelemetryArmed = m.artTelemetryEnabled and m.artActiveScope = "movies" and m.artActiveGeneration > 0
+    m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
     m.browseKeyArt.uri = uri
     if m.browseArtTelemetryArmed
-        emitArtStatus(m.artActiveGeneration, "movies", "movies-preview", "pending", m.browseArtTelemetryVersion)
+        emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "pending", m.browseArtTelemetryVersion)
         sampleBrowseKeyArtStatus()
     end if
     if Instr(1, uri, "style=stage-light") > 0 then m.browseKeyArt.opacity = 0.15 else if Instr(1, uri, "style=stage") > 0 then m.browseKeyArt.opacity = 0.15 else m.browseKeyArt.opacity = 0.4
@@ -2881,9 +2883,9 @@ end sub
 sub sampleBrowseKeyArtStatus()
     if not m.browseArtTelemetryArmed then return
     if m.browseKeyArt.loadStatus = "ready"
-        emitArtStatus(m.artActiveGeneration, "movies", "movies-preview", "ready", m.browseArtTelemetryVersion)
+        emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "ready", m.browseArtTelemetryVersion)
     else if m.browseKeyArt.loadStatus = "failed"
-        emitArtStatus(m.artActiveGeneration, "movies", "movies-preview", "failed", m.browseArtTelemetryVersion)
+        emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "failed", m.browseArtTelemetryVersion)
     end if
 end sub
 
@@ -2895,8 +2897,9 @@ sub declareCurrentBrowsePreviewArt(generation as Integer)
     end if
     if m.browseArtTelemetryVersion < 1 then m.browseArtTelemetryVersion = 1
     m.browseArtTelemetryArmed = true
-    emitArtSlot(generation, "movies", "movies-preview", true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
-    emitArtStatus(generation, "movies", "movies-preview", "pending", m.browseArtTelemetryVersion)
+    previewSlot = m.artActiveScope + "-preview"
+    emitArtSlot(generation, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+    emitArtStatus(generation, m.artActiveScope, previewSlot, "pending", m.browseArtTelemetryVersion)
     if m.browseKeyArt.uri = uri then sampleBrowseKeyArtStatus()
 end sub
 
@@ -2960,7 +2963,7 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
                 item.subtitleOverride = line
             end if
         end if
-        if grid.id = "browseGrid" and m.artTelemetryEnabled and m.artActiveScope = "movies" and m.artActiveGeneration > 0 and m.browseView = "screen"
+        if grid.id = "browseGrid" and m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0 and m.browseView = "screen"
             columns = m.browseGrid.numColumns
             if columns < 1 then columns = 3
             column = artIndex mod columns
@@ -2969,10 +2972,10 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
             y = m.browseGrid.translation[1] + rowIndex * (m.browseGrid.itemSize[1] + m.browseGrid.itemSpacing[1]) + item.padTop
             artWidth = 220 * cardScale
             artHeight = 124 * cardScale
-            slot = "movies-r" + rowIndex.ToStr() + "-c" + column.ToStr()
+            slot = m.artActiveScope + "-r" + rowIndex.ToStr() + "-c" + column.ToStr()
             if artRectVisible(x, y, artWidth, artHeight)
-                addPosterArtTelemetry(item, m.artActiveGeneration, "movies", slot, 0)
-                emitArtSlot(m.artActiveGeneration, "movies", slot, item.hdPosterUrl <> "", x, y, artWidth, artHeight, 0)
+                addPosterArtTelemetry(item, m.artActiveGeneration, m.artActiveScope, slot, 0)
+                emitArtSlot(m.artActiveGeneration, m.artActiveScope, slot, item.hdPosterUrl <> "", x, y, artWidth, artHeight, 0)
             end if
         end if
         artIndex += 1
@@ -6556,7 +6559,7 @@ end sub
 
 function beginArtGeneration(scope as String) as Integer
     if not m.artTelemetryEnabled then return 0
-    if scope <> "home" and scope <> "movies" then return 0
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return 0
     m.artGeneration += 1
     m.artActiveGeneration = m.artGeneration
     m.artActiveScope = scope
@@ -6566,7 +6569,7 @@ end function
 
 sub announceArtGeneration(generation as Integer, scope as String, hasArt as Boolean)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
     hasArtText = "0"
     if hasArt then hasArtText = "1"
     parityEmit("art", "begin|" + generation.ToStr() + "|" + scope + "|" + hasArtText + "|" + m.artExpectedSlots.Count().ToStr())
@@ -6574,13 +6577,13 @@ end sub
 
 sub finishArtGeneration(generation as Integer, scope as String)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
     parityEmit("art", "finish|" + generation.ToStr() + "|" + scope)
 end sub
 
 sub emitArtSlot(generation as Integer, scope as String, slot as String, hasSource as Boolean, x as Float, y as Float, width as Float, height as Float, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
     if not artRectVisible(x, y, width, height) then return
     hasSourceText = "0"
     if hasSource then hasSourceText = "1"
@@ -6594,14 +6597,14 @@ end sub
 
 sub emitArtStatus(generation as Integer, scope as String, slot as String, status as String, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
     if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
     parityEmit("art", "status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr())
 end sub
 
 sub emitArtOptionalEmpty(generation as Integer, scope as String, slot as String, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "movies" or slot <> "movies-preview" then return
+    if (scope <> "movies" and scope <> "series") or slot <> (scope + "-preview") then return
     remaining = []
     for each expectedSlot in m.artExpectedSlots
         if expectedSlot <> slot then remaining.Push(expectedSlot)

@@ -78,6 +78,25 @@ test("Movies preview art can join and leave the current generation without stale
   assert.deepEqual(artReadiness(state.generations.get("movies:13"), { scope: "movies" }), { ready: true, reason: "ready" });
 });
 
+test("Series readiness gates visible grid art and the sourced browse hero", () => {
+  const state = createArtReadinessState();
+  reduceArtEvent(state, event("begin|14|series|1|3", 50));
+  reduceArtEvent(state, event("slot|14|series|series-r0-c0|1|780|150|327|184|0", 51));
+  reduceArtEvent(state, event("slot|14|series|series-r0-c1|0|1107|150|327|184|0", 52));
+  reduceArtEvent(state, event("status|14|series|series-r0-c0|ready|0", 53));
+  reduceArtEvent(state, event("status|14|series|series-r0-c1|empty|0", 54));
+  reduceArtEvent(state, event("slot|14|series|series-preview|1|-20|-22.9|1038|1191|2", 55));
+  reduceArtEvent(state, event("finish|14|series", 56));
+  assert.equal(artReadiness(state.generations.get("series:14"), { scope: "series" }).reason, "art-pending");
+  reduceArtEvent(state, event("status|14|series|series-preview|ready|2", 57));
+  assert.deepEqual(artReadiness(state.generations.get("series:14"), { scope: "series" }), { ready: true, reason: "ready" });
+
+  const missingVisibleSet = createArtReadinessState();
+  reduceArtEvent(missingVisibleSet, event("begin|15|series|1|0", 58));
+  reduceArtEvent(missingVisibleSet, event("finish|15|series", 59));
+  assert.equal(artReadiness(missingVisibleSet.generations.get("series:15"), { scope: "series" }).reason, "no-required-art-slots");
+});
+
 test("invalid and non-whitelisted telemetry is ignored", () => {
   assert.equal(parseArtEvent("status|1|home|home-r0-c0|ready|0|a title", 1), null);
   assert.equal(parseArtEvent("status|1|home|home-r0-c0|loading|0", 1), null);

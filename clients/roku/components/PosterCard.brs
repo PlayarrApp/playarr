@@ -260,7 +260,7 @@ sub emitPosterArtStatus(status as String)
     slot = content.parityArtSlot
     version = content.parityArtVersion
     if generation = invalid or generation < 1 or version = invalid or version < 0 then return
-    if (scope <> "home" and scope <> "movies") or slot = invalid or slot = "" then return
+    if (scope <> "home" and scope <> "movies" and scope <> "series") or slot = invalid or slot = "" then return
     if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
     print "PARITY|art|status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr()
 end sub
