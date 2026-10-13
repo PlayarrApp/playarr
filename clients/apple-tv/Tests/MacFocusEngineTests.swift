@@ -41,6 +41,30 @@ final class MacFocusEngineTests: XCTestCase {
         XCTAssertEqual(MacFocusEngine.nearest(from: focused, direction: .left, in: [nav]), nav.0)
     }
 
+    func testLeftFromMeasuredHomeCardSelectsTheNearestWebNavIndex() throws {
+        // Safe 1920x1080 web geometry: Home rail 0/card 0 after the driver focuses it.
+        let focusedCard = CGRect(x: 881.59375, y: 457.75, width: 327.171875, height: 213.390625)
+        let navColumnWidth = DesignTokens.Shell.navItemSize
+            + DesignTokens.Shell.navGroupPadding * 2
+            + DesignTokens.Shell.navEdge * 2
+        let navCenterX = navColumnWidth / 2
+        let navCandidates = try (0..<10).map { index -> (UUID, CGRect) in
+            let centerY = try XCTUnwrap(
+                TVFloatingNavLayout.tileCenterY(index: index, groupCounts: [2, 4, 4], height: 1080)
+            )
+            let frame = CGRect(
+                x: navCenterX - DesignTokens.Shell.navItemSize / 2,
+                y: centerY - DesignTokens.Shell.navItemSize / 2,
+                width: DesignTokens.Shell.navItemSize,
+                height: DesignTokens.Shell.navItemSize
+            )
+            return (UUID(), frame)
+        }
+
+        let nearest = MacFocusEngine.nearest(from: focusedCard, direction: .left, in: navCandidates)
+        XCTAssertEqual(nearest, navCandidates[5].0) // verified web DOM-order index 5
+    }
+
     func testNothingAheadKeepsFocus() {
         let focused = card(100, 100)
         XCTAssertNil(MacFocusEngine.nearest(from: focused, direction: .up, in: [(UUID(), card(400, 500))]))
