@@ -42,6 +42,13 @@ function ThemeTokens(mode as String) as Object
             lineStrong: &h38262147
             ' Brand red (.tv-provider kicker, unwatched dot, player accent): the same in both themes.
             brand: &hCF3157FF
+            clientAndroid: &h3DDC84FF
+            clientWebOS: &hA50034FF
+            clientTizen: &h1428A0FF
+            clientRoku: &h662D91FF
+            clientChromecast: &hFF4444FF
+            clientXbox: &h107C10FF
+            clientFireTV: &hFF9900FF
             ' --brand-ink: text in the brand hue (kickers, eyebrows), WCAG AAA.
             brandInk: &h821E36FF
             ' --card-glow-color: the focus ring and glow of a media card (brand-strong in light, brand-ink in dark).
@@ -84,6 +91,13 @@ function ThemeTokens(mode as String) as Object
         line: &hDFDCDD1C
         lineStrong: &hDFDCDD3B
         brand: &hCF3157FF
+        clientAndroid: &h3DDC84FF
+        clientWebOS: &hA50034FF
+        clientTizen: &h1428A0FF
+        clientRoku: &h662D91FF
+        clientChromecast: &hFF4444FF
+        clientXbox: &h107C10FF
+        clientFireTV: &hFF9900FF
         brandInk: &hEAA6B6FF
         cardGlow: &hEAA6B6FF
         profileShadow: &h1F0E14FF

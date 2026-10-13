@@ -9,11 +9,24 @@ sub pagesInit()
     browseChromeInit()
     edgeFadesInit()
     m.pageGroup = m.top.findNode("pageGroup")
+    m.pageBg = m.top.findNode("pageBg")
     m.pageHead = m.top.findNode("pageHead")
     m.pageBody = m.top.findNode("pageBody")
     m.pageRing = m.top.findNode("pageRing")
     m.pagePanel = m.top.findNode("pagePanel")
     m.pagePanelFade = m.top.findNode("pagePanelFade")
+    m.clientsStageBg = m.top.findNode("clientsStageBg")
+    m.clientsStageChrome = m.top.findNode("clientsStageChrome")
+    m.clientsStageLogo = m.top.findNode("clientsStageLogo")
+    m.clientsThemePill = m.top.findNode("clientsThemePill")
+    m.clientsThemeIcon = m.top.findNode("clientsThemeIcon")
+    m.clientsThemeLabel = m.top.findNode("clientsThemeLabel")
+    m.clientsThemeChevron = m.top.findNode("clientsThemeChevron")
+    m.clientsLangPill = m.top.findNode("clientsLangPill")
+    m.clientsLangIcon = m.top.findNode("clientsLangIcon")
+    m.clientsLangLabel = m.top.findNode("clientsLangLabel")
+    m.clientsLangChevron = m.top.findNode("clientsLangChevron")
+    m.clientBubbles = []
     ThemeSetRole(m.pagePanel, "panel")
     ThemeSetRole(m.pagePanelFade, "panel")
     ThemeSetRole(m.pageRing, "focusRing")
@@ -176,6 +189,7 @@ end sub
 
 ' Shell header shared by every page: round back button, title; panelX is where the right-hand panel starts (0 = none).
 sub pageBegin(title as String, panelX as Float)
+    clientsIndex = m.pageKind = "clients" and m.clientGuideOpen <> true
     m.pageBody.removeChildrenIndex(m.pageBody.getChildCount(), 0)
     m.pageHead.removeChildrenIndex(m.pageHead.getChildCount(), 0)
     m.pageItems = []
@@ -191,11 +205,22 @@ sub pageBegin(title as String, panelX as Float)
         m.pagePanel.translation = [panelX + 260, 0]
         m.pagePanel.width = 1920 - panelX - 260
     end if
-    pgRound(m.pageHead, 153.6, 56.3, 50, 50, 25, "surface", 179)
-    pgRound(m.pageHead, 153.6, 56.3, 50, 50, 25, "line", -1, true)
-    pgIcon(m.pageHead, 170, 73, 17, "arrow-left.png", "inkSoft")
-    pgFocusable(153.6, 56.3, 50, 50, 25, "back")
-    pgLabel(m.pageHead, 226.6, 56.2, 900, 50, title, 34, 600, "ink", { vertAlign: "center" })
+    if m.pageBg <> invalid then m.pageBg.visible = not clientsIndex
+    if m.clientsStageBg <> invalid then m.clientsStageBg.visible = clientsIndex
+    if m.clientsStageChrome <> invalid then m.clientsStageChrome.visible = clientsIndex
+    backX = 153.6
+    if clientsIndex then backX = 0
+    pgRound(m.pageHead, backX, 56.3, 50, 50, 25, "surface", 179)
+    pgRound(m.pageHead, backX, 56.3, 50, 50, 25, "line", -1, true)
+    pgIcon(m.pageHead, backX + 16.4, 73, 17, "arrow-left.png", "inkSoft")
+    pgFocusable(backX, 56.3, 50, 50, 25, "back")
+    if clientsIndex
+        pgFocusable(1552, 50, 144, 48, 24, "clientsTheme")
+        pgFocusable(1710, 50, 168, 48, 24, "clientsLanguage")
+        applyClientsChrome()
+    else
+        pgLabel(m.pageHead, 226.6, 56.2, 900, 50, title, 34, 600, "ink", { vertAlign: "center" })
+    end if
 end sub
 
 sub pageEmptyState(x as Float, title as String, description as String)
@@ -244,13 +269,29 @@ sub pageFocusRender()
     for each it in m.pageItems
         if it.scrolls = true and it.y + it.h > bottom then bottom = it.y + it.h
     end for
-    pageFadesUpdate(bottom)
+    if m.pageKind = "clients" and m.clientGuideOpen <> true
+        m.pageFadeTop.visible = false
+        m.pageFadeBottom.visible = false
+    else
+        pageFadesUpdate(bottom)
+    end if
     radius = 25
     if item.r < 25 then radius = 12
-    m.pageRing.uri = "pkg:/images/round-ring-r" + radius.ToStr() + ".9.png"
-    m.pageRing.translation = [item.x + ox - 3, item.y + oy - 3]
-    m.pageRing.width = item.w + 6
-    m.pageRing.height = item.h + 6
+    if m.pageKind = "clients" and m.clientGuideOpen <> true
+        if item.action = "clientChoice"
+            m.pageRing.uri = "pkg:/images/clients-focus-ring.png"
+        else
+            m.pageRing.uri = "pkg:/images/round-ring-r" + radius.ToStr() + ".9.png"
+        end if
+        m.pageRing.translation = [item.x + ox - 5, item.y + oy - 5]
+        m.pageRing.width = item.w + 10
+        m.pageRing.height = item.h + 10
+    else
+        m.pageRing.uri = "pkg:/images/round-ring-r" + radius.ToStr() + ".9.png"
+        m.pageRing.translation = [item.x + ox - 3, item.y + oy - 3]
+        m.pageRing.width = item.w + 6
+        m.pageRing.height = item.h + 6
+    end if
     m.pageRing.visible = not m.navDockMode
     pageOnFocus(item)
 end sub
@@ -355,8 +396,40 @@ function pageOnKey(key as String) as Boolean
         return true
     end if
     if key = "up" or key = "down" or key = "left" or key = "right"
+        if m.pageKind = "clients" and m.clientGuideOpen <> true and m.pageItems.Count() > 0
+            action = m.pageItems[m.pageFocusIdx].action
+            if action = "back" or action = "clientsTheme" or action = "clientsLanguage"
+                if key = "right"
+                    if action = "back"
+                        focusClientsHeader("clientsTheme")
+                    else if action = "clientsTheme"
+                        focusClientsHeader("clientsLanguage")
+                    end if
+                    return true
+                else if key = "left"
+                    if action = "clientsLanguage"
+                        focusClientsHeader("clientsTheme")
+                    else if action = "clientsTheme"
+                        focusClientsHeader("back")
+                    end if
+                    return true
+                else if key = "down"
+                    if action = "clientsTheme" or action = "clientsLanguage"
+                        m.pageFocusIdx = 3
+                        pageFocusRender()
+                    end if
+                    return true
+                end if
+                return true
+            end if
+            if key = "up" and m.pageItems[m.pageFocusIdx].action = "clientChoice" and m.pageItems[m.pageFocusIdx].y < 500
+                focusClientsHeader("clientsTheme")
+                return true
+            end if
+        end if
         if pageMoveFocus(key) then return true
         if key = "left"
+            if m.pageKind = "clients" and m.clientGuideOpen <> true then return true
             m.navDockMode = true
             m.navDockIndex = activeNavDockIndex()
             if m.navDockIndex < 0 then m.navDockIndex = firstEnabledNavIndex()
@@ -390,10 +463,15 @@ sub pageActivate(item as Object)
         customiseAction(item)
     else if m.pageKind = "household"
         householdAction(item)
+    else if m.pageKind = "clients" and item.action = "clientsTheme"
+        openPairingThemePicker()
+    else if m.pageKind = "clients" and item.action = "clientsLanguage"
+        openPairingLanguagePicker()
     else if m.pageKind = "clients" and action = "clientChoice"
         clientId = item.data
         if clientId = "roku"
             m.clientGuideOpen = true
+            showOnly("page")
             renderRokuInstallGuide()
             m.pageFocusIdx = 0
             pageFocusRender()
@@ -410,6 +488,7 @@ end sub
 
 sub openPage(kind as String)
     m.pageKind = kind
+    if kind = "clients" then m.clientGuideOpen = false
     parityEmit("page", kind)
     m.pageData = invalid
     m.pageStatus = "loading"
@@ -573,30 +652,136 @@ function requestStatusLabel(status as Dynamic) as String
     return "Unknown"
 end function
 
-' Native equivalent of the tv-web /clients index. Keep every current platform choice visible; only Roku has a native guide on
-' this client, so other choices explain how to open their web guide on a phone or computer.
+' The Web /clients index is a standalone 4-column bubble grid, not an authenticated app-shell page.
+sub applyClientsChrome()
+    if m.clientsStageBg = invalid then return
+    isLight = ResolvePairingTheme(m.themePreference) = "light"
+    m.clientsStageBg.uri = "pkg:/images/profiles-bg.png"
+    if isLight then m.clientsStageBg.uri = "pkg:/images/profiles-bg-light.png"
+    tokens = ThemeTokens(ResolvePairingTheme(m.themePreference))
+    if m.clientsThemeLabel <> invalid
+        m.clientsThemeLabel.text = PairingThemeChromeLabel(m.themePreference, ResolvePairingLanguage(m.languagePreference))
+        m.clientsThemeLabel.color = tokens.ink
+        ThemeSetRole(m.clientsThemeLabel, "ink")
+    end if
+    if m.clientsLangLabel <> invalid
+        m.clientsLangLabel.text = PairingLanguageChromeLabel(m.languagePreference)
+        m.clientsLangLabel.color = tokens.ink
+        ThemeSetRole(m.clientsLangLabel, "ink")
+    end if
+    suffix = ""
+    if isLight then suffix = "-light"
+    if m.clientsThemeIcon <> invalid then m.clientsThemeIcon.uri = "pkg:/images/pairing-icon-theme" + suffix + ".png"
+    if m.clientsLangIcon <> invalid then m.clientsLangIcon.uri = "pkg:/images/pairing-icon-lang" + suffix + ".png"
+    if m.clientsThemeChevron <> invalid then m.clientsThemeChevron.uri = "pkg:/images/pairing-icon-chevron" + suffix + ".png"
+    if m.clientsLangChevron <> invalid then m.clientsLangChevron.uri = "pkg:/images/pairing-icon-chevron" + suffix + ".png"
+    if m.clientsThemePill <> invalid then m.clientsThemePill.uri = pairingChromeUri("theme", false)
+    if m.clientsLangPill <> invalid then m.clientsLangPill.uri = pairingChromeUri("lang", false)
+
+    for each bubble in m.clientBubbles
+        if bubble.fill <> invalid then ThemeSetRole(bubble.fill, "surfaceStrong")
+        if bubble.border <> invalid
+            line = ThemeColor("lineStrong")
+            borderAlpha = Int((line and &hFF) * 0.66)
+            bubble.border.blendColor = ThemeWithAlpha(line, borderAlpha)
+        end if
+        if bubble.icon <> invalid then bubble.icon.blendColor = clientPlatformIconColor(bubble.id)
+    end for
+end sub
+
+function clientPlatformIconColor(clientId as String) as Integer
+    if clientId = "vidaa" then return ThemeColor("brand")
+    if clientId = "android" then return ThemeColor("clientAndroid")
+    if clientId = "apple" or clientId = "harmony" or clientId = "server" then return ThemeColor("ink")
+    if clientId = "webos" then return ThemeColor("clientWebOS")
+    if clientId = "tizen" then return ThemeColor("clientTizen")
+    if clientId = "roku" then return ThemeColor("clientRoku")
+    if clientId = "chromecast" then return ThemeColor("clientChromecast")
+    if clientId = "xbox" then return ThemeColor("clientXbox")
+    if clientId = "firetv" then return ThemeColor("clientFireTV")
+    return ThemeColor("ink")
+end function
+
+sub centerClientsKicker()
+    if m.clientsKicker = invalid then return
+    width = m.clientsKicker.textWidth
+    if width > 0 then m.clientsKicker.translation = [Int((1920 - width) / 2), 188]
+end sub
+
+sub centerClientsTitle()
+    if m.clientsTitle = invalid then return
+    width = m.clientsTitle.textWidth
+    if width > 0 then m.clientsTitle.translation = [Int((1920 - width) / 2), 198]
+end sub
+
+' The Web /clients index uses four columns of 220px bubbles on a 286px pitch at 1920x1080.
 sub renderClientsIndex()
-    pageBegin("Clients", 0)
-    pgLabel(m.pageBody, 224, 126, 900, 18, "PLAYARR CLIENTS", 10, 800, "brandInk")
-    pgLabel(m.pageBody, 224, 153, 1400, 55, "Watch your way.", 40, 500, "ink")
-    pgLabel(m.pageBody, 224, 215, 1460, 42, "Choose a platform to see availability and installation details.", 15, 400, "inkSoft", { wrap: true, maxLines: 2 })
+    pageBegin("", 0)
+    m.clientBubbles = []
+
+    m.clientsKicker = CreateObject("roSGNode", "TrackedText")
+    m.clientsKicker.ObserveField("textWidth", "centerClientsKicker")
+    m.clientsKicker.spec = { text: "PLAYARR CLIENTS", size: 12, weight: 760, tracking: 2.16, role: "inkMuted", upper: true }
+    m.clientsKicker.translation = [890, 188]
+    centerClientsKicker()
+    m.pageBody.AppendChild(m.clientsKicker)
+
+    m.clientsTitle = CreateObject("roSGNode", "TrackedText")
+    m.clientsTitle.ObserveField("textWidth", "centerClientsTitle")
+    m.clientsTitle.spec = { text: "Watch your way.", size: 81, weight: 500, tracking: -5.83, role: "ink" }
+    m.clientsTitle.translation = [700, 198]
+    centerClientsTitle()
+    m.pageBody.AppendChild(m.clientsTitle)
 
     ids = ["vidaa", "android", "apple", "webos", "tizen", "roku", "chromecast", "xbox", "harmony", "firetv", "server"]
-    names = ["Hisense VIDAA", "Android", "Apple TV", "LG webOS", "Samsung Tizen", "Roku TV", "Chromecast", "Xbox", "HarmonyOS", "Fire TV", "Server"]
-    platforms = ["Hisense smart TVs", "Phones, tablets and TVs", "Apple TV", "LG smart TVs", "Samsung smart TVs", "Roku televisions", "Chromecast built-in devices", "Xbox consoles", "HarmonyOS devices", "Fire TV devices", "Your Playarr server"]
-    availability = ["Experimental install", "Available", "Coming soon", "Experimental install", "Experimental install", "Experimental install", "Coming soon", "Coming soon", "Coming soon", "Coming soon", "Experimental install"]
-    for i = 0 to ids.Count() - 1
-        row = Int(i / 3)
-        col = i - row * 3
-        x = 224 + col * 506
-        y = 332 + row * 132
-        pgRound(m.pageBody, x, y, 470, 112, 18, "surfaceStrong", 174)
-        pgRound(m.pageBody, x, y, 470, 112, 18, "line", 138, true)
-        pgLabel(m.pageBody, x + 24, y + 20, 420, 26, names[i], 19, 700, "ink")
-        pgLabel(m.pageBody, x + 24, y + 53, 420, 18, platforms[i], 12, 400, "inkSoft")
-        pgLabel(m.pageBody, x + 24, y + 78, 420, 16, availability[i], 10, 700, "brandInk")
-        pgFocusable(x, y, 470, 112, 18, "clientChoice", ids[i], true)
+    total = ids.Count()
+    columns = 4
+    rows = 3
+    tileSize = 220.0
+    pitch = 286.0
+    for i = 0 to total - 1
+        row = Int(i / columns)
+        col = i - row * columns
+        itemsInRow = columns
+        if row = rows - 1 then itemsInRow = total - row * columns
+        offsetX = col - (itemsInRow - 1) / 2.0
+        offsetY = row - (rows - 1) / 2.0
+        x = 960 + offsetX * pitch - tileSize / 2
+        y = 770 + offsetY * pitch - tileSize / 2
+
+        fill = CreateObject("roSGNode", "Poster")
+        fill.uri = "pkg:/images/clients-bubble.png"
+        fill.translation = [x, y]
+        fill.width = tileSize
+        fill.height = tileSize
+        fill.blendColor = ThemeColor("surfaceStrong")
+        ThemeSetRole(fill, "surfaceStrong")
+        m.pageBody.AppendChild(fill)
+
+        border = CreateObject("roSGNode", "Poster")
+        border.uri = "pkg:/images/clients-bubble-border.png"
+        border.translation = [x, y]
+        border.width = tileSize
+        border.height = tileSize
+        m.pageBody.AppendChild(border)
+
+        icon = CreateObject("roSGNode", "Poster")
+        icon.uri = "pkg:/images/client-icon-" + ids[i] + ".png"
+        iconSize = tileSize * 0.48
+        if ids[i] = "harmony" then iconSize = tileSize * 0.62
+        icon.translation = [x + (tileSize - iconSize) / 2, y + (tileSize - iconSize) / 2]
+        icon.width = iconSize
+        icon.height = iconSize
+        icon.blendColor = clientPlatformIconColor(ids[i])
+        m.pageBody.AppendChild(icon)
+
+        m.clientBubbles.Push({ id: ids[i], fill: fill, border: border, icon: icon })
+        pgFocusable(x, y, tileSize, tileSize, tileSize / 2, "clientChoice", ids[i], true)
     end for
+
+    applyClientsChrome()
+    m.pageFocusIdx = 3 ' Back, theme, language precede the Web default focus on the first bubble.
+    pageFocusRender()
 end sub
 
 ' The native /clients/roku guide. Roku has no in-app browser or download handoff, so show the install steps directly and expose
@@ -663,9 +848,21 @@ end sub
 
 sub leaveRokuGuideToClientList()
     m.clientGuideOpen = false
+    showOnly("page")
     renderClientsIndex()
-    m.pageFocusIdx = 6 ' the Roku tile follows the page back control and five earlier client choices
+    m.pageFocusIdx = 8 ' Back and the two header controls precede the Roku tile and five earlier choices.
     pageFocusRender()
+end sub
+
+sub focusClientsHeader(action as String)
+    if m.pageKind <> "clients" or m.clientGuideOpen = true then return
+    for i = 0 to m.pageItems.Count() - 1
+        if m.pageItems[i].action = action
+            m.pageFocusIdx = i
+            pageFocusRender()
+            return
+        end if
+    end for
 end sub
 
 ' ---------------------------------------------------------------------------

@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Route D-pad Down from the synthetic Add profile avatar to Clients while preserving Settings below real profiles.
+- Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
 - Android TV Home rails reserve the web-matched top headroom so focused artwork and its glow are no longer clipped.
 - Match Android phone Search geometry, idle illustration and muted colour to web, and label generated detail chapter markers consistently with web.
 - Tizen offline downloads now report Ready only after the complete output file has been flushed and closed.
@@ -346,6 +348,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add a native Roku Clients route with sideload instructions and clear notes about Roku's browser and download limits.
 - Tizen now provides a native Playlists directory with root and nested playlist navigation, preserving route state when returning to the directory.
 - Add a native Roku Clients route with sideload instructions and clear notes about Roku's browser and download limits.
 - HarmonyOS TV: Settings > Profile lock sets, replaces and removes the profile PIN, as web does.
