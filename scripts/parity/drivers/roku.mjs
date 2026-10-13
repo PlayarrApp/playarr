@@ -80,6 +80,21 @@ export function parseCalendarFocus(value) {
   return { action, rect: { x, y, w, h } };
 }
 
+export function parseCalendarDialog(value) {
+  if (typeof value !== "string") return null;
+  const state = value.trim();
+  return state === "open" || state === "closed" ? state : null;
+}
+
+export function parseCalendarContent(value) {
+  if (typeof value !== "string") return null;
+  const match = /^(month|week|agenda)\|(ready|empty|entries)$/.exec(value.trim());
+  if (!match) return null;
+  const [, view, content] = match;
+  if ((view === "agenda" && content === "ready") || (view !== "agenda" && content !== "ready")) return null;
+  return { view, content };
+}
+
 export function appendCalendarFocusTransition(trace, from, key, to, limit = MAX_CALENDAR_TRACE) {
   if (!Array.isArray(trace) || !CALENDAR_KEYS.has(key) || !Number.isInteger(limit) || limit < 1) return trace;
   limit = Math.min(limit, MAX_CALENDAR_TRACE);
@@ -129,6 +144,9 @@ export function createParityState() {
     focusSeq: 0, focusScreenSeq: 0, focusFloorAtScreen: 0, drawerSource: "",
     calendarView: "", calendarViewSeq: 0, calendarViewScreenSeq: 0,
     calendarFocus: "", calendarFocusRect: null, calendarFocusSeq: 0, calendarFocusScreenSeq: 0,
+    calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
+    calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
+    calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
     eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0 }, artState: createArtReadinessState(),
   };
 }
@@ -143,12 +161,18 @@ export function applyParityLine(state, line) {
     state.screenSeq += 1;
     state.focusFloorAtScreen = state.focusSeq;
     state.focus = null;
+    state.calendarContent = null;
+    state.calendarDialogState = "";
     if (state.screen === "home" || state.screen === "profiles") state.drawerSource = "";
     if (state.screen === "drawer" && !state.drawerSource) state.drawerSource = "actions";
     if (state.screen === "home") state.artMarkers.home = state.eventSeq;
   } else if (kind === "page") {
     state.page = value.trim();
-    if (state.page !== "calendar") state.calendarView = "";
+    if (state.page !== "calendar") {
+      state.calendarView = "";
+      state.calendarContent = null;
+      state.calendarDialogState = "";
+    }
   } else if (kind === "calendarView") {
     const view = value.trim();
     if (!["month", "week", "agenda"].includes(view)) return false;
@@ -162,6 +186,23 @@ export function applyParityLine(state, line) {
     state.calendarFocusRect = focus.rect;
     state.calendarFocusSeq += 1;
     state.calendarFocusScreenSeq = state.screenSeq;
+  } else if (kind === "calendarContent") {
+    const content = parseCalendarContent(value);
+    if (!content) return false;
+    state.calendarContent = content;
+    state.calendarContentSeq = state.eventSeq;
+    state.calendarContentScreenSeq = state.screenSeq;
+  } else if (kind === "calendarDialog") {
+    const dialog = parseCalendarDialog(value);
+    if (!dialog) return false;
+    state.calendarDialogState = dialog;
+    if (dialog === "open") {
+      state.calendarDialogOpenSeq = state.eventSeq;
+      state.calendarDialogOpenScreenSeq = state.screenSeq;
+    } else {
+      state.calendarDialogClosedSeq = state.eventSeq;
+      state.calendarDialogClosedScreenSeq = state.screenSeq;
+    }
   } else if (kind === "browse") {
     state.browse = value.trim();
     if (state.browse === "movie" || state.browse === "movies") state.artMarkers.movies = state.eventSeq;
@@ -266,6 +307,24 @@ export function hasFreshCalendarFocus(state, afterScreenSeq, afterFocusSeq) {
     && state.calendarFocus !== ""
     && state.calendarFocusSeq > afterFocusSeq
     && state.calendarFocusScreenSeq === state.screenSeq;
+}
+
+export function hasFreshCalendarContent(state, expectedView, afterContentSeq) {
+  return state.screen === "page"
+    && state.page === "calendar"
+    && state.calendarContent?.view === expectedView
+    && state.calendarContentSeq > afterContentSeq
+    && state.calendarContentScreenSeq === state.screenSeq;
+}
+
+export function hasFreshCalendarDialogClosure(state, afterEventSeq) {
+  return state.screen === "page"
+    && state.page === "calendar"
+    && state.calendarDialogState === "closed"
+    && state.calendarDialogOpenSeq > afterEventSeq
+    && state.calendarDialogClosedSeq > state.calendarDialogOpenSeq
+    && state.calendarDialogOpenScreenSeq === state.screenSeq
+    && state.calendarDialogClosedScreenSeq === state.screenSeq;
 }
 
 export function calendarCellLeftEdgeAction(focus) {
@@ -720,6 +779,7 @@ export function createDriver({ out, args = [] } = {}) {
       const targetView = entry.id.slice("calendar-".length);
       const beforeCalendarViewSeq = parityState.calendarViewSeq;
       const beforeCalendarFocusSeq = parityState.calendarFocusSeq;
+      const beforeCalendarContentSeq = parityState.calendarContentSeq;
       await press("left");
       for (let i = 0; i < 12; i += 1) await press("down");
       await press("up");
@@ -728,12 +788,15 @@ export function createDriver({ out, args = [] } = {}) {
       await waitFor(
         () => screenSeq > beforeCalendarScreenSeq
           && hasFreshCalendarView(parityState, "month", beforeCalendarViewSeq)
-          && hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeCalendarFocusSeq),
-        "fresh Calendar month view",
+          && hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeCalendarFocusSeq)
+          && hasFreshCalendarContent(parityState, "month", beforeCalendarContentSeq),
+        "fresh Calendar month content and focus",
         30000,
       );
       if (targetView !== "month") {
         const beforeTargetViewSeq = parityState.calendarViewSeq;
+        const beforeTargetContentSeq = parityState.calendarContentSeq;
+        const beforeTargetDialogSeq = parityState.eventSeq;
         const calendarTrace = [];
         const currentCalendarFocus = () => parityState.calendarFocus && parityState.calendarFocusRect
           ? { action: parityState.calendarFocus, rect: parityState.calendarFocusRect }
@@ -824,8 +887,10 @@ export function createDriver({ out, args = [] } = {}) {
         for (let i = 0; i < targetIndex; i += 1) await press("down");
         await press("select");
         await waitFor(
-          () => hasFreshCalendarView(parityState, targetView, beforeTargetViewSeq),
-          `fresh Calendar ${targetView} view`,
+          () => hasFreshCalendarView(parityState, targetView, beforeTargetViewSeq)
+            && hasFreshCalendarContent(parityState, targetView, beforeTargetContentSeq)
+            && hasFreshCalendarDialogClosure(parityState, beforeTargetDialogSeq),
+          `fresh Calendar ${targetView} content with the view dialog closed`,
           15000,
         );
       }

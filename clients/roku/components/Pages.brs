@@ -40,6 +40,7 @@ sub pagesInit()
     m.pageStatus = ""
     m.calendarAnchor = invalid
     m.calendarView = "month"
+    m.calendarViewDialogPendingClose = false
     m.calendarKinds = []
     m.pageScrollY = 0
     m.settingsPanel = "appearance"
@@ -600,8 +601,8 @@ sub openPage(kind as String)
         m.calendarFocusAction = ""
         m.calendarPlaceFirst = true
         m.calendarSelected = ""
-        renderCalendar()
         loadCalendar()
+        renderCalendar()
     else if kind = "household"
         m.householdNote = ""
         renderHousehold()
@@ -1630,6 +1631,15 @@ sub renderCalendarBody()
     else
         renderCalendarAgenda(entries)
     end if
+    if m.artTelemetryEnabled = true and m.pageStatus = "ready"
+        if m.calendarView = "agenda"
+            renderedState = "entries"
+            if entries.Count() = 0 then renderedState = "empty"
+            parityEmit("calendarContent", "agenda|" + renderedState)
+        else if m.calendarView = "month" or m.calendarView = "week"
+            parityEmit("calendarContent", m.calendarView + "|ready")
+        end if
+    end if
 end sub
 
 sub renderCalendarAgenda(entries as Object)
@@ -1870,27 +1880,30 @@ sub calendarAction(item as Object)
         else
             m.calendarAnchor = calAddDays(m.calendarAnchor, 30 * dir)
         end if
-        renderCalendar()
         loadCalendar()
+        renderCalendar()
     else if a = "calToday"
         m.calendarAnchor = invalid
         calendarEnsureRange()
-        renderCalendar()
         loadCalendar()
+        renderCalendar()
     else if a = "calView"
         dialog = CreateObject("roSGNode", "Dialog")
         dialog.title = "Calendar view"
         dialog.buttons = ["Month", "Week", "Agenda"]
         dialog.ObserveField("buttonSelected", "onCalendarViewButton")
+        dialog.ObserveField("visible", "onCalendarViewDialogVisibility")
+        m.calendarViewDialogPendingClose = false
         m.top.dialog = dialog
+        if m.artTelemetryEnabled = true and dialog.visible = true then parityEmit("calendarDialog", "open")
     else if a = "cell"
         m.calendarFocusAction = ""
         m.calendarPlaceFirst = true
         m.calendarAnchor = item.data
         m.calendarView = "agenda"
         parityEmit("calendarView", m.calendarView)
-        renderCalendar()
         loadCalendar()
+        renderCalendar()
     else if a = "calPlay"
         requestPlayback(item.data)
     else if a = "calOpen"
@@ -1906,16 +1919,33 @@ sub calendarAction(item as Object)
     if a = "calPrev" or a = "calNext" or a = "calToday" or a = "cell" then pageFocusRender()
 end sub
 
+sub onCalendarViewDialogVisibility(event as Object)
+    if m.artTelemetryEnabled <> true then return
+    visible = event.GetData()
+    if visible = true
+        if m.calendarViewDialogPendingClose <> true then parityEmit("calendarDialog", "open")
+        return
+    end if
+    if visible <> false then return
+    if m.calendarViewDialogPendingClose = true
+        m.calendarViewDialogPendingClose = false
+        parityEmit("calendarDialog", "closed")
+    end if
+end sub
+
 sub onCalendarViewButton(event as Object)
     index = event.GetData()
-    if m.top.dialog <> invalid then m.top.dialog.close = true
+    if m.top.dialog <> invalid
+        m.calendarViewDialogPendingClose = true
+        m.top.dialog.close = true
+    end if
     views = ["month", "week", "agenda"]
     if index >= 0 and index < views.Count()
         m.calendarView = views[index]
         parityEmit("calendarView", m.calendarView)
         m.calendarFocusAction = "calView"
-        renderCalendar()
         loadCalendar()
+        renderCalendar()
         pageFocusRender()
     end if
 end sub

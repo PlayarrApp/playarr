@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
@@ -90,6 +90,48 @@ test("Roku reports only a fresh, observed Calendar view", () => {
   assert.equal(hasFreshCalendarView(state, "week", currentViewSeq), true);
   assert.equal(rokuRouteForState("page", "calendar", "", "", state.calendarView), "/calendar?view=week");
   assert.equal(rokuRouteForState("page", "calendar", "", "", "agenda"), "/calendar");
+});
+
+test("Roku Calendar selection waits for a closed dialog and fresh content-only marker", () => {
+  assert.deepEqual(parseCalendarContent("agenda|empty"), { view: "agenda", content: "empty" });
+  assert.deepEqual(parseCalendarContent("agenda|entries"), { view: "agenda", content: "entries" });
+  assert.deepEqual(parseCalendarContent("week|ready"), { view: "week", content: "ready" });
+  assert.equal(parseCalendarContent("agenda|Title of a media item"), null);
+  assert.equal(parseCalendarContent("week|entries"), null);
+  assert.equal(parseCalendarContent(undefined), null);
+  assert.equal(parseCalendarDialog("open"), "open");
+  assert.equal(parseCalendarDialog("closed"), "closed");
+  assert.equal(parseCalendarDialog("close=true"), null);
+  assert.equal(parseCalendarDialog("media title"), null);
+  assert.equal(parseCalendarDialog(null), null);
+
+  const state = createParityState();
+  applyParityLine(state, "PARITY|screen|page");
+  applyParityLine(state, "PARITY|page|calendar");
+  const beforeViewSeq = state.calendarViewSeq;
+  const beforeContentSeq = state.calendarContentSeq;
+  const beforeDialogSeq = state.eventSeq;
+  applyParityLine(state, "PARITY|calendarView|agenda");
+  assert.equal(rokuRouteForState(state.screen, state.page, "", "", state.calendarView), "/calendar");
+  assert.equal(hasFreshCalendarView(state, "agenda", beforeViewSeq), true);
+  assert.equal(hasFreshCalendarContent(state, "agenda", beforeContentSeq), false);
+  assert.equal(hasFreshCalendarDialogClosure(state, beforeDialogSeq), false);
+
+  applyParityLine(state, "PARITY|calendarDialog|open");
+  applyParityLine(state, "PARITY|calendarContent|agenda|empty");
+  assert.equal(hasFreshCalendarContent(state, "agenda", beforeContentSeq), true);
+  assert.equal(hasFreshCalendarDialogClosure(state, beforeDialogSeq), false);
+  applyParityLine(state, "PARITY|calendarDialog|open");
+  assert.equal(hasFreshCalendarDialogClosure(state, beforeDialogSeq), false);
+  applyParityLine(state, "PARITY|calendarDialog|closed");
+  assert.equal(hasFreshCalendarDialogClosure(state, beforeDialogSeq), true);
+  assert.equal(hasFreshCalendarContent(state, "agenda", beforeContentSeq), true);
+
+  const afterScreen = state.screenSeq;
+  applyParityLine(state, "PARITY|screen|home");
+  assert.equal(hasFreshCalendarContent(state, "agenda", beforeContentSeq), false);
+  assert.equal(hasFreshCalendarDialogClosure(state, beforeDialogSeq), false);
+  assert.ok(state.screenSeq > afterScreen);
 });
 
 test("Roku Calendar route follows fresh focus as data replaces the initial Back control", () => {
