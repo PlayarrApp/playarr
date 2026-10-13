@@ -102,6 +102,14 @@
       <StageScrims id="scrimLayer" />
     </Group>
 
+    <!-- Home's .tv-home-rails frost sits above key art and below stage copy/rails. -->
+    <Group id="homeRailFrostLayer" visible="false">
+      <Poster id="homeRailFrostLight" translation="[729.6,0]" width="1190.4" height="1080"
+        uri="pkg:/images/home-rail-frost-light.png" loadDisplayMode="scaleToFill" visible="false" />
+      <Poster id="homeRailFrostDark" translation="[729.6,0]" width="1190.4" height="1080"
+        uri="pkg:/images/home-rail-frost-dark.png" loadDisplayMode="scaleToFill" visible="true" />
+    </Group>
+
     <!--
       Title panel.
       from: .tv-title-panel { top:31%; left:clamp(44px,7.5vw,150px); width:min(27vw,520px) }

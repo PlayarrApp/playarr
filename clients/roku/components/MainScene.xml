@@ -224,6 +224,7 @@
       attach as siblings of it, not inside it.
     -->
     <Group id="homeGroup" visible="false">
+      <Rectangle id="homeSurface" width="1920" height="1080" color="0x1B181BFF" />
       <TvStage id="homeStage" />
     </Group>
 

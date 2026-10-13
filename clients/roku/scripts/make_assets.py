@@ -494,6 +494,24 @@ def main() -> None:
             for xx in range(size[0]):
                 rpx[xx, yy] = (255, 255, 255, max(0, min(255, fn(xx, yy))))
         ramp_img.save(IMAGES / f"{name}.png")
+    # Home's right rail frost (.tv-home-rails) uses a theme-specific alpha curve over 62% of the canvas.
+    for name, stops in (
+        ("home-rail-frost-light", [(0, 0), (0.12, 0.68), (0.34, 0.88), (0.62, 0.96), (1, 1)]),
+        ("home-rail-frost-dark", [(0, 0), (0.12, 0.72), (0.34, 0.90), (0.62, 0.97), (1, 1)]),
+    ):
+        frost = Image.new("RGBA", (256, 4), (255, 255, 255, 0))
+        fpx = frost.load()
+        for x in range(256):
+            position = x / 255
+            for index in range(len(stops) - 1):
+                left, right = stops[index], stops[index + 1]
+                if position <= right[0]:
+                    progress = (position - left[0]) / (right[0] - left[0])
+                    alpha = round(255 * (left[1] + (right[1] - left[1]) * progress))
+                    break
+            for y in range(4):
+                fpx[x, y] = (255, 255, 255, alpha)
+        frost.save(IMAGES / f"{name}.png")
     # Media-card shadows (web, pinned in docs/design/page-layout.md section 5): colour rgb(56,38,33) under the 220 x 124 art
     # (radius 12). Focused Home card: 0 26px 52px .32 and 0 11px 22px .22. Resting card: 0 10px 20px .14 and 0 3px 8px .10.
     # A CSS blur radius B is a gaussian of sigma B / 2. The bitmap carries 90 px of room on every side; the y offset is baked in.

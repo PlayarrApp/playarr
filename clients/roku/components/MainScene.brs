@@ -83,6 +83,7 @@ sub init()
     m.libraryTitle = m.top.findNode("libraryTitle")
     m.homeGroup = m.top.findNode("homeGroup")
     m.homeStage = m.top.findNode("homeStage")
+    m.homeStage.findNode("homeRailFrostLayer").visible = true
     m.homeHeroDetailTimer = m.top.findNode("homeHeroDetailTimer")
     m.homeHeroFocusedWorkId = ""
     m.homeHeroPendingWorkId = ""

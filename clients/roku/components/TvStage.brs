@@ -9,7 +9,10 @@
 sub init()
     PlayarrFontifyTree(m.top)
     ThemeSetRole(m.top.findNode("keyArtFade"), "bg")
+    ThemeSetRole(m.top.findNode("homeRailFrostLight"), "homeRailFrost")
+    ThemeSetRole(m.top.findNode("homeRailFrostDark"), "homeRailFrost")
     ThemeInitComponent()
+    m.global.observeField("themeMode", "onStageThemeChanged")
     m.keyArtLayer = m.top.findNode("keyArtLayer")
     m.keyArt = m.top.findNode("keyArt")
     m.keyArtRetryTimer = m.top.findNode("keyArtRetryTimer")
@@ -28,6 +31,11 @@ sub init()
     m.top.contentTarget = m.contentPanel
 
     resetForEntrance()
+end sub
+
+sub onStageThemeChanged()
+    m.top.findNode("homeRailFrostLight").visible = m.global.themeMode = "light"
+    m.top.findNode("homeRailFrostDark").visible = m.global.themeMode <> "light"
 end sub
 
 ' Restores the pre-entrance (hidden/offset) state of every animated layer so
