@@ -133,14 +133,15 @@ launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route 
       pkill -x PlayarrMac 2>/dev/null || true; sleep 1
       mkdir -p "$WORK/machome"; pin_device
       local open_flags=(-n -g -j)
-      local invisible_args=(-PlayarrInvisible)
+      local app_args=(-PlayarrMuted -PlayarrTheme "$theme" -ApplePersistenceIgnoreState YES \
+        -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrRefreshToken "$REFRESH_TOKEN")
       if [[ ${MAC_PARITY_VISIBLE:-false} == true ]]; then
         open_flags=(-n)
-        invisible_args=()
+      else
+        app_args=(-PlayarrInvisible "${app_args[@]}")
       fi
       open "${open_flags[@]}" "$APP" --env CFFIXED_USER_HOME="$WORK/machome" --stdout "$WORK/app.log" --stderr "$WORK/app.log" \
-        --args "${invisible_args[@]}" -PlayarrMuted -PlayarrTheme "$theme" -ApplePersistenceIgnoreState YES \
-        -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrRefreshToken "$REFRESH_TOKEN" \
+        --args "${app_args[@]}" \
         $([[ $route != - ]] && echo "-PlayarrParityRoute $route") ${LAUNCH_EXTRA:-} ;; # route "-": a keys-driven launch (the Apple driver)
   esac
 }
