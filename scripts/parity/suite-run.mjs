@@ -8,6 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { expandKeys, focusForCheck, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { validateReadOnlyCaptureArgs } from "./readonly-capture.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));
@@ -33,6 +34,7 @@ const siblingExpected = join(out, "..", "web", "expected.json");
 const expectedFile = resolve(opt("expected", existsSync(siblingExpected) || !existsSync(committedExpected) ? siblingExpected : committedExpected));
 const problems = validateSuite(suite);
 if (problems.length) throw new Error(`suite.json invalid: ${problems.join("; ")}`);
+validateReadOnlyCaptureArgs(args, suite);
 if (!opt("driver")) throw new Error("--driver <module> is required");
 const expSrc = reference ? join(out, "expected.json") : expectedFile;
 const expected = existsSync(expSrc) ? JSON.parse(readFileSync(expSrc, "utf8")) : {};

@@ -9,10 +9,10 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { IOS_NATIVE_ROUTES, isReadOnlyPlayerRoute, resolveIOSNativeRoute, validateReadOnlyCaptureArgs } from "../readonly-capture.mjs";
 
 const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "suite.json"), "utf8"));
 
-const NATIVE = { "film-detail": "detail:movie:@first", "series-detail": "detail:series:@first", "player-controls": "player:movie:@first" };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 
@@ -39,7 +39,11 @@ async function resetProgressOnce(files) {
   }
 }
 
-export async function createDriver() {
+export async function createDriver({ args = [], exec = execFileSync, wait = sleep, nativeRoutes = IOS_NATIVE_ROUTES } = {}) {
+  const readOnlyCapture = validateReadOnlyCaptureArgs(args, suite, nativeRoutes);
+  const allowedScreens = new Set(readOnlyCapture?.screens ?? []);
+  const run = (cmd, args) => exec(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const sleep = wait;
   const device = process.env.DEVICE;
   if (device !== "iphone" && device !== "ipad") throw new Error(`apple-ios driver: ${device} is not an iPhone or iPad`);
   const work = process.env.WORK, st = readState(work), udid = st.UDID, bundle = st.BUNDLE;
@@ -70,8 +74,12 @@ export async function createDriver() {
   };
   return {
     supports: { downloads: true }, // no notifications (the app posts none) and no grouped Downloads page on iOS
-    async cleanupDownloads() { for (const file of touched) { try { cmd("cancel", { file }); await sleep(1500); } catch { /* app gone */ } } },
+    async cleanupDownloads() {
+      if (readOnlyCapture) throw new Error("read-only capture refuses download cleanup");
+      for (const file of touched) { try { cmd("cancel", { file }); await sleep(1500); } catch { /* app gone */ } }
+    },
     async download(c, expect) {
+      if (readOnlyCapture) throw new Error("read-only capture refuses downloads");
       const m = c.media;
       if (!state().signedIn) await launch("home");
       const within = expect.withinSeconds;
@@ -102,19 +110,31 @@ export async function createDriver() {
     async start() {
       run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
       await sleep(60000); // a fresh simulator shows one-off system banners (Apple Intelligence) in the first minute: let them go
-      await resetProgress([...new Set([...(suite.playback ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // pinned files come from suite.json, never a copy here
+      if (!readOnlyCapture) await resetProgress([...new Set([...(suite.playback ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // pinned files come from suite.json, never a copy here
     },
     async stop() {},
     async setTheme(t) { theme = t; },
     async home() { wanted = "/"; },
-    async route(r) { wanted = r; },
+    async route(r) {
+      if (readOnlyCapture && isReadOnlyPlayerRoute(r)) {
+        throw new Error("read-only capture refuses player routes");
+      }
+      wanted = r;
+    },
     async key() { throw new Error("touch device: no D-pad"); },
     async location() { return wanted; },
     async focused() { return null; },
     async screenshot(file) {
       const id = basename(file, ".png");
+      if (readOnlyCapture && !allowedScreens.has(id)) throw new Error(`read-only capture refuses screen outside the allowlist: ${id}`);
       const open = /^\/(movies|series)\/([0-9a-f-]{36})$/.exec(wanted); // film-detail and series-detail are opened by the suite's pinned id
-      await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (NATIVE[id] ?? id));
+      const launchRoute = open && id.endsWith("-detail")
+        ? ["detail", open[1] === "movies" ? "movie" : "series", "id=" + open[2]].join(":")
+        : resolveIOSNativeRoute(id, nativeRoutes);
+      if (readOnlyCapture && (isReadOnlyPlayerRoute(wanted) || isReadOnlyPlayerRoute(launchRoute))) {
+        throw new Error("read-only capture refuses player routes");
+      }
+      await launch(launchRoute);
       await sleep(id.startsWith("player") ? 30000 : 14000);
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
@@ -123,6 +143,7 @@ export async function createDriver() {
     },
     // Cases a-c: launch straight into the player on the media file and read the engine state the app writes.
     async play(c, expect) {
+      if (readOnlyCapture) throw new Error("read-only capture refuses performance checks");
       // A cold transcode or a pod restart: re-run; a full transcode node (other devices play at the same time) waits and retries.
       let r;
       for (let attempt = 1; attempt <= 4; attempt += 1) {
@@ -133,6 +154,7 @@ export async function createDriver() {
       return r;
     },
     async playOnce(c, expect) {
+      if (readOnlyCapture) throw new Error("read-only capture refuses performance checks");
       await launch("play", ["--playarr-parity-play", c.file]); // app start and sign-in are not playback time
       const t0 = Date.now();
       let start = null, p0 = null, last = {};

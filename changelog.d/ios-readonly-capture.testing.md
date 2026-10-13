@@ -1,0 +1,1 @@
+- Add a fail-closed iOS parity capture mode that requires an explicit screen allowlist and skips fixture progress resets, playback, downloads, and performance checks.

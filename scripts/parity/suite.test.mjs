@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -8,11 +8,66 @@ import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
+import { createDriver as createAppleIosDriver } from "./drivers/apple-ios.mjs";
+import { validateReadOnlyCaptureArgs } from "./readonly-capture.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
 
 test("suite.json is valid and matches the legend screens", () => assert.deepEqual(validateSuite(suite, legend), []));
+test("iOS read-only capture requires an explicit allowlist of non-player screens and screen-only work", () => {
+  const validate = (args) => validateReadOnlyCaptureArgs(["--readonly-capture", ...args], suite);
+  assert.deepEqual(validate(["--only", "screens", "--screens", "home,movies", "--themes", "dark"]).screens, ["home", "movies"]);
+  assert.throws(() => validateReadOnlyCaptureArgs(["--readonly-capture", "--only", "screens", "--screens", "home"], suite, { home: "player:movie:@first" }), /refuses player screen/);
+  for (const args of [
+    ["--only", "screens"],
+    ["--only", "screens", "--screens", "all"],
+    ["--only", "screens", "--screens", "home,player-controls"],
+    ["--only", "screens,performance", "--screens", "home"],
+    ["--only", "screens,downloads", "--screens", "home"],
+    ["--only", "screens", "--screens", "home", "--reset-progress"],
+  ]) assert.throws(() => validate(args));
+});
+test("iOS read-only capture rejects an invalid request before importing its driver", () => {
+  const result = spawnSync(process.execPath, [
+    new URL("./suite-run.mjs", import.meta.url).pathname,
+    "--driver", "./missing-driver.mjs", "--readonly-capture", "--only", "screens", "--screens", "all",
+  ], { encoding: "utf8", cwd: new URL(".", import.meta.url).pathname });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /refuses unknown screen/);
+  assert.doesNotMatch(result.stderr, /ERR_MODULE_NOT_FOUND/);
+});
+test("iOS read-only driver does not reset shared progress and rejects player routes before launch", async () => {
+  const work = mkdtempSync(join(tmpdir(), "playarr-ios-readonly-"));
+  const state = { WORK: process.env.WORK, DEVICE: process.env.DEVICE, fetch: globalThis.fetch };
+  writeFileSync(join(work, "state.env"), "UDID=simulator\nBUNDLE=app.playarr.ios\n");
+  let commands = 0, requests = 0;
+  try {
+    process.env.WORK = work;
+    process.env.DEVICE = "iphone";
+    globalThis.fetch = async () => { requests += 1; throw new Error("unexpected request"); };
+    const nativeRoutes = { home: "home" };
+    const driver = await createAppleIosDriver({
+      args: ["--readonly-capture", "--only", "screens", "--screens", "home"],
+      exec: () => { commands += 1; return ""; },
+      wait: async () => {},
+      nativeRoutes,
+    });
+    await driver.start();
+    assert.equal(requests, 0);
+    assert.equal(commands, 1);
+    await assert.rejects(driver.route("/player/123"), /refuses player routes/);
+    await assert.rejects(driver.screenshot("/captures/player-controls.png"), /outside the allowlist/);
+    nativeRoutes.home = "player:movie:@first";
+    await assert.rejects(driver.screenshot("/captures/home.png"), /refuses player routes/);
+    assert.equal(commands, 1);
+  } finally {
+    if (state.WORK === undefined) delete process.env.WORK; else process.env.WORK = state.WORK;
+    if (state.DEVICE === undefined) delete process.env.DEVICE; else process.env.DEVICE = state.DEVICE;
+    globalThis.fetch = state.fetch;
+    rmSync(work, { recursive: true, force: true });
+  }
+});
 test("validator rejects a bad suite", () => {
   const s = structuredClone(suite);
   s.screens[1].keys = ["sideways"];

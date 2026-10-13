@@ -17,12 +17,19 @@ on:
         description: Comma-separated devices (iphone, ipad)
         type: string
         default: iphone,ipad
+      mode:
+        description: Full parity or read-only screenshots with an explicit screen allowlist
+        type: choice
+        options:
+          - full
+          - readonly-capture
+        default: full
       ref:
         description: Branch, tag or SHA of the apps to build (default - the default branch)
         type: string
         default: ""
       screens:
-        description: Comma-separated screen ids (default - all 15; leave out player-controls while no playback may run)
+        description: Comma-separated screen ids (required for readonly-capture; player screens are refused)
         type: string
         default: ""
       parts:
@@ -40,15 +47,37 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
       - id: plan
         env:
           DEVICES: ${{ inputs.devices }}
           PARTS: ${{ inputs.parts }}
+          MODE: ${{ inputs.mode }}
+          SCREENS: ${{ inputs.screens }}
         run: |
+          set -euo pipefail
+          if [[ "$MODE" == readonly-capture ]]; then
+            node scripts/parity/validate-ios-readonly-capture.mjs --screens "$SCREENS"
+          elif [[ "$MODE" != full ]]; then
+            echo "Unsupported iOS wall mode" >&2
+            exit 1
+          fi
           python3 - <<'P' >> "$GITHUB_OUTPUT"
           import json, os
           ok = lambda v, allowed: [x for x in v.split(",") if x in allowed]
-          include = [{"device": d, "part": p} for d in ok(os.environ["DEVICES"], ("iphone", "ipad")) for p in ok(os.environ["PARTS"], ("dark", "light", "downloads"))]
+          devices = os.environ["DEVICES"].split(",")
+          parts = os.environ["PARTS"].split(",")
+          if os.environ["MODE"] == "readonly-capture":
+              if not devices or any(d not in ("iphone", "ipad") for d in devices) or len(set(devices)) != len(devices):
+                  raise SystemExit("Read-only capture requires a non-empty, unique device allowlist")
+              if not parts or any(p not in ("dark", "light") for p in parts) or len(set(parts)) != len(parts):
+                  raise SystemExit("Read-only capture allows only unique dark/light screen parts")
+          include = [{"device": d, "part": p} for d in ok(os.environ["DEVICES"], ("iphone", "ipad")) for p in ok(os.environ["PARTS"], ("dark", "light") if os.environ["MODE"] == "readonly-capture" else ("dark", "light", "downloads"))]
+          if not include:
+              raise SystemExit("No supported iOS wall jobs were selected")
           print("matrix=" + json.dumps({"include": include}))
           P
 
@@ -66,6 +95,7 @@ jobs:
     env:
       DEVICE: ${{ matrix.device }}
       PART: ${{ matrix.part }}
+      MODE: ${{ inputs.mode }}
       TRUSTED: ${{ github.workspace }}/trusted
       SRC: ${{ github.workspace }}/src
     steps:
@@ -302,7 +332,11 @@ jobs:
           esac
           # Playback is scored against the suite's own expectation (every case plays); touch devices have no D-pad values.
           echo '{"suite":1,"dpad":{},"playback":{}}' > "$RUNNER_TEMP/expected.json"
-          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
+          if [[ "$MODE" == readonly-capture ]]; then
+            node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only screens --themes "$PART" --expected "$RUNNER_TEMP/expected.json" --screens "$SCREENS" --readonly-capture
+          else
+            node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
+          fi
 
       - name: Upload the results
         if: always()
