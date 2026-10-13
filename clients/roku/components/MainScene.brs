@@ -2641,9 +2641,9 @@ sub buildAlphabetStrip()
         m.alphabetMarkers.Push(marker)
 
         focusRing = CreateObject("roSGNode", "Poster")
-        focusRing.translation = [4, y - 4]
-        focusRing.width = 32
-        focusRing.height = 32
+        focusRing.translation = [-6, y - 14]
+        focusRing.width = 52
+        focusRing.height = 52
         focusRing.uri = "pkg:/images/round-outline-r25.9.png"
         focusRing.loadDisplayMode = "scaleToFill"
         focusRing.visible = false
@@ -2658,7 +2658,7 @@ sub buildAlphabetStrip()
         label.height = 24
         label.text = letter
         label.horizAlign = "center"
-        label.color = ThemeColor("inkMuted")
+        label.color = ThemeColor("inkSoft")
         label.font = PlayarrMakeFont(400, 9)
         m.browseAlphabet.AppendChild(label)
         m.alphabetLabels.Push(label)
@@ -2690,15 +2690,23 @@ end function
 
 sub renderBrowseAlphabetFocus()
     if m.alphabetLabels = invalid or m.alphabetMarkers = invalid or m.alphabetFocusRings = invalid then return
-    markerIndex = -1
-    if m.browseKind = "movie"
-        markerIndex = m.browseTrackingAlphabetIndex
-    else if m.browseAlphabetMode
-        markerIndex = m.browseAlphabetIndex
+    if m.browseKind <> "movie"
+        for i = 0 to m.alphabetLabels.Count() - 1
+            m.alphabetMarkers[i].visible = false
+            m.alphabetFocusRings[i].visible = false
+            if m.browseAlphabetMode and i = m.browseAlphabetIndex
+                m.alphabetLabels[i].color = ThemeColor("brand")
+            else
+                m.alphabetLabels[i].color = ThemeColor("inkSoft")
+            end if
+        end for
+        return
     end if
+    markerIndex = -1
+    markerIndex = m.browseTrackingAlphabetIndex
     for i = 0 to m.alphabetLabels.Count() - 1
         tracked = i = markerIndex
-        focused = m.browseKind = "movie" and m.browseAlphabetMode and i = m.browseAlphabetIndex
+        focused = m.browseAlphabetMode and i = m.browseAlphabetIndex
         m.alphabetMarkers[i].visible = tracked
         m.alphabetFocusRings[i].visible = focused
         if tracked
