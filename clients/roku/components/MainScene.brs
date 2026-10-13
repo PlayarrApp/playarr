@@ -4005,10 +4005,10 @@ function createHomeRail(contentTarget as Object) as Object
     ' Rail heading matches Web's uniform .tv-rail h2 typography; focus changes the card, not the heading.
     title = CreateObject("roSGNode", "TrackedText")
     title.translation = [0, -21]
-    ' Fresh 1920x1080 r11 Web glyph bounds are about 5% wider for both
+    ' Fresh 1920x1080 r11 Web glyph bounds are about 4% wider for both
     ' Home rail headings. Widen only the tracked heading group so its font
     ' size, line height, tracking and vertical alignment stay unchanged.
-    title.scale = [1.05, 1]
+    title.scale = [1.04, 1]
     group.AppendChild(title)
 
     row = CreateObject("roSGNode", "RowList")
