@@ -4,6 +4,12 @@ namespace Playarr.Tizen.Logic;
 
 public sealed record SearchResultTarget(Work? Work = null, PlaylistInfo? Playlist = null, DiscoveryTitle? Game = null);
 
+/// <summary>Search focus preserved while a result page is opened and the Search route is recreated on Back.</summary>
+public sealed record SearchFocusState(int ResultIndex, float ScrollOffset)
+{
+    public int ResolveResultIndex(int resultCount) => ResultIndex >= 0 && ResultIndex < resultCount ? ResultIndex : -1;
+}
+
 /// <summary>Combines local catalog, playlist and game matches using the web Search type rules.</summary>
 public static class SearchResults
 {

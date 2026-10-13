@@ -1,0 +1,1 @@
+- Open playlist Search results in the native Tizen playlist directory and restore Search focus on Back.
