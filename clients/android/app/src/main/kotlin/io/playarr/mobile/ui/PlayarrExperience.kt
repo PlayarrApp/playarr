@@ -3588,7 +3588,7 @@ internal fun WebDetailPill(
             .onFocusChanged { focused = it.isFocused },
     ) {
         Row(
-            Modifier.padding(horizontal = 24.dp),
+            Modifier.padding(horizontal = if (primary) 21.6.dp else 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (primary) 11.1.dp else 8.9.dp, Alignment.CenterHorizontally),
         ) {
