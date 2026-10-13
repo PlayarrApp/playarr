@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -84,23 +85,28 @@ fun Modifier.playarrEdgeFade(
     endVisible: Boolean,
     vertical: Boolean,
     kind: PlayarrFadeKind = if (vertical) PlayarrFadeKind.Panel else PlayarrFadeKind.Rail,
+    horizontalEdgeStartInset: Dp = 0.dp,
+    horizontalEdgeEndInset: Dp = 0.dp,
 ): Modifier {
     val dark = LocalPlayarrDarkTheme.current
     val background = LocalPlayarrFadeBackground.current
     val scrimDepth = (LocalConfiguration.current.screenHeightDp * 0.08f).coerceIn(56f, 104f).dp
+    val density = LocalDensity.current
     // Dark: the page-background scrim at full strength; light: the ink shade at the web's per-kind opacity.
     val opacity = if (dark) 1f else kind.lightOpacity
     val start by animateFloatAsState(if (startVisible) opacity else 0f, tween(180), label = "scrollFadeStart")
     val end by animateFloatAsState(if (endVisible) opacity else 0f, tween(180), label = "scrollFadeEnd")
+    val edgeStartInsetPx = if (vertical) 0f else with(density) { horizontalEdgeStartInset.toPx() }
+    val edgeEndInsetPx = if (vertical) 0f else with(density) { horizontalEdgeEndInset.toPx() }
     if (start <= 0f && end <= 0f) return this
     return drawWithContent {
         drawContent()
         if (dark) {
-            if (start > 0f) drawScrimEdge(vertical, atStart = true, depth = scrimDepth.toPx(), background = background, opacity = start)
-            if (end > 0f) drawScrimEdge(vertical, atStart = false, depth = scrimDepth.toPx(), background = background, opacity = end)
+            if (start > 0f) drawScrimEdge(vertical, atStart = true, depth = scrimDepth.toPx(), background = background, opacity = start, horizontalEdgeStartInsetPx = edgeStartInsetPx, horizontalEdgeEndInsetPx = edgeEndInsetPx)
+            if (end > 0f) drawScrimEdge(vertical, atStart = false, depth = scrimDepth.toPx(), background = background, opacity = end, horizontalEdgeStartInsetPx = edgeStartInsetPx, horizontalEdgeEndInsetPx = edgeEndInsetPx)
         } else {
-            if (start > 0f) drawFadeEdge(vertical, atStart = true, kind = kind, opacity = start)
-            if (end > 0f) drawFadeEdge(vertical, atStart = false, kind = kind, opacity = end)
+            if (start > 0f) drawFadeEdge(vertical, atStart = true, kind = kind, opacity = start, horizontalEdgeStartInsetPx = edgeStartInsetPx, horizontalEdgeEndInsetPx = edgeEndInsetPx)
+            if (end > 0f) drawFadeEdge(vertical, atStart = false, kind = kind, opacity = end, horizontalEdgeStartInsetPx = edgeStartInsetPx, horizontalEdgeEndInsetPx = edgeEndInsetPx)
         }
     }
 }
@@ -141,13 +147,20 @@ fun Modifier.playarrScrollFade(
     return playarrEdgeFade(start, end, vertical, kind)
 }
 
-private fun DrawScope.drawFadeEdge(vertical: Boolean, atStart: Boolean, kind: PlayarrFadeKind, opacity: Float) {
-    val length = if (vertical) size.width else size.height
+private fun DrawScope.drawFadeEdge(
+    vertical: Boolean,
+    atStart: Boolean,
+    kind: PlayarrFadeKind,
+    opacity: Float,
+    horizontalEdgeStartInsetPx: Float = 0f,
+    horizontalEdgeEndInsetPx: Float = 0f,
+) {
+    val length = if (vertical) size.width else size.height - horizontalEdgeStartInsetPx - horizontalEdgeEndInsetPx
     val depth = minOf(kind.thickness.toPx(), if (vertical) size.height else size.width)
     if (length <= 0f || depth <= 0f) return
     // The fade's own box: `depth` deep, the full length of the edge.
     val left = if (vertical) 0f else if (atStart) 0f else size.width - depth
-    val top = if (!vertical) 0f else if (atStart) 0f else size.height - depth
+    val top = if (!vertical) horizontalEdgeStartInsetPx else if (atStart) 0f else size.height - depth
     val boxW = if (vertical) length else depth
     val boxH = if (vertical) depth else length
     // CSS `border-radius: 48%` on the two corners on the container-interior side.
@@ -214,7 +227,15 @@ private fun DrawScope.drawFadeEdge(vertical: Boolean, atStart: Boolean, kind: Pl
 }
 
 /** Dark theme: the page background fading to clear from the edge inwards (web `--edge-scrim-*`). */
-private fun DrawScope.drawScrimEdge(vertical: Boolean, atStart: Boolean, depth: Float, background: Color, opacity: Float) {
+private fun DrawScope.drawScrimEdge(
+    vertical: Boolean,
+    atStart: Boolean,
+    depth: Float,
+    background: Color,
+    opacity: Float,
+    horizontalEdgeStartInsetPx: Float = 0f,
+    horizontalEdgeEndInsetPx: Float = 0f,
+) {
     val length = if (vertical) size.height else size.width
     val d = minOf(depth, length)
     if (d <= 0f) return
@@ -230,12 +251,15 @@ private fun DrawScope.drawScrimEdge(vertical: Boolean, atStart: Boolean, depth: 
         drawRect(brush, topLeft = Offset(0f, top), size = Size(size.width, d))
     } else {
         val left = if (atStart) 0f else size.width - d
+        val top = horizontalEdgeStartInsetPx
+        val edgeHeight = size.height - horizontalEdgeStartInsetPx - horizontalEdgeEndInsetPx
+        if (edgeHeight <= 0f) return
         val brush = if (atStart) {
             Brush.horizontalGradient(*stops, startX = left, endX = left + d)
         } else {
             Brush.horizontalGradient(*stops, startX = left + d, endX = left)
         }
-        drawRect(brush, topLeft = Offset(left, 0f), size = Size(d, size.height))
+        drawRect(brush, topLeft = Offset(left, top), size = Size(d, edgeHeight))
     }
 }
 
@@ -248,7 +272,13 @@ private fun DrawScope.drawScrimEdge(vertical: Boolean, atStart: Boolean, depth: 
  * gutter on a phone).
  */
 @Composable
-fun Modifier.playarrRailFade(state: LazyListState, startGutter: Dp, kind: PlayarrFadeKind = PlayarrFadeKind.Rail): Modifier {
+fun Modifier.playarrRailFade(
+    state: LazyListState,
+    startGutter: Dp,
+    kind: PlayarrFadeKind = PlayarrFadeKind.Rail,
+    edgeCrossAxisStartInset: Dp = 0.dp,
+    edgeCrossAxisEndInset: Dp = 0.dp,
+): Modifier {
     val canStart by remember(state) { derivedStateOf { state.canScrollBackward } }
     val canEnd by remember(state) { derivedStateOf { state.canScrollForward } }
     val mask by animateFloatAsState(if (canStart) 1f else 0f, tween(180), label = "railMask")
@@ -270,5 +300,12 @@ fun Modifier.playarrRailFade(state: LazyListState, startGutter: Dp, kind: Playar
                 )
             }
         }
-        .playarrEdgeFade(startVisible = false, endVisible = canEnd, vertical = false, kind = kind)
+        .playarrEdgeFade(
+            startVisible = false,
+            endVisible = canEnd,
+            vertical = false,
+            kind = kind,
+            horizontalEdgeStartInset = edgeCrossAxisStartInset,
+            horizontalEdgeEndInset = edgeCrossAxisEndInset,
+        )
 }

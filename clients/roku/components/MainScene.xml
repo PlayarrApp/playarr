@@ -134,6 +134,12 @@
         <Poster id="profilesSignOutBtn" translation="[54,0]" width="104" height="44" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFit" />
         <Rectangle id="profilesSignOutHit" translation="[54,0]" width="104" height="44" color="0x00000000" focusable="true" />
       </Group>
+      <!-- Web .profile-clients-link: independent footer action, not part of avatar actions. -->
+      <Group id="profilesClientsAction" translation="[1784,1005]">
+        <Poster id="profilesClientsBtn" translation="[0,0]" width="88" height="44" uri="pkg:/images/profiles-clients.png" loadDisplayMode="scaleToFill" />
+        <Poster id="profilesClientsFocus" translation="[-5,-5]" width="98" height="54" uri="pkg:/images/round-ring-r25.9.png" visible="false" />
+        <Rectangle id="profilesClientsHit" translation="[0,0]" width="88" height="44" color="0x00000000" focusable="true" />
+      </Group>
 
     </Group>
 
@@ -565,10 +571,24 @@
     <!-- Web page shell screens (Watchlist, Requests, Calendar, Preferences): built in Pages.brs and Settings.brs. -->
     <Group id="pageGroup" visible="false">
       <Rectangle id="pageBg" width="1920" height="1080" color="0x1B181BFF" />
+      <Poster id="clientsStageBg" width="1920" height="1080" uri="pkg:/images/profiles-bg.png" visible="false" />
       <Poster id="pagePanelFade" translation="[730,0]" width="260" height="1080" uri="pkg:/images/page-fade.png" visible="false" />
       <Rectangle id="pagePanel" translation="[990,0]" width="930" height="1080" color="0x1B181BFF" visible="false" />
       <Group id="pageBody" />
       <Group id="pageHead" />
+      <Group id="clientsStageChrome" visible="false">
+        <Poster id="clientsStageLogo" translation="[68,59]" width="42" height="42" uri="pkg:/images/pairing-logo.png" loadDisplayMode="scaleToFit" />
+        <Group id="clientsChromeControls" translation="[1552,50]">
+          <Poster id="clientsThemePill" translation="[0,0]" width="144" height="48" uri="pkg:/images/pairing-chrome-dd-theme.png" />
+          <Poster id="clientsThemeIcon" translation="[14,16]" width="16" height="16" uri="pkg:/images/pairing-icon-theme.png" />
+          <Label id="clientsThemeLabel" translation="[36,0]" width="84" height="48" text="Dark" horizAlign="left" vertAlign="center" scale="[0.42,0.42]" scaleRotateCenter="[0,24]" color="0xF4F0F1FF" />
+          <Poster id="clientsThemeChevron" translation="[118,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
+          <Poster id="clientsLangPill" translation="[158,0]" width="168" height="48" uri="pkg:/images/pairing-chrome-dd.png" />
+          <Poster id="clientsLangIcon" translation="[172,16]" width="16" height="16" uri="pkg:/images/pairing-icon-lang.png" />
+          <Label id="clientsLangLabel" translation="[196,0]" width="100" height="48" text="Auto" horizAlign="left" vertAlign="center" scale="[0.42,0.42]" scaleRotateCenter="[0,24]" color="0xF4F0F1FF" />
+          <Poster id="clientsLangChevron" translation="[300,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
+        </Group>
+      </Group>
       <Poster id="pageRing" visible="false" uri="pkg:/images/round-ring-r12.9.png" />
     </Group>
 

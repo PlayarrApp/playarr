@@ -13,6 +13,21 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Android phone Home rails now preserve the focused artwork glow above and below cards without shifting the rail or extending its edge fade into surrounding content.
+- Align Android TV Home rail headings with the measured web positions without moving their cards.
+- Route D-pad Down from the synthetic Add profile avatar to Clients while preserving Settings below real profiles.
+- Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
+- Android TV Home rails reserve the web-matched top headroom so focused artwork and its glow are no longer clipped.
+- Match Android phone Search geometry, idle illustration and muted colour to web, and label generated detail chapter markers consistently with web.
+- Tizen offline downloads now report Ready only after the complete output file has been flushed and closed.
+- Run hosted macOS D-pad checks with a real key window and observed startup focus, while regular Mac captures stay invisible.
+- Route D-pad Down from the synthetic Add profile avatar to Clients while preserving Settings below real profiles.
+- Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
+- Fix Apple TV startup so D-pad navigation begins on the first Home card.
+- Xbox/UWP shared key art now matches the TV web's grayscale, contrast and brightness filters, measured image geometry and stage wash across Home, library and detail pages in both themes.
+- Hide legacy Chromium scrollbars in the webOS Calendar week view without changing scroll behaviour.
+- Match Android phone Search geometry, idle illustration and muted colour to web, and label generated detail chapter markers consistently with web.
+- D-pad parity failures now make the suite command fail, while explicitly skipped player checks remain non-failing.
 - Fire TV: replace stepped card-focus shadow and glow layers with Vega native blurred shadows.
 - Wait for the routed webOS view, finite page animations, visible content and decoded images to settle before capture; dismiss the Search keyboard through the real Filters and Back controls, retaining focus on Filters. Send a character event with CDP Enter so Calendar view buttons activate in the simulator.
 - Normalize the D-pad scorer's long-press Play action label across web and native clients.
@@ -335,6 +350,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Tizen's Playlists directory now previews the first three unique poster or backdrop covers from each playlist and its descendants.
+- Add a native Roku Clients route with sideload instructions and clear notes about Roku's browser and download limits.
+- Tizen now provides a native Playlists directory with root and nested playlist navigation, preserving route state when returning to the directory.
+- Add a native Roku Clients route with sideload instructions and clear notes about Roku's browser and download limits.
 - HarmonyOS TV: Settings > Profile lock sets, replaces and removes the profile PIN, as web does.
 - HarmonyOS TV player: an info button opens a drawer with the title, its synopsis and how the stream reaches the device (delivery, quality, audio, subtitles).
 - HarmonyOS TV player: the control bar shows the negotiated quality; selecting it opens a drawer to switch quality (the stream renegotiates from the current position, keeping the chosen audio).
@@ -539,6 +558,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Match the Android phone light-theme card focus glow to the web card accent.
+- Android phone library cards now show the web-matched focus glow and apply the web lift and art scale only during keyboard navigation, while touch interaction stays at rest.
+- Xbox and Windows UWP now apply the web's grayscale, contrast and brightness key-art filter to shared backdrops, with alpha-correct pixel output and stale-request protection.
 - HarmonyOS TV: the Home hero meta line is the focused title's runtime, as web, instead of the release year.
 - Tizen Search now exposes a remote-navigable type filter for movies, series, sites and music, keeps the selection in the route, and uses a single focus indicator while the page is active.
 - Tizen Search now filters playlist results and exposes Games as a search type; when live Games discovery is unavailable, Search shows the provider's unavailable state.
@@ -2896,6 +2918,11 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Prepare the selected Xcode installation and wait boundedly for an available iOS 18 runtime before building the iPad iOS wall app.
+- Prepare the selected Xcode installation before importing the required iOS 18.5 simulator runtime, then poll boundedly for an available iOS 18 runtime on iPad wall jobs.
+- Android TV parity captures now bound ADB calls and fail when screen focus does not become ready before the deadline.
+- Web parity captures wait for a matching detail route identity and cleared pending state, decode available hero art, and wait for finite detail entrance animations. Mobile Home waits for populated cards without TV focus keys; opt-in mobile emulation supports viewport and DPR overrides.
+- The player OK toggle parity check now compares the exact Play or Pause state from its generated web reference, while focus-order checks continue to compare the shared play-pause role.
 - The macOS D-pad parity driver can report engine focus, SwiftUI bindings, and the current window responder.
 - Harmony phone capture jobs now fail when required screens are missing and verify title-detail navigation through Previewer route state.
 - The player OK toggle parity check now compares the exact Play or Pause state from its generated web reference, while focus-order checks continue to compare the shared play-pause role.

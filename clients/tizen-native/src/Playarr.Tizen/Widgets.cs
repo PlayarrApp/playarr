@@ -14,16 +14,22 @@ internal sealed class MediaCard
     public TextLabel Title { get; }
     private readonly PlayarrTheme _t;
     private readonly float _scale, _lift, _blur, _shadowY, _shadowAlpha;
+    private readonly float _boxScale, _boxLift, _boxY, _focusHeight;
     private readonly View? _ring;
     private readonly float _artDy;
+    private View? _playlistIcon;
+    private bool _playlistCollage;
+    private bool _playlistCoverSet;
+    private bool _focused;
 
     /// <param name="scale">Focus scale (home 1.025, library 1.04).</param>
     /// <param name="lift">Focus lift in px (negative = up).</param>
     public MediaCard(AppEnv env, PlayarrTheme t, WorkCard card, float x, float y, bool showSub, float titleInset, float scale, float lift,
-        float blur, float shadowY, float shadowAlpha)
+        float blur, float shadowY, float shadowAlpha, float boxHeight = 230f, float boxScale = 1f, float boxLift = 0f, float focusHeight = Height, bool showRing = true)
     {
         _t = t; _scale = scale; _lift = lift; _blur = blur; _shadowY = shadowY; _shadowAlpha = shadowAlpha;
-        Box.PositionX = x; Box.PositionY = y; Box.Size = new Size(Width, 230);
+        _boxScale = boxScale; _boxLift = boxLift; _boxY = y; _focusHeight = focusHeight;
+        Box.PositionX = x; Box.PositionY = y; Box.Size = new Size(Width, boxHeight);
         // Chromium snaps an image's rect to whole device pixels (left and right edges rounded); a fractional rect resamples and blurs the poster
         var snapX = (float)Math.Round(x); var snapY = (float)Math.Round(y); var snapW = (float)Math.Round(x + Width) - snapX; var snapH = (float)Math.Round(y + Height) - snapY;
         _artDy = snapY - y; Art.PositionX = snapX - x; Art.PositionY = _artDy;
@@ -36,6 +42,7 @@ internal sealed class MediaCard
             Art.Add(Ui.Box(0, Height - 3, Math.Max(3, Width * (float)card.Progress), 3, t.Brand));
         }
         Box.Add(Art);
+        if (showRing)
         {
             // web: a 3 px ring on the focused card, the brand red in light and the pale brand pink in dark
             var rc = t.Name == "dark" ? new Color(t.BrandInk.R, t.BrandInk.G, t.BrandInk.B, 0.95f) : new Color(0.647f, 0.153f, 0.271f, 1);
@@ -56,11 +63,83 @@ internal sealed class MediaCard
 
     public void SetFocused(bool focused)
     {
+        _focused = focused;
+        Box.Scale = focused ? new Vector3(_boxScale, _boxScale, 1) : new Vector3(1, 1, 1);
+        Box.PositionY = _boxY + (focused ? _boxLift : 0);
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
         Art.PositionY = _artDy + (focused ? _lift : 0);
-        Art.BoxShadow = focused ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
+        Art.BoxShadow = focused && !_playlistCollage ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
         if (_ring is not null) { _ring.Show(focused); if (focused) _ring.RaiseToTop(); } // the poster loads later and would otherwise sit on top of the ring
         Title.TextColor = focused ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
+    }
+
+    public Box FocusRect(float x, float y)
+    {
+        var width = Width * _boxScale;
+        var height = _focusHeight * _boxScale;
+        return new Box(x + (Width - width) / 2, y + _boxLift + (_focusHeight - height) / 2, width, height);
+    }
+
+    /// <summary>Replaces the directory placeholder with the web's poster-first, backdrop-fallback cover stack.</summary>
+    public void SetPlaylistCovers(AppEnv env, string playlistName, IReadOnlyList<Work> works)
+    {
+        if (_playlistCoverSet) return;
+        _playlistCoverSet = true;
+        if (_playlistIcon is not null)
+        {
+            Art.Remove(_playlistIcon);
+            _playlistIcon.Dispose();
+            _playlistIcon = null;
+        }
+
+        var covers = works.Take(PlaylistCoverSelection.Limit).ToList();
+        if (covers.Count == 0)
+        {
+            static Rgba Mix(Rgba foreground, Rgba background, float foregroundAmount) => new(
+                foreground.R * foregroundAmount + background.R * (1 - foregroundAmount),
+                foreground.G * foregroundAmount + background.G * (1 - foregroundAmount),
+                foreground.B * foregroundAmount + background.B * (1 - foregroundAmount));
+            var empty = Ui.DiagonalGradient(0, 0, Width, Height, 135,
+                (0, Mix(_t.Brand, _t.SurfaceSoft, 0.18f)), (1, _t.SurfaceSoft));
+            empty.CornerRadius = 12.48f;
+            empty.BoxShadow = new Shadow(30, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.08f), new Vector2(0, 12), new Vector2(0, 0));
+            Art.Add(empty);
+            Art.Add(Ui.Text(playlistName, 20, 65, 18, 600, _t.Ink, Width - 40, 44,
+                HorizontalAlignment.Center, multiline: true, maxLines: 2));
+            if (_focused) _ring?.RaiseToTop();
+            return;
+        }
+
+        Art.BackgroundColor = new Color(0, 0, 0, 0);
+        Art.ClippingMode = default;
+        // Add back-to-front. The first selected work stays on top, matching the web z-index order.
+        for (var index = covers.Count - 1; index >= 0; index--)
+        {
+            var work = covers[index];
+            var inset = index * 0.05f;
+            var horizontalInset = inset * 0.7f;
+            var x = Width * horizontalInset;
+            var y = Height * inset;
+            var width = Width * (1 - 2 * horizontalInset);
+            var height = Height * (1 - inset);
+            var layer = new View
+            {
+                PositionX = x,
+                PositionY = y,
+                Size = new Size(width, height),
+                BackgroundColor = Ui.C(_t.SurfaceSoft),
+                CornerRadius = 12.48f,
+                ClippingMode = ClippingModeType.ClipChildren,
+                BorderlineWidth = 1,
+                BorderlineColor = Ui.C(new Rgba(_t.LineStrong.R, _t.LineStrong.G, _t.LineStrong.B, _t.LineStrong.A * 0.76f)),
+                Orientation = new Rotation(new Radian((float)((index - (covers.Count - 1) / 2.0) * -1.5 * Math.PI / 180)), new Vector3(0, 0, 1)),
+                BoxShadow = new Shadow(28, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.18f), new Vector2(0, 10), new Vector2(0, 0)),
+            };
+            Art.Add(layer);
+            var path = ArtworkPaths.Path(work, ImageKind.Poster) ?? ArtworkPaths.Path(work, ImageKind.Backdrop);
+            env.Images.Apply(layer, path, width, height, 12.48f);
+        }
+        if (_focused) _ring?.RaiseToTop();
     }
 
     public static MediaCard Home(AppEnv env, WorkCard card, float x, float y) =>
@@ -82,6 +161,36 @@ internal sealed class MediaCard
 
     public static MediaCard Library(AppEnv env, WorkCard card, float x, float y) =>
         new(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f);
+
+    /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>
+    public static MediaCard PlaylistDirectory(AppEnv env, WorkCard card, float x, float y)
+    {
+        var media = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.025f, lift: 0,
+            blur: 52, shadowY: 24, shadowAlpha: 0.30f, boxHeight: 213.4f, boxScale: 1.015f, boxLift: -5f, focusHeight: 213.4f);
+        media._playlistCollage = true;
+        AddPlaylistKind(media, env, card);
+        return media;
+    }
+
+    /// <summary>Playlist detail card: web lifts the card 6 px and scales its art 1.025 without scaling the caption.</summary>
+    public static MediaCard PlaylistDetail(AppEnv env, WorkCard card, float x, float y)
+    {
+        var media = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.025f, lift: 0,
+            blur: 52, shadowY: 26, shadowAlpha: 0.32f, boxHeight: 213.4f, boxLift: -6f, focusHeight: 213.4f, showRing: false);
+        if (card.Kind == WorkKind.Unknown) AddPlaylistKind(media, env, card);
+        return media;
+    }
+
+    private static void AddPlaylistKind(MediaCard media, AppEnv env, WorkCard card)
+    {
+        if (card.Kind == WorkKind.Unknown)
+        {
+            var icon = Ui.Icon("playlists", Width / 2 - 32, Height / 2 - 32, 64, env.Theme.InkMuted);
+            media._playlistIcon = icon;
+            media.Art.Add(icon);
+        }
+        media.Box.Add(Ui.Text(card.Sub.ToUpperInvariant(), 0, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, Width, 12.672f, HorizontalAlignment.End));
+    }
 }
 
 /// <summary>Web .tv-key-art: the focused title's backdrop in grayscale, faded into the page colour.</summary>

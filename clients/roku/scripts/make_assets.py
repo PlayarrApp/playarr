@@ -9,6 +9,7 @@ Nav icons are drawn from the web's NavIcons.tsx paths (24 box, stroke 1.8, round
 from __future__ import annotations
 
 import math
+import re
 import shutil
 import subprocess
 import tempfile
@@ -342,10 +343,105 @@ def profile_signout_buttons() -> None:
         image.resize((width, height), Image.LANCZOS).save(IMAGES / name)
 
 
+def clients_grid_assets() -> None:
+    """Rasterise the Web Clients page's platform marks and circular controls."""
+    web = Path(__file__).resolve().parents[3] / "clients" / "tv-web" / "web" / "src" / "pages" / "Clients.tsx"
+    source = web.read_text()
+    paths_start = source.index("const paths:")
+    paths_body_start = source.index("{", paths_start)
+    paths_body_end = source.index("\n  };", paths_body_start)
+    paths = dict(re.findall(r"([a-z]+)\s*:\s*\"([^\"]+)\"", source[paths_body_start:paths_body_end]))
+
+    def special_mark(icon: str) -> tuple[str, str]:
+        start = source.index(f'if (icon === "{icon}")')
+        end = source.find("\n  if (icon ===", start + 1)
+        block = source[start:] if end < 0 else source[start:end]
+        viewbox = re.search(r'<svg viewBox="([^"]+)"', block)
+        path = re.search(r'<path d="([^"]+)"', block)
+        if viewbox is None or path is None:
+            raise ValueError(f"Could not read the {icon} SVG from {web}")
+        return viewbox.group(1), path.group(1)
+
+    special = {
+        "vidaa": special_mark("vidaa"),
+        "xbox": special_mark("xbox"),
+        "server": special_mark("server"),
+    }
+    icon_names = {
+        "vidaa": "vidaa",
+        "android": "android",
+        "apple": "apple",
+        "webos": "lg",
+        "tizen": "samsung",
+        "roku": "roku",
+        "chromecast": "chromecast",
+        "xbox": "xbox",
+        "harmony": "harmony",
+        "firetv": "firetv",
+        "server": "server",
+    }
+
+    def svg_markup(icon: str) -> str:
+        if icon in special:
+            viewbox, path = special[icon]
+            if icon == "vidaa":
+                return (
+                    f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">'
+                    '<rect x="2.5" y="4.5" width="19" height="13" rx="2.5" '
+                    'fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+                    f'<path d="{path}" fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+                    '</svg>'
+                )
+            if icon == "server":
+                return (
+                    f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">'
+                    '<rect x="3" y="3.5" width="18" height="7" rx="2" fill="none" stroke="white" stroke-width="1.6"/>'
+                    '<rect x="3" y="13.5" width="18" height="7" rx="2" fill="none" stroke="white" stroke-width="1.6"/>'
+                    f'<path d="{path}" fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+                    '</svg>'
+                )
+            return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}" fill="white"><path d="{path}"/></svg>'
+        path = paths.get(icon)
+        if path is None:
+            raise ValueError(f"Could not read the {icon} SVG path from {web}")
+        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="{path}"/></svg>'
+
+    for client_id, icon in icon_names.items():
+        svg_path = svg_markup(icon)
+        png_path = IMAGES / f"client-icon-{client_id}.png"
+        rendered = subprocess.run(
+            ["rsvg-convert", "-w", "256", "-h", "256"],
+            input=svg_path.encode(),
+            stdout=subprocess.PIPE,
+            check=True,
+        ).stdout
+        Image.open(BytesIO(rendered)).save(png_path)
+
+    def mask_circle(name: str, size: int, inset: float = 0, stroke: float = 0) -> None:
+        big = Image.new("L", (size * SS, size * SS), 0)
+        bounds = (inset * SS, inset * SS, size * SS - 1 - inset * SS, size * SS - 1 - inset * SS)
+        draw = ImageDraw.Draw(big)
+        if stroke:
+            draw.ellipse(bounds, outline=255, width=round(stroke * SS))
+        else:
+            draw.ellipse(bounds, fill=255)
+        alpha = big.resize((size, size), Image.Resampling.LANCZOS)
+        mask = Image.new("RGBA", (size, size), (255, 255, 255, 0))
+        mask.putalpha(alpha)
+        mask.save(IMAGES / name)
+
+    # The circle fill and border follow .client-platform-icon at 220px. The focus ring is
+    # the Web's 3px :focus-visible outline with a 2px offset, so its outer box is 230px.
+    mask_circle("clients-bubble.png", 220)
+    mask_circle("clients-bubble-border.png", 220, stroke=1)
+    mask_circle("clients-focus-ring.png", 230, stroke=3)
+
+
 def main() -> None:
     avatars()
     profile_visual_assets()
     profile_signout_buttons()
+    clients_grid_assets()
     for name in ICONS:
         icon(name, 40 if name == "icon-empty" else 20)
     for r in (6, 12, 25):

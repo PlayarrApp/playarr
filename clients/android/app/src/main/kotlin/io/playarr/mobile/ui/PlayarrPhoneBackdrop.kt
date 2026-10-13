@@ -162,14 +162,16 @@ internal fun WebShadowedBox(
     innerWidthFill: Boolean = false,
     /**
      * Owner ruling 2026-10-09 (WCAG 2.4.13): a focused media card keeps its lift and shadow and adds the brand ring drawn
-     * as a glow, following the card's shape (web: `0 0 0 3px var(--brand-ink), 0 0 20px 4px` brand-ink at 45%).
+     * as a glow, following the card's shape (web: `0 0 0 3px` plus `0 0 20px 4px` at 45%). Phone supplies the web
+     * card-glow token, which is `--brand-strong` in light mode; TV and other callers keep the default `--brand-ink`.
      */
     focusGlow: Boolean = false,
+    focusGlowColor: Color? = null,
     content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit,
 ) {
     Box(modifier) {
         if (focusGlow) {
-            val brand = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk
+            val brand = focusGlowColor ?: io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk
             if (android.os.Build.VERSION.SDK_INT >= 31) {
                 val grow = 24.dp
                 Box(
@@ -214,7 +216,7 @@ internal fun WebShadowedBox(
         Box((if (innerFill) Modifier.matchParentSize() else if (innerWidthFill) Modifier.fillMaxWidth() else Modifier).clip(shape).then(innerModifier), content = content)
         if (focusGlow) {
             // The 3 dp ring sits outside the card edge, as a zero-blur box-shadow spread.
-            val brand = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk
+            val brand = focusGlowColor ?: io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk
             Box(
                 Modifier.matchParentSize().layout { measurable, constraints ->
                     val g = 3.dp.roundToPx()

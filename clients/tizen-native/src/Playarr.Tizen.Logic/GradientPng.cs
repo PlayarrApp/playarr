@@ -25,6 +25,38 @@ public static class GradientPng
         return Encode(w, h, raw);
     }
 
+    /// <summary>Renders an angled CSS-style gradient into a target-sized PNG so its angle survives image scaling.</summary>
+    public static byte[] MakeDiagonal(IReadOnlyList<(float At, Rgba Color)> stops, int width, int height, float degrees)
+    {
+        if (width < 1) throw new ArgumentOutOfRangeException(nameof(width));
+        if (height < 1) throw new ArgumentOutOfRangeException(nameof(height));
+        if (!float.IsFinite(degrees)) throw new ArgumentOutOfRangeException(nameof(degrees));
+
+        var radians = degrees * Math.PI / 180.0;
+        var dx = Math.Sin(radians);
+        var dy = -Math.Cos(radians);
+        var projections = new[] { 0.0, (width - 1) * dx, (height - 1) * dy, (width - 1) * dx + (height - 1) * dy };
+        var min = projections.Min();
+        var range = projections.Max() - min;
+        var raw = new byte[(width * 4 + 1) * height];
+        for (var y = 0; y < height; y++)
+        {
+            var row = y * (width * 4 + 1);
+            for (var x = 0; x < width; x++)
+            {
+                var projection = x * dx + y * dy;
+                var t = range <= 0 ? 0f : (float)((projection - min) / range);
+                var c = Sample(stops, t);
+                var offset = row + 1 + x * 4;
+                raw[offset] = (byte)Math.Round(c.R * 255);
+                raw[offset + 1] = (byte)Math.Round(c.G * 255);
+                raw[offset + 2] = (byte)Math.Round(c.B * 255);
+                raw[offset + 3] = (byte)Math.Round(c.A * 255);
+            }
+        }
+        return Encode(width, height, raw);
+    }
+
     private static byte[] Encode(int w, int h, byte[] raw)
     {
         using var png = new MemoryStream();

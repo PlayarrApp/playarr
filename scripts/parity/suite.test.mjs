@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
@@ -25,6 +26,52 @@ test("routeMatches", () => {
   assert.ok(!routeMatches("/movies/:id", "/movies"));
   assert.ok(routeMatches("/calendar?view=week", "/calendar?view=week&x=1"));
   assert.ok(!routeMatches("/calendar?view=week", "/calendar?view=month"));
+});
+
+test("Android TV driver bounds a hung uiautomator command", async () => {
+  const fakeAdb = new URL("./test-drivers/fake-adb.mjs", import.meta.url).pathname;
+  const hangVariable = "PLAYARR_PARITY_FAKE_ADB_HANG";
+  const previous = process.env[hangVariable];
+  process.env[hangVariable] = "uiautomator";
+  try {
+    const driver = createAndroidTvDriver({ adbBin: fakeAdb, commandTimeoutMs: 300 });
+    await assert.rejects(driver.screenshot("/dev/null"), /adb shell uiautomator timed out after 300ms/);
+  } finally {
+    if (previous === undefined) delete process.env[hangVariable];
+    else process.env[hangVariable] = previous;
+  }
+});
+
+test("Android TV driver bounds a hung screencap after a ready UI tree", async () => {
+  const fakeAdb = new URL("./test-drivers/fake-adb.mjs", import.meta.url).pathname;
+  const hangVariable = "PLAYARR_PARITY_FAKE_ADB_HANG";
+  const displayVariable = "PARITY_XDISPLAY";
+  const previousHang = process.env[hangVariable], previousDisplay = process.env[displayVariable];
+  process.env[hangVariable] = "screencap";
+  delete process.env[displayVariable];
+  try {
+    const driver = createAndroidTvDriver({ adbBin: fakeAdb, commandTimeoutMs: 300 });
+    await assert.rejects(driver.screenshot("/dev/null"), /adb exec-out screencap timed out after 300ms/);
+  } finally {
+    if (previousHang === undefined) delete process.env[hangVariable];
+    else process.env[hangVariable] = previousHang;
+    if (previousDisplay === undefined) delete process.env[displayVariable];
+    else process.env[displayVariable] = previousDisplay;
+  }
+});
+
+test("Android TV driver fails when screen focus never becomes ready", async () => {
+  const fakeAdb = new URL("./test-drivers/fake-adb.mjs", import.meta.url).pathname;
+  const driver = createAndroidTvDriver({ adbBin: fakeAdb, commandTimeoutMs: 1000, readinessTimeoutMs: 600, readinessPollMs: 25 });
+  const noFocusVariable = "PLAYARR_PARITY_FAKE_ADB_NO_FOCUS";
+  const previous = process.env[noFocusVariable];
+  process.env[noFocusVariable] = "1";
+  try {
+    await assert.rejects(driver.home(), /screen readiness timed out after 600ms/);
+  } finally {
+    if (previous === undefined) delete process.env[noFocusVariable];
+    else process.env[noFocusVariable] = previous;
+  }
 });
 
 test("focus-order checks keep play/pause role semantics while toggle checks keep state", () => {
@@ -73,12 +120,14 @@ test("player toggle reference records exact web state and rejects an unchanged p
     assert.equal(expected.dpad["player-ok-toggle"], "play");
 
     const scored = run("no", ["--expected", join(out, "expected.json")]);
-    assert.equal(scored.status, 0, scored.stderr || scored.stdout);
+    assert.equal(scored.status, 1, scored.stderr || scored.stdout);
+    assert.match(scored.stdout, /failed D-pad checks 1: player-ok-toggle/);
     const result = JSON.parse(readFileSync(join(out, "dpad.json"), "utf8"));
     assert.equal(result.results.find((x) => x.id === "player-ok-toggle").pass, false);
 
     const roleOnly = run("role", ["--expected", join(out, "expected.json")]);
-    assert.equal(roleOnly.status, 0, roleOnly.stderr || roleOnly.stdout);
+    assert.equal(roleOnly.status, 1, roleOnly.stderr || roleOnly.stdout);
+    assert.match(roleOnly.stdout, /failed D-pad checks 1: player-ok-toggle/);
     const roleResult = JSON.parse(readFileSync(join(out, "dpad.json"), "utf8"));
     assert.equal(roleResult.results.find((x) => x.id === "player-ok-toggle").pass, false);
 

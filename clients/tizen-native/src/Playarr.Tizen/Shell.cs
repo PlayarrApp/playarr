@@ -151,6 +151,7 @@ internal sealed class Shell : View
         var page = Pages.Create(_env, route);
         if (page is null) { previousSearch?.OnAdded(); return; }
         if (push && _page is not null) { _history.Push(_page.Route); if (_page.SaveState() is { } st) _saved[_page.Route] = st; }
+        if (_page is PlaylistsScreen previousPlaylists) previousPlaylists.OnRemoved();
         if (_page is not null)
         {
             Remove(_page.Root); _page.Root.Dispose();
