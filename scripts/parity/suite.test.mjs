@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarFocusTransitionError, calendarViewFocusKey, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarViewFocusKey, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
@@ -122,6 +122,12 @@ test("Roku Calendar route follows fresh focus as data replaces the initial Back 
   assert.equal(calendarFocusTransitionError(rightCell, "left", wrongRowCell), "calendar-left-did-not-move-to-an-earlier-cell-in-the-same-row");
   assert.equal(calendarFocusTransitionError(rightCell, "up", aboveCell), null);
   assert.equal(calendarFocusTransitionError(rightCell, "up", unchangedCell), "calendar-up-did-not-move-to-an-earlier-row");
+  assert.equal(calendarCellLeftEdgeAction({ action: "cell", rect: { x: 154, y: 200, w: 180, h: 120 } }), "edge");
+  assert.equal(calendarCellLeftEdgeAction({ action: "cell", rect: { x: 155, y: 200, w: 180, h: 120 } }), "edge");
+  assert.equal(calendarCellLeftEdgeAction({ action: "cell", rect: { x: 392.4, y: 200, w: 180, h: 120 } }), "left");
+  assert.equal(calendarCellLeftEdgeAction({ action: "cell", rect: { x: 153, y: 200, w: 180, h: 120 } }), "unknown");
+  assert.equal(calendarCellLeftEdgeAction({ action: "back", rect: { x: 153, y: 56, w: 50, h: 50 } }), "unknown");
+  assert.equal(calendarCellLeftEdgeAction({ action: "cell", rect: null }), "unknown");
   const wrongHeaderToRight = { action: "calPrev", rect: { x: 1200, y: 50, w: 60, h: 50 } };
   assert.equal(calendarFocusTransitionError(viewSelector, "left", wrongHeaderToRight), "calendar-header-left-did-not-move-left");
   assert.equal(calendarViewFocusKey(state.calendarFocus), null);

@@ -29,6 +29,7 @@ const CALENDAR_ACTIONS = new Set([
 const CALENDAR_HEADER_ACTIONS = new Set(["back", "calNext", "calToday", "calPrev", "calView", "calLink", "calFilters"]);
 const CALENDAR_KEYS = new Set(["up", "down", "left", "right", "select", "back"]);
 const MAX_CALENDAR_TRACE = 32;
+const CALENDAR_CONTENT_LEFT_EDGE = 154;
 const ROUTE_TRACE_SCREENS = new Set(["home", "browse", "drawer"]);
 const ROUTE_TRACE_BROWSE = new Set(["movie", "movies", "series", "artist", "music"]);
 const ROUTE_TRACE_DRAWERS = new Set(["filters", "actions"]);
@@ -273,6 +274,13 @@ export function calendarViewFocusKey(action) {
   if (action === "back") return "right";
   if (["calNext", "calToday", "calPrev"].includes(action)) return "left";
   return null;
+}
+
+export function calendarCellLeftEdgeAction(focus) {
+  if (!focus || focus.action !== "cell" || !Number.isFinite(focus.rect?.x)) return "unknown";
+  if (focus.rect.x < CALENDAR_CONTENT_LEFT_EDGE) return "unknown";
+  if (focus.rect.x <= CALENDAR_CONTENT_LEFT_EDGE + 1) return "edge";
+  return "left";
 }
 
 export function calendarFocusTransitionError(from, key, to) {
@@ -771,14 +779,16 @@ export function createDriver({ out, args = [] } = {}) {
             if (next === null) {
               let reachedLeftEdge = false;
               for (let leftStep = 0; leftStep < 32; leftStep += 1) {
-                const left = await observeCalendarKey("left", { allowBoundary: true });
-                if (left === null) {
+                const decision = calendarCellLeftEdgeAction(currentCalendarFocus());
+                if (decision === "unknown") throw new Error(traceFailure(`Calendar left edge is not proven by the focused rectangle: ${JSON.stringify(currentCalendarFocus())}`));
+                if (decision === "edge") {
                   reachedLeftEdge = true;
                   break;
                 }
+                const left = await observeCalendarKey("left");
                 if (left.action !== "cell") throw new Error(traceFailure(`Calendar left scan left the date row: ${JSON.stringify(left)}`));
               }
-              if (!reachedLeftEdge) throw new Error(traceFailure("Calendar left scan exceeded its safe bound"));
+              if (!reachedLeftEdge) throw new Error(traceFailure("Calendar left scan did not reach a geometrically proven edge within its safe bound"));
               next = await observeCalendarKey("up");
             }
             if (next.action !== "cell" && !CALENDAR_HEADER_ACTIONS.has(next.action)) {
