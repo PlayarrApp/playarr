@@ -69,6 +69,10 @@ sub onContentChanged()
     if content.focusRingOutsideArt <> invalid
         if content.focusRingOutsideArt = true then m.focusRingOutsideArt = true
     end if
+    m.homeCardFocusStyle = false
+    if content.homeCardFocusStyle <> invalid
+        if content.homeCardFocusStyle = true then m.homeCardFocusStyle = true
+    end if
     m.focusRingInset = 0
     m.cardContentInsetX = 0
     m.cardContentInsetY = 0
@@ -234,15 +238,17 @@ function CapitalizeFirst(value as Dynamic) as String
     return UCase(Left(value, 1)) + Right(value, Len(value) - 1)
 end function
 
-' Media-card focus values, pinned from the web (docs/design/page-layout.md section 5, reference commit de371253): a Home card
-' lifts 6 px; a grid card (cardScale > 1) lifts 5 px; the art zooms 1.025 (grid 1.015). The shadow bitmaps carry the web
-' shadows (tools/make_assets.py card_shadow). Lifts are CSS px at the 1920 x 1080 layout, divided by the card scale on use.
+' Media-card focus values, pinned from the web (docs/design/page-layout.md section 5, reference commit de371253): Home
+' lifts 6 px and zooms art 1.025; library grids lift 5 px and zoom art 1.015. Home cards use a larger source-art scale,
+' so identify their focus style explicitly instead of inferring it from cardScale. The shadow bitmaps carry the web shadows.
 function cardFocusLift() as Float
+    if m.homeCardFocusStyle then return 6
     if m.cardScaleValue > 1 then return 5
     return 6
 end function
 
 function cardFocusScale() as Float
+    if m.homeCardFocusStyle then return 0.025
     if m.cardScaleValue > 1 then return 0.015
     return 0.025
 end function

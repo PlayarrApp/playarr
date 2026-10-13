@@ -3790,10 +3790,11 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         item.activeRailFactor = activeRailFactor
         item.AddField("focusRingOutsideArt", "boolean", false)
         item.focusRingOutsideArt = homeRailIndex(row) >= 0
-        ' Similar Titles (detailSimilar) passes 1.5 to match the real,
-        ' larger .tv-title-card sizing used there -- see PosterCard.xml's
-        ' cardScale comment. Home's rails never pass this, so it defaults
-        ' to a no-op 1.
+        item.AddField("homeCardFocusStyle", "boolean", false)
+        item.homeCardFocusStyle = homeRailIndex(row) >= 0
+        ' Home and Similar Titles pass scaled art dimensions to match their
+        ' respective web cards. homeCardFocusStyle separates Home's 6px /
+        ' 1.025 focus transform from the larger layout scale.
         item.AddField("cardScale", "float", false)
         item.cardScale = cardScale
         if artEnabledForRow
