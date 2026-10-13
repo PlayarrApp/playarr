@@ -325,9 +325,20 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.focusRing.translation = [-focusInset, -focusInset]
     m.focusRing.width = artW + (focusInset * 2)
     m.focusRing.height = artH + (focusInset * 2)
-    m.focusGlow.translation = [-90, -90]
-    m.focusGlow.width = artW + 180
-    m.focusGlow.height = artH + 180
+    if m.homeCardFocusStyle
+        ' card-glow.png has a 220x124 mask centred in a 400x304 canvas with
+        ' 90px margins. Home artwork is laid out at the 1.4864 card scale, so
+        ' scale the full glow bitmap and its margins together to keep that mask
+        ' aligned to the artwork with the generated blur proportions intact.
+        glowScale = cardScale
+        m.focusGlow.translation = [-90 * glowScale, -90 * glowScale]
+        m.focusGlow.width = 400 * glowScale
+        m.focusGlow.height = 304 * glowScale
+    else
+        m.focusGlow.translation = [-90, -90]
+        m.focusGlow.width = artW + 180
+        m.focusGlow.height = artH + 180
+    end if
     m.restShadow.translation = [-90, -90]
     m.restShadow.width = artW + 180
     m.restShadow.height = artH + 180
