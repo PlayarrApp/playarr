@@ -21,6 +21,8 @@ internal sealed class MediaCard
     private readonly float _artDy;
     private View? _playlistIcon;
     private bool _playlistCollage;
+    private bool _playlistHasCovers;
+    private View? _playlistFocusRing;
     private bool _playlistCoverSet;
     private bool _focused;
     private TextLabel? _playlistMetadata;
@@ -92,9 +94,10 @@ internal sealed class MediaCard
                 ? new Shadow(20, new Color(glowColor.R, glowColor.G, glowColor.B, 0.45f), new Vector2(0, 0), new Vector2(0, 0))
                 : null;
         }
+        if (_playlistCollage && _playlistHasCovers) SetPlaylistFocusRing(focused);
         if (_ring is not null)
         {
-            var showRing = focused && _searchPlaylistFocusGlow is null;
+            var showRing = focused && !(_playlistCollage && _playlistHasCovers) && _searchPlaylistFocusGlow is null;
             _ring.Show(showRing);
             if (showRing) _ring.RaiseToTop(); // the poster loads later and would otherwise sit on top of the ring
         }
@@ -149,6 +152,8 @@ internal sealed class MediaCard
 
         Art.BackgroundColor = new Color(0, 0, 0, 0);
         Art.ClippingMode = default;
+        _playlistHasCovers = true;
+        _ring?.Show(false);
         // Add back-to-front. The first selected work stays on top, matching the web z-index order.
         for (var index = covers.Count - 1; index >= 0; index--)
         {
@@ -176,7 +181,36 @@ internal sealed class MediaCard
             var path = ArtworkPaths.Path(work, ImageKind.Poster) ?? ArtworkPaths.Path(work, ImageKind.Backdrop);
             env.Images.Apply(layer, path, width, height, 12.48f);
         }
-        if (_focused) _ring?.RaiseToTop();
+        _ring?.Show(false);
+        SetPlaylistFocusRing(_focused);
+    }
+
+    private void SetPlaylistFocusRing(bool focused)
+    {
+        if (_playlistFocusRing is null)
+        {
+            const float spread = 3f;
+            var ring = new View
+            {
+                PositionX = Art.PositionX - spread,
+                PositionY = Art.PositionY - spread,
+                Size = new Size(Art.Size.Width + spread * 2, Art.Size.Height + spread * 2),
+                CornerRadius = Art.CornerRadius + spread,
+                BorderlineWidth = spread,
+                BorderlineOffset = -1,
+                BorderlineColor = _t.Name == "dark"
+                    ? new Color(_t.BrandInk.R, _t.BrandInk.G, _t.BrandInk.B, 0.95f)
+                    : new Color(0.647f, 0.153f, 0.271f, 1),
+                BackgroundColor = new Color(0, 0, 0, 0),
+            };
+            Box.Add(ring);
+            _playlistFocusRing = ring;
+        }
+
+        _playlistFocusRing.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
+        _playlistFocusRing.PositionY = _artDy + (focused ? _lift : 0) - 3f;
+        _playlistFocusRing.Show(focused);
+        if (focused) _playlistFocusRing.RaiseToTop();
     }
 
     public static MediaCard Home(AppEnv env, WorkCard card, float x, float y) =>
