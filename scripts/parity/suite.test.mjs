@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarViewFocusKey, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarFocusTransitionError, calendarViewFocusKey, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
@@ -102,11 +102,17 @@ test("Roku Calendar route follows fresh focus as data replaces the initial Back 
   assert.equal(hasFreshCalendarFocus(state, beforeScreenSeq, beforeFocusSeq), true);
   assert.deepEqual(state.calendarFocusRect, { x: 153, y: 56.3, w: 50, h: 50 });
   assert.equal(calendarViewFocusKey(state.calendarFocus), "right");
+  const back = { action: state.calendarFocus, rect: state.calendarFocusRect };
   applyParityLine(state, "PARITY|calendarFocus|cell|310,200,120,44");
   assert.equal(calendarViewFocusKey(state.calendarFocus), "up");
+  const firstCell = { action: state.calendarFocus, rect: state.calendarFocusRect };
+  assert.equal(calendarFocusTransitionError(firstCell, "up", back), null);
+  assert.equal(calendarFocusTransitionError(back, "right", firstCell), "back-right-did-not-reach-view-selector");
   applyParityLine(state, "PARITY|calendarFocus|calPrev|1629,56.2,50,50");
   assert.equal(calendarViewFocusKey(state.calendarFocus), "left");
   applyParityLine(state, "PARITY|calendarFocus|calView|1000,56.2,100,48");
+  const viewSelector = { action: state.calendarFocus, rect: state.calendarFocusRect };
+  assert.equal(calendarFocusTransitionError(back, "right", viewSelector), null);
   assert.equal(calendarViewFocusKey(state.calendarFocus), null);
   assert.equal(applyParityLine(state, "PARITY|calendarFocus|entry|media title"), false);
 });

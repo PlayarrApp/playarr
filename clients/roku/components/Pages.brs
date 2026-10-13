@@ -346,6 +346,8 @@ function pageMoveFocus(dir as String) as Boolean
     cy = cur.y + cur.h / 2
     best = -1
     bestScore = 1000000.0
+    forwardDeadZone = 4
+    if m.pageKind = "calendar" then forwardDeadZone = 2
     for i = 0 to m.pageItems.Count() - 1
         if i <> m.pageFocusIdx
             it = m.pageItems[i]
@@ -356,13 +358,13 @@ function pageMoveFocus(dir as String) as Boolean
             ok = false
             primary = 0.0
             cross = 0.0
-            if dir = "right" and dx > 4
+            if dir = "right" and dx > forwardDeadZone
                 ok = true : primary = dx : cross = Abs(dy)
-            else if dir = "left" and dx < -4
+            else if dir = "left" and dx < -forwardDeadZone
                 ok = true : primary = -dx : cross = Abs(dy)
-            else if dir = "down" and dy > 4
+            else if dir = "down" and dy > forwardDeadZone
                 ok = true : primary = dy : cross = Abs(dx)
-            else if dir = "up" and dy < -4
+            else if dir = "up" and dy < -forwardDeadZone
                 ok = true : primary = -dy : cross = Abs(dx)
             end if
             if ok

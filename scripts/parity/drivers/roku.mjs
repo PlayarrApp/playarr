@@ -26,6 +26,7 @@ const MAX_DEBUG_FRAME_BYTES = 16 * 1024;
 const CALENDAR_ACTIONS = new Set([
   "back", "calNext", "calToday", "calPrev", "calView", "calLink", "calFilters", "cell", "entry", "calPlay", "calOpen", "calWatch",
 ]);
+const CALENDAR_HEADER_ACTIONS = new Set(["back", "calNext", "calToday", "calPrev", "calView", "calLink", "calFilters"]);
 const CALENDAR_KEYS = new Set(["up", "down", "left", "right", "select", "back"]);
 const MAX_CALENDAR_TRACE = 32;
 const ROUTE_TRACE_SCREENS = new Set(["home", "browse", "drawer"]);
@@ -271,6 +272,15 @@ export function calendarViewFocusKey(action) {
   if (["cell", "entry", "calPlay", "calOpen", "calWatch", "calLink", "calFilters"].includes(action)) return "up";
   if (action === "back") return "right";
   if (["calNext", "calToday", "calPrev"].includes(action)) return "left";
+  return null;
+}
+
+export function calendarFocusTransitionError(from, key, to) {
+  if (!from || !to || !CALENDAR_ACTIONS.has(from.action) || !CALENDAR_ACTIONS.has(to.action)) return null;
+  if (from.action === "back" && key === "right" && to.action !== "calView") return "back-right-did-not-reach-view-selector";
+  if (from.action === "cell" && key === "up" && to.action !== "cell" && !CALENDAR_HEADER_ACTIONS.has(to.action)) {
+    return "cell-up-did-not-reach-calendar-header";
+  }
   return null;
 }
 
@@ -726,7 +736,10 @@ export function createDriver({ out, args = [] } = {}) {
           } catch (error) {
             throw new Error(traceFailure(`${error.message}; last observed focus=${JSON.stringify(currentCalendarFocus())}`));
           }
-          appendCalendarFocusTransition(calendarTrace, from, key, currentCalendarFocus());
+          const to = currentCalendarFocus();
+          appendCalendarFocusTransition(calendarTrace, from, key, to);
+          const transitionError = calendarFocusTransitionError(from, key, to);
+          if (transitionError) throw new Error(traceFailure(`${transitionError}: ${JSON.stringify({ from, key, to })}`));
         }
         if (parityState.calendarFocus !== "calView") throw new Error(traceFailure(`Roku did not reach the Calendar view selector; last observed focus=${JSON.stringify(currentCalendarFocus())}`));
         await press("select");
