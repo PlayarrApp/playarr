@@ -194,16 +194,18 @@ final class MacFocusEngineTests: XCTestCase {
 
         homeFocusCount = 0
         navFocusCount = 0
-        engine.didFocus(homeID, true)
         engine.update(firstOverlayID, .init(frame: card(20, 100), layer: 1, focus: {}))
         engine.didFocus(firstOverlayID, true)
         try await Task.sleep(for: .milliseconds(200))
         engine.requestHomeCardRestore(parityID: "home-card", rail: 0, index: 0)
-        engine.didFocus(navID, true) // User changes focus while the drawer is open.
+        engine.update(nextOverlayID, .init(frame: card(40, 100), layer: 1, focus: {}))
+        engine.didFocus(nextOverlayID, true) // User changes focus within the drawer.
+        try await Task.sleep(for: .milliseconds(200))
+        engine.remove(nextOverlayID)
         engine.remove(firstOverlayID)
         try await Task.sleep(for: .milliseconds(200))
         XCTAssertEqual(homeFocusCount, 0, "user focus movement cancels the pending one-shot return")
-        XCTAssertEqual(navFocusCount, 1, "the changed nav focus receives ordinary layer restoration")
+        XCTAssertEqual(navFocusCount, 1, "ordinary layer restoration still returns to the previously focused nav item")
         engine.remove(homeID)
         engine.remove(navID)
     }
