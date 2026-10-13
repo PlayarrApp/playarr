@@ -50,6 +50,12 @@ internal sealed class Shell : View
     public IPage? Page => _page;
     public bool NavFocused => _navFocus >= 0;
     public bool Ready => _page?.IsReady ?? true;
+    public TextFieldEditingContext EditingTextFieldContext => _page switch
+    {
+        SearchScreen search when search.IsQueryEditing => TextFieldEditingContext.SearchQuery,
+        PlaylistsScreen playlists when playlists.IsPlaylistNameEditing => TextFieldEditingContext.PlaylistName,
+        _ => TextFieldEditingContext.None,
+    };
     /// <summary>{ rail, index }: "nav" and the item number from the top on the nav rail, else the page's own position (Home).</summary>
     public (string Rail, int Index)? FocusPosition => _navFocus >= 0 ? ("nav", _navFocus) : _page?.FocusPosition is { } p ? (p.Rail.ToString(), p.Index) : null;
     public string? FocusedLabel => _navFocus >= 0 ? _nav[_navFocus].Item.Label.ToLowerInvariant() : _page?.FocusedLabel;
@@ -160,6 +166,7 @@ internal sealed class Shell : View
         if (!push && _saved.Remove(route, out var restore)) page.RestoreState(restore);
         Add(page.Root);
         if (page is SearchScreen searchPage) searchPage.OnAdded();
+        if (page is PlaylistsScreen playlistsPage) playlistsPage.OnAdded();
         if (_theme.Name == "light" && !page.HideChrome && !page.Fullscreen)
         {
             // web light: the page colour fades from #fbfaf9 to #efeeef between x 640 and 1120 (measured); text and cards sit above it
