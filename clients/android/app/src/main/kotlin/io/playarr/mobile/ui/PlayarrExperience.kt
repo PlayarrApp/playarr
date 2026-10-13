@@ -72,6 +72,7 @@ import io.playarr.shared.designsystem.component.PlayarrFadeKind
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -3139,6 +3140,7 @@ internal fun ExperienceMediaRail(
     rails: TvRails? = null,
     railIndex: Int = 0,
 ) {
+    val density = LocalDensity.current
     val collection = playarrString(PlayarrString.LibraryCollectionTitles)
     val railTitle = rail.literalTitle ?: rail.title?.let { playarrString(it) }.orEmpty()
     Column(
@@ -3187,17 +3189,46 @@ internal fun ExperienceMediaRail(
         val tvTrackHeadroom = 42.dp
         val tvHeadroomAdjustment = tvTrackHeadroom - 6.dp
         val tvOuterTopPadding = (if (railIndex == 0) 43.2.dp else 41.2.dp) - tvHeadroomAdjustment
+        // Keep the pre-existing 10dp card origin exact: integer-pixel headroom avoids a fractional-density rounding drift.
+        val phoneFocusTopHeadroomPx = with(density) { 24.dp.roundToPx() }
+        val phoneFocusBottomHeadroomPx = with(density) { 80.dp.roundToPx() }
+        val phoneFocusTopHeadroom = with(density) { phoneFocusTopHeadroomPx.toDp() }
+        val phoneFocusBottomHeadroom = with(density) { phoneFocusBottomHeadroomPx.toDp() }
         val trackModifier = if (isTelevision) {
             Modifier.fillMaxWidth().extendStart(trackGutter).padding(top = tvOuterTopPadding)
         } else {
-            Modifier.fillMaxWidth().padding(end = 5.dp)
+            Modifier.fillMaxWidth().padding(end = 5.dp).layout { measurable, constraints ->
+                // Web `.tv-media-track-scroll` adds 24px above and 80px below the card for focus shadows, then uses
+                // matching negative margins so the card origin and following-rail position do not move. Give the
+                // LazyRow that paint headroom while reporting the original outer height to its parent.
+                val top = phoneFocusTopHeadroom.roundToPx()
+                val bottom = phoneFocusBottomHeadroom.roundToPx()
+                val extra = top + bottom
+                val expandedMaxHeight = if (constraints.hasBoundedHeight) {
+                    if (constraints.maxHeight > Int.MAX_VALUE - extra) Int.MAX_VALUE else constraints.maxHeight + extra
+                } else {
+                    constraints.maxHeight
+                }
+                val placeable = measurable.measure(constraints.copy(maxHeight = expandedMaxHeight))
+                val reportedHeight = (placeable.height - extra).coerceAtLeast(constraints.minHeight).coerceAtMost(constraints.maxHeight)
+                layout(placeable.width, reportedHeight) {
+                    placeable.placeRelative(0, -top)
+                }
+            }
         }
         PlayarrLazyRow(
             state = railState,
             fade = if (isTelevision) PlayarrFadeKind.Rail else PlayarrFadeKind.PhoneRail,
             startGutter = trackGutter,
+            fadeCrossAxisStartInset = if (isTelevision) 0.dp else phoneFocusTopHeadroom,
+            fadeCrossAxisEndInset = if (isTelevision) 0.dp else phoneFocusBottomHeadroom,
             modifier = trackModifier,
-            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = 20.dp, top = tvTrackHeadroom, bottom = 12.dp) else PaddingValues(start = 16.dp, end = 20.dp, top = 10.dp),
+            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = 20.dp, top = tvTrackHeadroom, bottom = 12.dp) else PaddingValues(
+                start = 16.dp,
+                end = 20.dp,
+                top = 10.dp + phoneFocusTopHeadroom,
+                bottom = phoneFocusBottomHeadroom,
+            ),
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp else 12.dp),
         ) {
             itemsIndexed(rail.works, key = { _, work -> work.id }) { itemIndex, work ->
