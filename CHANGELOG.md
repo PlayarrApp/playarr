@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Align Android TV Home rail headings with the measured web positions without moving their cards.
 - Route D-pad Down from the synthetic Add profile avatar to Clients while preserving Settings below real profiles.
 - Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.
 - Android TV Home rails reserve the web-matched top headroom so focused artwork and its glow are no longer clipped.

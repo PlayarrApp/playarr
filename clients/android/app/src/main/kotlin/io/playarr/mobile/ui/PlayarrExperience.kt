@@ -3148,7 +3148,18 @@ internal fun ExperienceMediaRail(
     ) {
         if (isTelevision) {
             // Web `.tv-home-rail h2`: 17.664 px / 610, no count line; cards start 58.9 px below the heading top.
-            Text(railTitle, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), lineHeight = 26.5.sp)
+            // Guarded TV geometry places the web h2 box at y=402px; the native rail Text starts at the
+            // LazyColumn content top y=389.9dp. The TV context maps dp 1:1 to pixels, so translate the
+            // heading's drawing by that measured difference without changing its line box or card origin.
+            val headingInkOffset = 402.dp - 389.9.dp
+            Text(
+                railTitle,
+                color = WebInk,
+                fontSize = 17.664.sp,
+                fontWeight = FontWeight(610),
+                lineHeight = 26.5.sp,
+                modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() },
+            )
         } else {
             // Web phone rail heading: 24 px tall, 16 px / 610; the active rail's title is drawn 1.16x, lifted 1 px.
             Box(Modifier.fillMaxWidth().height(24.dp).padding(start = 16.dp), contentAlignment = Alignment.CenterStart) {
