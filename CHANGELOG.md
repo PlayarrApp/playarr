@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Sailfish routes to Profiles when saved sessions exist but no session is active, while preserving SignIn when none exist and Home for an active session.
 - Show the selected work's runtime in the Fire TV Library preview while keeping catalog metadata immediately available.
 - Match the Fire TV Library top edge fade to the viewport so the focused-card glow clears the top edge without changing focus or grid geometry.
 - Keep viewport-intersecting Library rows rendered during focus scrolling animations on Fire TV, so earlier visible rows no longer disappear.
