@@ -138,6 +138,52 @@ function checkClientVersionPin(harmonyDir, errors, warnings) {
   }
 }
 
+function checkDetailObservedArtwork(harmonyDir, errors, warnings) {
+  const text = checkFileContract(
+    harmonyDir,
+    'entry/src/main/ets/pages/Detail.ets',
+    {
+      requiredSubstrings: [
+        '@Observed\nclass DetailArtworkStore',
+        '@Track revision: number = 0;',
+        '@Track private pixelMaps: Map<string, image.PixelMap> = new Map<string, image.PixelMap>();',
+        'beginGeneration(): number',
+        'isCurrentGeneration(generation: number): boolean',
+        'setArtwork(generation: number, rowId: string, pixelMap: image.PixelMap): void',
+        '@ObjectLink artworkStore: DetailArtworkStore;',
+        'PosterCard({\n      variant: this.variant,',
+        'artwork: this.artworkStore.getArtwork(this.rowId),',
+        'this.artworkStore.setArtwork(generation, item.id, thumb.value);',
+        'artworkStore: this.artworkStore,',
+        'rowId: (item as DetailRow).id,',
+        'DetailRowArtworkCard({',
+        'railId: rail.id,',
+        '(rail: DetailRail): string => rail.id',
+      ],
+    },
+    errors,
+    warnings
+  );
+  if (text === null) return;
+
+  const observedCardCount = (text.match(/DetailRowArtworkCard\(\{/g) || []).length;
+  if (observedCardCount !== 5) {
+    errors.push(`entry/src/main/ets/pages/Detail.ets: expected all five TV/touch Detail row card builders to use the observed artwork child, found ${observedCardCount}`);
+  }
+
+  const rowIdStoreCount = (text.match(/rowId: \(item as DetailRow\)\.id,/g) || []).length;
+  if (rowIdStoreCount !== 5) {
+    errors.push(`entry/src/main/ets/pages/Detail.ets: expected all five Detail card paths to use the shared artwork store by row ID, found ${rowIdStoreCount}`);
+  }
+  if (/artworkState/.test(text)) {
+    errors.push('entry/src/main/ets/pages/Detail.ets: artwork must be stored outside the unobserved DetailRow wrapper');
+  }
+
+  if (/@Prop\s+\w+\s*:\s*\([^\n]*=>/.test(text)) {
+    errors.push('entry/src/main/ets/pages/Detail.ets: observed artwork row component must not add function-valued @Prop fields');
+  }
+}
+
 export function checkContract(harmonyDir) {
   const errors = [];
   const warnings = [];
@@ -202,6 +248,7 @@ export function checkContract(harmonyDir) {
   );
 
   checkArtworkOriginGuard(harmonyDir, errors, warnings);
+  checkDetailObservedArtwork(harmonyDir, errors, warnings);
 
   checkFileContract(
     harmonyDir,

@@ -5,9 +5,16 @@ Signs in fresh (link code logged by the app, approved as the Device Test account
 dark and light. Aborts, writing nothing more, when a frame is too plain (an error or signed-out screen)."""
 import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
+from screen_selection import TV_SCREEN_IDS, parse_tv_screens, player_is_skipped
+from capture_diagnostics import (save_rejected_frame, summarize_detail_events,
+                                 summarize_detail_layout_events, summarize_detail_image_payload_events,
+                                 analyze_episode_art_frame, decoded_art_is_accepted,
+                                 write_detail_summary)
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
+TV_SCREENS_RAW = os.environ.get("TV_SCREENS", "all").strip()
+SKIP_PLAYER_REQUESTED = os.environ.get("SKIP_PLAYER", "false").lower() == "true"
 CTL = "http://127.0.0.1:" + ("40117" if device == "phone" else "40017")
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(out, exist_ok=True)
@@ -66,6 +73,13 @@ def abort(msg):
     sys.exit(1)
 
 
+try:
+    TV_SELECTION = parse_tv_screens(TV_SCREENS_RAW) if device == "tv" else None
+except ValueError as error:
+    abort(str(error))
+SKIP_PLAYER = player_is_skipped(TV_SELECTION, SKIP_PLAYER_REQUESTED)
+
+
 def guarded(name, fn):
     """Phone walk: a screen whose guard fails is skipped and listed as missing; the others still publish."""
     try:
@@ -89,10 +103,10 @@ def settle(limit=45):
 SEEN = {}
 
 
-def snap(name, folder, floor=60000):
+def snap(name, folder, floor=60000, frame_observer=None):
     for attempt in range(3 if device == "tv" else 1):
         try:
-            snap_checked(name, folder, floor)
+            snap_checked(name, folder, floor, frame_observer=frame_observer)
             return
         except SystemExit:
             if device == "phone":
@@ -103,13 +117,15 @@ def snap(name, folder, floor=60000):
             time.sleep(25)
 
 
-def snap_checked(name, folder, floor):
+def snap_checked(name, folder, floor, frame_observer=None):
     settle()
     if b"[JsEngine Crash]" in open(log, "rb").read():
         debug("crash-" + name)
         raise RuntimeError("the Previewer's JS engine crashed: every later frame would be the frozen last one")
     img = png()
-    debug('snap-' + name)
+    debug('snap-' + name, img)
+    if frame_observer is not None:
+        frame_observer(img)
     digest = hashlib.md5(img.tobytes()).hexdigest()
     if device == "phone" and digest in SEEN and not os.environ.get("CALIBRATE"):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
@@ -128,10 +144,10 @@ def snap_checked(name, folder, floor):
     print("captured", name, get("/health").decode().strip()[:80], flush=True)
 
 
-def debug(name):
+def debug(name, image=None):
     d = os.path.join(out, "_debug")
     os.makedirs(d, exist_ok=True)
-    png().save(os.path.join(d, name + ".png"))
+    (image if image is not None else png()).save(os.path.join(d, name + ".png"))
 
 
 for _ in range(30):
@@ -182,11 +198,14 @@ def extra_screens(folder):
         key("back"); time.sleep(3)
     except SystemExit:
         print("actions not captured", flush=True)
-    try:
-        route("player:" + json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["performance"][0]["file"], 20)
-        click(960, 540); time.sleep(3); snap("player-controls", folder, 30000)
-    except SystemExit:
-        print("player-controls not captured", flush=True)
+    if SKIP_PLAYER:
+        print("player-controls skipped by request", flush=True)
+    else:
+        try:
+            route("player:" + json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["performance"][0]["file"], 20)
+            click(960, 540); time.sleep(3); snap("player-controls", folder, 30000)
+        except SystemExit:
+            print("player-controls not captured", flush=True)
 
 
 def walk(folder, suffix):
@@ -194,8 +213,9 @@ def walk(folder, suffix):
     n = lambda s: s + suffix
     snap(n("home"), folder, 150000)
     if os.environ.get("POSTERDBG"):
-        log_ = json.loads(get("/state")).get("dbglog", [])
-        print("dbgsum", {k: sum(1 for x in log_ if x.startswith(k)) for k in ("cardart", "imgok", "imgerr")}, [x[:160] for x in log_ if x.startswith("imgerr")][:3], flush=True)
+        events = json.loads(get("/state")).get("debug_events", [])
+        print("dbgsum", {k: sum(1 for event in events if event.get("category") == k)
+                          for k in ("home-card-artwork-ok", "poster-image-complete", "poster-image-error")}, flush=True)
     route("library:movie", 15); snap(n("movies"), folder, 150000)
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
     click(946, 254); time.sleep(12); snap(n("film-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
@@ -227,16 +247,202 @@ if device == "tv" and THEME == "dpad":
     key("down"); time.sleep(2); print("after nav down", get("/state"), flush=True)
     sys.exit(0)
 if device == "tv":
+    if TV_SELECTION is not None:
+        suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
+        detail_sources = {}
+        decoded_art = {"dark": False, "light": False}
+
+        def route_state():
+            return json.loads(get("/state"))
+
+        def capture_selected_detail(name, folder, theme):
+            episode_art_result = {}
+            spec = next((screen for screen in suite_screens if screen.get("id") == name), None)
+            prefix = "/movies/" if name == "film-detail" else "/series/"
+            opened = spec.get("open", "") if spec is not None else ""
+            if not opened.startswith(prefix):
+                raise Skip(f"shared suite has no pinned route for {name}")
+            work_id = opened[len(prefix):]
+            if not re.fullmatch(r"[0-9a-fA-F-]{36}", work_id):
+                raise Skip(f"shared suite has an invalid pinned work ID for {name}")
+
+            before_route = route_state()
+            cursor = before_route.get("debug_sequence", 0)
+            started_at = time.monotonic()
+            route("detail:" + work_id, 5)
+            deadline = time.time() + 15
+            state = {}
+            while time.time() < deadline:
+                state = route_state()
+                if state.get("route") == "Detail" and state.get("work_id") == work_id:
+                    break
+                time.sleep(0.5)
+            if state.get("route") != "Detail" or state.get("work_id") != work_id:
+                if name == "series-detail":
+                    rejected = png()
+                    frame_path = save_rejected_frame(rejected, out, theme, name)
+                    stages = summarize_detail_events(state.get("debug_events", []), sequence_after=cursor,
+                                                     work_id=work_id, generation=state.get("route_generation", 0),
+                                                     started_at=started_at)
+                    layout = summarize_detail_layout_events(state.get("debug_events", []), sequence_after=cursor,
+                                                            work_id=work_id, generation=state.get("route_generation", 0),
+                                                            started_at=started_at)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        state.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                        generation=state.get("route_generation", 0))
+                    write_detail_summary(out, theme=theme, accepted=False, failure="route-not-settled",
+                                         frame_path=frame_path, stages=stages, layout=layout,
+                                         payload_metrics=payload_metrics)
+                raise Skip(f"pinned route did not settle for {name}")
+
+            if name == "series-detail":
+                generation = state.get("route_generation", 0)
+                if generation <= 0:
+                    raise Skip("pinned detail route has no preview generation")
+                completion_seen = False
+
+                def inspect_episode_art(frame, failure_override=None):
+                    metrics = analyze_episode_art_frame(frame)
+                    episode_art_result["metrics"] = metrics
+                    if metrics["status"] == "ok":
+                        return
+                    frame_path = save_rejected_frame(frame, out, theme, name)
+                    current = route_state()
+                    stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
+                                                     work_id=work_id, generation=generation,
+                                                     started_at=started_at)
+                    layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                            work_id=work_id, generation=generation,
+                                                            started_at=started_at)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                        generation=generation)
+                    failure = failure_override if failure_override is not None else metrics["status"]
+                    write_detail_summary(out, theme=theme, accepted=False, failure=failure,
+                                         frame_path=frame_path, stages=stages, layout=layout,
+                                         payload_metrics=payload_metrics, episode_art=metrics)
+                    raise Skip(failure)
+
+                deadline = time.time() + 12
+                while time.time() < deadline:
+                    current = route_state()
+                    if (current.get("route") != "Detail" or current.get("work_id") != work_id
+                            or current.get("route_generation") != generation):
+                        if name == "series-detail":
+                            frame_path = save_rejected_frame(png(), out, theme, name)
+                            stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
+                                                             work_id=work_id, generation=generation,
+                                                             started_at=started_at)
+                            layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                                    work_id=work_id, generation=generation,
+                                                                    started_at=started_at)
+                            payload_metrics = summarize_detail_image_payload_events(
+                                current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                                generation=generation)
+                            write_detail_summary(out, theme=theme, accepted=False, failure="route-changed",
+                                                 frame_path=frame_path, stages=stages, layout=layout,
+                                                 payload_metrics=payload_metrics)
+                        raise Skip("pinned detail route changed while waiting for row artwork")
+                    events = current.get("debug_events", [])
+                    stages = summarize_detail_events(events, sequence_after=cursor, work_id=work_id,
+                                                     generation=generation, started_at=started_at)
+                    layout = summarize_detail_layout_events(events, sequence_after=cursor, work_id=work_id,
+                                                            generation=generation, started_at=started_at)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        events, sequence_after=cursor, work_id=work_id, generation=generation)
+                    if stages.get("on-complete", {}).get("count", 0) > 0:
+                        completion_seen = True
+                        break
+                    time.sleep(0.25)
+                if not completion_seen:
+                    frame = png()
+                    inspect_episode_art(frame, failure_override="row-artwork-timeout")
+                    frame_path = save_rejected_frame(frame, out, theme, name)
+                    current = route_state()
+                    stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
+                                                     work_id=work_id, generation=generation, started_at=started_at)
+                    layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                            work_id=work_id, generation=generation, started_at=started_at)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                        generation=generation)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="row-artwork-timeout",
+                                         frame_path=frame_path, stages=stages, layout=layout,
+                                         payload_metrics=payload_metrics,
+                                         episode_art=episode_art_result.get("metrics"))
+                    raise Skip("no fresh matching detail-row image completion was reported")
+
+            detail_sources[name] = {"route": "Detail", "source": "suite.json:open", "route_confirmed": True}
+            try:
+                snap(name, folder, 100000,
+                     frame_observer=inspect_episode_art if name == "series-detail" else None)
+            except SystemExit:
+                if name == "series-detail":
+                    frame_path = save_rejected_frame(png(), out, theme, name)
+                    current = route_state()
+                    stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
+                                                     work_id=work_id, generation=generation, started_at=started_at)
+                    layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                            work_id=work_id, generation=generation,
+                                                            started_at=started_at)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                        generation=generation)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="frame-rejected",
+                                         frame_path=frame_path, stages=stages, layout=layout,
+                                         payload_metrics=payload_metrics,
+                                         episode_art=episode_art_result.get("metrics"))
+                raise
+            if name == "series-detail":
+                decoded_art[theme] = decoded_art_is_accepted(
+                    completion_seen, episode_art_result.get("metrics"))
+                current = route_state()
+                stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
+                                                 work_id=work_id, generation=generation, started_at=started_at)
+                layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                        work_id=work_id, generation=generation,
+                                                        started_at=started_at)
+                payload_metrics = summarize_detail_image_payload_events(
+                    current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                    generation=generation)
+                write_detail_summary(out, theme=theme, accepted=True, failure=None,
+                                     frame_path=os.path.relpath(os.path.join(folder, name + ".png"), out), stages=stages,
+                                     layout=layout, payload_metrics=payload_metrics,
+                                     episode_art=episode_art_result.get("metrics"))
+
+        def capture_selected(folder, theme):
+            for name in TV_SELECTION:
+                def capture_one():
+                    if name == "home":
+                        route("home", 8)
+                        snap(name, folder, 150000)
+                    elif name == "movies":
+                        route("library:movie", 15)
+                        snap(name, folder, 150000)
+                    else:
+                        capture_selected_detail(name, folder, theme)
+                guarded(name, capture_one)
+
+        capture_selected(os.path.join(out, "dark"), "dark")
+        route("settings", 8); click(394, 207); time.sleep(3); click(1295, 285); time.sleep(4)
+        capture_selected(os.path.join(out, "light"), "light")
+        for name in TV_SELECTION:
+            if name in ("film-detail", "series-detail") and name not in detail_sources:
+                detail_sources[name] = {"route": "Detail", "source": "suite.json:open", "route_confirmed": False}
+    else:
+        detail_sources = None
+        decoded_art = None
     folder = os.path.join(out, "dark")
-    route("profiles", 6); snap("profiles", folder)
-    # profiles picker -> home needs the same click as the first time
-    click(*PROFILE_CLICK); time.sleep(20)
-    walk(folder, "")
-    # light: Settings theme toggle (coordinates of the Mac scripts), then the same walk
-    route("settings", 8); click(394, 207); time.sleep(3); click(1295, 285); time.sleep(4)
-    route("profiles", 6); snap("profiles", os.path.join(out, "light"))
-    click(*PROFILE_CLICK); time.sleep(20)
-    walk(os.path.join(out, "light"), "")
+    if TV_SELECTION is None:
+        route("profiles", 6); snap("profiles", folder)
+        # profiles picker -> home needs the same click as the first time
+        click(*PROFILE_CLICK); time.sleep(20)
+        walk(folder, "")
+        # light: Settings theme toggle (coordinates of the Mac scripts), then the same walk
+        route("settings", 8); click(394, 207); time.sleep(3); click(1295, 285); time.sleep(4)
+        route("profiles", 6); snap("profiles", os.path.join(out, "light"))
+        click(*PROFILE_CLICK); time.sleep(20)
+        walk(os.path.join(out, "light"), "")
 else:
     # phone: the web phone shell. Pages by route; the phone's own controls (the header filter button, a card tap or long press)
     # inside a page. Coordinates are px at density 480 (3 px per vp): the header's round buttons sit at the right, 16 vp in.
@@ -308,9 +514,27 @@ else:
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
     guarded("player-controls", lambda: (route("player:b9a68b2c-8382-4c34-a6f0-c4dd58f55093", 20), snap("player-controls", folder, 30000)))
 import datetime
-json.dump({"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
-           "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")},
-          open(os.path.join(out, "build.json"), "w"))
+manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
+            "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
+if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
+    suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
+    requested = TV_SELECTION if TV_SELECTION is not None else [
+        screen["id"] for screen in suite_screens if not (SKIP_PLAYER and screen["id"] == "player-controls")
+    ]
+    manifest["missing"] = list(dict.fromkeys(MISSING))
+    manifest["screen_selection"] = {
+        "mode": "selected" if TV_SELECTION is not None else "all",
+        "skip_player": SKIP_PLAYER,
+        "requested": requested,
+        "captured": {
+            theme: [name for name in requested if os.path.isfile(os.path.join(out, theme, name + ".png"))]
+            for theme in ("dark", "light")
+        },
+    }
+    if TV_SELECTION is not None:
+        manifest["screen_selection"]["pinned_detail_sources"] = detail_sources
+        manifest["screen_selection"]["decoded_art"] = decoded_art
+json.dump(manifest, open(os.path.join(out, "build.json"), "w"))
 if MISSING:
     print("INCOMPLETE: missing required screens: " + ", ".join(MISSING), flush=True)
     sys.exit(2)

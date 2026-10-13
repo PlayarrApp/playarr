@@ -1,0 +1,1 @@
+- Harmony TV parity dispatches can capture a selected screen subset and skip the player route while preserving the default full capture.
