@@ -241,7 +241,7 @@ struct WorkDetailView: View {
     }
 
     private func tabletDetailBackdrop(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             PlayarrStyle.surface
 
             PlayarrTabletDetailArtwork(
