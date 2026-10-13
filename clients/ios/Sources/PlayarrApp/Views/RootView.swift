@@ -78,7 +78,7 @@ struct RootView: View {
     }
 }
 
-private struct AuthenticatedPlayarrShell: View {
+struct AuthenticatedPlayarrShell: View {
     enum Destination: Hashable {
         case downloads
         case search
@@ -91,7 +91,7 @@ private struct AuthenticatedPlayarrShell: View {
         case profiles
         case settings
         #if DEBUG
-        case detail
+        case detail(WorkKind)
         case player
         #endif
 
@@ -108,7 +108,7 @@ private struct AuthenticatedPlayarrShell: View {
             case .profiles: "Profiles"
             case .settings: "Profile"
             #if DEBUG
-            case .detail: "Title"
+            case .detail(_): "Title"
             case .player: "Player"
             #endif
             }
@@ -131,7 +131,7 @@ private struct AuthenticatedPlayarrShell: View {
             case .calendar: .calendar
             case .profiles, .settings: .home
             #if DEBUG
-            case .detail: .movies
+            case .detail(_): .movies
             case .player: .movies
             #endif
             }
@@ -150,10 +150,19 @@ private struct AuthenticatedPlayarrShell: View {
             case .profiles: "person.2"
             case .settings: "person.crop.circle"
             #if DEBUG
-            case .detail: "play.rectangle"
+            case .detail(_): "play.rectangle"
             case .player: "play.rectangle"
             #endif
             }
+        }
+
+        var stageNavigationSelection: Destination {
+            #if DEBUG
+            if case let .detail(kind) = self {
+                return .library(kind)
+            }
+            #endif
+            return self
         }
     }
 
@@ -195,7 +204,8 @@ private struct AuthenticatedPlayarrShell: View {
             case "watchlist": _selected = State(initialValue: .watchlist)
             case "requests": _selected = State(initialValue: .requests)
             case "profiles": _selected = State(initialValue: .profiles)
-            case "detail-film", "detail-series": _selected = State(initialValue: .detail)
+            case "detail-film": _selected = State(initialValue: .detail(.movie))
+            case "detail-series": _selected = State(initialValue: .detail(.series))
             case "player", "player-quality": _selected = State(initialValue: .player)
             default: break
             }
@@ -208,7 +218,7 @@ private struct AuthenticatedPlayarrShell: View {
         } else if ProcessInfo.processInfo.arguments.contains("--playarr-demo-settings") {
             _selected = State(initialValue: .settings)
         } else if ProcessInfo.processInfo.arguments.contains("--playarr-demo-detail") {
-            _selected = State(initialValue: .detail)
+            _selected = State(initialValue: .detail(.movie))
         }
         #endif
     }
@@ -321,7 +331,7 @@ private struct AuthenticatedPlayarrShell: View {
                 SettingsView(environment: environment)
             }
         #if DEBUG
-        case .detail:
+        case .detail(_):
             NavigationStack {
                 WorkDetailView(
                     viewModel: demoDetailViewModel,
@@ -470,19 +480,20 @@ private struct AuthenticatedPlayarrShell: View {
     }
 
     private func navGroup(_ group: [Destination]) -> some View {
-        VStack(spacing: 4) {
+        let stageSelection = selected.stageNavigationSelection
+        return VStack(spacing: 4) {
             ForEach(group, id: \.self) { destination in
                 Button { select(destination) } label: {
                     VStack(spacing: 6) {
-                        WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.muted, size: 18)
+                        WMIconView(icon: destination.webIcon, color: stageSelection == destination ? PlayarrStyle.ink : PlayarrStyle.muted, size: 18)
                         Text(destination.title)
                             .font(WM.font(8.5, 700))
                             .lineLimit(1)
                     }
-                    .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.muted)
+                    .foregroundStyle(stageSelection == destination ? PlayarrStyle.ink : PlayarrStyle.muted)
                     .frame(width: 64, height: 64)
                     .background(
-                        selected == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
+                        stageSelection == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                     )
                 }
