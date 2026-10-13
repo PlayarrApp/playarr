@@ -205,7 +205,7 @@ final class MacFocusEngineTests: XCTestCase {
 
         engine.move(.down)
 
-        XCTAssertTrue(childFocused[lowerFocus], "the actual child focus binding follows the geometric target")
+        XCTAssertTrue(childFocused[lowerFocus] == true, "the actual child focus binding follows the geometric target")
         XCTAssertEqual(selected, lowerFocus, "the Home mirror follows the child focus callback")
         XCTAssertEqual(engine.focusedID, lowerID, "engine focus is updated by the observed child focus callback")
         XCTAssertTrue(engine.targets[lowerID]?.isFocused() == true)
