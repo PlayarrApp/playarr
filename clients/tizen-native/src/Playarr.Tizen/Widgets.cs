@@ -24,6 +24,7 @@ internal sealed class MediaCard
     private bool _playlistHasCovers;
     private View? _playlistFocusGlow;
     private View? _playlistFocusRing;
+    private View? _playlistSecondaryShadow;
     private bool _playlistCoverSet;
     private bool _focused;
     private TextLabel? _playlistMetadata;
@@ -254,15 +255,50 @@ internal sealed class MediaCard
         if (!_playlistHasCovers)
         {
             Art.BoxShadow = null;
+            if (_playlistSecondaryShadow is not null) _playlistSecondaryShadow.BoxShadow = null;
             return;
         }
 
-        // BoxShadow follows this rounded rectangle, not the stacked images' alpha. The front cover fills this frame,
-        // so its outer silhouette stays close; one NUI shadow approximates the web's two measured focus shadows.
-        var opacity = _focused ? 0.44f : 0.14f;
-        var blur = _focused ? 10f : 5f;
-        var offsetY = _focused ? 9.2f : 5f;
-        Art.BoxShadow = new Shadow(blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, opacity), new Vector2(0, offsetY), new Vector2(0, 0));
+        if (_t.Name != "light")
+        {
+            // Keep the measured dark-theme baseline unchanged while the wider profile remains under review.
+            if (_playlistSecondaryShadow is not null) _playlistSecondaryShadow.BoxShadow = null;
+            var opacity = _focused ? 0.44f : 0.14f;
+            var blur = _focused ? 10f : 5f;
+            var offsetY = _focused ? 9.2f : 5f;
+            Art.BoxShadow = new Shadow(blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, opacity), new Vector2(0, offsetY), new Vector2(0, 0));
+            return;
+        }
+
+        EnsurePlaylistSecondaryShadow();
+        var brown = new Rgba(56 / 255f, 38 / 255f, 33 / 255f);
+        // The light-theme capture showed a closer profile with these two independent layers. NUI replaces BoxShadow
+        // values, so the transparent sibling supplies the narrow layer while Art carries the measured wide layer.
+        Art.BoxShadow = _focused
+            ? new Shadow(36, Ui.C(new Rgba(brown.R, brown.G, brown.B, 0.3f)), new Vector2(0, 12), new Vector2(0, 0))
+            : null;
+        _playlistSecondaryShadow!.BoxShadow = new Shadow(5,
+            Ui.C(new Rgba(brown.R, brown.G, brown.B, _focused ? 0.2f : 0.14f)),
+            new Vector2(0, 5), new Vector2(0, 0));
+        _playlistSecondaryShadow.Scale = _focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
+        _playlistSecondaryShadow.PositionY = _artDy + (_focused ? _lift : 0);
+    }
+
+    private void EnsurePlaylistSecondaryShadow()
+    {
+        if (_playlistSecondaryShadow is null)
+        {
+            _playlistSecondaryShadow = new View
+            {
+                PositionX = Art.PositionX,
+                PositionY = _artDy,
+                Size = Art.Size,
+                CornerRadius = Art.CornerRadius,
+                BackgroundColor = new Color(0, 0, 0, 0),
+            };
+            Box.Add(_playlistSecondaryShadow);
+            _playlistSecondaryShadow.LowerToBottom();
+        }
     }
 
     private void SetPlaylistFocusRing(bool focused)
