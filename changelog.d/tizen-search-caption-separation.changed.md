@@ -1,0 +1,1 @@
+- Separate the focused Tizen Search result title and kind label into web-matched inset columns.
