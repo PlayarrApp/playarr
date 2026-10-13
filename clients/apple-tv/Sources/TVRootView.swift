@@ -274,6 +274,9 @@ private struct TVProductionShell<Stage: View>: View {
     @Namespace private var shellFocusNamespace
     @State private var preferNavDefault = false
     @State private var homeFocusHandoff = TVHomeFocusHandoff()
+    @State private var homeNavFocusHandoff = TVHomeNavFocusHandoff()
+    @State private var navFrames: [TVNavTab: CGRect] = [:]
+    @State private var homeCardFocusReturnRequest: TVHomeCardFocusRequest?
     /// Who's watching, opened from the nav's profile tile (web `/profiles`).
     @State private var showProfiles = false
     /// A full-screen page (the player) is showing: no nav, no clock.
@@ -307,6 +310,9 @@ private struct TVProductionShell<Stage: View>: View {
                     externalFocus: shellFocus,
                     focusNamespace: shellFocusNamespace,
                     preferDefaultFocus: preferNavDefault,
+                    oneShotFocusTarget: homeNavFocusHandoff.oneShotNavTarget,
+                    onNavFramesChange: { navFrames = $0 },
+                    onRequestHomeReturn: requestHomeCardReturn,
                     browseKinds: environment.catalogKinds,
                     profile: TVNavProfile(
                         name: environment.profileName ?? "Viewer",
@@ -329,6 +335,7 @@ private struct TVProductionShell<Stage: View>: View {
                 // in screen coordinates (back button at 153.6, rails at 881.6) and backdrops run to the left edge.
                 NavigationStack(path: $path) {
                     stageContent()
+                        .environment(\.homeCardFocusReturnRequest, homeCardFocusReturnRequest)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .toolbar(.hidden, for: .navigationBar)
                         .navigationBarBackButtonHidden(true)
@@ -348,6 +355,15 @@ private struct TVProductionShell<Stage: View>: View {
                 .onChange(of: tab) { _, newTab in
                     path = []
                     homeFocusHandoff.tabChanged(to: newTab)
+                    homeNavFocusHandoff.reset()
+                    homeCardFocusReturnRequest = nil
+                }
+                .onChange(of: path) { _, newPath in
+                    if !newPath.isEmpty {
+                        homeFocusHandoff.cancel()
+                        homeNavFocusHandoff.reset()
+                        homeCardFocusReturnRequest = nil
+                    }
                 }
                 #if DEBUG && (os(tvOS) || os(macOS))
                 .onChange(of: tab) { _, new in TVParityState.setRoute(tab: new, path: []) }
@@ -381,7 +397,11 @@ private struct TVProductionShell<Stage: View>: View {
                 resetFocus(in: shellFocusNamespace)
                 #endif
             }
+            .environment(\.cancelStageFocusRequest) {
+                homeFocusHandoff.cancel()
+            }
             .environment(\.requestNavFocus) {
+                homeNavFocusHandoff.reset()
                 preferNavDefault = true
                 let target = TVShellFocus.nav(tab)
                 Task { @MainActor in
@@ -392,6 +412,16 @@ private struct TVProductionShell<Stage: View>: View {
                     try? await Task.sleep(for: .milliseconds(80))
                     preferNavDefault = false
                 }
+            }
+            .environment(\.requestHomeNavFocus) { card, frame in
+                guard tab == .home, path.isEmpty,
+                      let target = homeNavFocusHandoff.begin(from: card, frame: frame, navFrames: navFrames) else { return false }
+                preferNavDefault = false
+                Task { @MainActor in
+                    shellFocus.wrappedValue = .nav(target)
+                    resetFocus(in: shellFocusNamespace)
+                }
+                return true
             }
             .onChange(of: shellFocus.wrappedValue) { _, newValue in
                 if case .nav = newValue {
@@ -430,6 +460,21 @@ private struct TVProductionShell<Stage: View>: View {
                 }
             )
         }
+    }
+
+    private func requestHomeCardReturn() {
+        #if os(tvOS)
+        let target = homeNavFocusHandoff.takeReturnTarget(isHomeRoot: tab == .home && path.isEmpty)
+        if let target {
+            homeCardFocusReturnRequest = TVHomeCardFocusRequest(target: target)
+        }
+        Task { @MainActor in
+            await Task.yield()
+            shellFocus.wrappedValue = .stage
+        }
+        #else
+        shellFocus.wrappedValue = .stage
+        #endif
     }
 }
 

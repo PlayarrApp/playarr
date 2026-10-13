@@ -11,7 +11,7 @@ import SwiftUI
 /// The coordinate space of the 1920x1080 stage, inside the window scale.
 let macStageSpace = "playarr.macStage"
 
-enum MacMoveDirection { case up, down, left, right }
+enum MacMoveDirection: Equatable { case up, down, left, right }
 
 @MainActor
 final class MacFocusEngine {
@@ -35,6 +35,8 @@ final class MacFocusEngine {
     private(set) var hoveredID: UUID?
     /// The last focused target per layer, so closing a cover returns focus where it was (tvOS does the same).
     private var lastFocused: [Int: UUID] = [:]
+    /// Right from the nav can arrive before a lazy stage target registers; carry that entry intent through settle.
+    private var pendingStageFocus = false
 
     func update(_ id: UUID, _ target: Target) {
         let isNew = targets[id] == nil
@@ -54,11 +56,16 @@ final class MacFocusEngine {
     func remove(_ id: UUID) {
         targets[id] = nil
         if hoveredID == id { hoveredID = nil }
-        if focusedID == id { focusedID = nil; scheduleSettle() }
+        if focusedID == id {
+            focusedID = nil
+            pendingStageFocus = false
+            scheduleSettle()
+        }
     }
 
     func didFocus(_ id: UUID, _ focused: Bool) {
         if focused {
+            pendingStageFocus = false
             focusedID = id
             if let layer = targets[id]?.layer { lastFocused[layer] = id }
         } else if focusedID == id {
@@ -67,7 +74,12 @@ final class MacFocusEngine {
     }
 
     func didHover(_ id: UUID, _ inside: Bool) {
-        if inside { hoveredID = id } else if hoveredID == id { hoveredID = nil }
+        if inside {
+            pendingStageFocus = false
+            hoveredID = id
+        } else if hoveredID == id {
+            hoveredID = nil
+        }
     }
 
     var topLayer: Int { targets.values.map(\.layer).max() ?? 0 }
@@ -114,13 +126,18 @@ final class MacFocusEngine {
         let layer = topLayer
         let candidates = targets.filter { $0.value.layer == layer }
         autoFocusedID = nil
-        guard let fromID = focusedID, let from = candidates[fromID] else {
+        if direction != .right { pendingStageFocus = false }
+        let originID = focusedID.flatMap { candidates[$0] == nil ? nil : $0 }
+            ?? lastFocused[layer].flatMap { candidates[$0] == nil ? nil : $0 }
+        guard let fromID = originID, let from = candidates[fromID] else {
             first(in: candidates)?.1.focus()
             return
         }
         if let next = Self.nearest(from: from.frame, direction: direction,
                                    in: candidates.filter { $0.key != fromID }.map { ($0.key, $0.value.frame) }) {
             candidates[next]?.focus()
+        } else if direction == .right, from.frame.midX < Self.contentArea.minX {
+            pendingStageFocus = true
         }
     }
 
@@ -206,6 +223,14 @@ final class MacFocusEngine {
             let restore = layer < self.settledLayer
             self.settledLayer = layer
             let candidates = self.targets.filter { $0.value.layer == layer }
+            if self.pendingStageFocus {
+                let content = candidates.filter { Self.isContent($0.value.frame) }
+                guard let (id, target) = self.first(in: content) else { return }
+                self.pendingStageFocus = false
+                self.autoFocusedID = id
+                target.focus()
+                return
+            }
             if let id = self.focusedID, let current = candidates[id] {
                 // Keep focus unless the settle step put it on a header tile and page content has since appeared.
                 guard id == self.autoFocusedID, !Self.isContent(current.frame),

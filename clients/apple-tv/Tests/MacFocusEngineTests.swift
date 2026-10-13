@@ -110,6 +110,63 @@ final class MacFocusEngineTests: XCTestCase {
         XCTAssertTrue(back, "Left comes back")
     }
 
+    @MainActor
+    func testRightFromNavigationSettlesIntoAHomeTargetThatRegistersLate() async {
+        let engine = MacFocusEngine.shared
+        let layer = 900
+        let navID = UUID()
+        let stageID = UUID()
+        defer { engine.remove(navID); engine.remove(stageID) }
+
+        engine.update(navID, .init(frame: CGRect(x: 20, y: 120, width: 60, height: 60), layer: layer, focus: {
+            engine.didFocus(navID, true)
+        }))
+        engine.didFocus(navID, true)
+        engine.move(.right)
+        XCTAssertEqual(engine.focusedID, navID, "Right waits when the Home stage has not registered a focus target")
+        try? await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(engine.focusedID, navID, "a settle pass without stage targets must retain the queued entry")
+
+        engine.update(stageID, .init(frame: card(300, 200), layer: layer, focus: {
+            engine.didFocus(stageID, true)
+        }))
+        for _ in 0..<20 where engine.focusedID != stageID {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertEqual(engine.focusedID, stageID, "the pending nav-to-stage move settles on the first Home target")
+    }
+
+    @MainActor
+    func testRightAfterNavigationSelectionUsesLastFocusedOriginWhenBindingIsNil() async {
+        let engine = MacFocusEngine.shared
+        let layer = 901
+        let navID = UUID()
+        let stageID = UUID()
+        defer { engine.remove(navID); engine.remove(stageID) }
+
+        engine.update(navID, .init(
+            frame: CGRect(x: 20, y: 120, width: 60, height: 60),
+            layer: layer,
+            focus: { engine.didFocus(navID, true) },
+            activate: { engine.didFocus(navID, false) }
+        ))
+        engine.didFocus(navID, true)
+        XCTAssertTrue(engine.activateFocused(in: nil), "Select clears the transient focus binding")
+        XCTAssertNil(engine.focusedID, "selection can clear the transient focus binding before the next key")
+
+        engine.move(.right)
+        try? await Task.sleep(for: .milliseconds(200))
+        XCTAssertNil(engine.focusedID, "Right from the remembered nav origin waits for lazy Home content")
+
+        engine.update(stageID, .init(frame: card(300, 200), layer: layer, focus: {
+            engine.didFocus(stageID, true)
+        }))
+        for _ in 0..<20 where engine.focusedID != stageID {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertEqual(engine.focusedID, stageID, "the Right intent survives a nil focus binding until Home registers")
+    }
+
     /// A layer's preferred target (a drawer's close button) takes focus when it appears, ahead of the other buttons.
     @MainActor
     func testPreferredTargetTakesFocusWhenItAppears() async {

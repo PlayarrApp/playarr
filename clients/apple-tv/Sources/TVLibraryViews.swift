@@ -1,16 +1,101 @@
 import PlayarrKit
 import SwiftUI
 
+enum TVHomeRailMembership {
+    /// Web Home builds On Deck first when present, otherwise eight recent unique works, then keeps each server shelf.
+    static func server(
+        rails: [(title: String, works: [Work])],
+        onDeck: [Work]
+    ) -> [(title: String, works: [Work])] {
+        let all = rails.flatMap(\.works).enumerated()
+            .sorted { lhs, rhs in
+                lhs.element.addedAt != rhs.element.addedAt
+                    ? lhs.element.addedAt > rhs.element.addedAt
+                    : lhs.offset < rhs.offset
+            }
+            .map(\.element)
+        var seen = Set<UUID>()
+        var recent: [Work] = []
+        for work in all where seen.insert(work.id).inserted {
+            recent.append(work)
+            if recent.count >= 8 { break }
+        }
+        let primary = onDeck.isEmpty
+            ? (title: "Start watching", works: recent)
+            : (title: "On deck", works: Array(onDeck.prefix(10)))
+        return ([primary] + rails).filter { !$0.works.isEmpty }
+    }
+
+    static func fallback(
+        works: [Work],
+        onDeck: [Work]
+    ) -> [(title: String, works: [Work])] {
+        let movies = works.filter { $0.kind == .movie }
+        let mixed = works.filter { $0.kind == .series }
+            + works.filter { $0.kind != .series && $0.kind != .artist }
+        var used = Set<UUID>()
+        func takeUnused(_ source: [Work], count: Int) -> [Work] {
+            var selected: [Work] = []
+            for work in source where used.insert(work.id).inserted {
+                selected.append(work)
+                if selected.count >= count { break }
+            }
+            return selected
+        }
+        let primary: [Work]
+        let title: String
+        if onDeck.isEmpty {
+            title = "Start watching"
+            primary = takeUnused(mixed, count: 10)
+        } else {
+            title = "On deck"
+            primary = Array(onDeck.prefix(10))
+            used.formUnion(primary.map(\.id))
+        }
+        let newMovies = takeUnused(movies, count: 12)
+        return [(title, primary), ("New movies", newMovies)].filter { !$0.works.isEmpty }
+    }
+}
+
+struct HomeRailCardFocus: Hashable {
+    let rail: String
+    let workID: UUID
+}
+
+private struct HomeCardFramesPreferenceKey: PreferenceKey {
+    static var defaultValue: [HomeRailCardFocus: CGRect] = [:]
+    static func reduce(value: inout [HomeRailCardFocus: CGRect], nextValue: () -> [HomeRailCardFocus: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
+    }
+}
+
+struct TVHomeInitialFocus {
+    private(set) var wasCaptured = false
+    private(set) var target: HomeRailCardFocus?
+
+    mutating func capture(_ candidate: HomeRailCardFocus?) {
+        guard !wasCaptured else { return }
+        wasCaptured = true
+        target = candidate
+    }
+}
+
 struct TVHomeView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Environment(TVDisplayPreferences.self) private var displayPreferences
     @Environment(\.requestNavFocus) private var requestNavFocus
+    @Environment(\.requestHomeNavFocus) private var requestHomeNavFocus
+    @Environment(\.homeCardFocusReturnRequest) private var homeCardFocusReturnRequest
     @Environment(\.requestStageFocus) private var requestStageFocus
+    @Environment(\.cancelStageFocusRequest) private var cancelStageFocusRequest
     @State private var viewModel: TVHomeViewModel?
     /// Focus target is rail+work so the same title never lights up on two rails.
     @FocusState private var focusedCard: HomeRailCardFocus?
+    /// Freeze the default target on first Home appearance; late On Deck updates must not move focus.
+    @State private var initialFocus = TVHomeInitialFocus()
     /// Leading work ids per rail — Left on these hands focus to the dock.
     @State private var leadingWorkIDs: Set<UUID> = []
+    @State private var homeCardFrames: [HomeRailCardFocus: CGRect] = [:]
 
     var body: some View {
         Group {
@@ -25,12 +110,9 @@ struct TVHomeView: View {
             viewModel = model
             await model.load()
         }
-    }
-
-    /// Stable focus key: rail id + work id (works may not repeat across rails).
-    private struct HomeRailCardFocus: Hashable {
-        let rail: String
-        let workID: UUID
+        .onChange(of: homeCardFocusReturnRequest) { _, request in
+            if let request { focusedCard = request.target }
+        }
     }
 
     @ViewBuilder
@@ -42,7 +124,9 @@ struct TVHomeView: View {
             TVErrorView(title: "Couldn’t load your library", message: message) {
                 Task { await viewModel.load() }
             }
-        case .loaded where viewModel.works.isEmpty && viewModel.rails.isEmpty:
+        case .loaded where TVParityLaunch.requestedScreen == nil && !viewModel.homeInitialFocusReady:
+            TVHomeSkeleton()
+        case .loaded where viewModel.works.isEmpty && viewModel.rails.isEmpty && viewModel.onDeck.isEmpty:
             ContentUnavailableView(
                 "Your library is empty",
                 systemImage: "rectangle.stack",
@@ -101,16 +185,17 @@ struct TVHomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .defaultFocus($focusedCard, firstFocus)
+        .defaultFocus($focusedCard, initialFocus.wasCaptured ? initialFocus.target : firstFocus)
+        .onPreferenceChange(HomeCardFramesPreferenceKey.self) { homeCardFrames = $0 }
+        .onAppear { initialFocus.capture(firstFocus) }
         // The lead rail can change after the first paint (On deck arrives): keep focus on a card that still exists.
-        .task(id: firstFocus) {
-            // The lazy rail creates its cards after this first layout pass: wait a frame or two before focusing.
+        .task {
+            // The lazy rail creates its cards after this first layout pass: wait a frame or two before the one-shot handoff.
             try? await Task.sleep(for: .milliseconds(200))
             guard !Task.isCancelled else { return }
-            let ids = Set(rails.flatMap(\.works).map(\.id))
-            if focusedCard.map({ !ids.contains($0.workID) }) ?? true { focusedCard = firstFocus }
-            // The shell's tab-change observer arms the one-shot; focus content only after its lazy targets exist.
-            if firstFocus != nil { requestStageFocus() }
+            initialFocus.capture(firstFocus)
+            // The shell's tab-change observer arms the one-shot. User movement cancels it; late rail updates never reset focus.
+            if initialFocus.target != nil { requestStageFocus() }
         }
     }
 
@@ -121,9 +206,13 @@ struct TVHomeView: View {
 
     /// The server shelves with the web's primary rail first; older servers without shelves get the local rails.
     private static func productionRails(_ viewModel: TVHomeViewModel) -> [(title: String, works: [Work])] {
-        if !viewModel.rails.isEmpty { return liveRailDefinitions(viewModel) }
-        let (start, movies) = homeRailMembership(works: viewModel.works, interactive: true)
-        return [("Start watching", start), ("New movies", movies)].filter { !$0.works.isEmpty }
+        if !viewModel.rails.isEmpty {
+            return TVHomeRailMembership.server(
+                rails: viewModel.rails.map { (title: $0.title, works: $0.items) },
+                onDeck: viewModel.onDeck
+            )
+        }
+        return TVHomeRailMembership.fallback(works: viewModel.works, onDeck: viewModel.onDeck)
     }
 
     private func webRail(id: String, title: String, works: [Work]) -> some View {
@@ -146,6 +235,21 @@ struct TVHomeView: View {
                         .buttonStyle(TVFocusableCardButtonStyle())
                         .focusEffectDisabled()
                         .focused($focusedCard, equals: focus)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: HomeCardFramesPreferenceKey.self,
+                                    value: [focus: proxy.frame(in: tvScreenSpace)]
+                                )
+                            }
+                        }
+                        .onMoveCommand { direction in
+                            cancelStageFocusRequest()
+                            if direction == .left, index == 0,
+                               let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
+                                focusedCard = nil
+                            }
+                        }
                     }
                 }
                 .padding(.leading, Self.cardBleed)
@@ -320,6 +424,7 @@ struct TVHomeView: View {
                 focusedCard = defaultFocus
             }
         }
+        .onPreferenceChange(HomeCardFramesPreferenceKey.self) { homeCardFrames = $0 }
     }
 
     private func interactiveRail(
@@ -359,11 +464,26 @@ struct TVHomeView: View {
                         }
                         .buttonStyle(.card)
                         .focused($focusedCard, equals: focus)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: HomeCardFramesPreferenceKey.self,
+                                    value: [focus: proxy.frame(in: tvScreenSpace)]
+                                )
+                            }
+                        }
                         .onMoveCommand { direction in
+                            cancelStageFocusRequest()
                             // Per-card Left at the rail head → dock.
                             if direction == .left, index == 0 {
+                                #if os(tvOS)
+                                if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
+                                    focusedCard = nil
+                                }
+                                #else
                                 focusedCard = nil
                                 requestNavFocus()
+                                #endif
                             }
                         }
                     }
@@ -426,28 +546,12 @@ struct TVHomeView: View {
         .allowsHitTesting(false)
     }
 
-    /// Mirrors web `Home.tsx`: the primary rail is the most recently added unique works (8),
-    /// followed by the server's own rails.
+    /// Mirrors web `Home.tsx`: On Deck or the recent primary rail, followed by the configured server shelves.
     private static func liveRailDefinitions(_ viewModel: TVHomeViewModel) -> [(title: String, works: [Work])] {
-        let all = viewModel.rails.flatMap(\.items).enumerated()
-            .sorted { lhs, rhs in
-                lhs.element.addedAt != rhs.element.addedAt
-                    ? lhs.element.addedAt > rhs.element.addedAt
-                    : lhs.offset < rhs.offset
-            }
-            .map(\.element)
-        var seen = Set<UUID>()
-        var primary: [Work] = []
-        for work in all where seen.insert(work.id).inserted {
-            primary.append(work)
-            if primary.count >= 8 { break }
-        }
-        // Web Home: "On deck" (part-watched, at most 10) when there is any, else "Start watching" (8 most recent).
-        let lead: (title: String, works: [Work]) = viewModel.onDeck.isEmpty
-            ? ("Start watching", primary)
-            : ("On deck", Array(viewModel.onDeck.prefix(10)))
-        let definitions: [(title: String, works: [Work])] = [lead] + viewModel.rails.map { ($0.title, $0.items) }
-        return definitions.filter { !$0.works.isEmpty }
+        TVHomeRailMembership.server(
+            rails: viewModel.rails.map { (title: $0.title, works: $0.items) },
+            onDeck: viewModel.onDeck
+        )
     }
 
     /// Frozen live layout: web `.tv-home-rails` geometry measured on the 1920x1080 reference.

@@ -1,0 +1,1 @@
+- The Home nav-to-stage focus handoff is claimed once per route entry and cancelled when the viewer moves focus before it runs. macOS Right uses the last focused navigation target when selection has cleared the transient focus binding, preserving stage-entry intent until lazy Home content registers. Late On Deck results do not trigger another initial focus reset.
