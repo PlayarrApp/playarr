@@ -111,6 +111,8 @@ test("Roku Calendar selection waits for a closed dialog and fresh content-only m
   const beforeViewSeq = state.calendarViewSeq;
   const beforeContentSeq = state.calendarContentSeq;
   const beforeDialogSeq = state.eventSeq;
+  applyParityLine(state, "PARITY|calendarDialog|closed");
+  assert.equal(hasFreshCalendarDialogClosure(state, beforeDialogSeq), false);
   applyParityLine(state, "PARITY|calendarView|agenda");
   assert.equal(rokuRouteForState(state.screen, state.page, "", "", state.calendarView), "/calendar");
   assert.equal(hasFreshCalendarView(state, "agenda", beforeViewSeq), true);

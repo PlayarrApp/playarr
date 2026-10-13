@@ -1892,10 +1892,10 @@ sub calendarAction(item as Object)
         dialog.title = "Calendar view"
         dialog.buttons = ["Month", "Week", "Agenda"]
         dialog.ObserveField("buttonSelected", "onCalendarViewButton")
-        dialog.ObserveField("visible", "onCalendarViewDialogVisibility")
+        dialog.ObserveField("wasClosed", "onCalendarViewDialogClosed")
         m.calendarViewDialogPendingClose = false
         m.top.dialog = dialog
-        if m.artTelemetryEnabled = true and dialog.visible = true then parityEmit("calendarDialog", "open")
+        if m.artTelemetryEnabled = true then parityEmit("calendarDialog", "open")
     else if a = "cell"
         m.calendarFocusAction = ""
         m.calendarPlaceFirst = true
@@ -1919,18 +1919,13 @@ sub calendarAction(item as Object)
     if a = "calPrev" or a = "calNext" or a = "calToday" or a = "cell" then pageFocusRender()
 end sub
 
-sub onCalendarViewDialogVisibility(event as Object)
+sub onCalendarViewDialogClosed(event as Object)
     if m.artTelemetryEnabled <> true then return
-    visible = event.GetData()
-    if visible = true
-        if m.calendarViewDialogPendingClose <> true then parityEmit("calendarDialog", "open")
-        return
-    end if
-    if visible <> false then return
-    if m.calendarViewDialogPendingClose = true
-        m.calendarViewDialogPendingClose = false
-        parityEmit("calendarDialog", "closed")
-    end if
+    if m.calendarViewDialogPendingClose <> true then return
+    wasClosed = event.GetData()
+    if wasClosed <> true then return
+    m.calendarViewDialogPendingClose = false
+    parityEmit("calendarDialog", "closed")
 end sub
 
 sub onCalendarViewButton(event as Object)
