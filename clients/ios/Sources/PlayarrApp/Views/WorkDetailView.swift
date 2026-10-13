@@ -1343,7 +1343,7 @@ private struct TabletDetailBackdrop: View {
                         .frame(
                             width: proxy.size.width * 0.52,
                             height: proxy.size.height * 1.06,
-                            alignment: UnitPoint(x: 0.5, y: 0.2)
+                            alignment: .center
                         )
                         .mask {
                             LinearGradient(
