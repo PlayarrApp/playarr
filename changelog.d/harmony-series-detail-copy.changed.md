@@ -1,0 +1,1 @@
+- Harmony TV series detail copy follows the selected next-up episode when its resume target is present.

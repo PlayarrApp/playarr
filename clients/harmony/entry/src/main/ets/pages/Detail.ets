@@ -105,7 +105,7 @@ import { LengthMetrics } from '@kit.ArkUI';
 
 import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan } from '../data/CatalogRepository';
 import { resumeButtonLabel, resumeKicker, resumeTargetFile } from '../core/ResumePlan';
-import { metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
+import { hasSeriesResumeTarget, metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
 import type { ResumePlan } from '../core/Types/ResumePlan';
 import { getMediaChapters, getWatchProgress } from '../data/PlaybackRepository';
 import { addToWatchlist, removeFromWatchlist, resolveTitle } from '../data/WatchlistRepository';
@@ -1339,7 +1339,13 @@ struct Detail {
         })
 
       Column({ space: tv(COPY_GAP) }) {
-        FeatureCopy({ kicker: (this.detail !== null ? this.kickerLabel() : ''), title: (this.detail !== null ? this.detail.work.title : ''), metaLines: (this.detail !== null ? buildMetaLines(this.detail) : []), synopsis: this.synopsisText() })
+        FeatureCopy({
+          kicker: this.tvCopyKicker(),
+          title: (this.detail !== null ? this.detail.work.title : ''),
+          subtitle: this.tvCopySubtitle(),
+          metaLines: this.tvCopyMetaLines(),
+          synopsis: this.tvCopySynopsis(),
+        })
         this.tvActions()
       }
       .width(`${TvGeometry.detailCopyColumnWidthRatio * 100}%`)
@@ -1370,6 +1376,47 @@ struct Detail {
       return genres[0];
     }
     return kindLabel(this.detail.work.kind);
+  }
+
+  private hasResumeTarget(): boolean {
+    return this.detail !== null && hasSeriesResumeTarget(this.detail, this.resumePlan);
+  }
+
+  private tvCopyKicker(): string {
+    if (this.hasResumeTarget() && this.resumePlan !== null) {
+      const kicker = resumeKicker(this.resumePlan);
+      if (kicker.length > 0) {
+        return kicker;
+      }
+    }
+    return this.detail !== null ? this.kickerLabel() : '';
+  }
+
+  private tvCopySubtitle(): string {
+    if (this.detail === null || !this.hasResumeTarget() || this.resumePlan === null) {
+      return '';
+    }
+    return planEpisodeTitle(this.detail, this.resumePlan);
+  }
+
+  private tvCopyMetaLines(): string[] {
+    if (this.detail === null) {
+      return [];
+    }
+    if (this.hasResumeTarget() && this.resumePlan !== null) {
+      return [metaChips(this.detail, this.resumePlan).join(' · ')];
+    }
+    return buildMetaLines(this.detail);
+  }
+
+  private tvCopySynopsis(): string {
+    if (this.detail === null) {
+      return '';
+    }
+    if (this.hasResumeTarget() && this.resumePlan !== null) {
+      return planSynopsis(this.detail, this.resumePlan);
+    }
+    return this.synopsisText();
   }
 
   @Builder
