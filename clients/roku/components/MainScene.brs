@@ -4024,12 +4024,14 @@ function createHomeRail(contentTarget as Object) as Object
     ' landscape thumbnail, 220x124 art + 220x165 total card, 24px gap) --
     ' see PosterCard.xml's header comment for the full measurement notes.
     ' The viewport starts 96 px left of the track so scrolled cards continue into the gutter, where the scroll fade covers them.
-    row.itemSize = [1134, 262]
+    row.itemSize = [1134, 320]
     ' Home reserves 8 px horizontally and 15 px vertically for the focused
-    ' card's lifted/scaled outer ring while preserving the artwork origin.
-    row.rowItemSize = [[343, 262]]
+    ' card's lifted/scaled outer ring. The extra item height contains the
+    ' full shadow canvas below the art, so its blur fades before the RowList
+    ' clip instead of ending at the old 262 px row boundary.
+    row.rowItemSize = [[343, 320]]
     row.rowItemSpacing = [[9, 0]]
-    row.rowHeights = [262]
+    row.rowHeights = [320]
     row.showRowLabel = false
     row.focusXOffset = [96]
     row.rowFocusAnimationStyle = "floatingFocus"
