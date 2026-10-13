@@ -327,6 +327,80 @@ export function hasFreshCalendarDialogClosure(state, afterEventSeq) {
     && state.calendarDialogClosedScreenSeq === state.screenSeq;
 }
 
+export function calendarReadinessSnapshot(state, expectedView, baseline = {}) {
+  const safeSequence = (value) => Number.isSafeInteger(value) && value >= 0 ? value : null;
+  const safeView = (value) => ["month", "week", "agenda"].includes(value) ? value : "";
+  const safeContentState = (value) => ["ready", "empty", "entries"].includes(value) ? value : "";
+  const after = (sequence, baselineSequence) => sequence !== null && baselineSequence !== null && sequence > baselineSequence;
+  const target = safeView(expectedView);
+  const currentScreenSeq = safeSequence(state?.screenSeq);
+  const isCalendarPage = state?.screen === "page" && state?.page === "calendar";
+  const view = safeView(state?.calendarView);
+  const viewSeq = safeSequence(state?.calendarViewSeq);
+  const viewScreenSeq = safeSequence(state?.calendarViewScreenSeq);
+  const viewBaselineSeq = safeSequence(baseline.viewSeq);
+  const contentView = safeView(state?.calendarContent?.view);
+  const contentState = safeContentState(state?.calendarContent?.content);
+  const contentSeq = safeSequence(state?.calendarContentSeq);
+  const contentScreenSeq = safeSequence(state?.calendarContentScreenSeq);
+  const contentBaselineSeq = safeSequence(baseline.contentSeq);
+  const dialogState = ["open", "closed"].includes(state?.calendarDialogState) ? state.calendarDialogState : "";
+  const dialogOpenSeq = safeSequence(state?.calendarDialogOpenSeq);
+  const dialogClosedSeq = safeSequence(state?.calendarDialogClosedSeq);
+  const dialogOpenScreenSeq = safeSequence(state?.calendarDialogOpenScreenSeq);
+  const dialogClosedScreenSeq = safeSequence(state?.calendarDialogClosedScreenSeq);
+  const dialogBaselineSeq = safeSequence(baseline.dialogSeq);
+  const viewAfterBaseline = after(viewSeq, viewBaselineSeq);
+  const contentAfterBaseline = after(contentSeq, contentBaselineSeq);
+  const dialogOpenAfterBaseline = after(dialogOpenSeq, dialogBaselineSeq);
+  const dialogClosedAfterOpen = dialogOpenSeq !== null && dialogClosedSeq !== null && dialogClosedSeq > dialogOpenSeq;
+  const viewScreenSeqMatches = currentScreenSeq !== null && viewScreenSeq === currentScreenSeq;
+  const contentScreenSeqMatches = currentScreenSeq !== null && contentScreenSeq === currentScreenSeq;
+  const dialogOpenScreenSeqMatches = currentScreenSeq !== null && dialogOpenScreenSeq === currentScreenSeq;
+  const dialogClosedScreenSeqMatches = currentScreenSeq !== null && dialogClosedScreenSeq === currentScreenSeq;
+
+  return {
+    targetView: target,
+    calendarPage: isCalendarPage,
+    screenSeq: currentScreenSeq,
+    view: {
+      expected: target,
+      observed: view,
+      seq: viewSeq,
+      baselineSeq: viewBaselineSeq,
+      screenSeq: viewScreenSeq,
+      afterBaseline: viewAfterBaseline,
+      screenSeqMatches: viewScreenSeqMatches,
+      fresh: !!target && isCalendarPage && view === target && viewAfterBaseline && viewScreenSeqMatches,
+    },
+    content: {
+      expectedView: target,
+      observedView: contentView,
+      observedState: contentState,
+      seq: contentSeq,
+      baselineSeq: contentBaselineSeq,
+      screenSeq: contentScreenSeq,
+      afterBaseline: contentAfterBaseline,
+      screenSeqMatches: contentScreenSeqMatches,
+      fresh: !!target && isCalendarPage && contentView === target && contentAfterBaseline && contentScreenSeqMatches,
+    },
+    dialog: {
+      state: dialogState,
+      openSeq: dialogOpenSeq,
+      closedSeq: dialogClosedSeq,
+      baselineSeq: dialogBaselineSeq,
+      openScreenSeq: dialogOpenScreenSeq,
+      closedScreenSeq: dialogClosedScreenSeq,
+      openAfterBaseline: dialogOpenAfterBaseline,
+      closedAfterOpen: dialogClosedAfterOpen,
+      openScreenSeqMatches: dialogOpenScreenSeqMatches,
+      closedScreenSeqMatches: dialogClosedScreenSeqMatches,
+      freshClosure: isCalendarPage && dialogState === "closed" && dialogOpenAfterBaseline
+        && dialogClosedAfterOpen && dialogOpenScreenSeqMatches && dialogClosedScreenSeqMatches,
+    },
+  };
+}
+
 export function calendarCellLeftEdgeAction(focus) {
   if (!focus || focus.action !== "cell" || !Number.isFinite(focus.rect?.x)) return "unknown";
   if (focus.rect.x < CALENDAR_CONTENT_LEFT_EDGE) return "unknown";
@@ -886,13 +960,24 @@ export function createDriver({ out, args = [] } = {}) {
         const targetIndex = ["month", "week", "agenda"].indexOf(targetView);
         for (let i = 0; i < targetIndex; i += 1) await press("down");
         await press("select");
-        await waitFor(
-          () => hasFreshCalendarView(parityState, targetView, beforeTargetViewSeq)
-            && hasFreshCalendarContent(parityState, targetView, beforeTargetContentSeq)
-            && hasFreshCalendarDialogClosure(parityState, beforeTargetDialogSeq),
-          `fresh Calendar ${targetView} content with the view dialog closed`,
-          15000,
-        );
+        try {
+          await waitFor(
+            () => hasFreshCalendarView(parityState, targetView, beforeTargetViewSeq)
+              && hasFreshCalendarContent(parityState, targetView, beforeTargetContentSeq)
+              && hasFreshCalendarDialogClosure(parityState, beforeTargetDialogSeq),
+            `fresh Calendar ${targetView} content with the view dialog closed`,
+            15000,
+          );
+        } catch (error) {
+          const diagnostics = calendarReadinessSnapshot(parityState, targetView, {
+            viewSeq: beforeTargetViewSeq,
+            contentSeq: beforeTargetContentSeq,
+            dialogSeq: beforeTargetDialogSeq,
+          });
+          const reason = error?.message === `Roku did not reach fresh Calendar ${targetView} content with the view dialog closed`
+            ? "timeout" : "interrupted";
+          throw new Error(`Calendar ${targetView} readiness ${reason}; gates=${JSON.stringify(diagnostics)}`);
+        }
       }
     } else {
       if (entry.id === "actions") drawerSource = "actions";

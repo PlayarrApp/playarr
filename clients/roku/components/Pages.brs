@@ -1919,11 +1919,9 @@ sub calendarAction(item as Object)
     if a = "calPrev" or a = "calNext" or a = "calToday" or a = "cell" then pageFocusRender()
 end sub
 
-sub onCalendarViewDialogClosed(event as Object)
+sub onCalendarViewDialogClosed()
     if m.artTelemetryEnabled <> true then return
     if m.calendarViewDialogPendingClose <> true then return
-    wasClosed = event.GetData()
-    if wasClosed <> true then return
     m.calendarViewDialogPendingClose = false
     parityEmit("calendarDialog", "closed")
 end sub

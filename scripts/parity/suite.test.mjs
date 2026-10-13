@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
@@ -134,6 +134,63 @@ test("Roku Calendar selection waits for a closed dialog and fresh content-only m
   assert.equal(hasFreshCalendarContent(state, "agenda", beforeContentSeq), false);
   assert.equal(hasFreshCalendarDialogClosure(state, beforeDialogSeq), false);
   assert.ok(state.screenSeq > afterScreen);
+});
+
+test("Roku Calendar readiness diagnostics identify safe fresh-view, content, and dialog gates", () => {
+  const state = createParityState();
+  applyParityLine(state, "PARITY|screen|page");
+  applyParityLine(state, "PARITY|page|calendar");
+  const baseline = {
+    viewSeq: state.calendarViewSeq,
+    contentSeq: state.calendarContentSeq,
+    dialogSeq: state.eventSeq,
+  };
+  applyParityLine(state, "PARITY|calendarView|week");
+  applyParityLine(state, "PARITY|calendarContent|week|ready");
+  applyParityLine(state, "PARITY|calendarDialog|open");
+
+  const waiting = calendarReadinessSnapshot(state, "week", baseline);
+  assert.equal(waiting.calendarPage, true);
+  assert.equal(waiting.view.fresh, true);
+  assert.equal(waiting.content.fresh, true);
+  assert.deepEqual(waiting.content, {
+    expectedView: "week",
+    observedView: "week",
+    observedState: "ready",
+    seq: 4,
+    baselineSeq: 0,
+    screenSeq: 1,
+    afterBaseline: true,
+    screenSeqMatches: true,
+    fresh: true,
+  });
+  assert.equal(waiting.dialog.state, "open");
+  assert.equal(waiting.dialog.openAfterBaseline, true);
+  assert.equal(waiting.dialog.closedAfterOpen, false);
+  assert.equal(waiting.dialog.openScreenSeqMatches, true);
+  assert.equal(waiting.dialog.freshClosure, false);
+
+  applyParityLine(state, "PARITY|calendarDialog|closed");
+  const ready = calendarReadinessSnapshot(state, "week", baseline);
+  assert.equal(ready.dialog.state, "closed");
+  assert.equal(ready.dialog.openAfterBaseline, true);
+  assert.equal(ready.dialog.closedAfterOpen, true);
+  assert.equal(ready.dialog.closedScreenSeqMatches, true);
+  assert.equal(ready.dialog.freshClosure, true);
+
+  const unsafeState = {
+    ...state,
+    calendarView: "private title",
+    calendarContent: { view: "media name", content: "raw console" },
+    calendarDialogState: "dialog title",
+  };
+  const safe = calendarReadinessSnapshot(unsafeState, "private title", baseline);
+  assert.equal(safe.targetView, "");
+  assert.equal(safe.view.observed, "");
+  assert.equal(safe.content.observedView, "");
+  assert.equal(safe.content.observedState, "");
+  assert.equal(safe.dialog.state, "");
+  assert.doesNotMatch(JSON.stringify(safe), /private title|media name|raw console|dialog title/i);
 });
 
 test("Roku Calendar route follows fresh focus as data replaces the initial Back control", () => {
