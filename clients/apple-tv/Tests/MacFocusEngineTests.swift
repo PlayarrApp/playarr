@@ -56,10 +56,6 @@ final class MacFocusEngineTests: XCTestCase {
             frame: card(500, 200), layer: 0, focus: { railOneFocusCount += 1 },
             parityID: "sample-work-id", parityRail: 1, parityIndex: 0
         ))
-        engine.update(railZeroID, .init(
-            frame: card(300, 200), layer: 0, focus: { railZeroFocusCount += 1 },
-            parityID: "sample-work-id", parityRail: 0, parityIndex: 0
-        ))
         engine.update(overlayID, .init(frame: card(20, 100), layer: 1, focus: {}))
         engine.update(railZeroID, .init(
             frame: card(300, 200), layer: 0, focus: { railZeroFocusCount += 1 },
