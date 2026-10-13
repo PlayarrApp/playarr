@@ -312,7 +312,6 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.focusRing.translation = [-focusInset, -focusInset]
     m.focusRing.width = artW + (focusInset * 2)
     m.focusRing.height = artH + (focusInset * 2)
-    if m.focusRingOutsideArt then m.focusRing.loadDisplayMode = "scaleToFill"
     m.focusGlow.translation = [-90, -90]
     m.focusGlow.width = artW + 180
     m.focusGlow.height = artH + 180
