@@ -60,13 +60,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import io.playarr.shared.designsystem.component.PlayarrButton
 import io.playarr.shared.designsystem.component.PlayarrButtonSize
 import io.playarr.shared.designsystem.component.PlayarrButtonVariant
 import io.playarr.shared.designsystem.component.PlayarrIconButton
+import io.playarr.shared.designsystem.theme.LocalPlayarrWebPalette
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -75,6 +80,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
@@ -151,6 +157,8 @@ internal fun PlayarrFiltersSheet(
 ) {
     PlayarrSheetFrame(
         initialFocus = initialFocus,
+        paneTitle = title,
+        hostPhonePane = true,
         titleContent = { if (playarrTvDrawer()) Text(title, modifier = Modifier.semantics { heading() }) else Text(title, color = WebInk, fontSize = 22.4.sp, lineHeight = 33.6.sp, fontWeight = FontWeight(590), letterSpacing = (-1.232).sp, modifier = Modifier.semantics { heading() }) },
         kicker = kicker,
         closeLabel = closeLabel,
@@ -196,6 +204,8 @@ internal fun PlayarrPanel(
 @Composable
 private fun PlayarrSheetFrame(
     initialFocus: FocusRequester? = null,
+    paneTitle: String? = null,
+    hostPhonePane: Boolean = false,
     titleContent: (@Composable () -> Unit)?,
     kicker: String?,
     closeLabel: String,
@@ -208,6 +218,47 @@ private fun PlayarrSheetFrame(
     val dismiss = if (dismissible) onClose else ({})
     if (io.playarr.shared.designsystem.page.LocalPlayarrFormFactor.current == io.playarr.shared.designsystem.page.PlayarrFormFactor.Tv) {
         PlayarrTvDrawer(titleContent, kicker, closeLabel, onClose, dismissible, footer, focus, content, initialFocus)
+        return
+    }
+    val phoneDrawerHost = LocalPhoneDrawerHost.current
+    if (hostPhonePane && phoneDrawerHost != null && paneTitle != null) {
+        val owner = remember { Any() }
+        val route = LocalPhoneDrawerRoute.current
+        val currentOnClose = rememberUpdatedState(onClose)
+        val currentTitleContent = rememberUpdatedState(titleContent)
+        val currentKicker = rememberUpdatedState(kicker)
+        val currentCloseLabel = rememberUpdatedState(closeLabel)
+        val currentDismissible = rememberUpdatedState(dismissible)
+        val currentFooter = rememberUpdatedState(footer)
+        val currentContent = rememberUpdatedState(content)
+        val currentInitialFocus = rememberUpdatedState(initialFocus)
+        val paneContent: @Composable () -> Unit = {
+            PhoneDrawerPanel(
+                titleContent = currentTitleContent.value,
+                kicker = currentKicker.value,
+                closeLabel = currentCloseLabel.value,
+                onClose = { currentOnClose.value() },
+                dismissible = currentDismissible.value,
+                footer = currentFooter.value,
+                initialFocus = currentInitialFocus.value,
+                blurUnderlay = android.os.Build.VERSION.SDK_INT >= 31,
+                content = { currentContent.value(this) },
+            )
+        }
+        val currentPaneContent = rememberUpdatedState(paneContent)
+        DisposableEffect(phoneDrawerHost, owner) {
+            phoneDrawerHost.register(
+                PhoneDrawerPane(
+                    owner = owner,
+                    route = route,
+                    title = paneTitle,
+                    dismissible = currentDismissible.value,
+                    onDismiss = { currentOnClose.value() },
+                    content = { currentPaneContent.value.invoke() },
+                ),
+            )
+            onDispose { phoneDrawerHost.unregister(owner) }
+        }
         return
     }
     Dialog(
@@ -227,36 +278,72 @@ private fun PlayarrSheetFrame(
                 if (parityNoInsets) androidx.core.view.WindowCompat.getInsetsController(w, view).hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             }
         }
-        // Web phone `.drawer`: the whole 390 px viewport, 20 px padding, 7.04 px eyebrow, 22.4 px title, a 44 px round close button.
-        // Web blurs what is behind the 94% drawer to a haze; Compose cannot, so the page stays almost hidden instead of showing sharp.
-        Box(Modifier.fillMaxSize().background(WebSurfaceStrong.copy(alpha = 0.985f)).clickable(interactionSource = null, indication = null, enabled = false) {}) {
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
-            ) {
-                Row(verticalAlignment = Alignment.Top) {
-                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                        if (kicker != null) {
-                            Text(kicker.uppercase(), color = WebInkSoft, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
-                        }
-                        Box(Modifier.padding(top = if (kicker != null) 3.2.dp else 0.dp)) { titleContent?.invoke() }
+        PhoneDrawerPanel(titleContent, kicker, closeLabel, onClose, dismissible, footer, initialFocus, blurUnderlay = false, content = content)
+    }
+}
+
+@Composable
+private fun PhoneDrawerPanel(
+    titleContent: (@Composable () -> Unit)?,
+    kicker: String?,
+    closeLabel: String,
+    onClose: () -> Unit,
+    dismissible: Boolean,
+    footer: (@Composable RowScope.() -> Unit)?,
+    initialFocus: FocusRequester?,
+    blurUnderlay: Boolean,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    var initialFocusAttempted by remember { mutableStateOf(false) }
+    val inputModeManager = androidx.compose.ui.platform.LocalInputModeManager.current
+    val inputMode = inputModeManager.inputMode
+    // Web phone `.drawer`: full viewport, 20 px padding and a 44 px round close button.
+    // On API 31+, the Activity content behind this 94% surface is blurred in its own RenderNode.
+    Box(
+        Modifier.fillMaxSize()
+            .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
+            .background(WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f)),
+    ) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        ) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    if (kicker != null) {
+                        Text(kicker.uppercase(), color = WebInkSoft, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
                     }
-                    if (dismissible) {
-                        PlayarrIconButton(onClick = onClose, contentDescription = closeLabel, modifier = Modifier.focusRequester(focus), variant = PlayarrButtonVariant.Secondary) {
-                            Text("\u00D7", fontSize = 16.sp, fontWeight = FontWeight(720))
-                        }
+                    Box(Modifier.padding(top = if (kicker != null) 3.2.dp else 0.dp)) { titleContent?.invoke() }
+                }
+                if (dismissible) {
+                    // The web phone drawer uses a surface-filled secondary icon button with a strong-line border.
+                    PlayarrIconButton(
+                        onClick = onClose,
+                        contentDescription = closeLabel,
+                        modifier = Modifier
+                            .focusRequester(focus)
+                            .border(1.dp, LocalPlayarrWebPalette.current.pillBorder, CircleShape),
+                        variant = PlayarrButtonVariant.Secondary,
+                        containerColor = WebSurfaceSoft,
+                    ) {
+                        Text("\u00D7", fontSize = 16.sp, fontWeight = FontWeight(720))
                     }
                 }
-                Spacer(Modifier.height(26.6.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                    content()
-                    if (footer != null) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = footer)
-                    }
+            }
+            Spacer(Modifier.height(26.6.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                content()
+                if (footer != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = footer)
                 }
             }
         }
     }
-    LaunchedEffect(Unit) { runCatching { (initialFocus ?: focus).requestFocus() } }
+    LaunchedEffect(initialFocus, focus, inputMode) {
+        if (inputMode != androidx.compose.ui.input.InputMode.Keyboard || initialFocusAttempted) return@LaunchedEffect
+        initialFocusAttempted = true
+        runCatching { (initialFocus ?: focus).requestFocus() }
+    }
 }
 
 /** True on the television layout, where the shared drawer and its controls take the web TV metrics. */
@@ -387,7 +474,8 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
         contentColor = content,
         shape = shape,
         border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.10f, 0.12f)),
-        modifier = modifier.height(48.dp).graphicsLayer { scaleX = if (selected) 1.025f else 1f; scaleY = scaleX }.webFocusRing(focused, radius = 12.dp, offset = 0.dp),
+        modifier = modifier.height(48.dp).graphicsLayer { scaleX = if (selected) 1.025f else 1f; scaleY = scaleX }
+            .webFocusRing(focused, radius = 12.dp, offset = 0.dp),
     ) {
         Column(Modifier.fillMaxHeight().padding(horizontal = 9.6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.8.dp, Alignment.CenterVertically)) {
             icon?.invoke(content)

@@ -17,6 +17,7 @@ import io.playarr.shared.designsystem.component.PlayarrButton
 import io.playarr.shared.designsystem.component.PlayarrButtonVariant
 import io.playarr.shared.designsystem.component.PlayarrIconButton
 import io.playarr.shared.designsystem.theme.FocusMotion
+import io.playarr.shared.designsystem.theme.PlayarrWebTheme
 
 import android.app.Activity
 import android.content.Context
@@ -1930,7 +1931,7 @@ private fun TelevisionProfilesStage(
             // Web `.profiles-heading`: 10.368 px kicker at y 162, 80.64 px h1 at y 184.8.
             Text(
                 playarrString(PlayarrString.ProfilesTitle).uppercase(language.locale),
-                color = ProfilesBrandRose,
+                color = PlayarrWebTheme.palette.brandInk,
                 fontSize = 10.368.sp,
                 fontWeight = FontWeight(820),
                 letterSpacing = 1.348.sp,
@@ -2512,7 +2513,7 @@ private fun ProfileChoice(
         if (!serverLabel.isNullOrBlank()) {
             Text(
                 serverLabel,
-                color = WebInkMuted,
+                color = if (isTelevision) PlayarrWebTheme.palette.webInkMuted else WebInkMuted,
                 fontSize = if (isTelevision) 12.sp else 10.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -2529,7 +2530,7 @@ private fun ProfileChoice(
                     else -> PlayarrString.ProfilesStatusReady
                 },
             ).uppercase(LocalPlayarrLanguage.current.locale),
-            color = WebInkMuted,
+            color = if (isTelevision) PlayarrWebTheme.palette.webInkMuted else WebInkMuted,
             fontSize = if (isTelevision) 9.408.sp else 8.sp,
             fontWeight = if (isTelevision) FontWeight(690) else FontWeight.Bold,
             letterSpacing = if (isTelevision) 0.423.sp else 0.6.sp,
@@ -2668,7 +2669,7 @@ private fun AddProfileChoice(
         )
         Text(
             playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale),
-            color = WebInkMuted,
+            color = if (isTelevision) PlayarrWebTheme.palette.webInkMuted else WebInkMuted,
             fontSize = if (isTelevision) 9.408.sp else 8.sp,
             fontWeight = if (isTelevision) FontWeight(690) else FontWeight.Bold,
             letterSpacing = if (isTelevision) 0.423.sp else 0.6.sp,

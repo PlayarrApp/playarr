@@ -122,6 +122,7 @@ fun PlayarrIconButton(
     variant: PlayarrButtonVariant = PlayarrButtonVariant.Ghost,
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
+    containerColor: Color? = null,
     content: @Composable () -> Unit,
 ) {
     val source = interactionSource ?: remember { MutableInteractionSource() }
@@ -133,7 +134,7 @@ fun PlayarrIconButton(
         enabled = enabled,
         interactionSource = source,
         shape = CircleShape,
-        color = if (variant == PlayarrButtonVariant.Ghost) Color.Transparent else if (variant == PlayarrButtonVariant.Primary) scheme.primary else scheme.surfaceVariant.copy(alpha = 0.7f),
+        color = containerColor ?: if (variant == PlayarrButtonVariant.Ghost) Color.Transparent else if (variant == PlayarrButtonVariant.Primary) scheme.primary else scheme.surfaceVariant.copy(alpha = 0.7f),
         contentColor = if (variant == PlayarrButtonVariant.Primary) scheme.onPrimary else scheme.onSurface,
         border = null,
         modifier = modifier
