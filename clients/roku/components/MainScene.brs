@@ -2783,7 +2783,7 @@ sub renderBrowseAlphabetFocus()
         tracked = i = markerIndex
         focused = m.browseAlphabetMode and i = m.browseAlphabetIndex
         m.alphabetMarkers[i].visible = tracked
-        m.alphabetFocusRings[i].visible = focused
+        m.alphabetFocusRings[i].visible = focused and not tracked
         if tracked
             m.alphabetMarkers[i].blendColor = ThemeColor("ink", 199)
             m.alphabetLabels[i].color = ThemeColor("bg")
