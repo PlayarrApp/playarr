@@ -1350,6 +1350,7 @@ sub applyAppTheme()
     end for
     ThemeApplyTree(m.top, mode)
     m.top.backgroundColor = ThemeColor("bg")
+    renderBrowseAlphabetFocus()
 end sub
 
 sub onPairingThemeDialogButton(event as Object)
@@ -2622,15 +2623,28 @@ end function
 sub buildAlphabetStrip()
     letters = alphabetLetterList()
     m.alphabetLabels = []
+    m.alphabetMarkers = []
     y = 0
     for each letter in letters
+        marker = CreateObject("roSGNode", "Poster")
+        marker.translation = [8, y]
+        marker.width = 24
+        marker.height = 24
+        marker.uri = "pkg:/images/round-r12.9.png"
+        marker.loadDisplayMode = "scaleToFill"
+        marker.visible = false
+        ThemeSetRole(marker, "ink", 199)
+        marker.blendColor = ThemeColor("ink", 199)
+        m.browseAlphabet.AppendChild(marker)
+        m.alphabetMarkers.Push(marker)
+
         label = CreateObject("roSGNode", "Label")
         label.translation = [0, y]
         label.width = 40
         label.height = 24
         label.text = letter
         label.horizAlign = "center"
-        label.color = ThemeColor("inkSoft")
+        label.color = ThemeColor("inkMuted")
         label.font = PlayarrMakeFont(400, 9)
         m.browseAlphabet.AppendChild(label)
         m.alphabetLabels.Push(label)
@@ -2661,11 +2675,16 @@ function moveBrowseAlphabetFocus(delta as Integer) as Boolean
 end function
 
 sub renderBrowseAlphabetFocus()
+    if m.alphabetLabels = invalid or m.alphabetMarkers = invalid then return
+    showTrackingLetter = m.browseKind = "movie" or m.browseAlphabetMode
     for i = 0 to m.alphabetLabels.Count() - 1
-        if m.browseAlphabetMode and i = m.browseAlphabetIndex
-            m.alphabetLabels[i].color = ThemeColor("brand")
+        active = showTrackingLetter and i = m.browseAlphabetIndex
+        m.alphabetMarkers[i].visible = active
+        if active
+            m.alphabetMarkers[i].blendColor = ThemeColor("ink", 199)
+            m.alphabetLabels[i].color = ThemeColor("bg")
         else
-            m.alphabetLabels[i].color = ThemeColor("inkSoft")
+            m.alphabetLabels[i].color = ThemeColor("inkMuted")
         end if
     end for
 end sub
@@ -3025,6 +3044,7 @@ sub onBrowseItemFocused(event as Object)
             trackingIndex = trackingRow * columns
             if trackingIndex >= m.browseItems.Count() then trackingIndex = m.browseItems.Count() - 1
             m.browseAlphabetIndex = browseAlphabetIndexForItem(m.browseItems[trackingIndex])
+            renderBrowseAlphabetFocus()
         end if
     end if
     ' Web keeps the focused row 70 px clear of the bottom edge once the grid scrolls (its rows then sit 56 px higher).
