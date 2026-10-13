@@ -2688,7 +2688,7 @@ sub configureBrowseAlphabetLayout(isMovie as Boolean)
     if m.browseAlphabet = invalid or m.browseAlphabetContent = invalid or m.alphabetLabels = invalid then return
     if isMovie
         m.browseAlphabet.translation = [1851.53, 270]
-        m.browseAlphabet.clippingRect = [0, 0, 56, 810]
+        m.browseAlphabet.clippingRect = { x: 0, y: 0, width: 56, height: 810 }
         m.browseAlphabetContent.translation = [0, 8]
         y = 0
         for i = 0 to m.alphabetLabels.Count() - 1
@@ -2704,7 +2704,7 @@ sub configureBrowseAlphabetLayout(isMovie as Boolean)
         end for
     else
         m.browseAlphabet.translation = [1856.5, 271]
-        m.browseAlphabet.clippingRect = [0, 0, 0, 0]
+        m.browseAlphabet.clippingRect = { x: 0, y: 0, width: 0, height: 0 }
         m.browseAlphabetContent.translation = [0, 0]
         y = 0
         for i = 0 to m.alphabetLabels.Count() - 1
@@ -2722,7 +2722,7 @@ end sub
 
 sub scrollBrowseAlphabetToIndex(index as Integer, center as Boolean)
     if m.browseKind <> "movie" or index < 0 or index >= m.alphabetLabels.Count() then return
-    viewportHeight = m.browseAlphabet.clippingRect[3]
+    viewportHeight = m.browseAlphabet.clippingRect.height
     stageHeight = 1080.0
     if m.top.height > 0 then stageHeight = m.top.height
     viewportUnit = stageHeight / 100.0
