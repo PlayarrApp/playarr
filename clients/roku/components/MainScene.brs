@@ -83,6 +83,11 @@ sub init()
     m.libraryTitle = m.top.findNode("libraryTitle")
     m.homeGroup = m.top.findNode("homeGroup")
     m.homeStage = m.top.findNode("homeStage")
+    m.homeHeroDetailTimer = m.top.findNode("homeHeroDetailTimer")
+    m.homeHeroFocusedWorkId = ""
+    m.homeHeroPendingWorkId = ""
+    m.pendingHomeHeroRequest = invalid
+    m.homeHeroRuntimeById = {}
     m.homeContent = m.homeStage.contentTarget
     m.artTelemetryEnabled = false
     if m.global.parityArtEnabled = true then m.artTelemetryEnabled = true
@@ -345,6 +350,9 @@ sub init()
     m.playerAutoHideTimer.ObserveField("fire", "hidePlayerControls")
     if m.browseKeyArtTimer <> invalid
         m.browseKeyArtTimer.ObserveField("fire", "onBrowseKeyArtTimer")
+    end if
+    if m.homeHeroDetailTimer <> invalid
+        m.homeHeroDetailTimer.ObserveField("fire", "onHomeHeroDetailTimer")
     end if
 
     m.requestBusy = false
@@ -648,9 +656,18 @@ sub flushPendingApiRequests()
         startApiRequest(req)
         return
     end if
-    if m.pendingApiQueue = invalid or m.pendingApiQueue.Count() = 0 then return
-    req = m.pendingApiQueue.Shift()
-    startApiRequest(req)
+    if m.pendingApiQueue.Count() > 0
+        req = m.pendingApiQueue.Shift()
+        startApiRequest(req)
+        return
+    end if
+    if m.pendingHomeHeroRequest <> invalid
+        req = m.pendingHomeHeroRequest
+        m.pendingHomeHeroRequest = invalid
+        if m.top.screenState = "home" and req.workId = m.homeHeroFocusedWorkId and m.homeHeroRuntimeById.Lookup(req.workId) = invalid
+            startApiRequest(req)
+        end if
+    end if
 end sub
 
 sub flushPendingPlaybackRequest()
@@ -678,6 +695,11 @@ sub onApiResult(event as Object)
         end if
         if action = "hostedLinkPoll" and result.status = 404
             beginHostedLink()
+            return
+        end if
+        if action = "homeHeroDetail"
+            if request.workId <> invalid then m.homeHeroRuntimeById[request.workId] = 0
+            flushPendingPlaybackRequest()
             return
         end if
         handleApiFailure(action, result)
@@ -758,6 +780,8 @@ sub onApiResult(event as Object)
         acceptWatchProgress(result.data)
     else if action = "homeWorkDetail"
         acceptHomeWorkDetail(result.data)
+    else if action = "homeHeroDetail"
+        acceptHomeHeroDetail(request.workId, result.data)
     else if action = "homeFallback"
         m.homeFallbackItems = filterHomePrimaryKinds(itemsFromCatalog(result.data))
         ' Web mergeRecent(series, movie, site) for Start watching; sites gated.
@@ -4521,6 +4545,8 @@ end sub
 
 sub updateHeroFromWork(work as Object)
     if work = invalid then return
+    workId = JsonString(work.id)
+    m.homeHeroFocusedWorkId = workId
     m.homeStage.stageTitle = work.title
     ' Web hero kicker is "SERIES · CRIME" (kind + first genre), not bare kind.
     kicker = UCase(work.kind)
@@ -4536,12 +4562,60 @@ sub updateHeroFromWork(work as Object)
         if meta <> "" then meta += "  •  "
         meta += joinStrings(work.genres, ", ")
     end if
-    ' Web Home shows no meta row under the hero title (year and genres live on the detail page).
+    ' Web Home shows the focused work's runtime when its detail has loaded; year and genres stay on the detail page.
     m.homeStage.stageMeta = ""
+    if workId <> ""
+        runtimeMs = m.homeHeroRuntimeById.Lookup(workId)
+        if runtimeMs <> invalid
+            m.homeStage.stageMeta = formatRuntime(runtimeMs)
+        else if m.homeHeroDetailTimer <> invalid
+            m.homeHeroPendingWorkId = workId
+            m.homeHeroDetailTimer.control = "stop"
+            m.homeHeroDetailTimer.duration = 0.35
+            m.homeHeroDetailTimer.control = "start"
+        end if
+    end if
     overview = ""
     if work.overview <> invalid then overview = work.overview
     m.homeStage.stageOverview = overview
     setStageKeyArt(m.homeStage, heroArtworkUrl(work))
+end sub
+
+sub onHomeHeroDetailTimer()
+    if m.homeHeroDetailTimer <> invalid then m.homeHeroDetailTimer.control = "stop"
+    workId = m.homeHeroPendingWorkId
+    m.homeHeroPendingWorkId = ""
+    if workId = "" or m.top.screenState <> "home" or workId <> m.homeHeroFocusedWorkId then return
+    if m.homeHeroRuntimeById.Lookup(workId) <> invalid then return
+    request = {
+        action: "homeHeroDetail"
+        method: "GET"
+        path: "/api/v1/catalog/" + UrlEncode(workId)
+        url: m.serverUrl + "/api/v1/catalog/" + UrlEncode(workId)
+        body: invalid
+        accessToken: m.accessToken
+        workId: workId
+    }
+    if m.requestBusy or m.pendingApiQueue.Count() > 0
+        m.pendingHomeHeroRequest = request
+    else
+        startApiRequest(request)
+    end if
+end sub
+
+sub acceptHomeHeroDetail(workId as Dynamic, data as Dynamic)
+    if workId = invalid then return
+    if workId = "" then return
+    runtimeMs = 0
+    if data <> invalid
+        if data.runtime_ms <> invalid
+            if data.runtime_ms > 0 then runtimeMs = data.runtime_ms
+        end if
+    end if
+    m.homeHeroRuntimeById[workId] = runtimeMs
+    if m.top.screenState = "home" and m.homeHeroFocusedWorkId = workId
+        m.homeStage.stageMeta = formatRuntime(runtimeMs)
+    end if
 end sub
 
 ' Authenticated artwork proxy for TvStage key-art Posters (Bearer required).

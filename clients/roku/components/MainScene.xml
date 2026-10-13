@@ -757,6 +757,8 @@
     <Timer id="playerAutoHideTimer" duration="5" repeat="false" />
     <!-- Deferred browse key-art download so acceptBrowseCatalog can paint first. -->
     <Timer id="browseKeyArtTimer" duration="0.5" repeat="false" />
+    <!-- Delay Home hero detail hydration until remote focus settles on a work. -->
+    <Timer id="homeHeroDetailTimer" duration="0.35" repeat="false" />
   </children>
   <script type="text/brightscript" uri="pkg:/source/Fonts.brs" />
   <script type="text/brightscript" uri="pkg:/source/Theme.brs" />
