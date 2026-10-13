@@ -69,7 +69,7 @@ internal sealed class PlaylistsScreen : IPage
         _directorySelection = _route.PlaylistId;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_theme.Surface);
-        _keyArt = new KeyArt(env, armed: true);
+        _keyArt = new KeyArt(env, armed: true, playlistDirectoryParity: true);
         _root.Add(_keyArt.Root);
 
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.7f), 25);

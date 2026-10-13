@@ -1,0 +1,1 @@
+- Tizen: selected playlist backdrops now use the measured Web opacity, a linear right-edge alpha fade and separate stage wash, removing the measured light-theme boundary seam.
