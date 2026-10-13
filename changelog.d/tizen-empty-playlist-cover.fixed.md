@@ -1,0 +1,1 @@
+- Improved Tizen empty-playlist cover text fit and centring to match the web layout at screen resolution.

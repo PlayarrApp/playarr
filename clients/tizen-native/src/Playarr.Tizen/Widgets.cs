@@ -144,8 +144,31 @@ internal sealed class MediaCard
             empty.CornerRadius = 12.48f;
             empty.BoxShadow = new Shadow(30, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.08f), new Vector2(0, 12), new Vector2(0, 0));
             Art.Add(empty);
-            Art.Add(Ui.Text(playlistName, 20, 65, 18, 600, _t.Ink, Width - 40, 44,
-                HorizontalAlignment.Center, multiline: true, maxLines: 2));
+            const float nameFontSize = 10.88f; // web: 0.68rem at the 16px root size
+            const float nameRasterScale = 4;
+            const float nameLineHeight = 1.5f; // inherited web body line-height
+            var emptyLabel = new TextLabel(playlistName)
+            {
+                PositionX = 16,
+                PositionY = 16,
+                Size = new Size((Width - 32) * nameRasterScale, (Height - 32) * nameRasterScale),
+                WidthResizePolicy = ResizePolicyType.Fixed,
+                HeightResizePolicy = ResizePolicyType.Fixed,
+                PixelSize = nameFontSize * nameRasterScale,
+                PivotPoint = global::Tizen.NUI.PivotPoint.TopLeft,
+                PositionUsesPivotPoint = true,
+                Scale = new Vector3(1 / nameRasterScale, 1 / nameRasterScale, 1),
+                TextColor = Ui.C(_t.InkMuted),
+                FontFamily = Ui.Font,
+                FontStyle = new PropertyMap().Add("weight", new PropertyValue("regular")),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                MultiLine = true,
+                Ellipsis = false,
+                // Match Ui.Text's conversion: NUI relative line height multiplies its 1.364x native glyph height.
+                RelativeLineHeight = nameLineHeight / 1.364f,
+            };
+            Art.Add(emptyLabel);
             if (_focused) _ring?.RaiseToTop();
             return;
         }
