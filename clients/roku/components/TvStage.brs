@@ -112,8 +112,8 @@ sub onStageMetaChange()
 end sub
 
 sub onStageOverviewChange()
-    ' Web synopsis: 12.9 px (drawn at 14: Roku renders small text about 8 % narrower), 20.3 px lines, 336 px wide, five lines.
-    m.stageOverviewLabel.spec = { text: m.top.stageOverview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 5 }
+    ' Web .tv-preview-overview max-width: 42ch resolves to 324 px at 1920x1080; retain Roku's matched small-text size and line height.
+    m.stageOverviewLabel.spec = { text: m.top.stageOverview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 324, lineHeight: 20.33, maxLines: 5 }
     layoutStageText()
 end sub
 
