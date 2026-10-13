@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Match the Fire TV Library top edge fade to the viewport so the focused-card glow clears the top edge without changing focus or grid geometry.
 - Keep viewport-intersecting Library rows rendered during focus scrolling animations on Fire TV, so earlier visible rows no longer disappear.
 - Keep the iPhone Series tab selected while a series detail route is visible, preserving the originating content stack.
 - Hide legacy Chromium scrollbars in the webOS Calendar week view without changing scroll behaviour.

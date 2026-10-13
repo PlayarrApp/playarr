@@ -560,7 +560,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
         </Animated.View>
       </Box>
       {look.sort === 'title' ? <Alphabet active={activeLetter} onJump={(letter) => jumpTo(letter)} /> : null}
-      <EdgeFade side="top" active={row > 0} x={GRID_X - 24} y={GRID_CLIP_TOP} w={1920 - GRID_X + 24} h={1080 - GRID_CLIP_TOP} />
+      <EdgeFade side="top" active={row > 0} x={GRID_X - 24} y={0} w={1920 - GRID_X + 24} h={1080} />
       <EdgeFade
         side="bottom"
         active={items !== null && Math.ceil((total ?? items.length) / cols) > row + (listView ? 7 : 4)}
