@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- VIDAA Back now leaves an empty Search field and returns to the previous page.
 - Keep the native Tizen Search Filters action above focused result cards while navigating.
 - Android artwork requests now use the server's `w` resize parameter so native cards request the same source size as web.
 - Sailfish routes to Profiles when saved sessions exist but no session is active, while preserving SignIn when none exist and Home for an active session.
