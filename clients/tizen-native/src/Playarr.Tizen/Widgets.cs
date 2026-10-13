@@ -112,6 +112,7 @@ internal sealed class MediaCard
     {
         if (_playlistEmptyLabel is not { } label) return null;
         var natural = label.NaturalSize;
+        var fontStyle = label.GetFontStyle();
         return new
         {
             index,
@@ -122,9 +123,17 @@ internal sealed class MediaCard
             naturalWidth = natural.Width,
             naturalHeight = natural.Height,
             pixelSize = label.PixelSize,
+            fontSizeScale = label.FontSizeScale,
+            fontSizeScaleEnabled = label.EnableFontSizeScale,
+            requestedFamily = label.FontFamily,
+            requestedWidth = fontStyle.Width.ToString(),
+            requestedWeight = fontStyle.Weight.ToString(),
             characterSpacing = label.CharacterSpacing,
             lineWrapMode = label.LineWrapMode.ToString(),
             singleLineMeasuredWidth = _playlistEmptySingleLineWidth,
+            singleLineMeasuredWidthAt10 = Ui.TextWidth(label.Text, 10, 400, 0),
+            singleLineMeasuredWidthAt11 = Ui.TextWidth(label.Text, 11, 400, 0),
+            singleLineMeasuredWidthAt12 = Ui.TextWidth(label.Text, 12, 400, 0),
         };
     }
 
