@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Android artwork requests now use the server's `w` resize parameter so native cards request the same source size as web.
 - Sailfish routes to Profiles when saved sessions exist but no session is active, while preserving SignIn when none exist and Home for an active session.
 - Show the selected work's runtime in the Fire TV Library preview while keeping catalog metadata immediately available.
 - Match the Fire TV Library top edge fade to the viewport so the focused-card glow clears the top edge without changing focus or grid geometry.
