@@ -54,14 +54,18 @@ internal sealed class SearchScreen : IPage
     private FiltersDrawer? _filters;
     private bool _removed;
     private SearchFocusState? _restoreFocus;
+    private bool _focusResultsAfterEnter;
+    private bool _enterReleased = true;
+    private string _renderedQuery = "";
+    private string _renderedMediaType = "all";
 
     public View Root => _root;
+    internal bool IsQueryEditing => !_removed && _filters is null && _focus < 0 && _field.EnableEditing;
     public object? SaveState() => new SearchFocusState(_focus, _scroll);
     public void RestoreState(object state)
     {
         if (state is SearchFocusState focus) _restoreFocus = focus;
     }
-
     public string Route
     {
         get
@@ -254,8 +258,29 @@ internal sealed class SearchScreen : IPage
         if (on) FocusManager.Instance.SetCurrentFocusView(_field);
     }
 
+    internal void BeginQueryEnter()
+    {
+        _enterReleased = false;
+        _focusResultsAfterEnter = _query.Length > 0;
+    }
+
+    internal void HandleQueryEnterRelease()
+    {
+        _enterReleased = true;
+        FocusFirstResultAfterEnterIfReady();
+    }
+
+    private void FocusFirstResultAfterEnterIfReady()
+    {
+        if (!_focusResultsAfterEnter || !_enterReleased || !IsQueryEditing) return;
+        if (_renderedQuery != _query || _renderedMediaType != _mediaType) return;
+        _focusResultsAfterEnter = false;
+        if (_items.Count > 0) SetFocus(0);
+    }
+
     private void OnText(string text)
     {
+        _focusResultsAfterEnter = false;
         _query = text.Trim();
         _search?.Cancel();
         _notice.Show(false);
@@ -324,6 +349,7 @@ internal sealed class SearchScreen : IPage
                 SynchronizationContextHolder.Post(() =>
                 {
                     if (cts.IsCancellationRequested) return;
+                    _focusResultsAfterEnter = false;
                     _notice.Text = "Search is unavailable right now.";
                     _notice.Show(true);
                 });
@@ -361,6 +387,8 @@ internal sealed class SearchScreen : IPage
 
     private void RenderResults()
     {
+        _renderedQuery = _query;
+        _renderedMediaType = _mediaType;
         foreach (var c in _cards) { _results.Remove(c.Box); c.Box.Dispose(); }
         _cards.Clear(); _items.Clear(); _targets.Clear(); _focus = -1; _scroll = 0; _results.PositionY = 0;
         var targets = SearchResults.Build(_query, _mediaType, _searchResults, _playlists.Select(entry => entry.Playlist), _games);
@@ -393,6 +421,7 @@ internal sealed class SearchScreen : IPage
             _scroll = restore.ScrollOffset;
             SetFocus(restore.ResolveResultIndex(_items.Count));
         }
+        FocusFirstResultAfterEnterIfReady();
     }
 
     private void AddResult(WorkCard card, SearchResultTarget target, int index)
