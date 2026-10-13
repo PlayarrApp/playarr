@@ -162,9 +162,10 @@ struct PlayarrTabletDetailArtwork: View {
         let bias = 0.5 * (1 - contrast) * brightness
         let filter = CIFilter.colorMatrix()
         filter.inputImage = input
-        filter.rVector = CIVector(x: 0.2126 * scale, y: 0.2126 * scale, z: 0.2126 * scale, w: 0)
-        filter.gVector = CIVector(x: 0.7152 * scale, y: 0.7152 * scale, z: 0.7152 * scale, w: 0)
-        filter.bVector = CIVector(x: 0.0722 * scale, y: 0.0722 * scale, z: 0.0722 * scale, w: 0)
+        let grayscale = CIVector(x: 0.2126 * scale, y: 0.7152 * scale, z: 0.0722 * scale, w: 0)
+        filter.rVector = grayscale
+        filter.gVector = grayscale
+        filter.bVector = grayscale
         filter.aVector = CIVector(x: 0, y: 0, z: 0, w: 1)
         filter.biasVector = CIVector(x: bias, y: bias, z: bias, w: 0)
         guard let output = filter.outputImage,
