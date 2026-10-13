@@ -1,1 +1,0 @@
-- Refined Roku profile picker typography, label spacing, focused-avatar glow, add-profile styling, header controls and theme-specific page wash.

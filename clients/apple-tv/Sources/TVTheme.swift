@@ -539,9 +539,27 @@ enum TVShellFocus: Hashable {
     case stage
 }
 
+struct TVHomeFocusHandoff {
+    private(set) var pending = true
+
+    mutating func tabChanged(to tab: TVNavTab) {
+        pending = tab == .home
+    }
+
+    mutating func claim(isHomeRoot: Bool) -> Bool {
+        guard pending, isHomeRoot else { return false }
+        pending = false
+        return true
+    }
+}
+
 /// Called when the stage wants the remote to land on the left nav (Left on a
 /// leading card). The shell owns the FocusState and performs the move.
 private struct RequestNavFocusKey: EnvironmentKey {
+    static let defaultValue: () -> Void = {}
+}
+
+private struct RequestStageFocusKey: EnvironmentKey {
     static let defaultValue: () -> Void = {}
 }
 
@@ -549,6 +567,11 @@ extension EnvironmentValues {
     var requestNavFocus: () -> Void {
         get { self[RequestNavFocusKey.self] }
         set { self[RequestNavFocusKey.self] = newValue }
+    }
+
+    var requestStageFocus: () -> Void {
+        get { self[RequestStageFocusKey.self] }
+        set { self[RequestStageFocusKey.self] = newValue }
     }
 }
 

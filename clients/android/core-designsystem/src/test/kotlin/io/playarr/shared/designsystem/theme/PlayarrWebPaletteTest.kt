@@ -21,6 +21,12 @@ class PlayarrWebPaletteTest {
     }
 
     @Test
+    fun phoneCardGlowUsesWebCardAccentPerTheme() {
+        assertEquals(Color(0xFFEAA6B6), PlayarrWebPalette.Dark.phoneCardGlow)
+        assertEquals(Color(0xFFA52745), PlayarrWebPalette.Light.phoneCardGlow)
+    }
+
+    @Test
     fun selectingATheme_changesTheObservablePalette() {
         PlayarrWebTheme.select(dark = false)
         assertEquals(PlayarrWebPalette.Light, PlayarrWebTheme.palette)

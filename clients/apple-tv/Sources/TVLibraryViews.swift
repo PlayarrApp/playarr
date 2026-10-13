@@ -5,6 +5,7 @@ struct TVHomeView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Environment(TVDisplayPreferences.self) private var displayPreferences
     @Environment(\.requestNavFocus) private var requestNavFocus
+    @Environment(\.requestStageFocus) private var requestStageFocus
     @State private var viewModel: TVHomeViewModel?
     /// Focus target is rail+work so the same title never lights up on two rails.
     @FocusState private var focusedCard: HomeRailCardFocus?
@@ -105,8 +106,11 @@ struct TVHomeView: View {
         .task(id: firstFocus) {
             // The lazy rail creates its cards after this first layout pass: wait a frame or two before focusing.
             try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
             let ids = Set(rails.flatMap(\.works).map(\.id))
             if focusedCard.map({ !ids.contains($0.workID) }) ?? true { focusedCard = firstFocus }
+            // The shell's tab-change observer arms the one-shot; focus content only after its lazy targets exist.
+            if firstFocus != nil { requestStageFocus() }
         }
     }
 

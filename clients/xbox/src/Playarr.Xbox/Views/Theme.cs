@@ -50,25 +50,95 @@ namespace Playarr.Xbox.Views
 
         public static Color Bg => Parse(IsLight ? "#F5F3F2" : "#151315");
 
+        public static Color Surface => Parse(IsLight ? "#FBFAF9" : "#1B181B");
+
         public static Color BrandInk => Parse(IsLight ? "#821E36" : "#EAA6B6");
 
         public static Color InkMuted => Parse(IsLight ? "#4D4248" : "#C2B5BB");
 
         public static Color Success => Parse(IsLight ? "#224C3A" : "#8AC5A5");
 
-        public static Brush FocusRing => (Brush)Application.Current.Resources["PlayarrFocusRing"];
-
-        /// <summary>The faded edge of a backdrop beside the left column: translucent at the left, solid page colour at the right.</summary>
-        public static LinearGradientBrush LeftFade() => new LinearGradientBrush
+        /// <summary>The web's full-stage wash over focused key art, including the left surface blend.</summary>
+        public static LinearGradientBrush KeyArtStageWashLeft() => new LinearGradientBrush
         {
             StartPoint = new Windows.Foundation.Point(0, 0),
             EndPoint = new Windows.Foundation.Point(1, 0),
             GradientStops =
             {
-                new GradientStop { Color = Color.FromArgb(0x99, Bg.R, Bg.G, Bg.B), Offset = 0 },
-                new GradientStop { Color = Color.FromArgb(0xFF, Bg.R, Bg.G, Bg.B), Offset = 1 },
+                new GradientStop { Color = SurfaceWithAlpha(0xF0), Offset = 0 },
+                new GradientStop { Color = SurfaceWithAlpha(0xE6), Offset = 0.36 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 0.52 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 1 },
             },
         };
+
+        /// <summary>The web's underlying right-edge stage wash over focused key art.</summary>
+        public static LinearGradientBrush KeyArtStageWashRight() => new LinearGradientBrush
+        {
+            StartPoint = new Windows.Foundation.Point(1, 0),
+            EndPoint = new Windows.Foundation.Point(0, 0),
+            GradientStops =
+            {
+                new GradientStop { Color = SurfaceWithAlpha(0x80), Offset = 0 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 0.34 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 1 },
+            },
+        };
+
+        public static Brush FocusRing => (Brush)Application.Current.Resources["PlayarrFocusRing"];
+
+        /// <summary>The web stage's left wash, mapped to the art layer's 960-unit width.</summary>
+        public static LinearGradientBrush KeyArtStageHorizontalWash() => new LinearGradientBrush
+        {
+            StartPoint = new Windows.Foundation.Point(0, 0),
+            EndPoint = new Windows.Foundation.Point(1, 0),
+            GradientStops =
+            {
+                new GradientStop { Color = SurfaceWithAlpha(0xFF), Offset = 0 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 0.44 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 1 },
+            },
+        };
+
+        /// <summary>The web image mask's fade across the measured 998.4-unit image box, transformed with the artwork.</summary>
+        public static LinearGradientBrush KeyArtImageMaskWash() => new LinearGradientBrush
+        {
+            StartPoint = new Windows.Foundation.Point(0, 0),
+            EndPoint = new Windows.Foundation.Point(1, 0),
+            GradientStops =
+            {
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 0 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 0.72 },
+                new GradientStop { Color = SurfaceWithAlpha(0xFF), Offset = 1 },
+            },
+        };
+
+        /// <summary>The web key-art edge wash at the top and bottom of the TV stage.</summary>
+        public static LinearGradientBrush KeyArtVerticalWash() => new LinearGradientBrush
+        {
+            StartPoint = new Windows.Foundation.Point(0, 0),
+            EndPoint = new Windows.Foundation.Point(0, 1),
+            GradientStops =
+            {
+                new GradientStop { Color = SurfaceWithAlpha(0xFF), Offset = 0 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 0.18 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 0.78 },
+                new GradientStop { Color = SurfaceWithAlpha(0xFF), Offset = 1 },
+            },
+        };
+
+        /// <summary>The web image opacity, applied after the grayscale, contrast and brightness filters.</summary>
+        public static double KeyArtGroupOpacity => IsLight ? 0.24 : 0.72;
+
+        public static double KeyArtContrast => IsLight ? 0.88 : 0.82;
+
+        public static double KeyArtBrightness => IsLight ? 1.1 : 0.6;
+
+        private static Color SurfaceWithAlpha(byte alpha)
+        {
+            var surface = Surface;
+            return Color.FromArgb(alpha, surface.R, surface.G, surface.B);
+        }
 
         /// <summary>Applies the stored choice. Call at launch, before the first page is built.</summary>
         public static void Load() => Apply(Choice);

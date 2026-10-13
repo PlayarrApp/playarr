@@ -27,6 +27,9 @@ data class PlayarrWebPalette(
     val inkMuted: Color,
     val accent: Color,
 ) {
+    /** The exact web `--ink-muted` colour used by phone placeholders and action glyphs. */
+    val phoneInkMuted: Color get() = if (dark) Color(0xFFC2B5BB) else Color(0xFF4D4248)
+
     /**
      * The focus ring colour (`--focus-ring-color`): white in the dark theme, the theme's near-black ink in the light
      * theme (owner ruling Q11).
@@ -35,6 +38,9 @@ data class PlayarrWebPalette(
 
     /** `--brand-ink`: the one small subtitle colour (page subtitles, kickers, details-panel eyebrows). */
     val brandInk: Color get() = if (dark) Color(0xFFEAA6B6) else Color(0xFF821E36)
+
+    /** Phone media-card focus glow: web uses `--brand-ink` in dark mode and `--brand-strong` in light mode. */
+    val phoneCardGlow: Color get() = if (dark) brandInk else Color(0xFFA52745)
 
     /** `--dp-soft`: details-panel meta and description, `color-mix(in srgb, var(--ink) 88%, var(--surface))`. */
     val detailsSoft: Color get() = androidx.compose.ui.graphics.lerp(surface, ink, 0.88f)

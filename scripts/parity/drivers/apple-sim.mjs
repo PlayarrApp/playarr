@@ -25,6 +25,7 @@ export async function createDriver({ args = [] } = {}) {
   const device = process.env.DEVICE ?? "tvos";
   if (device !== "tvos" && device !== "macos") throw new Error(`apple-sim driver: ${device} is not supported yet`);
   const mac = device === "macos";
+  const visibleMacParity = mac && process.env.MAC_PARITY_VISIBLE === "true";
   const work = process.env.WORK;
   if (!work) throw new Error("WORK (the wall scratch dir) is required");
   const st = readState(work);
@@ -49,9 +50,11 @@ export async function createDriver({ args = [] } = {}) {
     if (mac) {
       run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
       await sleep(wait + 10000);
-      // The hidden window never takes the app's own first focus: any arrow with nothing focused focuses the first item, as web does on load.
-      run(notify, [`key:${KEYCODE.right}`]);
-      await sleep(1000);
+      // The shared runner normally stays invisible. In the dedicated hosted D-pad mode, read its real initial focus without moving it.
+      if (!visibleMacParity) {
+        run(notify, [`key:${KEYCODE.right}`]);
+        await sleep(1000);
+      }
       if (process.env.DRIVER_TRACE && !globalThis.__targetsLogged) { // once: where the Mac's focus targets sit (diagnosis)
         globalThis.__targetsLogged = true; run(notify, ["targets"]); await sleep(1500);
         try { console.log(run("bash", ["-c", `grep "PlayarrMac targets" "${work}/app.log" | sort -u | head -60`]).trim()); } catch { /* diagnosis only */ }

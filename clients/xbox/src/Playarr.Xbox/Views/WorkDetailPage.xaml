@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{StaticResource PlayarrSurface}">
 
     <!--
         Follows Views/LoginPage.xaml.cs's established pattern: every
@@ -23,13 +23,24 @@
         episodes sit in the right column from x=881, where the web shows its rails.
     -->
     <Grid>
-        <Image
-            x:Name="BackdropImage"
-            Width="960"
-            HorizontalAlignment="Left"
-            Stretch="UniformToFill"
-            Opacity="0.35" />
-        <Rectangle x:Name="BackdropFade" Width="960" HorizontalAlignment="Left" />
+        <Grid x:Name="BackdropLayer" Width="998.4" Height="1144.8" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform>
+                <ScaleTransform ScaleX="1.04" ScaleY="1.04" />
+            </Grid.RenderTransform>
+            <Image
+                x:Name="BackdropImage"
+                Stretch="UniformToFill"
+                IsHitTestVisible="False" />
+        </Grid>
+        <Rectangle x:Name="BackdropImageMaskWash" Width="998.4" Height="1144.8" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+            <Rectangle.RenderTransform>
+                <ScaleTransform ScaleX="1.04" ScaleY="1.04" />
+            </Rectangle.RenderTransform>
+        </Rectangle>
+        <Rectangle x:Name="BackdropFade" Width="960" HorizontalAlignment="Left" IsHitTestVisible="False" />
+        <Rectangle x:Name="BackdropVerticalFade" Width="1920" Height="1080" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" />
+        <Rectangle x:Name="BackdropStageWashRight" Width="1920" Height="1080" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" />
+        <Rectangle x:Name="BackdropStageWashLeft" Width="1920" Height="1080" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" />
 
         <Button
             x:Name="BackButton"

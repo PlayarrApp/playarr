@@ -13,18 +13,40 @@ const run = promisify(execFile);
 const KEYS = { up: "DPAD_UP", down: "DPAD_DOWN", left: "DPAD_LEFT", right: "DPAD_RIGHT", select: "DPAD_CENTER", back: "BACK" };
 const LIBRARIES = new Set(["movies", "series", "music", "search", "settings", "profiles", "watchlist", "requests", "downloads", "playlists", "folders"]);
 
-export function createDriver() {
+export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000 } = {}) {
   const env = process.env, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
-  const adbBin = env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb";
+  const adbBin = adbOverride ?? (env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb");
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const adbOnce = async (...a) => (await run(adbBin, a, { maxBuffer: 64 << 20, encoding: "utf8" })).stdout;
+  const execBounded = async (command, args, { timeoutMs = commandTimeoutMs, label = "external command", ...options } = {}) => {
+    try {
+      return await run(command, args, { ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
+    } catch (e) {
+      if (e.killed && e.signal === "SIGTERM") throw new Error(`${label} timed out after ${timeoutMs}ms`);
+      throw e;
+    }
+  };
+  const adbOnce = async (timeoutMs, ...a) => {
+    const command = [a[0], a[0] === "shell" ? a[1] : a[0] === "exec-out" ? a[1] : ""].filter(Boolean).join(" ");
+    return (await execBounded(adbBin, a, { timeoutMs, maxBuffer: 64 << 20, encoding: "utf8", label: `adb ${command}` })).stdout;
+  };
+  const adbWithTimeout = (timeoutMs, ...a) => adbOnce(timeoutMs, ...a);
   // An emulator that restarts mid-run (a crash): wait for it to boot again, then retry the command once.
   const adb = async (...a) => {
-    try { return await adbOnce(...a); } catch (e) {
+    try { return await adbOnce(commandTimeoutMs, ...a); } catch (e) {
       if (!/offline|closed|not found|no devices|cannot connect/i.test(String(e.stderr ?? e.message))) throw e;
-      for (let i = 0; i < 60; i++) { await new Promise((r) => setTimeout(r, 5000)); try { if ((await adbOnce("shell", "getprop", "sys.boot_completed")).trim() === "1") break; } catch { /* still booting */ } }
-      await new Promise((r) => setTimeout(r, 30000));
-      return adbOnce(...a);
+      const deadline = Date.now() + 120_000;
+      let booted = false;
+      while (Date.now() < deadline) {
+        await sleep(Math.min(5000, deadline - Date.now()));
+        const probeTimeout = Math.min(5000, deadline - Date.now());
+        if (probeTimeout <= 0) break;
+        try {
+          if ((await adbOnce(probeTimeout, "shell", "getprop", "sys.boot_completed")).trim() === "1") { booted = true; break; }
+        } catch { /* still booting */ }
+      }
+      if (!booted) throw new Error("emulator did not finish booting within 120s after adb disconnected");
+      await sleep(Math.min(30_000, Math.max(0, deadline - Date.now())));
+      return adbOnce(Math.min(commandTimeoutMs, Math.max(1, deadline - Date.now())), ...a);
     }
   };
   const shell = (...a) => adb("shell", ...a);
@@ -46,22 +68,30 @@ export function createDriver() {
     if (/^\/(movies|series)\/[^/]+$/.test(path)) return `experience-detail/${path.split("/")[2]}`;
     return path.slice(1) + (query ? `?${query}` : "");
   };
-  const tree = async () => {
-    await shell("uiautomator", "dump", "/sdcard/parity-ui.xml");
-    return adb("exec-out", "cat", "/sdcard/parity-ui.xml");
+  const tree = async (deadline = Date.now() + commandTimeoutMs) => {
+    const remaining = () => Math.max(1, Math.min(commandTimeoutMs, deadline - Date.now()));
+    await adbWithTimeout(remaining(), "shell", "uiautomator", "dump", "/sdcard/parity-ui.xml");
+    return adbWithTimeout(remaining(), "exec-out", "cat", "/sdcard/parity-ui.xml");
   };
   const attr = (node, name) => (node.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1] ?? "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
   const bounds = (n) => (attr(n, "bounds").match(/\d+/g) ?? []).map(Number);
 
   // Wait until the app has put focus on something (a loaded page): keys sent before that are lost.
-  const settled = async (maxSeconds = 60) => {
-    for (let i = 0; i < maxSeconds / 3; i++) {
-      await sleep(3000);
-      const xml = await tree();
+  const settled = async (timeoutMs = readinessTimeoutMs) => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      await sleep(Math.min(readinessPollMs, deadline - Date.now()));
+      if (Date.now() >= deadline) break;
+      const xml = await tree(deadline);
       // Loaded: focus sits on content (past the 140 px rail), or the sign-in screen is up.
       const onContent = (xml.match(/<node [^>]*>/g) ?? []).some((n) => attr(n, "focused") === "true" && attr(n, "focusable") === "true" && (bounds(n)[0] ?? 0) >= 140);
-      if (/Sign in to Playarr/.test(xml) || onContent) { await sleep(1500); return; }
+      if (/Sign in to Playarr/.test(xml) || onContent) {
+        if (Date.now() + 1500 > deadline) break;
+        await sleep(1500);
+        return;
+      }
     }
+    throw new Error(`screen readiness timed out after ${timeoutMs}ms (no content focus or sign-in screen)`);
   };
   // The sign-in screen shows a link code; approve it (PARITY_LINK_CMD) and relaunch. Returns true when it had to sign in.
   const relink = async (route, pause) => {
@@ -71,7 +101,12 @@ export function createDriver() {
       const code = /text="([A-Z0-9]{4}-[A-Z0-9]{4})"/.exec(xml)?.[1];
       if (!code || !env.PARITY_LINK_CMD) throw new Error("signed out and no link code or PARITY_LINK_CMD to approve it");
       const [cmd, ...rest] = env.PARITY_LINK_CMD.split(" ");
-      await run(cmd, [...rest, code]);
+      try {
+        await execBounded(cmd, [...rest, code], { timeoutMs: 30_000, label: "TV link approval command" });
+      } catch (e) {
+        if (/^TV link approval command timed out after \d+ms$/.test(e.message)) throw e;
+        throw new Error("TV link approval command failed");
+      }
       await sleep(25000);
       await launch(route, pause);
       await settled();
@@ -160,8 +195,8 @@ export function createDriver() {
       const xml = await tree();
       if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml.replace(/<node [^>]*package="(?!io\.playarr)[^>]*>/g, ""))) throw new Error("signed out or error screen");
       const png = env.PARITY_XDISPLAY
-        ? (await run("import", ["-window", "root", "png:-"], { encoding: "buffer", maxBuffer: 64 << 20, env: { ...env, DISPLAY: env.PARITY_XDISPLAY } })).stdout
-        : (await run(adbBin, ["exec-out", "screencap", "-p"], { encoding: "buffer", maxBuffer: 64 << 20 })).stdout;
+        ? (await execBounded("import", ["-window", "root", "png:-"], { encoding: "buffer", maxBuffer: 64 << 20, env: { ...env, DISPLAY: env.PARITY_XDISPLAY }, label: "screen capture import" })).stdout
+        : (await execBounded(adbBin, ["exec-out", "screencap", "-p"], { encoding: "buffer", maxBuffer: 64 << 20, label: "adb exec-out screencap" })).stdout;
       writeFileSync(file, png);
     },
     // Plays media file `c.file` through the player route and watches the position the debug log reports.

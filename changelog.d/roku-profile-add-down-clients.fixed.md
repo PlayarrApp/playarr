@@ -1,1 +1,0 @@
-- Route D-pad Down from the synthetic Add profile avatar to Clients while preserving Settings below real profiles.

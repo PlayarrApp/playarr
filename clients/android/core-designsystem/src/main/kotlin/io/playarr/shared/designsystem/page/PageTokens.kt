@@ -126,7 +126,7 @@ object PlayarrPageTokens {
         headerEnd = 16.dp,
         bodyEnd = 16.dp,
         control = 38.dp,
-        controlWidth = 42.dp,
+        controlWidth = 44.dp,
         pillWidth = 44.dp,
         pillHeight = 44.dp,
         pillRadius = 14.dp,

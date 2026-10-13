@@ -41,21 +41,89 @@ export async function createDriver() {
   const display = device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
   const cdpPort = process.env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
-  let ws, seq = 0, pending = new Map(), evalSeq = 0;
+  let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme;
 
+  function closeCdp(socket = ws) {
+    if (!socket) return;
+    if (socket === ws) {
+      ws = undefined;
+      for (const request of pending.values()) {
+        clearTimeout(request.timer);
+        request.reject(new Error("CDP socket closed"));
+      }
+      pending.clear();
+    }
+    if (socket.readyState < WebSocket.CLOSING) socket.close();
+  }
   async function cdpConnect() {
     const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
     const t = list.find((x) => new RegExp(process.env.WEBOS_MATCH ?? "webos-stage").test(x.url));
     if (!t) throw new Error("webOS app page not found (launcher showing?)");
-    ws = new WebSocket(t.webSocketDebuggerUrl);
-    pending = new Map();
-    ws.onmessage = (m) => { const msg = JSON.parse(m.data); if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); } };
-    await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+    const socket = new WebSocket(t.webSocketDebuggerUrl);
+    const requests = new Map();
+    ws = socket;
+    pending = requests;
+    socket.onmessage = (m) => {
+      const msg = JSON.parse(m.data), request = requests.get(msg.id);
+      if (request) { clearTimeout(request.timer); requests.delete(msg.id); request.resolve(msg); }
+    };
+    await new Promise((r, j) => { socket.onopen = r; socket.onerror = j; });
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
     await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
   }
-  const cdp = (method, params = {}) => new Promise((r) => { const i = ++seq; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+  async function keyboardVisible() {
+    const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
+    const target = list.find((item) => /#\/keyboard\//.test(item.url));
+    if (!target) throw new Error("webOS system keyboard visibility is unavailable");
+    const socket = new WebSocket(target.webSocketDebuggerUrl);
+    try {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("keyboard CDP connection timed out")), 5000);
+        socket.onopen = () => { clearTimeout(timer); resolve(); };
+        socket.onerror = (error) => { clearTimeout(timer); reject(error); };
+      });
+      const state = await new Promise((resolve, reject) => {
+        const id = 1;
+        const timer = setTimeout(() => reject(new Error("keyboard visibility query timed out")), 15000);
+        socket.onmessage = (message) => {
+          const response = JSON.parse(message.data);
+          if (response.id !== id) return;
+          clearTimeout(timer);
+          if (response.error || response.result?.exceptionDetails) reject(new Error("keyboard visibility query failed"));
+          else resolve(response.result?.result?.value);
+        };
+        socket.send(JSON.stringify({
+          id,
+          method: "Runtime.evaluate",
+          params: {
+            expression: `(() => { const r = document.documentElement.getBoundingClientRect(); return { hidden: document.hidden, visibility: document.visibilityState, width: r.width, height: r.height }; })()`,
+            returnByValue: true,
+          },
+        }));
+      });
+      if (!state || typeof state.hidden !== "boolean") throw new Error("webOS system keyboard visibility is unknown");
+      return !state.hidden && state.visibility !== "hidden" && state.width > 1 && state.height > 40;
+    } finally {
+      socket.close();
+    }
+  }
+  async function clickDisplayAt(x, y) {
+    const tree = execFileSync("xwininfo", ["-display", display, "-root", "-tree"], { encoding: "utf8" });
+    const window = tree.split("\n").find((line) => line.includes('"webOS TV') && /\d+x\d+[+-]\d+[+-]-?\d+/.test(line));
+    const geometry = window?.match(/\d+x\d+([+-]\d+)([+-]-?\d+)/);
+    if (!geometry) throw new Error("webOS simulator window position is unavailable");
+    const screenX = Number.parseInt(geometry[1], 10) + x;
+    const screenY = Number.parseInt(geometry[2].replace("+", ""), 10) + y;
+    execFileSync("python3", [XCLICK, display, "click", String(screenX), String(screenY)], { stdio: "ignore" });
+  }
+  const cdp = (method, params = {}) => new Promise((resolve, reject) => {
+    const i = ++seq;
+    const timer = setTimeout(() => { pending.delete(i); reject(new Error(`CDP ${method} timed out`)); }, 15000);
+    pending.set(i, { resolve, reject, timer });
+    try { ws.send(JSON.stringify({ id: i, method, params })); }
+    catch (error) { clearTimeout(timer); pending.delete(i); reject(error); }
+  });
   async function ev(expr) {
     if (device === "tizen") {
       const id = `d${Date.now()}${evalSeq++}`;
@@ -86,18 +154,103 @@ export async function createDriver() {
     // The app restores focus and scroll from sessionStorage on reload; a fresh web page load has none.
     await ev(`(sessionStorage.clear(), history.scrollRestoration = "manual", history.replaceState(null, "", "#" + ${JSON.stringify(route)}), setTimeout(() => location.reload(), 50), true)`).catch(() => {});
     await sleep(2500);
-    ws = undefined;
+    closeCdp();
     await cdpConnect();
+    loadedTheme = theme;
   }
   async function until(expr, ms = 90000) {
     const t0 = Date.now();
     while (Date.now() - t0 < ms) { if (await ev(expr).catch(() => false)) return true; await sleep(1000); }
     return false;
   }
-  const settle = async () => {
-    await until("[...document.images].every((i) => i.complete)", 30000);
-    await sleep(1500);
+  const routeReady = async (route) => {
+    const path = route.split("?")[0].replace(/\/$/, "") || "/";
+    const selectors = path === "/" ? [
+      '[data-page-id="home"] .tv-home-feature',
+      '[data-page-id="home"] .tv-home-card',
+    ] : path === "/search" ? [
+      '[data-page-id="search"] .tv-search-form input[type="search"]',
+      '[data-page-id="search"] .tv-search-copy',
+    ] : path === "/movies" || path === "/series" || path === "/music" ? [
+      '[data-page-id="library"].tv-library',
+      '[data-page-id="library"] .tv-title-card',
+    ] : path === "/calendar" ? [
+      '[data-page-id="calendar"].calendar-page',
+      '[data-page-id="calendar"] :is(.calendar-scroll, .calendar-agenda-content)',
+    ] : path.startsWith("/settings") ? [
+      '[data-page-id="settings"].settings-page',
+      '[data-page-id="settings"] .settings-workspace',
+    ] : path.startsWith("/music/") ? [
+      '[data-page-id="music-detail"].tv-music-detail',
+      '[data-page-id="music-detail"] .tv-detail-title',
+    ] : path === "/playlists" ? [
+      '[data-page-id="playlists"].tv-playlists',
+      '[data-page-id="playlists"] :is(.tv-playlist-directory-card, .tv-home-card)',
+    ] : path.startsWith("/movies/") || path.startsWith("/series/") || path.startsWith("/sites/") || path.startsWith("/search/") || path.startsWith("/library/") || path.startsWith("/playlists/") ? [
+      '[data-page-id="work-detail"].tv-detail',
+      '[data-page-id="work-detail"] .tv-detail-title',
+    ] : path === "/downloads" ? [
+      '[data-page-id="downloads"].tv-downloads',
+      '[data-page-id="downloads"] .tv-downloads-content',
+    ] : path === "/watchlist" || path === "/requests" ? [
+      `[data-page-id="${path.slice(1)}"]`,
+      `[data-page-id="${path.slice(1)}"] > header`,
+    ] : path === "/profiles" ? [".profiles-page"] : path.startsWith("/player/") ? [".player-page"] : [
+      "[data-page-id]",
+      "[data-page-id] > header",
+    ];
+    const query = JSON.stringify(selectors);
+    if (!(await until(`(() => { const s = ${query}; return s.every((q) => document.querySelector(q)); })()`, 90000))) {
+      throw new Error(`route view did not become ready: ${path}`);
+    }
+    if (path === "/") {
+      if (!(await until(`(() => { const cards = [...document.querySelectorAll(".tv-home-card")]; return cards.length >= 1 && !!document.querySelector(".tv-home-feature h2") && cards.some((c) => c.getBoundingClientRect().width > 0); })()`, 30000))) {
+        throw new Error("home content did not populate");
+      }
+      if (!(await until(`(async () => { const img = document.querySelector('[data-page-id="home"] > .tv-key-art img'); if (!img) return false; const r = img.getBoundingClientRect(); const s = getComputedStyle(img); if (!img.currentSrc || !img.complete || img.naturalWidth === 0 || r.width <= 0 || r.height <= 0 || s.visibility === "hidden" || Number(s.opacity) === 0) return false; try { await img.decode(); return true; } catch { return false; } })()`, 60000))) {
+        throw new Error("home backdrop artwork did not load");
+      }
+    } else if (path === "/search") {
+      if (!(await until(`(() => { const root = document.querySelector('[data-page-id="search"]'); return !!root && !!root.querySelector(".tv-search-prompt, .tv-search-results, .tv-search-preview"); })()`, 30000))) {
+        throw new Error("search content did not populate");
+      }
+    }
+    await settleVisibleImages(path === "/");
   };
+  async function settleVisibleImages(requireVisibleImage = false) {
+    let previous = "", stable = 0;
+    for (let i = 0; i < 60 && stable < 3; i += 1) {
+      const state = await ev(`(async () => {
+        const activeAnimations = (document.getAnimations?.() ?? []).filter((animation) => {
+          const endTime = animation.effect?.getComputedTiming().endTime;
+          return animation.playState === "running" && Number.isFinite(endTime);
+        });
+        if (${device === "webos"} && activeAnimations.length) return null;
+        const visible = [...document.images].filter((img) => {
+          const r = img.getBoundingClientRect(), s = getComputedStyle(img);
+          return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth &&
+            s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0 && !!(img.currentSrc || img.getAttribute("src") || img.getAttribute("srcset"));
+        });
+        if (${requireVisibleImage} && !visible.length) return null;
+        if (visible.some((img) => !img.currentSrc || !img.complete || img.naturalWidth === 0)) return null;
+        try { await Promise.all(visible.map((img) => img.decode())); } catch { return null; }
+        const page = document.querySelector("[data-page-id]");
+        const surfaces = [...(page?.querySelectorAll("h1,h2,h3,input,button,a,[role=alert],[role=search]") ?? [])]
+          .filter((element) => { const r = element.getBoundingClientRect(), s = getComputedStyle(element); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth && s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0; })
+          .slice(0, 48)
+          .map((element) => { const r = element.getBoundingClientRect(); return [element.tagName, element.getAttribute("aria-label") || element.textContent.trim().replace(/\\s+/g, " ").slice(0, 80), ...[r.x, r.y, r.width, r.height].map((n) => Math.round(n * 10) / 10)]; });
+        const currentNav = document.querySelector(".app-nav-link[aria-current=page]");
+        const focused = document.activeElement;
+        return JSON.stringify({ page: page?.getAttribute("data-page-id") ?? "", text: (page?.innerText ?? "").replace(/\\s+/g, " ").slice(0, 2000), currentNav: currentNav?.getAttribute("aria-label") ?? "", focus: focused?.getAttribute("aria-label") || focused?.textContent?.trim().slice(0, 80) || focused?.tagName || "", surfaces, images: visible.map((img) => [img.currentSrc, img.naturalWidth, img.naturalHeight]) });
+      })()`);
+      if (state && state === previous) stable += 1;
+      else stable = 0;
+      previous = state ?? "";
+      await sleep(750);
+    }
+    if (stable < 3) throw new Error("visible images did not settle before capture");
+    await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
+  }
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
   return {
@@ -108,9 +261,10 @@ export async function createDriver() {
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
       else execFileSync("xset", ["-display", display, "r", "off"], { stdio: "ignore" });
     },
-    async stop() { ws?.close(); },
+    async stop() { closeCdp(); },
     async setTheme(t) {
       await ev(`(localStorage.setItem("playarr-theme", ${JSON.stringify(t)}), true)`);
+      theme = t;
     },
     async home() {
       await load("/");
@@ -125,9 +279,12 @@ export async function createDriver() {
       }
       console.log(`  home first card: ${last.split("|")[0]}`);
       await sleep(3500); // the key handler attaches a moment after the first focus
-      await settle();
+      await routeReady("/");
     },
-    async route(r) { await load(r); await settle(); },
+    async route(r) {
+      if ((await ev('location.hash.replace(/^#/, "")')) !== r || loadedTheme !== theme) await load(r);
+      await routeReady(r);
+    },
     async key(k, { long } = {}) {
       // The simulator opens the player slower than web: a key sent while the title is still loading toggles or opens the wrong thing.
       if (device === "webos") {
@@ -138,7 +295,12 @@ export async function createDriver() {
       if (device === "tizen") xkey(k, long);
       else {
         const c = { key: KEYNAME[k], code: KEYNAME[k], windowsVirtualKeyCode: KEYCODE[k], nativeVirtualKeyCode: KEYCODE[k] };
-        await cdp("Input.dispatchKeyEvent", { type: "rawKeyDown", ...c });
+        if (k === "select") {
+          // Chromium needs the character event to run native button activation. rawKeyDown alone
+          // focuses controls but does not click action buttons in the webOS simulator.
+          await cdp("Input.dispatchKeyEvent", { type: "keyDown", ...c });
+          await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
+        } else await cdp("Input.dispatchKeyEvent", { type: "rawKeyDown", ...c });
         if (long) await sleep(900);
         await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c });
       }
@@ -155,9 +317,26 @@ export async function createDriver() {
         return { label, position }; })()`);
     },
     async screenshot(file) {
-      await ev("(document.activeElement && document.activeElement.blur && document.activeElement.blur(), true)");
+      if (device === "webos" && (await keyboardVisible())) {
+        const searchInput = await ev(`(() => { const e = document.activeElement; return location.hash === "#/search" && e?.matches('input[type="search"]') && e.value === ""; })()`);
+        if (!searchInput) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
+        const filter = await ev(`(() => { const controls = [...document.querySelectorAll('button[aria-controls="search-filters-drawer"]')]; if (controls.length !== 1) return { error: "expected one Search Filters control" }; const e = controls[0], r = e.getBoundingClientRect(), s = getComputedStyle(e); if (e.disabled || r.width <= 0 || r.height <= 0 || s.display === "none" || s.visibility === "hidden" || Number(s.opacity) === 0) return { error: "Search Filters control is not visible" }; return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+        if (!filter || filter.error) throw new Error(filter?.error ?? "cannot dismiss Search keyboard without its Filters control");
+        await clickDisplayAt(Math.round(filter.x), Math.round(filter.y));
+        if (!(await until(`location.hash.includes("/search?panel=filters") && !!document.querySelector(".tv-filter-drawer")`, 10000))) {
+          throw new Error("real Filters selection did not open the Search drawer");
+        }
+        for (let i = 0; i < 10 && (await keyboardVisible()); i += 1) await sleep(300);
+        if (await keyboardVisible()) throw new Error("webOS system keyboard remained visible after selecting Filters");
+        xkey("back"); // A real Back closes the drawer and restores focus to the Filters opener.
+        if (!(await until(`location.hash === "#/search" && document.activeElement?.getAttribute("aria-label") === "Filters"`, 10000))) {
+          throw new Error("closing Search filters did not restore focus to Filters");
+        }
+        if (await keyboardVisible()) throw new Error("webOS system keyboard reopened after returning focus to Filters");
+      }
+      if (device === "webos" && (await keyboardVisible())) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
       if (await ev(BAD)) throw new Error("signed out or error page");
-      await settle();
+      await settleVisibleImages();
       const xwd = `${file}.xwd`;
       writeFileSync(xwd, execFileSync("xwd", ["-display", display, "-root", "-silent"], { maxBuffer: 64 << 20 }));
       execFileSync("magick", [`xwd:${xwd}`, `png:${file}`]);

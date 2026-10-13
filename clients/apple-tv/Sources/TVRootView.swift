@@ -273,6 +273,7 @@ private struct TVProductionShell<Stage: View>: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Namespace private var shellFocusNamespace
     @State private var preferNavDefault = false
+    @State private var homeFocusHandoff = TVHomeFocusHandoff()
     /// Who's watching, opened from the nav's profile tile (web `/profiles`).
     @State private var showProfiles = false
     /// A full-screen page (the player) is showing: no nav, no clock.
@@ -344,7 +345,10 @@ private struct TVProductionShell<Stage: View>: View {
                 }
                 .environment(\.openRoute) { path.append($0) }
                 .disabled(actionsWork != nil) // the actions drawer is modal
-                .onChange(of: tab) { _, _ in path = [] }
+                .onChange(of: tab) { _, newTab in
+                    path = []
+                    homeFocusHandoff.tabChanged(to: newTab)
+                }
                 #if DEBUG && (os(tvOS) || os(macOS))
                 .onChange(of: tab) { _, new in TVParityState.setRoute(tab: new, path: []) }
                 .onChange(of: path) { _, new in TVParityState.setRoute(tab: tab, path: new) }
@@ -370,6 +374,13 @@ private struct TVProductionShell<Stage: View>: View {
             // One scope for dock + stage so resetFocus / prefersDefaultFocus
             // can pull the remote out of ScrollView rails into the dock.
             .focusScope(shellFocusNamespace)
+            .environment(\.requestStageFocus) {
+                #if os(tvOS)
+                guard homeFocusHandoff.claim(isHomeRoot: tab == .home && path.isEmpty) else { return }
+                shellFocus.wrappedValue = .stage
+                resetFocus(in: shellFocusNamespace)
+                #endif
+            }
             .environment(\.requestNavFocus) {
                 preferNavDefault = true
                 let target = TVShellFocus.nav(tab)

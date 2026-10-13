@@ -40,4 +40,32 @@ public class GradientPngTests
         Assert.Equal(255, raw[1]);       // first pixel red
         Assert.Equal(255, raw[1 + 15 * 4 + 2]); // last pixel blue
     }
+
+    [Fact]
+    public void Diagonal135GradientRunsFromTopLeftToBottomRight()
+    {
+        const int width = 3, height = 3;
+        var png = GradientPng.MakeDiagonal(
+            new[] { (0f, new Rgba(1, 0, 0)), (1f, new Rgba(0, 0, 1)) }, width, height, 135);
+        Assert.Equal(width, (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19]);
+        Assert.Equal(height, (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23]);
+        var idat = Array.IndexOf(png, (byte)'I', 33);
+        var length = (png[idat - 4] << 24) | (png[idat - 3] << 16) | (png[idat - 2] << 8) | png[idat - 1];
+        using var z = new DeflateStream(new MemoryStream(png, idat + 4 + 2, length - 2), CompressionMode.Decompress);
+        var raw = new byte[(width * 4 + 1) * height];
+        var read = 0;
+        while (read < raw.Length)
+        {
+            var count = z.Read(raw, read, raw.Length - read);
+            if (count == 0) break;
+            read += count;
+        }
+
+        Assert.Equal(raw.Length, read);
+        Assert.Equal(255, raw[1]);
+        var middle = height / 2 * (width * 4 + 1) + 1 + width / 2 * 4;
+        Assert.InRange(raw[middle], 120, 135);
+        var last = (height - 1) * (width * 4 + 1) + 1 + (width - 1) * 4;
+        Assert.Equal(255, raw[last + 2]);
+    }
 }
