@@ -439,6 +439,15 @@ struct WorkDetailView: View {
         let synopsis = episode.overview ?? selected.season.season.overview ?? detail.work.overview
         // These are the web's resolved CSS-pixel values at the guarded 1366px viewport, converted to native points below.
         let titleFont = min(80, max(35.2, 3.6 * 1366 / 100)) * tabletScale
+        let titleWebLineHeight = titleFont * 0.9
+        let titleNativeLineHeight = DesignFont.uiFont(
+            family: "Nunito Sans",
+            postScriptName: DesignFont.nunitoPostScriptName,
+            size: titleFont,
+            weight: 560,
+            fixedAxes: DesignFont.nunitoAxes
+        )?.lineHeight ?? UIFont(name: "AvenirNext-Medium", size: titleFont)?.lineHeight ?? titleFont
+        let titleLineHeightCorrection = titleWebLineHeight - titleNativeLineHeight
         return VStack(alignment: .leading, spacing: 0) {
             Text("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))")
                 .font(DesignFont.font(8.75 * tabletScale, 820))
@@ -448,9 +457,11 @@ struct WorkDetailView: View {
             Text(detail.work.title)
                 .font(DesignFont.font(titleFont, 560))
                 .tracking(-0.072 * titleFont)
-                .lineSpacing(-3 * tabletScale)
+                .lineSpacing(titleLineHeightCorrection)
                 .foregroundStyle(PlayarrStyle.ink)
                 .lineLimit(2)
+                // CSS uses line-height: .9. Match its line pitch and remove the final native line's extra leading.
+                .padding(.bottom, titleLineHeightCorrection)
             Text(episodeTitle)
                 .font(DesignFont.font(15.026 * tabletScale, 570))
                 .tracking(-0.035 * 15.026 * tabletScale)
@@ -552,7 +563,7 @@ struct WorkDetailView: View {
                     .fixedSize()
                 }
                 .fixedSize(horizontal: true, vertical: false)
-                .padding(.top, 35.84 * tabletVerticalScale)
+                .padding(.top, 12 * tabletVerticalScale)
             }
         }
     }
