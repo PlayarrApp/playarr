@@ -145,6 +145,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -156,6 +157,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -163,6 +165,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -1697,7 +1700,18 @@ internal fun PlayarrExperience(
             LocalTvNavEntry provides navEntryFocus,
             LocalTvContentEntry provides remember { TvContentEntry() },
         ) {
-        Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+        val phoneDrawerHost = remember { PhoneDrawerHostState() }
+        LaunchedEffect(activeNavRoute, isTelevision) {
+            if (isTelevision) phoneDrawerHost.dismiss() else phoneDrawerHost.routeChanged(activeNavRoute)
+        }
+        CompositionLocalProvider(
+            LocalPhoneDrawerHost provides if (isTelevision) null else phoneDrawerHost,
+            LocalPhoneDrawerRoute provides activeNavRoute,
+        ) {
+        val visibleDestinations = visibleExperienceDestinations(availableKinds, canDownload, hasFolders)
+        val phoneDrawerActive = !isTelevision && phoneDrawerHost.activePane?.route == activeNavRoute
+        val drawerBlurRadius = with(LocalDensity.current) { 38.dp.toPx() }
+        val backgroundContent: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
             ExperienceNavHost(
                 navController,
                 serverUrl,
@@ -1729,33 +1743,29 @@ internal fun PlayarrExperience(
                 )
             }
 
-            // Web keeps the rail, logo, clock and profile chip around the blocked state.
             if (!isPlayer && !isProfiles) {
-                val visibleDestinations = visibleExperienceDestinations(availableKinds, canDownload, hasFolders)
                 val profileName = currentUserName ?: playarrString(PlayarrString.ProfileViewerFallback)
                 val profileDescription = playarrString(PlayarrString.ProfileControl, "name" to profileName)
-                if (visibleDestinations.isNotEmpty()) {
+                if (isTelevision && visibleDestinations.isNotEmpty()) {
                     ExperienceNavigation(
                         destinations = visibleDestinations,
                         currentRoute = activeNavRoute,
-                        isTelevision = isTelevision,
+                        isTelevision = true,
                         onNavigate = { navController.openExperienceTopLevel(it) },
-                        modifier = Modifier.align(if (isTelevision) Alignment.TopStart else Alignment.BottomCenter)
-                            .onFocusChanged { navFocusState.value = it.hasFocus },
+                        modifier = Modifier.align(Alignment.TopStart).onFocusChanged { navFocusState.value = it.hasFocus },
                         currentEntryFocus = navEntryFocus,
                         tvProfile = TvProfileTile(currentUserId.orEmpty(), profileName, profileAvatar, profileDescription) {
                             navController.openExperienceTopLevel("profiles")
                         },
                     )
                 }
-                // The rail (television) or the bottom bar (phone, web `.app-nav-profile`) carries the profile; the chip only stands in when there is no nav.
-                if (visibleDestinations.isEmpty()) ProfileControl(
-                    isTelevision = isTelevision,
+                if (isTelevision && visibleDestinations.isEmpty()) ProfileControl(
+                    isTelevision = true,
                     userId = currentUserId.orEmpty(),
                     userName = currentUserName,
                     avatar = profileAvatar,
                     onClick = { navController.openExperienceTopLevel("profiles") },
-                    modifier = Modifier.align(if (isTelevision) Alignment.BottomStart else Alignment.TopEnd),
+                    modifier = Modifier.align(Alignment.BottomStart),
                 )
                 if (isTelevision) {
                     PlayarrLogo(
@@ -1765,21 +1775,76 @@ internal fun PlayarrExperience(
                     Box(Modifier.align(Alignment.TopStart).padding(top = 68.2.dp).width(634.dp), contentAlignment = Alignment.TopEnd) { ExperienceClock() }
                 }
             }
-
-            if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
-                PlayarrMiniPlayer(
-                    item = activePlaybackItem!!,
-                    timeline = miniTimeline,
-                    serverUrl = serverUrl,
-                    accessToken = token,
-                    isTelevision = isTelevision,
-                    player = playerViewModel.player.rawPlayer,
-                    onMaximise = {
-                        navController.navigate("experience-player/${Uri.encode(activePlaybackItem!!.mediaFileId)}")
-                    },
-                    modifier = Modifier.align(if (isTelevision) Alignment.BottomEnd else Alignment.BottomCenter),
-                )
+        }
+        if (isTelevision) {
+            // Keep the TV layout tree and its focus order unchanged.
+            Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+                backgroundContent()
+                if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
+                    PlayarrMiniPlayer(
+                        item = activePlaybackItem!!,
+                        timeline = miniTimeline,
+                        serverUrl = serverUrl,
+                        accessToken = token,
+                        isTelevision = true,
+                        player = playerViewModel.player.rawPlayer,
+                        onMaximise = { navController.navigate("experience-player/${Uri.encode(activePlaybackItem!!.mediaFileId)}") },
+                        modifier = Modifier.align(Alignment.BottomEnd),
+                    )
+                }
             }
+        } else {
+            Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+                Box(
+                    Modifier.fillMaxSize()
+                        .graphicsLayer {
+                            renderEffect = if (phoneDrawerActive && android.os.Build.VERSION.SDK_INT >= 31) {
+                                BlurEffect(drawerBlurRadius, drawerBlurRadius, TileMode.Decal)
+                            } else {
+                                null
+                            }
+                        }
+                        .focusProperties { canFocus = !phoneDrawerActive }
+                        .semantics { if (phoneDrawerActive) invisibleToUser() },
+                    content = backgroundContent,
+                )
+                PhoneDrawerHostPane(phoneDrawerHost, activeNavRoute)
+                if (!isPlayer && !isProfiles) {
+                    val profileName = currentUserName ?: playarrString(PlayarrString.ProfileViewerFallback)
+                    if (visibleDestinations.isNotEmpty()) {
+                        ExperienceNavigation(
+                            destinations = visibleDestinations,
+                            currentRoute = activeNavRoute,
+                            isTelevision = false,
+                            onNavigate = { navController.openExperienceTopLevel(it) },
+                            modifier = Modifier.align(Alignment.BottomCenter).onFocusChanged { navFocusState.value = it.hasFocus },
+                            currentEntryFocus = navEntryFocus,
+                        )
+                    } else {
+                        ProfileControl(
+                            isTelevision = false,
+                            userId = currentUserId.orEmpty(),
+                            userName = profileName,
+                            avatar = profileAvatar,
+                            onClick = { navController.openExperienceTopLevel("profiles") },
+                            modifier = Modifier.align(Alignment.TopEnd),
+                        )
+                    }
+                }
+                if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
+                    PlayarrMiniPlayer(
+                        item = activePlaybackItem!!,
+                        timeline = miniTimeline,
+                        serverUrl = serverUrl,
+                        accessToken = token,
+                        isTelevision = false,
+                        player = playerViewModel.player.rawPlayer,
+                        onMaximise = { navController.navigate("experience-player/${Uri.encode(activePlaybackItem!!.mediaFileId)}") },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
+            }
+        }
         }
         }
     }
@@ -3851,7 +3916,8 @@ private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetE
                 .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(6.4.dp),
         ) {
             Row(
-                Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(10.dp)).clickable { open = !open }.padding(horizontal = 12.dp),
+                Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(10.dp))
+                    .clickable { open = !open }.padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
             ) {
                 Text(summary, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
