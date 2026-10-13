@@ -186,12 +186,12 @@ struct PlayarrTabletDetailArtwork: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
-            .scaleEffect(1.04)
             .mask(LinearGradient(
                 stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.72), .init(color: .clear, location: 1)],
                 startPoint: .leading,
                 endPoint: .trailing
             ))
+            .scaleEffect(1.04)
             .opacity(parameters.opacity)
         }
         .task(id: "\(work.id)-tablet-detail-backdrop") {
