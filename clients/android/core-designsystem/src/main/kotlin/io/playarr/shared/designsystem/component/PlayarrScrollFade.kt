@@ -282,7 +282,10 @@ fun Modifier.playarrRailFade(
     val canStart by remember(state) { derivedStateOf { state.canScrollBackward } }
     val canEnd by remember(state) { derivedStateOf { state.canScrollForward } }
     val mask by animateFloatAsState(if (canStart) 1f else 0f, tween(180), label = "railMask")
-    return this
+    val webHomeEndMask = kind == PlayarrFadeKind.Rail
+    val config = LocalConfiguration.current
+    val endMaskDepth = with(LocalDensity.current) { (config.screenHeightDp * 0.055f).coerceIn(38f, 64f).dp.toPx() }
+    val faded = this
         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithContent {
             drawContent()
@@ -299,13 +302,35 @@ fun Modifier.playarrRailFade(
                     blendMode = BlendMode.DstIn,
                 )
             }
+            if (webHomeEndMask && canEnd && size.width > 0f) {
+                // Web page-layout.css masks TV Home rails with a 0.3 edge floor over clamp(38px, 5.5vh, 64px).
+                // At the 1920x1080 parity viewport this is a 59.4px alpha mask, rather than a tinted overlay.
+                val depth = minOf(endMaskDepth, size.width)
+                if (depth > 0f) {
+                    val full = Color.Black
+                    val floor = 0.3f
+                    val stops = arrayOf(
+                        0f to full,
+                        ((size.width - depth) / size.width) to full,
+                        ((size.width - depth * 0.75f) / size.width) to full.copy(alpha = floor + (1f - floor) * 0.156f),
+                        ((size.width - depth * 0.5f) / size.width) to full.copy(alpha = floor + (1f - floor) * 0.5f),
+                        ((size.width - depth * 0.25f) / size.width) to full.copy(alpha = floor + (1f - floor) * 0.844f),
+                        1f to full.copy(alpha = floor),
+                    )
+                    drawRect(
+                        brush = Brush.horizontalGradient(*stops, startX = 0f, endX = size.width),
+                        size = size,
+                        blendMode = BlendMode.DstIn,
+                    )
+                }
+            }
         }
-        .playarrEdgeFade(
-            startVisible = false,
-            endVisible = canEnd,
-            vertical = false,
-            kind = kind,
-            horizontalEdgeStartInset = edgeCrossAxisStartInset,
-            horizontalEdgeEndInset = edgeCrossAxisEndInset,
-        )
+    return if (webHomeEndMask) faded else faded.playarrEdgeFade(
+        startVisible = false,
+        endVisible = canEnd,
+        vertical = false,
+        kind = kind,
+        horizontalEdgeStartInset = edgeCrossAxisStartInset,
+        horizontalEdgeEndInset = edgeCrossAxisEndInset,
+    )
 }
