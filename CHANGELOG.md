@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The iPad wall now keeps a pristine iOS 18.5 runtime package cache, reports safe package metadata, saves only after runtime registration, and makes one bounded fresh-import fallback when a successful cache import leaves the runtime unavailable.
 - VIDAA Back now leaves an empty Search field and returns to the previous page.
 - Keep the native Tizen Search Filters action above focused result cards while navigating.
 - Android artwork requests now use the server's `w` resize parameter so native cards request the same source size as web.
