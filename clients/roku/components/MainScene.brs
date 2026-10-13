@@ -291,6 +291,7 @@ sub init()
     m.browseTotal = invalid
     m.browseAlphabetMode = false
     m.browseAlphabetIndex = 0
+    m.browseTrackingAlphabetIndex = 0
     m.browseAlphabetPendingLetter = invalid
     m.browseFiltersButtonFocused = false
     m.browseFiltersMode = false
@@ -2624,6 +2625,7 @@ sub buildAlphabetStrip()
     letters = alphabetLetterList()
     m.alphabetLabels = []
     m.alphabetMarkers = []
+    m.alphabetFocusRings = []
     y = 0
     for each letter in letters
         marker = CreateObject("roSGNode", "Poster")
@@ -2637,6 +2639,18 @@ sub buildAlphabetStrip()
         marker.blendColor = ThemeColor("ink", 199)
         m.browseAlphabet.AppendChild(marker)
         m.alphabetMarkers.Push(marker)
+
+        focusRing = CreateObject("roSGNode", "Poster")
+        focusRing.translation = [4, y - 4]
+        focusRing.width = 32
+        focusRing.height = 32
+        focusRing.uri = "pkg:/images/round-outline-r25.9.png"
+        focusRing.loadDisplayMode = "scaleToFill"
+        focusRing.visible = false
+        focusRing.blendColor = ThemeColor("focusRing")
+        ThemeSetRole(focusRing, "focusRing")
+        m.browseAlphabet.AppendChild(focusRing)
+        m.alphabetFocusRings.Push(focusRing)
 
         label = CreateObject("roSGNode", "Label")
         label.translation = [0, y]
@@ -2675,12 +2689,19 @@ function moveBrowseAlphabetFocus(delta as Integer) as Boolean
 end function
 
 sub renderBrowseAlphabetFocus()
-    if m.alphabetLabels = invalid or m.alphabetMarkers = invalid then return
-    showTrackingLetter = m.browseKind = "movie" or m.browseAlphabetMode
+    if m.alphabetLabels = invalid or m.alphabetMarkers = invalid or m.alphabetFocusRings = invalid then return
+    markerIndex = -1
+    if m.browseKind = "movie"
+        markerIndex = m.browseTrackingAlphabetIndex
+    else if m.browseAlphabetMode
+        markerIndex = m.browseAlphabetIndex
+    end if
     for i = 0 to m.alphabetLabels.Count() - 1
-        active = showTrackingLetter and i = m.browseAlphabetIndex
-        m.alphabetMarkers[i].visible = active
-        if active
+        tracked = i = markerIndex
+        focused = m.browseKind = "movie" and m.browseAlphabetMode and i = m.browseAlphabetIndex
+        m.alphabetMarkers[i].visible = tracked
+        m.alphabetFocusRings[i].visible = focused
+        if tracked
             m.alphabetMarkers[i].blendColor = ThemeColor("ink", 199)
             m.alphabetLabels[i].color = ThemeColor("bg")
         else
@@ -3043,7 +3064,8 @@ sub onBrowseItemFocused(event as Object)
             if trackingRow < 0 then trackingRow = 0
             trackingIndex = trackingRow * columns
             if trackingIndex >= m.browseItems.Count() then trackingIndex = m.browseItems.Count() - 1
-            m.browseAlphabetIndex = browseAlphabetIndexForItem(m.browseItems[trackingIndex])
+            m.browseTrackingAlphabetIndex = browseAlphabetIndexForItem(m.browseItems[trackingIndex])
+            m.browseAlphabetIndex = m.browseTrackingAlphabetIndex
             renderBrowseAlphabetFocus()
         end if
     end if
