@@ -21,6 +21,7 @@ internal sealed class MediaCard
     private bool _playlistCollage;
     private bool _playlistHasCovers;
     private View? _playlistFocusGlow;
+    private View? _playlistFocusRing;
     private bool _playlistCoverSet;
     private bool _focused;
     private TextLabel? _playlistMetadata;
@@ -77,9 +78,15 @@ internal sealed class MediaCard
         {
             SetPlaylistGroupShadow();
             SetPlaylistFocusGlow(focused);
+            if (_playlistHasCovers) SetPlaylistFocusRing(focused);
         }
         else Art.BoxShadow = focused ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
-        if (_ring is not null) { _ring.Show(focused); if (focused) _ring.RaiseToTop(); } // the poster loads later and would otherwise sit on top of the ring
+        if (_ring is not null)
+        {
+            var show = focused && !(_playlistCollage && _playlistHasCovers);
+            _ring.Show(show);
+            if (show) _ring.RaiseToTop(); // the poster loads later and would otherwise sit on top of the ring
+        }
         Title.TextColor = focused ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
     }
 
@@ -134,6 +141,7 @@ internal sealed class MediaCard
         Art.BackgroundColor = new Color(0, 0, 0, 0);
         Art.ClippingMode = default;
         EnsurePlaylistFocusGlow();
+        _ring?.Show(false);
         // Add back-to-front. The first selected work stays on top, matching the web z-index order.
         for (var index = covers.Count - 1; index >= 0; index--)
         {
@@ -162,7 +170,7 @@ internal sealed class MediaCard
         }
         SetPlaylistGroupShadow();
         SetPlaylistFocusGlow(_focused);
-        if (_focused) _ring?.RaiseToTop();
+        SetPlaylistFocusRing(_focused);
     }
 
     private void EnsurePlaylistFocusGlow()
@@ -195,6 +203,34 @@ internal sealed class MediaCard
         // brown cover-stack shadow above; the glow token is brand-ink in dark and brand-strong in light.
         var glow = _t.Name == "dark" ? _t.BrandInk : Rgba.Hex(0xa52745);
         _playlistFocusGlow.BoxShadow = new Shadow(20, new Color(glow.R, glow.G, glow.B, 0.45f), new Vector2(0, 0), new Vector2(4, 4));
+    }
+
+    private void SetPlaylistFocusRing(bool focused)
+    {
+        if (_playlistFocusRing is null)
+        {
+            const float spread = 3f;
+            var ring = new View
+            {
+                PositionX = Art.PositionX - spread,
+                PositionY = Art.PositionY - spread,
+                Size = new Size(Art.Size.Width + spread * 2, Art.Size.Height + spread * 2),
+                CornerRadius = Art.CornerRadius + spread,
+                BorderlineWidth = spread,
+                BorderlineOffset = -1,
+                BorderlineColor = _t.Name == "dark"
+                    ? new Color(_t.BrandInk.R, _t.BrandInk.G, _t.BrandInk.B, 0.95f)
+                    : new Color(0.647f, 0.153f, 0.271f, 1),
+                BackgroundColor = new Color(0, 0, 0, 0),
+            };
+            Box.Add(ring);
+            _playlistFocusRing = ring;
+        }
+
+        _playlistFocusRing.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
+        _playlistFocusRing.PositionY = _artDy + (focused ? _lift : 0) - 3f;
+        _playlistFocusRing.Show(focused);
+        if (focused) _playlistFocusRing.RaiseToTop();
     }
 
     private void SetPlaylistGroupShadow()
