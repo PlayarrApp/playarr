@@ -262,7 +262,6 @@ sub pageFocusRender()
     end if
     if m.pageFocusIdx >= m.pageItems.Count() then m.pageFocusIdx = 0
     item = m.pageItems[m.pageFocusIdx]
-    if m.pageKind = "calendar" then parityEmit("calendarFocus", item.action)
     if item.scrolls = true
         ' Keep the focused control inside the visible band (the panel scrolls under the fixed header).
         top = item.y + m.pageScrollY
@@ -313,6 +312,11 @@ sub pageFocusRender()
         m.pageRing.translation = [item.x + ox - 3, item.y + oy - 3]
         m.pageRing.width = item.w + 6
         m.pageRing.height = item.h + 6
+    end if
+    if m.pageKind = "calendar"
+        focusX = item.x + ox
+        focusY = item.y + oy
+        parityEmit("calendarFocus", item.action + "|" + focusX.ToStr() + "," + focusY.ToStr() + "," + item.w.ToStr() + "," + item.h.ToStr())
     end if
     m.pageRing.visible = not m.navDockMode
     pageOnFocus(item)

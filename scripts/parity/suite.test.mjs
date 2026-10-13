@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { applyParityLine, calendarViewFocusKey, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, applyParityLine, calendarViewFocusKey, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
@@ -98,16 +98,44 @@ test("Roku Calendar route follows fresh focus as data replaces the initial Back 
   const beforeFocusSeq = state.calendarFocusSeq;
   applyParityLine(state, "PARITY|screen|page");
   applyParityLine(state, "PARITY|page|calendar");
-  applyParityLine(state, "PARITY|calendarFocus|back");
+  applyParityLine(state, "PARITY|calendarFocus|back|153,56.3,50,50");
   assert.equal(hasFreshCalendarFocus(state, beforeScreenSeq, beforeFocusSeq), true);
+  assert.deepEqual(state.calendarFocusRect, { x: 153, y: 56.3, w: 50, h: 50 });
   assert.equal(calendarViewFocusKey(state.calendarFocus), "right");
-  applyParityLine(state, "PARITY|calendarFocus|cell");
+  applyParityLine(state, "PARITY|calendarFocus|cell|310,200,120,44");
   assert.equal(calendarViewFocusKey(state.calendarFocus), "up");
-  applyParityLine(state, "PARITY|calendarFocus|calPrev");
+  applyParityLine(state, "PARITY|calendarFocus|calPrev|1629,56.2,50,50");
   assert.equal(calendarViewFocusKey(state.calendarFocus), "left");
-  applyParityLine(state, "PARITY|calendarFocus|calView");
+  applyParityLine(state, "PARITY|calendarFocus|calView|1000,56.2,100,48");
   assert.equal(calendarViewFocusKey(state.calendarFocus), null);
-  assert.equal(applyParityLine(state, "PARITY|calendarFocus|A media label"), false);
+  assert.equal(applyParityLine(state, "PARITY|calendarFocus|entry|media title"), false);
+});
+
+test("Roku Calendar focus telemetry accepts only safe actions and bounded rectangles", () => {
+  assert.deepEqual(parseCalendarFocus("calView|1000,56.2,120,48"), {
+    action: "calView", rect: { x: 1000, y: 56.2, w: 120, h: 48 },
+  });
+  for (const invalid of [
+    "entry|media title,56,100,40", "calView|NaN,56,120,48", "calView|99999,56,120,48",
+    "unknown|10,20,30,40", "calView|10,20,0,40", "calView|10,20,30,-1",
+  ]) assert.equal(parseCalendarFocus(invalid), null);
+  const state = createParityState();
+  assert.equal(applyParityLine(state, "PARITY|calendarFocus|calView|10,20,0,40"), false);
+  assert.equal(state.calendarFocus, "");
+});
+
+test("Roku Calendar focus trail is sanitised and bounded", () => {
+  const trace = [];
+  const focus = (action, x) => ({ action, rect: { x, y: 20, w: 40, h: 40 } });
+  for (let index = 0; index < 5; index += 1) {
+    appendCalendarFocusTransition(trace, focus("cell", index), "up", focus("calView", index + 1), 3);
+  }
+  assert.equal(trace.length, 3);
+  assert.equal(trace[0].from.rect.x, 2);
+  assert.equal(JSON.stringify(trace).includes("private media label"), false);
+  appendCalendarFocusTransition(trace, { action: "entry", label: "private media label", rect: focus("cell", 0).rect }, "up", focus("calView", 1), 3);
+  assert.equal(trace.length, 3);
+  assert.equal(JSON.stringify(trace).includes("private media label"), false);
 });
 
 test("Roku requires fresh Movies grid focus before the Filters route", () => {

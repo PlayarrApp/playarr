@@ -23,6 +23,11 @@ const KEY_NAMES = { up: "Up", down: "Down", left: "Left", right: "Right", select
 const SUITE_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../suite.json");
 const SUITE_SCREENS = JSON.parse(readFileSync(SUITE_FILE, "utf8")).screens;
 const MAX_DEBUG_FRAME_BYTES = 16 * 1024;
+const CALENDAR_ACTIONS = new Set([
+  "back", "calNext", "calToday", "calPrev", "calView", "calLink", "calFilters", "cell", "entry", "calPlay", "calOpen", "calWatch",
+]);
+const CALENDAR_KEYS = new Set(["up", "down", "left", "right", "select", "back"]);
+const MAX_CALENDAR_TRACE = 32;
 
 export function spawnSyncBinary(command, args, options = {}) {
   return spawnSync(command, args, { ...options, encoding: null });
@@ -59,12 +64,38 @@ export function parseParityLine(line) {
   return { kind: match[1], value: match[2] };
 }
 
+export function parseCalendarFocus(value) {
+  const match = /^([A-Za-z]+)\|(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/.exec(value.trim());
+  if (!match || !CALENDAR_ACTIONS.has(match[1])) return null;
+  const [, action, ...rawRect] = match;
+  const [x, y, w, h] = rawRect.map(Number);
+  if (![x, y, w, h].every(Number.isFinite) || Math.abs(x) > 4000 || Math.abs(y) > 4000 || w <= 0 || h <= 0 || w > 4000 || h > 4000) return null;
+  return { action, rect: { x, y, w, h } };
+}
+
+export function appendCalendarFocusTransition(trace, from, key, to, limit = MAX_CALENDAR_TRACE) {
+  if (!Array.isArray(trace) || !CALENDAR_KEYS.has(key) || !Number.isInteger(limit) || limit < 1) return trace;
+  limit = Math.min(limit, MAX_CALENDAR_TRACE);
+  const safeFocus = (focus) => {
+    if (!focus || !CALENDAR_ACTIONS.has(focus.action) || !focus.rect) return null;
+    const { x, y, w, h } = focus.rect;
+    if (![x, y, w, h].every(Number.isFinite) || Math.abs(x) > 4000 || Math.abs(y) > 4000 || w <= 0 || h <= 0 || w > 4000 || h > 4000) return null;
+    return { action: focus.action, rect: { x, y, w, h } };
+  };
+  const safeFrom = safeFocus(from);
+  const safeTo = safeFocus(to);
+  if (!safeFrom || !safeTo) return trace;
+  trace.push({ from: safeFrom, key, to: safeTo });
+  if (trace.length > limit) trace.splice(0, trace.length - limit);
+  return trace;
+}
+
 export function createParityState() {
   return {
     screen: "", screenSeq: 0, page: "", browse: "", focus: null,
     focusSeq: 0, focusScreenSeq: 0, focusFloorAtScreen: 0, drawerSource: "",
     calendarView: "", calendarViewSeq: 0, calendarViewScreenSeq: 0,
-    calendarFocus: "", calendarFocusSeq: 0, calendarFocusScreenSeq: 0,
+    calendarFocus: "", calendarFocusRect: null, calendarFocusSeq: 0, calendarFocusScreenSeq: 0,
     eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0 }, artState: createArtReadinessState(),
   };
 }
@@ -92,9 +123,10 @@ export function applyParityLine(state, line) {
     state.calendarViewSeq += 1;
     state.calendarViewScreenSeq = state.screenSeq;
   } else if (kind === "calendarFocus") {
-    const focus = value.trim();
-    if (!["back", "calNext", "calToday", "calPrev", "calView", "calLink", "calFilters", "cell", "entry", "calPlay", "calOpen", "calWatch"].includes(focus)) return false;
-    state.calendarFocus = focus;
+    const focus = parseCalendarFocus(value);
+    if (!focus) return false;
+    state.calendarFocus = focus.action;
+    state.calendarFocusRect = focus.rect;
     state.calendarFocusSeq += 1;
     state.calendarFocusScreenSeq = state.screenSeq;
   } else if (kind === "browse") {
@@ -307,7 +339,7 @@ export function createDriver({ out, args = [] } = {}) {
 
   const resetObservedState = () => {
     debugBuffer = "";
-    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "", calendarView: "", calendarFocus: "" });
+    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "", calendarView: "", calendarFocus: "", calendarFocusRect: null });
     screen = "";
     page = "";
     browse = "";
@@ -624,18 +656,29 @@ export function createDriver({ out, args = [] } = {}) {
       );
       if (targetView !== "month") {
         const beforeTargetViewSeq = parityState.calendarViewSeq;
+        const calendarTrace = [];
+        const currentCalendarFocus = () => parityState.calendarFocus && parityState.calendarFocusRect
+          ? { action: parityState.calendarFocus, rect: parityState.calendarFocusRect }
+          : null;
+        const traceFailure = (reason) => `${reason}; Calendar focus trail=${JSON.stringify(calendarTrace)}`;
         for (let i = 0; i < 8 && parityState.calendarFocus !== "calView"; i += 1) {
           const key = calendarViewFocusKey(parityState.calendarFocus);
-          if (!key) throw new Error(`Calendar focus cannot reach the view selector from ${parityState.calendarFocus || "unknown"}`);
+          if (!key) throw new Error(traceFailure(`Calendar focus cannot reach the view selector from ${parityState.calendarFocus || "unknown"}`));
+          const from = currentCalendarFocus();
           const beforeFocusSeq = parityState.calendarFocusSeq;
           await press(key);
-          await waitFor(
-            () => hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeFocusSeq),
-            `fresh Calendar focus after ${key}`,
-            5000,
-          );
+          try {
+            await waitFor(
+              () => hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeFocusSeq),
+              `fresh Calendar focus after ${key}`,
+              5000,
+            );
+          } catch (error) {
+            throw new Error(traceFailure(`${error.message}; last observed focus=${JSON.stringify(currentCalendarFocus())}`));
+          }
+          appendCalendarFocusTransition(calendarTrace, from, key, currentCalendarFocus());
         }
-        if (parityState.calendarFocus !== "calView") throw new Error("Roku did not reach the Calendar view selector");
+        if (parityState.calendarFocus !== "calView") throw new Error(traceFailure(`Roku did not reach the Calendar view selector; last observed focus=${JSON.stringify(currentCalendarFocus())}`));
         await press("select");
         const targetIndex = ["month", "week", "agenda"].indexOf(targetView);
         for (let i = 0; i < targetIndex; i += 1) await press("down");
