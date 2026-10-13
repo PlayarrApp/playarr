@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The isolated macOS Search smoke retains its confirmed Home readiness snapshot and reports safe navigation-stage evidence when Search cannot be reached.
 - Guarded Apple wall suite selection now handles an empty argument list safely under Bash nounset.
 - The tvOS navigation rail now draws web-matched vector paths for its shared tabs. macOS retains its existing SF Symbols.
 - macOS Home card movement now applies focus to the registered child button and updates the Home selection mirror from the observed focus change, avoiding competing SwiftUI focus bindings.

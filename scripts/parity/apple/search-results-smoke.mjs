@@ -86,6 +86,13 @@ async function waitFor(predicate, timeoutMs = 30000) {
   return null;
 }
 
+export async function waitForHomeReadySnapshot(readState, poll = waitFor) {
+  return poll(() => {
+    const snapshot = readState();
+    return snapshot?.route === "/" && snapshot.focused ? snapshot : null;
+  }, 45000);
+}
+
 function keyCode(code) {
   osascript([
     "on run argv",
@@ -115,17 +122,22 @@ function focusSearchAndType(query) {
 }
 
 function activateSearchNavigation() {
-  osascript([
+  const output = osascript([
     "tell application \"System Events\"",
     'tell process "PlayarrMac"',
     "set frontmost to true",
     "if (count of windows) is 0 then error \"no app window\"",
     'set matches to every button of front window whose name is "Search"',
-    "if (count of matches) is not 1 then error \"Search navigation target unavailable\"",
+    "set matchCount to count of matches",
+    'if matchCount is not 1 then return (matchCount as text) & "|false"',
     "click item 1 of matches",
+    'return (matchCount as text) & "|true"',
     "end tell",
     "end tell",
   ]);
+  const match = /^([0-9]+)\|(true|false)$/.exec(output.trim());
+  if (!match) throw new Error("Search navigation result unavailable");
+  return { searchTargetCount: Number(match[1]), searchClicked: match[2] === "true" };
 }
 
 function readNativeAccessibleText() {
@@ -252,20 +264,31 @@ async function runSmoke(query) {
         MAC_PARITY_VISIBLE: "true",
       },
     });
-    await waitFor(() => {
-      const state = readNativeState(stateFile);
-      return state?.route === "/" && state?.focused ? state : null;
-    }, 45000);
+    const homeState = await waitForHomeReadySnapshot(() => readNativeState(stateFile));
 
     stage = "native_search_navigation";
-    const homeState = readNativeState(stateFile);
-    if (homeState?.route !== "/" || !homeState.focused) return { status: "not_executed", stage };
-    activateSearchNavigation();
+    if (!homeState) return { status: "not_executed", stage: "home_readiness", homeReady: false,
+      searchTargetCount: null, searchTargetUnique: false, searchClicked: false, routeObserved: false };
+    let navigation;
+    try {
+      navigation = activateSearchNavigation();
+    } catch {
+      return { status: "not_executed", stage: "search_target", homeReady: true,
+        searchTargetCount: null, searchTargetUnique: false, searchClicked: false, routeObserved: false };
+    }
+    const searchTargetUnique = navigation.searchTargetCount === 1;
+    if (!searchTargetUnique) return { status: "not_executed", stage: "search_target", homeReady: true,
+      searchTargetCount: navigation.searchTargetCount, searchTargetUnique, searchClicked: false, routeObserved: false };
+    if (!navigation.searchClicked) return { status: "not_executed", stage: "search_click", homeReady: true,
+      searchTargetCount: navigation.searchTargetCount, searchTargetUnique, searchClicked: false, routeObserved: false };
     const state = await waitFor(() => {
       const next = readNativeState(stateFile);
       return next?.route === "/search" ? next : null;
     }, 15000);
-    if (!state) return { status: "not_executed", stage };
+    if (!state) return { status: "not_executed", stage: "route_observation", homeReady: true,
+      searchTargetCount: navigation.searchTargetCount, searchTargetUnique, searchClicked: true, routeObserved: false };
+    const navigationEvidence = { homeReady: true, searchTargetCount: navigation.searchTargetCount,
+      searchTargetUnique, searchClicked: true, routeObserved: true };
 
     stage = "web_search";
     const web = (process.env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
@@ -285,14 +308,14 @@ async function runSmoke(query) {
       return parseResultCount(labels) !== null ? labels : null;
     }, 30000);
     if (!countLabels) {
-      return { status: "not_executed", stage, webCount: webResult.count, nativeCount: null };
+      return { status: "not_executed", stage, ...navigationEvidence, webCount: webResult.count, nativeCount: null };
     }
     const nativeCount = parseResultCount(countLabels);
     if (nativeCount < 2 || webResult.count < 2) {
-      return { status: "not_executed", stage: "result_readiness", webCount: webResult.count, nativeCount };
+      return { status: "not_executed", stage: "result_readiness", ...navigationEvidence, webCount: webResult.count, nativeCount };
     }
     if (nativeCount !== webResult.count) {
-      return { status: "failed", stage: "result_count_mismatch", webCount: webResult.count, nativeCount };
+      return { status: "failed", stage: "result_count_mismatch", ...navigationEvidence, webCount: webResult.count, nativeCount };
     }
 
     stage = "focus_comparison";
@@ -321,6 +344,7 @@ async function runSmoke(query) {
     return {
       status: comparison.status === "complete" && comparison.firstMatches && comparison.downMatches ? "passed" : "failed",
       stage,
+      ...navigationEvidence,
       route: "/search",
       webCount: webResult.count,
       nativeCount,

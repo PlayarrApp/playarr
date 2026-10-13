@@ -1,6 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { compareSearchEvidence, parseArgs, parseResultCount } from "./search-results-smoke.mjs";
+import { compareSearchEvidence, parseArgs, parseResultCount, waitForHomeReadySnapshot } from "./search-results-smoke.mjs";
+
+test("Home readiness uses its awaited snapshot even if later state changes", async () => {
+  let current = { route: "/", focused: "Home" };
+  const ready = await waitForHomeReadySnapshot(() => current, async (predicate) => {
+    const snapshot = predicate();
+    current = { route: "/", focused: null };
+    return snapshot;
+  });
+  assert.deepEqual(ready, { route: "/", focused: "Home" });
+  assert.equal(current.focused, null);
+});
 
 test("argument parsing accepts one bounded query without exposing it", () => {
   assert.deepEqual(parseArgs(["--query", "the" ]), { query: "the" });
