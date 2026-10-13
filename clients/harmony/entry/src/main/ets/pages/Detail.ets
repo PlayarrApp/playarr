@@ -1652,7 +1652,7 @@ struct Detail {
       Text(label)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .fontSize(11)
+        .fontSize(8)
         .fontColor(toResourceColor(activeColors().ink))
         .layoutWeight(1)
     }
