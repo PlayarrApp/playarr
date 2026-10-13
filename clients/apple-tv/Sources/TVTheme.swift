@@ -539,6 +539,88 @@ enum TVShellFocus: Hashable {
     case stage
 }
 
+struct TVHomeCardFocusRequest: Equatable, Identifiable {
+    let id: UUID
+    let target: HomeRailCardFocus
+
+    init(target: HomeRailCardFocus) {
+        id = UUID()
+        self.target = target
+    }
+}
+
+enum TVHomeNavFocusGeometry {
+    static func nearestTarget(from source: CGRect, navFrames: [TVNavTab: CGRect]) -> TVNavTab? {
+        navFrames.compactMap { tab, frame -> (tab: TVNavTab, score: CGFloat)? in
+            guard frame.width > 0, frame.height > 0,
+                  let score = scoreLeftCandidate(from: source, to: frame) else { return nil }
+            return (tab, score)
+        }.min { lhs, rhs in
+            if lhs.score != rhs.score { return lhs.score < rhs.score }
+            return (TVNavTab.allCases.firstIndex(of: lhs.tab) ?? Int.max)
+                < (TVNavTab.allCases.firstIndex(of: rhs.tab) ?? Int.max)
+        }?.tab
+    }
+
+    /// Port of web `scoreDirectionalCandidate(from, to, "left")` in focusGeometry.ts.
+    static func scoreLeftCandidate(from source: CGRect, to target: CGRect) -> CGFloat? {
+        let dx = target.midX - source.midX
+        let dy = target.midY - source.midY
+        guard dx < -2 else { return nil }
+
+        let primary = abs(dx)
+        let lateral = abs(dy)
+        let overlap = max(0, min(source.maxY, target.maxY) - max(source.minY, target.minY))
+        let crossAxisSize = min(source.height, target.height)
+        let coneAllowance = primary * 0.85 + crossAxisSize * 0.2
+        guard overlap > 0 || lateral <= coneAllowance else { return nil }
+
+        return primary + lateral * 4 - min(overlap, 180) * 0.55
+    }
+}
+
+struct TVHomeNavFocusHandoff {
+    private(set) var oneShotNavTarget: TVNavTab? = nil
+    private(set) var returnTarget: HomeRailCardFocus? = nil
+
+    mutating func begin(from card: HomeRailCardFocus, frame: CGRect, navFrames: [TVNavTab: CGRect]) -> TVNavTab? {
+        guard let target = TVHomeNavFocusGeometry.nearestTarget(from: frame, navFrames: navFrames) else { return nil }
+        returnTarget = card
+        oneShotNavTarget = target
+        return target
+    }
+
+    mutating func takeReturnTarget(isHomeRoot: Bool) -> HomeRailCardFocus? {
+        guard isHomeRoot else { return nil }
+        defer {
+            returnTarget = nil
+            oneShotNavTarget = nil
+        }
+        return returnTarget
+    }
+
+    mutating func reset() {
+        oneShotNavTarget = nil
+        returnTarget = nil
+    }
+
+    static func allowsNavFocus(
+        _ tab: TVNavTab,
+        activeTab: TVNavTab,
+        navHasFocus: Bool,
+        oneShotTarget: TVNavTab?
+    ) -> Bool {
+        navHasFocus || tab == activeTab || tab == oneShotTarget
+    }
+}
+
+private struct TVNavFramesPreferenceKey: PreferenceKey {
+    static var defaultValue: [TVNavTab: CGRect] = [:]
+    static func reduce(value: inout [TVNavTab: CGRect], nextValue: () -> [TVNavTab: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
+    }
+}
+
 struct TVHomeFocusHandoff {
     private(set) var pending = true
 
@@ -546,8 +628,10 @@ struct TVHomeFocusHandoff {
         pending = tab == .home
     }
 
-    mutating func claim(isHomeRoot: Bool) -> Bool {
-        guard pending, isHomeRoot else { return false }
+    mutating func cancel() { pending = false }
+
+    mutating func claim(isHomeRoot: Bool, targetRegistered: Bool = true) -> Bool {
+        guard pending, isHomeRoot, targetRegistered else { return false }
         pending = false
         return true
     }
@@ -559,19 +643,53 @@ private struct RequestNavFocusKey: EnvironmentKey {
     static let defaultValue: () -> Void = {}
 }
 
+private struct RequestHomeNavFocusKey: EnvironmentKey {
+    static let defaultValue: (HomeRailCardFocus, CGRect) -> Bool = { _, _ in false }
+}
+
+private struct HomeCardFocusReturnRequestKey: EnvironmentKey {
+    static let defaultValue: TVHomeCardFocusRequest? = nil
+}
+
+struct TVHomeStageFocusRequest {
+    let parityID: String
+    let rail: Int
+    let index: Int
+    let completion: (Bool) -> Void
+}
+
 private struct RequestStageFocusKey: EnvironmentKey {
+    static let defaultValue: (TVHomeStageFocusRequest) -> Void = { $0.completion(false) }
+}
+
+private struct CancelStageFocusRequestKey: EnvironmentKey {
     static let defaultValue: () -> Void = {}
 }
 
 extension EnvironmentValues {
+    var requestHomeNavFocus: (HomeRailCardFocus, CGRect) -> Bool {
+        get { self[RequestHomeNavFocusKey.self] }
+        set { self[RequestHomeNavFocusKey.self] = newValue }
+    }
+
+    var homeCardFocusReturnRequest: TVHomeCardFocusRequest? {
+        get { self[HomeCardFocusReturnRequestKey.self] }
+        set { self[HomeCardFocusReturnRequestKey.self] = newValue }
+    }
+
     var requestNavFocus: () -> Void {
         get { self[RequestNavFocusKey.self] }
         set { self[RequestNavFocusKey.self] = newValue }
     }
 
-    var requestStageFocus: () -> Void {
+    var requestStageFocus: (TVHomeStageFocusRequest) -> Void {
         get { self[RequestStageFocusKey.self] }
         set { self[RequestStageFocusKey.self] = newValue }
+    }
+
+    var cancelStageFocusRequest: () -> Void {
+        get { self[CancelStageFocusRequestKey.self] }
+        set { self[CancelStageFocusRequestKey.self] = newValue }
     }
 }
 
@@ -620,6 +738,7 @@ struct TVFloatingNavLayout {
 
 struct TVFloatingNav: View {
     @Binding var selection: TVNavTab
+    @Environment(\.cancelStageFocusRequest) private var cancelStageFocusRequest
     /// When true, suppress tvOS focus lift so parity captures match web chrome.
     var suppressFocusChrome: Bool = false
     /// SPA library/home frames omit the settings group from the left rail.
@@ -630,6 +749,10 @@ struct TVFloatingNav: View {
     var focusNamespace: Namespace.ID? = nil
     /// When true, the active tab is the preferred default focus target.
     var preferDefaultFocus: Bool = false
+    /// A single measured target may temporarily enter focus from the Home rail.
+    var oneShotFocusTarget: TVNavTab? = nil
+    var onNavFramesChange: ([TVNavTab: CGRect]) -> Void = { _ in }
+    var onRequestHomeReturn: () -> Void = {}
 
     /// Same three groups as the web shell (`.app-nav`). Music joins the browse group only when
     /// the library has music (`showMusic`).
@@ -675,6 +798,7 @@ struct TVFloatingNav: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: DesignTokens.Shell.navItemSize + DesignTokens.Shell.navGroupPadding * 2)
+        .onPreferenceChange(TVNavFramesPreferenceKey.self, perform: onNavFramesChange)
     }
 
     private func navGroup(tabs: [TVNavTab]) -> some View {
@@ -739,7 +863,9 @@ struct TVFloatingNav: View {
     private func navButton(_ tab: TVNavTab) -> some View {
         let isActive = selection == tab
         let isFocused = externalFocus.wrappedValue == .nav(tab)
+        let isOneShotFocusTarget = oneShotFocusTarget == tab
         let button = Button {
+            if selection == tab { cancelStageFocusRequest() }
             selection = tab
             externalFocus.wrappedValue = .nav(tab)
             // Web: Select on a tab opens the page and puts focus on its first item (the page loads a moment later).
@@ -781,26 +907,47 @@ struct TVFloatingNav: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .accessibilityLabel(tab.title)
         .focused(externalFocus, equals: .nav(tab))
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: TVNavFramesPreferenceKey.self,
+                    value: [tab: proxy.frame(in: tvScreenSpace)]
+                )
+            }
+        }
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: isFocused) { _, now in TVParityState.setFocus(tab.title, now, id: "nav-" + tab.rawValue, rail: "nav", index: TVNavTab.allCases.firstIndex(of: tab)) }
         #endif
-        // not .focusable: on a Button it adds a second, inert focus target. While focus is outside the nav only the
-        // active tab can take it, so Left from the page lands on the active tab (web), not the nearest one.
+        // not .focusable: on a Button it adds a second, inert focus target. Outside the nav only the active tab can
+        // take focus, except for the one measured target during a Home-leading-card handoff.
         #if os(macOS)
         // The mouse must reach every tab (hover, click); only the remote needs the one-active-tab rule above.
         .disabled(suppressFocusChrome)
         #else
-        .disabled(suppressFocusChrome || (!navHasFocus && !isActive))
+        .disabled(suppressFocusChrome || !TVHomeNavFocusHandoff.allowsNavFocus(
+            tab,
+            activeTab: selection,
+            navHasFocus: navHasFocus,
+            oneShotTarget: isOneShotFocusTarget ? oneShotFocusTarget : nil
+        ))
         #endif
         .focusEffectDisabled(suppressFocusChrome)
         .onMoveCommand { direction in
             // Right from any dock item jumps into the stage (first rail card).
             if direction == .right {
-                externalFocus.wrappedValue = .stage
+                if selection == .home {
+                    onRequestHomeReturn()
+                } else {
+                    externalFocus.wrappedValue = .stage
+                }
+            } else {
+                cancelStageFocusRequest()
             }
         }
 
-        if let focusNamespace, preferDefaultFocus, isActive {
+        if let focusNamespace, oneShotFocusTarget == tab {
+            button.prefersDefaultFocus(true, in: focusNamespace)
+        } else if let focusNamespace, preferDefaultFocus, isActive {
             button.prefersDefaultFocus(true, in: focusNamespace)
         } else {
             button

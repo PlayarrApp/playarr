@@ -13,6 +13,14 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS Home card movement now applies focus to the registered child button and updates the Home selection mirror from the observed focus change, avoiding competing SwiftUI focus bindings.
+- macOS and tvOS Home wait for the On Deck request to succeed or fail before showing Home rails; the network layer timeout governs, and the navigation remains available while Home shows its skeleton. Only the current On Deck request generation can update rail and progress state. The primary rail keeps server shelf membership and avoids repeating On Deck cards in the fallback movie rail.
+- The Home nav-to-stage focus handoff is claimed once per route entry and cancelled when the viewer moves focus before it runs. Its initial target is captured once, so late On Deck results do not move focus or trigger another reset.
+- macOS Escape and Back now pop pushed title pages to their originating library route, while modal, focus-layer drawer, and cover Back actions keep priority.
+- macOS Library and Search cards now update their selected work from the child button's observed focus, without competing outer focus bindings.
+- The Home nav-to-stage focus handoff is claimed once per route entry and cancelled when the viewer moves focus before it runs. macOS Right uses the last focused navigation target when selection has cleared the transient focus binding, preserving stage-entry intent until lazy Home content registers. Late On Deck results do not trigger another initial focus reset.
+- Production D-pad Home now measures card/nav frames; Left uses the web directional score and Right from Home nav restores the same leading card. Inactive nav items remain ineligible outside the one-shot handoff.
+- Home waits for the On Deck request to succeed or fail before drawing rails; the navigation stays usable while its skeleton is visible.
 - The iPad wall now keeps a pristine iOS 18.5 runtime package cache, reports safe package metadata, saves only after runtime registration, and makes one bounded fresh-import fallback when a successful cache import leaves the runtime unavailable.
 - VIDAA Back now leaves an empty Search field and returns to the previous page.
 - Keep the native Tizen Search Filters action above focused result cards while navigating.
@@ -573,6 +581,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
 - Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
 - Match native Tizen Search playlist result cards to the web media glyph, artwork gradients, rounded corners and composed focused-card geometry.
 - Separate the focused Tizen Search result title and kind label into web-matched inset columns.
@@ -2938,6 +2947,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- macOS library-grid parity diagnostics now identify the focused row and column, with start state reported only when the actual entry target is known.
+- DEBUG macOS arrow-key diagnostics now report safe focus transitions, registered-target counts, and numeric selected frames without labels or identifiers.
 - Add an isolated, opt-in macOS Search-results focus smoke outside the shared parity suite denominator. Focused helper tests pass; no Apple runtime or live Search run has been executed.
 - Add an opt-in iPhone XCTest for opening a Series from Home and Search, checking the selected Series tab, and verifying Back restores each origin without starting playback.
 - Apple wall web references and native runs now share validated suite-selection arguments, including check filters and player skipping; the Mac visible-parity mode follows that validated selection and remains capture-, stream- and chain-gated.
