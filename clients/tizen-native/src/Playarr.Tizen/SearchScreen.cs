@@ -131,6 +131,7 @@ internal sealed class SearchScreen : IPage
         _results.PositionX = -729.6f;
         clip.Add(_results);
         _root.Add(clip);
+        _filterTile?.RaiseToTop();
         _debounce = new global::Tizen.NUI.Timer(300);
         _debounce.Tick += (_, _) => { _ = RunSearchAsync(_query); return false; };
         SetFieldFocus(true);
