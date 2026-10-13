@@ -1,0 +1,1 @@
+- Show the selected playlist type and name in the native Tizen Search preview, with display-only line breaks for long names.

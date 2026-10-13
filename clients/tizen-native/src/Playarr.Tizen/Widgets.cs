@@ -263,6 +263,14 @@ internal sealed class DetailsPanel
             _ = FetchRuntimeAsync(card, kickerOverride, metaLead);
     }
 
+    public void ShowPlaylistPreview(SearchPlaylistPreview preview)
+    {
+        _showing = Guid.Empty;
+        var card = new WorkCard(Guid.Empty, WorkKind.Unknown, preview.Title, preview.Eyebrow, preview.Eyebrow, "", null, null, null, 0, false);
+        Render(card, preview.Eyebrow, null, null);
+        Root.Show(true);
+    }
+
     private async Task FetchRuntimeAsync(WorkCard card, string? kicker, string? lead)
     {
         try
