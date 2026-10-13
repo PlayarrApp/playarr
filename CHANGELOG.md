@@ -2915,6 +2915,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Prepare the selected Xcode installation and wait boundedly for an available iOS 18 runtime before building the iPad iOS wall app.
 - Prepare the selected Xcode installation before importing the required iOS 18.5 simulator runtime, then poll boundedly for an available iOS 18 runtime on iPad wall jobs.
 - Android TV parity captures now bound ADB calls and fail when screen focus does not become ready before the deadline.
 - Web parity captures wait for a matching detail route identity and cleared pending state, decode available hero art, and wait for finite detail entrance animations. Mobile Home waits for populated cards without TV focus keys; opt-in mobile emulation supports viewport and DPR overrides.
