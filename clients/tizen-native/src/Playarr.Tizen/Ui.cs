@@ -8,6 +8,14 @@ namespace Playarr.Tizen;
 internal static class Ui
 {
     private static TextLabel? _measure;
+    private static bool? _fontDirectoryAdded;
+    private static int _bundledNunitoFontCount;
+
+    internal static object FontRegistrationMetrics => new
+    {
+        fontDirectoryAdded = _fontDirectoryAdded,
+        bundledNunitoFontCount = _bundledNunitoFontCount,
+    };
 
     /// <summary>Natural single-line width of a string at the given style (a hidden label, measured synchronously).</summary>
     public static float TextWidth(string text, float size, int weight, float spacing, string family = Font)
@@ -107,7 +115,14 @@ internal static class Ui
         global::Tizen.Applications.Application.Current.DirectoryInfo.Resource + relative;
 
     /// <summary>Registers the bundled Nunito Sans weights so TextLabel can use them by family name.</summary>
-    public static void RegisterFonts() => FontClient.Instance.AddCustomFontDirectory(ResPath("fonts"));
+    public static void RegisterFonts()
+    {
+        var fontDirectory = Path.GetFullPath(ResPath("fonts")) + Path.DirectorySeparatorChar;
+        _fontDirectoryAdded = FontClient.Instance.AddCustomFontDirectory(ResPath("fonts"));
+        _bundledNunitoFontCount = FontClient.Instance.GetSystemFonts()
+            .Count(font => font.Family.Contains("Nunito Sans", StringComparison.OrdinalIgnoreCase)
+                && font.Path.StartsWith(fontDirectory, StringComparison.Ordinal));
+    }
 
     public static View Box(float x, float y, float w, float h, Rgba? bg = null, float radius = 0)
     {

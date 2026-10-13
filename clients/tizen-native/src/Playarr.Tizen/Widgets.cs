@@ -115,6 +115,7 @@ internal sealed class MediaCard
         return new
         {
             index,
+            textLength = label.Text.Length,
             lineCount = label.LineCount,
             width = label.Size.Width,
             height = label.Size.Height,
