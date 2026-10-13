@@ -2930,6 +2930,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Apple wall web references and native runs now share validated suite-selection arguments, including check filters and player skipping; the Mac visible-parity mode follows that validated selection and remains capture-, stream- and chain-gated.
 - Prepare the selected Xcode installation and wait boundedly for an available iOS 18 runtime before building the iPad iOS wall app.
 - Prepare the selected Xcode installation before importing the required iOS 18.5 simulator runtime, then poll boundedly for an available iOS 18 runtime on iPad wall jobs.
 - Android TV parity captures now bound ADB calls and fail when screen focus does not become ready before the deadline.

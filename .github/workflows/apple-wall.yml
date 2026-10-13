@@ -133,9 +133,6 @@ jobs:
       TRUSTED: ${{ github.workspace }}/trusted
       SRC: ${{ github.workspace }}/src
       HAVE_TS: ${{ secrets.TS_OAUTH_SECRET != '' && secrets.TS_OAUTH_CLIENT_ID != '' }}
-      MAC_PARITY_VISIBLE: >-
-        ${{ matrix.device == 'macos' && inputs.capture == false && inputs.stream != true && inputs.chain != true
-        && inputs.suite_args == '--only dpad --skip-player' }}
     steps:
       - name: Note the start time
         run: |
@@ -148,6 +145,100 @@ jobs:
           ref: ${{ github.sha }}
           path: trusted
           persist-credentials: false
+
+      # Validate once, before the app launch. Both suite runners consume the same
+      # constrained JSON selection, and wall.sh up sees the derived visibility flag.
+      - name: Validate suite selection
+        id: suite_selection
+        env:
+          SUITE_ARGS: ${{ inputs.suite_args }}
+          SUITE_JSON: ${{ github.workspace }}/trusted/scripts/parity/suite.json
+          DEVICE: ${{ matrix.device }}
+          CAPTURE_ENABLED: ${{ inputs.capture }}
+          STREAM_ENABLED: ${{ inputs.stream }}
+          CHAIN_ENABLED: ${{ inputs.chain }}
+        run: |
+          set -euo pipefail
+          [[ "$SUITE_ARGS" != *$'\n'* && "$SUITE_ARGS" != *$'\r'* ]] || { echo '::error::suite_args must be a single line'; exit 1; }
+          read -r -a requested <<< "$SUITE_ARGS"
+          selection_json="$(python3 - "$SUITE_JSON" "${requested[@]}" <<'PY_SUITE_ARGS'
+          import json
+          import os
+          import re
+          import sys
+
+          suite_path, *args = sys.argv[1:]
+          with open(suite_path, encoding="utf-8") as handle:
+              suite = json.load(handle)
+
+          values = {
+              "--only": {"screens", "dpad", "downloads", "performance"},
+              "--checks": {item["id"] for group in ("dpad", "performance") for item in suite.get(group, [])},
+              "--screens": {item["id"] for item in suite.get("screens", [])},
+              "--cases": {item["id"] for item in suite.get("downloads", [])},
+          }
+          switches = {"--skip-player", "--player"}
+          seen = set()
+          index = 0
+          while index < len(args):
+              flag = args[index]
+              if flag not in set(values) | switches:
+                  raise SystemExit("unsupported suite flag")
+              if flag in seen:
+                  raise SystemExit("duplicate suite flag")
+              seen.add(flag)
+              if flag in switches:
+                  index += 1
+                  continue
+              if index + 1 >= len(args) or args[index + 1].startswith("--"):
+                  raise SystemExit("suite flag requires a value")
+              selected = args[index + 1].split(",")
+              allowed = values[flag]
+              if any(not re.fullmatch(r"[a-z0-9-]+", item) for item in selected):
+                  raise SystemExit("invalid suite selection value")
+              if len(set(selected)) != len(selected) or any(item not in allowed for item in selected):
+                  raise SystemExit("unsupported suite selection value")
+              index += 2
+
+          if "--skip-player" in seen and "--player" in seen:
+              raise SystemExit("--player and --skip-player cannot be combined")
+          selected_only = set(args[args.index("--only") + 1].split(",")) if "--only" in seen else {"screens", "dpad"}
+          if "--screens" in seen and "screens" not in selected_only:
+              raise SystemExit("--screens requires screens in --only")
+          if "--cases" in seen and "downloads" not in selected_only:
+              raise SystemExit("--cases requires downloads in --only")
+          if "--player" in seen and "dpad" not in selected_only:
+              raise SystemExit("--player requires dpad in --only")
+          selected_checks = set()
+          if "--checks" in seen:
+              selected_checks = set(args[args.index("--checks") + 1].split(","))
+              dpad_ids = {item["id"] for item in suite.get("dpad", [])}
+              performance_ids = {item["id"] for item in suite.get("performance", [])}
+              required_only = ({"dpad"} if selected_checks & dpad_ids else set()) | ({"performance"} if selected_checks & performance_ids else set())
+              if not required_only <= selected_only:
+                  raise SystemExit("--checks are outside the selected --only suites")
+          if "--only" not in seen:
+              args.extend(("--only", "screens,dpad"))
+
+          non_player_dpad = {item["id"] for item in suite.get("dpad", []) if not item["id"].startswith("player-")}
+          has_non_player_check = bool(selected_checks & non_player_dpad) if "--checks" in seen else bool(non_player_dpad)
+          visibility = (
+              os.environ.get("DEVICE") == "macos"
+              and os.environ.get("CAPTURE_ENABLED") == "false"
+              and os.environ.get("STREAM_ENABLED") != "true"
+              and os.environ.get("CHAIN_ENABLED") != "true"
+              and selected_only == {"dpad"}
+              and "--skip-player" in seen
+              and "--player" not in seen
+              and has_non_player_check
+              and (not selected_checks or selected_checks <= non_player_dpad)
+          )
+          print(json.dumps({"args": args, "macParityVisible": visibility}, separators=(",", ":")))
+          PY_SUITE_ARGS
+          )"
+          printf 'selection=%s\n' "$selection_json" >> "$GITHUB_OUTPUT"
+          mac_parity_visible="$(python3 -c 'import json,sys; print("true" if json.loads(sys.argv[1])["macParityVisible"] else "false")' "$selection_json")"
+          printf 'MAC_PARITY_VISIBLE=%s\n' "$mac_parity_visible" >> "$GITHUB_ENV"
 
       - name: Check out the ref under test
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -259,8 +350,6 @@ jobs:
           REF: ${{ inputs.ref || github.event.repository.default_branch }}
         run: bash "$TRUSTED/scripts/apple-wall/wall.sh" capture "$DEVICE"
 
-      # The shared suite (scripts/parity, docs/parity/SUITE.md) takes over from the interim captures above once an Apple driver
-      # exists in the default branch: D-pad checks and playback results (dpad.json, playback.json) join the artifact.
       # Fresh web reference in the same minute (real sign-in through the UI, dark and light), for the pixel diff and the D-pad
       # expectations. Written to $RUNNER_TEMP/web, where the suite looks for expected.json.
       - name: Web reference (fresh sign-in)
@@ -273,12 +362,14 @@ jobs:
           PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
-          SUITE_ARGS: ${{ inputs.suite_args }}
+          SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
         run: |
+          set -euo pipefail
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
-          # Same checks as the device run below, so parallel dispatches (one with --only dpad, one with --only playback) each take only what they score.
-          only=$(grep -oE -e '--only [a-z,]+' <<<"$SUITE_ARGS" | cut -d' ' -f2 || true)
-          node suite-run.mjs --driver ./drivers/web.mjs --reference --out "${{ runner.temp }}/web" --only "${only:-screens,dpad}"
+          WALL_SUITE_ARGS=()
+          while IFS= read -r arg; do WALL_SUITE_ARGS+=("$arg"); done < <(python3 -c 'import json,sys; print(chr(10).join(json.loads(sys.argv[1])["args"]))' "$SUITE_SELECTION")
+          (( ${#WALL_SUITE_ARGS[@]} > 0 )) || { echo '::error::validated suite selection is empty'; exit 1; }
+          node suite-run.mjs --driver ./drivers/web.mjs --reference --out "$RUNNER_TEMP/web" "${WALL_SUITE_ARGS[@]}"
 
       # The shared suite (scripts/parity, docs/parity/SUITE.md) through the Apple driver: the 15 screens in both themes (written
       # over the interim captures above), the D-pad checks against the web reference, playback (not yet).
@@ -292,9 +383,14 @@ jobs:
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           DRIVER_TRACE: "1"
+          SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
         run: |
+          set -euo pipefail
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
-          node suite-run.mjs --driver ./drivers/apple-sim.mjs --out "${{ runner.temp }}/capture" --via keys ${{ inputs.suite_args || '--only screens,dpad' }}
+          WALL_SUITE_ARGS=()
+          while IFS= read -r arg; do WALL_SUITE_ARGS+=("$arg"); done < <(python3 -c 'import json,sys; print(chr(10).join(json.loads(sys.argv[1])["args"]))' "$SUITE_SELECTION")
+          (( ${#WALL_SUITE_ARGS[@]} > 0 )) || { echo '::error::validated suite selection is empty'; exit 1; }
+          node suite-run.mjs --driver ./drivers/apple-sim.mjs --out "$RUNNER_TEMP/capture" --via keys "${WALL_SUITE_ARGS[@]}"
 
       - name: Upload the web reference
         if: steps.webref.outcome != 'skipped'
