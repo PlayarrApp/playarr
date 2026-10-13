@@ -71,24 +71,34 @@ def home(s):
 
 def detail(s):
     s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { currentPreviewRouteGeneration, reportDetailLayoutStageForScope, captureDetailRowImageContext, reportDetailRowImageStage } from '../util/PreviewState';", 1)
-    artwork_state = "  @ObjectLink artworkState: DetailArtworkState;\n"
-    assert artwork_state in s
-    s = s.replace(artwork_state, artwork_state + "  @Prop previewRoute: string = '';\n  @Prop previewWorkId: string = '';\n  @Prop previewRowId: string = '';\n  @Prop previewGeneration: number = 0;\n", 1)
+    artwork_store = "  @ObjectLink artworkStore: DetailArtworkStore;\n"
+    assert artwork_store in s
+    s = s.replace(artwork_store, artwork_store + "  @Prop previewRoute: string = '';\n  @Prop previewWorkId: string = '';\n  @Prop previewRowId: string = '';\n  @Prop previewGeneration: number = 0;\n", 1)
     card_variant = "      variant: this.variant,\n"
     assert card_variant in s
     s = s.replace(card_variant, card_variant + "      previewRoute: this.previewRoute,\n      previewWorkId: this.previewWorkId,\n      previewRowId: this.previewRowId,\n      previewGeneration: this.previewGeneration,\n", 1)
-    artwork_state_arg = "artworkState: (item as DetailRow).artworkState,\n"
-    assert s.count(artwork_state_arg) == 5
-    s = s.replace(artwork_state_arg, artwork_state_arg + "        previewRoute: 'Detail',\n        previewWorkId: this.workId,\n        previewRowId: (item as DetailRow).id,\n        previewGeneration: currentPreviewRouteGeneration(),\n")
+    artwork_store_arg = re.compile(r"(?m)^(?P<indent>\s*)artworkStore: this\.artworkStore,\n(?P=indent)rowId: \(item as DetailRow\)\.id,\n")
+    matches = artwork_store_arg.findall(s)
+    assert len(matches) == 5
+    def add_preview_context(match):
+        indent = match.group('indent')
+        return match.group(0) + indent + "previewRoute: 'Detail',\n" + indent + "previewWorkId: this.workId,\n" + indent + "previewRowId: (item as DetailRow).id,\n" + indent + "previewGeneration: currentPreviewRouteGeneration(),\n"
+    s = artwork_store_arg.sub(add_preview_context, s)
     old = """        const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
+        if (!this.artworkStore.isCurrentGeneration(generation)) {
+          return;
+        }
         if (thumb.kind === 'ok') {
-          this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
+          this.artworkStore.setArtwork(generation, item.id, thumb.value);
         }"""
     assert old in s
     new = """        const previewContext = captureDetailRowImageContext(this.workId, item.id);
         reportDetailRowImageStage(previewContext, 'source');
         reportDetailRowImageStage(previewContext, 'fetch-start');
         const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
+        if (!this.artworkStore.isCurrentGeneration(generation)) {
+          return;
+        }
         if (thumb.kind === 'ok') {
           reportDetailRowImageStage(previewContext, 'fetch-ok');
           reportDetailRowImageStage(previewContext, 'bridge-source-ready');
@@ -102,19 +112,12 @@ def detail(s):
           }
           reportDetailRowImageStage(previewContext,
             matchingRowCount > 0 ? 'row-match-found' : 'row-match-missing');
-          this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
-          let assignedArtworkState = false;
-          for (const updatedRail of this.rails) {
-            for (const updatedRow of updatedRail.items) {
-              if (updatedRow.id === item.id && (updatedRow as DetailRow).artworkState.pixelMap !== undefined) {
-                assignedArtworkState = true;
-              }
-            }
-          }
+          this.artworkStore.setArtwork(generation, item.id, thumb.value);
+          const artworkStorePresent = this.artworkStore.getArtwork(item.id) !== undefined;
           reportDetailRowImageStage(previewContext,
-            assignedArtworkState ? 'artwork-state-present' : 'artwork-state-absent');
-          if (assignedArtworkState) {
-            reportDetailRowImageStage(previewContext, 'artwork-state-mutated');
+            artworkStorePresent ? 'artwork-store-present' : 'artwork-store-absent');
+          if (artworkStorePresent) {
+            reportDetailRowImageStage(previewContext, 'artwork-store-updated');
           }
           reportDetailRowImageStage(previewContext, 'assigned');
         } else {

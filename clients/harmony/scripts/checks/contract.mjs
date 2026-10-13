@@ -144,12 +144,18 @@ function checkDetailObservedArtwork(harmonyDir, errors, warnings) {
     'entry/src/main/ets/pages/Detail.ets',
     {
       requiredSubstrings: [
-        '@Observed\nclass DetailArtworkState',
-        '@ObjectLink artworkState: DetailArtworkState;',
+        '@Observed\nclass DetailArtworkStore',
+        '@Track revision: number = 0;',
+        '@Track private pixelMaps: Map<string, image.PixelMap> = new Map<string, image.PixelMap>();',
+        'beginGeneration(): number',
+        'isCurrentGeneration(generation: number): boolean',
+        'setArtwork(generation: number, rowId: string, pixelMap: image.PixelMap): void',
+        '@ObjectLink artworkStore: DetailArtworkStore;',
         'PosterCard({\n      variant: this.variant,',
-        'artwork: this.artworkState.pixelMap,',
-        'item.artworkState.pixelMap = artwork;',
-        'artworkState: item.artworkState,',
+        'artwork: this.artworkStore.getArtwork(this.rowId),',
+        'this.artworkStore.setArtwork(generation, item.id, thumb.value);',
+        'artworkStore: this.artworkStore,',
+        'rowId: (item as DetailRow).id,',
         'DetailRowArtworkCard({',
         'railId: rail.id,',
         '(rail: DetailRail): string => rail.id',
@@ -160,24 +166,17 @@ function checkDetailObservedArtwork(harmonyDir, errors, warnings) {
   );
   if (text === null) return;
 
-  const initialStateCount = (text.match(/artworkState: new DetailArtworkState\(undefined\)/g) || []).length;
-  if (initialStateCount !== 5) {
-    errors.push(`entry/src/main/ets/pages/Detail.ets: expected five Detail row constructors to initialize independent artwork state objects, found ${initialStateCount}`);
-  }
-
   const observedCardCount = (text.match(/DetailRowArtworkCard\(\{/g) || []).length;
   if (observedCardCount !== 5) {
     errors.push(`entry/src/main/ets/pages/Detail.ets: expected all five TV/touch Detail row card builders to use the observed artwork child, found ${observedCardCount}`);
   }
 
-  const identityPreservingCloneCount = (text.match(/artworkState: item\.artworkState,/g) || []).length;
-  if (identityPreservingCloneCount < 2) {
-    errors.push('entry/src/main/ets/pages/Detail.ets: row and album artwork clones must preserve the existing artwork-state object');
+  const rowIdStoreCount = (text.match(/rowId: \(item as DetailRow\)\.id,/g) || []).length;
+  if (rowIdStoreCount !== 5) {
+    errors.push(`entry/src/main/ets/pages/Detail.ets: expected all five Detail card paths to use the shared artwork store by row ID, found ${rowIdStoreCount}`);
   }
-
-  const pixelMapUpdateCount = (text.match(/item\.artworkState\.pixelMap = artwork;/g) || []).length;
-  if (pixelMapUpdateCount !== 2) {
-    errors.push(`entry/src/main/ets/pages/Detail.ets: expected row and album fetch paths to update observed artwork state, found ${pixelMapUpdateCount}`);
+  if (/artworkState/.test(text)) {
+    errors.push('entry/src/main/ets/pages/Detail.ets: artwork must be stored outside the unobserved DetailRow wrapper');
   }
 
   if (/@Prop\s+\w+\s*:\s*\([^\n]*=>/.test(text)) {

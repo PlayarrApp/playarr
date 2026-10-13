@@ -86,6 +86,8 @@ class CaptureDiagnosticsTests(unittest.TestCase):
              "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.6},
             {"sequence": 10, "category": "detail-row-image-artwork-state-mutated", "route": "Detail", "work_id": "private-work",
              "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.65},
+            {"sequence": 10, "category": "detail-row-image-artwork-store-updated", "route": "Detail", "work_id": "private-work",
+             "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.66},
             {"sequence": 11, "category": "detail-row-image-poster-artwork-prop-present", "route": "Detail", "work_id": "private-work",
              "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.7},
             {"sequence": 12, "category": "detail-row-image-poster-render-artwork-present", "route": "Detail", "work_id": "private-work",
@@ -105,6 +107,7 @@ class CaptureDiagnosticsTests(unittest.TestCase):
         self.assertEqual(result["image-area-zero"], {"count": 1, "first_elapsed_ms": 500, "last_elapsed_ms": 500})
         self.assertEqual(result["row-match-found"], {"count": 1, "first_elapsed_ms": 600, "last_elapsed_ms": 600})
         self.assertEqual(result["artwork-state-mutated"], {"count": 1, "first_elapsed_ms": 650, "last_elapsed_ms": 650})
+        self.assertEqual(result["artwork-store-updated"], {"count": 1, "first_elapsed_ms": 660, "last_elapsed_ms": 660})
         self.assertEqual(result["poster-artwork-prop-present"], {"count": 1, "first_elapsed_ms": 700, "last_elapsed_ms": 700})
         self.assertEqual(result["poster-render-artwork-present"], {"count": 1, "first_elapsed_ms": 800, "last_elapsed_ms": 800})
         self.assertEqual(result["visible-item-artwork-state-absent"], {"count": 1, "first_elapsed_ms": 900, "last_elapsed_ms": 900})

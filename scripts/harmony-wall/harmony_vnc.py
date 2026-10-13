@@ -41,6 +41,7 @@ DETAIL_IMAGE_STAGES = {
     "source", "fetch-start", "fetch-ok", "fetch-error", "bridge-source-ready",
     "assigned", "image-source", "image-area-positive", "image-area-zero", "on-complete", "on-error",
     "row-match-found", "row-match-missing", "artwork-state-present", "artwork-state-absent", "artwork-state-mutated",
+    "artwork-store-present", "artwork-store-absent", "artwork-store-updated",
     "poster-artwork-prop-undefined", "poster-artwork-prop-present",
     "poster-render-artwork-undefined", "poster-render-artwork-present",
     "visible-item-artwork-state-absent", "visible-item-artwork-state-present",
