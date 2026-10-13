@@ -1,0 +1,1 @@
+- macOS Escape and Back now pop pushed title pages to their originating library route, while modal, focus-layer drawer, and cover Back actions keep priority.

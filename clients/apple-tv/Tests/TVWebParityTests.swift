@@ -15,6 +15,56 @@ final class TVWebParityTests: XCTestCase {
         XCTAssertEqual(TVLibraryKindView.ordered(titles, sort: "title", order: "desc").map(\.title), ["Title 10", "title 2", "Title 1"])
     }
 
+    func testMacDetailBackPopsToTheLibraryRootWithoutChangingSelection() {
+        let detail = Work(
+            id: UUID(), kind: .series, title: "Test Series A", sortTitle: "Test Series A",
+            addedAt: Date(), monitored: false, availability: .available
+        )
+        var state = TVShellBackState(selection: .series, path: [.work(detail)])
+
+        XCTAssertTrue(state.handleBack())
+        XCTAssertTrue(state.path.isEmpty, "Back from a pushed detail route returns to the library root")
+        XCTAssertEqual(state.selection, .series, "popping detail preserves its originating library tab")
+    }
+
+    func testMacBackLeavesModalAndCoverHandlingAheadOfRoutePop() {
+        let detail = Work(
+            id: UUID(), kind: .series, title: "Test Series A", sortTitle: "Test Series A",
+            addedAt: Date(), monitored: false, availability: .available
+        )
+
+        for state in [
+            TVShellBackState(selection: .series, path: [.work(detail)], actionsPresented: true),
+            TVShellBackState(selection: .series, path: [.work(detail)], playerPresented: true),
+            TVShellBackState(selection: .series, path: [.work(detail)], profilesPresented: true),
+        ] {
+            var state = state
+            XCTAssertFalse(state.handleBack())
+            XCTAssertEqual(state.path.count, 1, "modal or cover Back must not pop the underlying route")
+        }
+    }
+
+    func testMacBackDoesNotPopRouteUnderAFocusLayerOverlay() {
+        let detail = Work(
+            id: UUID(), kind: .series, title: "Test Series A", sortTitle: "Test Series A",
+            addedAt: Date(), monitored: false, availability: .available
+        )
+        var state = TVShellBackState(selection: .series, path: [.work(detail)], focusLayer: 1)
+
+        XCTAssertFalse(state.handleBack())
+        XCTAssertEqual(state.path.count, 1, "a higher focus layer handles Back before the underlying route")
+    }
+
+    func testMacBackReturnsToHomeOnlyAtTheRootOfANonHomeTab() {
+        var library = TVShellBackState(selection: .series, path: [])
+        XCTAssertTrue(library.handleBack())
+        XCTAssertEqual(library.selection, .home)
+
+        var home = TVShellBackState(selection: .home, path: [])
+        XCTAssertFalse(home.handleBack())
+        XCTAssertEqual(home.selection, .home)
+    }
+
     func testHomeFocusHandoffRunsOnceAtTheHomeRootPerTabEntry() {
         var handoff = TVHomeFocusHandoff()
 

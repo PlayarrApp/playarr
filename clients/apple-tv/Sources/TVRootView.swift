@@ -6,6 +6,26 @@ import SwiftUI
 import UIKit
 #endif
 
+struct TVShellBackState {
+    var selection: TVNavTab
+    var path: [TVRoute]
+    var actionsPresented = false
+    var playerPresented = false
+    var profilesPresented = false
+    var focusLayer = 0
+
+    mutating func handleBack() -> Bool {
+        guard !actionsPresented, !playerPresented, !profilesPresented, focusLayer <= 0 else { return false }
+        if !path.isEmpty {
+            path.removeLast()
+            return true
+        }
+        guard selection != .home else { return false }
+        selection = .home
+        return true
+    }
+}
+
 struct TVRootView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Environment(TVDisplayPreferences.self) private var displayPreferences
@@ -286,6 +306,9 @@ private struct TVProductionShell<Stage: View>: View {
     /// The media actions drawer (long press on a card) and the title it started playing.
     @State private var actionsWork: Work?
     @State private var playing: PlayRequest?
+    #if os(macOS)
+    @State private var macBackHandlerID = UUID()
+    #endif
 
     private struct PlayRequest: Identifiable {
         let id: UUID
@@ -460,7 +483,32 @@ private struct TVProductionShell<Stage: View>: View {
                 }
             )
         }
+        #if os(macOS)
+        .onAppear {
+            MacKeyboard.shared.pushBackHandler(macBackHandlerID) { handleMacBack() }
+        }
+        .onDisappear {
+            MacKeyboard.shared.popBackHandler(macBackHandlerID)
+        }
+        #endif
     }
+
+    #if os(macOS)
+    private func handleMacBack() -> Bool {
+        var state = TVShellBackState(
+            selection: nav,
+            path: path,
+            actionsPresented: actionsWork != nil,
+            playerPresented: playing != nil,
+            profilesPresented: showProfiles,
+            focusLayer: MacFocusEngine.shared.topLayer
+        )
+        guard state.handleBack() else { return false }
+        path = state.path
+        nav = state.selection
+        return true
+    }
+    #endif
 
     private func requestHomeCardReturn() {
         #if os(tvOS)

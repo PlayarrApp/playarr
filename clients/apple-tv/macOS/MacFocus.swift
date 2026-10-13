@@ -413,6 +413,14 @@ final class MacKeyboard {
     static let shared = MacKeyboard()
     private var monitor: Any?
     private var playPause: [(UUID, () -> Void)] = []
+    private var backHandlers: [(UUID, () -> Bool)] = []
+
+    func pushBackHandler(_ id: UUID, _ action: @escaping () -> Bool) {
+        backHandlers.removeAll { $0.0 == id }
+        backHandlers.append((id, action))
+    }
+
+    func popBackHandler(_ id: UUID) { backHandlers.removeAll { $0.0 == id } }
 
     func pushPlayPause(_ id: UUID, _ action: @escaping () -> Void) {
         playPause.removeAll { $0.0 == id }
@@ -452,7 +460,9 @@ final class MacKeyboard {
         case 49: // Space
             if let action = playPause.last?.1 { action(); return nil }
             return event
-        case 51, 117: // Delete, forward delete: Back, the same as Escape
+        case 53, 51, 117: // Escape, Delete and forward delete: Back
+            if backHandlers.last?.1() == true { return nil }
+            if event.keyCode == 53 { return event }
             return NSEvent.keyEvent(with: .keyDown, location: event.locationInWindow, modifierFlags: [],
                                     timestamp: event.timestamp, windowNumber: event.windowNumber, context: nil,
                                     characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}",
