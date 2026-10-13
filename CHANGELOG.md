@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Guarded Apple wall suite selection now handles an empty argument list safely under Bash nounset.
 - The tvOS navigation rail now draws web-matched vector paths for its shared tabs. macOS retains its existing SF Symbols.
 - macOS Home card movement now applies focus to the registered child button and updates the Home selection mirror from the observed focus change, avoiding competing SwiftUI focus bindings.
 - macOS and tvOS Home wait for the On Deck request to succeed or fail before showing Home rails; the network layer timeout governs, and the navigation remains available while Home shows its skeleton. Only the current On Deck request generation can update rail and progress state. The primary rail keeps server shelf membership and avoids repeating On Deck cards in the fallback movie rail.

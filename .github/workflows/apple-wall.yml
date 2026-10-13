@@ -188,8 +188,13 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$SUITE_ARGS" != *$'\n'* && "$SUITE_ARGS" != *$'\r'* ]] || { echo '::error::suite_args must be a single line'; exit 1; }
-          read -r -a requested <<< "$SUITE_ARGS"
-          selection_json="$(python3 - "$SUITE_JSON" "${requested[@]}" <<'PY_SUITE_ARGS'
+          python_args=("$SUITE_JSON")
+          if [[ "$SUITE_ARGS" =~ [^[:space:]] ]]; then
+            requested=()
+            read -r -a requested <<< "$SUITE_ARGS"
+            python_args+=("${requested[@]}")
+          fi
+          selection_json="$(python3 - "${python_args[@]}" <<'PY_SUITE_ARGS'
           import json
           import os
           import re

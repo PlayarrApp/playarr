@@ -95,6 +95,33 @@ rejected("--checks", "movies-grid-right;touch")
 rejected("--player", "--skip-player")
 
 # The parser runs before the app launch, persists one validated JSON selection, and both suite steps build arrays from it.
+argv_setup = '''python_args=("$SUITE_JSON")
+if [[ "$SUITE_ARGS" =~ [^[:space:]] ]]; then
+  requested=()
+  read -r -a requested <<< "$SUITE_ARGS"
+  python_args+=("${requested[@]}")
+fi'''
+argv_start = workflow.index("          python_args=(\"$SUITE_JSON\")")
+argv_end = workflow.index("          selection_json=", argv_start)
+assert dedent(workflow[argv_start:argv_end]).strip() == argv_setup
+
+
+def shell_python_args(suite_args: str) -> list[str]:
+    result = subprocess.run(
+        ["bash", "-c", "set -euo pipefail\n" + argv_setup + '\nprintf "%s\\n" "${python_args[@]}"'],
+        text=True,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "SUITE_ARGS": suite_args, "SUITE_JSON": str(suite)},
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout.rstrip("\n").split("\n")
+
+
+assert shell_python_args("") == [str(suite)]
+assert shell_python_args("   \t  ") == [str(suite)]
+assert shell_python_args("--only dpad --skip-player") == [str(suite), "--only", "dpad", "--skip-player"]
+
 assert workflow.index("- name: Check out the default branch (scripts that see secrets)") < workflow.index("- name: Validate suite selection")
 assert workflow.index("- name: Validate suite selection") < workflow.index("- name: Check out the ref under test")
 assert workflow.index("- name: Validate suite selection") < workflow.index("- name: Start the simulator, sign in and launch")
