@@ -25,8 +25,6 @@ internal sealed class MediaCard
     private bool _playlistCoverSet;
     private bool _focused;
     private TextLabel? _playlistMetadata;
-    private TextLabel? _playlistEmptyLabel;
-    private float? _playlistEmptySingleLineWidth;
     private string _playlistMediaType = "video";
     private bool _playlistShared;
 
@@ -108,35 +106,6 @@ internal sealed class MediaCard
         _playlistMetadata.Show(true);
     }
 
-    internal object? EmptyCoverTextMetrics(int index)
-    {
-        if (_playlistEmptyLabel is not { } label) return null;
-        var natural = label.NaturalSize;
-        var fontStyle = label.GetFontStyle();
-        return new
-        {
-            index,
-            textLength = label.Text.Length,
-            lineCount = label.LineCount,
-            width = label.Size.Width,
-            height = label.Size.Height,
-            naturalWidth = natural.Width,
-            naturalHeight = natural.Height,
-            pixelSize = label.PixelSize,
-            fontSizeScale = label.FontSizeScale,
-            fontSizeScaleEnabled = label.EnableFontSizeScale,
-            requestedFamily = label.FontFamily,
-            requestedWidth = fontStyle.Width.ToString(),
-            requestedWeight = fontStyle.Weight.ToString(),
-            characterSpacing = label.CharacterSpacing,
-            lineWrapMode = label.LineWrapMode.ToString(),
-            singleLineMeasuredWidth = _playlistEmptySingleLineWidth,
-            singleLineMeasuredWidthAt10 = Ui.TextWidth(label.Text, 10, 400, 0),
-            singleLineMeasuredWidthAt11 = Ui.TextWidth(label.Text, 11, 400, 0),
-            singleLineMeasuredWidthAt12 = Ui.TextWidth(label.Text, 12, 400, 0),
-        };
-    }
-
     /// <summary>Replaces the directory placeholder with the web's poster-first, backdrop-fallback cover stack.</summary>
     public void SetPlaylistCovers(AppEnv env, string playlistName, IReadOnlyList<Work> works)
     {
@@ -163,15 +132,19 @@ internal sealed class MediaCard
             empty.BoxShadow = new Shadow(30, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.08f), new Vector2(0, 12), new Vector2(0, 0));
             Art.Add(empty);
             const float nameFontSize = 10.88f; // web: 0.68rem at the 16px root size
+            const float nameRasterScale = 4;
             const float nameLineHeight = 1.5f; // inherited web body line-height
-            _playlistEmptyLabel = new TextLabel(playlistName)
+            var emptyLabel = new TextLabel(playlistName)
             {
                 PositionX = 16,
                 PositionY = 16,
-                Size = new Size(Width - 32, Height - 32),
+                Size = new Size((Width - 32) * nameRasterScale, (Height - 32) * nameRasterScale),
                 WidthResizePolicy = ResizePolicyType.Fixed,
                 HeightResizePolicy = ResizePolicyType.Fixed,
-                PixelSize = nameFontSize,
+                PixelSize = nameFontSize * nameRasterScale,
+                PivotPoint = global::Tizen.NUI.PivotPoint.TopLeft,
+                PositionUsesPivotPoint = true,
+                Scale = new Vector3(1 / nameRasterScale, 1 / nameRasterScale, 1),
                 TextColor = Ui.C(_t.InkMuted),
                 FontFamily = Ui.Font,
                 FontStyle = new PropertyMap().Add("weight", new PropertyValue("regular")),
@@ -182,8 +155,7 @@ internal sealed class MediaCard
                 // Match Ui.Text's conversion: NUI relative line height multiplies its 1.364x native glyph height.
                 RelativeLineHeight = nameLineHeight / 1.364f,
             };
-            _playlistEmptySingleLineWidth = Ui.TextWidth(playlistName, nameFontSize, 400, 0);
-            Art.Add(_playlistEmptyLabel);
+            Art.Add(emptyLabel);
             if (_focused) _ring?.RaiseToTop();
             return;
         }

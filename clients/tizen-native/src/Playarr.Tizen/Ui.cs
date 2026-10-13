@@ -8,16 +8,6 @@ namespace Playarr.Tizen;
 internal static class Ui
 {
     private static TextLabel? _measure;
-    private static bool? _fontDirectoryAdded;
-    private static int _bundledNunitoFontCount;
-    private static IReadOnlyList<global::Tizen.NUI.Text.FontInfo> _bundledNunitoFonts = Array.Empty<global::Tizen.NUI.Text.FontInfo>();
-
-    internal static object FontRegistrationMetrics => new
-    {
-        fontDirectoryAdded = _fontDirectoryAdded,
-        bundledNunitoFontCount = _bundledNunitoFontCount,
-        bundledNunitoFonts = _bundledNunitoFonts.Select(font => new { family = font.Family, style = font.Style }).ToList(),
-    };
 
     /// <summary>Natural single-line width of a string at the given style (a hidden label, measured synchronously).</summary>
     public static float TextWidth(string text, float size, int weight, float spacing, string family = Font)
@@ -117,16 +107,7 @@ internal static class Ui
         global::Tizen.Applications.Application.Current.DirectoryInfo.Resource + relative;
 
     /// <summary>Registers the bundled Nunito Sans weights so TextLabel can use them by family name.</summary>
-    public static void RegisterFonts()
-    {
-        var fontDirectory = System.IO.Path.GetFullPath(ResPath("fonts")) + System.IO.Path.DirectorySeparatorChar;
-        _fontDirectoryAdded = FontClient.Instance.AddCustomFontDirectory(ResPath("fonts"));
-        _bundledNunitoFonts = FontClient.Instance.GetSystemFonts()
-            .Where(font => font.Family.Contains("Nunito Sans", StringComparison.OrdinalIgnoreCase)
-                && font.Path.StartsWith(fontDirectory, StringComparison.Ordinal))
-            .ToList();
-        _bundledNunitoFontCount = _bundledNunitoFonts.Count;
-    }
+    public static void RegisterFonts() => FontClient.Instance.AddCustomFontDirectory(ResPath("fonts"));
 
     public static View Box(float x, float y, float w, float h, Rgba? bg = null, float radius = 0)
     {

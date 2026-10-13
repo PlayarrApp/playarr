@@ -56,11 +56,6 @@ internal sealed class PlaylistsScreen : IPage
     public View Root => _root;
     public string Route => _route.ToRoute();
     public bool IsReady => _ready;
-    internal IReadOnlyList<object> EmptyCoverTextMetrics => _cards
-        .Select((card, index) => card.EmptyCoverTextMetrics(index))
-        .Where(metrics => metrics is not null)
-        .Cast<object>()
-        .ToList();
     public string? FocusedLabel => _createDrawer?.FocusedLabel ?? _filters?.FocusedLabel ?? _focus.Item?.Label;
     internal bool IsPlaylistNameEditing => _createDrawer?.IsNameEditing == true;
     internal void SubmitCreateFromName() => _createDrawer?.SubmitFromTextInput();
