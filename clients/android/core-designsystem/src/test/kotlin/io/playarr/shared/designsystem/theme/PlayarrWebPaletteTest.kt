@@ -27,6 +27,14 @@ class PlayarrWebPaletteTest {
     }
 
     @Test
+    fun webInkMutedMatchesBothWebThemesAndPhoneAlias() {
+        assertEquals(Color(0xFFC2B5BB), PlayarrWebPalette.Dark.webInkMuted)
+        assertEquals(Color(0xFF4D4248), PlayarrWebPalette.Light.webInkMuted)
+        assertEquals(PlayarrWebPalette.Dark.webInkMuted, PlayarrWebPalette.Dark.phoneInkMuted)
+        assertEquals(PlayarrWebPalette.Light.webInkMuted, PlayarrWebPalette.Light.phoneInkMuted)
+    }
+
+    @Test
     fun selectingATheme_changesTheObservablePalette() {
         PlayarrWebTheme.select(dark = false)
         assertEquals(PlayarrWebPalette.Light, PlayarrWebTheme.palette)
