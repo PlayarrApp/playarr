@@ -2,6 +2,7 @@ import PlayarrKit
 import SwiftUI
 import CoreText
 import UIKit
+import os
 
 struct WorkDetailView: View {
     @State private var viewModel: WorkDetailViewModel
@@ -460,8 +461,26 @@ struct WorkDetailView: View {
                 .lineSpacing(titleLineHeightCorrection)
                 .foregroundStyle(PlayarrStyle.ink)
                 .lineLimit(2)
+                .overlay {
+                    TabletTitleLayoutDiagnostic(
+                        stage: "natural",
+                        fontSize: titleFont,
+                        appliedCorrection: titleLineHeightCorrection,
+                        isSettled: tabletResumePlanLoaded,
+                        colorScheme: scheme
+                    )
+                }
                 // CSS uses line-height: .9. Match its line pitch and remove the final native line's extra leading.
                 .padding(.bottom, titleLineHeightCorrection)
+                .overlay {
+                    TabletTitleLayoutDiagnostic(
+                        stage: "adjusted",
+                        fontSize: titleFont,
+                        appliedCorrection: titleLineHeightCorrection,
+                        isSettled: tabletResumePlanLoaded,
+                        colorScheme: scheme
+                    )
+                }
             Text(episodeTitle)
                 .font(DesignFont.font(15.026 * tabletScale, 570))
                 .tracking(-0.035 * 15.026 * tabletScale)
@@ -1252,6 +1271,46 @@ struct WorkDetailView: View {
             apiClient: apiClient,
             downloadRepository: DownloadRepository(apiClient: apiClient)
         )
+    }
+}
+
+/// Emits numeric SwiftUI text-layout diagnostics without participating in layout.
+private struct TabletTitleLayoutDiagnostic: View {
+    private static let logger = Logger(subsystem: "PlayarrApp", category: "TitleLayoutDiagnostic")
+
+    let stage: String
+    let fontSize: CGFloat
+    let appliedCorrection: CGFloat
+    let isSettled: Bool
+    let colorScheme: ColorScheme
+    @State private var lastMeasurement: String?
+
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear
+                .onAppear { record(proxy.size) }
+                .onChange(of: proxy.size) { _, size in record(size) }
+                .onChange(of: isSettled) { _, _ in record(proxy.size) }
+        }
+    }
+
+    private func record(_ size: CGSize) {
+        #if DEBUG
+        guard ProcessInfo.processInfo.environment["PLAYARR_LAYOUT_DIAGNOSTICS"] == "1",
+              isSettled, size.width > 0, size.height > 0 else { return }
+        let uiFont = DesignFont.uiFont(
+            family: "Nunito Sans",
+            postScriptName: DesignFont.nunitoPostScriptName,
+            size: fontSize,
+            weight: 560,
+            fixedAxes: DesignFont.nunitoAxes
+        ) ?? UIFont.systemFont(ofSize: fontSize)
+        let estimatedLineCount = max(1, Int((size.height / max(uiFont.lineHeight, 1)).rounded()))
+        let signature = String(format: "%@|%.2f|%.2f|%.2f|%.2f|%.2f", stage, size.width, size.height, fontSize, uiFont.lineHeight, appliedCorrection)
+        guard signature != lastMeasurement else { return }
+        lastMeasurement = signature
+        Self.logger.info("PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC stage=\(stage, privacy: .public) width=\(Double(size.width), format: .fixed(precision: 2), privacy: .public) height=\(Double(size.height), format: .fixed(precision: 2), privacy: .public) fontSize=\(Double(fontSize), format: .fixed(precision: 2), privacy: .public) ascender=\(Double(uiFont.ascender), format: .fixed(precision: 2), privacy: .public) descender=\(Double(uiFont.descender), format: .fixed(precision: 2), privacy: .public) leading=\(Double(uiFont.leading), format: .fixed(precision: 2), privacy: .public) lineHeight=\(Double(uiFont.lineHeight), format: .fixed(precision: 2), privacy: .public) webTargetLineHeight=\(Double(fontSize * 0.9), format: .fixed(precision: 2), privacy: .public) appliedCorrection=\(Double(appliedCorrection), format: .fixed(precision: 2), privacy: .public) estimatedLineCount=\(estimatedLineCount, privacy: .public) theme=\(colorScheme == .dark ? "dark" : "light", privacy: .public)")
+        #endif
     }
 }
 

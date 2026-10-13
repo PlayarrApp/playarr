@@ -14,7 +14,7 @@ const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url
 
 const NATIVE = { "film-detail": "detail:movie:@first", "series-detail": "detail:series:@first", "player-controls": "player:movie:@first" };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const run = (cmd, args) => execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+const run = (cmd, args, options = {}) => execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...options });
 
 function readState(work) {
   const env = {};
@@ -48,13 +48,16 @@ export async function createDriver() {
   let theme = "dark", wanted = "/";
   const statePath = () => join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents", "parity-state.json");
   const state = () => { try { return JSON.parse(readFileSync(statePath(), "utf8")); } catch { return {}; } };
-  const launch = async (route, extra = []) => {
+  const launch = async (route, extra = [], enableLayoutDiagnostics = false) => {
     try { run("xcrun", ["simctl", "terminate", udid, bundle]); } catch { /* not running */ }
     try { rmSync(statePath(), { force: true }); } catch { /* no container yet */ }
     run("xcrun", ["simctl", "ui", udid, "appearance", theme]);
+    const launchEnv = { ...process.env };
+    delete launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS;
+    if (device === "ipad" && enableLayoutDiagnostics) launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS = "1";
     run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrMuted", "--playarr-parity-server", e.SERVER_URL, "--playarr-parity-user", e.TEST_USERNAME,
       "--playarr-parity-password", e.TEST_PASSWORD, "--playarr-parity-route", route, "--playarr-parity-theme", theme,
-      ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...extra]);
+      ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...extra], { env: launchEnv });
     for (let i = 0; i < 60 && !state().signedIn; i += 1) await sleep(1000);
     if (!state().signedIn) throw new Error("signed out");
   };
@@ -114,12 +117,25 @@ export async function createDriver() {
     async screenshot(file) {
       const id = basename(file, ".png");
       const open = /^\/(movies|series)\/([0-9a-f-]{36})$/.exec(wanted); // film-detail and series-detail are opened by the suite's pinned id
-      await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (NATIVE[id] ?? id));
+      await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (NATIVE[id] ?? id), [], device === "ipad" && id === "series-detail");
       await sleep(id.startsWith("player") ? 30000 : 14000);
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
+      if (device === "ipad" && id === "series-detail") {
+        let diagnostics = "";
+        try {
+          diagnostics = run("xcrun", ["simctl", "spawn", udid, "log", "show", "--info", "--last", "5m", "--style", "compact",
+            "--predicate", 'eventMessage CONTAINS "PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC"']);
+        } catch { /* absence of the optional diagnostic must not fail the screenshot */ }
+        const markerLines = diagnostics.split("\n").filter((line) => line.includes("PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC") && line.includes(`theme=${theme}`)).slice(-10);
+        const sidecar = markerLines.join("\n").slice(-4000);
+        writeFileSync(`${file}.layout-diagnostic.log`, sidecar);
+        if (!sidecar || !sidecar.includes("stage=natural") || !sidecar.includes("stage=adjusted")) {
+          throw new Error("title layout diagnostics missing natural or adjusted stage");
+        }
+      }
     },
     // Cases a-c: launch straight into the player on the media file and read the engine state the app writes.
     async play(c, expect) {
