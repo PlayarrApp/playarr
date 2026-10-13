@@ -83,6 +83,7 @@ import {layout, text} from '../theme/styles';
 import {sh, sw} from '../theme/scale';
 import {ROUTES, type RouteName} from '../navigation/routes';
 import {reportFocus, reportQuery, takePendingQuery} from '../debug/parityControl';
+import {computeLibraryWindow, nextLibraryScrollOffset} from './libraryWindow';
 
 export type LibraryKind = Extract<WorkKind, 'movie' | 'series' | 'site' | 'artist'>;
 
@@ -332,6 +333,13 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
   const [facets, setFacets] = useState<LanguageFacets | null>(null);
   const loadingMore = useRef(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const currentScrollOffset = useRef(0);
+  useEffect(() => {
+    const listener = scrollY.addListener(({value}) => {
+      currentScrollOffset.current = Math.max(0, -value);
+    });
+    return () => scrollY.removeListener(listener);
+  }, [scrollY]);
   useEffect(() => () => scrollY.stopAnimation(), [scrollY]);
   const detailRoute = kind === 'artist' ? ROUTES.musicDetail : ROUTES.workDetail;
   const label = KIND_LABEL[kind];
@@ -420,27 +428,35 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
   });
   const row = Math.floor(focusIndex / cols);
   const gridOffset = useRef(0);
+  const cardExtent = listView ? rowPitch - 24 : layout.cardH + 33;
+  const nextGridOffset = nextLibraryScrollOffset(gridOffset.current, row, rowPitch, cardExtent, GRID_Y - 7);
   useEffect(() => {
-    // The web's smoothScrollIntoView ("nearest"): the grid stays put until the focused card (art plus label) would leave
-    // [33.5, 1036.5], then moves just far enough; it does not return to the top on its own (measured on the live web).
-    const cardTop = GRID_Y - 7 + row * rowPitch - gridOffset.current;
-    const cardBottom = cardTop + (listView ? rowPitch - 24 : layout.cardH + 33);
-    let next = gridOffset.current;
-    if (cardBottom > 1036.5) next += cardBottom - 1036.5;
-    else if (cardTop < 33.5) next -= 33.5 - cardTop;
-    next = Math.max(0, next);
-    if (next !== gridOffset.current) {
-      gridOffset.current = next;
+    // The web's smoothScrollIntoView ("nearest") moves only when the focused card leaves [33.5, 1036.5].
+    if (nextGridOffset !== gridOffset.current) {
+      gridOffset.current = nextGridOffset;
       scrollY.stopAnimation();
-      Animated.timing(scrollY, {toValue: -next, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+      Animated.timing(scrollY, {toValue: -nextGridOffset, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start(({finished}) => {
+        if (finished) currentScrollOffset.current = nextGridOffset;
+      });
     }
     if (items && focusIndex > items.length - cols * 4) loadMore();
-  }, [row, rowPitch, cols, focusIndex, items, loadMore, scrollY, listView, layout.cardH]);
+  }, [nextGridOffset, cols, focusIndex, items, loadMore, scrollY]);
 
   const dark = scheme === 'dark';
   const activeLetter = selected ? workLetter(selected) : null;
-  const firstVisible = Math.max(0, (row - 2) * cols);
-  const visible = items === null ? [] : items.slice(firstVisible, (row + (listView ? 8 : 5)) * cols);
+  const libraryWindow = computeLibraryWindow({
+    itemCount: items?.length ?? 0,
+    columns: cols,
+    rowPitch,
+    cardTop: GRID_Y - 7,
+    cardExtent,
+    viewportTop: 0,
+    viewportBottom: 1080,
+    offsets: [currentScrollOffset.current, gridOffset.current, nextGridOffset],
+    overscanRows: 1,
+  });
+  const firstVisible = libraryWindow.startIndex;
+  const visible = items === null ? [] : items.slice(firstVisible, libraryWindow.endIndex);
   const locale = language === 'en' ? 'en-GB' : language;
 
   const update = (patch: Partial<{view: LibraryView; size: ArtworkSize; sort: LibrarySort; order: SortOrder}>): void => {

@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Keep viewport-intersecting Library rows rendered during focus scrolling animations on Fire TV, so earlier visible rows no longer disappear.
 - Keep the iPhone Series tab selected while a series detail route is visible, preserving the originating content stack.
 - Hide legacy Chromium scrollbars in the webOS Calendar week view without changing scroll behaviour.
 - Android phone Home card metadata now uses the same muted text colour as the web client in both themes.
