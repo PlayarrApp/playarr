@@ -278,8 +278,23 @@ export function calendarViewFocusKey(action) {
 export function calendarFocusTransitionError(from, key, to) {
   if (!from || !to || !CALENDAR_ACTIONS.has(from.action) || !CALENDAR_ACTIONS.has(to.action)) return null;
   if (from.action === "back" && key === "right" && to.action !== "calView") return "back-right-did-not-reach-view-selector";
-  if (from.action === "cell" && key === "up" && to.action !== "cell" && !CALENDAR_HEADER_ACTIONS.has(to.action)) {
-    return "cell-up-did-not-reach-calendar-header";
+  const fromX = from.rect.x + from.rect.w / 2;
+  const fromY = from.rect.y + from.rect.h / 2;
+  const toX = to.rect.x + to.rect.w / 2;
+  const toY = to.rect.y + to.rect.h / 2;
+  if (from.action === "cell" && key === "left" &&
+      (to.action !== "cell" || Math.abs(toY - fromY) > 2 || toX >= fromX - 1)) {
+    return "calendar-left-did-not-move-to-an-earlier-cell-in-the-same-row";
+  }
+  if (from.action === "cell" && key === "up") {
+    if (to.action === "cell" && toY >= fromY - 1) return "calendar-up-did-not-move-to-an-earlier-row";
+    if (to.action !== "cell" && !CALENDAR_HEADER_ACTIONS.has(to.action)) return "cell-up-did-not-reach-calendar-header";
+  }
+  if (CALENDAR_HEADER_ACTIONS.has(from.action) && CALENDAR_HEADER_ACTIONS.has(to.action)) {
+    if (key === "left" && toX >= fromX - 1) return "calendar-header-left-did-not-move-left";
+    if (key === "right" && toX <= fromX + 1) return "calendar-header-right-did-not-move-right";
+    if (key === "up" && toY >= fromY - 1) return "calendar-header-up-did-not-move-up";
+    if (key === "down" && toY <= fromY + 1) return "calendar-header-down-did-not-move-down";
   }
   return null;
 }
@@ -721,9 +736,9 @@ export function createDriver({ out, args = [] } = {}) {
           ? { action: parityState.calendarFocus, rect: parityState.calendarFocusRect }
           : null;
         const traceFailure = (reason) => `${reason}; Calendar focus trail=${JSON.stringify(calendarTrace)}`;
-        for (let i = 0; i < 8 && parityState.calendarFocus !== "calView"; i += 1) {
-          const key = calendarViewFocusKey(parityState.calendarFocus);
-          if (!key) throw new Error(traceFailure(`Calendar focus cannot reach the view selector from ${parityState.calendarFocus || "unknown"}`));
+        const sameFocus = (a, b) => !!a && !!b && a.action === b.action
+          && a.rect.x === b.rect.x && a.rect.y === b.rect.y && a.rect.w === b.rect.w && a.rect.h === b.rect.h;
+        const observeCalendarKey = async (key, { allowBoundary = false } = {}) => {
           const from = currentCalendarFocus();
           const beforeFocusSeq = parityState.calendarFocusSeq;
           await press(key);
@@ -731,15 +746,49 @@ export function createDriver({ out, args = [] } = {}) {
             await waitFor(
               () => hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeFocusSeq),
               `fresh Calendar focus after ${key}`,
-              5000,
+              1800,
             );
           } catch (error) {
-            throw new Error(traceFailure(`${error.message}; last observed focus=${JSON.stringify(currentCalendarFocus())}`));
+            assertDebug();
+            const unchanged = currentCalendarFocus();
+            if (allowBoundary && parityState.screen === "page" && parityState.page === "calendar"
+                && parityState.screenSeq > beforeCalendarScreenSeq
+                && parityState.calendarFocusSeq === beforeFocusSeq && sameFocus(from, unchanged)) {
+              appendCalendarFocusTransition(calendarTrace, from, key, unchanged);
+              return null;
+            }
+            throw new Error(traceFailure(`${error.message}; last observed focus=${JSON.stringify(unchanged)}`));
           }
           const to = currentCalendarFocus();
           appendCalendarFocusTransition(calendarTrace, from, key, to);
           const transitionError = calendarFocusTransitionError(from, key, to);
           if (transitionError) throw new Error(traceFailure(`${transitionError}: ${JSON.stringify({ from, key, to })}`));
+          return to;
+        };
+        for (let step = 0; step < 64 && parityState.calendarFocus !== "calView"; step += 1) {
+          if (parityState.calendarFocus === "cell") {
+            let next = await observeCalendarKey("up", { allowBoundary: true });
+            if (next === null) {
+              let reachedLeftEdge = false;
+              for (let leftStep = 0; leftStep < 32; leftStep += 1) {
+                const left = await observeCalendarKey("left", { allowBoundary: true });
+                if (left === null) {
+                  reachedLeftEdge = true;
+                  break;
+                }
+                if (left.action !== "cell") throw new Error(traceFailure(`Calendar left scan left the date row: ${JSON.stringify(left)}`));
+              }
+              if (!reachedLeftEdge) throw new Error(traceFailure("Calendar left scan exceeded its safe bound"));
+              next = await observeCalendarKey("up");
+            }
+            if (next.action !== "cell" && !CALENDAR_HEADER_ACTIONS.has(next.action)) {
+              throw new Error(traceFailure(`Calendar Up reached an unexpected control: ${JSON.stringify(next)}`));
+            }
+          } else {
+            const key = calendarViewFocusKey(parityState.calendarFocus);
+            if (!key) throw new Error(traceFailure(`Calendar focus cannot reach the view selector from ${parityState.calendarFocus || "unknown"}`));
+            await observeCalendarKey(key);
+          }
         }
         if (parityState.calendarFocus !== "calView") throw new Error(traceFailure(`Roku did not reach the Calendar view selector; last observed focus=${JSON.stringify(currentCalendarFocus())}`));
         await press("select");

@@ -113,6 +113,17 @@ test("Roku Calendar route follows fresh focus as data replaces the initial Back 
   applyParityLine(state, "PARITY|calendarFocus|calView|1000,56.2,100,48");
   const viewSelector = { action: state.calendarFocus, rect: state.calendarFocusRect };
   assert.equal(calendarFocusTransitionError(back, "right", viewSelector), null);
+  const rightCell = { action: "cell", rect: { x: 300, y: 200, w: 180, h: 120 } };
+  const leftCell = { action: "cell", rect: { x: 100, y: 200, w: 180, h: 120 } };
+  const aboveCell = { action: "cell", rect: { x: 300, y: 50, w: 180, h: 120 } };
+  const wrongRowCell = { action: "cell", rect: { x: 100, y: 50, w: 180, h: 120 } };
+  const unchangedCell = { action: "cell", rect: { x: 300, y: 200, w: 180, h: 120 } };
+  assert.equal(calendarFocusTransitionError(rightCell, "left", leftCell), null);
+  assert.equal(calendarFocusTransitionError(rightCell, "left", wrongRowCell), "calendar-left-did-not-move-to-an-earlier-cell-in-the-same-row");
+  assert.equal(calendarFocusTransitionError(rightCell, "up", aboveCell), null);
+  assert.equal(calendarFocusTransitionError(rightCell, "up", unchangedCell), "calendar-up-did-not-move-to-an-earlier-row");
+  const wrongHeaderToRight = { action: "calPrev", rect: { x: 1200, y: 50, w: 60, h: 50 } };
+  assert.equal(calendarFocusTransitionError(viewSelector, "left", wrongHeaderToRight), "calendar-header-left-did-not-move-left");
   assert.equal(calendarViewFocusKey(state.calendarFocus), null);
   assert.equal(applyParityLine(state, "PARITY|calendarFocus|entry|media title"), false);
 });
