@@ -40,6 +40,9 @@ DEBUG_SEQUENCE = 0
 DETAIL_IMAGE_STAGES = {
     "source", "fetch-start", "fetch-ok", "fetch-error", "bridge-source-ready",
     "assigned", "image-source", "image-area-positive", "image-area-zero", "on-complete", "on-error",
+    "row-match-found", "row-match-missing", "poster-artwork-prop-undefined", "poster-artwork-prop-present",
+    "poster-render-artwork-undefined", "poster-render-artwork-present",
+    "visible-item-stamp-absent", "visible-item-stamp-present",
 }
 DETAIL_LAYOUT_STAGES = {
     "detail-rails-count", "rail-items-count", "rail-item-appear",

@@ -24,12 +24,22 @@ class PreviewPatchContractTests(unittest.TestCase):
         for expected in props:
             self.assertIn(expected, card_transform)
         self.assertIn("reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'on-complete')", card_transform)
+        self.assertIn("@Prop @Watch('previewArtworkUpdated') artwork: image.PixelMap | undefined = undefined", card_transform)
+        self.assertIn("'poster-artwork-prop-undefined' : 'poster-artwork-prop-present'", card_transform)
+        self.assertIn("'poster-render-artwork-present'", card_transform)
+        self.assertIn("'poster-render-artwork-undefined'", card_transform)
         self.assertIn("reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'poster-card-root-area'", card_transform)
         self.assertIn("previewRowId: (item as DetailRow).id", detail_transform)
+        self.assertIn("import { PosterCard } from '../design/components/PosterCard';\\nimport { currentPreviewRouteGeneration", detail_transform)
         self.assertIn("previewGeneration: currentPreviewRouteGeneration()", detail_transform)
         self.assertIn("private tvRightColumn(): void", detail_transform)
         self.assertIn("previewWorkId: this.workId", detail_transform)
         self.assertIn("reportDetailLayoutStageForScope('Detail', this.workId, currentPreviewRouteGeneration(), 'detail-rails-count'", detail_transform)
+        self.assertIn("matchingRowCount > 0 ? 'row-match-found' : 'row-match-missing'", detail_transform)
+        self.assertIn("reportDetailRowImageStage(previewContext,", detail_transform)
+        row_update = detail_transform.split('new = """', 1)[1].split('"""', 1)[0]
+        self.assertLess(row_update.index("'row-match-found'"),
+                        row_update.index("this.rails = applyRowArtworkAcrossRails"))
         self.assertLess(detail_transform.index("this.rails = rails;"),
                         detail_transform.index("'detail-rails-count', rails.length"))
         self.assertLess(self.patch_rail.index(".height(this.listHeight > 0 ? this.listHeight : '100%')"),
@@ -38,7 +48,9 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("rail-items-count", self.patch_rail)
         self.assertIn("rail-item-appear", self.patch_rail)
         self.assertIn("ListItem()", self.patch_rail)
-        self.assertIn(".onAppear(() => { reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'rail-item-appear'", self.patch_rail)
+        self.assertIn("reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'rail-item-appear'", self.patch_rail)
+        self.assertIn("item.stamp !== undefined ? 'visible-item-stamp-present' : 'visible-item-stamp-absent'", self.patch_rail)
+        self.assertIn("reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, item.id, this.previewGeneration", self.patch_rail)
         self.assertIn("rail-list-area", self.patch_rail)
         self.assertIn("rail-list-height-default-fill", self.patch_rail)
         self.assertNotIn("@Prop onPreview", card_transform + self.patch_rail)

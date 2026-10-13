@@ -82,10 +82,18 @@ class PreviewEventTests(unittest.TestCase):
         self.assertTrue(harmony_vnc.append_detail_image_stage(dict(body, stage="image-source")))
         self.assertTrue(harmony_vnc.append_detail_image_stage(dict(body, stage="image-area-positive")))
         self.assertTrue(harmony_vnc.append_detail_image_stage(dict(body, stage="image-area-zero")))
+        for stage in (
+            "row-match-found", "row-match-missing", "poster-artwork-prop-undefined",
+            "poster-artwork-prop-present", "poster-render-artwork-undefined",
+            "poster-render-artwork-present", "visible-item-stamp-absent", "visible-item-stamp-present",
+        ):
+            self.assertTrue(harmony_vnc.append_detail_image_stage(dict(body, stage=stage)), stage)
         self.assertNotIn("width", harmony_vnc.STATE["debug_events"][-1])
         self.assertNotIn("height", harmony_vnc.STATE["debug_events"][-1])
         self.assertFalse(harmony_vnc.append_detail_image_stage(dict(body, stage="bad", row_id="row-b")))
         self.assertFalse(harmony_vnc.append_detail_image_stage(dict(body, generation=6)))
+        self.assertFalse(harmony_vnc.append_detail_image_stage(dict(body, work_id="work-b", parent_work_id="work-b")))
+        self.assertFalse(harmony_vnc.append_detail_image_stage(dict(body, route="Home")))
 
     def test_layout_stages_require_exact_detail_scope_and_numeric_measurements(self):
         harmony_vnc.apply_state({
