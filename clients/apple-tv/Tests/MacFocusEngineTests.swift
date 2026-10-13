@@ -12,6 +12,26 @@ final class MacFocusEngineTests: XCTestCase {
         CGRect(x: x, y: y, width: w, height: h)
     }
 
+    func testLibraryGridParityPositionFollowsOrderedRowAndColumn() {
+        let positions = (0..<7).compactMap { TVParityGridPosition(itemIndex: $0, columns: 3) }
+        XCTAssertEqual(positions, [
+            TVParityGridPosition(itemIndex: 0, columns: 3)!,
+            TVParityGridPosition(itemIndex: 1, columns: 3)!,
+            TVParityGridPosition(itemIndex: 2, columns: 3)!,
+            TVParityGridPosition(itemIndex: 3, columns: 3)!,
+            TVParityGridPosition(itemIndex: 4, columns: 3)!,
+            TVParityGridPosition(itemIndex: 5, columns: 3)!,
+            TVParityGridPosition(itemIndex: 6, columns: 3)!
+        ])
+        XCTAssertEqual(positions.map(\.row), [0, 0, 0, 1, 1, 1, 2])
+        XCTAssertEqual(positions.map(\.column), [0, 1, 2, 0, 1, 2, 0])
+    }
+
+    func testLibraryGridParityPositionRejectsInvalidLayout() {
+        XCTAssertNil(TVParityGridPosition(itemIndex: -1, columns: 3))
+        XCTAssertNil(TVParityGridPosition(itemIndex: 0, columns: 0))
+    }
+
     func testDownLandsOnTheCardVisuallyBelowNotTheSameIndex() {
         // The top rail is scrolled: the focused card sits at x 900. The lower rail starts at x 100.
         let focused = card(900, 100)

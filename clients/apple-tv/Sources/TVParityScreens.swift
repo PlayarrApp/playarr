@@ -477,9 +477,19 @@ enum TVParityState {
     /// The focused card or nav tile's title, set by the tile itself: SwiftUI's focus item is not a view, so the
     /// accessibility tree cannot name it reliably.
     /// `id` tells tiles apart when titles repeat (two films called "Brothers"): only the tile that set the tag clears it.
-    static func setFocus(_ title: String, _ focused: Bool, id: String? = nil, rail: Any? = nil, index: Int? = nil) {
+    static func setFocus(_ title: String, _ focused: Bool, id: String? = nil, rail: Any? = nil, index: Int? = nil,
+                         gridPosition: TVParityGridPosition? = nil) {
         let key = id ?? title
-        if focused { tag = title; tagID = key; position = rail.flatMap { r in index.map { ["rail": r, "index": $0] } } }
+        if focused {
+            tag = title
+            tagID = key
+            if let gridPosition {
+                position = ["rail": gridPosition.row, "index": gridPosition.column,
+                            "row": gridPosition.row, "column": gridPosition.column, "kind": "grid"]
+            } else {
+                position = rail.flatMap { r in index.map { ["rail": r, "index": $0] } }
+            }
+        }
         else if tagID == key { tag = nil; tagID = nil; position = nil }
         write()
     }

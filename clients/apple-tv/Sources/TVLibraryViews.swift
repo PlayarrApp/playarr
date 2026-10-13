@@ -1529,7 +1529,8 @@ struct TVLibraryKindView: View {
                     width: artW,
                     artHeight: artH,
                     showTitle: true,
-                    artIncludesDot: true
+                    artIncludesDot: true,
+                    gridPosition: TVParityGridPosition(itemIndex: index, columns: cols)
                 )
                 // Top-leading placement (not centre) so art top matches SPA y.
                 .frame(width: artW, height: artH + titleBlock, alignment: .topLeading)
@@ -1561,11 +1562,12 @@ struct TVLibraryKindView: View {
                 alignment: .leading,
                 spacing: 27
             ) {
-                ForEach(items) { work in
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, work in
                     if view == "list" {
                         libraryRow(work)
                     } else {
-                        libraryCard(work: work, width: cardW, artHeight: artH, showTitle: true, artIncludesDot: false)
+                        libraryCard(work: work, width: cardW, artHeight: artH, showTitle: true, artIncludesDot: false,
+                                    gridPosition: TVParityGridPosition(itemIndex: index, columns: cols))
                     }
                 }
             }
@@ -1606,10 +1608,12 @@ struct TVLibraryKindView: View {
         width: CGFloat,
         artHeight: CGFloat,
         showTitle: Bool,
-        artIncludesDot: Bool
+        artIncludesDot: Bool,
+        gridPosition: TVParityGridPosition? = nil
     ) -> some View {
         let isSelected = selected?.id == work.id
-        return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil) {
+        return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
+                            parityGridPosition: gridPosition) {
             // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
             // `strong { font-size: clamp(0.54rem, 0.6vw, 0.74rem) → ~11.5 @ 1920,
             // font-weight: 610, letter-spacing: -0.015em }`.

@@ -1,0 +1,1 @@
+- macOS library-grid parity diagnostics now identify the focused row and column, with start state reported only when the actual entry target is known.

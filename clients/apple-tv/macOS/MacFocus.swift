@@ -226,7 +226,13 @@ struct MacSecondary { let action: () -> Void }
 private struct MacSecondaryKey: EnvironmentKey { static let defaultValue: MacSecondary? = nil }
 private struct MacPreferredKey: EnvironmentKey { static let defaultValue = false }
 /// Debug parity: what a focus target names itself in parity-state.json (the Mac's focus is not a SwiftUI focus the tiles can read).
-struct MacParityTag { let title: String; let id: String; let rail: Int?; let index: Int? }
+struct MacParityTag {
+    let title: String
+    let id: String
+    let rail: Int?
+    let index: Int?
+    let gridPosition: TVParityGridPosition?
+}
 private struct MacParityTagKey: EnvironmentKey { static let defaultValue: MacParityTag? = nil }
 
 extension EnvironmentValues {
@@ -295,7 +301,9 @@ struct MacFocusTarget: ViewModifier {
             .onChange(of: focused) { _, now in
                 MacFocusEngine.shared.didFocus(id, now)
                 #if DEBUG
-                if let t = parityTag { TVParityState.setFocus(t.title, now, id: t.id, rail: t.rail, index: t.index) }
+                if let t = parityTag {
+                    TVParityState.setFocus(t.title, now, id: t.id, rail: t.rail, index: t.index, gridPosition: t.gridPosition)
+                }
                 #endif
             }
             .background {
