@@ -13,6 +13,51 @@ let macStageSpace = "playarr.macStage"
 
 enum MacMoveDirection: Equatable { case up, down, left, right }
 
+#if DEBUG
+struct MacFocusMoveObservation {
+    let registeredTargetCandidateCount: Int
+    let chosenFrame: CGRect?
+}
+
+struct MacFocusKeyDiagnosticSample {
+    enum ResponderCategory: String { case text, other }
+
+    let direction: MacMoveDirection
+    let responder: ResponderCategory
+    let textEditingExcluded: Bool
+    let beforeFocusedPresent: Bool
+    let beforeFallbackFocusedPresent: Bool
+    let beforeFallbackEqualsBefore: Bool
+    let afterFocusedPresent: Bool
+    let afterEqualsBefore: Bool
+    let fallbackRan: Bool
+    let registeredTargetCandidateCount: Int
+    let chosenFrame: CGRect?
+    let focusedBindingPresent: Bool
+    let focusedBindingCount: Int
+
+    func line(sequence: Int) -> String {
+        let directionName: String
+        switch direction {
+        case .left: directionName = "left"
+        case .right: directionName = "right"
+        case .up: directionName = "up"
+        case .down: directionName = "down"
+        }
+        let frame = chosenFrame.map {
+            String(format: "%.1f,%.1f,%.1f,%.1f", Double($0.minX), Double($0.minY), Double($0.width), Double($0.height))
+        } ?? "none"
+        return "PlayarrMacFocusKey seq=\(sequence) direction=\(directionName) responder=\(responder.rawValue) " +
+            "text_edit_excluded=\(textEditingExcluded) before_focused=\(beforeFocusedPresent) " +
+            "before_fallback_focused_present=\(beforeFallbackFocusedPresent) " +
+            "before_fallback_equals_before=\(beforeFallbackEqualsBefore) " +
+            "after_focused=\(afterFocusedPresent) after_equals_before=\(afterEqualsBefore) fallback_ran=\(fallbackRan) " +
+            "registered_target_candidates=\(registeredTargetCandidateCount) chosen_frame=\(frame) " +
+            "focused_binding=\(focusedBindingPresent) focused_binding_count=\(focusedBindingCount)"
+    }
+}
+#endif
+
 @MainActor
 final class MacFocusEngine {
     static let shared = MacFocusEngine()
@@ -168,6 +213,10 @@ final class MacFocusEngine {
             .min(by: { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height })
     }
 
+    #if DEBUG
+    private var lastMoveObservation = MacFocusMoveObservation(registeredTargetCandidateCount: 0, chosenFrame: nil)
+    #endif
+
     /// Moves focus to the nearest target in `direction` in the top layer. With nothing focused it focuses the
     /// layer's first target.
     func move(_ direction: MacMoveDirection) {
@@ -178,16 +227,41 @@ final class MacFocusEngine {
         let originID = focusedID.flatMap { candidates[$0] == nil ? nil : $0 }
             ?? lastFocused[layer].flatMap { candidates[$0] == nil ? nil : $0 }
         guard let fromID = originID, let from = candidates[fromID] else {
-            first(in: candidates)?.1.focus()
+            guard let target = first(in: candidates)?.1 else {
+                #if DEBUG
+                lastMoveObservation = MacFocusMoveObservation(registeredTargetCandidateCount: 0, chosenFrame: nil)
+                #endif
+                return
+            }
+            target.focus()
+            #if DEBUG
+            lastMoveObservation = MacFocusMoveObservation(registeredTargetCandidateCount: 0, chosenFrame: target.frame)
+            #endif
             return
         }
-        if let next = Self.nearest(from: from.frame, direction: direction,
-                                   in: candidates.filter { $0.key != fromID }.map { ($0.key, $0.value.frame) }) {
-            candidates[next]?.focus()
+        let geometricCandidates = candidates.filter { $0.key != fromID }.map { ($0.key, $0.value.frame) }
+        let next = Self.nearest(from: from.frame, direction: direction, in: geometricCandidates)
+        if let next, let target = candidates[next] {
+            target.focus()
+            #if DEBUG
+            lastMoveObservation = MacFocusMoveObservation(registeredTargetCandidateCount: geometricCandidates.count, chosenFrame: target.frame)
+            #endif
         } else if direction == .right, from.frame.midX < Self.contentArea.minX {
             pendingStageFocus = true
         }
+        #if DEBUG
+        if next == nil {
+            lastMoveObservation = MacFocusMoveObservation(registeredTargetCandidateCount: geometricCandidates.count, chosenFrame: nil)
+        }
+        #endif
     }
+
+    #if DEBUG
+    func moveWithDiagnostics(_ direction: MacMoveDirection) -> MacFocusMoveObservation {
+        move(direction)
+        return lastMoveObservation
+    }
+    #endif
 
     /// The geometric neighbour: the closest row (or column) ahead, then the closest centre across it, so a move
     /// between rails lands on the card visually above or below, never on a matching index.
@@ -462,6 +536,9 @@ final class MacKeyboard {
     static let shared = MacKeyboard()
     private var monitor: Any?
     private var playPause: [(UUID, () -> Void)] = []
+    #if DEBUG
+    private var focusDiagnosticSequence = 0
+    #endif
 
     func pushPlayPause(_ id: UUID, _ action: @escaping () -> Void) {
         playPause.removeAll { $0.0 == id }
@@ -469,6 +546,59 @@ final class MacKeyboard {
     }
 
     func popPlayPause(_ id: UUID) { playPause.removeAll { $0.0 == id } }
+
+    private func moveDirection(for keyCode: UInt16) -> MacMoveDirection? {
+        switch keyCode {
+        case 123: return .left
+        case 124: return .right
+        case 125: return .down
+        case 126: return .up
+        default: return nil
+        }
+    }
+
+    #if DEBUG
+    private func logFocusKey(_ sequence: Int, direction: MacMoveDirection, responder: MacFocusKeyDiagnosticSample.ResponderCategory,
+                             textEditingExcluded: Bool, before: UUID?, beforeFallback: UUID?, after: UUID?, fallbackRan: Bool,
+                             move: MacFocusMoveObservation) {
+        let engine = MacFocusEngine.shared
+        let bindingCount = engine.targets.values.filter { $0.isFocused() }.count
+        let bindingPresent = engine.focusedID.flatMap { engine.targets[$0]?.isFocused() } ?? false
+        let sample = MacFocusKeyDiagnosticSample(
+            direction: direction,
+            responder: responder,
+            textEditingExcluded: textEditingExcluded,
+            beforeFocusedPresent: before != nil,
+            beforeFallbackFocusedPresent: beforeFallback != nil,
+            beforeFallbackEqualsBefore: beforeFallback == before,
+            afterFocusedPresent: after != nil,
+            afterEqualsBefore: after == before,
+            fallbackRan: fallbackRan,
+            registeredTargetCandidateCount: move.registeredTargetCandidateCount,
+            chosenFrame: move.chosenFrame,
+            focusedBindingPresent: bindingPresent,
+            focusedBindingCount: bindingCount
+        )
+        NSLog("%@", sample.line(sequence: sequence) as NSString)
+    }
+
+    private func nextFocusDiagnosticSequence() -> Int {
+        focusDiagnosticSequence += 1
+        return focusDiagnosticSequence
+    }
+
+    private func logArrowEventEntry(_ sequence: Int, direction: MacMoveDirection, textResponder: Bool, windowKey: Bool) {
+        let name: String
+        switch direction {
+        case .left: name = "left"
+        case .right: name = "right"
+        case .up: name = "up"
+        case .down: name = "down"
+        }
+        NSLog("PlayarrMacFocusKeyEntry seq=%d direction=%@ text_responder=%@ window_key=%@",
+              sequence, name as NSString, String(textResponder) as NSString, String(windowKey) as NSString)
+    }
+    #endif
 
     func install() {
         guard monitor == nil else { return }
@@ -481,18 +611,56 @@ final class MacKeyboard {
         if event.type == .rightMouseDown {
             return MacFocusEngine.shared.secondary(hovered: true) ? nil : event
         }
+        let direction = moveDirection(for: event.keyCode)
         // Text fields keep their keys (search, server address, PIN).
-        if event.window?.firstResponder is NSText { return event }
+        let textEditing = event.window?.firstResponder is NSText
+        #if DEBUG
+        let diagnosticSequence: Int? = direction.map { direction in
+            let sequence = nextFocusDiagnosticSequence()
+            logArrowEventEntry(sequence, direction: direction, textResponder: textEditing,
+                               windowKey: event.window?.isKeyWindow == true)
+            return sequence
+        }
+        #endif
+        if textEditing {
+            #if DEBUG
+            if let direction, let sequence = diagnosticSequence {
+                let engine = MacFocusEngine.shared
+                let focused = engine.focusedID
+                logFocusKey(sequence, direction: direction, responder: .text, textEditingExcluded: true,
+                            before: focused, beforeFallback: focused, after: focused, fallbackRan: false,
+                            move: MacFocusMoveObservation(registeredTargetCandidateCount: 0, chosenFrame: nil))
+            }
+            #endif
+            return event
+        }
         let mods = event.modifierFlags.intersection([.command, .option, .control, .shift])
         if mods.contains(.command) { return event }
         switch event.keyCode {
         case 123, 124, 125, 126:
-            let direction: MacMoveDirection = [123: .left, 124: .right, 125: .down, 126: .up][event.keyCode]!
+            guard let direction else { return event }
             // The focused view's own onMoveCommand runs first (as on tvOS); the engine then moves focus unless
             // that handler already moved it.
-            let before = MacFocusEngine.shared.focusedID
+            let engine = MacFocusEngine.shared
+            let before = engine.focusedID
+            #if DEBUG
+            guard let sequence = diagnosticSequence else { return event }
+            #endif
             DispatchQueue.main.async {
-                if MacFocusEngine.shared.focusedID == before { MacFocusEngine.shared.move(direction) }
+                let beforeFallback = engine.focusedID
+                let fallbackRan = beforeFallback == before
+                #if DEBUG
+                let move = fallbackRan
+                    ? engine.moveWithDiagnostics(direction)
+                    : MacFocusMoveObservation(registeredTargetCandidateCount: 0, chosenFrame: nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(120)) {
+                    self.logFocusKey(sequence, direction: direction, responder: .other, textEditingExcluded: false,
+                                     before: before, beforeFallback: beforeFallback, after: engine.focusedID,
+                                     fallbackRan: fallbackRan, move: move)
+                }
+                #else
+                if fallbackRan { engine.move(direction) }
+                #endif
             }
             return event
         case 36, 76: // Return, keypad Enter

@@ -8,6 +8,33 @@ import XCTest
 
 /// The Mac's arrow-key focus: geometric moves, the web TV rules.
 final class MacFocusEngineTests: XCTestCase {
+#if DEBUG
+    func testFocusKeyDiagnosticContainsOnlySafeDecisionFields() {
+        let sample = MacFocusKeyDiagnosticSample(
+            direction: .down,
+            responder: .other,
+            textEditingExcluded: false,
+            beforeFocusedPresent: true,
+            beforeFallbackFocusedPresent: false,
+            beforeFallbackEqualsBefore: false,
+            afterFocusedPresent: true,
+            afterEqualsBefore: true,
+            fallbackRan: true,
+            registeredTargetCandidateCount: 4,
+            chosenFrame: CGRect(x: 10, y: 20, width: 30, height: 40),
+            focusedBindingPresent: true,
+            focusedBindingCount: 1
+        )
+        XCTAssertEqual(
+            sample.line(sequence: 7),
+            "PlayarrMacFocusKey seq=7 direction=down responder=other text_edit_excluded=false before_focused=true " +
+                "before_fallback_focused_present=false before_fallback_equals_before=false " +
+                "after_focused=true after_equals_before=true fallback_ran=true " +
+                "registered_target_candidates=4 chosen_frame=10.0,20.0,30.0,40.0 focused_binding=true focused_binding_count=1"
+        )
+    }
+#endif
+
     private func card(_ x: CGFloat, _ y: CGFloat, w: CGFloat = 200, h: CGFloat = 300) -> CGRect {
         CGRect(x: x, y: y, width: w, height: h)
     }
