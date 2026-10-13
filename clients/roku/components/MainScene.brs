@@ -2725,9 +2725,11 @@ sub scrollBrowseAlphabetToIndex(index as Integer, center as Boolean)
     if m.browseKind <> "movie" or index < 0 or index >= m.alphabetLabels.Count() then return
     clippingRect = m.browseAlphabet.clippingRect
     rectType = layoutAssociativeTypeTag(clippingRect)
-    if rectType <> "assoc" then return
-    viewportHeight = clippingRect.height
-    if not isPositiveLayoutNumber(viewportHeight) then return
+    viewportHeight = 810.0
+    if rectType = "assoc"
+        clippingHeight = clippingRect.height
+        if isPositiveLayoutNumber(clippingHeight) then viewportHeight = clippingHeight
+    end if
     stageHeight = 1080.0
     resolutionType = "other"
     resolutionHeightType = "other"
