@@ -72,18 +72,72 @@ final class MacFocusEngineTests: XCTestCase {
             }
             return condition()
         }
+        enum DiagnosticStage: String {
+            case afterSettle = "after-settle"
+            case afterRight = "after-right"
+            case afterLeft = "after-left"
+        }
+        func attachSafeDiagnostic(_ stage: DiagnosticStage) {
+            let topTargets = engine.targets.filter { $0.value.layer == engine.topLayer }
+                .sorted { $0.value.frame.minX < $1.value.frame.minX }
+            let firstTarget = topTargets.first
+            let secondTarget = topTargets.dropFirst().first
+            let validFrameCount = topTargets.filter { _, target in
+                let frame = target.frame
+                return !frame.isNull && !frame.isInfinite
+                    && frame.origin.x.isFinite && frame.origin.y.isFinite
+                    && frame.width.isFinite && frame.height.isFinite
+                    && frame.width > 0 && frame.height > 0
+            }.count
+            let nearestSelectsFirst: Bool
+            if let firstTarget, let secondTarget,
+               validFrameCount == topTargets.count {
+                nearestSelectsFirst = MacFocusEngine.nearest(
+                    from: secondTarget.value.frame,
+                    direction: .left,
+                    in: [(firstTarget.key, firstTarget.value.frame)]
+                ) == firstTarget.key
+            } else {
+                nearestSelectsFirst = false
+            }
+            let focusedMatchesFirst = firstTarget.map { engine.focusedID == $0.key } ?? false
+            let focusedMatchesSecond = secondTarget.map { engine.focusedID == $0.key } ?? false
+            let firstBindingFocused = firstTarget?.value.isFocused() ?? false
+            let secondBindingFocused = secondTarget?.value.isFocused() ?? false
+            let diagnostic = [
+                "stage=\(stage.rawValue)",
+                "key_window=\(window.isKeyWindow)",
+                "top_layer_count=\(topTargets.count)",
+                "valid_frame_count=\(validFrameCount)",
+                "nearest_left_selects_first=\(nearestSelectsFirst)",
+                "focused_matches_first=\(focusedMatchesFirst)",
+                "focused_matches_second=\(focusedMatchesSecond)",
+                "first_target_is_focused=\(firstBindingFocused)",
+                "second_target_is_focused=\(secondBindingFocused)",
+            ].joined(separator: " ")
+            NSLog("PLAYARR_MAC_FOCUS_DIAGNOSTIC %@", diagnostic as NSString)
+            let attachment = XCTAttachment(string: diagnostic)
+            attachment.name = "mac-focus-safe-diagnostic"
+            attachment.lifetime = .keepAlways
+            XCTContext.runActivity(named: "mac-focus-\(stage.rawValue)") { activity in
+                activity.add(attachment: attachment)
+            }
+        }
         guard await wait({ window.isKeyWindow }) else { throw XCTSkip("no key window in this session") }
         let registered = await wait({ engine.targets.values.filter { $0.layer == engine.topLayer }.count == 2 })
         XCTAssertTrue(registered, "both buttons are focus targets in the top layer")
         let settled = await wait({ engine.focusedID != nil })
         XCTAssertTrue(settled, "the settle step focuses the layer's first target")
+        attachSafeDiagnostic(.afterSettle)
         let first = engine.focusedID
         engine.move(.right)
         let moved = await wait({ engine.focusedID != nil && engine.focusedID != first })
         XCTAssertTrue(moved, "Right moves focus")
+        attachSafeDiagnostic(.afterRight)
         engine.move(.left)
         let back = await wait({ engine.focusedID == first })
         XCTAssertTrue(back, "Left comes back")
+        attachSafeDiagnostic(.afterLeft)
     }
 
     /// A layer's preferred target (a drawer's close button) takes focus when it appears, ahead of the other buttons.
