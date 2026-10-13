@@ -409,31 +409,7 @@ private struct TVProductionShell<Stage: View>: View {
             // One scope for dock + stage so resetFocus / prefersDefaultFocus
             // can pull the remote out of ScrollView rails into the dock.
             .focusScope(shellFocusNamespace)
-            .environment(\.requestStageFocus) { parityID, rail, index, completion in
-                #if os(tvOS)
-                guard homeFocusHandoff.claim(isHomeRoot: tab == .home && path.isEmpty) else {
-                    completion(false)
-                    return
-                }
-                shellFocus.wrappedValue = .stage
-                resetFocus(in: shellFocusNamespace)
-                completion(true)
-                #elseif os(macOS)
-                guard tab == .home, path.isEmpty, homeFocusHandoff.pending else {
-                    completion(false)
-                    return
-                }
-                pendingMacHomeFocusRequest = PendingMacHomeFocusRequest(
-                    parityID: parityID,
-                    rail: rail,
-                    index: index,
-                    completion: completion
-                )
-                attemptPendingMacHomeFocus()
-                #else
-                completion(false)
-                #endif
-            }
+            .environment(\.requestStageFocus, handleStageFocusRequest)
             .environment(\.cancelStageFocusRequest) {
                 homeFocusHandoff.cancel()
 #if os(macOS)
@@ -516,6 +492,37 @@ private struct TVProductionShell<Stage: View>: View {
             finishPendingMacHomeFocus(false)
         }
 #endif
+    }
+
+    private func handleStageFocusRequest(
+        parityID: String,
+        rail: Int,
+        index: Int,
+        completion: @escaping (Bool) -> Void
+    ) {
+        #if os(tvOS)
+        guard homeFocusHandoff.claim(isHomeRoot: tab == .home && path.isEmpty) else {
+            completion(false)
+            return
+        }
+        shellFocus.wrappedValue = .stage
+        resetFocus(in: shellFocusNamespace)
+        completion(true)
+        #elseif os(macOS)
+        guard tab == .home, path.isEmpty, homeFocusHandoff.pending else {
+            completion(false)
+            return
+        }
+        pendingMacHomeFocusRequest = PendingMacHomeFocusRequest(
+            parityID: parityID,
+            rail: rail,
+            index: index,
+            completion: completion
+        )
+        attemptPendingMacHomeFocus()
+        #else
+        completion(false)
+        #endif
     }
 
 #if os(macOS)
