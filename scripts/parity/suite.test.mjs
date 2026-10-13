@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseBrowseAlphabetFocusDiagnostic, parseBrowseGridHandoffDiagnostic, parseBrowseGridObserverDiagnostic, parseBrowseKeyArtDiagnostic, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseBrowseAlphabetFocusDiagnostic, parseBrowseAlphabetGeometryDiagnostic, parseBrowseGridHandoffDiagnostic, parseBrowseGridObserverDiagnostic, parseBrowseKeyArtDiagnostic, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
 
@@ -426,6 +426,33 @@ test("Roku alphabet focus diagnostics allowlist actions, indices, focus booleans
   assert.equal(state.browseAlphabetFocusDiagnostics[0].seq, 10);
   assert.equal(state.browseAlphabetFocusDiagnostics.at(-1).index, 12);
   assert.doesNotMatch(JSON.stringify(state.browseAlphabetFocusDiagnostics), /private|https?:|title|uri|token/i);
+});
+
+test("Roku alphabet geometry diagnostics accept documented rect and Scene shapes with bounded numeric dimensions", () => {
+  assert.deepEqual(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|1080", 7), {
+    rectType: "assoc", viewportType: "integer", viewportHeight: 810,
+    resolutionType: "assoc", resolutionHeightType: "integer", stageType: "integer", stageHeight: 1080, seq: 7,
+  });
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|float|810.5|assoc|float|float|1080.5", 8)?.viewportHeight, 810.5);
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("other|integer|810|assoc|integer|integer|1080", 9)?.rectType, "other");
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|assoc|810|assoc|integer|integer|1080", 10), null);
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|0|assoc|integer|integer|1080", 11), null);
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|other|other|integer|1080", 12)?.resolutionType, "other");
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|other|integer|1080", 13)?.resolutionHeightType, "other");
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|NaN", 14), null);
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|1e3", 15), null);
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|4321", 16), null);
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|1080|private", 17), null);
+
+  const state = createParityState();
+  assert.equal(applyParityLine(state, "PARITY|browseAlphabetGeometry|assoc|integer|810|assoc|integer|integer|1080"), true);
+  for (let height = 100; height < 1100; height += 100) {
+    assert.equal(applyParityLine(state, `PARITY|browseAlphabetGeometry|assoc|integer|810|assoc|integer|integer|${height}`), true);
+  }
+  assert.equal(state.browseAlphabetGeometryDiagnostics.length, 8);
+  assert.equal(state.browseAlphabetGeometryDiagnostics[0].stageHeight, 300);
+  assert.equal(state.browseAlphabetGeometryDiagnostics.at(-1).stageHeight, 1000);
+  assert.doesNotMatch(JSON.stringify(state.browseAlphabetGeometryDiagnostics), /private|https?:|title|uri|token/i);
 });
 
 test("Roku browse-grid handoff diagnostics retain numeric edge state and observer focus booleans", () => {

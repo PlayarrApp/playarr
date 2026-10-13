@@ -105,6 +105,24 @@ export function parseBrowseAlphabetFocusDiagnostic(value, seq) {
   return { action, index, gridInFocusChain: gridFocus === "1", sceneInFocusChain: sceneFocus === "1", seq };
 }
 
+export function parseBrowseAlphabetGeometryDiagnostic(value, seq) {
+  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
+  const parts = value.trim().split("|");
+  if (parts.length !== 7) return null;
+  const [rectType, viewportType, rawViewportHeight, resolutionType, resolutionHeightType, stageType, rawStageHeight] = parts;
+  const numericToken = /^\d+(?:\.\d+)?$/;
+  if (!numericToken.test(rawViewportHeight) || !numericToken.test(rawStageHeight)) return null;
+  const viewportHeight = Number(rawViewportHeight);
+  const stageHeight = Number(rawStageHeight);
+  const numberTypes = new Set(["integer", "longinteger", "float", "double"]);
+  const isHeight = (height) => Number.isFinite(height) && height > 0 && height <= 4320;
+  if (!["assoc", "other"].includes(rectType) || !numberTypes.has(viewportType)
+      || !["assoc", "other"].includes(resolutionType) || ![...numberTypes, "other"].includes(resolutionHeightType)
+      || !numberTypes.has(stageType)
+      || !isHeight(viewportHeight) || !isHeight(stageHeight)) return null;
+  return { rectType, viewportType, viewportHeight, resolutionType, resolutionHeightType, stageType, stageHeight, seq };
+}
+
 export function parseBrowseGridHandoffDiagnostic(value, seq) {
   if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
   const parts = value.trim().split("|");
@@ -202,7 +220,7 @@ export function createParityState() {
     calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
     calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
     calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(), browseKeyArtDiagnostics: [], browseAlphabetFocusDiagnostics: [], browseGridHandoffDiagnostics: [], browseGridObserverDiagnostics: [],
+    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(), browseKeyArtDiagnostics: [], browseAlphabetFocusDiagnostics: [], browseAlphabetGeometryDiagnostics: [], browseGridHandoffDiagnostics: [], browseGridObserverDiagnostics: [],
   };
 }
 
@@ -277,6 +295,11 @@ export function applyParityLine(state, line) {
     if (!diagnostic) return false;
     state.browseAlphabetFocusDiagnostics.push(diagnostic);
     if (state.browseAlphabetFocusDiagnostics.length > 32) state.browseAlphabetFocusDiagnostics.shift();
+  } else if (kind === "browseAlphabetGeometry") {
+    const diagnostic = parseBrowseAlphabetGeometryDiagnostic(value, state.eventSeq);
+    if (!diagnostic) return false;
+    state.browseAlphabetGeometryDiagnostics.push(diagnostic);
+    if (state.browseAlphabetGeometryDiagnostics.length > 8) state.browseAlphabetGeometryDiagnostics.shift();
   } else if (kind === "browseGridHandoff") {
     const diagnostic = parseBrowseGridHandoffDiagnostic(value, state.eventSeq);
     if (!diagnostic) return false;
@@ -752,6 +775,7 @@ export function createDriver({ out, args = [] } = {}) {
       parityState.artMarkers = { home: 0, movies: 0, series: 0, calendar: 0 };
       parityState.browseKeyArtDiagnostics = [];
       parityState.browseAlphabetFocusDiagnostics = [];
+      parityState.browseAlphabetGeometryDiagnostics = [];
       parityState.browseGridHandoffDiagnostics = [];
       parityState.browseGridObserverDiagnostics = [];
     }
@@ -1104,6 +1128,7 @@ export function createDriver({ out, args = [] } = {}) {
     async focused() { assertDebug(); return focus; },
     async browseKeyArtDiagnostics() { assertDebug(); return parityState.browseKeyArtDiagnostics.map((event) => ({ ...event })); },
     async browseAlphabetFocusDiagnostics() { assertDebug(); return parityState.browseAlphabetFocusDiagnostics.map((event) => ({ ...event })); },
+    async browseAlphabetGeometryDiagnostics() { assertDebug(); return parityState.browseAlphabetGeometryDiagnostics.map((event) => ({ ...event })); },
     async browseGridHandoffDiagnostics() { assertDebug(); return parityState.browseGridHandoffDiagnostics.map((event) => ({ ...event })); },
     async browseGridObserverDiagnostics() { assertDebug(); return parityState.browseGridObserverDiagnostics.map((event) => ({ ...event })); },
     async screenshot(file) {

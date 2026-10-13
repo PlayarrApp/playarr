@@ -2413,6 +2413,7 @@ sub openBrowse(kind as String, label as String)
     m.artActiveScope = ""
     m.browseArtTelemetryArmed = false
     m.browseKind = kind
+    m.browseAlphabetGeometryEmitted = false
     configureBrowseAlphabetLayout(kind = "movie")
     if kind = "movie"
         m.browseTrackingAlphabetIndex = 0
@@ -2723,14 +2724,23 @@ end sub
 sub scrollBrowseAlphabetToIndex(index as Integer, center as Boolean)
     if m.browseKind <> "movie" or index < 0 or index >= m.alphabetLabels.Count() then return
     clippingRect = m.browseAlphabet.clippingRect
-    if Type(clippingRect) <> "roAssociativeArray" then return
+    rectType = layoutAssociativeTypeTag(clippingRect)
+    if rectType <> "assoc" then return
     viewportHeight = clippingRect.height
     if not isPositiveLayoutNumber(viewportHeight) then return
     stageHeight = 1080.0
+    resolutionType = "other"
+    resolutionHeightType = "other"
     designResolution = m.top.currentDesignResolution
-    if Type(designResolution) = "roAssociativeArray"
+    resolutionType = layoutAssociativeTypeTag(designResolution)
+    if resolutionType = "assoc"
         designHeight = designResolution.height
+        resolutionHeightType = layoutNumberTypeTag(designHeight)
         if isPositiveLayoutNumber(designHeight) then stageHeight = designHeight
+    end if
+    if m.artTelemetryEnabled and not m.browseAlphabetGeometryEmitted
+        parityEmit("browseAlphabetGeometry", rectType + "|" + layoutNumberTypeTag(viewportHeight) + "|" + viewportHeight.ToStr().Trim() + "|" + resolutionType + "|" + resolutionHeightType + "|" + layoutNumberTypeTag(stageHeight) + "|" + stageHeight.ToStr().Trim())
+        m.browseAlphabetGeometryEmitted = true
     end if
     viewportUnit = stageHeight / 100.0
     topPadding = 8.0
@@ -2759,12 +2769,26 @@ sub scrollBrowseAlphabetToIndex(index as Integer, center as Boolean)
 end sub
 
 function isPositiveLayoutNumber(value as Dynamic) as Boolean
-    valueType = Type(value)
-    if valueType = "Integer" then return value > 0
-    if valueType = "LongInteger" then return value > 0
-    if valueType = "Float" then return value > 0
-    if valueType = "Double" then return value > 0
+    valueType = layoutNumberTypeTag(value)
+    if valueType = "integer" then return value > 0
+    if valueType = "longinteger" then return value > 0
+    if valueType = "float" then return value > 0
+    if valueType = "double" then return value > 0
     return false
+end function
+
+function layoutNumberTypeTag(value as Dynamic) as String
+    valueType = LCase(Type(value))
+    if valueType = "integer" then return valueType
+    if valueType = "longinteger" then return valueType
+    if valueType = "float" then return valueType
+    if valueType = "double" then return valueType
+    return "other"
+end function
+
+function layoutAssociativeTypeTag(value as Dynamic) as String
+    if Type(value) = "roAssociativeArray" then return "assoc"
+    return "other"
 end function
 
 sub enterBrowseAlphabet(preserveCurrent as Boolean)
