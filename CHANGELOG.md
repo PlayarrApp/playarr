@@ -565,6 +565,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Match the Sailfish unseen marker outer size and border to the mobile web card.
 - Match the Sailfish library count colour to the web brand ink in both light and dark themes.
 - Match the Android phone light-theme card focus glow to the web card accent.
 - Android phone library cards now show the web-matched focus glow and apply the web lift and art scale only during keyboard navigation, while touch interaction stays at rest.

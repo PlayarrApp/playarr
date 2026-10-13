@@ -48,10 +48,10 @@ MouseArea {
     }
     Rectangle {
         visible: root.showUnwatched && (!root.prog || root.prog.state === "unseen")
-        width: 10 * Tokens.u; height: width; radius: width / 2
+        width: 9 * Tokens.u; height: width; radius: width / 2
         anchors { top: art.top; right: art.right; topMargin: 7 * Tokens.u; rightMargin: 7 * Tokens.u }
         color: Tokens.brandPink
-        border.width: 1.6 * Tokens.u
+        border.width: 2 * Tokens.u
         border.color: "#ffffff"
     }
     Column {
