@@ -3788,6 +3788,8 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         item.artHeaders = artworkHeaders(item.hdPosterUrl, headers)
         item.AddField("activeRailFactor", "float", false)
         item.activeRailFactor = activeRailFactor
+        item.AddField("focusRingOutsideArt", "boolean", false)
+        item.focusRingOutsideArt = homeRailIndex(row) >= 0
         ' Similar Titles (detailSimilar) passes 1.5 to match the real,
         ' larger .tv-title-card sizing used there -- see PosterCard.xml's
         ' cardScale comment. Home's rails never pass this, so it defaults
@@ -3797,9 +3799,10 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         if artEnabledForRow
             focusOffset = 0
             if row.focusXOffset <> invalid and row.focusXOffset.Count() > 0 then focusOffset = row.focusXOffset[0]
-            artX = m.homeContent.translation[0] + row.translation[0] + focusOffset + artCardIndex * (row.rowItemSize[0][0] + row.rowItemSpacing[0][0])
-            artY = m.homeContent.translation[1] + m.homeRailPool[artRowIndex].group.translation[1] + row.translation[1]
-            artW = row.rowItemSize[0][0]
+            focusInset = 3
+            artX = m.homeContent.translation[0] + row.translation[0] + focusOffset + focusInset + artCardIndex * (row.rowItemSize[0][0] + row.rowItemSpacing[0][0])
+            artY = m.homeContent.translation[1] + m.homeRailPool[artRowIndex].group.translation[1] + row.translation[1] + focusInset
+            artW = row.rowItemSize[0][0] - (focusInset * 2)
             artH = artW * 9 / 16
             artSlotName = "home-r" + artRowIndex.ToStr() + "-c" + artCardIndex.ToStr()
             if artRectVisible(artX, artY, artW, artH)
@@ -3996,10 +3999,10 @@ function createHomeRail(contentTarget as Object) as Object
     ' see PosterCard.xml's header comment for the full measurement notes.
     ' The viewport starts 96 px left of the track so scrolled cards continue into the gutter, where the scroll fade covers them.
     row.itemSize = [1134, 250]
-    ' RowList rounds item geometry to whole pixels: a 220 box on a 244 pitch (web 243.8) with the art drawn 218.9 wide.
-    ' Web Home cards are 327 x 184 art on a 352 px pitch (measured on the live web: rects of the card images).
-    row.rowItemSize = [[327, 250]]
-    row.rowItemSpacing = [[25, 0]]
+    ' Home reserves 3 px on each side for the outer focus ring while keeping
+    ' the artwork at 327 px and the measured 352 px card pitch.
+    row.rowItemSize = [[333, 250]]
+    row.rowItemSpacing = [[19, 0]]
     row.rowHeights = [250]
     row.showRowLabel = false
     row.focusXOffset = [96]
@@ -4009,7 +4012,7 @@ function createHomeRail(contentTarget as Object) as Object
     ' focus-ring bitmap, which would otherwise draw an unwanted white
     ' outline with no basis in tv-web's actual CSS.
     row.focusBitmapBlendColor = &h00000000
-    row.translation = [-96, 41.1]
+    row.translation = [-99, 38.1]
     group.AppendChild(row)
 
     contentTarget.AppendChild(group)

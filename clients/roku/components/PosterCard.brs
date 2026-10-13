@@ -7,6 +7,7 @@ sub init()
     ThemeSetRole(m.top.findNode("focusRing"), "cardGlow")
     ThemeSetRole(m.top.findNode("focusGlow"), "cardGlow")
     ThemeInitComponent()
+    m.focusRingInset = 0
     m.focusRing = m.top.findNode("focusRing")
     m.focusGlow = m.top.findNode("focusGlow")
     m.poster = m.top.findNode("poster")
@@ -62,7 +63,14 @@ sub onContentChanged()
     if content.listMode = true then listMode = true
     m.padTop = 0
     if content.padTop <> invalid then m.padTop = content.padTop
-    m.cardRoot.translation = [0, m.padTop]
+    m.focusRingOutsideArt = false
+    if content.focusRingOutsideArt <> invalid
+        if content.focusRingOutsideArt = true then m.focusRingOutsideArt = true
+    end if
+    focusInset = 0
+    if m.focusRingOutsideArt then focusInset = 3
+    m.focusRingInset = focusInset
+    m.cardRoot.translation = [focusInset, m.padTop + focusInset]
     layoutCard(cardScale, artW, artH, listMode)
     ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
     m.titleY = m.cardTitleY
@@ -205,7 +213,7 @@ sub onFocusChanged()
     liftY = -cardFocusLift() * effective
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
-    m.liftInterp.keyValue = [m.cardRoot.translation, [0, m.padTop + liftY]]
+    m.liftInterp.keyValue = [m.cardRoot.translation, [m.focusRingInset, m.padTop + m.focusRingInset + liftY]]
     m.scaleInterp.key = [0, 1]
     m.scaleInterp.keyValue = [m.artGroup.scale, [artScale, artScale]]
     m.focusAnim.control = "stop"
@@ -298,10 +306,12 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.unwatchedBadge.translation = [artW - 23.5, 9.5]
     m.progressTrack.translation = [0, artH - 3]
     m.progressTrack.width = artW
-    ' Inside the art's edge: a list clips its items at its own bounds, so a ring outside the art would lose its top and left.
-    m.focusRing.translation = [0, 0]
-    m.focusRing.width = artW
-    m.focusRing.height = artH
+    ' Home RowList items reserve a 3 px inset around the art so this outer ring stays inside the item viewport.
+    focusInset = 0
+    if m.focusRingOutsideArt then focusInset = 3
+    m.focusRing.translation = [-focusInset, -focusInset]
+    m.focusRing.width = artW + (focusInset * 2)
+    m.focusRing.height = artH + (focusInset * 2)
     m.focusGlow.translation = [-90, -90]
     m.focusGlow.width = artW + 180
     m.focusGlow.height = artH + 180
