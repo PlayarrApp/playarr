@@ -429,10 +429,13 @@ test("Roku alphabet focus diagnostics allowlist actions, indices, focus booleans
 });
 
 test("Roku alphabet geometry diagnostics accept documented rect and Scene shapes with bounded numeric dimensions", () => {
-  assert.deepEqual(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|1080", 7), {
+  const sevenFieldEvent = "assoc|integer|810|assoc|integer|integer|1080";
+  assert.deepEqual(parseBrowseAlphabetGeometryDiagnostic(sevenFieldEvent, 7), {
     rectType: "assoc", viewportType: "integer", viewportHeight: 810,
     resolutionType: "assoc", resolutionHeightType: "integer", stageType: "integer", stageHeight: 1080, seq: 7,
   });
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|1080", 7), null);
+  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc||810|assoc|integer|integer|1080", 7), null);
   assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|float|810.5|assoc|float|float|1080.5", 8)?.viewportHeight, 810.5);
   assert.equal(parseBrowseAlphabetGeometryDiagnostic("other|integer|810|assoc|integer|integer|1080", 9)?.rectType, "other");
   assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|assoc|810|assoc|integer|integer|1080", 10), null);
