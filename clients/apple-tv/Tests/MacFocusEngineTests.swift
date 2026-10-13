@@ -174,29 +174,36 @@ final class MacFocusEngineTests: XCTestCase {
             parityID: "home-card", parityRail: 0, parityIndex: 0, homeRailFocus: true
         ))
         engine.update(navID, .init(frame: card(20, 100), layer: 0, focus: { navFocusCount += 1 }))
+        try await Task.sleep(for: .milliseconds(200)) // Let the initial layer settle before modeling drawer entry.
         engine.didFocus(homeID, true)
         engine.didFocus(navID, true)
+        homeFocusCount = 0
+        navFocusCount = 0
         engine.update(firstOverlayID, .init(frame: card(20, 100), layer: 1, focus: {}))
         engine.didFocus(firstOverlayID, true)
+        try await Task.sleep(for: .milliseconds(200)) // Record layer 1 before closing or opening another layer.
         engine.requestHomeCardRestore(parityID: "home-card", rail: 0, index: 0)
         engine.update(nextOverlayID, .init(frame: card(40, 100), layer: 2, focus: {}))
         engine.didFocus(nextOverlayID, true)
+        try await Task.sleep(for: .milliseconds(200))
         engine.remove(nextOverlayID)
         engine.remove(firstOverlayID)
         try await Task.sleep(for: .milliseconds(200))
         XCTAssertEqual(homeFocusCount, 0, "opening another overlay cancels the pending one-shot return")
         XCTAssertEqual(navFocusCount, 1, "normal layer restoration still prefers the last focused nav item")
 
-        engine.update(firstOverlayID, .init(frame: card(20, 100), layer: 1, focus: {}))
+        homeFocusCount = 0
+        navFocusCount = 0
         engine.didFocus(homeID, true)
+        engine.update(firstOverlayID, .init(frame: card(20, 100), layer: 1, focus: {}))
         engine.didFocus(firstOverlayID, true)
+        try await Task.sleep(for: .milliseconds(200))
         engine.requestHomeCardRestore(parityID: "home-card", rail: 0, index: 0)
-        engine.update(nextOverlayID, .init(frame: card(40, 100), layer: 1, focus: {}))
-        engine.didFocus(nextOverlayID, true)
-        engine.remove(nextOverlayID)
+        engine.didFocus(navID, true) // User changes focus while the drawer is open.
         engine.remove(firstOverlayID)
         try await Task.sleep(for: .milliseconds(200))
         XCTAssertEqual(homeFocusCount, 0, "user focus movement cancels the pending one-shot return")
+        XCTAssertEqual(navFocusCount, 1, "the changed nav focus receives ordinary layer restoration")
         engine.remove(homeID)
         engine.remove(navID)
     }
@@ -278,11 +285,17 @@ final class MacFocusEngineTests: XCTestCase {
             frame: card(300, 200), layer: 0, focus: { homeFocusCount += 1 },
             parityID: "home", parityRail: 0, parityIndex: 0, homeRailFocus: true
         ))
+        try await Task.sleep(for: .milliseconds(200)) // Let base-layer registration settle before opening a drawer.
         engine.didFocus(homeID, true)
         engine.update(navID, .init(frame: card(20, 100), layer: 0, focus: { navFocusCount += 1 }))
+        try await Task.sleep(for: .milliseconds(200))
+        engine.didFocus(homeID, true)
         engine.didFocus(navID, true)
+        homeFocusCount = 0
+        navFocusCount = 0
         engine.update(overlayID, .init(frame: card(300, 100), layer: 1, focus: {}))
         engine.didFocus(overlayID, true)
+        try await Task.sleep(for: .milliseconds(200)) // Let the overlay become the settled layer before the arrow.
         engine.requestHomeCardRestore(parityID: "home", rail: 0, index: 0)
 
         engine.move(.right) // No right-hand target exists in the active overlay.
