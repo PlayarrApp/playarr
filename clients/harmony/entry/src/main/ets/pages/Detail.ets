@@ -48,15 +48,15 @@
  *
  * ## Artwork
  *
- * Per-row artwork is intentionally modest in scope: an album's own cover
- * (`fetchAlbumArtworkByPriority`, `COVER_ARTWORK_PRIORITY`) is fetched ONCE
- * per album and reused for every track row inside it (there is no
- * per-track artwork endpoint at all, brief 4.9); an episode/book row tries
- * `fetchMediaThumbnail(mediaFileId, 0)` when it has a resolved
- * `media_file_id` -- exactly the "on-deck episode art" use
- * `data/ArtworkRepository.ets`'s own header comment documents that endpoint
- * for. Every fetch happens AFTER the rail/row skeletons are already on
- * screen (never blocking first paint). Resolved PixelMaps live in a
+ * Per-row artwork follows the matching web sources: episode rows require a
+ * resolved `media_file_id`, then try the server-cached episode still when
+ * advertised, its default 30-second media thumbnail, and the series
+ * backdrop/poster detail artwork; book rows use their media thumbnail.
+ * An album's own cover (`fetchAlbumArtworkByPriority`,
+ * `COVER_ARTWORK_PRIORITY`) is fetched ONCE per album and reused for every
+ * track row (there is no per-track artwork endpoint, brief 4.9). Every
+ * fetch happens AFTER the rail/row skeletons are already on screen (never
+ * blocking first paint). Resolved PixelMaps live in a
  * Detail-owned `@Observed` store keyed by stable row ID. Each store update
  * increments its `@Track` revision; row-card children receive the store
  * directly through `@ObjectLink` and read their artwork by row ID, without
@@ -112,9 +112,11 @@ import { addToWatchlist, removeFromWatchlist, resolveTitle } from '../data/Watch
 import { snapshotFromWork } from '../core/TitleSnapshot';
 import { formatRuntimeLabel } from '../core/RuntimeLabel';
 import { resumeStartMs } from '../core/PlaybackMath.ts';
+import { selectEpisodeArtworkSources } from '../core/EpisodeArtworkSources';
 import {
   fetchWorkArtworkByPriority,
   fetchAlbumArtworkByPriority,
+  fetchEpisodeArtwork,
   fetchMediaThumbnail,
   HERO_ARTWORK_PRIORITY,
   COVER_ARTWORK_PRIORITY,
@@ -275,6 +277,8 @@ interface DetailRow {
   subtitle: string;
   mediaFileId: string | null;
   similarWorkId: string | null;
+  /** Present only for episode rows; false means no still endpoint is advertised. */
+  episodeHasThumb?: boolean;
   /** Where playback starts when the row is a chapter; absent plays from the beginning. */
   startMs?: number;
 }
@@ -407,6 +411,7 @@ function buildEpisodeRow(detail: EpisodeDetail): DetailRow {
     subtitle: 'Episode ' + String(episode.episode_number),
     mediaFileId: episodeMediaFileId(detail),
     similarWorkId: null,
+    episodeHasThumb: episode.images.some((item): boolean => item.kind === 'thumb'),
   };
   return row;
 }
@@ -421,7 +426,10 @@ function seasonHeading(season: Season): string {
 function buildSeasonRail(detail: SeasonDetail): DetailRail {
   const items: DetailRow[] = [];
   for (const episodeDetail of detail.episodes) {
-    items.push(buildEpisodeRow(episodeDetail));
+    const item = buildEpisodeRow(episodeDetail);
+    if (item.mediaFileId !== null && item.mediaFileId.length > 0) {
+      items.push(item);
+    }
   }
   const rail: DetailRail = {
     id: 'season-' + detail.season.id,
@@ -709,8 +717,8 @@ struct Detail {
       this.loadResumePlan(detail.work.id);
     }
 
-    this.loadHeroArtwork(detail.work.id, artworkGeneration);
-    this.hydrateRailArtwork(artworkGeneration);
+    const heroArtworkPromise = this.loadHeroArtwork(detail.work.id, artworkGeneration);
+    this.hydrateRailArtwork(artworkGeneration, heroArtworkPromise);
     this.loadSimilar(detail.work, artworkGeneration);
     this.loadCredits(detail.work.id);
     this.loadWatchlistState(detail.work);
@@ -722,18 +730,25 @@ struct Detail {
     }
   }
 
-  private async loadHeroArtwork(workId: string, generation: number): Promise<void> {
+  private async loadHeroArtwork(workId: string, generation: number): Promise<image.PixelMap | null> {
     const result = await fetchWorkArtworkByPriority(workId, HERO_ARTWORK_PRIORITY);
-    if (this.artworkStore.isCurrentGeneration(generation) && result.kind === 'ok') {
-      this.heroArtwork = result.value;
+    if (!this.artworkStore.isCurrentGeneration(generation)) {
+      return null;
     }
+    if (result.kind === 'ok') {
+      this.heroArtwork = result.value;
+      return result.value;
+    }
+    return null;
   }
 
-  /** Fires once per rail: an album rail's cover is fetched once and applied
-   * to every track row at once; every other rail (season/books) hydrates
-   * its rows individually via `fetchMediaThumbnail`, skipping any row whose
-   * `media_file_id` has not resolved yet. */
-  private async hydrateRailArtwork(generation: number): Promise<void> {
+  /** Fires once per rail: an album cover is shared by its track rows;
+   * episode rows try still, media frame, then the shared hero-art promise;
+   * book rows use `fetchMediaThumbnail` when their file is resolved. */
+  private async hydrateRailArtwork(
+    generation: number,
+    heroArtworkPromise: Promise<image.PixelMap | null>
+  ): Promise<void> {
     const detail = this.detail;
     const artistWorkId = detail !== null ? detail.work.id : '';
     const rails = this.rails;
@@ -760,6 +775,45 @@ struct Detail {
 
       for (const item of rail.items) {
         if (item.mediaFileId === null) {
+          continue;
+        }
+        if (item.episodeHasThumb !== undefined && detail !== null) {
+          const sources = selectEpisodeArtworkSources({
+            mediaFileId: item.mediaFileId,
+            hasEpisodeThumb: item.episodeHasThumb,
+          });
+          for (const source of sources) {
+            if (source === 'episode-still') {
+              const still = await fetchEpisodeArtwork(detail.work.id, item.id, 'thumb', 540);
+              if (!this.artworkStore.isCurrentGeneration(generation)) {
+                return;
+              }
+              if (still.kind === 'ok') {
+                this.artworkStore.setArtwork(generation, item.id, still.value);
+                break;
+              }
+              continue;
+            }
+            if (source === 'media-thumbnail') {
+              const frame = await fetchMediaThumbnail(item.mediaFileId);
+              if (!this.artworkStore.isCurrentGeneration(generation)) {
+                return;
+              }
+              if (frame.kind === 'ok') {
+                this.artworkStore.setArtwork(generation, item.id, frame.value);
+                break;
+              }
+              continue;
+            }
+            const seriesArtwork = await heroArtworkPromise;
+            if (!this.artworkStore.isCurrentGeneration(generation)) {
+              return;
+            }
+            if (seriesArtwork !== null) {
+              this.artworkStore.setArtwork(generation, item.id, seriesArtwork);
+              break;
+            }
+          }
           continue;
         }
         const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);

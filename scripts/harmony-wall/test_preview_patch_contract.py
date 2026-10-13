@@ -1,8 +1,13 @@
 import unittest
 from pathlib import Path
+import importlib.util
 
 
 HERE = Path(__file__).resolve().parent
+PATCH_STATE_SPEC = importlib.util.spec_from_file_location("harmony_patch_state", HERE / "patch_state.py")
+patch_state = importlib.util.module_from_spec(PATCH_STATE_SPEC)
+assert PATCH_STATE_SPEC.loader is not None
+PATCH_STATE_SPEC.loader.exec_module(patch_state)
 
 
 class PreviewPatchContractTests(unittest.TestCase):
@@ -109,6 +114,41 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("isCurrentGeneration(generation)", old)
         self.assertIn("isCurrentGeneration(generation)", new)
         self.assertIn("setArtwork(generation, item.id, thumb.value)", new)
+
+    def test_episode_sources_are_instrumented_once_with_scoped_payload_and_store_stages(self):
+        transformed = patch_state.instrument_episode_art(self.detail_source)
+        branches = (
+            ("episode-still", "still", "stillContext"),
+            ("media-thumbnail", "frame", "frameContext"),
+            ("series-artwork fallback", "seriesArtwork", "seriesArtworkContext"),
+        )
+        for branch, result, context in branches:
+            with self.subTest(branch=branch):
+                self.assertIn('assert count == 1, f"expected exactly one {branch} episode-art branch, found {count}"',
+                              self.patch_state)
+                self.assertEqual(transformed.count(f"reportDetailRowImageStage({context}, 'fetch-start')"), 1)
+                self.assertEqual(transformed.count(f"reportDetailRowImageStage({context}, 'fetch-ok')"), 1)
+                self.assertEqual(transformed.count(f"reportDetailRowImageStage({context}, 'fetch-error')"), 1)
+                self.assertEqual(transformed.count(f"reportDetailRowImageStage({context}, 'bridge-source-ready')"), 1)
+                payload_value = result if result == "seriesArtwork" else result + ".value"
+                self.assertEqual(transformed.count(f"reportDetailImagePayloadScope({context}, {payload_value} as Object as string)"), 1)
+                self.assertEqual(transformed.count(f"reportDetailRowImageStage({context}, 'artwork-store-updated')"), 1)
+                self.assertEqual(transformed.count(f"reportDetailRowImageStage({context}, 'assigned')"), 1)
+        self.assertIn("reportDetailRowImageStage(previewContext, 'fetch-start')", self.patch_state)
+
+    def test_episode_instrumentation_checks_generation_after_each_await(self):
+        transformed = patch_state.instrument_episode_art(self.detail_source)
+        awaited_results = (
+            "const still = await fetchEpisodeArtwork",
+            "const frame = await fetchMediaThumbnail",
+            "const seriesArtwork = await heroArtworkPromise",
+        )
+        for awaited in awaited_results:
+            start = transformed.index(awaited)
+            guard = transformed.index("if (!this.artworkStore.isCurrentGeneration(generation))", start)
+            result_stage = transformed.index("reportDetailRowImageStage(", guard + 1)
+            self.assertLess(start, guard)
+            self.assertLess(guard, result_stage)
 
     def test_preview_scope_generation_is_captured_as_scalar_props(self):
         self.assertIn("previewGeneration: currentPreviewRouteGeneration()", self.patch_state)

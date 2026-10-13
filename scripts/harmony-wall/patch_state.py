@@ -1,10 +1,9 @@
 # Preview-only, run after patch_route.py (never committed): the parity state for the suite driver. Cards and nav tiles report their focus,
 # and the route poll also reports the top route name (and Library kind). Usage: patch_state.py <ets-root> (clients/harmony/entry/src/main/ets copy).
 import re, sys
-root = sys.argv[1]
 
 def edit(rel, fn):
-    p = root + '/' + rel
+    p = ROOT + '/' + rel
     s = open(p).read()
     if 'PreviewState' in s:
         return
@@ -135,15 +134,131 @@ def detail(s):
     old_rails = "    const rails = buildRailsFromChildren(detail.children);\n    this.rails = rails;"
     assert old_rails in s
     s = s.replace(old_rails, old_rails + "\n    reportDetailLayoutStageForScope('Detail', this.workId, currentPreviewRouteGeneration(), 'detail-rails-count', rails.length, -1, -1);", 1)
-    return s
+    return instrument_episode_art(s)
+
+def replace_episode_branch(s, old, new, branch):
+    count = s.count(old)
+    assert count == 1, f"expected exactly one {branch} episode-art branch, found {count}"
+    return s.replace(old, new, 1)
+
+def instrument_episode_art(s):
+    still = """            if (source === 'episode-still') {
+              const still = await fetchEpisodeArtwork(detail.work.id, item.id, 'thumb', 540);
+              if (!this.artworkStore.isCurrentGeneration(generation)) {
+                return;
+              }
+              if (still.kind === 'ok') {
+                this.artworkStore.setArtwork(generation, item.id, still.value);
+                break;
+              }
+              continue;
+            }"""
+    still_instrumented = """            if (source === 'episode-still') {
+              const stillContext = captureDetailRowImageContext(this.workId, item.id);
+              reportDetailRowImageStage(stillContext, 'source');
+              reportDetailRowImageStage(stillContext, 'fetch-start');
+              const still = await fetchEpisodeArtwork(detail.work.id, item.id, 'thumb', 540);
+              if (!this.artworkStore.isCurrentGeneration(generation)) {
+                return;
+              }
+              if (still.kind === 'ok') {
+                reportDetailRowImageStage(stillContext, 'fetch-ok');
+                reportDetailRowImageStage(stillContext, 'bridge-source-ready');
+                reportDetailImagePayloadScope(stillContext, still.value as Object as string);
+                this.artworkStore.setArtwork(generation, item.id, still.value);
+                const stillStored = this.artworkStore.getArtwork(item.id) !== undefined;
+                reportDetailRowImageStage(stillContext, stillStored ? 'artwork-store-present' : 'artwork-store-absent');
+                if (stillStored) {
+                  reportDetailRowImageStage(stillContext, 'artwork-store-updated');
+                }
+                reportDetailRowImageStage(stillContext, 'assigned');
+                break;
+              }
+              reportDetailRowImageStage(stillContext, 'fetch-error');
+              continue;
+            }"""
+    s = replace_episode_branch(s, still, still_instrumented, 'episode-still')
+
+    frame = """            if (source === 'media-thumbnail') {
+              const frame = await fetchMediaThumbnail(item.mediaFileId);
+              if (!this.artworkStore.isCurrentGeneration(generation)) {
+                return;
+              }
+              if (frame.kind === 'ok') {
+                this.artworkStore.setArtwork(generation, item.id, frame.value);
+                break;
+              }
+              continue;
+            }"""
+    frame_instrumented = """            if (source === 'media-thumbnail') {
+              const frameContext = captureDetailRowImageContext(this.workId, item.id);
+              reportDetailRowImageStage(frameContext, 'source');
+              reportDetailRowImageStage(frameContext, 'fetch-start');
+              const frame = await fetchMediaThumbnail(item.mediaFileId);
+              if (!this.artworkStore.isCurrentGeneration(generation)) {
+                return;
+              }
+              if (frame.kind === 'ok') {
+                reportDetailRowImageStage(frameContext, 'fetch-ok');
+                reportDetailRowImageStage(frameContext, 'bridge-source-ready');
+                reportDetailImagePayloadScope(frameContext, frame.value as Object as string);
+                this.artworkStore.setArtwork(generation, item.id, frame.value);
+                const frameStored = this.artworkStore.getArtwork(item.id) !== undefined;
+                reportDetailRowImageStage(frameContext, frameStored ? 'artwork-store-present' : 'artwork-store-absent');
+                if (frameStored) {
+                  reportDetailRowImageStage(frameContext, 'artwork-store-updated');
+                }
+                reportDetailRowImageStage(frameContext, 'assigned');
+                break;
+              }
+              reportDetailRowImageStage(frameContext, 'fetch-error');
+              continue;
+            }"""
+    s = replace_episode_branch(s, frame, frame_instrumented, 'media-thumbnail')
+
+    fallback = """            const seriesArtwork = await heroArtworkPromise;
+            if (!this.artworkStore.isCurrentGeneration(generation)) {
+              return;
+            }
+            if (seriesArtwork !== null) {
+              this.artworkStore.setArtwork(generation, item.id, seriesArtwork);
+              break;
+            }"""
+    fallback_instrumented = """            const seriesArtworkContext = captureDetailRowImageContext(this.workId, item.id);
+            reportDetailRowImageStage(seriesArtworkContext, 'source');
+            reportDetailRowImageStage(seriesArtworkContext, 'fetch-start');
+            const seriesArtwork = await heroArtworkPromise;
+            if (!this.artworkStore.isCurrentGeneration(generation)) {
+              return;
+            }
+            if (seriesArtwork !== null) {
+              reportDetailRowImageStage(seriesArtworkContext, 'fetch-ok');
+              reportDetailRowImageStage(seriesArtworkContext, 'bridge-source-ready');
+              reportDetailImagePayloadScope(seriesArtworkContext, seriesArtwork as Object as string);
+              this.artworkStore.setArtwork(generation, item.id, seriesArtwork);
+              const seriesArtworkStored = this.artworkStore.getArtwork(item.id) !== undefined;
+              reportDetailRowImageStage(seriesArtworkContext,
+                seriesArtworkStored ? 'artwork-store-present' : 'artwork-store-absent');
+              if (seriesArtworkStored) {
+                reportDetailRowImageStage(seriesArtworkContext, 'artwork-store-updated');
+              }
+              reportDetailRowImageStage(seriesArtworkContext, 'assigned');
+              break;
+            }
+            reportDetailRowImageStage(seriesArtworkContext, 'fetch-error');"""
+    return replace_episode_branch(s, fallback, fallback_instrumented, 'series-artwork fallback')
 
 def card_dbg(s):
     old = "        if (this.artwork !== undefined) {\n          Image(this.artwork)"
     assert old in s
     return s
 
-edit('pages/Home.ets', home)
-edit('design/components/PosterCard.ets', card)
-edit('design/components/NavRail.ets', nav)
-edit('pages/Index.ets', index)
-edit('pages/Detail.ets', detail)
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        raise SystemExit('usage: patch_state.py <ets-root>')
+    ROOT = sys.argv[1]
+    edit('pages/Home.ets', home)
+    edit('design/components/PosterCard.ets', card)
+    edit('design/components/NavRail.ets', nav)
+    edit('pages/Index.ets', index)
+    edit('pages/Detail.ets', detail)
