@@ -1,0 +1,1 @@
+- Tizen: shared native key art now follows the Web's linear right-edge alpha fade instead of an opaque surface-gradient approximation.

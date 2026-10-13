@@ -475,13 +475,10 @@ internal sealed class KeyArt
                 var dark = _t.Name == "dark";
                 var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f,
                     dark ? 0.82f : _playlistDirectoryParity ? 0.88f : 1f, dark ? 0.6f : 1.1f,
-                    linearRightEdgeAlpha: _playlistDirectoryParity);
+                    linearRightEdgeAlpha: true);
                 img.Opacity = _playlistDirectoryParity ? (dark ? 0.72f : 0.24f) : dark ? 0.07f : 0.035f;
                 Root.Add(img);
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
-                // Non-playlist KeyArt callers retain their existing surface-gradient mask approximation.
-                if (!_playlistDirectoryParity)
-                    Root.Add(Ui.Gradient(-20 + 1038.3f * 0.72f, 0, 1038.3f * 0.28f, 1080, true, (0, clear), (1, s)));
                 Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, s), (0.22f, clear), (1, clear)));
                 Root.Add(Ui.Gradient(0, 0, 1920, 1080, false, (0, s), (_playlistDirectoryParity ? 0.22f : 0.18f, clear), (0.82f, clear), (1, s)));
                 if (_playlistDirectoryParity)
