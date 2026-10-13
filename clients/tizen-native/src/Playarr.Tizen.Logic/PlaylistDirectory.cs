@@ -54,6 +54,25 @@ public static class PlaylistDirectoryModel
     public static IReadOnlyList<PlaylistTreeEntry> Children(IEnumerable<PlaylistTreeEntry> entries, Guid parentId) =>
         Sort(entries.Where(entry => entry.ParentPlaylistId == parentId));
 
+    /// <summary>Child playlists in the web directory's depth-first order, with cycles ignored.</summary>
+    public static IReadOnlyList<PlaylistTreeEntry> Descendants(IEnumerable<PlaylistTreeEntry> entries, Guid playlistId)
+    {
+        var all = entries.ToList();
+        var descendants = new List<PlaylistTreeEntry>();
+        var visited = new HashSet<Guid> { playlistId };
+        void Visit(Guid parentId)
+        {
+            foreach (var child in Children(all, parentId))
+            {
+                if (!visited.Add(child.Playlist.Id)) continue;
+                descendants.Add(child);
+                Visit(child.Playlist.Id);
+            }
+        }
+        Visit(playlistId);
+        return descendants;
+    }
+
     public static PlaylistRouteState RouteForSelection(IEnumerable<PlaylistTreeEntry> entries, Guid selectedId)
     {
         var all = entries.ToList();
@@ -123,6 +142,51 @@ public static class PlaylistDirectoryModel
             return (left.Length - li).CompareTo(right.Length - ri);
         }
     }
+}
+
+/// <summary>Selects the three visible directory covers in playlist item and descendant order.</summary>
+public static class PlaylistCoverSelection
+{
+    public const int Limit = 3;
+
+    public sealed class Collector
+    {
+        private readonly HashSet<Guid> _seen = new();
+        private readonly List<Work> _works = new(Limit);
+        public IReadOnlyList<Work> Works => _works;
+        public bool IsComplete => _works.Count >= Limit;
+
+        /// <returns>True when the three-cover limit has been reached.</returns>
+        public bool Add(Work work)
+        {
+            if (!HasArtwork(work) || !_seen.Add(work.Id)) return IsComplete;
+            _works.Add(work);
+            return IsComplete;
+        }
+    }
+
+    public static IReadOnlyList<Work> Select(
+        IEnumerable<PlaylistTreeEntry> entries,
+        Guid playlistId,
+        IReadOnlyDictionary<Guid, IReadOnlyList<Work>> orderedWorksByPlaylist)
+    {
+        var selected = new Collector();
+        var byId = entries.ToDictionary(entry => entry.Playlist.Id);
+        if (!byId.ContainsKey(playlistId)) return selected.Works;
+
+        foreach (var id in new[] { playlistId }.Concat(PlaylistDirectoryModel.Descendants(byId.Values, playlistId).Select(entry => entry.Playlist.Id)))
+        {
+            if (!orderedWorksByPlaylist.TryGetValue(id, out var works)) continue;
+            foreach (var work in works)
+            {
+                if (selected.Add(work)) return selected.Works;
+            }
+        }
+        return selected.Works;
+    }
+
+    public static bool HasArtwork(Work work) =>
+        ArtworkPaths.Path(work, ImageKind.Poster) is not null || ArtworkPaths.Path(work, ImageKind.Backdrop) is not null;
 }
 
 /// <summary>Loads the playlist response once, including the parent relation omitted by the shared Core model.</summary>

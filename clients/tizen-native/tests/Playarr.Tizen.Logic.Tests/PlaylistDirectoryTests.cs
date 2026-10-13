@@ -104,6 +104,56 @@ public sealed class PlaylistDirectoryTests
         Assert.Empty(PlaylistDirectoryModel.Roots(entries));
     }
 
+    [Fact]
+    public void CoverSelectionUsesOwnItemsThenDepthFirstChildrenAndDeduplicatesWorks()
+    {
+        var root = Entry("Root", null);
+        var secondFolder = Entry("Folder 2", root.Playlist.Id);
+        var firstFolder = Entry("Folder 1", root.Playlist.Id);
+        var nestedFolder = Entry("Nested", firstFolder.Playlist.Id);
+        var noPosterOrBackdrop = CoverWork(ImageKind.Thumb);
+        var first = CoverWork(ImageKind.Poster);
+        var second = CoverWork(ImageKind.Backdrop);
+        var third = CoverWork(ImageKind.Poster);
+        var fourth = CoverWork(ImageKind.Poster);
+        var entries = new[] { secondFolder, nestedFolder, root, firstFolder };
+        var works = new Dictionary<Guid, IReadOnlyList<Work>>
+        {
+            [root.Playlist.Id] = new[] { noPosterOrBackdrop, first, first },
+            [firstFolder.Playlist.Id] = new[] { first, second },
+            [nestedFolder.Playlist.Id] = new[] { third },
+            [secondFolder.Playlist.Id] = new[] { fourth },
+        };
+
+        var covers = PlaylistCoverSelection.Select(entries, root.Playlist.Id, works);
+
+        Assert.Equal(new[] { first.Id, second.Id, third.Id }, covers.Select(work => work.Id));
+    }
+
+    [Fact]
+    public void CoverSelectionReturnsEmptyWhenPlaylistTreeHasNoArtwork()
+    {
+        var root = Entry("Empty", null);
+        var child = Entry("Empty child", root.Playlist.Id);
+        var works = new Dictionary<Guid, IReadOnlyList<Work>>
+        {
+            [root.Playlist.Id] = new[] { CoverWork(ImageKind.Thumb) },
+            [child.Playlist.Id] = Array.Empty<Work>(),
+        };
+
+        Assert.Empty(PlaylistCoverSelection.Select(new[] { root, child }, root.Playlist.Id, works));
+    }
+
     private static PlaylistTreeEntry Entry(string name, Guid? parent) =>
         new(new PlaylistInfo { Id = Guid.NewGuid(), Name = name }, parent);
+
+    private static Work CoverWork(ImageKind kind)
+    {
+        var id = Guid.NewGuid();
+        return new Work
+        {
+            Id = id,
+            Images = new List<ImageAsset> { new() { Kind = kind, Url = "/artwork/" + id.ToString("D") } },
+        };
+    }
 }

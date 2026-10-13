@@ -12,6 +12,7 @@ internal sealed class PlaylistsScreen : IPage
     private static readonly float[] DirectoryColX = { 783.36f, 1136.46f, 1489.56f };
     private static readonly float[] DetailColX = { 881.609f, 1234.709f, 1587.809f };
     private static readonly HttpClient PlaylistHttp = new();
+    private static readonly SemaphoreSlim CoverLoadLimit = new(3);
     private sealed record SavedState(Guid? DirectorySelection, int Focus, float Scroll);
 
     private readonly AppEnv _env;
@@ -32,6 +33,7 @@ internal sealed class PlaylistsScreen : IPage
     private SavedState? _restore;
     private CancellationTokenSource? _loadRequest;
     private CancellationTokenSource? _detailRequest;
+    private CancellationTokenSource? _coverRequest;
     private float _scroll;
     private bool _ready;
     private bool _failed;
@@ -131,6 +133,9 @@ internal sealed class PlaylistsScreen : IPage
         _detailRequest?.Cancel();
         _detailRequest?.Dispose();
         _detailRequest = null;
+        _coverRequest?.Cancel();
+        _coverRequest?.Dispose();
+        _coverRequest = null;
         _focus.Clear();
         foreach (var card in _cards) { _results.Remove(card.Box); card.Box.Dispose(); }
         _cards.Clear();
@@ -143,6 +148,7 @@ internal sealed class PlaylistsScreen : IPage
         if (_route.PlaylistId is not { } rootId)
         {
             var roots = PlaylistDirectoryModel.Roots(_entries);
+            _coverRequest = new CancellationTokenSource();
             _title.Text = "Playlists";
             _count.Text = $"{roots.Count} PLAYLISTS";
             _eyebrow.Text = "YOUR COLLECTION";
@@ -196,6 +202,67 @@ internal sealed class PlaylistsScreen : IPage
             entry.Playlist.IsSystem ? "System playlist" : "Playlist", "Playlist", "", null, null, null, 0, false);
         var card = directory ? MediaCard.PlaylistDirectory(_env, cardModel, x, y) : MediaCard.PlaylistDetail(_env, cardModel, x, y);
         AddCard(card, index, entry.Playlist.Name.ToLowerInvariant(), select, x, y);
+        if (directory && _coverRequest is { } coverRequest)
+            _ = LoadDirectoryCoversAsync(entry, card, coverRequest.Token);
+    }
+
+    private async Task LoadDirectoryCoversAsync(PlaylistTreeEntry playlist, MediaCard card, CancellationToken cancellationToken)
+    {
+        var acquired = false;
+        try
+        {
+            await CoverLoadLimit.WaitAsync(cancellationToken).ConfigureAwait(false);
+            acquired = true;
+            var selected = new PlaylistCoverSelection.Collector();
+            var requestedWorks = new HashSet<Guid>();
+            var playlistIds = new[] { playlist.Playlist.Id }.Concat(
+                PlaylistDirectoryModel.Descendants(_entries, playlist.Playlist.Id).Select(entry => entry.Playlist.Id));
+            foreach (var playlistId in playlistIds)
+            {
+                IList<PlaylistItem> items;
+                try
+                {
+                    items = await _env.Api.ListPlaylistItemsAsync(playlistId, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception error)
+                {
+                    Dbg.Log("PLAYLISTS covers: items failed: " + error.Message);
+                    continue;
+                }
+
+                foreach (var item in items.OrderBy(item => item.Position))
+                {
+                    if (cancellationToken.IsCancellationRequested) return;
+                    if (selected.IsComplete) break;
+                    if (!requestedWorks.Add(item.WorkId)) continue;
+                    try
+                    {
+                        var detail = await _env.Api.GetWorkAsync(item.WorkId, cancellationToken).ConfigureAwait(false);
+                        selected.Add(detail.Work);
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception error)
+                    {
+                        Dbg.Log("PLAYLISTS covers: work failed: " + error.Message);
+                    }
+                }
+                if (selected.IsComplete) break;
+            }
+
+            if (cancellationToken.IsCancellationRequested || _removed) return;
+            SynchronizationContextHolder.Post(() =>
+            {
+                if (cancellationToken.IsCancellationRequested || _removed) return;
+                card.SetPlaylistCovers(_env, playlist.Playlist.Name, selected.Works);
+            });
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { Dbg.Log("PLAYLISTS covers failed: " + error.Message); }
+        finally
+        {
+            if (acquired) CoverLoadLimit.Release();
+        }
     }
 
     private void AddWorkCard(Work work, int index)
@@ -357,6 +424,7 @@ internal sealed class PlaylistsScreen : IPage
         _removed = true;
         _loadRequest?.Cancel();
         _detailRequest?.Cancel();
+        _coverRequest?.Cancel();
         _focus.Clear();
     }
 }

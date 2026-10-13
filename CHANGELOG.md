@@ -349,6 +349,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Tizen's Playlists directory now previews the first three unique poster or backdrop covers from each playlist and its descendants.
 - Add a native Roku Clients route with sideload instructions and clear notes about Roku's browser and download limits.
 - Tizen now provides a native Playlists directory with root and nested playlist navigation, preserving route state when returning to the directory.
 - Add a native Roku Clients route with sideload instructions and clear notes about Roku's browser and download limits.

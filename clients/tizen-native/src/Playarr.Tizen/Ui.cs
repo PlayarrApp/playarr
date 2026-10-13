@@ -159,6 +159,19 @@ internal static class Ui
         return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
     }
 
+    /// <summary>Angled gradient rendered at the target aspect ratio so its direction is preserved when displayed.</summary>
+    public static View DiagonalGradient(float x, float y, float w, float h, float degrees, params (float At, Rgba Color)[] stops)
+    {
+        var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+        Directory.CreateDirectory(dir);
+        var pixelWidth = Math.Max(1, (int)Math.Round(w));
+        var pixelHeight = Math.Max(1, (int)Math.Round(h));
+        var key = $"d{degrees:0.###}-{pixelWidth}x{pixelHeight}-" + string.Join("_", stops.Select(s => $"{s.At:0.###}-{s.Color.R:0.##}-{s.Color.G:0.##}-{s.Color.B:0.##}-{s.Color.A:0.###}"));
+        var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
+        if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDiagonal(stops, pixelWidth, pixelHeight, degrees));
+        return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
+    }
+
     /// <summary>The details-panel scrim over a panel box (x, y, w, h): extends 40% left, 22% right, 14% above and below, as web.</summary>
     public static View PanelScrim(PlayarrTheme t, float x, float y, float w, float h)
     {
