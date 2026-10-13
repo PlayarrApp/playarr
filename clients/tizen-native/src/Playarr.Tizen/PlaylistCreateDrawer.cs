@@ -72,6 +72,7 @@ internal sealed class PlaylistCreateDrawer : IDisposable
             PositionY = 9,
             Size = new Size(236, 40),
             Focusable = true,
+            MaxLength = int.MaxValue,
             PixelSize = 13,
             TextColor = Ui.C(theme.Ink),
             PlaceholderText = "Playlist name",
