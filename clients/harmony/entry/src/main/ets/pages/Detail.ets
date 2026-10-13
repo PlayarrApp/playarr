@@ -230,8 +230,6 @@ interface DetailRow {
   title: string;
   subtitle: string;
   artwork: image.PixelMap | undefined;
-  /** Revision suffix for MediaRail's ForEach key; absent until artwork arrives. */
-  stamp?: string;
   mediaFileId: string | null;
   similarWorkId: string | null;
   /** Where playback starts when the row is a chapter; absent plays from the beginning. */
@@ -531,7 +529,6 @@ function applyRowArtworkInRail(rail: DetailRail, rowId: string, artwork: image.P
         title: item.title,
         subtitle: item.subtitle,
         artwork: artwork,
-        stamp: item.stamp ?? 'art',
         mediaFileId: item.mediaFileId,
         similarWorkId: item.similarWorkId,
         startMs: item.startMs,
@@ -570,10 +567,8 @@ function applyAlbumArtwork(rails: DetailRail[], railId: string, artwork: image.P
         title: item.title,
         subtitle: item.subtitle,
         artwork: artwork,
-        stamp: item.stamp ?? 'art',
         mediaFileId: item.mediaFileId,
         similarWorkId: item.similarWorkId,
-        startMs: item.startMs,
       };
       items.push(next);
     }
