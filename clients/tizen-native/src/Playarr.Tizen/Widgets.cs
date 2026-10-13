@@ -143,7 +143,7 @@ internal sealed class MediaCard
                 PixelSize = nameFontSize,
                 TextColor = Ui.C(_t.InkMuted),
                 FontFamily = Ui.Font,
-                FontStyle = new PropertyMap().AddWeight(400),
+                FontStyle = new PropertyMap().Add("weight", new PropertyValue("regular")),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 MultiLine = true,
