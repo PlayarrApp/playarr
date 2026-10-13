@@ -1,7 +1,5 @@
 import PlayarrKit
 import SwiftUI
-import CoreImage
-import CoreImage.CIFilterBuiltins
 import CoreText
 import UIKit
 import os
@@ -166,8 +164,9 @@ struct WorkDetailView: View {
     private func tabletDetail(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
         ScrollViewReader { scrollProxy in
             ZStack(alignment: .topLeading) {
-                TabletDetailBackdrop(work: detail.work, apiClient: apiClient, scheme: scheme)
+                PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
                     .frame(width: proxy.size.width, height: proxy.size.height)
+                    .opacity(scheme == .dark ? 0.3 : 0.07)
                     .overlay {
                         LinearGradient(
                             colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
@@ -1307,94 +1306,6 @@ struct WorkDetailView: View {
         .padding(.horizontal, 14)
         .frame(minHeight: 58)
         .background(PlayarrStyle.surfaceStrong.opacity(0.68), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-}
-
-/// Applies the web tablet detail page's key-art crop and colour treatment without changing
-/// artwork used by other screens. Core Image's colour matrix scales RGB values for CSS's
-/// multiplicative brightness; SwiftUI's `brightness(_:)` is additive instead.
-private struct TabletDetailBackdrop: View {
-    let work: Work
-    let apiClient: PlayarrAPIClient
-    let scheme: ColorScheme
-
-    @State private var image: UIImage?
-
-    private var contrast: CGFloat { scheme == .dark ? 0.82 : 0.88 }
-    private var brightness: CGFloat { scheme == .dark ? 0.6 : 1.1 }
-    private var opacity: Double { scheme == .dark ? 0.72 : 0.24 }
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.19, green: 0.13, blue: 0.17),
-                    Color(red: 0.075, green: 0.062, blue: 0.075),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            if let image {
-                GeometryReader { proxy in
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(
-                            width: proxy.size.width * 0.52,
-                            height: proxy.size.height * 1.06,
-                            alignment: .center
-                        )
-                        .mask {
-                            LinearGradient(
-                                stops: [
-                                    .init(color: .black, location: 0),
-                                    .init(color: .black, location: 0.72),
-                                    .init(color: .clear, location: 1),
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        }
-                        .scaleEffect(1.04, anchor: .topLeading)
-                        .opacity(opacity)
-                }
-            } else {
-                PlayarrLogo(size: 46)
-                    .opacity(0.84)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .clipped()
-        .task(id: "\(work.id)-\(scheme == .dark ? "dark" : "light")") {
-            guard let data = try? await apiClient.fetchArtwork(workID: work.id, kind: .backdrop),
-                  let decoded = UIImage(data: data) else {
-                image = nil
-                return
-            }
-            image = Self.applyWebFilter(decoded, contrast: contrast, brightness: brightness)
-        }
-    }
-
-    private static func applyWebFilter(_ image: UIImage, contrast: CGFloat, brightness: CGFloat) -> UIImage? {
-        guard let input = CIImage(image: image, options: [.applyOrientationProperty: true]) else { return nil }
-
-        let controls = CIFilter.colorControls()
-        controls.inputImage = input
-        controls.saturation = 0
-        controls.contrast = Float(contrast)
-        guard let contrasted = controls.outputImage else { return nil }
-
-        let multiplier = CIFilter.colorMatrix()
-        multiplier.inputImage = contrasted
-        multiplier.rVector = CIVector(x: brightness, y: 0, z: 0, w: 0)
-        multiplier.gVector = CIVector(x: 0, y: brightness, z: 0, w: 0)
-        multiplier.bVector = CIVector(x: 0, y: 0, z: brightness, w: 0)
-        multiplier.aVector = CIVector(x: 0, y: 0, z: 0, w: 1)
-        multiplier.biasVector = CIVector(x: 0, y: 0, z: 0, w: 0)
-        guard let output = multiplier.outputImage,
-              let rendered = CIContext().createCGImage(output, from: output.extent) else { return nil }
-        return UIImage(cgImage: rendered, scale: image.scale, orientation: .up)
     }
 }
 
