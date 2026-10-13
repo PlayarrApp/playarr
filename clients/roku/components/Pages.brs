@@ -366,7 +366,38 @@ function pageMoveFocus(dir as String) as Boolean
                 ok = true : primary = -dy : cross = Abs(dx)
             end if
             if ok
-                score = primary + cross * 2.5
+                if m.pageKind = "calendar"
+                    overlapStart = cur.y
+                    overlapEnd = cur.y + cur.h
+                    crossAxisSize = cur.h
+                    if dir = "up" or dir = "down"
+                        overlapStart = cur.x
+                        overlapEnd = cur.x + cur.w
+                        candidateStart = it.x
+                        candidateEnd = it.x + it.w
+                        crossAxisSize = cur.w
+                        if it.w < crossAxisSize then crossAxisSize = it.w
+                    else
+                        candidateStart = it.y
+                        candidateEnd = it.y + it.h
+                        if it.h < crossAxisSize then crossAxisSize = it.h
+                    end if
+                    if candidateStart > overlapStart then overlapStart = candidateStart
+                    if candidateEnd < overlapEnd then overlapEnd = candidateEnd
+                    overlap = overlapEnd - overlapStart
+                    if overlap < 0 then overlap = 0
+                    coneAllowance = primary * 0.85 + crossAxisSize * 0.2
+                    if overlap <= 0 and cross > coneAllowance then
+                        ok = false
+                    else
+                        if overlap > 180 then overlap = 180
+                        score = primary + cross * 4 - overlap * 0.55
+                    end if
+                else
+                    score = primary + cross * 2.5
+                end if
+            end if
+            if ok
                 if score < bestScore
                     bestScore = score
                     best = i
