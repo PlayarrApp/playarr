@@ -4618,7 +4618,12 @@ sub homeRailTrack(row as Object, idx as Integer)
                 ' further right than the whole-card step the RowList takes, moving left it lines up with the track start.
                 shift = 0.0
                 if rail.rightAligned = true and rail.first > 0 then shift = 33.9
-                rail.row.translation = [-96 + shift, 41.1]
+                ' Keep the card artwork at the same origin used when the rail
+                ' is created. Home RowList items reserve 8px horizontally and
+                ' 15px vertically for the outer focus ring, so the pre-clearance
+                ' tracking origin [-96, 41.1] displaced every focused card.
+                ' Preserve only the web-matched horizontal scroll adjustment.
+                rail.row.translation = [-104 + shift, 26.1]
             end if
             rail.last = idx
             return
@@ -4674,7 +4679,7 @@ function moveHomeFocus(delta as Integer) as Boolean
     if oldIndex >= 0 and oldIndex < m.visibleRails.Count()
         oldRail = m.visibleRails[oldIndex]
         oldRail.row.SetFocus(false)
-        buildRailContent(oldRail.row, oldRail.works, false)
+        buildRailContent(oldRail.row, oldRail.works, false, 1.4864)
     end if
     m.homeFocusIndex = newIndex
     newRail = m.visibleRails[newIndex]
@@ -4691,7 +4696,7 @@ function moveHomeFocus(delta as Integer) as Boolean
         newRail.last = desired
         newRail.row.jumpToRowItem = [0, desired]
     end if
-    buildRailContent(newRail.row, newRail.works, true)
+    buildRailContent(newRail.row, newRail.works, true, 1.4864)
     newRail.row.SetFocus(true)
     if desired = 0 and m.homeLeftProxy <> invalid then m.homeLeftProxy.SetFocus(true)
     scrollHomeToFocusedRail()
