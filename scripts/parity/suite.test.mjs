@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { applyParityLine, createParityState, hasFreshBrowseFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { applyParityLine, calendarViewFocusKey, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
@@ -90,6 +90,24 @@ test("Roku reports only a fresh, observed Calendar view", () => {
   assert.equal(hasFreshCalendarView(state, "week", currentViewSeq), true);
   assert.equal(rokuRouteForState("page", "calendar", "", "", state.calendarView), "/calendar?view=week");
   assert.equal(rokuRouteForState("page", "calendar", "", "", "agenda"), "/calendar");
+});
+
+test("Roku Calendar route follows fresh focus as data replaces the initial Back control", () => {
+  const state = createParityState();
+  const beforeScreenSeq = state.screenSeq;
+  const beforeFocusSeq = state.calendarFocusSeq;
+  applyParityLine(state, "PARITY|screen|page");
+  applyParityLine(state, "PARITY|page|calendar");
+  applyParityLine(state, "PARITY|calendarFocus|back");
+  assert.equal(hasFreshCalendarFocus(state, beforeScreenSeq, beforeFocusSeq), true);
+  assert.equal(calendarViewFocusKey(state.calendarFocus), "right");
+  applyParityLine(state, "PARITY|calendarFocus|cell");
+  assert.equal(calendarViewFocusKey(state.calendarFocus), "up");
+  applyParityLine(state, "PARITY|calendarFocus|calPrev");
+  assert.equal(calendarViewFocusKey(state.calendarFocus), "left");
+  applyParityLine(state, "PARITY|calendarFocus|calView");
+  assert.equal(calendarViewFocusKey(state.calendarFocus), null);
+  assert.equal(applyParityLine(state, "PARITY|calendarFocus|A media label"), false);
 });
 
 test("Roku requires fresh Movies grid focus before the Filters route", () => {

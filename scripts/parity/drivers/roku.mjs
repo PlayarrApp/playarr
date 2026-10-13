@@ -64,6 +64,7 @@ export function createParityState() {
     screen: "", screenSeq: 0, page: "", browse: "", focus: null,
     focusSeq: 0, focusScreenSeq: 0, focusFloorAtScreen: 0, drawerSource: "",
     calendarView: "", calendarViewSeq: 0, calendarViewScreenSeq: 0,
+    calendarFocus: "", calendarFocusSeq: 0, calendarFocusScreenSeq: 0,
     eventSeq: 0, artMarkers: { home: 0, movies: 0 }, artState: createArtReadinessState(),
   };
 }
@@ -90,6 +91,12 @@ export function applyParityLine(state, line) {
     state.calendarView = view;
     state.calendarViewSeq += 1;
     state.calendarViewScreenSeq = state.screenSeq;
+  } else if (kind === "calendarFocus") {
+    const focus = value.trim();
+    if (!["back", "calNext", "calToday", "calPrev", "calView", "calLink", "calFilters", "cell", "entry", "calPlay", "calOpen", "calWatch"].includes(focus)) return false;
+    state.calendarFocus = focus;
+    state.calendarFocusSeq += 1;
+    state.calendarFocusScreenSeq = state.screenSeq;
   } else if (kind === "browse") {
     state.browse = value.trim();
     if (state.browse === "movie" || state.browse === "movies") state.artMarkers.movies = state.eventSeq;
@@ -184,6 +191,23 @@ export function hasFreshCalendarView(state, expectedView, afterViewSeq) {
     && state.calendarView === expectedView
     && state.calendarViewSeq > afterViewSeq
     && state.calendarViewScreenSeq === state.screenSeq;
+}
+
+export function hasFreshCalendarFocus(state, afterScreenSeq, afterFocusSeq) {
+  return state.screen === "page"
+    && state.page === "calendar"
+    && state.screenSeq > afterScreenSeq
+    && state.calendarFocus !== ""
+    && state.calendarFocusSeq > afterFocusSeq
+    && state.calendarFocusScreenSeq === state.screenSeq;
+}
+
+export function calendarViewFocusKey(action) {
+  if (action === "calView") return null;
+  if (["cell", "entry", "calPlay", "calOpen", "calWatch", "calLink", "calFilters"].includes(action)) return "up";
+  if (action === "back") return "right";
+  if (["calNext", "calToday", "calPrev"].includes(action)) return "left";
+  return null;
 }
 
 export function themePixelMatches(pixel, theme) {
@@ -282,7 +306,7 @@ export function createDriver({ out, args = [] } = {}) {
 
   const resetObservedState = () => {
     debugBuffer = "";
-    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "", calendarView: "" });
+    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "", calendarView: "", calendarFocus: "" });
     screen = "";
     page = "";
     browse = "";
@@ -584,22 +608,33 @@ export function createDriver({ out, args = [] } = {}) {
     } else if (["calendar-month", "calendar-week", "calendar-agenda"].includes(entry.id)) {
       const targetView = entry.id.slice("calendar-".length);
       const beforeCalendarViewSeq = parityState.calendarViewSeq;
+      const beforeCalendarFocusSeq = parityState.calendarFocusSeq;
       await press("left");
       for (let i = 0; i < 12; i += 1) await press("down");
       await press("up");
       const beforeCalendarScreenSeq = screenSeq;
       await press("select");
       await waitFor(
-        () => screenSeq > beforeCalendarScreenSeq && hasFreshCalendarView(parityState, "month", beforeCalendarViewSeq),
+        () => screenSeq > beforeCalendarScreenSeq
+          && hasFreshCalendarView(parityState, "month", beforeCalendarViewSeq)
+          && hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeCalendarFocusSeq),
         "fresh Calendar month view",
         30000,
       );
       if (targetView !== "month") {
         const beforeTargetViewSeq = parityState.calendarViewSeq;
-        // Calendar starts with its first registered page control focused:
-        // Next, Today, Previous, then the range/view button. Move left across
-        // those fixed header controls to open the view chooser.
-        for (let i = 0; i < 3; i += 1) await press("left");
+        for (let i = 0; i < 8 && parityState.calendarFocus !== "calView"; i += 1) {
+          const key = calendarViewFocusKey(parityState.calendarFocus);
+          if (!key) throw new Error(`Calendar focus cannot reach the view selector from ${parityState.calendarFocus || "unknown"}`);
+          const beforeFocusSeq = parityState.calendarFocusSeq;
+          await press(key);
+          await waitFor(
+            () => hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeFocusSeq),
+            `fresh Calendar focus after ${key}`,
+            5000,
+          );
+        }
+        if (parityState.calendarFocus !== "calView") throw new Error("Roku did not reach the Calendar view selector");
         await press("select");
         const targetIndex = ["month", "week", "agenda"].indexOf(targetView);
         for (let i = 0; i < targetIndex; i += 1) await press("down");

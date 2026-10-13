@@ -262,6 +262,7 @@ sub pageFocusRender()
     end if
     if m.pageFocusIdx >= m.pageItems.Count() then m.pageFocusIdx = 0
     item = m.pageItems[m.pageFocusIdx]
+    if m.pageKind = "calendar" then parityEmit("calendarFocus", item.action)
     if item.scrolls = true
         ' Keep the focused control inside the visible band (the panel scrolls under the fixed header).
         top = item.y + m.pageScrollY
