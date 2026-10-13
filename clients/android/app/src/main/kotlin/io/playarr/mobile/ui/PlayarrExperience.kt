@@ -4716,6 +4716,10 @@ private fun TelevisionSearchBody(
         // Copy column (x 153.6): search pill, Filters pill, preview.
         var focused by remember { mutableStateOf(false) }
         val searchFieldFocus = remember { FocusRequester() }
+        if (query.isBlank() && !filtersOpen) {
+            // Web `data-tv-focus-default` lands on the empty Search field when there is no selected result.
+            TvDefaultFocusEffect(Unit) { runCatching { searchFieldFocus.requestFocus() } }
+        }
         val ringPink = WebKicker
         Row(
             Modifier
