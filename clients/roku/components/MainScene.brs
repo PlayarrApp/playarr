@@ -2722,9 +2722,16 @@ end sub
 
 sub scrollBrowseAlphabetToIndex(index as Integer, center as Boolean)
     if m.browseKind <> "movie" or index < 0 or index >= m.alphabetLabels.Count() then return
-    viewportHeight = m.browseAlphabet.clippingRect.height
+    clippingRect = m.browseAlphabet.clippingRect
+    if Type(clippingRect) <> "roAssociativeArray" then return
+    viewportHeight = clippingRect.height
+    if not isPositiveLayoutNumber(viewportHeight) then return
     stageHeight = 1080.0
-    if m.top.height > 0 then stageHeight = m.top.height
+    designResolution = m.top.currentDesignResolution
+    if Type(designResolution) = "roAssociativeArray"
+        designHeight = designResolution.height
+        if isPositiveLayoutNumber(designHeight) then stageHeight = designHeight
+    end if
     viewportUnit = stageHeight / 100.0
     topPadding = 8.0
     bottomPadding = 6.0 * viewportUnit
@@ -2750,6 +2757,15 @@ sub scrollBrowseAlphabetToIndex(index as Integer, center as Boolean)
     if nextScroll > maxScroll then nextScroll = maxScroll
     m.browseAlphabetContent.translation = [0, topPadding - nextScroll]
 end sub
+
+function isPositiveLayoutNumber(value as Dynamic) as Boolean
+    valueType = Type(value)
+    if valueType = "Integer" then return value > 0
+    if valueType = "LongInteger" then return value > 0
+    if valueType = "Float" then return value > 0
+    if valueType = "Double" then return value > 0
+    return false
+end function
 
 sub enterBrowseAlphabet(preserveCurrent as Boolean)
     m.browseGrid.SetFocus(false)
