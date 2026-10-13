@@ -243,6 +243,7 @@ sub init()
     m.library.ObserveField("rowItemFocused", "onLibraryItemFocused")
     m.browseGrid.ObserveField("itemSelected", "onBrowseItemSelected")
     m.browseGrid.ObserveField("itemFocused", "onBrowseItemFocused")
+    m.browseGrid.ObserveField("alphabetHandoffRequest", "onBrowseGridAlphabetHandoff")
     m.searchGrid.ObserveField("itemSelected", "onSearchItemSelected")
     m.searchGrid.ObserveField("itemFocused", "onSearchItemFocused")
     m.playlistsGrid.ObserveField("itemSelected", "onPlaylistDirectoryItemSelected")
@@ -2409,6 +2410,7 @@ sub openBrowse(kind as String, label as String)
     m.artActiveScope = ""
     m.browseArtTelemetryArmed = false
     m.browseKind = kind
+    m.browseGrid.alphabetHandoffEnabled = kind = "movie"
     parityEmit("browse", kind)
     m.browseLabel = label
     m.browseItems = []
@@ -2436,6 +2438,12 @@ sub openBrowse(kind as String, label as String)
     m.top.screenState = "browse"
     m.browseGrid.SetFocus(true)
     loadBrowseCatalog(false)
+end sub
+
+sub onBrowseGridAlphabetHandoff(event as Object)
+    if m.top.screenState <> "browse" or m.browseKind <> "movie" then return
+    if m.browseAlphabetMode or m.browseFiltersButtonFocused then return
+    enterBrowseAlphabet(true)
 end sub
 
 sub loadBrowseCatalog(append as Boolean)
@@ -2599,6 +2607,18 @@ function alphabetLetterList() as Object
     return letters
 end function
 
+function browseAlphabetIndexForItem(item as Object) as Integer
+    if item = invalid then return 0
+    sortKey = ""
+    if item.sort_title <> invalid then sortKey = item.sort_title
+    if sortKey = "" and item.title <> invalid then sortKey = item.title
+    sortKey = sortKey.Trim()
+    if sortKey.Len() = 0 then return 0
+    first = UCase(sortKey.Left(1))
+    if first < "A" or first > "Z" then return 0
+    return Asc(first) - 64
+end function
+
 sub buildAlphabetStrip()
     letters = alphabetLetterList()
     m.alphabetLabels = []
@@ -2618,10 +2638,10 @@ sub buildAlphabetStrip()
     end for
 end sub
 
-sub enterBrowseAlphabet()
+sub enterBrowseAlphabet(preserveCurrent as Boolean)
     m.browseGrid.SetFocus(false)
     m.browseAlphabetMode = true
-    m.browseAlphabetIndex = 0
+    if not preserveCurrent then m.browseAlphabetIndex = 0
     renderBrowseAlphabetFocus()
     m.top.SetFocus(true)
 end sub
@@ -2994,6 +3014,19 @@ sub onBrowseItemFocused(event as Object)
         parityEmit("focus", "open " + m.browseItems[itemIndex].title)
     end if
     browseFadesUpdate(itemIndex)
+    if m.browseKind = "movie" and itemIndex >= 0 and itemIndex < m.browseItems.Count()
+        columns = m.browseGrid.numColumns
+        visibleRows = m.browseGrid.numRows
+        if columns > 0
+            if visibleRows < 1 then visibleRows = 1
+            focusedRow = Int(itemIndex / columns)
+            trackingRow = focusedRow - visibleRows + 1
+            if trackingRow < 0 then trackingRow = 0
+            trackingIndex = trackingRow * columns
+            if trackingIndex >= m.browseItems.Count() then trackingIndex = m.browseItems.Count() - 1
+            m.browseAlphabetIndex = browseAlphabetIndexForItem(m.browseItems[trackingIndex])
+        end if
+    end if
     ' Web keeps the focused row 70 px clear of the bottom edge once the grid scrolls (its rows then sit 56 px higher).
     if m.browseView = "screen"
         if Int(itemIndex / m.browseGrid.numColumns) >= 4
@@ -6807,16 +6840,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         selectBrowseAlphabetLetter()
         return true
     else if state = "browse" and not m.browseAlphabetMode and not m.browseFiltersButtonFocused and key = "options"
-        ' Right was the first choice here (spatially matches the real
-        ' alphabet strip's fixed right-edge position), but confirmed live
-        ' via a debug-console key trace that MarkupGrid swallows Right
-        ' unconditionally, regardless of column, it never once reached
-        ' this far. The "*"/Info remote button (BrightScript key string
-        ' "options") isn't claimed by MarkupGrid at all, so it's used as
-        ' this screen's secondary-action entry point instead, the same
-        ' role this codebase's pairing screen already uses it for
-        ' ("Press * to enter a server address").
-        enterBrowseAlphabet()
+        ' The "*"/Info remote button (BrightScript key string "options")
+        ' remains an explicit alphabet entry route that resets to #; the
+        ' Movies grid boundary handoff preserves the active alphabet entry.
+        enterBrowseAlphabet(false)
         return true
     else if state = "browse" and key = "back"
         showOnly("home")

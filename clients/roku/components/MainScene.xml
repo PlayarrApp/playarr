@@ -268,15 +268,14 @@
       <TrackedText id="browsePreviewMeta" translation="[153.6,454.9]" />
       <TrackedText id="browsePreviewMeta2" translation="[194.4,454.9]" />
       <TrackedText id="browsePreviewOverview" translation="[153.6,494.7]" />
-      <MarkupGrid id="browseGrid" translation="[783.4,154]" itemComponentName="PosterCard"
+      <BrowseGrid id="browseGrid" translation="[783.4,154]" itemComponentName="PosterCard"
         numColumns="3" numRows="4" itemSize="[353.5,240.5]" itemSpacing="[0,0]"
         focusBitmapBlendColor="0x00000000" vertFocusAnimationStyle="floatingFocus" />
       <Label id="browseHint" translation="[200,1020]" width="1700" height="40" text="" scale="[0.62,0.62]" color="0xA9B7C9FF" />
       <!-- Alphabet jump strip (from: .tv-alphabet, confirmed live: "#" then
-           A-Z, right edge, entered from the grid via Right at its last
-           column, matching this app's established "bubble at the boundary"
-           navigation pattern everywhere else RowList/MarkupGrid meets a
-           hand-focused sibling list). See MainScene.brs's
+           A-Z, right edge). Movies enters at the active letter from the
+           grid boundary (initially "#"); Options remains the explicit entry
+           route for other browse kinds. See MainScene.brs's
            enterBrowseAlphabet/jumpToBrowseLetter for the real jump
            behaviour (paginates further if the target letter isn't loaded
            yet, not just a decorative strip). -->
