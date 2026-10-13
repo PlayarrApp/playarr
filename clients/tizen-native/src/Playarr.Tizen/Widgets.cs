@@ -22,6 +22,7 @@ internal sealed class MediaCard
     private View? _playlistIcon;
     private bool _playlistCollage;
     private bool _playlistHasCovers;
+    private View? _playlistFocusGlow;
     private View? _playlistFocusRing;
     private bool _playlistCoverSet;
     private bool _focused;
@@ -82,6 +83,11 @@ internal sealed class MediaCard
                 ? new Shadow(52, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.28f), new Vector2(0, 22), new Vector2(0, 0))
                 : new Shadow(34, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.16f), new Vector2(0, 12), new Vector2(0, 0))
             : focused && !_playlistCollage ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
+        if (_playlistCollage)
+        {
+            SetPlaylistGroupShadow();
+            SetPlaylistFocusGlow(focused);
+        }
         if (_searchPlaylistFocusGlow is not null)
         {
             var glowColor = _t.Name == "dark" ? _t.BrandInk : Rgba.Hex(0xa52745);
@@ -176,6 +182,7 @@ internal sealed class MediaCard
         Art.BackgroundColor = new Color(0, 0, 0, 0);
         Art.ClippingMode = default;
         _playlistHasCovers = true;
+        EnsurePlaylistFocusGlow();
         _ring?.Show(false);
         // Add back-to-front. The first selected work stays on top, matching the web z-index order.
         for (var index = covers.Count - 1; index >= 0; index--)
@@ -198,14 +205,63 @@ internal sealed class MediaCard
                 BorderlineWidth = 1,
                 BorderlineColor = Ui.C(new Rgba(_t.LineStrong.R, _t.LineStrong.G, _t.LineStrong.B, _t.LineStrong.A * 0.76f)),
                 Orientation = new Rotation(new Radian((float)((index - (covers.Count - 1) / 2.0) * -1.5 * Math.PI / 180)), new Vector3(0, 0, 1)),
-                BoxShadow = new Shadow(28, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.18f), new Vector2(0, 10), new Vector2(0, 0)),
             };
             Art.Add(layer);
             var path = ArtworkPaths.Path(work, ImageKind.Poster) ?? ArtworkPaths.Path(work, ImageKind.Backdrop);
             env.Images.Apply(layer, path, width, height, 12.48f);
         }
         _ring?.Show(false);
+        SetPlaylistGroupShadow();
+        SetPlaylistFocusGlow(_focused);
         SetPlaylistFocusRing(_focused);
+    }
+
+    private void EnsurePlaylistFocusGlow()
+    {
+        if (_playlistFocusGlow is not null) return;
+        _playlistFocusGlow = new View
+        {
+            PositionX = Art.PositionX,
+            PositionY = Art.PositionY,
+            Size = Art.Size,
+            CornerRadius = Art.CornerRadius,
+            BackgroundColor = new Color(0, 0, 0, 0),
+        };
+        Box.Add(_playlistFocusGlow);
+        _playlistFocusGlow.LowerToBottom();
+    }
+
+    private void SetPlaylistFocusGlow(bool focused)
+    {
+        if (_playlistFocusGlow is null) return;
+        _playlistFocusGlow.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
+        _playlistFocusGlow.PositionY = _artDy + (focused ? _lift : 0);
+        if (!focused)
+        {
+            _playlistFocusGlow.BoxShadow = null;
+            return;
+        }
+
+        // Web adds a separate 20 px, 4 px spread glow to the playlist card ring. Keep this layer independent of the
+        // brown cover-stack shadow above; the glow token is brand-ink in dark and brand-strong in light.
+        var glow = _t.Name == "dark" ? _t.BrandInk : Rgba.Hex(0xa52745);
+        _playlistFocusGlow.BoxShadow = new Shadow(20, new Color(glow.R, glow.G, glow.B, 0.45f), new Vector2(0, 0), new Vector2(4, 4));
+    }
+
+    private void SetPlaylistGroupShadow()
+    {
+        if (!_playlistHasCovers)
+        {
+            Art.BoxShadow = null;
+            return;
+        }
+
+        // BoxShadow follows this rounded rectangle, not the stacked images' alpha. The front cover fills this frame,
+        // so its outer silhouette stays close; one NUI shadow approximates the web's two measured focus shadows.
+        var opacity = _focused ? 0.44f : 0.14f;
+        var blur = _focused ? 10f : 5f;
+        var offsetY = _focused ? 9.2f : 5f;
+        Art.BoxShadow = new Shadow(blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, opacity), new Vector2(0, offsetY), new Vector2(0, 0));
     }
 
     private void SetPlaylistFocusRing(bool focused)
