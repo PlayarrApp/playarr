@@ -106,6 +106,8 @@ import { LengthMetrics } from '@kit.ArkUI';
 import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan } from '../data/CatalogRepository';
 import { resumeButtonLabel, resumeKicker, resumeTargetFile } from '../core/ResumePlan';
 import { hasSeriesResumeTarget, metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
+import { seriesPhoneActionIds } from '../core/PhoneDetailActions';
+import type { SeriesPhoneActionId } from '../core/PhoneDetailActions';
 import type { ResumePlan } from '../core/Types/ResumePlan';
 import { getMediaChapters, getWatchProgress } from '../data/PlaybackRepository';
 import { addToWatchlist, removeFromWatchlist, resolveTitle } from '../data/WatchlistRepository';
@@ -1572,24 +1574,96 @@ struct Detail {
 
   @Builder
   private touchActionRows(): void {
-    Row({ space: 8 }) {
-      this.touchActionButton('Download', (): void => {
-        this.touchActionsOpen = true;
-      })
-      this.touchActionButton('Playback', (): void => {
-        this.touchActionsOpen = true;
-      })
-      this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
+    if (this.detail !== null && this.detail.work.kind === 'series') {
+      Row({ space: 8 }) {
+        ForEach(seriesPhoneActionIds(this.hasResumeTarget() && this.primaryMediaFileId !== null),
+          (action: SeriesPhoneActionId) => {
+            this.touchSeriesAction(action);
+          },
+          (action: SeriesPhoneActionId) => action)
+      }
+      .width('100%')
+      .margin({ top: 4 })
+    } else {
+      Row({ space: 8 }) {
+        this.touchActionButton('Download', (): void => {
+          this.touchActionsOpen = true;
+        })
+        this.touchActionButton('Playback', (): void => {
+          this.touchActionsOpen = true;
+        })
+        this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
+      }
+      Row({ space: 8 }) {
+        this.touchActionButton(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
+          this.toggleWatchlist();
+        })
+        this.touchActionButton('Add to Playlist', (): void => {
+          this.touchActionsOpen = true;
+        })
+      }
+      .margin({ top: 4 })
     }
-    Row({ space: 8 }) {
-      this.touchActionButton(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
-        this.toggleWatchlist();
+  }
+
+  @Builder
+  private touchSeriesAction(action: SeriesPhoneActionId): void {
+    if (action === 'primary') {
+      Row({ space: 8 }) {
+        Text('▶')
+          .fontSize(11)
+          .fontColor(toResourceColor(activeColors().bg))
+        Text(this.primaryLabel())
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .fontSize(11)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(toResourceColor(activeColors().bg))
+          .layoutWeight(1)
+      }
+      .layoutWeight(1)
+      .height(44)
+      .padding({ left: 12, right: 12 })
+      .borderRadius(22)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(toResourceColor(activeColors().ink))
+      .onClick(() => {
+        this.playPrimary();
       })
-      this.touchActionButton('Add to Playlist', (): void => {
+    } else if (action === 'watchlist') {
+      this.touchSeriesSecondaryAction(
+        this.listed === true ? 'Remove from watchlist' : 'Add to watchlist',
+        this.listed === true ? '✓' : '+',
+        (): void => { this.toggleWatchlist(); }
+      )
+    } else {
+      this.touchSeriesSecondaryAction('Add to Playlist', '+', (): void => {
         this.touchActionsOpen = true;
       })
     }
-    .margin({ top: 4 })
+  }
+
+  @Builder
+  private touchSeriesSecondaryAction(label: string, glyph: string, onTap: () => void): void {
+    Row({ space: 5 }) {
+      Text(glyph)
+        .fontSize(12)
+        .fontColor(toResourceColor(BRAND_PINK))
+      Text(label)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .fontSize(11)
+        .fontColor(toResourceColor(activeColors().ink))
+        .layoutWeight(1)
+    }
+    .layoutWeight(1)
+    .height(44)
+    .padding({ left: 8, right: 8 })
+    .borderRadius(22)
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.72))
+    .onClick(() => {
+      onTap();
+    })
   }
 
   /** Phone (web phone detail): the backdrop fading into the page at the top, Back over it, then the pink kind line, the title, the

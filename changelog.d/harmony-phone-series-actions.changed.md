@@ -1,0 +1,1 @@
+- Align Harmony phone series detail actions with the web row: primary, watchlist and playlist actions share one row.

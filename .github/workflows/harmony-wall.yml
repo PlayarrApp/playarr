@@ -26,6 +26,10 @@ on:
         description: TV screen IDs as a comma-separated list, or all for the legacy full set
         type: string
         default: all
+      phone_screens:
+        description: Phone screens-only IDs from home,movies,film-detail,series-detail, or all for the legacy full set
+        type: string
+        default: all
       skip_player:
         description: Skip the player-controls route while retaining the other full-set captures
         type: boolean
@@ -101,6 +105,7 @@ jobs:
     env:
       DEVICE: ${{ inputs.device || 'tv' }}
       TV_SCREENS: ${{ inputs.tv_screens || 'all' }}
+      PHONE_SCREENS: ${{ inputs.phone_screens || 'all' }}
       SKIP_PLAYER: ${{ inputs.skip_player == true && 'true' || 'false' }}
       MESA_VERSION: 26.2.4
       THEME: ${{ matrix.theme }}

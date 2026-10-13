@@ -5,7 +5,8 @@ Signs in fresh (link code logged by the app, approved as the Device Test account
 dark and light. Aborts, writing nothing more, when a frame is too plain (an error or signed-out screen)."""
 import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
-from screen_selection import TV_SCREEN_IDS, parse_tv_screens, player_is_skipped
+from screen_selection import (TV_SCREEN_IDS, parse_phone_screens, parse_tv_screens,
+                              player_is_skipped)
 from capture_diagnostics import (save_rejected_frame, summarize_detail_events,
                                  summarize_detail_layout_events, summarize_detail_image_payload_events,
                                  analyze_episode_art_frame, decoded_art_is_accepted,
@@ -14,6 +15,7 @@ from capture_diagnostics import (save_rejected_frame, summarize_detail_events,
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
 TV_SCREENS_RAW = os.environ.get("TV_SCREENS", "all").strip()
+PHONE_SCREENS_RAW = os.environ.get("PHONE_SCREENS", "all").strip()
 SKIP_PLAYER_REQUESTED = os.environ.get("SKIP_PLAYER", "false").lower() == "true"
 CTL = "http://127.0.0.1:" + ("40117" if device == "phone" else "40017")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -75,9 +77,10 @@ def abort(msg):
 
 try:
     TV_SELECTION = parse_tv_screens(TV_SCREENS_RAW) if device == "tv" else None
+    PHONE_SELECTION = parse_phone_screens(PHONE_SCREENS_RAW) if device == "phone" else None
 except ValueError as error:
     abort(str(error))
-SKIP_PLAYER = player_is_skipped(TV_SELECTION, SKIP_PLAYER_REQUESTED)
+SKIP_PLAYER = player_is_skipped(TV_SELECTION if device == "tv" else PHONE_SELECTION, SKIP_PLAYER_REQUESTED)
 
 
 def guarded(name, fn):
@@ -443,6 +446,39 @@ if device == "tv":
         route("profiles", 6); snap("profiles", os.path.join(out, "light"))
         click(*PROFILE_CLICK); time.sleep(20)
         walk(os.path.join(out, "light"), "")
+elif PHONE_SELECTION is not None:
+    # A selected phone subset is screens-only: it never enters the legacy player/actions walk.
+    folder = os.path.join(out, THEME)
+    suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
+    for name in PHONE_SELECTION:
+        def capture_phone_screen():
+            if name == "home":
+                route("home", 40)
+                snap(name, folder, 100000)
+            elif name == "movies":
+                route("library:movie", 15)
+                snap(name, folder, 100000)
+            else:
+                spec = next((screen for screen in suite_screens if screen.get("id") == name), None)
+                prefix = "/movies/" if name == "film-detail" else "/series/"
+                opened = spec.get("open", "") if spec is not None else ""
+                if not opened.startswith(prefix):
+                    raise Skip(f"shared suite has no pinned route for {name}")
+                work_id = opened[len(prefix):]
+                if not re.fullmatch(r"[0-9a-fA-F-]{36}", work_id):
+                    raise Skip(f"shared suite has an invalid pinned work id for {name}")
+                route("detail:" + work_id, 5)
+                deadline = time.time() + 15
+                state = {}
+                while time.time() < deadline:
+                    state = json.loads(get("/state"))
+                    if state.get("route") == "Detail" and state.get("work_id") == work_id:
+                        snap(name, folder, 100000)
+                        return
+                    time.sleep(0.5)
+                debug(f"{name}-route-timeout")
+                raise Skip(f"pinned detail route did not settle for {name}")
+        guarded(name, capture_phone_screen)
 else:
     # phone: the web phone shell. Pages by route; the phone's own controls (the header filter button, a card tap or long press)
     # inside a page. Coordinates are px at density 480 (3 px per vp): the header's round buttons sit at the right, 16 vp in.
@@ -534,6 +570,14 @@ if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
     if TV_SELECTION is not None:
         manifest["screen_selection"]["pinned_detail_sources"] = detail_sources
         manifest["screen_selection"]["decoded_art"] = decoded_art
+if device == "phone" and PHONE_SELECTION is not None:
+    manifest["screen_selection"] = {
+        "mode": "selected",
+        "skip_player": SKIP_PLAYER,
+        "requested": PHONE_SELECTION,
+        "captured": {THEME: [name for name in PHONE_SELECTION
+                              if os.path.isfile(os.path.join(out, THEME, name + ".png"))]},
+    }
 json.dump(manifest, open(os.path.join(out, "build.json"), "w"))
 if MISSING:
     print("INCOMPLETE: missing required screens: " + ", ".join(MISSING), flush=True)
