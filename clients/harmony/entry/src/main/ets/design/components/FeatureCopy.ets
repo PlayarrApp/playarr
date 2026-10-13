@@ -122,11 +122,11 @@ export struct FeatureCopy {
 
   private episodeSubtitleMaxWidth(): number {
     const ui = this.getUIContext();
-    return ui.getMeasureUtils().measureText({
+    return ui.px2vp(ui.getMeasureUtils().measureText({
       textContent: '0'.repeat(EPISODE_TITLE_MAX_CHARS),
       fontSize: tv(EPISODE_TITLE_FONT_SIZE),
       fontWeight: EPISODE_TITLE_FONT_WEIGHT,
-    });
+    }));
   }
 
   build() {
