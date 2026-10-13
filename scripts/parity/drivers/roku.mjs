@@ -28,6 +28,11 @@ const CALENDAR_ACTIONS = new Set([
 ]);
 const CALENDAR_KEYS = new Set(["up", "down", "left", "right", "select", "back"]);
 const MAX_CALENDAR_TRACE = 32;
+const ROUTE_TRACE_SCREENS = new Set(["home", "browse", "drawer"]);
+const ROUTE_TRACE_BROWSE = new Set(["movie", "movies", "series", "artist", "music"]);
+const ROUTE_TRACE_DRAWERS = new Set(["filters", "actions"]);
+const ROUTE_TRACE_KEYS = new Set(["up", "down", "left", "right", "select", "back", "info"]);
+const MAX_ROUTE_TRACE = 32;
 
 export function spawnSyncBinary(command, args, options = {}) {
   return spawnSync(command, args, { ...options, encoding: null });
@@ -84,6 +89,32 @@ export function appendCalendarFocusTransition(trace, from, key, to, limit = MAX_
   };
   const safeFrom = safeFocus(from);
   const safeTo = safeFocus(to);
+  if (!safeFrom || !safeTo) return trace;
+  trace.push({ from: safeFrom, key, to: safeTo });
+  if (trace.length > limit) trace.splice(0, trace.length - limit);
+  return trace;
+}
+
+export function safeRouteSnapshot(state) {
+  if (!state || !ROUTE_TRACE_SCREENS.has(state.screen)) return null;
+  const snapshot = { screen: state.screen };
+  if (ROUTE_TRACE_SCREENS.has(state.screen) && state.screen !== "home" && ROUTE_TRACE_BROWSE.has(state.browse)) {
+    snapshot.browse = state.browse === "movies" ? "movie" : state.browse === "music" ? "artist" : state.browse;
+  }
+  if (state.screen === "drawer" && ROUTE_TRACE_DRAWERS.has(state.drawerSource)) snapshot.drawer = state.drawerSource;
+  const position = state.focus && typeof state.focus === "object" ? state.focus.position : null;
+  if (position && Number.isSafeInteger(position.rail) && Number.isSafeInteger(position.index)
+      && position.rail >= 0 && position.index >= 0 && position.rail <= 100 && position.index <= 1000) {
+    snapshot.position = { rail: position.rail, index: position.index };
+  }
+  return snapshot;
+}
+
+export function appendSafeRouteTransition(trace, from, key, to, limit = MAX_ROUTE_TRACE) {
+  if (!Array.isArray(trace) || !ROUTE_TRACE_KEYS.has(key) || !Number.isInteger(limit) || limit < 1) return trace;
+  limit = Math.min(limit, MAX_ROUTE_TRACE);
+  const safeFrom = safeRouteSnapshot(from);
+  const safeTo = safeRouteSnapshot(to);
   if (!safeFrom || !safeTo) return trace;
   trace.push({ from: safeFrom, key, to: safeTo });
   if (trace.length > limit) trace.splice(0, trace.length - limit);
@@ -615,29 +646,48 @@ export function createDriver({ out, args = [] } = {}) {
     if (!entry || !SAFE_SCREENS.has(entry.id) || entry.open) throw new Error(`Roku suite route is unsupported: ${path}`);
     await toHome();
     if (entry.id === "filters") {
-      const beforeBrowseScreenSeq = screenSeq;
-      const beforeBrowseFocusSeq = focusSeq;
-      await press("left");
-      for (let i = 0; i < 12; i += 1) await press("down");
-      for (let i = 0; i < 6; i += 1) await press("up");
-      await press("select");
-      await waitFor(
-        () => hasFreshBrowseFocus(parityState, "movie", beforeBrowseScreenSeq, beforeBrowseFocusSeq),
-        "fresh Movies grid focus before opening Filters",
-        30000,
-      );
-      drawerSource = "filters";
-      parityState.drawerSource = "filters";
-      await sendEcp("keypress/Info");
-      await sleep(keyDelay);
-      await press("up");
-      const beforeDrawerScreenSeq = screenSeq;
-      await press("select");
-      await waitFor(
-        () => screen === "drawer" && screenSeq > beforeDrawerScreenSeq,
-        "fresh Filters drawer screen",
-        15000,
-      );
+      const filtersTrace = [];
+      const snapshotFiltersState = () => ({
+        screen: parityState.screen,
+        browse: parityState.browse,
+        drawerSource: parityState.drawerSource,
+        focus: parityState.focus,
+      });
+      const traceFilterKey = async (key, send = () => press(key)) => {
+        const from = snapshotFiltersState();
+        await send();
+        appendSafeRouteTransition(filtersTrace, from, key, snapshotFiltersState());
+      };
+      const traceFailure = (reason) => `${reason}; Filters route trail=${JSON.stringify(filtersTrace)}; last=${JSON.stringify(safeRouteSnapshot(snapshotFiltersState()))}`;
+      try {
+        const beforeBrowseScreenSeq = screenSeq;
+        const beforeBrowseFocusSeq = focusSeq;
+        await traceFilterKey("left");
+        for (let i = 0; i < 12; i += 1) await traceFilterKey("down");
+        for (let i = 0; i < 6; i += 1) await traceFilterKey("up");
+        await traceFilterKey("select");
+        await waitFor(
+          () => hasFreshBrowseFocus(parityState, "movie", beforeBrowseScreenSeq, beforeBrowseFocusSeq),
+          "fresh Movies grid focus before opening Filters",
+          30000,
+        );
+        drawerSource = "filters";
+        parityState.drawerSource = "filters";
+        await traceFilterKey("info", async () => {
+          await sendEcp("keypress/Info");
+          await sleep(keyDelay);
+        });
+        await traceFilterKey("up");
+        const beforeDrawerScreenSeq = screenSeq;
+        await traceFilterKey("select");
+        await waitFor(
+          () => screen === "drawer" && screenSeq > beforeDrawerScreenSeq,
+          "fresh Filters drawer screen",
+          15000,
+        );
+      } catch (error) {
+        throw new Error(traceFailure(error.message));
+      }
     } else if (["calendar-month", "calendar-week", "calendar-agenda"].includes(entry.id)) {
       const targetView = entry.id.slice("calendar-".length);
       const beforeCalendarViewSeq = parityState.calendarViewSeq;

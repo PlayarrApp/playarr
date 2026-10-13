@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { appendCalendarFocusTransition, applyParityLine, calendarViewFocusKey, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarViewFocusKey, createParityState, hasFreshBrowseFocus, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
@@ -136,6 +136,35 @@ test("Roku Calendar focus trail is sanitised and bounded", () => {
   appendCalendarFocusTransition(trace, { action: "entry", label: "private media label", rect: focus("cell", 0).rect }, "up", focus("calView", 1), 3);
   assert.equal(trace.length, 3);
   assert.equal(JSON.stringify(trace).includes("private media label"), false);
+});
+
+test("Roku controlled route snapshots keep only allowlisted states and numeric focus position", () => {
+  const snapshot = safeRouteSnapshot({
+    screen: "browse", browse: "movies", drawerSource: "filters",
+    focus: { label: "Private movie title", position: { rail: 0, index: 12 } },
+  });
+  assert.deepEqual(snapshot, { screen: "browse", browse: "movie", position: { rail: 0, index: 12 } });
+  assert.equal(JSON.stringify(snapshot).includes("Private movie title"), false);
+  assert.deepEqual(safeRouteSnapshot({ screen: "drawer", browse: "movie", drawerSource: "filters", focus: "Private title" }), {
+    screen: "drawer", browse: "movie", drawer: "filters",
+  });
+  assert.equal(safeRouteSnapshot({ screen: "unsupported", browse: "movie", focus: "Private title" }), null);
+  assert.deepEqual(safeRouteSnapshot({ screen: "browse", browse: "private media", focus: { position: { rail: -1, index: 1 } } }), {
+    screen: "browse",
+  });
+});
+
+test("Roku controlled route trail is bounded and excludes focus labels", () => {
+  const trace = [];
+  const from = { screen: "home", focus: { label: "Private home item", position: { rail: 0, index: 0 } } };
+  const to = { screen: "browse", browse: "movie", focus: { label: "Private movie title", position: { rail: 0, index: 1 } } };
+  for (let index = 0; index < 40; index += 1) appendSafeRouteTransition(trace, from, "down", to, 100);
+  assert.equal(trace.length, 32);
+  assert.deepEqual(trace[0].from, { screen: "home", position: { rail: 0, index: 0 } });
+  assert.deepEqual(trace.at(-1).to, { screen: "browse", browse: "movie", position: { rail: 0, index: 1 } });
+  assert.equal(JSON.stringify(trace).includes("Private"), false);
+  appendSafeRouteTransition(trace, from, "launch", to);
+  assert.equal(trace.length, 32);
 });
 
 test("Roku requires fresh Movies grid focus before the Filters route", () => {
