@@ -21,7 +21,7 @@ internal static class Ui
     public static List<string> WrapLines(string text, float size, int weight, float spacing, float width, int maxLines = int.MaxValue, string family = Font, bool balance = false)
     {
         var greedy = Wrap(text, size, weight, spacing, width, maxLines, family);
-        return balance && greedy.Count > 1 && greedy.Count <= maxLines ? Balanced(text, size, weight, spacing, width, greedy.Count, family) ?? greedy : greedy;
+        return balance && !text.Contains('\u200B') && greedy.Count > 1 && greedy.Count <= maxLines ? Balanced(text, size, weight, spacing, width, greedy.Count, family) ?? greedy : greedy;
     }
 
     /// <summary>
@@ -60,10 +60,33 @@ internal static class Ui
     private static List<string> Wrap(string text, float size, int weight, float spacing, float width, int maxLines, string family)
     {
         var lines = new List<string>(); var cur = "";
-        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        if (!text.Contains('\u200B'))
         {
-            var next = cur.Length == 0 ? word : cur + " " + word;
-            if (cur.Length > 0 && TextWidth(next, size, weight, spacing, family) > width) { lines.Add(cur); cur = word; } else cur = next;
+            foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var next = cur.Length == 0 ? word : cur + " " + word;
+                if (cur.Length > 0 && TextWidth(next, size, weight, spacing, family) > width) { lines.Add(cur); cur = word; } else cur = next;
+            }
+        }
+        else
+        {
+            foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = word.Split('\u200B');
+                for (var i = 0; i < parts.Length; i++)
+                {
+                    var part = parts[i];
+                    if (part.Length == 0) continue;
+                    var separator = i == 0 && cur.Length > 0 ? " " : "";
+                    var next = cur + separator + part;
+                    if (cur.Length > 0 && TextWidth(next, size, weight, spacing, family) > width)
+                    {
+                        lines.Add(cur);
+                        cur = part;
+                    }
+                    else cur = next;
+                }
+            }
         }
         if (cur.Length > 0) lines.Add(cur);
         if (lines.Count > maxLines)

@@ -428,6 +428,11 @@ internal sealed class SearchScreen : IPage
             _panel.Show(_items[index], kickerOverride: _items[index].Sub, metaLead: HomeModel.MetaLead(_items[index]));
             _keyArt.Set(_items[index].BackdropUrl);
         }
+        else if (SearchResults.PlaylistPreview(_targets[index]) is { } playlistPreview)
+        {
+            _panel.ShowPlaylistPreview(playlistPreview);
+            _keyArt.Set(null);
+        }
         else
         {
             _panel.Root.Show(false);

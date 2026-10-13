@@ -66,6 +66,46 @@ public sealed class DiscoverySearchTests
         Assert.Same(game, gameResults[0].Game);
     }
 
+    [Theory]
+    [InlineData(false, "Playlist")]
+    [InlineData(true, "System playlist")]
+    public void SelectedPlaylistMapsToTheWebPreviewCopy(bool isSystem, string expectedEyebrow)
+    {
+        var playlist = new PlaylistInfo { Id = Guid.NewGuid(), Name = "Night favourites", IsSystem = isSystem };
+        var target = new SearchResultTarget(Playlist: playlist);
+
+        var preview = SearchResults.PlaylistPreview(target);
+
+        Assert.Equal(new SearchPlaylistPreview(expectedEyebrow, "Night favourites"), preview);
+    }
+
+    [Fact]
+    public void EmptyOrNonPlaylistSelectionHasNoPlaylistPreview()
+    {
+        var work = new SearchResultTarget(Work: new Work { Kind = WorkKind.Movie, Title = "A film" });
+        var game = new SearchResultTarget(Game: new DiscoveryTitle { Kind = "game", Title = "A game" });
+
+        Assert.Null(SearchResults.PlaylistPreview(null));
+        Assert.Null(SearchResults.PlaylistPreview(work));
+        Assert.Null(SearchResults.PlaylistPreview(game));
+    }
+
+    [Fact]
+    public void PlaylistPreviewKeepsRawNameAndAddsDisplayOnlyHyphenBreaks()
+    {
+        const string title = "archive-alpha-bravo-charlie-delta-echo-foxtrot-golf-hotel-india-juliet";
+        var playlist = new PlaylistInfo { Id = Guid.NewGuid(), Name = title };
+
+        var preview = SearchResults.PlaylistPreview(new SearchResultTarget(Playlist: playlist));
+
+        Assert.NotNull(preview);
+        Assert.Equal(title, playlist.Name);
+        Assert.Equal(title, preview.Title);
+        Assert.Equal(6, preview.MaxTitleLines);
+        Assert.Equal("archive-\u200Balpha-\u200Bbravo-\u200Bcharlie-\u200Bdelta-\u200Becho-\u200Bfoxtrot-\u200Bgolf-\u200Bhotel-\u200Bindia-\u200Bjuliet", preview.DisplayTitle);
+        Assert.DoesNotContain('\u200B', playlist.Name);
+    }
+
     [Fact]
     public void ParseReadsGamesAndProviderStatusFromTheDiscoveryEnvelope()
     {

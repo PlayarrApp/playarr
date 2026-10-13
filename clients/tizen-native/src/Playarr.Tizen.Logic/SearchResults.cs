@@ -4,6 +4,12 @@ namespace Playarr.Tizen.Logic;
 
 public sealed record SearchResultTarget(Work? Work = null, PlaylistInfo? Playlist = null, DiscoveryTitle? Game = null);
 
+public sealed record SearchPlaylistPreview(string Eyebrow, string Title)
+{
+    public int MaxTitleLines => 6;
+    public string DisplayTitle => Title.Replace("-", "-\u200B", StringComparison.Ordinal);
+}
+
 /// <summary>Search focus preserved while a result page is opened and the Search route is recreated on Back.</summary>
 public sealed record SearchFocusState(int ResultIndex, float ScrollOffset)
 {
@@ -13,6 +19,12 @@ public sealed record SearchFocusState(int ResultIndex, float ScrollOffset)
 /// <summary>Combines local catalog, playlist and game matches using the web Search type rules.</summary>
 public static class SearchResults
 {
+    public static SearchPlaylistPreview? PlaylistPreview(SearchResultTarget? selected)
+    {
+        if (selected?.Playlist is not { } playlist) return null;
+        return new SearchPlaylistPreview(playlist.IsSystem ? "System playlist" : "Playlist", playlist.Name);
+    }
+
     public static IReadOnlyList<SearchResultTarget> Build(
         string query,
         string mediaType,
