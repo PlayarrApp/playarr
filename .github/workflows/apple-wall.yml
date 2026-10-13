@@ -158,8 +158,26 @@ jobs:
 
       - name: Record the toolchain
         run: |
-          xcodebuild -version; swift --version; sw_vers
-          xcrun simctl list runtimes | grep -E 'iOS|tvOS' || true
+          set -euo pipefail
+          xcode_path="$(xcode-select -p)"
+          echo "Selected Xcode path: $xcode_path"
+          xcodebuild -version | awk '/^Xcode / { print "Selected Xcode version: " $2 }'
+          if runtime_json="$(xcrun simctl list runtimes -j 2>/dev/null)" && printf '%s\n' "$runtime_json" | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["runtimes"]
+          for family in ("iOS", "tvOS"):
+              selected = [runtime for runtime in runtimes if runtime.get("name", "").startswith(family + " ")]
+              available = sum(runtime.get("isAvailable") is True for runtime in selected)
+              print(f"{family} runtimes: total={len(selected)} available={available} unavailable={len(selected) - available}")
+          ios18 = [runtime for runtime in runtimes if runtime.get("name", "").startswith("iOS 18.")]
+          available18 = sum(runtime.get("isAvailable") is True for runtime in ios18)
+          status = "available" if available18 else "unavailable" if ios18 else "missing"
+          print(f"iOS 18 runtime status={status} total={len(ios18)} available={available18} unavailable={len(ios18) - available18}")
+          ' 2>/dev/null; then
+            :
+          else
+            echo "simctl/runtime status=unavailable"
+          fi
 
       # The iPad wall build needs an iOS 18 simulator (iPadOS 26 does not rotate); the runner image only has 26.
       - name: Cache the iOS 18 simulator runtime
@@ -174,11 +192,39 @@ jobs:
         timeout-minutes: 40
         run: |
           set -euo pipefail
-          t0=$(date +%s); dir="$RUNNER_TEMP/ios18"; mkdir -p "$dir"
-          if ! ls "$dir"/*.dmg >/dev/null 2>&1; then xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir"; fi
-          xcodebuild -importPlatform "$(ls "$dir"/*.dmg | head -1)"
-          xcrun simctl list runtimes | grep 'iOS 18' || { echo "::error::iOS 18 runtime missing after import"; exit 1; }
-          echo "runtime ready in $(( $(date +%s) - t0 )) s"
+          dir="$RUNNER_TEMP/ios18"; mkdir -p "$dir"
+          xcode_path="$(xcode-select -p)"
+          sudo xcode-select --switch "$xcode_path" >/dev/null 2>&1 || { echo "::error::Could not select the current Xcode path"; exit 1; }
+          echo "Selected Xcode path: $(xcode-select -p)"
+          xcodebuild -version | awk '/^Xcode / { print "Selected Xcode version: " $2 }'
+          xcodebuild -runFirstLaunch >/dev/null 2>&1 || { echo "::error::Xcode first-launch setup failed"; exit 1; }
+          shopt -s nullglob
+          packages=("$dir"/*.dmg "$dir"/*.exportedBundle)
+          if (( ${#packages[@]} == 0 )); then
+            xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir" >/dev/null 2>&1 || { echo "::error::iOS 18.5 runtime download failed"; exit 1; }
+            packages=("$dir"/*.dmg "$dir"/*.exportedBundle)
+          fi
+          if (( ${#packages[@]} != 1 )); then echo "::error::Expected one cached iOS 18.5 runtime package"; exit 1; fi
+          xcodebuild -importPlatform "${packages[0]}" >/dev/null 2>&1 || { echo "::error::iOS 18.5 runtime import failed"; exit 1; }
+          available18=0
+          for attempt in {1..30}; do
+            if counts="$(xcrun simctl list runtimes -j 2>/dev/null | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["runtimes"]
+          ios18 = [runtime for runtime in runtimes if runtime.get("name", "").startswith("iOS 18.")]
+          available = sum(runtime.get("isAvailable") is True for runtime in ios18)
+          print(len(ios18), available, len(ios18) - available)
+          ' 2>/dev/null)"; then
+              read -r total available18 unavailable <<< "$counts"
+              if (( available18 > 0 )); then status=available; else status=missing; fi
+            else
+              total=0; available18=0; unavailable=0; status=unavailable
+            fi
+            echo "iOS 18 availability poll attempt=$attempt/30 status=$status total=$total available=$available18 unavailable=$unavailable"
+            if (( available18 > 0 )); then break; fi
+            sleep 2
+          done
+          (( available18 > 0 )) || { echo "::error::No available iOS 18 runtime after bounded import poll"; exit 1; }
 
       # Compiled output is cached per device: later runs only rebuild what changed.
       - name: Cache the build
