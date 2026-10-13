@@ -9,6 +9,7 @@ namespace Playarr.Tizen;
 internal sealed class MediaCard
 {
     public const float Width = 327.2f, Height = 184f;
+    private const float SearchPlaylistFocusRingWidth = 3f;
     public View Box { get; } = new();
     public View Art { get; } = new();
     public TextLabel Title { get; }
@@ -16,11 +17,14 @@ internal sealed class MediaCard
     private readonly float _scale, _lift, _blur, _shadowY, _shadowAlpha;
     private readonly float _boxScale, _boxLift, _boxY, _focusHeight;
     private readonly View? _ring;
+    private View? _searchPlaylistFocusGlow;
     private readonly float _artDy;
     private View? _playlistIcon;
     private bool _playlistCollage;
     private bool _playlistCoverSet;
     private bool _focused;
+
+    private float SearchPlaylistFocusRingExtent => SearchPlaylistFocusRingWidth / (_boxScale * _scale);
 
     /// <param name="scale">Focus scale (home 1.025, library 1.04).</param>
     /// <param name="lift">Focus lift in px (negative = up).</param>
@@ -68,8 +72,29 @@ internal sealed class MediaCard
         Box.PositionY = _boxY + (focused ? _boxLift : 0);
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
         Art.PositionY = _artDy + (focused ? _lift : 0);
-        Art.BoxShadow = focused && !_playlistCollage ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
-        if (_ring is not null) { _ring.Show(focused); if (focused) _ring.RaiseToTop(); } // the poster loads later and would otherwise sit on top of the ring
+        Art.BoxShadow = _searchPlaylistFocusGlow is not null
+            ? focused
+                ? new Shadow(52, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.28f), new Vector2(0, 22), new Vector2(0, 0))
+                : new Shadow(34, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.16f), new Vector2(0, 12), new Vector2(0, 0))
+            : focused && !_playlistCollage ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
+        if (_searchPlaylistFocusGlow is not null)
+        {
+            var glowColor = _t.Name == "dark" ? _t.BrandInk : Rgba.Hex(0xa52745);
+            var ringExtent = SearchPlaylistFocusRingExtent;
+            _searchPlaylistFocusGlow.PositionX = Art.PositionX - ringExtent;
+            _searchPlaylistFocusGlow.PositionY = Art.PositionY - ringExtent;
+            _searchPlaylistFocusGlow.Scale = Art.Scale;
+            _searchPlaylistFocusGlow.Show(focused);
+            _searchPlaylistFocusGlow.BoxShadow = focused
+                ? new Shadow(20, new Color(glowColor.R, glowColor.G, glowColor.B, 0.45f), new Vector2(0, 0), new Vector2(0, 0))
+                : null;
+        }
+        if (_ring is not null)
+        {
+            var showRing = focused && _searchPlaylistFocusGlow is null;
+            _ring.Show(showRing);
+            if (showRing) _ring.RaiseToTop(); // the poster loads later and would otherwise sit on top of the ring
+        }
         Title.TextColor = focused ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
     }
 
@@ -148,11 +173,48 @@ internal sealed class MediaCard
     /// <summary>Search result: title and kind share the web's inset two-column caption row.</summary>
     public static MediaCard Search(AppEnv env, WorkCard card, float x, float y)
     {
-        var c = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.015f, lift: -6, blur: 52, shadowY: 22, shadowAlpha: 0.28f);
+        var isPlaylist = card.Kind == WorkKind.Unknown && card.Kicker == "Playlist";
+        var c = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f,
+            scale: isPlaylist ? 1.025f : 1.015f, lift: isPlaylist ? 0 : -6, blur: 52, shadowY: 22, shadowAlpha: 0.28f,
+            boxScale: isPlaylist ? 1.015f : 1f, boxLift: isPlaylist ? -6 : 0);
         if (card.Kind == WorkKind.Unknown)
         {
-            var icon = card.Kicker == "Playlist" ? "playlists" : "games";
-            c.Art.Add(Ui.Icon(icon, Width / 2 - 32, Height / 2 - 32, 64, env.Theme.InkMuted));
+            if (card.Kicker == "Playlist")
+            {
+                var theme = env.Theme;
+                var linearStart = BlendThemeColor(theme.SurfaceSoft, theme.SurfaceStrong, 0.12f);
+                c.Art.BackgroundColor = Ui.C(theme.SurfaceStrong);
+                var linear = Ui.DiagonalGradient(0, 0, Width, Height, 145, (0, linearStart), (1, theme.SurfaceStrong));
+                linear.CornerRadius = 12.48f;
+                var radial = Ui.RadialGradient(0, 0, Width, Height, new Rgba(theme.Brand.R, theme.Brand.G, theme.Brand.B, 0.34f), 0.76f, 0.22f, 0.42f);
+                radial.CornerRadius = 12.48f;
+                c.Art.Add(linear);
+                c.Art.Add(radial);
+                var iconSize = Math.Max(42f, Width * 0.34f);
+                var iconX = (Width - iconSize) / 2;
+                var iconY = (Height - iconSize) / 2;
+                var stroke = BlendThemeColor(theme.Ink, theme.Brand, 0.24f);
+                c.Art.Add(Ui.Icon("search-playlist-fill", iconX, iconY, iconSize, new Rgba(theme.Brand.R, theme.Brand.G, theme.Brand.B, 0.22f)));
+                c.Art.Add(Ui.Icon("search-playlist-lines", iconX, iconY, iconSize, stroke));
+                c.Art.BoxShadow = new Shadow(34, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.16f), new Vector2(0, 12), new Vector2(0, 0));
+                var glowColor = theme.Name == "dark" ? theme.BrandInk : Rgba.Hex(0xa52745);
+                var ringExtent = c.SearchPlaylistFocusRingExtent;
+                c._searchPlaylistFocusGlow = new View
+                {
+                    PositionX = c.Art.PositionX - ringExtent,
+                    PositionY = c.Art.PositionY - ringExtent,
+                    Size = new Size(c.Art.Size.Width + ringExtent * 2, c.Art.Size.Height + ringExtent * 2),
+                    CornerRadius = 12.48f + ringExtent,
+                    BorderlineWidth = ringExtent,
+                    BorderlineColor = Ui.C(glowColor),
+                    BorderlineOffset = -1,
+                    BackgroundColor = new Color(0, 0, 0, 0),
+                };
+                c._searchPlaylistFocusGlow.Show(false);
+                c.Box.Add(c._searchPlaylistFocusGlow);
+                c._searchPlaylistFocusGlow.LowerToBottom();
+            }
+            else c.Art.Add(Ui.Icon("games", Width / 2 - 32, Height / 2 - 32, 64, env.Theme.InkMuted));
         }
         var kind = card.Sub.ToUpperInvariant();
         var layout = SearchCaptionLayout.Create(Width, 1.92f, Ui.TextWidth(kind, 8.448f, 700, 0), 9.6f);
@@ -161,6 +223,12 @@ internal sealed class MediaCard
         c.Box.Add(Ui.Text(kind, layout.CaptionX, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, layout.CaptionWidth, 12.672f, HorizontalAlignment.End));
         return c;
     }
+
+    private static Rgba BlendThemeColor(Rgba first, Rgba second, float secondWeight) => new(
+        first.R * (1 - secondWeight) + second.R * secondWeight,
+        first.G * (1 - secondWeight) + second.G * secondWeight,
+        first.B * (1 - secondWeight) + second.B * secondWeight,
+        first.A * (1 - secondWeight) + second.A * secondWeight);
 
     public static MediaCard Library(AppEnv env, WorkCard card, float x, float y) =>
         new(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f);

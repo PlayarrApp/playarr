@@ -4,9 +4,8 @@ using System.Text;
 namespace Playarr.Tizen.Logic;
 
 /// <summary>
-/// Renders a one-dimensional linear gradient as a small RGBA PNG (stretch it over any box). Stops are straight-alpha
-/// colours at offsets 0..1 and interpolate like CSS in premultiplied space, so fading a colour to transparent does not
-/// pass through grey.
+/// Renders CSS-like linear and radial gradients as small RGBA PNGs. Linear stops use straight-alpha colours and
+/// premultiplied interpolation, so fading a colour to transparent does not pass through grey.
 /// </summary>
 public static class GradientPng
 {
@@ -52,6 +51,43 @@ public static class GradientPng
                 raw[offset + 1] = (byte)Math.Round(c.G * 255);
                 raw[offset + 2] = (byte)Math.Round(c.B * 255);
                 raw[offset + 3] = (byte)Math.Round(c.A * 255);
+            }
+        }
+        return Encode(width, height, raw);
+    }
+
+    /// <summary>Renders a CSS-style radial fade to transparent, sized relative to the farthest corner.</summary>
+    public static byte[] MakeRadial(int width, int height, Rgba color, float centerX, float centerY, float radiusFraction)
+    {
+        if (width < 1) throw new ArgumentOutOfRangeException(nameof(width));
+        if (height < 1) throw new ArgumentOutOfRangeException(nameof(height));
+        if (!float.IsFinite(centerX) || centerX < 0 || centerX > 1) throw new ArgumentOutOfRangeException(nameof(centerX));
+        if (!float.IsFinite(centerY) || centerY < 0 || centerY > 1) throw new ArgumentOutOfRangeException(nameof(centerY));
+        if (!float.IsFinite(radiusFraction) || radiusFraction <= 0) throw new ArgumentOutOfRangeException(nameof(radiusFraction));
+
+        var cx = centerX * (width - 1);
+        var cy = centerY * (height - 1);
+        var farthestCorner = new[]
+        {
+            Math.Sqrt(cx * cx + cy * cy),
+            Math.Sqrt((width - 1 - cx) * (width - 1 - cx) + cy * cy),
+            Math.Sqrt(cx * cx + (height - 1 - cy) * (height - 1 - cy)),
+            Math.Sqrt((width - 1 - cx) * (width - 1 - cx) + (height - 1 - cy) * (height - 1 - cy)),
+        }.Max();
+        var radius = Math.Max(1, farthestCorner * radiusFraction);
+        var raw = new byte[(width * 4 + 1) * height];
+        for (var y = 0; y < height; y++)
+        {
+            var row = y * (width * 4 + 1);
+            for (var x = 0; x < width; x++)
+            {
+                var distance = Math.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) / radius;
+                var alpha = (byte)Math.Round(color.A * Math.Clamp(1 - distance, 0, 1) * 255);
+                var offset = row + 1 + x * 4;
+                raw[offset] = (byte)Math.Round(color.R * 255);
+                raw[offset + 1] = (byte)Math.Round(color.G * 255);
+                raw[offset + 2] = (byte)Math.Round(color.B * 255);
+                raw[offset + 3] = alpha;
             }
         }
         return Encode(width, height, raw);

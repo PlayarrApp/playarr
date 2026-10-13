@@ -568,6 +568,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Match native Tizen Search playlist result cards to the web media glyph, artwork gradients, rounded corners and composed focused-card geometry.
 - Separate the focused Tizen Search result title and kind label into web-matched inset columns.
 - Match the Sailfish unseen marker outer size and border to the mobile web card.
 - Match the Sailfish library count colour to the web brand ink in both light and dark themes.

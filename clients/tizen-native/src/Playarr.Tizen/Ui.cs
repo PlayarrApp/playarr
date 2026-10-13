@@ -195,6 +195,18 @@ internal static class Ui
         return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
     }
 
+    public static View RadialGradient(float x, float y, float w, float h, Rgba color, float centerX, float centerY, float radiusFraction)
+    {
+        var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+        Directory.CreateDirectory(dir);
+        var pixelWidth = Math.Max(1, (int)Math.Round(w));
+        var pixelHeight = Math.Max(1, (int)Math.Round(h));
+        var key = $"r{pixelWidth}x{pixelHeight}-{centerX:0.###}-{centerY:0.###}-{radiusFraction:0.###}-{color.R:0.##}-{color.G:0.##}-{color.B:0.##}-{color.A:0.###}";
+        var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
+        if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeRadial(pixelWidth, pixelHeight, color, centerX, centerY, radiusFraction));
+        return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
+    }
+
     /// <summary>The details-panel scrim over a panel box (x, y, w, h): extends 40% left, 22% right, 14% above and below, as web.</summary>
     public static View PanelScrim(PlayarrTheme t, float x, float y, float w, float h)
     {
