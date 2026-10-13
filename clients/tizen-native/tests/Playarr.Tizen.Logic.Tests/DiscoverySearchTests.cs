@@ -91,6 +91,22 @@ public sealed class DiscoverySearchTests
     }
 
     [Fact]
+    public void PlaylistPreviewKeepsRawNameAndAddsDisplayOnlyHyphenBreaks()
+    {
+        const string title = "archive-alpha-bravo-charlie-delta-echo-foxtrot-golf-hotel-india-juliet";
+        var playlist = new PlaylistInfo { Id = Guid.NewGuid(), Name = title };
+
+        var preview = SearchResults.PlaylistPreview(new SearchResultTarget(Playlist: playlist));
+
+        Assert.NotNull(preview);
+        Assert.Equal(title, playlist.Name);
+        Assert.Equal(title, preview.Title);
+        Assert.Equal(6, preview.MaxTitleLines);
+        Assert.Equal("archive-\u200Balpha-\u200Bbravo-\u200Bcharlie-\u200Bdelta-\u200Becho-\u200Bfoxtrot-\u200Bgolf-\u200Bhotel-\u200Bindia-\u200Bjuliet", preview.DisplayTitle);
+        Assert.DoesNotContain('\u200B', playlist.Name);
+    }
+
+    [Fact]
     public void ParseReadsGamesAndProviderStatusFromTheDiscoveryEnvelope()
     {
         const string json = """

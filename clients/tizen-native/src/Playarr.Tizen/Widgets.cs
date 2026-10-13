@@ -266,8 +266,8 @@ internal sealed class DetailsPanel
     public void ShowPlaylistPreview(SearchPlaylistPreview preview)
     {
         _showing = Guid.Empty;
-        var card = new WorkCard(Guid.Empty, WorkKind.Unknown, preview.Title, preview.Eyebrow, preview.Eyebrow, "", null, null, null, 0, false);
-        Render(card, preview.Eyebrow, null, null);
+        var card = new WorkCard(Guid.Empty, WorkKind.Unknown, preview.DisplayTitle, preview.Eyebrow, preview.Eyebrow, "", null, null, null, 0, false);
+        Render(card, preview.Eyebrow, null, null, preview.MaxTitleLines);
         Root.Show(true);
     }
 
@@ -284,13 +284,13 @@ internal sealed class DetailsPanel
         catch (Exception) { RuntimeCache[card.WorkId] = null; }
     }
 
-    private void Render(WorkCard card, string? kicker, string? lead, long? runtimeMs)
+    private void Render(WorkCard card, string? kicker, string? lead, long? runtimeMs, int titleMaxLines = 5)
     {
         var t = _env.Theme;
         foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
         var ky = _flow ? 286.6f : 259.2f; var tsize = _flow ? 49.92f : 69.12f; var tlh = _flow ? 47.424f : 62.208f; var tw = _flow ? 420f : 369f; var ty = _flow ? 330.9f : 303.5f;
         Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 800, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, 5, balance: true);
+        var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, titleMaxLines, balance: true);
         var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f) + (_library ? 4f : 0); // library panels: measured 4 px lower on web
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
