@@ -67,6 +67,7 @@ import io.playarr.shared.designsystem.component.PlayarrButton
 import io.playarr.shared.designsystem.component.PlayarrButtonSize
 import io.playarr.shared.designsystem.component.PlayarrButtonVariant
 import io.playarr.shared.designsystem.component.PlayarrIconButton
+import io.playarr.shared.designsystem.theme.LocalPlayarrWebPalette
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -241,7 +242,14 @@ private fun PlayarrSheetFrame(
                         Box(Modifier.padding(top = if (kicker != null) 3.2.dp else 0.dp)) { titleContent?.invoke() }
                     }
                     if (dismissible) {
-                        PlayarrIconButton(onClick = onClose, contentDescription = closeLabel, modifier = Modifier.focusRequester(focus), variant = PlayarrButtonVariant.Secondary) {
+                        // The web phone drawer uses a surface-filled secondary icon button with a strong-line border.
+                        PlayarrIconButton(
+                            onClick = onClose,
+                            contentDescription = closeLabel,
+                            modifier = Modifier.focusRequester(focus).border(1.dp, LocalPlayarrWebPalette.current.pillBorder, CircleShape),
+                            variant = PlayarrButtonVariant.Secondary,
+                            containerColor = WebSurfaceSoft,
+                        ) {
                             Text("\u00D7", fontSize = 16.sp, fontWeight = FontWeight(720))
                         }
                     }
