@@ -909,6 +909,7 @@ namespace Playarr.Xbox.Views
             art.Children.Add(new TextBlock
             {
                 Text = episode.EpisodeNumber.ToString("00", System.Globalization.CultureInfo.InvariantCulture),
+                Foreground = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White),
                 FontSize = 22,
                 FontWeight = FontWeights.SemiBold,
                 HorizontalAlignment = HorizontalAlignment.Right,
