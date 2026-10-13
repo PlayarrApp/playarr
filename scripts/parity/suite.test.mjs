@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { applyParityLine, createParityState, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { applyParityLine, createParityState, hasFreshBrowseFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, requestEcp, routeForState as rokuRouteForState, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
@@ -34,12 +34,12 @@ test("Roku suite driver requires explicit non-player screen and D-pad allowlists
     "--only", "screens,dpad", "--via", "route", "--screens", "home,movies",
     "--checks", "home-right,movies-grid-down",
   ]), true);
+  assert.equal(validateRokuRunArgs([
+    "--only", "screens", "--via", "route", "--screens", "calendar-month,calendar-week,calendar-agenda",
+  ]), true);
   assert.throws(() => validateRokuRunArgs(["--only", "screens,dpad"]), /explicit non-player --screens/);
   assert.throws(() => validateRokuRunArgs([
     "--only", "screens", "--screens", "home,player-controls",
-  ]), /refuses unsupported screen/);
-  assert.throws(() => validateRokuRunArgs([
-    "--only", "screens", "--via", "route", "--screens", "calendar-month",
   ]), /refuses unsupported screen/);
   assert.throws(() => validateRokuRunArgs([
     "--only", "dpad", "--checks", "home-right,player-right",
@@ -72,8 +72,34 @@ test("Roku samples a 1x1 pixel from an encoded JPEG after converting to RGB", ()
   assert.ok(Math.abs(pixel.b - 0x77) <= 12);
 });
 
-test("Roku does not report a calendar view it cannot observe", () => {
-  assert.equal(rokuRouteForState("page", "calendar", "", ""), null);
+test("Roku reports only a fresh, observed Calendar view", () => {
+  const state = createParityState();
+  assert.equal(rokuRouteForState("page", "calendar", "", "", state.calendarView), null);
+  const beforeViewSeq = state.calendarViewSeq;
+  applyParityLine(state, "PARITY|screen|page");
+  applyParityLine(state, "PARITY|page|calendar");
+  assert.equal(hasFreshCalendarView(state, "month", beforeViewSeq), false);
+  applyParityLine(state, "PARITY|calendarView|month");
+  assert.equal(hasFreshCalendarView(state, "month", beforeViewSeq), true);
+  assert.equal(rokuRouteForState("page", "calendar", "", "", state.calendarView), "/calendar?view=month");
+  const currentViewSeq = state.calendarViewSeq;
+  applyParityLine(state, "PARITY|screen|page");
+  applyParityLine(state, "PARITY|page|calendar");
+  assert.equal(hasFreshCalendarView(state, "month", currentViewSeq), false);
+  applyParityLine(state, "PARITY|calendarView|week");
+  assert.equal(hasFreshCalendarView(state, "week", currentViewSeq), true);
+  assert.equal(rokuRouteForState("page", "calendar", "", "", state.calendarView), "/calendar?view=week");
+  assert.equal(rokuRouteForState("page", "calendar", "", "", "agenda"), "/calendar");
+});
+
+test("Roku requires fresh Movies grid focus before the Filters route", () => {
+  const state = createParityState();
+  applyParityLine(state, "PARITY|screen|browse");
+  applyParityLine(state, "PARITY|browse|movie");
+  assert.equal(hasFreshBrowseFocus(state, "movie", 0, 0), false);
+  applyParityLine(state, "PARITY|focus|first card");
+  assert.equal(hasFreshBrowseFocus(state, "movie", 0, 0), true);
+  assert.equal(hasFreshBrowseFocus(state, "series", 0, 0), false);
 });
 
 test("Roku launch response guard detects HTTP-200 ECP error bodies", () => {

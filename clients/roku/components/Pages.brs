@@ -558,6 +558,7 @@ sub openPage(kind as String)
     else if kind = "calendar"
         m.calendarAnchor = invalid
         m.calendarView = "month"
+        parityEmit("calendarView", m.calendarView)
         m.calendarFocusAction = ""
         m.calendarPlaceFirst = true
         m.calendarSelected = ""
@@ -1849,6 +1850,7 @@ sub calendarAction(item as Object)
         m.calendarPlaceFirst = true
         m.calendarAnchor = item.data
         m.calendarView = "agenda"
+        parityEmit("calendarView", m.calendarView)
         renderCalendar()
         loadCalendar()
     else if a = "calPlay"
@@ -1872,6 +1874,7 @@ sub onCalendarViewButton(event as Object)
     views = ["month", "week", "agenda"]
     if index >= 0 and index < views.Count()
         m.calendarView = views[index]
+        parityEmit("calendarView", m.calendarView)
         m.calendarFocusAction = "calView"
         renderCalendar()
         loadCalendar()

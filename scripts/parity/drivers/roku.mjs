@@ -12,7 +12,8 @@ import { fileURLToPath } from "node:url";
 import { artReadiness, createArtReadinessState, intersectingSlots, parseArtEvent, reduceArtEvent, resetArtReadinessState } from "../roku/art-readiness.mjs";
 
 const SAFE_SCREENS = new Set([
-  "home", "movies", "series", "music", "search", "settings", "filters", "profiles", "actions",
+  "home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda",
+  "search", "settings", "filters", "profiles", "actions",
 ]);
 const SAFE_CHECKS = new Set([
   "home-right", "home-down", "home-down-right", "home-left-nav", "nav-down",
@@ -62,6 +63,7 @@ export function createParityState() {
   return {
     screen: "", screenSeq: 0, page: "", browse: "", focus: null,
     focusSeq: 0, focusScreenSeq: 0, focusFloorAtScreen: 0, drawerSource: "",
+    calendarView: "", calendarViewSeq: 0, calendarViewScreenSeq: 0,
     eventSeq: 0, artMarkers: { home: 0, movies: 0 }, artState: createArtReadinessState(),
   };
 }
@@ -81,6 +83,13 @@ export function applyParityLine(state, line) {
     if (state.screen === "home") state.artMarkers.home = state.eventSeq;
   } else if (kind === "page") {
     state.page = value.trim();
+    if (state.page !== "calendar") state.calendarView = "";
+  } else if (kind === "calendarView") {
+    const view = value.trim();
+    if (!["month", "week", "agenda"].includes(view)) return false;
+    state.calendarView = view;
+    state.calendarViewSeq += 1;
+    state.calendarViewScreenSeq = state.screenSeq;
   } else if (kind === "browse") {
     state.browse = value.trim();
     if (state.browse === "movie" || state.browse === "movies") state.artMarkers.movies = state.eventSeq;
@@ -157,6 +166,26 @@ export function hasFreshHomeContentFocus(state, afterScreenSeq, afterFocusSeq) {
     && Number.isInteger(position?.index) && position.index >= 0;
 }
 
+export function hasFreshBrowseFocus(state, expectedBrowse, afterScreenSeq, afterFocusSeq) {
+  const browseMatches = state.browse === expectedBrowse
+    || (expectedBrowse === "movie" && state.browse === "movies")
+    || (expectedBrowse === "movies" && state.browse === "movie");
+  return state.screen === "browse"
+    && state.screenSeq > afterScreenSeq
+    && browseMatches
+    && state.focus !== null
+    && state.focusSeq > afterFocusSeq
+    && state.focusScreenSeq === state.screenSeq;
+}
+
+export function hasFreshCalendarView(state, expectedView, afterViewSeq) {
+  return state.screen === "page"
+    && state.page === "calendar"
+    && state.calendarView === expectedView
+    && state.calendarViewSeq > afterViewSeq
+    && state.calendarViewScreenSeq === state.screenSeq;
+}
+
 export function themePixelMatches(pixel, theme) {
   if (!pixel || ![pixel.r, pixel.g, pixel.b].every(Number.isFinite)) return false;
   if (theme === "dark") return pixel.r < 80 && pixel.g < 80 && pixel.b < 80;
@@ -186,7 +215,7 @@ function parseKeySequence(keys = []) {
   return out;
 }
 
-export function routeForState(screen, page, browse, drawerSource) {
+export function routeForState(screen, page, browse, drawerSource, calendarView = "") {
   if (screen === "home") return "/";
   if (screen === "profiles") return "/profiles";
   if (screen === "search") return "/search";
@@ -201,8 +230,11 @@ export function routeForState(screen, page, browse, drawerSource) {
     return null;
   }
   if (screen === "page") {
-    // Roku reports only the Calendar page name, not its persisted month/week/agenda view.
-    if (page === "calendar") return null;
+    if (page === "calendar") {
+      if (calendarView === "agenda") return "/calendar";
+      if (calendarView === "month" || calendarView === "week") return `/calendar?view=${calendarView}`;
+      return null;
+    }
     if (["watchlist", "requests", "clients", "household"].includes(page)) return `/${page}`;
     if (page === "settings") return "/settings";
     return null;
@@ -250,7 +282,7 @@ export function createDriver({ out, args = [] } = {}) {
 
   const resetObservedState = () => {
     debugBuffer = "";
-    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "" });
+    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "", calendarView: "" });
     screen = "";
     page = "";
     browse = "";
@@ -347,7 +379,7 @@ export function createDriver({ out, args = [] } = {}) {
       drawerSource = "actions";
       parityState.drawerSource = drawerSource;
     }
-    const actual = routeForState(screen, page, browse, drawerSource);
+    const actual = routeForState(screen, page, browse, drawerSource, parityState.calendarView);
     if (actual) lastRoute = actual;
     if (screen === "playback") throw new Error("Roku parity driver stopped before capturing a player screen");
   };
@@ -525,12 +557,67 @@ export function createDriver({ out, args = [] } = {}) {
     const entry = exactSuiteScreen(path);
     if (!entry || !SAFE_SCREENS.has(entry.id) || entry.open) throw new Error(`Roku suite route is unsupported: ${path}`);
     await toHome();
-    if (entry.id === "filters") drawerSource = "filters";
-    else if (entry.id === "actions") drawerSource = "actions";
-    parityState.drawerSource = drawerSource;
-    for (const item of parseKeySequence(entry.keys)) await press(item.key, { long: item.long });
-    const actual = routeForState(screen, page, browse, drawerSource);
-    if (actual !== (entry.match ?? entry.route)) throw new Error(`Roku route ended on ${actual}; expected ${entry.match ?? entry.route}`);
+    if (entry.id === "filters") {
+      const beforeBrowseScreenSeq = screenSeq;
+      const beforeBrowseFocusSeq = focusSeq;
+      await press("left");
+      for (let i = 0; i < 12; i += 1) await press("down");
+      for (let i = 0; i < 6; i += 1) await press("up");
+      await press("select");
+      await waitFor(
+        () => hasFreshBrowseFocus(parityState, "movie", beforeBrowseScreenSeq, beforeBrowseFocusSeq),
+        "fresh Movies grid focus before opening Filters",
+        30000,
+      );
+      drawerSource = "filters";
+      parityState.drawerSource = "filters";
+      await sendEcp("keypress/Info");
+      await sleep(keyDelay);
+      await press("up");
+      const beforeDrawerScreenSeq = screenSeq;
+      await press("select");
+      await waitFor(
+        () => screen === "drawer" && screenSeq > beforeDrawerScreenSeq,
+        "fresh Filters drawer screen",
+        15000,
+      );
+    } else if (["calendar-month", "calendar-week", "calendar-agenda"].includes(entry.id)) {
+      const targetView = entry.id.slice("calendar-".length);
+      const beforeCalendarViewSeq = parityState.calendarViewSeq;
+      await press("left");
+      for (let i = 0; i < 12; i += 1) await press("down");
+      await press("up");
+      const beforeCalendarScreenSeq = screenSeq;
+      await press("select");
+      await waitFor(
+        () => screenSeq > beforeCalendarScreenSeq && hasFreshCalendarView(parityState, "month", beforeCalendarViewSeq),
+        "fresh Calendar month view",
+        30000,
+      );
+      if (targetView !== "month") {
+        const beforeTargetViewSeq = parityState.calendarViewSeq;
+        // Calendar starts with its first registered page control focused:
+        // Next, Today, Previous, then the range/view button. Move left across
+        // those fixed header controls to open the view chooser.
+        for (let i = 0; i < 3; i += 1) await press("left");
+        await press("select");
+        const targetIndex = ["month", "week", "agenda"].indexOf(targetView);
+        for (let i = 0; i < targetIndex; i += 1) await press("down");
+        await press("select");
+        await waitFor(
+          () => hasFreshCalendarView(parityState, targetView, beforeTargetViewSeq),
+          `fresh Calendar ${targetView} view`,
+          15000,
+        );
+      }
+    } else {
+      if (entry.id === "actions") drawerSource = "actions";
+      parityState.drawerSource = drawerSource;
+      for (const item of parseKeySequence(entry.keys)) await press(item.key, { long: item.long });
+    }
+    const actual = routeForState(screen, page, browse, drawerSource, parityState.calendarView);
+    const expectedRoute = entry.id === "calendar-agenda" ? "/calendar" : (entry.match ?? entry.route);
+    if (actual !== expectedRoute) throw new Error(`Roku route ended on ${actual}; expected ${expectedRoute}`);
     lastRoute = actual;
   };
 
@@ -560,7 +647,7 @@ export function createDriver({ out, args = [] } = {}) {
     async location() {
       assertDebug();
       if (screen === "playback") return "/player/unsupported";
-      const current = routeForState(screen, page, browse, drawerSource);
+      const current = routeForState(screen, page, browse, drawerSource, parityState.calendarView);
       if (current) lastRoute = current;
       return lastRoute;
     },
@@ -587,7 +674,7 @@ export function createDriver({ out, args = [] } = {}) {
         screen,
         page,
         browse,
-        route: routeForState(screen, page, browse, drawerSource),
+        route: routeForState(screen, page, browse, drawerSource, parityState.calendarView),
         focus,
       }, null, 2));
     },
