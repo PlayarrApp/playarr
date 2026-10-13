@@ -284,6 +284,7 @@
              MainScene.brs's buildAlphabetStrip, kept out of XML since
              it's the exact same 27-entry content on every grid screen that
              uses one, not screen-specific markup. -->
+        <Group id="browseAlphabetContent" />
       </Group>
       <!-- Filters button (from: .tv-filter-launcher, top-right, above the
            alphabet strip): reached from the alphabet strip's own "#" entry

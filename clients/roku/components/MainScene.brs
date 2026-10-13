@@ -129,6 +129,7 @@ sub init()
     m.browsePreviewMeta2 = m.top.findNode("browsePreviewMeta2")
     m.browsePreviewOverview = m.top.findNode("browsePreviewOverview")
     m.browseAlphabet = m.top.findNode("browseAlphabet")
+    m.browseAlphabetContent = m.top.findNode("browseAlphabetContent")
     buildAlphabetStrip()
     m.browseFiltersButton = m.top.findNode("browseFiltersButton")
     m.browseFiltersPanel = m.top.findNode("browseFiltersPanel")
@@ -2412,6 +2413,11 @@ sub openBrowse(kind as String, label as String)
     m.artActiveScope = ""
     m.browseArtTelemetryArmed = false
     m.browseKind = kind
+    configureBrowseAlphabetLayout(kind = "movie")
+    if kind = "movie"
+        m.browseTrackingAlphabetIndex = 0
+        m.browseAlphabetIndex = 0
+    end if
     m.browseGrid.alphabetHandoffEnabled = kind = "movie"
     parityEmit("browse", kind)
     m.browseLabel = label
@@ -2637,7 +2643,7 @@ sub buildAlphabetStrip()
         marker.visible = false
         ThemeSetRole(marker, "ink", 199)
         marker.blendColor = ThemeColor("ink", 199)
-        m.browseAlphabet.AppendChild(marker)
+        m.browseAlphabetContent.AppendChild(marker)
         m.alphabetMarkers.Push(marker)
 
         focusRing = CreateObject("roSGNode", "Poster")
@@ -2649,7 +2655,7 @@ sub buildAlphabetStrip()
         focusRing.visible = false
         focusRing.blendColor = ThemeColor("focusRing")
         ThemeSetRole(focusRing, "focusRing")
-        m.browseAlphabet.AppendChild(focusRing)
+        m.browseAlphabetContent.AppendChild(focusRing)
         m.alphabetFocusRings.Push(focusRing)
 
         label = CreateObject("roSGNode", "Label")
@@ -2660,10 +2666,77 @@ sub buildAlphabetStrip()
         label.horizAlign = "center"
         label.color = ThemeColor("inkSoft")
         label.font = PlayarrMakeFont(400, 9)
-        m.browseAlphabet.AppendChild(label)
+        m.browseAlphabetContent.AppendChild(label)
         m.alphabetLabels.Push(label)
         y += 25.6
     end for
+end sub
+
+sub configureBrowseAlphabetLayout(isMovie as Boolean)
+    if m.browseAlphabet = invalid or m.browseAlphabetContent = invalid or m.alphabetLabels = invalid then return
+    if isMovie
+        m.browseAlphabet.translation = [1851.53, 270]
+        m.browseAlphabet.clippingRect = [0, 0, 56, 810]
+        m.browseAlphabetContent.translation = [0, 8]
+        y = 0
+        for i = 0 to m.alphabetLabels.Count() - 1
+            m.alphabetLabels[i].translation = [6, y]
+            m.alphabetLabels[i].width = 44
+            m.alphabetLabels[i].height = 44
+            m.alphabetLabels[i].vertAlign = "center"
+            m.alphabetMarkers[i].translation = [16, y + 10]
+            m.alphabetFocusRings[i].translation = [1, y - 5]
+            m.alphabetFocusRings[i].width = 54
+            m.alphabetFocusRings[i].height = 54
+            y += 44
+        end for
+    else
+        m.browseAlphabet.translation = [1856.5, 271]
+        m.browseAlphabet.clippingRect = [0, 0, 0, 0]
+        m.browseAlphabetContent.translation = [0, 0]
+        y = 0
+        for i = 0 to m.alphabetLabels.Count() - 1
+            m.alphabetLabels[i].translation = [0, y]
+            m.alphabetLabels[i].width = 40
+            m.alphabetLabels[i].height = 24
+            m.alphabetMarkers[i].translation = [8, y]
+            m.alphabetFocusRings[i].translation = [4, y - 4]
+            m.alphabetFocusRings[i].width = 32
+            m.alphabetFocusRings[i].height = 32
+            y += 25.6
+        end for
+    end if
+end sub
+
+sub scrollBrowseAlphabetToIndex(index as Integer, center as Boolean)
+    if m.browseKind <> "movie" or index < 0 or index >= m.alphabetLabels.Count() then return
+    viewportHeight = m.browseAlphabet.clippingRect[3]
+    stageHeight = 1080.0
+    if m.top.height > 0 then stageHeight = m.top.height
+    viewportUnit = stageHeight / 100.0
+    topPadding = 8.0
+    bottomPadding = 6.0 * viewportUnit
+    if bottomPadding < 48 then bottomPadding = 48
+    if bottomPadding > 78 then bottomPadding = 78
+    contentHeight = topPadding + m.alphabetLabels.Count() * 44.0 + bottomPadding
+    edgeInset = 5.5 * viewportUnit
+    if edgeInset < 38 then edgeInset = 38
+    if edgeInset > 64 then edgeInset = 64
+    maxScroll = contentHeight - viewportHeight
+    currentScroll = topPadding - m.browseAlphabetContent.translation[1]
+    itemTop = topPadding + index * 44.0
+    itemBottom = itemTop + 44.0
+    nextScroll = currentScroll
+    if center
+        nextScroll = itemTop + 22.0 - viewportHeight / 2.0
+    else if itemBottom - currentScroll > viewportHeight - edgeInset
+        nextScroll = itemBottom - (viewportHeight - edgeInset)
+    else if itemTop - currentScroll < edgeInset
+        nextScroll = itemTop - edgeInset
+    end if
+    if nextScroll < 0 then nextScroll = 0
+    if nextScroll > maxScroll then nextScroll = maxScroll
+    m.browseAlphabetContent.translation = [0, topPadding - nextScroll]
 end sub
 
 sub enterBrowseAlphabet(preserveCurrent as Boolean)
@@ -2671,6 +2744,7 @@ sub enterBrowseAlphabet(preserveCurrent as Boolean)
     m.browseAlphabetMode = true
     if not preserveCurrent then m.browseAlphabetIndex = 0
     renderBrowseAlphabetFocus()
+    scrollBrowseAlphabetToIndex(m.browseAlphabetIndex, false)
     m.top.SetFocus(true)
 end sub
 
@@ -2685,6 +2759,7 @@ function moveBrowseAlphabetFocus(delta as Integer) as Boolean
     if newIndex < 0 or newIndex >= m.alphabetLabels.Count() then return true
     m.browseAlphabetIndex = newIndex
     renderBrowseAlphabetFocus()
+    scrollBrowseAlphabetToIndex(newIndex, false)
     return true
 end function
 
@@ -2788,6 +2863,7 @@ sub focusBrowseAlphabetFromButton()
     m.browseAlphabetMode = true
     m.browseAlphabetIndex = 0
     renderBrowseAlphabetFocus()
+    scrollBrowseAlphabetToIndex(m.browseAlphabetIndex, false)
 end sub
 
 sub openBrowseFiltersPanel()
@@ -3072,9 +3148,13 @@ sub onBrowseItemFocused(event as Object)
             if trackingRow < 0 then trackingRow = 0
             trackingIndex = trackingRow * columns
             if trackingIndex >= m.browseItems.Count() then trackingIndex = m.browseItems.Count() - 1
+            previousTrackingAlphabetIndex = m.browseTrackingAlphabetIndex
             m.browseTrackingAlphabetIndex = browseAlphabetIndexForItem(m.browseItems[trackingIndex])
             m.browseAlphabetIndex = m.browseTrackingAlphabetIndex
             renderBrowseAlphabetFocus()
+            if previousTrackingAlphabetIndex <> m.browseTrackingAlphabetIndex
+                scrollBrowseAlphabetToIndex(m.browseTrackingAlphabetIndex, true)
+            end if
         end if
     end if
     ' Web keeps the focused row 70 px clear of the bottom edge once the grid scrolls (its rows then sit 56 px higher).
