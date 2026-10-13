@@ -575,6 +575,49 @@ extension EnvironmentValues {
     }
 }
 
+/// Web TV navigation's vertical safe area, measured from the 1920x1080 web rail and expressed
+/// with the same viewport-height clamps as `.app-nav`.
+struct TVFloatingNavLayout {
+    let topInset: CGFloat
+    let bottomInset: CGFloat
+
+    static func metrics(height: CGFloat) -> TVFloatingNavLayout {
+        let viewportUnit = max(0, height)
+        let header = min(max(viewportUnit * 0.052, 34), 66)
+        let controlGap = min(max(viewportUnit * 0.012, 6.4), 14.4)
+        let bottom = min(max(viewportUnit * 0.032, 22), 46) - 14
+        return TVFloatingNavLayout(
+            topInset: header + 44 + controlGap,
+            bottomInset: max(0, bottom)
+        )
+    }
+
+    /// Intrinsic centre for an unscaled nav tile, using the shell's grouped spacing.
+    static func tileCenterY(index: Int, groupCounts: [Int], height: CGFloat) -> CGFloat? {
+        guard index >= 0, groupCounts.allSatisfy({ $0 >= 0 }),
+              index < groupCounts.reduce(0, +) else { return nil }
+        let metrics = metrics(height: height)
+        var remaining = index
+        var groupTop = metrics.topInset + DesignTokens.Shell.navGroupPadding
+        for (groupIndex, count) in groupCounts.enumerated() {
+            if remaining < count {
+                return groupTop + DesignTokens.Shell.navGroupPadding
+                    + DesignTokens.Shell.navItemSize / 2
+                    + CGFloat(remaining) * (DesignTokens.Shell.navItemSize + DesignTokens.Shell.navGroupGap)
+            }
+            remaining -= count
+            let groupHeight = CGFloat(count) * DesignTokens.Shell.navItemSize
+                + CGFloat(max(0, count - 1)) * DesignTokens.Shell.navGroupGap
+                + DesignTokens.Shell.navGroupPadding * 2
+            groupTop += groupHeight
+            if groupIndex < groupCounts.count - 1 {
+                groupTop += 14
+            }
+        }
+        return nil
+    }
+}
+
 struct TVFloatingNav: View {
     @Binding var selection: TVNavTab
     /// When true, suppress tvOS focus lift so parity captures match web chrome.
@@ -607,16 +650,29 @@ struct TVFloatingNav: View {
     var profile: TVNavProfile? = nil
 
     var body: some View {
-        // Whole nav is one centred column (web: top 50% + translateY(-50%)).
-        // Settings sits just under the primary group, not pinned to the footer.
-        VStack(spacing: 14) {
-            ForEach(navGroups, id: \.self) { navGroup(tabs: $0) }
-            if showSettings {
-                navGroup(tabs: [.settings])
+        GeometryReader { geometry in
+            let metrics = TVFloatingNavLayout.metrics(height: geometry.size.height)
+            VStack(spacing: 0) {
+                ScrollView(.vertical) {
+                    VStack(spacing: 14) {
+                        ForEach(navGroups, id: \.self) { navGroup(tabs: $0) }
+                        if showSettings {
+                            navGroup(tabs: [.settings])
+                        }
+                    }
+                    // Web rail keeps the first group clear of the header/page controls and
+                    // preserves room for focused group shadows at both scroll edges.
+                    .padding(.vertical, DesignTokens.Shell.navGroupPadding)
+                }
+                .scrollIndicators(.hidden)
+
+                if let profile {
+                    profileGroup(profile)
+                }
             }
-            if let profile {
-                profileGroup(profile)
-            }
+            .padding(.top, metrics.topInset)
+            .padding(.bottom, metrics.bottomInset)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: DesignTokens.Shell.navItemSize + DesignTokens.Shell.navGroupPadding * 2)
     }

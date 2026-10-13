@@ -569,6 +569,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
 - Match native Tizen Search playlist result cards to the web media glyph, artwork gradients, rounded corners and composed focused-card geometry.
 - Separate the focused Tizen Search result title and kind label into web-matched inset columns.
 - Match the Sailfish unseen marker outer size and border to the mobile web card.
