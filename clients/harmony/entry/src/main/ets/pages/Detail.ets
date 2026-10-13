@@ -152,7 +152,7 @@ import { PlaybackOptionsDrawer } from '../design/components/PlaybackOptionsDrawe
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 import { Skeleton } from '../design/components/Skeleton';
 
-import { BRAND_PINK_SOFT } from '../core/Tokens';
+import { BRAND_PINK, BRAND_PINK_SOFT } from '../core/Tokens';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { tv, isTvMetrics, TvGeometry, TouchGeometry } from '../design/Metrics';
