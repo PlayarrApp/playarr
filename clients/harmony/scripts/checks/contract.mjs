@@ -138,6 +138,52 @@ function checkClientVersionPin(harmonyDir, errors, warnings) {
   }
 }
 
+function checkDetailObservedArtwork(harmonyDir, errors, warnings) {
+  const text = checkFileContract(
+    harmonyDir,
+    'entry/src/main/ets/pages/Detail.ets',
+    {
+      requiredSubstrings: [
+        '@Observed\nclass DetailArtworkState',
+        '@ObjectLink artworkState: DetailArtworkState;',
+        '@BuilderParam cardBuilder: (artwork: image.PixelMap | undefined) => void',
+        'item.artworkState.pixelMap = artwork;',
+        'artworkState: item.artworkState,',
+        'DetailRowArtworkCard({',
+        'railId: rail.id,',
+        '(rail: DetailRail): string => rail.id',
+      ],
+    },
+    errors,
+    warnings
+  );
+  if (text === null) return;
+
+  const initialStateCount = (text.match(/artworkState: new DetailArtworkState\(undefined\)/g) || []).length;
+  if (initialStateCount !== 5) {
+    errors.push(`entry/src/main/ets/pages/Detail.ets: expected five Detail row constructors to initialize independent artwork state objects, found ${initialStateCount}`);
+  }
+
+  const observedCardCount = (text.match(/DetailRowArtworkCard\(\{/g) || []).length;
+  if (observedCardCount !== 5) {
+    errors.push(`entry/src/main/ets/pages/Detail.ets: expected all five TV/touch Detail row card builders to use the observed artwork child, found ${observedCardCount}`);
+  }
+
+  const identityPreservingCloneCount = (text.match(/artworkState: item\.artworkState,/g) || []).length;
+  if (identityPreservingCloneCount < 2) {
+    errors.push('entry/src/main/ets/pages/Detail.ets: row and album artwork clones must preserve the existing artwork-state object');
+  }
+
+  const pixelMapUpdateCount = (text.match(/item\.artworkState\.pixelMap = artwork;/g) || []).length;
+  if (pixelMapUpdateCount !== 2) {
+    errors.push(`entry/src/main/ets/pages/Detail.ets: expected row and album fetch paths to update observed artwork state, found ${pixelMapUpdateCount}`);
+  }
+
+  if (/@Prop\s+\w+\s*:\s*\([^\n]*=>/.test(text)) {
+    errors.push('entry/src/main/ets/pages/Detail.ets: observed artwork row component must not add function-valued @Prop fields');
+  }
+}
+
 export function checkContract(harmonyDir) {
   const errors = [];
   const warnings = [];
@@ -202,6 +248,7 @@ export function checkContract(harmonyDir) {
   );
 
   checkArtworkOriginGuard(harmonyDir, errors, warnings);
+  checkDetailObservedArtwork(harmonyDir, errors, warnings);
 
   checkFileContract(
     harmonyDir,

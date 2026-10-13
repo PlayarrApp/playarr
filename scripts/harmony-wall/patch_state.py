@@ -13,8 +13,7 @@ def edit(rel, fn):
 
 def card(s):
     s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { reportCardFocus, previewReport, reportDetailLayoutStageForScope, reportDetailRowImageStageForScope } from '../../util/PreviewState';", 1)
-    s = s.replace("  onLongPress: () => void = () => {};", "  onLongPress: () => void = () => {};\n  @Prop previewRoute: string = '';\n  @Prop previewWorkId: string = '';\n  @Prop previewRowId: string = '';\n  @Prop previewGeneration: number = 0;", 1)
-    s = s.replace("  @Prop artwork: image.PixelMap | undefined = undefined;", "  @Prop @Watch('previewArtworkUpdated') artwork: image.PixelMap | undefined = undefined;", 1)
+    s = s.replace("  @Prop artwork: image.PixelMap | undefined = undefined;", "  @Prop previewRoute: string = '';\n  @Prop previewWorkId: string = '';\n  @Prop previewRowId: string = '';\n  @Prop previewGeneration: number = 0;\n  @Prop @Watch('previewArtworkUpdated') artwork: image.PixelMap | undefined = undefined;", 1)
     s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onAppear(() => { reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'poster-render-artwork-present'); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'image-source'); })\n            .onAreaChange((_old: Area, area: Area) => { reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, Number(area.width) > 0 && Number(area.height) > 0 ? 'image-area-positive' : 'image-area-zero'); })\n            .onComplete(() => { previewReport('dbg=' + encodeURIComponent('poster-image-complete')); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'on-complete'); })\n            .onError(() => { previewReport('dbg=' + encodeURIComponent('poster-image-error')); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'on-error'); })\n            .width('100%')", 1)
     old = "      this.setFocused(true);\n      this.onFocused();\n"
     assert old in s
@@ -102,6 +101,19 @@ def detail(s):
           reportDetailRowImageStage(previewContext,
             matchingRowCount > 0 ? 'row-match-found' : 'row-match-missing');
           this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
+          let assignedArtworkState = false;
+          for (const updatedRail of this.rails) {
+            for (const updatedRow of updatedRail.items) {
+              if (updatedRow.id === item.id && (updatedRow as DetailRow).artworkState.pixelMap !== undefined) {
+                assignedArtworkState = true;
+              }
+            }
+          }
+          reportDetailRowImageStage(previewContext,
+            assignedArtworkState ? 'artwork-state-present' : 'artwork-state-absent');
+          if (assignedArtworkState) {
+            reportDetailRowImageStage(previewContext, 'artwork-state-mutated');
+          }
           reportDetailRowImageStage(previewContext, 'assigned');
         } else {
           reportDetailRowImageStage(previewContext, 'fetch-error');

@@ -85,7 +85,7 @@ class PreviewEventTests(unittest.TestCase):
         for stage in (
             "row-match-found", "row-match-missing", "poster-artwork-prop-undefined",
             "poster-artwork-prop-present", "poster-render-artwork-undefined",
-            "poster-render-artwork-present", "visible-item-stamp-absent", "visible-item-stamp-present",
+            "poster-render-artwork-present", "visible-item-artwork-state-absent", "visible-item-artwork-state-present",
         ):
             self.assertTrue(harmony_vnc.append_detail_image_stage(dict(body, stage=stage)), stage)
         self.assertNotIn("width", harmony_vnc.STATE["debug_events"][-1])

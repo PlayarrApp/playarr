@@ -84,12 +84,16 @@ class CaptureDiagnosticsTests(unittest.TestCase):
              "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.5},
             {"sequence": 10, "category": "detail-row-image-row-match-found", "route": "Detail", "work_id": "private-work",
              "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.6},
+            {"sequence": 10, "category": "detail-row-image-artwork-state-mutated", "route": "Detail", "work_id": "private-work",
+             "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.65},
             {"sequence": 11, "category": "detail-row-image-poster-artwork-prop-present", "route": "Detail", "work_id": "private-work",
              "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.7},
             {"sequence": 12, "category": "detail-row-image-poster-render-artwork-present", "route": "Detail", "work_id": "private-work",
              "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.8},
-            {"sequence": 13, "category": "detail-row-image-visible-item-stamp-absent", "route": "Detail", "work_id": "private-work",
+            {"sequence": 13, "category": "detail-row-image-visible-item-artwork-state-absent", "route": "Detail", "work_id": "private-work",
              "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 10.9},
+            {"sequence": 15, "category": "detail-row-image-visible-item-artwork-state-present", "route": "Detail", "work_id": "private-work",
+             "parent_work_id": "private-work", "row_id": "private-row", "generation": 4, "timestamp": 11.1},
             {"sequence": 14, "category": "detail-row-image-poster-artwork-prop-present", "route": "Detail", "work_id": "other-work",
              "parent_work_id": "other-work", "row_id": "other-row", "generation": 4, "timestamp": 11.0},
         ]
@@ -100,9 +104,11 @@ class CaptureDiagnosticsTests(unittest.TestCase):
         self.assertEqual(result["image-area-positive"], {"count": 1, "first_elapsed_ms": 400, "last_elapsed_ms": 400})
         self.assertEqual(result["image-area-zero"], {"count": 1, "first_elapsed_ms": 500, "last_elapsed_ms": 500})
         self.assertEqual(result["row-match-found"], {"count": 1, "first_elapsed_ms": 600, "last_elapsed_ms": 600})
+        self.assertEqual(result["artwork-state-mutated"], {"count": 1, "first_elapsed_ms": 650, "last_elapsed_ms": 650})
         self.assertEqual(result["poster-artwork-prop-present"], {"count": 1, "first_elapsed_ms": 700, "last_elapsed_ms": 700})
         self.assertEqual(result["poster-render-artwork-present"], {"count": 1, "first_elapsed_ms": 800, "last_elapsed_ms": 800})
-        self.assertEqual(result["visible-item-stamp-absent"], {"count": 1, "first_elapsed_ms": 900, "last_elapsed_ms": 900})
+        self.assertEqual(result["visible-item-artwork-state-absent"], {"count": 1, "first_elapsed_ms": 900, "last_elapsed_ms": 900})
+        self.assertEqual(result["visible-item-artwork-state-present"], {"count": 1, "first_elapsed_ms": 1100, "last_elapsed_ms": 1100})
         self.assertNotIn("on-complete", result)
         self.assertNotIn("private-work", json.dumps(result))
         self.assertNotIn("private-title", json.dumps(result))

@@ -217,6 +217,15 @@ function pct100(value: number): number {
 
 // -- Row/rail view models ----------------------------------------------------
 
+@Observed
+class DetailArtworkState {
+  pixelMap: image.PixelMap | undefined;
+
+  constructor(pixelMap: image.PixelMap | undefined) {
+    this.pixelMap = pixelMap;
+  }
+}
+
 /**
  * One playable-or-navigable row inside a rail: an episode, a track, a book,
  * or a similar-title. Deliberately ONE shape for all four -- every one of
@@ -229,11 +238,25 @@ interface DetailRow {
   id: string;
   title: string;
   subtitle: string;
-  artwork: image.PixelMap | undefined;
+  artworkState: DetailArtworkState;
   mediaFileId: string | null;
   similarWorkId: string | null;
   /** Where playback starts when the row is a chapter; absent plays from the beginning. */
   startMs?: number;
+}
+
+@Component
+struct DetailRowArtworkCard {
+  @ObjectLink artworkState: DetailArtworkState;
+
+  @Builder
+  private emptyCardBuilder(artwork: image.PixelMap | undefined): void {}
+
+  @BuilderParam cardBuilder: (artwork: image.PixelMap | undefined) => void = this.emptyCardBuilder;
+
+  build() {
+    this.cardBuilder(this.artworkState.pixelMap);
+  }
 }
 
 /** One season/album/books/similar rail: a heading plus its rows. */
@@ -329,7 +352,7 @@ function buildEpisodeRow(detail: EpisodeDetail): DetailRow {
     id: episode.id,
     title: title,
     subtitle: 'Episode ' + String(episode.episode_number),
-    artwork: undefined,
+    artworkState: new DetailArtworkState(undefined),
     mediaFileId: episodeMediaFileId(detail),
     similarWorkId: null,
   };
@@ -377,7 +400,7 @@ function buildTrackRow(detail: TrackDetail): DetailRow {
     id: track.id,
     title: track.title,
     subtitle: 'Track ' + String(track.track_number),
-    artwork: undefined,
+    artworkState: new DetailArtworkState(undefined),
     mediaFileId: trackMediaFileId(detail),
     similarWorkId: null,
   };
@@ -425,7 +448,7 @@ function buildBookRow(detail: BookDetail): DetailRow {
     id: book.id,
     title: book.title,
     subtitle: subtitle,
-    artwork: undefined,
+    artworkState: new DetailArtworkState(undefined),
     mediaFileId: bookMediaFileId(detail),
     similarWorkId: null,
   };
@@ -503,7 +526,7 @@ function buildSimilarRail(works: Work[]): DetailRail {
       id: work.id,
       title: work.title,
       subtitle: kindLabel(work.kind),
-      artwork: undefined,
+      artworkState: new DetailArtworkState(undefined),
       mediaFileId: null,
       similarWorkId: work.id,
     };
@@ -513,13 +536,13 @@ function buildSimilarRail(works: Work[]): DetailRail {
   return rail;
 }
 
-/** Rebuilds `rail` with `rowId`'s row's `artwork` replaced -- every other
- * row is returned unchanged. Used both for a flat similar-titles rail and,
+/** Rebuilds `rail` with `rowId`'s row replaced -- every other row is
+ * returned unchanged. The matching row keeps its observed artwork-state
+ * identity while that state's PixelMap is updated. Used both for a flat similar-titles rail and,
  * via `applyRowArtworkAcrossRails` below, for a specific row somewhere
- * inside a list of season/book rails. Never mutates `rail`/its rows in
- * place -- ArkTS `@State` reactivity needs a fresh reference, matching
- * `data/ArtworkRepository.ets`'s own rebuild-rather-than-mutate cache
- * eviction discipline. */
+ * inside a list of season/book rails. It rebuilds the array and matching
+ * row wrapper for `@State`, while the `@Observed` artwork-state mutation
+ * updates the retained row-card child. */
 function applyRowArtworkInRail(rail: DetailRail, rowId: string, artwork: image.PixelMap): DetailRail {
   const items: DetailRow[] = [];
   for (const item of rail.items) {
@@ -528,11 +551,12 @@ function applyRowArtworkInRail(rail: DetailRail, rowId: string, artwork: image.P
         id: item.id,
         title: item.title,
         subtitle: item.subtitle,
-        artwork: artwork,
+        artworkState: item.artworkState,
         mediaFileId: item.mediaFileId,
         similarWorkId: item.similarWorkId,
         startMs: item.startMs,
       };
+      item.artworkState.pixelMap = artwork;
       items.push(next);
     } else {
       items.push(item);
@@ -562,13 +586,15 @@ function applyAlbumArtwork(rails: DetailRail[], railId: string, artwork: image.P
     }
     const items: DetailRow[] = [];
     for (const item of rail.items) {
+      item.artworkState.pixelMap = artwork;
       const next: DetailRow = {
         id: item.id,
         title: item.title,
         subtitle: item.subtitle,
-        artwork: artwork,
+        artworkState: item.artworkState,
         mediaFileId: item.mediaFileId,
         similarWorkId: item.similarWorkId,
+        startMs: item.startMs,
       };
       items.push(next);
     }
@@ -598,7 +624,7 @@ function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
     id: 'chapter-' + chapter.index.toString(),
     title: title,
     subtitle: chapterTimeLabel(chapter.start_ms),
-    artwork: undefined,
+    artworkState: new DetailArtworkState(undefined),
     mediaFileId: mediaFileId,
     similarWorkId: null,
     startMs: chapter.start_ms,
@@ -928,31 +954,41 @@ struct Detail {
   @Builder
   private rowItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     if (isTvMetrics()) {
-      PosterCard({
-        variant: 'titleEpisode',
-        title: (item as DetailRow).title,
-        subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
-        cardWidth: tv(TvGeometry.railPanelCardWidth),
-        cardHeight: Math.round((tv(TvGeometry.railPanelCardWidth) * 9) / 16),
-        activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
+      DetailRowArtworkCard({
+        artworkState: (item as DetailRow).artworkState,
+        cardBuilder: (artwork: image.PixelMap | undefined): void => {
+          PosterCard({
+            variant: 'titleEpisode',
+            title: (item as DetailRow).title,
+            subtitle: (item as DetailRow).subtitle,
+            artwork: artwork,
+            cardWidth: tv(TvGeometry.railPanelCardWidth),
+            cardHeight: Math.round((tv(TvGeometry.railPanelCardWidth) * 9) / 16),
+            activeRailFactor: activeRailFactor,
+            onSelect: () => {
+              this.selectRow((item as DetailRow));
+            },
+          })
         },
       })
     } else {
-      PosterCard({
-        variant: 'titleEpisode',
-        title: (item as DetailRow).title,
-        subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
-        cardWidth: TouchGeometry.homeRailCardWidthLandscape,
-        cardHeight: Math.round((TouchGeometry.homeRailCardWidthLandscape * 9) / 16),
-        titleFontSize: 12,
-        subtitleFontSize: 10,
-        activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
+      DetailRowArtworkCard({
+        artworkState: (item as DetailRow).artworkState,
+        cardBuilder: (artwork: image.PixelMap | undefined): void => {
+          PosterCard({
+            variant: 'titleEpisode',
+            title: (item as DetailRow).title,
+            subtitle: (item as DetailRow).subtitle,
+            artwork: artwork,
+            cardWidth: TouchGeometry.homeRailCardWidthLandscape,
+            cardHeight: Math.round((TouchGeometry.homeRailCardWidthLandscape * 9) / 16),
+            titleFontSize: 12,
+            subtitleFontSize: 10,
+            activeRailFactor: activeRailFactor,
+            onSelect: () => {
+              this.selectRow((item as DetailRow));
+            },
+          })
         },
       })
     }
@@ -964,33 +1000,43 @@ struct Detail {
   @Builder
   private similarItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     if (isTvMetrics()) {
-      PosterCard({
-        variant: 'home',
-        title: (item as DetailRow).title,
-        subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
-        cardWidth: tv(TvGeometry.homeRailCardWidthCover),
-        cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthCover) * 3) / 2),
-        artworkRadius: Radii.homeCardArtworkTv,
-        activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
+      DetailRowArtworkCard({
+        artworkState: (item as DetailRow).artworkState,
+        cardBuilder: (artwork: image.PixelMap | undefined): void => {
+          PosterCard({
+            variant: 'home',
+            title: (item as DetailRow).title,
+            subtitle: (item as DetailRow).subtitle,
+            artwork: artwork,
+            cardWidth: tv(TvGeometry.homeRailCardWidthCover),
+            cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthCover) * 3) / 2),
+            artworkRadius: Radii.homeCardArtworkTv,
+            activeRailFactor: activeRailFactor,
+            onSelect: () => {
+              this.selectRow((item as DetailRow));
+            },
+          })
         },
       })
     } else {
-      PosterCard({
-        variant: 'home',
-        title: (item as DetailRow).title,
-        subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
-        cardWidth: TouchGeometry.homeRailCardWidthCover,
-        cardHeight: Math.round((TouchGeometry.homeRailCardWidthCover * 3) / 2),
-        artworkRadius: Radii.homeCardArtworkTouch,
-        titleFontSize: 12,
-        subtitleFontSize: 10,
-        activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
+      DetailRowArtworkCard({
+        artworkState: (item as DetailRow).artworkState,
+        cardBuilder: (artwork: image.PixelMap | undefined): void => {
+          PosterCard({
+            variant: 'home',
+            title: (item as DetailRow).title,
+            subtitle: (item as DetailRow).subtitle,
+            artwork: artwork,
+            cardWidth: TouchGeometry.homeRailCardWidthCover,
+            cardHeight: Math.round((TouchGeometry.homeRailCardWidthCover * 3) / 2),
+            artworkRadius: Radii.homeCardArtworkTouch,
+            titleFontSize: 12,
+            subtitleFontSize: 10,
+            activeRailFactor: activeRailFactor,
+            onSelect: () => {
+              this.selectRow((item as DetailRow));
+            },
+          })
         },
       })
     }
@@ -1298,16 +1344,21 @@ struct Detail {
 
   @Builder
   private chapterItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
-    PosterCard({
-      variant: 'titleEpisode',
-      title: (item as DetailRow).title,
-      subtitle: (item as DetailRow).subtitle,
-      artwork: (item as DetailRow).artwork,
-      cardWidth: tv(CHAPTER_CARD_WIDTH),
-      cardHeight: tv(CHAPTER_CARD_HEIGHT),
-      activeRailFactor: activeRailFactor,
-      onSelect: () => {
-        this.selectRow((item as DetailRow));
+    DetailRowArtworkCard({
+      artworkState: (item as DetailRow).artworkState,
+      cardBuilder: (artwork: image.PixelMap | undefined): void => {
+        PosterCard({
+          variant: 'titleEpisode',
+          title: (item as DetailRow).title,
+          subtitle: (item as DetailRow).subtitle,
+          artwork: artwork,
+          cardWidth: tv(CHAPTER_CARD_WIDTH),
+          cardHeight: tv(CHAPTER_CARD_HEIGHT),
+          activeRailFactor: activeRailFactor,
+          onSelect: () => {
+            this.selectRow((item as DetailRow));
+          },
+        })
       },
     })
   }
