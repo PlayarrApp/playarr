@@ -1,1 +1,1 @@
-- Tizen: selected playlist backdrops now use the measured Web opacity, a linear right-edge alpha fade and separate stage wash, removing the measured light-theme boundary seam.
+- Tizen: key art now uses the CSS `grayscale(1)` Rec.709 luminance weights; the selected playlist backdrop's linear right-edge alpha fade removes the measured light-theme boundary seam.
