@@ -260,8 +260,10 @@ const LIST_ART_W = 172.8;
 const LIST_ART_H = 97.2;
 const GRID_X = 783.4;
 const GRID_Y = 162;
-/** The grid scrolls under the page header: clipped below it, with the web's edge fades. */
+/** The grid content viewport starts at y=0; EdgeFade overlays begin separately at GRID_CLIP_TOP=150. */
 const GRID_CLIP_TOP = 150;
+const GRID_CLIP_BLEED_X = 48;
+const GRID_CLIP_BLEED_TOP = GRID_CLIP_TOP;
 const PAGE_SIZE = 200;
 const CARD_W = 327.2;
 const CARD_H = 184;
@@ -514,8 +516,8 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
           </T>
         </Box>
       ) : null}
-      <Box x={GRID_X - 24} y={GRID_CLIP_TOP} w={1920 - GRID_X + 24} h={1080 - GRID_CLIP_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
-        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 24)), top: u(-GRID_CLIP_TOP), width: u(1920), transform: [{translateY: scrollY}]}} pointerEvents="box-none">
+      <Box x={GRID_X - 24 - GRID_CLIP_BLEED_X} y={GRID_CLIP_TOP - GRID_CLIP_BLEED_TOP} w={1920 - GRID_X + 24 + GRID_CLIP_BLEED_X} h={1080 - GRID_CLIP_TOP + GRID_CLIP_BLEED_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
+        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 24 - GRID_CLIP_BLEED_X)), top: u(-(GRID_CLIP_TOP - GRID_CLIP_BLEED_TOP)), width: u(1920), transform: [{translateY: scrollY}]}} pointerEvents="box-none">
           {visible.map((work, offset) => {
             const index = firstVisible + offset;
             const col = index % cols;
