@@ -70,7 +70,7 @@ def home(s):
     return s.replace(old, "    previewReport('dbg=' + encodeURIComponent('home-card-artwork-' + result.kind));\n" + old, 1)
 
 def detail(s):
-    s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { currentPreviewRouteGeneration, reportDetailLayoutStageForScope, captureDetailRowImageContext, reportDetailRowImageStage } from '../util/PreviewState';", 1)
+    s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { currentPreviewRouteGeneration, reportDetailLayoutStageForScope, captureDetailRowImageContext, reportDetailRowImageStage, reportDetailImagePayloadScope } from '../util/PreviewState';", 1)
     artwork_store = "  @ObjectLink artworkStore: DetailArtworkStore;\n"
     assert artwork_store in s
     s = s.replace(artwork_store, artwork_store + "  @Prop previewRoute: string = '';\n  @Prop previewWorkId: string = '';\n  @Prop previewRowId: string = '';\n  @Prop previewGeneration: number = 0;\n", 1)
@@ -112,6 +112,7 @@ def detail(s):
           }
           reportDetailRowImageStage(previewContext,
             matchingRowCount > 0 ? 'row-match-found' : 'row-match-missing');
+          reportDetailImagePayloadScope(previewContext, thumb.value as Object as string);
           this.artworkStore.setArtwork(generation, item.id, thumb.value);
           const artworkStorePresent = this.artworkStore.getArtwork(item.id) !== undefined;
           reportDetailRowImageStage(previewContext,

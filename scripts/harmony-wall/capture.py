@@ -7,7 +7,9 @@ import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.re
 from PIL import Image
 from screen_selection import TV_SCREEN_IDS, parse_tv_screens, player_is_skipped
 from capture_diagnostics import (save_rejected_frame, summarize_detail_events,
-                                 summarize_detail_layout_events, write_detail_summary)
+                                 summarize_detail_layout_events, summarize_detail_image_payload_events,
+                                 analyze_episode_art_frame, decoded_art_is_accepted,
+                                 write_detail_summary)
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
@@ -101,10 +103,10 @@ def settle(limit=45):
 SEEN = {}
 
 
-def snap(name, folder, floor=60000):
+def snap(name, folder, floor=60000, frame_observer=None):
     for attempt in range(3 if device == "tv" else 1):
         try:
-            snap_checked(name, folder, floor)
+            snap_checked(name, folder, floor, frame_observer=frame_observer)
             return
         except SystemExit:
             if device == "phone":
@@ -115,13 +117,15 @@ def snap(name, folder, floor=60000):
             time.sleep(25)
 
 
-def snap_checked(name, folder, floor):
+def snap_checked(name, folder, floor, frame_observer=None):
     settle()
     if b"[JsEngine Crash]" in open(log, "rb").read():
         debug("crash-" + name)
         raise RuntimeError("the Previewer's JS engine crashed: every later frame would be the frozen last one")
     img = png()
-    debug('snap-' + name)
+    debug('snap-' + name, img)
+    if frame_observer is not None:
+        frame_observer(img)
     digest = hashlib.md5(img.tobytes()).hexdigest()
     if device == "phone" and digest in SEEN and not os.environ.get("CALIBRATE"):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
@@ -140,10 +144,10 @@ def snap_checked(name, folder, floor):
     print("captured", name, get("/health").decode().strip()[:80], flush=True)
 
 
-def debug(name):
+def debug(name, image=None):
     d = os.path.join(out, "_debug")
     os.makedirs(d, exist_ok=True)
-    png().save(os.path.join(d, name + ".png"))
+    (image if image is not None else png()).save(os.path.join(d, name + ".png"))
 
 
 for _ in range(30):
@@ -252,6 +256,7 @@ if device == "tv":
             return json.loads(get("/state"))
 
         def capture_selected_detail(name, folder, theme):
+            episode_art_result = {}
             spec = next((screen for screen in suite_screens if screen.get("id") == name), None)
             prefix = "/movies/" if name == "film-detail" else "/series/"
             opened = spec.get("open", "") if spec is not None else ""
@@ -274,20 +279,50 @@ if device == "tv":
                 time.sleep(0.5)
             if state.get("route") != "Detail" or state.get("work_id") != work_id:
                 if name == "series-detail":
-                    frame_path = save_rejected_frame(png(), out, theme, name)
+                    rejected = png()
+                    frame_path = save_rejected_frame(rejected, out, theme, name)
                     stages = summarize_detail_events(state.get("debug_events", []), sequence_after=cursor,
                                                      work_id=work_id, generation=state.get("route_generation", 0),
                                                      started_at=started_at)
                     layout = summarize_detail_layout_events(state.get("debug_events", []), sequence_after=cursor,
                                                             work_id=work_id, generation=state.get("route_generation", 0),
                                                             started_at=started_at)
-                    write_detail_summary(out, theme=theme, accepted=False, failure="route-not-settled", frame_path=frame_path, stages=stages, layout=layout)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        state.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                        generation=state.get("route_generation", 0))
+                    write_detail_summary(out, theme=theme, accepted=False, failure="route-not-settled",
+                                         frame_path=frame_path, stages=stages, layout=layout,
+                                         payload_metrics=payload_metrics)
                 raise Skip(f"pinned route did not settle for {name}")
 
             if name == "series-detail":
                 generation = state.get("route_generation", 0)
                 if generation <= 0:
                     raise Skip("pinned detail route has no preview generation")
+                completion_seen = False
+
+                def inspect_episode_art(frame, failure_override=None):
+                    metrics = analyze_episode_art_frame(frame)
+                    episode_art_result["metrics"] = metrics
+                    if metrics["status"] == "ok":
+                        return
+                    frame_path = save_rejected_frame(frame, out, theme, name)
+                    current = route_state()
+                    stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
+                                                     work_id=work_id, generation=generation,
+                                                     started_at=started_at)
+                    layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
+                                                            work_id=work_id, generation=generation,
+                                                            started_at=started_at)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                        generation=generation)
+                    failure = failure_override if failure_override is not None else metrics["status"]
+                    write_detail_summary(out, theme=theme, accepted=False, failure=failure,
+                                         frame_path=frame_path, stages=stages, layout=layout,
+                                         payload_metrics=payload_metrics, episode_art=metrics)
+                    raise Skip(failure)
+
                 deadline = time.time() + 12
                 while time.time() < deadline:
                     current = route_state()
@@ -301,30 +336,46 @@ if device == "tv":
                             layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
                                                                     work_id=work_id, generation=generation,
                                                                     started_at=started_at)
-                            write_detail_summary(out, theme=theme, accepted=False, failure="route-changed", frame_path=frame_path, stages=stages, layout=layout)
+                            payload_metrics = summarize_detail_image_payload_events(
+                                current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                                generation=generation)
+                            write_detail_summary(out, theme=theme, accepted=False, failure="route-changed",
+                                                 frame_path=frame_path, stages=stages, layout=layout,
+                                                 payload_metrics=payload_metrics)
                         raise Skip("pinned detail route changed while waiting for row artwork")
                     events = current.get("debug_events", [])
                     stages = summarize_detail_events(events, sequence_after=cursor, work_id=work_id,
                                                      generation=generation, started_at=started_at)
                     layout = summarize_detail_layout_events(events, sequence_after=cursor, work_id=work_id,
                                                             generation=generation, started_at=started_at)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        events, sequence_after=cursor, work_id=work_id, generation=generation)
                     if stages.get("on-complete", {}).get("count", 0) > 0:
-                        decoded_art[theme] = True
+                        completion_seen = True
                         break
                     time.sleep(0.25)
-                if not decoded_art[theme]:
-                    frame_path = save_rejected_frame(png(), out, theme, name)
+                if not completion_seen:
+                    frame = png()
+                    inspect_episode_art(frame, failure_override="row-artwork-timeout")
+                    frame_path = save_rejected_frame(frame, out, theme, name)
                     current = route_state()
                     stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                      work_id=work_id, generation=generation, started_at=started_at)
                     layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
                                                             work_id=work_id, generation=generation, started_at=started_at)
-                    write_detail_summary(out, theme=theme, accepted=False, failure="row-artwork-timeout", frame_path=frame_path, stages=stages, layout=layout)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                        generation=generation)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="row-artwork-timeout",
+                                         frame_path=frame_path, stages=stages, layout=layout,
+                                         payload_metrics=payload_metrics,
+                                         episode_art=episode_art_result.get("metrics"))
                     raise Skip("no fresh matching detail-row image completion was reported")
 
             detail_sources[name] = {"route": "Detail", "source": "suite.json:open", "route_confirmed": True}
             try:
-                snap(name, folder, 100000)
+                snap(name, folder, 100000,
+                     frame_observer=inspect_episode_art if name == "series-detail" else None)
             except SystemExit:
                 if name == "series-detail":
                     frame_path = save_rejected_frame(png(), out, theme, name)
@@ -334,18 +385,30 @@ if device == "tv":
                     layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
                                                             work_id=work_id, generation=generation,
                                                             started_at=started_at)
-                    write_detail_summary(out, theme=theme, accepted=False, failure="frame-rejected", frame_path=frame_path, stages=stages, layout=layout)
+                    payload_metrics = summarize_detail_image_payload_events(
+                        current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                        generation=generation)
+                    write_detail_summary(out, theme=theme, accepted=False, failure="frame-rejected",
+                                         frame_path=frame_path, stages=stages, layout=layout,
+                                         payload_metrics=payload_metrics,
+                                         episode_art=episode_art_result.get("metrics"))
                 raise
             if name == "series-detail":
+                decoded_art[theme] = decoded_art_is_accepted(
+                    completion_seen, episode_art_result.get("metrics"))
                 current = route_state()
                 stages = summarize_detail_events(current.get("debug_events", []), sequence_after=cursor,
                                                  work_id=work_id, generation=generation, started_at=started_at)
                 layout = summarize_detail_layout_events(current.get("debug_events", []), sequence_after=cursor,
                                                         work_id=work_id, generation=generation,
                                                         started_at=started_at)
+                payload_metrics = summarize_detail_image_payload_events(
+                    current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
+                    generation=generation)
                 write_detail_summary(out, theme=theme, accepted=True, failure=None,
                                      frame_path=os.path.relpath(os.path.join(folder, name + ".png"), out), stages=stages,
-                                     layout=layout)
+                                     layout=layout, payload_metrics=payload_metrics,
+                                     episode_art=episode_art_result.get("metrics"))
 
         def capture_selected(folder, theme):
             for name in TV_SELECTION:

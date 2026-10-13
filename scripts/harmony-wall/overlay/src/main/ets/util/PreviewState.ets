@@ -103,6 +103,26 @@ export function reportDetailRowImageStage(context: DetailRowImageContext, stage:
                                     context.generation, stage);
 }
 
+export function reportDetailImagePayloadScope(context: DetailRowImageContext, imageUrl: string): void {
+  if (context.route !== 'Detail' || context.parentWorkId.length === 0 || context.rowId.length === 0 ||
+      context.parentWorkId !== PREVIEW_WORK_ID || context.generation !== PREVIEW_ROUTE_GENERATION) {
+    return;
+  }
+  const match: RegExpMatchArray | null = imageUrl.match(/\/img\/([0-9]+)$/);
+  if (match === null || match[1].length === 0) {
+    return;
+  }
+  const body: string = JSON.stringify({
+    route: context.route,
+    work_id: context.parentWorkId,
+    parent_work_id: context.parentWorkId,
+    row_id: context.rowId,
+    generation: context.generation,
+    image_id: match[1],
+  });
+  previewPost('/image-metrics-scope', body);
+}
+
 export function reportDetailRowImageStageForScope(route: string, parentWorkId: string, rowId: string,
                                                   generation: number, stage: string): void {
   if (route !== 'Detail' || parentWorkId.length === 0 || rowId.length === 0 ||

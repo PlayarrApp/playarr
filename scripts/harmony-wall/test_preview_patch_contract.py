@@ -34,11 +34,13 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'poster-card-root-area'", card_transform)
         self.assertIn("previewRowId: (item as DetailRow).id", detail_transform)
         self.assertIn("import { PosterCard } from '../design/components/PosterCard';\\nimport { currentPreviewRouteGeneration", detail_transform)
+        self.assertIn("reportDetailImagePayloadScope } from '../util/PreviewState';", detail_transform)
         self.assertIn("previewGeneration: currentPreviewRouteGeneration()", detail_transform)
         self.assertIn("private tvRightColumn(): void", detail_transform)
         self.assertIn("previewWorkId: this.workId", detail_transform)
         self.assertIn("reportDetailLayoutStageForScope('Detail', this.workId, currentPreviewRouteGeneration(), 'detail-rails-count'", detail_transform)
         self.assertIn("matchingRowCount > 0 ? 'row-match-found' : 'row-match-missing'", detail_transform)
+        self.assertIn("reportDetailImagePayloadScope(previewContext, thumb.value as Object as string)", detail_transform)
         self.assertIn("this.artworkStore.getArtwork(item.id) !== undefined", detail_transform)
         self.assertIn("artworkStorePresent ? 'artwork-store-present' : 'artwork-store-absent'", detail_transform)
         self.assertIn("reportDetailRowImageStage(previewContext, 'artwork-store-updated')", detail_transform)
@@ -113,6 +115,25 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("export function currentPreviewRouteGeneration(): number", self.preview_state)
         self.assertIn("generation !== PREVIEW_ROUTE_GENERATION", self.preview_state)
         self.assertIn("return new DetailRowImageContext(PREVIEW_ROUTE, parentWorkId, rowId, PREVIEW_ROUTE_GENERATION);", self.preview_state)
+
+    def test_preview_payload_scope_extracts_only_ephemeral_numeric_image_key(self):
+        self.assertIn("export function reportDetailImagePayloadScope(context: DetailRowImageContext, imageUrl: string): void", self.preview_state)
+        self.assertIn("imageUrl.match(/\\/img\\/([0-9]+)$/)", self.preview_state)
+        self.assertIn("image_id: match[1]", self.preview_state)
+        self.assertIn("previewPost('/image-metrics-scope', body)", self.preview_state)
+        self.assertIn("if (route !== 'Detail'", self.preview_state)
+
+    def test_episode_art_screenshot_guard_is_limited_to_series_detail(self):
+        capture = (HERE / "capture.py").read_text(encoding="utf-8")
+        self.assertIn("frame_observer=inspect_episode_art if name == \"series-detail\" else None", capture)
+        self.assertIn('failure = failure_override if failure_override is not None else metrics["status"]', capture)
+        self.assertIn('failure_override="row-artwork-timeout"', capture)
+        self.assertIn("episode_art=episode_art_result.get(\"metrics\")", capture)
+        self.assertIn("debug('snap-' + name, img)", capture)
+        self.assertIn("(image if image is not None else png()).save", capture)
+        self.assertNotIn("decoded_art[theme] = True", capture)
+        self.assertLess(capture.index("snap(name, folder, 100000"),
+                        capture.index("decoded_art[theme] = decoded_art_is_accepted"))
 
 
 if __name__ == "__main__":
