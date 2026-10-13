@@ -556,6 +556,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android phone library cards now show the web-matched focus glow and apply the web lift and art scale only during keyboard navigation, while touch interaction stays at rest.
 - Xbox and Windows UWP now apply the web's grayscale, contrast and brightness key-art filter to shared backdrops, with alpha-correct pixel output and stale-request protection.
 - HarmonyOS TV: the Home hero meta line is the focused title's runtime, as web, instead of the release year.
 - Tizen Search now exposes a remote-navigable type filter for movies, series, sites and music, keeps the selection in the route, and uses a single focus indicator while the page is active.

@@ -33,6 +33,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -3280,17 +3281,22 @@ internal fun ExperienceLandscapeCard(
 ) {
     val resolvedSubtitle = displaySubtitle ?: work.playarrKindYearLabel()
     var focused by remember { mutableStateOf(false) }
+    val cardInteractionSource = remember(webPhone) {
+        if (webPhone) MutableInteractionSource() else null
+    }
     val animatedScale = rememberPlayarrFocusScale(
         focused = focused,
         focusedScale = if (webTvStyle) 1f else FocusMotion.cardFocusScale,
         label = "playarrCardFocus",
     )
-    // Web touch layouts no longer raise the autofocused card (#90): a phone card is never lifted or scaled.
+    val webPhoneRemoteFocus = webPhone && focused &&
+        androidx.compose.ui.platform.LocalInputModeManager.current.inputMode == androidx.compose.ui.input.InputMode.Keyboard
+    // Touch input keeps phone cards at rest; keyboard focus applies the web lift and art scale inside the focus target.
     val scale = if (webPhone) 1f else animatedScale
     // Web remote mode (`body[data-input-mode="remote"]`, which is always the case on a TV): no lift, no scale and no
     // selected state; the focused card's art gets a 3 px ring and a deeper shadow, and nothing else changes.
     val liftActive = focused
-    val artScale by animateFloatAsState(if (focused && webTvStyle) 1.025f else 1f, tween(240), label = "homeArtScale")
+    val artScale by animateFloatAsState(if (focused && (webTvStyle || webPhoneRemoteFocus)) 1.025f else 1f, tween(240), label = "homeArtScale")
     val cardRadius = if (webTvStyle) 12.48.dp else 10.dp
     val stackNear = WebInk.copy(alpha = 0.26f)
     val stackFar = WebInk.copy(alpha = 0.14f)
@@ -3305,18 +3311,40 @@ internal fun ExperienceLandscapeCard(
                 },
             )
             .onFocusChanged { if (it.isFocused) { focused = true; onSelected() } else focused = false }
-            .combinedClickable(
-                onClick = { onSelected(); onClick() },
-                onLongClick = onContext,
+            .then(
+                if (webPhone) {
+                    Modifier.combinedClickable(
+                        interactionSource = cardInteractionSource,
+                        indication = if (webPhoneRemoteFocus) null else androidx.compose.foundation.LocalIndication.current,
+                        onClick = { onSelected(); onClick() },
+                        onLongClick = onContext,
+                    )
+                } else {
+                    Modifier.combinedClickable(
+                        onClick = { onSelected(); onClick() },
+                        onLongClick = onContext,
+                    )
+                },
             )
             .then(if (contentLabel != null) Modifier.semantics { contentDescription = contentLabel } else Modifier),
     ) {
     // The lift is applied here, inside the focus target, so focus search keeps the unlifted bounds.
-    Column(Modifier.fillMaxWidth().then(if (webTvStyle) Modifier.mediaCardLift(focused, PlayarrCardMotions.Home) else Modifier)) {
+    val webPhoneMotion = when {
+        webHome -> PlayarrCardMotions.Home
+        webSearch -> PlayarrCardMotions.Search
+        else -> PlayarrCardMotions.Library
+    }
+    Column(Modifier.fillMaxWidth().then(
+        when {
+            webTvStyle -> Modifier.mediaCardLift(focused, PlayarrCardMotions.Home)
+            webPhoneRemoteFocus -> Modifier.mediaCardLift(focused, webPhoneMotion)
+            else -> Modifier
+        },
+    )) {
         WebShadowedBox(
-            shadows = if (webPhone) webCardShadows(false, webHome, webSearch) else if (webTvStyle) (if (focused) webRemoteFocusShadows else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
+            shadows = if (webPhone) webCardShadows(selected || focused, webHome, webSearch) else if (webTvStyle) (if (focused) webRemoteFocusShadows else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),
-            focusGlow = webTvStyle && focused,
+            focusGlow = (webPhone && (selected || focused)) || (webTvStyle && focused),
             modifier = Modifier.fillMaxWidth()
                 .aspectRatio(if (homeView == PlayarrHomeViewPreference.Cover) 2f / 3f else 16f / 9f)
                 .then(
