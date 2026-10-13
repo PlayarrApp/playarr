@@ -188,8 +188,19 @@ struct WorkDetailView: View {
                     }
                     .frame(width: proxy.size.width * 0.62, height: proxy.size.height)
                     .background {
+                        let dark = scheme == .dark
+                        // Approximation: pre-mix frost tokens in encoded sRGB before SwiftUI gradient interpolation.
+                        let frost = dark
+                            ? Color(red: 40.04 / 255, green: 34.72 / 255, blue: 39.6 / 255)
+                            : Color(red: 239.64 / 255, green: 238.2 / 255, blue: 238.68 / 255)
                         LinearGradient(
-                            colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: frost.opacity(dark ? 0.72 : 0.68), location: 0.12),
+                                .init(color: frost.opacity(dark ? 0.90 : 0.88), location: 0.34),
+                                .init(color: frost.opacity(dark ? 0.97 : 0.96), location: 0.62),
+                                .init(color: frost, location: 1)
+                            ],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
