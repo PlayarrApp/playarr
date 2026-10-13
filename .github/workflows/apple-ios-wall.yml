@@ -168,8 +168,54 @@ jobs:
           }
           download_package() {
             local dir="$1"
+            local stderr_log="$RUNNER_TEMP/ios18-download.stderr" download_exit=0 package_count
             mkdir -p "$dir"
-            xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir" >/dev/null 2>&1 || return 1
+            if xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir" 2>&1 | tail -c 65536 >"$stderr_log"; then
+              :
+            else
+              local pipeline_status=("${PIPESTATUS[@]}")
+              download_exit="${pipeline_status[0]}"
+            fi
+            if (( download_exit != 0 )); then
+              local packages=("$dir"/*.dmg "$dir"/*.exportedBundle)
+              package_count="${#packages[@]}"
+              echo "::error::xcodebuild -downloadPlatform failed (exit=$download_exit package_count=$package_count)"
+              if ! python3 - "$stderr_log" <<'PY'
+          import re
+          import sys
+
+          try:
+              raw = open(sys.argv[1], "rb").read(65536).decode("utf-8", errors="replace")
+          except OSError:
+              print("xcodebuild stderr unavailable")
+              raise SystemExit(0)
+
+          ansi = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+          sensitive = re.compile(r"(?i)\b(authorization\s*[:=]\s*bearer\s+|(?:access|refresh)[_-]?token\s*[:=]\s*|(?:password|secret|api[_ -]?key)\s*[:=]\s*)[^\s,;]+")
+          url_auth = re.compile(r"(?i)(https?://[^/\s:@]+:)[^@\s/]+@")
+          assignment = re.compile(r"\b[A-Z_][A-Z0-9_]{2,}\s*=")
+          environment = re.compile(r"(?i)\b(environment|env dump|exported environment)\b")
+          lines = raw.splitlines()[-20:]
+          emitted = 0
+          for line in lines:
+              line = ansi.sub("", line).replace("\x00", "")
+              if environment.search(line) or assignment.search(line):
+                  line = "[environment details redacted]"
+              line = sensitive.sub(r"\1[redacted]", line)
+              line = url_auth.sub(r"\1[redacted]@", line)
+              prefix = "xcodebuild stderr: "
+              remaining = 4000 - emitted - len(prefix) - 1
+              if remaining <= 0:
+                  break
+              line = line[:remaining]
+              print(prefix + line)
+              emitted += len(prefix) + len(line) + 1
+          PY
+              then
+                echo "::warning::Could not read sanitized xcodebuild stderr"
+              fi
+              return "$download_exit"
+            fi
             find_package "$dir"
           }
           copy_for_import() {
