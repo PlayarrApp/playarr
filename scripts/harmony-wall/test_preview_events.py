@@ -100,11 +100,22 @@ class PreviewEventTests(unittest.TestCase):
         self.assertEqual(event["category"], "detail-layout-rail-list-area")
         self.assertEqual((event["width"], event["height"], event["area"]), (1280, 420, 537600))
         self.assertNotIn("row_id", event)
+        newer = dict(body, generation=8, stage="rail-items-count", value=5, width=-1, height=-1)
+        self.assertTrue(harmony_vnc.append_detail_layout_stage(newer))
+        newer_event = harmony_vnc.STATE["debug_events"][-1]
+        self.assertEqual(newer_event["route"], "Detail")
+        self.assertEqual(newer_event["work_id"], "work-a")
+        self.assertEqual(newer_event["generation"], 8)
+        self.assertEqual(newer_event["value"], 5)
         self.assertFalse(harmony_vnc.append_detail_layout_stage(dict(body, generation=6)))
         self.assertFalse(harmony_vnc.append_detail_layout_stage(dict(body, work_id="work-b")))
         self.assertFalse(harmony_vnc.append_detail_layout_stage(dict(body, stage="private-title")))
         self.assertFalse(harmony_vnc.append_detail_layout_stage(dict(body, width="1280")))
         self.assertFalse(harmony_vnc.append_detail_layout_stage(dict(body, height=float("nan"))))
+        self.assertFalse(harmony_vnc.append_detail_layout_stage(dict(body, width=float("inf"))))
+        self.assertFalse(harmony_vnc.append_detail_layout_stage(dict(body, width=1000001)))
+        self.assertFalse(harmony_vnc.append_detail_layout_stage(dict(body, height=-2)))
+        self.assertFalse(harmony_vnc.append_detail_layout_stage(dict(body, height=10**1000)))
 
     def test_debug_sequence_stays_monotonic_when_window_is_capped(self):
         for _ in range(305):

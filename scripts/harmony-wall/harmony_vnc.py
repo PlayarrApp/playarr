@@ -125,15 +125,19 @@ def append_detail_layout_stage(body: dict) -> bool:
         return False
     if route != "Detail" or not work_id or generation <= 0 or stage not in DETAIL_LAYOUT_STAGES:
         return False
-    if (STATE.get("route") != route or STATE.get("work_id") != work_id
-            or STATE.get("route_generation") != generation):
+    current_generation = STATE.get("route_generation", 0)
+    if generation < current_generation:
+        return False
+    if (generation == current_generation and current_generation > 0
+            and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
         return False
     numeric = {}
     for field in ("value", "width", "height"):
         raw = body.get(field)
         if raw is None:
             continue
-        if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(raw) or raw < -1:
+        if (isinstance(raw, bool) or not isinstance(raw, (int, float))
+                or (isinstance(raw, float) and not math.isfinite(raw)) or raw < -1):
             return False
         if raw > 1000000:
             return False

@@ -12,15 +12,15 @@ def edit(rel, fn):
     open(p, 'w').write(s)
 
 def card(s):
-    s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { reportCardFocus, previewReport } from '../../util/PreviewState';", 1)
-    s = s.replace("  onLongPress: () => void = () => {};", "  onLongPress: () => void = () => {};\n  @Prop onPreviewRowImageSource: () => void = () => {};\n  @Prop onPreviewRowImageArea: (positive: boolean) => void = (_positive: boolean) => {};\n  @Prop onPreviewRowImageComplete: () => void = () => {};\n  @Prop onPreviewRowImageError: () => void = () => {};\n  @Prop onPreviewLayout: (stage: string, value: number, width: number, height: number) => void = (_stage: string, _value: number, _width: number, _height: number) => {};", 1)
+    s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { reportCardFocus, previewReport, reportDetailLayoutStageForScope, reportDetailRowImageStageForScope } from '../../util/PreviewState';", 1)
+    s = s.replace("  onLongPress: () => void = () => {};", "  onLongPress: () => void = () => {};\n  @Prop previewRoute: string = '';\n  @Prop previewWorkId: string = '';\n  @Prop previewRowId: string = '';\n  @Prop previewGeneration: number = 0;", 1)
     old = "      this.setFocused(true);\n      this.onFocused();\n"
     assert old in s
     s = s.replace(old, old + "      reportCardFocus(this.title, this.subtitle);\n", 1)
     s = s.replace("    .focusable(true)\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", "    .focusable(true)\n    .focusOnTouch(true)\n    .id('pcard')\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", 1)
-    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onAppear(() => { this.onPreviewRowImageSource(); })\n            .onAreaChange((_old: Area, area: Area) => { this.onPreviewRowImageArea(Number(area.width) > 0 && Number(area.height) > 0); })\n            .onComplete(() => { previewReport('dbg=' + encodeURIComponent('poster-image-complete')); this.onPreviewRowImageComplete(); })\n            .onError(() => { previewReport('dbg=' + encodeURIComponent('poster-image-error')); this.onPreviewRowImageError(); })\n            .width('100%')", 1)
-    s = s.replace("      .width(this.cardWidth)\n      .height(this.cardHeight)\n      .clip(true)", "      .width(this.cardWidth)\n      .height(this.cardHeight)\n      .onAreaChange((_old: Area, area: Area) => { this.onPreviewLayout('poster-card-art-area', 0, Number(area.width), Number(area.height)); })\n      .clip(true)", 1)
-    s = s.replace("    .width(this.cardWidth)\n    .alignItems(HorizontalAlign.Start)", "    .width(this.cardWidth)\n    .onAreaChange((_old: Area, area: Area) => { this.onPreviewLayout('poster-card-root-area', 0, Number(area.width), Number(area.height)); })\n    .alignItems(HorizontalAlign.Start)", 1)
+    s = s.replace("          Image(this.artwork)\n            .width('100%')", "          Image(this.artwork)\n            .onAppear(() => { reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'image-source'); })\n            .onAreaChange((_old: Area, area: Area) => { reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, Number(area.width) > 0 && Number(area.height) > 0 ? 'image-area-positive' : 'image-area-zero'); })\n            .onComplete(() => { previewReport('dbg=' + encodeURIComponent('poster-image-complete')); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'on-complete'); })\n            .onError(() => { previewReport('dbg=' + encodeURIComponent('poster-image-error')); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'on-error'); })\n            .width('100%')", 1)
+    s = s.replace("      .width(this.cardWidth)\n      .height(this.cardHeight)\n      .clip(true)", "      .width(this.cardWidth)\n      .height(this.cardHeight)\n      .onAreaChange((_old: Area, area: Area) => { reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'poster-card-art-area', 0, Number(area.width), Number(area.height)); })\n      .clip(true)", 1)
+    s = s.replace("    .width(this.cardWidth)\n    .alignItems(HorizontalAlign.Start)", "    .width(this.cardWidth)\n    .onAreaChange((_old: Area, area: Area) => { reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'poster-card-root-area', 0, Number(area.width), Number(area.height)); })\n    .alignItems(HorizontalAlign.Start)", 1)
     return s.replace("    .onClick(() => {\n      if (this.longPressFired) {", "    .onClick(() => {\n      reportCardFocus('click:' + this.title, '');\n      if (this.longPressFired) {", 1)
 
 def nav(s):
@@ -60,36 +60,13 @@ def home(s):
     return s.replace(old, "    previewReport('dbg=' + encodeURIComponent('home-card-artwork-' + result.kind));\n" + old, 1)
 
 def detail(s):
-    s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { captureDetailLayoutContext, reportDetailLayoutStage, captureDetailRowImageContext, reportDetailRowImageStage } from '../util/PreviewState';", 1)
-    marker = "// -- UI-only constants"
-    helper = """function createDetailRowImageStageCallback(parentWorkId: string, rowId: string, stage: string): () => void {
-  const context = captureDetailRowImageContext(parentWorkId, rowId);
-  return (): void => { reportDetailRowImageStage(context, stage); };
-}
-
-function createDetailRowImageAreaCallback(parentWorkId: string, rowId: string): (positive: boolean) => void {
-  const context = captureDetailRowImageContext(parentWorkId, rowId);
-  return (positive: boolean): void => {
-    reportDetailRowImageStage(context, positive ? 'image-area-positive' : 'image-area-zero');
-  };
-}
-
-function createDetailLayoutCallback(parentWorkId: string): (stage: string, value: number, width: number, height: number) => void {
-  const context = captureDetailLayoutContext(parentWorkId);
-  return (stage: string, value: number, width: number, height: number): void => {
-    reportDetailLayoutStage(context, stage, value, width, height);
-  };
-}
-
-"""
-    assert marker in s
-    s = s.replace(marker, helper + marker, 1)
+    s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { currentPreviewRouteGeneration, reportDetailLayoutStageForScope, captureDetailRowImageContext, reportDetailRowImageStage } from '../util/PreviewState';", 1)
     old = "  private rowItem(item: MediaRailItem, index: number, activeRailFactor: number): void {\n    if (isTvMetrics()) {"
     assert old in s
     start = s.index("  private rowItem(item: MediaRailItem")
     end = s.index("  /** Similar-title row content", start)
     row = s[start:end]
-    row = row.replace("        variant: 'titleEpisode',\n", "        variant: 'titleEpisode',\n        onPreviewRowImageSource: createDetailRowImageStageCallback(this.workId, (item as DetailRow).id, 'image-source'),\n        onPreviewRowImageArea: createDetailRowImageAreaCallback(this.workId, (item as DetailRow).id),\n        onPreviewRowImageComplete: createDetailRowImageStageCallback(this.workId, (item as DetailRow).id, 'on-complete'),\n        onPreviewRowImageError: createDetailRowImageStageCallback(this.workId, (item as DetailRow).id, 'on-error'),\n        onPreviewLayout: createDetailLayoutCallback(this.workId),\n")
+    row = row.replace("        variant: 'titleEpisode',\n", "        variant: 'titleEpisode',\n        previewRoute: 'Detail',\n        previewWorkId: this.workId,\n        previewRowId: (item as DetailRow).id,\n        previewGeneration: currentPreviewRouteGeneration(),\n")
     s = s[:start] + row + s[end:]
     old = """        const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
         if (thumb.kind === 'ok') {
@@ -114,11 +91,11 @@ function createDetailLayoutCallback(parentWorkId: string): (stage: string, value
     tv = s[tv_start:tv_end]
     old_items = "            items: rail.items,\n            itemBuilder:"
     assert old_items in tv
-    tv = tv.replace(old_items, "            items: rail.items,\n            onPreviewLayout: createDetailLayoutCallback(this.workId),\n            itemBuilder:", 1)
+    tv = tv.replace(old_items, "            items: rail.items,\n            previewRoute: 'Detail',\n            previewWorkId: this.workId,\n            previewGeneration: currentPreviewRouteGeneration(),\n            itemBuilder:", 1)
     s = s[:tv_start] + tv + s[tv_end:]
     old_rails = "    const rails = buildRailsFromChildren(detail.children);\n    this.rails = rails;"
     assert old_rails in s
-    s = s.replace(old_rails, old_rails + "\n    const layoutContext = captureDetailLayoutContext(this.workId);\n    reportDetailLayoutStage(layoutContext, 'detail-rails-count', rails.length, -1, -1);", 1)
+    s = s.replace(old_rails, old_rails + "\n    reportDetailLayoutStageForScope('Detail', this.workId, currentPreviewRouteGeneration(), 'detail-rails-count', rails.length, -1, -1);", 1)
     return s
 
 def card_dbg(s):
