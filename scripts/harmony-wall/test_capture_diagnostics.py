@@ -26,6 +26,12 @@ class CaptureDiagnosticsTests(unittest.TestCase):
              "width": 230, "height": 190, "area": 43700},
             {"sequence": 6, "category": "detail-layout-rail-list-height-default-fill", "route": "Detail",
              "work_id": "private-work", "generation": 8, "timestamp": 10.5, "value": 0},
+            {"sequence": 10, "category": "detail-layout-rail-items-prop-update-count", "route": "Detail",
+             "work_id": "private-work", "generation": 8, "timestamp": 10.8, "value": 5},
+            {"sequence": 11, "category": "detail-layout-rail-items-prop-update-artwork-count", "route": "Detail",
+             "work_id": "private-work", "generation": 8, "timestamp": 10.9, "value": 3},
+            {"sequence": 12, "category": "detail-layout-rail-items-prop-update-artwork-count", "route": "Detail",
+             "work_id": "private-work", "generation": 9, "timestamp": 11.0, "value": 99},
             {"sequence": 7, "category": "detail-layout-poster-card-art-area", "route": "Detail",
              "work_id": "private-work", "generation": 8, "timestamp": 10.6,
              "width": float("nan"), "height": float("inf"), "area": float("inf")},
@@ -45,6 +51,8 @@ class CaptureDiagnosticsTests(unittest.TestCase):
         self.assertEqual(result["rail-item-appear"]["count"], 1)
         self.assertEqual(result["poster-card-root-area"]["width"], {"min": 230, "max": 230})
         self.assertEqual(result["rail-list-height-default-fill"]["value"], {"min": 0, "max": 0})
+        self.assertEqual(result["rail-items-prop-update-count"]["value"], {"min": 5, "max": 5})
+        self.assertEqual(result["rail-items-prop-update-artwork-count"]["value"], {"min": 3, "max": 3})
         self.assertEqual(result["poster-card-art-area"]["count"], 1)
         self.assertNotIn("width", result["poster-card-art-area"])
         self.assertNotIn("height", result["poster-card-art-area"])

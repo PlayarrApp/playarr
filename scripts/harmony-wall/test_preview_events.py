@@ -108,6 +108,8 @@ class PreviewEventTests(unittest.TestCase):
         self.assertEqual(event["category"], "detail-layout-rail-list-area")
         self.assertEqual((event["width"], event["height"], event["area"]), (1280, 420, 537600))
         self.assertNotIn("row_id", event)
+        self.assertTrue(harmony_vnc.append_detail_layout_stage(dict(body, stage="rail-items-prop-update-count", value=5)))
+        self.assertTrue(harmony_vnc.append_detail_layout_stage(dict(body, stage="rail-items-prop-update-artwork-count", value=3)))
         newer = dict(body, generation=8, stage="rail-items-count", value=5, width=-1, height=-1)
         self.assertTrue(harmony_vnc.append_detail_layout_stage(newer))
         newer_event = harmony_vnc.STATE["debug_events"][-1]

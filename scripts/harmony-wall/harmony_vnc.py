@@ -46,6 +46,7 @@ DETAIL_IMAGE_STAGES = {
 }
 DETAIL_LAYOUT_STAGES = {
     "detail-rails-count", "rail-items-count", "rail-item-appear",
+    "rail-items-prop-update-count", "rail-items-prop-update-artwork-count",
     "poster-card-root-area", "poster-card-art-area", "rail-list-area",
     "rail-list-height-explicit", "rail-list-height-default-fill",
 }
