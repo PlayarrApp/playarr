@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The tvOS navigation rail now draws web-matched vector paths for its shared tabs. macOS retains its existing SF Symbols.
 - macOS Home card movement now applies focus to the registered child button and updates the Home selection mirror from the observed focus change, avoiding competing SwiftUI focus bindings.
 - macOS and tvOS Home wait for the On Deck request to succeed or fail before showing Home rails; the network layer timeout governs, and the navigation remains available while Home shows its skeleton. Only the current On Deck request generation can update rail and progress state. The primary rail keeps server shelf membership and avoids repeating On Deck cards in the fallback movie rail.
 - The Home nav-to-stage focus handoff is claimed once per route entry and cancelled when the viewer moves focus before it runs. Its initial target is captured once, so late On Deck results do not move focus or trigger another reset.

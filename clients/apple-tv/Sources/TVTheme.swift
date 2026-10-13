@@ -531,6 +531,165 @@ enum TVNavTab: String, CaseIterable, Identifiable {
     }
 }
 
+/// Paths ported from the web sidebar's 24x24, 1.8px currentColor SVGs.
+struct TVNavIconVector {
+    static let viewBoxSize: CGFloat = 24
+    static let strokeWidth: CGFloat = 1.8
+    static let renderedSize: CGFloat = 20
+
+    let strokes: [Path]
+    let fills: [Path]
+
+    var bounds: CGRect {
+        (strokes + fills).reduce(.null) { $0.union($1.boundingRect) }
+    }
+
+    static func forTab(_ tab: TVNavTab) -> TVNavIconVector? {
+        switch tab {
+        case .home:
+            return .init(strokes: [
+                path { $0.move(to: pt(3, 11.5)); $0.addLine(to: pt(12, 4)); $0.addLine(to: pt(21, 11.5)) },
+                path {
+                    $0.move(to: pt(5.5, 9.5)); $0.addLine(to: pt(5.5, 20))
+                    $0.addLine(to: pt(18.5, 20)); $0.addLine(to: pt(18.5, 9.5))
+                },
+                path {
+                    $0.move(to: pt(10, 20)); $0.addLine(to: pt(10, 14))
+                    $0.addLine(to: pt(14, 14)); $0.addLine(to: pt(14, 20))
+                },
+            ], fills: [])
+        case .search:
+            return .init(strokes: [
+                ellipse(10.5, 10.5, 6.5),
+                path { $0.move(to: pt(15.5, 15.5)); $0.addLine(to: pt(20, 20)) },
+            ], fills: [])
+        case .downloads:
+            return .init(strokes: [
+                path { $0.move(to: pt(12, 3)); $0.addLine(to: pt(12, 15)) },
+                path { $0.move(to: pt(7, 10.5)); $0.addLine(to: pt(12, 15)); $0.addLine(to: pt(17, 10.5)) },
+                path {
+                    $0.move(to: pt(4.5, 18.5)); $0.addLine(to: pt(4.5, 20))
+                    $0.addCurve(to: pt(5.5, 21), control1: pt(4.5, 20.5523), control2: pt(4.9477, 21))
+                    $0.addLine(to: pt(18.5, 21))
+                    $0.addCurve(to: pt(19.5, 20), control1: pt(19.0523, 21), control2: pt(19.5, 20.5523))
+                    $0.addLine(to: pt(19.5, 18.5))
+                },
+            ], fills: [])
+        case .series:
+            return .init(strokes: [
+                roundedRect(4, 4, 16, 16, 2),
+                path {
+                    $0.move(to: pt(8, 9)); $0.addLine(to: pt(16, 9))
+                    $0.move(to: pt(8, 13)); $0.addLine(to: pt(16, 13))
+                    $0.move(to: pt(8, 17)); $0.addLine(to: pt(13, 17))
+                },
+                path { $0.move(to: pt(10, 1)); $0.addLine(to: pt(12, 4)); $0.addLine(to: pt(14, 1)) },
+            ], fills: [])
+        case .movies:
+            return .init(strokes: [
+                roundedRect(3, 5, 18, 14, 2),
+                path {
+                    $0.move(to: pt(7, 5)); $0.addLine(to: pt(9, 2))
+                    $0.move(to: pt(13, 5)); $0.addLine(to: pt(15, 2))
+                    $0.move(to: pt(19, 5)); $0.addLine(to: pt(21, 2))
+                },
+            ], fills: [closedPath { $0.move(to: pt(10, 10)); $0.addLine(to: pt(15, 12.5)); $0.addLine(to: pt(10, 15)) }])
+        case .music:
+            return .init(strokes: [
+                path {
+                    $0.move(to: pt(9, 18)); $0.addLine(to: pt(9, 6)); $0.addLine(to: pt(19, 4))
+                    $0.addLine(to: pt(19, 16)); $0.move(to: pt(9, 10)); $0.addLine(to: pt(19, 8))
+                    $0.addEllipse(in: CGRect(x: 4, y: 16, width: 5, height: 5))
+                    $0.addEllipse(in: CGRect(x: 14, y: 14, width: 5, height: 5))
+                },
+            ], fills: [])
+        case .playlists:
+            return .init(strokes: [
+                path {
+                    $0.move(to: pt(5, 6)); $0.addLine(to: pt(15, 6))
+                    $0.move(to: pt(5, 10)); $0.addLine(to: pt(15, 10))
+                    $0.move(to: pt(5, 14)); $0.addLine(to: pt(11, 14))
+                    $0.move(to: pt(17, 13.5)); $0.addLine(to: pt(17, 19.5))
+                    $0.move(to: pt(17, 13.5)); $0.addLine(to: pt(21, 12)); $0.addLine(to: pt(21, 17.5))
+                    $0.addEllipse(in: CGRect(x: 14, y: 18, width: 3, height: 3))
+                    $0.addEllipse(in: CGRect(x: 18, y: 16, width: 3, height: 3))
+                },
+            ], fills: [])
+        case .watchlist, .requests:
+            return .init(strokes: [
+                path {
+                    $0.move(to: pt(6, 3.5)); $0.addLine(to: pt(18, 3.5))
+                    $0.addCurve(to: pt(19, 4.5), control1: pt(18.5523, 3.5), control2: pt(19, 3.9477))
+                    $0.addLine(to: pt(19, 21)); $0.addLine(to: pt(12, 16.5))
+                    $0.addLine(to: pt(5, 21)); $0.addLine(to: pt(5, 4.5))
+                    $0.addCurve(to: pt(6, 3.5), control1: pt(5, 3.9477), control2: pt(5.4477, 3.5))
+                    $0.closeSubpath()
+                    $0.move(to: pt(12, 7.5)); $0.addLine(to: pt(12, 12.5))
+                    $0.move(to: pt(9.5, 10)); $0.addLine(to: pt(14.5, 10))
+                },
+            ], fills: [])
+        case .calendar:
+            return .init(strokes: [
+                roundedRect(3.5, 5, 17, 15, 2),
+                path {
+                    $0.move(to: pt(3.5, 10)); $0.addLine(to: pt(20.5, 10))
+                    $0.move(to: pt(8, 3)); $0.addLine(to: pt(8, 7))
+                    $0.move(to: pt(16, 3)); $0.addLine(to: pt(16, 7))
+                },
+            ], fills: [])
+        case .settings:
+            return nil
+        }
+    }
+
+    private static func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: y) }
+
+    private static func path(_ draw: (inout Path) -> Void) -> Path {
+        var value = Path()
+        draw(&value)
+        return value
+    }
+
+    private static func closedPath(_ draw: (inout Path) -> Void) -> Path {
+        path { value in draw(&value); value.closeSubpath() }
+    }
+
+    private static func ellipse(_ x: CGFloat, _ y: CGFloat, _ radius: CGFloat) -> Path {
+        Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: 2 * radius, height: 2 * radius))
+    }
+
+    private static func roundedRect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat, _ radius: CGFloat) -> Path {
+        Path(roundedRect: CGRect(x: x, y: y, width: width, height: height), cornerSize: CGSize(width: radius, height: radius))
+    }
+}
+
+#if os(tvOS)
+private struct TVNavVectorIcon: View {
+    let tab: TVNavTab
+
+    var body: some View {
+        if let vector = TVNavIconVector.forTab(tab) {
+            Canvas { context, size in
+                let scale = min(size.width, size.height) / TVNavIconVector.viewBoxSize
+                let transform = CGAffineTransform(scaleX: scale, y: scale)
+                let style = StrokeStyle(lineWidth: TVNavIconVector.strokeWidth * scale, lineCap: .round, lineJoin: .round)
+                for path in vector.strokes {
+                    context.stroke(path.applying(transform), with: .foreground, style: style)
+                }
+                for path in vector.fills {
+                    context.fill(path.applying(transform), with: .foreground)
+                }
+            }
+            .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
+            .accessibilityHidden(true)
+        } else {
+            Image(systemName: tab.systemImage)
+                .font(.system(size: 20, weight: .medium))
+        }
+    }
+}
+#endif
+
 /// Focus identity shared between floating nav and main stage.
 enum TVShellFocus: Hashable {
     case nav(TVNavTab)
@@ -877,8 +1036,12 @@ struct TVFloatingNav: View {
             }
         } label: {
             VStack(spacing: 5) {
+                #if os(tvOS)
+                TVNavVectorIcon(tab: tab)
+                #else
                 Image(systemName: tab.systemImage)
                     .font(.system(size: 20, weight: .medium))
+                #endif
                 Text(tab.title)
                     .font(TVTheme.font(size: 9, weight: .semibold))
                     .tracking(0.3)
