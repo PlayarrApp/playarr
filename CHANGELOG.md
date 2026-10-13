@@ -566,6 +566,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Separate the focused Tizen Search result title and kind label into web-matched inset columns.
 - Match the Sailfish unseen marker outer size and border to the mobile web card.
 - Match the Sailfish library count colour to the web brand ink in both light and dark themes.
 - Match the Android phone light-theme card focus glow to the web card accent.

@@ -145,7 +145,7 @@ internal sealed class MediaCard
     public static MediaCard Home(AppEnv env, WorkCard card, float x, float y) =>
         new(env, env.Theme, card, x, y, showSub: true, titleInset: 0, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f);
 
-    /// <summary>Search result: title left, kind label right on the caption line (web .tv-search-result).</summary>
+    /// <summary>Search result: title and kind share the web's inset two-column caption row.</summary>
     public static MediaCard Search(AppEnv env, WorkCard card, float x, float y)
     {
         var c = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.015f, lift: -6, blur: 52, shadowY: 22, shadowAlpha: 0.28f);
@@ -155,7 +155,10 @@ internal sealed class MediaCard
             c.Art.Add(Ui.Icon(icon, Width / 2 - 32, Height / 2 - 32, 64, env.Theme.InkMuted));
         }
         var kind = card.Sub.ToUpperInvariant();
-        c.Box.Add(Ui.Text(kind, 0, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, Width, 12.672f, HorizontalAlignment.End));
+        var layout = SearchCaptionLayout.Create(Width, 1.92f, Ui.TextWidth(kind, 8.448f, 700, 0), 9.6f);
+        c.Title.PositionX = layout.TitleX;
+        c.Title.Size = new Size(layout.TitleWidth, 17.856f);
+        c.Box.Add(Ui.Text(kind, layout.CaptionX, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, layout.CaptionWidth, 12.672f, HorizontalAlignment.End));
         return c;
     }
 
