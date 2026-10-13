@@ -36,6 +36,14 @@ on:
         description: Extra suite-run arguments for the Apple driver step (test runs; default - screens and D-pad checks)
         type: string
         default: ""
+      search_smoke:
+        description: Run the isolated interactive macOS Search-results focus smoke
+        type: boolean
+        default: false
+      search_query:
+        description: Query for the isolated Search smoke; kept out of workflow logs
+        type: string
+        default: the
       chain:
         description: While streaming, start the next run before this one ends
         type: boolean
@@ -74,6 +82,13 @@ jobs:
           DEVICES: ${{ inputs.devices }}
           LENGTH: ${{ inputs.length }}
           STREAM: ${{ inputs.stream }}
+          CAPTURE: ${{ inputs.capture }}
+          CHAIN: ${{ inputs.chain }}
+          SEARCH_SMOKE: ${{ inputs.search_smoke }}
+          SEARCH_QUERY: ${{ inputs.search_query }}
+          SUITE_ARGS: ${{ inputs.suite_args }}
+          APP_REF: ${{ inputs.ref }}
+          REF_NAME: ${{ github.ref_name }}
           ENABLED: ${{ vars.APPLE_WALL_SCHEDULE }}
           TESTS: ${{ vars.APPLE_WALL_TESTS }}
           CRON: ${{ github.event.schedule }}
@@ -81,6 +96,14 @@ jobs:
         run: |
           set -euo pipefail
           declare -A off=([tvos]=0 [iphone]=30 [ipad]=60 [macos]=90) vnc=([tvos]=TVOS [iphone]=IPHONE [ipad]=IPAD [macos]=MACOS)
+          if [[ $SEARCH_SMOKE == true ]]; then
+            [[ $EVENT == workflow_dispatch && $REF_NAME == "$DEFAULT_BRANCH" && ( -z $APP_REF || $APP_REF == "$DEFAULT_BRANCH" ) && $DEVICES == macos && $CAPTURE == false && $STREAM != true && $CHAIN != true && -z $SUITE_ARGS ]] || {
+              echo '::error::search_smoke requires default-branch workflow and app refs, devices=macos, capture=false, stream=false, chain=false and empty suite_args'; exit 1;
+            }
+            python3 -c 'import os,sys,unicodedata; q=os.environ.get("SEARCH_QUERY", ""); sys.exit(0 if q.strip() and len(q) <= 80 and not any(unicodedata.category(c) == "Cc" for c in q) else 1)' || {
+              echo '::error::search_query must be a non-empty single-line query of at most 80 characters'; exit 1;
+            }
+          fi
           if [[ $EVENT == schedule && $CRON == "5 */3 * * *" ]]; then
             # test-only: capture all four devices, never stream, and only while APPLE_WALL_TESTS is "true"
             if [[ $TESTS != true ]]; then echo 'any=false' >> "$GITHUB_OUTPUT"; echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"; exit 0; fi
@@ -102,6 +125,9 @@ jobs:
             echo 'any=false' >> "$GITHUB_OUTPUT"; echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"; exit 0
           fi
           items=()
+          if [[ $SEARCH_SMOKE == true ]]; then
+            items+=('{"device":"macos","vnc":"MACOS","length":1,"themes":"dark","slug":"search-smoke"}')
+          else
           for d in ${DEVICES//,/ }; do
             [[ -n ${off[$d]:-} ]] || { echo "::error::unknown device $d"; exit 1; }
             len=${LENGTH:-$((345 - off[$d]))}
@@ -112,6 +138,7 @@ jobs:
               for t in dark light; do items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len,\"themes\":\"$t\",\"slug\":\"$t\"}"); done
             fi
           done
+          fi
           echo "any=true" >> "$GITHUB_OUTPUT"
           echo "matrix={\"include\":[$(IFS=,; echo "${items[*]}")]}" >> "$GITHUB_OUTPUT"
 
@@ -157,6 +184,7 @@ jobs:
           CAPTURE_ENABLED: ${{ inputs.capture }}
           STREAM_ENABLED: ${{ inputs.stream }}
           CHAIN_ENABLED: ${{ inputs.chain }}
+          SEARCH_SMOKE_ENABLED: ${{ inputs.search_smoke }}
         run: |
           set -euo pipefail
           [[ "$SUITE_ARGS" != *$'\n'* && "$SUITE_ARGS" != *$'\r'* ]] || { echo '::error::suite_args must be a single line'; exit 1; }
@@ -168,6 +196,14 @@ jobs:
           import sys
 
           suite_path, *args = sys.argv[1:]
+          search_smoke = os.environ.get("SEARCH_SMOKE_ENABLED") == "true"
+          if search_smoke and (
+              os.environ.get("DEVICE") != "macos"
+              or os.environ.get("CAPTURE_ENABLED") != "false"
+              or os.environ.get("STREAM_ENABLED") == "true"
+              or os.environ.get("CHAIN_ENABLED") == "true"
+          ):
+              raise SystemExit("search smoke requires a capture-free, non-streaming macOS run")
           with open(suite_path, encoding="utf-8") as handle:
               suite = json.load(handle)
 
@@ -224,14 +260,19 @@ jobs:
           has_non_player_check = bool(selected_checks & non_player_dpad) if "--checks" in seen else bool(non_player_dpad)
           visibility = (
               os.environ.get("DEVICE") == "macos"
-              and os.environ.get("CAPTURE_ENABLED") == "false"
-              and os.environ.get("STREAM_ENABLED") != "true"
-              and os.environ.get("CHAIN_ENABLED") != "true"
-              and selected_only == {"dpad"}
-              and "--skip-player" in seen
-              and "--player" not in seen
-              and has_non_player_check
-              and (not selected_checks or selected_checks <= non_player_dpad)
+              and (
+                  search_smoke
+                  or (
+                      os.environ.get("CAPTURE_ENABLED") == "false"
+                      and os.environ.get("STREAM_ENABLED") != "true"
+                      and os.environ.get("CHAIN_ENABLED") != "true"
+                      and selected_only == {"dpad"}
+                      and "--skip-player" in seen
+                      and "--player" not in seen
+                      and has_non_player_check
+                      and (not selected_checks or selected_checks <= non_player_dpad)
+                  )
+              )
           )
           print(json.dumps({"args": args, "macParityVisible": visibility}, separators=(",", ":")))
           PY_SUITE_ARGS
@@ -245,6 +286,14 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.event.repository.default_branch }}
           path: src
+          persist-credentials: false
+
+      - name: Check out default-branch smoke scripts
+        if: inputs.search_smoke && env.DEVICE == 'macos'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: smoke-tools
           persist-credentials: false
 
       - name: Record the toolchain
@@ -337,6 +386,24 @@ jobs:
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
         run: bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
 
+      - name: Interactive Search-results focus smoke
+        if: inputs.search_smoke && env.DEVICE == 'macos'
+        timeout-minutes: 15
+        env:
+          TRUSTED: ${{ github.workspace }}/smoke-tools
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          SEARCH_QUERY: ${{ inputs.search_query }}
+          PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+        run: |
+          set -euo pipefail
+          cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          node apple/search-results-smoke.mjs --query "$SEARCH_QUERY"
+
       - name: Parity captures
         id: capture
         if: github.event_name != 'workflow_dispatch' || inputs.capture
@@ -419,7 +486,7 @@ jobs:
           retention-days: 14
 
       - name: VNC server self-test (loopback, no tailnet)
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.stream) }}
+        if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.stream || inputs.search_smoke)) }}
         timeout-minutes: 5
         env:
           STREAM_BIND: 127.0.0.1

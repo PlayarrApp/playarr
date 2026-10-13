@@ -17,13 +17,14 @@ parser_source = dedent(match.group(1))
 suite = root / "scripts/parity/suite.json"
 
 
-def parse(*args: str, device="macos", capture="false", stream="false", chain="false") -> dict:
+def parse(*args: str, device="macos", capture="false", stream="false", chain="false", search_smoke=False) -> dict:
     env = {
         **os.environ,
         "DEVICE": device,
         "CAPTURE_ENABLED": capture,
         "STREAM_ENABLED": stream,
         "CHAIN_ENABLED": chain,
+        "SEARCH_SMOKE_ENABLED": str(search_smoke).lower(),
     }
     result = subprocess.run(
         [sys.executable, "-c", parser_source, str(suite), *args],
@@ -37,12 +38,21 @@ def parse(*args: str, device="macos", capture="false", stream="false", chain="fa
     return json.loads(result.stdout)
 
 
-def rejected(*args: str) -> None:
+def rejected(*args: str, device="macos", capture="false", stream="false", chain="false", search_smoke=False) -> None:
+    env = {
+        **os.environ,
+        "DEVICE": device,
+        "CAPTURE_ENABLED": capture,
+        "STREAM_ENABLED": stream,
+        "CHAIN_ENABLED": chain,
+        "SEARCH_SMOKE_ENABLED": str(search_smoke).lower(),
+    }
     result = subprocess.run(
         [sys.executable, "-c", parser_source, str(suite), *args],
         text=True,
         capture_output=True,
         check=False,
+        env=env,
     )
     assert result.returncode != 0
 
@@ -62,6 +72,11 @@ assert parse("--only", "dpad", "--skip-player", chain="true")["macParityVisible"
 assert parse("--only", "dpad", "--skip-player", device="tvos")["macParityVisible"] is False
 assert parse("--only", "dpad", "--player")["macParityVisible"] is False
 assert parse("--only", "dpad")["macParityVisible"] is False
+assert parse(search_smoke=True)["macParityVisible"] is True
+rejected(device="tvos", search_smoke=True)
+rejected(capture="true", search_smoke=True)
+rejected(stream="true", search_smoke=True)
+rejected(chain="true", search_smoke=True)
 assert parse("--only", "screens", "--screens", "home,series")["args"] == [
     "--only", "screens", "--screens", "home,series"
 ]
@@ -99,6 +114,11 @@ for loader in array_loaders:
     assert reconstructed.stdout.rstrip("\n").split("\n") == selection["args"]
 assert "MAC_PARITY_VISIBLE:" not in workflow
 assert "printf 'MAC_PARITY_VISIBLE=%s\\n' \"$mac_parity_visible\" >> \"$GITHUB_ENV\"" in workflow
+assert 'search_smoke:' in workflow and 'type: boolean' in workflow
+assert 'node apple/search-results-smoke.mjs --query "$SEARCH_QUERY"' in workflow
+assert 'ref: ${{ github.event.repository.default_branch }}' in workflow
+assert 'SEARCH_SMOKE_ENABLED: ${{ inputs.search_smoke }}' in workflow
+assert workflow.count("node suite-run.mjs") == 2
 assert '${{ inputs.suite_args ||' not in workflow
 assert 'grep -oE -e' not in workflow
 
