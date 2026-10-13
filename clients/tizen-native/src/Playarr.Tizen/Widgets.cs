@@ -155,7 +155,7 @@ internal sealed class MediaCard
             c.Art.Add(Ui.Icon(icon, Width / 2 - 32, Height / 2 - 32, 64, env.Theme.InkMuted));
         }
         var kind = card.Sub.ToUpperInvariant();
-        var layout = SearchCaptionLayout.Create(Width, 1.92f, Ui.TextWidth(kind, 8.448f * 4, 700, 0) / 4, 9.6f);
+        var layout = SearchCaptionLayout.Create(Width, 1.92f, Ui.TextWidth(kind, 8.448f, 700, 0), 9.6f);
         c.Title.PositionX = layout.TitleX;
         c.Title.Size = new Size(layout.TitleWidth, 17.856f);
         c.Box.Add(Ui.Text(kind, layout.CaptionX, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, layout.CaptionWidth, 12.672f, HorizontalAlignment.End));
