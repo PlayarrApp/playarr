@@ -5,12 +5,123 @@
 // press holds Return through a CGEvent helper. The route and the focused item come from the app's debug parity-state.json
 // (TVParityState in clients/apple-tv), read through `simctl get_app_container`. Screenshots are `simctl io screenshot`.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 const KEYCODE = { up: 126, down: 125, left: 123, right: 124, select: 36, back: 53 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts });
+
+const MAC_DIRECTIONS = new Set(["up", "down", "left", "right"]);
+const SAFE_BOOLEAN = "(true|false)";
+const SAFE_NUMBER = "-?\\d{1,7}(?:\\.\\d{1,3})?";
+const MAX_MAC_LOG_DELTA_BYTES = 256 * 1024;
+const MAX_MAC_KEY_ARTIFACT_BYTES = 64 * 1024;
+const MAC_KEY_ENTRY = new RegExp(`^PlayarrMacFocusKeyEntry seq=(\\d{1,9}) direction=(up|down|left|right) text_responder=${SAFE_BOOLEAN} window_key=${SAFE_BOOLEAN}$`);
+const MAC_KEY_RESULT = new RegExp(`^PlayarrMacFocusKey seq=(\\d{1,9}) direction=(up|down|left|right) responder=(text|other) text_edit_excluded=${SAFE_BOOLEAN} before_focused=${SAFE_BOOLEAN} before_fallback_focused_present=${SAFE_BOOLEAN} before_fallback_equals_before=${SAFE_BOOLEAN} after_focused=${SAFE_BOOLEAN} after_equals_before=${SAFE_BOOLEAN} fallback_ran=${SAFE_BOOLEAN} registered_target_candidates=(\\d{1,6}) chosen_frame=(none|${SAFE_NUMBER},${SAFE_NUMBER},${SAFE_NUMBER},${SAFE_NUMBER}) focused_binding=${SAFE_BOOLEAN} focused_binding_count=(\\d{1,6})$`);
+
+export class MacFocusLogCursor {
+  identity = null;
+  offset = 0;
+
+  reset(identity, size) {
+    this.identity = identity;
+    this.offset = size;
+  }
+
+  start(identity, size) {
+    if (identity !== this.identity || size < this.offset) {
+      this.identity = identity;
+      this.offset = 0;
+    }
+    return this.offset;
+  }
+
+  advance(identity, size) {
+    this.identity = identity;
+    this.offset = size;
+  }
+}
+
+function safeMarker(line, prefix, pattern) {
+  const markerStart = line.indexOf(prefix);
+  if (markerStart < 0) return null;
+  const marker = line.slice(markerStart).trim();
+  return pattern.exec(marker);
+}
+
+function safeMacFocusRecord(line) {
+  const entry = safeMarker(line, "PlayarrMacFocusKeyEntry ", MAC_KEY_ENTRY);
+  if (entry && MAC_DIRECTIONS.has(entry[2])) {
+    return {
+      sequence: Number(entry[1]), direction: entry[2], kind: "entry",
+      marker: `PlayarrMacFocusKeyEntry seq=${entry[1]} direction=${entry[2]} text_responder=${entry[3]} window_key=${entry[4]}`,
+    };
+  }
+  const result = safeMarker(line, "PlayarrMacFocusKey ", MAC_KEY_RESULT);
+  if (result && MAC_DIRECTIONS.has(result[2])) return { sequence: Number(result[1]), direction: result[2], kind: "result", marker: result[0] };
+  return null;
+}
+
+export class MacFocusKeyCollector {
+  partial = "";
+  emitted = new Set();
+
+  reset() {
+    this.partial = "";
+    this.emitted.clear();
+  }
+
+  discardPartial() { this.partial = ""; }
+
+  feed(text, { final = false } = {}) {
+    this.partial += text;
+    const lines = this.partial.split(/\r?\n/);
+    this.partial = final ? "" : lines.pop();
+    if (final && lines.length && lines.at(-1) === "") lines.pop();
+    const records = [];
+    for (const line of lines) {
+      const record = safeMacFocusRecord(line);
+      if (!record) continue;
+      const key = `${record.kind}:${record.sequence}:${record.direction}`;
+      if (this.emitted.has(key)) continue;
+      this.emitted.add(key);
+      records.push(record);
+    }
+    return records;
+  }
+}
+
+export function serializeMacFocusKeyMarker(record) {
+  return `${JSON.stringify({ sequence: record.sequence, direction: record.direction, kind: record.kind, marker: record.marker })}\n`;
+}
+
+function readMacLogDelta(file, cursor) {
+  let fd;
+  try {
+    fd = openSync(file, "r");
+    const stat = fstatSync(fd);
+    const identity = `${stat.dev}:${stat.ino}`;
+    const reset = identity !== cursor.identity || stat.size < cursor.offset;
+    let start = cursor.start(identity, stat.size);
+    const oversized = stat.size - start > MAX_MAC_LOG_DELTA_BYTES;
+    if (oversized) start = stat.size - MAX_MAC_LOG_DELTA_BYTES;
+    const length = Math.max(0, stat.size - start);
+    const bytes = Buffer.alloc(length);
+    let read = 0;
+    while (read < length) {
+      const count = readSync(fd, bytes, read, length - read, start + read);
+      if (count === 0) break;
+      read += count;
+    }
+    cursor.advance(identity, start + read);
+    return { text: bytes.subarray(0, read).toString("utf8"), reset, oversized };
+  } catch {
+    return { text: "", reset: false, oversized: false };
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
 
 function readState(work) {
   const f = join(work, "state.env");
@@ -19,13 +130,15 @@ function readState(work) {
   return env;
 }
 
-export async function createDriver({ args = [] } = {}) {
+export async function createDriver({ args = [], out } = {}) {
   // The D-pad checks compare against web, where Select on a nav item moves focus into the page (-PlayarrSelectEntersPage).
   const dpadOnly = args.includes("--only") && args[args.indexOf("--only") + 1] === "dpad";
   const device = process.env.DEVICE ?? "tvos";
   if (device !== "tvos" && device !== "macos") throw new Error(`apple-sim driver: ${device} is not supported yet`);
   const mac = device === "macos";
   const visibleMacParity = mac && process.env.MAC_PARITY_VISIBLE === "true";
+  const outIndex = args.indexOf("--out");
+  const suiteOut = outIndex >= 0 && args[outIndex + 1] ? resolve(args[outIndex + 1]) : out ? resolve(out) : null;
   const work = process.env.WORK;
   if (!work) throw new Error("WORK (the wall scratch dir) is required");
   const st = readState(work);
@@ -33,21 +146,62 @@ export async function createDriver({ args = [] } = {}) {
   if (!mac && (!udid || !bundle)) throw new Error("no simulator in WORK/state.env: run wall.sh up first");
   // The Mac app: keys and snapshots go through its debug remote (notify), the state file sits in the app's own home.
   const macState = join(work, "parity-state.json");
+  const macAppLog = join(work, "app.log");
+  const macKeyArtifact = mac && suiteOut ? join(suiteOut, "mac-focus-keys.jsonl") : null;
+  const macFocusLogCursor = new MacFocusLogCursor();
+  const macFocusKeyCollector = new MacFocusKeyCollector();
   const notify = join(work, "notify"), wallSh = join(process.env.TRUSTED ?? "", "scripts/apple-wall/wall.sh");
   let theme = "dark";
+  let macLogHasLaunched = false;
   const hold = join(work, "hold-key");
+  let macKeyArtifactBytes = 0;
+  if (macKeyArtifact) {
+    mkdirSync(suiteOut, { recursive: true });
+    writeFileSync(macKeyArtifact, "");
+  }
+  const flushMacFocusKeyLog = () => {
+    if (!mac) return;
+    macFocusKeyCollector.reset();
+    try {
+      const stat = statSync(macAppLog);
+      macFocusLogCursor.reset(`${stat.dev}:${stat.ino}`, stat.size);
+    } catch {
+      macFocusLogCursor.reset(null, 0);
+    }
+  };
+  const emitMacFocusRecords = (records) => {
+    for (const record of records) {
+      console.log(`    ${record.marker}`);
+      if (macKeyArtifact) {
+        const serialized = serializeMacFocusKeyMarker(record);
+        const size = Buffer.byteLength(serialized);
+        if (macKeyArtifactBytes + size <= MAX_MAC_KEY_ARTIFACT_BYTES) {
+          try {
+            appendFileSync(macKeyArtifact, serialized);
+            macKeyArtifactBytes += size;
+          } catch { /* diagnostic artifact only */ }
+        }
+      }
+    }
+  };
+  const collectMacFocusKeyLog = ({ final = false } = {}) => {
+    if (!mac) return;
+    const delta = readMacLogDelta(macAppLog, macFocusLogCursor);
+    if (delta.reset) macFocusKeyCollector.reset();
+    else if (delta.oversized) macFocusKeyCollector.discardPartial();
+    emitMacFocusRecords(macFocusKeyCollector.feed(delta.text, { final }));
+  };
   const traceMacFocus = async () => {
     run(notify, ["focus"]);
     await sleep(150);
-    try {
-      const lines = readFileSync(join(work, "app.log"), "utf8").split("\n");
-      const line = lines.reverse().find((entry) => entry.includes("PlayarrMac focus:"));
-      if (line) console.log(`    ${line.trim()}`);
-    } catch { /* diagnosis only */ }
   };
   const frontmost = () => { if (mac) return; try { run("osascript", ["-e", 'tell application "Simulator" to activate']); } catch { /* keep going: keys may still land */ } };
   const launch = async (extra = [], wait = 22000) => {
     if (mac) {
+      if (macLogHasLaunched) {
+        collectMacFocusKeyLog({ final: true });
+        macFocusKeyCollector.reset();
+      } else flushMacFocusKeyLog();
       run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
       await sleep(wait + 10000);
       // The shared runner normally stays invisible. In the dedicated hosted D-pad mode, read its real initial focus without moving it.
@@ -56,10 +210,11 @@ export async function createDriver({ args = [] } = {}) {
         await sleep(1000);
       }
       if (process.env.DRIVER_TRACE && !globalThis.__targetsLogged) { // once: where the Mac's focus targets sit (diagnosis)
-        globalThis.__targetsLogged = true; run(notify, ["targets"]); await sleep(1500);
-        try { console.log(run("bash", ["-c", `grep "PlayarrMac targets" "${work}/app.log" | sort -u | head -60`]).trim()); } catch { /* diagnosis only */ }
+        globalThis.__targetsLogged = true;
         await traceMacFocus();
       }
+      collectMacFocusKeyLog({ final: true });
+      macLogHasLaunched = true;
       return;
     }
     try { run("xcrun", ["simctl", "terminate", udid, bundle]); } catch { /* not running */ }
@@ -98,7 +253,7 @@ export async function createDriver({ args = [] } = {}) {
         await launch([], 15000);
         // Where the Mac app wrote its state (the home it runs in may not be the one handed to it).
         console.log("parity state file:", existsSync(macState) ? "written" : "missing");
-        try { console.log(run("bash", ["-c", `grep -i "PlayarrParity\\|PlayarrMac" "${work}/app.log" | tail -8`]).trim()); } catch { /* diagnosis only */ }
+        collectMacFocusKeyLog({ final: true });
         return;
       }
       // Long-press helper: hold Return for 1.1 s with a CGEvent.
@@ -120,7 +275,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       await sleep(6000);
       await launch();
     },
-    async stop() {},
+    async stop() { collectMacFocusKeyLog({ final: true }); },
     async setTheme(t) { if (t !== theme) { theme = t; await launch(); } },
     async home() { await launch(); },
     // Only the pinned detail screens (/movies/<id>, /series/<id>) open by id; every other screen is reached by keys.
@@ -131,14 +286,19 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
     },
     async key(name, { long } = {}) {
       frontmost();
-      if (mac) run(notify, [`key:${KEYCODE[name]}${long ? ":shift" : ""}`]); // the Mac's long press is Shift+Return
-      else if (long && existsSync(hold)) run(hold, [String(KEYCODE[name]), "1.1"]);
-      else run("osascript", ["-e", `tell application "System Events" to key code ${KEYCODE[name]}`]);
-      await sleep(600);
+      if (mac) {
+        run(notify, [`key:${KEYCODE[name]}${long ? ":shift" : ""}`]); // the Mac's long press is Shift+Return
+        await sleep(600);
+      } else {
+        if (long && existsSync(hold)) run(hold, [String(KEYCODE[name]), "1.1"]);
+        else run("osascript", ["-e", `tell application "System Events" to key code ${KEYCODE[name]}`]);
+        await sleep(600);
+      }
       if (process.env.DRIVER_TRACE) {
-        const s = state(); console.log(`    key ${name}${long ? ":long" : ""} -> ${s.route} | ${s.focused} | ${s.item}`);
+        console.log(`    key ${name}${long ? ":long" : ""}`);
         if (mac) await traceMacFocus();
       }
+      if (mac) collectMacFocusKeyLog();
     },
     async location() { await sleep(300); return state().route ?? "/"; },
     async focused() { const s = state(); return s.focused == null ? null : s.position ? { label: s.focused, position: s.position } : s.focused; },
