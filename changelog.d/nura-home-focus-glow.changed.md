@@ -1,0 +1,1 @@
+- Match the selected Nura Home card's focus ring, glow, and elevation to the web treatment.
