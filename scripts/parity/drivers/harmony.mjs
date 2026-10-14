@@ -23,14 +23,39 @@ export async function createDriver() {
       await get(`${long ? "/keylong/" : "/key/"}${k}`);
       await sleep(450);
     },
+    // The app reports its route a poll after navigating (and the Previewer is slow), so wait for the route the request should reach.
     async route(path) {
       const base = path.split("?")[0];
-      const name = ROUTE[base];
+      const detail = base.match(/^\/(?:movies|series)\/([^/]+)$/)?.[1];
+      const name = detail ? `detail:${detail}` : ROUTE[base];
       if (!name) throw new Error(`no preview route for ${path}`);
+      const want = detail ? { route: "Detail", work_id: detail } : name.startsWith("library:") ? { route: "Library", lib_kind: name.slice(8) } : null;
       await get(`/setroute?name=${encodeURIComponent(name)}`);
-      await sleep(8000);
+      const t0 = Date.now();
+      for (;;) {
+        await sleep(2000);
+        const s = await state();
+        if (!want || Object.entries(want).every(([k, v]) => s[k] === v)) break;
+        if (Date.now() - t0 > 45000) { console.log(`  harmony route ${path}: state ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-4) })}`); break; }
+      }
+      await sleep(6000);
     },
-    async home() { await this.route("/"); await sleep(4000); await get("/setroute?name=focus:pcard"); await sleep(2500); },
+    async home() {
+      await this.route("/");
+      await sleep(4000);
+      await get("/setroute?name=focus:pcard");
+      const t0 = Date.now();
+      while (Date.now() - t0 < 12000 && !(await state()).focused) await sleep(1000);
+      if (!(await state()).focused) {
+        // Focus requests do not take in the Previewer until a touch has activated focus: click the first card (opens its detail), come back.
+        console.log(`  harmony home: no focus, dbg ${JSON.stringify((await state()).dbglog?.slice(-4))}; touch-activating`);
+        await get("/click?x=1044&y=544");
+        await sleep(8000);
+        await get("/key/back");
+        await sleep(6000);
+      }
+      await sleep(1500);
+    },
     async location() {
       const s = await state();
       const kind = { movie: "/movies", series: "/series", artist: "/music" };
@@ -46,7 +71,11 @@ export async function createDriver() {
         default: return "/" + String(s.route).toLowerCase();
       }
     },
-    async focused() { return (await state()).focused; },
+    async focused() {
+      const s = await state();
+      if (!s.focused) console.log(`  harmony focused: none, state ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-4) })}`);
+      return s.focused;
+    },
     async screenshot(file) {
       const bytes = Buffer.from(await (await get("/shot.png")).arrayBuffer());
       if (bytes.length < 40000) throw new Error("frame too plain: an error or signed-out screen");

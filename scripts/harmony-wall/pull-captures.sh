@@ -14,5 +14,6 @@ for d in $(find "$TMP" -type d -name dark -o -type d -name light | grep -v _debu
     light) for f in "$d"/*.png; do cp "$f" "$DEST/dev/light/$(basename "$f")"; done ;;
   esac
 done
+D=$(find "$TMP" -name dpad.json | head -1); [ -z "$D" ] || cp "$D" "$DEST/dev/dpad.json"
 cp "$(find "$TMP" -name build.json | sort | head -1)" "$DEST/dev/build.json"
 cat "$DEST/dev/build.json"

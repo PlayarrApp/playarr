@@ -20,8 +20,12 @@ on:
       parts:
         description: TV parts (screens - the captures only; everything - captures, D-pad, key screens, playback)
         type: choice
-        options: [screens, everything]
+        options: [screens, dpad, everything]
         default: screens
+      checks:
+        description: D-pad check ids to run (comma separated; empty runs all non-player checks)
+        type: string
+        default: ''
       tv_screens:
         description: TV screen IDs as a comma-separated list, or all for the legacy full set
         type: string
@@ -94,7 +98,7 @@ jobs:
       matrix:
         # phone: each theme in its own parallel job (one Previewer per colour mode). TV: the screens (all), the D-pad checks, the key-reached screens and
         # the playback cases run as parallel jobs, each signing in on its own session
-        theme: ${{ fromJSON(inputs.device == 'phone' && '["dark","light"]' || ((inputs.tv_screens != 'all') && '["all"]') || (inputs.parts == 'screens' && '["all"]' || '["all","dpad","extra","playback"]')) }}
+        theme: ${{ fromJSON(inputs.device == 'phone' && '["dark","light"]' || ((inputs.tv_screens != 'all') && '["all"]') || (inputs.parts == 'screens' && '["all"]') || (inputs.parts == 'dpad' && '["dpad"]') || '["all","dpad","extra","playback"]') }}
     defaults:
       run:
         shell: bash
@@ -146,6 +150,7 @@ jobs:
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
+          CHECKS: ${{ inputs.checks }}
           GALLIUM_DRIVER: llvmpipe
           MESA_GL_VERSION_OVERRIDE: "4.5"
         run: |
@@ -184,7 +189,7 @@ jobs:
             # the shared suite over the same signed-in Previewer, one part per parallel job
             export HARMONY_CTL=$CTL PREVIEWER_LOG="$W/previewer.log"
             case "$THEME" in
-              dpad) node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --only dpad --expected /nonexistent.json || true ;;
+              dpad) node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --only dpad --skip-player ${CHECKS:+--checks "$CHECKS"} --expected scripts/parity/expected.web.json || true ;;
               extra) node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --themes dark --only screens --screens player-controls,actions,filters || true ;;
               playback) node scripts/parity/suite-run.mjs --driver scripts/parity/drivers/harmony.mjs --out suite --only playback --expected /nonexistent.json || true ;;
             esac
