@@ -1,0 +1,1 @@
+- Xbox: page headers match the web again: the subtitle sits beside the title after a thin divider and is not pink; it drops under the title only when there is no room.

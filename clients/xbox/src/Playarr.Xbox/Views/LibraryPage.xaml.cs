@@ -94,6 +94,7 @@ namespace Playarr.Xbox.Views
             CountText.Text = _viewModel.Total is { } total
                 ? $"{total.ToString("N0", CultureInfo.CurrentCulture)} {(kind == WorkKind.Artist ? "ARTISTS" : "TITLES")}"
                 : string.Empty;
+            Ui.LayoutHeader(HeaderTitles, TitleText, CountText);
 
             // Rebuild only for a new result: a rebuild drops focus back to the nav rail.
             if (!ReferenceEquals(_renderedWorks, _viewModel.Works))

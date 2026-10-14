@@ -100,7 +100,8 @@ namespace Playarr.Xbox.Views
 
             _sections[section].Host!.Visibility = Visibility.Visible;
 
-            SectionText.Text = _sections[section].Title.ToUpperInvariant();
+            SectionText.Text = _sections[section].Title;
+            Ui.LayoutHeader(HeaderTitles, PageTitleText, SectionText);
             _sections[section].Render?.Invoke();
         }
 

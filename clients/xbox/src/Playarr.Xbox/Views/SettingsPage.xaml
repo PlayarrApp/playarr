@@ -36,16 +36,9 @@
             Click="BackButton_Click">
             <FontIcon Glyph="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
         </Button>
-        <StackPanel Margin="228,57,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <StackPanel x:Name="HeaderTitles" Margin="228,57,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
             <TextBlock x:Name="PageTitleText" Text="Preferences" Style="{StaticResource PlayarrPageTitle}" />
-            <TextBlock
-                x:Name="SectionText"
-                Text="APPEARANCE"
-                FontSize="11"
-                FontWeight="Bold"
-                CharacterSpacing="120"
-                Foreground="{StaticResource PlayarrBrandInk}"
-                Margin="0,6,0,0" />
+            <TextBlock x:Name="SectionText" Text="APPEARANCE" />
         </StackPanel>
 
         <ScrollViewer

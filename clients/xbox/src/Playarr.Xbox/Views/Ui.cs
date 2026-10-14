@@ -20,13 +20,55 @@ namespace Playarr.Xbox.Views
         {
             host.Children.Add(BackButton(back));
             var titles = new StackPanel { Margin = new Thickness(228, 57, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-            titles.Children.Add(new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"] });
-            if (!string.IsNullOrEmpty(subtitle))
+            LayoutHeader(titles, new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"] }, new TextBlock { Text = subtitle ?? string.Empty });
+            host.Children.Add(titles);
+        }
+
+        /// <summary>
+        /// The web page header: the subtitle sits beside the title after a thin vertical divider (not pink); it drops under
+        /// the title, over a thin line, only when the clock leaves no room (title + divider + subtitle wider than 250 px).
+        /// </summary>
+        public static void LayoutHeader(Panel titles, TextBlock title, TextBlock subtitle)
+        {
+            foreach (var part in new FrameworkElement[] { title, subtitle })
             {
-                titles.Children.Add(new TextBlock { Text = subtitle!.ToUpperInvariant(), FontSize = 11, FontWeight = FontWeights.Bold, CharacterSpacing = 120, Foreground = Res("PlayarrBrandInk"), Margin = new Thickness(0, 6, 0, 0) });
+                if (Windows.UI.Xaml.Media.VisualTreeHelper.GetParent(part) is Panel parent)
+                {
+                    parent.Children.Remove(part);
+                }
             }
 
-            host.Children.Add(titles);
+            titles.Children.Clear();
+            subtitle.Text = subtitle.Text.ToUpperInvariant();
+            subtitle.FontSize = 11;
+            subtitle.FontWeight = FontWeights.Bold;
+            subtitle.CharacterSpacing = 60;
+            subtitle.Foreground = Res("PlayarrInk");
+            if (string.IsNullOrEmpty(subtitle.Text))
+            {
+                titles.Children.Add(title);
+                return;
+            }
+
+            title.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+            subtitle.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+            if (title.DesiredSize.Width + 25 + subtitle.DesiredSize.Width <= 250)
+            {
+                var row = new StackPanel { Orientation = Orientation.Horizontal };
+                subtitle.VerticalAlignment = VerticalAlignment.Center;
+                subtitle.Margin = new Thickness(0, 6, 0, 0);
+                row.Children.Add(title);
+                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(12, 8, 12, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(subtitle);
+                titles.Children.Add(row);
+            }
+            else
+            {
+                subtitle.Margin = new Thickness(0, 6, 0, 0);
+                titles.Children.Add(title);
+                titles.Children.Add(new Border { Height = 1, Background = Res("PlayarrLineStrong"), Margin = new Thickness(0, 6, 0, 0) });
+                titles.Children.Add(subtitle);
+            }
         }
 
         /// <summary>The web's empty state: a round icon and a title with its explanation, centred in the content area.</summary>
