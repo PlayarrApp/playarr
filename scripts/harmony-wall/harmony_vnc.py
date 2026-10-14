@@ -596,7 +596,19 @@ def apply_state(q):
             STATE["detail_load_sequence"] = 0
         if STATE["route"] == "Library":
             STATE["lib_kind"] = STATE["kind"]
+    if "img" in q:
+        # Poster cards still showing their placeholder (the app adds one when a placeholder appears and removes one when it goes).
+        try:
+            STATE["img_pending"] = max(0, STATE.get("img_pending", 0) + int(q["img"][0]))
+        except ValueError:
+            pass
+    if "net" in q:
+        # The preview HTTP gate reports idle when no API call or artwork request is pending; the capture waits for it.
+        STATE["net_idle"] = q["net"][0] == "idle"
+        print(f"[net] {time.monotonic():.1f} {q['net'][0]}", flush=True)
     if "dbg" in q:
+        if q["dbg"][0].startswith("http:"):
+            print(f"[http] {time.monotonic():.1f} {q['dbg'][0][:140]}", flush=True)
         STATE["dbg"] = q["dbg"][0]
         STATE.setdefault("dbglog", []).append(q["dbg"][0])
         del STATE["dbglog"][:-300]

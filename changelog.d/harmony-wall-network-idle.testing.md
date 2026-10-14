@@ -1,0 +1,1 @@
+- Harmony wall capture: API calls bypass the Previewer's artwork gate and the capture waits until the app reports no pending request, so Home art and the watchlist state are loaded before the frame is taken.

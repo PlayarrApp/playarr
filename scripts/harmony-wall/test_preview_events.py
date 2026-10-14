@@ -1024,6 +1024,22 @@ class PreviewEventTests(unittest.TestCase):
         self.assertEqual(len(latest), 1)
         self.assertEqual(latest[0]["row_id"], "target-private")
 
+    def test_image_pending_counter_follows_placeholders(self):
+        harmony_vnc.STATE["img_pending"] = 0
+        harmony_vnc.apply_state({"img": ["1"]})
+        harmony_vnc.apply_state({"img": ["1"]})
+        harmony_vnc.apply_state({"img": ["-1"]})
+        self.assertEqual(harmony_vnc.STATE["img_pending"], 1)
+        harmony_vnc.apply_state({"img": ["-1"]})
+        harmony_vnc.apply_state({"img": ["-1"]})
+        self.assertEqual(harmony_vnc.STATE["img_pending"], 0)
+
+    def test_network_idle_report_is_recorded(self):
+        harmony_vnc.apply_state({"net": ["busy"]})
+        self.assertFalse(harmony_vnc.STATE["net_idle"])
+        harmony_vnc.apply_state({"net": ["idle"]})
+        self.assertTrue(harmony_vnc.STATE["net_idle"])
+
     def test_stale_route_report_cannot_rewind_preview_generation(self):
         harmony_vnc.apply_state({
             "route": ["Detail"], "kind": [""], "work": ["work-a"], "generation": ["7"],

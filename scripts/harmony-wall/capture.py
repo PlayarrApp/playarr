@@ -91,15 +91,30 @@ def guarded(name, fn):
         MISSING.append(name)
 
 
-def settle(limit=45):
-    """Wait until the frame stops changing (posters and lists arrive after the route does): two equal polls 4 s apart."""
+def images_pending():
+    """Poster cards the app still shows as placeholders (app-reported); 0 when the build has never reported."""
+    try:
+        return json.loads(get("/state")).get("img_pending", 0)
+    except (ValueError, OSError, SystemExit):
+        return 0
+
+
+def settle(limit=45, image_limit=90):
+    """Wait until the frame stops changing (posters and lists arrive after the route does): two equal polls 4 s apart, and then until
+    the app reports no poster still on its placeholder (bounded: art that never loads is a result to see, not to wait on forever)."""
     last, end = None, time.time() + limit
     while time.time() < end:
         cur = png().tobytes()
         if cur == last:
-            return
+            break
         last = cur
         time.sleep(4)
+    image_end = time.time() + image_limit
+    while images_pending() > 0 and time.time() < image_end:
+        time.sleep(3)
+        last = None
+    if last is None:  # something arrived while waiting: let the frame settle once more
+        settle(limit=20, image_limit=0)
 
 
 SEEN = {}
