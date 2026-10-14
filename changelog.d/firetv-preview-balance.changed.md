@@ -1,0 +1,1 @@
+- Fire TV: the Library preview title wraps balanced, as the web does.

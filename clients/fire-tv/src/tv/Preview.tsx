@@ -2,7 +2,7 @@
 import React from 'react';
 import {View} from 'react-native';
 import {useTheme} from '../theme/ThemeProvider';
-import {Box, T, u} from './kit';
+import {BalancedT, Box, T, u} from './kit';
 
 export interface PreviewProps {
   kicker?: string;
@@ -26,9 +26,9 @@ export function Preview({kicker, title, meta, metaContent, overview, children}: 
         </T>
       ) : null}
       <View style={{marginTop: u(25.9), width: u(373.2)}}>
-        <T size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
+        <BalancedT key={title} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
           {title}
-        </T>
+        </BalancedT>
       </View>
       {(meta && meta.length > 0) || metaContent ? (
         <View style={{marginTop: u(27), flexDirection: 'row', flexWrap: 'wrap'}}>
