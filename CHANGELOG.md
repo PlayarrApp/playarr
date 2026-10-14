@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: the focused episode, chapter and cast cards on a title page get the web's soft glow and art scale, now that their rails reserve the web's focus overflow.
+- Xbox: the episode and chapter numbers over a still are white in the light theme, as on the web.
 - Nura title page: the hero art's bottom fade now spans the art, as the web's.
 - Xbox: focused cards and rings on Search, Playlists, a playlist, Downloads and the profile picker are no longer cropped by their container: the web's 48 px focus overflow is reserved there too.
 - Xbox: focused cards on Home, the library grid and the title-page rails are no longer cropped by their container: the web's 48 px focus overflow is reserved for the lift, ring and glow.
@@ -611,6 +613,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV: the page backdrop follows the web (art confined to the left half under the stage wash), Detail draws it the same way as Home, and the Home wash has its web stops.
 - Android: tablets wider than 760 dp now show web's wide layout (left nav rail, hero panel beside a three-column library grid, wide Home and detail pages) drawn on web's 1920 px canvas scaled to the screen width; phones are unchanged.
 - Nura library cards get the web's resting shadow and a larger unseen dot; the letter rail highlights the first title's letter.
 - Match the Nura title page's hero art to the web phone: smaller backdrop with the web's fades and opacity.
@@ -2992,6 +2995,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Harmony wall: the player capture shows the app background where the Previewer drew its grey surface placeholder.
 - Harmony wall: the capture also waits for the series-detail watchlist pill's pending `discover/resolve` (counted with the poster placeholders).
 - Harmony wall capture: API calls bypass the Previewer's artwork gate and the capture waits until the app reports no pending request, so Home art and the watchlist state are loaded before the frame is taken.
 - Retain failed Harmony TV detail capture frames in private debug artifacts and add sanitised stage counts with elapsed time ranges.

@@ -1,2 +1,0 @@
-- Xbox: the focused episode, chapter and cast cards on a title page get the web's soft glow and art scale, now that their rails reserve the web's focus overflow.
-- Xbox: the episode and chapter numbers over a still are white in the light theme, as on the web.

@@ -1,1 +1,0 @@
-- HarmonyOS TV: the page backdrop follows the web (art confined to the left half under the stage wash), Detail draws it the same way as Home, and the Home wash has its web stops.
