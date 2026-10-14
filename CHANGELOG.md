@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Web: loading skeletons in the Library, Music, Search and detail pages now have the exact size, gap and position of the media cards that replace them (they reuse the card classes and tokens), covered by the new `skeleton-size-e2e` script.
 - Nura title page: the hero art now draws on film pages (a late-loaded picture was not repainted), and the page covers it only once scrolled.
 - Fix VIDAA debug mirror captures so the scaled TV stage fills the requested output instead of leaving blank right and bottom areas.
 - Restore the shell clock's en-GB weekday and month on VIDAA firmware with incomplete Intl date data.

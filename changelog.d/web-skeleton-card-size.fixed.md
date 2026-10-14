@@ -1,1 +1,0 @@
-- Web: loading skeletons in the Library, Music, Search and detail pages now have the exact size, gap and position of the media cards that replace them (they reuse the card classes and tokens), covered by the new `skeleton-size-e2e` script.

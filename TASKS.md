@@ -168,6 +168,7 @@ Steps only the repository owner can perform.
 | 10095 | Web mobile: library pages keep the letter jump rail on the right | in_review | web-mobile | web-mobile-alphabet-1011 | | 2026-10-15 12:00 ICT | Owner request. PR open: #860. ETA reset by coordinator 2026-10-14. |
 | 10096 | Downloads page groups TV by series, then season, then episode, with Pause, Cancel, Delete and Edit at each level, plus a Filters button | done | web-downloads | web-downloads-tree-1011 | | 2026-10-12 12:00 ICT | Owner request. Web: PR open: #881. Native clients follow. PR #881 merged 2026-10-11. |
 | 10097 | Download status notifications (progress, paused, done, failed; Pause, Resume and Cancel actions) on every platform that supports them | in_progress | parity-downloads | | | 2026-10-15 18:00 ICT | Owner request. Web opt-in notification is in #881; Sailfish in #882 (open). ETA reset by coordinator 2026-10-14. |
+| 10270 | Web: skeleton placeholders match the media card size and position (owner report 14 Oct 2026) | in_progress | web-skeleton-size | web-skeleton-size | | 2026-10-14 23:00 ICT | Library, Search and detail skeletons now wear the loaded card classes (title and search cards, episode tiles through the shared RailStack loading mode) instead of their own sizes. Test: scripts/skeleton-size-e2e.mjs (28 scenarios, 4 widths). |
 
 ## 2. Server performance and security (2026-10-03)
 
