@@ -28,8 +28,12 @@ const BACK_GLYPH_SIZE: number = 17.28;
 const TITLE_SIZE: number = 33.6;
 const TITLE_LETTER_SPACING: number = -1.512;
 const HEADER_GAP: number = 23;
-// Web page header with a subtitle: the kicker 12.288 px pink at y=112.
-const KICKER_TOP: number = 112;
+// Web `.page-header-detail`: 0.58vw (11.136 px), weight 680, tracking .045em.
+const DETAIL_SIZE: number = 11.136;
+const DETAIL_LETTER_SPACING: number = 0.501;
+const CLOCK_STOP: number = 478;
+const WRAP_GAP: number = 5.6;
+const WRAP_PAD_TOP: number = 6.4;
 const KICKER_SIZE: number = 12.288;
 const KICKER_LETTER_SPACING: number = 0.983;
 
@@ -75,6 +79,105 @@ export struct PageShell {
     this.navItems = buildNavRailItems(kinds.kind === 'ok' ? kinds.value : []);
   }
 
+  /** Web `detailFitsInline` (lib/pageHeaderLayout.ts): the detail goes beside the title only while it clears the clock by 16. */
+  private measureHeaderText(text: string, size: number, weight: number, spacing: number): number {
+    const ui = this.getUIContext();
+    return ui.px2vp(ui.getMeasureUtils().measureText({
+      textContent: text, fontSize: tv(size), fontWeight: weight, letterSpacing: tv(spacing),
+    }));
+  }
+
+  private detailTextWidth(): number {
+    return Math.ceil(this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, 700, DETAIL_LETTER_SPACING)) + 2;
+  }
+
+  private wrappedColumnWidth(): number {
+    const title = this.measureHeaderText(this.title, TITLE_SIZE, 500, TITLE_LETTER_SPACING);
+    const detail = this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, 700, DETAIL_LETTER_SPACING);
+    return Math.ceil(Math.max(title, detail)) + 2;
+  }
+
+  private detailFitsInline(): boolean {
+    const title = this.measureHeaderText(this.title, TITLE_SIZE, 500, TITLE_LETTER_SPACING);
+    const detail = this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, 700, DETAIL_LETTER_SPACING);
+    const right = tv(TvGeometry.titlePanelLeft + HEADER_SIZE + HEADER_GAP) + title + tv(HEADER_GAP) + detail + tv(HEADER_GAP + 1);
+    return right + tv(16) <= tv(CLOCK_STOP);
+  }
+
+  @Builder
+  private headerBack(): void {
+    Text('←').fontFamily(nunito(400))
+      .fontSize(tv(BACK_GLYPH_SIZE))
+      .fontWeight(FontWeight.Normal)
+      .fontColor(toResourceColor(activeColors().inkSoft))
+      .textAlign(TextAlign.Center)
+      .width(tv(HEADER_SIZE))
+      .height(tv(HEADER_SIZE))
+      .borderRadius(tv(HEADER_SIZE / 2))
+      .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+      // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
+      .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
+      .focusable(true)
+      .onClick(() => {
+        popRoute(getNavStack());
+      })
+  }
+
+  @Builder
+  private headerTitle(): void {
+    Text(this.title).fontFamily(nunito(500))
+      .fontSize(tv(TITLE_SIZE))
+      .fontWeight(FontWeight.Medium)
+      .letterSpacing(tv(TITLE_LETTER_SPACING))
+      .fontColor(toResourceColor(activeColors().ink))
+      .height(tv(HEADER_SIZE))
+  }
+
+  @Builder
+  private headerDetail(inline: boolean): void {
+    Text(this.kicker).fontFamily(nunito(700))
+      .fontSize(tv(DETAIL_SIZE))
+      .fontWeight(FontWeight.Bold)
+      .letterSpacing(tv(DETAIL_LETTER_SPACING))
+      .textCase(TextCase.UpperCase)
+      .fontColor(toResourceColor(activeColors().ink))
+      .maxLines(1)
+      .padding(inline ? { left: tv(HEADER_GAP) } : { top: tv(WRAP_PAD_TOP) })
+      .border(inline ? { width: { left: tv(1) }, color: toResourceColor(activeColors().lineStrong) }
+        : { width: { top: tv(1) }, color: toResourceColor(activeColors().lineStrong) })
+      .width(inline ? this.detailTextWidth() + tv(HEADER_GAP + 2) : '100%')
+  }
+
+  /** Web page header: Back, title and, beside it after a divider, the detail; when that cannot fit before the clock the detail wraps
+   * under the title with a horizontal rule, in a column as wide as the wider of the two, Back level with the title line. */
+  @Builder
+  private tvHeader(): void {
+    if (this.kicker.length === 0 || this.detailFitsInline()) {
+      Row({ space: tv(HEADER_GAP) }) {
+        this.headerBack()
+        this.headerTitle()
+        if (this.kicker.length > 0) {
+          this.headerDetail(true)
+        }
+      }
+      .height(tv(HEADER_SIZE))
+      .alignItems(VerticalAlign.Center)
+      .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
+    } else {
+      Row({ space: tv(HEADER_GAP) }) {
+        this.headerBack()
+        Column({ space: tv(WRAP_GAP) }) {
+          this.headerTitle()
+          this.headerDetail(false)
+        }
+        .width(this.wrappedColumnWidth())
+        .alignItems(HorizontalAlign.Start)
+      }
+      .alignItems(VerticalAlign.Top)
+      .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
+    }
+  }
+
   @Builder
   private chrome(): void {
     Stack() {
@@ -100,42 +203,9 @@ export struct PageShell {
       .alignItems(VerticalAlign.Center)
       .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
       if (this.showHeader) {
-        Row({ space: tv(HEADER_GAP) }) {
-          Text('←').fontFamily(nunito(400))
-            .fontSize(tv(BACK_GLYPH_SIZE))
-            .fontWeight(FontWeight.Normal)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .textAlign(TextAlign.Center)
-            .width(tv(HEADER_SIZE))
-            .height(tv(HEADER_SIZE))
-            .borderRadius(tv(HEADER_SIZE / 2))
-            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-            // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
-            .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
-            .focusable(true)
-            .onClick(() => {
-              popRoute(getNavStack());
-            })
-          Text(this.title).fontFamily(nunito(500))
-            .fontSize(tv(TITLE_SIZE))
-            .fontWeight(FontWeight.Medium)
-            .letterSpacing(tv(TITLE_LETTER_SPACING))
-            .fontColor(toResourceColor(activeColors().ink))
-        }
-        .height(tv(HEADER_SIZE))
-        .alignItems(VerticalAlign.Center)
-        .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.utilityRowTop) })
+        this.tvHeader()
       }
       this.controls()
-      if (this.kicker.length > 0) {
-        Text(this.kicker).fontFamily(nunito(900))
-          .fontSize(tv(KICKER_SIZE))
-          .fontWeight(FontWeight.Bolder)
-          .letterSpacing(tv(KICKER_LETTER_SPACING))
-          .textCase(TextCase.UpperCase)
-          .fontColor(toResourceColor(BRAND_PINK_SOFT))
-          .position({ x: tv(TvGeometry.titlePanelLeft + HEADER_SIZE + HEADER_GAP), y: tv(KICKER_TOP) })
-      }
     }
     .width('100%')
     .height('100%')

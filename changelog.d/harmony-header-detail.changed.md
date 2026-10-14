@@ -1,0 +1,1 @@
+- HarmonyOS TV: the page header shows the subtitle beside the title after a divider, in ink and not pink, as the web header.
