@@ -50,8 +50,8 @@ const EPISODE_TITLE_FONT_WEIGHT: number = 600;
 const EPISODE_TITLE_LETTER_SPACING: number = EPISODE_TITLE_FONT_SIZE * -0.035;
 const EPISODE_TITLE_LINE_HEIGHT: number = EPISODE_TITLE_FONT_SIZE * 1.15;
 const EPISODE_TITLE_MAX_CHARS: number = 24;
-const EPISODE_TITLE_MARGIN_TOP: number = 19.44;
-const EPISODE_META_MARGIN_TOP: number = 27;
+const EPISODE_TITLE_MARGIN_TOP: number = 12.4;
+const EPISODE_META_MARGIN_TOP: number = 30;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
@@ -61,7 +61,7 @@ const SYNOPSIS_MAX_WIDTH: number = 324;
 const SYNOPSIS_MAX_LINES: number = 5;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
-const GAP_KICKER_TITLE: number = 27;
+const GAP_KICKER_TITLE: number = 37;
 const GAP_TITLE_META: number = 22;
 const GAP_META_SYNOPSIS: number = 21;
 

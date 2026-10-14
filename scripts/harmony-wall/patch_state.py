@@ -728,6 +728,20 @@ def instrument_episode_art(s):
             reportDetailRowImageStage(seriesArtworkContext, 'fetch-error');"""
     return replace_episode_branch(s, fallback, fallback_instrumented, 'series-artwork fallback')
 
+def player(s):
+    # The Previewer draws a grey "Preview not available for this component." placeholder for a SURFACE XComponent; the app's own
+    # background (PLAYER_BG, behind the video on a device) is what a player capture should show.
+    old = """        XComponent({
+          id: 'playarr-player-surface',
+          type: XComponentType.SURFACE,
+          controller: this.controller.surfaceController,
+        })
+          .width('100%')
+          .height('100%')
+"""
+    assert s.count(old) == 1
+    return s.replace(old, "        Column().width('100%').height('100%')\n", 1)
+
 def card_dbg(s):
     old = "        if (this.artwork !== undefined) {\n          Image(this.artwork)"
     assert old in s
@@ -742,3 +756,4 @@ if __name__ == '__main__':
     edit('design/components/NavRail.ets', nav)
     edit('pages/Index.ets', index)
     edit('pages/Detail.ets', detail)
+    edit('pages/Player.ets', player)

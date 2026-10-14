@@ -219,6 +219,8 @@ export interface TvGeometryTokens {
 
   // Stage wash.
   stageWashLeftOpacityPct: number;
+  stageWashLeftMidOpacityPct: number;
+  stageWashLeftMidPct: number;
   stageWashLeftFadePct: number;
   stageWashRightOpacityPct: number;
   stageWashRightFadePct: number;
@@ -338,7 +340,10 @@ export const TvGeometry: TvGeometryTokens = {
   keyArtScrimVerticalFadeOutStartPct: 82,
 
   stageWashLeftOpacityPct: 94,
-  stageWashLeftFadePct: 31,
+  // Web `.tv-stage-wash`: surface 94% at 0, 90% at 36%, clear at 52%.
+  stageWashLeftMidOpacityPct: 90,
+  stageWashLeftMidPct: 36,
+  stageWashLeftFadePct: 52,
   stageWashRightOpacityPct: 50,
   stageWashRightFadePct: 34,
 
@@ -409,7 +414,7 @@ export const TvGeometry: TvGeometryTokens = {
   detailBackdropLeftPct: 55,
   detailCopyColumnWidthRatio: 0.39,
   detailCopyColumnStart: 154,
-  detailCopyColumnTop: 224,
+  detailCopyColumnTop: 259, // web `.tv-detail-copy` top: 24%
   detailBrowserWidthRatio: 0.57,
   detailBrowserHeightRatio: 0.72,
   detailBrowserEnd: 50,

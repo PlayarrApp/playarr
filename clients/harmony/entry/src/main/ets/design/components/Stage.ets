@@ -274,6 +274,7 @@ export struct Stage {
         angle: HORIZONTAL_ANGLE,
         colors: [
           [toResourceColorWithAlpha(activeColors().surface, pct100(TvGeometry.stageWashLeftOpacityPct)), 0],
+          [toResourceColorWithAlpha(activeColors().surface, pct100(TvGeometry.stageWashLeftMidOpacityPct)), pct100(TvGeometry.stageWashLeftMidPct)],
           [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.stageWashLeftFadePct)],
         ],
       })

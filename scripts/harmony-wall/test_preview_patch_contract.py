@@ -23,6 +23,12 @@ class PreviewPatchContractTests(unittest.TestCase):
         cls.preview_state = (HERE / "overlay/src/main/ets/util/PreviewState.ets").read_text(encoding="utf-8")
         cls.detail_source = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/pages/Detail.ets").read_text(encoding="utf-8")
 
+    def test_player_surface_placeholder_is_replaced(self):
+        source = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/pages/Player.ets").read_text(encoding="utf-8")
+        patched = patch_state.player(source)
+        self.assertNotIn("playarr-player-surface", patched)
+        self.assertIn("Column().width('100%').height('100%')", patched)
+
     def test_watchlist_resolve_is_counted_as_pending(self):
         patched = patch_state.detail(self.detail_source)
         body = patched.split("private async loadWatchlistState", 1)[1].split("private async toggleWatchlist", 1)[0]

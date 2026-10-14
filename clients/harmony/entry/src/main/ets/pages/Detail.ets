@@ -164,6 +164,7 @@ import type { Work, Availability } from '../core/Types/Work';
 import type { WorkKind } from '../core/Types/Catalog';
 
 import { FeatureCopy } from '../design/components/FeatureCopy';
+import { KeyArtBackdrop } from '../design/components/KeyArtBackdrop';
 import { MediaRail } from '../design/components/MediaRail';
 import type { MediaRailItem } from '../design/components/MediaRail';
 import { PosterCard } from '../design/components/PosterCard';
@@ -205,7 +206,6 @@ const PILL_GAP: number = 17;
 const PILL_ROW_GAP: number = 14;
 const PILL_FILL_ALPHA: number = 0.09;
 const COPY_GAP: number = 36;
-const BACKDROP_OPACITY: number = 0.09;
 const RIGHT_COLUMN_X: number = 882;
 const RIGHT_COLUMN_Y: number = 530;
 const RIGHT_COLUMN_WIDTH: number = 1038;
@@ -235,12 +235,6 @@ const RAIL_PANEL_SURFACE_OPACITY_LIGHT: number = 0.72;
 const RAIL_PANEL_SURFACE_OPACITY_DARK: number = 0.76;
 const RAIL_PANEL_HAIRLINE_ALPHA: number = 0.22;
 const HAIRLINE_WHITE: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
-
-/** Fraction (0-1) conversion for a literal CSS percentage field, matching
- * `design/components/Stage.ets`'s own identical private helper. */
-function pct100(value: number): number {
-  return value / 100;
-}
 
 // -- Row/rail view models ----------------------------------------------------
 
@@ -1982,28 +1976,7 @@ struct Detail {
   @Builder
   private tvContent(): void {
     Stack() {
-      if (this.heroArtwork !== undefined) {
-        Image(this.heroArtwork)
-          .width('100%')
-          .height('100%')
-          .objectFit(ImageFit.Cover)
-          .grayscale(1)
-          .opacity(BACKDROP_OPACITY)
-          .draggable(false)
-          .focusable(false)
-      }
-
-      Row()
-        .width('100%')
-        .height('100%')
-        .hitTestBehavior(HitTestMode.Transparent)
-        .linearGradient({
-          angle: 90,
-          colors: [
-            [toResourceColor(activeColors().surface), 0],
-            [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.detailBackdropLeftPct)],
-          ],
-        })
+      KeyArtBackdrop({ keyArt: this.heroArtwork })
 
       Column({ space: tv(COPY_GAP) }) {
         FeatureCopy({

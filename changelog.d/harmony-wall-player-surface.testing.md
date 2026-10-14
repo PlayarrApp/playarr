@@ -1,0 +1,1 @@
+- Harmony wall: the player capture shows the app background where the Previewer drew its grey surface placeholder.
