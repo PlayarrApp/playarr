@@ -36,6 +36,10 @@ on:
         description: Extra suite-run arguments for the Apple driver step (test runs; default - screens and D-pad checks)
         type: string
         default: ""
+      theme:
+        description: Capture only this theme (dark or light; default - both, a job each)
+        type: string
+        default: ""
       search_smoke:
         description: Run the isolated interactive macOS Search-results focus smoke
         type: boolean
@@ -87,6 +91,7 @@ jobs:
           SEARCH_SMOKE: ${{ inputs.search_smoke }}
           SEARCH_QUERY: ${{ inputs.search_query }}
           SUITE_ARGS: ${{ inputs.suite_args }}
+          ONLY_THEME: ${{ inputs.theme }}
           APP_REF: ${{ inputs.ref }}
           REF_NAME: ${{ github.ref_name }}
           ENABLED: ${{ vars.APPLE_WALL_SCHEDULE }}
@@ -124,6 +129,7 @@ jobs:
             fi
             echo 'any=false' >> "$GITHUB_OUTPUT"; echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"; exit 0
           fi
+          [[ -z $ONLY_THEME || $ONLY_THEME == dark || $ONLY_THEME == light ]] || { echo '::error::theme must be dark or light'; exit 1; }
           items=()
           if [[ $SEARCH_SMOKE == true ]]; then
             items+=('{"device":"macos","vnc":"MACOS","length":1,"themes":"dark","slug":"search-smoke"}')
@@ -135,7 +141,7 @@ jobs:
             if [[ $STREAM == true ]]; then # a stream shows one app: both themes in one job
               items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len,\"themes\":\"dark light\",\"slug\":\"all\"}")
             else # capture-only: a job per theme, in parallel
-              for t in dark light; do items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len,\"themes\":\"$t\",\"slug\":\"$t\"}"); done
+              for t in ${ONLY_THEME:-dark light}; do items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len,\"themes\":\"$t\",\"slug\":\"$t\"}"); done
             fi
           done
           fi

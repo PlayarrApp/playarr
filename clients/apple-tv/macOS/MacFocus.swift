@@ -177,6 +177,20 @@ final class MacFocusEngine {
         target.focus()
     }
 
+    /// Moves focus to the top layer's first page content (a grid entered from Back lands on its first card, not on
+    /// whatever sits under a resting pointer).
+    func focusFirstContent() {
+        let layer = topLayer
+        guard let (id, target) = first(in: targets.filter { $0.value.layer == layer }) else { return }
+        autoFocusedID = id
+        target.focus()
+    }
+
+    /// The work whose detail is open; its grid card takes focus back when the detail pops.
+    var returnWorkID: UUID?
+    /// Set when the detail has popped; a grid that shows again while the detail is still open must not take it.
+    var returnReady = false
+
     func didHover(_ id: UUID, _ inside: Bool) {
         if inside {
             if let pendingHomeCardRestore, targets[id].flatMap({ Self.identity(of: $0) }) != pendingHomeCardRestore {
@@ -440,6 +454,8 @@ private struct MacPreferredKey: EnvironmentKey { static let defaultValue = false
 struct MacFocusBindingBridge {
     let focusChanged: (Bool) -> Void
     let restore: () -> Void
+    /// The owner asks this target to take focus (Back into a grid lands on its first card).
+    var wantsFocus = false
 }
 private struct MacFocusBindingBridgeKey: EnvironmentKey { static let defaultValue: MacFocusBindingBridge? = nil }
 /// Debug parity: what a focus target names itself in parity-state.json (the Mac's focus is not a SwiftUI focus the tiles can read).
@@ -510,6 +526,7 @@ struct MacFocusTarget: ViewModifier {
     @Environment(\.macFocusBindingBridge) private var focusBridge
     @FocusState private var focused: Bool
     @State private var id = UUID()
+    @State private var appearedAt = Date()
 
     func body(content: Content) -> some View {
         targetContent(content, bridge: focusBridge)
@@ -524,10 +541,18 @@ struct MacFocusTarget: ViewModifier {
                 .focusEffectDisabled()
                 .onHover { inside in
                     MacFocusEngine.shared.didHover(id, inside)
-                    if inside, isEnabled { focused = true }
+                    // A card that appears under a resting pointer (Back to a grid) must not steal focus from the settle step.
+                    if inside, isEnabled, Date().timeIntervalSince(appearedAt) > 0.5 { focused = true }
+                }
+                .onAppear { if bridge.wantsFocus, isEnabled { focused = true } } // a lazily realised card asked before it existed
+                .onChange(of: bridge.wantsFocus) { _, wants in
+                    if wants, isEnabled, MacFocusEngine.shared.topLayer == layer { focused = true }
                 }
                 .onChange(of: focused) { _, now in
                     if now, MacFocusEngine.shared.topLayer != layer { return }
+                    #if DEBUG
+                    if now { NSLog("PlayarrMacTrace focus set tag=%@ layer=%d", parityTag?.title ?? "none", layer) }
+                    #endif
                     MacFocusEngine.shared.didFocus(id, now)
                     #if DEBUG
                     if let tag = parityTag, tag.rail == nil {
@@ -547,7 +572,8 @@ struct MacFocusTarget: ViewModifier {
                 .focusEffectDisabled()
                 .onHover { inside in
                     MacFocusEngine.shared.didHover(id, inside)
-                    if inside, isEnabled { focused = true }
+                    // A card that appears under a resting pointer (Back to a grid) must not steal focus from the settle step.
+                    if inside, isEnabled, Date().timeIntervalSince(appearedAt) > 0.5 { focused = true }
                 }
                 .onChange(of: focused) { _, now in
                     MacFocusEngine.shared.didFocus(id, now)
@@ -808,4 +834,9 @@ final class MacKeyboard {
             return event
         }
     }
+}
+
+extension Notification.Name {
+    /// Posted when a detail pops back to its library grid.
+    static let macGridReturnFocus = Notification.Name("PlayarrMacGridReturnFocus")
 }

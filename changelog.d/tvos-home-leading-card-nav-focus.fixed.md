@@ -1,0 +1,2 @@
+- Production D-pad Home now measures card/nav frames; Left uses the web directional score and Right from Home nav restores the same leading card. Inactive nav items remain ineligible outside the one-shot handoff.
+- Home waits for the On Deck request to succeed or fail before drawing rails; the navigation stays usable while its skeleton is visible.

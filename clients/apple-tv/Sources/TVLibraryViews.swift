@@ -1481,6 +1481,8 @@ struct TVLibraryKindView: View {
     @State private var entryPending = true
     #if os(macOS)
     @State private var selectedID: UUID?
+    /// Mac: the card the grid asks to take focus (its first, when the grid comes back from a detail).
+    @State private var focusRequestID: UUID?
     #else
     @FocusState private var selectedID: UUID?
     #endif
@@ -1511,13 +1513,35 @@ struct TVLibraryKindView: View {
     private func macFocusBridge(for work: Work) -> MacFocusBindingBridge {
         MacFocusBindingBridge(
             focusChanged: { isFocused in
-                if isFocused { selectedID = work.id }
+                if isFocused { selectedID = work.id; if focusRequestID == work.id { focusRequestID = nil } }
                 else if selectedID == work.id { selectedID = nil }
             },
             restore: {
                 // MacFocusEngine's layer settle restores the last-focused child when the drawer disappears.
-            }
+            },
+            wantsFocus: focusRequestID == work.id
         )
+    }
+    #endif
+
+    #if os(macOS)
+    private func restoreOpenedCard(_ proxy: ScrollViewProxy) {
+        guard MacFocusEngine.shared.returnReady, let id = MacFocusEngine.shared.returnWorkID, items.contains(where: { $0.id == id }) else { return }
+        MacFocusEngine.shared.returnWorkID = nil
+        NSLog("PlayarrMacTrace restore opened card index=%d", items.firstIndex(where: { $0.id == id }) ?? -1)
+        proxy.scrollTo(id, anchor: .center)
+        focusRequestID = id
+    }
+    #endif
+
+    #if DEBUG && os(macOS)
+    private func reportMacGridFocus(from previous: UUID?, to current: UUID?, columns: Int) {
+        if let previous, previous != current, let work = items.first(where: { $0.id == previous }) {
+            TVParityState.setFocus(work.title, false, id: previous.uuidString)
+        }
+        guard let current, let index = items.firstIndex(where: { $0.id == current }) else { return }
+        TVParityState.setFocus(items[index].title, true, id: current.uuidString,
+                               gridPosition: TVParityGridPosition(itemIndex: index, columns: columns))
     }
     #endif
 
@@ -1754,7 +1778,8 @@ struct TVLibraryKindView: View {
         let gap: CGFloat = cover ? 19.2 : 25.92
         let cardW = view == "list" ? 1033.44 : cover ? (1033.44 - 19.2 * CGFloat(cols - 1)) / CGFloat(cols) : displayPreferences.cardWidth
         let artH = cover ? cardW * 1.5 : cardW * 9 / 16
-        return ScrollView(.vertical, showsIndicators: false) {
+        return ScrollViewReader { proxy in
+        ScrollView(.vertical, showsIndicators: false) {
             LazyVGrid(
                 columns: Array(
                     repeating: GridItem(.fixed(cardW), spacing: gap),
@@ -1787,6 +1812,10 @@ struct TVLibraryKindView: View {
         // Entering the grid from outside (nav, header) lands on the last focused title, else the first (web), never on
         // the card that happens to sit level with the nav item.
         .onChange(of: selectedID) { previous, current in
+            #if DEBUG && os(macOS)
+            // The single owner of Mac grid focus names the card for the parity driver (the per-card tag lost the race with its own unfocus).
+            reportMacGridFocus(from: previous, to: current, columns: cols)
+            #endif
             guard let current else { return }
             #if os(macOS)
             lastFocusedID = current
@@ -1799,6 +1828,12 @@ struct TVLibraryKindView: View {
             #endif
         }
         .onChange(of: selectedID == nil) { _, left in if left { entryPending = true } }
+        #if os(macOS)
+        // Back from a detail: web restores the card that opened it. Same transaction as the pop, before the settle step.
+        .onReceive(NotificationCenter.default.publisher(for: .macGridReturnFocus)) { _ in restoreOpenedCard(proxy) }
+        .onAppear { restoreOpenedCard(proxy) }
+        .onChange(of: items.count) { _, _ in restoreOpenedCard(proxy) }
+        #endif
         // Web scroll edge fade: content leaving the top fades out before the header line (owner rule).
         .mask(
             LinearGradient(
@@ -1808,6 +1843,7 @@ struct TVLibraryKindView: View {
             )
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+        }
     }
 
     private func libraryCard(

@@ -1,0 +1,1 @@
+- macOS Home card movement now applies focus to the registered child button and updates the Home selection mirror from the observed focus change, avoiding competing SwiftUI focus bindings.

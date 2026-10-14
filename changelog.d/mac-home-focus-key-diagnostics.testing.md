@@ -1,0 +1,1 @@
+- DEBUG macOS arrow-key diagnostics now report safe focus transitions, registered-target counts, and numeric selected frames without labels or identifiers.

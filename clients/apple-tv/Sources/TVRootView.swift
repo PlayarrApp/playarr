@@ -395,7 +395,17 @@ private struct TVProductionShell<Stage: View>: View {
                     homeNavFocusHandoff.reset()
                     homeCardFocusReturnRequest = nil
                 }
-                .onChange(of: path) { _, newPath in
+                .onChange(of: path) { oldPath, newPath in
+#if os(macOS)
+                    // Web restores the card that opened a detail: remember it on the push, hand it back on the pop.
+                    if newPath.count > oldPath.count, case .work(let opened) = newPath.last {
+                        MacFocusEngine.shared.returnWorkID = opened.id
+                        MacFocusEngine.shared.returnReady = false
+                    } else if newPath.count < oldPath.count, newPath.isEmpty {
+                        MacFocusEngine.shared.returnReady = true
+                        NotificationCenter.default.post(name: .macGridReturnFocus, object: nil)
+                    }
+#endif
                     if !newPath.isEmpty {
                         homeFocusHandoff.cancel()
 #if os(macOS)

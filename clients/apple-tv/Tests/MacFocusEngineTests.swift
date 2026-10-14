@@ -439,6 +439,18 @@ final class MacFocusEngineTests: XCTestCase {
         XCTAssertNil(TVParityGridPosition(itemIndex: 0, columns: 0))
     }
 
+    @MainActor
+    func testFocusFirstContentPicksTheTopLeftCardNotTheOneUnderThePointer() {
+        let engine = MacFocusEngine()
+        var focused: String?
+        let nav = UUID(), first = UUID(), lower = UUID()
+        engine.update(nav, MacFocusEngine.Target(frame: CGRect(x: 49, y: 515, width: 64, height: 64), layer: 0, focus: { focused = "nav" }))
+        engine.update(first, MacFocusEngine.Target(frame: card(882, 162), layer: 0, focus: { focused = "first" }))
+        engine.update(lower, MacFocusEngine.Target(frame: card(882, 642), layer: 0, focus: { focused = "lower" }))
+        engine.focusFirstContent()
+        XCTAssertEqual(focused, "first")
+    }
+
     func testDownLandsOnTheCardVisuallyBelowNotTheSameIndex() {
         // The top rail is scrolled: the focused card sits at x 900. The lower rail starts at x 100.
         let focused = card(900, 100)
@@ -517,7 +529,7 @@ final class MacFocusEngineTests: XCTestCase {
         defer { window.orderOut(nil) }
         let engine = MacFocusEngine.shared
         func wait(_ condition: () -> Bool) async -> Bool {
-            for _ in 0..<40 {
+            for _ in 0..<150 {
                 if condition() { return true }
                 try? await Task.sleep(for: .milliseconds(100))
             }
@@ -528,22 +540,27 @@ final class MacFocusEngineTests: XCTestCase {
         XCTAssertTrue(registered, "both buttons are focus targets in the top layer")
         let settled = await wait({ engine.focusedID != nil })
         XCTAssertTrue(settled, "the settle step focuses the layer's first target")
+        // The settle step and a pointer resting over a button can each move focus once: let them finish, then test from
+        // whichever button holds it, moving toward the other one (the CI flake assumed the left button).
+        try? await Task.sleep(for: .milliseconds(600))
         let first = try XCTUnwrap(engine.focusedID)
         let initialBinding = await wait({ engine.focusedID == first && engine.targets[first]?.isFocused() == true })
-        XCTAssertTrue(initialBinding, "initial engine focus matches the first target binding")
+        XCTAssertTrue(initialBinding, "initial engine focus matches its target binding")
         let second = try XCTUnwrap(engine.targets.first(where: {
             $0.key != first && $0.value.layer == engine.topLayer
         })?.key)
         XCTAssertEqual(engine.targets[second]?.layer, engine.topLayer, "second target belongs to the active layer")
-        engine.move(.right)
+        let towardSecond: MacMoveDirection = engine.targets[second]!.frame.midX > engine.targets[first]!.frame.midX ? .right : .left
+        let towardFirst: MacMoveDirection = towardSecond == .right ? .left : .right
+        engine.move(towardSecond)
         let moved = await wait({ engine.focusedID == second && engine.targets[second]?.isFocused() == true })
-        XCTAssertTrue(moved, "Right focuses the second target binding")
+        XCTAssertTrue(moved, "the arrow focuses the second target binding")
         let firstReleased = await wait({ engine.targets[first]?.isFocused() == false })
-        XCTAssertTrue(firstReleased, "Right releases the first target binding")
+        XCTAssertTrue(firstReleased, "the arrow releases the first target binding")
         let firstFrame = try XCTUnwrap(engine.targets[first]?.frame)
         let secondFrame = try XCTUnwrap(engine.targets[second]?.frame)
         let targetsShareYOverlap = firstFrame.minY < secondFrame.maxY && secondFrame.minY < firstFrame.maxY
-        let leftObservation = engine.moveWithDiagnostics(.left)
+        let leftObservation = engine.moveWithDiagnostics(towardFirst)
         let back = await wait({
             window.isKeyWindow && NSApp.keyWindow === window && engine.focusedID == first
                 && engine.targets[first]?.isFocused() == true && engine.targets[second]?.isFocused() == false
