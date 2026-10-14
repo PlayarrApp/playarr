@@ -198,6 +198,11 @@ const PLAY_BUTTON_HEIGHT_TOUCH: number = 48;
 const PLAY_BUTTON_ICON_SIZE: number = 18;
 const PLAY_BUTTON_LABEL_SIZE: number = 16;
 const HERO_TOUCH_HEIGHT: number = 340;
+// Web phone season rows (measured on the 360 vp reference): 187 vp cards, heading to cards 23, season to season 237.
+const PHONE_EPISODE_CARD_WIDTH: number = 187;
+const PHONE_SEASON_LIST_HEIGHT: number = 165;
+const PHONE_SEASON_HEADER_CARD_GAP: number = 23;
+const PHONE_SEASON_ROW_GAP: number = 21;
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
 const TOUCH_SETTLE_ATTEMPTS: number = 12;
 /** Web phone series detail, next-up episode in the middle: the page scrolled by about this much (measured on the 360 vp reference). */
@@ -1530,8 +1535,8 @@ struct Detail {
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
       focusId: seriesEpisodeFocusId((item as DetailRow).id),
-      cardWidth: tv(SERIES_EPISODE_CARD_WIDTH),
-      cardHeight: Math.round(tv(SERIES_EPISODE_CARD_WIDTH) * 9 / 16),
+      cardWidth: this.seriesCardWidth(),
+      cardHeight: Math.round(this.seriesCardWidth() * 9 / 16),
       activeRailFactor: activeRailFactor,
       onCardAppear: (): void => { this.seriesEpisodeCardAppeared(railId, (item as DetailRow).id, index); },
       onArtworkAreaChanged: this.seriesCardArtworkAreaReporter(railId, (item as DetailRow).id, index,
@@ -1941,13 +1946,18 @@ struct Detail {
     .width('100%')
   }
 
+  /** The episode card width: the TV stage's, or web phone's 187 vp. */
+  private seriesCardWidth(): number {
+    return isTvMetrics() ? tv(SERIES_EPISODE_CARD_WIDTH) : PHONE_EPISODE_CARD_WIDTH;
+  }
+
   @Builder
   private tvSeriesSeasonRows(): void {
-    Column({ space: tv(SERIES_SEASON_ROW_GAP) }) {
+    Column({ space: isTvMetrics() ? tv(SERIES_SEASON_ROW_GAP) : PHONE_SEASON_ROW_GAP }) {
       ForEach(
         this.rails,
         (rail: DetailRail) => {
-          Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
+          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
             this.railHeading(rail.heading, rail.items.length.toString() + ' episodes')
             MediaRail({
               railId: rail.id,
@@ -1956,7 +1966,7 @@ struct Detail {
               headingGap: 0,
               itemGap: tv(TvGeometry.railItemGapTitle),
               items: rail.items,
-              listHeight: tv(SERIES_EPISODE_LIST_HEIGHT),
+              listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : PHONE_SEASON_LIST_HEIGHT,
               initialItemIndex: this.initialEpisodeIndex(rail),
               onInitialItemPositioned: (): void => { this.seriesEpisodeIndexPositioned(rail); },
               onListAreaChange: this.seriesRailAreaReporter(rail.id, this.workId, this.seriesFocusGeneration),
