@@ -28,7 +28,7 @@ Column {
         height: Math.round(cardW * 9 / 16 + 0.2) + Math.round(51 * Tokens.u)
         ListView {
             id: list
-            anchors.fill: parent
+            y: -8 * Tokens.u; width: parent.width; height: parent.height + 16 * Tokens.u   // room for the focus ring and shadows inside the clip
             orientation: ListView.Horizontal
             spacing: Tokens.px(12)
             leftMargin: Tokens.pad
@@ -36,6 +36,7 @@ Column {
             clip: true
             model: root.items
             delegate: WorkCard {
+                y: 8 * Tokens.u
                 work: modelData
                 cardWidth: root.cardW
                 showUnwatched: root.showUnwatched

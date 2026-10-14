@@ -347,10 +347,12 @@ PlayarrPage {
                     Label { x: Tokens.pad; text: qsTr("Season %1").arg(modelData.season.season_number); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 15.4 * Tokens.u }
                     Label { x: Tokens.pad; text: qsTr("%1 episodes").arg(modelData.episodes.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10.6 * Tokens.u }
                     Item { width: 1; height: 6.5 * Tokens.u }
+                    Item {
+                        width: col.width; height: 178.8 * Tokens.u * 9 / 16 + 58 * Tokens.u
                     ListView {
                         id: epList
-                        width: col.width
-                        height: 178.8 * Tokens.u * 9 / 16 + 58 * Tokens.u
+                        y: -8 * Tokens.u; width: col.width   // room for the focus ring and shadows inside the clip
+                        height: parent.height + 16 * Tokens.u
                         orientation: ListView.Horizontal
                         spacing: 12.2 * Tokens.u
                         leftMargin: Tokens.pad
@@ -367,6 +369,7 @@ PlayarrPage {
                         Component.onCompleted: railTimer.start()
                         Connections { target: page; onTargetChanged: railTimer.restart() }
                         delegate: MouseArea {
+                                y: 8 * Tokens.u
                                 id: epCard
                                 readonly property real cw: 178.8 * Tokens.u
                                 width: cw
@@ -445,6 +448,7 @@ PlayarrPage {
                                     }
                                 }
                         }
+                    }
                     }
                 }
             }
