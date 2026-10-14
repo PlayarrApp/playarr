@@ -317,6 +317,7 @@ PlayarrPage {
                         }
                         PillButton {
                             id: wlBtn
+                            width: naturalWidth + 1 * Tokens.u   // web's pill runs a little wider than its content
                             icon: page.inWatchlist ? "\u2713" : "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
                             fontSize: 8.0 * Tokens.u
                             implicitHeight: 43.5 * Tokens.u
@@ -325,6 +326,7 @@ PlayarrPage {
                         }
                         PillButton {
                             id: plBtn
+                            width: naturalWidth + 3.5 * Tokens.u
                             icon: "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
                             fontSize: 8.0 * Tokens.u
                             implicitHeight: 43.5 * Tokens.u
@@ -340,15 +342,15 @@ PlayarrPage {
                 Column {
                     id: seasonCol
                     width: col.width
-                    spacing: 8 * Tokens.u
+                    spacing: 6 * Tokens.u   // web: 24 px from the season heading to its count
                     property var sdata: modelData
                     Label { x: Tokens.pad; text: qsTr("Season %1").arg(modelData.season.season_number); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 15.4 * Tokens.u }
                     Label { x: Tokens.pad; text: qsTr("%1 episodes").arg(modelData.episodes.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10.6 * Tokens.u }
-                    Item { width: 1; height: 0.5 * Tokens.u }
+                    Item { width: 1; height: 6.5 * Tokens.u }
                     ListView {
                         id: epList
                         width: col.width
-                        height: 178.8 * Tokens.u * 9 / 16 + 56.5 * Tokens.u
+                        height: 178.8 * Tokens.u * 9 / 16 + 58 * Tokens.u
                         orientation: ListView.Horizontal
                         spacing: 12.2 * Tokens.u
                         leftMargin: Tokens.pad
@@ -413,7 +415,7 @@ PlayarrPage {
                                             text: ("0" + modelData.episode.episode_number).slice(-2); color: "#ffffff"; font.family: Tokens.family580; font.pixelSize: 12.8 * Tokens.u }
                                     Rectangle {
                                         visible: !epCard.pr || epCard.pr.state === "unseen"
-                                        width: 10 * Tokens.u; height: width; radius: width / 2
+                                        width: 9 * Tokens.u; height: width; radius: width / 2
                                         anchors { top: parent.top; right: parent.right; topMargin: 7 * Tokens.u; rightMargin: 7 * Tokens.u }
                                         color: Tokens.brandPink; border.width: 1.6 * Tokens.u; border.color: "#ffffff"
                                     }
@@ -429,21 +431,11 @@ PlayarrPage {
                                     spacing: 9.5 * Tokens.u
                                     readonly property bool current: !!page.target && page.target.id === modelData.media_file_id
                                     Label { id: codeLbl; text: "S" + ("0" + seasonCol.sdata.season.season_number).slice(-2) + " \u00B7 E" + ("0" + modelData.episode.episode_number).slice(-2); color: parent.current ? Tokens.ink : Tokens.inkSoft; font.family: parent.current ? Tokens.family820 : Tokens.family580; font.pixelSize: 9.5 * Tokens.u }
-                                    // The web fades a long title out at the right edge instead of an ellipsis.
-                                    Item {
-                                        width: epCard.width - codeLbl.width - 14 * Tokens.u; height: titleLbl.height; clip: true
-                                        Label { id: titleLbl; text: modelData.episode.title || ""; color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 12 * Tokens.u; wrapMode: Text.NoWrap }
-                                        LinearGradient {
-                                            visible: titleLbl.implicitWidth > parent.width
-                                            anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
-                                            width: 40 * Tokens.u
-                                            start: Qt.point(0, 0); end: Qt.point(width, 0)
-                                            gradient: Gradient {
-                                                GradientStop { position: 0.0; color: Qt.rgba(Tokens.surface.r, Tokens.surface.g, Tokens.surface.b, 0) }
-                                                GradientStop { position: 0.6; color: Qt.rgba(Tokens.surface.r, Tokens.surface.g, Tokens.surface.b, 0.7) }
-                                                GradientStop { position: 1.0; color: Qt.rgba(Tokens.surface.r, Tokens.surface.g, Tokens.surface.b, 0.92) }
-                                            }
-                                        }
+                                    Label {
+                                        id: titleLbl
+                                        width: epCard.width - codeLbl.width - 14 * Tokens.u
+                                        text: modelData.episode.title || ""; elide: Text.ElideRight
+                                        color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 12 * Tokens.u
                                     }
                                 }
                         }

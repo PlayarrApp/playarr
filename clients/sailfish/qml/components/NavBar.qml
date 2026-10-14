@@ -39,7 +39,8 @@ Rectangle {
             width: 46.1 * Tokens.u
             height: parent.height
             onClicked: root.profileClicked()
-            Avatar { anchors.centerIn: parent; width: 21 * Tokens.u; source: Api.profileAvatar }
+            Avatar { anchors.centerIn: parent; anchors.verticalCenterOffset: -4 * Tokens.u; width: 21 * Tokens.u;   // web seats the avatar higher than the icons
+                     source: Api.profileAvatar }
         }
         Repeater {
             model: root.tabs
