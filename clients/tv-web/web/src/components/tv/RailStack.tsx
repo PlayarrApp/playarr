@@ -114,10 +114,14 @@ export const RailStack = forwardRef<
         const marker = document.querySelector<HTMLElement>("[data-remote-active]");
         if (marker && marker.closest(".tv-media-track") !== track) return;
         // Moving along a rail never moves the stack: the rail was centred when it was entered, and a later focus on one
-        // of its cards (the real focus trailing the marker) must not re-measure and nudge it. Remote keys only; a
-        // pointer or a wheel scroll still re-centres on focus.
+        // of its cards (the real focus trailing the marker) must not re-measure and nudge it. Remote keys only, and only
+        // while the focused card is on screen: once a wheel or touch scroll has moved the rail out of view, focus pulls it back.
         const stack = track.closest<HTMLElement>(".tv-rail-surface.is-vertical-tracks");
-        if (stack && document.body.dataset.inputMode === "remote" && centredTrack.get(stack) === track) return;
+        if (stack && document.body.dataset.inputMode === "remote" && centredTrack.get(stack) === track) {
+          const card = (event.target as HTMLElement).getBoundingClientRect();
+          const view = stack.getBoundingClientRect();
+          if (card.top >= view.top - 1 && card.bottom <= view.bottom + 1) return;
+        }
         centreTrackInStack(track);
       }}
     >

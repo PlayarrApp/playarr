@@ -4159,7 +4159,7 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overflow-y: hidden;
-  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
   scroll-behavior: smooth;
   scrollbar-width: none;
 }
@@ -6168,7 +6168,7 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overflow-y: hidden;
-  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
   scroll-padding-inline: 8px clamp(22px, calc(2.4 * var(--vw)), 46px);
   scroll-behavior: auto;
   scrollbar-width: none;
@@ -6650,7 +6650,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overflow-y: hidden;
-  overscroll-behavior: contain;
+  /* x only: `contain` on both axes stops a vertical wheel, trackpad or touch scroll over the rail reaching the stack. */
+  overscroll-behavior-x: contain;
   scroll-padding-inline: var(--tv-track-left-fade)
     clamp(22px, calc(2.4 * var(--vw)), 46px);
   scroll-behavior: smooth;

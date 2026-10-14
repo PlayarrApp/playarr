@@ -892,7 +892,7 @@ jobs:
         if: startsWith(matrix.shard, 'nav-')
         working-directory: clients/tv-web/web
         run: |
-          shard_a="nav-back nav-details nav-drawer-focus nav-focus nav-home-skeleton nav-home-speed nav-keys nav-layers nav-library-drawer nav-mobile-stage nav-rail-centre nav-library-frames"
+          shard_a="nav-back nav-details nav-drawer-focus nav-focus nav-home-skeleton nav-home-speed nav-keys nav-layers nav-library-drawer nav-mobile-stage nav-rail-centre nav-library-frames nav-wheel-scroll"
           for script in scripts/nav-*-e2e.mjs; do
             name=$(basename "$script" -e2e.mjs)
             case " $shard_a " in *" $name "*) in_a=1 ;; *) in_a=0 ;; esac
