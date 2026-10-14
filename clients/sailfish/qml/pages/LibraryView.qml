@@ -65,7 +65,7 @@ Item {
             var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
         }
-        Rectangle { anchors.fill: parent; radius: 11 * Tokens.u; color: "transparent"; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
+        Rectangle { anchors.fill: parent; radius: 11 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
         Image { anchors.centerIn: parent; width: 15 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
     }
     PageTitle {
@@ -97,7 +97,7 @@ Item {
         onLoadMore: root.more()
     }
     // Alphabet rail (web #860): jump to the first title at or after a letter; loads further pages until one is found.
-    readonly property bool railOn: Api.setting("lib.sort", "title") === "title" && (kind === "movie" || kind === "series")
+    readonly property bool railOn: Api.setting("lib.sort", "title") === "title" && (kind === "movie" || kind === "series" || kind === "artist")
     property string activeLetter: "#"
     property string jumping: ""
     readonly property var alphabet: ["#", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
@@ -112,7 +112,10 @@ Item {
         if (firstAtOrAfter(letter) >= 0) { jumping = ""; targetLetter = letter; scrollTries = 0; scrollTimer.restart(); return }
         if (total < 0 || works.length < total) { jumping = letter; more() } else jumping = ""
     }
-    onWorksChanged: if (jumping !== "") jumpTo(jumping)
+    onWorksChanged: {
+        if (jumping !== "") jumpTo(jumping)
+        else if (works.length > 0 && grid.contentY <= 0) activeLetter = letterOf(works[0])   // web highlights the first title's letter at rest
+    }
     Connections {
         target: grid
         onContentYChanged: {

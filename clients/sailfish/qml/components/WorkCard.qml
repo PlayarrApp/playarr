@@ -74,7 +74,7 @@ MouseArea {
     }
     Column {
         id: caption
-        anchors { top: art.bottom; topMargin: (compact ? 12 : 11.7) * Tokens.u; left: parent.left; right: parent.right; leftMargin: 1.7 * Tokens.u }
+        anchors { top: art.bottom; topMargin: (compact ? 11 : 11.7) * Tokens.u; left: parent.left; right: parent.right; leftMargin: 1.7 * Tokens.u }
         spacing: 3 * Tokens.u
         Label {
             width: parent.width
