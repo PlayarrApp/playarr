@@ -1,0 +1,1 @@
+- Fire TV: the page header shows the title and subtitle side by side with a divider (wrapping under the title only when there is no room), and the subtitle is no longer pink, as the web does.

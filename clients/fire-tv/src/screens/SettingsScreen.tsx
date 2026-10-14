@@ -13,7 +13,7 @@ import {ROUTES, type RouteName} from '../navigation/routes';
 import {useTheme} from '../theme/ThemeProvider';
 import {Box, T, u} from '../tv/kit';
 import {EdgeFade} from '../tv/EdgeFade';
-import {BackButton} from '../tv/PageHeader';
+import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
 import type {TranslationKey} from '../../../tv-web/web/src/lib/i18n/translations';
 import {
@@ -137,18 +137,7 @@ export function SettingsScreen({initial = 'appearance'}: {initial?: SettingsSect
   return (
     <Stage>
       <RailFrost dark={scheme === 'dark'} soft={colour.surfaceSoft} strong={colour.surfaceStrong} x={672} />
-      <BackButton onPress={() => navigation.navigate(ROUTES.home)} x={153.6} y={56.2} hasTVPreferredFocus accessibilityLabel={t('settings.sectionLayout.backLink')} />
-      <View style={{position: 'absolute', left: u(226.6), top: u(56.2)}} pointerEvents="none">
-        <T size={33.6} weight={580} ls={-1.512} lh={50.4} color={colour.ink} lines={1}>
-          {t('settings.index.title')}
-        </T>
-        {/* Web: the open section as the one shared page subtitle (12.288 px / 820, uppercase, brand ink) at y 111.8. */}
-        <View style={{marginTop: u(5.4)}}>
-          <T size={12.288} weight={820} ls={0.983} lh={18.4} color={scheme === 'dark' ? '#eaa6b6' : '#821e36'} upper>
-            {t(activeSection.titleKey)}
-          </T>
-        </View>
-      </View>
+      <PageHeader title={t('settings.index.title')} detail={t(activeSection.titleKey)} onBack={() => navigation.navigate(ROUTES.home)} backFocus backLabel={t('settings.sectionLayout.backLink')} />
 
       <Box x={0} y={LIST_CLIP_TOP} w={672} h={1080 - LIST_CLIP_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
         <Animated.View style={{position: 'absolute', top: u(-LIST_CLIP_TOP), left: 0, width: u(672), transform: [{translateY: scroll}]}} pointerEvents="box-none">

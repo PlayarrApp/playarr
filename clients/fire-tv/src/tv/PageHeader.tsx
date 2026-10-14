@@ -1,9 +1,9 @@
 /** The web's `page-header` on a stage page: the round back button, the page title and its detail, and the clock gap. */
-import React, {useState} from 'react';
-import {Pressable, View} from 'react-native';
+import React, {useRef, useState} from 'react';
+import {LayoutChangeEvent, Pressable, View} from 'react-native';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
-import {T, u} from './kit';
+import {T, u, uf} from './kit';
 
 export interface BackButtonProps {
   onPress: () => void;
@@ -55,29 +55,57 @@ export function BackButton({onPress, x = 153.6, y = 56.2, size = 50, accessibili
 
 export interface PageHeaderProps {
   title: string;
-  /** The page subtitle under the title (a count, or the open title): web's one shared `.page-subtitle` style. */
+  /** The page subtitle (a count, or the open title): web's one shared `.page-subtitle` style, beside the title or wrapped under it. */
   detail?: string;
   onBack: () => void;
-  titleX?: number;
-  titleWidth?: number;
+  backLabel?: string;
+  backFocus?: boolean;
 }
 
-export function PageHeader({title, detail, onBack, titleWidth}: PageHeaderProps): React.ReactElement {
-  const {colour, scheme} = useTheme();
+const HEADER_X = 226.6;
+/** Web: the title, 24 px, a 1 px divider, 24 px, the subtitle; the subtitle wraps under the title when it would run into the clock (475.75 minus the 24 px gap). */
+const HEADER_GAP = 24;
+const HEADER_BESIDE_LIMIT = 451.75;
+
+export function PageHeader({title, detail, onBack, backLabel, backFocus}: PageHeaderProps): React.ReactElement {
+  const {colour} = useTheme();
+  const [widths, setWidths] = useState<{title: number; detail: number} | null>(null);
+  const measured = useRef<{title?: number; detail?: number}>({});
+  const measure = (key: 'title' | 'detail') => (event: LayoutChangeEvent): void => {
+    measured.current[key] = event.nativeEvent.layout.width / uf(1);
+    const {title: tw, detail: dw} = measured.current;
+    if (tw !== undefined && (detail === undefined || dw !== undefined)) setWidths((current) => (current && Math.abs(current.title - tw) < 0.5 && Math.abs(current.detail - (dw ?? 0)) < 0.5 ? current : {title: tw, detail: dw ?? 0}));
+  };
+  const beside = widths !== null && detail !== undefined && HEADER_X + widths.title + HEADER_GAP * 2 + 1 + widths.detail <= HEADER_BESIDE_LIMIT;
+  const subtitle = (
+    <T size={12.288} weight={820} ls={0.983} lh={18.4} color={colour.ink} upper lines={1}>
+      {detail}
+    </T>
+  );
   return (
     <>
-      <BackButton onPress={onBack} />
-      <View style={{position: 'absolute', left: u(226.6), top: u(56.2), height: u(50.4), width: titleWidth === undefined ? undefined : u(titleWidth)}} pointerEvents="none">
-        <T size={33.6} weight={580} ls={-1.512} lh={50.4} dy={1} color={colour.ink} lines={1}>
-          {title}
-        </T>
+      <BackButton onPress={onBack} accessibilityLabel={backLabel} hasTVPreferredFocus={backFocus} />
+      <View style={{position: 'absolute', left: u(HEADER_X), top: u(56.2), height: u(50.4), flexDirection: 'row', alignItems: 'center'}} pointerEvents="none">
+        <View onLayout={measure('title')}>
+          <T size={33.6} weight={580} ls={-1.512} lh={50.4} dy={1} color={colour.ink} lines={1}>
+            {title}
+          </T>
+        </View>
+        {detail !== undefined && beside ? (
+          <>
+            <View style={{width: u(1), height: u(17), marginHorizontal: u(HEADER_GAP), backgroundColor: colour.lineStrong}} />
+            {subtitle}
+          </>
+        ) : null}
       </View>
       {detail !== undefined ? (
-        // Web: 12.288 px / 820, 0.08em tracking, uppercase, in the brand ink, at y 111.8 under the title.
-        <View style={{position: 'absolute', left: u(226.6), top: u(111.8), width: u(600)}} pointerEvents="none">
-          <T size={12.288} weight={820} ls={0.983} lh={18.4} color={scheme === 'dark' ? '#eaa6b6' : '#821e36'} upper lines={1}>
-            {detail}
-          </T>
+        <View
+          style={{position: 'absolute', left: u(HEADER_X), top: u(beside ? 72.2 : 116.8), opacity: widths === null || beside ? 0 : 1}}
+          pointerEvents="none"
+        >
+          <View onLayout={measure('detail')} style={{position: 'absolute', opacity: 0}}>{subtitle}</View>
+          {!beside && widths !== null ? <View style={{position: 'absolute', left: 0, top: u(-4.8), width: u(widths.detail), height: u(1), backgroundColor: colour.lineStrong}} /> : null}
+          {!beside ? subtitle : null}
         </View>
       ) : null}
     </>
