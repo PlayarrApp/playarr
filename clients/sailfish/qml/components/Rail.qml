@@ -13,6 +13,8 @@ Column {
     width: parent ? parent.width : 0
     spacing: Math.round(19.5 * Tokens.u)
     visible: items.length > 0
+    // The same card as the library grid (web #924): (viewport - 16 gutter - 52 rail pad - 12 gap) / 2.
+    readonly property real cardW: Math.round((width - Tokens.px(16 + 52 + 12)) / 2)
 
     Label {
         x: Tokens.pad
@@ -23,7 +25,7 @@ Column {
     }
     Item {
         width: parent.width
-        height: Math.round(173 * Tokens.u * 9 / 16 + 50 * Tokens.u)
+        height: Math.round(cardW * 9 / 16 + 0.2) + Math.round(51 * Tokens.u)
         ListView {
             id: list
             anchors.fill: parent
@@ -35,6 +37,7 @@ Column {
             model: root.items
             delegate: WorkCard {
                 work: modelData
+                cardWidth: root.cardW
                 showUnwatched: root.showUnwatched
                 onOpened: root.opened(work)
                 onHeld: root.held(work)
