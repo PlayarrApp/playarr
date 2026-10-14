@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Nura's series episode rail no longer crops the focused episode's ring and glow.
 - Xbox: Settings > Appearance groups follow the web: a sentence-case heading, the note above the choice, and a divider between groups.
 - Match inactive Android TV navigation text and icons to the web muted foreground in light and dark themes.
 - Align iPad detail copy width and series rail placement with the shared stage layout.
@@ -385,6 +386,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Android TV Search now gives default D-pad focus to its empty search field when entering the idle Search page, without opening the on-screen keyboard until Select is pressed.
 - Android phone Filters and Actions drawers blur the page beneath them on Android 12 and later while keeping the bottom navigation available.
 - Fire TV Search adds the web media-type filters, matching playlist results, game discovery, and supported discovery actions. The Filters tile remains visible above Search content and receives focus again after the drawer closes.
 - HarmonyOS TV player: previous and next buttons (and the media keys) move through the session queue; the -10 and +10 buttons are gone from the bar as on web (seeking stays on the D-pad left and right).
