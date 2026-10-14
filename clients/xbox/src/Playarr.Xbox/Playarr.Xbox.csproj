@@ -190,6 +190,7 @@
     <Compile Include="Services\DeviceCapsProvider.cs" />
     <Compile Include="Services\DownloadService.cs" />
     <Compile Include="Services\DownloadToasts.cs" />
+    <Compile Include="Services\RemoteHostService.cs" />
 
     <Compile Include="ViewModels\ViewModelBase.cs" />
     <Compile Include="ViewModels\LoginViewModel.cs" />
@@ -231,6 +232,7 @@
     <Compile Include="Views\Ui.cs" />
     <Compile Include="Views\NavIcons.cs" />
     <Compile Include="Views\Appearance.cs" />
+    <Compile Include="Views\LanguageSetting.cs" />
     <Compile Include="Views\Theme.cs" />
     <Compile Include="Views\Avatars.cs" />
     <Compile Include="Views\FocusClaim.cs" />
@@ -322,6 +324,9 @@
       <SubType>Designer</SubType>
     </Page>
     <Compile Include="Views\SettingsPage.xaml.cs">
+      <DependentUpon>SettingsPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\SettingsPage.Rows.cs">
       <DependentUpon>SettingsPage.xaml</DependentUpon>
     </Compile>
   </ItemGroup>

@@ -81,6 +81,7 @@ namespace Playarr.Xbox
                 rootFrame.NavigationFailed += OnNavigationFailed;
                 RootFrame = rootFrame;
                 Navigation = new NavigationService(rootFrame);
+                Views.LanguageSetting.Load();
                 // One codebase for the console and the desktop window: the app is laid out at the web TV size (1920x1080)
                 // and a Viewbox scales that layout to the window, as the web scales its TV layout. A pointer, the keyboard
                 // and the gamepad all work on the same tree; the top strip is the draggable title bar.

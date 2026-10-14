@@ -3,6 +3,7 @@ using System.Linq;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
+using Playarr.Core.Localization;
 using Playarr.Xbox;
 using Playarr.Xbox.ViewModels;
 
@@ -26,9 +27,12 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             _viewModel = new SettingsViewModel(App.Environment);
             ServerAddressBox.Text = _viewModel.ServerConnection.ServerAddress;
+            PageTitleText.Text = Lang.T("settings.index.title");
             BuildSections();
             ShowSection(0);
         }
+
+        private int _openSection;
 
         /// <summary>The web's numbered section list (Settings index): number, title, and how the section fills the right-hand side.</summary>
         private sealed class SectionDef
@@ -44,22 +48,26 @@ namespace Playarr.Xbox.Views
 
         private void BuildSections()
         {
-            _sections.Add(new SectionDef { Number = "01", Title = "Appearance", Render = RenderAppearance, Host = AppearanceSection });
-            _sections.Add(new SectionDef { Number = "02", Title = "Profile avatar", Render = RenderAvatar, Host = ExtraSection });
-            _sections.Add(new SectionDef { Number = "04", Title = "Player", Render = RenderPlayer, Host = PlayerSection });
-            _sections.Add(new SectionDef { Number = "05", Title = "Server connection", Host = ServerSection });
-            _sections.Add(new SectionDef { Number = "06", Title = "Profile lock", Render = () => RenderProfileLock(), Host = ExtraSection });
-            _sections.Add(new SectionDef { Number = "11", Title = "Customise Home", Render = RenderCustomiseHome, Host = ExtraSection });
+            _sections.Add(new SectionDef { Number = "01", Title = Lang.T("settings.index.appearance.title"), Render = RenderAppearance, Host = AppearanceSection });
+            _sections.Add(new SectionDef { Number = "02", Title = Lang.T("settings.index.profileAvatar.title"), Render = RenderAvatar, Host = ExtraSection });
+            _sections.Add(new SectionDef { Number = "03", Title = Lang.T("settings.index.language.title"), Render = RenderLanguage, Host = ExtraSection });
+            _sections.Add(new SectionDef { Number = "04", Title = Lang.T("settings.index.player.title"), Render = RenderPlayer, Host = PlayerSection });
+            _sections.Add(new SectionDef { Number = "05", Title = Lang.T("settings.index.server.title"), Host = ServerSection });
+            _sections.Add(new SectionDef { Number = "06", Title = Lang.T("settings.index.profileLock.title"), Render = () => RenderProfileLock(), Host = ExtraSection });
+            _sections.Add(new SectionDef { Number = "07", Title = Lang.T("settings.index.invite.title"), Render = RenderInvite, Host = ExtraSection });
+            _sections.Add(new SectionDef { Number = "09", Title = Lang.T("settings.index.remote.title"), Render = RenderRemote, Host = ExtraSection });
+            _sections.Add(new SectionDef { Number = "10", Title = Lang.T("settings.index.yourData.title"), Render = RenderYourData, Host = ExtraSection });
+            _sections.Add(new SectionDef { Number = "11", Title = Lang.T("pages.home.customise.title"), Render = RenderCustomiseHome, Host = ExtraSection });
             foreach (var section in _sections)
             {
                 var def = section;
                 var row = new Grid();
                 row.Children.Add(new TextBlock { Text = def.Number, FontSize = 10, FontWeight = Windows.UI.Text.FontWeights.Bold, Margin = new Thickness(0, -22, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-                row.Children.Add(new TextBlock { Text = def.Title, FontSize = 30, Margin = new Thickness(60, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new TextBlock { Text = def.Title, FontSize = 28, Margin = new Thickness(60, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
                 row.Children.Add(new TextBlock { Text = "\u2192", FontSize = 18, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center });
                 def.Tab = new Button
                 {
-                    Width = 480,
+                    Width = 470,
                     Height = 92,
                     Padding = new Thickness(32, 0, 32, 0),
                     HorizontalContentAlignment = HorizontalAlignment.Stretch,
@@ -75,6 +83,9 @@ namespace Playarr.Xbox.Views
 
         private void ShowSection(int section)
         {
+            StopSectionWork();
+            _openSection = section;
+            _languageOpen = false;
             var none = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent);
             // Several sections share one host panel: collapse every host first, then show the chosen one's.
             foreach (var def in _sections)
@@ -316,16 +327,16 @@ namespace Playarr.Xbox.Views
             AppearancePanel.Children.Clear();
             var choices = new[] { Theme.System, Theme.Light, Theme.Dark };
             var selected = System.Array.IndexOf(choices, Theme.Choice);
-            AppearancePanel.Children.Add(SettingGroup("Colour theme", null, new[] { "System", "Light", "Dark" }, selected < 0 ? 0 : selected, i =>
+            AppearancePanel.Children.Add(SettingGroup(Lang.T("settings.appearance.colourThemeLabel"), null, new[] { "System", "Light", "Dark" }, selected < 0 ? 0 : selected, i =>
             {
                 Theme.Set(choices[i]);
                 // Rebuild this page so the controls it built in code pick the new tokens up.
                 App.Navigation.NavigateReplacingCurrent(typeof(SettingsPage), null!);
             }, first: true));
-            AppearancePanel.Children.Add(SettingGroup("Home screen artwork", "Show portrait covers instead of wide media thumbnails on the home screen.",
-                new[] { "Thumbnails", "Covers" }, Appearance.HomeCover ? 1 : 0, i => { Appearance.HomeCover = i == 1; RenderAppearance(); }));
-            AppearancePanel.Children.Add(SettingGroup("Artwork size", "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.",
-                new[] { "Small", "Medium", "Large" }, Appearance.SizeIndex, i => { Appearance.SizeIndex = i; RenderAppearance(); }, divider: false));
+            AppearancePanel.Children.Add(SettingGroup(Lang.T("settings.appearance.homeViewTitle"), Lang.T("settings.appearance.homeViewDescription"),
+                new[] { Lang.T("settings.appearance.homeViewThumbnail"), Lang.T("settings.appearance.homeViewCover") }, Appearance.HomeCover ? 1 : 0, i => { Appearance.HomeCover = i == 1; RenderAppearance(); }));
+            AppearancePanel.Children.Add(SettingGroup(Lang.T("settings.appearance.artworkSizeTitle"), Lang.T("settings.appearance.artworkSizeDescription"),
+                new[] { Capitalise(Lang.T("pages.library.sizeSmall")), Capitalise(Lang.T("pages.library.sizeMedium")), Capitalise(Lang.T("pages.library.sizeLarge")) }, Appearance.SizeIndex, i => { Appearance.SizeIndex = i; RenderAppearance(); }, divider: false));
         }
 
         /// <summary>The web's settings group: a heading, an optional note, the segmented choice, then a divider line.</summary>
@@ -363,6 +374,7 @@ namespace Playarr.Xbox.Views
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            StopSectionWork();
             base.OnNavigatedFrom(e);
         }
 
@@ -454,6 +466,7 @@ namespace Playarr.Xbox.Views
 
         private void SignOutButton_Click(object sender, RoutedEventArgs e)
         {
+            Services.RemoteHostService.Instance.Stop();
             _viewModel.SignOut();
             Avatars.Reset();
             App.Navigation.Navigate(typeof(LoginPage));

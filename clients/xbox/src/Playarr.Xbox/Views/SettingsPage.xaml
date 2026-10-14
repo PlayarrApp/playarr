@@ -37,7 +37,7 @@
             <FontIcon Glyph="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
         </Button>
         <StackPanel Margin="228,57,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <TextBlock Text="Preferences" Style="{StaticResource PlayarrPageTitle}" />
+            <TextBlock x:Name="PageTitleText" Text="Preferences" Style="{StaticResource PlayarrPageTitle}" />
             <TextBlock
                 x:Name="SectionText"
                 Text="APPEARANCE"

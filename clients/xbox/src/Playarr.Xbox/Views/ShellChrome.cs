@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Playarr.Core.Localization;
 using Playarr.Core.Models;
 using Windows.UI;
 using Windows.UI.Text;
@@ -32,6 +33,7 @@ namespace Playarr.Xbox.Views
         private readonly TextBlock _time = new TextBlock { FontSize = 18, FontWeight = FontWeights.Bold };
         private readonly TextBlock _date = new TextBlock { FontSize = 12.5, FontWeight = FontWeights.SemiBold, CharacterSpacing = 60, VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _profileName = new TextBlock { FontSize = 10, FontWeight = FontWeights.Medium, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
+        private readonly List<(TextBlock Label, string Key)> _labels = new List<(TextBlock, string)>();
         private Border _avatar = null!;
         private bool _avatarLoaded;
         private readonly DispatcherTimer _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
@@ -39,6 +41,7 @@ namespace Playarr.Xbox.Views
         public ShellChrome(Frame frame)
         {
             _frame = frame;
+            Instance = this;
             // The remote's D-pad is a gamepad on Xbox, but a keyboard (and the device-wall tests) must move focus the
             // same way: arrow keys move focus spatially across the nav rail, rails and grids, not only inside a list.
             Root = new Grid { XYFocusKeyboardNavigation = Windows.UI.Xaml.Input.XYFocusKeyboardNavigationMode.Enabled };
@@ -53,6 +56,20 @@ namespace Playarr.Xbox.Views
         }
 
         public Grid Root { get; }
+
+        /// <summary>The one shell, so a language change can relabel the rail in place.</summary>
+        public static ShellChrome? Instance { get; private set; }
+
+        /// <summary>Rewrites the rail labels (and the profile fallback) in the current language.</summary>
+        public void Relabel()
+        {
+            foreach (var (label, key) in _labels)
+            {
+                label.Text = Lang.T("shell.nav." + key.ToLowerInvariant());
+            }
+
+            _profileName.Text = string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName.Split(' ')[0];
+        }
 
         /// <summary>
         /// LEFT out of the content lands on the rail item level with the focused card, as the web does (XYFocus alone
@@ -202,7 +219,9 @@ namespace Playarr.Xbox.Views
         {
             var content = new StackPanel { Spacing = 6 };
             content.Children.Add(NavIcons.Create(label, (Brush)Application.Current.Resources["PlayarrInkMuted"]));
-            content.Children.Add(new TextBlock { Text = label, FontSize = 10, FontWeight = FontWeights.Medium, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center });
+            var text = new TextBlock { Text = Lang.T("shell.nav." + label.ToLowerInvariant()), FontSize = 10, FontWeight = FontWeights.Medium, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
+            _labels.Add((text, label));
+            content.Children.Add(text);
             return RailButton(content, page, kind);
         }
 
@@ -260,6 +279,12 @@ namespace Playarr.Xbox.Views
                 && e.SourcePageType != typeof(ProfilesPage)
                 && e.SourcePageType != typeof(PlayerPage);
             _chrome.Visibility = shell ? Visibility.Visible : Visibility.Collapsed;
+            if (shell)
+            {
+                // A signed-in console listens for phone-remote pairing unless Settings > Phone remote turned it off.
+                Services.RemoteHostService.Instance.Apply();
+            }
+
             if (shell && !_avatarLoaded)
             {
                 _avatarLoaded = true;

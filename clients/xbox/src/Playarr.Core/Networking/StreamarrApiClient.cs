@@ -24,7 +24,18 @@ namespace Playarr.Core.Networking
     /// polling-with-backoff shape does not fit this interface's "one call in,
     /// one typed result out" pattern.
     /// </remarks>
-    public interface IPlayarrApiClient
+    public interface IRemoteInboxClient
+    {
+        Task RegisterRemoteTargetAsync(string name, string platform, IEnumerable<string> capabilities, CancellationToken cancellationToken = default);
+
+        /// <summary>Long-polls this target's inbox for up to <paramref name="waitSeconds"/> (the server caps it at 25).</summary>
+        Task<RemoteInbox> PollRemoteInboxAsync(long after, int waitSeconds, CancellationToken cancellationToken = default);
+
+        /// <summary>Acknowledges an inbox event with ok, failed or unsupported.</summary>
+        Task AckRemoteEventAsync(Guid eventId, string status, string? detail, CancellationToken cancellationToken = default);
+    }
+
+    public interface IPlayarrApiClient : IRemoteInboxClient
     {
         Uri BaseUrl { get; }
 
@@ -164,6 +175,56 @@ namespace Playarr.Core.Networking
         /// </summary>
         Task<IDictionary<string, string>> GetPlaybackRequestHeadersAsync(
             CancellationToken cancellationToken = default);
+
+        // ---- Settings > Invite a friend, Phone remote and Your data (the web's api-client, same endpoints) ----
+
+        /// <summary><c>GET /api/v1/users/me/user-invite-request</c>; null when this account never asked.</summary>
+        Task<UserInviteRequest?> GetMyUserInviteRequestAsync(CancellationToken cancellationToken = default);
+
+        Task<UserInviteRequest> CreateUserInviteRequestAsync(string? message, CancellationToken cancellationToken = default);
+
+        Task<UserInvite> GenerateApprovedUserInviteAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Admin-only (403 for everyone else); callers fall back to this server's own address.</summary>
+        Task<PeerAddressBundle> GetPeerAddressBundleAsync(CancellationToken cancellationToken = default);
+
+        Task UnregisterRemoteTargetAsync(CancellationToken cancellationToken = default);
+
+        Task<IList<RemoteTarget>> ListRemoteTargetsAsync(CancellationToken cancellationToken = default);
+
+        Task<IList<RemotePairing>> ListRemotePairingsAsync(CancellationToken cancellationToken = default);
+
+        Task<RemotePairing> RequestRemotePairingAsync(Guid targetDeviceId, string controllerName, CancellationToken cancellationToken = default);
+
+        Task<RemotePairing> GetRemotePairingAsync(Guid id, CancellationToken cancellationToken = default);
+
+        Task<RemotePairing> ApproveRemotePairingAsync(Guid id, CancellationToken cancellationToken = default);
+
+        Task DenyRemotePairingAsync(Guid id, CancellationToken cancellationToken = default);
+
+        Task RenameRemotePairingAsync(Guid id, string name, CancellationToken cancellationToken = default);
+
+        Task RevokeRemotePairingAsync(Guid id, CancellationToken cancellationToken = default);
+
+        Task<RemoteCommandAccepted> SendRemoteCommandAsync(Guid pairingId, string kind, string payloadJson, CancellationToken cancellationToken = default);
+
+        Task<RemoteCommandStatus> GetRemoteCommandStatusAsync(Guid commandId, CancellationToken cancellationToken = default);
+
+        Task<UserDataExportJob> StartUserDataExportAsync(CancellationToken cancellationToken = default);
+
+        Task<UserDataExportJob> GetUserDataExportAsync(string id, CancellationToken cancellationToken = default);
+
+        Task<UserDataTransferLink> CreateUserDataTransferLinkAsync(string exportId, CancellationToken cancellationToken = default);
+
+        Task<UserDataImportSession> CreateUserDataImportSessionAsync(CancellationToken cancellationToken = default);
+
+        Task<UserDataImportSession> GetUserDataImportSessionAsync(string id, CancellationToken cancellationToken = default);
+
+        Task DeleteUserDataImportSessionAsync(string id, CancellationToken cancellationToken = default);
+
+        Task<UserDataImportPreview> PreviewUserDataImportSessionAsync(string id, bool includePreferences, string progressConflicts, CancellationToken cancellationToken = default);
+
+        Task<UserDataImportResult> ApplyUserDataImportSessionAsync(string id, string packageSha256, bool includePreferences, string progressConflicts, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Resolves a possibly server-relative URL (as returned in
@@ -521,6 +582,126 @@ namespace Playarr.Core.Networking
         public Task AddToPlaylistAsync(Guid playlistId, Guid workId, CancellationToken cancellationToken = default) =>
             SendNoBodyAsync(HttpMethod.Post, $"/api/v1/playlists/{playlistId:D}/items", "{\"work_id\":\"" + workId.ToString("D") + "\"}", cancellationToken);
 
+        // ---- Settings > Invite a friend, Phone remote and Your data ----
+
+        public async Task<UserInviteRequest?> GetMyUserInviteRequestAsync(CancellationToken cancellationToken = default) =>
+            Decode<UserInviteRequest>(await SendTextAsync(HttpMethod.Get, "/api/v1/users/me/user-invite-request", null, cancellationToken).ConfigureAwait(false), allowNull: true);
+
+        public async Task<UserInviteRequest> CreateUserInviteRequestAsync(string? message, CancellationToken cancellationToken = default) =>
+            Decode<UserInviteRequest>(await SendTextAsync(HttpMethod.Post, "/api/v1/users/me/user-invite-request",
+                JsonCoding.Serialize(new { message = string.IsNullOrWhiteSpace(message) ? null : message!.Trim() }), cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<UserInvite> GenerateApprovedUserInviteAsync(CancellationToken cancellationToken = default) =>
+            Decode<UserInvite>(await SendTextAsync(HttpMethod.Post, "/api/v1/users/me/user-invite-request/generate", "{}", cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<PeerAddressBundle> GetPeerAddressBundleAsync(CancellationToken cancellationToken = default) =>
+            Decode<PeerAddressBundle>(await SendTextAsync(HttpMethod.Get, "/api/v1/admin/peer-groups/self/address-bundle", null, cancellationToken).ConfigureAwait(false))!;
+
+        public Task RegisterRemoteTargetAsync(string name, string platform, IEnumerable<string> capabilities, CancellationToken cancellationToken = default) =>
+            SendTextAsync(HttpMethod.Put, "/api/v1/remote/target", JsonCoding.Serialize(new { name, platform, capabilities = capabilities.ToArray() }), cancellationToken);
+
+        public Task UnregisterRemoteTargetAsync(CancellationToken cancellationToken = default) =>
+            SendTextAsync(HttpMethod.Delete, "/api/v1/remote/target", null, cancellationToken);
+
+        public async Task<IList<RemoteTarget>> ListRemoteTargetsAsync(CancellationToken cancellationToken = default) =>
+            Decode<List<RemoteTarget>>(await SendTextAsync(HttpMethod.Get, "/api/v1/remote/targets", null, cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<IList<RemotePairing>> ListRemotePairingsAsync(CancellationToken cancellationToken = default) =>
+            Decode<List<RemotePairing>>(await SendTextAsync(HttpMethod.Get, "/api/v1/remote/pairings", null, cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<RemotePairing> RequestRemotePairingAsync(Guid targetDeviceId, string controllerName, CancellationToken cancellationToken = default) =>
+            Decode<RemotePairing>(await SendTextAsync(HttpMethod.Post, "/api/v1/remote/pairings",
+                JsonCoding.Serialize(new { target_device_id = targetDeviceId, controller_name = controllerName }), cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<RemotePairing> GetRemotePairingAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Decode<RemotePairing>(await SendTextAsync(HttpMethod.Get, $"/api/v1/remote/pairings/{id:D}", null, cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<RemotePairing> ApproveRemotePairingAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Decode<RemotePairing>(await SendTextAsync(HttpMethod.Post, $"/api/v1/remote/pairings/{id:D}/approve", "{}", cancellationToken).ConfigureAwait(false))!;
+
+        public Task DenyRemotePairingAsync(Guid id, CancellationToken cancellationToken = default) =>
+            SendTextAsync(HttpMethod.Post, $"/api/v1/remote/pairings/{id:D}/deny", "{}", cancellationToken);
+
+        public Task RenameRemotePairingAsync(Guid id, string name, CancellationToken cancellationToken = default) =>
+            SendTextAsync(new HttpMethod("PATCH"), $"/api/v1/remote/pairings/{id:D}", JsonCoding.Serialize(new { name }), cancellationToken);
+
+        public Task RevokeRemotePairingAsync(Guid id, CancellationToken cancellationToken = default) =>
+            SendTextAsync(HttpMethod.Delete, $"/api/v1/remote/pairings/{id:D}", null, cancellationToken);
+
+        public async Task<RemoteCommandAccepted> SendRemoteCommandAsync(Guid pairingId, string kind, string payloadJson, CancellationToken cancellationToken = default) =>
+            Decode<RemoteCommandAccepted>(await SendTextAsync(HttpMethod.Post, $"/api/v1/remote/pairings/{pairingId:D}/commands",
+                "{\"kind\":" + Newtonsoft.Json.JsonConvert.ToString(kind) + ",\"payload\":" + payloadJson + "}", cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<RemoteCommandStatus> GetRemoteCommandStatusAsync(Guid commandId, CancellationToken cancellationToken = default) =>
+            Decode<RemoteCommandStatus>(await SendTextAsync(HttpMethod.Get, $"/api/v1/remote/commands/{commandId:D}", null, cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<RemoteInbox> PollRemoteInboxAsync(long after, int waitSeconds, CancellationToken cancellationToken = default) =>
+            Decode<RemoteInbox>(await SendTextAsync(HttpMethod.Get, $"/api/v1/remote/inbox?after={Math.Max(0, after)}&wait={waitSeconds}", null, cancellationToken).ConfigureAwait(false))!;
+
+        public Task AckRemoteEventAsync(Guid eventId, string status, string? detail, CancellationToken cancellationToken = default) =>
+            SendTextAsync(HttpMethod.Post, $"/api/v1/remote/events/{eventId:D}/ack", JsonCoding.Serialize(new { status, detail }), cancellationToken);
+
+        public async Task<UserDataExportJob> StartUserDataExportAsync(CancellationToken cancellationToken = default) =>
+            Decode<UserDataExportJob>(await SendTextAsync(HttpMethod.Post, "/api/v1/users/me/data-exports", null, cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<UserDataExportJob> GetUserDataExportAsync(string id, CancellationToken cancellationToken = default) =>
+            Decode<UserDataExportJob>(await SendTextAsync(HttpMethod.Get, $"/api/v1/users/me/data-exports/{Uri.EscapeDataString(id)}", null, cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<UserDataTransferLink> CreateUserDataTransferLinkAsync(string exportId, CancellationToken cancellationToken = default) =>
+            Decode<UserDataTransferLink>(await SendTextAsync(HttpMethod.Post, $"/api/v1/users/me/data-exports/{Uri.EscapeDataString(exportId)}/transfer-link", null, cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<UserDataImportSession> CreateUserDataImportSessionAsync(CancellationToken cancellationToken = default) =>
+            Decode<UserDataImportSession>(await SendTextAsync(HttpMethod.Post, "/api/v1/users/me/data-import-sessions", null, cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<UserDataImportSession> GetUserDataImportSessionAsync(string id, CancellationToken cancellationToken = default) =>
+            Decode<UserDataImportSession>(await SendTextAsync(HttpMethod.Get, $"/api/v1/users/me/data-import-sessions/{Uri.EscapeDataString(id)}", null, cancellationToken).ConfigureAwait(false))!;
+
+        public Task DeleteUserDataImportSessionAsync(string id, CancellationToken cancellationToken = default) =>
+            SendTextAsync(HttpMethod.Delete, $"/api/v1/users/me/data-import-sessions/{Uri.EscapeDataString(id)}", null, cancellationToken);
+
+        public async Task<UserDataImportPreview> PreviewUserDataImportSessionAsync(string id, bool includePreferences, string progressConflicts, CancellationToken cancellationToken = default) =>
+            Decode<UserDataImportPreview>(await SendTextAsync(HttpMethod.Post,
+                $"/api/v1/users/me/data-import-sessions/{Uri.EscapeDataString(id)}/preview?{ImportQuery(includePreferences, progressConflicts)}", null, cancellationToken).ConfigureAwait(false))!;
+
+        public async Task<UserDataImportResult> ApplyUserDataImportSessionAsync(string id, string packageSha256, bool includePreferences, string progressConflicts, CancellationToken cancellationToken = default) =>
+            Decode<UserDataImportResult>(await SendTextAsync(HttpMethod.Post,
+                $"/api/v1/users/me/data-import-sessions/{Uri.EscapeDataString(id)}/apply?{ImportQuery(includePreferences, progressConflicts)}&package_sha256={Uri.EscapeDataString(packageSha256)}", null, cancellationToken).ConfigureAwait(false))!;
+
+        /// <summary>The web's import query: <c>include_preferences</c> only when on, <c>progress_conflicts</c> always.</summary>
+        private static string ImportQuery(bool includePreferences, string progressConflicts) =>
+            (includePreferences ? "include_preferences=true&" : string.Empty) + "progress_conflicts=" + Uri.EscapeDataString(progressConflicts);
+
+        private static T? Decode<T>(string payload, bool allowNull = false) where T : class
+        {
+            if (allowNull && (payload.Length == 0 || payload.Trim() == "null"))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonCoding.Deserialize<T>(payload)
+                    ?? throw new ApiException(ApiErrorKind.Decoding, $"unreadable {typeof(T).Name} response");
+            }
+            catch (Newtonsoft.Json.JsonException decoding)
+            {
+                throw new ApiException(ApiErrorKind.Decoding, $"the server's {typeof(T).Name} response did not match this build", innerException: decoding);
+            }
+        }
+
+        /// <summary>An authenticated request (one forced token refresh on 401) that returns the response text; empty for 204.</summary>
+        private async Task<string> SendTextAsync(HttpMethod method, string path, string? json, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await SendEmptyOnceAsync(method, path, false, cancellationToken, json).ConfigureAwait(false);
+            }
+            catch (ApiException error) when (error.Kind == ApiErrorKind.Unauthorized && _tokens != null)
+            {
+                return await SendEmptyOnceAsync(method, path, true, cancellationToken, json).ConfigureAwait(false);
+            }
+        }
+
         private async Task SendNoBodyAsync(HttpMethod method, string path, string json, CancellationToken cancellationToken)
         {
             try
@@ -555,7 +736,7 @@ namespace Playarr.Core.Networking
             GetAsync<IList<PlaylistItem>>($"/api/v1/playlists/{playlistId:D}/items", null, authenticated: true, cancellationToken);
 
         /// <summary>A request whose success carries no body (204), such as removing a watchlist entry.</summary>
-        private async Task SendEmptyOnceAsync(HttpMethod method, string path, bool forceRefresh, CancellationToken cancellationToken, string? json = null)
+        private async Task<string> SendEmptyOnceAsync(HttpMethod method, string path, bool forceRefresh, CancellationToken cancellationToken, string? json = null)
         {
             using var request = new HttpRequestMessage(method, BuildUri(path, null));
             if (json != null)
@@ -589,6 +770,8 @@ namespace Playarr.Core.Networking
                     var payload = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     throw ApiException.ForStatus(response.StatusCode, JsonCoding.Deserialize<ApiErrorBody>(payload));
                 }
+
+                return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             }
         }
 
@@ -762,7 +945,16 @@ namespace Playarr.Core.Networking
         private Uri BuildUri(string path, IDictionary<string, string>? query)
         {
             var builder = new UriBuilder(_configuration.BaseUrl);
+            // A path may carry its own ready-escaped query ("...?after=0&wait=25").
+            var queryAt = path.IndexOf('?');
+            var ownQuery = queryAt < 0 ? string.Empty : path.Substring(queryAt + 1);
+            if (queryAt >= 0)
+            {
+                path = path.Substring(0, queryAt);
+            }
+
             builder.Path = builder.Path.TrimEnd('/') + path;
+            builder.Query = ownQuery;
 
             if (query is { Count: > 0 })
             {
