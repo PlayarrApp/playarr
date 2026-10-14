@@ -1,0 +1,1 @@
+- Xbox: Settings > Appearance groups follow the web: a sentence-case heading, the note above the choice, and a divider between groups.

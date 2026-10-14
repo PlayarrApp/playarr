@@ -60,7 +60,7 @@
         </ScrollViewer>
 
     <ScrollViewer x:Name="AppearanceSection" Margin="774,200,0,0" Padding="0,0,106,48" VerticalScrollBarVisibility="Hidden">
-        <StackPanel x:Name="AppearancePanel" Width="1040" HorizontalAlignment="Left" Spacing="8" />
+        <StackPanel x:Name="AppearancePanel" Width="1040" HorizontalAlignment="Left" Spacing="0" />
     </ScrollViewer>
 
     <ScrollViewer x:Name="PlayerSection" Visibility="Collapsed" Margin="774,200,0,0" Padding="0,0,106,48" VerticalScrollBarVisibility="Hidden">

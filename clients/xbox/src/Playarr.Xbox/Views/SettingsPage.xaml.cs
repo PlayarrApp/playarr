@@ -171,7 +171,7 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
-            ExtraPanel.Children.Add(Ui.Text(locked ? "REPLACE PIN" : "NEW PIN", 9, Windows.UI.Text.FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10)));
+            ExtraPanel.Children.Add(Ui.Text(locked ? "Replace PIN" : "New PIN", 17.5, Windows.UI.Text.FontWeights.SemiBold, "PlayarrInk", new Thickness(0, 0, 0, 12)));
             var row = new Grid { ColumnSpacing = 12, Margin = new Thickness(0, 0, 0, 18) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -300,29 +300,15 @@ namespace Playarr.Xbox.Views
         private void RenderPlayer()
         {
             PlayerPanel.Children.Clear();
-            PlayerPanel.Children.Add(Ui.Text("ADVANCED", 9, Windows.UI.Text.FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 14)));
+            PlayerPanel.Children.Add(Ui.Text("Advanced", 17.5, Windows.UI.Text.FontWeights.SemiBold, "PlayarrInk", new Thickness(0, 16, 0, 0)));
             PlayerPanel.Children.Add(ForceToggle("Force direct video", "Always send the original picture, even when the device may not support its codec, bit depth or HDR format.",
                 Services.DeviceCapsProvider.ForceDirectVideo, on => Services.DeviceCapsProvider.ForceDirectVideo = on));
             PlayerPanel.Children.Add(ForceToggle("Force direct audio", "Always send the original audio, even when the device may not support its codec or channel count.",
                 Services.DeviceCapsProvider.ForceDirectAudio, on => Services.DeviceCapsProvider.ForceDirectAudio = on));
         }
 
-        private StackPanel ForceToggle(string title, string description, bool isOn, System.Action<bool> set)
-        {
-            var group = Drawer.Segmented(title, new[] { "Off", "On" }, isOn ? 1 : 0, i => { set(i == 1); RenderPlayer(); });
-            var note = Ui.Text(description, 11, Windows.UI.Text.FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 4, 0, 24));
-            note.TextWrapping = TextWrapping.WrapWholeWords;
-            group.Children.Add(note);
-            return group;
-        }
-
-        private static StackPanel Described(StackPanel group, string description)
-        {
-            var note = Ui.Text(description, 11, Windows.UI.Text.FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 4, 0, 24));
-            note.TextWrapping = TextWrapping.WrapWholeWords;
-            group.Children.Add(note);
-            return group;
-        }
+        private StackPanel ForceToggle(string title, string description, bool isOn, System.Action<bool> set) =>
+            SettingGroup(title, description, new[] { "Off", "On" }, isOn ? 1 : 0, i => { set(i == 1); RenderPlayer(); });
 
         /// <summary>Colour theme as on the web (System, Light, Dark); the choice applies at once and is kept.</summary>
         private void RenderAppearance()
@@ -330,18 +316,39 @@ namespace Playarr.Xbox.Views
             AppearancePanel.Children.Clear();
             var choices = new[] { Theme.System, Theme.Light, Theme.Dark };
             var selected = System.Array.IndexOf(choices, Theme.Choice);
-            AppearancePanel.Children.Add(Drawer.Segmented("Colour theme", new[] { "System", "Light", "Dark" }, selected < 0 ? 0 : selected, i =>
+            AppearancePanel.Children.Add(SettingGroup("Colour theme", null, new[] { "System", "Light", "Dark" }, selected < 0 ? 0 : selected, i =>
             {
                 Theme.Set(choices[i]);
                 // Rebuild this page so the controls it built in code pick the new tokens up.
                 App.Navigation.NavigateReplacingCurrent(typeof(SettingsPage), null!);
-            }));
-            AppearancePanel.Children.Add(Described(
-                Drawer.Segmented("Home screen artwork", new[] { "Thumbnails", "Covers" }, Appearance.HomeCover ? 1 : 0, i => { Appearance.HomeCover = i == 1; RenderAppearance(); }),
-                "Show portrait covers instead of wide media thumbnails on the home screen."));
-            AppearancePanel.Children.Add(Described(
-                Drawer.Segmented("Artwork size", new[] { "Small", "Medium", "Large" }, Appearance.SizeIndex, i => { Appearance.SizeIndex = i; RenderAppearance(); }),
-                "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more."));
+            }, first: true));
+            AppearancePanel.Children.Add(SettingGroup("Home screen artwork", "Show portrait covers instead of wide media thumbnails on the home screen.",
+                new[] { "Thumbnails", "Covers" }, Appearance.HomeCover ? 1 : 0, i => { Appearance.HomeCover = i == 1; RenderAppearance(); }));
+            AppearancePanel.Children.Add(SettingGroup("Artwork size", "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.",
+                new[] { "Small", "Medium", "Large" }, Appearance.SizeIndex, i => { Appearance.SizeIndex = i; RenderAppearance(); }, divider: false));
+        }
+
+        /// <summary>The web's settings group: a heading, an optional note, the segmented choice, then a divider line.</summary>
+        private static StackPanel SettingGroup(string title, string? note, string[] options, int selected, System.Action<int> onSelect, bool first = false, bool divider = true)
+        {
+            var group = new StackPanel { Margin = new Thickness(0, first ? 16 : 38, 0, 0) };
+            group.Children.Add(Ui.Text(title, 17.5, Windows.UI.Text.FontWeights.SemiBold, "PlayarrInk"));
+            if (note != null)
+            {
+                var text = Ui.Text(note, 11, Windows.UI.Text.FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 6, 0, 0));
+                text.TextWrapping = TextWrapping.WrapWholeWords;
+                group.Children.Add(text);
+            }
+
+            var choice = Drawer.Segmented(string.Empty, options, selected, onSelect);
+            choice.Margin = new Thickness(0, 4, 0, 30);
+            group.Children.Add(choice);
+            if (divider)
+            {
+                group.Children.Add(new Windows.UI.Xaml.Shapes.Rectangle { Height = 1, Fill = Ui.Res("PlayarrLine") });
+            }
+
+            return group;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -349,6 +356,8 @@ namespace Playarr.Xbox.Views
             base.OnNavigatedTo(e);
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             Render();
+            // The web opens Settings with the Back control focused.
+            FocusClaim.Start(this, () => BackButton);
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
