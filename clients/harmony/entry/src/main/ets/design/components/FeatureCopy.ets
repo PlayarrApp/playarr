@@ -26,7 +26,6 @@ import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
-import { BRAND_PINK } from '../../core/Tokens';
 import type { RgbaColor } from '../../core/Tokens';
 import { balanceTitle } from '../../core/TitleBalance';
 
@@ -37,6 +36,8 @@ const KICKER_FONT_SIZE: number = 12.288;
 const KICKER_FONT_WEIGHT: number = 900;
 const KICKER_LETTER_SPACING: number = KICKER_FONT_SIZE * 0.08;
 // Dark theme kicker pink on web; light theme keeps the brand pink.
+// Web `--brand-ink` in the light theme (#821e36).
+const KICKER_COLOR_LIGHT: RgbaColor = { r: 130, g: 30, b: 54, a: 1 };
 const KICKER_COLOR_DARK: RgbaColor = { r: 234, g: 166, b: 182, a: 1 };
 
 const HERO_TITLE_FONT_SIZE: number = 69.12;
@@ -67,7 +68,7 @@ const SYNOPSIS_MAX_WIDTH: number = 324;
 const SYNOPSIS_MAX_LINES: number = 5;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
-const GAP_KICKER_TITLE: number = 37;
+const GAP_KICKER_TITLE: number = 34;
 const GAP_TITLE_META: number = 22;
 const GAP_META_SYNOPSIS: number = 21;
 
@@ -106,7 +107,7 @@ export struct FeatureCopy {
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
 
   private kickerColor(): string {
-    return resolvedThemeMode() === 'dark' ? toResourceColor(KICKER_COLOR_DARK) : toResourceColor(BRAND_PINK);
+    return resolvedThemeMode() === 'dark' ? toResourceColor(KICKER_COLOR_DARK) : toResourceColor(KICKER_COLOR_LIGHT);
   }
 
   private copyTextColor(): string {

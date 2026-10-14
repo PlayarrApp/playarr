@@ -351,7 +351,7 @@ export const TvGeometry: TvGeometryTokens = {
   titlePanelLeft: 154,
   titlePanelWidth: 455,
   // Web TV Home `.tv-home-feature` top edge (live DOM, 1920x1080).
-  titlePanelTop: 259,
+  titlePanelTop: 262,
 
   primaryActionTopPct: 47,
   primaryActionLeftPct: 47.5,
@@ -414,7 +414,7 @@ export const TvGeometry: TvGeometryTokens = {
   detailBackdropLeftPct: 55,
   detailCopyColumnWidthRatio: 0.39,
   detailCopyColumnStart: 154,
-  detailCopyColumnTop: 259, // web `.tv-detail-copy` top: 24%
+  detailCopyColumnTop: 262, // web `.tv-detail-copy` top 259 plus the kicker's leading
   detailBrowserWidthRatio: 0.57,
   detailBrowserHeightRatio: 0.72,
   detailBrowserEnd: 50,
