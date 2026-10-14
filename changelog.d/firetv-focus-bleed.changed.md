@@ -1,0 +1,1 @@
+- Fire TV: Search results keep the focused card's glow and ring clear of the grid clip, as the web does.

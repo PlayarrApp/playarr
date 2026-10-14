@@ -49,6 +49,9 @@ const ROW_PITCH = 251.2;
 const ART_W = 327.2;
 const ART_H = 184;
 const GRID_CLIP_TOP = 150;
+/** The web grid reserves room for the focused card's lift, ring and glow (48 px left, the full header height above): the clip bleeds by that much, the fades keep the old edge. */
+const GRID_CLIP_BLEED_X = 48;
+const GRID_CLIP_BLEED_TOP = GRID_CLIP_TOP;
 
 export interface SearchScreenNavigation {
   navigate: (route: RouteName, params?: Record<string, unknown>) => void;
@@ -332,8 +335,8 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
         </Box>
       ) : null}
 
-      <Box x={GRID_X - 20} y={GRID_CLIP_TOP} w={1920 - GRID_X + 20} h={1080 - GRID_CLIP_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
-        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 20)), top: scrollY, width: u(1920)}} pointerEvents="box-none">
+      <Box x={GRID_X - 20 - GRID_CLIP_BLEED_X} y={GRID_CLIP_TOP - GRID_CLIP_BLEED_TOP} w={1920 - GRID_X + 20 + GRID_CLIP_BLEED_X} h={1080 - GRID_CLIP_TOP + GRID_CLIP_BLEED_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
+        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 20 - GRID_CLIP_BLEED_X)), top: Animated.add(scrollY, new Animated.Value(u(GRID_CLIP_BLEED_TOP))), width: u(1920)}} pointerEvents="box-none">
           {discoveryExtras.length > 0 ? <Box x={GRID_X} y={GRID_Y + Math.floor(discoveryHeaderIndex / COLUMNS) * ROW_PITCH} w={800}>
             <T size={17.664} weight={610} color={colour.ink}>{mediaType === 'game' ? t('discovery.extras.gamesTitle') : t('discovery.extras.title')}</T>
           </Box> : null}
@@ -391,8 +394,8 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           })}
         </Animated.View>
       </Box>
-      <EdgeFade side="top" active={row > 0} x={GRID_X - 20} y={GRID_CLIP_TOP} w={1920 - GRID_X + 20} h={1080 - GRID_CLIP_TOP} />
-      <EdgeFade side="bottom" active={gridRows > row + 3} x={GRID_X - 20} y={GRID_CLIP_TOP} w={1920 - GRID_X + 20} h={1080 - GRID_CLIP_TOP} />
+      <EdgeFade side="top" active={row > 0} x={GRID_X - 20} y={0} w={1920 - GRID_X + 20} h={1080} />
+      <EdgeFade side="bottom" active={gridRows > row + 3} x={GRID_X - 20} y={0} w={1920 - GRID_X + 20} h={1080} />
       <ActionTile
         icon="filters"
         label={t('pages.search.filters')}
