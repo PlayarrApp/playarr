@@ -469,7 +469,9 @@ test("Android TV driver bounds a hung screencap after a ready UI tree", async ()
 
 test("Android TV driver fails when screen focus never becomes ready", async () => {
   const fakeAdb = new URL("./test-drivers/fake-adb.mjs", import.meta.url).pathname;
-  const driver = createAndroidTvDriver({ adbBin: fakeAdb, commandTimeoutMs: 1000, readinessTimeoutMs: 600, readinessPollMs: 25 });
+  let fake = 0; // fake clock: sleeping advances time instantly, so the deadline logic is deterministic
+  const clock = { now: () => fake, sleep: async (ms) => { fake += ms; } };
+  const driver = createAndroidTvDriver({ adbBin: fakeAdb, commandTimeoutMs: 5000, readinessTimeoutMs: 600, readinessPollMs: 25, clock });
   const noFocusVariable = "PLAYARR_PARITY_FAKE_ADB_NO_FOCUS";
   const previous = process.env[noFocusVariable];
   process.env[noFocusVariable] = "1";

@@ -13,10 +13,12 @@ const run = promisify(execFile);
 const KEYS = { up: "DPAD_UP", down: "DPAD_DOWN", left: "DPAD_LEFT", right: "DPAD_RIGHT", select: "DPAD_CENTER", back: "BACK" };
 const LIBRARIES = new Set(["movies", "series", "music", "search", "settings", "profiles", "watchlist", "requests", "downloads", "playlists", "folders"]);
 
-export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000 } = {}) {
+export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {} } = {}) {
   const env = process.env, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
   const adbBin = adbOverride ?? (env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb");
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // Injectable clock (tests): the readiness loop's deadline arithmetic then never depends on how long a real process took.
+  const now = clock.now ?? Date.now;
+  const sleep = clock.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const execBounded = async (command, args, { timeoutMs = commandTimeoutMs, label = "external command", ...options } = {}) => {
     try {
       return await run(command, args, { ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
@@ -34,19 +36,19 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   const adb = async (...a) => {
     try { return await adbOnce(commandTimeoutMs, ...a); } catch (e) {
       if (!/offline|closed|not found|no devices|cannot connect/i.test(String(e.stderr ?? e.message))) throw e;
-      const deadline = Date.now() + 120_000;
+      const deadline = now() + 120_000;
       let booted = false;
-      while (Date.now() < deadline) {
-        await sleep(Math.min(5000, deadline - Date.now()));
-        const probeTimeout = Math.min(5000, deadline - Date.now());
+      while (now() < deadline) {
+        await sleep(Math.min(5000, deadline - now()));
+        const probeTimeout = Math.min(5000, deadline - now());
         if (probeTimeout <= 0) break;
         try {
           if ((await adbOnce(probeTimeout, "shell", "getprop", "sys.boot_completed")).trim() === "1") { booted = true; break; }
         } catch { /* still booting */ }
       }
       if (!booted) throw new Error("emulator did not finish booting within 120s after adb disconnected");
-      await sleep(Math.min(30_000, Math.max(0, deadline - Date.now())));
-      return adbOnce(Math.min(commandTimeoutMs, Math.max(1, deadline - Date.now())), ...a);
+      await sleep(Math.min(30_000, Math.max(0, deadline - now())));
+      return adbOnce(Math.min(commandTimeoutMs, Math.max(1, deadline - now())), ...a);
     }
   };
   const shell = (...a) => adb("shell", ...a);
@@ -68,25 +70,26 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
     if (/^\/(movies|series)\/[^/]+$/.test(path)) return `experience-detail/${path.split("/")[2]}`;
     return path.slice(1) + (query ? `?${query}` : "");
   };
-  const tree = async (deadline = Date.now() + commandTimeoutMs) => {
-    const remaining = () => Math.max(1, Math.min(commandTimeoutMs, deadline - Date.now()));
-    await adbWithTimeout(remaining(), "shell", "uiautomator", "dump", "/sdcard/parity-ui.xml");
-    return adbWithTimeout(remaining(), "exec-out", "cat", "/sdcard/parity-ui.xml");
+  // Each adb call gets the full command timeout: clamping it to the time left before a readiness deadline gave calls a few
+  // milliseconds near the end, which a real process cannot meet (a flaky "timed out after 26ms").
+  const tree = async () => {
+    await adbWithTimeout(commandTimeoutMs, "shell", "uiautomator", "dump", "/sdcard/parity-ui.xml");
+    return adbWithTimeout(commandTimeoutMs, "exec-out", "cat", "/sdcard/parity-ui.xml");
   };
   const attr = (node, name) => (node.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1] ?? "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
   const bounds = (n) => (attr(n, "bounds").match(/\d+/g) ?? []).map(Number);
 
   // Wait until the app has put focus on something (a loaded page): keys sent before that are lost.
   const settled = async (timeoutMs = readinessTimeoutMs) => {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      await sleep(Math.min(readinessPollMs, deadline - Date.now()));
-      if (Date.now() >= deadline) break;
-      const xml = await tree(deadline);
+    const deadline = now() + timeoutMs;
+    while (now() < deadline) {
+      await sleep(Math.min(readinessPollMs, deadline - now()));
+      if (now() >= deadline) break;
+      const xml = await tree();
       // Loaded: focus sits on content (past the 140 px rail), or the sign-in screen is up.
       const onContent = (xml.match(/<node [^>]*>/g) ?? []).some((n) => attr(n, "focused") === "true" && attr(n, "focusable") === "true" && (bounds(n)[0] ?? 0) >= 140);
       if (/Sign in to Playarr/.test(xml) || onContent) {
-        if (Date.now() + 1500 > deadline) break;
+        if (now() + 1500 > deadline) break;
         await sleep(1500);
         return;
       }
@@ -202,14 +205,14 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
     // Plays media file `c.file` through the player route and watches the position the debug log reports.
     async play(c, expect) {
       await launch(`experience-player/${c.file}`, false);
-      const t0 = Date.now(), pos = async () => {
+      const t0 = now(), pos = async () => {
         const ms = (await parityLines()).filter((l) => l.startsWith("player positionMs=")).map((l) => Number(l.slice(18)));
         return ms.length ? ms.at(-1) : null;
       };
       let p0 = null;
-      while ((p0 === null || p0 <= 0) && Date.now() - t0 < expect.startWithinSeconds * 1000) { await sleep(1000); p0 = await pos(); }
+      while ((p0 === null || p0 <= 0) && now() - t0 < expect.startWithinSeconds * 1000) { await sleep(1000); p0 = await pos(); }
       if (p0 === null || p0 <= 0) return { state: "error", detail: "no frames in time" };
-      const startSeconds = (Date.now() - t0) / 1000;
+      const startSeconds = (now() - t0) / 1000;
       // Playing means the position moves by advanceSeconds soon after the first frame (the first seconds can be a seek or a rebuffer).
       let advancedSeconds = 0;
       for (let i = 0; i < expect.advanceSeconds + 15 && advancedSeconds < expect.advanceSeconds; i++) {
