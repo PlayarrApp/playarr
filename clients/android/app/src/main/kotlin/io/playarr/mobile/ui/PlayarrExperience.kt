@@ -60,6 +60,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.width
@@ -2038,6 +2039,7 @@ private fun ExperienceNavigation(
     // Web: `bottom: max(8px, env(safe-area-inset-bottom))`, so the bar sits on the gesture inset or 8 dp up.
     val systemBottom = if (parityNoInsets) 0.dp else WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomInsets = WindowInsets(0)
+    val sideInsets = if (parityNoInsets) PaddingValues(0.dp) else WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
     val phoneNavShape = RoundedCornerShape(if (isTelevision) 28.dp else 20.dp)
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.material3.LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified,
@@ -2049,7 +2051,11 @@ private fun ExperienceNavigation(
         modifier = modifier
             .windowInsetsPadding(bottomInsets)
             .then(if (isTelevision) Modifier else Modifier.fillMaxWidth())
-            .padding(horizontal = if (isTelevision) 0.dp else 10.dp)
+            // Phone safe-area spec: the bar's side margin is max(10, side inset), not 10 plus the inset.
+            .padding(
+                start = if (isTelevision) 0.dp else maxOf(10.dp, sideInsets.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current)),
+                end = if (isTelevision) 0.dp else maxOf(10.dp, sideInsets.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current)),
+            )
             .padding(top = if (isTelevision) 26.dp else 8.dp, bottom = if (isTelevision) 26.dp else maxOf(8.dp, systemBottom)),
         innerFill = false,
         innerWidthFill = !isTelevision,
@@ -4212,6 +4218,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                     val shownLetter = if (activeLetter == "#") selected.sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                     Column(
                         modifier = Modifier.align(Alignment.TopEnd)
+                            // Landscape: keep the strip clear of a side cutout or a side navigation bar.
+                            .windowInsetsPadding(if (parityNoInsets) WindowInsets(0) else WindowInsets.safeDrawing.only(WindowInsetsSides.End))
                             .padding(top = 88.dp)
                             .width(52.dp).height(675.dp).padding(start = 4.dp, end = 4.dp),
                     ) {
