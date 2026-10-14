@@ -187,18 +187,13 @@ describe("MusicDetail track list", () => {
     expect(playerSource).not.toContain("preparingPlayback");
   });
 
-  it("keeps the inline mini-player inside the app layout scope", () => {
-    const surfaceSource = readFileSync(
-      new URL("../components/player/PlayerSurface.tsx", import.meta.url),
-      "utf8"
-    );
-    const miniPlayerSource = surfaceSource.slice(
-      surfaceSource.indexOf("export function InlineMusicMiniPlayer"),
-      surfaceSource.indexOf("export function PlayerSurface")
-    );
-
-    expect(miniPlayerSource).toContain("player-inline-music-mini");
-    expect(miniPlayerSource).not.toContain("createPortal(");
+  it("shows no mini player on the active music page, where the full controls are", () => {
+    const playerSource = readFileSync(new URL("./Player.tsx", import.meta.url), "utf8");
+    const surfaceSource = readFileSync(new URL("../components/player/PlayerSurface.tsx", import.meta.url), "utf8");
+    expect(playerSource).not.toContain("InlineMusicMiniPlayer");
+    expect(surfaceSource).not.toContain("player-inline-music-mini");
+    // Elsewhere the one minimised player (not inline) is still drawn while playing.
+    expect(playerSource).toContain('minimised ? " is-minimised" : ""');
   });
 
   it("opens the shared hold menu for tracks and targets audio playlists", () => {
@@ -213,10 +208,5 @@ describe("MusicDetail track list", () => {
     expect(contextMenuSource).toContain("playlist.media_type === target.mediaType");
     expect(contextMenuSource).toContain("track_id: target.trackId");
     expect(contextMenuSource).toContain("const LONG_PRESS_MS = 650");
-  });
-
-  it("keeps the artist page mini player clear of the track list", () => {
-    const css = readFileSync(new URL("../styles/global.css", import.meta.url), "utf8");
-    expect(css).toMatch(/\.player-page\.is-minimised\.player-inline-music-mini \{[^}]*width: min\([^}]*38 \* var\(--vw\)/);
   });
 });

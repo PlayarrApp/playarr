@@ -464,53 +464,20 @@ function MusicPlayerVisual({
   );
 }
 
-export function InlineMusicMiniPlayer({
-  context,
-  title,
-  positionSeconds,
-  durationSeconds,
-  progressPercentage,
-  onMaximise,
-}: {
-  context?: PlayerMusicContext;
-  title: string;
-  positionSeconds: number;
-  durationSeconds: number;
-  progressPercentage: number;
-  onMaximise: () => void;
-}) {
+/** How long inline music may sit loading before the user is told and offered a retry. */
+const INLINE_MUSIC_STALL_MS = 15_000;
+
+/** Error state of the inline music player, drawn where its controls are; Retry restarts the stream. */
+export function InlineMusicStatus({ message, onRetry }: { message: string; onRetry?: () => void }) {
   const { t } = useLanguage();
   return (
-    <div className="player-page is-minimised player-inline-music-mini">
-      <div className="player-shell player-shell-minimised player-shell-music">
-        {context ? (
-          <MusicPlayerVisual context={context} title={title} />
-        ) : (
-          <span className="player-inline-music-art-fallback" aria-hidden="true">
-            {title.slice(0, 1)}
-          </span>
-        )}
-        <button
-          type="button"
-          className="mini-player-hit-target"
-          data-navigation-focus-key="shell:mini-player"
-          onClick={onMaximise}
-          aria-label={t("components.player.surface.openCoverFlowAriaLabel", { title })}
-        />
-        <div className="mini-player-details" aria-hidden="true">
-          <span className="mini-player-title">{title}</span>
-          <span className="mini-player-time">
-            {formatPlayerTime(positionSeconds)} /{" "}
-            {formatPlayerTime(durationSeconds)}
-          </span>
-          <span className="mini-player-track">
-            <span style={{ width: `${progressPercentage}%` }} />
-          </span>
-        </div>
-        <span className="mini-player-maximise" aria-hidden="true">
-          <MaximiseIcon />
-        </span>
-      </div>
+    <div className="player-inline-music-status" role="alert" aria-live="assertive">
+      <p className="player-error-message">{message}</p>
+      {onRetry && (
+        <Button type="button" variant="primary" className="player-retry-btn" onClick={onRetry}>
+          {t("components.player.surface.restartPlaybackButton")}
+        </Button>
+      )}
     </div>
   );
 }
@@ -1106,6 +1073,20 @@ export function PlayerSurface({
       engineState.state === "loading" ||
       engineState.state === "buffering");
   const isFatalError = !castConnected && engineState.state === "error" && !reconnecting;
+  // Inline music has no overlay, so a stream that never starts or fails must say so beside the controls, not sit silent.
+  const [inlineStalled, setInlineStalled] = useState(false);
+  useEffect(() => {
+    if (!inlineMusic || !isBusy) {
+      setInlineStalled(false);
+      return;
+    }
+    const id = setTimeout(() => setInlineStalled(true), INLINE_MUSIC_STALL_MS);
+    return () => clearTimeout(id);
+  }, [inlineMusic, isBusy]);
+  const inlineStatus =
+    inlineMusic && !castConnected && !reconnecting && (isFatalError || inlineStalled)
+      ? playbackErrorMessage(isFatalError ? engineState.error?.message : "network", t)
+      : null;
   const castPositionSeconds = (castState?.positionMs ?? 0) / 1000;
   const castDurationSeconds = (castState?.durationMs ?? 0) / 1000;
   const durationSeconds = engineState.durationSeconds;
@@ -1518,11 +1499,10 @@ export function PlayerSurface({
       )}
       {!minimised && playlistContext.contextMenu}
 
-      {shouldRenderPlayerControls({
+      {inlineStatus && <InlineMusicStatus message={inlineStatus} onRetry={retryNegotiation} />}
+      {!inlineStatus && shouldRenderPlayerControls({
         inlineMusic,
         minimised,
-        playbackBusy: isBusy,
-        playbackStarted,
       }) && (
         <PlayerControls
           engineState={engineState}

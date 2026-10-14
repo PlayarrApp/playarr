@@ -43,7 +43,7 @@ import {
   waitForFirstPlayarrCastMessage,
 } from "../lib/cast/castMessages";
 import {
-  InlineMusicMiniPlayer,
+  InlineMusicStatus,
   PlayerCloseButton,
   PlayerSurface,
   type PlayerMusicContext,
@@ -276,16 +276,6 @@ function PlayerPageInner({
     durationSeconds > 0
       ? Math.min(100, Math.max(0, (positionSeconds / durationSeconds) * 100))
       : 0;
-  const inlineMiniPlayer = inlineMusic ? (
-      <InlineMusicMiniPlayer
-        context={miniPlayerMusicContext}
-        title={playerTitle}
-        positionSeconds={positionSeconds}
-        durationSeconds={durationSeconds}
-        progressPercentage={progressPercentage}
-        onMaximise={onMaximise}
-      />
-    ) : null;
   const musicPlaybackStateRef = useRef({
     mediaFileId,
     hasPlayed: false,
@@ -748,6 +738,19 @@ function PlayerPageInner({
   // --- /Chromecast ---------------------------------------------------------
 
   if (negotiation.kind === "error") {
+    if (inlineMusic) {
+      const status = (
+        <div className="player-page is-minimised is-inline-music">
+          <div className="player-shell player-shell-inline-music">
+            <InlineMusicStatus
+              message={negotiation.message}
+              onRetry={negotiation.forbidden ? undefined : retryNegotiation}
+            />
+          </div>
+        </div>
+      );
+      return inlineMusicHost ? createPortal(status, inlineMusicHost) : status;
+    }
     if (minimised) {
       return (
         <MinimisedPlayerStatus
@@ -848,7 +851,6 @@ function PlayerPageInner({
   return (
     <>
       {inlineMusicHost ? createPortal(playerSurface, inlineMusicHost) : playerSurface}
-      {inlineMiniPlayer}
     </>
   );
 }

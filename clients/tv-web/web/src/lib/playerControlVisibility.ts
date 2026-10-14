@@ -17,16 +17,13 @@ export function shouldAutoHidePlayerControls({
   );
 }
 
+/** Inline music controls stay mounted while a slow or stalled stream is still busy, so they never vanish under the coverflow. */
 export function shouldRenderPlayerControls({
   inlineMusic,
   minimised,
-  playbackBusy,
-  playbackStarted,
 }: {
   inlineMusic: boolean;
   minimised: boolean;
-  playbackBusy: boolean;
-  playbackStarted: boolean;
 }): boolean {
-  return !minimised || (inlineMusic && (!playbackBusy || playbackStarted));
+  return !minimised || inlineMusic;
 }

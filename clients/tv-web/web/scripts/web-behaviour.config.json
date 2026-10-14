@@ -3,6 +3,7 @@
     "nav-smoke",
     "rail-geometry-e2e",
     "skeleton-size-e2e",
+    "music-controls-e2e",
     "calendar-nav",
     "calendar-layout",
     "calendar-agenda-e2e",
@@ -65,6 +66,7 @@
   },
   "tracked": {},
   "seconds": {
+    "music-controls-e2e": 75,
     "nav-smoke": 83,
     "rail-geometry-e2e": 57,
     "calendar-nav": 23,

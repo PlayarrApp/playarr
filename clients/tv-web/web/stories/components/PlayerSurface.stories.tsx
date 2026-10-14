@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { PlayerMusicContext } from "../../src/components/player/PlayerSurface";
 import {
-  InlineMusicMiniPlayer,
   MusicVisualiserBars,
   PlayerCloseButton,
   musicVisualiserBarCount,
@@ -32,19 +31,6 @@ function Surface({ withMusicContext, progress, platform }: { withMusicContext: b
         <Caption>Music visualiser (at rest)</Caption>
         <div className="player-music-cover" style={{ width: "16rem", height: "6rem" }}>
           <MusicVisualiserBars />
-        </div>
-      </div>
-      <div>
-        <Caption>Inline music mini player</Caption>
-        <div style={{ position: "relative", height: "6rem", width: "min(100%, 28rem)" }}>
-          <InlineMusicMiniPlayer
-            context={withMusicContext ? CONTEXT : undefined}
-            title="Sample Track 1"
-            positionSeconds={Math.round(2.4 * progress)}
-            durationSeconds={240}
-            progressPercentage={progress}
-            onMaximise={noop}
-          />
         </div>
       </div>
     </div>

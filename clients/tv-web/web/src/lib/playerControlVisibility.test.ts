@@ -27,33 +27,12 @@ describe("shouldAutoHidePlayerControls", () => {
     ).toBe(true);
   });
 
-  it("hides inline controls until playback is ready", () => {
-    expect(
-      shouldRenderPlayerControls({
-        inlineMusic: true,
-        minimised: true,
-        playbackBusy: true,
-        playbackStarted: false,
-      })
-    ).toBe(false);
-    expect(
-      shouldRenderPlayerControls({
-        inlineMusic: true,
-        minimised: true,
-        playbackBusy: false,
-        playbackStarted: false,
-      })
-    ).toBe(true);
+  it("keeps inline controls rendered while playback is busy or not yet started", () => {
+    expect(shouldRenderPlayerControls({ inlineMusic: true, minimised: true })).toBe(true);
   });
 
-  it("keeps inline controls mounted while a playing track reloads after seeking", () => {
-    expect(
-      shouldRenderPlayerControls({
-        inlineMusic: true,
-        minimised: true,
-        playbackBusy: true,
-        playbackStarted: true,
-      })
-    ).toBe(true);
+  it("renders fullscreen controls and not those of a minimised non-music player", () => {
+    expect(shouldRenderPlayerControls({ inlineMusic: false, minimised: false })).toBe(true);
+    expect(shouldRenderPlayerControls({ inlineMusic: false, minimised: true })).toBe(false);
   });
 });

@@ -270,6 +270,8 @@ export function usePlaybackEngine(
   const previousPlaybackStateRef = useRef(IDLE_ENGINE_STATE.state);
   // The last state the viewer actually had (playing, buffering or paused): an error carries no play state.
   const lastActiveStateRef = useRef<string | undefined>(undefined);
+  // Only a pause the user asked for counts as paused: a failing stream also leaves the element paused.
+  const userPausedRef = useRef(false);
   const progressGateRef = useRef(createProgressGate());
   const engineStateRef = useRef<PlaybackEngineState>(IDLE_ENGINE_STATE);
   const qualitySwitchRequestRef = useRef(0);
@@ -613,6 +615,7 @@ export function usePlaybackEngine(
     };
     previousPlaybackStateRef.current = IDLE_ENGINE_STATE.state;
     lastActiveStateRef.current = undefined;
+    userPausedRef.current = false;
     qualitySwitchRequestRef.current += 1;
     sourceSwitchBarrierRef.current = Promise.resolve();
     latestUserSeekRef.current = null;
@@ -1209,7 +1212,7 @@ export function usePlaybackEngine(
       engineState.state === "buffering" ||
       engineState.state === "paused"
     ) {
-      lastActiveStateRef.current = engineState.state;
+      if (engineState.state !== "paused" || userPausedRef.current) lastActiveStateRef.current = engineState.state;
     }
     const plan = progressGateRef.current.plan({
       engineStateToken: engineState,
@@ -1262,16 +1265,20 @@ export function usePlaybackEngine(
   }, [mediaFileId]);
 
   const play = useCallback(() => {
+    userPausedRef.current = false;
     safePlay(engineRef.current?.play());
   }, []);
   const pause = useCallback(() => {
+    userPausedRef.current = true;
     void engineRef.current?.pause();
   }, []);
   const togglePlay = useCallback(() => {
     const current = engineRef.current?.getState().state;
     if (current === "playing" || current === "buffering") {
+      userPausedRef.current = true;
       void engineRef.current?.pause();
     } else {
+      userPausedRef.current = false;
       safePlay(engineRef.current?.play());
     }
   }, []);

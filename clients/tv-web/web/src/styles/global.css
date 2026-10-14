@@ -2270,14 +2270,6 @@ code {
   filter: drop-shadow(0 22px 44px rgba(0, 0, 0, 0.34));
 }
 
-/* Artist page: the mini player stays clear of the track list (the browser panel starts at 38% of the width or later). */
-@media (min-width: 761px) {
-  .player-page.is-minimised.player-inline-music-mini {
-    left: calc(var(--tv-nav-clearance, 110px) + 8px);
-    width: min(clamp(340px, calc(27 * var(--vw)), 500px), calc(38 * var(--vw) - var(--tv-nav-clearance, 110px) - 20px));
-  }
-}
-
 .player-page.is-minimised:not(.is-inline-music) {
   display: block;
   opacity: 1;
@@ -2731,23 +2723,6 @@ code {
   display: none;
 }
 
-.player-inline-music-art-fallback {
-  position: absolute;
-  z-index: 0;
-  inset: 0 auto 0 0;
-  width: 48%;
-  display: grid;
-  place-items: center;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--brand) 48%, transparent), transparent 34%),
-    linear-gradient(145deg, #2a1720, #0d090b);
-  color: rgba(255, 255, 255, 0.78);
-  font-size: clamp(2rem, calc(4 * var(--vw)), 3.8rem);
-  font-weight: 260;
-  text-transform: uppercase;
-}
-
 .player-page.is-minimised.is-inline-music {
   inset: 0 0 auto auto;
   z-index: var(--z-raised);
@@ -2788,6 +2763,21 @@ code {
   color: var(--player-ink);
   pointer-events: auto;
   filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.72));
+}
+
+.player-shell-inline-music .player-inline-music-status {
+  position: absolute;
+  top: calc(clamp(104px, calc(13 * var(--viewport-unit)), 142px) + clamp(330px, calc(50 * var(--viewport-unit)), 540px) - var(--music-controls-band));
+  left: 50%;
+  width: min(76%, 720px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--player-ink);
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: auto;
 }
 
 .player-shell-inline-music .player-controls-row {
@@ -9094,6 +9084,11 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
     inset: auto;
     width: 100%;
     height: 88px;
+  }
+
+  .tv-inline-music-player-host .player-shell-inline-music .player-inline-music-status {
+    top: 0;
+    width: calc(100% - 32px);
   }
 
   .tv-inline-music-player-host .player-shell-inline-music .player-controls {
