@@ -1,1 +1,0 @@
-- Web: a mouse wheel or trackpad scroll over a rail now scrolls Home and the detail pages, and after such a scroll Left or Right along a rail brings the focused card back on screen.
