@@ -1,1 +1,0 @@
-- Fix the VIDAA debug mirror drawing each Home and detail rail 104 stage px too tall (the gap between a show's seasons), and report track rects in its layout facts.

@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fix the VIDAA debug mirror drawing each Home and detail rail 104 stage px too tall (the gap between a show's seasons), and report track rects in its layout facts.
 - Web detail pages: the Playback, Play, Download and Watchlist buttons show the hover look when focused with keyboard or D-pad, and their focus ring is no longer dimmed by the left nav rail.
 - Xbox: page headers match the web again: the subtitle sits beside the title after a thin divider and is not pink; it drops under the title only when there is no room.
 - Web: every page header subtitle is the Movies, Series and Music one again: beside the title after a vertical divider, in the page ink (not pink), wrapping under the title only when there is no room. Reverts the under-title pink kicker.
