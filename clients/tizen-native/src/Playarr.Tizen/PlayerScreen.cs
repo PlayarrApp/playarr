@@ -29,7 +29,7 @@ internal sealed class PlayerScreen : IPage
     private readonly View _progress;
     private readonly TextLabel _now, _total;
     private readonly ImageView _playIcon;
-    private readonly FocusSet _focus = new();
+    private FocusSet _focus = new();
     private readonly global::Tizen.NUI.Timer _tick, _hide;
     private Player? _player;
     private PlaybackInfoResponse? _info;
@@ -71,7 +71,10 @@ internal sealed class PlayerScreen : IPage
         play.Add(_playIcon);
         var playRing = Ring.Make(64, 64, 32, white, themed: false); playRing.Show(false); play.Add(playRing);
         _controls.Add(play);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(147.6f, 958, 64, 64), Label = "pause", Select = TogglePause, Style = f => playRing.Show(f) });
+        _playRing = playRing;
+        _focus.Items.Add(PlayFocusable("pause"));
+        // web: Up from the transport row lands on the seek bar
+        _focus.Items.Add(new Focusable { Rect = () => new Box(TrackX, TrackY - 14, TrackW, 34), Label = "seek", Select = () => { }, Style = f => _progress.Size = new Size(_progress.Size.Width, f ? 10 : 6) });
         AddIcon("next", 247.2f, 980, "next", dim: true);
         _now = Ui.Text("0:00", 302.8f, 981.8f, 10.88f, 400, white, 60, 16.32f);
         _controls.Add(_now);
@@ -80,11 +83,13 @@ internal sealed class PlayerScreen : IPage
         _controls.Add(_total);
 
         // tools
-        AddIcon("volume", 1318.3f, 980, "volume", dim: false);
-        AddIcon("captions", 1395.9f, 980, "subtitles", dim: false);
-        AddIcon("queue", 1473.5f, 980, "queue", dim: false);
+        AddIcon("volume", 1318.3f, 980, "audio", dim: false);
+        AddIcon("captions", 1395.9f, 980, "subtitles", dim: false, select: OpenSubtitles);
+        AddIcon("queue", 1473.5f, 980, "playlist", dim: false);
         _controls.Add(Ui.Text("HD", 1543.5f, 984.5f, 7.68f, 800, white, 28, 11.52f, spacing: 0.3f));
         _controls.Add(Ui.Text("Original", 1580.3f, 982.1f, 10.56f, 700, white, 100, 15.84f, spacing: 0.1f));
+        var qring = Ring.Make(176, 36, 18, new Rgba(1, 1, 1), themed: false); qring.PositionX = 1532; qring.PositionY = 968; qring.Show(false); _controls.Add(qring);
+        _focus.Items.Add(new Focusable { Rect = () => new Box(1536, 972, 168, 36), Label = "quality", Select = () => { }, Style = f => qring.Show(f) });
         AddIcon("info", 1730.4f, 980, "info", dim: false);
         AddIcon("cast", 1808, 980, "play on another device", dim: false);
 
@@ -105,12 +110,13 @@ internal sealed class PlayerScreen : IPage
         _focus.Items.Add(new Focusable { Rect = () => new Box(x, 37.8f, w, 48), Label = label, Select = select, Style = f => ring.Show(f) });
     }
 
-    private void AddIcon(string icon, float x, float y, string label, bool dim)
+    private void AddIcon(string icon, float x, float y, string label, bool dim, Action? select = null)
     {
         _controls.Add(Ui.Icon(icon, x, y, 20, new Rgba(1, 1, 1, dim ? 0.4f : 0.8f)));
+        if (dim) return; // web: previous and next are disabled (not focusable) when nothing precedes or follows
         var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1), themed: false); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
         _controls.Add(ring);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(x - 8, y - 8, 36, 36), Label = label, Select = () => { }, Style = f => ring.Show(f) });
+        _focus.Items.Add(new Focusable { Rect = () => new Box(x - 8, y - 8, 36, 36), Label = label, Select = select ?? (() => { }), Style = f => ring.Show(f) });
     }
 
     private async Task StartAsync()
@@ -172,9 +178,10 @@ internal sealed class PlayerScreen : IPage
             _player.Start();
             _started = true;
             // A recovered session keeps the viewer's play state: a player that was paused shows its frame and stays paused.
-            if (!PlaybackRecovery.StartPlaying(startPaused)) { _player.Pause(); _paused = true; _playIcon.ResourceUrl = Ui.ResPath("icons/play.svg"); }
+            if (!PlaybackRecovery.StartPlaying(startPaused)) { _player.Pause(); _paused = true; _playIcon.ResourceUrl = Ui.ResPath("icons/play.svg"); RelabelPlay("play"); }
             else { _paused = false; _playIcon.ResourceUrl = Ui.ResPath("icons/pause.svg"); }
             Dbg.Log("PLAY started");
+            if (_pendingToggle) { _pendingToggle = false; TogglePause(); }
             _tick.Start(); _hide.Start();
         }
         catch (Exception e) { Dbg.Log("PLAY begin failed: " + e); }
@@ -263,15 +270,59 @@ internal sealed class PlayerScreen : IPage
         CloseSelf();
     }
 
+    private View _playRing = null!;
+    private Focusable PlayFocusable(string label) => new() { Rect = () => new Box(147.6f, 958, 64, 64), Label = label, Select = TogglePause, Style = f => _playRing.Show(f) };
+
+    private bool _pendingToggle;
+
     private void TogglePause()
     {
-        if (_player is null) return;
+        // a press before playback has started is kept and applied once it has (web toggles the loading video too)
+        if (_player is null || !_started) { _pendingToggle = !_pendingToggle; return; }
         try
         {
-            if (_player.State == PlayerState.Playing) { _player.Pause(); _paused = true; _playIcon.ResourceUrl = Ui.ResPath("icons/play.svg"); }
-            else { _player.Start(); _paused = false; _playIcon.ResourceUrl = Ui.ResPath("icons/pause.svg"); _hide.Restart(); }
+            if (_player.State == PlayerState.Playing) { _player.Pause(); _paused = true; _playIcon.ResourceUrl = Ui.ResPath("icons/play.svg"); RelabelPlay("play"); }
+            else { _player.Start(); _paused = false; _playIcon.ResourceUrl = Ui.ResPath("icons/pause.svg"); RelabelPlay("pause"); _hide.Restart(); }
         }
         catch (Exception e) { Dbg.Log("PLAY toggle failed: " + e.Message); }
+    }
+
+    /// <summary>web: the play button's name follows its state ("play" while paused).</summary>
+    private void RelabelPlay(string label)
+    {
+        var i = _focus.Items.FindIndex(x => x.Label is "pause" or "play");
+        if (i >= 0) _focus.Items[i] = PlayFocusable(label);
+    }
+
+    // ---- subtitles panel (web: a list over the player; Back closes it and focus returns to the subtitles button) ----
+    private View? _panel;
+    private FocusSet? _outer;
+
+    private void OpenSubtitles()
+    {
+        if (_panel is not null) return;
+        _outer = _focus;
+        var panel = Ui.Box(1500, 560, 340, 330, new Rgba(0.047f, 0.039f, 0.043f, 0.92f), 16);
+        panel.BorderlineWidth = 1; panel.BorderlineColor = new Color(1, 1, 1, 0.2f);
+        panel.Add(Ui.Text("Subtitles", 24, 20, 14, 700, new Rgba(1, 1, 1), 292, 22));
+        var row = Ui.Box(16, 64, 308, 56, new Rgba(1, 1, 1, 0.1f), 12);
+        row.Add(Ui.Text("Off", 16, 8, 12.5f, 700, new Rgba(1, 1, 1), 200, 20));
+        row.Add(Ui.Text("No subtitles", 16, 29, 10, 400, new Rgba(0.8f, 0.76f, 0.78f), 200, 16));
+        row.Add(Ui.Text("\u2713", 272, 16, 14, 700, new Rgba(1, 1, 1), 24, 22));
+        var ring = Ring.Make(308, 56, 12, new Rgba(1, 1, 1), themed: false); row.Add(ring);
+        panel.Add(row);
+        _controls.Add(panel); _panel = panel;
+        var set = new FocusSet();
+        set.Items.Add(new Focusable { Rect = () => new Box(1516, 624, 308, 56), Label = "offno subtitles\u2713", Select = CloseSubtitles, Style = f => ring.Show(f) });
+        set.Set(0);
+        _focus = set;
+    }
+
+    private void CloseSubtitles()
+    {
+        if (_panel is null || _outer is null) return;
+        _controls.Remove(_panel); _panel.Dispose(); _panel = null;
+        _focus = _outer; _outer = null;
     }
 
     private async void SeekBy(long deltaMs)
@@ -311,6 +362,7 @@ internal sealed class PlayerScreen : IPage
     public bool OnKey(RemoteKey key)
     {
         if (_error) { if (key is RemoteKey.Select or RemoteKey.Back) CloseSelf(); return true; }
+        if (_panel is not null && key == RemoteKey.Back) { CloseSubtitles(); _hide.Restart(); return true; }
         switch (key)
         {
             case RemoteKey.Back: Stop(); return false;
