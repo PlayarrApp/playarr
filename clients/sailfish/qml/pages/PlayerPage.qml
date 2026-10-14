@@ -228,7 +228,7 @@ Page {
         color: "white"
     }
     Label {
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: page.controls ? 130 * Tokens.u : 48 * Tokens.u; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: (page.controls ? 130 * Tokens.u : 48 * Tokens.u) + Tokens.safeBottom; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
         visible: text !== ""
         text: page.cueText
         horizontalAlignment: Text.AlignHCenter
@@ -255,18 +255,18 @@ Page {
             gradient: Gradient { GradientStop { position: 0; color: "transparent" } GradientStop { position: 1; color: "#cc000000" } }
         }
         IconButton {
-            anchors { left: parent.left; top: parent.top; margins: Theme.paddingMedium }
+            anchors { left: parent.left; top: parent.top; margins: Theme.paddingMedium; topMargin: Theme.paddingMedium + Tokens.safeTop }
             icon.source: "image://theme/icon-m-back"
             onClicked: page.menuOpen ? page.menuOpen = false : page.close(false)
         }
         IconButton {
-            anchors { right: parent.right; top: parent.top; margins: Theme.paddingMedium }
+            anchors { right: parent.right; top: parent.top; margins: Theme.paddingMedium; topMargin: Theme.paddingMedium + Tokens.safeTop }
             icon.source: "image://theme/icon-m-menu"
             visible: !!page.info
             onClicked: page.menuOpen = !page.menuOpen
         }
         Label {
-            anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 80 * Tokens.u; rightMargin: 80 * Tokens.u; topMargin: Theme.paddingLarge }
+            anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 80 * Tokens.u; rightMargin: 80 * Tokens.u; topMargin: Theme.paddingLarge + Tokens.safeTop }
             text: page.title
             elide: Text.ElideRight
             color: "white"
@@ -282,7 +282,7 @@ Page {
             onClicked: player.playbackState === MediaPlayer.PlayingState ? player.pause() : player.play()
         }
         Row {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: Theme.paddingLarge; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: Theme.paddingLarge + Tokens.safeBottom; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
             spacing: 8 * Tokens.u
             Label {
                 id: posLabel

@@ -123,22 +123,28 @@ PlayarrPage {
             Item {
                 width: parent.width
                 height: 298 * Tokens.u
-                clip: true
-                HeroArt { work: page.work }
-                PageTitle {
-                    y: 4 * Tokens.u
-                    title: work.kind === "movie" ? qsTr("Movies") : work.kind === "series" ? qsTr("Series") : qsTr("Music")
-                    filled: true
-                    onBackClicked: pageStack.pop()
-                }
-                Label {
-                    x: 70 * Tokens.u
-                    y: 66 * Tokens.u
-                    text: work.title.toUpperCase()
-                    color: Tokens.brandPinkSoft
-                    font.family: Tokens.family820
-                    font.letterSpacing: 1.4 * Tokens.u
-                    font.pixelSize: 9.6 * Tokens.u
+                Item {   // the picture bleeds up behind a cutout; the copy below stays inside the safe area
+                    y: -Tokens.safeTop; width: parent.width; height: parent.height + Tokens.safeTop
+                    clip: true
+                    HeroArt { y: 0; work: page.work }
+                    Item {
+                        y: Tokens.safeTop; width: parent.width; height: 298 * Tokens.u
+                        PageTitle {
+                            y: 4 * Tokens.u
+                            title: work.kind === "movie" ? qsTr("Movies") : work.kind === "series" ? qsTr("Series") : qsTr("Music")
+                            filled: true
+                            onBackClicked: pageStack.pop()
+                        }
+                        Label {
+                            x: 70 * Tokens.u
+                            y: 66 * Tokens.u
+                            text: work.title.toUpperCase()
+                            color: Tokens.brandPinkSoft
+                            font.family: Tokens.family820
+                            font.letterSpacing: 1.4 * Tokens.u
+                            font.pixelSize: 9.6 * Tokens.u
+                        }
+                    }
                 }
             }
             Label {
@@ -288,6 +294,7 @@ PlayarrPage {
                         y: -2.5 * Tokens.u; width: parent.width; height: 100 * Tokens.u; clip: true
                         HeroArt {
                             id: stickyArt
+                            bleed: false
                             y: { flick.contentY; return -stripWindow.mapToItem(page, 0, 0).y }
                             work: page.work; kinds: ["backdrop", "poster", "thumb"]
                             artOpacity: Tokens.dark ? 0.2 : 0.42

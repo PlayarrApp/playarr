@@ -7,6 +7,11 @@ QtObject {
     readonly property bool dark: Api.themeMode === "dark" || (Api.themeMode !== "light" && Theme.colorScheme === Theme.LightOnDark)
     // CSS px of the 390 px web mobile layout, scaled to this screen (set by the application window).
     property real u: 1
+    // Safe area: content sits below a notch or camera cutout and above the bottom gesture area; backgrounds still bleed.
+    property real testTop: 0       // emulator smoke scripts set this to simulate a cutout
+    property real testBottom: 0
+    readonly property real safeTop: Math.max(testTop, Screen.topCutout && Screen.topCutout.height ? Screen.topCutout.height : 0)
+    readonly property real safeBottom: Math.max(testBottom, Screen.bottomCutout && Screen.bottomCutout.height ? Screen.bottomCutout.height : 0)
 
     // Pages sit on the web's surface colour (the web token `bg` is only the outer shell).
     readonly property color bg: dark ? "#1b181b" : "#fbfaf9"

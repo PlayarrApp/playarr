@@ -13,13 +13,16 @@ Item {
     property real fadeFrom: 0.26      // where the page colour starts to cover it
     property real fadeTo: 0.54
     property real artOpacity: Tokens.dark ? 0.72 : 0.42
+    property bool bleed: true         // the picture also fills the strip behind a notch or cutout
+    readonly property real over: bleed ? Tokens.safeTop : 0
     width: parent ? parent.width : 0
-    height: boxH
+    y: -over
+    height: boxH + over
     clip: true
 
     Item {
         width: parent.width
-        height: root.imgH > 0 ? root.imgH : root.imgFrac * root.boxH
+        height: (root.imgH > 0 ? root.imgH : root.imgFrac * root.boxH) + root.over
         clip: true
         opacity: root.artOpacity
         layer.enabled: true
