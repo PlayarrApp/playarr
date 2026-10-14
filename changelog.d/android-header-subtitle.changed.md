@@ -1,0 +1,1 @@
+- Android: wide page headers put the subtitle beside the title after a divider (wrapping beneath only when it does not fit before the clock), in the soft ink colour instead of pink, as web does.

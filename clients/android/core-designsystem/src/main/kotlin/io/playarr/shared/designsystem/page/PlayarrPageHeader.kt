@@ -148,18 +148,18 @@ internal fun PlayarrPageHeaderRow(
         }.first().measure(loose.copy(maxWidth = titleMax.coerceAtMost(constraints.maxWidth)))
         val separator = (if (tv) 47.04.dp else 10.dp).roundToPx()
         val titleEnd = backWidth + backGap + titleP.width
-        val probe = subtitle?.takeIf { !tv }?.let {
-            subcompose("probe") { PlayarrBreadcrumbText(it, phone = !tv) }.first().measure(loose)
+        val probe = subtitle?.takeIf { !spec.countLine }?.let {
+            subcompose("probe") { if (tv) PlayarrTvInlineSubtitle(it) else PlayarrBreadcrumbText(it, phone = true) }.first().measure(loose)
         }
-        // Television: web stacks the subtitle under the title in the one shared small subtitle style (owner rule 2026-10-10).
-        val placement = if ((tv || spec.countLine) && subtitle != null) PlayarrSubtitlePlacement.Wrapped
+        // Web (#1299): the subtitle sits beside the title after a divider and wraps beneath only when it does not fit before the clock.
+        val placement = if (spec.countLine && subtitle != null) PlayarrSubtitlePlacement.Wrapped
         else decideSubtitlePlacement(subtitle != null, titleEnd, probe?.width ?: 0, separator, reservedStartPx)
         val inline = if (placement == PlayarrSubtitlePlacement.Inline) {
             subcompose("inline") {
                 if (tv) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.padding(horizontal = 23.04.dp).width(1.dp).height(metrics.control).background(palette.divider))
-                        PlayarrBreadcrumbText(subtitle!!)
+                        Box(Modifier.padding(horizontal = 23.04.dp).width(1.dp).height(16.dp).background(palette.divider))
+                        PlayarrTvInlineSubtitle(subtitle!!)
                     }
                 } else {
                     // Web `.page-header-detail`: 1 px divider the full 38 px header height, 14 px padding, 10 px after the title.
@@ -203,12 +203,27 @@ internal fun PlayarrPageHeaderRow(
     }
 }
 
+/** Web television header subtitle beside the title: small, uppercase, the soft ink colour (not the brand pink). */
+@Composable
+private fun PlayarrTvInlineSubtitle(text: String) {
+    Text(
+        text.uppercase(),
+        color = PlayarrWebTheme.palette.inkSoft,
+        fontSize = 11.136.sp,
+        lineHeight = 16.sp,
+        fontWeight = FontWeight(750),
+        letterSpacing = 0.501.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
 /** Web `.page-subtitle` (shared with the media kickers): `--brand-ink`, 12.288 px, weight 820, 0.08em, uppercase. */
 @Composable
 private fun PlayarrPageSubtitleText(text: String, phone: Boolean = false) {
     Text(
         text.uppercase(),
-        color = PlayarrWebTheme.palette.brandInk,
+        color = if (phone) PlayarrWebTheme.palette.brandInk else PlayarrWebTheme.palette.inkSoft,
         // Web phone: `.page-subtitle` is 0.66rem (10.56 px) under 760 px.
         fontSize = if (phone) 10.56.sp else 12.288.sp,
         lineHeight = if (phone) 15.84.sp else 18.432.sp,
