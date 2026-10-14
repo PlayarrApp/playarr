@@ -26,13 +26,17 @@ struct WorkDetailView: View {
     /// `DownloadRepository.enqueue` need for one playable leaf under this
     /// work — every row builder below funnels through this rather than
     /// constructing `DownloadCandidate` inline.
-    private func candidate(mediaFileID: UUID, title: String, subtitle: String?) -> DownloadCandidate {
+    private func candidate(mediaFileID: UUID, title: String, subtitle: String?, season: Int32? = nil, episode: Int32? = nil) -> DownloadCandidate {
         DownloadCandidate(
             mediaFileID: mediaFileID,
             workID: viewModel.workID,
             title: title,
             subtitle: subtitle,
-            posterURLString: viewModel.detail?.work.images.first(where: { $0.kind == .poster })?.url
+            posterURLString: viewModel.detail?.work.images.first(where: { $0.kind == .poster })?.url,
+            workKind: viewModel.detail?.work.kind.rawValue,
+            seriesTitle: season == nil ? nil : viewModel.detail?.work.title,
+            seasonNumber: season.map(Int.init),
+            episodeNumber: episode.map(Int.init)
         )
     }
 
@@ -585,7 +589,9 @@ struct WorkDetailView: View {
                     candidate(
                         mediaFileID: $0,
                         title: episode.episode.title ?? "Episode \(episode.episode.episodeNumber)",
-                        subtitle: season.season.title ?? "Season \(season.season.seasonNumber)"
+                        subtitle: season.season.title ?? "Season \(season.season.seasonNumber)",
+                        season: season.season.seasonNumber,
+                        episode: episode.episode.episodeNumber
                     )
                 }
             },
@@ -637,7 +643,7 @@ struct WorkDetailView: View {
                 .contextMenu {
                     Button("Download", systemImage: "arrow.down.circle") {
                         downloadRepository.enqueue(
-                            candidates: [candidate(mediaFileID: mediaFileID, title: title, subtitle: label)],
+                            candidates: [candidate(mediaFileID: mediaFileID, title: title, subtitle: label, season: seasonNumber, episode: episode.episodeNumber)],
                             profile: nil,
                             keepUntil: .forever
                         )

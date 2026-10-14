@@ -221,6 +221,12 @@ public struct DownloadCandidate: Identifiable, Hashable, Sendable {
     public var title: String
     public var subtitle: String?
     public var posterURLString: String?
+    /// `WorkKind.rawValue` of the work, and for an episode its series title and numbers: the Downloads page groups TV
+    /// as series, season, episode (the web page's `episodeIdentity`).
+    public var workKind: String?
+    public var seriesTitle: String?
+    public var seasonNumber: Int?
+    public var episodeNumber: Int?
 
     public var id: UUID { mediaFileID }
 
@@ -229,12 +235,20 @@ public struct DownloadCandidate: Identifiable, Hashable, Sendable {
         workID: UUID,
         title: String,
         subtitle: String? = nil,
-        posterURLString: String? = nil
+        posterURLString: String? = nil,
+        workKind: String? = nil,
+        seriesTitle: String? = nil,
+        seasonNumber: Int? = nil,
+        episodeNumber: Int? = nil
     ) {
         self.mediaFileID = mediaFileID
         self.workID = workID
         self.title = title
         self.subtitle = subtitle
         self.posterURLString = posterURLString
+        self.workKind = workKind
+        self.seriesTitle = seriesTitle
+        self.seasonNumber = seasonNumber
+        self.episodeNumber = episodeNumber
     }
 }

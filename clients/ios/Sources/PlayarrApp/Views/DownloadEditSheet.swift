@@ -11,7 +11,9 @@ struct DownloadEditSheet: View {
         var id: String { rawValue }
     }
 
-    let record: DownloadRecord
+    /// One download, or every download of a season or series (the first one's options stand for all).
+    let records: [DownloadRecord]
+    let title: String
     let apiClient: PlayarrAPIClient
     let downloadRepository: DownloadRepository
 
@@ -23,6 +25,7 @@ struct DownloadEditSheet: View {
     @State private var afterWatchedAmount = 30
     @State private var afterWatchedUnit: KeepUntilPolicy.TimeUnit = .days
 
+    private var record: DownloadRecord { records[0] }
     private var currentOptionID: String? { options.first { $0.profile == record.profile }?.id }
 
     var body: some View {
@@ -70,7 +73,7 @@ struct DownloadEditSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(PlayarrStyle.background)
-            .navigationTitle(record.title)
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -94,9 +97,10 @@ struct DownloadEditSheet: View {
         case .specificDate: .specificDate(specificDate)
         case .afterWatched: .afterWatched(amount: afterWatchedAmount, unit: afterWatchedUnit)
         }
-        downloadRepository.updateKeepUntil(mediaFileID: record.mediaFileID, policy)
+        let ids = records.map(\.mediaFileID)
+        downloadRepository.updateKeepUntil(mediaFileIDs: ids, policy)
         if let id = selectedOptionID, id != currentOptionID, let option = options.first(where: { $0.id == id }) {
-            downloadRepository.changeQuality(mediaFileID: record.mediaFileID, profile: option.profile)
+            downloadRepository.changeQuality(mediaFileIDs: ids, profile: option.profile)
         }
         dismiss()
     }

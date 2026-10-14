@@ -56,6 +56,11 @@ public final class DownloadRecord {
     /// The last server- or client-side error message for a `.failed`
     /// record, surfaced by `DownloadsView`.
     public var errorMessage: String?
+    /// Optional additions (lightweight migration): kind and, for an episode, series title and numbers.
+    public var workKind: String?
+    public var seriesTitle: String?
+    public var seasonNumber: Int?
+    public var episodeNumber: Int?
     public var createdAt: Date
     public var updatedAt: Date
 

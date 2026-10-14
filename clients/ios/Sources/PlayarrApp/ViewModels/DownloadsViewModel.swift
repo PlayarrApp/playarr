@@ -44,6 +44,10 @@ public final class DownloadsViewModel {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
+    /// Filters and the grouped list the page shows (series, season, episode), as on web.
+    public var filters = DownloadFilters()
+    public var tree: [DownloadListItem] { DownloadGroups.tree(DownloadGroups.filterAndSort(repository.records, filters)) }
+
     public var isEmpty: Bool {
         repository.records.isEmpty
     }

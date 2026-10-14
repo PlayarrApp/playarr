@@ -26,7 +26,8 @@ struct DownloadsView: View {
     }
 
     @Environment(\.playarrGoHome) private var goHome
-    @State private var editing: DownloadRecord?
+    @State private var editing: DownloadEditTarget?
+    @State private var showingFilters = false
 
     private var isPhone: Bool { PlayarrLayout.isPhone(UIScreen.main.bounds.size) }
 
@@ -47,8 +48,16 @@ struct DownloadsView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .task { viewModel.refresh() }
         .onAppear { viewModel.refresh() }
-        .sheet(item: $editing) { record in
-            DownloadEditSheet(record: record, apiClient: apiClient, downloadRepository: downloadRepository)
+        .sheet(item: $editing) { target in
+            DownloadEditSheet(records: target.records, title: target.title, apiClient: apiClient, downloadRepository: downloadRepository)
+        }
+        .sheet(isPresented: $showingFilters) { DownloadFiltersSheet(filters: $viewModel.filters) }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showingFilters = true } label: {
+                    Label(viewModel.filters.activeCount > 0 ? "Filters (\(viewModel.filters.activeCount))" : "Filters", systemImage: "slider.horizontal.3")
+                }
+            }
         }
     }
 
@@ -75,10 +84,15 @@ struct DownloadsView: View {
 
     private var content: some View {
         List {
-            section("Downloading", records: viewModel.downloading, isActive: true)
-            section("Queued", records: viewModel.queued, isActive: true)
-            section("Completed", records: viewModel.completed, isActive: false)
-            section("Failed", records: viewModel.failed, isActive: false)
+            // Series, then season, then episode, with the same controls at every level (web's grouped Downloads page).
+            Section("Downloads") {
+                ForEach(Array(viewModel.tree.enumerated()), id: \.offset) { _, item in
+                    switch item {
+                    case .record(let record): row(for: record)
+                    case .series(let series): seriesGroup(series)
+                    }
+                }
+            }
 
             Section {
                 HStack {
@@ -96,15 +110,55 @@ struct DownloadsView: View {
         .refreshable { viewModel.refresh() }
     }
 
-    @ViewBuilder
-    private func section(_ title: String, records: [DownloadRecord], isActive: Bool) -> some View {
-        if !records.isEmpty {
-            Section(title) {
-                ForEach(records, id: \.mediaFileID) { record in
-                    row(for: record)
+    private func seriesGroup(_ series: SeriesNode) -> some View {
+        DisclosureGroup {
+            ForEach(series.seasons, id: \.key) { season in
+                DisclosureGroup {
+                    ForEach(season.episodes, id: \.record.mediaFileID) { episode in row(for: episode.record) }
+                } label: {
+                    groupLabel("Season \(season.seasonNumber)", season.aggregate, records: season.records, title: "\(series.title) · Season \(season.seasonNumber)")
                 }
             }
+        } label: {
+            groupLabel(series.title, series.aggregate, records: series.records, title: series.title)
         }
+    }
+
+    /// Title, aggregate status and the shared controls: Pause or Resume, Edit, Cancel and Delete.
+    private func groupLabel(_ name: String, _ aggregate: DownloadAggregate, records: [DownloadRecord], title: String) -> some View {
+        let ids = records.map(\.mediaFileID)
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(name).font(.subheadline.weight(.semibold)).foregroundStyle(PlayarrStyle.ink)
+            Text(groupStatus(aggregate)).font(.caption).foregroundStyle(PlayarrStyle.muted)
+            if let percent = aggregate.percent, aggregate.running + aggregate.paused > 0 {
+                ProgressView(value: Double(percent) / 100).tint(PlayarrStyle.pink)
+            }
+            HStack(spacing: 14) {
+                if aggregate.running > 0 {
+                    Button("Pause") { downloadRepository.pause(mediaFileIDs: ids); viewModel.refresh() }
+                } else if aggregate.paused + aggregate.failed > 0 {
+                    Button("Resume") { downloadRepository.resume(mediaFileIDs: ids); viewModel.refresh() }
+                }
+                Button("Edit") { editing = DownloadEditTarget(records: records, title: title) }
+                if aggregate.running + aggregate.paused > 0 {
+                    Button("Cancel", role: .destructive) { downloadRepository.cancel(mediaFileIDs: ids); viewModel.refresh() }
+                }
+                if aggregate.ready + aggregate.failed > 0 {
+                    Button("Delete", role: .destructive) { downloadRepository.cancel(mediaFileIDs: ids); viewModel.refresh() }
+                }
+            }
+            .font(.caption.weight(.semibold))
+            .buttonStyle(.borderless)
+        }
+    }
+
+    private func groupStatus(_ aggregate: DownloadAggregate) -> String {
+        var parts = ["\(aggregate.count) episode\(aggregate.count == 1 ? "" : "s")"]
+        if aggregate.running > 0 { parts.append("\(aggregate.running) downloading") }
+        if aggregate.paused > 0 { parts.append("\(aggregate.paused) paused") }
+        if aggregate.failed > 0 { parts.append("\(aggregate.failed) failed") }
+        if let total = PlayarrByteFormat.string(aggregate.totalBytes) { parts.append(total) }
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder
@@ -126,13 +180,13 @@ struct DownloadsView: View {
             }
             .swipeActions(edge: .trailing) {
                 Button("Delete", systemImage: "trash", role: .destructive) { viewModel.delete(record) }
-                Button("Edit", systemImage: "slider.horizontal.3") { editing = record }.tint(PlayarrStyle.pink)
+                Button("Edit", systemImage: "slider.horizontal.3") { editing = DownloadEditTarget(records: [record], title: record.title) }.tint(PlayarrStyle.pink)
             }
         } else {
             DownloadRow(record: record)
                 .swipeActions(edge: .trailing) {
                     Button("Delete", systemImage: "trash", role: .destructive) { viewModel.delete(record) }
-                    Button("Edit", systemImage: "slider.horizontal.3") { editing = record }.tint(PlayarrStyle.pink)
+                    Button("Edit", systemImage: "slider.horizontal.3") { editing = DownloadEditTarget(records: [record], title: record.title) }.tint(PlayarrStyle.pink)
                 }
                 .swipeActions(edge: .leading) {
                     if record.state == .paused || record.state == .failed {
@@ -161,6 +215,42 @@ struct DownloadsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(PlayarrStyle.ink)
         .background(PlayarrStyle.surface)
+    }
+}
+
+struct DownloadEditTarget: Identifiable {
+    let id = UUID()
+    let records: [DownloadRecord]
+    let title: String
+}
+
+/// Web's Downloads Filters drawer: kind, status and sort.
+private struct DownloadFiltersSheet: View {
+    @Binding var filters: DownloadFilters
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Picker("Kind", selection: $filters.kind) {
+                    Text("All").tag(DownloadKindFilter.all); Text("Movies").tag(DownloadKindFilter.movies)
+                    Text("TV").tag(DownloadKindFilter.tv); Text("Music").tag(DownloadKindFilter.music)
+                }
+                Picker("Status", selection: $filters.status) {
+                    Text("All").tag(DownloadStatusFilter.all); Text("Downloading").tag(DownloadStatusFilter.downloading)
+                    Text("Paused").tag(DownloadStatusFilter.paused); Text("Done").tag(DownloadStatusFilter.done)
+                    Text("Failed").tag(DownloadStatusFilter.failed)
+                }
+                Picker("Sort", selection: $filters.sort) {
+                    Text("Recent").tag(DownloadSort.recent); Text("Title").tag(DownloadSort.title); Text("Size").tag(DownloadSort.size)
+                }
+                Button("Reset") { filters = DownloadFilters() }
+            }
+            .navigationTitle("Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+        .presentationDetents([.medium])
     }
 }
 

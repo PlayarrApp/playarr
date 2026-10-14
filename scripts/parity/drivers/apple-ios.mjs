@@ -59,9 +59,19 @@ export async function createDriver() {
     if (!state().signedIn) throw new Error("signed out");
   };
   let seq = 0, touched = new Set();
-  const cmd = (action, m) => { // the debug app polls Documents/parity-cmd.json (ParityDownloads.swift)
-    touched.add(m.file);
-    writeFileSync(join(statePath(), "..", "parity-cmd.json"), JSON.stringify({ seq: (seq += 1), action, file: m.file, work: m.work, title: m.title }));
+  const cmd = (action, m, extra = {}) => { // the debug app polls Documents/parity-cmd.json (ParityDownloads.swift)
+    if (m.file) touched.add(m.file);
+    const episode = m.season ? { kind: "series", series: m.title, season: m.season, episode: m.episode } : { kind: "movie" };
+    writeFileSync(join(statePath(), "..", "parity-cmd.json"), JSON.stringify({ seq: (seq += 1), action, file: m.file, work: m.work, title: m.title, ...(action === "start" ? episode : {}), ...extra }));
+  };
+  // The server's download options for a file (its quality profiles), to pick a quality other than the current one.
+  const optionProfiles = async (file) => {
+    const server = process.env.SERVER_URL.replace(/\/$/, "");
+    const post = (path, body, token) => fetch(server + path, { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
+    const login = await post("/api/v1/auth/login", { client_platform: "ios", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-options", username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD });
+    const token = (await login.json()).access_token;
+    const r = await fetch(`${server}/api/v1/media/${file}/download-options`, { headers: { authorization: `Bearer ${token}` } });
+    return ((await r.json()).options ?? []).map((o) => o.profile ?? null);
   };
   const rec = (m) => (state().downloads ?? []).find((d) => d.file.toLowerCase() === m.file.toLowerCase());
   const until = async (m, ok, seconds) => {
@@ -69,7 +79,7 @@ export async function createDriver() {
     return { state: "failed", detail: `timed out after ${seconds} s: ${JSON.stringify(rec(m) ?? null)}` };
   };
   return {
-    supports: { downloads: true }, // no notifications (the app posts none) and no grouped Downloads page on iOS
+    supports: { downloads: true, "grouped-downloads": true }, // no notifications: the app posts none
     async cleanupDownloads() { for (const file of touched) { try { cmd("cancel", { file }); await sleep(1500); } catch { /* app gone */ } } },
     async download(c, expect) {
       const m = c.media;
@@ -94,7 +104,22 @@ export async function createDriver() {
           await launch("play", ["--playarr-parity-play", m.file]);
           for (let t = 0; t < 40; t += 1) { const p = state().playback; if (p?.state === "playing" && p.position > 0) { const p0 = p.position; await sleep(5000); const adv = (state().playback?.position ?? 0) - p0; cmd("delete", m); return adv >= 3 ? { state: "ok", detail: `advanced ${adv.toFixed(1)} s` } : { state: "failed", detail: "frames did not advance" }; } await sleep(1000); }
           cmd("delete", m); return { state: "failed", detail: "the downloaded title did not play" };
-        case "edit": return { state: "failed", detail: "iOS has no edit-download screen (keep-until and quality are fixed when a download starts)" };
+        case "edit": { // keep-until now, quality through a new ticket (the repository calls the edit sheet's Save makes)
+          r = await start(); if (r.state !== "ok") return r;
+          r = await until(m, (d) => d.state === "downloading" && d.bytes > 0, 120); if (r.state !== "ok") { cmd("delete", m); return r; }
+          cmd("keep", m, { days: 7 }); r = await until(m, (d) => /afterWatched/.test(d.keep), 30); if (r.state !== "ok") { cmd("delete", m); return { state: "failed", detail: `keep-until did not change: ${r.detail}` }; }
+          const other = (await optionProfiles(m.file)).find((p) => p !== null);
+          if (other) { cmd("quality", m, { profile: other }); r = await until(m, (d) => d.profile === other && /afterWatched/.test(d.keep), 120); if (r.state !== "ok") r.detail = `quality did not change: ${r.detail}`; }
+          cmd("delete", m); return r; }
+        case "series-pause": case "season-pause": { // one episode in its series and season, paused through the group call
+          r = await start(); if (r.state !== "ok") return r;
+          r = await until(m, (d) => d.kind === "series" && d.season === m.season && d.state === "downloading" && d.bytes > 0, 120); if (r.state !== "ok") { cmd("delete", m); return { state: "failed", detail: `episode not grouped or not downloading: ${r.detail}` }; }
+          cmd("group", m, { op: "pause", ...(c.action === "season-pause" ? { season: m.season } : {}) });
+          r = await until(m, (d) => d.state === "paused", 30); cmd("delete", m); return r; }
+        case "series-delete": case "season-delete": {
+          r = await start(); if (r.state === "ok") r = await until(m, done, within); if (r.state !== "ok") { cmd("delete", m); return r; }
+          cmd("group", m, { op: "delete", ...(c.action === "season-delete" ? { season: m.season } : {}) });
+          return until(m, (d) => !d, 30); }
         case "notification": return { state: "failed", detail: "iOS posts no download notification yet" };
         default: return { state: "failed", detail: `unknown action ${c.action}` };
       }

@@ -48,9 +48,15 @@ public final class URLSessionDownloadEngine: NSObject, URLSessionDownloadDelegat
     public var backgroundCompletionHandler: (() -> Void)?
 
     private lazy var session: URLSession = {
+        #if DEBUG && targetEnvironment(simulator)
+        // The hosted CI simulator fails every background-session task at once with NSURLErrorDomain -1 (seen in the parity
+        // downloads run), so debug simulator builds use a foreground session. Devices and release builds stay background.
+        let configuration = URLSessionConfiguration.default
+        #else
         let configuration = URLSessionConfiguration.background(withIdentifier: Self.backgroundSessionIdentifier)
         configuration.isDiscretionary = false
         configuration.sessionSendsLaunchEvents = true
+        #endif
         return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
     }()
 
@@ -173,6 +179,9 @@ public final class URLSessionDownloadEngine: NSObject, URLSessionDownloadDelegat
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let error else { return }
+        // A pause or cancel we asked for ends the task with NSURLErrorCancelled: `pause`/`cancel` already report it (paused or
+        // removed), so it must not turn the record into a failed download.
+        if (error as NSError).domain == NSURLErrorDomain, (error as NSError).code == NSURLErrorCancelled { return }
         guard let description = task.taskDescription, let mediaFileID = UUID(uuidString: description) else { return }
         unregister(mediaFileID)
         // `NSURLSessionDownloadTaskResumeData` on a cancelled/failed

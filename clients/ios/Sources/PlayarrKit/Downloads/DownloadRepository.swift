@@ -97,6 +97,10 @@ public final class DownloadRepository {
                 profile: profile
             )
             record.keepUntil = keepUntil
+            record.workKind = candidate.workKind
+            record.seriesTitle = candidate.seriesTitle
+            record.seasonNumber = candidate.seasonNumber
+            record.episodeNumber = candidate.episodeNumber
             insert(record)
             Task { await self.resolveDownload(record: record, profile: profile) }
         }
@@ -224,6 +228,32 @@ public final class DownloadRepository {
         cancel(mediaFileID: mediaFileID)
     }
 
+    // MARK: - Group controls (the Downloads page's series and season levels call these with the group's media files)
+
+    /// Pauses what is running in the group.
+    public func pause(mediaFileIDs: [UUID]) {
+        for id in mediaFileIDs where record(forMediaFileID: id).map(DownloadGroups.isRunning) == true { pause(mediaFileID: id) }
+    }
+
+    /// Resumes what is paused or failed in the group.
+    public func resume(mediaFileIDs: [UUID]) {
+        for id in mediaFileIDs {
+            if let record = record(forMediaFileID: id), record.state == .paused || record.state == .failed { resume(mediaFileID: id) }
+        }
+    }
+
+    public func cancel(mediaFileIDs: [UUID]) {
+        for id in mediaFileIDs { cancel(mediaFileID: id) }
+    }
+
+    public func updateKeepUntil(mediaFileIDs: [UUID], _ policy: KeepUntilPolicy) {
+        for id in mediaFileIDs { updateKeepUntil(mediaFileID: id, policy) }
+    }
+
+    public func changeQuality(mediaFileIDs: [UUID], profile: String?) {
+        for id in mediaFileIDs { changeQuality(mediaFileID: id, profile: profile) }
+    }
+
     /// Changes when a stored download may be removed (web's edit drawer: keep-until).
     public func updateKeepUntil(mediaFileID: UUID, _ policy: KeepUntilPolicy) {
         guard let record = record(forMediaFileID: mediaFileID) else { return }
@@ -238,7 +268,8 @@ public final class DownloadRepository {
         guard let record = record(forMediaFileID: mediaFileID) else { return }
         let candidate = DownloadCandidate(
             mediaFileID: record.mediaFileID, workID: record.workID, title: record.title,
-            subtitle: record.subtitle, posterURLString: record.posterURLString
+            subtitle: record.subtitle, posterURLString: record.posterURLString, workKind: record.workKind,
+            seriesTitle: record.seriesTitle, seasonNumber: record.seasonNumber, episodeNumber: record.episodeNumber
         )
         let keepUntil = record.keepUntil
         cancel(mediaFileID: mediaFileID)

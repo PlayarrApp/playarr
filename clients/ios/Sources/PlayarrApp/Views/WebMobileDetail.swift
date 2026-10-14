@@ -395,14 +395,16 @@ struct WMDetailPage: View {
                             mediaFileID: $0, workID: work.id,
                             title: episode.episode.title ?? "Episode \(episode.episode.episodeNumber)",
                             subtitle: season.season.title ?? "Season \(season.season.seasonNumber)",
-                            posterURLString: poster
+                            posterURLString: poster,
+                            workKind: work.kind.rawValue, seriesTitle: work.title,
+                            seasonNumber: Int(season.season.seasonNumber), episodeNumber: Int(episode.episode.episodeNumber)
                         )
                     }
                 }
             }
         }
         guard let mediaFileID = detail.mediaFileID else { return [] }
-        return [DownloadCandidate(mediaFileID: mediaFileID, workID: work.id, title: work.title, subtitle: nil, posterURLString: poster)]
+        return [DownloadCandidate(mediaFileID: mediaFileID, workID: work.id, title: work.title, subtitle: nil, posterURLString: poster, workKind: work.kind.rawValue)]
     }
 
     private func pill(
