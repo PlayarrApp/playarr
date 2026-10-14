@@ -1,1 +1,0 @@
-- HarmonyOS TV: the light-theme kicker uses the web crimson (#821e36) and the hero copy sits 3 vp lower, as web.
