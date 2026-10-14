@@ -1,0 +1,1 @@
+- Nura's series episode rail no longer crops the focused episode's ring and glow.

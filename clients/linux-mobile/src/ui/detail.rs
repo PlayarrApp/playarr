@@ -495,6 +495,7 @@ fn season_rail(
             })
             .css_classes(["pa-season-title"])
             .xalign(0.0)
+            .margin_start(FOCUS_ROOM)
             .build(),
     );
     col.append(
@@ -502,11 +503,18 @@ fn season_rail(
             .label(format!("{} episodes", season.episodes.len()))
             .css_classes(["pa-season-count"])
             .xalign(0.0)
+            .margin_start(FOCUS_ROOM)
             .margin_top(8)
-            .margin_bottom(17)
+            .margin_bottom(17 - FOCUS_ROOM)
             .build(),
     );
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
+    // The rail's scroller clips its children: reserve room for the focus ring and glow on every side, and take the
+    // same room back from the neighbours so the layout does not move.
+    row.set_margin_start(FOCUS_ROOM);
+    row.set_margin_top(FOCUS_ROOM);
+    row.set_margin_bottom(FOCUS_ROOM);
+    col.set_margin_start(-FOCUS_ROOM);
     for e in &season.episodes {
         let pic = gtk4::Picture::builder()
             .content_fit(gtk4::ContentFit::Cover)
@@ -611,10 +619,12 @@ fn season_rail(
         });
     }
     col.append(&rail);
-    col.set_margin_bottom(35);
+    col.set_margin_bottom(35 - FOCUS_ROOM);
     col
 }
 
+/// Room kept around a focus ring (3 px) and its glow (about 11 px more) inside clipping scrollers.
+const FOCUS_ROOM: i32 = 14;
 const EP_W: i32 = 187;
 const EP_H: i32 = 105;
 
