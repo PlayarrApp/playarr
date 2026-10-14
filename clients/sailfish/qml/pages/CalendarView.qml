@@ -199,16 +199,18 @@ Item {
                             Rectangle { x: 3.4 * Tokens.u; width: parent.width - 3.4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.dark ? "#363136" : "#e3dfdf"; opacity: card.pressed ? 0.6 : 1 }
                             Rectangle {
                                 id: poster
-                                x: 15.7 * Tokens.u
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 39.6 * Tokens.u; height: 59.4 * Tokens.u; radius: 4 * Tokens.u; clip: true
+                                x: Math.round(15.7 * Tokens.u)   // whole pixels, as web snaps image rects
+                                y: Math.round((parent.height - height) / 2)
+                                width: Math.round(39.6 * Tokens.u); height: Math.round(59.4 * Tokens.u); radius: 4 * Tokens.u; clip: true
                                 color: Tokens.surfaceSoft
                                 Image {
                                     anchors.fill: parent
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
                                     sourceSize.width: 120
-                                    source: modelData.work_id ? Api.artworkOf(modelData.work_id, "poster") : ""
+                                    // web asks the provider for w185 instead of the original (sizedPosterUrl)
+                                    source: modelData.poster_url ? String(modelData.poster_url).replace(/^(https:\/\/image\.tmdb\.org\/t\/p\/)original\//, "$1w185/")
+                                          : modelData.work_id ? Api.artworkOf(modelData.work_id, "poster") : ""
                                 }
                             }
                             Column {
