@@ -78,7 +78,7 @@ PlayarrPage {
                     width: 168.6 * Tokens.u
                     source: modelData.avatar
                     // The active ring sits outside the plate, as on web.
-                    Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: Tokens.brandPink; opacity: Tokens.dark ? 0.4 : 0.55 }
+                    Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: Tokens.dark ? Qt.rgba(0.81, 0.19, 0.34, 0.4) : Tokens.brandInk }   // alpha in the colour: item opacity drew a pink square behind the plate
                 }
                 Label { anchors { top: av.bottom; topMargin: 5.8 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink
