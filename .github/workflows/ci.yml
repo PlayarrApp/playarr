@@ -531,7 +531,8 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          # 8.0.426 (released 14 Oct) fails to create .NET's named NuGet-Migrations mutex on the runners (IOException before any test runs); 8.0.425 is fine
+          dotnet-version: '8.0.425'
 
       - uses: actions/cache@v4
         with:
