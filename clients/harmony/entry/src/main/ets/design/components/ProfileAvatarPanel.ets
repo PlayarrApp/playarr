@@ -4,6 +4,7 @@
  * Custom photo upload needs a picker and cropper and is left out; the panel says so, as web does where upload is missing.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import { tv } from '../Metrics';
 import { BRAND_PINK } from '../../core/Tokens';
@@ -62,7 +63,7 @@ export struct ProfileAvatarPanel {
         }, (preset: string): string => `${preset}:${preset === this.activePreset()}`)
       }
       .width(tv(GRID_WIDTH + GRID_GAP))
-      Text(this.note.length > 0 ? this.note : 'Custom photos are not available on this device; choose one of the built-in avatars.')
+      Text(this.note.length > 0 ? this.note : 'Custom photos are not available on this device; choose one of the built-in avatars.').fontFamily(nunito(400))
         .fontSize(tv(13.824))
         .fontColor(toResourceColor(activeColors().inkSoft))
     }

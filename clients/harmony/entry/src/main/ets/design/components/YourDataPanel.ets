@@ -4,6 +4,7 @@
  * device scans, then previews what the package would change and applies it.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import { tv } from '../Metrics';
 import { getServerDirectory } from '../../AppContainer';
@@ -189,7 +190,7 @@ export struct YourDataPanel {
 
   @Builder
   private heading(text: string): void {
-    Text(text)
+    Text(text).fontFamily(nunito(500))
       .fontSize(tv(26.4))
       .fontWeight(FontWeight.Medium)
       .letterSpacing(tv(-0.924))
@@ -198,7 +199,7 @@ export struct YourDataPanel {
 
   @Builder
   private copy(text: string, soft: boolean): void {
-    Text(text)
+    Text(text).fontFamily(nunito(400))
       .fontSize(tv(13.824))
       .fontColor(toResourceColor(soft ? activeColors().inkSoft : activeColors().inkMuted))
       .width(tv(this.panelWidth))
@@ -206,7 +207,7 @@ export struct YourDataPanel {
 
   @Builder
   private button(label: string, primary: boolean, enabled: boolean, onTap: () => void): void {
-    Text(label)
+    Text(label).fontFamily(nunito(700))
       .fontSize(tv(13.824))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(primary ? activeColors().bg : activeColors().ink))
@@ -254,7 +255,7 @@ export struct YourDataPanel {
           this.qr(this.exportLink)
         }
         if (this.exportError.length > 0) {
-          Text(this.exportError)
+          Text(this.exportError).fontFamily(nunito(400))
             .fontSize(tv(13.824))
             .fontColor(toResourceColor(activeColors().danger))
         }
@@ -284,7 +285,7 @@ export struct YourDataPanel {
         if (this.session !== null && this.session.status === 'uploaded') {
           this.copy('File received (' + formatBytes(this.session.size_bytes) + '). Review it below.', true)
         }
-        Text('If progress already exists')
+        Text('If progress already exists').fontFamily(nunito(700))
           .fontSize(tv(13.824))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
@@ -303,12 +304,12 @@ export struct YourDataPanel {
           this.runPreview();
         })
         if (this.importError.length > 0) {
-          Text(this.importError)
+          Text(this.importError).fontFamily(nunito(400))
             .fontSize(tv(13.824))
             .fontColor(toResourceColor(activeColors().danger))
         }
         if (this.preview !== null) {
-          Text('What this import would do')
+          Text('What this import would do').fontFamily(nunito(700))
             .fontSize(tv(16))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))
@@ -324,7 +325,7 @@ export struct YourDataPanel {
           })
         }
         if (this.result !== null) {
-          Text(resultLine(this.result))
+          Text(resultLine(this.result)).fontFamily(nunito(400))
             .fontSize(tv(13.824))
             .fontColor(toResourceColor(this.result.completed ? activeColors().inkSoft : activeColors().danger))
             .width(tv(this.panelWidth))

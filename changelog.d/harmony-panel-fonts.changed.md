@@ -1,0 +1,1 @@
+- HarmonyOS TV: the Settings panels (Customise Home, Profile avatar, Invite, Your data) use the bundled Nunito Sans like the rest of the app.
