@@ -618,6 +618,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: the bottom nav bar, library captions and letter rail, and the series detail scroll position follow the web phone layout.
 - Nura calendar rows (agenda and week) follow the web phone: surface row, hairline border, availability bar, TODAY pill.
 - Nura title page: dark hero art dimmer and dissolving into the page as the web's.
 - Android: the tablet's library grid top padding and row gap follow web's viewport-height tokens, so its rows line up with the web reference.
