@@ -172,7 +172,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.wrapContentHeight
 import io.playarr.shared.designsystem.component.PlayarrButtonSize
@@ -405,6 +407,16 @@ internal fun tvPosterCardWidth(size: LibraryArtworkSize, cover: Boolean): Dp {
     val cols = (if (cover) 5 else 3) + step
     val gap = if (cover) 19.2f else 25.92f
     return ((1033.44f - (cols - 1) * gap) / cols).dp
+}
+
+/** [tvPosterCardWidth] for the screen in force: a tablet takes web's rail for its own viewport (cover drops to 4 columns at 1100 px or less). */
+@Composable
+internal fun tvPosterCardWidthHere(size: LibraryArtworkSize, cover: Boolean): Dp {
+    val scale = LocalStageScale.current
+    if (scale == 1f) return tvPosterCardWidth(size, cover)
+    val step = when (size) { LibraryArtworkSize.Small -> 1; LibraryArtworkSize.Medium -> 0; LibraryArtworkSize.Large -> -1 }
+    val narrow = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * scale <= 1100f
+    return webLibraryRail().cardWidth((if (cover) (if (narrow) 4 else 5) else 3) + step, cover)
 }
 
 /** Web kicker / eyebrow accent (`#cf3157`), distinct from the neutral palette accent. */
@@ -2129,23 +2141,84 @@ private fun TelevisionNavigation(
     currentEntryFocus: FocusRequester?,
     profile: TvProfileTile?,
 ) {
+    val scale = LocalStageScale.current
+    if (scale != 1f) {
+        // The rail is css px in web (a 64 px tile, 20 px icon), not a fraction of the viewport, so a tablet draws it unscaled.
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val heightCss = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * scale
+        val widthCss = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * scale
+        CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides Density(density.density / scale, density.fontScale)) {
+            TelevisionNavigationContent(destinations, currentRoute, onNavigate, modifier, currentEntryFocus, profile, TvNavMetrics.web(widthCss, heightCss))
+        }
+        return
+    }
+    TelevisionNavigationContent(destinations, currentRoute, onNavigate, modifier, currentEntryFocus, profile, null)
+}
+
+/** Web `.app-nav` measurements for a viewport (css px), where they differ from the 1080 rail. */
+private class TvNavMetrics(
+    val left: Dp, val top: Dp, val bottom: Dp, val groupGap: Dp, val groupPadding: PaddingValues,
+    val linkGap: Dp, val linkHeight: Dp, val labelSize: TextUnit, val iconTop: Dp, val labelGap: Dp,
+) {
+    companion object {
+        fun web(widthCss: Float, heightCss: Float): TvNavMetrics {
+            val vw = widthCss / 100f
+            val vu = heightCss / 100f
+            val linkHeight = (5.926f * vu).coerceIn(44f, 64f)
+            val iconGap = (0.44f * vu).coerceIn(1.6f, 4.8f)
+            val labelSize = (0.46f * vw).coerceIn(6.72f, 8.96f)
+            val padding = (0.5f * vu).coerceIn(0.8f, 5.6f)
+            // The icon, its gap and the one-line label are centred in the link; padding only matters below 44 px.
+            val content = 20f + iconGap + labelSize
+            val iconTop = maxOf((linkHeight - content) / 2f, padding)
+            // Short viewports (max-height 800 px) tighten the gap and the group padding.
+            val short = heightCss <= 800f
+            return TvNavMetrics(
+                left = (2.2f * vw).coerceIn(18f, 44f).dp,
+                top = ((5.2f * vu).coerceIn(34f, 66f) + 44f + (1.2f * vu).coerceIn(6.4f, 14.4f)).dp,
+                bottom = (3.2f * vu).coerceIn(22f, 46f).dp,
+                groupGap = (1.26f * vu).coerceIn(4f, 13.6f).dp,
+                groupPadding = PaddingValues(horizontal = 6.76.dp, vertical = ((if (short) 4.48f else 6.72f) + 1f).dp),
+                linkGap = (if (short) 4f else (0.889f * vu).coerceIn(2.4f, 9.6f)).dp,
+                linkHeight = linkHeight.dp,
+                labelSize = labelSize.sp,
+                iconTop = iconTop.dp,
+                labelGap = iconGap.dp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TelevisionNavigationContent(
+    destinations: List<ExperienceDestination>,
+    currentRoute: String,
+    onNavigate: (String) -> Unit,
+    modifier: Modifier,
+    currentEntryFocus: FocusRequester?,
+    profile: TvProfileTile?,
+    web: TvNavMetrics?,
+) {
     val groups = televisionDestinationGroups(destinations)
     // Web `.app-nav`: the groups start at y 119.1 under the logo; the profile group and the version sit at its foot.
     Column(
-        modifier = modifier.fillMaxHeight().padding(start = 42.2.dp, top = 119.1.dp, bottom = 34.5.dp),
+        modifier = modifier.fillMaxHeight().padding(
+            start = web?.left ?: 42.2.dp, top = web?.top ?: 119.1.dp, bottom = web?.bottom ?: 34.5.dp,
+        ),
     ) {
         groups.forEachIndexed { groupIndex, group ->
             // Whole-pixel gaps that reproduce the web's 13.6 px between groups and 9.6 px between links.
-            if (groupIndex > 0) Spacer(Modifier.height(if (groupIndex == 1) 13.dp else 14.dp))
-            TvNavGroup(PaddingValues(start = 6.75.dp, end = 6.75.dp, top = 8.dp, bottom = 7.dp)) {
+            if (groupIndex > 0) Spacer(Modifier.height(web?.groupGap ?: if (groupIndex == 1) 13.dp else 14.dp))
+            TvNavGroup(web?.groupPadding ?: PaddingValues(start = 6.75.dp, end = 6.75.dp, top = 8.dp, bottom = 7.dp)) {
                 group.forEachIndexed { destinationIndex, destination ->
-                    if (destinationIndex > 0) Spacer(Modifier.height((if (group.size == 3) listOf(9, 10) else listOf(10, 9, 10))[(destinationIndex - 1) % (if (group.size == 3) 2 else 3)].dp))
+                    if (destinationIndex > 0) Spacer(Modifier.height(web?.linkGap ?: (if (group.size == 3) listOf(9, 10) else listOf(10, 9, 10))[(destinationIndex - 1) % (if (group.size == 3) 2 else 3)].dp))
                     val selected = currentRoute == destination.route
                     TvNavTile(
                         selected = selected,
                         label = playarrString(destination.label),
                         onClick = { onNavigate(destination.route) },
                         entryFocus = if (selected) currentEntryFocus else null,
+                        web = web,
                     ) { Icon(destination.icon, contentDescription = null, modifier = Modifier.size(20.dp)) }
                 }
             }
@@ -2154,8 +2227,9 @@ private fun TelevisionNavigation(
             Spacer(Modifier.weight(1f))
             // Web `.app-nav-group-profile`: the last tile of the rail in its own group, the avatar in the icon slot
             // and the first name as its label (`shortProfileName`), the version 5.6 px under the group.
-            TvNavGroup(PaddingValues(horizontal = 6.75.dp, vertical = 7.7.dp)) {
+            TvNavGroup(web?.groupPadding ?: PaddingValues(horizontal = 6.75.dp, vertical = 7.7.dp)) {
                 TvNavTile(
+                    web = web,
                     selected = currentRoute == "profiles",
                     label = tvProfileTileLabel(profile.name),
                     onClick = profile.onClick,
@@ -2214,6 +2288,7 @@ private fun TvNavTile(
     onClick: () -> Unit,
     entryFocus: FocusRequester?,
     description: String? = null,
+    web: TvNavMetrics? = null,
     icon: @Composable () -> Unit,
 ) {
     val contentEntry = LocalTvContentEntry.current
@@ -2231,7 +2306,7 @@ private fun TvNavTile(
         contentColor = if (selected || focused) WebInk else PlayarrWebTheme.palette.webInkMuted,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
-            .size(64.dp)
+            .size(width = 64.dp, height = web?.linkHeight ?: 64.dp)
             .scale(navScale)
             .webFocusRing(focused, radius = 16.dp, offset = 2.dp)
             .then(if (entryFocus != null) Modifier.focusRequester(entryFocus) else Modifier)
@@ -2253,12 +2328,12 @@ private fun TvNavTile(
     ) {
         // Web `.app-nav-link`: the 20 px icon 15.2 px down, the 8.832 px label 4.8 px under it.
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
-            Spacer(Modifier.height(15.2.dp))
+            Spacer(Modifier.height(web?.iconTop ?: 15.2.dp))
             Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) { icon() }
             Text(
                 label,
-                fontSize = 8.832.sp,
-                lineHeight = 8.832.sp,
+                fontSize = web?.labelSize ?: 8.832.sp,
+                lineHeight = web?.labelSize ?: 8.832.sp,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight(680),
                 letterSpacing = 0.309.sp,
                 maxLines = 1,
@@ -2271,7 +2346,7 @@ private fun TvNavTile(
                         ),
                     ),
                 ),
-                modifier = Modifier.padding(top = 4.8.dp, start = 4.dp, end = 4.dp),
+                modifier = Modifier.padding(top = web?.labelGap ?: 4.8.dp, start = 4.dp, end = 4.dp),
             )
         }
     }
@@ -3019,7 +3094,7 @@ private fun ExperienceStage(
         }
         }
         if (isTelevision) {
-            Box(Modifier.fillMaxWidth(0.38f).fillMaxHeight().padding(start = playarrPageMetrics(true).start, top = 259.dp, end = 28.dp), contentAlignment = Alignment.TopStart) {
+            Box(Modifier.fillMaxWidth(0.38f).fillMaxHeight().padding(start = playarrPageMetrics(true).start, top = tvHeroTop(), end = 28.dp), contentAlignment = Alignment.TopStart) {
                 feature()
             }
             Box(
@@ -3347,8 +3422,8 @@ internal fun ExperienceMediaRail(
                     // Web: Home cards are THE poster card, the Library grid card (owner request 2026-10-10): `--card-w`
                     // 327.2 dp and `--card-w-cover` 191.3 dp at 1920 x 1080.
                     width = when (homeView) {
-                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidth(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else phonePosterCardWidth()
-                        PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidth(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else 118.dp
+                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else phonePosterCardWidth()
+                        PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else 118.dp
                     },
                     homeView = homeView,
                     webPhone = !isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail,
@@ -3553,7 +3628,10 @@ internal fun ExperienceLandscapeCard(
         }
         if (webTvLibrary) {
             // Web `.tv-title-card-copy strong`: 11.904 px / 610, 11.5 px under the art; no subtitle line.
-            Text(displayTitle, color = WebInk, fontSize = 11.904.sp, fontWeight = FontWeight(610), lineHeight = 17.9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 11.5.dp, start = 1.9.dp))
+            // A tablet takes the viewport's own clamp: title clamp(8.8, 0.62 vw, 12.48) and the fixed 0.72 rem (11.52 px) gap, in stage units.
+            val tabletCard = LocalStageScale.current != 1f
+            val titleSize = if (tabletCard) webVw(8.8f, 0.62f, 12.48f).value.sp else 11.904.sp
+            Text(displayTitle, color = WebInk, fontSize = titleSize, fontWeight = FontWeight(610), lineHeight = if (tabletCard) titleSize * 1.504f else 17.9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletCard) (11.52f / LocalStageScale.current).dp else 11.5.dp, start = 1.9.dp))
         } else if (webTvStyle) {
             // Web `.tv-home-card` copy: strong 11.328 px / 630, small 8.64 px, 9.9 px under the art.
             Text(displayTitle, color = WebInk, fontSize = 11.328.sp, fontWeight = FontWeight(630), lineHeight = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 9.9.dp))
@@ -3690,14 +3768,15 @@ internal fun LibraryResults(
     // Web `--library-rail-top` clamp(128, 15 vu, 174) less the 140 dp the header already takes, and the row gap clamp(22, 2.5 vu, 36).
     val tvGridTop = webVu(128f, 15f, 174f) - 140.dp
     val tvRowGap = webVu(22f, 2.5f, 36f)
-    val screenPadding = if (isTelevision) PaddingValues(start = 53.7.dp, end = 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
+    val tvRail = if (LocalStageScale.current != 1f) webLibraryRail() else null
+    val screenPadding = if (isTelevision) PaddingValues(start = tvRail?.start ?: 53.7.dp, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
     when (viewMode) {
         LibraryViewMode.Screen -> LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(2),
             state = gridState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = screenPadding,
-            horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.92.dp else 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
             verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 24.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
@@ -4163,7 +4242,7 @@ private fun ExperienceLibraryScreen(
                 }
         }
                 if (isTelevision) {
-                    Box(Modifier.fillMaxWidth(0.35f).fillMaxHeight().padding(start = playarrPageMetrics(true).start, top = 259.dp, end = 26.dp), contentAlignment = Alignment.TopStart) {
+                    Box(Modifier.fillMaxWidth(0.35f).fillMaxHeight().padding(start = playarrPageMetrics(true).start, top = tvHeroTop(), end = 26.dp), contentAlignment = Alignment.TopStart) {
                         val runtimes by viewModel.runtimes.collectAsState()
                         LaunchedEffect(selected.id) {
                             if (selected.kind == WorkKind.Movie) { kotlinx.coroutines.delay(250); viewModel.loadRuntime(selected.id) }
@@ -5187,7 +5266,7 @@ private fun MediaContextDialog(
 @Composable
 private fun TvLibrarySkeleton(loadingLabel: String) {
     Box(Modifier.fillMaxSize().background(WebSurface).semantics { contentDescription = loadingLabel }) {
-        Column(Modifier.padding(start = playarrPageMetrics(true).start, top = 259.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.padding(start = playarrPageMetrics(true).start, top = tvHeroTop()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             PlayarrSkeleton(Modifier.size(110.dp, 14.dp))
             PlayarrSkeleton(Modifier.size(340.dp, 54.dp))
             PlayarrSkeleton(Modifier.size(240.dp, 54.dp))
@@ -5691,7 +5770,7 @@ private fun ExperienceDetailScreen(
                     Box(Modifier.fillMaxSize().heroScrim(isTelevision))
         }
                     if (isTelevision) {
-                        Box(Modifier.fillMaxWidth(0.38f).fillMaxHeight().padding(start = playarrPageMetrics(true).start, top = 259.dp, end = 24.dp), contentAlignment = Alignment.TopStart) { FeatureCopy(detail.work, true) }
+                        Box(Modifier.fillMaxWidth(0.38f).fillMaxHeight().padding(start = playarrPageMetrics(true).start, top = tvHeroTop(), end = 24.dp), contentAlignment = Alignment.TopStart) { FeatureCopy(detail.work, true) }
                         Surface(
                             modifier = Modifier.fillMaxWidth(0.55f).fillMaxHeight(0.62f).align(Alignment.CenterEnd).padding(end = 52.dp),
                             color = WebSurfaceStrong.copy(alpha = 0.88f),
@@ -5969,7 +6048,7 @@ private fun ExperienceVideoDetailContent(
                 Modifier
                     .width(455.dp + playarrPageMetrics(true).start + 28.dp)
                     .fillMaxHeight()
-                    .padding(start = playarrPageMetrics(true).start, top = 259.dp, end = 28.dp, bottom = 64.dp),
+                    .padding(start = playarrPageMetrics(true).start, top = tvHeroTop(), end = 28.dp, bottom = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 VideoDetailCopy(

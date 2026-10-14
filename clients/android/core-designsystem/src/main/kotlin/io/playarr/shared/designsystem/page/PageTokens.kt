@@ -145,11 +145,39 @@ object PlayarrPageTokens {
 
     fun of(formFactor: PlayarrFormFactor): PlayarrPageMetrics = if (formFactor == PlayarrFormFactor.Tv) Tv else Phone
 
+    /**
+     * The television metrics for a web viewport of [widthCss] x [heightCss] css px drawn at [scale] dp per css px
+     * (a tablet draws web's 1920 px canvas scaled to its width). Web clamps these against the viewport, so a short
+     * or narrow screen does not get the 1080 value scaled. At 1920 x 1080 and scale 1 this equals [Tv].
+     */
+    fun tvFor(widthCss: Float, heightCss: Float, scale: Float): PlayarrPageMetrics {
+        val vw = widthCss / 100f
+        val vu = heightCss / 100f
+        fun dp(css: Float) = (css / scale).dp
+        val navEdge = (2.2f * vw).coerceIn(18f, 44f)
+        // `--tv-nav-clearance`: the rail's edge, its 64 px tile, both paddings, the 1 px borders and a 12 px gap.
+        val navClearance = navEdge + 64f + 12.8f + 2f + 12f
+        return Tv.copy(
+            headerTop = dp((5.2f * vu).coerceIn(34f, 66f)),
+            start = dp(maxOf((8f * vw).coerceIn(102f, 160f), navClearance)),
+            headerEnd = dp((4f * vw).coerceIn(24f, 96f)),
+            shellColumnTop = dp((14f * vu).coerceIn(116f, 164f)),
+            shellColumnEdge = dp((0.65f * vw).coerceIn(5f, 14f)),
+            shellColumnGap = dp((1.2f * vu).coerceIn(10f, 16f)),
+        )
+    }
+
     /** The metrics for the provided [LocalPlayarrFormFactor]. */
     @Composable
     @ReadOnlyComposable
-    fun current(): PlayarrPageMetrics = of(LocalPlayarrFormFactor.current)
+    fun current(): PlayarrPageMetrics =
+        if (LocalPlayarrFormFactor.current == PlayarrFormFactor.Tv) LocalPlayarrTvMetrics.current else Phone
 }
 
+/** The television metrics in force: [PlayarrPageTokens.Tv] on a television, [PlayarrPageTokens.tvFor] on a tablet. */
+val LocalPlayarrTvMetrics = staticCompositionLocalOf { PlayarrPageTokens.Tv }
+
 /** The page measurements for the form factor: screens read gutters and insets here and carry no literal of their own. */
-fun playarrPageMetrics(isTelevision: Boolean): PlayarrPageMetrics = if (isTelevision) PlayarrPageTokens.Tv else PlayarrPageTokens.Phone
+@Composable
+@ReadOnlyComposable
+fun playarrPageMetrics(isTelevision: Boolean): PlayarrPageMetrics = if (isTelevision) LocalPlayarrTvMetrics.current else PlayarrPageTokens.Phone

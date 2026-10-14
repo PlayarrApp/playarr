@@ -495,6 +495,9 @@ fun PlayarrApp(
             androidx.compose.ui.platform.LocalDensity provides stageDensity,
             androidx.compose.ui.platform.LocalConfiguration provides stageConfiguration,
             LocalStageScale provides stageScale,
+            io.playarr.shared.designsystem.page.LocalPlayarrTvMetrics provides io.playarr.shared.designsystem.page.PlayarrPageTokens.tvFor(
+                configuration.screenWidthDp.toFloat(), configuration.screenHeightDp.toFloat(), stageScale,
+            ),
             content = content,
         )
     }
