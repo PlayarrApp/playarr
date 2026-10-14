@@ -1,0 +1,1 @@
+- Match the Nura search page's empty state to the web: placeholder, search-minus ring and "Start typing to search."

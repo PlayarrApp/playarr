@@ -11,6 +11,7 @@ pub fn markup(name: &str) -> &'static str {
     match name {
         "home" => r#"<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-6h4v6"/>"#,
         "search" => r#"<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/>"#,
+        "search-minus" => r#"<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/><path d="M8 10.5h5"/>"#,
         "movies" => {
             r#"<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 5 2-3M13 5l2-3M19 5l2-3"/><path d="m10 10 5 2.5-5 2.5z" fill="currentColor" stroke="none"/>"#
         }
@@ -147,6 +148,7 @@ mod tests {
         for n in [
             "home",
             "search",
+            "search-minus",
             "movies",
             "series",
             "music",

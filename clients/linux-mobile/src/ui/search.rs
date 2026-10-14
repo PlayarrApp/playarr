@@ -15,24 +15,48 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     page.append(&head.widget);
     // A plain entry: the web's field has no clear icon, and GtkSearchEntry's cannot be hidden by CSS.
     let entry = gtk4::Entry::builder()
-        .placeholder_text("Search")
+        .placeholder_text("Search your libraries and playlists")
         .primary_icon_name("edit-find-symbolic")
         .css_classes(["pa-search"])
         .margin_start(16)
         .margin_end(16)
         .margin_top(7)
         .build();
+    // The web's empty state: a ring with a search-minus icon, then the prompt beside it.
     let status = gtk4::Label::builder()
-        .label("Search movies, series and music.")
-        .css_classes(["pa-muted"])
-        .margin_start(16)
+        .label("Start typing to search.")
+        .css_classes(["pa-empty-text"])
         .xalign(0.0)
+        .wrap(true)
+        .hexpand(true)
         .build();
+    let ring = gtk4::Box::builder()
+        .css_classes(["pa-empty-ring"])
+        .valign(gtk4::Align::Center)
+        .build();
+    ring.set_size_request(86, 86);
+    let icon = crate::icons::image("search-minus", 20, crate::icons::Tone::Brand);
+    icon.set_hexpand(true);
+    icon.set_vexpand(true);
+    ring.append(&icon);
+    let empty = gtk4::Box::builder()
+        .spacing(19)
+        .margin_start(16)
+        .margin_end(16)
+        .margin_top(17)
+        .build();
+    empty.append(&ring);
+    empty.append(&status);
+    // Hide the ring with the prompt when results are shown.
+    status.connect_notify_local(Some("visible"), {
+        let empty = empty.clone();
+        move |s, _| empty.set_visible(s.is_visible())
+    });
     let flow = Rc::new(library::CardGrid::new());
     flow.widget.set_margin_top(17);
     flow.widget.set_spacing(14); // the web's search grid has a tighter row gap than the library's
     page.append(&entry);
-    page.append(&status);
+    page.append(&empty);
     page.append(&flow.widget);
     // Like the web, the field is focused when the page opens.
     {
@@ -174,7 +198,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         flow.clear();
         head.set_subtitle("");
         if q.chars().count() < 2 {
-            status.set_label("Search movies, series and music.");
+            status.set_label("Start typing to search.");
             status.set_visible(true);
             return;
         }

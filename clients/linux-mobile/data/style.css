@@ -237,3 +237,7 @@ dropdown.pa-dropdown.pa-filter > button { min-height: 54px; border-radius: 12px;
 /* Detail hero as the web's phone key art: dark .72 / light .42 opacity, edges and bottom faded into the page */
 
 .pa-display { line-height: 0.94; }
+
+/* Search empty state */
+.pa-empty-ring { border: 1px solid @pa_line; border-radius: 999px; }
+.pa-empty-text { font-size: 11px; font-weight: 680; color: @pa_ink; }
