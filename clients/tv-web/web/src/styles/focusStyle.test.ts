@@ -69,6 +69,7 @@ const MEDIA_CARD =
 /**
  * Focus rules that are not controls and stay as they are. Each entry says why. The list may only shrink.
  *  - nav rail and logo: owned by the navigation work (it keeps its label expansion);
+ *  - the detail-page action buttons: focus shares the hover look (owner 2026-10-14) and keeps the ring;
  *  - the scrubber and the mini player draw their own ring-and-thumb marker inside the player;
  */
 const NON_CONTROL_FOCUS = [
@@ -77,6 +78,7 @@ const NON_CONTROL_FOCUS = [
   /\.player-seek-track/,
   /\.mini-player-hit-target/,
   /\.tv-filter-launcher/,
+  /\.tv-detail-(play|playback-settings|download)/,
   /\.tv-alphabet button\.is-active/,
   /\.app-user-identity-cluster/,
   /\.tv-download-row-copy/,

@@ -45,9 +45,8 @@ describe("title detail focus", () => {
     expect(css).toMatch(/\.tv-home-card\[data-remote-active\] \.tv-home-card-art \{\s*transform: scale\(1\.025\) !important;\s*box-shadow: 0 26px 52px/);
   });
 
-  it("paints the ring on controls from the one global rule: their focus rules carry no fill and no scale", () => {
-    expect(css).toMatch(/\.tv-detail-play:hover \{/);
-    expect(css).not.toMatch(/\.tv-detail-play:focus-visible/);
+  it("paints the ring on controls from the one global rule; the detail actions share their hover look on focus (owner 2026-10-14)", () => {
+    expect(css).toMatch(/\.tv-detail-play:hover,\s*\.tv-detail-play:focus-visible \{/);
     expect(css).not.toMatch(/\.tv-track-action:focus-visible/);
   });
 

@@ -79,6 +79,7 @@
   --z-health: 70;
   --z-drawer: 80;
   --z-nav: 90;
+  --z-above-nav: 91;
   --z-identity: 92;
   --z-mini-player: 94;
   --z-playlist: 110;
@@ -6305,6 +6306,11 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   animation: tv-copy-in 520ms 80ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
+/* The nav rail (z 90) would crop the focus ring of the first action on the left: lift the column above it while one of its controls has keyboard focus. */
+.tv-detail-copy:has(:focus-visible) {
+  z-index: var(--z-above-nav);
+}
+
 .tv-detail-copy h2:not(.tv-detail-title) {
   max-width: 24ch;
   margin-top: clamp(14px, calc(1.8 * var(--viewport-unit)), 24px);
@@ -6355,7 +6361,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   font-size: 0.85em;
 }
 
-.tv-detail-play:hover {
+.tv-detail-play:hover,
+.tv-detail-play:focus-visible {
   background: var(--brand-strong);
   color: #fff;
   transform: scale(1.06);
@@ -6404,6 +6411,7 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
 }
 
 .tv-detail-playback-settings:hover,
+.tv-detail-playback-settings:focus-visible,
 .tv-detail-playback-settings[aria-expanded="true"] {
   background: color-mix(in srgb, var(--ink) 88%, transparent);
   color: var(--bg);
@@ -9730,6 +9738,7 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
 }
 
 .tv-detail-download:hover,
+.tv-detail-download:focus-visible,
 .tv-detail-download[aria-expanded="true"] {
   background: color-mix(in srgb, var(--ink) 88%, transparent);
   color: var(--bg);
