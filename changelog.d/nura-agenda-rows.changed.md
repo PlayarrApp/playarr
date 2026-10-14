@@ -1,1 +1,0 @@
-- Nura calendar rows (agenda and week) follow the web phone: surface row, hairline border, availability bar, TODAY pill.

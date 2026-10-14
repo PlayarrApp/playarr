@@ -617,6 +617,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Nura calendar rows (agenda and week) follow the web phone: surface row, hairline border, availability bar, TODAY pill.
+- Nura title page: dark hero art dimmer and dissolving into the page as the web's.
 - Android: the tablet's library grid top padding and row gap follow web's viewport-height tokens, so its rows line up with the web reference.
 - VIDAA: the stage transform now reports element rects and the window size in stage pixels (VIDAA only), so rail centring and left-to-nav focus match web on the real TV.
 - HarmonyOS TV: the page backdrop follows the web (art confined to the left half under the stage wash), Detail draws it the same way as Home, and the Home wash has its web stops.
