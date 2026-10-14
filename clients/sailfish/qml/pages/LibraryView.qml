@@ -77,7 +77,7 @@ Item {
     Label {
         id: count
         anchors { top: heading.bottom; topMargin: -4 * Tokens.u; left: parent.left; leftMargin: 70 * Tokens.u }
-        visible: root.total > 0
+        visible: false   // web phone hides the header subtitle (#1299); the label keeps the grid's anchor
         text: (root.kind === "artist" ? qsTr("%1 artists") : qsTr("%1 titles")).arg(Number(root.total).toLocaleString(Qt.locale(), "f", 0)).toUpperCase()
         color: Tokens.brandInk
         font.family: Tokens.family820
