@@ -367,7 +367,7 @@ namespace Playarr.Xbox.Views
                     list.Items.Add(CastCard(credit));
                 }
 
-                CardFocus.Attach(list, halo: false);
+                CardFocus.Attach(list);
                 var section = new StackPanel { Margin = new Thickness(0, _viewModel.IsSeries ? 44 : 60, 0, 0) };
                 section.Children.Add(new TextBlock { Text = "Cast", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
                 section.Children.Add(new TextBlock
@@ -506,7 +506,7 @@ namespace Playarr.Xbox.Views
                     App.Navigation.Navigate(typeof(PlayerPage), new PlayerNavigationParameter(file, resumePositionMs: chapter.StartMs, title: _viewModel.Title, workId: _viewModel.WorkId));
                 }
             };
-            CardFocus.Attach(list, halo: false);
+            CardFocus.Attach(list);
             var section = new StackPanel { Margin = new Thickness(0, 195, 0, 0) };
             section.Children.Add(new TextBlock { Text = "Chapters", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
             section.Children.Add(new TextBlock
@@ -539,6 +539,7 @@ namespace Playarr.Xbox.Views
                 Text = (chapter.Index + 1).ToString("00", System.Globalization.CultureInfo.InvariantCulture),
                 FontSize = 22,
                 FontWeight = FontWeights.SemiBold,
+                Foreground = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White), // over the still, in both themes, as the web
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(0, 0, 12, 8),
@@ -805,7 +806,7 @@ namespace Playarr.Xbox.Views
                         PlayButton_Click(this, new RoutedEventArgs());
                     }
                 };
-                CardFocus.Attach(list, halo: false);
+                CardFocus.Attach(list);
                 list.GotFocus += (s, e) =>
                 {
                     if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: EpisodeDetail episode } })
@@ -937,6 +938,7 @@ namespace Playarr.Xbox.Views
                 Text = episode.EpisodeNumber.ToString("00", System.Globalization.CultureInfo.InvariantCulture),
                 FontSize = 22,
                 FontWeight = FontWeights.SemiBold,
+                Foreground = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White), // over the still, in both themes, as the web
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(0, 0, 12, 8),

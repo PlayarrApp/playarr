@@ -18,7 +18,7 @@ namespace Playarr.Xbox.Views
         private const double Lift = -7;
         private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(260);
 
-        /// <param name="halo">False for rails inside a clipped scroller that has no room for the soft glow and the art scale (title page rails).</param>
+        /// <param name="halo">False for a rail whose container has no room for the soft glow and the art scale (reserve it with <see cref="ReserveFocusRoom"/> instead).</param>
         public static void Attach(ListViewBase list, bool halo = true)
         {
             // No selection, hover, press or focus fill: the web card shows only the lift, the scale and the glow ring.
