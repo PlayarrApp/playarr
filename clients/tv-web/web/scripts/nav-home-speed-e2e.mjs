@@ -16,8 +16,8 @@ const { check, open, finish } = await boot({ detailDelayMs: 900, movies: 60, ser
 /** Frames, not milliseconds, for "within a frame": a frame count does not stretch on a loaded CI runner. */
 const START_MAX_FRAMES = 4;
 const TEXT_MAX_FRAMES = 2;
-/** Key to settled, wall clock. The glide is 180 ms; the rest is slack for a loaded runner. */
-const SETTLE_MAX_MS = 330;
+/** Key to settled, in frames. The glide is 180 ms (about 11 frames at 60 Hz); the rest is slack. */
+const SETTLE_MAX_FRAMES = 20;
 
 const INSTALL = () => {
   const rails = document.querySelector(".tv-home-rails");
@@ -28,9 +28,7 @@ const INSTALL = () => {
   };
   requestAnimationFrame(tick);
   let lastTop = rails.scrollTop;
-  s.times = [];
   const sample = (t) => {
-    s.times.push(t);
     if (Math.abs(rails.scrollTop - lastTop) > 0.01) {
       s.scroll.push({ t, top: rails.scrollTop, frame: s.frame });
       lastTop = rails.scrollTop;
@@ -85,11 +83,17 @@ for (const size of [
   { width: 1280, height: 720 },
 ]) {
   const tag = `${size.width}x${size.height}`;
-  // Rail changes, one at a time, with the glide allowed to finish between presses.
+  // Rail changes, one at a time, with the glide allowed to finish between presses (waited on state: scrollTop held for 10 frames).
+  // Start and settle are counted in rendered frames, not milliseconds: a stalled host page renders fewer frames, so it cannot fail them.
   const rail = await session(size, async (page) => {
     for (const key of ["ArrowDown", "ArrowDown", "ArrowUp", "ArrowUp"]) {
       await page.keyboard.press(key);
-      await page.waitForTimeout(900);
+      await page.evaluate(() => new Promise((resolve) => {
+        const rails = document.querySelector(".tv-home-rails");
+        let last = -1, still = 0;
+        const step = () => { still = rails.scrollTop === last ? still + 1 : 0; last = rails.scrollTop; still >= 10 ? resolve(true) : requestAnimationFrame(step); };
+        requestAnimationFrame(step);
+      }));
     }
   });
   const bursts = [];
@@ -97,19 +101,13 @@ for (const size of [
     const next = rail.keys.find((x) => x.t > k.t)?.t ?? Infinity;
     const samples = rail.scroll.filter((s) => s.t >= k.t && s.t < Math.min(next, k.t + 450));
     if (!samples.length) continue;
-    // A busy shared host stalls the page for hundreds of ms; a press whose window had a frame gap over 60 ms
-    // measures the host, not the app, and is skipped (at least one press must be clean).
-    const window = rail.times.filter((t) => t >= k.t && t <= k.t + 400);
-    if (window.some((t, i) => i > 0 && t - window[i - 1] > 60)) continue;
-    const startFrames = samples[0].frame - k.frame;
-    const settledAt = samples[samples.length - 1].t - k.t;
-    bursts.push({ startFrames, settledAt });
+    bursts.push({ startFrames: samples[0].frame - k.frame, settledFrames: samples[samples.length - 1].frame - k.frame });
   }
-  check(`${tag}: rail changes measured on a healthy page (${bursts.length} of ${rail.keys.length})`, bursts.length >= 1, JSON.stringify(bursts));
+  check(`${tag}: rail changes measured (${bursts.length} of ${rail.keys.length})`, bursts.length >= 1, JSON.stringify(bursts));
   const worstStart = Math.max(...bursts.map((b) => b.startFrames));
-  const worstSettle = Math.max(...bursts.map((b) => b.settledAt));
+  const worstSettle = Math.max(...bursts.map((b) => b.settledFrames));
   check(`${tag}: rail glide starts within ${START_MAX_FRAMES} frames of the key (worst ${worstStart})`, worstStart <= START_MAX_FRAMES, String(worstStart));
-  check(`${tag}: rail settles within ${SETTLE_MAX_MS} ms of the key (worst ${Math.round(worstSettle)} ms)`, worstSettle <= SETTLE_MAX_MS, String(worstSettle));
+  check(`${tag}: rail settles within ${SETTLE_MAX_FRAMES} frames of the key (worst ${worstSettle})`, worstSettle <= SETTLE_MAX_FRAMES, String(worstSettle));
 
   // Rapid rail presses retarget the one glide: it still converges on the newest rail within one glide of the last key.
   const rapid = await session(size, async (page) => {
@@ -121,9 +119,7 @@ for (const size of [
   });
   const last = rapid.keys[rapid.keys.length - 1];
   const tail = rapid.scroll[rapid.scroll.length - 1];
-  const lastWindow = rapid.times.filter((t) => t >= last.t && t <= last.t + 450);
-  const janky = lastWindow.some((t, i) => i > 0 && t - lastWindow[i - 1] > 60);
-  check(`${tag}: rapid rail presses settle within ${SETTLE_MAX_MS} ms of the last key${janky ? " (host stalled, skipped)" : ""}`, janky || (tail && tail.t - last.t <= SETTLE_MAX_MS), `${tail ? Math.round(tail.t - last.t) : "none"}`);
+  check(`${tag}: rapid rail presses settle within ${SETTLE_MAX_FRAMES} frames of the last key`, tail && tail.frame - last.frame <= SETTLE_MAX_FRAMES, `${tail ? tail.frame - last.frame : "none"}`);
 
   // Sideways moves: the panel follows within a frame, in order, never blank, never remounted.
   for (const [label, count, gap] of [["single presses", 6, 500], ["rapid taps", 14, 45]]) {

@@ -162,15 +162,18 @@ const slowServer = await startServer({
 });
 /** Counts API reads in flight (the event stream and remote long polls stay open by design and are ignored). */
 const trackRequests = (page) => {
-  const state = { open: 0 };
+  const state = { open: 0, started: 0 };
   const counted = (request) => /\/api\/v1\//.test(request.url()) && !/\/(events|remote)\b/.test(request.url());
-  page.on("request", (r) => { if (counted(r)) state.open += 1; });
+  page.on("request", (r) => { if (counted(r)) { state.open += 1; state.started += 1; } });
   page.on("requestfinished", (r) => { if (counted(r)) state.open -= 1; });
   page.on("requestfailed", (r) => { if (counted(r)) state.open -= 1; });
   return state;
 };
 /** Waits (bounded) until no API read has been in flight for 400 ms: the dwell's prefetch has landed. */
-const settled = async (page, state) => {
+const settled = async (page, state, startedBefore = state.started) => {
+  // The dwell's prefetch starts after a debounce that stretches on a loaded runner: "nothing in flight" before it has even started
+  // is not "landed". Wait (bounded) for the first read to start, unless the section was already cached and needs none.
+  if (state.started === startedBefore) await page.waitForEvent("request", { predicate: () => state.started > startedBefore, timeout: 2500 }).catch(() => {});
   let quiet = 0;
   for (let waited = 0; waited < 12000 && quiet < 400; waited += 100) {
     await page.waitForTimeout(100);
@@ -201,10 +204,10 @@ for (const [w, h] of [[1920, 1080], [1280, 720]]) {
         ["series", "/series", ".tv-title-card"],
         ["music", "/music", ".tv-title-card"],
       ]) {
+        const startedBefore = requests.started;
         await navTo(page, href);
-        // The dwell fires the prefetch (150 ms); wait for its slow answers to land before pressing Enter.
-        await page.waitForTimeout(400);
-        await settled(page, requests);
+        // The dwell fires the prefetch (150 ms); wait for it to start and for its slow answers to land before pressing Enter.
+        await settled(page, requests, startedBefore);
         await page.evaluate(RECORD);
         console.log("   active before Enter:", name, await page.evaluate(() => document.activeElement?.className?.toString().slice(0, 40)));
         await page.keyboard.press("Enter");
