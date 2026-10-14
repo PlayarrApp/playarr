@@ -47,6 +47,8 @@ export interface WorkDetailScreenNavigation {
 
 export interface WorkDetailRouteParams {
   workId: string;
+  backTo?: RouteName;
+  backParams?: Record<string, unknown>;
 }
 
 export interface PlayOptions {
@@ -192,7 +194,7 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
   if (state.status === 'error' || state.status === 'empty') {
     return (
       <Stage>
-        <PageHeader title={t('pages.workDetail.titleLoadError')} onBack={() => navigation.navigate(ROUTES.home)} />
+        <PageHeader title={t('pages.workDetail.titleLoadError')} onBack={() => navigation.navigate(route.params.backTo ?? ROUTES.home, route.params.backParams)} />
       </Stage>
     );
   }
@@ -348,7 +350,7 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
       stageArt={artUri}
       token={token}
       dark={dark}
-      header={<PageHeader title={backLabel} detail={work.title} onBack={() => navigation.navigate(ROUTES.home)} />}
+      header={<PageHeader title={backLabel} detail={work.title} onBack={() => navigation.navigate(route.params.backTo ?? ROUTES.home, route.params.backParams)} />}
       copy={
         <CopyColumn
           kicker={kicker}

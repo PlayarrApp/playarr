@@ -179,7 +179,8 @@ export function useTvBackNavigation(fallbackBackTo?: RouteName): void {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const route = useRoute();
   const routeName = route.name as RouteName;
-  const routeBackTo = (route.params as {backTo?: RouteName} | undefined)?.backTo;
+  const routeParams = route.params as {backTo?: RouteName; backParams?: Record<string, unknown>} | undefined;
+  const routeBackTo = routeParams?.backTo;
 
   useBackHandler(() => {
     const layer = backLayers[backLayers.length - 1];
@@ -201,7 +202,11 @@ export function useTvBackNavigation(fallbackBackTo?: RouteName): void {
     if (target === -1) {
       navigation.goBack();
     } else {
-      (navigation.navigate as unknown as (name: string) => void).call(navigation, target);
+      (navigation.navigate as unknown as (name: string, params?: Record<string, unknown>) => void).call(
+        navigation,
+        target,
+        target === routeBackTo ? routeParams?.backParams : undefined
+      );
     }
     return true;
   });

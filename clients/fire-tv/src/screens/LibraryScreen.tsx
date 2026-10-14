@@ -687,8 +687,8 @@ function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.Re
       accessibilityRole="button"
       accessibilityLabel={work.title}
       hasTVPreferredFocus={first}
-      onFocus={() => {
-        reportFocus(`open ${work.title}`);
+      onFocus={(event) => {
+        reportFocus(`open ${work.title}`, undefined, undefined, event.nativeEvent.target);
         onFocus();
       }}
       onPress={onPress}
@@ -722,8 +722,8 @@ function ListRow(props: CardProps): React.ReactElement {
       accessibilityRole="button"
       accessibilityLabel={work.title}
       hasTVPreferredFocus={first}
-      onFocus={() => {
-        reportFocus(`open ${work.title}`);
+      onFocus={(event) => {
+        reportFocus(`open ${work.title}`, undefined, undefined, event.nativeEvent.target);
         onFocus();
       }}
       onPress={onPress}

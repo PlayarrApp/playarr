@@ -1,0 +1,1 @@
+- Fire TV focus diagnostics now reconcile event and native focus tags. The scoped dark and light Movies-right → Home → Movies-down runtime pair passed with matching settled no-key focus state; this does not replace the full D-pad suite or establish a product navigation fix.

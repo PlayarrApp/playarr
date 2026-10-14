@@ -11,20 +11,47 @@
  *   cmd=theme&name=dark|light      set the in-app theme preference
  */
 import {Linking} from 'react-native';
+import {FocusManager} from '@amazon-devices/react-native-kepler';
 
 export const PARITY_CONTROL = process.env.PLAYARR_PARITY_CONTROL === '1';
 
 export interface FocusReport {
   label: string;
   position?: {rail: number | 'nav'; index: number};
+  eventTag?: number;
 }
 
 let lastFocus: FocusReport | null = null;
+let lastFocusOwner: object | null = null;
+const focusReportsByEventTag = new Map<number, {focus: FocusReport; owner: object | null}>();
+const MAX_FOCUS_REPORTS = 32;
 
 /** Screens call this from their focus handlers; a no-op unless the control channel is built in. */
-export function reportFocus(label: string, position?: FocusReport['position']): void {
+export function reportFocus(label: string, position?: FocusReport['position'], owner?: object, eventTag?: number): void {
   if (!PARITY_CONTROL) return;
-  lastFocus = {label: label.trim().toLowerCase().replace(/\s+/g, ' '), ...(position ? {position} : {})};
+  const focus = {label: label.trim().toLowerCase().replace(/\s+/g, ' '), ...(position ? {position} : {}), ...(eventTag === undefined ? {} : {eventTag})};
+  lastFocus = focus;
+  lastFocusOwner = owner ?? null;
+  if (eventTag !== undefined) {
+    focusReportsByEventTag.delete(eventTag);
+    focusReportsByEventTag.set(eventTag, {focus, owner: owner ?? null});
+    while (focusReportsByEventTag.size > MAX_FOCUS_REPORTS) {
+      const oldestEventTag = focusReportsByEventTag.keys().next().value as number | undefined;
+      if (oldestEventTag === undefined) break;
+      focusReportsByEventTag.delete(oldestEventTag);
+    }
+  }
+}
+
+/** Clear focus only if it is still owned by the component requesting cleanup. */
+export function clearFocus(owner: object): void {
+  if (!PARITY_CONTROL) return;
+  for (const [eventTag, report] of focusReportsByEventTag) {
+    if (report.owner === owner) focusReportsByEventTag.delete(eventTag);
+  }
+  if (lastFocusOwner !== owner) return;
+  lastFocus = null;
+  lastFocusOwner = null;
 }
 
 const queries: Record<string, string | null> = {};
@@ -103,7 +130,15 @@ export function installParityControl(hooks: ParityHooks): () => void {
       return;
     }
     // Every command answers with the state, so the driver needs one read after it.
-    setTimeout(() => console.log('PARITY ' + JSON.stringify({cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus: lastFocus, player: hooks.player(), theme: hooks.theme()})), command.cmd === 'state' ? 0 : 1500);
+    setTimeout(() => {
+      const nativeFocusTag = command.cmd === 'state' ? FocusManager.getFocused() : undefined;
+      let focus = lastFocus;
+      if (command.cmd === 'state' && focus?.eventTag !== undefined && focus.eventTag !== nativeFocusTag) {
+        focus = nativeFocusTag === undefined ? null : focusReportsByEventTag.get(nativeFocusTag)?.focus ?? null;
+      }
+      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus, player: hooks.player(), theme: hooks.theme()};
+      console.log('PARITY ' + JSON.stringify(command.cmd === 'state' ? {...state, nativeFocusTag} : state));
+    }, command.cmd === 'state' ? 0 : 1500);
   };
   void Linking.getInitialURL().then(handle, () => undefined);
   const subscription = Linking.addEventListener('url', (event: {url: string}) => handle(event.url));

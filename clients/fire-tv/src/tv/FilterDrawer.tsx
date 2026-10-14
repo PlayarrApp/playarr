@@ -9,6 +9,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Animated, Easing, Pressable, View} from 'react-native';
 import {useBackLayer} from '../navigation/backPolicy';
+import {clearFocus, reportFocus} from '../debug/parityControl';
 import {TvFocusScope, focusNode} from '../platform/focus';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
@@ -36,6 +37,7 @@ export interface DrawerChip {
   label: string;
   selected: boolean;
   onPress: () => void;
+  focusId?: string;
   icon?: ViewIcon;
 }
 
@@ -66,6 +68,8 @@ export interface FilterDrawerProps {
   footerHeight?: number;
   /** Called once the drawer holds focus, so the page can stop offering its own controls to the D-pad. */
   onFocused?: () => void;
+  /** Optional parity identity for the drawer close button. */
+  closeFocusId?: string;
   /** The 430 px drawer of the title page's playback settings, over the 360 px one of the libraries and the calendar. */
   wide?: boolean;
 }
@@ -90,8 +94,9 @@ function layoutSections(sections: DrawerSection[]): {tops: number[]; end: number
   return {tops, end: y};
 }
 
-export function FilterDrawer({kicker, title, closeLabel, onClose, sections, footer, footerHeight = 0, onFocused, wide}: FilterDrawerProps): React.ReactElement {
+export function FilterDrawer({kicker, title, closeLabel, onClose, sections, footer, footerHeight = 0, onFocused, closeFocusId, wide}: FilterDrawerProps): React.ReactElement {
   const {colour} = useTheme();
+  const focusOwner = useRef({}).current;
   useBackLayer(true, onClose);
   const {tops, end} = layoutSections(sections);
   const contentEnd = end + footerHeight;
@@ -102,8 +107,11 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
   useEffect(() => {
     const animation = Animated.timing(slide, {toValue: 1, duration: 360, easing: Easing.bezier(0.16, 1, 0.3, 1), useNativeDriver: true});
     animation.start();
-    return () => animation.stop();
-  }, [slide]);
+    return () => {
+      animation.stop();
+      clearFocus(focusOwner);
+    };
+  }, [focusOwner, slide]);
 
   return (
     <>
@@ -137,7 +145,10 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
                 {title}
               </T>
             </View>
-            <CloseButton label={closeLabel} onPress={onClose} onFocused={onFocused} x={wide ? 1826 - WIDE_X : undefined} />
+            <CloseButton label={closeLabel} onPress={onClose} onFocused={() => {
+              if (closeFocusId) reportFocus(closeFocusId, undefined, focusOwner);
+              onFocused?.();
+            }} x={wide ? 1826 - WIDE_X : undefined} />
             {sections.map((section, index) => {
               const top = tops[index]!;
               return (
@@ -155,7 +166,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
                         const row = Math.floor(chipIndex / section.columns);
                         const width = section.columns === 2 ? 130 : 84;
                         const chipTop = top + LABEL_H + LABEL_GAP + row * (CHIP_H + CHIP_GAP);
-                        return <Chip key={chip.key} chip={chip} x={CONTENT_X + col * (width + CHIP_GAP)} y={chipTop} w={width} onReveal={revealChip} />;
+                        return <Chip key={chip.key} chip={chip} x={CONTENT_X + col * (width + CHIP_GAP)} y={chipTop} w={width} onReveal={revealChip} focusOwner={focusOwner} />;
                       })
                     : 'select' in section
                     ? <SelectField label={section.label} value={section.select.value} onPress={section.select.onPress} x={CONTENT_X} y={top + LABEL_H + LABEL_GAP} w={wide ? WIDE_W - 2 * CONTENT_X : CONTENT_W} onReveal={revealChip} />
@@ -234,7 +245,7 @@ function ViewGlyph({icon, color}: {icon: ViewIcon; color: string}): React.ReactE
   );
 }
 
-function Chip({chip, x, y, w, onReveal}: {chip: DrawerChip; x: number; y: number; w: number; onReveal: (y: number, h: number) => void}): React.ReactElement {
+function Chip({chip, x, y, w, onReveal, focusOwner}: {chip: DrawerChip; x: number; y: number; w: number; onReveal: (y: number, h: number) => void; focusOwner: object}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   const lit = focused || chip.selected;
@@ -247,6 +258,7 @@ function Chip({chip, x, y, w, onReveal}: {chip: DrawerChip; x: number; y: number
       onFocus={() => {
         setFocused(true);
         onReveal(y, CHIP_H);
+        reportFocus(chip.focusId ?? chip.label, undefined, focusOwner);
       }}
       onBlur={() => setFocused(false)}
       onPress={chip.onPress}
