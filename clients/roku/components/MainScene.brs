@@ -2942,7 +2942,7 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
         item.AddField("kind", "string", false)
         item.kind = work.kind
         item.AddField("year", "string", false)
-        if work.release_date <> invalid and work.release_date.Len() >= 4 then item.year = work.release_date.Left(4)
+        if work.release_date <> invalid and work.release_date.Len() >= 4 then item.year = WorkYearLabel(work)
         item.description = JsonString(work.overview)
         item.AddField("subtitleOverride", "string", false)
         applyWatchState(item, work)
@@ -3536,7 +3536,7 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         item.AddField("kind", "string", false)
         item.kind = work.kind
         item.AddField("year", "string", false)
-        if work.release_date <> invalid and work.release_date.Len() >= 4 then item.year = work.release_date.Left(4)
+        if work.release_date <> invalid and work.release_date.Len() >= 4 then item.year = WorkYearLabel(work)
         item.description = JsonString(work.overview)
         item.AddField("subtitleOverride", "string", false)
         if work.onDeckTitle <> invalid
@@ -5747,7 +5747,7 @@ sub updateSeriesEpisodeHeader()
     parts.Push({ text: "Season " + season.season_number.ToStr(), role: "inkSoft", weight: 700 })
     parts.Push({ text: code, role: "inkMuted", weight: 400 })
     if ep.runtime_minutes <> invalid and ep.runtime_minutes > 0 then parts.Push({ text: ep.runtime_minutes.ToStr() + " min", role: "inkMuted", weight: 400 })
-    if work.release_date <> invalid and work.release_date.Len() >= 4 then parts.Push({ text: work.release_date.Left(4), role: "inkMuted", weight: 400 })
+    if work.release_date <> invalid and work.release_date.Len() >= 4 then parts.Push({ text: WorkYearLabel(work), role: "inkMuted", weight: 400 })
     if ep.air_date <> invalid and ep.air_date <> "" then parts.Push({ text: "Aired " + formatReleaseDate(ep.air_date), role: "inkMuted", weight: 400 })
     if work.genres <> invalid and work.genres.Count() > 0 then parts.Push({ text: work.genres[0], role: "inkMuted", weight: 400 })
     x = 153.6
@@ -7333,7 +7333,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     parts.Push({ text: CapitalizeFirst(work.kind), role: "inkSoft", weight: 700 })
     if detail.runtime_ms <> invalid and detail.runtime_ms > 0 then parts.Push({ text: formatRuntime(detail.runtime_ms), role: "inkMuted", weight: 400 })
     if work.release_date <> invalid and work.release_date.Len() >= 4
-        parts.Push({ text: work.release_date.Left(4), role: "inkMuted", weight: 400 })
+        parts.Push({ text: WorkYearLabel(work), role: "inkMuted", weight: 400 })
         parts.Push({ text: "Released " + formatReleaseDate(work.release_date), role: "inkMuted", weight: 400 })
     end if
     if work.genres <> invalid
@@ -7462,3 +7462,12 @@ sub acceptDetailLag(data as Dynamic)
     m.detailLagText = text
     updateSeriesEpisodeHeader()
 end sub
+
+' Web yearRangeLabel: "2011", or "2011-2017" (en dash) when the server reports an end_date in a later year.
+function WorkYearLabel(work as Object) as String
+    start = work.release_date.Left(4)
+    if work.end_date <> invalid and Type(work.end_date) = "roString" and work.end_date.Len() >= 4
+        if Val(work.end_date.Left(4)) > Val(start) then return start + Chr(8211) + work.end_date.Left(4)
+    end if
+    return start
+end function
