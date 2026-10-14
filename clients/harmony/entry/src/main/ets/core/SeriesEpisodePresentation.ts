@@ -3,8 +3,8 @@ export const SERIES_EPISODE_CARD_WIDTH: number = 268;
 export const SERIES_EPISODE_LIST_HEIGHT: number = 220;
 export const SERIES_EPISODE_CAPTION_TOP_PADDING: number = 11.52;
 export const SERIES_EPISODE_CAPTION_TITLE_GAP: number = 8.8;
-export const SERIES_SEASON_HEADER_CARD_GAP: number = 24;
-export const SERIES_SEASON_ROW_GAP: number = 32;
+export const SERIES_SEASON_HEADER_CARD_GAP: number = 40;
+export const SERIES_SEASON_ROW_GAP: number = 40;
 
 export function seriesEpisodeCaption(seasonNumber: number, episodeNumber: number): string {
   return 'S' + twoDigits(seasonNumber) + ' · E' + twoDigits(episodeNumber);

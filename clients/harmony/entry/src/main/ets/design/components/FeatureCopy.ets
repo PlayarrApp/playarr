@@ -21,6 +21,7 @@
  * web is the reference (docs/parity/README.md).
  */
 
+import { LengthMetrics } from '@kit.ArkUI';
 import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
@@ -53,6 +54,11 @@ const EPISODE_TITLE_MAX_CHARS: number = 24;
 const EPISODE_TITLE_MARGIN_TOP: number = 12.4;
 const EPISODE_META_MARGIN_TOP: number = 30;
 
+// Web `.tv-detail-meta`: 0.55vw chips, 0.85rem apart, the first one bolder and softer-ink, the rest muted.
+const META_CHIP_FONT_SIZE: number = 10.56;
+const META_CHIP_GAP: number = 13.6;
+const META_CHIP_ROW_GAP: number = 6.4;
+
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
 const COPY_TEXT_INK_ALPHA: number = 0.87;
@@ -84,6 +90,8 @@ export struct FeatureCopy {
    * treatment, matching `.tv-title-meta span:last-child` -- pass a single
    * entry if there is no secondary line. Empty array hides the whole row. */
   @Prop metaLines: string[] = [];
+  /** Detail pages: the meta as web chips (replaces `metaLines` when set). */
+  @Prop metaChips: string[] = [];
   /** Synopsis body copy, clamped to `SYNOPSIS_MAX_LINES` lines with an
    * ellipsis. Empty string hides it entirely -- the home Stage hero
    * renders no synopsis in the source design (only Detail supplies one). */
@@ -163,7 +171,22 @@ export struct FeatureCopy {
           .margin({ top: tv(EPISODE_TITLE_MARGIN_TOP) })
       }
 
-      if (this.metaLines.length > 0) {
+      if (this.metaChips.length > 0) {
+        Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(tv(META_CHIP_GAP)), cross: LengthMetrics.vp(tv(META_CHIP_ROW_GAP)) } }) {
+          ForEach(
+            this.metaChips,
+            (chip: string, index: number) => {
+              Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
+                .fontSize(tv(META_CHIP_FONT_SIZE))
+                .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
+                .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
+            },
+            (chip: string, index: number) => `${index}-${chip}`
+          )
+        }
+        .width('100%')
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META) })
+      } else if (this.metaLines.length > 0) {
         Column() {
           ForEach(
             this.metaLines,

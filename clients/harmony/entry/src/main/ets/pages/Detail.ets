@@ -205,9 +205,17 @@ const TOUCH_SETTLE_INTERVAL_MS: number = 250;
 /** Phone: where the text block starts (the backdrop's lower part is under it, faded). */
 const TOUCH_TEXT_TOP: number = 343;
 
-const PILL_HEIGHT: number = 62;
-const PILL_PADDING_X: number = 28;
-const PILL_GAP: number = 17;
+// Web `.tv-detail-play` / `.tv-detail-playback-settings` at 1920 wide (clamps of 0.62vw / 0.58vw, 4.2vw, 8.5vw / 7.6vw).
+const PILL_HEIGHT: number = 64;
+const PILL_PADDING_X: number = 16;
+const PILL_PRIMARY_PADDING_X: number = 21.6;
+const PILL_PRIMARY_FONT: number = 11.9;
+const PILL_SECONDARY_FONT: number = 11.1;
+const PILL_PRIMARY_GAP: number = 10.4;
+const PILL_SECONDARY_GAP: number = 8.8;
+const PILL_PRIMARY_MIN_WIDTH: number = 156;
+const PILL_SECONDARY_MIN_WIDTH: number = 142;
+const PILL_GAP: number = 16;
 const PILL_ROW_GAP: number = 14;
 const PILL_FILL_ALPHA: number = 0.09;
 const COPY_GAP: number = 36;
@@ -216,8 +224,8 @@ const RIGHT_COLUMN_Y: number = 530;
 const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 550;
 const RIGHT_COLUMN_GAP: number = 56;
-const SERIES_COLUMN_TOP: number = 364;
-const SERIES_COLUMN_HEIGHT: number = 716;
+const SERIES_COLUMN_TOP: number = 361;
+const SERIES_COLUMN_HEIGHT: number = 719;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
 const CAST_CIRCLE: number = 104;
@@ -1670,18 +1678,19 @@ struct Detail {
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
-    Row({ space: tv(10) }) {
+    Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
       Text(glyph).fontFamily(nunito(400))
-        .fontSize(tv(12))
+        .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
         .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().accent))
       Text(label).fontFamily(nunito(700))
-        .fontSize(tv(13))
+        .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().ink))
         .maxLines(1)
     }
     .height(tv(PILL_HEIGHT))
-    .padding({ left: tv(PILL_PADDING_X), right: tv(PILL_PADDING_X) })
+    .constraintSize({ minWidth: tv(primary ? PILL_PRIMARY_MIN_WIDTH : PILL_SECONDARY_MIN_WIDTH) })
+    .padding({ left: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X), right: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X) })
     .borderRadius(tv(PILL_HEIGHT / 2))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
@@ -1993,7 +2002,7 @@ struct Detail {
           kicker: this.tvCopyKicker(),
           title: (this.detail !== null ? this.detail.work.title : ''),
           subtitle: this.tvCopySubtitle(),
-          metaLines: this.tvCopyMetaLines(),
+          metaChips: this.detail !== null ? metaChips(this.detail, this.hasResumeTarget() ? this.resumePlan : null) : [],
           synopsis: this.tvCopySynopsis(),
         })
         this.tvActions()
@@ -2061,16 +2070,6 @@ struct Detail {
       return '';
     }
     return planEpisodeTitle(this.detail, this.resumePlan);
-  }
-
-  private tvCopyMetaLines(): string[] {
-    if (this.detail === null) {
-      return [];
-    }
-    if (this.hasResumeTarget() && this.resumePlan !== null) {
-      return [metaChips(this.detail, this.resumePlan).join(' · ')];
-    }
-    return buildMetaLines(this.detail);
   }
 
   private tvCopySynopsis(): string {
