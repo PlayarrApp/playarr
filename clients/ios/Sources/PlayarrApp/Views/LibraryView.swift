@@ -123,6 +123,7 @@ struct LibraryView: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .submitLabel(.search)
+                            .accessibilityIdentifier("search-field")
                             .onSubmit { Task { await viewModel.load() } }
                             .onChange(of: viewModel.searchText) { _, value in
                                 if value.isEmpty { Task { await viewModel.load() } }
@@ -192,6 +193,8 @@ struct LibraryView: View {
                                     WMSearchCard(work: work, apiClient: apiClient, focused: index == 0)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityIdentifier("search-work-\(work.id.uuidString)")
+                                .accessibilityLabel(work.title)
                             }
                         }
                         .padding(.leading, 16)

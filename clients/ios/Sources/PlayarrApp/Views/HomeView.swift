@@ -87,10 +87,12 @@ struct HomeView: View {
         .ignoresSafeArea()
     }
 
-    /// The card the parity capture scrolls the first rail to (debug builds only).
-    private func scrollTarget(_ rail: HomeViewModel.Rail) -> UUID? {
+    /// Debug parity captures and the navigation UI test can focus the first Series card.
+    private func scrollTarget(_ rail: HomeViewModel.Rail, first: Bool) -> UUID? {
         #if DEBUG
-        if let card = ParityLaunch.homeScrollCard, rail.works.indices.contains(card) { return rail.works[card].id }
+        if ParityLaunch.selectsHomeSeries,
+           let series = rail.works.first(where: { $0.kind == .series }) { return series.id }
+        if first, let card = ParityLaunch.homeScrollCard, rail.works.indices.contains(card) { return rail.works[card].id }
         #endif
         return nil
     }
@@ -98,7 +100,7 @@ struct HomeView: View {
     private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(rail.title, 16, 610, lh: 24, ls: -0.48).padding(.horizontal, 16)
-            WMFadingRail(scrollTo: first ? scrollTarget(rail) : nil) {
+            WMFadingRail(scrollTo: scrollTarget(rail, first: first)) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(Array(rail.works.enumerated()), id: \.element.id) { index, work in
                         workLink(work) {
@@ -309,9 +311,16 @@ struct HomeView: View {
             content()
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(homeWorkAccessibilityID(work))
+        .accessibilityLabel(work.title)
         .contextMenu {
             Button("Download", systemImage: "arrow.down.circle") { downloadTarget = work }
         }
+    }
+
+    private func homeWorkAccessibilityID(_ work: Work) -> String {
+        let kind = work.kind == .series ? "series" : "work"
+        return "home-\(kind)-work-\(work.id.uuidString)"
     }
 }
 

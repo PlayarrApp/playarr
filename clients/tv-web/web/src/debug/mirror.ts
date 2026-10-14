@@ -4,6 +4,8 @@
 // build, every ~2 s and on every focus change. The receiver origin is the page's own origin and the
 // token comes from the launch URL (?mirrorToken=...), so nothing about the environment is baked in.
 import { focusInfo, visibleText } from "./mirrorSnapshot";
+import { mirrorCaptureGeometry } from "./mirrorCaptureGeometry";
+import { localeTagFor } from "../lib/i18n/languages";
 
 // The production-bundle guard and test look for this string, so it must survive minification.
 const MIRROR_SENTINEL = "PLAYARR_DEBUG_MIRROR_SENTINEL";
@@ -67,6 +69,11 @@ for (const type of ["keydown", "keyup"] as const) {
 function layoutEnv(): Record<string, unknown> {
   const root = document.documentElement;
   const mq = (q: string) => window.matchMedia(q).matches;
+  const clockDate = document.querySelector<HTMLElement>(".app-clock-date");
+  const clockLocale = localeTagFor(root.lang);
+  const clockDateFormatter = new Intl.DateTimeFormat(clockLocale, { weekday: "short", day: "numeric", month: "long" });
+  const clockDateRect = clockDate?.getBoundingClientRect();
+  const clockDateStyle = clockDate ? window.getComputedStyle(clockDate) : null;
   return {
     zoom: root.style.getPropertyValue("--stage-zoom") || root.style.getPropertyValue("zoom"),
     vw: root.style.getPropertyValue("--vw"),
@@ -75,6 +82,20 @@ function layoutEnv(): Record<string, unknown> {
     theme: root.dataset.theme ?? null,
     platform: root.dataset.platform ?? null,
     fontPx: window.getComputedStyle(root).fontSize,
+    clockDebug: {
+      documentLanguage: root.lang,
+      navigatorLanguage: navigator.language,
+      uiLocale: clockLocale,
+      intlDate: clockDateFormatter.format(new Date()),
+      intlDateParts: clockDateFormatter.formatToParts(new Date()).map(({ type, value }) => ({ type, value })),
+      elementText: clockDate?.textContent ?? null,
+      elementRect: clockDateRect ? [clockDateRect.x, clockDateRect.y, clockDateRect.width, clockDateRect.height] : null,
+      elementClientWidth: clockDate?.clientWidth ?? null,
+      elementScrollWidth: clockDate?.scrollWidth ?? null,
+      elementDisplay: clockDateStyle?.display ?? null,
+      elementOverflow: clockDateStyle?.overflow ?? null,
+      elementTextOverflow: clockDateStyle?.textOverflow ?? null,
+    },
     video: (() => {
       const v = document.querySelector("video");
       return v
@@ -136,12 +157,14 @@ export function startDebugMirror(): void {
     let captureError: string | null = null;
     try {
       const { toJpeg, toPng, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
-      // The TV stage scale (tvStageScale.ts) zooms <html>, which html-to-image does not see (it clones
-      // <body> with computed styles in stage units): render the stage size, not the zoomed viewport.
+      // The TV stage scale (tvStageScale.ts) zooms <html> on most platforms, which html-to-image does
+      // not see. VIDAA instead transforms <body>; clear only that transform on the cloned body so the
+      // logical stage is rendered once at the requested output density.
       const zoom = parseFloat(document.documentElement.style.getPropertyValue("--stage-zoom")) || 1;
-      const stageW = Math.round(window.innerWidth / zoom);
-      const stageH = Math.round(window.innerHeight / zoom);
-      const scale = Math.min(1, TARGET_WIDTH / Math.max(1, stageW));
+      const hasStageBodyTransform = Boolean(document.body.style.transform && zoom !== 1);
+      const geometry = mirrorCaptureGeometry(window.innerWidth, window.innerHeight, zoom, TARGET_WIDTH, hasStageBodyTransform);
+      const stageW = geometry.width;
+      const stageH = geometry.height;
       const bg = window.getComputedStyle(document.body).backgroundColor || "#000";
       // The browser itself renders the SVG foreignObject, so modern CSS (color-mix and so on) is drawn faithfully.
       if (fontCss === null) {
@@ -176,7 +199,8 @@ export function startDebugMirror(): void {
             }
             return true;
           },
-          pixelRatio: scale,
+          pixelRatio: geometry.pixelRatio,
+          ...(geometry.cloneStyle ? { style: geometry.cloneStyle } : {}),
           quality: 0.92,
           width: stageW,
           height: stageH,

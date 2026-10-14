@@ -5,6 +5,7 @@
  * is filled with ink, as the other choice tiles.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -39,7 +40,7 @@ export struct PeriodPicker {
 
   @Builder
   private option(label: string, selected: boolean, onTap: () => void): void {
-    Text(label)
+    Text(label).fontFamily(nunito(700))
       .width('100%')
       .height(tv(OPTION_HEIGHT))
       .textAlign(TextAlign.Center)

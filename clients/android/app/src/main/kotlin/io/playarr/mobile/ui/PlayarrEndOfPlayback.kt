@@ -177,7 +177,7 @@ internal fun playarrArtworkCandidates(
     images: List<io.playarr.shared.data.model.ImageAsset>,
     kinds: List<io.playarr.shared.data.model.ImageKind>,
     serverUrl: String,
-    /** Sizes the request like web (`?width=`, snapped up by the server): null keeps the full-size source. */
+    /** Sizes the request like web (`?w=`, snapped up by the server): null keeps the full-size source. */
     width: ((io.playarr.shared.data.model.ImageKind) -> Int)? = null,
 ): List<String> = kinds.distinct().flatMap { kind ->
     val image = images.firstOrNull { it.kind == kind && it.url.isNotBlank() } ?: return@flatMap emptyList()
@@ -189,7 +189,7 @@ internal fun playarrArtworkCandidates(
         io.playarr.shared.data.model.ImageKind.Thumb -> "thumb"
     }
     listOf(
-        "${serverUrl.trimEnd('/')}/api/v1/artwork/work/${workId.asUrlPathSegment()}/$wireKind" + (width?.let { "?width=${it(kind)}" } ?: ""),
+        "${serverUrl.trimEnd('/')}/api/v1/artwork/work/${workId.asUrlPathSegment()}/$wireKind" + (width?.let { "?w=${it(kind)}" } ?: ""),
         resolveArtworkUrl(serverUrl, image.url),
     )
 }.distinct()

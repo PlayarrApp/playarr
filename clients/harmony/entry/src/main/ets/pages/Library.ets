@@ -103,6 +103,7 @@
  * that integration lands, with no changes needed here.
  */
 
+import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -339,7 +340,7 @@ struct LibraryChip {
 
   build() {
 
-    Text(this.label)
+    Text(this.label).fontFamily(nunito(500))
       .fontSize(13)
       .fontWeight(FontWeight.Medium)
       .fontColor(toResourceColor((this.selected ? activeColors().onAccent : activeColors().ink)))
@@ -824,7 +825,7 @@ export struct Library {
         }
 
         if (this.loadMoreFailed && !this.isLoadingMore) {
-          Text("Couldn't load more. Scroll to try again.")
+          Text("Couldn't load more. Scroll to try again.").fontFamily(nunito(400))
             .fontSize(12)
             .fontColor(toResourceColor(activeColors().inkMuted))
             .textAlign(TextAlign.Center)
@@ -987,14 +988,14 @@ export struct Library {
         (work: Work) => {
           ListItem() {
             Row({ space: tv(16) }) {
-              Text(work.title)
+              Text(work.title).fontFamily(nunito(700))
                 .fontSize(tv(16.32))
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .layoutWeight(1)
-              Text(releaseYearOf(work))
+              Text(releaseYearOf(work)).fontFamily(nunito(400))
                 .fontSize(tv(13.4))
                 .fontColor(toResourceColor(activeColors().inkMuted))
             }

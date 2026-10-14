@@ -5,6 +5,9 @@ use crate::icons::{self, Tone};
 use crate::model::Profile;
 use crate::{avatar, store, theme};
 use gtk4::prelude::*;
+use libadwaita as adw;
+use libadwaita::prelude::*;
+use std::cell::Cell;
 use std::rc::Rc;
 
 pub fn avatar_widget(preset: &str, size: i32) -> gtk4::Image {
@@ -123,8 +126,16 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
             Err(e) => status.set_label(&e.to_string()),
             Ok(profiles) => {
                 status.set_visible(false);
+                let switching = Rc::new(Cell::new(crate::profile_sessions::SwitchPhase::Idle));
                 for p in profiles {
-                    tiles.append(&tile(&app, &client, &p, my_preset.as_deref(), from_shell));
+                    tiles.append(&tile(
+                        &app,
+                        &client,
+                        &p,
+                        my_preset.as_deref(),
+                        from_shell,
+                        switching.clone(),
+                    ));
                 }
                 tiles.append(&add_tile(&app));
             }
@@ -138,7 +149,14 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .upcast()
 }
 
-fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>, from_shell: bool) -> gtk4::Button {
+fn tile(
+    app: &Rc<App>,
+    client: &Client,
+    p: &Profile,
+    my_preset: Option<&str>,
+    from_shell: bool,
+    switching: Rc<Cell<crate::profile_sessions::SwitchPhase>>,
+) -> gtk4::Button {
     let preset = match (p.is_current, my_preset) {
         (true, Some(m)) => m.to_string(),
         _ => avatar::default_preset(&p.id).to_string(),
@@ -171,18 +189,135 @@ fn tile(app: &Rc<App>, client: &Client, p: &Profile, my_preset: Option<&str>, fr
         .css_classes(["pa-plain", "pa-profile"])
         .valign(gtk4::Align::Start)
         .build();
-    let (app, client, current) = (app.clone(), client.clone(), p.is_current);
+    let (app, client, current, user_id) = (app.clone(), client.clone(), p.is_current, p.id.clone());
     b.connect_clicked(move |_| {
-        if current && from_shell {
-            app.nav.pop();
-        } else if current {
-            app.enter(client.clone());
+        if app.is_signing_out() {
+            return;
+        }
+        if current {
+            if !crate::profile_sessions::current_profile_action_allowed(&switching) {
+                return;
+            }
+            if from_shell {
+                app.nav.pop();
+            } else {
+                app.enter(client.clone());
+            }
         } else {
-            // shortcut: another profile needs its own device link, there is no saved-session switcher yet.
-            app.show_link();
+            request_switch(
+                app.clone(),
+                client.clone(),
+                user_id.clone(),
+                switching.clone(),
+                None,
+                false,
+                app.flow_generation(),
+            );
         }
     });
     b
+}
+
+fn request_switch(
+    app: Rc<App>,
+    client: Client,
+    user_id: String,
+    switching: Rc<Cell<crate::profile_sessions::SwitchPhase>>,
+    pin: Option<String>,
+    from_pin_dialog: bool,
+    flow_generation: u64,
+) {
+    if !crate::profile_sessions::begin_switch(&switching, from_pin_dialog) {
+        return;
+    }
+    if flow_generation != app.flow_generation() {
+        switching.set(crate::profile_sessions::SwitchPhase::Idle);
+        return;
+    }
+    let active = client.session();
+    let requested_pin = pin.clone();
+    let id_for_work = user_id.clone();
+    let flow = app.flow_generation.clone();
+    super::bg(
+        move || {
+            crate::profile_sessions::switch_saved_profile(
+                &active,
+                &id_for_work,
+                requested_pin.as_deref(),
+                flow,
+                flow_generation,
+            )
+        },
+        move |result| match result {
+            _ if app.flow_generation() != flow_generation => {
+                switching.set(crate::profile_sessions::SwitchPhase::Idle);
+            }
+            Ok(session) => app.enter(Client::new(session)),
+            Err(crate::profile_sessions::SwitchError::PinRequired) if pin.is_none() => {
+                switching.set(crate::profile_sessions::SwitchPhase::AwaitingPin);
+                ask_for_pin(app, client, user_id, switching, flow_generation);
+            }
+            Err(crate::profile_sessions::SwitchError::NotSaved) => {
+                switching.set(crate::profile_sessions::SwitchPhase::Idle);
+                app.show_link();
+            }
+            Err(error) => {
+                switching.set(crate::profile_sessions::SwitchPhase::Idle);
+                app.show_error(&error.to_string());
+            }
+        },
+    );
+}
+
+fn ask_for_pin(
+    app: Rc<App>,
+    client: Client,
+    user_id: String,
+    switching: Rc<Cell<crate::profile_sessions::SwitchPhase>>,
+    flow_generation: u64,
+) {
+    let dialog = adw::AlertDialog::new(Some("Unlock profile"), Some("Enter this profile’s PIN to switch."));
+    dialog.add_responses(&[("cancel", "Cancel"), ("unlock", "Unlock")]);
+    dialog.set_response_appearance("unlock", adw::ResponseAppearance::Suggested);
+    dialog.set_default_response(Some("unlock"));
+    dialog.set_close_response("cancel");
+    let entry = gtk4::Entry::new();
+    entry.set_visibility(false);
+    entry.set_input_purpose(gtk4::InputPurpose::Password);
+    entry.set_activates_default(true);
+    let content = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+    content.append(&entry);
+    dialog.set_extra_child(Some(&content));
+    app.pin_dialog.replace(Some(dialog.clone()));
+    let app_for_response = app.clone();
+    let client_for_response = client.clone();
+    let id_for_response = user_id.clone();
+    let switching_for_response = switching.clone();
+    dialog.connect_response(None, move |dialog, response| {
+        let pin = entry.text().to_string();
+        dialog.force_close();
+        app_for_response.pin_dialog.borrow_mut().take();
+        if app_for_response.flow_generation() != flow_generation {
+            switching_for_response.set(crate::profile_sessions::SwitchPhase::Idle);
+            return;
+        }
+        if response == "unlock" && !pin.is_empty() {
+            request_switch(
+                app_for_response.clone(),
+                client_for_response.clone(),
+                id_for_response.clone(),
+                switching_for_response.clone(),
+                Some(pin),
+                true,
+                flow_generation,
+            );
+        } else {
+            if switching_for_response.get() == crate::profile_sessions::SwitchPhase::AwaitingPin {
+                switching_for_response.set(crate::profile_sessions::SwitchPhase::Idle);
+            }
+        }
+    });
+    dialog.present(Some(&app.window));
 }
 
 fn add_tile(app: &Rc<App>) -> gtk4::Button {
@@ -215,6 +350,10 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .valign(gtk4::Align::Start)
         .build();
     let app = app.clone();
-    b.connect_clicked(move |_| app.show_link());
+    b.connect_clicked(move |_| {
+        if !app.is_signing_out() {
+            app.show_link();
+        }
+    });
     b
 }

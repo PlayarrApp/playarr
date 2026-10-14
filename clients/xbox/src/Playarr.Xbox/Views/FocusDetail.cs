@@ -7,6 +7,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
+using Windows.UI.Xaml.Shapes;
 
 namespace Playarr.Xbox.Views
 {
@@ -16,11 +17,40 @@ namespace Playarr.Xbox.Views
     /// </summary>
     internal sealed class FocusDetail : Grid
     {
-        private readonly Image _backdrop = new Image { Width = 960, HorizontalAlignment = HorizontalAlignment.Left, Stretch = Stretch.UniformToFill, Opacity = 0.35 };
+        private readonly Grid _backdropLayer = new Grid
+        {
+            Width = 998.4,
+            Height = 1144.8,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
+            RenderTransform = new ScaleTransform { ScaleX = 1.04, ScaleY = 1.04 },
+        };
+        private readonly Image _backdrop = new Image { Stretch = Stretch.UniformToFill };
+        private readonly Rectangle _imageMaskWash = new Rectangle
+        {
+            Width = 998.4,
+            Height = 1144.8,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            IsHitTestVisible = false,
+            RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
+            RenderTransform = new ScaleTransform { ScaleX = 1.04, ScaleY = 1.04 },
+        };
+        private readonly Rectangle _horizontalWash = new Rectangle { Width = 960, HorizontalAlignment = HorizontalAlignment.Left };
+        private readonly Rectangle _verticalWash = new Rectangle
+        {
+            Width = 1920,
+            Height = 1080,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        private readonly Rectangle _stageWashLeft = new Rectangle { IsHitTestVisible = false };
+        private readonly Rectangle _stageWashRight = new Rectangle { IsHitTestVisible = false };
         private readonly TextBlock _eyebrow = new TextBlock { FontSize = 12, FontWeight = FontWeights.Bold, CharacterSpacing = 120 };
         private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69, FontWeight = FontWeights.SemiBold, CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 34, 0, 0) };
         private readonly TextBlock _meta = new TextBlock { FontSize = 14, Margin = new Thickness(0, 12, 0, 0) };
-        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 14, LineHeight = 22, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 20, 0, 0) };
+        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 14, LineHeight = 22, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 26, 0, 0) };
         private readonly StackPanel _panel;
 
         public FocusDetail()
@@ -30,13 +60,19 @@ namespace Playarr.Xbox.Views
             _eyebrow.Foreground = (Brush)Application.Current.Resources["PlayarrBrandInk"];
             _meta.Foreground = soft;
             _overview.Foreground = soft;
-            Children.Add(_backdrop);
-            Children.Add(new Windows.UI.Xaml.Shapes.Rectangle
-            {
-                Width = 960,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Fill = Theme.LeftFade(),
-            });
+            _backdropLayer.Opacity = Theme.KeyArtGroupOpacity;
+            _backdropLayer.Children.Add(_backdrop);
+            Children.Add(_backdropLayer);
+            _imageMaskWash.Fill = Theme.KeyArtImageMaskWash();
+            Children.Add(_imageMaskWash);
+            _horizontalWash.Fill = Theme.KeyArtStageHorizontalWash();
+            Children.Add(_horizontalWash);
+            _verticalWash.Fill = Theme.KeyArtVerticalWash();
+            Children.Add(_verticalWash);
+            _stageWashRight.Fill = Theme.KeyArtStageWashRight();
+            Children.Add(_stageWashRight);
+            _stageWashLeft.Fill = Theme.KeyArtStageWashLeft();
+            Children.Add(_stageWashLeft);
             _panel = new StackPanel
             {
                 Width = 380,
@@ -146,9 +182,8 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
-            // The web all but hides the backdrop behind the light page.
-            _backdrop.Opacity = Theme.IsLight ? 0.1 : 0.35;
-            Artwork.Load(_backdrop, work, 960, new[] { ImageKind.Backdrop }, requestWidth: 1280);
+            _backdropLayer.Opacity = Theme.KeyArtGroupOpacity;
+            Artwork.Load(_backdrop, work, 999, new[] { ImageKind.Backdrop }, requestWidth: withKind ? 1920 : 780, applyKeyArtFilter: true);
             var eyebrow = new List<string>();
             if (withKind)
             {

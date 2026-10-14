@@ -39,3 +39,10 @@ export function resolveAvatarPreset(userId: string): string {
   const index: number = ((hash % 6) + 6) % 6;
   return AVATAR_PRESET_IDS[index];
 }
+
+/** A preset id from a saved server preference, else '' (a custom photo is not drawn on this device). */
+export function presetFromRemote(kind: string, value: string): string {
+  return kind === "preset" && AVATAR_PRESET_IDS.indexOf(value) >= 0 ? value : "";
+}
+
+export const AVATAR_PRESET_LIST: string[] = AVATAR_PRESET_IDS.slice();

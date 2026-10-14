@@ -102,10 +102,12 @@ import { useTvNavigation } from "./lib/useTvNavigation";
 import { useOnlineStatus } from "./lib/useOnlineStatus";
 import { useDownloads } from "./lib/DownloadsProvider";
 import {
+  IS_VIDAA,
   IS_TV,
   PLAYARR_CLIENT_PLATFORM,
   shouldStartTvLink,
 } from "./lib/clientPlatform";
+import { formatShellClockDate } from "./lib/shellClockDate";
 import { ShellActionColumnProvider } from "./components/shell/ShellActionColumn";
 import { ProfileNavLink } from "./components/shell/ProfileNavLink";
 import { PRODUCT_NAV_GROUPS } from "./lib/productSurfaces";
@@ -453,7 +455,7 @@ function AppShell() {
             })}
           >
             <span className="app-clock-time">{formatTime(now, localeTag)}</span>
-            <span className="app-clock-date">{formatDate(now, localeTag)}</span>
+            <span className="app-clock-date">{formatShellClockDate(now, localeTag, IS_VIDAA)}</span>
           </div>
 
           <div className="app-utility">
@@ -636,14 +638,6 @@ function formatTime(date: Date, locale?: string): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  }).format(date);
-}
-
-function formatDate(date: Date, locale?: string): string {
-  return new Intl.DateTimeFormat(locale, {
-    weekday: "short",
-    day: "numeric",
-    month: "long",
   }).format(date);
 }
 

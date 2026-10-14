@@ -1,97 +1,97 @@
-/** Playlists: the empty state and one track per top-level playlist, with its titles resolved to real works. */
 import React from 'react';
 import {act, create, type ReactTestRenderer} from 'react-test-renderer';
-import {Text} from 'react-native';
-import type {Work} from '@playarr-tv/api-client';
+import {Pressable, Text} from 'react-native';
 import {ApiClientProvider} from '../api/ApiClientProvider';
 import {LanguageProvider} from '../i18n/LanguageProvider';
 import {ROUTES} from '../navigation/routes';
+import {TrackStack} from '../tv/TrackStack';
 import {PlaylistsScreen, type PlaylistsScreenNavigation} from './PlaylistsScreen';
 
+jest.mock('../platform/focus', () => {
+  const ReactValue = require('react') as typeof React;
+  return {TvFocusScope: ({children}: {children: React.ReactNode}) => ReactValue.createElement(ReactValue.Fragment, null, children), focusNode: jest.fn(), useDefaultFocus: jest.fn()};
+});
+jest.mock('../navigation/backPolicy', () => ({useTvBackNavigation: jest.fn()}));
 (globalThis as unknown as {React: typeof React}).React = React;
 
-const renderers: ReactTestRenderer[] = [];
-function trackRenderer(renderer: ReactTestRenderer): ReactTestRenderer {
-  renderers.push(renderer);
-  return renderer;
+const playlists = [
+  {id: 'playlist-root', name: 'Neutral Root', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', media_type: 'video', is_system: false},
+  {id: 'playlist-child', name: 'Neutral Child', parent_playlist_id: 'playlist-root', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', media_type: 'video', is_system: false},
+];
+const neutralWork = {id: 'work-neutral', title: 'Neutral Work', kind: 'movie', availability: 'available', added_at: '2026-01-01T00:00:00Z', external_refs: [], genres: [], images: [], monitored: true, overview: null, sort_title: 'Neutral Work', tags: []};
+const mounted: ReactTestRenderer[] = [];
+
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), {status: 200, headers: {'Content-Type': 'application/json'}});
 }
 
-jest.mock('../navigation/backPolicy', () => ({useTvBackNavigation: jest.fn(), useBackLayer: jest.fn()}));
-
-function work(overrides: Partial<Work> & Pick<Work, 'id' | 'title'>): Work {
-  return {added_at: '2026-01-01T00:00:00Z', availability: 'available', external_refs: [], genres: [], images: [], kind: 'movie', monitored: true, overview: null, sort_title: overrides.title, tags: [], ...overrides};
-}
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {status, headers: {'Content-Type': 'application/json'}});
-}
-
-function allText(renderer: ReactTestRenderer): string {
-  return renderer.root
-    .findAllByType(Text)
-    .map((node) => {
-      const children = node.props.children;
-      return (Array.isArray(children) ? children : [children]).filter((value) => typeof value === 'string').join('');
-    })
-    .join(' | ');
-}
-
-const PLAYLIST = {created_at: '2026-01-01T00:00:00Z', id: 'playlist-1', is_system: false, media_type: 'video', name: 'Weekend Watchlist', owner_user_id: 'user-1', parent_playlist_id: null, updated_at: '2026-01-01T00:00:00Z'};
-
-function mockFetch(handlers: {playlists?: unknown[]; items?: unknown[]; work?: unknown}): void {
-  jest.spyOn(global, 'fetch').mockImplementation(async (input: unknown) => {
-    const url = input instanceof Request ? input.url : String(input);
-    if (url.includes('/playlists/playlist-1/items')) return json(handlers.items ?? []);
-    if (url.includes('/playlists')) return json(handlers.playlists ?? []);
-    if (url.includes('/catalog/')) return json({available_on: [], children: 'Movie', media_file_id: null, runtime_ms: null, work: handlers.work});
-    return json({}, 404);
+function mockPlaylistFetch(): jest.SpyInstance {
+  return jest.spyOn(global, 'fetch').mockImplementation(async (input: unknown) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.endsWith('/api/v1/playlists')) return jsonResponse(playlists);
+    if (url.includes('/api/v1/playlists/playlist-child/items')) return jsonResponse([{id: 'item-neutral', playlist_id: 'playlist-child', position: 0, work_id: 'work-neutral', added_at: '2026-01-01T00:00:00Z'}]);
+    if (url.includes('/api/v1/catalog/work-neutral')) return jsonResponse({work: neutralWork, runtime_ms: null});
+    return jsonResponse([]);
   });
 }
 
-async function render(navigation: PlaylistsScreenNavigation): Promise<ReactTestRenderer> {
-  let renderer!: ReactTestRenderer;
-  await act(async () => {
-    renderer = trackRenderer(create(
-      <ApiClientProvider>
-        <LanguageProvider>
-          <PlaylistsScreen navigation={navigation} />
-        </LanguageProvider>
-      </ApiClientProvider>,
-    ));
-    for (let i = 0; i < 6; i += 1) await Promise.resolve();
-  });
-  return renderer;
+function navigation(): PlaylistsScreenNavigation & {navigate: jest.Mock} {
+  return {navigate: jest.fn()};
 }
 
-describe('PlaylistsScreen', () => {
+function renderScreen(params: {playlistId?: string; trackId?: string; backTo?: typeof ROUTES.search} | undefined, nav = navigation()) {
+  const renderer = create(<ApiClientProvider><LanguageProvider><PlaylistsScreen route={{params}} navigation={nav} /></LanguageProvider></ApiClientProvider>);
+  mounted.push(renderer);
+  return {renderer, nav};
+}
+
+describe('PlaylistsScreen route params from Search', () => {
   afterEach(() => {
-    act(() => {
-      for (const renderer of renderers.splice(0)) renderer.unmount();
-    });
+    act(() => mounted.splice(0).forEach((renderer) => renderer.unmount()));
     jest.restoreAllMocks();
   });
 
-  it('shows the empty state when there are no playlists', async () => {
-    mockFetch({playlists: []});
-    const text = allText(await render({navigate: jest.fn()}));
-    expect(text).toContain('No playlists yet');
-    expect(text).toContain('Your collection');
+  it('opens the selected child playlist and preserves its root and child IDs when opening a track', async () => {
+    mockPlaylistFetch();
+    let renderer!: ReturnType<typeof renderScreen>['renderer'];
+    const nav = navigation();
+    await act(async () => {
+      ({renderer} = renderScreen({playlistId: 'playlist-root', trackId: 'playlist-child', backTo: ROUTES.search}, nav));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(renderer.root.findAllByType(Text).some((node) => node.props.children === 'Neutral Root')).toBe(true);
+    expect(renderer.root.findByType(TrackStack).props.tracks.map((track: {id: string}) => track.id)).toEqual(['playlist-root', 'playlist-child']);
+    expect(renderer.root.findByType(TrackStack).props.initial).toEqual({track: 1, item: 0});
+
+    const track = renderer.root.findAllByType(Pressable).find((node) => node.props.accessibilityLabel === 'Neutral Work');
+    expect(track).toBeDefined();
+    act(() => track!.props.onPress());
+    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.workDetail, {
+      workId: 'work-neutral',
+      backTo: ROUTES.playlists,
+      backParams: {playlistId: 'playlist-root', trackId: 'playlist-child', backTo: ROUTES.search},
+    });
+
+    // Re-enter the playlist route using the detail's back target and params; its header must still return to Search.
+    const playlistReturn = renderScreen({playlistId: 'playlist-root', trackId: 'playlist-child', backTo: ROUTES.search}, nav);
+    const back = playlistReturn.renderer.root.findByProps({accessibilityLabel: 'Back'});
+    act(() => back.props.onPress());
+    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.search, undefined);
   });
 
-  it('lists a playlist as a track of its titles and opens one', async () => {
-    mockFetch({
-      playlists: [PLAYLIST],
-      items: [{id: 'item-1', playlist_id: 'playlist-1', work_id: 'w1', position: 0, added_at: '2026-01-01T00:00:00Z'}],
-      work: work({id: 'w1', title: 'The First Film'}),
-    });
-    const navigation = {navigate: jest.fn()};
-    const renderer = await render(navigation);
-    const text = allText(renderer);
-    expect(text).toContain('Weekend Watchlist');
-    expect(text).toContain('The First Film');
+  it('fails closed for an unknown playlist ID instead of showing the full collection', async () => {
+    const fetchMock = mockPlaylistFetch();
+    let renderer!: ReturnType<typeof renderScreen>['renderer'];
     await act(async () => {
-      renderer.root.findByProps({accessibilityLabel: 'The First Film'}).props.onPress();
+      ({renderer} = renderScreen({playlistId: 'missing-playlist', backTo: ROUTES.search}));
+      await Promise.resolve();
     });
-    expect(navigation.navigate).toHaveBeenCalledWith(ROUTES.workDetail, {workId: 'w1', backTo: ROUTES.playlists});
+
+    expect(renderer.root.findAllByType(Text).some((node) => node.props.children === 'Neutral Root')).toBe(false);
+    expect(renderer.root.findAllByType(Text).some((node) => node.props.children === 'Neutral Child')).toBe(false);
+    expect(fetchMock.mock.calls.map(([input]) => String(input instanceof Request ? input.url : input)).filter((url) => url.includes('/items'))).toHaveLength(0);
+    const back = renderer.root.findByProps({accessibilityLabel: 'Back'});
+    expect(() => act(() => back.props.onPress())).not.toThrow();
   });
 });

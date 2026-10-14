@@ -6,6 +6,7 @@
  * keys are not wired; add both with the shared scroll-fade work.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -61,12 +62,12 @@ export struct SelectField {
   build() {
     Column({ space: tv(STACK_GAP) }) {
       Row({ space: tv(GAP) }) {
-        Text(this.labelOf(this.value))
+        Text(this.labelOf(this.value)).fontFamily(nunito(700))
           .fontSize(tv(FONT))
           .fontWeight(FontWeight.Bold)
           .fontColor(this.textColor(this.highlighted === '#trigger'))
           .layoutWeight(1)
-        Text('⌄')
+        Text('⌄').fontFamily(nunito(400))
           .fontSize(tv(FONT))
           .fontColor(this.textColor(this.highlighted === '#trigger'))
           .rotate({ angle: this.open ? 180 : 0 })
@@ -96,12 +97,12 @@ export struct SelectField {
           Column({ space: tv(LIST_GAP) }) {
             ForEach(this.options, (option: Choice) => {
               Row({ space: tv(GAP) }) {
-                Text(option.label)
+                Text(option.label).fontFamily(nunito(700))
                   .fontSize(tv(FONT))
                   .fontWeight(FontWeight.Bold)
                   .fontColor(this.textColor(this.highlighted === option.value))
                   .layoutWeight(1)
-                Text(option.value === this.value ? '✓' : '')
+                Text(option.value === this.value ? '✓' : '').fontFamily(nunito(400))
                   .fontSize(tv(FONT))
                   .fontColor(this.textColor(this.highlighted === option.value))
                   .width(tv(FONT))

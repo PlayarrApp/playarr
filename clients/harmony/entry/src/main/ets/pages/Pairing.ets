@@ -43,6 +43,7 @@
  * now-consumed pairing code.
  */
 
+import { nunito } from '../design/Typography';
 import { getDeviceAuthService, getServerDirectory } from '../AppContainer';
 import { Spacing, Radii } from '../core/Tokens';
 import type { DeviceCodeResponse } from '../core/Types/Auth';
@@ -186,7 +187,7 @@ struct Pairing {
   build() {
     NavDestination() {
       Column({ space: Spacing.xl }) {
-        Text($r('app.string.pairing_title'))
+        Text($r('app.string.pairing_title')).fontFamily(nunito(700))
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
@@ -213,22 +214,22 @@ struct Pairing {
               .focusable(false)
 
             Column({ space: Spacing.sm }) {
-              Text('Scan the QR code, or visit')
+              Text('Scan the QR code, or visit').fontFamily(nunito(400))
                 .fontSize(18)
                 .fontColor(toResourceColor(activeColors().inkSoft))
-              Text(this.deviceCode.verification_uri)
+              Text(this.deviceCode.verification_uri).fontFamily(nunito(700))
                 .fontSize(24)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
-              Text('and enter this code')
+              Text('and enter this code').fontFamily(nunito(400))
                 .fontSize(18)
                 .fontColor(toResourceColor(activeColors().inkSoft))
-              Text(this.deviceCode.user_code)
+              Text(this.deviceCode.user_code).fontFamily(nunito(700))
                 .fontSize(USER_CODE_FONT_SIZE)
                 .fontWeight(FontWeight.Bold)
                 .letterSpacing(USER_CODE_LETTER_SPACING)
                 .fontColor(toResourceColor(activeColors().ink))
-              Text($r('app.string.pairing_waiting'))
+              Text($r('app.string.pairing_waiting')).fontFamily(nunito(400))
                 .fontSize(16)
                 .fontColor(toResourceColor(activeColors().inkMuted))
             }

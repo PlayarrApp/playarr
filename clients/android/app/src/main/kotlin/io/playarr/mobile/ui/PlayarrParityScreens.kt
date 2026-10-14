@@ -17,6 +17,7 @@ import io.playarr.shared.designsystem.component.PlayarrButton
 import io.playarr.shared.designsystem.component.PlayarrButtonVariant
 import io.playarr.shared.designsystem.component.PlayarrIconButton
 import io.playarr.shared.designsystem.theme.FocusMotion
+import io.playarr.shared.designsystem.theme.PlayarrWebTheme
 
 import android.app.Activity
 import android.content.Context
@@ -1930,7 +1931,7 @@ private fun TelevisionProfilesStage(
             // Web `.profiles-heading`: 10.368 px kicker at y 162, 80.64 px h1 at y 184.8.
             Text(
                 playarrString(PlayarrString.ProfilesTitle).uppercase(language.locale),
-                color = ProfilesBrandRose,
+                color = PlayarrWebTheme.palette.brandInk,
                 fontSize = 10.368.sp,
                 fontWeight = FontWeight(820),
                 letterSpacing = 1.348.sp,
@@ -2432,13 +2433,12 @@ private fun ProfileChoice(
     val avatarFocused by avatarSource.collectIsFocusedAsState()
     val settingsFocus = remember { FocusRequester() }
     val settingsLabel = playarrString(PlayarrString.ProfilesSettingsFor, "name" to profile.displayName)
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(cardWidth)
-            .then(lift)
-            .onFocusChanged { if (it.isFocused) onFocus() },
-    ) {
+    val avatarShadows = when {
+        isTelevision && avatarFocused -> listOf(WebShadow(22.dp, 52.dp, Color(0xFF1F0E14).copy(alpha = 0.28f)))
+        isTelevision && selected -> listOf(WebShadow(22.dp, 52.dp, Color(0xFF1F0E14).copy(alpha = 0.18f)))
+        else -> emptyList()
+    }
+    val avatarSurface: @Composable () -> Unit = {
         Surface(
             onClick = onClick,
             interactionSource = avatarSource,
@@ -2451,11 +2451,11 @@ private fun ProfileChoice(
                 .then(if (selected) Modifier.focusProperties { down = settingsFocus } else Modifier)
                 .size(avatarSize)
                 .semantics { contentDescription = avatarDescription }
-                // Order matters: the scale and the ring come before the shadow, which clips everything after it.
-                .scale(if (selected) 1.035f else 1f)
+                // On TV the outer shadow layer owns the scale; phone keeps the original avatar modifier chain.
+                .then(if (isTelevision) Modifier else Modifier.scale(if (selected) 1.035f else 1f))
                 .then(
-                    if (selected) {
-                        // Web `box-shadow: 0 0 0 4px rose 42%`: the ring sits outside the avatar, over the page.
+                    if (selected && (!isTelevision || !avatarFocused)) {
+                        // Web selected state: 4px brand ring. Focus replaces it with the 3px focus glow below.
                         Modifier.drawBehind {
                             drawCircle(
                                 ProfilesBrandRose.copy(alpha = 0.42f), radius = size.minDimension / 2f + 2.dp.toPx(),
@@ -2466,18 +2466,16 @@ private fun ProfileChoice(
                         Modifier
                     },
                 )
-                // Over the selected rose ring: the focus glow wins while the avatar holds focus.
-                .circleCardGlow(isTelevision && avatarFocused)
                 .then(
-                    if (selected) {
-                        Modifier.shadow(
+                    when {
+                        selected && !isTelevision -> Modifier.shadow(
                             elevation = 22.dp,
                             shape = CircleShape,
                             ambientColor = Color(0x2E1F0E14),
                             spotColor = Color(0x2E1F0E14),
                         )
-                    } else {
-                        Modifier.border(1.dp, WebInkMuted.copy(alpha = 0.35f), CircleShape)
+                        !selected -> Modifier.border(1.dp, WebInkMuted.copy(alpha = 0.35f), CircleShape)
+                        else -> Modifier
                     },
                 ),
         ) {
@@ -2497,6 +2495,24 @@ private fun ProfileChoice(
                 }
             }
         }
+    }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(cardWidth)
+            .then(lift)
+            .onFocusChanged { if (it.isFocused) onFocus() },
+    ) {
+        if (isTelevision) {
+            WebShadowedBox(
+                shadows = avatarShadows,
+                shape = CircleShape,
+                modifier = Modifier.size(avatarSize).graphicsLayer { scaleX = if (selected) 1.035f else 1f; scaleY = scaleX },
+                focusGlow = avatarFocused,
+            ) { avatarSurface() }
+        } else {
+            avatarSurface()
+        }
         Text(
             profile.displayName,
             color = if (selected) WebInk else WebInkSoft,
@@ -2512,7 +2528,7 @@ private fun ProfileChoice(
         if (!serverLabel.isNullOrBlank()) {
             Text(
                 serverLabel,
-                color = WebInkMuted,
+                color = if (isTelevision) PlayarrWebTheme.palette.webInkMuted else WebInkMuted,
                 fontSize = if (isTelevision) 12.sp else 10.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -2529,7 +2545,7 @@ private fun ProfileChoice(
                     else -> PlayarrString.ProfilesStatusReady
                 },
             ).uppercase(LocalPlayarrLanguage.current.locale),
-            color = WebInkMuted,
+            color = if (isTelevision) PlayarrWebTheme.palette.webInkMuted else WebInkMuted,
             fontSize = if (isTelevision) 9.408.sp else 8.sp,
             fontWeight = if (isTelevision) FontWeight(690) else FontWeight.Bold,
             letterSpacing = if (isTelevision) 0.423.sp else 0.6.sp,
@@ -2599,18 +2615,10 @@ private fun AddProfileChoice(
     // Draw-only lift: an offset would change the bounds focus search measures.
     val lift = if (selected) Modifier.graphicsLayer { translationY = -8.dp.toPx(); scaleX = 1.045f; scaleY = 1.045f } else Modifier
     var addFocused by remember { mutableStateOf(false) }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(cardWidth)
-            .then(lift)
-            .onFocusChanged { addFocused = it.hasFocus; if (it.hasFocus) onFocus() },
-    ) {
-        // Web `.profile-add .profile-avatar` dashed plate.
+    val addAvatar: @Composable () -> Unit = {
         Box(
             modifier = Modifier
                 .size(avatarSize)
-                .circleCardGlow(isTelevision && addFocused)
                 .clip(CircleShape)
                 .drawBehind {
                     // Web `.profile-avatar` plate: 145deg from surface-strong mixed 16% to #cf3157 towards #a82655,
@@ -2642,7 +2650,7 @@ private fun AddProfileChoice(
                             pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)),
                         ),
                     )
-                    if (selected) {
+                    if (selected && (!isTelevision || !addFocused)) {
                         drawCircle(
                             color = ProfilesBrandRose.copy(alpha = 0.42f),
                             style = Stroke(width = 4.dp.toPx()),
@@ -2659,6 +2667,24 @@ private fun AddProfileChoice(
                 fontWeight = FontWeight.Light,
             )
         }
+    }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(cardWidth)
+            .then(lift)
+            .onFocusChanged { addFocused = it.hasFocus; if (it.hasFocus) onFocus() },
+    ) {
+        if (isTelevision) {
+            WebShadowedBox(
+                shadows = if (addFocused) listOf(WebShadow(22.dp, 52.dp, Color(0xFF1F0E14).copy(alpha = 0.28f))) else emptyList(),
+                shape = CircleShape,
+                modifier = Modifier.size(avatarSize),
+                focusGlow = addFocused,
+            ) { addAvatar() }
+        } else {
+            addAvatar()
+        }
         Text(
             playarrString(PlayarrString.ProfilesSignIn),
             color = if (selected) WebInk else WebInkSoft,
@@ -2668,7 +2694,7 @@ private fun AddProfileChoice(
         )
         Text(
             playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale),
-            color = WebInkMuted,
+            color = if (isTelevision) PlayarrWebTheme.palette.webInkMuted else WebInkMuted,
             fontSize = if (isTelevision) 9.408.sp else 8.sp,
             fontWeight = if (isTelevision) FontWeight(690) else FontWeight.Bold,
             letterSpacing = if (isTelevision) 0.423.sp else 0.6.sp,

@@ -205,6 +205,33 @@ class PlayarrEndOfPlaybackTest {
     }
 
     @Test
+    fun `artwork candidate width uses the backend w parameter and preserves provider query`() {
+        val candidates = playarrArtworkCandidates(
+            "w1",
+            listOf(
+                image(
+                    io.playarr.shared.data.model.ImageKind.Backdrop,
+                    "/api/v1/artwork/work/w1/backdrop?style=stage&v=source",
+                ),
+            ),
+            PLAYER_SUGGESTION_ARTWORK_KINDS,
+            "https://pl.example",
+            width = { 780 },
+        )
+
+        assertEquals(
+            listOf(
+                "https://pl.example/api/v1/artwork/work/w1/backdrop?w=780",
+                "https://pl.example/api/v1/artwork/work/w1/backdrop?style=stage&v=source",
+            ),
+            candidates,
+        )
+        assertTrue(candidates.first().contains("?w=780"))
+        assertFalse(candidates.first().contains("width="))
+        assertEquals(1, candidates.first().count { it == '?' })
+    }
+
+    @Test
     fun `artwork candidates are empty when there is no usable image so the tile shows its title`() {
                 assertTrue(playarrArtworkCandidates("w1", emptyList(), PLAYER_SUGGESTION_ARTWORK_KINDS, "https://pl.example").isEmpty())
         assertTrue(

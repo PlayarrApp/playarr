@@ -774,6 +774,20 @@ export class AvPlayerController {
     }
   }
 
+  /** Sets the player's own output level (0 silent to 1 full). The device's volume keys are separate and untouched. */
+  public setVolume(level: number): void {
+    const player = this.player;
+    if (player === null) {
+      return;
+    }
+    try {
+      player.setVolume(Math.max(0, Math.min(1, level)));
+    } catch (err) {
+      const asError = err as Error;
+      logError(LOG_TAG, 'setVolume() failed: ' + asError.message);
+    }
+  }
+
   public async pause(): Promise<void> {
     const player = this.player;
     if (player === null) {

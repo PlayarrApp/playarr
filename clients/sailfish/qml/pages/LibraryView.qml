@@ -79,7 +79,7 @@ Item {
         anchors { top: heading.bottom; topMargin: -4 * Tokens.u; left: parent.left; leftMargin: 70 * Tokens.u }
         visible: root.total > 0
         text: (root.kind === "artist" ? qsTr("%1 artists") : qsTr("%1 titles")).arg(Number(root.total).toLocaleString(Qt.locale(), "f", 0)).toUpperCase()
-        color: Tokens.brandPinkSoft
+        color: Tokens.brandInk
         font.family: Tokens.family820
         font.letterSpacing: 1 * Tokens.u
         font.pixelSize: 10.2 * Tokens.u
@@ -128,9 +128,9 @@ Item {
             MouseArea {
                 width: 26 * Tokens.u; height: 19 * Tokens.u
                 onClicked: root.jumpTo(modelData)
-                Rectangle { anchors.centerIn: parent; width: 21.5 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
+                Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.dark ? "#d4d1d4" : Tokens.ink }
-                Label { anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.6 * Tokens.u
+                Label { anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.96 * Tokens.u
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#1b181b" : "#ffffff") : Tokens.inkSoft }
             }
         }

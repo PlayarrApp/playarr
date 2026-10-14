@@ -71,6 +71,7 @@ import { ImageKind } from '../core/Types/Work.ts';
 import {
   artworkWorkUrl,
   artworkAlbumUrl,
+  artworkEpisodeUrl,
   mediaThumbnailUrl,
 } from '../core/Endpoints.ts';
 
@@ -409,11 +410,24 @@ export function fetchAlbumArtwork(artistWorkId: string, albumId: string, kind: I
   return fetchArtworkBytes(path, cacheKey);
 }
 
+/** `GET /api/v1/artwork/episode/{series_work_id}/{episode_id}/{kind}?w=`. */
+export function fetchEpisodeArtwork(
+  seriesWorkId: string,
+  episodeId: string,
+  kind: ImageKind,
+  width: number
+): Promise<ApiResult<image.PixelMap>> {
+  const path = artworkEpisodeUrl(seriesWorkId, episodeId, kind, width);
+  const cacheKey = buildCacheKey('episode', seriesWorkId + '/' + episodeId, kind + ':width:' + String(width));
+  return fetchArtworkBytes(path, cacheKey);
+}
+
 /** `GET /api/v1/media/{media_file_id}/thumbnail?position_ms=` (brief 4.9):
  * chapter cards and on-deck episode art. */
-export function fetchMediaThumbnail(mediaFileId: string, positionMs: number): Promise<ApiResult<image.PixelMap>> {
-  const path = mediaThumbnailUrl(mediaFileId) + '?position_ms=' + String(positionMs);
-  const cacheKey = buildCacheKey('thumbnail', mediaFileId, 'position:' + String(positionMs));
+export function fetchMediaThumbnail(mediaFileId: string, positionMs?: number): Promise<ApiResult<image.PixelMap>> {
+  const cachePositionMs = positionMs !== undefined ? positionMs : 30000;
+  const path = mediaThumbnailUrl(mediaFileId, positionMs);
+  const cacheKey = buildCacheKey('thumbnail', mediaFileId, 'position:' + String(cachePositionMs));
   return fetchArtworkBytes(path, cacheKey);
 }
 

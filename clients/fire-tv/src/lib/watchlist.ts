@@ -1,5 +1,5 @@
 /** The detail page's Add to watchlist toggle: the web's `WatchlistToggle`, as a hook. */
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import type {TitleSnapshot, Work} from '@playarr-tv/api-client';
 
 export function snapshotFromWork(work: Work): TitleSnapshot {
@@ -20,36 +20,39 @@ export interface WatchlistClient {
   removeFromWatchlist(titleKey: string): Promise<void>;
 }
 
-export function useWatchlistToggle(client: WatchlistClient, snapshot: TitleSnapshot | null): {listed: boolean | null; busy: boolean; toggle: () => void} {
-  const [listed, setListed] = useState<boolean | null>(null);
+export function useWatchlistToggle(client: WatchlistClient, snapshot: TitleSnapshot | null, initialListed?: boolean): {listed: boolean | null; busy: boolean; toggle: () => void} {
+  const [listed, setListed] = useState<boolean | null>(initialListed ?? null);
   const [titleKey, setTitleKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const interactedRef = useRef(false);
   const identity = snapshot ? `${snapshot.kind}:${snapshot.work_id ?? ''}:${snapshot.title}:${snapshot.year ?? ''}` : '';
 
   useEffect(() => {
     let cancelled = false;
-    setListed(null);
+    interactedRef.current = false;
+    setListed(initialListed ?? null);
     setTitleKey(null);
     if (!snapshot) return undefined;
     client
       .resolveTitle(snapshot)
       .then((resolved) => {
         if (cancelled) return;
-        setListed(resolved.in_watchlist);
         setTitleKey(resolved.title.title_key);
+        if (!interactedRef.current) setListed(resolved.in_watchlist);
       })
       .catch(() => {
-        if (!cancelled) setListed(false);
+        if (!cancelled && !interactedRef.current) setListed(false);
       });
     return () => {
       cancelled = true;
     };
-    // `snapshot` is rebuilt on every render; `identity` is what names it.
+    // `snapshot` and the initial server flag are rebuilt on renders; only a new identity starts another read.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, identity]);
 
   const toggle = useCallback(() => {
     if (busy || listed === null || !snapshot) return;
+    interactedRef.current = true;
     setBusy(true);
     const run = async (): Promise<void> => {
       if (listed) {

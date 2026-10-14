@@ -103,6 +103,7 @@ import {
   writeCachedCatalogKinds,
 } from '../lib/catalogKindsCache';
 import {PlayerHandleContext} from './PlayerHandleContext';
+import {CatalogKindsContext} from '../lib/catalogKindsContext';
 import {HomeScreen} from '../screens/HomeScreen';
 import {LibraryScreen, type LibraryKind} from '../screens/LibraryScreen';
 import {MusicDetailScreen} from '../screens/MusicDetailScreen';
@@ -196,8 +197,9 @@ function SearchScreenScreen(): React.ReactElement {
 
 function PlaylistsScreenScreen(): React.ReactElement {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
-  useTvBackNavigation();
-  return <PlaylistsScreen navigation={navigateAdapter(navigation)} />;
+  const route = useRoute<RouteProp<ParamListBase>>();
+  const params = route.params as {playlistId?: string; trackId?: string; backTo?: RouteName} | undefined;
+  return <PlaylistsScreen route={{params}} navigation={navigateAdapter(navigation)} />;
 }
 
 /**
@@ -216,7 +218,7 @@ function PlaylistsScreenScreen(): React.ReactElement {
 function WorkDetailScreenScreen(): React.ReactElement {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const route = useRoute<RouteProp<ParamListBase>>();
-  const params = route.params as {workId?: string; backTo?: RouteName} | undefined;
+  const params = route.params as {workId?: string; backTo?: RouteName; backParams?: Record<string, unknown>} | undefined;
   const playerHandle = useContext(PlayerHandleContext);
   useTvBackNavigation(params?.backTo);
 
@@ -227,7 +229,7 @@ function WorkDetailScreenScreen(): React.ReactElement {
 
   return (
     <WorkDetailScreen
-      route={{params: {workId: params.workId}}}
+      route={{params: {workId: params.workId, backTo: params.backTo, backParams: params.backParams}}}
       navigation={navigateAdapter(navigation)}
       onPlay={(mediaFileId, options) => playerHandle?.current?.show(mediaFileId, options)}
     />
@@ -237,7 +239,7 @@ function WorkDetailScreenScreen(): React.ReactElement {
 function MusicDetailScreenScreen(): React.ReactElement {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const route = useRoute<RouteProp<ParamListBase>>();
-  const params = route.params as {workId?: string; backTo?: RouteName} | undefined;
+  const params = route.params as {workId?: string; backTo?: RouteName; backParams?: Record<string, unknown>} | undefined;
   const playerHandle = useContext(PlayerHandleContext);
   useTvBackNavigation(params?.backTo ?? ROUTES.music);
 
@@ -248,7 +250,7 @@ function MusicDetailScreenScreen(): React.ReactElement {
 
   return (
     <MusicDetailScreen
-      route={{params: {workId: params.workId}}}
+      route={{params: {workId: params.workId, backTo: params.backTo, backParams: params.backParams}}}
       navigation={navigateAdapter(navigation)}
       onPlay={(mediaFileId) => playerHandle?.current?.show(mediaFileId)}
     />
@@ -391,6 +393,7 @@ export function AppShellNavigator(): React.ReactElement {
 
   return (
     <View style={{flex: 1, backgroundColor: colour.bg}}>
+      <CatalogKindsContext.Provider value={availableWorkKinds}>
       <ContentStack.Navigator screenOptions={{headerShown: false, animationEnabled: false}}>
         <ContentStack.Screen name={ROUTES.home} component={HomeScreen} />
         <ContentStack.Screen name={ROUTES.search} component={SearchScreenScreen} />
@@ -419,6 +422,7 @@ export function AppShellNavigator(): React.ReactElement {
         <ContentStack.Screen name={ROUTES.settingsCustomiseHome} component={SettingsRoutes.customiseHome} />
         <ContentStack.Screen name={ROUTES.notFound} component={NotFoundScreenScreen} />
       </ContentStack.Navigator>
+      </CatalogKindsContext.Provider>
       {household.status && householdBlock ? (
         <HouseholdBlockedScreen client={client} status={household.status} onSwitchProfile={() => navigation.navigate(ROUTES.profiles)} />
       ) : null}

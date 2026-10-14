@@ -21,10 +21,10 @@ function targetBlock(name) {
 }
 
 test('hosted iOS app tests inherit the pinned Google Cast search paths', () => {
-  const appTarget = targetBlock('PlayarrApp');
+  const appTarget = targetBlock('Playarr');
   const appTestsTarget = targetBlock('PlayarrAppTests');
 
   assert.match(appTarget, /pod 'google-cast-sdk', '= 4\.8\.6'/);
-  assert.ok(appTarget.includes(appTestsTarget), 'PlayarrAppTests must be nested in PlayarrApp');
+  assert.ok(appTarget.includes(appTestsTarget), 'PlayarrAppTests must be nested in Playarr');
   assert.match(appTestsTarget, /inherit! :search_paths/);
 });

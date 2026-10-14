@@ -232,6 +232,19 @@
       }
     },
     {
+      "id": "nav-right-stage",
+      "from": "home",
+      "keys": [
+        "left",
+        "right"
+      ],
+      "compare": "position",
+      "start": {
+        "rail": 0,
+        "index": 0
+      }
+    },
+    {
       "id": "nav-down",
       "from": "home",
       "keys": [
@@ -376,7 +389,8 @@
         "right*2",
         "select"
       ],
-      "wait": 6000
+      "wait": 6000,
+      "observe": "panel"
     },
     {
       "id": "player-panel-close",
@@ -386,7 +400,8 @@
         "select",
         "back"
       ],
-      "wait": 6000
+      "wait": 6000,
+      "observe": "panel"
     }
   ],
   "downloadMedia": {

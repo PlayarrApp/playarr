@@ -148,6 +148,21 @@ describe("day sections", () => {
     expect(agenda).toContain("<h3>");
     expect(agenda).not.toMatch(/<section[^>]*aria-label=/);
   });
+
+  it("renders an en-GB week heading without an engine-specific comma", () => {
+    const week = renderToStaticMarkup(
+      <DaySections
+        days={[{ day: "2024-10-07", entries: [] }]}
+        t={t}
+        locale="en-GB"
+        today="2024-10-08"
+        showEmpty
+        selectedKey={null}
+        onSelect={noop}
+      />
+    );
+    expect(week).toContain('<time dateTime="2024-10-07">Monday 7 October</time>');
+  });
 });
 
 describe("calendar filters show no source names", () => {

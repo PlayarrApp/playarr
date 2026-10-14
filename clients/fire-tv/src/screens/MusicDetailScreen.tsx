@@ -54,6 +54,8 @@ export interface MusicDetailScreenNavigation {
 
 export interface MusicDetailRouteParams {
   workId: string;
+  backTo?: RouteName;
+  backParams?: Record<string, unknown>;
 }
 
 export interface MusicDetailScreenProps {
@@ -114,7 +116,7 @@ export function MusicDetailScreen({route, navigation, onPlay}: MusicDetailScreen
   if (state.status !== 'ready') {
     return (
       <Stage>
-        <PageHeader title={t('pages.musicDetail.music')} onBack={() => navigation.navigate('home' as RouteName)} />
+        <PageHeader title={t('pages.musicDetail.music')} onBack={() => navigation.navigate(route.params.backTo ?? ('home' as RouteName), route.params.backParams)} />
         <Box x={783} y={200} w={700}>
           <T size={17} weight={610} color={colour.ink}>
             {state.status === 'error' ? t('pages.musicDetail.loadErrorTitle') : t('pages.musicDetail.loadingArtistDetails')}
@@ -133,7 +135,7 @@ export function MusicDetailScreen({route, navigation, onPlay}: MusicDetailScreen
 
   return (
     <Stage artUri={stageArtUrl(baseUrl, artist)} accessToken={accessToken}>
-      <PageHeader title={t('pages.musicDetail.music')} detail={artist.title} onBack={() => navigation.navigate('music' as RouteName)} />
+      <PageHeader title={t('pages.musicDetail.music')} detail={artist.title} onBack={() => navigation.navigate(route.params.backTo ?? ('music' as RouteName), route.params.backParams)} />
       <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} x={776} />
       {selectedAlbum ? (
         <Box x={153.6} y={259.2} w={540}>

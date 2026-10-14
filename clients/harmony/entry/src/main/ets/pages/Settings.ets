@@ -8,6 +8,7 @@
  * profile) and Server connection (the address in use). The other web sections land with 13.10018's later steps.
  */
 
+import { nunito } from '../design/Typography';
 import { activeColors, setThemeModeSetting, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
@@ -20,6 +21,10 @@ import { getPlayerPreferences, updatePlayerPreferences, getProfilePinSetting, up
 import type { Choice } from '../design/components/ChoiceSegments';
 
 import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance } from '../AppContainer';
+import { InvitePanel } from '../design/components/InvitePanel';
+import { ProfileAvatarPanel } from '../design/components/ProfileAvatarPanel';
+import { HomeRailsPanel } from '../design/components/HomeRailsPanel';
+import { YourDataPanel } from '../design/components/YourDataPanel';
 import { QualityMatrix } from '../design/components/QualityMatrix';
 import { ORIGINAL_QUALITY, normaliseQuality, normaliseSubtitleMode, normaliseSubtitleLanguage } from '../core/PlayerDefaults';
 
@@ -251,19 +256,19 @@ export struct SettingsScreen {
   @Builder
   private sectionRow(section: SettingsSection): void {
     Stack({ alignContent: Alignment.TopStart }) {
-      Text(section.number)
+      Text(section.number).fontFamily(nunito(700))
         .fontSize(tv(NUMBER_SIZE))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .position({ x: tv(NUMBER_LEFT), y: tv(NUMBER_TOP) })
-      Text(section.title)
+      Text(section.title).fontFamily(nunito(500))
         .fontSize(tv(TITLE_SIZE))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(TITLE_LETTER_SPACING))
         .fontColor(toResourceColor(activeColors().ink))
         .height(tv(ROW_HEIGHT))
         .position({ x: tv(TITLE_LEFT), y: 0 })
-      Text('→')
+      Text('→').fontFamily(nunito(400))
         .fontSize(tv(ARROW_SIZE))
         .fontColor(toResourceColor(activeColors().ink))
         .height(tv(ROW_HEIGHT))
@@ -334,12 +339,12 @@ export struct SettingsScreen {
 
   @Builder
   private panelHeading(title: string, description: string): void {
-    Text(title)
+    Text(title).fontFamily(nunito(500))
       .fontSize(tv(26.4))
       .fontWeight(FontWeight.Medium)
       .letterSpacing(tv(-0.924))
       .fontColor(toResourceColor(activeColors().ink))
-    Text(description)
+    Text(description).fontFamily(nunito(400))
       .fontSize(tv(PANEL_TEXT_SIZE))
       .fontColor(toResourceColor(activeColors().inkSoft))
   }
@@ -387,10 +392,10 @@ export struct SettingsScreen {
             this.chooseAudioLanguage(value);
           },
         })
-        Text(this.audioStatusText())
+        Text(this.audioStatusText()).fontFamily(nunito(400))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontColor(toResourceColor(this.audioStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
-        Text('Quality and subtitle defaults are saved on this device. Audio language follows your profile.')
+        Text('Quality and subtitle defaults are saved on this device. Audio language follows your profile.').fontFamily(nunito(400))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontColor(toResourceColor(activeColors().inkMuted))
       }
@@ -407,7 +412,7 @@ export struct SettingsScreen {
   @Builder
   private profileLockPanel(): void {
     Column({ space: tv(16) }) {
-      Text(this.pinLocked ? 'Replace PIN' : 'New PIN')
+      Text(this.pinLocked ? 'Replace PIN' : 'New PIN').fontFamily(nunito(700))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
@@ -425,7 +430,7 @@ export struct SettingsScreen {
           .onChange((value: string) => {
             this.pinDraft = value;
           })
-        Text(this.lockStatus === 'saving' ? 'Saving…' : this.pinLocked ? 'Replace' : 'Set PIN')
+        Text(this.lockStatus === 'saving' ? 'Saving…' : this.pinLocked ? 'Replace' : 'Set PIN').fontFamily(nunito(700))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(this.pinDraft.length === 4 ? activeColors().bg : activeColors().inkMuted))
@@ -438,11 +443,11 @@ export struct SettingsScreen {
           })
       }
       Row({ space: tv(16) }) {
-        Text(this.lockStatusText())
+        Text(this.lockStatusText()).fontFamily(nunito(400))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontColor(toResourceColor(this.lockStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
         if (this.pinLocked) {
-          Text('Remove PIN')
+          Text('Remove PIN').fontFamily(nunito(700))
             .fontSize(tv(PANEL_TEXT_SIZE))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))
@@ -464,12 +469,12 @@ export struct SettingsScreen {
   @Builder
   private pendingPanel(): void {
     Column({ space: tv(16) }) {
-      Text(this.sectionTitle())
+      Text(this.sectionTitle()).fontFamily(nunito(500))
         .fontSize(tv(26.4))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(SECTION_COPY.get(this.openSection) ?? '')
+      Text(SECTION_COPY.get(this.openSection) ?? '').fontFamily(nunito(400))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
@@ -480,12 +485,12 @@ export struct SettingsScreen {
   @Builder
   private serverPanel(): void {
     Column({ space: tv(16) }) {
-      Text('Server connection')
+      Text('Server connection').fontFamily(nunito(500))
         .fontSize(tv(26.4))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(getServerDirectory().getActiveBaseUrl() ?? 'No server connected.')
+      Text(getServerDirectory().getActiveBaseUrl() ?? 'No server connected.').fontFamily(nunito(400))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
@@ -510,6 +515,14 @@ export struct SettingsScreen {
         this.serverPanel()
       } else if (this.openSection === 'profile-lock') {
         this.profileLockPanel()
+      } else if (this.openSection === 'home') {
+        HomeRailsPanel({ panelWidth: this.panelWidth() })
+      } else if (this.openSection === 'profile-avatar') {
+        ProfileAvatarPanel()
+      } else if (this.openSection === 'invite') {
+        InvitePanel({ panelWidth: this.panelWidth() })
+      } else if (this.openSection === 'your-data') {
+        YourDataPanel({ panelWidth: this.panelWidth() })
       } else {
         this.pendingPanel()
       }
@@ -531,6 +544,14 @@ export struct SettingsScreen {
             this.serverPanel()
           } else if (this.openSection === 'profile-lock') {
             this.profileLockPanel()
+          } else if (this.openSection === 'home') {
+            HomeRailsPanel({ panelWidth: this.panelWidth() })
+          } else if (this.openSection === 'profile-avatar') {
+            ProfileAvatarPanel()
+          } else if (this.openSection === 'invite') {
+            InvitePanel({ panelWidth: this.panelWidth() })
+          } else if (this.openSection === 'your-data') {
+            YourDataPanel({ panelWidth: this.panelWidth() })
           } else {
             this.pendingPanel()
           }
@@ -547,18 +568,18 @@ export struct SettingsScreen {
       Column() {
         ForEach(SECTIONS, (section: SettingsSection) => {
           Row({ space: 16 }) {
-            Text(section.number)
+            Text(section.number).fontFamily(nunito(700))
               .fontSize(10)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
               .alignSelf(ItemAlign.Start)
               .margin({ top: 6 })
             Column({ space: 4 }) {
-              Text(section.title)
+              Text(section.title).fontFamily(nunito(500))
                 .fontSize(20)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
-              Text(SECTION_COPY.get(section.id) ?? '')
+              Text(SECTION_COPY.get(section.id) ?? '').fontFamily(nunito(400))
                 .fontSize(12)
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 .maxLines(1)
@@ -566,7 +587,7 @@ export struct SettingsScreen {
             }
             .alignItems(HorizontalAlign.Start)
             .layoutWeight(1)
-            Text('→')
+            Text('→').fontFamily(nunito(400))
               .fontSize(18)
               .fontColor(toResourceColor(activeColors().ink))
           }

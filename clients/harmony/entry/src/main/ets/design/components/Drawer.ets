@@ -4,6 +4,7 @@
  * long-press actions, downloads) uses this. It overlays the page; the page is never rebuilt behind it.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -49,13 +50,13 @@ export struct Drawer {
     Column() {
       Row() {
         Column({ space: tv(4) }) {
-          Text(this.kicker)
+          Text(this.kicker).fontFamily(nunito(700))
             .fontSize(tv(KICKER_SIZE))
             .fontWeight(FontWeight.Bold)
             .letterSpacing(tv(KICKER_LETTER_SPACING))
             .textCase(TextCase.UpperCase)
             .fontColor(toResourceColor(activeColors().inkSoft))
-          Text(this.title)
+          Text(this.title).fontFamily(nunito(500))
             .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
             .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
@@ -63,7 +64,7 @@ export struct Drawer {
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
-        Text('×')
+        Text('×').fontFamily(nunito(700))
           .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))

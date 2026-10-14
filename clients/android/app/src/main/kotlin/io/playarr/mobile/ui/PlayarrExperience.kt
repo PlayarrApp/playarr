@@ -33,6 +33,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -71,6 +72,7 @@ import io.playarr.shared.designsystem.component.PlayarrFadeKind
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -143,6 +145,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -153,6 +156,8 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -160,6 +165,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -1694,7 +1700,19 @@ internal fun PlayarrExperience(
             LocalTvNavEntry provides navEntryFocus,
             LocalTvContentEntry provides remember { TvContentEntry() },
         ) {
-        Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+        val phoneDrawerHost = remember { PhoneDrawerHostState() }
+        LaunchedEffect(activeNavRoute, isTelevision) {
+            if (isTelevision) phoneDrawerHost.dismiss() else phoneDrawerHost.routeChanged(activeNavRoute)
+        }
+        CompositionLocalProvider(
+            LocalPhoneDrawerHost provides if (isTelevision) null else phoneDrawerHost,
+            LocalPhoneDrawerRoute provides activeNavRoute,
+        ) {
+        val visibleDestinations = visibleExperienceDestinations(availableKinds, canDownload, hasFolders)
+        val phoneDrawerActive = !isTelevision && phoneDrawerHost.activePane?.route == activeNavRoute
+        val phoneDrawerNavigationAbovePane = isPhoneDrawerNavigationAbovePane(phoneDrawerHost.activePane, activeNavRoute)
+        val drawerBlurRadius = with(LocalDensity.current) { 38.dp.toPx() }
+        val backgroundContent: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
             ExperienceNavHost(
                 navController,
                 serverUrl,
@@ -1726,33 +1744,41 @@ internal fun PlayarrExperience(
                 )
             }
 
-            // Web keeps the rail, logo, clock and profile chip around the blocked state.
             if (!isPlayer && !isProfiles) {
-                val visibleDestinations = visibleExperienceDestinations(availableKinds, canDownload, hasFolders)
                 val profileName = currentUserName ?: playarrString(PlayarrString.ProfileViewerFallback)
                 val profileDescription = playarrString(PlayarrString.ProfileControl, "name" to profileName)
-                if (visibleDestinations.isNotEmpty()) {
+                if (isTelevision && visibleDestinations.isNotEmpty()) {
                     ExperienceNavigation(
                         destinations = visibleDestinations,
                         currentRoute = activeNavRoute,
-                        isTelevision = isTelevision,
+                        isTelevision = true,
                         onNavigate = { navController.openExperienceTopLevel(it) },
-                        modifier = Modifier.align(if (isTelevision) Alignment.TopStart else Alignment.BottomCenter)
-                            .onFocusChanged { navFocusState.value = it.hasFocus },
+                        modifier = Modifier.align(Alignment.TopStart).onFocusChanged { navFocusState.value = it.hasFocus },
                         currentEntryFocus = navEntryFocus,
                         tvProfile = TvProfileTile(currentUserId.orEmpty(), profileName, profileAvatar, profileDescription) {
                             navController.openExperienceTopLevel("profiles")
                         },
                     )
                 }
-                // The rail (television) or the bottom bar (phone, web `.app-nav-profile`) carries the profile; the chip only stands in when there is no nav.
-                if (visibleDestinations.isEmpty()) ProfileControl(
-                    isTelevision = isTelevision,
+                if (!isTelevision && phoneDrawerActive && !phoneDrawerNavigationAbovePane && !isPlayer && !isProfiles && visibleDestinations.isNotEmpty()) {
+                    ExperienceNavigation(
+                        destinations = visibleDestinations,
+                        currentRoute = activeNavRoute,
+                        isTelevision = false,
+                        onNavigate = { navController.openExperienceTopLevel(it) },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                            .focusProperties { canFocus = false }
+                            .onFocusChanged { navFocusState.value = it.hasFocus },
+                        currentEntryFocus = navEntryFocus,
+                    )
+                }
+                if (isTelevision && visibleDestinations.isEmpty()) ProfileControl(
+                    isTelevision = true,
                     userId = currentUserId.orEmpty(),
                     userName = currentUserName,
                     avatar = profileAvatar,
                     onClick = { navController.openExperienceTopLevel("profiles") },
-                    modifier = Modifier.align(if (isTelevision) Alignment.BottomStart else Alignment.TopEnd),
+                    modifier = Modifier.align(Alignment.BottomStart),
                 )
                 if (isTelevision) {
                     PlayarrLogo(
@@ -1762,21 +1788,77 @@ internal fun PlayarrExperience(
                     Box(Modifier.align(Alignment.TopStart).padding(top = 68.2.dp).width(634.dp), contentAlignment = Alignment.TopEnd) { ExperienceClock() }
                 }
             }
-
-            if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
-                PlayarrMiniPlayer(
-                    item = activePlaybackItem!!,
-                    timeline = miniTimeline,
-                    serverUrl = serverUrl,
-                    accessToken = token,
-                    isTelevision = isTelevision,
-                    player = playerViewModel.player.rawPlayer,
-                    onMaximise = {
-                        navController.navigate("experience-player/${Uri.encode(activePlaybackItem!!.mediaFileId)}")
-                    },
-                    modifier = Modifier.align(if (isTelevision) Alignment.BottomEnd else Alignment.BottomCenter),
-                )
+        }
+        if (isTelevision) {
+            // Keep the TV layout tree and its focus order unchanged.
+            Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+                backgroundContent()
+                if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
+                    PlayarrMiniPlayer(
+                        item = activePlaybackItem!!,
+                        timeline = miniTimeline,
+                        serverUrl = serverUrl,
+                        accessToken = token,
+                        isTelevision = true,
+                        player = playerViewModel.player.rawPlayer,
+                        onMaximise = { navController.navigate("experience-player/${Uri.encode(activePlaybackItem!!.mediaFileId)}") },
+                        modifier = Modifier.align(Alignment.BottomEnd),
+                    )
+                }
             }
+        } else {
+            Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+                Box(
+                    Modifier.fillMaxSize()
+                        .graphicsLayer {
+                            renderEffect = if (phoneDrawerActive && android.os.Build.VERSION.SDK_INT >= 31) {
+                                BlurEffect(drawerBlurRadius, drawerBlurRadius, TileMode.Decal)
+                            } else {
+                                null
+                            }
+                        }
+                        .focusProperties { canFocus = !phoneDrawerActive }
+                        .semantics { if (phoneDrawerActive) invisibleToUser() },
+                    content = backgroundContent,
+                )
+                if (phoneDrawerNavigationAbovePane) PhoneDrawerHostPane(phoneDrawerHost, activeNavRoute)
+                if (phoneDrawerNavigationAbovePane && !isPlayer && !isProfiles) {
+                    val profileName = currentUserName ?: playarrString(PlayarrString.ProfileViewerFallback)
+                    if (visibleDestinations.isNotEmpty()) {
+                        ExperienceNavigation(
+                            destinations = visibleDestinations,
+                            currentRoute = activeNavRoute,
+                            isTelevision = false,
+                            onNavigate = { navController.openExperienceTopLevel(it) },
+                            modifier = Modifier.align(Alignment.BottomCenter).onFocusChanged { navFocusState.value = it.hasFocus },
+                            currentEntryFocus = navEntryFocus,
+                        )
+                    } else {
+                        ProfileControl(
+                            isTelevision = false,
+                            userId = currentUserId.orEmpty(),
+                            userName = profileName,
+                            avatar = profileAvatar,
+                            onClick = { navController.openExperienceTopLevel("profiles") },
+                            modifier = Modifier.align(Alignment.TopEnd),
+                        )
+                    }
+                }
+                if (!phoneDrawerNavigationAbovePane) PhoneDrawerHostPane(phoneDrawerHost, activeNavRoute)
+                if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
+                    PlayarrMiniPlayer(
+                        item = activePlaybackItem!!,
+                        timeline = miniTimeline,
+                        serverUrl = serverUrl,
+                        accessToken = token,
+                        isTelevision = false,
+                        player = playerViewModel.player.rawPlayer,
+                        onMaximise = { navController.navigate("experience-player/${Uri.encode(activePlaybackItem!!.mediaFileId)}") },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
+            }
+        }
         }
         }
     }
@@ -2144,7 +2226,11 @@ private fun TvNavTile(
             // RIGHT lands directly in the page's default target, as on web.
             .onPreviewKeyEvent { event ->
                 val target = contentEntry.requester
-                if (event.key == Key.DirectionRight && event.type == KeyEventType.KeyDown && target != null) {
+                val enter = contentEntry.enter
+                if (event.key == Key.DirectionRight && event.type == KeyEventType.KeyDown && enter != null) {
+                    enter()
+                    true
+                } else if (event.key == Key.DirectionRight && event.type == KeyEventType.KeyDown && target != null) {
                     runCatching { target.requestFocus() }.isSuccess
                 } else {
                     false
@@ -2797,6 +2883,12 @@ private fun ExperienceHomeScreen(
                     tvRails.onLeftEdge = { false }
                     // Nothing sits above the first rail (Customise Home now lives in Settings), so UP at the top edge stays put.
                     tvRails.onUpEdge = { false }
+                    // Web `data-tv-focus-default`: RIGHT from the nav rail lands on the first card of the first rail.
+                    val homeEntry = LocalTvContentEntry.current
+                    DisposableEffect(tvRails) {
+                        homeEntry.enter = { homeScope.launch { tvRails.focus(0, 0) } }
+                        onDispose { homeEntry.enter = null }
+                    }
                     if (isTelevision) {
                         // Web's default focus: the last focused card, else the first card of the first rail.
                         TvDefaultFocusEffect(Unit) {
@@ -3137,6 +3229,7 @@ internal fun ExperienceMediaRail(
     rails: TvRails? = null,
     railIndex: Int = 0,
 ) {
+    val density = LocalDensity.current
     val collection = playarrString(PlayarrString.LibraryCollectionTitles)
     val railTitle = rail.literalTitle ?: rail.title?.let { playarrString(it) }.orEmpty()
     Column(
@@ -3147,7 +3240,18 @@ internal fun ExperienceMediaRail(
     ) {
         if (isTelevision) {
             // Web `.tv-home-rail h2`: 17.664 px / 610, no count line; cards start 58.9 px below the heading top.
-            Text(railTitle, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), lineHeight = 26.5.sp)
+            // Guarded TV geometry places the web h2 box at y=402px; the native rail Text starts at the
+            // LazyColumn content top y=389.9dp. The TV context maps dp 1:1 to pixels, so translate the
+            // heading's drawing by that measured difference without changing its line box or card origin.
+            val headingInkOffset = 402.dp - 389.9.dp
+            Text(
+                railTitle,
+                color = WebInk,
+                fontSize = 17.664.sp,
+                fontWeight = FontWeight(610),
+                lineHeight = 26.5.sp,
+                modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() },
+            )
         } else {
             // Web phone rail heading: 24 px tall, 16 px / 610; the active rail's title is drawn 1.16x, lifted 1 px.
             Box(Modifier.fillMaxWidth().height(24.dp).padding(start = 16.dp), contentAlignment = Alignment.CenterStart) {
@@ -3168,12 +3272,52 @@ internal fun ExperienceMediaRail(
         // television, the 16 dp page gutter on a phone) ahead of the content start line. A card at rest sits on that line;
         // scrolled-past cards fade away over the gutter only.
         val trackGutter = if (isTelevision) tvTrackGutter() else 16.dp
+        // Web `.tv-media-track-scroll` reserves 18px of normal spacing plus 24px for focused-card shadow above its
+        // viewport. Move the extra 36px from the outer spacing into LazyRow content padding, keeping the resting card
+        // origin fixed while giving the focus lift, scale and shadow the same unclipped headroom.
+        val tvTrackHeadroom = 42.dp
+        val tvHeadroomAdjustment = tvTrackHeadroom - 6.dp
+        val tvOuterTopPadding = (if (railIndex == 0) 43.2.dp else 41.2.dp) - tvHeadroomAdjustment
+        // Keep the pre-existing 10dp card origin exact: integer-pixel headroom avoids a fractional-density rounding drift.
+        val phoneFocusTopHeadroomPx = with(density) { 24.dp.roundToPx() }
+        val phoneFocusBottomHeadroomPx = with(density) { 80.dp.roundToPx() }
+        val phoneFocusTopHeadroom = with(density) { phoneFocusTopHeadroomPx.toDp() }
+        val phoneFocusBottomHeadroom = with(density) { phoneFocusBottomHeadroomPx.toDp() }
+        val trackModifier = if (isTelevision) {
+            Modifier.fillMaxWidth().extendStart(trackGutter).padding(top = tvOuterTopPadding)
+        } else {
+            Modifier.fillMaxWidth().padding(end = 5.dp).layout { measurable, constraints ->
+                // Web `.tv-media-track-scroll` adds 24px above and 80px below the card for focus shadows, then uses
+                // matching negative margins so the card origin and following-rail position do not move. Give the
+                // LazyRow that paint headroom while reporting the original outer height to its parent.
+                val top = phoneFocusTopHeadroom.roundToPx()
+                val bottom = phoneFocusBottomHeadroom.roundToPx()
+                val extra = top + bottom
+                val expandedMaxHeight = if (constraints.hasBoundedHeight) {
+                    if (constraints.maxHeight > Int.MAX_VALUE - extra) Int.MAX_VALUE else constraints.maxHeight + extra
+                } else {
+                    constraints.maxHeight
+                }
+                val placeable = measurable.measure(constraints.copy(maxHeight = expandedMaxHeight))
+                val reportedHeight = (placeable.height - extra).coerceAtLeast(constraints.minHeight).coerceAtMost(constraints.maxHeight)
+                layout(placeable.width, reportedHeight) {
+                    placeable.placeRelative(0, -top)
+                }
+            }
+        }
         PlayarrLazyRow(
             state = railState,
             fade = if (isTelevision) PlayarrFadeKind.Rail else PlayarrFadeKind.PhoneRail,
             startGutter = trackGutter,
-            modifier = (if (isTelevision) Modifier.fillMaxWidth().extendStart(trackGutter) else Modifier.fillMaxWidth().padding(end = 5.dp)).then(if (isTelevision) Modifier.padding(top = if (railIndex == 0) 43.2.dp else 41.2.dp) else Modifier),
-            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = 20.dp, top = 6.dp, bottom = 12.dp) else PaddingValues(start = 16.dp, end = 20.dp, top = 10.dp),
+            fadeCrossAxisStartInset = if (isTelevision) 0.dp else phoneFocusTopHeadroom,
+            fadeCrossAxisEndInset = if (isTelevision) 0.dp else phoneFocusBottomHeadroom,
+            modifier = trackModifier,
+            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = 20.dp, top = tvTrackHeadroom, bottom = 12.dp) else PaddingValues(
+                start = 16.dp,
+                end = 20.dp,
+                top = 10.dp + phoneFocusTopHeadroom,
+                bottom = phoneFocusBottomHeadroom,
+            ),
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp else 12.dp),
         ) {
             itemsIndexed(rail.works, key = { _, work -> work.id }) { itemIndex, work ->
@@ -3257,17 +3401,22 @@ internal fun ExperienceLandscapeCard(
 ) {
     val resolvedSubtitle = displaySubtitle ?: work.playarrKindYearLabel()
     var focused by remember { mutableStateOf(false) }
+    val cardInteractionSource = remember(webPhone) {
+        if (webPhone) MutableInteractionSource() else null
+    }
     val animatedScale = rememberPlayarrFocusScale(
         focused = focused,
         focusedScale = if (webTvStyle) 1f else FocusMotion.cardFocusScale,
         label = "playarrCardFocus",
     )
-    // Web touch layouts no longer raise the autofocused card (#90): a phone card is never lifted or scaled.
+    val webPhoneRemoteFocus = webPhone && focused &&
+        androidx.compose.ui.platform.LocalInputModeManager.current.inputMode == androidx.compose.ui.input.InputMode.Keyboard
+    // Touch input keeps phone cards at rest; keyboard focus applies the web lift and art scale inside the focus target.
     val scale = if (webPhone) 1f else animatedScale
     // Web remote mode (`body[data-input-mode="remote"]`, which is always the case on a TV): no lift, no scale and no
     // selected state; the focused card's art gets a 3 px ring and a deeper shadow, and nothing else changes.
     val liftActive = focused
-    val artScale by animateFloatAsState(if (focused && webTvStyle) 1.025f else 1f, tween(240), label = "homeArtScale")
+    val artScale by animateFloatAsState(if (focused && (webTvStyle || webPhoneRemoteFocus)) 1.025f else 1f, tween(240), label = "homeArtScale")
     val cardRadius = if (webTvStyle) 12.48.dp else 10.dp
     val stackNear = WebInk.copy(alpha = 0.26f)
     val stackFar = WebInk.copy(alpha = 0.14f)
@@ -3282,18 +3431,41 @@ internal fun ExperienceLandscapeCard(
                 },
             )
             .onFocusChanged { if (it.isFocused) { focused = true; onSelected() } else focused = false }
-            .combinedClickable(
-                onClick = { onSelected(); onClick() },
-                onLongClick = onContext,
+            .then(
+                if (webPhone) {
+                    Modifier.combinedClickable(
+                        interactionSource = cardInteractionSource,
+                        indication = if (webPhoneRemoteFocus) null else androidx.compose.foundation.LocalIndication.current,
+                        onClick = { onSelected(); onClick() },
+                        onLongClick = onContext,
+                    )
+                } else {
+                    Modifier.combinedClickable(
+                        onClick = { onSelected(); onClick() },
+                        onLongClick = onContext,
+                    )
+                },
             )
             .then(if (contentLabel != null) Modifier.semantics { contentDescription = contentLabel } else Modifier),
     ) {
     // The lift is applied here, inside the focus target, so focus search keeps the unlifted bounds.
-    Column(Modifier.fillMaxWidth().then(if (webTvStyle) Modifier.mediaCardLift(focused, PlayarrCardMotions.Home) else Modifier)) {
+    val webPhoneMotion = when {
+        webHome -> PlayarrCardMotions.Home
+        webSearch -> PlayarrCardMotions.Search
+        else -> PlayarrCardMotions.Library
+    }
+    Column(Modifier.fillMaxWidth().then(
+        when {
+            webTvStyle -> Modifier.mediaCardLift(focused, PlayarrCardMotions.Home)
+            webPhoneRemoteFocus -> Modifier.mediaCardLift(focused, webPhoneMotion)
+            else -> Modifier
+        },
+    )) {
         WebShadowedBox(
-            shadows = if (webPhone) webCardShadows(false, webHome, webSearch) else if (webTvStyle) (if (focused) webRemoteFocusShadows else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
+            shadows = if (webPhone) webCardShadows(selected || focused, webHome, webSearch) else if (webTvStyle) (if (focused) webRemoteFocusShadows else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),
-            focusGlow = webTvStyle && focused,
+            focusGlow = (webPhone && (selected || focused)) || (webTvStyle && focused),
+            focusGlowColor = if (webPhone) PlayarrWebTheme.palette.phoneCardGlow else null,
             modifier = Modifier.fillMaxWidth()
                 .aspectRatio(if (homeView == PlayarrHomeViewPreference.Cover) 2f / 3f else 16f / 9f)
                 .then(
@@ -3378,7 +3550,7 @@ internal fun ExperienceLandscapeCard(
                 modifier = Modifier.padding(start = 1.9.dp, top = 9.7.dp),
             )
             Text(
-                resolvedSubtitle, color = WebInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
+                resolvedSubtitle, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 1.9.dp, top = 2.56.dp),
             )
@@ -3768,7 +3940,8 @@ private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetE
                 .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(6.4.dp),
         ) {
             Row(
-                Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(10.dp)).clickable { open = !open }.padding(horizontal = 12.dp),
+                Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(10.dp))
+                    .clickable { open = !open }.padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
             ) {
                 Text(summary, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -4348,7 +4521,6 @@ private fun PhoneSearchContent(
         HeroBackdropStack {
             PhoneKeyArt(selectedWork, serverUrl, accessToken, Modifier.fillMaxSize())
             PhoneStageWash(Modifier.fillMaxSize())
-            Box(Modifier.padding(top = 320.7.dp).fillMaxSize().background(phonePanelBrush(fadeFraction = 0.1f)))
         }
         Column(Modifier.fillMaxSize().windowInsetsPadding(webPhoneInsets())) {
             Spacer(Modifier.height(76.dp))
@@ -4381,13 +4553,14 @@ private fun PhoneSearchContent(
                     innerWidthFill = true,
                 ) {
                 Row(
-                    Modifier.fillMaxWidth().height(50.dp)
+                    // Web's 50px min-height grows to 60px from the 44px input plus 14px padding and 2px border.
+                    Modifier.fillMaxWidth().height(60.dp)
                         .background(WebSurfaceStrong.copy(alpha = 0.88f), pillShape)
                         .border(1.dp, if (fieldFocused) rose.copy(alpha = 0.72f) else WebSearchBorder, pillShape)
                         .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(PlayarrWebIcons.Search, contentDescription = null, tint = WebInkMuted, modifier = Modifier.size(18.dp))
+                    Icon(PlayarrWebIcons.Search, contentDescription = null, tint = PlayarrWebTheme.palette.phoneInkMuted, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     androidx.compose.foundation.text.BasicTextField(
                         value = query,
@@ -4401,7 +4574,7 @@ private fun PhoneSearchContent(
                         decorationBox = { inner ->
                             Box(contentAlignment = Alignment.CenterStart) {
                                 if (query.isEmpty()) {
-                                    Text(playarrString(PlayarrString.SearchPlaceholder), color = WebInkMuted, fontSize = 16.sp, lineHeight = 24.sp, maxLines = 1)
+                                    Text(playarrString(PlayarrString.SearchPlaceholder), color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 16.sp, lineHeight = 24.sp, maxLines = 1)
                                 }
                                 inner()
                             }
@@ -4409,17 +4582,18 @@ private fun PhoneSearchContent(
                     )
                 }
                 }
-                Spacer(Modifier.height(10.dp))
                 filterPanel()
             }
             // The web results area does not follow the top inset: it starts where a 24 dp status bar leaves it.
             val topInset = webPhoneInsets().asPaddingValues().calculateTopPadding()
-            Box(Modifier.padding(top = (24.dp - topInset).coerceAtLeast(0.dp)).weight(1f).fillMaxWidth()) {
+            // Web starts the copy at 14px + 58px, then the 18px form margin places its 60px field at y=90px.
+            // The results rail starts at y=154px, four pixels below that field.
+            Box(Modifier.padding(top = (18.dp - topInset).coerceAtLeast(0.dp)).weight(1f).fillMaxWidth()) {
                 when (val current = state) {
                     ExperienceLoad.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = WebAccent) }
                     is ExperienceLoad.Failed -> PlayarrErrorState(current.message, onSubmit)
                     is ExperienceLoad.Ready -> if (query_.isBlank()) {
-                        PlayarrEmptyState(playarrString(PlayarrString.SearchIdleTitle), playarrString(PlayarrString.SearchEmptyPrompt))
+                        PhoneSearchIdleState(Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp))
                     } else if (gamesOnly) {
                         DiscoveryExtrasSection(
                             query = query_.trim(),
@@ -4478,6 +4652,40 @@ private fun PhoneSearchContent(
                 }
             }
         }
+    }
+}
+
+/** Phone Search idle row matching the web mobile search illustration and copy. */
+@Composable
+private fun PhoneSearchIdleState(modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(86.dp)
+                .background(WebSurfaceStrong.copy(alpha = 0.54f), CircleShape)
+                .border(1.dp, if (webIsDark) Color(0xFFDFDCDD).copy(alpha = 0.115f) else Color(0xFF382621).copy(alpha = 0.14f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(Modifier.size(width = 34.dp, height = (34f * 32f / 48f).dp)) {
+                val pink = Color(0xFFCF3157)
+                val scale = size.width / 48f
+                val strokeWidth = 1.8f * scale
+                val style = androidx.compose.ui.graphics.drawscope.Stroke(strokeWidth, cap = StrokeCap.Round)
+                drawCircle(pink, radius = 9f * scale, center = Offset(21f * scale, 14f * scale), style = style)
+                drawLine(pink, Offset(17f * scale, 14f * scale), Offset(25f * scale, 14f * scale), strokeWidth, cap = StrokeCap.Round)
+                drawLine(pink, Offset(28f * scale, 21f * scale), Offset(37f * scale, 29f * scale), strokeWidth, cap = StrokeCap.Round)
+            }
+        }
+        Spacer(Modifier.width(22.dp))
+        Text(
+            playarrString(PlayarrString.SearchIdleTitle),
+            color = WebInk,
+            fontSize = 11.52.sp,
+            fontWeight = FontWeight(650),
+            letterSpacing = (-0.2304).sp,
+            lineHeight = 13.824.sp,
+            style = WebTextStyle,
+            maxLines = 1,
+        )
     }
 }
 
@@ -4891,6 +5099,8 @@ private fun MediaContextDialog(
             kicker = playarrString(PlayarrString.ContextTitleActions),
             closeLabel = playarrString(PlayarrString.CommonClose),
             onClose = onDismiss,
+            // Web media-context backdrop covers the app navigation; the Filters panel uses the separate above-nav layer.
+            navigationAbovePane = false,
             initialFocus = firstAction, // web: the drawer opens on its first action
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -5803,6 +6013,7 @@ private fun ExperienceVideoDetailContent(
                 progressByMedia = progressByMedia,
                 movieRuntimeMs = movieMetadata?.durationMs,
                 chapters = playarrDisplayedMovieChapters(movieChapters, movieMetadata?.durationMs ?: 0L),
+                generatedChapters = movieChapters.isEmpty(),
                 credits = credits,
                 similarWorks = similarWorks,
                 availabilityLag = availabilityLag,
@@ -5847,6 +6058,7 @@ private fun PhoneVideoDetailBody(
     progressByMedia: Map<String, WatchProgress>,
     movieRuntimeMs: Long?,
     chapters: List<MediaChapter>,
+    generatedChapters: Boolean,
     credits: WorkCreditsResponse,
     similarWorks: List<Work>,
     availabilityLag: io.playarr.shared.data.model.AvailabilityLag?,
@@ -5899,7 +6111,7 @@ private fun PhoneVideoDetailBody(
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Text(
                     (episodeCode ?: work.genres.firstOrNull() ?: work.kind.playarrSingularLabel()).uppercase(language.locale),
-                    color = WebKicker, fontSize = 10.56.sp, lineHeight = 15.84.sp, fontWeight = FontWeight(820), letterSpacing = 0.8448.sp, style = WebTextStyle,
+                    color = PlayarrWebTheme.palette.brandInk, fontSize = 10.56.sp, lineHeight = 15.84.sp, fontWeight = FontWeight(820), letterSpacing = 0.8448.sp, style = WebTextStyle,
                 )
                 Spacer(Modifier.height(10.dp))
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
@@ -5924,7 +6136,7 @@ private fun PhoneVideoDetailBody(
                 FlowRow(Modifier.offset(y = (-1.3).dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     metaItems.forEachIndexed { index, item ->
                         Text(
-                            item, color = if (index == 0) WebInkSoft else WebInkMuted, fontSize = 10.24.sp, lineHeight = 15.36.sp,
+                            item, color = if (index == 0) WebInkSoft else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 10.24.sp, lineHeight = 15.36.sp,
                             fontWeight = if (index == 0) FontWeight(680) else FontWeight.Normal, style = WebTextStyle, maxLines = 1,
                         )
                     }
@@ -5940,7 +6152,7 @@ private fun PhoneVideoDetailBody(
                 } else {
                     Spacer(Modifier.height(10.dp))
                 }
-                Text(synopsis, color = WebInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, style = WebTextStyle, maxLines = 3, minLines = if (episode != null) 3 else 1, overflow = TextOverflow.Ellipsis)
+                Text(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, style = WebTextStyle, maxLines = 3, minLines = if (episode != null) 3 else 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(if (episode != null) 11.67.dp else 14.dp))
                 PhoneDetailActions(
                     work = work, episode = selectedEpisode, mediaFileId = mediaFileId, progress = progress, canDownload = canDownload,
@@ -5999,7 +6211,10 @@ private fun PhoneVideoDetailBody(
                 } else if (mediaFileId != null && chapters.isNotEmpty()) {
                     PhoneDetailRail(
                         title = playarrString(PlayarrString.DetailChapters),
-                        subtitle = playarrString(PlayarrString.DetailSceneMarkersCount, "count" to chapters.size),
+                        subtitle = playarrString(
+                            if (generatedChapters) PlayarrString.DetailSceneMarkersCount else PlayarrString.DetailChaptersCount,
+                            "count" to chapters.size,
+                        ),
                     ) {
                         items(chapters, key = MediaChapter::index) { chapter ->
                             PhoneChapterCard(chapter, mediaFileId, serverUrl, accessToken) { onPlay(mediaFileId, chapter.startMs, launchSettings) }

@@ -174,6 +174,8 @@ namespace Playarr.Xbox.Views
                 Height = 262,
                 Padding = new Thickness(0),
             };
+            // Match the web Home rail's 18 px focus headroom while keeping its card origin and rail pitch unchanged.
+            CardFocus.ReserveTopLiftRoom(list, 18);
             ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
             ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
             ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);
@@ -197,7 +199,7 @@ namespace Playarr.Xbox.Views
                 list.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, cover: Appearance.HomeCover));
             }
 
-            var section = new StackPanel { Spacing = 22 };
+            var section = new StackPanel { Spacing = 38 };
             section.Children.Add(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
             section.Children.Add(list);
             return section;

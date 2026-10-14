@@ -1,0 +1,23 @@
+/*
+ * webOS 23's Chromium 94 does not implement scrollbar-width:none. Keep the
+ * shared Calendar week layout unchanged while hiding only its scrollbar
+ * chrome on this platform; overflow and the remote-controlled scroll areas
+ * remain intact.
+ */
+html[data-platform="tv-webos"] .calendar-week-scroll::-webkit-scrollbar,
+html[data-platform="tv-webos"] .calendar-week-scroll .calendar-day::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Measured webOS calendar line boxes need the web reference minima; the status pill's 26.56px reference is its 1.4em line, .36rem vertical padding and 2px borders. */
+html[data-platform="tv-webos"] .calendar-day h3,
+html[data-platform="tv-webos"] .calendar-entry-title,
+html[data-platform="tv-webos"] .calendar-entry-subtitle {
+  min-block-size: 1.5em;
+}
+
+html[data-platform="tv-webos"] .calendar-entry-meta .status-pill {
+  min-block-size: calc(1.4em + 0.36rem + 2px);
+}

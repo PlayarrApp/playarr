@@ -10,6 +10,7 @@ struct WorkDetailView: View {
     let downloadRepository: DownloadRepository
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var scheme
+    @Environment(VisibleWorkDetailRoutes.self) private var visibleDetailRoutes: VisibleWorkDetailRoutes?
     @State private var playlists: [Playlist] = []
     @State private var playlistMessage: String?
     @State private var actionMessageTitle = "Playlists"
@@ -25,6 +26,9 @@ struct WorkDetailView: View {
     @State private var tabletResumePlanLoaded = false
     @State private var tabletEpisodeSelectionTouched = false
     @FocusState private var focusedTabletEpisodeID: UUID?
+    @State private var initialTabletScrollWorkID: UUID?
+    @State private var visibleDetailRouteID = UUID()
+    @State private var isVisible = false
 
     init(
         viewModel: WorkDetailViewModel,
@@ -65,7 +69,11 @@ struct WorkDetailView: View {
         }
         .task {
             if case .idle = viewModel.loadState { await viewModel.load() }
-            playlists = (try? await apiClient.listPlaylists()) ?? []
+            guard !Task.isCancelled, isVisible else { return }
+            updateVisibleDetailRoute()
+            let loadedPlaylists = (try? await apiClient.listPlaylists()) ?? []
+            guard !Task.isCancelled, isVisible else { return }
+            playlists = loadedPlaylists
             if selectedAlbumID == nil,
                case .artist(let albums) = viewModel.detail?.children {
                 selectedAlbumID = albums.first?.album.id
@@ -78,6 +86,24 @@ struct WorkDetailView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .playarrChromeHidden(!(viewModel.detail.map { $0.work.kind == .movie || $0.work.kind == .series } ?? false))
+        .onAppear {
+            isVisible = true
+            updateVisibleDetailRoute()
+        }
+        .onChange(of: viewModel.detail?.work.kind) { _, _ in updateVisibleDetailRoute() }
+        .onDisappear {
+            isVisible = false
+            visibleDetailRoutes?.deactivate(id: visibleDetailRouteID)
+        }
+    }
+
+    private func updateVisibleDetailRoute() {
+        guard isVisible, let visibleDetailRoutes else { return }
+        guard let kind = viewModel.detail?.work.kind else {
+            visibleDetailRoutes.deactivate(id: visibleDetailRouteID)
+            return
+        }
+        visibleDetailRoutes.activate(id: visibleDetailRouteID, kind: kind)
     }
 
     private func detailContent(_ detail: WorkDetail) -> some View {

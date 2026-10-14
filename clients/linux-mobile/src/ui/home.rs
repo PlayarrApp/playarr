@@ -4,7 +4,9 @@ use super::images::Images;
 use super::{bg, App};
 use crate::api::Client;
 use crate::model::{Rail, Work};
+use gtk4::glib;
 use gtk4::prelude::*;
+use std::cell::Cell;
 use std::rc::Rc;
 
 struct Deck {
@@ -12,24 +14,50 @@ struct Deck {
     fraction: f64,
 }
 
-fn rail_row(children: impl IntoIterator<Item = gtk4::Button>) -> gtk4::ScrolledWindow {
+struct RailRow {
+    scrolled: gtk4::ScrolledWindow,
+    cards: Vec<gtk4::Button>,
+    selected: Option<gtk4::Button>,
+}
+
+fn rail_row(children: impl IntoIterator<Item = gtk4::Button>, selected: bool) -> RailRow {
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
     row.set_margin_start(16);
     row.set_margin_end(16);
+    let mut cards = Vec::new();
+    let mut selected_card = None;
     for c in children {
+        if selected && cards.is_empty() {
+            selected_card = Some(c.clone());
+        }
         row.append(&c);
+        cards.push(c);
     }
-    gtk4::ScrolledWindow::builder()
+    let scrolled = gtk4::ScrolledWindow::builder()
         .child(&row)
         .vscrollbar_policy(gtk4::PolicyType::Never)
         .hscrollbar_policy(gtk4::PolicyType::Automatic)
         .propagate_natural_height(true)
-        .build()
+        .build();
+    RailRow {
+        scrolled,
+        cards,
+        selected: selected_card,
+    }
 }
 
-fn section(title: &str, row: &gtk4::ScrolledWindow) -> gtk4::Box {
-    let b = gtk4::Box::new(gtk4::Orientation::Vertical, 19);
-    b.append(
+struct FocusSection {
+    widget: gtk4::Overlay,
+    scrolled: gtk4::ScrolledWindow,
+    cards: Vec<gtk4::Button>,
+    selected: Option<gtk4::Button>,
+    halo_layer: gtk4::Fixed,
+    halo: gtk4::Box,
+}
+
+fn section(title: &str, row: RailRow) -> FocusSection {
+    let content = gtk4::Box::new(gtk4::Orientation::Vertical, 19);
+    content.append(
         &gtk4::Label::builder()
             .label(title)
             .css_classes(["pa-rail-title"])
@@ -37,8 +65,172 @@ fn section(title: &str, row: &gtk4::ScrolledWindow) -> gtk4::Box {
             .margin_start(16)
             .build(),
     );
-    b.append(row);
-    b
+    content.append(&row.scrolled);
+    let section_overlay = gtk4::Overlay::builder().child(&content).build();
+    let halo_layer = gtk4::Fixed::new();
+    halo_layer.set_hexpand(true);
+    halo_layer.set_vexpand(true);
+    halo_layer.set_can_target(false);
+    let halo = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    halo.add_css_class("pa-art");
+    halo.add_css_class("selected");
+    halo.add_css_class("pa-home-focus-halo");
+    halo.set_size_request(RAIL_W, super::cards::ART_H);
+    halo.set_can_target(false);
+    halo.set_visible(false);
+    halo_layer.put(&halo, 0.0, 0.0);
+    // Clip the non-measuring halo to the full section, whose heading and 19px gap provide its outset.
+    let halo_clip = gtk4::Viewport::new(None::<&gtk4::Adjustment>, None::<&gtk4::Adjustment>);
+    halo_clip.set_child(Some(&halo_layer));
+    halo_clip.add_css_class("pa-home-focus-clip");
+    halo_clip.set_hexpand(true);
+    halo_clip.set_vexpand(true);
+    halo_clip.set_halign(gtk4::Align::Fill);
+    halo_clip.set_valign(gtk4::Align::Fill);
+    halo_clip.set_can_target(false);
+    section_overlay.add_overlay(&halo_clip);
+    section_overlay.set_measure_overlay(&halo_clip, false);
+    FocusSection {
+        widget: section_overlay,
+        scrolled: row.scrolled,
+        cards: row.cards,
+        selected: row.selected,
+        halo_layer,
+        halo,
+    }
+}
+
+struct FocusSectionWeak {
+    widget: glib::WeakRef<gtk4::Overlay>,
+    scrolled: glib::WeakRef<gtk4::ScrolledWindow>,
+    cards: Vec<glib::WeakRef<gtk4::Button>>,
+    layer: glib::WeakRef<gtk4::Fixed>,
+    halo: glib::WeakRef<gtk4::Box>,
+}
+
+fn track_focused_cards(sections: &[FocusSection]) {
+    let sections_weak: Vec<_> = sections
+        .iter()
+        .map(|section| FocusSectionWeak {
+            widget: section.widget.downgrade(),
+            scrolled: section.scrolled.downgrade(),
+            cards: section.cards.iter().map(|card| card.downgrade()).collect(),
+            layer: section.halo_layer.downgrade(),
+            halo: section.halo.downgrade(),
+        })
+        .collect();
+    let selected_weak = sections
+        .iter()
+        .find_map(|section| section.selected.as_ref())
+        .map(|selected| selected.downgrade());
+    let refresh: Rc<dyn Fn()> = Rc::new(move || {
+        let live: Vec<_> = sections_weak
+            .iter()
+            .filter_map(|section| {
+                Some((
+                    section.widget.upgrade()?,
+                    section.scrolled.upgrade()?,
+                    section
+                        .cards
+                        .iter()
+                        .map(|card| card.upgrade())
+                        .collect::<Option<Vec<_>>>()?,
+                    section.layer.upgrade()?,
+                    section.halo.upgrade()?,
+                ))
+            })
+            .collect();
+        let target = live
+            .iter()
+            .flat_map(|(_, _, cards, _, _)| cards)
+            .find(|card| card.has_focus())
+            .cloned()
+            .or_else(|| selected_weak.as_ref().and_then(|selected| selected.upgrade()));
+
+        for (_, scrolled, cards, halo_layer, halo) in live {
+            let Some(card) = target
+                .as_ref()
+                .filter(|target| cards.iter().any(|card| card == *target))
+            else {
+                halo.set_visible(false);
+                continue;
+            };
+            let (Some(card_bounds), Some(viewport_bounds)) =
+                (card.compute_bounds(&halo_layer), scrolled.compute_bounds(&halo_layer))
+            else {
+                halo.set_visible(false);
+                continue;
+            };
+            let card_right = card_bounds.x() + card.width() as f32;
+            let card_bottom = card_bounds.y() + super::cards::ART_H as f32;
+            let viewport_right = viewport_bounds.x() + viewport_bounds.width();
+            let viewport_bottom = viewport_bounds.y() + viewport_bounds.height();
+            if card.width() == 0
+                || card_right <= viewport_bounds.x()
+                || card_bounds.x() >= viewport_right
+                || card_bottom <= viewport_bounds.y()
+                || card_bounds.y() >= viewport_bottom
+            {
+                halo.set_visible(false);
+                continue;
+            }
+            halo.set_size_request(card.width(), super::cards::ART_H);
+            halo_layer.move_(&halo, card_bounds.x() as f64, card_bounds.y() as f64);
+            halo.set_visible(true);
+        }
+    });
+
+    for section in sections {
+        for card in &section.cards {
+            let refresh = refresh.clone();
+            card.connect_has_focus_notify(move |_| refresh());
+        }
+        let section_widget = section.widget.downgrade();
+        let pending = Rc::new(Cell::new(false));
+        let refresh_on_adjustment = refresh.clone();
+        let schedule_adjustment_refresh: Rc<dyn Fn()> = Rc::new(move || {
+            if pending.replace(true) {
+                return;
+            }
+            let Some(widget) = section_widget.upgrade() else {
+                pending.set(false);
+                return;
+            };
+            let pending_tick = pending.clone();
+            let section_tick = section_widget.clone();
+            let refresh_tick = refresh_on_adjustment.clone();
+            widget.add_tick_callback(move |widget, _| {
+                if section_tick.upgrade().is_none() {
+                    pending_tick.set(false);
+                    return gtk4::glib::ControlFlow::Break;
+                }
+                let pending_after_layout = pending_tick.clone();
+                let section_after_layout = section_tick.clone();
+                let refresh_after_layout = refresh_tick.clone();
+                widget.add_tick_callback(move |_, _| {
+                    pending_after_layout.set(false);
+                    if section_after_layout.upgrade().is_some() {
+                        refresh_after_layout();
+                    }
+                    gtk4::glib::ControlFlow::Break
+                });
+                gtk4::glib::ControlFlow::Break
+            });
+        });
+        let adjustment = section.scrolled.hadjustment();
+        let refresh_on_scroll = schedule_adjustment_refresh.clone();
+        adjustment.connect_value_changed(move |_| refresh_on_scroll());
+        let refresh_on_resize = schedule_adjustment_refresh.clone();
+        adjustment.connect_changed(move |_| refresh_on_resize());
+        let refresh_on_map = refresh.clone();
+        section.widget.connect_map(move |widget| {
+            let refresh = refresh_on_map.clone();
+            widget.add_tick_callback(move |_, _| {
+                refresh();
+                gtk4::glib::ControlFlow::Break
+            });
+        });
+    }
 }
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
@@ -128,7 +320,8 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                 let app = app.clone();
                 move |w: &Work| app.open_work(w)
             };
-            let mut first = true;
+            let mut initial_selection = true;
+            let mut focus_sections = Vec::new();
             let mut art_set = false;
             let mut set_art = |w: &Work| {
                 if !art_set {
@@ -139,6 +332,7 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                 }
             };
             if !deck.is_empty() {
+                let selected = std::mem::take(&mut initial_selection);
                 let cards: Vec<_> = deck
                     .iter()
                     .map(|d| {
@@ -147,13 +341,15 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                             width: Some(RAIL_W),
                             meta: Some(d.work.meta_line()),
                             progress: Some(d.fraction),
-                            selected: std::mem::take(&mut first),
+                            home_art: true,
                             ..Default::default()
                         };
                         card(&imgs, &d.work, opts, open.clone())
                     })
                     .collect();
-                page.append(&section("On deck", &rail_row(cards)));
+                let section = section("On deck", rail_row(cards, selected));
+                page.append(&section.widget);
+                focus_sections.push(section);
             }
             match rails {
                 Err(e) => page.append(
@@ -167,6 +363,7 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                 ),
                 Ok(rails) => {
                     for Rail { title, items, .. } in rails.into_iter().filter(|r| !r.items.is_empty()) {
+                        let selected = std::mem::take(&mut initial_selection);
                         let cards: Vec<_> = items
                             .iter()
                             .map(|w| {
@@ -174,17 +371,20 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                                 let opts = CardOpts {
                                     width: Some(RAIL_W),
                                     meta: Some(w.meta_line()),
-                                    selected: std::mem::take(&mut first),
                                     unseen: app.is_unseen(w),
+                                    home_art: true,
                                     ..Default::default()
                                 };
                                 card(&imgs, w, opts, open.clone())
                             })
                             .collect();
-                        page.append(&section(&title, &rail_row(cards)));
+                        let section = section(&title, rail_row(cards, selected));
+                        page.append(&section.widget);
+                        focus_sections.push(section);
                     }
                 }
             }
+            track_focused_cards(&focus_sections);
         },
     );
 }

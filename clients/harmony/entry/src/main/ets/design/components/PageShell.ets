@@ -6,6 +6,7 @@
  * between pages.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry } from '../Metrics';
@@ -94,7 +95,7 @@ export struct PageShell {
       .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
       if (this.showHeader) {
         Row({ space: tv(HEADER_GAP) }) {
-          Text('←')
+          Text('←').fontFamily(nunito(400))
             .fontSize(tv(BACK_GLYPH_SIZE))
             .fontWeight(FontWeight.Normal)
             .fontColor(toResourceColor(activeColors().inkSoft))
@@ -109,7 +110,7 @@ export struct PageShell {
             .onClick(() => {
               popRoute(getNavStack());
             })
-          Text(this.title)
+          Text(this.title).fontFamily(nunito(500))
             .fontSize(tv(TITLE_SIZE))
             .fontWeight(FontWeight.Medium)
             .letterSpacing(tv(TITLE_LETTER_SPACING))
@@ -121,7 +122,7 @@ export struct PageShell {
       }
       this.controls()
       if (this.kicker.length > 0) {
-        Text(this.kicker)
+        Text(this.kicker).fontFamily(nunito(900))
           .fontSize(tv(KICKER_SIZE))
           .fontWeight(FontWeight.Bolder)
           .letterSpacing(tv(KICKER_LETTER_SPACING))
@@ -140,7 +141,7 @@ export struct PageShell {
     Column() {
       Row({ space: 12 }) {
         if (this.showHeader) {
-          Text('←')
+          Text('←').fontFamily(nunito(400))
             .fontSize(16)
             .fontWeight(FontWeight.Normal)
             .fontColor(toResourceColor(activeColors().inkSoft))
@@ -154,7 +155,7 @@ export struct PageShell {
               popRoute(getNavStack());
             })
           Column() {
-            Text(this.title)
+            Text(this.title).fontFamily(nunito(500))
               .fontSize(22)
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-0.5)
@@ -171,7 +172,7 @@ export struct PageShell {
       .alignItems(VerticalAlign.Center)
       if (this.kicker.length > 0) {
         // Web phone: the pink count or section line sits under the title, level with it.
-        Text(this.kicker)
+        Text(this.kicker).fontFamily(nunito(900))
           .fontSize(10)
           .fontWeight(FontWeight.Bolder)
           .letterSpacing(0.8)
