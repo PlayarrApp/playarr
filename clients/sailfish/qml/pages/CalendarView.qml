@@ -201,7 +201,7 @@ Item {
                                 id: poster
                                 x: Math.round(15.7 * Tokens.u)   // whole pixels, as web snaps image rects
                                 y: Math.round((parent.height - height) / 2)
-                                width: Math.round(39.6 * Tokens.u); height: Math.round(59.4 * Tokens.u); radius: 4 * Tokens.u; clip: true
+                                width: Math.round(39.6 * Tokens.u); height: Math.round(59.4 * Tokens.u); radius: 5 * Tokens.u; clip: true
                                 color: Tokens.surfaceSoft
                                 Image {
                                     anchors.fill: parent
@@ -216,13 +216,13 @@ Item {
                             Column {
                                 id: info
                                 anchors { left: poster.right; leftMargin: 14.7 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
-                                spacing: 4 * Tokens.u
+                                spacing: 3 * Tokens.u
                                 Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16.3 * Tokens.u }
                                 Label {
                                     width: parent.width
                                     visible: text !== ""
                                     text: [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
-                                    elide: Text.ElideRight; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u
+                                    elide: Text.ElideRight; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 16.2 * Tokens.u
                                 }
                                 Row {
                                     spacing: 11 * Tokens.u
@@ -230,8 +230,8 @@ Item {
                                     Label { text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("Cinema") : modelData.release_type === "digital" ? qsTr("Digital") : modelData.release_type === "physical" ? qsTr("Physical") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
                                     Label { text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
                                     Rectangle {
-                                        width: badge.width + 22 * Tokens.u; height: 20.3 * Tokens.u; radius: height / 2
-                                        color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : Qt.rgba(0.81, 0.19, 0.34, Tokens.dark ? 0.16 : 0.15); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#394540" : "#c1cbc5") : Tokens.brandPink
+                                        width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
+                                        color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : Qt.rgba(0.81, 0.19, 0.34, Tokens.dark ? 0.16 : 0.15); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : Tokens.brandPink
                                         Label { id: badge; anchors.centerIn: parent; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10.5 * Tokens.u }
                                     }
                                 }
