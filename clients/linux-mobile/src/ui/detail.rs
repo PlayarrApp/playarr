@@ -90,7 +90,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
     // The web's page scrolls under its sticky art: the top 93 px of the art is covered by the page.
     root.add_overlay(&fade(93, "pa-khero-cover"));
     root.add_overlay(&fade(223, "pa-khero-edge"));
-    root.add_overlay(&fade(390, "pa-khero-fade"));
+    root.add_overlay(&fade(223, "pa-khero-fade"));
     root.add_overlay(&fade(485, "pa-khero-wash"));
 
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
