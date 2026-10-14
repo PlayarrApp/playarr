@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A long playlist name no longer widens the Nura window (which pushed the header action and letter rail off screen on every tab).
 - Xbox: Home rail heading-to-card gap and the overview offset match the web.
 - Match Android TV Profiles captions and kicker to the web theme colours.
 - Match the Android TV Profiles avatar's selected and focused ring and shadow to the web treatment while keeping avatar artwork bounds unchanged.
