@@ -9,23 +9,33 @@ import { SkeletonBlock, SkeletonLines } from "./Skeleton";
  */
 export type SkeletonKind = "grid" | "rails" | "detail" | "rows" | "settings";
 
-/** One card placeholder (also the single extra row a library shows while it loads more). */
-export function SkeletonCard({ aspect = "16 / 9" }: { aspect?: string }) {
+/**
+ * One card placeholder (also the single extra row a library shows while it loads more). It wears the loaded card's own
+ * classes, so its art ratio, radius and caption line box come from the card CSS and cannot drift from it (the kind label hangs out of flow, so only the title line is drawn).
+ */
+export function SkeletonCard({ variant = "title" }: { variant?: "title" | "search" }) {
+  const card = variant === "search" ? "tv-search-result" : "tv-title-card";
   return (
-    <div className="skeleton-card">
-      <SkeletonBlock className="skeleton-card-art" style={{ aspectRatio: aspect }} />
-      <SkeletonBlock height="0.8rem" width="72%" />
-      <SkeletonBlock height="0.6rem" width="40%" />
+    <div className={`media-card ${card} is-skeleton skeleton-card`}>
+      <span className={`${card}-art skeleton-card-art`}>
+        <SkeletonBlock width="100%" height="100%" />
+      </span>
+      <span className={`${card}-copy`}>
+        <strong className="skeleton skeleton-text-line">{"\u00a0"}</strong>
+      </span>
     </div>
   );
 }
 
-/** A poster or thumbnail grid (Library, Playlists, Folders, Search results). */
-export function SkeletonGrid({ count = 12 }: { count?: number }) {
+/** A poster or thumbnail grid (Library, Playlists, Folders, Search results). Search lays out on its real grid. */
+export function SkeletonGrid({ count = 12, variant = "title" }: { count?: number; variant?: "title" | "search" }) {
   return (
-    <div className="skeleton-set skeleton-grid-set" aria-hidden="true">
+    <div
+      className={variant === "search" ? "tv-search-results-grid tv-search-rail-grid" : "skeleton-set skeleton-grid-set"}
+      aria-hidden="true"
+    >
       {Array.from({ length: count }, (_, i) => (
-        <SkeletonCard key={i} />
+        <SkeletonCard key={i} variant={variant} />
       ))}
     </div>
   );
@@ -105,9 +115,19 @@ export function SkeletonSettings({ count = 5 }: { count?: number }) {
 }
 
 /** One skeleton inside a polite status region. `label` is announced, never drawn. */
-export function SkeletonState({ kind, label, compact = false }: { kind: SkeletonKind; label: string; compact?: boolean }) {
+export function SkeletonState({
+  kind,
+  label,
+  compact = false,
+  cards,
+}: {
+  kind: SkeletonKind;
+  label: string;
+  compact?: boolean;
+  cards?: "title" | "search";
+}) {
   const set: Record<SkeletonKind, ReactNode> = {
-    grid: <SkeletonGrid />,
+    grid: <SkeletonGrid variant={cards} />,
     rails: <SkeletonRails />,
     detail: <SkeletonDetail />,
     rows: <SkeletonRows />,

@@ -2,6 +2,7 @@
   "scripts": [
     "nav-smoke",
     "rail-geometry-e2e",
+    "skeleton-size-e2e",
     "calendar-nav",
     "calendar-layout",
     "calendar-agenda-e2e",

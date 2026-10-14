@@ -26,7 +26,7 @@ import { AvailabilityLagNote } from "../components/AvailabilityLag";
 import { useApiClient } from "../lib/ApiClientProvider";
 import { useLiveRevision, useLiveSubscription } from "../lib/liveEvents";
 import { knownWork } from "../lib/knownWorks";
-import { SkeletonBlock, SkeletonLines, SkeletonRails } from "../components/shell";
+import { SkeletonBlock, SkeletonLines } from "../components/shell";
 import { CachedArtworkImage, PersonHeadshot, useCachedArtwork } from "../lib/artwork";
 import { useDownloads } from "../lib/DownloadsProvider";
 import { useOfflineAwareDetail } from "../lib/offlineWorkDetail";
@@ -69,7 +69,7 @@ import {
   type JoinedWorkSource,
 } from "../lib/joinedServers";
 import { TvEmptyState } from "../components/tv/TvEmptyState";
-import { TvMediaTrack, TvRailSurface, type TvTrackSpacing } from "../components/tv/TvStage";
+import { TvMediaTrack, type TvTrackSpacing } from "../components/tv/TvStage";
 import { Select } from "../components/ui";
 import { RailStack, centreTrackInStack } from "../components/tv/RailStack";
 
@@ -938,7 +938,7 @@ function DetailPending({ work, fallbackKind, label }: { work: Work | undefined; 
   const series = (work?.kind ?? fallbackKind) === "series";
   return (
     <>
-      <aside className="tv-detail-copy" role="status" aria-busy="true" aria-label={label}>
+      <aside className="tv-detail-copy" aria-busy="true">
         {work?.genres[0] ? (
           <p className="tv-detail-kicker">{work.genres[0]}</p>
         ) : (
@@ -963,11 +963,11 @@ function DetailPending({ work, fallbackKind, label }: { work: Work | undefined; 
           <SkeletonBlock height="3.2rem" width="8rem" style={{ borderRadius: 999 }} />
         </div>
       </aside>
-      <TvRailSurface className={series ? "tv-series-browser" : "tv-movie-browser"} mode="content">
-        <div className="skeleton-detail-track" aria-hidden="true">
-          <SkeletonRails rails={series ? 2 : 1} cards={5} />
-        </div>
-      </TvRailSurface>
+      <RailStack
+        className={series ? "tv-series-browser" : "tv-movie-browser"}
+        spacing="related"
+        skeleton={{ tracks: series ? 2 : 1, cards: 5, label, card: "episode", centred: series, meta: true }}
+      />
     </>
   );
 }

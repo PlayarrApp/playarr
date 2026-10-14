@@ -10776,19 +10776,24 @@ body[data-input-mode="remote"] .quality-matrix.is-player .quality-matrix-choice:
   user-select: none;
 }
 
-/* Home's loading rails reuse the loaded card markup; the text lines keep their real line boxes. */
-.tv-home-card.is-skeleton {
+/* Loading cards reuse the loaded card markup; the text lines keep their real line boxes. */
+:is(.tv-home-card, .tv-title-card, .tv-search-result, .tv-episode-card).is-skeleton {
   pointer-events: none;
 }
 
-.tv-home-card.is-skeleton .skeleton-text-line {
+:is(.tv-home-card, .tv-title-card, .tv-search-result, .tv-episode-card).is-skeleton .skeleton-text-line {
   width: 62%;
   color: transparent;
   user-select: none;
 }
 
-.tv-home-card.is-skeleton small.skeleton-text-line {
+:is(.tv-home-card, .tv-title-card, .tv-search-result, .tv-episode-card).is-skeleton small.skeleton-text-line {
   width: 38%;
+}
+
+/* The tile's number and sheen belong to the loaded art only. */
+.tv-episode-card.is-skeleton .tv-episode-art::after {
+  content: none;
 }
 
 .skeleton-title-line {

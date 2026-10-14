@@ -48,15 +48,15 @@ export const RailStack = forwardRef<
      * Loading mode: the same stack, tracks and cards (same classes, so the same top, left, card size, gap and
      * spacing) with shimmering blocks instead of titles and art. Not focusable; announced through `skeletonLabel`.
      */
-    skeleton?: { tracks: number; cards: number; label: string };
+    skeleton?: { tracks: number; cards: number; label: string; card?: "poster" | "episode"; centred?: boolean; meta?: boolean };
     children?: ReactNode;
   }
 >(function RailStack({ spacing = "related", skeleton, children, ...surface }, ref) {
   // The loaded stack opens with its first track centred; the skeleton starts there too.
   const centreFirst = useCallback((node: HTMLDivElement | null) => {
     const first = node?.querySelector<HTMLElement>(".tv-media-track");
-    if (first) centreTrackInStack(first, { animate: false });
-  }, []);
+    if (first && skeleton?.centred !== false) centreTrackInStack(first, { animate: false });
+  }, [skeleton?.centred]);
   if (skeleton) {
     return (
       <TvRailSurface {...surface} ref={mergeRefs(ref, centreFirst)} mode="vertical-tracks">
@@ -66,18 +66,31 @@ export const RailStack = forwardRef<
               <TvMediaTrack
                 key={track}
                 title={<i className="skeleton-title-line">Recently added</i>}
+                meta={skeleton.meta ? <i className="skeleton-title-line">Season 1</i> : undefined}
                 scrollKey={`skeleton:track:${track}`}
                 itemsKey={`skeleton:${track}`}
                 dataTrackId={`skeleton-${track}`}
               >
                 {Array.from({ length: skeleton.cards }, (_, card) => (
-                  <div className="media-card tv-home-card is-skeleton" key={card} aria-hidden="true">
-                    <span className="tv-home-card-art">
-                      <SkeletonBlock width="100%" height="100%" />
-                    </span>
-                    <strong className="skeleton skeleton-text-line">{"\u00a0"}</strong>
-                    <small className="skeleton skeleton-text-line">{"\u00a0"}</small>
-                  </div>
+                  skeleton.card === "episode" ? (
+                    <div className="media-card tv-episode-card is-skeleton" key={card} aria-hidden="true">
+                      <span className="tv-episode-art">
+                        <SkeletonBlock width="100%" height="100%" />
+                      </span>
+                      <span className="tv-episode-copy">
+                        <small className="skeleton skeleton-text-line">{"\u00a0"}</small>
+                        <strong className="skeleton skeleton-text-line">{"\u00a0"}</strong>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="media-card tv-home-card is-skeleton" key={card} aria-hidden="true">
+                      <span className="tv-home-card-art">
+                        <SkeletonBlock width="100%" height="100%" />
+                      </span>
+                      <strong className="skeleton skeleton-text-line">{"\u00a0"}</strong>
+                      <small className="skeleton skeleton-text-line">{"\u00a0"}</small>
+                    </div>
+                  )
                 ))}
               </TvMediaTrack>
             ))}

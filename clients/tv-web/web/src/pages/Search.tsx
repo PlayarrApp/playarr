@@ -850,7 +850,7 @@ export function SearchPage() {
           viewportProps={{ "aria-live": "polite", "aria-busy": state.status === "loading" }}
         >
           {state.status === "loading" ? (
-            <SkeletonState kind="grid" compact label={t("pages.search.loadingEllipsis")} />
+            <SkeletonState kind="grid" cards="search" compact label={t("pages.search.loadingEllipsis")} />
           ) : state.status === "error" ? (
             <TvEmptyState
               announce={false}
