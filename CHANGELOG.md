@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: episode cards on the series page show the web watch-state overlay: the unseen dot, or a progress line for a part-watched episode.
 - Keep the focused Home halo unclipped and aligned with its card while horizontal rails scroll.
 - Match iPhone detail header geometry, theme-aware copy, selected episode styling, and listed watchlist action wording to the web layout; show ended-series year ranges from the server end date.
 - Fix VIDAA debug mirror captures so the scaled TV stage fills the requested output instead of leaving blank right and bottom areas.
@@ -595,6 +596,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Match the selected Nura Home card's focus ring, glow, and elevation to the web treatment.
 - Match the Nura Home card resting shadow to Home web tokens in both themes.
 - Fire TV: the Library preview title wraps balanced, as the web does.
 - HarmonyOS TV: the Settings panels (Customise Home, Profile avatar, Invite, Your data) use the bundled Nunito Sans like the rest of the app.
