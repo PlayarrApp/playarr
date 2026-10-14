@@ -351,10 +351,8 @@ struct WMDetailPage: View {
             WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: onBack)
                 .accessibilityIdentifier("detail-back")
                 .offset(x: 16, y: WM.topInset + 2)
-            VStack(alignment: .leading, spacing: 5.6) {
-                WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972)
-                WMText(work.title.uppercased(), 10.56, 820, color: WM.brandInk, lh: 15.84, ls: 0.8448)
-            }
+            // The web hides the header subtitle on phones (#1299), so only the page title shows here.
+            WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972)
             .offset(x: 68, y: WM.topInset + 2)
         }
     }

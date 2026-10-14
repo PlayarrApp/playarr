@@ -555,11 +555,13 @@ struct LibraryView: View {
         let scale = proxy.size.width / 1366
         return ZStack(alignment: .topLeading) {
             WMHeaderCircleButton(width: 43, height: 43, glyph: "←", action: goHome).offset(x: 122 * scale, y: 55 * scale)
-            WMText(title, 24, 520, lh: 36, ls: -1).offset(x: 182 * scale, y: 57 * scale)
-            if let total = viewModel.total {
-                WMText("\(total.formatted(.number.grouping(.automatic))) \(viewModel.selectedKind == .artist ? "ARTISTS" : "TITLES")", 9, 760, color: WM.inkSoft, lh: 14, ls: 0.6)
-                    .offset(x: 181 * scale, y: 101 * scale)
+            WMTitleWithDetail(
+                detail: viewModel.total.map { "\($0.formatted(.number.grouping(.automatic))) \(viewModel.selectedKind == .artist ? "artists" : "titles")" },
+                maxWidth: max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 182 * scale - 4), size: 9.92, gap: 15
+            ) {
+                WMText(title, max(19.2, 24 * scale), 520, lh: 36, ls: -1)
             }
+            .offset(x: 182 * scale, y: 57 * scale)
             HStack {
                 Spacer()
                 Button { showingFilters = true } label: {
@@ -580,18 +582,14 @@ struct LibraryView: View {
     }
 
     private func pageHeading(phone: Bool, proxy: GeometryProxy) -> some View {
-        HStack(spacing: phone ? 10 : 20) {
+        HStack(spacing: phone ? 10 : 15) {
             Text(title)
                 .font(.custom("Avenir Next", fixedSize: phone ? 22 : min(34, proxy.size.width * 0.0175)).weight(.medium))
                 .tracking(phone ? -1 : -1.5)
                 .foregroundStyle(PlayarrStyle.ink)
                 .lineLimit(1)
             if !phone, let total = viewModel.total {
-                Rectangle().fill(PlayarrStyle.lineStrong).frame(width: 1, height: 22)
-                Text("\(total) TITLES")
-                    .font(.custom("Avenir Next", fixedSize: 9).weight(.bold))
-                    .tracking(0.4)
-                    .foregroundStyle(PlayarrStyle.muted)
+                WMHeaderDetail(text: "\(total) titles", gap: 14)
             }
 
             Spacer()

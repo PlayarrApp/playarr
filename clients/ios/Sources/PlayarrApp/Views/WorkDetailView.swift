@@ -167,10 +167,14 @@ struct WorkDetailView: View {
     /// Web tablet title page header (1366 pt): back circle at x 122, the library name at x 182, the title as a pink kicker below.
     private func tabletDetailHeader(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
         let scale = proxy.size.width / 1366
+        // The title stops at the shell clock (stage chrome puts it at 24% of the width), as on the web.
+        let room = max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 182 * scale - 4) // the web fits the detail up to the shell clock (24% of the width)
         return ZStack(alignment: .topLeading) {
             WMHeaderCircleButton(width: 43, height: 43, glyph: "←") { dismiss() }.offset(x: 122 * scale, y: 55 * scale)
-            WMText(detail.work.kind.displayName == "Movie" ? "Movies" : "Series", 24, 520, lh: 36, ls: -1).offset(x: 182 * scale, y: 57 * scale)
-            WMText(detail.work.title.uppercased(), 8.6, 800, color: WM.pink, lh: 13, ls: 1.1).offset(x: 181 * scale, y: 101 * scale)
+            WMTitleWithDetail(detail: detail.work.title, maxWidth: room, size: 9.92, gap: 15) {
+                WMText(detail.work.kind.displayName == "Movie" ? "Movies" : "Series", max(19.2, 24 * scale), 520, lh: 36, ls: -1)
+            }
+            .offset(x: 182 * scale, y: 57 * scale)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }

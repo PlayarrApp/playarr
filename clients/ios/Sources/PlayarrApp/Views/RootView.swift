@@ -504,6 +504,8 @@ private struct AuthenticatedPlayarrShell: View {
         let chromeTop = min(66, max(34, proxy.size.height * 0.052))
 
         return ZStack(alignment: .topLeading) {
+            // The web hides the clock at tablet widths (761 to 1100 pt) on pages with a header.
+            if proxy.size.width > 1100 || selected == .home {
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 HStack(alignment: .firstTextBaseline, spacing: 11) {
                     Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute()))
@@ -514,6 +516,7 @@ private struct AuthenticatedPlayarrShell: View {
                 }
                 .foregroundStyle(PlayarrStyle.ink)
                 .offset(x: proxy.size.width * 0.24, y: chromeTop + 14)
+            }
             }
 
             PlayarrLogo(size: 30)

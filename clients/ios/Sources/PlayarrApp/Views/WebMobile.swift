@@ -623,10 +623,7 @@ struct WMLibraryHeader: View {
                 .offset(x: 17, y: top)
             WMText(title, 22, 520, lh: 33, ls: -1)
                 .offset(x: 71, y: top + 5)
-            if let detail {
-                WMText(detail.uppercased(), 11.5, 760, color: Color(red: 0.93, green: 0.69, blue: 0.78), lh: 17, ls: 1.1)
-                    .offset(x: 71, y: 64.5)
-            }
+            // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
                 Spacer()
                 Button(action: onFilters) {
@@ -681,6 +678,69 @@ extension View {
                 .padding(.leading, min(16, WM.leadingInset))
                 .padding(.trailing, min(16, WM.trailingInset))
                 .ignoresSafeArea(edges: .vertical)
+        }
+    }
+}
+
+/// The web page-header subtitle (#1299): small uppercase ink text after a vertical divider, beside the title. Never
+/// pink. `divider: false` is the phone Settings section name, which stands in for the title and has no divider.
+struct WMHeaderDetail: View {
+    let text: String
+    var size: CGFloat = 9.92
+    var gap: CGFloat = 16
+    var divider = true
+
+    var body: some View {
+        Text(text.uppercased())
+            .font(WM.font(size, 680))
+            .tracking(size * 0.045)
+            .foregroundStyle(WM.ink)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .padding(.leading, divider ? gap : 0)
+            .frame(height: size * 1.5)
+            .overlay(alignment: .leading) {
+                // Web: 1 px rule in the ink at 28% opacity, as tall as the detail line (about 1.5 x the font size).
+                if divider { Rectangle().fill(WM.ink.opacity(0.28)).frame(width: 1, height: size * 1.5) }
+            }
+    }
+}
+
+/// Title with the web's header detail beside it after the divider; when it does not fit in `maxWidth` the detail wraps
+/// under the title behind a top rule as wide as the wider of the two (web `is-detail-wrapped`).
+struct WMTitleWithDetail<Title: View>: View {
+    let detail: String?
+    let maxWidth: CGFloat
+    var size: CGFloat = 9.92
+    var gap: CGFloat = 16
+    @ViewBuilder let title: () -> Title
+
+    var body: some View {
+        if let detail, !detail.isEmpty {
+            ViewThatFits(in: .horizontal) {
+                // Web: the header gap (15 pt at 1024) between the title and the rule, then 14 pt before the text.
+                HStack(spacing: gap) {
+                    title()
+                    WMHeaderDetail(text: detail, size: size, gap: 14 * min(1, size / 9.92))
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 5.6) {
+                    title()
+                    Text(detail.uppercased())
+                        .font(WM.font(size, 680))
+                        .tracking(size * 0.045)
+                        .foregroundStyle(WM.ink)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .padding(.top, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .overlay(alignment: .top) { Rectangle().fill(PlayarrStyle.lineStrong).frame(height: 1) }
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            }
+            .frame(maxWidth: maxWidth, alignment: .leading)
+        } else {
+            title()
         }
     }
 }

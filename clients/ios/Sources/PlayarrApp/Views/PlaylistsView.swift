@@ -467,9 +467,7 @@ struct PlaylistDetailView: View {
                         .font(.custom("Avenir Next", fixedSize: phone ? 22 : 30).weight(.medium))
                         .tracking(-1)
                         .lineLimit(1)
-                    Text("\(items.count) ITEMS")
-                        .font(.custom("Avenir Next", fixedSize: 9).weight(.bold))
-                        .foregroundStyle(PlayarrStyle.muted)
+                    if !phone { WMHeaderDetail(text: "\(items.count) \(items.count == 1 ? "item" : "items")") }
                 }
                 .foregroundStyle(PlayarrStyle.ink)
                 .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
