@@ -12,6 +12,7 @@ SilicaGridView {
     signal held(var work)
     signal loadMore()
 
+    property bool restRing: false
     property string mode: "screen"          // screen (landscape cards), cover (posters), list (rows)
     readonly property real gap: 14 * Tokens.u
     readonly property int columns: mode === "cover" ? 3 : mode === "list" ? 1 : 2
@@ -39,6 +40,7 @@ SilicaGridView {
                 work: modelData
                 poster: root.mode === "cover"
                 compact: true
+                ring: root.restRing && index === 0
                 cardWidth: root.cardW
                 onOpened: root.opened(work)
                 onHeld: root.held(work)

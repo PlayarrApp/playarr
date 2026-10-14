@@ -11,6 +11,7 @@ MouseArea {
     property bool poster: false
     property bool compact: false        // library grids: title only
     property bool showUnwatched: true
+    property bool ring: false           // web focuses the first library card at rest and draws its ring
     readonly property var prog: work ? Progress.byWork[work.id] : undefined
     signal opened(var work)
     signal held(var work)
@@ -55,6 +56,12 @@ MouseArea {
         kinds: root.poster ? ["poster", "backdrop"] : ["backdrop", "thumb", "poster"]
         height: Math.round(width * (root.poster ? 3 / 2 : 9 / 16) + (root.poster ? 0 : 0.2))
         opacity: root.pressed ? 0.7 : 1
+    }
+    Rectangle {
+        visible: root.ring
+        anchors { fill: art; margins: -3 * Tokens.u }
+        radius: Tokens.radius + 3 * Tokens.u; color: "transparent"
+        border.width: 3 * Tokens.u; border.color: Tokens.brandInk
     }
     // Watch state: a progress bar for part-watched, a ringed dot for unseen (web WatchStateOverlay).
     Rectangle {

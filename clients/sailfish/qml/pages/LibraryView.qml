@@ -86,11 +86,13 @@ Item {
     }
     WorkGrid {
         id: grid
-        anchors { top: count.bottom; topMargin: 3 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { top: count.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
         works: root.works
         mode: root.viewMode
+        restRing: true
         busy: root.busy
         done: root.total >= 0 && root.works.length >= root.total
+        topMargin: 3 * Tokens.u   // inside the clip, so the first card ring is not cut
         bottomMargin: 100 * Tokens.u
         onOpened: root.opened(work)
         onHeld: root.held(work)
