@@ -1,1 +1,0 @@
-- Android: the tablet's navigation rail uses web's fixed 64 px tiles, and its page start, header top, hero copy and library card rail follow web's viewport clamps, so the wide layout lines up with the web reference at 1280x800.

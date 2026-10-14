@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: page headers match the web again: the subtitle sits beside the title after a thin divider and is not pink; it drops under the title only when there is no room.
 - Web: every page header subtitle is the Movies, Series and Music one again: beside the title after a vertical divider, in the page ink (not pink), wrapping under the title only when there is no room. Reverts the under-title pink kicker.
 - Xbox: the Calendar gets the web's Calendar link and Filters tiles (folds in the Calendar filters and link drawer work); the title actions drawer has a bold close X and a solid Play glyph.
 - Web: loading skeletons in the Library, Music, Search and detail pages now have the exact size, gap and position of the media cards that replace them (they reuse the card classes and tokens), covered by the new `skeleton-size-e2e` script.
@@ -620,6 +621,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android: the tablet's navigation rail uses web's fixed 64 px tiles, and its page start, header top, hero copy and library card rail follow web's viewport clamps, so the wide layout lines up with the web reference at 1280x800.
 - HarmonyOS phone: content sits below the notch or cutout and above the gesture bar in portrait and landscape, with backgrounds and art edge to edge.
 - HarmonyOS TV detail: the meta is web chips (10.6 px), the action pills use the web sizes, and the season rows use the web 314 px pitch.
 - HarmonyOS phone: the bottom nav bar, library captions and letter rail, and the series detail scroll position follow the web phone layout.
