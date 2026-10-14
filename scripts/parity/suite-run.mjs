@@ -97,10 +97,10 @@ if (only.includes("dpad")) {
       console.log(`skip dpad ${d.id}: no PLAYBACK-PHASE (use --player to force, --skip-player to silence)`);
       continue;
     }
-    let actual = null, startOk = true, lastKey = null, agreed = false;
+    let actual = null, startOk = true, lastKey = null, agreed = false, why = "";
     // A check starts from a known focus position (`start`): a wrong start or a lost first key gives a wrong answer, so retry up to 3 times.
     for (let attempt = 1; attempt <= (reference ? 5 : 3); attempt += 1) {
-      actual = null; startOk = true;
+      actual = null; startOk = true; why = "";
       try {
         const from = suite.screens.find((x) => x.id === d.from);
         await reach(from);
@@ -113,7 +113,7 @@ if (only.includes("dpad")) {
         if (d.start) {
           const at = focusForCheck(await driver.focused(), d.id).position;
           startOk = !at || samePosition(at, d.start); // a driver without position cannot assert the start
-          if (!startOk) { console.log(`  dpad ${d.id}: start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index} (attempt ${attempt})`); continue; }
+          if (!startOk) { why = `wrong start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index} (focus lost or the app is not on the screen)`; console.log(`  dpad ${d.id}: start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index} (attempt ${attempt})`); continue; }
         }
         await press(d.keys);
         await sleep(800);
@@ -122,8 +122,8 @@ if (only.includes("dpad")) {
         // observe "panel": whether the audio/subtitle panel is open (driver.panelOpen), else the focused label.
         if (d.observe === "panel" && driver.panelOpen) actual = { ...actual, label: `panel:${(await driver.panelOpen()) ? "open" : "closed"}` };
         if (d.observe === "state") actual = { ...actual, label: `${(await driver.location()).split("?")[0].split("/").filter(Boolean).map((s, i) => (i ? ":id" : s)).join("/")}` };
-      } catch (e) { console.log(`ERR dpad ${d.id}: ${e.message.split("\n")[0]}`); }
-      if (!actual?.label) continue;
+      } catch (e) { why = e.message.split("\n")[0]; console.log(`ERR dpad ${d.id}: ${why}`); }
+      if (!actual?.label) { why ||= "the driver reported no focused item"; continue; }
       // The reference needs two identical answers in a row: Home rails re-sort while other devices play, which moves a card
       // between positions mid-check. A device run needs one answer.
       if (!reference) { agreed = true; break; }
@@ -139,7 +139,8 @@ if (only.includes("dpad")) {
       ? !!actual?.label && actual.label === w.label
       : !!actual?.label && sameItem(actual.label, w.label);
     if (pass === false) summary.dpadFailed.push(d.id);
-    results.push({ id: d.id, pass, compared: byPosition ? "position" : "label", expected: expected.dpad[d.id] ?? null, actual: actual && (actual.position ? actual : actual.label) });
+    results.push({ id: d.id, pass, compared: byPosition ? "position" : "label", expected: expected.dpad[d.id] ?? null, actual: actual && (actual.position ? actual : actual.label),
+      ...(pass ? {} : { detail: why || `focus ${actual?.label} @${actual?.position ? `${actual.position.rail}:${actual.position.index}` : "?"}, expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""}` }) });
     console.log(`${pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual?.label}${actual?.position ? ` @${actual.position.rail}:${actual.position.index}` : ""}${pass ? "" : ` (expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""})`}`);
   }
   // The reference must never record a null or a wrong-start answer: fail the run and leave the old expected.json alone.

@@ -8,6 +8,8 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
+// IDB (path of the idb client, with its companion running): headless keys as USB HID usages, no Simulator window, no host keyboard.
+const HID = { up: 82, down: 81, left: 80, right: 79, select: 40, back: 41 };
 const KEYCODE = { up: 126, down: 125, left: 123, right: 124, select: 36, back: 53 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts });
@@ -45,7 +47,7 @@ export async function createDriver({ args = [] } = {}) {
       if (line) console.log(`    ${line.trim()}`);
     } catch { /* diagnosis only */ }
   };
-  const frontmost = () => { if (mac) return; try { run("osascript", ["-e", 'tell application "Simulator" to activate']); } catch { /* keep going: keys may still land */ } };
+  const frontmost = () => { if (mac || process.env.IDB) return; try { run("osascript", ["-e", 'tell application "Simulator" to activate']); } catch { /* keep going: keys may still land */ } };
   const launch = async (extra = [], wait = 22000) => {
     if (mac) {
       run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
@@ -64,7 +66,15 @@ export async function createDriver({ args = [] } = {}) {
     }
     try { run("xcrun", ["simctl", "terminate", udid, bundle]); } catch { /* not running */ }
     await sleep(1000);
-    run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...extra]);
+    // A fresh sign-in per launch, as wall.sh does (the saved session may be revoked by the capture step's own launches).
+    const login = join(process.env.TRUSTED ?? "", "scripts/apple-wall/login.py"), tokens = [];
+    if (process.env.SERVER_URL && existsSync(login)) {
+      const env = { ...process.env, DEVICE_NAME: `wall-${device}` };
+      const [access, refresh] = run("python3", [login], { env }).trim().split(" ");
+      run("xcrun", ["simctl", "spawn", udid, "defaults", "write", bundle, "com.playarr.playarr.tvos.deviceID", "-string", run("python3", [login, "--device-id"], { env }).trim()]);
+      tokens.push("-PlayarrServerURL", process.env.SERVER_URL, "-PlayarrAccessToken", access, "-PlayarrRefreshToken", refresh);
+    }
+    run("xcrun", ["simctl", "launch", udid, bundle, ...tokens, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...extra]);
     await sleep(wait); // a launch signs in from the seeded session and loads Home
     frontmost(); await sleep(500);
   };
@@ -116,8 +126,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       for (const key of ["ApplicationAccessibilityEnabled", "AccessibilityEnabled", "AutomationEnabled"]) {
         try { run("xcrun", ["simctl", "spawn", udid, "defaults", "write", "com.apple.Accessibility", key, "-bool", "true"]); } catch (e) { console.log("accessibility default", key, String(e.stderr ?? e).split("\n")[0]); }
       }
-      run("open", ["-a", "Simulator", "--args", "-CurrentDeviceUDID", udid]);
-      await sleep(6000);
+      if (!process.env.IDB) { run("open", ["-a", "Simulator", "--args", "-CurrentDeviceUDID", udid]); await sleep(6000); }
       await launch();
     },
     async stop() {},
@@ -130,10 +139,16 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       await launch(["-PlayarrOpenWork", id], 22000);
     },
     async key(name, { long } = {}) {
-      frontmost();
-      if (mac) run(notify, [`key:${KEYCODE[name]}${long ? ":shift" : ""}`]); // the Mac's long press is Shift+Return
-      else if (long && existsSync(hold)) run(hold, [String(KEYCODE[name]), "1.1"]);
-      else run("osascript", ["-e", `tell application "System Events" to key code ${KEYCODE[name]}`]);
+      // KEY_LOCK (a file path): hosts shared with other keyboard injectors take a shlock around each key.
+      const lock = process.env.KEY_LOCK;
+      if (lock) for (let i = 0; ; i += 1) { try { run("shlock", ["-f", lock, "-p", String(process.pid)]); break; } catch (e) { if (i > 600) throw e; await sleep(100); } }
+      try {
+        frontmost();
+        if (process.env.IDB && !mac) run(process.env.IDB, ["ui", "key", "--udid", udid, ...(long ? ["--duration", "1.1"] : []), String(HID[name])]);
+        else if (mac) run(notify, [`key:${KEYCODE[name]}${long ? ":shift" : ""}`]); // the Mac's long press is Shift+Return
+        else if (long && existsSync(hold)) run(hold, [String(KEYCODE[name]), "1.1"]);
+        else run("osascript", ["-e", `tell application "System Events" to key code ${KEYCODE[name]}`]);
+      } finally { if (lock) rmSync(lock, { force: true }); }
       await sleep(600);
       if (process.env.DRIVER_TRACE) {
         const s = state(); console.log(`    key ${name}${long ? ":long" : ""} -> ${s.route} | ${s.focused} | ${s.item}`);
