@@ -96,6 +96,7 @@ button.pa-hbtn.square { border-radius: 14px; }
 /* Home key art and search field */
 .pa-key-art { opacity: 0.38; filter: grayscale(1); }
 .pa-key-wash { background: linear-gradient(to bottom, @pa_wash, @pa_bg); }
+.pa-key-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0.54), alpha(@pa_bg, 0)), linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }
 scrolledwindow.pa-transparent, scrolledwindow.pa-transparent viewport { background: transparent; }
 .pa-rail-title { font-size: 16px; font-weight: 610; }
 .pa-search { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; min-height: 58px; padding: 0 14px; box-shadow: none; color: @pa_ink; }
@@ -184,7 +185,7 @@ button.pa-pill, .pa-pill { background: @pa_surface; font-size: 11.52px; font-wei
 .pa-entry-title { font-size: 16px; font-weight: 640; }
 .pa-entry-sub { font-size: 16px; font-weight: 400; color: @pa_ink_soft; }
 .pa-entry-meta { font-size: 12.8px; color: @pa_muted; }
-.pa-chip-status { font-size: 10.24px; font-weight: 750; padding: 0 12px; min-height: 22px; }
+.pa-chip-status { font-size: 10.24px; font-weight: 750; padding: 0 12px; min-height: 19px; }
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding: 16px; border-radius: 12px; min-height: 93px; }
 /* Agenda rows as the web phone: a surface row with a hairline above and below, a 3 px availability bar on the left, no fill or radius */
 button.pa-entry, button.pa-entry:hover { background: @pa_surface; border-radius: 12px; border-width: 1px 0 1px 3px; border-style: solid; border-color: @pa_line; padding: 9px 13px; min-height: 0; }
@@ -263,3 +264,5 @@ dropdown.pa-dropdown.pa-filter > button { min-height: 54px; border-radius: 12px;
 .pa-cal-controls .pa-pill { min-height: 41px; }
 .pa-cal-controls .pa-pill.selected { padding: 0 22px; }
 .pa-cal-controls .pa-pill.round { min-width: 42px; }
+/* Week columns: rounded white cards with a curved availability bar, as the web. */
+button.pa-entry.week, button.pa-entry.week:hover { border-width: 1px 1px 1px 3px; border-radius: 14px; }

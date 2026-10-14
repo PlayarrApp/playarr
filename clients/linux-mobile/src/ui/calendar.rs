@@ -173,7 +173,8 @@ fn status_chip(e: &CalendarEntry, today_date: Date) -> (&'static str, &'static s
     }
 }
 
-fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry) -> gtk4::Button {
+/// `week`: the narrow week-column card, whose status chip sits on its own line.
+fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> gtk4::Button {
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 14);
     let thumb = gtk4::Picture::builder()
         .content_fit(gtk4::ContentFit::Cover)
@@ -236,19 +237,28 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry) -> gtk4::Button
         meta.append(&gtk4::Label::builder().label(t).css_classes(["pa-entry-meta"]).build());
     }
     let (text, class) = status_chip(e, today());
-    meta.append(
-        &gtk4::Label::builder()
-            .label(text)
-            .css_classes(["pa-chip-status", class])
-            .build(),
-    );
-    col.append(&meta);
+    let chip = gtk4::Label::builder()
+        .label(text)
+        .css_classes(["pa-chip-status", class])
+        .halign(gtk4::Align::Start)
+        .build();
+    if week {
+        col.append(&meta);
+        col.append(&chip);
+    } else {
+        meta.append(&chip);
+        col.append(&meta);
+    }
     row.append(&col);
     // The left border shows availability (we have it) versus not, never which library it belongs to.
     let have = if e.has_file { "have" } else { "missing" };
     let b = gtk4::Button::builder()
         .child(&row)
-        .css_classes(["pa-card", "pa-entry", have])
+        .css_classes(if week {
+            vec!["pa-card", "pa-entry", have, "week"]
+        } else {
+            vec!["pa-card", "pa-entry", have]
+        })
         .hexpand(true)
         .halign(gtk4::Align::Fill)
         .build();
@@ -362,7 +372,14 @@ impl Cal {
         m
     }
 
-    fn day_section(&self, dt: Date, entries: &[CalendarEntry], empty_text: Option<&str>) {
+    fn day_section(
+        &self,
+        parent: &gtk4::Box,
+        dt: Date,
+        entries: &[CalendarEntry],
+        empty_text: Option<&str>,
+        week: bool,
+    ) {
         let head = gtk4::Box::builder()
             .spacing(9)
             .height_request(44)
@@ -407,7 +424,7 @@ impl Cal {
         head.set_margin_bottom(0);
         sec.append(&head);
         for e in entries {
-            sec.append(&entry_widget(&self.app, &self.imgs, e));
+            sec.append(&entry_widget(&self.app, &self.imgs, e, week));
         }
         if entries.is_empty() {
             if let Some(t) = empty_text {
@@ -420,7 +437,15 @@ impl Cal {
                 );
             }
         }
-        self.body.append(&sec);
+        if week {
+            // The web's week columns are 295 px wide and sit side by side.
+            sec.set_size_request(295, -1);
+            sec.set_valign(gtk4::Align::Start);
+            sec.set_spacing(8);
+            head.set_height_request(22);
+            head.set_margin_top(6);
+        }
+        parent.append(&sec);
     }
 
     fn render(self: &Rc<Self>) {
@@ -440,14 +465,17 @@ impl Cal {
                     );
                 }
                 for (d, es) in &days {
-                    self.day_section(*d, es, None);
+                    self.day_section(&self.body, *d, es, None, false);
                 }
             }
             View::Week => {
                 let start = self.anchor.get();
+                let cols = gtk4::Box::builder().spacing(19).valign(gtk4::Align::Start).build();
+                self.body.append(&cols);
                 for i in 0..7 {
                     let d = add_days(start, i);
-                    self.day_section(d, days.get(&d).map(Vec::as_slice).unwrap_or(&[]), Some("Nothing today"));
+                    let es = days.get(&d).map(Vec::as_slice).unwrap_or(&[]);
+                    self.day_section(&cols, d, es, Some("Nothing today"), true);
                 }
             }
             View::Month => self.render_month(&days),

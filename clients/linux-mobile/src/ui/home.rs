@@ -249,12 +249,19 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .valign(gtk4::Align::Start)
         .build();
     wash.set_size_request(-1, 340);
+    // The web phone's key art is masked to nothing at its right edge and darkened at its left.
+    let edge = gtk4::Box::builder()
+        .css_classes(["pa-key-edge"])
+        .valign(gtk4::Align::Start)
+        .build();
+    edge.set_size_request(-1, 340);
     let scroll = gtk4::ScrolledWindow::builder()
         .child(&page)
         .hscrollbar_policy(gtk4::PolicyType::Never)
         .css_classes(["pa-page"])
         .build();
     let overlay = gtk4::Overlay::builder().child(&backdrop).build();
+    overlay.add_overlay(&edge);
     overlay.add_overlay(&wash);
     overlay.add_overlay(&scroll);
     scroll.add_css_class("pa-transparent");
