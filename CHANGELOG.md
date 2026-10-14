@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: focused cards on Home, the library grid and the title-page rails are no longer cropped by their container: the web's 48 px focus overflow is reserved for the lift, ring and glow.
 - Nura's series episode rail no longer crops the focused episode's ring and glow.
 - Xbox: Settings > Appearance groups follow the web: a sentence-case heading, the note above the choice, and a divider between groups.
 - Match inactive Android TV navigation text and icons to the web muted foreground in light and dark themes.
@@ -607,6 +608,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: Search results keep the focused card's glow and ring clear of the grid clip, as the web does.
+- HarmonyOS TV: artwork already loaded in the last five minutes is reused without asking the server again, and the artwork cache holds 128 entries (was 64), so Home and Library walks stop refetching the same posters.
 - Match the Nura search page's empty state to the web: placeholder, search-minus ring and "Start typing to search."
 - HarmonyOS TV series detail takes episode artwork in web's source order (episode thumbnail at width 540, then the media thumbnail, then the title's backdrop or poster).
 - Harmony TV series detail copy follows the selected next-up episode when its resume target is present.
@@ -2982,6 +2985,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Harmony wall capture: API calls bypass the Previewer's artwork gate and the capture waits until the app reports no pending request, so Home art and the watchlist state are loaded before the frame is taken.
 - Retain failed Harmony TV detail capture frames in private debug artifacts and add sanitised stage counts with elapsed time ranges.
 - Harmony TV parity dispatches can capture a selected screen subset and skip the player route while preserving the default full capture.
 - Fire TV focus diagnostics now reconcile event and native focus tags. The scoped dark and light Movies-right → Home → Movies-down runtime pair passed with matching settled no-key focus state; this does not replace the full D-pad suite or establish a product navigation fix.
