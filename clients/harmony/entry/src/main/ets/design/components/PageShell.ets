@@ -174,19 +174,9 @@ export struct PageShell {
         }
       }
       .width('100%')
-      .padding({ left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight), top: atLeast(17, this.safeTop), bottom: this.kicker.length > 0 ? 2 : 12 })
+      .padding({ left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight), top: atLeast(17, this.safeTop), bottom: 12 })
       .alignItems(VerticalAlign.Center)
-      if (this.kicker.length > 0) {
-        // Web phone: the pink count or section line sits under the title, level with it.
-        Text(this.kicker).fontFamily(nunito(900))
-          .fontSize(10)
-          .fontWeight(FontWeight.Bolder)
-          .letterSpacing(0.8)
-          .textCase(TextCase.UpperCase)
-          .fontColor(toResourceColor(BRAND_PINK_SOFT))
-          .width('100%')
-          .padding({ left: 55 + atLeast(16, this.safeLeft), top: 8, bottom: 3 })
-      }
+      // Web phone hides the header subtitle (web #1299): no count or section line under the title.
       Column() {
         this.touchContent()
       }
