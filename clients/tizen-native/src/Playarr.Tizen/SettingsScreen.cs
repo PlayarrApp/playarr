@@ -87,7 +87,8 @@ internal sealed class SettingsScreen : IPage
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _root.Add(back);
         _root.Add(Ui.Text("Preferences", 226.6f, 56.2f, 33.6f, 700, _t.Ink, 400, 50, spacing: -1.51f));
-        _root.Add(Ui.Text("Appearance", 226.6f, 111.8f, 12.288f, 800, _t.BrandInk, 400, 18.432f, upper: true, spacing: 0.98f));
+        _root.Add(Ui.Box(226.6f, 112f, Ui.TextWidth("Preferences", 33.6f, 700, -1.51f), 1, new Rgba(_t.Ink.R, _t.Ink.G, _t.Ink.B, 0.2f)));
+        _root.Add(Ui.Text("Appearance", 226.6f, 119f, 10.56f, 600, _t.Ink, 400, 16, upper: true, spacing: 0.85f));
         BuildList();
         _root.Add(_panel);
         _listCount = _focus.Items.Count;

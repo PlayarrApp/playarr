@@ -58,6 +58,7 @@ internal sealed class Shell : View
     {
         _env = env; _theme = env.Theme; _exit = exit;
         env.Navigate = route => Navigate(route);
+        env.SetClockX = x => { var cx = Math.Max(x, 476.1f); if (_clockTime is not null) _clockTime.PositionX = cx; if (_clockDate is not null) _clockDate.PositionX = cx + 52.7f; };
         env.NavigateBack = () => { if (_history.Count > 0) Navigate(_history.Pop(), push: false); else Navigate("/", push: false); };
         Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         BackgroundColor = Ui.C(_theme.Bg);
@@ -148,6 +149,7 @@ internal sealed class Shell : View
     {
         var previousSearch = _page as SearchScreen;
         previousSearch?.OnRemoved();
+        _env.SetClockX(0);
         var page = Pages.Create(_env, route);
         if (page is null) { previousSearch?.OnAdded(); return; }
         if (push && _page is not null) { _history.Push(_page.Route); if (_page.SaveState() is { } st) _saved[_page.Route] = st; }

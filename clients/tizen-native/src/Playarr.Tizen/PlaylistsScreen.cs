@@ -20,7 +20,7 @@ internal sealed class PlaylistsScreen : IPage
     private readonly View _root = new();
     private readonly View _results = new();
     private readonly TextLabel _title;
-    private readonly TextLabel _count;
+    private readonly PageSubtitle _count;
     private readonly TextLabel _eyebrow;
     private readonly TextLabel _featureTitle;
     private readonly TextLabel _featureCopy;
@@ -62,8 +62,7 @@ internal sealed class PlaylistsScreen : IPage
         _root.Add(back);
         _title = Ui.Text("Playlists", 226.6f, 56.2f, 33.6f, 700, _theme.Ink, 600, 50, spacing: -1.51f);
         _root.Add(_title);
-        _count = Ui.Text("", 226.6f, 111.8f, 12.288f, 800, _theme.BrandInk, 480, 18.432f, upper: true, spacing: 0.98f);
-        _root.Add(_count);
+        _count = new PageSubtitle(env, _root, "Playlists");
         _eyebrow = Ui.Text("YOUR COLLECTION", 153.6f, 259.2f, 12.288f, 800, _theme.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f);
         _root.Add(_eyebrow);
         _featureTitle = Ui.Text("Playlists", 153.6f, 303.5f, 49.92f, 600, _theme.Ink, 455, 56, spacing: -2.4f, maxLines: 3);
@@ -123,7 +122,7 @@ internal sealed class PlaylistsScreen : IPage
                 _failed = true;
                 _status.Text = "Couldn't load playlists. Press Select to try again.";
                 _status.Show(true);
-                _count.Text = "";
+                _count.Set("", _title.Text);
             });
         }
     }
@@ -150,7 +149,7 @@ internal sealed class PlaylistsScreen : IPage
             var roots = PlaylistDirectoryModel.Roots(_entries);
             _coverRequest = new CancellationTokenSource();
             _title.Text = "Playlists";
-            _count.Text = $"{roots.Count} PLAYLISTS";
+            _count.Set($"{roots.Count} PLAYLISTS", _title.Text);
             _eyebrow.Text = "YOUR COLLECTION";
             _featureTitle.Text = "Playlists";
             _featureCopy.Text = roots.Count == 0 ? "Playlists you create on any device show up here." : "Choose a playlist to view its contents.";
@@ -168,7 +167,7 @@ internal sealed class PlaylistsScreen : IPage
         if (current is null)
         {
             _title.Text = "Playlists";
-            _count.Text = "";
+            _count.Set("", _title.Text);
             _eyebrow.Text = "PLAYLIST UNAVAILABLE";
             _featureTitle.Text = "This playlist isn't available.";
             _featureCopy.Text = "Return to Playlists and choose another playlist.";
@@ -177,7 +176,7 @@ internal sealed class PlaylistsScreen : IPage
 
         _directorySelection = rootId;
         _title.Text = current.Playlist.Name;
-        _count.Text = current.Playlist.IsSystem ? "SYSTEM PLAYLIST" : "PLAYLIST";
+        _count.Set(current.Playlist.IsSystem ? "SYSTEM PLAYLIST" : "PLAYLIST", _title.Text);
         _eyebrow.Text = current.Playlist.IsSystem ? "SYSTEM PLAYLIST" : "YOUR PLAYLIST";
         _featureTitle.Text = current.Playlist.Name;
         _featureCopy.Text = "Loading playlist contents…";
@@ -323,7 +322,7 @@ internal sealed class PlaylistsScreen : IPage
                 foreach (var work in works) AddWorkCard(work, index++);
                 var total = children.Count + works.Count;
                 _featureCopy.Text = total == 1 ? "1 item" : $"{total} items";
-                _count.Text = $"{total} {(total == 1 ? "ITEM" : "ITEMS")}";
+                _count.Set($"{total} {(total == 1 ? "ITEM" : "ITEMS")}", _title.Text);
                 if (resolved.Any(result => result.Work is null)) _status.Text = "Some playlist items couldn't be loaded.";
                 _status.Show(resolved.Any(result => result.Work is null));
                 RestoreFocus(directory: false);

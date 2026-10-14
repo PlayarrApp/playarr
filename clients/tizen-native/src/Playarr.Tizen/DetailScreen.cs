@@ -76,7 +76,7 @@ internal sealed class DetailScreen : IPage
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _content.Add(back);
         _content.Add(Ui.Text("Movies", 226.6f, 56.2f, 33.6f, 700, _t.Ink, 400, 50, spacing: -1.51f));
-        _content.Add(Ui.Text(w.Title, 226.6f, 111.8f, 12.288f, 800, _t.BrandInk, 700, 18.432f, upper: true, spacing: 0.98f));
+        new PageSubtitle(_env, _content, "Movies").Set(w.Title);
     }
 
     private void BuildCopy(Work w, WorkDetail d)

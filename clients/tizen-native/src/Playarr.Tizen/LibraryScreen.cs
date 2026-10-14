@@ -28,7 +28,7 @@ internal sealed class LibraryScreen : IPage
     private int _total, _focus = -1;
     private float _scroll;
     private bool _loading;
-    private TextLabel? _count;
+    private PageSubtitle? _subtitle;
     // right-hand side targets: the Filters tile and the A-Z rail (geometric focus together with the grid)
     private readonly List<Focusable> _side = new();
     private readonly Dictionary<char, View> _letterDots = new();
@@ -73,6 +73,7 @@ internal sealed class LibraryScreen : IPage
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _root.Add(back);
         _root.Add(Ui.Text(_title, 226.6f, 56.2f, 33.6f, 700, _t.Ink, 400, 50, spacing: -1.51f));
+        _subtitle = new PageSubtitle(_env, _root, _title);
     }
 
     private void BuildSide()
@@ -146,9 +147,7 @@ internal sealed class LibraryScreen : IPage
                 foreach (var v in _views.Values) { _grid.Remove(v.Box); v.Box.Dispose(); }
                 _views.Clear();
                 if (focusedId is { } fid) _focus = Math.Max(0, _items.FindIndex(c => c.WorkId == fid));
-                _count?.Dispose();
-                _count = Ui.Text($"{_total:N0} {(_kind == WorkKind.Artist ? "artists" : "titles")}", 226.6f, 111.8f, 12.288f, 800, _t.BrandInk, 400, 18.432f, upper: true, spacing: 0.98f);
-                _root.Add(_count);
+                _subtitle?.Set($"{_total:N0} {(_kind == WorkKind.Artist ? "artists" : "titles")}");
                 if (_focus < 0 && _items.Count > 0)
                 {
                     var at = _restoreId is { } rid ? _items.FindIndex(c => c.WorkId == rid) : -1;

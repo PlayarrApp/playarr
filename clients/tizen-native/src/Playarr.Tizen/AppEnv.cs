@@ -15,6 +15,8 @@ internal sealed class AppEnv
     /// <summary>Set by the shell: opens a route (detail pages, the player).</summary>
     public Action<string> Navigate { get; set; } = _ => { };
     /// <summary>Set by the shell: the same as Back on the remote (previous page).</summary>
+    /// <summary>Set by the shell: moves the header clock right of a page subtitle (x in px; 0 restores the default).</summary>
+    public Action<float> SetClockX { get; set; } = _ => { };
     public Action NavigateBack { get; set; } = () => { };
     /// <summary>Set by the app: switches the theme and rebuilds the shell on the same route.</summary>
     public Action<string> SetTheme { get; set; } = _ => { };

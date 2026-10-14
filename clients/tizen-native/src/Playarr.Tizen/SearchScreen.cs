@@ -29,7 +29,7 @@ internal sealed class SearchScreen : IPage
     private readonly DetailsPanel _panel;
     private readonly TextField _field;
     private readonly View _clear;
-    private readonly TextLabel _count;
+    private readonly PageSubtitle _count;
     private readonly TextLabel _notice;
     private readonly TextLabel _prompt;
     private readonly TextLabel _gameHeading;
@@ -94,8 +94,7 @@ internal sealed class SearchScreen : IPage
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _root.Add(back);
         _root.Add(Ui.Text("Search", 226.6f, 56.2f, 33.6f, 700, _t.Ink, 400, 50, spacing: -1.51f));
-        _count = Ui.Text("", 226.6f, 111.8f, 12.288f, 800, _t.BrandInk, 400, 18.432f, upper: true, spacing: 0.98f);
-        _root.Add(_count);
+        _count = new PageSubtitle(env, _root, "Search");
         _notice = Ui.Text("", 153.6f, 266, 13.5f, 500, _t.InkMuted, 590, 54, multiline: true, maxLines: 2);
         _notice.Show(false);
         _root.Add(_notice);
@@ -368,7 +367,7 @@ internal sealed class SearchScreen : IPage
         _empty.Show(targets.Count == 0 && _query.Length == 0);
         _prompt.Text = gameEmpty ? "Choose a different title or refine your search." : "";
         _prompt.Show(gameEmpty);
-        _count.Text = _query.Length > 0 ? $"{targets.Count} results".ToUpperInvariant() : "";
+        _count.Set(_query.Length > 0 ? $"{targets.Count} results".ToUpperInvariant() : "");
         _gameHeading.Show(gameEmpty);
         _gameNotice.Text = gameEmpty ? CleanProviderReason(_notice.Text) : "";
         _gameNotice.Show(gameEmpty && !string.IsNullOrWhiteSpace(_gameNotice.Text));
