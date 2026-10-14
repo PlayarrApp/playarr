@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: Home rail heading-to-card gap and the overview offset match the web.
 - Match Android TV Profiles captions and kicker to the web theme colours.
 - Match the Android TV Profiles avatar's selected and focused ring and shadow to the web treatment while keeping avatar artwork bounds unchanged.
 - Xbox: episode cards on the series page show the web watch-state overlay: the unseen dot, or a progress line for a part-watched episode.
