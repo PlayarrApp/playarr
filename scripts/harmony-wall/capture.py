@@ -92,9 +92,11 @@ def guarded(name, fn):
 
 
 def images_pending():
-    """Poster cards the app still shows as placeholders (app-reported); 0 when the build has never reported."""
+    """Poster cards still on their placeholder plus one while any API or artwork request is in flight (both app-reported; the
+    request count catches cards a lazy list has not built yet); 0 when the build has never reported."""
     try:
-        return json.loads(get("/state")).get("img_pending", 0)
+        st = json.loads(get("/state"))
+        return st.get("img_pending", 0) + (1 if st.get("net_idle") is False else 0)
     except (ValueError, OSError, SystemExit):
         return 0
 
