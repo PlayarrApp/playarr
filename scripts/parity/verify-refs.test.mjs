@@ -27,5 +27,7 @@ test("verifyDir accepts a clean pair and flags wrong theme, skeletons and titles
   assert.equal(verifyDir(dir, group, manifest, ["film-detail"]).length, 2);
   facts({ resumeState: true });
   assert.match(verifyDir(dir, group, manifest, ["film-detail"])[0], /Resume or Ask-again/);
+  facts({ placeholderCards: 1 });
+  assert.match(verifyDir(dir, group, manifest, ["film-detail"])[0], /without a loaded poster/);
   assert.match(verifyDir(dir, { pixels: [5, 4] }, manifest, ["film-detail"])[0], /expected 5x4/);
 });

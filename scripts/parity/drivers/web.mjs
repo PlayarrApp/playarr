@@ -6,6 +6,13 @@
 import { writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
 
+// True when no card-art in view (and none cut by the viewport edge) lacks a loaded poster img.
+const PLACEHOLDER_CARDS_GONE = () => ![...document.querySelectorAll("[class*=card-art]:not([class*=skeleton])")].some((e) => {
+  const r = e.getBoundingClientRect();
+  return r.width > 0 && r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0 &&
+    ![...e.querySelectorAll("img")].some((i) => i.complete && i.naturalWidth > 0);
+});
+
 const KEYS = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", select: "Enter", back: "Escape" };
 const UA = "Mozilla/5.0 (Linux; Android 12; BRAVIA) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 PlayarrAndroidTV/1.0";
 const MOBILE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
@@ -443,7 +450,8 @@ export async function createDriver() {
     focused: focusInfo,
     async screenshot(file) {
       await waitForDetailReady({ requireHeroAction: detailActionRequired });
-      await page.waitForFunction(() => ![...document.querySelectorAll("[class*=card-art]")].some((e) => !e.querySelector("img") && e.getBoundingClientRect().top < innerHeight), null, { timeout: 20000 }).catch(() => {});
+      // Every card on screen shows its poster: a card-art without a loaded img is a placeholder (fallback title on grey). Fatal in a stable capture.
+      await page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 }).catch((e) => { if (env.PARITY_STABLE === "1") throw new Error("poster still loading: placeholder card on screen"); });
       // Loading placeholders (skeletons, spinners) must be gone: a half-loaded screen is not a capture.
       await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader"), null, { timeout: 20000 }).catch(() => {});
       await page.waitForTimeout(500);
@@ -495,6 +503,7 @@ export async function createDriver() {
           skeletons: [...document.querySelectorAll(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true], .is-resolving")].filter(vis).length,
           dialogs: [...document.querySelectorAll("[role=dialog], dialog[open], .media-context-drawer, .download-quality-drawer, [class*=filters-panel], [class*=drawer]")].filter(vis).length,
           brokenSrc: [...document.images].filter((i) => { const r = i.getBoundingClientRect(), x = Math.min(Math.max(r.left + r.width / 2, 0), innerWidth - 1), y = Math.min(Math.max(r.top + r.height / 2, 0), innerHeight - 1); return vis(i) && document.elementsFromPoint(x, y).includes(i) && !(i.complete && i.naturalWidth > 0); }).map((i) => (i.currentSrc || i.src).replace(/^https?:\/\/[^/]+/, "").slice(0, 90)),
+          placeholderCards: [...document.querySelectorAll("[class*=card-art]:not([class*=skeleton])")].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0 && ![...e.querySelectorAll("img")].some((i) => i.complete && i.naturalWidth > 0); }).length,
           fontsReady: document.fonts.status === "loaded",
           signedOut: !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"),
         };

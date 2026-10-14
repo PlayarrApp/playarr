@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // One command regenerates every web reference screenshot (the pixel reference native clients are scored against).
-//   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset]
+//   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset] [--bak <backup dir name>]
 // Needs PARITY_CHROME=<chromium path> (or Playwright's own), and the Device Test account in the environment:
 //   PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD (read from ~/.secrets
 //   PLAYARR_DEVICE_TEST_* when unset; never printed).
@@ -25,6 +25,8 @@ const root = opt("parity-root") && resolve(opt("parity-root"));
 const groups = opt("groups", Object.keys(manifest.groups).join(",")).split(",");
 const wantScreens = opt("screens", manifest.screens.join(",")).split(",");
 const work = resolve(opt("work", join(process.cwd(), "web-refs-work")));
+const bakName = opt("bak", `web.bak-${manifest.date}`); // --bak <name>: partial retake, backs up to that name and leaves build.json alone
+const partial = args.includes("--bak");
 const copy = !args.includes("--no-copy");
 if (copy && !root) throw new Error("--parity-root <dir> is required (or --no-copy)");
 
@@ -121,14 +123,14 @@ if (copy) {
   for (const name of groups) {
     const g = manifest.groups[name];
     for (const d of g.dirs) {
-      const web = join(root, d, "web"), bak = join(root, d, `web.bak-${manifest.date}`);
+      const web = join(root, d, "web"), bak = join(root, d, bakName);
       if (existsSync(web) && !existsSync(bak)) cpSync(web, bak, { recursive: true });
       mkdirSync(join(web, "light"), { recursive: true });
       for (const id of wantScreens) {
         cpSync(join(work, name, "dark", `${id}.png`), join(web, `${id}.png`));
         cpSync(join(work, name, "light", `${id}.png`), join(web, "light", `${id}.png`));
       }
-      writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha, pr: null, captured_at: startedAt, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
+      if (!partial) writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha, pr: null, captured_at: startedAt, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
       console.log(`published ${name} -> ${d}/web`);
     }
   }

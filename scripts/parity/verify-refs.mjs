@@ -37,6 +37,7 @@ export function verifyDir(dir, group, manifest, screens = manifest.screens) {
     if (f.signedOut) bad.push(`${k}: signed out`);
     if (f.skeletons) bad.push(`${k}: ${f.skeletons} loading placeholders`);
     if (f.brokenSrc?.length) bad.push(`${k}: ${f.brokenSrc.length} visible images not loaded`);
+    if (f.placeholderCards) bad.push(`${k}: ${f.placeholderCards} cards without a loaded poster`);
     if (!f.fontsReady) bad.push(`${k}: fonts not loaded`);
     const wantDialog = manifest.dialogScreens.includes(id);
     if (wantDialog && !f.dialogs) bad.push(`${k}: expected an open panel`);
