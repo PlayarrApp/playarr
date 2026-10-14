@@ -179,7 +179,23 @@ namespace Playarr.Xbox.Views
 
         private static void Apply(object source, bool focused, bool halo)
         {
-            if (!(source is SelectorItem { ContentTemplateRoot: Panel card }) || card.Children.Count == 0 || !(card.Children[0] is Grid art))
+            if (!(source is SelectorItem { ContentTemplateRoot: Panel card }))
+            {
+                return;
+            }
+
+            // The art is the first Grid; a resting-shadow canvas may sit before it.
+            Grid? art = null;
+            foreach (var child in card.Children)
+            {
+                if (child is Grid grid)
+                {
+                    art = grid;
+                    break;
+                }
+            }
+
+            if (art == null)
             {
                 return;
             }

@@ -172,6 +172,7 @@ namespace Playarr.Xbox.Views
             }
 
             var root = new StackPanel { Width = width, Spacing = 0, Tag = work.Id };
+            root.Children.Add(RestingShadow(width, height));
             root.Children.Add(art);
             root.Children.Add(new TextBlock
             {
@@ -198,6 +199,31 @@ namespace Playarr.Xbox.Views
                 Margin = new Thickness(2, 4, 0, 0),
             });
             return root;
+        }
+
+        /// <summary>
+        /// Web's resting card shadow (<c>--card-shadow-rest</c>: 0 10px 20px at 14 %, 0 3px 8px at 10 %) as stacked, fading
+        /// rounded layers on a zero-size canvas before the art, so it paints beneath the card and moves nothing.
+        /// </summary>
+        private static Canvas RestingShadow(double width, double height)
+        {
+            var canvas = new Canvas { Width = 0, Height = 0, HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false };
+            for (var k = 15; k >= 0; k--)
+            {
+                var d = k * 2;
+                var layer = new Border
+                {
+                    Width = width + 2 * d,
+                    Height = height + 2 * d,
+                    CornerRadius = new CornerRadius(12 + d),
+                    Background = new SolidColorBrush(Windows.UI.Color.FromArgb(k < 3 ? (byte)7 : (byte)4, 56, 38, 33)),
+                };
+                Canvas.SetLeft(layer, -d);
+                Canvas.SetTop(layer, 8 - d);
+                canvas.Children.Add(layer);
+            }
+
+            return canvas;
         }
 
         public static FrameworkElement CreateTile(Work work, Uri? posterUri)
