@@ -147,7 +147,7 @@ button.pa-row.focus { outline: 2px solid @pa_ink; outline-offset: -1px; }
 
 /* Profiles */
 .pa-mark { background: @pa_brand; border-radius: 999px; min-width: 38px; min-height: 38px; padding: 10px; }
-.pa-add-circle { background: radial-gradient(circle at 35% 30%, alpha(@pa_brand, 0.38), alpha(@pa_brand, 0.6)); border: 1px solid alpha(@pa_brand, 0.4); border-radius: 999px; }
+.pa-add-circle { background: radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 27%), linear-gradient(145deg, mix(@pa_surface_strong, @pa_brand, 0.16), #a82655); border: 1px solid alpha(@pa_ink, 0.2); border-radius: 999px; }
 .pa-avatar.current { border-radius: 999px; box-shadow: 0 0 0 3px alpha(@pa_brand_ink, 0.9), 0 0 24px alpha(@pa_brand, 0.5); }
 .pa-tiny { font-size: 8px; letter-spacing: 1px; font-weight: 700; color: @pa_muted; }
 dropdown.pa-dropdown > button { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 8px; min-height: 44px; box-shadow: none; color: @pa_ink; }
@@ -187,10 +187,10 @@ button.pa-pill, .pa-pill { background: @pa_surface; font-size: 11.52px; font-wei
 .pa-chip-status { font-size: 10.24px; font-weight: 750; padding: 0 12px; min-height: 22px; }
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding: 16px; border-radius: 12px; min-height: 93px; }
 /* Agenda rows as the web phone: a surface row with a hairline above and below, a 3 px availability bar on the left, no fill or radius */
-button.pa-entry, button.pa-entry:hover { background: @pa_surface; border-radius: 12px; border-width: 1px 0 1px 3px; border-style: solid; border-color: @pa_line; padding: 15px 12px; min-height: 0; }
+button.pa-entry, button.pa-entry:hover { background: @pa_surface; border-radius: 12px; border-width: 1px 0 1px 3px; border-style: solid; border-color: @pa_line; padding: 9px 13px; min-height: 0; }
 button.pa-entry.have { border-left-color: #8ac5a5; }
 button.pa-entry.missing { border-left-color: @pa_brand_ink; }
-.pa-today-chip { font-size: 10.24px; letter-spacing: 1px; font-weight: 700; padding: 0 12px; }
+.pa-today-chip { font-size: 10.24px; letter-spacing: 1px; font-weight: 700; padding: 0 10px; min-height: 0; }
 .pa-thumb { border-radius: 6px; }
 
 /* Drawers, measured from the web */
@@ -216,7 +216,7 @@ dropdown.pa-dropdown > button { background: @pa_bg; border: 1px solid @pa_line; 
 /* Letter rail (web phone: 16 px column of 27 letters, 8.96 px bold) */
 button.pa-letter { background: transparent; border: none; box-shadow: none; padding: 0; min-width: 22px; min-height: 0; font-size: 8.96px; font-weight: 700; color: @pa_muted; border-radius: 999px; }
 button.pa-letter.active { background: alpha(@pa_ink, 0.85); color: @pa_bg; }
-.pa-back-arrow { font-size: 14px; color: @pa_ink_soft; }
+.pa-back-arrow { font-size: 10px; font-weight: 300; color: @pa_ink_soft; }
 .pa-hbtn.ring { outline: 3px solid @pa_ink; outline-offset: 2px; }
 .pa-row-glyph { color: #cf3157; font-size: 18px; min-width: 22px; }
 .pa-meta-flow flowboxchild { padding: 0; }
@@ -259,3 +259,7 @@ dropdown.pa-dropdown.pa-filter > button { min-height: 54px; border-radius: 12px;
 .pa-ep-shade { background: linear-gradient(135deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.48)); }
 /* The web's scroller edge fade (a mask down to 30% alpha over 38 px, eased), as a page-colour overlay. */
 .pa-edge-fade { background: linear-gradient(90deg, alpha(@pa_bg, 0) 0%, alpha(@pa_bg, 0.11) 25%, alpha(@pa_bg, 0.35) 50%, alpha(@pa_bg, 0.59) 75%, alpha(@pa_bg, 0.7) 100%); }
+.pa-profile-actions button.pa-pill { min-height: 42px; } .pa-profile-actions button.pa-pill.round { min-width: 42px; }
+.pa-cal-controls .pa-pill { min-height: 41px; }
+.pa-cal-controls .pa-pill.selected { padding: 0 22px; }
+.pa-cal-controls .pa-pill.round { min-width: 42px; }

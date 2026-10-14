@@ -19,6 +19,30 @@ pub fn avatar_widget(preset: &str, size: i32) -> gtk4::Image {
     img
 }
 
+/// The web's selector: icon, label and a thin chevron, centred in the box.
+fn decorate_dropdown(d: &gtk4::DropDown, icon: &str) {
+    let Some(inner) = d
+        .first_child()
+        .and_then(|b| b.downcast::<gtk4::Button>().ok())
+        .and_then(|b| b.child())
+    else {
+        return;
+    };
+    let Ok(inner) = inner.downcast::<gtk4::Box>() else {
+        return;
+    };
+    inner.set_halign(gtk4::Align::Center);
+    inner.set_spacing(8);
+    if let Some(label) = inner.first_child() {
+        label.set_hexpand(false);
+    }
+    if let Some(arrow) = inner.last_child() {
+        arrow.set_visible(false);
+    }
+    inner.prepend(&icons::image(icon, 14, Tone::Soft));
+    inner.append(&icons::image("chevron", 11, Tone::Soft));
+}
+
 const THEMES: [(&str, &str); 3] = [("dark", "Dark"), ("light", "Light"), ("system", "Auto")];
 
 pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
@@ -34,13 +58,12 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .margin_end(14)
         .height_request(48)
         .build();
-    let mark = gtk4::Box::builder()
-        .css_classes(["pa-mark"])
-        .hexpand(true)
-        .halign(gtk4::Align::Start)
-        .valign(gtk4::Align::Center)
-        .build();
-    mark.append(&icons::image("play", 14, Tone::Brand));
+    let mark = icons::brand_mark(30);
+    mark.set_hexpand(true);
+    mark.set_halign(gtk4::Align::Start);
+    mark.set_valign(gtk4::Align::Center);
+    mark.set_margin_start(0);
+    mark.set_margin_bottom(6);
     top.append(&mark);
     let names: Vec<&str> = THEMES.iter().map(|t| t.1).collect();
     let theme_pick = gtk4::DropDown::from_strings(&names);
@@ -53,18 +76,27 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         store::update_settings(|s| s.theme = name.into());
         theme::apply(name);
     });
+    decorate_dropdown(
+        &theme_pick,
+        if store::load_settings().theme == "dark" {
+            "moon"
+        } else {
+            "sun"
+        },
+    );
     top.append(&theme_pick);
     let lang = gtk4::DropDown::from_strings(&["Auto"]);
     lang.add_css_class("pa-dropdown");
     lang.set_size_request(112, 48);
     lang.set_tooltip_text(Some("The app follows this device's language."));
+    decorate_dropdown(&lang, "globe");
     top.append(&lang);
     root.append(&top);
 
     let heading = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
         .halign(gtk4::Align::Center)
-        .margin_top(10)
+        .margin_top(9)
         .build();
     heading.append(
         &gtk4::Label::builder()
@@ -76,7 +108,6 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         &gtk4::Label::builder()
             .label("Who’s watching?")
             .css_classes(["pa-who"])
-            .margin_top(2)
             .build(),
     );
     root.append(&heading);
@@ -84,7 +115,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     let tiles = gtk4::Box::builder()
         .spacing(22)
         .halign(gtk4::Align::Center)
-        .margin_top(31)
+        .margin_top(33)
         .build();
     root.append(&tiles);
     let status = gtk4::Label::builder()
@@ -97,9 +128,10 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     // Settings and sign out sit under the current profile.
     let actions = gtk4::Box::builder()
         .spacing(9)
+        .css_classes(["pa-profile-actions"])
         .halign(gtk4::Align::Start)
         .margin_start(25)
-        .margin_top(24)
+        .margin_top(22)
         .build();
     let settings = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
     settings.set_child(Some(&icons::image("settings", 16, Tone::Brand)));
@@ -107,10 +139,11 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         let (app, client) = (app.clone(), client.clone());
         settings.connect_clicked(move |_| app.push_settings(client.clone()));
     }
-    let sign_out = gtk4::Button::builder()
-        .css_classes(["pa-pill", "small"])
-        .label("Sign out")
-        .build();
+    let sign_out = gtk4::Button::builder().css_classes(["pa-pill", "small"]).build();
+    let out_row = gtk4::Box::builder().spacing(6).build();
+    out_row.append(&icons::image("logout", 14, Tone::Ink));
+    out_row.append(&gtk4::Label::new(Some("Sign out")));
+    sign_out.set_child(Some(&out_row));
     {
         let app = app.clone();
         sign_out.connect_clicked(move |_| app.sign_out());
@@ -161,7 +194,7 @@ fn tile(
         (true, Some(m)) => m.to_string(),
         _ => avatar::default_preset(&p.id).to_string(),
     };
-    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 7);
     col.set_halign(gtk4::Align::Center);
     let av = avatar_widget(&preset, 156);
     if p.is_current {
@@ -181,6 +214,7 @@ fn tile(
             &gtk4::Label::builder()
                 .label("WATCHING NOW")
                 .css_classes(["pa-tiny"])
+                .margin_top(5)
                 .build(),
         );
     }
@@ -325,11 +359,14 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
     let circle = gtk4::Box::builder()
         .css_classes(["pa-add-circle"])
         .halign(gtk4::Align::Center)
+        // Bottom-aligned with the 162 px current avatar, as on the web.
+        .margin_top(14)
         .build();
     circle.set_size_request(144, 144);
     let plus = icons::image("add", 28, Tone::Ink);
+    // No vexpand: it would stretch the whole row and push Sign out to the page bottom.
     plus.set_hexpand(true);
-    plus.set_vexpand(true);
+    plus.set_valign(gtk4::Align::Center);
     circle.append(&plus);
     col.append(&circle);
     col.append(
@@ -342,6 +379,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         &gtk4::Label::builder()
             .label("ADD ANOTHER PROFILE")
             .css_classes(["pa-tiny"])
+            .margin_top(3)
             .build(),
     );
     let b = gtk4::Button::builder()

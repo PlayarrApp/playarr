@@ -41,6 +41,15 @@ pub fn markup(name: &str) -> &'static str {
             r#"<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l2-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.7 7.7 0 0 0 0 3l-2 1.5 2 3.4 2.3-.9c.77.66 1.65 1.17 2.6 1.5l.5 2.5h4l.5-2.5a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4z"/>"#
         }
         "back" => r#"<path d="M19 12H5M11 6l-6 6 6 6"/>"#,
+        "logout" => r#"<path d="M10 5H5v14h5"/><path d="M13 8l4 4-4 4M8 12h9"/>"#,
+        "sun" => {
+            r#"<circle cx="12" cy="12" r="3.5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/>"#
+        }
+        "moon" => r#"<path d="M20.25 15.35A8.5 8.5 0 0 1 8.65 3.75 8.5 8.5 0 1 0 20.25 15.35Z"/>"#,
+        "globe" => {
+            r#"<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.3 5.1 3.3 8.5S14.2 18.2 12 20.5M12 3.5C9.8 5.8 8.7 8.6 8.7 12s1.1 6.2 3.3 8.5"/>"#
+        }
+        "chevron" => r#"<path d="m6 9 6 6 6-6"/>"#,
         "play" => r#"<path d="m8 5 11 7-11 7z" fill="currentColor" stroke="none"/>"#,
         "check" => r#"<path d="m5 12.5 4.5 4.5L19 7.5"/>"#,
         "close" => r#"<path d="M6 6l12 12M18 6 6 18"/>"#,
@@ -61,6 +70,17 @@ pub fn texture(name: &str, color: &str, px: i32) -> Option<gdk::Texture> {
     let stream = gio::MemoryInputStream::from_bytes(&bytes);
     let pb = gdk_pixbuf::Pixbuf::from_stream_at_scale(&stream, px * 2, px * 2, true, gio::Cancellable::NONE).ok()?;
     Some(gdk::Texture::for_pixbuf(&pb))
+}
+
+/// The brand mark (the web's playarr-icon.svg), drawn at `px` css pixels.
+pub fn brand_mark(px: i32) -> gtk4::Image {
+    let bytes = glib::Bytes::from_static(include_bytes!("../data/playarr-mark.svg"));
+    let stream = gio::MemoryInputStream::from_bytes(&bytes);
+    let img = gtk4::Image::builder().pixel_size(px).build();
+    if let Ok(pb) = gdk_pixbuf::Pixbuf::from_stream_at_scale(&stream, px * 2, px * 2, true, gio::Cancellable::NONE) {
+        img.set_paintable(Some(&gdk::Texture::for_pixbuf(&pb)));
+    }
+    img
 }
 
 /// Which colour an icon takes; resolved against the current theme.

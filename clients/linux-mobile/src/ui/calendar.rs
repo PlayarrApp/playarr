@@ -2,7 +2,6 @@
 use super::images::Images;
 use super::{bg, header, App};
 use crate::api::Client;
-use crate::icons::{self, Tone};
 use crate::model::CalendarEntry;
 use gtk4::prelude::*;
 use std::cell::{Cell, RefCell};
@@ -125,6 +124,8 @@ struct Cal {
     anchor: Cell<Date>,
     selected: Cell<Option<Date>>,
     range_label: gtk4::Label,
+    /// The period controls; the web sits them 18 px lower on week and month than on the agenda.
+    controls: gtk4::Box,
     body: gtk4::Box,
     generation: Cell<u32>,
     entries: RefCell<Vec<CalendarEntry>>,
@@ -178,13 +179,17 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry) -> gtk4::Button
         .content_fit(gtk4::ContentFit::Cover)
         .can_shrink(true)
         .build();
+    // A blank 40 x 60 box sizes the frame; the poster is an overlay, so its own size cannot widen it.
+    let sizer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    sizer.set_size_request(40, 60);
     let frame = gtk4::Overlay::builder()
-        .child(&thumb)
+        .child(&sizer)
         .overflow(gtk4::Overflow::Hidden)
         .css_classes(["pa-thumb"])
         .valign(gtk4::Align::Center)
+        .halign(gtk4::Align::Start)
         .build();
-    frame.set_size_request(40, 60);
+    frame.add_overlay(&thumb);
     if let Some(id) = &e.work_id {
         imgs.load(Client::artwork_path(id, "poster", 160), &thumb);
     }
@@ -265,9 +270,15 @@ fn pill(label: &str) -> gtk4::Button {
     gtk4::Button::builder().label(label).css_classes(["pa-pill"]).build()
 }
 
-fn round_icon(name: &str) -> gtk4::Button {
+/// A round control with a text arrow, as the web's period navigation.
+fn round_arrow(arrow: &str) -> gtk4::Button {
     let b = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
-    b.set_child(Some(&icons::image(name, 18, Tone::Soft)));
+    b.set_child(Some(
+        &gtk4::Label::builder()
+            .label(arrow)
+            .css_classes(["pa-back-arrow"])
+            .build(),
+    ));
     b
 }
 
@@ -551,6 +562,7 @@ impl Cal {
 
     fn set_view(self: &Rc<Self>, v: View) {
         self.view.set(v);
+        self.controls.set_margin_top(if v == View::Agenda { 5 } else { 21 });
         let t = today();
         self.anchor.set(match v {
             View::Agenda => t,
@@ -626,7 +638,7 @@ impl Cal {
 }
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
-    let page = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+    let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     page.set_margin_bottom(110);
     let head = header::build(&app, "Calendar", "filters");
     head.action.set_visible(true);
@@ -642,16 +654,15 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .spacing(8)
         .halign(gtk4::Align::End)
         .margin_top(5)
+        .css_classes(["pa-cal-controls"])
         .build();
     let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
     let range = gtk4::Box::builder().css_classes(["pa-pill"]).build();
     range.append(&range_label);
-    let prev = round_icon("back");
+    let prev = round_arrow("←");
     let today_btn = pill("Today");
     today_btn.add_css_class("selected");
-    let next = round_icon("back");
-    // The forward arrow reuses the back glyph, flipped.
-    next.set_child(Some(&gtk4::Image::from_icon_name("go-next-symbolic")));
+    let next = round_arrow("→");
     controls.append(&range);
     controls.append(&prev);
     controls.append(&today_btn);
@@ -668,7 +679,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .vscrollbar_policy(gtk4::PolicyType::Never)
         .kinetic_scrolling(false)
         .propagate_natural_height(true)
-        .margin_top(8)
+        .margin_top(6)
         .build();
     content.append(&days_view);
     let scroll = gtk4::ScrolledWindow::builder()
@@ -685,6 +696,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         anchor: Cell::new(today()),
         selected: Cell::new(None),
         range_label,
+        controls: controls.clone(),
         body,
         generation: Cell::new(0),
         entries: RefCell::default(),
