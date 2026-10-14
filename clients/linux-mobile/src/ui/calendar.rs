@@ -382,7 +382,7 @@ impl Cal {
         if dt == today() {
             head.append(
                 &gtk4::Label::builder()
-                    .label("Today")
+                    .label("TODAY")
                     .css_classes(["pa-today-chip"])
                     .valign(gtk4::Align::Center)
                     .build(),
