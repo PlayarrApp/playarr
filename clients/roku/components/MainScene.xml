@@ -499,14 +499,14 @@
            detail page's network calls and the genre-search fallback). Both
            use the larger .tv-title-card sizing (cardScale 1.5 = 330x247). -->
       <RowList id="detailChapters" translation="[0,0]" itemComponentName="PosterCard"
-        numRows="1" itemSize="[1038,330]" rowItemSize="[[268,190]]"
-        rowItemSpacing="[[25,0]]" rowHeights="[330]" showRowLabel="true"
+        numRows="1" itemSize="[1046,345]" rowItemSize="[[284,220]]"
+        rowItemSpacing="[[9,0]]" rowHeights="[345]" showRowLabel="true"
         rowLabelOffset="[[0,4]]" focusXOffset="[0]"
         focusBitmapBlendColor="0x00000000" rowFocusAnimationStyle="fixedFocusWrap"
         visible="false" />
       <RowList id="detailSimilar" translation="[0,0]" itemComponentName="PosterCard"
-        numRows="1" itemSize="[1038,330]" rowItemSize="[[268,190]]"
-        rowItemSpacing="[[25,0]]" rowHeights="[330]" showRowLabel="true"
+        numRows="1" itemSize="[1046,345]" rowItemSize="[[284,220]]"
+        rowItemSpacing="[[9,0]]" rowHeights="[345]" showRowLabel="true"
         rowLabelOffset="[[0,4]]" focusXOffset="[0]"
         focusBitmapBlendColor="0x00000000" rowFocusAnimationStyle="fixedFocusWrap"
         visible="false" />

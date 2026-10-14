@@ -5187,13 +5187,13 @@ end function
 sub layoutDetailRails()
     y = 0
     hideDetailRailHeads()
-    m.detailRailBase = 0
+    m.detailRailBase = -15
     showLabels = false
     m.detailChapters.showRowLabel = showLabels
     m.detailSimilar.showRowLabel = showLabels
     if m.detailGroupKind = ""
         ' Movie: Chapters then Cast, headings at web y 540 and 854, cards 80 px below, rows 314 px apart.
-        m.detailRailBase = 197.8
+        m.detailRailBase = 182.8
         m.detailEpisodes.visible = false
         slot = 0
         y = 117.1
@@ -5208,7 +5208,7 @@ sub layoutDetailRails()
             end if
             if n = 1 and m.detailChaptersGenerated <> true then captionText = "1 chapter"
             setDetailRailHead(slot, y, "Chapters", captionText)
-            m.detailChapters.translation = [0, y + 80.7]
+            m.detailChapters.translation = [-8, y + 65.7]
             slot = slot + 1
             y = y + 314.3
         end if
@@ -5218,7 +5218,7 @@ sub layoutDetailRails()
             people = n.ToStr() + " people"
             if n = 1 then people = "1 person"
             setDetailRailHead(slot, y, "Cast", people)
-            m.detailSimilar.translation = [0, y + 80.7]
+            m.detailSimilar.translation = [-8, y + 65.7]
         end if
         return
     end if
@@ -5233,11 +5233,11 @@ sub layoutDetailRails()
         y += visibleRows * 315 + 20
     end if
     if m.detailChapters.visible
-        m.detailChapters.translation = [0, y]
+        m.detailChapters.translation = [-8, y - 15]
         y += 350
     end if
     if m.detailSimilar.visible
-        m.detailSimilar.translation = [0, y]
+        m.detailSimilar.translation = [-8, y - 15]
     end if
 end sub
 
@@ -5370,7 +5370,11 @@ sub buildDetailChaptersRail(isActive as Boolean)
         item.cardScale = 268.0 / 220.0
         item.AddField("startMs", "integer", false)
         item.startMs = chapter.start_ms
+        item.AddField("focusRingOutsideArt", "boolean", false)
+        item.focusRingOutsideArt = true
     end for
+    m.detailChapters.rowItemSize = [[284, 220]]
+    m.detailChapters.rowItemSpacing = [[9, 0]]
     m.detailChapters.content = root
 end sub
 
@@ -5426,11 +5430,17 @@ end sub
 ' See buildDetailChaptersRail's comment for why moveDetailFocus (below)
 ' needs to rebuild this rail's content on every focus transition too.
 sub buildDetailSimilarRail(isActive as Boolean)
-    m.detailSimilar.rowItemSize = [[268, 190]]
-    m.detailSimilar.rowItemSpacing = [[25, 0]]
-    buildRailContent(m.detailSimilar, m.similarWorks, isActive, 1.5)
+    m.detailSimilar.rowItemSize = [[284, 220]]
+    m.detailSimilar.rowItemSpacing = [[9, 0]]
+    buildRailContent(m.detailSimilar, m.similarWorks, isActive, 268.0 / 220.0)
     row = m.detailSimilar.content.GetChild(0)
-    if row <> invalid then row.title = "Similar Titles"
+    if row <> invalid
+        row.title = "Similar Titles"
+        ' Reserve the lift, ring and glow overflow inside the rail's clip, as the episode rails do.
+        for i = 0 to row.GetChildCount() - 1
+            row.GetChild(i).focusRingOutsideArt = true
+        end for
+    end if
 end sub
 
 sub startSimilarGenreFallback()
@@ -7418,9 +7428,11 @@ sub buildDetailCastRail(isActive as Boolean)
         item.AddField("shape", "string", false)
         item.shape = "circle"
         item.cardScale = 1.0
+        item.AddField("focusRingOutsideArt", "boolean", false)
+        item.focusRingOutsideArt = true
     end for
-    m.detailSimilar.rowItemSize = [[177, 190]]
-    m.detailSimilar.rowItemSpacing = [[0, 0]]
+    m.detailSimilar.rowItemSize = [[193, 205]]
+    m.detailSimilar.rowItemSpacing = [[-16, 0]]
     m.detailSimilar.content = root
 end sub
 
