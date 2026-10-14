@@ -70,20 +70,28 @@ fn fetch(c: &Client, id: &str) -> Result<Loaded, crate::api::ApiError> {
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk4::Widget {
     let root = gtk4::Overlay::new();
-    // Key art behind everything, dimmed and washed into the page.
+    // Key art behind everything, as the web phone's `.tv-key-art`: a 360 x 223 backdrop, its right edge, left edge and
+    // bottom faded into the page, then a 485 px wash over the top of the page.
     let art = gtk4::Picture::builder()
         .content_fit(gtk4::ContentFit::Cover)
-        .css_classes(["pa-key-art"])
+        .css_classes(["pa-key-art", "pa-khero"])
         .valign(gtk4::Align::Start)
         .build();
-    art.set_size_request(-1, 390);
-    let wash = gtk4::Box::builder()
-        .css_classes(["pa-key-wash"])
-        .valign(gtk4::Align::Start)
-        .build();
-    wash.set_size_request(-1, 485);
+    art.set_size_request(-1, 223);
+    let fade = |h: i32, class: &str| {
+        let b = gtk4::Box::builder()
+            .css_classes([class])
+            .valign(gtk4::Align::Start)
+            .build();
+        b.set_size_request(-1, h);
+        b
+    };
     root.set_child(Some(&art));
-    root.add_overlay(&wash);
+    // The web's page scrolls under its sticky art: the top 93 px of the art is covered by the page.
+    root.add_overlay(&fade(93, "pa-khero-cover"));
+    root.add_overlay(&fade(223, "pa-khero-edge"));
+    root.add_overlay(&fade(390, "pa-khero-fade"));
+    root.add_overlay(&fade(485, "pa-khero-wash"));
 
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     page.set_margin_bottom(32);
@@ -131,7 +139,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
                 Ok(l) => {
                     let w = &l.detail.work;
                     if let Some(kind) = ["backdrop", "poster"].iter().find(|k| w.has_image(k)) {
-                        imgs.load(Client::artwork_path(&w.id, kind, 1280), &art2);
+                        imgs.load(Client::artwork_path(&w.id, kind, 780), &art2);
                     }
                     head.set_section(match w.kind.as_str() {
                         "series" => "Series",

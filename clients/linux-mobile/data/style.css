@@ -241,3 +241,8 @@ dropdown.pa-dropdown.pa-filter > button { min-height: 54px; border-radius: 12px;
 /* Search empty state */
 .pa-empty-ring { border: 1px solid @pa_line; border-radius: 999px; }
 .pa-empty-text { font-size: 11px; font-weight: 680; color: @pa_ink; }
+
+/* Detail hero fades, as the web phone's .tv-key-art::after and .tv-stage-wash */
+.pa-khero-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }
+.pa-khero-cover { background: @pa_bg; }
+.pa-khero-wash { background: linear-gradient(0deg, @pa_bg 34%, alpha(@pa_bg, 0) 68%); }

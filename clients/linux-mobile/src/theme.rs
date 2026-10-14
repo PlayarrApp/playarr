@@ -67,7 +67,23 @@ pub fn css(dark: bool) -> String {
         t.bg, t.surface, t.surface_strong, t.surface_soft, t.ink, t.ink_soft, t.ink_muted, t.line, t.brand, t.brand_ink,
         t.focus_glow, t.on_accent, t.accent, t.shadow, t.wash
     );
-    defs + include_str!("../data/style.css")
+    // The detail hero's opacity and filter are the web's: .72 and darkened in dark, .42 and lightened in light.
+    // Bottom of the art: a hard edge at 183 px in dark, a soft fade from about 150 px in light (the web references).
+    let edge = if dark {
+        "linear-gradient(0deg, @pa_bg 18%, alpha(@pa_bg, 0) 18%)"
+    } else {
+        "linear-gradient(0deg, @pa_bg 4%, alpha(@pa_bg, 0) 34%)"
+    };
+    let hero = format!(
+        ".pa-khero-fade {{ background: {edge}; }}\n.pa-key-art.pa-khero {{ opacity: {}; filter: {}; }}\n",
+        if dark { "0.72" } else { "0.24" },
+        if dark {
+            "grayscale(1) contrast(0.82) brightness(0.6)"
+        } else {
+            "grayscale(1) contrast(0.88) brightness(1.1)"
+        }
+    );
+    defs + &hero + include_str!("../data/style.css")
 }
 
 thread_local! {
