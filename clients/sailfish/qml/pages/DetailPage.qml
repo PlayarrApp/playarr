@@ -336,7 +336,7 @@ PlayarrPage {
                     }
                 }
             }
-            Item { width: 1; height: 7 * Tokens.u }
+            Item { width: 1; height: 8 * Tokens.u }
             Repeater {
                 model: seasons
                 Column {
@@ -425,6 +425,12 @@ PlayarrPage {
                                         height: 3 * Tokens.u; color: Tokens.brandPink
                                         width: visible ? parent.width * Math.min(1, epCard.pr.position_ms / epCard.pr.duration_ms) : 0
                                     }
+                                }
+                                Rectangle {   // web focus ring on the next-up episode
+                                    visible: !!page.target && page.target.id === modelData.media_file_id
+                                    anchors { fill: thumb; margins: -3 * Tokens.u }
+                                    radius: thumb.radius + 3 * Tokens.u; color: "transparent"
+                                    border.width: 3 * Tokens.u; border.color: Tokens.brandInk
                                 }
                                 Row {
                                     anchors { top: thumb.bottom; topMargin: 12 * Tokens.u; left: parent.left; right: parent.right; }
