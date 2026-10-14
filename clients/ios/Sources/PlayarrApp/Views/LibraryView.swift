@@ -242,6 +242,7 @@ struct LibraryView: View {
                 if !phone, let preview = viewModel.works.first {
                     PlayarrArtwork(work: preview, kind: .backdrop, apiClient: apiClient)
                         .frame(width: proxy.size.width * 0.52, height: proxy.size.height)
+                        .clipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
                         .opacity(scheme == .dark ? 0.3 : 0.14)
                         .overlay {
                             LinearGradient(
@@ -465,6 +466,15 @@ struct LibraryView: View {
                                 libraryListRow(work, width: cardWidth)
                             } else {
                                 PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false)
+                                    .overlay(alignment: .top) {
+                                        // Web focuses the first tile of a library on arrival: a pink ring with a soft glow.
+                                        if !phone && work.id == viewModel.works.first?.id {
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .stroke(WM.cardGlowColor, lineWidth: 3)
+                                                .frame(width: cardWidth, height: cardWidth * 9 / 16)
+                                                .shadow(color: WM.cardGlowColor.opacity(0.45), radius: 14)
+                                        }
+                                    }
                             }
                         }
                         .buttonStyle(.plain)
