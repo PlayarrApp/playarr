@@ -126,8 +126,8 @@ function RailLink({
       accessibilityLabel={item.label}
       accessibilityState={{selected: active}}
       {...({nextFocusUp: up, nextFocusDown: down} as object)}
-      onFocus={() => {
-        reportFocus(item.label, {rail: 'nav', index});
+      onFocus={(event) => {
+        reportFocus(item.label, {rail: 'nav', index}, undefined, event.nativeEvent.target);
         setFocused(true);
       }}
       onBlur={() => setFocused(false)}
@@ -301,8 +301,8 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
           {...({nextFocusUp: up} as object)}
           accessibilityRole="button"
           accessibilityLabel={`Profile ${name}`}
-          onFocus={() => {
-            reportFocus('device', {rail: 'nav', index: navCount});
+          onFocus={(event) => {
+            reportFocus('device', {rail: 'nav', index: navCount}, undefined, event.nativeEvent.target);
             setFocused(true);
           }}
           onBlur={() => setFocused(false)}

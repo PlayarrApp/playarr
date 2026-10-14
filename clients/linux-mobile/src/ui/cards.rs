@@ -30,6 +30,8 @@ pub struct CardOpts<'a> {
     pub selected: bool,
     /// Red "unseen" dot at the art's top-right corner.
     pub unseen: bool,
+    /// Uses the Home rail's resting shadow tokens.
+    pub home_art: bool,
     pub kinds: &'a [&'a str],
 }
 
@@ -41,6 +43,7 @@ impl Default for CardOpts<'_> {
             progress: None,
             selected: false,
             unseen: false,
+            home_art: false,
             kinds: &["backdrop", "thumb", "poster"],
         }
     }
@@ -52,10 +55,25 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         .can_shrink(true)
         .build();
     let overlay = gtk4::Overlay::builder()
-        .child(&pic)
         .overflow(gtk4::Overflow::Hidden)
         .css_classes(["pa-art"])
         .build();
+    if o.home_art {
+        overlay.add_css_class("pa-home-art");
+    }
+    if let Some(width) = o.width {
+        let art_space = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        art_space.set_size_request(width, ART_H);
+        overlay.set_child(Some(&art_space));
+        pic.set_halign(gtk4::Align::Fill);
+        pic.set_valign(gtk4::Align::Fill);
+        pic.set_hexpand(true);
+        pic.set_vexpand(true);
+        overlay.add_overlay(&pic);
+        overlay.set_measure_overlay(&pic, false);
+    } else {
+        overlay.set_child(Some(&pic));
+    }
     match o.kinds.iter().find(|k| work.has_image(k)) {
         Some(kind) => imgs.load(Client::artwork_path(&work.id, kind, 780), &pic),
         None => overlay.add_overlay(

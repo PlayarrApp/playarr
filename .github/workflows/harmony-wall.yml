@@ -22,6 +22,14 @@ on:
         type: choice
         options: [screens, everything]
         default: screens
+      tv_screens:
+        description: TV screen IDs as a comma-separated list, or all for the legacy full set
+        type: string
+        default: all
+      skip_player:
+        description: Skip the player-controls route while retaining the other full-set captures
+        type: boolean
+        default: false
       rail_patch:
         description: Apply the preview-only MediaRail @Prop patch (turn off to test whether the app needs it)
         type: boolean
@@ -86,12 +94,14 @@ jobs:
       matrix:
         # phone: each theme in its own parallel job (one Previewer per colour mode). TV: the screens (all), the D-pad checks, the key-reached screens and
         # the playback cases run as parallel jobs, each signing in on its own session
-        theme: ${{ fromJSON(inputs.device == 'phone' && '["dark","light"]' || (inputs.parts == 'screens' && '["all"]' || '["all","dpad","extra","playback"]')) }}
+        theme: ${{ fromJSON(inputs.device == 'phone' && '["dark","light"]' || ((inputs.tv_screens != 'all') && '["all"]') || (inputs.parts == 'screens' && '["all"]' || '["all","dpad","extra","playback"]')) }}
     defaults:
       run:
         shell: bash
     env:
       DEVICE: ${{ inputs.device || 'tv' }}
+      TV_SCREENS: ${{ inputs.tv_screens || 'all' }}
+      SKIP_PLAYER: ${{ inputs.skip_player == true && 'true' || 'false' }}
       MESA_VERSION: 26.2.4
       THEME: ${{ matrix.theme }}
       SDK_BUILD: "31" # the public SDK is 6.1.0.<build>; split so the env-data guard does not read it as an IPv4 address
@@ -144,6 +154,7 @@ jobs:
           if [ "$DEVICE" = phone ]; then D=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait); else D=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape); fi
           if [ "$THEME" = light ]; then CM=light; else CM=dark; fi
           cp scripts/sim-vnc/sim_vnc.py scripts/harmony-wall/
+          python scripts/harmony-wall/backend_preflight.py --output backend-preflight.json
           launch() {
             PLAYARR_VNC_PASSWORD=selftest1 python scripts/harmony-wall/harmony_vnc.py --bind 127.0.0.1 --port 5917 --ws $WS --ctl $CTL \
               --debug-port $DBG --cmd-name playarr_cmd --password-env PLAYARR_VNC_PASSWORD > bridge.log 2>&1 &
@@ -198,8 +209,11 @@ jobs:
         with:
           name: harmony-debug-${{ env.DEVICE }}-${{ matrix.theme }}
           path: |
+            backend-preflight.json
             capture/_debug
             capture/_rejected-*.png
+            capture/backend-preflight-*.json
+            capture/build.json
             bridge.log
             previewer.log
           if-no-files-found: ignore

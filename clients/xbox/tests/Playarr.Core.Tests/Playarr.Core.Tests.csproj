@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Playarr.Core/Playarr.Core.csproj" />
+    <Compile Include="../../src/Playarr.Xbox/Views/BackdropPixelFilter.cs" Link="BackdropPixelFilter.cs" />
   </ItemGroup>
 
 </Project>

@@ -17,7 +17,7 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
 
 targets:
-  PlayarrApp:
+  Playarr:
     type: application
     productName: Playarr
     platform: iOS
@@ -72,7 +72,7 @@ targets:
     sources:
       - path: Tests/PlayarrAppTests
     dependencies:
-      - target: PlayarrApp
+      - target: Playarr
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
@@ -80,13 +80,27 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Playarr.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Playarr"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
+  PlayarrAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/PlayarrAppUITests
+    dependencies:
+      - target: Playarr
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.playarr.ios.app-ui-tests
+        TEST_TARGET_NAME: Playarr
+
 schemes:
   PlayarrApp:
     build:
       targets:
-        PlayarrApp: all
+        Playarr: all
         PlayarrKitTests: [test]
         PlayarrAppTests: [test]
+        PlayarrAppUITests: [test]
     run:
       config: Debug
     test:
@@ -95,5 +109,6 @@ schemes:
       targets:
         - PlayarrKitTests
         - PlayarrAppTests
+        - PlayarrAppUITests
     archive:
       config: Release

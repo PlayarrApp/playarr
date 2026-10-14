@@ -4,6 +4,7 @@
  * rest of this client today.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -46,12 +47,12 @@ export struct Clock {
 
   build() {
     Row({ space: tv(TIME_DATE_GAP) }) {
-      Text(clockTime(this.now))
+      Text(clockTime(this.now)).fontFamily(nunito(TIME_FONT_WEIGHT))
         .fontSize(tv(TIME_FONT_SIZE))
         .fontWeight(TIME_FONT_WEIGHT)
         .letterSpacing(tv(TIME_LETTER_SPACING))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(clockDate(this.now))
+      Text(clockDate(this.now)).fontFamily(nunito(DATE_FONT_WEIGHT))
         .fontSize(tv(DATE_FONT_SIZE))
         .fontWeight(DATE_FONT_WEIGHT)
         .letterSpacing(tv(DATE_LETTER_SPACING))

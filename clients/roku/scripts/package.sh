@@ -9,7 +9,7 @@ mkdir -p "$(dirname "${output_path}")"
 rm -f "${output_path}"
 
 cd "${roku_dir}"
-zip -q -r "${output_path}" manifest source components images fonts \
+zip -q -r "${output_path}" manifest source components images fonts THIRD_PARTY_NOTICES.md \
   -x '*.DS_Store' '__MACOSX/*' '*.pyc' '*__pycache__*'
 
 printf 'Created %s\n' "${output_path}"

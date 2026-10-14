@@ -425,6 +425,9 @@ internal fun calendarMonthChipNeighbour(slots: List<Int>, columns: Int, from: Ca
 /** Where RIGHT from the navigation rail lands: the page's default focus target (web `data-tv-focus-default`). */
 internal class TvContentEntry {
     var requester: FocusRequester? = null
+
+    /** A page whose default target is not one focus requester (Home's first card in rail 0) sets this instead. */
+    var enter: (() -> Unit)? = null
 }
 
 internal val LocalTvContentEntry = androidx.compose.runtime.staticCompositionLocalOf { TvContentEntry() }

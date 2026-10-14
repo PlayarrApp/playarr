@@ -60,9 +60,41 @@ export function playerPreferencesUrl(): string {
   return "/api/v1/users/me/player-preferences";
 }
 
+/** `GET`/`PUT /api/v1/users/me/profile-avatar`: the avatar every client device of this user shows. */
+export function profileAvatarUrl(): string {
+  return "/api/v1/users/me/profile-avatar";
+}
+
+/** `GET`/`POST /api/v1/users/me/user-invite-request`: this user's friend-invite request; `/generate` issues the approved invite. */
+export function userInviteRequestUrl(): string {
+  return "/api/v1/users/me/user-invite-request";
+}
+
 /** `GET`/`PATCH` the signed-in profile's PIN lock (web `getProfilePinSetting` / `updateProfilePinSetting`). */
 export function profilePinUrl(): string {
   return "/api/v1/users/me/profile-pin";
+}
+
+// -- Your data (portable export and import; web `getUserDataExport` and friends) --
+
+export function dataExportsUrl(): string {
+  return "/api/v1/users/me/data-exports";
+}
+
+export function dataExportUrl(id: string): string {
+  return "/api/v1/users/me/data-exports/" + encodeURIComponent(id);
+}
+
+export function dataExportTransferLinkUrl(id: string): string {
+  return dataExportUrl(id) + "/transfer-link";
+}
+
+export function dataImportSessionsUrl(): string {
+  return "/api/v1/users/me/data-import-sessions";
+}
+
+export function dataImportSessionUrl(id: string): string {
+  return dataImportSessionsUrl() + "/" + encodeURIComponent(id);
 }
 
 // -- 4.8 Catalog -----------------------------------------------------------
@@ -146,6 +178,11 @@ export function downloadOptionsUrl(mediaFileId: string): string {
   return `/api/v1/media/${encodeURIComponent(mediaFileId)}/download-options`;
 }
 
+/** `GET`/`PUT`/`DELETE /api/v1/home/rails/preferences`: the signed-in user's Home rail order and hidden set (web Customise Home). */
+export function railPreferencesUrl(): string {
+  return "/api/v1/home/rails/preferences";
+}
+
 /** `GET /api/v1/home/rails`: the server-curated Home rails web TV Home renders. */
 export function homeRailsUrl(): string {
   return "/api/v1/home/rails";
@@ -200,8 +237,16 @@ export function artworkAlbumUrl(artistWorkId: string, albumId: string, kind: str
   return "/api/v1/artwork/album/" + artistWorkId + "/" + albumId + "/" + kind;
 }
 
-export function mediaThumbnailUrl(mediaFileId: string): string {
-  return "/api/v1/media/" + mediaFileId + "/thumbnail";
+export function artworkEpisodeUrl(seriesWorkId: string, episodeId: string, kind: string, width: number): string {
+  return "/api/v1/artwork/episode/" + seriesWorkId + "/" + episodeId + "/" + kind + "?w=" + String(width);
+}
+
+export function mediaThumbnailUrl(mediaFileId: string, positionMs?: number): string {
+  const path = "/api/v1/media/" + mediaFileId + "/thumbnail";
+  if (positionMs === undefined) {
+    return path;
+  }
+  return path + "?position_ms=" + String(positionMs);
 }
 
 // -- 4.10 Playback negotiation ------------------------------------------------

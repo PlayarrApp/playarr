@@ -44,10 +44,17 @@
     "player-up-seek": "seek",
     "player-up-down": "play-pause",
     "player-ok-toggle": "play-pause",
-    "player-panel-open": "offno subtitles\u2713",
-    "player-panel-close": "subtitles: off",
-    "player-back": "movies/:id",
-    "player-back-back": "movies"
+    "player-panel-open": "panel:open",
+    "player-panel-close": "panel:closed",
+    "player-back": "player/:id",
+    "player-back-back": "movies/:id",
+    "nav-right-stage": {
+      "label": "first Home card",
+      "position": {
+        "rail": 0,
+        "index": 0
+      }
+    }
   },
   "performance": {},
   "note": "Web reference for the pinned Device Test state (12 Oct 2026). Home positions depend on the account: On deck currently holds one card, so home-right stays on 0:0. Regenerate with: node suite-run.mjs --driver drivers/web.mjs --reference --only dpad --out <dir>, then copy <dir>/expected.json here."

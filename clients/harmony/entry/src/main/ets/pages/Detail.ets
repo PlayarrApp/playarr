@@ -48,19 +48,19 @@
  *
  * ## Artwork
  *
- * Per-row artwork is intentionally modest in scope: an album's own cover
- * (`fetchAlbumArtworkByPriority`, `COVER_ARTWORK_PRIORITY`) is fetched ONCE
- * per album and reused for every track row inside it (there is no
- * per-track artwork endpoint at all, brief 4.9); an episode/book row tries
- * `fetchMediaThumbnail(mediaFileId, 0)` when it has a resolved
- * `media_file_id` -- exactly the "on-deck episode art" use
- * `data/ArtworkRepository.ets`'s own header comment documents that endpoint
- * for. Every fetch happens AFTER the rail/row skeletons are already on
- * screen (never blocking first paint), and each success rebuilds the
- * `@State` array it belongs to with a fresh reference (ArkTS `@State`
- * reactivity needs a new array/object identity, never an in-place mutation
- * -- the same discipline `data/ArtworkRepository.ets`'s own LRU cache uses
- * for its `removeCacheKey` rebuild).
+ * Per-row artwork follows the matching web sources: episode rows require a
+ * resolved `media_file_id`, then try the server-cached episode still when
+ * advertised, its default 30-second media thumbnail, and the series
+ * backdrop/poster detail artwork; book rows use their media thumbnail.
+ * An album's own cover (`fetchAlbumArtworkByPriority`,
+ * `COVER_ARTWORK_PRIORITY`) is fetched ONCE per album and reused for every
+ * track row (there is no per-track artwork endpoint, brief 4.9). Every
+ * fetch happens AFTER the rail/row skeletons are already on screen (never
+ * blocking first paint). Resolved PixelMaps live in a
+ * Detail-owned `@Observed` store keyed by stable row ID. Each store update
+ * increments its `@Track` revision; row-card children receive the store
+ * directly through `@ObjectLink` and read their artwork by row ID, without
+ * changing the rail or item keys.
  *
  * ## Layout
  *
@@ -100,21 +100,46 @@
  * reject outright.
  */
 
+import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
 
-import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan } from '../data/CatalogRepository';
+import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan, clearResumeChoices } from '../data/CatalogRepository';
 import { resumeButtonLabel, resumeKicker, resumeTargetFile } from '../core/ResumePlan';
-import { metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
+import { hasSeriesResumeTarget, metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
+import {
+  EpisodeFocusGate,
+  hasPositiveEpisodeAreaSample,
+  hasPositiveEpisodeVisibleArea,
+  issueEpisodeFocusRequest,
+  isSeriesEpisodeTargetFocused,
+  EpisodeFocusRect,
+  episodeFocusRectFromAreaVps,
+  SeriesEpisodeAreaSample,
+  seriesEpisodeAreaSampleMatchesTarget,
+  centredSeasonStackOffset,
+  SERIES_EPISODE_CARD_WIDTH,
+  SERIES_EPISODE_LIST_HEIGHT,
+  SERIES_SEASON_HEADER_CARD_GAP,
+  SERIES_SEASON_ROW_GAP,
+  episodeIndexForTarget,
+  seriesEpisodeCaption,
+  seriesDetailMeasurementId,
+  seriesEpisodeFocusId,
+  seriesEpisodeOverlayNumber,
+} from '../core/SeriesEpisodePresentation';
+import { NonEmptyComponentIdModifier } from '../design/ComponentMeasurement';
 import type { ResumePlan } from '../core/Types/ResumePlan';
 import { getMediaChapters, getWatchProgress } from '../data/PlaybackRepository';
 import { addToWatchlist, removeFromWatchlist, resolveTitle } from '../data/WatchlistRepository';
 import { snapshotFromWork } from '../core/TitleSnapshot';
 import { formatRuntimeLabel } from '../core/RuntimeLabel';
 import { resumeStartMs } from '../core/PlaybackMath.ts';
+import { selectEpisodeArtworkSources } from '../core/EpisodeArtworkSources';
 import {
   fetchWorkArtworkByPriority,
   fetchAlbumArtworkByPriority,
+  fetchEpisodeArtwork,
   fetchMediaThumbnail,
   HERO_ARTWORK_PRIORITY,
   COVER_ARTWORK_PRIORITY,
@@ -186,6 +211,8 @@ const RIGHT_COLUMN_Y: number = 530;
 const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 550;
 const RIGHT_COLUMN_GAP: number = 56;
+const SERIES_COLUMN_TOP: number = 364;
+const SERIES_COLUMN_HEIGHT: number = 716;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
 const CAST_CIRCLE: number = 104;
@@ -217,6 +244,50 @@ function pct100(value: number): number {
 
 // -- Row/rail view models ----------------------------------------------------
 
+@Observed
+class DetailArtworkStore {
+  @Track revision: number = 0;
+  @Track private pixelMaps: Map<string, image.PixelMap> = new Map<string, image.PixelMap>();
+  private generation: number = 0;
+
+  beginGeneration(): number {
+    this.generation += 1;
+    this.pixelMaps.clear();
+    this.revision += 1;
+    return this.generation;
+  }
+
+  isCurrentGeneration(generation: number): boolean {
+    return generation === this.generation;
+  }
+
+  setArtwork(generation: number, rowId: string, pixelMap: image.PixelMap): void {
+    if (!this.isCurrentGeneration(generation)) {
+      return;
+    }
+    this.pixelMaps.set(rowId, pixelMap);
+    this.revision += 1;
+  }
+
+  setArtworkForRows(generation: number, rowIds: string[], pixelMap: image.PixelMap): void {
+    if (!this.isCurrentGeneration(generation)) {
+      return;
+    }
+    for (const rowId of rowIds) {
+      this.pixelMaps.set(rowId, pixelMap);
+    }
+    this.revision += 1;
+  }
+
+  getArtwork(rowId: string): image.PixelMap | undefined {
+    const revision = this.revision;
+    if (revision === 0) {
+      return undefined;
+    }
+    return this.pixelMaps.get(rowId);
+  }
+}
+
 /**
  * One playable-or-navigable row inside a rail: an episode, a track, a book,
  * or a similar-title. Deliberately ONE shape for all four -- every one of
@@ -229,11 +300,79 @@ interface DetailRow {
   id: string;
   title: string;
   subtitle: string;
-  artwork: image.PixelMap | undefined;
   mediaFileId: string | null;
   similarWorkId: string | null;
+  /** Present only for episode rows; false means no still endpoint is advertised. */
+  episodeHasThumb?: boolean;
+  /** Present only for a series TV card, rendered above its episode title. */
+  episodeCaption?: string;
+  /** Present only for a series TV card, rendered over the artwork. */
+  episodeNumberOverlay?: string;
   /** Where playback starts when the row is a chapter; absent plays from the beginning. */
   startMs?: number;
+}
+
+@Component
+struct DetailRowArtworkCard {
+  @ObjectLink artworkStore: DetailArtworkStore;
+  @Prop rowId: string = '';
+  @Prop measurementId: string = '';
+  @Prop imageMeasurementId: string = '';
+  @Prop variant: 'home' | 'titleEpisode' = 'titleEpisode';
+  @Prop title: string = '';
+  @Prop subtitle: string = '';
+  @Prop cardWidth: number = 0;
+  @Prop cardHeight: number = 0;
+  @Prop artworkRadius: number = -1;
+  @Prop titleFontSize: number = 11.904;
+  @Prop subtitleFontSize: number = 8.832;
+  @Prop activeRailFactor: number = 1;
+  @Prop episodeCaption: string = '';
+  @Prop episodeNumberOverlay: string = '';
+  @Prop focusId: string = '';
+
+  onSelect: () => void = () => {};
+  onCardAppear: () => void = () => {};
+  onCardFocus: () => void = () => {};
+  onCardArea: (area: Area) => void = (_area: Area) => {};
+  onArtworkAreaChanged: () => void = () => {};
+
+  @Builder
+  private posterCard(): void {
+    PosterCard({
+      variant: this.variant,
+      title: this.title,
+      subtitle: this.subtitle,
+      artwork: this.artworkStore.getArtwork(this.rowId),
+      cardWidth: this.cardWidth,
+      cardHeight: this.cardHeight,
+      artworkRadius: this.artworkRadius,
+      titleFontSize: this.titleFontSize,
+      subtitleFontSize: this.subtitleFontSize,
+      activeRailFactor: this.activeRailFactor,
+      episodeCaption: this.episodeCaption,
+      episodeNumberOverlay: this.episodeNumberOverlay,
+      measurementId: this.measurementId,
+      imageMeasurementId: this.imageMeasurementId,
+      onFocused: this.onCardFocus,
+      onArtworkAreaChanged: this.onArtworkAreaChanged,
+      onSelect: this.onSelect,
+    })
+      .id(this.focusId.length > 0 ? this.focusId : 'detail-card-' + this.rowId)
+      .onAppear(() => { this.onCardAppear(); })
+      .onAreaChange((_oldArea: Area, area: Area) => { this.onCardArea(area); })
+  }
+
+  build() {
+    if (this.measurementId.length > 0) {
+      Column() {
+        this.posterCard()
+      }
+      .attributeModifier(new NonEmptyComponentIdModifier(this.measurementId))
+    } else {
+      this.posterCard()
+    }
+  }
 }
 
 /** One season/album/books/similar rail: a heading plus its rows. */
@@ -241,6 +380,11 @@ interface DetailRail {
   id: string;
   heading: string;
   items: DetailRow[];
+}
+
+interface DetailSeasonRowArea {
+  top: number;
+  height: number;
 }
 
 function kindLabel(kind: WorkKind): string {
@@ -319,7 +463,7 @@ function episodeMediaFileId(detail: EpisodeDetail): string | null {
   return detail.media_file_id;
 }
 
-function buildEpisodeRow(detail: EpisodeDetail): DetailRow {
+function buildEpisodeRow(detail: EpisodeDetail, seasonNumber: number): DetailRow {
   const episode = detail.episode;
   let title = 'Episode ' + String(episode.episode_number);
   if (episode.title !== undefined && episode.title !== null && episode.title.length > 0) {
@@ -329,9 +473,11 @@ function buildEpisodeRow(detail: EpisodeDetail): DetailRow {
     id: episode.id,
     title: title,
     subtitle: 'Episode ' + String(episode.episode_number),
-    artwork: undefined,
+    episodeCaption: seriesEpisodeCaption(seasonNumber, episode.episode_number),
+    episodeNumberOverlay: seriesEpisodeOverlayNumber(episode.episode_number),
     mediaFileId: episodeMediaFileId(detail),
     similarWorkId: null,
+    episodeHasThumb: episode.images.some((item): boolean => item.kind === 'thumb'),
   };
   return row;
 }
@@ -346,7 +492,10 @@ function seasonHeading(season: Season): string {
 function buildSeasonRail(detail: SeasonDetail): DetailRail {
   const items: DetailRow[] = [];
   for (const episodeDetail of detail.episodes) {
-    items.push(buildEpisodeRow(episodeDetail));
+    const item = buildEpisodeRow(episodeDetail, detail.season.season_number);
+    if (item.mediaFileId !== null && item.mediaFileId.length > 0) {
+      items.push(item);
+    }
   }
   const rail: DetailRail = {
     id: 'season-' + detail.season.id,
@@ -359,7 +508,10 @@ function buildSeasonRail(detail: SeasonDetail): DetailRail {
 function buildSeasonRails(seasons: SeasonDetail[]): DetailRail[] {
   const rails: DetailRail[] = [];
   for (const season of seasons) {
-    rails.push(buildSeasonRail(season));
+    // Web lists only seasons with at least one playable episode (a media file has synced for it).
+    if (season.episodes.some((episode: EpisodeDetail): boolean => episodeMediaFileId(episode) !== null)) {
+      rails.push(buildSeasonRail(season));
+    }
   }
   return rails;
 }
@@ -377,7 +529,6 @@ function buildTrackRow(detail: TrackDetail): DetailRow {
     id: track.id,
     title: track.title,
     subtitle: 'Track ' + String(track.track_number),
-    artwork: undefined,
     mediaFileId: trackMediaFileId(detail),
     similarWorkId: null,
   };
@@ -425,7 +576,6 @@ function buildBookRow(detail: BookDetail): DetailRow {
     id: book.id,
     title: book.title,
     subtitle: subtitle,
-    artwork: undefined,
     mediaFileId: bookMediaFileId(detail),
     similarWorkId: null,
   };
@@ -503,7 +653,6 @@ function buildSimilarRail(works: Work[]): DetailRail {
       id: work.id,
       title: work.title,
       subtitle: kindLabel(work.kind),
-      artwork: undefined,
       mediaFileId: null,
       similarWorkId: work.id,
     };
@@ -511,70 +660,6 @@ function buildSimilarRail(works: Work[]): DetailRail {
   }
   const rail: DetailRail = { id: 'similar', heading: 'Similar Titles', items: items };
   return rail;
-}
-
-/** Rebuilds `rail` with `rowId`'s row's `artwork` replaced -- every other
- * row is returned unchanged. Used both for a flat similar-titles rail and,
- * via `applyRowArtworkAcrossRails` below, for a specific row somewhere
- * inside a list of season/book rails. Never mutates `rail`/its rows in
- * place -- ArkTS `@State` reactivity needs a fresh reference, matching
- * `data/ArtworkRepository.ets`'s own rebuild-rather-than-mutate cache
- * eviction discipline. */
-function applyRowArtworkInRail(rail: DetailRail, rowId: string, artwork: image.PixelMap): DetailRail {
-  const items: DetailRow[] = [];
-  for (const item of rail.items) {
-    if (item.id === rowId) {
-      const next: DetailRow = {
-        id: item.id,
-        title: item.title,
-        subtitle: item.subtitle,
-        artwork: artwork,
-        mediaFileId: item.mediaFileId,
-        similarWorkId: item.similarWorkId,
-        startMs: item.startMs,
-      };
-      items.push(next);
-    } else {
-      items.push(item);
-    }
-  }
-  const next: DetailRail = { id: rail.id, heading: rail.heading, items: items };
-  return next;
-}
-
-function applyRowArtworkAcrossRails(rails: DetailRail[], rowId: string, artwork: image.PixelMap): DetailRail[] {
-  const updated: DetailRail[] = [];
-  for (const rail of rails) {
-    updated.push(applyRowArtworkInRail(rail, rowId, artwork));
-  }
-  return updated;
-}
-
-/** Applies ONE artwork to EVERY row inside the rail identified by `railId`
- * -- used for an album, whose cover is fetched once and shown on every
- * track row (brief 4.9: there is no per-track artwork endpoint). */
-function applyAlbumArtwork(rails: DetailRail[], railId: string, artwork: image.PixelMap): DetailRail[] {
-  const updated: DetailRail[] = [];
-  for (const rail of rails) {
-    if (rail.id !== railId) {
-      updated.push(rail);
-      continue;
-    }
-    const items: DetailRow[] = [];
-    for (const item of rail.items) {
-      const next: DetailRow = {
-        id: item.id,
-        title: item.title,
-        subtitle: item.subtitle,
-        artwork: artwork,
-        mediaFileId: item.mediaFileId,
-        similarWorkId: item.similarWorkId,
-      };
-      items.push(next);
-    }
-    updated.push({ id: rail.id, heading: rail.heading, items: items });
-  }
-  return updated;
 }
 
 function chapterTimeLabel(ms: number): string {
@@ -598,7 +683,6 @@ function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
     id: 'chapter-' + chapter.index.toString(),
     title: title,
     subtitle: chapterTimeLabel(chapter.start_ms),
-    artwork: undefined,
     mediaFileId: mediaFileId,
     similarWorkId: null,
     startMs: chapter.start_ms,
@@ -613,6 +697,37 @@ function initialsOf(name: string): string {
   }
   const first = parts[0].charAt(0).toUpperCase();
   return parts.length === 1 ? first : first + parts[parts.length - 1].charAt(0).toUpperCase();
+}
+
+function detailLengthToVp(value: Length): number {
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (typeof value !== 'string') {
+    return 0;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function detailAreaLengthToVp(value: Length | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+  return value;
+}
+
+function detailFocusRectForArea(area: Area): EpisodeFocusRect | null {
+  const position = area.globalPosition;
+  if (position === undefined || position === null) {
+    return null;
+  }
+  return episodeFocusRectFromAreaVps(
+    detailAreaLengthToVp(position.x),
+    detailAreaLengthToVp(position.y),
+    detailAreaLengthToVp(area.width),
+    detailAreaLengthToVp(area.height)
+  );
 }
 
 @Component
@@ -634,11 +749,24 @@ struct Detail {
   @State private errorMessage: string = '';
   @State private heroArtwork: image.PixelMap | undefined = undefined;
   @State private rails: DetailRail[] = [];
+  @State private artworkStore: DetailArtworkStore = new DetailArtworkStore();
   @State private similarRail: DetailRail | null = null;
   @State private primaryMediaFileId: string | null = null;
   @State private chaptersRail: DetailRail | null = null;
   /** A series' resume plan (null for a film, or until the server answers): its target is what the primary button plays. */
   @State private resumePlan: ResumePlan | null = null;
+  @State private episodeFocusSuppressed: boolean = false;
+  @State private targetSeriesSeasonCentered: boolean = false;
+  @State private targetSeriesEpisodeCentered: boolean = false;
+  @State private seriesFocusedRowIsTarget: boolean = false;
+  private episodeFocusGate: EpisodeFocusGate = new EpisodeFocusGate();
+  private seriesFocusGeneration: number = 0;
+  private mountedSeriesEpisodeIds: string[] = [];
+  private measuredSeriesCardAreas: Map<string, SeriesEpisodeAreaSample | null> = new Map();
+  private measuredSeriesAreaRects: Map<string, EpisodeFocusRect | null> = new Map();
+  private currentSeriesRailOffsets: Map<string, number> = new Map();
+  private seasonRowAreas: Map<string, DetailSeasonRowArea> = new Map();
+  private seriesStackScroller: Scroller = new Scroller();
   @State private cast: Credit[] = [];
   @State private actionsOpen: boolean = false;
   /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
@@ -656,15 +784,28 @@ struct Detail {
   }
 
   private async loadDetail(): Promise<void> {
+    this.seriesFocusGeneration += 1;
     this.detail = null;
     this.loadFailed = false;
     this.errorMessage = '';
     this.heroArtwork = undefined;
+    const artworkGeneration = this.artworkStore.beginGeneration();
     this.rails = [];
     this.similarRail = null;
     this.primaryMediaFileId = null;
     this.chaptersRail = null;
     this.resumePlan = null;
+    this.episodeFocusSuppressed = false;
+    this.episodeFocusGate = new EpisodeFocusGate();
+    this.mountedSeriesEpisodeIds = [];
+    this.measuredSeriesCardAreas = new Map();
+    this.measuredSeriesAreaRects = new Map();
+    this.currentSeriesRailOffsets = new Map();
+    this.seasonRowAreas = new Map();
+    this.targetSeriesSeasonCentered = false;
+    this.targetSeriesEpisodeCentered = false;
+    this.seriesFocusedRowIsTarget = false;
+    this.seriesStackScroller = new Scroller();
     this.cast = [];
     this.actionsOpen = false;
     this.optionsOpen = false;
@@ -674,6 +815,9 @@ struct Detail {
 
     const workId = this.workId;
     const detailResult = await getWorkDetail(workId);
+    if (!this.artworkStore.isCurrentGeneration(artworkGeneration)) {
+      return;
+    }
     if (detailResult.kind !== 'ok') {
       this.loadFailed = true;
       if (detailResult.kind === 'network_failure') {
@@ -697,31 +841,38 @@ struct Detail {
       this.loadResumePlan(detail.work.id);
     }
 
-    this.loadHeroArtwork(detail.work.id);
-    this.hydrateRailArtwork();
-    this.loadSimilar(detail.work);
+    const heroArtworkPromise = this.loadHeroArtwork(detail.work.id, artworkGeneration);
+    this.hydrateRailArtwork(artworkGeneration, heroArtworkPromise);
+    this.loadSimilar(detail.work, artworkGeneration);
     this.loadCredits(detail.work.id);
     this.loadWatchlistState(detail.work);
     if (this.primaryMediaFileId !== null && detail.work.kind === 'movie') {
       this.loadResume(this.primaryMediaFileId);
     }
     if (this.primaryMediaFileId !== null && detail.work.kind === 'movie') {
-      this.loadChapters(this.primaryMediaFileId);
+      this.loadChapters(this.primaryMediaFileId, artworkGeneration);
     }
   }
 
-  private async loadHeroArtwork(workId: string): Promise<void> {
+  private async loadHeroArtwork(workId: string, generation: number): Promise<image.PixelMap | null> {
     const result = await fetchWorkArtworkByPriority(workId, HERO_ARTWORK_PRIORITY);
+    if (!this.artworkStore.isCurrentGeneration(generation)) {
+      return null;
+    }
     if (result.kind === 'ok') {
       this.heroArtwork = result.value;
+      return result.value;
     }
+    return null;
   }
 
-  /** Fires once per rail: an album rail's cover is fetched once and applied
-   * to every track row at once; every other rail (season/books) hydrates
-   * its rows individually via `fetchMediaThumbnail`, skipping any row whose
-   * `media_file_id` has not resolved yet. */
-  private async hydrateRailArtwork(): Promise<void> {
+  /** Fires once per rail: an album cover is shared by its track rows;
+   * episode rows try still, media frame, then the shared hero-art promise;
+   * book rows use `fetchMediaThumbnail` when their file is resolved. */
+  private async hydrateRailArtwork(
+    generation: number,
+    heroArtworkPromise: Promise<image.PixelMap | null>
+  ): Promise<void> {
     const detail = this.detail;
     const artistWorkId = detail !== null ? detail.work.id : '';
     const rails = this.rails;
@@ -730,8 +881,18 @@ struct Detail {
       if (rail.id.startsWith('album-')) {
         const albumId = rail.id.slice('album-'.length);
         const albumArt = await fetchAlbumArtworkByPriority(artistWorkId, albumId, COVER_ARTWORK_PRIORITY);
+        if (!this.artworkStore.isCurrentGeneration(generation)) {
+          return;
+        }
         if (albumArt.kind === 'ok') {
-          this.rails = applyAlbumArtwork(this.rails, rail.id, albumArt.value);
+          const currentRail = this.rails.find((item: DetailRail): boolean => item.id === rail.id);
+          if (currentRail !== undefined) {
+            const rowIds: string[] = [];
+            for (const item of currentRail.items) {
+              rowIds.push(item.id);
+            }
+            this.artworkStore.setArtworkForRows(generation, rowIds, albumArt.value);
+          }
         }
         continue;
       }
@@ -740,9 +901,51 @@ struct Detail {
         if (item.mediaFileId === null) {
           continue;
         }
+        if (item.episodeHasThumb !== undefined && detail !== null) {
+          const sources = selectEpisodeArtworkSources({
+            mediaFileId: item.mediaFileId,
+            hasEpisodeThumb: item.episodeHasThumb,
+          });
+          for (const source of sources) {
+            if (source === 'episode-still') {
+              const still = await fetchEpisodeArtwork(detail.work.id, item.id, 'thumb', 540);
+              if (!this.artworkStore.isCurrentGeneration(generation)) {
+                return;
+              }
+              if (still.kind === 'ok') {
+                this.artworkStore.setArtwork(generation, item.id, still.value);
+                break;
+              }
+              continue;
+            }
+            if (source === 'media-thumbnail') {
+              const frame = await fetchMediaThumbnail(item.mediaFileId);
+              if (!this.artworkStore.isCurrentGeneration(generation)) {
+                return;
+              }
+              if (frame.kind === 'ok') {
+                this.artworkStore.setArtwork(generation, item.id, frame.value);
+                break;
+              }
+              continue;
+            }
+            const seriesArtwork = await heroArtworkPromise;
+            if (!this.artworkStore.isCurrentGeneration(generation)) {
+              return;
+            }
+            if (seriesArtwork !== null) {
+              this.artworkStore.setArtwork(generation, item.id, seriesArtwork);
+              break;
+            }
+          }
+          continue;
+        }
         const thumb = await fetchMediaThumbnail(item.mediaFileId, 0);
+        if (!this.artworkStore.isCurrentGeneration(generation)) {
+          return;
+        }
         if (thumb.kind === 'ok') {
-          this.rails = applyRowArtworkAcrossRails(this.rails, item.id, thumb.value);
+          this.artworkStore.setArtwork(generation, item.id, thumb.value);
         }
       }
     }
@@ -797,8 +1000,11 @@ struct Detail {
   }
 
   /** The movie's embedded chapters (web's Chapters rail): one card per chapter, thumbnail taken at its start. */
-  private async loadChapters(mediaFileId: string): Promise<void> {
+  private async loadChapters(mediaFileId: string, generation: number): Promise<void> {
     const result = await getMediaChapters(mediaFileId);
+    if (!this.artworkStore.isCurrentGeneration(generation)) {
+      return;
+    }
     if (result.kind !== 'ok' || result.value.length === 0) {
       return;
     }
@@ -809,9 +1015,12 @@ struct Detail {
     this.chaptersRail = { id: 'chapters', heading: 'Chapters', items: rows };
     for (const chapter of result.value) {
       const thumb = await fetchMediaThumbnail(mediaFileId, chapter.start_ms);
+      if (!this.artworkStore.isCurrentGeneration(generation)) {
+        return;
+      }
       const current = this.chaptersRail;
       if (thumb.kind === 'ok' && current !== null) {
-        this.chaptersRail = applyRowArtworkInRail(current, 'chapter-' + chapter.index.toString(), thumb.value);
+        this.artworkStore.setArtwork(generation, 'chapter-' + chapter.index.toString(), thumb.value);
       }
     }
   }
@@ -826,16 +1035,19 @@ struct Detail {
   /** Brief 4.8: a 404 here is normal and already handled inside
    * `getSimilarWorks` itself (the genre-query fallback) -- this method only
    * ever sees the final, already-reconciled result. */
-  private async loadSimilar(work: Work): Promise<void> {
+  private async loadSimilar(work: Work, generation: number): Promise<void> {
     const result = await getSimilarWorks(work);
+    if (!this.artworkStore.isCurrentGeneration(generation)) {
+      return;
+    }
     if (result.kind !== 'ok' || result.value.length === 0) {
       return;
     }
     this.similarRail = buildSimilarRail(result.value);
-    this.hydrateSimilarArtwork();
+    this.hydrateSimilarArtwork(generation);
   }
 
-  private async hydrateSimilarArtwork(): Promise<void> {
+  private async hydrateSimilarArtwork(generation: number): Promise<void> {
     const rail = this.similarRail;
     if (rail === null) {
       return;
@@ -845,10 +1057,13 @@ struct Detail {
         continue;
       }
       const result = await fetchWorkArtworkByPriority(item.similarWorkId, COVER_ARTWORK_PRIORITY);
+      if (!this.artworkStore.isCurrentGeneration(generation)) {
+        return;
+      }
       if (result.kind === 'ok') {
         const current = this.similarRail;
         if (current !== null) {
-          this.similarRail = applyRowArtworkInRail(current, item.id, result.value);
+          this.artworkStore.setArtwork(generation, item.id, result.value);
         }
       }
     }
@@ -897,6 +1112,7 @@ struct Detail {
    * neither (an episode/track/book that has not synced a file yet) is a
    * no-op. */
   private selectRow(row: DetailRow): void {
+    this.cancelInitialEpisodeFocus();
     const stack = getNavStack();
     if (row.mediaFileId !== null) {
       const currentWorkId = this.workId;
@@ -916,6 +1132,330 @@ struct Detail {
     }
   }
 
+  private seriesEpisodeCardAppeared(railId: string, episodeId: string, occurrence: number): void {
+    if (this.mountedSeriesEpisodeIds.indexOf(episodeId) < 0) {
+      this.mountedSeriesEpisodeIds.push(episodeId);
+    }
+    this.tryInitialEpisodeFocus(railId, episodeId, this.workId, this.seriesFocusGeneration, occurrence);
+  }
+
+  private seriesMeasurementId(kind: string, workId: string, generation: number, railId: string,
+                              episodeId: string = '', occurrence: number = -1): string {
+    return seriesDetailMeasurementId(kind, workId, generation, railId, episodeId, occurrence);
+  }
+
+  private seriesCardAreaChanged(railId: string, episodeId: string, occurrence: number,
+                                workId: string, generation: number, area: Area, railOffset: number): void {
+    if (generation !== this.seriesFocusGeneration || workId !== this.workId ||
+        this.detail === null || this.detail.work.kind !== 'series' || this.detail.work.id !== workId) {
+      return;
+    }
+    const rail = this.rails.find((candidate: DetailRail): boolean => candidate.id === railId);
+    if (rail === undefined || occurrence < 0 || occurrence >= rail.items.length ||
+        rail.items[occurrence].id !== episodeId) {
+      return;
+    }
+    const pageOffset = this.seriesStackScroller.currentOffset().yOffset;
+    const measurementId = this.seriesMeasurementId('card', workId, generation, railId, episodeId, occurrence);
+    const rect = detailFocusRectForArea(area);
+    if (rect === null || !Number.isFinite(pageOffset) || !Number.isFinite(railOffset)) {
+      this.measuredSeriesAreaRects.set(measurementId, null);
+      this.measuredSeriesCardAreas.set(measurementId, null);
+      return;
+    }
+    this.measuredSeriesAreaRects.set(measurementId, rect);
+    this.measuredSeriesCardAreas.set(measurementId, {
+      workId: workId,
+      generation: generation,
+      railId: railId,
+      episodeId: episodeId,
+      occurrence: occurrence,
+      pageOffset: pageOffset,
+      railOffset: railOffset,
+      capturedAtMs: Date.now(),
+    });
+    const plan = this.resumePlan;
+    if (plan !== null && plan.target !== undefined && plan.target !== null &&
+        plan.target.episode_id === episodeId) {
+      this.tryInitialEpisodeFocus(railId, episodeId, workId, generation, occurrence);
+    }
+  }
+
+  private seriesRailItemAreaReporter(railId: string, workId: string, generation: number):
+    (itemId: string, index: number, area: Area, railOffset: number) => void {
+    return (itemId: string, index: number, area: Area, railOffset: number): void => {
+      this.seriesCardAreaChanged(railId, itemId, index, workId, generation, area, railOffset);
+    };
+  }
+
+  private seriesCardArtworkAreaReporter(railId: string, episodeId: string, occurrence: number,
+                                       workId: string, generation: number): () => void {
+    return (): void => {
+      const measurementId = this.seriesMeasurementId('card', workId, generation, railId, episodeId, occurrence);
+      const measurement = this.measuredSeriesCardAreas.get(measurementId);
+      if (generation !== this.seriesFocusGeneration || workId !== this.workId ||
+          measurement === undefined || measurement === null) {
+        return;
+      }
+      this.tryInitialEpisodeFocus(railId, episodeId, workId, generation, occurrence);
+    };
+  }
+
+  private seriesRailAreaChanged(railId: string, workId: string, generation: number, area: Area): void {
+    if (generation !== this.seriesFocusGeneration || workId !== this.workId) {
+      return;
+    }
+    const railIdForMeasure = this.seriesMeasurementId('rail', workId, generation, railId);
+    const rect = detailFocusRectForArea(area);
+    if (rect === null) {
+      this.measuredSeriesAreaRects.set(railIdForMeasure, null);
+      return;
+    }
+    this.measuredSeriesAreaRects.set(railIdForMeasure, rect);
+    this.tryInitialEpisodeFocus(railId, null, workId, generation);
+  }
+
+  private seriesRailAreaReporter(railId: string, workId: string, generation: number): (area: Area) => void {
+    return (area: Area): void => { this.seriesRailAreaChanged(railId, workId, generation, area); };
+  }
+
+  private seriesRailOffsetChanged(railId: string, offset: number, workId: string, generation: number): void {
+    if (generation !== this.seriesFocusGeneration || workId !== this.workId || !Number.isFinite(offset)) {
+      return;
+    }
+    this.currentSeriesRailOffsets.set(railId, offset);
+    this.tryInitialEpisodeFocus(railId, null, workId, generation);
+  }
+
+  private seriesRailOffsetReporter(railId: string, workId: string, generation: number): (offset: number) => void {
+    return (offset: number): void => { this.seriesRailOffsetChanged(railId, offset, workId, generation); };
+  }
+
+  private seriesPageAreaChanged(workId: string, generation: number, area: Area): void {
+    if (generation !== this.seriesFocusGeneration || workId !== this.workId) {
+      return;
+    }
+    const pageId = this.seriesMeasurementId('page', workId, generation, '');
+    const rect = detailFocusRectForArea(area);
+    if (rect === null) {
+      this.measuredSeriesAreaRects.set(pageId, null);
+      return;
+    }
+    this.measuredSeriesAreaRects.set(pageId, rect);
+    this.tryInitialEpisodeFocus(null, null, workId, generation);
+  }
+
+  private seriesPageAreaReporter(workId: string, generation: number): (area: Area) => void {
+    return (area: Area): void => { this.seriesPageAreaChanged(workId, generation, area); };
+  }
+
+  private seriesPageScrollChanged(workId: string, generation: number): void {
+    if (generation !== this.seriesFocusGeneration || workId !== this.workId ||
+        !Number.isFinite(this.seriesStackScroller.currentOffset().yOffset)) {
+      return;
+    }
+    this.tryInitialEpisodeFocus(null, null, workId, generation);
+  }
+
+  private seriesPageScrollReporter(workId: string, generation: number): (xOffset: number, yOffset: number) => void {
+    return (_xOffset: number, _yOffset: number): void => {
+      this.seriesPageScrollChanged(workId, generation);
+    };
+  }
+
+  private tryInitialEpisodeFocus(railId: string | null = null, reportedEpisodeId: string | null = null,
+                                 workId: string = this.workId, generation: number = this.seriesFocusGeneration,
+                                 reportedOccurrence: number = -1): void {
+    if (generation !== this.seriesFocusGeneration || workId !== this.workId) {
+      return;
+    }
+    const detail = this.detail;
+    const plan = this.resumePlan;
+    if (detail === null || detail.work.kind !== 'series' || !this.targetSeriesSeasonCentered ||
+        !this.targetSeriesEpisodeCentered || plan === null || !hasSeriesResumeTarget(detail, plan) ||
+        plan.target === undefined || plan.target === null) {
+      return;
+    }
+    const episodeId = plan.target.episode_id;
+    if (reportedEpisodeId !== null && reportedEpisodeId !== episodeId) {
+      return;
+    }
+    const appeared = this.mountedSeriesEpisodeIds.indexOf(episodeId) >= 0;
+    const actualTargetRailId = this.railIdForEpisode(episodeId);
+    if (actualTargetRailId === null || (railId !== null && railId !== actualTargetRailId)) {
+      return;
+    }
+    const targetRailId = actualTargetRailId;
+    const currentRailOffset = this.listOffsetForRail(targetRailId);
+    if (currentRailOffset === null || !Number.isFinite(currentRailOffset)) {
+      return;
+    }
+    const targetRail = this.rails.find((candidate: DetailRail): boolean => candidate.id === targetRailId);
+    if (targetRail === undefined) {
+      return;
+    }
+    const occurrence = reportedEpisodeId === episodeId && reportedOccurrence >= 0 ?
+      reportedOccurrence : targetRail.items.findIndex((item: DetailRow): boolean => item.id === episodeId);
+    if (occurrence < 0) {
+      return;
+    }
+    const measurementId = this.seriesMeasurementId('card', workId, generation, targetRailId, episodeId, occurrence);
+    const cardMeasurement = this.measuredSeriesCardAreas.get(measurementId);
+    const card = this.measuredSeriesAreaRects.get(measurementId);
+    const rail = this.measuredSeriesAreaRects.get(
+      this.seriesMeasurementId('rail', workId, generation, targetRailId)
+    );
+    const page = this.measuredSeriesAreaRects.get(this.seriesMeasurementId('page', workId, generation, ''));
+    const pageOffset = this.seriesStackScroller.currentOffset().yOffset;
+    if (cardMeasurement === undefined || cardMeasurement === null || card === undefined || card === null ||
+        rail === undefined || rail === null || page === undefined || page === null ||
+        !Number.isFinite(pageOffset) ||
+        !seriesEpisodeAreaSampleMatchesTarget(
+          cardMeasurement, workId, generation, targetRailId, episodeId, occurrence, pageOffset, currentRailOffset
+        )) {
+      return;
+    }
+    const mounted = appeared || hasPositiveEpisodeAreaSample(
+      card, cardMeasurement.pageOffset, cardMeasurement.railOffset
+    );
+    const visible = hasPositiveEpisodeVisibleArea(card, rail, page);
+    const decision = this.episodeFocusGate.claim(episodeId, mounted, visible);
+    if (decision === 'request' && this.episodeFocusGate.beginRequest()) {
+      const issued = issueEpisodeFocusRequest((): void => {
+        this.getUIContext().getFocusController().requestFocus(seriesEpisodeFocusId(episodeId));
+      });
+      if (!issued) {
+        this.episodeFocusGate.rollbackRequest();
+      }
+    }
+  }
+
+  private railIdForEpisode(episodeId: string): string | null {
+    const rail = this.rails.find((candidate: DetailRail): boolean =>
+      candidate.items.findIndex((item: DetailRow): boolean => item.id === episodeId) >= 0
+    );
+    return rail === undefined ? null : rail.id;
+  }
+
+  private listOffsetForRail(railId: string): number | null {
+    const offset = this.currentSeriesRailOffsets.get(railId);
+    return offset === undefined ? null : offset;
+  }
+
+  private centreTargetSeriesSeason(rail: DetailRail): void {
+    const detail = this.detail;
+    const plan = this.resumePlan;
+    if (this.targetSeriesSeasonCentered || this.episodeFocusSuppressed || !this.episodeFocusGate.isPending() ||
+        detail === null || detail.work.kind !== 'series' || plan === null || !hasSeriesResumeTarget(detail, plan) ||
+        plan.target === undefined || plan.target === null) {
+      return;
+    }
+    const targetEpisodeId = plan.target.episode_id;
+    if (rail.items.findIndex((item: DetailRow): boolean => item.id === targetEpisodeId) < 0) {
+      return;
+    }
+    const rowArea = this.seasonRowAreas.get(rail.id);
+    if (rowArea === undefined) {
+      return;
+    }
+    if (rowArea.height <= 0) {
+      return;
+    }
+    this.targetSeriesSeasonCentered = true;
+    this.seriesStackScroller.scrollTo({
+      xOffset: 0,
+      yOffset: centredSeasonStackOffset(rowArea.top, rowArea.height, tv(SERIES_COLUMN_HEIGHT)),
+      animation: false,
+    });
+    this.tryInitialEpisodeFocus();
+  }
+
+  private onSeriesSeasonRowAreaChanged(rail: DetailRail, area: Area): void {
+    const positionY = area.position.y;
+    const rowHeight = area.height;
+    if (positionY === undefined || positionY === null || rowHeight === undefined || rowHeight === null) {
+      return;
+    }
+    const topVp = detailLengthToVp(positionY);
+    const heightVp = detailLengthToVp(rowHeight);
+    if (heightVp <= 0) {
+      return;
+    }
+    this.seasonRowAreas.set(rail.id, { top: topVp, height: heightVp });
+    this.centreTargetSeriesSeason(rail);
+  }
+
+  private seriesEpisodeIndexPositioned(rail: DetailRail): void {
+    const detail = this.detail;
+    const plan = this.resumePlan;
+    if (!this.targetSeriesSeasonCentered || this.targetSeriesEpisodeCentered || this.episodeFocusSuppressed ||
+        detail === null || detail.work.kind !== 'series' || plan === null || !hasSeriesResumeTarget(detail, plan) ||
+        plan.target === undefined || plan.target === null) {
+      return;
+    }
+    const targetEpisodeId = plan.target.episode_id;
+    if (rail.items.findIndex((item: DetailRow): boolean => item.id === targetEpisodeId) < 0) {
+      return;
+    }
+    this.targetSeriesEpisodeCentered = true;
+    this.tryInitialEpisodeFocus();
+  }
+
+  private cancelInitialEpisodeFocus(): void {
+    this.episodeFocusGate.cancel();
+    this.episodeFocusSuppressed = true;
+    this.seriesFocusedRowIsTarget = false;
+  }
+
+  private noteOtherDetailFocus(workId: string, generation: number): void {
+    if (workId !== this.workId || generation !== this.seriesFocusGeneration) {
+      return;
+    }
+    // Framework-seeded focus is passive; key and click handlers cancel the initial request.
+    this.seriesFocusedRowIsTarget = false;
+    this.episodeFocusGate.recordCurrentFocus('', this.resumeTargetEpisodeId());
+    this.tryInitialEpisodeFocus(null, null, workId, generation);
+  }
+
+  private otherDetailFocusReporter(workId: string, generation: number): () => void {
+    return (): void => { this.noteOtherDetailFocus(workId, generation); };
+  }
+
+  private seriesEpisodeCardFocused(episodeId: string): void {
+    const targetEpisodeId = this.resumeTargetEpisodeId();
+    this.seriesFocusedRowIsTarget = isSeriesEpisodeTargetFocused(episodeId, targetEpisodeId);
+    this.episodeFocusGate.recordCurrentFocus(episodeId, targetEpisodeId);
+  }
+
+  private resumeTargetEpisodeId(): string | null {
+    const plan = this.resumePlan;
+    return plan !== null && plan.target !== undefined && plan.target !== null ? plan.target.episode_id : null;
+  }
+
+  private seriesEpisodeFocusReporter(episodeId: string, workId: string,
+                                     generation: number): () => void {
+    return (): void => {
+      if (generation === this.seriesFocusGeneration && workId === this.workId) {
+        this.seriesEpisodeCardFocused(episodeId);
+        this.tryInitialEpisodeFocus(null, null, workId, generation);
+      }
+    };
+  }
+
+  private initialEpisodeIndex(rail: DetailRail): number {
+    const detail = this.detail;
+    const plan = this.resumePlan;
+    if (detail === null || detail.work.kind !== 'series' || !this.targetSeriesSeasonCentered || plan === null || !hasSeriesResumeTarget(detail, plan) ||
+        plan.target === undefined || plan.target === null) {
+      return -1;
+    }
+    return episodeIndexForTarget(
+      rail.items.map((item: DetailRow): string => item.id),
+      plan.target.episode_id,
+      !this.episodeFocusSuppressed && this.episodeFocusGate.isPending()
+    );
+  }
+
   private railPanelSurfaceOpacity(): number {
     if (resolvedThemeMode() === 'dark') {
       return RAIL_PANEL_SURFACE_OPACITY_DARK;
@@ -928,34 +1468,64 @@ struct Detail {
   @Builder
   private rowItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     if (isTvMetrics()) {
-      PosterCard({
+      DetailRowArtworkCard({
+        artworkStore: this.artworkStore,
+        rowId: (item as DetailRow).id,
         variant: 'titleEpisode',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
         cardWidth: tv(TvGeometry.railPanelCardWidth),
         cardHeight: Math.round((tv(TvGeometry.railPanelCardWidth) * 9) / 16),
         activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
-        },
+        onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     } else {
-      PosterCard({
+      DetailRowArtworkCard({
+        artworkStore: this.artworkStore,
+        rowId: (item as DetailRow).id,
         variant: 'titleEpisode',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
         cardWidth: TouchGeometry.homeRailCardWidthLandscape,
         cardHeight: Math.round((TouchGeometry.homeRailCardWidthLandscape * 9) / 16),
         titleFontSize: 12,
         subtitleFontSize: 10,
         activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
-        },
+        onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     }
+  }
+
+  @Builder
+  private seriesEpisodeItem(item: MediaRailItem, index: number, activeRailFactor: number, railId: string): void {
+    DetailRowArtworkCard({
+      artworkStore: this.artworkStore,
+      rowId: (item as DetailRow).id,
+      measurementId: this.seriesMeasurementId('card', this.workId, this.seriesFocusGeneration, railId,
+        (item as DetailRow).id, index),
+      imageMeasurementId: this.seriesMeasurementId('image', this.workId, this.seriesFocusGeneration, railId,
+        (item as DetailRow).id, index),
+      variant: 'titleEpisode',
+      title: (item as DetailRow).title,
+      subtitle: '',
+      episodeCaption: (item as DetailRow).episodeCaption ?? '',
+      episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
+      focusId: seriesEpisodeFocusId((item as DetailRow).id),
+      cardWidth: tv(SERIES_EPISODE_CARD_WIDTH),
+      cardHeight: Math.round(tv(SERIES_EPISODE_CARD_WIDTH) * 9 / 16),
+      activeRailFactor: activeRailFactor,
+      onCardAppear: (): void => { this.seriesEpisodeCardAppeared(railId, (item as DetailRow).id, index); },
+      onArtworkAreaChanged: this.seriesCardArtworkAreaReporter(railId, (item as DetailRow).id, index,
+        this.workId, this.seriesFocusGeneration),
+      onCardFocus: this.seriesEpisodeFocusReporter(
+        (item as DetailRow).id,
+        this.workId,
+        this.seriesFocusGeneration
+      ),
+      onSelect: () => { this.selectRow((item as DetailRow)); },
+    })
   }
 
   /** Similar-title row content -- a cover (2:3) card, matching every other
@@ -964,34 +1534,34 @@ struct Detail {
   @Builder
   private similarItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     if (isTvMetrics()) {
-      PosterCard({
+      DetailRowArtworkCard({
+        artworkStore: this.artworkStore,
+        rowId: (item as DetailRow).id,
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
         cardWidth: tv(TvGeometry.homeRailCardWidthCover),
         cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthCover) * 3) / 2),
         artworkRadius: Radii.homeCardArtworkTv,
         activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
-        },
+        onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     } else {
-      PosterCard({
+      DetailRowArtworkCard({
+        artworkStore: this.artworkStore,
+        rowId: (item as DetailRow).id,
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        artwork: (item as DetailRow).artwork,
         cardWidth: TouchGeometry.homeRailCardWidthCover,
         cardHeight: Math.round((TouchGeometry.homeRailCardWidthCover * 3) / 2),
         artworkRadius: Radii.homeCardArtworkTouch,
         titleFontSize: 12,
         subtitleFontSize: 10,
         activeRailFactor: activeRailFactor,
-        onSelect: () => {
-          this.selectRow((item as DetailRow));
-        },
+        onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
+        onSelect: () => { this.selectRow((item as DetailRow)); },
       })
     }
   }
@@ -1008,10 +1578,10 @@ struct Detail {
   private playButton(enabled: boolean, height: number): void {
 
     Row({ space: Spacing.sm }) {
-      Text('▶')
+      Text('▶').fontFamily(nunito(400))
         .fontSize(PLAY_BUTTON_ICON_SIZE)
         .fontColor(toResourceColor(activeColors().onAccent))
-      Text(this.primaryLabel())
+      Text(this.primaryLabel()).fontFamily(nunito(700))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .fontSize(PLAY_BUTTON_LABEL_SIZE)
@@ -1027,6 +1597,7 @@ struct Detail {
     .backgroundColor((enabled ? toResourceColor(activeColors().accent) : toResourceColor(activeColors().inkMuted)))
     .opacity((enabled ? 1 : 0.6))
     .focusable(enabled)
+    .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
     .onClick(() => {
       this.playPrimary();
     })
@@ -1096,10 +1667,10 @@ struct Detail {
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
     Row({ space: tv(10) }) {
-      Text(glyph)
+      Text(glyph).fontFamily(nunito(400))
         .fontSize(tv(12))
         .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().accent))
-      Text(label)
+      Text(label).fontFamily(nunito(700))
         .fontSize(tv(13))
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().ink))
@@ -1113,13 +1684,55 @@ struct Detail {
     .backgroundColor(primary ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
+    .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
     .onClick(() => {
+      this.cancelInitialEpisodeFocus();
       onPress();
     })
   }
 
   @Builder
   private tvActions(): void {
+    if (this.detail !== null && this.detail.work.kind === 'series') {
+      this.tvSeriesActions()
+    } else {
+      this.tvTitleActions()
+    }
+  }
+
+  /** Web's series actions: one row, the Start / Resume pill (once the resume plan is there), Ask again when a choice is remembered, then the watchlist and playlist pills. */
+  @Builder
+  private tvSeriesActions(): void {
+    Row({ space: tv(PILL_GAP) }) {
+      if (this.resumePlan !== null && this.resumePlan.target !== undefined && this.resumePlan.target !== null) {
+        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+          this.playPrimary();
+        })
+        if (this.resumePlan.action !== 'start') {
+          this.actionPill('Ask again', '\u21BA', false, true, (): void => {
+            void this.askAgain();
+          })
+        }
+      }
+      this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+        void this.toggleWatchlist();
+      })
+      this.actionPill('Add to Playlist', '+', false, true, (): void => {
+        this.actionsOpen = true;
+      })
+    }
+  }
+
+  private async askAgain(): Promise<void> {
+    if (this.detail === null) {
+      return;
+    }
+    await clearResumeChoices(this.detail.work.id);
+    await this.loadResumePlan(this.detail.work.id);
+  }
+
+  @Builder
+  private tvTitleActions(): void {
     Column({ space: tv(PILL_ROW_GAP) }) {
       Row({ space: tv(PILL_GAP) }) {
         this.actionPill('Download', '\u21E9', false, this.primaryMediaFileId !== null, (): void => {
@@ -1157,6 +1770,16 @@ struct Detail {
     if (target !== null) {
       this.primaryMediaFileId = target;
     }
+    if (result.value.target !== undefined && result.value.target !== null) {
+      const targetEpisodeId = result.value.target.episode_id;
+      const targetRail = this.rails.find((rail: DetailRail): boolean =>
+        rail.items.findIndex((item: DetailRow): boolean => item.id === targetEpisodeId) >= 0
+      );
+      if (targetRail !== undefined) {
+        this.centreTargetSeriesSeason(targetRail);
+      }
+    }
+    this.tryInitialEpisodeFocus();
   }
 
   /** The primary pill's label: Resume from m:ss for a part-watched movie, else Play (Unavailable while nothing is playable). */
@@ -1178,7 +1801,7 @@ struct Detail {
   private castItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     Column({ space: tv(8) }) {
       Stack() {
-        Text(initialsOf((item as CastRow).name))
+        Text(initialsOf((item as CastRow).name)).fontFamily(nunito(500))
           .fontSize(tv(CAST_INITIALS_SIZE))
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.6))
@@ -1196,8 +1819,8 @@ struct Detail {
       .clip(true)
       .backgroundColor(toResourceColorWithAlpha(activeColors().ink, 0.08))
       .focusable(true)
-
-      Text((item as CastRow).name)
+      .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
+      Text((item as CastRow).name).fontFamily(nunito(400))
         .fontSize(tv(12))
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
@@ -1222,10 +1845,10 @@ struct Detail {
   @Builder
   private railHeading(heading: string, count: string): void {
     Column({ space: tv(4) }) {
-      Text(heading)
+      Text(heading).fontFamily(nunito(400))
         .fontSize(tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(count)
+      Text(count).fontFamily(nunito(400))
         .fontSize(tv(11))
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
@@ -1236,22 +1859,26 @@ struct Detail {
   @Builder
   private tvRightColumn(): void {
     Column({ space: tv(RIGHT_COLUMN_GAP) }) {
-      ForEach(
-        this.rails,
-        (rail: DetailRail) => {
-          MediaRail({
-            railId: rail.id,
-            heading: rail.heading,
-            itemGap: tv(TvGeometry.railItemGapTitle),
-            headingSize: tv(TvGeometry.railHeadingSize),
-            items: rail.items,
-            itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
-              this.rowItem(item, index, activeRailFactor);
-            },
-          })
-        },
-        (rail: DetailRail): string => rail.id
-      )
+      if (this.detail !== null && this.detail.work.kind === 'series') {
+        this.tvSeriesSeasonRows()
+      } else {
+        ForEach(
+          this.rails,
+          (rail: DetailRail) => {
+            MediaRail({
+              railId: rail.id,
+              heading: rail.heading,
+              itemGap: tv(TvGeometry.railItemGapTitle),
+              headingSize: tv(TvGeometry.railHeadingSize),
+              items: rail.items,
+              itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
+                this.rowItem(item, index, activeRailFactor);
+              },
+            })
+          },
+          (rail: DetailRail): string => rail.id
+        )
+      }
       if (this.chaptersRail !== null) {
         Column({ space: tv(12) }) {
           this.railHeading('Chapters', this.chaptersRail.items.length.toString() + ' chapters')
@@ -1297,18 +1924,58 @@ struct Detail {
   }
 
   @Builder
+  private tvSeriesSeasonRows(): void {
+    Column({ space: tv(SERIES_SEASON_ROW_GAP) }) {
+      ForEach(
+        this.rails,
+        (rail: DetailRail) => {
+          Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
+            this.railHeading(rail.heading, rail.items.length.toString() + ' episodes')
+            MediaRail({
+              railId: rail.id,
+              measurementId: this.seriesMeasurementId('rail', this.workId, this.seriesFocusGeneration, rail.id),
+              heading: '',
+              headingGap: 0,
+              itemGap: tv(TvGeometry.railItemGapTitle),
+              items: rail.items,
+              listHeight: tv(SERIES_EPISODE_LIST_HEIGHT),
+              initialItemIndex: this.initialEpisodeIndex(rail),
+              onInitialItemPositioned: (): void => { this.seriesEpisodeIndexPositioned(rail); },
+              onListAreaChange: this.seriesRailAreaReporter(rail.id, this.workId, this.seriesFocusGeneration),
+              onListOffsetChange: this.seriesRailOffsetReporter(rail.id, this.workId, this.seriesFocusGeneration),
+              onItemAreaChange: this.seriesRailItemAreaReporter(
+                rail.id, this.workId, this.seriesFocusGeneration
+              ),
+              itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
+                this.seriesEpisodeItem(item, index, activeRailFactor, rail.id);
+              },
+            })
+          }
+          .alignItems(HorizontalAlign.Start)
+          .onAreaChange((_oldArea: Area, area: Area) => {
+            this.onSeriesSeasonRowAreaChanged(rail, area);
+          })
+        },
+        (rail: DetailRail): string => rail.id
+      )
+    }
+    .alignItems(HorizontalAlign.Start)
+    .width('100%')
+  }
+
+  @Builder
   private chapterItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
-    PosterCard({
+    DetailRowArtworkCard({
+      artworkStore: this.artworkStore,
+      rowId: (item as DetailRow).id,
       variant: 'titleEpisode',
       title: (item as DetailRow).title,
       subtitle: (item as DetailRow).subtitle,
-      artwork: (item as DetailRow).artwork,
       cardWidth: tv(CHAPTER_CARD_WIDTH),
       cardHeight: tv(CHAPTER_CARD_HEIGHT),
       activeRailFactor: activeRailFactor,
-      onSelect: () => {
-        this.selectRow((item as DetailRow));
-      },
+      onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
+      onSelect: () => { this.selectRow((item as DetailRow)); },
     })
   }
 
@@ -1339,21 +2006,41 @@ struct Detail {
         })
 
       Column({ space: tv(COPY_GAP) }) {
-        FeatureCopy({ kicker: (this.detail !== null ? this.kickerLabel() : ''), title: (this.detail !== null ? this.detail.work.title : ''), metaLines: (this.detail !== null ? buildMetaLines(this.detail) : []), synopsis: this.synopsisText() })
+        FeatureCopy({
+          kicker: this.tvCopyKicker(),
+          title: (this.detail !== null ? this.detail.work.title : ''),
+          subtitle: this.tvCopySubtitle(),
+          metaLines: this.tvCopyMetaLines(),
+          synopsis: this.tvCopySynopsis(),
+        })
         this.tvActions()
       }
       .width(`${TvGeometry.detailCopyColumnWidthRatio * 100}%`)
       .alignItems(HorizontalAlign.Start)
       .position({ x: tv(TvGeometry.detailCopyColumnStart), y: tv(TvGeometry.detailCopyColumnTop) })
 
-      Scroll() {
-        this.tvRightColumn()
+      if (this.detail !== null && this.detail.work.kind === 'series') {
+        Scroll(this.seriesStackScroller) {
+          this.tvRightColumn()
+        }
+        .id(this.seriesMeasurementId('page', this.workId, this.seriesFocusGeneration, ''))
+        .align(Alignment.Top)
+        .width(tv(RIGHT_COLUMN_WIDTH))
+        .height(tv(SERIES_COLUMN_HEIGHT))
+        .scrollBar(BarState.Off)
+        .position({ x: tv(RIGHT_COLUMN_X), y: tv(SERIES_COLUMN_TOP) })
+        .onAreaChange(this.seriesPageAreaReporter(this.workId, this.seriesFocusGeneration))
+        .onScroll(this.seriesPageScrollReporter(this.workId, this.seriesFocusGeneration))
+      } else {
+        Scroll() {
+          this.tvRightColumn()
+        }
+        .align(Alignment.Top)
+        .width(tv(RIGHT_COLUMN_WIDTH))
+        .height(tv(RIGHT_COLUMN_HEIGHT))
+        .scrollBar(BarState.Off)
+        .position({ x: tv(RIGHT_COLUMN_X), y: tv(RIGHT_COLUMN_Y) })
       }
-      .align(Alignment.Top)
-      .width(tv(RIGHT_COLUMN_WIDTH))
-      .height(tv(RIGHT_COLUMN_HEIGHT))
-      .scrollBar(BarState.Off)
-      .position({ x: tv(RIGHT_COLUMN_X), y: tv(RIGHT_COLUMN_Y) })
     }
     .width('100%')
     .height('100%')
@@ -1370,6 +2057,47 @@ struct Detail {
       return genres[0];
     }
     return kindLabel(this.detail.work.kind);
+  }
+
+  private hasResumeTarget(): boolean {
+    return this.detail !== null && hasSeriesResumeTarget(this.detail, this.resumePlan);
+  }
+
+  private tvCopyKicker(): string {
+    if (this.hasResumeTarget() && this.resumePlan !== null) {
+      const kicker = resumeKicker(this.resumePlan);
+      if (kicker.length > 0) {
+        return kicker;
+      }
+    }
+    return this.detail !== null ? this.kickerLabel() : '';
+  }
+
+  private tvCopySubtitle(): string {
+    if (this.detail === null || !this.hasResumeTarget() || this.resumePlan === null) {
+      return '';
+    }
+    return planEpisodeTitle(this.detail, this.resumePlan);
+  }
+
+  private tvCopyMetaLines(): string[] {
+    if (this.detail === null) {
+      return [];
+    }
+    if (this.hasResumeTarget() && this.resumePlan !== null) {
+      return [metaChips(this.detail, this.resumePlan).join(' · ')];
+    }
+    return buildMetaLines(this.detail);
+  }
+
+  private tvCopySynopsis(): string {
+    if (this.detail === null) {
+      return '';
+    }
+    if (this.hasResumeTarget() && this.resumePlan !== null) {
+      return planSynopsis(this.detail, this.resumePlan);
+    }
+    return this.synopsisText();
   }
 
   @Builder
@@ -1411,7 +2139,7 @@ struct Detail {
   private touchMetaChips(): void {
     Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(12), cross: LengthMetrics.vp(4) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
-        Text(chip)
+        Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
           .fontSize(11)
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
           .fontColor(toResourceColor(index === 0 ? activeColors().ink : activeColors().inkSoft))
@@ -1423,7 +2151,7 @@ struct Detail {
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
   private touchActionButton(label: string, onTap: () => void): void {
-    Text(label)
+    Text(label).fontFamily(nunito(500))
       .fontSize(11)
       .fontWeight(FontWeight.Medium)
       .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1433,6 +2161,7 @@ struct Detail {
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       .onClick(() => {
+        this.cancelInitialEpisodeFocus();
         onTap();
       })
   }
@@ -1486,28 +2215,28 @@ struct Detail {
       Scroll() {
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column({ space: 10 }) {
-            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? kindLabel(this.detail.work.kind) : ''))
+            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? kindLabel(this.detail.work.kind) : '')).fontFamily(nunito(900))
               .fontSize(10.56)
               .height(16)
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(BRAND_PINK_SOFT))
-            Text(this.detail !== null ? this.detail.work.title : '')
+            Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
               .fontSize(36)
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-1.6)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
-              Text(planEpisodeTitle(this.detail, this.resumePlan))
+              Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunito(500))
                 .fontSize(14.4)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
             }
             this.touchMetaChips()
-            Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '')
+            Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunito(400))
               .fontSize(12)
               .fontColor(toResourceColor(activeColors().inkSoft))
               .lineHeight(18)
@@ -1534,7 +2263,7 @@ struct Detail {
       .height('100%')
 
       Row({ space: 12 }) {
-        Text('←')
+        Text('←').fontFamily(nunito(700))
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1547,7 +2276,7 @@ struct Detail {
           .onClick(() => {
             popRoute(getNavStack());
           })
-        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? 'Series' : kindLabel(this.detail.work.kind) + 's') : '')
+        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? 'Series' : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
           .fontSize(22)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
@@ -1610,6 +2339,12 @@ struct Detail {
     }
     .hideTitleBar(true)
     .backgroundColor(toResourceColor(activeColors().bg))
+    .onKeyEvent((event: KeyEvent): boolean => {
+      if (event.type === KeyType.Down) {
+        this.cancelInitialEpisodeFocus();
+      }
+      return false;
+    })
   }
 }
 

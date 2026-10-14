@@ -21,7 +21,7 @@ internal static class Ui
     public static List<string> WrapLines(string text, float size, int weight, float spacing, float width, int maxLines = int.MaxValue, string family = Font, bool balance = false)
     {
         var greedy = Wrap(text, size, weight, spacing, width, maxLines, family);
-        return balance && greedy.Count > 1 && greedy.Count <= maxLines ? Balanced(text, size, weight, spacing, width, greedy.Count, family) ?? greedy : greedy;
+        return balance && !text.Contains('\u200B') && greedy.Count > 1 && greedy.Count <= maxLines ? Balanced(text, size, weight, spacing, width, greedy.Count, family) ?? greedy : greedy;
     }
 
     /// <summary>
@@ -60,10 +60,33 @@ internal static class Ui
     private static List<string> Wrap(string text, float size, int weight, float spacing, float width, int maxLines, string family)
     {
         var lines = new List<string>(); var cur = "";
-        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        if (!text.Contains('\u200B'))
         {
-            var next = cur.Length == 0 ? word : cur + " " + word;
-            if (cur.Length > 0 && TextWidth(next, size, weight, spacing, family) > width) { lines.Add(cur); cur = word; } else cur = next;
+            foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var next = cur.Length == 0 ? word : cur + " " + word;
+                if (cur.Length > 0 && TextWidth(next, size, weight, spacing, family) > width) { lines.Add(cur); cur = word; } else cur = next;
+            }
+        }
+        else
+        {
+            foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = word.Split('\u200B');
+                for (var i = 0; i < parts.Length; i++)
+                {
+                    var part = parts[i];
+                    if (part.Length == 0) continue;
+                    var separator = i == 0 && cur.Length > 0 ? " " : "";
+                    var next = cur + separator + part;
+                    if (cur.Length > 0 && TextWidth(next, size, weight, spacing, family) > width)
+                    {
+                        lines.Add(cur);
+                        cur = part;
+                    }
+                    else cur = next;
+                }
+            }
         }
         if (cur.Length > 0) lines.Add(cur);
         if (lines.Count > maxLines)
@@ -156,6 +179,31 @@ internal static class Ui
         var key = (horizontal ? "h" : "v") + string.Join("_", stops.Select(s => $"{s.At:0.###}-{s.Color.R:0.##}-{s.Color.G:0.##}-{s.Color.B:0.##}-{s.Color.A:0.###}"));
         var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.Make(horizontal, stops));
+        return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
+    }
+
+    /// <summary>Angled gradient rendered at the target aspect ratio so its direction is preserved when displayed.</summary>
+    public static View DiagonalGradient(float x, float y, float w, float h, float degrees, params (float At, Rgba Color)[] stops)
+    {
+        var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+        Directory.CreateDirectory(dir);
+        var pixelWidth = Math.Max(1, (int)Math.Round(w));
+        var pixelHeight = Math.Max(1, (int)Math.Round(h));
+        var key = $"d{degrees:0.###}-{pixelWidth}x{pixelHeight}-" + string.Join("_", stops.Select(s => $"{s.At:0.###}-{s.Color.R:0.##}-{s.Color.G:0.##}-{s.Color.B:0.##}-{s.Color.A:0.###}"));
+        var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
+        if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDiagonal(stops, pixelWidth, pixelHeight, degrees));
+        return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
+    }
+
+    public static View RadialGradient(float x, float y, float w, float h, Rgba color, float centerX, float centerY, float radiusFraction)
+    {
+        var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+        Directory.CreateDirectory(dir);
+        var pixelWidth = Math.Max(1, (int)Math.Round(w));
+        var pixelHeight = Math.Max(1, (int)Math.Round(h));
+        var key = $"r{pixelWidth}x{pixelHeight}-{centerX:0.###}-{centerY:0.###}-{radiusFraction:0.###}-{color.R:0.##}-{color.G:0.##}-{color.B:0.##}-{color.A:0.###}";
+        var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
+        if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeRadial(pixelWidth, pixelHeight, color, centerX, centerY, radiusFraction));
         return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
     }
 

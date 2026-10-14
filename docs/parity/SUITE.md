@@ -22,8 +22,7 @@ Devices and how each is run: [DEVICES.md](DEVICES.md).
   stay parity: the `player-controls` screen (dark and light) and the player D-pad checks below.
 - **Player D-pad checks** (from `player-controls`, which loads the player and shows its controls). They play a title, which changes On deck on the shared account, so the runner skips them (`pass: null`, not a failure) unless the file named by `PLAYARR_PLAYBACK_PHASE_FILE` exists (the PLAYBACK-PHASE window) or `--player` is given; `--skip-player` always skips. Before the first key a driver with `playerReady()` must reach a known state: video playing, controls visible, focus on play/pause (web waits for it; other drivers get the fixed `wait`). The play/pause button is one role: its label ("Play" or "Pause") is ignored in comparisons.
   initial focus, Right order across the controls (audio, subtitles, playlist, quality, info, cast), Left at the edge, Up to the
-  seek bar and Down back to the buttons, OK on play/pause, and Back: on web one Back with the controls up already leaves the player (to the title's detail screen) and a second
-  Back goes on to the list (`observe: "state"` records the route shape, e.g. `player/:id`, `movies/:id`, `movies`), and the audio/subtitle panel opening and closing.
+  seek bar and Down back to the buttons, OK on play/pause, and Back: on web, with the title playing and focus on play/pause, the first Back hides the controls (still `player/:id`) and the second leaves the player (to `movies/:id`) (`observe: "state"` records the route shape, e.g. `player/:id`, `movies/:id`, `movies`), and the audio/subtitle panel opening and closing.
 - **Downloads cases** (`downloads` in `suite.json`, media pinned in `downloadMedia`: the smallest original files: a movie and an
   episode on the test server): start a movie download and see it complete, start an episode download, pause then
   resume, cancel mid-download, delete a completed download, edit keep-until and quality, play the downloaded title
@@ -66,6 +65,8 @@ A device worker writes one ES module exporting `createDriver({ out, args })` tha
 | `download(case, expect)` | Optional. Run one downloads case (`case.action`, `case.media` = title, work id, file id), return `{ state: "ok"\|"failed", detail }`. Must leave nothing downloaded. |
 | `cleanupDownloads()` | Optional. Remove every download the cases touched (safety net after an abort). |
 | `playerReady()` | Optional. Before a player D-pad check: wait until the video is playing, the controls are visible and focus is on play/pause; throw if it does not happen. |
+| `playhead()` | Optional. Playhead in seconds, or null. Before the first key of a player check the runner waits (up to 45 s) until it is past 1 s, so a slow player does not eat keys. |
+| `panelOpen()` | Optional. True when the audio or subtitle panel is open. The `player-panel-*` checks (`observe: "panel"`) record `panel:open` or `panel:closed`; without it they fall back to the focused label. |
 | `play(case, expect)` | Play the media file `case.file` (deep link or the device's own way), return `{ state: "playing"\|"stalled"\|"error", startSeconds, advancedSeconds, detail?, nowPlaying?: { ok } }` (`nowPlaying` only when `case.nowPlaying` and `supports.nowPlaying`). |
 
 Run: `node suite-run.mjs --driver ./my-driver.mjs --out <dir>/<cand>/ [--themes dark] [--only screens,dpad,downloads,performance]

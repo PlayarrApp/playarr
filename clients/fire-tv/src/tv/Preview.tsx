@@ -2,19 +2,21 @@
 import React from 'react';
 import {View} from 'react-native';
 import {useTheme} from '../theme/ThemeProvider';
-import {Box, T, u} from './kit';
+import {BalancedT, Box, T, u} from './kit';
 
 export interface PreviewProps {
   kicker?: string;
   title: string;
   /** Meta runs: the first in the soft ink, the rest muted. */
   meta?: readonly string[];
+  /** Additional content rendered in the metadata row after the text runs. */
+  metaContent?: React.ReactNode;
   overview?: string | null;
   /** Content drawn between the overview and the page (actions). */
   children?: React.ReactNode;
 }
 
-export function Preview({kicker, title, meta, overview, children}: PreviewProps): React.ReactElement {
+export function Preview({kicker, title, meta, metaContent, overview, children}: PreviewProps): React.ReactElement {
   const {colour} = useTheme();
   return (
     <Box x={153.6} y={259.2} w={455} pointerEvents="box-none">
@@ -24,19 +26,20 @@ export function Preview({kicker, title, meta, overview, children}: PreviewProps)
         </T>
       ) : null}
       <View style={{marginTop: u(25.9), width: u(373.2)}}>
-        <T size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
+        <BalancedT key={title} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
           {title}
-        </T>
+        </BalancedT>
       </View>
-      {meta && meta.length > 0 ? (
+      {(meta && meta.length > 0) || metaContent ? (
         <View style={{marginTop: u(27), flexDirection: 'row', flexWrap: 'wrap'}}>
-          {meta.map((run, index) => (
+          {meta?.map((run, index) => (
             <View key={`${index}:${run}`} style={{marginRight: u(12.8)}}>
               <T size={12.096} weight={400} lh={18.1} color={index === 0 ? colour.inkSoft : colour.inkMuted}>
                 {run}
               </T>
             </View>
           ))}
+          {metaContent}
         </View>
       ) : null}
       {overview ? (

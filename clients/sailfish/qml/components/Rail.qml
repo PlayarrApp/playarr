@@ -11,7 +11,7 @@ Column {
     signal opened(var work)
     signal held(var work)
     width: parent ? parent.width : 0
-    spacing: 19.5 * Tokens.u
+    spacing: Math.round(19.5 * Tokens.u)
     visible: items.length > 0
 
     Label {
@@ -23,7 +23,7 @@ Column {
     }
     Item {
         width: parent.width
-        height: 173 * Tokens.u * 9 / 16 + 50 * Tokens.u
+        height: Math.round(173 * Tokens.u * 9 / 16 + 50 * Tokens.u)
         ListView {
             id: list
             anchors.fill: parent

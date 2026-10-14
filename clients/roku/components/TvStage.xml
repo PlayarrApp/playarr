@@ -33,6 +33,12 @@
     <field id="keyArtUri" type="string" onChange="onKeyArtUriChange" />
     <!-- Optional HTTP headers (Bearer) for authenticated artwork proxy loads. -->
     <field id="keyArtHeaders" type="assocarray" />
+    <!-- Optional sanitized parity-capture readiness telemetry. -->
+    <field id="artTelemetryGeneration" type="integer" value="0" />
+    <field id="artTelemetryScope" type="string" value="" />
+    <field id="artTelemetrySlot" type="string" value="" />
+    <field id="artTelemetryVersion" type="integer" value="0" />
+    <field id="artTelemetryActive" type="boolean" value="false" />
     <!-- from: .tv-provider / .tv-detail-kicker text content -->
     <field id="stageKicker" type="string" onChange="onStageKickerChange" />
     <!-- from: .tv-title-panel h1 text content -->
@@ -94,6 +100,14 @@
            (238 px) and surface at the top from 82 % (the top 194 px); .tv-stage-wash = 90deg surface 94 % over 31 % (595 px) and
            270deg surface 50 % over 34 % (653 px). -->
       <StageScrims id="scrimLayer" />
+    </Group>
+
+    <!-- Home's .tv-home-rails frost sits above key art and below stage copy/rails. -->
+    <Group id="homeRailFrostLayer" visible="false">
+      <Poster id="homeRailFrostLight" translation="[729.6,0]" width="1190.4" height="1080"
+        uri="pkg:/images/home-rail-frost-light.png" loadDisplayMode="scaleToFill" visible="false" />
+      <Poster id="homeRailFrostDark" translation="[729.6,0]" width="1190.4" height="1080"
+        uri="pkg:/images/home-rail-frost-dark.png" loadDisplayMode="scaleToFill" visible="true" />
     </Group>
 
     <!--

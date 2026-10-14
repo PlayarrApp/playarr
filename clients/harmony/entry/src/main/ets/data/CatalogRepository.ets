@@ -49,6 +49,7 @@ import {
   catalogUrl,
   catalogKindsUrl,
   homeRailsUrl,
+  railPreferencesUrl,
   catalogSearchUrl,
   catalogDetailUrl,
   catalogCreditsUrl,
@@ -73,6 +74,8 @@ import {
   BrowseQuery,
   CatalogPage,
   HomeRailsResponse,
+  RailPreferencesRequest,
+  RailPreferencesResponse,
   SearchResult,
   ViewSummary,
   WorkKind,
@@ -254,6 +257,11 @@ export function getResumePlan(seriesId: string): Promise<ApiResult<ResumePlan>> 
   return getPlayarrClient().getJson<ResumePlan>(catalogResumePlanUrl(seriesId));
 }
 
+/** `DELETE /api/v1/catalog/{id}/resume-plan/choices`: forget the remembered resume choices (web's Ask again). */
+export function clearResumeChoices(seriesId: string): Promise<ApiResult<Object>> {
+  return getPlayarrClient().deleteJson<Object>(catalogResumePlanUrl(seriesId) + '/choices');
+}
+
 /** `GET /api/v1/catalog/{id}/credits`: the work's cast and crew. */
 export function getWorkCredits(id: string): Promise<ApiResult<WorkCredits>> {
   return getPlayarrClient().getJson<WorkCredits>(catalogCreditsUrl(id));
@@ -399,4 +407,19 @@ export async function getContinueWatching(): Promise<ApiResult<ContinueWatchingE
 
   const ok: ApiOk<ContinueWatchingEntry[]> = { kind: 'ok', status: progressResult.status, value: entries };
   return ok;
+}
+
+/** `GET /api/v1/home/rails/preferences`: every enabled rail with this user's order and hidden flags. */
+export function getRailPreferences(): Promise<ApiResult<RailPreferencesResponse>> {
+  return getPlayarrClient().getJson<RailPreferencesResponse>(railPreferencesUrl());
+}
+
+/** `PUT /api/v1/home/rails/preferences`: saves the order and the hidden set. */
+export function saveRailPreferences(request: RailPreferencesRequest): Promise<ApiResult<RailPreferencesResponse>> {
+  return getPlayarrClient().putJson<RailPreferencesRequest, RailPreferencesResponse>(railPreferencesUrl(), request);
+}
+
+/** `DELETE /api/v1/home/rails/preferences`: back to the default order with nothing hidden. */
+export function resetRailPreferences(): Promise<ApiResult<Object>> {
+  return getPlayarrClient().deleteJson<Object>(railPreferencesUrl());
 }

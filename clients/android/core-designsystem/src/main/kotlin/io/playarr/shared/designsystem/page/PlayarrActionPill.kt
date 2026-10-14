@@ -79,7 +79,7 @@ fun PlayarrActionPill(
             shape = tile,
             // Focus draws the ring only; the open state (panel shown) keeps the ink fill.
             color = if (active) palette.ink else palette.surfaceStrong.copy(alpha = 0.78f),
-            contentColor = if (active) palette.background else if (focused) palette.ink else palette.inkMuted,
+            contentColor = if (active) palette.background else if (focused) palette.ink else if (tv) palette.inkMuted else palette.phoneInkMuted,
             border = BorderStroke(1.dp, palette.launcherBorder),
         ) {
             val vector = icon.vector

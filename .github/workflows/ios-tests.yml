@@ -78,6 +78,9 @@ jobs:
         timeout-minutes: 45
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          TEST_RUNNER_PLAYARR_UI_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_RUNNER_PLAYARR_UI_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_RUNNER_PLAYARR_UI_TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
         run: |
           set -euo pipefail
           [[ "$SIMULATOR_UDID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
@@ -85,6 +88,12 @@ jobs:
             -resultBundlePath "$RUNNER_TEMP/ios.xcresult" \
             -workspace "$GITHUB_WORKSPACE/clients/ios/Playarr.xcworkspace" \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" 2>&1 | tee "$RUNNER_TEMP/ios-log.txt"
+          test_case="Test Case '-[PlayarrAppUITests.DetailNavigationUITests testHomeAndSearchSeriesDetailsSelectSeriesAndRestoreTheirOrigin]' passed"
+          if ! grep -Fq "$test_case" "$RUNNER_TEMP/ios-log.txt"; then
+            echo "Expected iPhone navigation UI test did not execute and pass: $test_case" >&2
+            exit 1
+          fi
+          grep -F "$test_case" "$RUNNER_TEMP/ios-log.txt"
 
       - name: Delete the test simulator
         if: ${{ always() && steps.simulator.outputs.udid != '' }}

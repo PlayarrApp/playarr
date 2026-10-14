@@ -88,21 +88,186 @@ jobs:
 
       # The iPad wall build needs an iOS 18 simulator (iPadOS 26 does not rotate); the runner image only has 26.
       - name: Cache the iOS 18 simulator runtime
+        id: ios18-cache
         if: matrix.device == 'ipad'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/ios18
-          key: ios-sim-runtime-18.5-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/ios18-cache
+          key: ios-sim-runtime-18.5-v2-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install the iOS 18 simulator runtime
+        id: ios18-runtime
         if: matrix.device == 'ipad'
         timeout-minutes: 40
+        env:
+          CACHE_HIT: ${{ steps.ios18-cache.outputs.cache-hit == 'true' && 'true' || 'false' }}
         run: |
           set -euo pipefail
-          dir="$RUNNER_TEMP/ios18"; mkdir -p "$dir"
-          if ! ls "$dir"/*.dmg >/dev/null 2>&1; then xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir"; fi
-          xcodebuild -importPlatform "$(ls "$dir"/*.dmg | head -1)"
-          xcrun simctl list runtimes | grep 'iOS 18' || { echo "::error::iOS 18 runtime missing after import"; exit 1; }
+          cache_dir="$RUNNER_TEMP/ios18-cache"
+          mkdir -p "$cache_dir"
+          xcode_path="$(xcode-select -p)"
+          sudo xcode-select --switch "$xcode_path" >/dev/null 2>&1 || { echo "::error::Could not select the current Xcode path"; exit 1; }
+          xcodebuild -version | awk '/^Xcode / { print "Selected Xcode version: " $2 }'
+          xcodebuild -runFirstLaunch >/dev/null 2>&1 || { echo "::error::Xcode first-launch setup failed"; exit 1; }
+          shopt -s nullglob
+          package_metadata() {
+            python3 - "$1" <<'PY'
+          import hashlib
+          import os
+          import pathlib
+          import stat
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          suffix = ".dmg" if path.name.endswith(".dmg") else ".exportedBundle" if path.name.endswith(".exportedBundle") else "unknown"
+          digest = hashlib.sha256()
+          size = 0
+          try:
+              if stat.S_ISREG(path.stat().st_mode):
+                  kind = "file"
+                  with path.open("rb") as package:
+                      for chunk in iter(lambda: package.read(1024 * 1024), b""):
+                          digest.update(chunk)
+                          size += len(chunk)
+              elif path.is_dir():
+                  kind = "directory"
+                  entries = []
+                  for root, dirs, files in os.walk(path, followlinks=False):
+                      dirs.sort()
+                      files.sort()
+                      root_path = pathlib.Path(root)
+                      entries.extend(root_path / name for name in dirs + files)
+                  for entry in sorted(entries, key=lambda item: item.relative_to(path).as_posix()):
+                      relative = entry.relative_to(path).as_posix().encode()
+                      if entry.is_symlink():
+                          value = os.readlink(entry).encode()
+                          digest.update(b"L" + relative + b"\0" + value + b"\0")
+                      elif entry.is_dir():
+                          digest.update(b"D" + relative + b"\0")
+                      elif stat.S_ISREG(entry.stat().st_mode):
+                          file_digest = hashlib.sha256()
+                          with entry.open("rb") as package:
+                              for chunk in iter(lambda: package.read(1024 * 1024), b""):
+                                  file_digest.update(chunk)
+                                  size += len(chunk)
+                          digest.update(b"F" + relative + b"\0" + file_digest.digest())
+                      else:
+                          raise ValueError
+              else:
+                  raise ValueError
+          except Exception:
+              print("Runtime package diagnostics unavailable; package type or contents are unsupported")
+              sys.exit(1)
+          print(f"suffix={suffix} regular_file={str(kind == 'file').lower()} kind={kind} bytes={size} sha256={digest.hexdigest()}")
+          PY
+          }
+          find_package() {
+            local dir="$1"
+            packages=("$dir"/*.dmg "$dir"/*.exportedBundle)
+            (( ${#packages[@]} == 1 )) || return 1
+          }
+          download_package() {
+            local dir="$1"
+            mkdir -p "$dir"
+            xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir" >/dev/null 2>&1 || return 1
+            find_package "$dir"
+          }
+          copy_for_import() {
+            local source="$1" dest="$2"
+            mkdir -p "$dest"
+            if [[ -f "$source" ]]; then
+              cp "$source" "$dest/$(basename "$source")" >/dev/null 2>&1 || return 1
+            elif [[ -d "$source" ]]; then
+              ditto "$source" "$dest/$(basename "$source")" >/dev/null 2>&1 || return 1
+            else
+              return 1
+            fi
+            imported=("$dest"/*)
+            (( ${#imported[@]} == 1 ))
+          }
+          import_package() {
+            local source="$1" dest="$2" label="$3"
+            if ! copy_for_import "$source" "$dest"; then
+              echo "::error::Could not prepare the iOS 18.5 runtime package for import"
+              return 1
+            fi
+            local package="${imported[0]}" import_exit=0 source_before source_after source_before_sha source_after_sha
+            source_before="$(package_metadata "$source")" || {
+              echo "::error::Could not inspect the iOS 18.5 runtime package before import"
+              return 1
+            }
+            echo "Runtime package phase=before-import $source_before"
+            xcodebuild -importPlatform "$package" >/dev/null 2>&1 || import_exit=$?
+            echo "Runtime import phase=$label exit=$import_exit"
+            source_after="$(package_metadata "$source")" || {
+              echo "::error::Could not inspect the iOS 18.5 runtime package after import"
+              return 1
+            }
+            echo "Runtime package phase=after-import $source_after"
+            source_before_sha="${source_before##*sha256=}"
+            source_after_sha="${source_after##*sha256=}"
+            if [[ "$source_before_sha" != "$source_after_sha" ]]; then
+              echo "::error::Runtime package changed during import; cache save is blocked"
+              return 1
+            fi
+            (( import_exit == 0 )) || return 1
+          }
+          poll_runtime() {
+            local phase="$1" attempt counts total available18 unavailable status
+            available18=0
+            for attempt in {1..30}; do
+              if counts="$(xcrun simctl list runtimes -j 2>/dev/null | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["runtimes"]
+          ios18 = [runtime for runtime in runtimes if runtime.get("name", "").startswith("iOS 18.")]
+          available = sum(runtime.get("isAvailable") is True for runtime in ios18)
+          print(len(ios18), available, len(ios18) - available)
+          ' 2>/dev/null)"; then
+                read -r total available18 unavailable <<< "$counts"
+                if (( available18 > 0 )); then status=available; else status=missing; fi
+              else
+                total=0; available18=0; unavailable=0; status=unavailable
+              fi
+              echo "iOS 18 availability poll phase=$phase attempt=$attempt/30 status=$status total=$total available=$available18 unavailable=$unavailable"
+              if (( available18 > 0 )); then return 0; fi
+              sleep 2
+            done
+            return 1
+          }
+          find_package "$cache_dir" || {
+            if [[ "$CACHE_HIT" == true ]]; then
+              echo "::error::The restored iOS 18.5 runtime cache does not contain exactly one package"
+              exit 1
+            fi
+            download_package "$cache_dir" || { echo "::error::Could not download exactly one iOS 18.5 runtime package"; exit 1; }
+          }
+          cache_package="${packages[0]}"
+          import_package "$cache_package" "$RUNNER_TEMP/ios18-import-primary" primary || {
+            echo "::error::iOS 18.5 runtime import failed"
+            exit 1
+          }
+          if ! poll_runtime primary; then
+            if [[ "$CACHE_HIT" != true ]]; then
+              echo "::error::No available iOS 18 runtime after bounded import poll"
+              exit 1
+            fi
+            echo "Cache-hit import completed without registering iOS 18.5; attempting one fresh download/import fallback"
+            download_package "$RUNNER_TEMP/ios18-fallback" || { echo "::error::Could not download exactly one fallback iOS 18.5 runtime package"; exit 1; }
+            fallback_package="${packages[0]}"
+            import_package "$fallback_package" "$RUNNER_TEMP/ios18-import-fallback" fallback || {
+              echo "::error::Fresh iOS 18.5 runtime fallback import failed"
+              exit 1
+            }
+            poll_runtime fallback || { echo "::error::No available iOS 18 runtime after bounded fallback poll"; exit 1; }
+          fi
+          echo "registered=true" >> "$GITHUB_OUTPUT"
+
+      - name: Save the registered iOS 18 simulator runtime cache
+        if: matrix.device == 'ipad' && steps.ios18-runtime.outputs.registered == 'true' && steps.ios18-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ios18-cache
+          key: ios-sim-runtime-18.5-v2-${{ runner.os }}-${{ runner.arch }}
 
       - name: Build the app
         timeout-minutes: 60

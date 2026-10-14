@@ -32,6 +32,7 @@
  * -- the app's sole entry/`loadContent` target is `pages/Index.ets`.
  */
 
+import { nunito } from '../design/Typography';
 import { getServerDirectory } from '../AppContainer';
 import { normaliseServerUrl } from '../core/Url';
 import { Spacing, Radii } from '../core/Tokens';
@@ -107,13 +108,13 @@ struct ServerSetup {
   build() {
     NavDestination() {
       Column({ space: Spacing.lg }) {
-        Text($r('app.string.server_setup_title'))
+        Text($r('app.string.server_setup_title')).fontFamily(nunito(700))
           .fontSize(26)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
           .textAlign(TextAlign.Center)
 
-        Text($r('app.string.server_setup_hint'))
+        Text($r('app.string.server_setup_hint')).fontFamily(nunito(400))
           .fontSize(15)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .textAlign(TextAlign.Center)
@@ -140,7 +141,7 @@ struct ServerSetup {
           })
 
         if (this.errorMessage.length > 0) {
-          Text(this.errorMessage)
+          Text(this.errorMessage).fontFamily(nunito(400))
             .fontSize(13)
             .fontColor(toResourceColor(activeColors().danger))
             .textAlign(TextAlign.Center)

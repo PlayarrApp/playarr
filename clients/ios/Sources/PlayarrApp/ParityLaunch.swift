@@ -4,10 +4,10 @@ import SwiftUI
 import UIKit
 
 #if DEBUG
-/// Launch-argument hooks used only by the pixel-parity workflow
-/// (`.github/workflows/parity-apple.yml`). They sign the app in against a
-/// fixture server and open one named screen, so a simulator screenshot can be
-/// compared with the web mobile reference. Compiled out of Release builds.
+/// Debug launch hooks for parity captures and iOS UI tests. They sign the app
+/// in against a fixture server and open one named screen, so simulator output
+/// can be compared with the web mobile reference. UI tests pass credentials
+/// through the environment, not simulator launch arguments. Compiled out of Release builds.
 ///
 ///     --playarr-parity-server <url> --playarr-parity-user <name>
 ///     --playarr-parity-password <password> --playarr-parity-route <route>
@@ -16,16 +16,20 @@ import UIKit
 /// `detail:<movie|series>:<title>`, `player:movie:<title>` (the film paused at 2.0 s with the
 /// controls up) and `player-quality:movie:<title>` (the same with the quality menu open).
 enum ParityLaunch {
+    private static func environmentValue(_ key: String) -> String? {
+        ProcessInfo.processInfo.environment[key]
+    }
+
     private static func value(_ flag: String) -> String? {
         let args = ProcessInfo.processInfo.arguments
         guard let index = args.lastIndex(of: flag), index + 1 < args.count else { return nil }
         return args[index + 1]
     }
 
-    static var server: String? { value("--playarr-parity-server") }
-    static var user: String? { value("--playarr-parity-user") }
-    static var password: String? { value("--playarr-parity-password") }
-    static var route: String? { value("--playarr-parity-route") }
+    static var server: String? { value("--playarr-parity-server") ?? environmentValue("PLAYARR_PARITY_SERVER") }
+    static var user: String? { value("--playarr-parity-user") ?? environmentValue("PLAYARR_PARITY_USER") }
+    static var password: String? { value("--playarr-parity-password") ?? environmentValue("PLAYARR_PARITY_PASSWORD") }
+    static var route: String? { value("--playarr-parity-route") ?? environmentValue("PLAYARR_PARITY_ROUTE") }
     private static var parts: [String] {
         (route ?? "").split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
     }
@@ -43,6 +47,7 @@ enum ParityLaunch {
         guard parts.first == "home-scrolled" else { return nil }
         return parts.count > 1 ? Int(parts[1]) ?? 2 : 2
     }
+    static var selectsHomeSeries: Bool { environmentValue("PLAYARR_PARITY_SELECT_HOME_SERIES") == "1" }
     /// `--playarr-parity-play <media file id>` with route `play`: opens the player on that file and plays it (suite playback cases).
     static var playFile: String? { value("--playarr-parity-play") }
     /// Routes `calendar-month`, `calendar-week` and `calendar-agenda` open the calendar in that view.

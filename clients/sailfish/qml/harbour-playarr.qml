@@ -2,6 +2,7 @@ import QtQuick 2.6
 import Sailfish.Silica 1.0
 import "components"
 import "pages"
+import "startRoute.js" as StartRoute
 
 ApplicationWindow {
     id: app
@@ -20,12 +21,15 @@ ApplicationWindow {
     Component.onCompleted: Tokens.u = Screen.width / 390
 
     function showStart() {
-        pageStack.replaceAbove(null, Api.signedIn ? (Api.profiles.length > 1 ? Qt.resolvedUrl("pages/ProfilesPage.qml")
-                                                                         : Qt.resolvedUrl("pages/MainPage.qml"))
-                                                  : Qt.resolvedUrl("pages/LinkPage.qml"))
+        pageStack.replaceAbove(null, startPage(Api.signedIn, Api.profiles.length))
     }
 
-    initialPage: Api.signedIn ? (Api.profiles.length > 1 ? profilesPage : mainPage) : linkPage
+    function startPage(signedIn, profileCount) {
+        var route = StartRoute.initialRoute(signedIn, profileCount)
+        return route === "profiles" ? profilesPage : route === "main" ? mainPage : linkPage
+    }
+
+    initialPage: startPage(Api.signedIn, Api.profiles.length)
     Component { id: linkPage; LinkPage {} }
     Component { id: profilesPage; ProfilesPage {} }
     Component { id: mainPage; MainPage {} }

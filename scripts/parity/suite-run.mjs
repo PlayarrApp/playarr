@@ -59,7 +59,7 @@ async function reach(screen, tries = 2) {
 async function reachOnce(screen) {
   await driver.home();
   // A pinned `open` path is always used (every device shows the same title); otherwise keys, or the route as a fallback.
-  if (screen.open) await driver.route(screen.open);
+  if (screen.open) await driver.route(screen.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(screen.open) });
   else if (via === "route" || !screen.keys) {
     if (via === "keys" && !screen.keys) console.log(`  ${screen.id}: no keys in the suite, deep linking`);
     await driver.route(screen.route);
@@ -69,7 +69,7 @@ async function reachOnce(screen) {
   if (!routeMatches(screen.match ?? screen.route, at)) throw new Error(`${screen.id}: ended on ${at}, expected ${screen.route}`);
 }
 
-const summary = { screens: 0, failed: [] };
+const summary = { screens: 0, failed: [], dpadFailed: [] };
 if (reset) await resetProgress(pinned()); // before any capture: On deck and Resume start from the same state on every device
 await driver.start?.({ theme: themes[0] });
 if (only.includes("screens")) {
@@ -105,7 +105,11 @@ if (only.includes("dpad")) {
         const from = suite.screens.find((x) => x.id === d.from);
         await reach(from);
         // The player needs a known state before the first key: playing, controls up, focus on play/pause (driver.playerReady), else a fixed wait.
-        if (d.wait) { if (driver.playerReady) await driver.playerReady(); else await sleep(d.wait); }
+        if (d.wait) {
+          if (driver.playerReady) await driver.playerReady(); else await sleep(d.wait);
+          // Every driver: the playhead must be past 1 s before the first key (a slow player eats keys and shows the wrong state).
+          if (driver.playhead) { const t0 = Date.now(); while (Date.now() - t0 < 45000 && !((await driver.playhead()) > 1)) await sleep(500); if (!((await driver.playhead()) > 1)) throw new Error("player did not start playing within 45 s"); }
+        }
         if (d.start) {
           const at = focusForCheck(await driver.focused(), d.id).position;
           startOk = !at || samePosition(at, d.start); // a driver without position cannot assert the start
@@ -115,6 +119,8 @@ if (only.includes("dpad")) {
         await sleep(800);
         actual = focusForCheck(await driver.focused(), d.id);
         // observe "state": where the app is (route shape, ids dropped), for Back out of the player: the focus label there varies with timing.
+        // observe "panel": whether the audio/subtitle panel is open (driver.panelOpen), else the focused label.
+        if (d.observe === "panel" && driver.panelOpen) actual = { ...actual, label: `panel:${(await driver.panelOpen()) ? "open" : "closed"}` };
         if (d.observe === "state") actual = { ...actual, label: `${(await driver.location()).split("?")[0].split("/").filter(Boolean).map((s, i) => (i ? ":id" : s)).join("/")}` };
       } catch (e) { console.log(`ERR dpad ${d.id}: ${e.message.split("\n")[0]}`); }
       if (!actual?.label) continue;
@@ -132,6 +138,7 @@ if (only.includes("dpad")) {
     const pass = byPosition ? samePosition(actual.position, w.position) : d.id === "player-ok-toggle"
       ? !!actual?.label && actual.label === w.label
       : !!actual?.label && sameItem(actual.label, w.label);
+    if (pass === false) summary.dpadFailed.push(d.id);
     results.push({ id: d.id, pass, compared: byPosition ? "position" : "label", expected: expected.dpad[d.id] ?? null, actual: actual && (actual.position ? actual : actual.label) });
     console.log(`${pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual?.label}${actual?.position ? ` @${actual.position.rail}:${actual.position.index}` : ""}${pass ? "" : ` (expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""})`}`);
   }
@@ -182,4 +189,5 @@ if (only.includes("downloads")) {
 if (reference) { mkdirSync(out, { recursive: true }); writeFileSync(join(out, "expected.json"), JSON.stringify({ suite: suite.version, ...expected }, null, 2)); }
 await driver.stop?.();
 console.log(`captured ${summary.screens}, failed ${summary.failed.length}${summary.failed.length ? `: ${summary.failed.join(", ")}` : ""}`);
-process.exit(summary.failed.length ? 1 : 0);
+if (summary.dpadFailed.length) console.log(`failed D-pad checks ${summary.dpadFailed.length}: ${summary.dpadFailed.join(", ")}`);
+process.exit(summary.failed.length || summary.dpadFailed.length ? 1 : 0);

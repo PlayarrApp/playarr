@@ -20,9 +20,10 @@ SilicaGridView {
     function scrollToIndex(index) { contentY = originY + Math.floor(index / columns) * cellHeight; returnToBounds() }
     // Web phone grid (#924): cards fit beside the 52 px letter rail pad: (viewport - 16 gutter - 52 rail - 12 gap) / 2.
     readonly property real cardW: columns === 2 ? Math.round((width - Tokens.px(16 + 52 + 12)) / 2) : cellWidth - Tokens.pad - gap / 2
-    cellHeight: mode === "list" ? 76 * Tokens.u
-              : mode === "cover" ? cardW * 3 / 2 + 62 * Tokens.u
-              : cardW * 9 / 16 + 49 * Tokens.u
+    // Whole pixels: web snaps image rects, and a fractional row offset would resample the posters.
+    cellHeight: Math.round(mode === "list" ? 76 * Tokens.u
+              : mode === "cover" ? Math.round(cardW * 3 / 2) + 62 * Tokens.u
+              : Math.round(cardW * 9 / 16 + 0.2) + 49 * Tokens.u)
     model: works
     clip: true
     delegate: Item {

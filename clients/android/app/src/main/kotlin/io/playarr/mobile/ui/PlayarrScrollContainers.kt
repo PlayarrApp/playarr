@@ -104,6 +104,8 @@ internal fun PlayarrLazyRow(
     fade: PlayarrFadeKind? = PlayarrFadeKind.Rail,
     /** The rail's viewport extent left of its content start line; non-null fades scrolled-past cards over that gutter only. */
     startGutter: Dp? = null,
+    fadeCrossAxisStartInset: Dp = 0.dp,
+    fadeCrossAxisEndInset: Dp = 0.dp,
     content: LazyListScope.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -112,7 +114,13 @@ internal fun PlayarrLazyRow(
     LazyRow(
         modifier = when {
             fade == null -> modifier
-            startGutter != null -> modifier.playarrRailFade(state, startGutter, fade)
+            startGutter != null -> modifier.playarrRailFade(
+                state,
+                startGutter,
+                fade,
+                edgeCrossAxisStartInset = fadeCrossAxisStartInset,
+                edgeCrossAxisEndInset = fadeCrossAxisEndInset,
+            )
             else -> modifier.playarrScrollFade(state, vertical = false, kind = fade)
         },
         state = state,

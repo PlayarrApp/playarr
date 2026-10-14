@@ -36,6 +36,7 @@ import {
   viewResolveUrl,
   artworkWorkUrl,
   artworkAlbumUrl,
+  artworkEpisodeUrl,
   mediaThumbnailUrl,
   playbackInfoUrl,
   mediaStreamUrl,
@@ -175,10 +176,24 @@ describe('Endpoints - 4.9 artwork', () => {
     assert.notEqual(forward, swapped);
   });
 
-  it('mediaThumbnailUrl (position_ms query left to the caller)', () => {
+  it('artworkEpisodeUrl includes the requested thumb width', () => {
+    assert.equal(
+      artworkEpisodeUrl(WORK_ID, OTHER_ID, 'thumb', 540),
+      '/api/v1/artwork/episode/11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222/thumb?w=540'
+    );
+  });
+
+  it('mediaThumbnailUrl omits the query for the default position', () => {
     assert.equal(
       mediaThumbnailUrl(MEDIA_FILE_ID),
       '/api/v1/media/66666666-6666-6666-6666-666666666666/thumbnail'
+    );
+  });
+
+  it('mediaThumbnailUrl preserves an explicit zero position', () => {
+    assert.equal(
+      mediaThumbnailUrl(MEDIA_FILE_ID, 0),
+      '/api/v1/media/66666666-6666-6666-6666-666666666666/thumbnail?position_ms=0'
     );
   });
 });

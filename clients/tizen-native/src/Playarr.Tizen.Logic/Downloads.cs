@@ -226,20 +226,28 @@ public sealed class DownloadEngine(IDownloadsApi api, DownloadStore store)
         var have = File.Exists(path) ? new FileInfo(path).Length : 0;
         if (r.TotalBytes is { } tb && have > tb) { File.Delete(path); have = 0; }
         if (r.TotalBytes is { } total && have == total) { r.BytesDownloaded = have; r.State = DownloadState.Ready; return; }
-        using var res = await api.FileAsync(r.Id, have, ct).ConfigureAwait(false);
-        if ((int)res.StatusCode is 409 or 410) { r.State = (int)res.StatusCode == 410 ? DownloadState.Expired : DownloadState.Processing; return; }
-        if (!res.IsSuccessStatusCode) throw new InvalidOperationException($"HTTP {(int)res.StatusCode}");
-        if ((int)res.StatusCode == 200 && have > 0) have = 0; // the server ignored Range: start over
-        r.State = DownloadState.Downloading;
-        await using var src = await res.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-        await using var dst = new FileStream(path, have > 0 ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.Read);
-        var buf = new byte[256 * 1024]; var last = DateTime.UtcNow; long done = have; int n;
-        r.BytesDownloaded = done;
-        while ((n = await src.ReadAsync(buf, ct).ConfigureAwait(false)) > 0)
+        long done = have;
+        // Ready and Changed are observable, so keep them after every response and stream has been disposed.
+        using (var res = await api.FileAsync(r.Id, have, ct).ConfigureAwait(false))
         {
-            await dst.WriteAsync(buf.AsMemory(0, n), ct).ConfigureAwait(false);
-            done += n; r.BytesDownloaded = done;
-            if (DateTime.UtcNow - last > TimeSpan.FromMilliseconds(500)) { last = DateTime.UtcNow; Changed?.Invoke(); }
+            if ((int)res.StatusCode is 409 or 410) { r.State = (int)res.StatusCode == 410 ? DownloadState.Expired : DownloadState.Processing; return; }
+            if (!res.IsSuccessStatusCode) throw new InvalidOperationException($"HTTP {(int)res.StatusCode}");
+            if ((int)res.StatusCode == 200 && have > 0) have = 0; // the server ignored Range: start over
+            r.State = DownloadState.Downloading;
+            await using (var src = await res.Content.ReadAsStreamAsync(ct).ConfigureAwait(false))
+            await using (var dst = new FileStream(path, have > 0 ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.Read))
+            {
+                var buf = new byte[256 * 1024]; var last = DateTime.UtcNow; int n;
+                done = have;
+                r.BytesDownloaded = done;
+                while ((n = await src.ReadAsync(buf, ct).ConfigureAwait(false)) > 0)
+                {
+                    await dst.WriteAsync(buf.AsMemory(0, n), ct).ConfigureAwait(false);
+                    done += n; r.BytesDownloaded = done;
+                    if (DateTime.UtcNow - last > TimeSpan.FromMilliseconds(500)) { last = DateTime.UtcNow; Changed?.Invoke(); }
+                }
+                await dst.FlushAsync(ct).ConfigureAwait(false);
+            }
         }
         r.TotalBytes ??= done;
         r.State = DownloadState.Ready;

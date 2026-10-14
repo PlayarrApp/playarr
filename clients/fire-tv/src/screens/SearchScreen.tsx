@@ -2,11 +2,12 @@
  * Search, drawn at the web TV layout's measurements (`clients/tv-web/web/src/pages/Search.tsx`): the search pill, the
  * focused result's key art and details on the left, and a three-column grid of results on the right.
  *
- * Not on this platform yet: the type and library filter drawer and playlist results (see the board row).
+ * Search supports the web's media type filters, matching playlist rows, and separate DiscoveryExtras actions. Library-backed
+ * discovery titles open native detail; remote titles expose request/watchlist actions where the web does.
  */
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useContext, useEffect, useMemo, useRef, useState} from 'react';
 import {Animated, Easing, Pressable, TextInput, View} from 'react-native';
-import type {WatchProgress, Work} from '@playarr-tv/api-client';
+import type {DiscoverTitle, PlaylistResponse, WatchProgress, Work} from '@playarr-tv/api-client';
 import {useAsyncData} from '@playarr-tv/api-client/react';
 import {useApiClient} from '../api/ApiClientProvider';
 import {preferredArtworkKind, workArtworkUrl} from '../api/artworkUrl';
@@ -18,17 +19,26 @@ import {blend, mix} from '../theme/color';
 import {sans} from '../theme/fonts';
 import {useTheme} from '../theme/ThemeProvider';
 import {EdgeFade} from '../tv/EdgeFade';
+import {ActionTile} from '../tv/ActionTile';
+import {FilterDrawer, type DrawerSection} from '../tv/FilterDrawer';
 import {BalancedT, Box, T, u} from '../tv/kit';
 import {MediaFocus} from '../tv/mediaFocus';
 import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
 import {useAccessToken} from './LibraryScreen';
+import {SearchDiscoveryCard} from './SearchDiscoveryCard';
+import {discoveryLibraryWorkId, discoveryTitleIsRequestable, filterSearchWorks, matchingSearchPlaylists, searchPlaylistTarget, searchSourcePlan, visibleSearchMediaTypes, snapshotFromDiscoveryTitle, type SearchMediaType} from '../lib/searchModel';
+import {reportFocus} from '../debug/parityControl';
+import {focusNode} from '../platform/focus';
+import {CatalogKindsContext} from '../lib/catalogKindsContext';
 
 /** Matches the web's `SEARCH_LIMIT`: one results screen, no pagination. */
 const SEARCH_LIMIT = 60;
 /** How long to wait after the last keystroke before searching. */
 const DEBOUNCE_MS = 350;
+const SEARCH_INPUT_FOCUS_ID = 'search input';
+const SEARCH_FILTERS_FOCUS_ID = 'search filters';
 
 const COLUMNS = 3;
 const GRID_X = 825.6;
@@ -50,6 +60,7 @@ export interface SearchScreenProps {
 
 export function SearchScreen({navigation}: SearchScreenProps): React.ReactElement {
   const client = useApiClient();
+  const availableWorkKinds = useContext(CatalogKindsContext);
   const token = useAccessToken(client);
   const baseUrl = client.resolveUrl('/');
   const {t} = useLanguage();
@@ -59,21 +70,57 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
   const [focusIndex, setFocusIndex] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
   const [cardFocused, setCardFocused] = useState(false);
+  const [mediaType, setMediaType] = useState<SearchMediaType>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [drawerFocused, setDrawerFocused] = useState(false);
+  const filtersRef = useRef<View>(null);
+  const filtersWereOpen = useRef(false);
   const scrollY = useRef(new Animated.Value(u(-GRID_CLIP_TOP))).current;
+
+  useEffect(() => {
+    const wasOpen = filtersWereOpen.current;
+    filtersWereOpen.current = filtersOpen;
+    if (wasOpen && !filtersOpen) focusNode(filtersRef);
+  }, [filtersOpen]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query.trim()), DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [query]);
 
-  const state = useAsyncData(() => client.searchCatalog(debounced, SEARCH_LIMIT), [client, debounced], {
-    enabled: debounced.length > 0,
-    isEmpty: (results) => results.length === 0,
+  const sourcePlan = searchSourcePlan(mediaType);
+  const catalogState = useAsyncData(() => client.searchCatalog(debounced, SEARCH_LIMIT, {availableOnly: true}), [client, debounced, mediaType], {
+    enabled: debounced.length > 0 && sourcePlan.works,
+  });
+  const playlistState = useAsyncData(() => client.listPlaylists(), [client, debounced, mediaType], {
+    enabled: debounced.length > 0 && sourcePlan.playlists,
+  });
+  const discoveryState = useAsyncData(() => client.discover(debounced, {scope: sourcePlan.discovery ?? 'media', limit: 25}), [client, debounced, mediaType], {
+    enabled: debounced.length > 0 && sourcePlan.discovery !== null,
   });
   const progress = useAsyncData(() => client.listWatchProgress(), [client]);
   const progressByWork = useMemo(() => indexWatchProgressByWork(progress.status === 'ready' ? progress.data : []), [progress]);
-  const results: Work[] = state.status === 'ready' ? state.data : [];
-  const selected = results[Math.min(focusIndex, Math.max(0, results.length - 1))];
+  const results = catalogState.status === 'ready' ? filterSearchWorks(catalogState.data, mediaType) : [];
+  const availablePlaylists = playlistState.status === 'ready' ? playlistState.data : [];
+  const playlists = sourcePlan.playlists ? matchingSearchPlaylists(availablePlaylists, debounced) : [];
+  const entries: Array<{type: 'work'; value: Work} | {type: 'playlist'; value: PlaylistResponse}> = [
+    ...results.map((value) => ({type: 'work' as const, value})),
+    ...playlists.map((value) => ({type: 'playlist' as const, value})),
+  ];
+  const discoveryExtras: DiscoverTitle[] = sourcePlan.discovery !== null && discoveryState.status === 'ready'
+    ? discoveryState.data.titles.filter((title) => title.kind === 'game' || title.sources.some((source) => source.source !== 'library'))
+    : [];
+  const discoveryHeaderIndex = Math.ceil(entries.length / COLUMNS) * COLUMNS;
+  const discoveryStartIndex = discoveryHeaderIndex + COLUMNS;
+  const gridEntries: Array<{entry: (typeof entries)[number] | {type: 'discovery'; value: DiscoverTitle}; index: number}> = [
+    ...entries.map((entry, index) => ({entry, index})),
+    ...discoveryExtras.map((value, offset) => ({entry: {type: 'discovery' as const, value}, index: discoveryStartIndex + offset})),
+  ];
+  const gridRows = gridEntries.length > 0 ? Math.ceil((Math.max(...gridEntries.map(({index}) => index)) + 1) / COLUMNS) : 0;
+  const activeEntry = gridEntries.find((item) => item.index === focusIndex)?.entry;
+  const selected = activeEntry?.type === 'work' ? activeEntry.value : undefined;
+  const selectedPlaylist = activeEntry?.type === 'playlist' ? activeEntry.value : undefined;
+  const selectedDiscovery = activeEntry?.type === 'discovery' ? activeEntry.value : undefined;
   const row = Math.floor(focusIndex / COLUMNS);
 
   useEffect(() => {
@@ -89,9 +136,18 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
     work.kind === 'series' ? t('pages.search.kindSeries') : work.kind === 'artist' ? t('pages.search.kindArtist') : work.kind === 'site' ? t('pages.search.kindSite') : t('pages.search.kindMovie');
   const year = (work: Work): string | null => (work.release_date ? String(new Date(work.release_date).getUTCFullYear()) : null);
   const open = (work: Work): void => navigation.navigate(work.kind === 'artist' ? ROUTES.musicDetail : ROUTES.workDetail, {workId: work.id, backTo: ROUTES.search});
+  const openPlaylist = (playlist: PlaylistResponse): void => navigation.navigate(ROUTES.playlists, {...searchPlaylistTarget(playlist, availablePlaylists), backTo: ROUTES.search});
+  const openDiscovery = (title: DiscoverTitle): void => {
+    const workId = discoveryLibraryWorkId(title);
+    if (workId) navigation.navigate(title.kind === 'artist' ? ROUTES.musicDetail : ROUTES.workDetail, {workId, backTo: ROUTES.search});
+  };
 
-  const detail =
-    state.status === 'ready' ? (results.length === 1 ? t('pages.search.resultCountOne', {count: 1}) : t('pages.search.resultCountOther', {count: results.length})) : state.status === 'empty' ? t('pages.search.zeroResults') : undefined;
+  const activeStates = [sourcePlan.works ? catalogState : null, sourcePlan.playlists ? playlistState : null].filter((state): state is NonNullable<typeof state> => state !== null);
+  const failed = activeStates.length > 0 && activeStates.every((state) => state.status === 'error');
+  const settled = activeStates.length > 0
+    ? activeStates.every((state) => state.status === 'ready' || state.status === 'empty' || state.status === 'error')
+    : sourcePlan.discovery !== null && (discoveryState.status === 'ready' || discoveryState.status === 'empty' || discoveryState.status === 'error');
+  const detail = debounced && settled ? (entries.length === 1 ? t('pages.search.resultCountOne', {count: 1}) : t('pages.search.resultCountOther', {count: entries.length})) : undefined;
   const artKind = selected ? preferredArtworkKind(selected, ['backdrop', 'poster']) : undefined;
   const dark = scheme === 'dark';
   // The web details panel's --dp-soft: ink 88% over the surface.
@@ -99,11 +155,41 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
   const visibleFrom = Math.max(0, (row - 1) * COLUMNS);
   const visibleTo = (row + 4) * COLUMNS;
 
+  const typeLabel = (type: SearchMediaType): string => {
+    switch (type) {
+      case 'all': return t('pages.search.all');
+      case 'movie': return t('pages.search.filterTypeMovies');
+      case 'series': return t('pages.search.filterTypeSeries');
+      case 'site': return t('pages.search.filterTypeSites');
+      case 'artist': return t('pages.search.filterTypeMusic');
+      case 'playlist': return t('pages.search.filterTypePlaylists');
+      case 'game': return t('pages.search.filterTypeGames');
+    }
+  };
+  const filterSections: DrawerSection[] = [{
+    key: 'type',
+    label: t('pages.search.filterByType'),
+    columns: 2,
+    chips: visibleSearchMediaTypes(availableWorkKinds).map((type) => ({
+      key: type,
+      label: typeLabel(type),
+      selected: mediaType === type,
+      focusId: `search filter ${type}`,
+      onPress: () => {
+        setMediaType(type);
+        setFocusIndex(0);
+        setCardFocused(false);
+        setFiltersOpen(false);
+        setDrawerFocused(false);
+      },
+    })),
+  }];
+
   return (
     <Stage artUri={selected && artKind ? workArtworkUrl(baseUrl, selected.id, artKind) : undefined} accessToken={token}>
       <PageHeader title={t('pages.search.title')} detail={detail} onBack={() => navigation.navigate(ROUTES.home)} />
 
-      {/* The search pill. A focused TextInput opens the system keyboard at once, which is how this platform's own search behaves. */}
+      {/* A focused TextInput opens the system keyboard on arrival, which is how this platform's own Search behaves. */}
       <View
         style={{
           position: 'absolute',
@@ -128,6 +214,7 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           onFocus={() => {
             setInputFocused(true);
             setCardFocused(false);
+            reportFocus(SEARCH_INPUT_FOCUS_ID);
           }}
           onBlur={() => setInputFocused(false)}
           placeholder={t('pages.search.searchPlaceholder')}
@@ -182,6 +269,35 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
             </T>
           </View>
         </Box>
+      ) : selectedPlaylist ? (
+        <Box x={153.6} y={286.6} w={552.6}>
+          <T size={12.288} weight={860} ls={0.983} lh={18.4} color={dark ? '#eaa6b6' : '#821e36'} upper>{t('pages.search.playlist')}</T>
+          <View style={{marginTop: u(25.9)}}>
+            <BalancedT key={selectedPlaylist.id} width={419.2} size={49.92} weight={560} ls={-2.995} lh={47.4} color={colour.ink}>{selectedPlaylist.name}</BalancedT>
+          </View>
+        </Box>
+      ) : selectedDiscovery ? (
+        <Box x={153.6} y={286.6} w={552.6}>
+          <T size={12.288} weight={860} ls={0.983} lh={18.4} color={dark ? '#eaa6b6' : '#821e36'} upper>
+            {`${selectedDiscovery.kind === 'game' ? t('discovery.extras.gamesTitle') : t('pages.search.availableToPlay')}${selectedDiscovery.year ? ` · ${selectedDiscovery.year}` : ''}`}
+          </T>
+          <View style={{marginTop: u(25.9)}}>
+            <BalancedT key={selectedDiscovery.title_key} width={419.2} size={49.92} weight={560} ls={-2.995} lh={47.4} color={colour.ink}>
+              {selectedDiscovery.title}
+            </BalancedT>
+          </View>
+          {selectedDiscovery.sources.length > 0 ? <View style={{marginTop: u(27), flexDirection: 'row'}}>
+            {selectedDiscovery.sources.slice(0, 2).map((source, index) => (
+              <T key={`${source.source}:${index}`} size={13.056} weight={600} lh={19.6} color={soft}>{index ? ` · ${source.label}` : source.label}</T>
+            ))}
+          </View> : null}
+          {selectedDiscovery.editions.length > 0 ? <View style={{marginTop: u(21.6), width: u(348.1)}}>
+            <T size={13.824} weight={600} lh={21.84} color={soft} lines={2}>{selectedDiscovery.editions.slice(0, 2).join(' · ')}</T>
+          </View> : null}
+          {selectedDiscovery.overview ? <View style={{marginTop: u(12), width: u(348.1)}}>
+            <T size={13.824} weight={600} lh={21.84} color={soft} lines={3}>{selectedDiscovery.overview}</T>
+          </View> : null}
+        </Box>
       ) : null}
 
       <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} />
@@ -197,13 +313,13 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
             </T>
           </View>
         </Box>
-      ) : state.status === 'error' ? (
+      ) : failed ? (
         <Box x={1304} y={350} w={500}>
           <T size={17.664} weight={610} color={colour.accent}>
             {t('pages.search.errorTitle')}
           </T>
         </Box>
-      ) : state.status === 'empty' ? (
+      ) : settled && entries.length === 0 && sourcePlan.works ? (
         <Box x={826} y={172} w={700}>
           <T size={17.664} weight={610} color={colour.ink}>
             {t('pages.search.noResultsTitle')}
@@ -218,33 +334,94 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
 
       <Box x={GRID_X - 20} y={GRID_CLIP_TOP} w={1920 - GRID_X + 20} h={1080 - GRID_CLIP_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
         <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 20)), top: scrollY, width: u(1920)}} pointerEvents="box-none">
-          {results.slice(visibleFrom, visibleTo).map((work, offset) => {
-            const index = visibleFrom + offset;
+          {discoveryExtras.length > 0 ? <Box x={GRID_X} y={GRID_Y + Math.floor(discoveryHeaderIndex / COLUMNS) * ROW_PITCH} w={800}>
+            <T size={17.664} weight={610} color={colour.ink}>{mediaType === 'game' ? t('discovery.extras.gamesTitle') : t('discovery.extras.title')}</T>
+          </Box> : null}
+          {gridEntries.filter(({index}) => index >= visibleFrom && index < visibleTo).map(({entry, index}) => {
+            if (entry.type === 'work') {
+              const work = entry.value;
+              return (
+                <ResultCard
+                  key={`work:${work.id}`}
+                  work={work}
+                  x={GRID_X + (index % COLUMNS) * COL_PITCH}
+                  y={GRID_Y + Math.floor(index / COLUMNS) * ROW_PITCH}
+                  baseUrl={baseUrl}
+                  token={token}
+                  label={`${kindLabel(work)}${year(work) ? ` · ${year(work)}` : ''}`}
+                  selected={cardFocused && index === focusIndex}
+                  progress={progressByWork.get(work.id)}
+                  progressReady={progress.status === 'ready'}
+                  onFocus={() => {
+                    setFocusIndex(index);
+                    setCardFocused(true);
+                    reportFocus('search result', {rail: 0, index});
+                  }}
+                  onPress={() => open(work)}
+                />
+              );
+            }
+            if (entry.type === 'playlist') {
+              return (
+                <PlaylistResultCard
+                  key={`playlist:${entry.value.id}`}
+                  playlist={entry.value}
+                  label={t('pages.search.playlist')}
+                  x={GRID_X + (index % COLUMNS) * COL_PITCH}
+                  y={GRID_Y + Math.floor(index / COLUMNS) * ROW_PITCH}
+                  selected={cardFocused && index === focusIndex}
+                  onFocus={() => { setFocusIndex(index); setCardFocused(true); reportFocus('search result', {rail: 0, index}); }}
+                  onPress={() => openPlaylist(entry.value)}
+                />
+              );
+            }
             return (
-              <ResultCard
-                key={work.id}
-                work={work}
+              <SearchDiscoveryCard
+                key={`discovery:${entry.value.title_key}`}
+                title={entry.value}
                 x={GRID_X + (index % COLUMNS) * COL_PITCH}
                 y={GRID_Y + Math.floor(index / COLUMNS) * ROW_PITCH}
-                baseUrl={baseUrl}
-                token={token}
-                label={`${kindLabel(work)}${year(work) ? ` · ${year(work)}` : ''}`}
                 selected={cardFocused && index === focusIndex}
-                progress={progressByWork.get(work.id)}
-                progressReady={progress.status === 'ready'}
-                onFocus={() => {
-                  setFocusIndex(index);
-                  setCardFocused(true);
-                }}
-                onPress={() => open(work)}
+                onFocus={() => { setFocusIndex(index); setCardFocused(true); reportFocus('search result', {rail: 0, index}); }}
+                onOpen={discoveryLibraryWorkId(entry.value) ? () => openDiscovery(entry.value) : undefined}
+                snapshot={snapshotFromDiscoveryTitle(entry.value)}
+                requestable={discoveryTitleIsRequestable(entry.value)}
               />
             );
           })}
         </Animated.View>
       </Box>
       <EdgeFade side="top" active={row > 0} x={GRID_X - 20} y={GRID_CLIP_TOP} w={1920 - GRID_X + 20} h={1080 - GRID_CLIP_TOP} />
-      <EdgeFade side="bottom" active={Math.ceil(results.length / COLUMNS) > row + 3} x={GRID_X - 20} y={GRID_CLIP_TOP} w={1920 - GRID_X + 20} h={1080 - GRID_CLIP_TOP} />
+      <EdgeFade side="bottom" active={gridRows > row + 3} x={GRID_X - 20} y={GRID_CLIP_TOP} w={1920 - GRID_X + 20} h={1080 - GRID_CLIP_TOP} />
+      <ActionTile
+        icon="filters"
+        label={t('pages.search.filters')}
+        focusId={SEARCH_FILTERS_FOCUS_ID}
+        slot={0}
+        active={filtersOpen}
+        focusable={!drawerFocused}
+        defaultFocus
+        focusRef={filtersRef}
+        onPress={() => setFiltersOpen(true)}
+      />
+      {filtersOpen ? <FilterDrawer kicker={t('pages.search.filters')} title={t('pages.search.filters')} closeLabel={t('components.mediaContextMenu.close')} closeFocusId="search filters close" onClose={() => { setFiltersOpen(false); setDrawerFocused(false); setCardFocused(false); }} sections={filterSections} onFocused={() => { setDrawerFocused(true); }} /> : null}
     </Stage>
+  );
+}
+
+function PlaylistResultCard({playlist, label, x, y, selected, onFocus, onPress}: {playlist: PlaylistResponse; label: string; x: number; y: number; selected: boolean; onFocus: () => void; onPress: () => void}): React.ReactElement {
+  const {colour} = useTheme();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={playlist.name} onFocus={onFocus} onPress={onPress} style={{position: 'absolute', left: u(x), top: u(y), width: u(ART_W)}}>
+      <MediaFocus variant="search" focused={selected} width={ART_W} height={ART_H} radius={12.48}>
+        <View style={{width: '100%', height: '100%', borderRadius: u(12.48), backgroundColor: colour.surfaceStrong, borderWidth: 1, borderColor: colour.line, alignItems: 'center', justifyContent: 'center'}}>
+          <T size={11.904} weight={610} color={colour.inkMuted}>{label}</T>
+        </View>
+      </MediaFocus>
+      <View style={{marginTop: u(11.5), paddingHorizontal: u(1.9)}}>
+        <T size={11.904} weight={610} ls={-0.179} lh={17.9} color={colour.ink} lines={1}>{playlist.name}</T>
+      </View>
+    </Pressable>
   );
 }
 

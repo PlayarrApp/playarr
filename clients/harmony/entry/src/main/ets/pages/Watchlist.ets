@@ -8,6 +8,7 @@
  * live-updates revalidation web does.
  */
 
+import { nunito } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { tv } from '../design/Metrics';
@@ -87,7 +88,7 @@ export struct WatchlistScreen {
 
   @Builder
   private pill(label: string, onTap: () => void): void {
-    Text(label)
+    Text(label).fontFamily(nunito(400))
       .fontSize(tv(PILL_SIZE))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
@@ -102,7 +103,7 @@ export struct WatchlistScreen {
   private row(entry: WatchlistEntry): void {
     Row({ space: tv(PILL_GAP) }) {
       Column({ space: tv(COPY_GAP) }) {
-        Text(entry.title.title)
+        Text(entry.title.title).fontFamily(nunito(700))
           .fontSize(tv(TITLE_SIZE_ROW))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
@@ -110,18 +111,18 @@ export struct WatchlistScreen {
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         Row({ space: tv(META_GAP) }) {
           if (entry.title.year !== undefined && entry.title.year !== null) {
-            Text(String(entry.title.year))
+            Text(String(entry.title.year)).fontFamily(nunito(400))
               .fontSize(tv(META_SIZE))
               .fontColor(toResourceColor(activeColors().inkMuted))
           }
           ForEach(sourceChips(entry.title.sources), (chip: string) => {
-            Text(chip)
+            Text(chip).fontFamily(nunito(400))
               .fontSize(tv(META_SIZE))
               .fontColor(toResourceColor(activeColors().inkMuted))
           }, (chip: string): string => chip)
         }
         ForEach(explainedReasons(entry.actions), (line: string) => {
-          Text(line)
+          Text(line).fontFamily(nunito(400))
             .fontSize(tv(META_SIZE))
             .fontColor(toResourceColor(activeColors().inkMuted))
         }, (line: string): string => line)
@@ -166,12 +167,12 @@ export struct WatchlistScreen {
         .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
     } else if (this.entries.length === 0) {
       Column({ space: tv(8) }) {
-        Text('Your watchlist is empty')
+        Text('Your watchlist is empty').fontFamily(nunito(500))
           .fontSize(tv(26.4))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(-0.924))
           .fontColor(toResourceColor(activeColors().ink))
-        Text('Add titles from search or a title page to keep them here on every device.')
+        Text('Add titles from search or a title page to keep them here on every device.').fontFamily(nunito(400))
           .fontSize(tv(13.824))
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -186,7 +187,7 @@ export struct WatchlistScreen {
         }, (entry: WatchlistEntry): string => entry.title.title_key)
         if (this.removeError.length > 0) {
           ListItem() {
-            Text(this.removeError)
+            Text(this.removeError).fontFamily(nunito(400))
               .fontSize(tv(META_SIZE))
               .fontColor(toResourceColor(activeColors().danger))
           }

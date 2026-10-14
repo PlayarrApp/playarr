@@ -1,6 +1,6 @@
 import Foundation
-import PlayarrKit
 import XCTest
+@testable import PlayarrKit
 
 final class OpenAPISchemasTests: XCTestCase {
     func testDecodesVersionCompatibilityUsingWireKeys() throws {
@@ -72,5 +72,15 @@ final class OpenAPISchemasTests: XCTestCase {
         let decoded = try JSONDecoder().decode(ExternalProvider.self, from: encoded)
 
         XCTAssertEqual(decoded, original)
+    }
+
+    func testWorkDecodesOptionalEndDateForEndedSeries() throws {
+        let json = Data(
+            #"{"id":"00000000-0000-0000-0000-000000000001","kind":"series","external_refs":[],"title":"Test Series A","sort_title":"Test Series A","overview":null,"images":[],"genres":[],"tags":[],"added_at":"2026-01-01T00:00:00Z","monitored":true,"availability":"available","release_date":"2011-01-01T00:00:00Z","end_date":"2017-01-01T00:00:00Z"}"#.utf8
+        )
+
+        let work = try PlayarrJSONCoding.makeDecoder().decode(Work.self, from: json)
+
+        XCTAssertEqual(work.endDate, "2017-01-01T00:00:00Z")
     }
 }
