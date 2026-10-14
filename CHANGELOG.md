@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- On iPad, page headers show the subtitle beside the title after a vertical divider, in the page ink and never pink (Series and Movies detail, Library count, playlist item count). It wraps under the title behind a rule only when there is no room before the clock. On iPhone the header subtitle is hidden, as on the web, except a Settings section, which shows its name in place of the title.
 - macOS Home card movement now applies focus to the registered child button and updates the Home selection mirror from the observed focus change, avoiding competing SwiftUI focus bindings.
 - macOS and tvOS Home wait for the On Deck request to succeed or fail before showing Home rails; the network layer timeout governs, and the navigation remains available while Home shows its skeleton. Only the current On Deck request generation can update rail and progress state. The primary rail keeps server shelf membership and avoids repeating On Deck cards in the fallback movie rail.
 - The Home nav-to-stage focus handoff is claimed once per route entry and cancelled when the viewer moves focus before it runs. Its initial target is captured once, so late On Deck results do not move focus or trigger another reset.
