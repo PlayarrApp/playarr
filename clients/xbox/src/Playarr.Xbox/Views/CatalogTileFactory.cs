@@ -201,25 +201,33 @@ namespace Playarr.Xbox.Views
             return root;
         }
 
+        // (y offset, edge growth, alpha/255) layers fitted to the two Gaussian shadows of --card-shadow-rest: the edge of a
+        // blurred box falls off as A * (1 - Phi(x / sigma)), so each layer adds the alpha that keeps the stack on that curve.
+        // 0 10px 20px at 14 % (sigma 10) and 0 3px 8px at 10 % (sigma 4); layers hidden behind the card are left out.
+        private static readonly (int Offset, int Grow, byte Alpha)[] RestingShadowLayers =
+        {
+            (10, 21, 1), (10, 18, 1), (10, 15, 1), (10, 12, 2), (10, 9, 3), (10, 6, 4), (10, 3, 4), (10, 0, 5), (10, -3, 4), (10, -6, 4), (10, -9, 3),
+            (3, 8, 1), (3, 6, 2), (3, 4, 3), (3, 2, 4), (3, 0, 6), (3, -2, 4),
+        };
+
         /// <summary>
-        /// Web's resting card shadow (<c>--card-shadow-rest</c>: 0 10px 20px at 14 %, 0 3px 8px at 10 %) as stacked, fading
+        /// Web's resting card shadow (<c>--card-shadow-rest</c>: 0 10px 20px at 14 %, 0 3px 8px at 10 %) as stacked
         /// rounded layers on a zero-size canvas before the art, so it paints beneath the card and moves nothing.
         /// </summary>
         private static Canvas RestingShadow(double width, double height)
         {
             var canvas = new Canvas { Width = 0, Height = 0, HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false };
-            for (var k = 15; k >= 0; k--)
+            foreach (var (offset, grow, alpha) in RestingShadowLayers)
             {
-                var d = k * 2;
                 var layer = new Border
                 {
-                    Width = width + 2 * d,
-                    Height = height + 2 * d,
-                    CornerRadius = new CornerRadius(12 + d),
-                    Background = new SolidColorBrush(Windows.UI.Color.FromArgb(k < 3 ? (byte)7 : (byte)4, 56, 38, 33)),
+                    Width = width + 2 * grow,
+                    Height = height + 2 * grow,
+                    CornerRadius = new CornerRadius(System.Math.Max(0, 12 + grow)),
+                    Background = new SolidColorBrush(Windows.UI.Color.FromArgb(alpha, 56, 38, 33)),
                 };
-                Canvas.SetLeft(layer, -d);
-                Canvas.SetTop(layer, 8 - d);
+                Canvas.SetLeft(layer, -grow);
+                Canvas.SetTop(layer, offset - grow);
                 canvas.Children.Add(layer);
             }
 
