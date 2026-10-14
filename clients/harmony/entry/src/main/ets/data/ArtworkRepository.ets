@@ -89,11 +89,16 @@ export const HERO_ARTWORK_PRIORITY: ImageKind[] = ['backdrop', 'poster'];
 /** In-memory LRU capacity -- an arbitrary, generous bound (a handful of
  * screens' worth of rails and a detail page) rather than anything the brief
  * pins to a specific number. */
-const MAX_ARTWORK_CACHE_ENTRIES: number = 64;
+const MAX_ARTWORK_CACHE_ENTRIES: number = 128;
+
+/** An entry younger than this is served without asking the server again: artwork does not change within a session, and a Home or
+ * Library walk asks for the same poster many times (focus, rebuilds). Older entries are revalidated with `If-None-Match`. */
+const ARTWORK_FRESH_MS: number = 5 * 60 * 1000;
 
 interface ArtworkCacheEntry {
   pixelMap: image.PixelMap;
   etag: string | null;
+  fetchedAtMs: number;
 }
 
 /** The cache itself, keyed by `buildCacheKey(...)`'s `(serverOrigin, id,
@@ -334,7 +339,7 @@ async function decodeArtworkSuccess(response: HttpTransportResponse, cacheKey: s
   }
 
   const etag = response.headers.get('etag') ?? null;
-  const entry: ArtworkCacheEntry = { pixelMap: pixelMap, etag: etag };
+  const entry: ArtworkCacheEntry = { pixelMap: pixelMap, etag: etag, fetchedAtMs: Date.now() };
   putCacheEntry(cacheKey, entry);
 
   const ok: ApiOk<image.PixelMap> = { kind: 'ok', status: response.status, value: pixelMap };
@@ -362,6 +367,10 @@ async function fetchArtworkBytes(path: string, cacheKey: string): Promise<ApiRes
   }
 
   const cached = getCacheEntry(cacheKey);
+  if (cached !== undefined && Date.now() - cached.fetchedAtMs < ARTWORK_FRESH_MS) {
+    const fresh: ApiOk<image.PixelMap> = { kind: 'ok', status: 200, value: cached.pixelMap };
+    return fresh;
+  }
   const headers = buildArtworkRequestHeaders(url, cached !== undefined ? cached.etag : null);
   if (headers.size === 0) {
     // buildArtworkRequestHeaders refused outright (a foreign origin, or no
@@ -384,6 +393,7 @@ async function fetchArtworkBytes(path: string, cacheKey: string): Promise<ApiRes
   }
 
   if (response.status === 304 && cached !== undefined) {
+    cached.fetchedAtMs = Date.now();
     const ok: ApiOk<image.PixelMap> = { kind: 'ok', status: response.status, value: cached.pixelMap };
     return ok;
   }

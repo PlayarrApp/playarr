@@ -1,0 +1,1 @@
+- HarmonyOS TV: artwork already loaded in the last five minutes is reused without asking the server again, and the artwork cache holds 128 entries (was 64), so Home and Library walks stop refetching the same posters.
