@@ -1,0 +1,1 @@
+- Xbox: episode cards on the series page show the web watch-state overlay: the unseen dot, or a progress line for a part-watched episode.

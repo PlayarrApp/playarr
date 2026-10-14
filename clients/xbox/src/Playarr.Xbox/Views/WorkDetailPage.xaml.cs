@@ -7,6 +7,7 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI.Xaml.Shapes;
 using Playarr.Core.Models;
 using Playarr.Xbox;
 using Playarr.Xbox.ViewModels;
@@ -792,7 +793,7 @@ namespace Playarr.Xbox.Views
                     "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
                 foreach (var episode in season.Episodes)
                 {
-                    list.Items.Add(EpisodeCard(_viewModel.Work, season.Season.SeasonNumber, episode));
+                    list.Items.Add(EpisodeCard(_viewModel.Work, season.Season.SeasonNumber, episode, _viewModel.EpisodeWatch(episode)));
                 }
 
                 list.ItemClick += (s, e) =>
@@ -829,7 +830,7 @@ namespace Playarr.Xbox.Views
             AppendCast();
         }
 
-        private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail)
+        private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail, (double? Percent, bool Unwatched) watch)
         {
             var episode = detail.Episode;
             var art = new Grid
@@ -904,6 +905,30 @@ namespace Playarr.Xbox.Views
                 still.Unloaded += (_, __) => stopWatchingViewport();
                 startWatchingViewport();
                 art.Children.Add(still);
+            }
+
+            if (watch.Percent is { } percent)
+            {
+                // .tv-watch-progress: a 3 px brand line along the bottom edge on a 20 % white track.
+                var track = new Grid { Height = 3, VerticalAlignment = VerticalAlignment.Bottom, Background = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(51, 255, 255, 255)), IsHitTestVisible = false };
+                track.Children.Add(new Border { Width = Math.Max(3, 268 * percent / 100), HorizontalAlignment = HorizontalAlignment.Left, Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrBrand"] });
+                art.Children.Add(track);
+            }
+            else if (watch.Unwatched)
+            {
+                // .tv-watch-unseen: a brand dot with a white ring in the top right corner.
+                art.Children.Add(new Ellipse
+                {
+                    Width = 13,
+                    Height = 13,
+                    Margin = new Thickness(0, 10, 10, 0),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Fill = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrBrand"],
+                    Stroke = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false,
+                });
             }
 
             art.Children.Add(new TextBlock
