@@ -1,0 +1,1 @@
+- A long playlist name no longer widens the Nura window (which pushed the header action and letter rail off screen on every tab).

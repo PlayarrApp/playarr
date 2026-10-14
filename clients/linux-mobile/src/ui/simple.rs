@@ -62,6 +62,9 @@ pub fn playlists(app: &Rc<App>, client: Client) -> gtk4::Widget {
                             .label(&p.name)
                             .css_classes(["pa-cap-title"])
                             .xalign(0.0)
+                            // A long name must not widen the whole window (every tab shares its width).
+                            .ellipsize(gtk4::pango::EllipsizeMode::End)
+                            .max_width_chars(1)
                             .build(),
                     );
                     row.append(
