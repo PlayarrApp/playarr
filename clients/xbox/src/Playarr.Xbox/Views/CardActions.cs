@@ -9,8 +9,8 @@ namespace Playarr.Xbox.Views
 {
     /// <summary>
     /// The web's long-press actions panel (MediaContextMenu) in the shared <see cref="Drawer"/>: the gamepad Menu
-    /// button, a long press or right-click on a card opens "Title actions" with Play, Mark as Watched and Mark as
-    /// Unwatched. Download and Add to Playlist are not offered: this client has neither feature yet.
+    /// button, a long press or right-click on a card opens "Title actions" with Play, Download (films), Add to
+    /// Playlist, Mark as Watched and Mark as Unwatched.
     /// </summary>
     internal static class CardActions
     {
@@ -52,7 +52,7 @@ namespace Playarr.Xbox.Views
         {
             var body = new StackPanel();
             Drawer? drawer = null;
-            body.Children.Add(Drawer.Action("", "Play", async () =>
+            body.Children.Add(Drawer.Action("\uE768", "Play", async () =>
             {
                 drawer?.Close();
                 var detail = await App.Environment.ApiClient.GetWorkAsync(work.Id);
@@ -67,9 +67,67 @@ namespace Playarr.Xbox.Views
                     App.Navigation.Navigate(typeof(WorkDetailPage), work.Id);
                 }
             }));
+            if (work.Kind == WorkKind.Movie)
+            {
+                body.Children.Add(Drawer.Action("\uE896", "Download", () => Download(work, drawer)));
+            }
+
+            body.Children.Add(Drawer.Action("\uE710", "Add to Playlist", () => OpenPlaylists(host, work)));
             body.Children.Add(Drawer.Action("", "Mark as Watched", () => SetWatched(work, true, drawer)));
             body.Children.Add(Drawer.Action("", "Mark as Unwatched", () => SetWatched(work, false, drawer)));
             drawer = Drawer.Open(host, "Title actions", work.Title, body);
+        }
+
+        private static async void Download(Work work, Drawer? drawer)
+        {
+            try
+            {
+                var detail = await App.Environment.ApiClient.GetWorkAsync(work.Id);
+                var leaf = detail.PlayableLeaves().FirstOrDefault();
+                var service = Services.DownloadService.Instance;
+                await service.LoadAsync();
+                if (leaf.MediaFileId != Guid.Empty && service.ForMediaFile(leaf.MediaFileId) == null)
+                {
+                    await service.StartAsync(new DownloadRecord { WorkId = work.Id, MediaFileId = leaf.MediaFileId, Kind = "movie", Title = work.Title });
+                }
+
+                drawer?.Close();
+            }
+            catch (Exception error)
+            {
+                App.LogCrash(error);
+            }
+        }
+
+        private static async void OpenPlaylists(Panel host, Work work)
+        {
+            try
+            {
+                var body = new StackPanel();
+                foreach (var info in (await App.Environment.ApiClient.ListPlaylistsAsync()).Where(p => !p.IsSystem))
+                {
+                    var id = info.Id;
+                    body.Children.Add(Drawer.Action("\uE710", info.Name, async () =>
+                    {
+                        try
+                        {
+                            await App.Environment.ApiClient.AddToPlaylistAsync(id, work.Id);
+                        }
+                        catch (Exception error)
+                        {
+                            App.LogCrash(error);
+                        }
+
+                        Drawer.TryCloseCurrent();
+                    }));
+                }
+
+                Drawer.Open(host, "Add to Playlist", work.Title, body);
+            }
+            catch (Exception error)
+            {
+                App.LogCrash(error);
+            }
         }
 
         private static async void SetWatched(Work work, bool watched, Drawer? drawer)

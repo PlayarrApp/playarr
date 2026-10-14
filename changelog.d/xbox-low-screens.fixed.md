@@ -1,0 +1,1 @@
+- Xbox: Search works again (the server answers a page, not a bare list); the title actions drawer matches the web (Download, Add to Playlist, taller filled rows, filled Close button, semibold title); the calendar month cells use the web's in-month and out-of-month fills.

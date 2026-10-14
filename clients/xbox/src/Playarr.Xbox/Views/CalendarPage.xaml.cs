@@ -190,7 +190,10 @@ namespace Playarr.Xbox.Views
                 Height = height,
                 BorderBrush = isToday ? Theme.FocusRing : (Brush)Application.Current.Resources["PlayarrLine"],
                 BorderThickness = new Thickness(isToday ? 2 : 0.5),
-                Background = day.Month == _anchor.Month ? null : new SolidColorBrush(Color.FromArgb(0x30, 0, 0, 0)),
+                // Web's month cells: a faint surface in the month, a stronger one outside it.
+                Background = new SolidColorBrush(day.Month == _anchor.Month
+                    ? (Theme.IsLight ? Color.FromArgb(255, 251, 250, 249) : Color.FromArgb(255, 27, 24, 27))
+                    : (Theme.IsLight ? Color.FromArgb(255, 239, 238, 237) : Color.FromArgb(255, 36, 31, 35))),
                 Padding = new Thickness(10, 8, 10, 8),
             };
             var lines = new StackPanel { Spacing = 7 };

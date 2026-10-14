@@ -321,7 +321,7 @@ namespace Playarr.Core.Networking
             return GetAsync<CatalogPage>("/api/v1/catalog", query, authenticated: true, cancellationToken);
         }
 
-        public Task<IList<Work>> SearchCatalogAsync(
+        public async Task<IList<Work>> SearchCatalogAsync(
             string query,
             int? limit = null,
             CancellationToken cancellationToken = default)
@@ -329,8 +329,10 @@ namespace Playarr.Core.Networking
             var parameters = new Dictionary<string, string> { ["q"] = query };
             if (limit is { } l) parameters["limit"] = l.ToString(CultureInfo.InvariantCulture);
 
-            return GetAsync<IList<Work>>(
-                "/api/v1/catalog/search", parameters, authenticated: true, cancellationToken);
+            // The server answers a page ({"items": [...], "remote_only": [...]}), not a bare list.
+            var page = await GetAsync<CatalogPage>(
+                "/api/v1/catalog/search", parameters, authenticated: true, cancellationToken).ConfigureAwait(false);
+            return page.Items;
         }
 
         public Task<WorkDetail> GetWorkAsync(Guid id, CancellationToken cancellationToken = default) =>

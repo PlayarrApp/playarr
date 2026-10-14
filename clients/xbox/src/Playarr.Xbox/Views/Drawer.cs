@@ -45,9 +45,9 @@ namespace Playarr.Xbox.Views
             var eyebrowText = Ui.Text(eyebrow.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft");
             eyebrowText.CharacterSpacing = 120;
             header.Children.Add(eyebrowText);
-            var titleText = Ui.Text(title, 34, FontWeights.Normal, "PlayarrInk", new Thickness(0, 10, 0, 0));
+            var titleText = Ui.Text(title, 34, FontWeights.Bold, "PlayarrInk", new Thickness(0, 10, 0, 0));
             titleText.TextWrapping = TextWrapping.WrapWholeWords;
-            titleText.LineHeight = 40;
+            titleText.LineHeight = 57;
             titleText.MaxLines = 3;
             header.Children.Add(titleText);
             panel.Children.Add(header);
@@ -55,6 +55,8 @@ namespace Playarr.Xbox.Views
             var close = Ui.RoundButton("", Close);
             close.Width = close.Height = 46;
             close.CornerRadius = new CornerRadius(23);
+            close.Background = Ui.Res("PlayarrSurfaceSoft");
+            close.BorderThickness = new Thickness(0);
             close.HorizontalAlignment = HorizontalAlignment.Right;
             close.VerticalAlignment = VerticalAlignment.Top;
             close.Margin = new Thickness(0, -20, -22, 0);
@@ -63,7 +65,7 @@ namespace Playarr.Xbox.Views
             var scroller = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden };
             var bodyHost = new Grid { Margin = new Thickness(0, 0, 0, 0) };
             bodyHost.Children.Add(scroller);
-            header.SizeChanged += (s, e) => bodyHost.Margin = new Thickness(0, e.NewSize.Height + 40, 0, 0);
+            header.SizeChanged += (s, e) => bodyHost.Margin = new Thickness(0, e.NewSize.Height + 28, 0, 0);
             panel.Children.Add(bodyHost);
 
             _overlay = new Grid();
@@ -78,7 +80,7 @@ namespace Playarr.Xbox.Views
             panel.Loaded += (s, e) =>
             {
                 var first = FocusManager.FindFirstFocusableElement(scroller) as Control;
-                (first ?? close).Focus(FocusState.Programmatic);
+                (first ?? close).Focus(FocusState.Keyboard);
             };
         }
 
@@ -212,19 +214,18 @@ namespace Playarr.Xbox.Views
         public static Button Action(string glyph, string label, Action onClick)
         {
             var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 18 };
-            content.Children.Add(new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 12, Foreground = Ui.Res("PlayarrBrand") });
-            content.Children.Add(Ui.Text(label, 14, FontWeights.SemiBold, "PlayarrInk"));
+            content.Children.Add(new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 16, Foreground = Ui.Res("PlayarrBrand") });
+            content.Children.Add(Ui.Text(label, 19, FontWeights.Bold, "PlayarrInk"));
             var button = new Button
             {
-                Height = 46,
-                Margin = new Thickness(0, 0, 0, 10),
-                Padding = new Thickness(22, 0, 16, 0),
+                Height = 68,
+                Margin = new Thickness(0, 0, 0, 14),
+                Padding = new Thickness(26, 0, 16, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
-                CornerRadius = new CornerRadius(6),
-                Background = Ui.Res("PlayarrSurface"),
-                BorderBrush = Ui.Res("PlayarrLine"),
-                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Background = Ui.Res("PlayarrSurfaceSoft"),
+                BorderThickness = new Thickness(0),
                 Content = content,
                 FocusVisualPrimaryBrush = Theme.FocusRing,
                 FocusVisualPrimaryThickness = new Thickness(3),
