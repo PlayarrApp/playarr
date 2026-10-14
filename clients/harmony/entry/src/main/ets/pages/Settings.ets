@@ -20,6 +20,10 @@ import { getPlayerPreferences, updatePlayerPreferences, getProfilePinSetting, up
 import type { Choice } from '../design/components/ChoiceSegments';
 
 import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance } from '../AppContainer';
+import { InvitePanel } from '../design/components/InvitePanel';
+import { ProfileAvatarPanel } from '../design/components/ProfileAvatarPanel';
+import { HomeRailsPanel } from '../design/components/HomeRailsPanel';
+import { YourDataPanel } from '../design/components/YourDataPanel';
 import { QualityMatrix } from '../design/components/QualityMatrix';
 import { ORIGINAL_QUALITY, normaliseQuality, normaliseSubtitleMode, normaliseSubtitleLanguage } from '../core/PlayerDefaults';
 
@@ -510,6 +514,14 @@ export struct SettingsScreen {
         this.serverPanel()
       } else if (this.openSection === 'profile-lock') {
         this.profileLockPanel()
+      } else if (this.openSection === 'home') {
+        HomeRailsPanel({ panelWidth: this.panelWidth() })
+      } else if (this.openSection === 'profile-avatar') {
+        ProfileAvatarPanel()
+      } else if (this.openSection === 'invite') {
+        InvitePanel({ panelWidth: this.panelWidth() })
+      } else if (this.openSection === 'your-data') {
+        YourDataPanel({ panelWidth: this.panelWidth() })
       } else {
         this.pendingPanel()
       }
@@ -531,6 +543,14 @@ export struct SettingsScreen {
             this.serverPanel()
           } else if (this.openSection === 'profile-lock') {
             this.profileLockPanel()
+          } else if (this.openSection === 'home') {
+            HomeRailsPanel({ panelWidth: this.panelWidth() })
+          } else if (this.openSection === 'profile-avatar') {
+            ProfileAvatarPanel()
+          } else if (this.openSection === 'invite') {
+            InvitePanel({ panelWidth: this.panelWidth() })
+          } else if (this.openSection === 'your-data') {
+            YourDataPanel({ panelWidth: this.panelWidth() })
           } else {
             this.pendingPanel()
           }

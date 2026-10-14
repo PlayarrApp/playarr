@@ -74,6 +74,7 @@ import type { RgbaColor } from '../../core/Tokens';
 import { FOCUS_LIFT } from './FocusLift';
 import { ProfileAvatar } from './ProfileAvatar';
 import { resolveAvatarPreset } from '../../core/AvatarPreset';
+import { syncCurrentAvatar } from '../../data/ProfileRepository';
 import { clientVersion } from '../../core/AppConfig';
 
 /** The id the rail reports when the profile tile is activated. */
@@ -223,6 +224,12 @@ export struct NavRail {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
+  /** The avatar chosen in Settings > Profile avatar ('' until one is saved on the server). */
+  @StorageProp('currentAvatarPreset') private avatarOverride: string = '';
+
+  aboutToAppear(): void {
+    syncCurrentAvatar();
+  }
   /** The signed-in profile, set by the profile picker when it loads (web's foot-of-rail identity tile). */
   @StorageProp('currentProfileName') private profileName: string = '';
   @StorageProp('currentProfileId') private profileId: string = '';
@@ -295,7 +302,7 @@ export struct NavRail {
   private profileGroup(): void {
     Column({ space: tv(4) }) {
       Column({ space: NAV_TILE_ICON_LABEL_GAP }) {
-        ProfileAvatar({ presetId: resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE) })
+        ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE) })
           .focusable(false)
         Text(this.firstName())
           .fontSize(tv(TvGeometry.navTileLabelSize))

@@ -1,0 +1,1 @@
+- HarmonyOS TV: Settings > Profile avatar picks a built-in avatar, saved to the profile as web does, and the nav rail and Profiles show it. Custom photo upload is not available yet.

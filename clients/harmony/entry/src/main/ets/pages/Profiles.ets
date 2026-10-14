@@ -49,7 +49,7 @@ import { resolveAvatarPreset } from '../core/AvatarPreset.ts';
 import { BRAND_PINK, BRAND_PINK_SOFT, Spacing, Radii } from '../core/Tokens';
 import type { RgbaColor } from '../core/Tokens';
 
-import { listProfiles, verifyPin } from '../data/ProfileRepository';
+import { listProfiles, verifyPin, syncCurrentAvatar } from '../data/ProfileRepository';
 
 import { getSessionManager, getServerDirectory, saveThemeChoice } from '../AppContainer';
 import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
@@ -153,7 +153,11 @@ struct Profiles {
   @State private pinCancelFocusPercent: number = 0;
   @State private pinContinueFocusPercent: number = 0;
 
+  /** The avatar chosen in Settings > Profile avatar ('' until one is saved on the server). */
+  @StorageProp('currentAvatarPreset') private avatarOverride: string = '';
+
   aboutToAppear(): void {
+    syncCurrentAvatar();
     this.loadProfiles();
   }
 
@@ -404,7 +408,7 @@ struct Profiles {
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
           Column() {
             ProfileAvatar({
-              presetId: resolveAvatarPreset(profile.id),
+              presetId: profile.is_current && this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(profile.id),
               diameter: tv(TV_CHOICE_WIDTH),
               initialFocus: profile.is_current,
               onSelect: () => {

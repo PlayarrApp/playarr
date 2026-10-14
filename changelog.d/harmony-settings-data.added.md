@@ -1,0 +1,1 @@
+- HarmonyOS TV: Settings > Your data exports and imports your data through one-time QR codes (the ten-foot flow web uses): prepare an export and show its download code, or open an upload code, then preview and apply the import.
