@@ -194,6 +194,11 @@ def detail(s):
         this.mountedSeriesEpisodeIds.indexOf(targetEpisodeId) >= 0 ? 1 : 0);
       if (targetRail !== undefined) {
 """, 1)
+    # The watchlist pill is blank until its resolve returns: count the pending resolve with the placeholders (img=+1/-1).
+    resolve_old = "    const result = await resolveTitle(snapshotFromWork(work));\n    if (result.kind === 'ok') {\n      this.watchlistKey = result.value.title.title_key;\n      this.listed = result.value.in_watchlist === true;\n    } else {\n      this.listed = false;\n    }\n"
+    assert s.count(resolve_old) == 1
+    s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { previewReport } from '../util/PreviewState';", 1)
+    s = s.replace(resolve_old, "    previewReport('img=1');\n" + resolve_old + "    previewReport('img=-1');\n", 1)
     load_detail = "  private async loadDetail(): Promise<void> {\n"
     assert load_detail in s
     s = s.replace(load_detail, load_detail + "    setPreviewRouteContext('Detail', '', this.workId);\n    this.previewScopeGeneration = currentPreviewRouteGeneration();\n    this.previewLoadSequence = beginPreviewDetailLoad(this.workId);\n    this.previewLoadGeneration = currentPreviewRouteGeneration();\n    const previewLoadSequence: number = this.previewLoadSequence;\n    const previewLoadGeneration: number = this.previewLoadGeneration;\n    this.previewCardAreaRouteGenerations = new Map();\n    this.previewSeriesFocusRequestCount = 0;\n    this.previewReportedSeriesPrerequisites = new Map();\n    this.previewSeasonRowAreas = new Map();\n", 1)

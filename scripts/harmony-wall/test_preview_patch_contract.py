@@ -23,6 +23,12 @@ class PreviewPatchContractTests(unittest.TestCase):
         cls.preview_state = (HERE / "overlay/src/main/ets/util/PreviewState.ets").read_text(encoding="utf-8")
         cls.detail_source = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/pages/Detail.ets").read_text(encoding="utf-8")
 
+    def test_watchlist_resolve_is_counted_as_pending(self):
+        patched = patch_state.detail(self.detail_source)
+        body = patched.split("private async loadWatchlistState", 1)[1].split("private async toggleWatchlist", 1)[0]
+        self.assertLess(body.index("previewReport('img=1')"), body.index("await resolveTitle"))
+        self.assertGreater(body.index("previewReport('img=-1')"), body.index("this.listed = false"))
+
     def test_preview_reporting_uses_scalar_props_and_no_function_props(self):
         card_transform = self.patch_state.split("def card(s):", 1)[1].split("\ndef nav(s):", 1)[0]
         detail_transform = self.patch_state.split("def detail(s):", 1)[1].split("\ndef card_dbg(s):", 1)[0]
