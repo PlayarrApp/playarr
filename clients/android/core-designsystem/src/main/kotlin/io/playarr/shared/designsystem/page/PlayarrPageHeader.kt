@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -148,12 +149,13 @@ internal fun PlayarrPageHeaderRow(
         }.first().measure(loose.copy(maxWidth = titleMax.coerceAtMost(constraints.maxWidth)))
         val separator = (if (tv) 47.04.dp else 10.dp).roundToPx()
         val titleEnd = backWidth + backGap + titleP.width
-        val probe = subtitle?.takeIf { !spec.countLine }?.let {
+        val probe = subtitle?.takeIf { tv || !spec.countLine }?.let {
             subcompose("probe") { if (tv) PlayarrTvInlineSubtitle(it) else PlayarrBreadcrumbText(it, phone = true) }.first().measure(loose)
         }
+        // Television: web's clock starts at x 474, 76 dp before the reserved 550, and the subtitle keeps 16 dp clear of it (hence 92 dp).
         // Web (#1299): the subtitle sits beside the title after a divider and wraps beneath only when it does not fit before the clock.
-        val placement = if (spec.countLine && subtitle != null) PlayarrSubtitlePlacement.Wrapped
-        else decideSubtitlePlacement(subtitle != null, titleEnd, probe?.width ?: 0, separator, reservedStartPx)
+        val placement = if (!tv && spec.countLine && subtitle != null) PlayarrSubtitlePlacement.Wrapped
+        else decideSubtitlePlacement(subtitle != null, titleEnd, probe?.width ?: 0, separator, reservedStartPx?.let { if (tv) it - 92.dp.roundToPx() else it })
         val inline = if (placement == PlayarrSubtitlePlacement.Inline) {
             subcompose("inline") {
                 if (tv) {
@@ -175,8 +177,12 @@ internal fun PlayarrPageHeaderRow(
         }
         val wrapped = if (placement == PlayarrSubtitlePlacement.Wrapped) {
             subcompose("wrapped") {
-                if (tv || spec.countLine) {
-                    PlayarrPageSubtitleText(subtitle!!, phone = !tv)
+                if (!tv && spec.countLine) {
+                    PlayarrPageSubtitleText(subtitle!!, phone = true)
+                } else if (tv) Column(Modifier.width(androidx.compose.foundation.layout.IntrinsicSize.Max).widthIn(min = with(density) { titleP.width.toDp() }), verticalArrangement = Arrangement.spacedBy(6.4.dp)) {
+                    // Web `.is-detail-wrapped`: a 1 px rule across the block, then the subtitle in the same small style as inline.
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(palette.divider))
+                    PlayarrTvInlineSubtitle(subtitle!!)
                 } else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(Modifier.fillMaxWidth().height(1.dp).background(palette.inkMuted.copy(alpha = 0.45f)))
                     PlayarrBreadcrumbText(subtitle!!, phone = !tv)

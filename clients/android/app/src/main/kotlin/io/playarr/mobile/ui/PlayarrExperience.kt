@@ -3694,8 +3694,9 @@ internal fun WebDetailPill(
         onClick = onClick,
         enabled = enabled,
         shape = CircleShape,
-        color = if (ink) WebInk else if (primary) WebKicker else WebSurfaceStrong.copy(alpha = 0.72f),
-        contentColor = if (ink) WebBackground else if (primary) Color.White else WebInk,
+        // Web (#1320): focus shares the hover look: Play goes brand-strong with white text, the other pills ink at 88% with the page colour.
+        color = if (focused) (if (ink || primary) Color(0xFFA52745) else WebInk.copy(alpha = 0.88f)) else if (ink) WebInk else if (primary) WebKicker else WebSurfaceStrong.copy(alpha = 0.72f),
+        contentColor = if (focused) (if (ink || primary) Color.White else WebBackground) else if (ink) WebBackground else if (primary) Color.White else WebInk,
         modifier = modifier
             .height(64.dp)
             .widthIn(min = if (primary) 156.dp else 142.dp)
@@ -3709,7 +3710,7 @@ internal fun WebDetailPill(
             horizontalArrangement = Arrangement.spacedBy(if (primary) 11.1.dp else 8.9.dp, Alignment.CenterHorizontally),
         ) {
             glyph?.let {
-                Text(it, color = if (ink) WebBackground else if (primary) Color.White else WebKicker, fontSize = if (primary) 10.118.sp else 12.806.sp)
+                Text(it, color = if (focused && (ink || primary)) Color.White else if (ink) WebBackground else if (primary) Color.White else WebKicker, fontSize = if (primary) 10.118.sp else 12.806.sp)
             }
             Text(label, fontSize = if (primary) 11.904.sp else 11.136.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
@@ -3767,9 +3768,10 @@ internal fun LibraryResults(
     // Television: web's first column starts at x 783.4 (measured on the live grid).
     // Web `--library-rail-top` clamp(128, 15 vu, 174) less the 140 dp the header already takes, and the row gap clamp(22, 2.5 vu, 36).
     val tvGridTop = webVu(128f, 15f, 174f) - 140.dp
-    val tvRowGap = webVu(22f, 2.5f, 36f)
+    // Measured against web at 1920 on the emulator: a 26 px gap puts rows 2 and 3 one pixel under web's, 27 px puts them two.
+    val tvRowGap = webVu(22f, 2.5f, 36f) - 1.dp
     val tvRail = if (LocalStageScale.current != 1f) webLibraryRail() else null
-    val screenPadding = if (isTelevision) PaddingValues(start = tvRail?.start ?: 53.7.dp, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
+    val screenPadding = if (isTelevision) PaddingValues(start = tvRail?.start ?: 52.7.dp /* web's first column paints at x 783 (rounded), not 784 */, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
     when (viewMode) {
         LibraryViewMode.Screen -> LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(2),

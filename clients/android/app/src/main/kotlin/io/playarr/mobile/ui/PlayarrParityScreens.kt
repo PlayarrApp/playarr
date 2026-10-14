@@ -4249,12 +4249,14 @@ private fun TvSettingsBody(
             ),
         ),
     ) {
-        // Web: the section is the page header subtitle (`.page-subtitle`, owner rule 2026-10-10), with no rule or caption line.
+        // Web (#1299): the section is the page header subtitle, wrapped under the title behind a 1 px rule as wide as the title,
+        // in the page ink (not pink). shortcut: the rule is the English "Preferences" title's width, measure the title when localised titles differ.
+        Box(Modifier.offset(x = 226.6.dp, y = 112.dp).width(163.4.dp).height(1.dp).background(TvSettingsPalette.inputBorder))
         Text(
             playarrString(section.label).uppercase(locale),
-            color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk,
-            fontSize = 12.288.sp, fontWeight = FontWeight(820), letterSpacing = 0.983.sp, lineHeight = 18.432.sp, style = cssLine(),
-            modifier = Modifier.offset(x = 226.6.dp, y = 111.8.dp),
+            color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.ink,
+            fontSize = 11.136.sp, fontWeight = FontWeight(680), letterSpacing = 0.501.sp, lineHeight = 16.704.sp, style = cssLine(),
+            modifier = Modifier.offset(x = 226.6.dp, y = 117.7.dp),
         )
         val isAdmin by viewModel.isAdmin.collectAsState()
         LazyColumn(
