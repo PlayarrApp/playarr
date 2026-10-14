@@ -1,1 +1,0 @@
-- Android: tablets wider than 760 dp now show web's wide layout (left nav rail, hero panel beside a three-column library grid, wide Home and detail pages) drawn on web's 1920 px canvas scaled to the screen width; phones are unchanged.

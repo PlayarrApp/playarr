@@ -610,6 +610,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android: tablets wider than 760 dp now show web's wide layout (left nav rail, hero panel beside a three-column library grid, wide Home and detail pages) drawn on web's 1920 px canvas scaled to the screen width; phones are unchanged.
+- Nura library cards get the web's resting shadow and a larger unseen dot; the letter rail highlights the first title's letter.
 - Match the Nura title page's hero art to the web phone: smaller backdrop with the web's fades and opacity.
 - HarmonyOS TV: a focused rail card is no longer cropped at the top of its rail (24 vp reserved above the list, as already below and to the left).
 - Fire TV: Search results keep the focused card's glow and ring clear of the grid clip, as the web does.
