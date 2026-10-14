@@ -52,7 +52,7 @@ namespace Playarr.Xbox.Views
         {
             var body = new StackPanel();
             Drawer? drawer = null;
-            body.Children.Add(Drawer.Action("\uE768", "Play", async () =>
+            body.Children.Add(Drawer.Action("\uF5B0", "Play", async () =>
             {
                 drawer?.Close();
                 var detail = await App.Environment.ApiClient.GetWorkAsync(work.Id);

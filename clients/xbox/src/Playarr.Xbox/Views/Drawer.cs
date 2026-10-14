@@ -54,6 +54,8 @@ namespace Playarr.Xbox.Views
 
             var close = Ui.RoundButton("", Close);
             close.Width = close.Height = 46;
+            ((FontIcon)close.Content).Glyph = "\uE8BB"; // ChromeClose: the web's bold X
+            ((FontIcon)close.Content).FontSize = 13;
             close.CornerRadius = new CornerRadius(23);
             close.Background = Ui.Res("PlayarrSurfaceSoft");
             close.BorderThickness = new Thickness(0);

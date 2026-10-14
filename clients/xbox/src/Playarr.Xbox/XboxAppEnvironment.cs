@@ -115,6 +115,13 @@ namespace Playarr.Xbox
         public async Task<bool> HasPersistedSessionAsync(CancellationToken cancellationToken = default) =>
             await _tokenStore.GetSessionAsync(cancellationToken).ConfigureAwait(false) != null;
 
+        /// <summary>Profile claim used only to scope private calendar-link storage on this device.</summary>
+        public async Task<Guid?> GetSignedInProfileIdAsync(CancellationToken cancellationToken = default)
+        {
+            var session = await _tokenStore.GetSessionAsync(cancellationToken).ConfigureAwait(false);
+            return session is null ? null : JwtClaims.Subject(session.AccessToken.ExposeSecret());
+        }
+
         /// <summary>
         /// Validates and normalises <paramref name="address"/>, persists it,
         /// rebuilds <see cref="ApiClient"/> and the device-flow client

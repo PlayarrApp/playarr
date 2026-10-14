@@ -186,6 +186,7 @@
     <Compile Include="Services\NavigationService.cs" />
     <Compile Include="Services\PasswordVaultTokenStore.cs" />
     <Compile Include="Services\LocalSettingsKnownServerGroupStore.cs" />
+    <Compile Include="Services\CalendarFeedUrlStore.cs" />
     <Compile Include="Services\XboxModelDetector.cs" />
     <Compile Include="Services\DeviceCapsProvider.cs" />
     <Compile Include="Services\DownloadService.cs" />
@@ -284,6 +285,7 @@
     <Compile Include="Views\CalendarPage.xaml.cs">
       <DependentUpon>CalendarPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\CalendarLinkPanel.cs" />
     <Page Include="Views\WatchlistPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

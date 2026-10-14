@@ -1,0 +1,1 @@
+- Xbox: the Calendar gets the web's Calendar link and Filters tiles (folds in the Calendar filters and link drawer work); the title actions drawer has a bold close X and a solid Play glyph.

@@ -28,6 +28,9 @@ namespace Playarr.Xbox.Views
         private readonly Grid _root;
         private readonly Grid _content = new Grid();
         private readonly Button _rangeButton;
+        private readonly HashSet<string> _types = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _statuses = new HashSet<string>(StringComparer.Ordinal);
+        private bool _monitoredOnly;
         private CalendarView _view = CalendarView.Agenda;
 
         /// <summary>The open view; read by the parity trace.</summary>
@@ -74,6 +77,62 @@ namespace Playarr.Xbox.Views
             controls.Children.Add(Ui.Pill("Today", () => { _anchor = DateTime.Today; Load(); }, 90));
             controls.Children.Add(Ui.RoundButton("", () => { _anchor = CalendarRules.Step(_view, _anchor, 1); Load(); }));
             _root.Children.Add(controls);
+
+            var linkButton = new Button
+            {
+                Width = 58,
+                Height = 70,
+                Margin = new Thickness(0, 151, 14, 0),
+                Padding = new Thickness(0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                CornerRadius = new CornerRadius(12),
+                Background = Ui.Res("PlayarrSurface"),
+                BorderBrush = Ui.Res("PlayarrLine"),
+                BorderThickness = new Thickness(1),
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new FontIcon { Glyph = "\uE734", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 15 },
+                        new TextBlock { Text = "Calendar link", FontSize = 8.5, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.WrapWholeWords, TextAlignment = TextAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center },
+                    },
+                },
+                FocusVisualPrimaryBrush = Theme.FocusRing,
+                FocusVisualPrimaryThickness = new Thickness(3),
+                FocusVisualSecondaryThickness = new Thickness(0),
+            };
+            linkButton.Click += (s, e) => CalendarLinkPanel.Open(_root);
+            _root.Children.Add(linkButton);
+
+            var filtersButton = new Button
+            {
+                Width = 58,
+                Height = 70,
+                Margin = new Thickness(0, 237, 14, 0),
+                Padding = new Thickness(0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                CornerRadius = new CornerRadius(12),
+                Background = Ui.Res("PlayarrSurface"),
+                BorderBrush = Ui.Res("PlayarrLine"),
+                BorderThickness = new Thickness(1),
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new FontIcon { Glyph = "\uE71C", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 15 },
+                        new TextBlock { Text = "Filters", FontSize = 9, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center },
+                    },
+                },
+                FocusVisualPrimaryBrush = Theme.FocusRing,
+                FocusVisualPrimaryThickness = new Thickness(3),
+                FocusVisualSecondaryThickness = new Thickness(0),
+            };
+            filtersButton.Click += (s, e) => OpenFilters();
+            _root.Children.Add(filtersButton);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -129,6 +188,9 @@ namespace Playarr.Xbox.Views
             var (start, end) = CalendarRules.VisibleRange(_view, _anchor);
             // All-day entries first within their day, then by time (web entrySortKey).
             var byDay = _entries
+                .Select(ApplyFilters)
+                .Where(entry => entry != null)
+                .Select(entry => entry!)
                 .GroupBy(CalendarRules.LocalDay)
                 .ToDictionary(g => g.Key, g => g.OrderBy(e => CalendarRules.ReleaseInstant(e)?.UtcTicks ?? long.MinValue).ToList());
             switch (_view)
@@ -144,6 +206,178 @@ namespace Playarr.Xbox.Views
                     break;
             }
         }
+
+        private void OpenFilters()
+        {
+            var body = new StackPanel();
+            body.Children.Add(Drawer.Segmented("View", new[] { "Agenda", "Week", "Month" }, ViewOptionIndex(_view), i =>
+            {
+                _view = ViewFromOptionIndex(i);
+                _anchor = DateTime.Today;
+                Load();
+                Drawer.TryCloseCurrent();
+            }));
+            body.Children.Add(FilterGroup("Type", new[] { ("episode", "TV"), ("movie", "Movies"), ("album", "Music"), ("book", "Books") }, _types));
+            body.Children.Add(FilterGroup("Status", new[] { ("aired", "Aired"), ("upcoming", "Upcoming"), ("downloaded", "Downloaded"), ("missing", "Missing") }, _statuses));
+            body.Children.Add(Drawer.Segmented("Monitored", new[] { "All", "Monitored only" }, _monitoredOnly ? 1 : 0, i =>
+            {
+                _monitoredOnly = i == 1;
+                Render();
+                OpenFilters();
+            }));
+            body.Children.Add(Drawer.Action("", "Clear filters", () =>
+            {
+                _types.Clear();
+                _statuses.Clear();
+                _monitoredOnly = false;
+                Render();
+                Drawer.TryCloseCurrent();
+            }));
+            Drawer.Open(_root, "Calendar", "Filters", body);
+        }
+
+        private StackPanel FilterGroup(string title, (string Key, string Label)[] options, HashSet<string> selected)
+        {
+            var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
+            var caption = Ui.Text(title.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
+            caption.CharacterSpacing = 120;
+            group.Children.Add(caption);
+
+            var perRow = 2;
+            var grid = new Grid { ColumnSpacing = 6, RowSpacing = 6 };
+            for (var column = 0; column < perRow; column++)
+            {
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            }
+
+            for (var row = 0; row < (options.Length + perRow - 1) / perRow; row++)
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            }
+
+            for (var i = 0; i < options.Length; i++)
+            {
+                var option = options[i];
+                var label = new TextBlock
+                {
+                    Text = option.Label,
+                    FontSize = 10.5,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Ui.Res(selected.Contains(option.Key) ? "PlayarrSurfaceStrong" : "PlayarrInkSoft"),
+                    TextWrapping = TextWrapping.WrapWholeWords,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                var button = new Button
+                {
+                    Height = 56,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    CornerRadius = new CornerRadius(6),
+                    Background = Ui.Res(selected.Contains(option.Key) ? "PlayarrInk" : "PlayarrSurfaceStrong"),
+                    BorderBrush = Ui.Res("PlayarrLineStrong"),
+                    BorderThickness = new Thickness(1),
+                    Content = label,
+                    FocusVisualPrimaryBrush = Theme.FocusRing,
+                    FocusVisualPrimaryThickness = new Thickness(3),
+                    FocusVisualSecondaryThickness = new Thickness(0),
+                };
+                button.Click += (s, e) =>
+                {
+                    if (!selected.Add(option.Key))
+                    {
+                        selected.Remove(option.Key);
+                    }
+
+                    var isSelected = selected.Contains(option.Key);
+                    button.Background = Ui.Res(isSelected ? "PlayarrInk" : "PlayarrSurfaceStrong");
+                    label.Foreground = Ui.Res(isSelected ? "PlayarrSurfaceStrong" : "PlayarrInkSoft");
+                    Render();
+                };
+                Grid.SetColumn(button, i % perRow);
+                Grid.SetRow(button, i / perRow);
+                grid.Children.Add(button);
+            }
+
+            group.Children.Add(grid);
+            return group;
+        }
+
+        private CalendarEntry? ApplyFilters(CalendarEntry entry)
+        {
+            var type = entry.MediaKind switch
+            {
+                "episode" => "episode",
+                "movie" => "movie",
+                "album" => "album",
+                "book" => "book",
+                _ => entry.MediaKind,
+            };
+            if (_types.Count > 0 && !_types.Contains(type))
+            {
+                return null;
+            }
+
+            var day = CalendarRules.LocalDay(entry);
+            bool MatchesStatus(bool hasFile, bool monitored)
+            {
+                var aired = day <= DateTime.Today;
+                var matchesStatus = _statuses.Count == 0
+                    || (_statuses.Contains("aired") && aired)
+                    || (_statuses.Contains("upcoming") && !aired)
+                    || (_statuses.Contains("downloaded") && hasFile)
+                    || (_statuses.Contains("missing") && aired && !hasFile);
+                return matchesStatus && (!_monitoredOnly || monitored);
+            }
+
+            if (entry.Members is not { Count: > 0 } members)
+            {
+                return MatchesStatus(entry.HasFile, entry.Monitored) ? entry : null;
+            }
+
+            var filteredMembers = members.Where(member => MatchesStatus(member.HasFile, member.Monitored)).ToList();
+            if (filteredMembers.Count == 0)
+            {
+                return null;
+            }
+
+            if (filteredMembers.Count == members.Count)
+            {
+                return entry;
+            }
+
+            return new CalendarEntry
+            {
+                Id = entry.Id,
+                Date = entry.Date,
+                Title = entry.Title,
+                Subtitle = entry.Subtitle,
+                SeasonNumber = entry.SeasonNumber,
+                EpisodeNumber = entry.EpisodeNumber,
+                HasFile = filteredMembers.All(member => member.HasFile),
+                Monitored = filteredMembers.Any(member => member.Monitored),
+                MediaKind = entry.MediaKind,
+                ReleaseType = entry.ReleaseType,
+                ReleaseAt = entry.ReleaseAt,
+                PosterUrl = entry.PosterUrl,
+                Overview = entry.Overview,
+                WorkId = entry.WorkId,
+                Members = filteredMembers,
+            };
+        }
+
+        private static int ViewOptionIndex(CalendarView view) => view switch
+        {
+            CalendarView.Agenda => 0,
+            CalendarView.Week => 1,
+            _ => 2,
+        };
+
+        private static CalendarView ViewFromOptionIndex(int index) => index switch
+        {
+            0 => CalendarView.Agenda,
+            1 => CalendarView.Week,
+            _ => CalendarView.Month,
+        };
 
         // ---- month -------------------------------------------------------------------------------------------------
 

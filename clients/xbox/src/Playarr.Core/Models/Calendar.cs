@@ -49,11 +49,34 @@ namespace Playarr.Core.Models
         [JsonProperty("episode_number")] public int? EpisodeNumber { get; set; }
 
         [JsonProperty("subtitle")] public string? Subtitle { get; set; }
+
+        [JsonProperty("has_file")] public bool HasFile { get; set; }
+
+        [JsonProperty("monitored")] public bool Monitored { get; set; }
     }
 
     public sealed class CalendarResponse
     {
         [JsonProperty("entries")] public IList<CalendarEntry> Entries { get; set; } = new List<CalendarEntry>();
+    }
+
+    /// <summary><c>GET /api/v1/calendar/feed</c>; a missing <c>link_available</c> means an older server.</summary>
+    public sealed class CalendarFeedStatus
+    {
+        [JsonProperty("active")] public bool Active { get; set; }
+
+        /// <summary>True only when a plain POST returns the existing secret link without replacing it.</summary>
+        [JsonProperty("link_available")] public bool? LinkAvailable { get; set; }
+    }
+
+    /// <summary>Secret response from <c>POST /api/v1/calendar/feed</c>; do not log the URL or token.</summary>
+    public sealed class CalendarFeedCreated
+    {
+        [JsonProperty("url")] public string Url { get; set; } = string.Empty;
+
+        [JsonProperty("token")] public string Token { get; set; } = string.Empty;
+
+        [JsonProperty("created_at")] public DateTimeOffset CreatedAt { get; set; }
     }
 
     public enum CalendarView

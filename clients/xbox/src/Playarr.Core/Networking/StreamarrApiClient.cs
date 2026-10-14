@@ -35,7 +35,7 @@ namespace Playarr.Core.Networking
         Task AckRemoteEventAsync(Guid eventId, string status, string? detail, CancellationToken cancellationToken = default);
     }
 
-    public interface IPlayarrApiClient : IRemoteInboxClient
+    public interface IPlayarrApiClient : IRemoteInboxClient, ICalendarFeedClient
     {
         Uri BaseUrl { get; }
 
@@ -483,6 +483,17 @@ namespace Playarr.Core.Networking
                 authenticated: true,
                 cancellationToken);
 
+        public Task<CalendarFeedStatus> GetCalendarFeedAsync(CancellationToken cancellationToken = default) =>
+            GetAsync<CalendarFeedStatus>("/api/v1/calendar/feed", null, authenticated: true, cancellationToken);
+
+        public Task<CalendarFeedCreated> CreateCalendarFeedAsync(bool rotate = false, CancellationToken cancellationToken = default) =>
+            SendAsync<CalendarFeedCreated>(
+                HttpMethod.Post,
+                "/api/v1/calendar/feed",
+                null,
+                cancellationToken,
+                rotate ? new Dictionary<string, string> { ["rotate"] = "true" } : null);
+
         public Task<IList<WorkKind>> ListCatalogKindsAsync(CancellationToken cancellationToken = default) =>
             GetAsync<IList<WorkKind>>("/api/v1/catalog/kinds", null, authenticated: true, cancellationToken);
 
@@ -856,17 +867,18 @@ namespace Playarr.Core.Networking
             HttpMethod method,
             string path,
             string? body,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IDictionary<string, string>? query = null)
             where T : class
         {
             try
             {
-                return await SendOnceAsync<T>(method, path, null, body, true, false, cancellationToken)
+                return await SendOnceAsync<T>(method, path, query, body, true, false, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (ApiException error) when (error.Kind == ApiErrorKind.Unauthorized && _tokens != null)
             {
-                return await SendOnceAsync<T>(method, path, null, body, true, true, cancellationToken)
+                return await SendOnceAsync<T>(method, path, query, body, true, true, cancellationToken)
                     .ConfigureAwait(false);
             }
         }
