@@ -1,1 +1,0 @@
-- Match the Nura title page's hero art to the web phone: smaller backdrop with the web's fades and opacity.
