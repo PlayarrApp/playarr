@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Match iPhone detail header geometry, theme-aware copy, selected episode styling, and listed watchlist action wording to the web layout; show ended-series year ranges from the server end date.
 - Fix VIDAA debug mirror captures so the scaled TV stage fills the requested output instead of leaving blank right and bottom areas.
 - Restore the shell clock's en-GB weekday and month on VIDAA firmware with incomplete Intl date data.
 - The isolated macOS Search smoke retains its confirmed Home readiness snapshot and reports safe navigation-stage evidence when Search cannot be reached.
@@ -374,6 +375,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Fire TV Search adds the web media-type filters, matching playlist results, game discovery, and supported discovery actions. The Filters tile remains visible above Search content and receives focus again after the drawer closes.
 - HarmonyOS TV player: previous and next buttons (and the media keys) move through the session queue; the -10 and +10 buttons are gone from the bar as on web (seeking stays on the D-pad left and right).
 - HarmonyOS TV player: a volume button mutes and restores the player output (it stays muted across items of the session).
 - HarmonyOS TV: Settings > Profile avatar picks a built-in avatar, saved to the profile as web does, and the nav rail and Profiles show it. Custom photo upload is not available yet.
@@ -592,6 +594,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: the Library preview title wraps balanced, as the web does.
+- HarmonyOS TV: the Settings panels (Customise Home, Profile avatar, Invite, Your data) use the bundled Nunito Sans like the rest of the app.
 - HarmonyOS: text uses the bundled Nunito Sans, web's font, on every screen (the hosted Previewer cannot load custom fonts, so its captures still show the system font).
 - Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
 - Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
@@ -2959,6 +2963,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Fire TV focus diagnostics now reconcile event and native focus tags. The scoped dark and light Movies-right → Home → Movies-down runtime pair passed with matching settled no-key focus state; this does not replace the full D-pad suite or establish a product navigation fix.
 - macOS library-grid parity diagnostics now identify the focused row and column, with start state reported only when the actual entry target is known.
 - DEBUG macOS arrow-key diagnostics now report safe focus transitions, registered-target counts, and numeric selected frames without labels or identifiers.
 - Add an isolated, opt-in macOS Search-results focus smoke outside the shared parity suite denominator. Focused helper tests pass; no Apple runtime or live Search run has been executed.

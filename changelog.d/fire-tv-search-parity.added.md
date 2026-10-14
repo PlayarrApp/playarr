@@ -1,1 +1,0 @@
-- Fire TV Search adds the web media-type filters, matching playlist results, game discovery, and supported discovery actions. The Filters tile remains visible above Search content and receives focus again after the drawer closes.

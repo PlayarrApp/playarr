@@ -1,1 +1,0 @@
-- Match iPhone detail header geometry, theme-aware copy, selected episode styling, and listed watchlist action wording to the web layout; show ended-series year ranges from the server end date.
