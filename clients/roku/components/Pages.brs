@@ -2184,9 +2184,9 @@ sub edgeFadesInit()
     m.homeFadeRight = pgFade(home, "r", 1824, 410, 96, 670)
     browse = m.top.findNode("browseGroup")
     m.browseFadeTop = pgFade(browse, "t", 740, 128, 1110, 40)
-    m.browseFadeBottom = pgFade(browse, "b", 740, 1000, 1110, 80)
+    m.browseFadeBottom = pgFade(browse, "b", 740, 1008, 1110, 72)
     m.pageFadeTop = pgFade(m.top.findNode("pageGroup"), "t", 0, 128, 1920, 56)
-    m.pageFadeBottom = pgFade(m.top.findNode("pageGroup"), "b", 0, 1000, 1920, 80)
+    m.pageFadeBottom = pgFade(m.top.findNode("pageGroup"), "b", 0, 1008, 1920, 72)
 end sub
 
 ' Home rails: the left fade once the rail is scrolled, the right fade while more cards continue past the edge.

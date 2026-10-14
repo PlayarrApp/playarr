@@ -472,13 +472,14 @@ def main() -> None:
                 t = 1 - fn(xx, yy) / 95
                 px2[xx, yy] = (255, 255, 255, round(255 * max(t, 0) ** 1.4))
         img.save(IMAGES / f"{name}.png")
-    for name, fn in (("edge-fade-t", lambda y: y), ("edge-fade-b", lambda y: 95 - y)):
+    # The bottom fade follows the web's measured curve (alpha 0 at 72 px above the edge, squared); the top keeps the 1.4 power.
+    for name, fn, power in (("edge-fade-t", lambda y: y, 1.4), ("edge-fade-b", lambda y: 95 - y, 2.0)):
         img = Image.new("RGBA", (4, 96), (255, 255, 255, 0))
         px2 = img.load()
         for yy in range(96):
             for xx in range(4):
                 t = 1 - fn(yy) / 95
-                px2[xx, yy] = (255, 255, 255, round(255 * max(t, 0) ** 1.4))
+                px2[xx, yy] = (255, 255, 255, round(255 * max(t, 0) ** power))
         img.save(IMAGES / f"{name}.png")
     # Linear alpha ramps (white, tinted at run time): the web's stage gradients (.tv-key-art::after, .tv-stage-wash) are CSS linear
     # gradients from a token colour to transparent, so a stretched ramp bitmap reproduces them without stepped rectangles.
