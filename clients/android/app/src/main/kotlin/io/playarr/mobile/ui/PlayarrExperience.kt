@@ -2226,7 +2226,11 @@ private fun TvNavTile(
             // RIGHT lands directly in the page's default target, as on web.
             .onPreviewKeyEvent { event ->
                 val target = contentEntry.requester
-                if (event.key == Key.DirectionRight && event.type == KeyEventType.KeyDown && target != null) {
+                val enter = contentEntry.enter
+                if (event.key == Key.DirectionRight && event.type == KeyEventType.KeyDown && enter != null) {
+                    enter()
+                    true
+                } else if (event.key == Key.DirectionRight && event.type == KeyEventType.KeyDown && target != null) {
                     runCatching { target.requestFocus() }.isSuccess
                 } else {
                     false
@@ -2879,6 +2883,12 @@ private fun ExperienceHomeScreen(
                     tvRails.onLeftEdge = { false }
                     // Nothing sits above the first rail (Customise Home now lives in Settings), so UP at the top edge stays put.
                     tvRails.onUpEdge = { false }
+                    // Web `data-tv-focus-default`: RIGHT from the nav rail lands on the first card of the first rail.
+                    val homeEntry = LocalTvContentEntry.current
+                    DisposableEffect(tvRails) {
+                        homeEntry.enter = { homeScope.launch { tvRails.focus(0, 0) } }
+                        onDispose { homeEntry.enter = null }
+                    }
                     if (isTelevision) {
                         // Web's default focus: the last focused card, else the first card of the first rail.
                         TvDefaultFocusEffect(Unit) {
