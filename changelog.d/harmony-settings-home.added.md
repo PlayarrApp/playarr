@@ -1,1 +1,0 @@
-- HarmonyOS TV: Settings > Customise Home shows, hides, reorders and resets the Home rails with web's calls.

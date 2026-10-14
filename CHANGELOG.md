@@ -372,6 +372,12 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- HarmonyOS TV player: previous and next buttons (and the media keys) move through the session queue; the -10 and +10 buttons are gone from the bar as on web (seeking stays on the D-pad left and right).
+- HarmonyOS TV player: a volume button mutes and restores the player output (it stays muted across items of the session).
+- HarmonyOS TV: Settings > Profile avatar picks a built-in avatar, saved to the profile as web does, and the nav rail and Profiles show it. Custom photo upload is not available yet.
+- HarmonyOS TV: Settings > Your data exports and imports your data through one-time QR codes (the ten-foot flow web uses): prepare an export and show its download code, or open an upload code, then preview and apply the import.
+- HarmonyOS TV: Settings > Customise Home shows, hides, reorders and resets the Home rails with web's calls.
+- HarmonyOS TV: Settings > Invite a friend requests an invite from the admin and shows the one-use QR and link once approved, as web does (no approval push notifications).
 - Android phone drawers blur the page beneath them on Android 12 and later. Filters keep the bottom navigation above the panel; the Actions global backdrop overlays and blocks it, matching the web layout.
 - Linux phone users can switch between profiles already linked on the device and unlock a saved PIN-protected profile.
 - Show the selected playlist type and name in the native Tizen Search preview, with display-only line breaks for long names.

@@ -1,1 +1,0 @@
-- HarmonyOS TV: Settings > Invite a friend requests an invite from the admin and shows the one-use QR and link once approved, as web does (no approval push notifications).
