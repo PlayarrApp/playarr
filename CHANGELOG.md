@@ -623,6 +623,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: series detail season rows use web's phone card size and spacing (TV unchanged).
+- Harmony wall: the preview's series episode card patch follows the phone card width.
 - HarmonyOS TV: the light-theme kicker uses the web crimson (#821e36) and the hero copy sits 3 vp lower, as web.
 - Android: wide page headers put the subtitle beside the title after a divider (wrapping beneath only when it does not fit before the clock), in the soft ink colour instead of pink, as web does.
 - HarmonyOS TV: the page header shows the subtitle beside the title after a divider, in ink and not pink, as the web header.

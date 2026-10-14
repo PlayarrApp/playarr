@@ -1,2 +1,0 @@
-- HarmonyOS phone: series detail season rows use web's phone card size and spacing (TV unchanged).
-- Harmony wall: the preview's series episode card patch follows the phone card width.

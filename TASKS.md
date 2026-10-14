@@ -535,6 +535,7 @@ Steps only the repository owner can perform.
 | 10284 | Roku series detail and cards show web's year range (2011–2017) | in_review | parity-roku | roku-year-range-10284 | | 2026-10-15 18:00 ICT | Web's yearRangeLabel uses the work's end_date when it closes in a later year; Roku showed only the start year on the series detail meta line and on card kind lines. Same helper now. PR open: #1325. |
 | 10286 | Harmony phone header: no subtitle under the title as web | in_review | parity-harmony | harmony-phone-header | | 2026-10-16 12:00 ICT | Web phone hides the header subtitle (web #1299), so the pink count line under the title is dropped on the phone shell. PR open: #1337. |
 | 10287 | Roku page header: subtitle beside the title with a divider, not pink, like web (#1299) | done | parity-roku | roku-page-header-10285 | | 2026-10-15 18:00 ICT | Library and detail headers put the subtitle after a thin divider, in ink; when it does not fit before the clock it wraps under the title above a hairline (Preferences does this). The clock date is larger and brighter. Measured against scratch/20261014-header-restore/new-*.png on a real Roku (dark). PR open: #1331. PR #1331 merged 2026-10-14. |
+| 10290 | Harmony phone series detail: season rows at web's phone card size and pitch | in_review | parity-harmony | harmony-phone-season-row | | 2026-10-16 12:00 ICT | Phone episode cards 187 vp wide, heading to cards 23, season to season 237, as the web phone reference; the TV stage keeps its sizes. PR open: #1338. |
 
 ## 18. Public repository readiness (2026-10-05)
 
