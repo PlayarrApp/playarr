@@ -1,1 +1,0 @@
-- Match the Android TV Profiles avatar's selected and focused ring and shadow to the web treatment while keeping avatar artwork bounds unchanged.

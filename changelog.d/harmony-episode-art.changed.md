@@ -1,1 +1,0 @@
-- HarmonyOS TV series detail takes episode artwork in web's source order (episode thumbnail at width 540, then the media thumbnail, then the title's backdrop or poster).

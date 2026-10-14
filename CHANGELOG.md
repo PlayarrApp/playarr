@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Match Android TV Profiles captions and kicker to the web theme colours.
+- Match the Android TV Profiles avatar's selected and focused ring and shadow to the web treatment while keeping avatar artwork bounds unchanged.
 - Xbox: episode cards on the series page show the web watch-state overlay: the unseen dot, or a progress line for a part-watched episode.
 - Keep the focused Home halo unclipped and aligned with its card while horizontal rails scroll.
 - Match iPhone detail header geometry, theme-aware copy, selected episode styling, and listed watchlist action wording to the web layout; show ended-series year ranges from the server end date.
@@ -377,6 +379,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Android phone Filters and Actions drawers blur the page beneath them on Android 12 and later while keeping the bottom navigation available.
 - Fire TV Search adds the web media-type filters, matching playlist results, game discovery, and supported discovery actions. The Filters tile remains visible above Search content and receives focus again after the drawer closes.
 - HarmonyOS TV player: previous and next buttons (and the media keys) move through the session queue; the -10 and +10 buttons are gone from the bar as on web (seeking stays on the D-pad left and right).
 - HarmonyOS TV player: a volume button mutes and restores the player output (it stays muted across items of the session).
@@ -596,6 +599,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV series detail takes episode artwork in web's source order (episode thumbnail at width 540, then the media thumbnail, then the title's backdrop or poster).
+- Harmony TV series detail copy follows the selected next-up episode when its resume target is present.
+- Harmony TV series detail now presents season rows with episode artwork, numbers, and web-aligned captions, with a guarded initial focus request for the next-up episode.
 - Match the selected Nura Home card's focus ring, glow, and elevation to the web treatment.
 - Match the Nura Home card resting shadow to Home web tokens in both themes.
 - Fire TV: the Library preview title wraps balanced, as the web does.
@@ -2967,6 +2973,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Retain failed Harmony TV detail capture frames in private debug artifacts and add sanitised stage counts with elapsed time ranges.
+- Harmony TV parity dispatches can capture a selected screen subset and skip the player route while preserving the default full capture.
 - Fire TV focus diagnostics now reconcile event and native focus tags. The scoped dark and light Movies-right → Home → Movies-down runtime pair passed with matching settled no-key focus state; this does not replace the full D-pad suite or establish a product navigation fix.
 - macOS library-grid parity diagnostics now identify the focused row and column, with start state reported only when the actual entry target is known.
 - DEBUG macOS arrow-key diagnostics now report safe focus transitions, registered-target counts, and numeric selected frames without labels or identifiers.
