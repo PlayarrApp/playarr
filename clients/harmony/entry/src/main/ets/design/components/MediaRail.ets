@@ -117,6 +117,8 @@ import { FOCUS_LIFT, effectiveFocusPercent } from './FocusLift';
 /** Brief 5.10's rail clip-inset recipe -- see this file's header comment. */
 const RAIL_CLIP_INSET_BOTTOM: number = 24;
 const RAIL_CLIP_INSET_START: number = 8;
+/** Reserves web's overflow above the first row too: the focused card lifts and scales up and its glow ring (3 px + 20 px blur) must not be cut by the list's own clip. */
+const RAIL_CLIP_INSET_TOP: number = 24;
 
 /** Brief 5.4, "rail heading" row: `-0.03em` tracking. Not a
  * `core/Tokens.ts` field (that table has no typography tracking values) --
@@ -314,11 +316,11 @@ export struct MediaRail {
         )
       }
       .listDirection(Axis.Horizontal)
-      .height(this.listHeight > 0 ? this.listHeight : '100%')
+      .height(this.listHeight > 0 ? this.listHeight + RAIL_CLIP_INSET_TOP : '100%')
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
-      .padding({ left: RAIL_CLIP_INSET_START, bottom: RAIL_CLIP_INSET_BOTTOM })
-      .margin({ left: -RAIL_CLIP_INSET_START, bottom: -RAIL_CLIP_INSET_BOTTOM })
+      .padding({ left: RAIL_CLIP_INSET_START, top: RAIL_CLIP_INSET_TOP, bottom: RAIL_CLIP_INSET_BOTTOM })
+      .margin({ left: -RAIL_CLIP_INSET_START, top: -RAIL_CLIP_INSET_TOP, bottom: -RAIL_CLIP_INSET_BOTTOM })
       .focusScopeId(this.railId, true, true)
       .id(this.measurementId.length > 0 ? this.measurementId : this.railId + '-list')
       .onFocus(() => {
