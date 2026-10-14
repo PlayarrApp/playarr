@@ -1,1 +1,0 @@
-- Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.

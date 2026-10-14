@@ -13,6 +13,13 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS Home card movement now applies focus to the registered child button and updates the Home selection mirror from the observed focus change, avoiding competing SwiftUI focus bindings.
+- macOS and tvOS Home wait for the On Deck request to succeed or fail before showing Home rails; the network layer timeout governs, and the navigation remains available while Home shows its skeleton. Only the current On Deck request generation can update rail and progress state. The primary rail keeps server shelf membership and avoids repeating On Deck cards in the fallback movie rail.
+- The Home nav-to-stage focus handoff is claimed once per route entry and cancelled when the viewer moves focus before it runs. Its initial target is captured once, so late On Deck results do not move focus or trigger another reset.
+- macOS Escape and Back now pop pushed title pages to their originating library route, while modal, focus-layer drawer, and cover Back actions keep priority.
+- The Home nav-to-stage focus handoff is claimed once per route entry and cancelled when the viewer moves focus before it runs. macOS Right uses the last focused navigation target when selection has cleared the transient focus binding, preserving stage-entry intent until lazy Home content registers. Late On Deck results do not trigger another initial focus reset.
+- Production D-pad Home now measures card/nav frames; Left uses the web directional score and Right from Home nav restores the same leading card. Inactive nav items remain ineligible outside the one-shot handoff.
+- Home waits for the On Deck request to succeed or fail before drawing rails; the navigation stays usable while its skeleton is visible.
 - Xbox: library, search and Home cards draw the web's resting shadow (visible in the light theme).
 - Web: a mouse wheel or trackpad scroll over a rail now scrolls Home and the detail pages, and after such a scroll Left or Right along a rail brings the focused card back on screen.
 - On iPhone and iPad, content now stays below the notch or Dynamic Island and above the home indicator in portrait and landscape. Phone screens, the bottom navigation and the library panels respect the side safe areas, the player controls and panels clear the landscape notch, and page content starts below the real top inset. Backgrounds and artwork stay full-bleed.
@@ -626,6 +633,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
 - HarmonyOS phone: series detail shows Start, Add to watchlist and Add to Playlist in one row, as web.
 - HarmonyOS phone: series detail season rows use web's phone card size and spacing (TV unchanged).
 - Harmony wall: the preview's series episode card patch follows the phone card width.
@@ -3023,6 +3031,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- DEBUG macOS arrow-key diagnostics now report safe focus transitions, registered-target counts, and numeric selected frames without labels or identifiers.
 - Harmony wall: the phone series-detail capture waits for episode art and refuses a frame with grey placeholder cards.
 - Harmony wall: the capture also waits while the app reports a request in flight, so a card a lazy list had not built yet is not captured as a placeholder.
 - Harmony wall: the player capture shows the app background where the Previewer drew its grey surface placeholder.
