@@ -1,1 +1,0 @@
-- HarmonyOS TV: a focused rail card is no longer cropped at the top of its rail (24 vp reserved above the list, as already below and to the left).

@@ -608,6 +608,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV: a focused rail card is no longer cropped at the top of its rail (24 vp reserved above the list, as already below and to the left).
 - Fire TV: Search results keep the focused card's glow and ring clear of the grid clip, as the web does.
 - HarmonyOS TV: artwork already loaded in the last five minutes is reused without asking the server again, and the artwork cache holds 128 entries (was 64), so Home and Library walks stop refetching the same posters.
 - Match the Nura search page's empty state to the web: placeholder, search-minus ring and "Start typing to search."
