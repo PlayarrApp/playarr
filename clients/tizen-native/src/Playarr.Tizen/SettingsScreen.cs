@@ -18,7 +18,12 @@ internal sealed class SettingsScreen : IPage
     private readonly View _root = new();
     private readonly FocusSet _focus = new();
     private readonly View _panel = new();
+    private readonly View _list = new();
+    private readonly View _listClip = new() { PositionX = 140, PositionY = 140, Size = new Size(520, 940), ClippingMode = ClippingModeType.ClipChildren }; // scrolled rows never run under the page header
+    private float _scroll;
     private int _listCount;
+    // web scrolls the option list so the focused row, its ring and its glow stay clear of the bottom edge (last row ends 153 px above the screen edge)
+    private const float ListBottomLimit = 927f;
 
     private void Show(int option)
     {
@@ -93,6 +98,8 @@ internal sealed class SettingsScreen : IPage
 
     private void BuildList()
     {
+        _list.PositionX = -140; _list.PositionY = -140;
+        _listClip.Add(_list); _root.Add(_listClip);
         for (var i = 0; i < Options.Length; i++)
         {
             var y = 162 + i * 91.9f; var idx = i;
@@ -101,10 +108,10 @@ internal sealed class SettingsScreen : IPage
             card.Add(Ui.Text(Options[i], 92, 23.8f, 29.6f, 500, _t.Ink, 307.6f, 44.4f, spacing: -1.04f));
             card.Add(Ui.Text("→", 432.6f, 30.3f, 20.8f, 400, i == 0 ? _t.Ink : _t.InkMuted, 30, 31.2f));
             var ring = Ring.Make(480.4f, 91.9f, 18, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
-            _root.Add(card);
+            _list.Add(card);
             _focus.Items.Add(new Focusable
             {
-                Rect = () => new Box(153.6f, y, 480.4f, 91.9f), Label = Options[i].ToLowerInvariant(),
+                Rect = () => new Box(153.6f, y - _scroll, 480.4f, 91.9f), Label = Options[i].ToLowerInvariant(),
                 Style = f => ring.Show(f),
                 Select = () => { if (idx is 0 or 3) Show(idx); else Toast(Options[idx] + " is not available in this app yet."); },
             });
@@ -149,7 +156,10 @@ internal sealed class SettingsScreen : IPage
         {
             case RemoteKey.Select: _focus.Item?.Select?.Invoke(); return true;
             case RemoteKey.Back: return false;
-            default: return _focus.Move(key) || key != RemoteKey.Left;
+            default:
+                var moved = _focus.Move(key);
+                if (_focus.Current >= 0 && _focus.Current < _listCount) { _scroll = Math.Max(0, 162 + (_focus.Current + 1) * 91.9f - ListBottomLimit); _list.PositionY = -140 - _scroll; }
+                return moved || key != RemoteKey.Left;
         }
     }
 }
