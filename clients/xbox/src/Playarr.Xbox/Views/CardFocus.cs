@@ -18,7 +18,7 @@ namespace Playarr.Xbox.Views
         private const double Lift = -7;
         private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(260);
 
-        public static void Attach(ListViewBase list)
+        public static void Attach(ListViewBase list, bool externalArtRing = false)
         {
             // No selection, hover, press or focus fill: the web card shows only the lift, the scale and the glow ring.
             list.ContainerContentChanging += (s, e) =>
@@ -29,8 +29,8 @@ namespace Playarr.Xbox.Views
                     ClearFill(container);
                 }
             };
-            list.GotFocus += (s, e) => Apply(e.OriginalSource, true);
-            list.LostFocus += (s, e) => Apply(e.OriginalSource, false);
+            list.GotFocus += (s, e) => Apply(e.OriginalSource, true, externalArtRing);
+            list.LostFocus += (s, e) => Apply(e.OriginalSource, false, externalArtRing);
         }
 
         /// <summary>
@@ -74,39 +74,54 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private static void Apply(object source, bool focused)
+        private static void Apply(object source, bool focused, bool externalArtRing)
         {
             if (!(source is SelectorItem { ContentTemplateRoot: Panel card }) || card.Children.Count == 0 || !(card.Children[0] is Grid art))
             {
                 return;
             }
 
-            // Dark theme --card-glow-color is --brand-ink; the ring is 3 px (WCAG 2.4.13).
-            // A rounded 3 px ring over the art's edge (the art grid clips its children to its corners, so it cannot sit outside).
-            Border? ring = null;
-            foreach (var child in art.Children)
+            // Episode cards draw an external ring beside the art grid; suppress
+            // only this shared inner ring while retaining the common card lift.
+            if (externalArtRing)
             {
-                if (child is Border { Tag: "ring" } existing)
+                foreach (var child in art.Children)
                 {
-                    ring = existing;
+                    if (child is Border { Tag: "ring" } existing)
+                    {
+                        existing.Visibility = Visibility.Collapsed;
+                    }
                 }
             }
-
-            if (ring == null)
+            else
             {
-                ring = new Border
+                // Dark theme --card-glow-color is --brand-ink; the ring is 3 px (WCAG 2.4.13).
+                // A rounded 3 px ring over the art's edge (the art grid clips its children to its corners, so it cannot sit outside).
+                Border? ring = null;
+                foreach (var child in art.Children)
                 {
-                    Tag = "ring",
-                    BorderThickness = new Thickness(3),
-                    BorderBrush = (Brush)Application.Current.Resources["PlayarrBrandInk"],
-                    CornerRadius = art.CornerRadius,
-                    IsHitTestVisible = false,
-                    Visibility = Visibility.Collapsed,
-                };
-                art.Children.Add(ring);
-            }
+                    if (child is Border { Tag: "ring" } existing)
+                    {
+                        ring = existing;
+                    }
+                }
 
-            ring.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;
+                if (ring == null)
+                {
+                    ring = new Border
+                    {
+                        Tag = "ring",
+                        BorderThickness = new Thickness(3),
+                        BorderBrush = (Brush)Application.Current.Resources["PlayarrBrandInk"],
+                        CornerRadius = art.CornerRadius,
+                        IsHitTestVisible = false,
+                        Visibility = Visibility.Collapsed,
+                    };
+                    art.Children.Add(ring);
+                }
+
+                ring.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;
+            }
 
             if (!(card.RenderTransform is TranslateTransform move))
             {

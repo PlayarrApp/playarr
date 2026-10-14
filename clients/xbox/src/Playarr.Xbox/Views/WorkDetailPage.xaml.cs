@@ -1,11 +1,17 @@
 using System;
 using System.Linq;
 using System.ComponentModel;
+using System.Numerics;
+using Windows.UI;
+using Windows.UI.Composition;
 using Windows.UI.Text;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Media.Animation;
 using Windows.UI.Xaml.Media.Imaging;
+using Windows.UI.Xaml.Hosting;
+using Windows.UI.Xaml.Shapes;
 using Windows.UI.Xaml.Navigation;
 using Playarr.Core.Models;
 using Playarr.Xbox;
@@ -39,6 +45,7 @@ namespace Playarr.Xbox.Views
     {
         private WorkDetailViewModel _viewModel = null!;
         private Work? _backdropWork;
+        private bool _episodeRailOverscanApplied;
 
         /// <summary>The title's kind once loaded; read by the parity trace.</summary>
         internal WorkKind? Kind => _viewModel?.Work?.Kind;
@@ -772,6 +779,7 @@ namespace Playarr.Xbox.Views
         /// <summary>Web series page: one rail per season of 268x151 episode thumbnails with the number overlaid.</summary>
         private void RenderSeasonRails()
         {
+            ReserveEpisodeRailLeftOverscan();
             SeriesPanel.Children.Clear();
             foreach (var season in _viewModel.Seasons)
             {
@@ -781,9 +789,13 @@ namespace Playarr.Xbox.Views
                     IsItemClickEnabled = true,
                     Height = 210,
                     ItemContainerStyle = CatalogTileFactory.CardContainerStyle,
+                    // The wider ListView viewport is offset by equal left padding,
+                    // so the first item and all later item pitches stay in place.
+                    Margin = new Thickness(-48, 0, 0, 0),
+                    Padding = new Thickness(48, 0, 0, 0),
                 };
-                // Match the web episode rail's compensated 12 px top bleed without moving cards or season rails.
-                CardFocus.ReserveTopLiftRoom(list, 12);
+                // Reserve compensated top headroom for the expanded halo without moving cards or season rails.
+                CardFocus.ReserveTopLiftRoom(list, 48);
                 ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
                 ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
                 ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);
@@ -803,14 +815,16 @@ namespace Playarr.Xbox.Views
                         PlayButton_Click(this, new RoutedEventArgs());
                     }
                 };
-                CardFocus.Attach(list);
+                CardFocus.Attach(list, externalArtRing: true);
                 list.GotFocus += (s, e) =>
                 {
+                    ApplyEpisodeArtFocus(e.OriginalSource, true);
                     if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: EpisodeDetail episode } })
                     {
                         ShowEpisode(episode);
                     }
                 };
+                list.LostFocus += (s, e) => ApplyEpisodeArtFocus(e.OriginalSource, false);
 
                 var section = new StackPanel { Margin = new Thickness(0, 14, 0, 11) };
                 section.Children.Add(new TextBlock { Text = SeasonLabel(season), Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
@@ -829,6 +843,23 @@ namespace Playarr.Xbox.Views
             AppendCast();
         }
 
+        private void ReserveEpisodeRailLeftOverscan()
+        {
+            if (_episodeRailOverscanApplied)
+            {
+                return;
+            }
+
+            const double leftOverscan = 48;
+            var viewportMargin = SeriesViewport.Margin;
+            var panelMargin = SeriesPanel.Margin;
+            // Widen the outer clip to the left while keeping the SeriesPanel's
+            // origin fixed. Only episode ListViews use the compensating offset.
+            SeriesViewport.Margin = new Thickness(viewportMargin.Left - leftOverscan, viewportMargin.Top, viewportMargin.Right, viewportMargin.Bottom);
+            SeriesPanel.Margin = new Thickness(panelMargin.Left + leftOverscan, panelMargin.Top, panelMargin.Right, panelMargin.Bottom);
+            _episodeRailOverscanApplied = true;
+        }
+
         private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail)
         {
             var episode = detail.Episode;
@@ -839,10 +870,49 @@ namespace Playarr.Xbox.Views
                 CornerRadius = new CornerRadius(12),
                 Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
+            Canvas? shadowHost = null;
             if (series != null)
             {
                 var diagnosticCard = EpisodeArtworkDiagnostics.NewCard();
+                var episodeShadowHost = new Canvas { Width = 268, Height = 151, IsHitTestVisible = false };
+                shadowHost = episodeShadowHost;
+                // This rounded source shape is fully covered by the art at rest;
+                // its alpha mask models the CSS border box, not image transparency.
+                episodeShadowHost.Children.Add(new Rectangle
+                {
+                    Width = 268,
+                    Height = 151,
+                    RadiusX = 12,
+                    RadiusY = 12,
+                    Fill = new SolidColorBrush(Windows.UI.Colors.White),
+                    IsHitTestVisible = false,
+                });
+                // Pre-scaled source dimensions produce a centered 4 px expansion
+                // when the halo SpriteVisual is laid out at 276x159.
+                episodeShadowHost.Children.Add(new Rectangle
+                {
+                    Width = 268,
+                    Height = 151,
+                    RadiusX = 15.54,
+                    RadiusY = 15.20,
+                    Fill = new SolidColorBrush(Windows.UI.Colors.White),
+                    IsHitTestVisible = false,
+                });
                 var still = new Image { Width = 268, Height = 151, Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
+                episodeShadowHost.Loaded += (_, __) =>
+                {
+                    if (episodeShadowHost.Tag is true)
+                    {
+                        ApplyEpisodeArtShadow(episodeShadowHost, true);
+                    }
+                };
+                art.SizeChanged += (_, __) =>
+                {
+                    if (episodeShadowHost.Tag is true)
+                    {
+                        ApplyEpisodeArtShadow(episodeShadowHost, true);
+                    }
+                };
                 var requested = false;
                 var watchingViewport = false;
                 Windows.Foundation.TypedEventHandler<FrameworkElement, EffectiveViewportChangedEventArgs> viewportChanged = null!;
@@ -921,10 +991,216 @@ namespace Playarr.Xbox.Views
             caption.Children.Add(new TextBlock { Text = EpisodeCode(seasonNumber, episode.EpisodeNumber), FontSize = 9, FontWeight = FontWeights.SemiBold, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"], VerticalAlignment = VerticalAlignment.Center });
             caption.Children.Add(new TextBlock { Text = episode.Title ?? string.Empty, FontSize = 12, FontWeight = FontWeights.SemiBold, MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis });
 
-            var root = new StackPanel { Width = 268, Tag = detail };
+            var layoutProbe = new StackPanel { Width = 268 };
+            layoutProbe.Children.Add(art);
+            layoutProbe.Children.Add(caption);
+            layoutProbe.Measure(new Windows.Foundation.Size(268, double.PositiveInfinity));
+            var rootHeight = layoutProbe.DesiredSize.Height;
+            layoutProbe.Children.Remove(art);
+            layoutProbe.Children.Remove(caption);
+
+            var root = new Canvas { Width = 268, Height = rootHeight, Tag = detail };
             root.Children.Add(art);
+            if (shadowHost != null)
+            {
+                // Canvas.ZIndex is interpreted by this root Canvas, so the overlay
+                // shadow stays behind art without adding to the card's measured height.
+                Canvas.SetLeft(shadowHost, 0);
+                Canvas.SetTop(shadowHost, 0);
+                Canvas.SetZIndex(shadowHost, -1);
+                root.Children.Add(shadowHost);
+                var focusRing = new Border
+                {
+                    Width = 274,
+                    Height = 157,
+                    CornerRadius = new CornerRadius(15),
+                    BorderThickness = new Thickness(3),
+                    BorderBrush = new SolidColorBrush(EpisodeArtGlowColor),
+                    IsHitTestVisible = false,
+                    Visibility = Visibility.Collapsed,
+                };
+                Canvas.SetLeft(focusRing, -3);
+                Canvas.SetTop(focusRing, -3);
+                // Match the shadow host's negative z-order: art covers the
+                // ring's inner stroke, leaving only the external 3 px outline.
+                Canvas.SetZIndex(focusRing, -1);
+                root.Children.Add(focusRing);
+            }
+            Canvas.SetLeft(caption, 0);
+            Canvas.SetTop(caption, art.Height);
             root.Children.Add(caption);
             return root;
+        }
+
+        private static void ApplyEpisodeArtFocus(object source, bool focused)
+        {
+            DependencyObject? current = source as DependencyObject;
+            while (current != null && !(current is ListViewItem))
+            {
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            if (!(current is ListViewItem item) || !(item.Content is Panel card) ||
+                card.Children.Count == 0 || !(card.Children[0] is Grid art))
+            {
+                return;
+            }
+
+            art.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+            var scale = art.RenderTransform as ScaleTransform ?? new ScaleTransform { ScaleX = 1, ScaleY = 1 };
+            art.RenderTransform = scale;
+
+            var shadowHost = card.Children.OfType<Canvas>().FirstOrDefault();
+            var focusRing = card.Children.OfType<Border>().FirstOrDefault();
+            ScaleTransform? ringScale = null;
+            if (focusRing != null)
+            {
+                focusRing.BorderBrush = new SolidColorBrush(EpisodeArtGlowColor);
+                focusRing.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;
+                focusRing.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+                ringScale = focusRing.RenderTransform as ScaleTransform ?? new ScaleTransform { ScaleX = 1, ScaleY = 1 };
+                focusRing.RenderTransform = ringScale;
+            }
+            var targets = new System.Collections.Generic.List<DependencyObject> { scale };
+            if (shadowHost != null)
+            {
+                shadowHost.Tag = focused;
+                shadowHost.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+                var shadowScale = shadowHost.RenderTransform as ScaleTransform ?? new ScaleTransform { ScaleX = 1, ScaleY = 1 };
+                shadowHost.RenderTransform = shadowScale;
+                targets.Add(shadowScale);
+            }
+            if (ringScale != null)
+            {
+                targets.Add(ringScale);
+            }
+
+            var storyboard = new Storyboard();
+            foreach (var target in targets)
+            {
+                foreach (var property in new[] { "ScaleX", "ScaleY" })
+                {
+                    var axisAnimation = new DoubleAnimationUsingKeyFrames();
+                    axisAnimation.KeyFrames.Add(new SplineDoubleKeyFrame
+                    {
+                        Value = focused ? 1.025 : 1,
+                        KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(260)),
+                        KeySpline = new KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.2, 0.8), ControlPoint2 = new Windows.Foundation.Point(0.2, 1) },
+                    });
+
+                    Storyboard.SetTarget(axisAnimation, target);
+                    Storyboard.SetTargetProperty(axisAnimation, property);
+                    storyboard.Children.Add(axisAnimation);
+                }
+            }
+
+            storyboard.Begin();
+
+            if (shadowHost != null)
+            {
+                ApplyEpisodeArtShadow(shadowHost, focused);
+            }
+        }
+
+        private static void ApplyEpisodeArtShadow(Canvas shadowHost, bool focused)
+        {
+            var shadowVisual = ElementCompositionPreview.GetElementChildVisual(shadowHost);
+            if (!focused)
+            {
+                if (shadowVisual != null)
+                {
+                    shadowVisual.Opacity = 0;
+                }
+
+                return;
+            }
+
+            var maskShape = shadowHost.Children.OfType<Rectangle>().FirstOrDefault();
+            if (maskShape == null || !maskShape.IsLoaded || shadowHost.ActualWidth <= 0 || shadowHost.ActualHeight <= 0)
+            {
+                return;
+            }
+
+            if (shadowVisual != null)
+            {
+                if (shadowVisual is ContainerVisual existingLayers &&
+                    existingLayers.Children.OfType<SpriteVisual>()
+                        .Select(sprite => sprite.Shadow)
+                        .OfType<DropShadow>()
+                        .FirstOrDefault(shadow => shadow.Comment == "episode-brand-halo") is DropShadow halo)
+                {
+                    halo.Color = EpisodeArtHaloColor;
+                }
+                shadowVisual.Opacity = 1;
+                return;
+            }
+
+            var hostVisual = ElementCompositionPreview.GetElementVisual(shadowHost);
+            var compositor = hostVisual.Compositor;
+            var mask = maskShape.GetAlphaMask();
+            var layeredShadow = compositor.CreateContainerVisual();
+            layeredShadow.Size = new Vector2((float)shadowHost.ActualWidth, (float)shadowHost.ActualHeight);
+            // CSS defines blur radius as 2σ. UWP describes BlurRadius as a Gaussian
+            // radius without defining numeric equivalence; these one-pass values
+            // are candidates for exact-head runtime comparison, not asserted matches.
+            var haloMaskShape = shadowHost.Children.OfType<Rectangle>().Skip(1).FirstOrDefault();
+            if (haloMaskShape == null || !haloMaskShape.IsLoaded)
+            {
+                return;
+            }
+            // The CSS 20 px box-shadow blur targets Gaussian σ10. UWP documents BlurRadius as
+            // a Gaussian radius but gives no CSS conversion; paired captures fit web σ10.3/10.4
+            // against Composition 20 at σ6.7/6.8. This 30 trial estimates that pair only.
+            AddEpisodeHaloLayer(compositor, layeredShadow, haloMaskShape.GetAlphaMask(), EpisodeArtHaloColor, 30, 4);
+            AddEpisodeShadowLayer(compositor, layeredShadow, mask, Color.FromArgb(51, 56, 38, 33), 10, 10);
+            // The matched halo trial improved with a 1.5x radius (20→30); test the same ratio
+            // for CSS blur 48 as a Composition radius 72 hypothesis, not a universal conversion.
+            AddEpisodeShadowLayer(compositor, layeredShadow, mask, Color.FromArgb(77, 56, 38, 33), 72, 24);
+
+            ElementCompositionPreview.SetElementChildVisual(shadowHost, layeredShadow);
+        }
+
+        private static Color EpisodeArtGlowColor => Theme.IsLight
+            ? Color.FromArgb(255, 0xA5, 0x27, 0x45)
+            : Theme.BrandInk;
+
+        private static Color EpisodeArtHaloColor
+        {
+            get
+            {
+                var brand = EpisodeArtGlowColor;
+                return Color.FromArgb((byte)Math.Round(brand.A * 0.45), brand.R, brand.G, brand.B);
+            }
+        }
+
+        private static void AddEpisodeShadowLayer(Compositor compositor, ContainerVisual host, CompositionBrush mask, Color color, float blur, float offsetY)
+        {
+            var shadow = compositor.CreateDropShadow();
+            shadow.Color = color;
+            shadow.BlurRadius = blur;
+            shadow.Offset = new Vector3(0, offsetY, 0);
+            shadow.Mask = mask;
+
+            var sprite = compositor.CreateSpriteVisual();
+            sprite.Size = host.Size;
+            sprite.Shadow = shadow;
+            host.Children.InsertAtTop(sprite);
+        }
+
+        private static void AddEpisodeHaloLayer(Compositor compositor, ContainerVisual host, CompositionBrush mask, Color color, float blur, float spread)
+        {
+            var shadow = compositor.CreateDropShadow();
+            shadow.Color = color;
+            shadow.BlurRadius = blur;
+            shadow.Offset = Vector3.Zero;
+            shadow.Mask = mask;
+            shadow.Comment = "episode-brand-halo";
+
+            var sprite = compositor.CreateSpriteVisual();
+            sprite.Size = new Vector2(host.Size.X + spread * 2, host.Size.Y + spread * 2);
+            sprite.Offset = new Vector3(-spread, -spread, 0);
+            sprite.Shadow = shadow;
+            host.Children.InsertAtTop(sprite);
         }
 
         /// <summary>The web series header follows the focused (or next) episode: "S01 · E01" eyebrow, episode title, meta.</summary>
