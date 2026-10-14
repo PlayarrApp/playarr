@@ -633,6 +633,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Xbox: the resting card shadow follows the web's two-layer falloff.
 - Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
 - HarmonyOS phone: series detail shows Start, Add to watchlist and Add to Playlist in one row, as web.
 - HarmonyOS phone: series detail season rows use web's phone card size and spacing (TV unchanged).

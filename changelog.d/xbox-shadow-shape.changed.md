@@ -1,1 +1,0 @@
-- Xbox: the resting card shadow follows the web's two-layer falloff.
