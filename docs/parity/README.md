@@ -30,6 +30,13 @@ rasterisation).
 - `scripts/parity/capture-web.mjs`: Playwright captures of the web reference. `--dump-dom` also writes the rect, font
   and colour of every visible element per screen (`<layout>/<theme>/dom/<id>.json`); `PARITY_CHROME_CHANNEL=chrome`
   launches the installed Chrome; the `hideVideo` step blanks the video picture.
+- `scripts/parity/capture-refs.mjs`, `web-refs.json`, `verify-refs.mjs`: one command regenerates the LIVE web references for every
+  client (14 non-player screens, dark and light, one capture per viewport group, copied into each client's `web/` and `web/light/`
+  with a `web.bak-<date>/` backup and `web/build.json`). It resets the pinned files' watch progress, signs in fresh as the Device Test
+  account (environment or `~/.secrets`), clears sessionStorage on every document, waits for fonts and images, takes two identical
+  shots, and verifies size, theme, title and loading placeholders before copying anything:
+  `PARITY_CHROME=/usr/bin/chromium node capture-refs.mjs --parity-root <dir of client folders> [--groups tv,iphone] [--screens home]`.
+  Run it inside a memory scope. The player-controls screen is not part of it.
 - `scripts/parity/diff.mjs`: pixelmatch diff, per-screen mismatch table and an HTML report. Ignored regions:
   `--mask-rect x,y,w,h[,screen-id]` (CSS px of the layout, repeatable) and the `maskRects` the reference manifest
   records for text that differs per fixture instance (the `settings-server` address, from `maskSelectors` in

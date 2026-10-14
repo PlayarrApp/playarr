@@ -3,6 +3,7 @@
 //   PARITY_CHROME (browser path, default Playwright's), PLAYARR_WEB_MOBILE=1, PLAYARR_WEB_USER_AGENT, and
 //   PLAYARR_WEB_VIEWPORT_WIDTH/HEIGHT/DPR (TV defaults 1920/1080/1; mobile defaults 390/844/3). Sessions are never shared: every run signs in fresh (new
 //   browser profile, so a new device id) and keeps the session in memory only; nothing is written to disk.
+import { writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
 
 const KEYS = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", select: "Enter", back: "Escape" };
@@ -461,7 +462,49 @@ export async function createDriver() {
         }
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       }
+      // Deterministic capture (PARITY_STABLE=1): fonts ready, every visible image decoded, no spinner, and two shots a moment apart identical
+      // (the header clock ticks per minute: a rollover just retries).
+      if (env.PARITY_STABLE === "1") {
+        await page.evaluate(() => document.fonts.ready);
+        await page.waitForFunction(() => [...document.images].filter((i) => { const r = i.getBoundingClientRect(), x = Math.min(Math.max(r.left + r.width / 2, 0), innerWidth - 1), y = Math.min(Math.max(r.top + r.height / 2, 0), innerHeight - 1); return r.width > 0 && r.height > 0 && document.elementsFromPoint(x, y).includes(i); })
+          .every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 });
+        await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar]"), null, { timeout: 20000 });
+        let shot = null;
+        for (let i = 0; i < 4 && !shot; i += 1) {
+          const a = await page.screenshot(); await page.waitForTimeout(700); const b = await page.screenshot();
+          if (a.equals(b)) shot = b;
+        }
+        if (!shot) throw new Error("screen is not stable (two shots differ four times)");
+        writeFileSync(file, shot);
+        return;
+      }
       await page.screenshot({ path: file });
+    },
+    // Facts about the page as it is now, for the reference verifier: theme, the title on detail pages and action drawers, loading
+    // placeholders, open dialogs, broken images, fonts.
+    async inspect() {
+      return page.evaluate(() => {
+        const t = (e) => e?.textContent?.trim().replace(/\s+/g, " ") ?? null;
+        const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+        return {
+          url: location.pathname + location.search,
+          theme: document.documentElement.getAttribute("data-theme") ?? localStorage.getItem("playarr-theme"),
+          detailTitle: t(document.querySelector(".tv-detail-title")),
+          drawerTitle: t(document.querySelector(".media-context-drawer h2, .media-context-drawer h1, .media-context-drawer [class*=title]")),
+          resumeState: /\bresume\b|ask again/i.test(document.querySelector(".tv-detail")?.innerText ?? ""),
+          skeletons: [...document.querySelectorAll(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true], .is-resolving")].filter(vis).length,
+          dialogs: [...document.querySelectorAll("[role=dialog], dialog[open], .media-context-drawer, .download-quality-drawer, [class*=filters-panel], [class*=drawer]")].filter(vis).length,
+          brokenSrc: [...document.images].filter((i) => { const r = i.getBoundingClientRect(), x = Math.min(Math.max(r.left + r.width / 2, 0), innerWidth - 1), y = Math.min(Math.max(r.top + r.height / 2, 0), innerHeight - 1); return vis(i) && document.elementsFromPoint(x, y).includes(i) && !(i.complete && i.naturalWidth > 0); }).map((i) => (i.currentSrc || i.src).replace(/^https?:\/\/[^/]+/, "").slice(0, 90)),
+          fontsReady: document.fonts.status === "loaded",
+          signedOut: !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"),
+        };
+      });
+    },
+    // Phone layout: long-press on a card is a context-menu event; opens the title-actions drawer of the first library card.
+    async openActions() {
+      await page.locator("a[href^='/movies/']").first().dispatchEvent("contextmenu");
+      await page.waitForSelector(".media-context-drawer", { timeout: 10000 });
+      await settle();
     },
     // Plays media file `c.file` (a deep link on web; devices open it by their own means), returns {state, startSeconds, advancedSeconds, proxied}.
     async play(c, expect) {

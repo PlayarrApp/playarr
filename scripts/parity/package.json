@@ -7,7 +7,8 @@
     "capture:web": "node capture-web.mjs",
     "diff": "node diff.mjs",
     "suite": "node suite-run.mjs",
-    "test:suite": "node --test suite.test.mjs"
+    "test:suite": "node --test suite.test.mjs",
+    "refs": "node capture-refs.mjs"
   },
   "dependencies": {
     "pixelmatch": "^6.0.0",

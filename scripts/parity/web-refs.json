@@ -1,0 +1,151 @@
+{
+  "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces.",
+  "date": "20261014",
+  "groups": {
+    "tv": {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "dpr": 1,
+      "mobile": false,
+      "pixels": [
+        1920,
+        1080
+      ],
+      "dirs": [
+        "android",
+        "firetv",
+        "apple",
+        "tizen-native",
+        "tizen-webos",
+        "harmony",
+        "macos",
+        "roku",
+        "vidaa",
+        "xbox"
+      ],
+      "actionsTitle": "The 5th Wave"
+    },
+    "ipad": {
+      "viewport": [
+        1366,
+        1024
+      ],
+      "dpr": 2,
+      "mobile": false,
+      "pixels": [
+        2732,
+        2048
+      ],
+      "dirs": [
+        "ios-tablet"
+      ],
+      "actionsTitle": "The 5th Wave"
+    },
+    "iphone": {
+      "viewport": [
+        393,
+        852
+      ],
+      "dpr": 3,
+      "mobile": true,
+      "pixels": [
+        1179,
+        2556
+      ],
+      "dirs": [
+        "ios-phone"
+      ]
+    },
+    "android-phone": {
+      "viewport": [
+        390,
+        845
+      ],
+      "dpr": 1.8436,
+      "mobile": true,
+      "pixels": [
+        719,
+        1558
+      ],
+      "dirs": [
+        "android-phone"
+      ]
+    },
+    "harmony-phone": {
+      "viewport": [
+        360,
+        780
+      ],
+      "dpr": 3,
+      "mobile": true,
+      "pixels": [
+        1080,
+        2340
+      ],
+      "dirs": [
+        "harmony-phone"
+      ]
+    },
+    "sailfish": {
+      "viewport": [
+        390,
+        683
+      ],
+      "dpr": 1.9692,
+      "mobile": true,
+      "pixels": [
+        768,
+        1344
+      ],
+      "dirs": [
+        "sailfish"
+      ],
+      "crop": [
+        768,
+        1344
+      ]
+    },
+    "nura": {
+      "viewport": [
+        360,
+        673
+      ],
+      "dpr": 2,
+      "mobile": true,
+      "pixels": [
+        720,
+        1346
+      ],
+      "dirs": [
+        "postmarketos"
+      ]
+    }
+  },
+  "screens": [
+    "home",
+    "movies",
+    "series",
+    "music",
+    "calendar-month",
+    "calendar-week",
+    "calendar-agenda",
+    "search",
+    "film-detail",
+    "series-detail",
+    "settings",
+    "filters",
+    "profiles",
+    "actions"
+  ],
+  "titles": {
+    "film-detail": "2 Fast 2 Furious",
+    "series-detail": "2 Broke Girls",
+    "actions": "2 Fast 2 Furious"
+  },
+  "dialogScreens": [
+    "filters",
+    "actions"
+  ]
+}
