@@ -1,1 +1,0 @@
-- VIDAA: the stage transform now reports element rects and the window size in stage pixels (VIDAA only), so rail centring and left-to-nav focus match web on the real TV.
