@@ -1,0 +1,1 @@
+- HarmonyOS TV player: previous and next buttons (and the media keys) move through the session queue; the -10 and +10 buttons are gone from the bar as on web (seeking stays on the D-pad left and right).

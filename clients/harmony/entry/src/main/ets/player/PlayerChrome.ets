@@ -190,6 +190,7 @@ const TV_ROW_GAP: number = 24;
 const TV_BAR_GAP: number = 28;
 const TV_TIME_FONT_SIZE: number = 12;
 const TV_QUALITY_WIDTH: number = 120;
+const TV_VOLUME_WIDTH: number = 76;
 const BACK_BUTTON_WIDTH_TV: number = 96;
 
 function defaultChromePaddingH(): number {
@@ -323,6 +324,8 @@ struct ChromeButton {
    * state, the same pattern as every other content component in this
    * design system (e.g. `design/components/PosterCard.ets#onSelect`). */
   /** Web TV player: a round button with a hairline ring (the play button's ring is heavier). */
+  /** False draws the button dimmed and takes it out of focus (web's disabled previous and next). */
+  active: boolean = true;
   circle: boolean = false;
   ringWidth: number = 1;
 
@@ -362,7 +365,8 @@ struct ChromeButton {
     .backgroundColor(this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_FILL_ALPHA) : Color.Transparent)
     .border(this.circle ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_RING_ALPHA) } : { width: 0 })
     .scale({ x: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)), y: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)) })
-    .focusable(true)
+    .opacity(this.active ? 1 : 0.35)
+    .focusable(this.active)
     .onFocus(() => {
       this.setFocused(true);
     })
@@ -370,7 +374,9 @@ struct ChromeButton {
       this.setFocused(false);
     })
     .onClick(() => {
-      this.onActivate();
+      if (this.active) {
+        this.onActivate();
+      }
     })
   }
 }
@@ -416,6 +422,14 @@ export struct PlayerChrome {
   onOpenQuality: () => void = () => {};
   /** Info: the title and stream facts drawer (TV). */
   onOpenInfo: () => void = () => {};
+  /** Previous and next in the session's queue (TV). */
+  @Prop canPrevious: boolean = false;
+  @Prop canNext: boolean = false;
+  onPrevious: () => void = () => {};
+  onNext: () => void = () => {};
+  /** Volume: the player's own output is muted; the button toggles it (TV). */
+  @Prop muted: boolean = false;
+  onToggleMute: () => void = () => {};
   onVisibilityChanged: (visible: boolean) => void = () => {};
 
   @State private chromeOpacity: number = 1;
@@ -578,12 +592,13 @@ export struct PlayerChrome {
         }
         Row({ space: tv(TV_ROW_GAP) }) {
           ChromeButton({
-            label: '-10',
+            label: '\u23EE',
             circle: true,
+            active: this.canPrevious,
             buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
-            fontSize: tv(13),
-            onActivate: this.onSeekBack,
+            fontSize: tv(16),
+            onActivate: this.onPrevious,
             notifyFocusChanged: ((focused: boolean): void => {
               this.setChildFocused(focused);
             }),
@@ -602,12 +617,13 @@ export struct PlayerChrome {
             }),
           })
           ChromeButton({
-            label: '+10',
+            label: '\u23ED',
             circle: true,
+            active: this.canNext,
             buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
-            fontSize: tv(13),
-            onActivate: this.onSeekForward,
+            fontSize: tv(16),
+            onActivate: this.onNext,
             notifyFocusChanged: ((focused: boolean): void => {
               this.setChildFocused(focused);
             }),
@@ -620,6 +636,17 @@ export struct PlayerChrome {
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
           Blank()
+          ChromeButton({
+            label: this.muted ? 'Muted' : 'Vol',
+            circle: true,
+            buttonWidth: tv(TV_VOLUME_WIDTH),
+            buttonHeight: tv(TV_SEEK_SIZE),
+            fontSize: tv(13),
+            onActivate: this.onToggleMute,
+            notifyFocusChanged: ((focused: boolean): void => {
+              this.setChildFocused(focused);
+            }),
+          })
           if (this.qualityLabel.length > 0) {
             ChromeButton({
               label: this.qualityLabel,

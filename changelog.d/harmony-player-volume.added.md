@@ -1,0 +1,1 @@
+- HarmonyOS TV player: a volume button mutes and restores the player output (it stays muted across items of the session).
