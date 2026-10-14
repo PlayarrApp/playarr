@@ -5223,12 +5223,12 @@ sub layoutDetailRails()
         return
     end if
     if m.detailEpisodes.visible
-        m.detailEpisodes.translation = [0, 69]
+        m.detailEpisodes.translation = [-8, 54]
         updateSeasonHeads()
         visibleRows = m.detailSeasons.Count()
         if visibleRows > 3 then visibleRows = 3
         if visibleRows < 1 then visibleRows = 1
-        m.detailEpisodes.itemSize = [1038, visibleRows * 315]
+        m.detailEpisodes.itemSize = [1046, visibleRows * 315 + 15]
         m.detailEpisodes.numRows = visibleRows
         y += visibleRows * 315 + 20
     end if
@@ -5847,8 +5847,8 @@ sub buildEpisodeContent(groups as Object, kind as String)
         rowHeights.Push(314)
     end for
     m.detailEpisodes.rowHeights = rowHeights
-    m.detailEpisodes.rowItemSize = [[268, 190]]
-    m.detailEpisodes.rowItemSpacing = [[25, 0]]
+    m.detailEpisodes.rowItemSize = [[284, 220]]
+    m.detailEpisodes.rowItemSpacing = [[9, 0]]
     m.detailEpisodes.showRowLabel = false
     m.detailEpisodes.rowLabelFont = PlayarrMakeFont(600, 18)
     m.detailEpisodes.rowLabelColor = ThemeColor("ink")
@@ -5863,6 +5863,9 @@ sub addEpisodeCardFields(item as Object, activeFactor as Float)
     item.activeRailFactor = activeFactor
     item.AddField("cardScale", "float", false)
     item.cardScale = 268.0 / 220.0
+    ' Reserve the lift, ring and glow overflow inside the row's clip (8 px sides, 15 px top), as Home does.
+    item.AddField("focusRingOutsideArt", "boolean", false)
+    item.focusRingOutsideArt = true
 end sub
 
 ' Episode still, always through the server proxy (the catalog's own image
