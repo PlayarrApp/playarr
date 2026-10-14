@@ -531,19 +531,21 @@ private struct AuthenticatedPlayarrShell: View {
     }
 
     private func navGroup(_ group: [Destination]) -> some View {
-        VStack(spacing: 4) {
+        // A title page highlights its library's rail item, as on web (same rule as the phone nav).
+        let stageSelection = phoneSelectedDestination
+        return VStack(spacing: 4) {
             ForEach(group, id: \.self) { destination in
                 Button { select(destination) } label: {
                     VStack(spacing: 6) {
-                        WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.muted, size: 18)
+                        WMIconView(icon: destination.webIcon, color: stageSelection == destination ? PlayarrStyle.ink : PlayarrStyle.muted, size: 18)
                         Text(destination.title)
                             .font(WM.font(8.5, 700))
                             .lineLimit(1)
                     }
-                    .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.muted)
+                    .foregroundStyle(stageSelection == destination ? PlayarrStyle.ink : PlayarrStyle.muted)
                     .frame(width: 64, height: 64)
                     .background(
-                        selected == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
+                        stageSelection == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                     )
                 }
