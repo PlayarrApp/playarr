@@ -388,6 +388,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Parity: web-refs.json gains an android-tablet viewport group (1280x800 at 2x, TV layout) so the Android tablet gets its own web references.
 - Android TV Search now gives default D-pad focus to its empty search field when entering the idle Search page, without opening the on-screen keyboard until Select is pressed.
 - Android phone Filters and Actions drawers blur the page beneath them on Android 12 and later while keeping the bottom navigation available.
 - Fire TV Search adds the web media-type filters, matching playlist results, game discovery, and supported discovery actions. The Filters tile remains visible above Search content and receives focus again after the drawer closes.
@@ -2988,6 +2989,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Harmony wall: the capture also waits for the series-detail watchlist pill's pending `discover/resolve` (counted with the poster placeholders).
 - Harmony wall capture: API calls bypass the Previewer's artwork gate and the capture waits until the app reports no pending request, so Home art and the watchlist state are loaded before the frame is taken.
 - Retain failed Harmony TV detail capture frames in private debug artifacts and add sanitised stage counts with elapsed time ranges.
 - Harmony TV parity dispatches can capture a selected screen subset and skip the player route while preserving the default full capture.

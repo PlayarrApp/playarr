@@ -1,1 +1,0 @@
-- Parity: web-refs.json gains an android-tablet viewport group (1280x800 at 2x, TV layout) so the Android tablet gets its own web references.

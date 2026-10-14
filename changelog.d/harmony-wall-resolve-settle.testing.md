@@ -1,1 +1,0 @@
-- Harmony wall: the capture also waits for the series-detail watchlist pill's pending `discover/resolve` (counted with the poster placeholders).
