@@ -36,14 +36,13 @@ final class DetailNavigationUITests: XCTestCase {
         // The element tap performs XCTest's system-wide interrupting-element check.
         // A coordinate tap targets the already-visible card directly, avoiding that
         // unrelated System application accessibility query on the hosted simulator.
-        homeSeries.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-
+        tap(until: detailBack, "The selected Series detail must open.") {
+            if homeSeries.exists { homeSeries.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+        }
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 30), "The selected Series detail must open.")
         XCTAssertTrue(seriesTab.waitForExistence(timeout: 30))
         assertSelected(seriesTab)
-        XCTAssertTrue(detailBack.waitForExistence(timeout: 30))
-        detailBack.tap()
-        XCTAssertTrue(homeSeries.waitForExistence(timeout: 30), "Back must restore Home.")
+        tap(until: homeSeries, "Back must restore Home.") { if detailBack.exists { detailBack.tap() } }
         assertSelected(homeTab)
 
         searchTab.tap()
@@ -54,20 +53,29 @@ final class DetailNavigationUITests: XCTestCase {
 
         let result = app.buttons["search-work-\(workID)"]
         XCTAssertTrue(result.waitForExistence(timeout: 60), "Search must return the same Series.")
-        result.tap()
+        tap(until: detailBack, "Search result detail must open.") { if result.exists { result.tap() } }
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 30))
-        XCTAssertTrue(detailBack.waitForExistence(timeout: 30))
         assertSelected(seriesTab)
-        detailBack.tap()
-
-        XCTAssertTrue(searchField.waitForExistence(timeout: 30), "Back must restore Search.")
+        tap(until: searchField, "Back must restore Search.") { if detailBack.exists { detailBack.tap() } }
         XCTAssertEqual(searchField.value as? String, title)
         assertSelected(searchTab)
+    }
+
+    /// A tap on a loaded CI simulator can be swallowed mid-transition. Retry the tap until its
+    /// outcome (`target`) exists, instead of asserting after a single tap and a fixed wait.
+    @MainActor
+    private func tap(until target: XCUIElement, _ message: String, _ action: () -> Void,
+                     file: StaticString = #filePath, line: UInt = #line) {
+        for _ in 0..<3 {
+            action()
+            if target.waitForExistence(timeout: 20) { return }
+        }
+        XCTFail(message, file: file, line: line)
     }
 
     @MainActor
     private func assertSelected(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: element)
-        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 30), .completed, file: file, line: line)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 60), .completed, file: file, line: line)
     }
 }
