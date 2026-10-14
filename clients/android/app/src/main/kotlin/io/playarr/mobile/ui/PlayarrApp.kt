@@ -87,6 +87,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -467,12 +468,35 @@ private val LoginFailure.messageKey: PlayarrString get() = when (this) {
     LoginFailure.Connection -> PlayarrString.LoginConnectionFailed
 }
 
+/** Web's phone/wide breakpoint (`max-width: 760px` in the web app's CSS). */
+internal const val WEB_PHONE_MAX_WIDTH_DP = 760
+private const val TV_STAGE_WIDTH_DP = 1920f
+
 @Composable
 fun PlayarrApp(
     isTelevision: Boolean,
     rootViewModel: PlayarrRootViewModel = hiltViewModel(),
 ) {
     val state by rootViewModel.state.collectAsState()
+    // Web switches from its phone layout to the wide (TV) layout above 760 px; a tablet shows that layout by touch.
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val wideLayout = isTelevision || configuration.screenWidthDp > WEB_PHONE_MAX_WIDTH_DP
+    // The TV layout is built for web's 1920 px canvas; its tokens are viewport-width fractions, so a tablet draws that canvas scaled to its width.
+    val stageScale = if (!isTelevision && wideLayout) configuration.screenWidthDp / TV_STAGE_WIDTH_DP else 1f
+    val stageDensity = androidx.compose.ui.platform.LocalDensity.current.let { Density(it.density * stageScale, it.fontScale) }
+    val stageConfiguration = remember(configuration, stageScale) {
+        if (stageScale == 1f) configuration else android.content.res.Configuration(configuration).apply {
+            screenWidthDp = TV_STAGE_WIDTH_DP.toInt()
+            screenHeightDp = (configuration.screenHeightDp / stageScale).toInt()
+        }
+    }
+    val stage: @Composable (@Composable () -> Unit) -> Unit = { content ->
+        if (stageScale == 1f) content() else CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalDensity provides stageDensity,
+            androidx.compose.ui.platform.LocalConfiguration provides stageConfiguration,
+            content = content,
+        )
+    }
     val display = LocalPlayarrDisplayPreferences.current
     val language = rememberPlayarrLanguageState(display.language)
     val systemDark = isSystemInDarkTheme()
@@ -485,7 +509,7 @@ fun PlayarrApp(
     val phoneInsets: @Composable () -> androidx.compose.foundation.layout.WindowInsets = remember { { webPhoneInsets() } }
     CompositionLocalProvider(
         LocalPlayarrLanguage provides language,
-        LocalPlayarrFormFactor provides if (isTelevision) PlayarrFormFactor.Tv else PlayarrFormFactor.Phone,
+        LocalPlayarrFormFactor provides if (wideLayout) PlayarrFormFactor.Tv else PlayarrFormFactor.Phone,
         LocalPlayarrPhoneInsets provides phoneInsets,
         LocalPlayarrWebTextStyle provides WebTextStyle,
     ) {
@@ -493,14 +517,16 @@ fun PlayarrApp(
             when (val current = state) {
                 RootState.Loading -> LoadingScreen()
                 is RootState.SignedOut -> if (current.showProfiles) {
-                    ExperienceProfilesScreen(
-                        isTelevision = isTelevision,
-                        currentUserId = "",
-                        currentAvatar = null,
-                        onHome = rootViewModel::resumeAfterProfile,
-                        onSettings = { rootViewModel.openAfterProfile("settings") },
-                        onAddProfile = rootViewModel::addProfile,
-                    )
+                    stage {
+                        ExperienceProfilesScreen(
+                            isTelevision = wideLayout,
+                            currentUserId = "",
+                            currentAvatar = null,
+                            onHome = rootViewModel::resumeAfterProfile,
+                            onSettings = { rootViewModel.openAfterProfile("settings") },
+                            onAddProfile = rootViewModel::addProfile,
+                        )
+                    }
                 } else {
                     LoginScreen(
                         savedServerUrl = current.savedServerUrl,
@@ -514,13 +540,15 @@ fun PlayarrApp(
                     // Never mount a WebView shell for television "parity".
                     // Policy: docs/architecture/client-principles.md and
                     // clients/android/AGENTS.md.
-                    PlayarrExperience(
-                        serverUrl = current.serverUrl,
-                        isTelevision = isTelevision,
-                        initialRoute = initialRoute,
-                        onAddProfile = rootViewModel::addProfile,
-                        onRouteChanged = rootViewModel::rememberRoute,
-                    )
+                    stage {
+                        PlayarrExperience(
+                            serverUrl = current.serverUrl,
+                            isTelevision = wideLayout,
+                            initialRoute = initialRoute,
+                            onAddProfile = rootViewModel::addProfile,
+                            onRouteChanged = rootViewModel::rememberRoute,
+                        )
+                    }
                 }
             }
         }
