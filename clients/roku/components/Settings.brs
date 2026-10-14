@@ -45,8 +45,10 @@ sub renderSettings()
     sections = settingsSections()
     activeIdx = settingsSectionIndexOf(m.settingsPanel)
     pageBegin("Preferences", 672)
-    pgLabel(m.pageHead, 226.6, 119.5, 420, 21, UCase(sections[activeIdx].title), 14, 800, "inkMuted")
-    pgLabel(m.pageHead, 226.6, 143.7, 420, 16, UCase(sections[activeIdx].detail), 12, 400, "inkMuted", { maxLines: 1 })
+    ' Web: a hairline as wide as the title, then the section name; no description line.
+    titleW = pgButtonWidth(m.pageHead, "Preferences", 0, 50, 34, 600) - 16.6
+    pgRect(m.pageHead, 226.6, 112, titleW, 1, "line")
+    pgLabel(m.pageHead, 226.6, 117, 420, 17, UCase(sections[activeIdx].title), 12, 700, "ink")
     for i = 0 to sections.Count() - 1
         y = 162 + 91.9 * i
         if i = activeIdx then pgRect(m.pageBody, 153.6, y, 480.4, 91.9, "surfaceSoft")
@@ -58,7 +60,7 @@ sub renderSettings()
         arrowRole = "inkMuted"
         if i = activeIdx then arrowRole = "ink"
         pgIcon(m.pageBody, 586, y + 33, 20, "arrow-right.png", arrowRole)
-        pgFocusable(153.6, y, 480.4, 91.9, 12, "section", sections[i].id, false)
+        pgFocusable(153.6, y, 480.4, 91.9, 12, "section", sections[i].id, true)
     end for
     id = m.settingsPanel
     if id = "appearance"

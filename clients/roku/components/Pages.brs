@@ -263,6 +263,8 @@ sub pageFocusRender()
     end if
     if m.pageFocusIdx >= m.pageItems.Count() then m.pageFocusIdx = 0
     item = m.pageItems[m.pageFocusIdx]
+    ' Section rows that fit on screen show unscrolled; only the last rows (ring below the screen edge) scroll the page.
+    if item.action = "section" and item.y + item.h <= 1030 then m.pageScrollY = 0
     if item.scrolls = true
         ' Keep the focused control inside the visible band (the panel scrolls under the fixed header).
         top = item.y + m.pageScrollY
@@ -2142,7 +2144,8 @@ sub browseChromeInit()
     pgRound(holder, 153.6, 56.3, 50, 50, 25, "surface", 179)
     pgRound(holder, 153.6, 56.3, 50, 50, 25, "line", -1, true)
     pgIcon(holder, 170, 73, 17, "arrow-left.png", "inkSoft")
-    m.browseDivider = pgRect(holder, 348, 57, 1, 48, "line")
+    m.browseDivider = pgRect(holder, 348, 73, 1, 16, "line")
+    m.browseRule = pgRect(holder, 226.6, 112, 1, 1, "line")
     tx = shellActionX()
     ty = shellActionY(0)
     pgRound(holder, tx, ty, 62, 72, 14, "surfaceStrong", 199)
@@ -2205,4 +2208,26 @@ end sub
 sub pageFadesUpdate(contentBottom as Float)
     m.pageFadeTop.visible = m.pageScrollY < 0
     m.pageFadeBottom.visible = contentBottom + m.pageScrollY > 1040
+end sub
+
+' Web page header: the subtitle sits beside the title after a thin vertical divider (not pink); it wraps under the title,
+' above a hairline as wide as the title, only when it does not fit before the clock.
+sub layoutHeaderSub(titleW as Float, label as Object, divider as Object, rule as Object, text as String)
+    label.spec = { text: text, size: 12, weight: 700, tracking: 0.983, role: "ink", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
+    x = 226.6 + titleW + 24
+    if x + 1 + 24 + label.textWidth <= 462
+        divider.translation = [x, 73]
+        divider.width = 1
+        divider.height = 16
+        divider.visible = true
+        rule.visible = false
+        label.translation = [x + 25, 71.7]
+    else
+        divider.visible = false
+        rule.translation = [226.6, 112]
+        rule.width = titleW
+        rule.height = 1
+        rule.visible = true
+        label.translation = [226.6, 117]
+    end if
 end sub

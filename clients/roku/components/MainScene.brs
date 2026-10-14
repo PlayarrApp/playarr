@@ -2536,7 +2536,6 @@ sub rebuildBrowseContent()
         noun = "TITLES"
         if m.browseKind = "artist" then noun = "ARTISTS"
         setBrowseCount(UCase(formatCountWithCommas(total) + " " + noun))
-        m.browseDivider.visible = false
     end if
     ' A pending letter jump (see jumpToBrowseLetter) means the target
     ' wasn't loaded yet when it was requested -- now that another page has
@@ -2548,7 +2547,7 @@ end sub
 
 ' Web's library heading: the count is a brand-ink subtitle under the title.
 sub setBrowseCount(text as String)
-    m.browseCountLabel.spec = { text: text, size: 12, weight: 800, tracking: 0.983, role: "brandInk", upper: true, width: 500, lineHeight: 16.7, maxLines: 1 }
+    layoutHeaderSub(m.browseTitle.textWidth, m.browseCountLabel, m.browseDivider, m.browseRule, text)
 end sub
 
 function formatCountWithCommas(n as Dynamic) as String
@@ -6767,7 +6766,7 @@ sub showOnly(name as String)
     m.pageGroup.visible = name = "page"
     ' Web .app-clock is at the same place on every screen.
     m.clockTime.translation = [474, 68]
-    m.clockDate.translation = [529, 75]
+    m.clockDate.translation = [529, 73]
     m.libraryGroup.visible = name = "library"
     m.homeGroup.visible = name = "home"
     m.browseGroup.visible = name = "browse"
@@ -7297,7 +7296,8 @@ sub detailChromeInit()
     m.detailHeaderTitle = CreateObject("roSGNode", "TrackedText")
     m.detailHeaderTitle.translation = [226.6, 56.2]
     holder.AppendChild(m.detailHeaderTitle)
-    m.detailHeaderDivider = pgRect(holder, 348, 57, 1, 48, "line")
+    m.detailHeaderDivider = pgRect(holder, 348, 73, 1, 16, "line")
+    m.detailHeaderRule = pgRect(holder, 226.6, 112, 1, 1, "line")
     m.detailHeaderChip = CreateObject("roSGNode", "TrackedText")
     holder.AppendChild(m.detailHeaderChip)
     m.detailMetaParts = []
@@ -7322,10 +7322,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if work.kind = "site" then heading = "Sites"
     if work.kind = "artist" then heading = "Music"
     m.detailHeaderTitle.spec = { text: heading, size: 34, weight: 600, tracking: -1.512, role: "ink" }
-    ' Web puts the title under the heading as a brand-ink subtitle (no divider).
-    m.detailHeaderDivider.visible = false
-    m.detailHeaderChip.translation = [226.6, 112]
-    m.detailHeaderChip.spec = { text: work.title, size: 12, weight: 800, tracking: 0.983, role: "brandInk", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
+        layoutHeaderSub(m.detailHeaderTitle.textWidth, m.detailHeaderChip, m.detailHeaderDivider, m.detailHeaderRule, work.title)
     ' Kicker: the first genre, like the library preview.
     kicker = UCase(work.kind)
     if work.genres <> invalid and work.genres.Count() > 0 then kicker = UCase(work.genres[0])

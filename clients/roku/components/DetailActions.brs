@@ -57,7 +57,7 @@ sub buildTiles()
             ic.width = 16
             ic.height = 16
             ic.translation = [t.x + 34, t.y + t.h / 2 - 8]
-            roleName = "brand"
+            roleName = "brandInk"
             if t.primary then roleName = "playerInk"
             if t.ink = true then roleName = "bg"
             ic.blendColor = ThemeColor(roleName)
@@ -67,8 +67,8 @@ sub buildTiles()
             plus = CreateObject("roSGNode", "Label")
             plus.text = "+"
             plus.font = PlayarrMakeFont(400, 13)
-            plus.color = ThemeColor("brand")
-            ThemeSetRole(plus, "brand")
+            plus.color = ThemeColor("brandInk")
+            ThemeSetRole(plus, "brandInk")
             plus.translation = [t.x + 20, t.y + t.h / 2 - 11]
             m.tilesGroup.AppendChild(plus)
         end if
