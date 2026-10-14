@@ -5,6 +5,7 @@
 // token comes from the launch URL (?mirrorToken=...), so nothing about the environment is baked in.
 import { focusInfo, selectorFor, visibleText } from "./mirrorSnapshot";
 import { mirrorCaptureGeometry } from "./mirrorCaptureGeometry";
+import { withCollapsingTrackHeights } from "./mirrorTrackHeights";
 import { localeTagFor } from "../lib/i18n/languages";
 
 // The production-bundle guard and test look for this string, so it must survive minification.
@@ -111,6 +112,8 @@ function layoutEnv(): Record<string, unknown> {
       return {
         card: r4(document.querySelector(".tv-home-card")),
         nav: Array.from(document.querySelectorAll(".app-nav-link")).map(r4),
+        // Track headings and scrollers: the live gap between rails, to tell real layout from a capture artefact.
+        tracks: Array.from(document.querySelectorAll(".tv-media-track")).slice(0, 6).map((t) => [r4(t.querySelector("h2")), r4(t.querySelector(".tv-media-track-scroll"))]),
         scroll: [window.scrollY, main ? (main as HTMLElement).scrollTop : null, document.documentElement.scrollTop],
         vv: window.visualViewport ? [window.visualViewport.width, window.visualViewport.height, window.visualViewport.scale] : null,
       };
@@ -190,7 +193,7 @@ export function startDebugMirror(): void {
         scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
       });
       image = await withTimeout(
-        (usePng ? toPng : toJpeg)(document.body, {
+        withCollapsingTrackHeights(() => (usePng ? toPng : toJpeg)(document.body, {
           // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
           // native scrollbars the TV does not show: hide them in the rendered copy.
           fontEmbedCSS: `${fontCss}\n*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
@@ -220,7 +223,7 @@ export function startDebugMirror(): void {
           backgroundColor: bg,
           cacheBust: false,
           imagePlaceholder: "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
-        }),
+        })),
         60000,
         "html-to-image render",
       ).finally(() => scrolled.forEach((e) => e.removeAttribute("data-mirror-scroll")));
