@@ -93,44 +93,62 @@ struct TVKeyArtFilter: ViewModifier {
 /// Web page header: round back button, h1 and an optional detail after a hairline divider.
 struct TVPageHeader: View {
     var title: String
-    /// The web `.page-subtitle`: the one small subtitle style, under the title (never beside it).
+    /// The web `.page-subtitle`: beside the title after a hairline divider, in ink.
     var detail: String? = nil
-    /// Settings shows the back button focused (white disc, dark arrow).
+    /// Settings shows the back button focused (web: a white ring round the same disc).
     var backFocused = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            let size: CGFloat = backFocused ? 52.8 : 50
-            let origin: CGFloat = backFocused ? 152.2 : 153.6
+            let size: CGFloat = backFocused ? 58 : 50
+            let origin: CGFloat = backFocused ? 149.6 : 153.6
             Circle()
-                .fill(backFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.backgroundElevated.opacity(0.7))
+                .fill(DesignTokens.Color.backgroundElevated.opacity(0.7))
                 .overlay(
                     Circle().stroke(
-                        DesignTokens.Color.borderDefault.opacity(backFocused ? 0 : 0.35),
-                        lineWidth: 1
+                        backFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.borderDefault.opacity(0.35),
+                        lineWidth: backFocused ? 2 : 1
                     )
                 )
                 .overlay(
                     Text("\u{2190}")
                         .font(TVTheme.font(size: 17.3, weight: .semibold))
-                        .foregroundStyle(backFocused ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textSecondary)
+                        .foregroundStyle(DesignTokens.Color.textSecondary)
                 )
-                .placed(x: origin, y: backFocused ? 54.8 : 56.2, w: size, h: size)
-            Text(title)
+                .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
+            // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
+            // the row would run into the clock (x 466) does the subtitle drop under the title.
+            let titleText = Text(title)
                 .font(TVTheme.font(size: 33.6, css: 580))
                 .tracking(-1.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .fixedSize()
-                .placed(x: 226.6, y: 56.2, h: 50)
-            if let detail {
-                Text(detail.uppercased())
-                    .font(TVTheme.font(size: 12.29, css: 820))
-                    .tracking(0.98)
-                    .foregroundStyle(DesignTokens.Stage.brandInk)
+            let subtitle = detail.map {
+                Text($0.uppercased())
+                    .font(TVTheme.font(size: 10.3, css: 820))
+                    .tracking(0.82)
+                    .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
                     .fixedSize()
-                    .placed(x: 226.6, y: 111.8, h: 18.4)
             }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 24) {
+                    titleText
+                    if let subtitle {
+                        Rectangle().fill(DesignTokens.Color.textPrimary.opacity(0.2)).frame(width: 1, height: 17)
+                        subtitle
+                    }
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    // Web: a hairline under the title where the subtitle wraps below it.
+                    titleText.overlay(alignment: .bottom) {
+                        Rectangle().fill(DesignTokens.Color.textPrimary.opacity(0.2)).frame(height: 1).offset(y: 8)
+                    }
+                    if let subtitle { subtitle }
+                }
+            }
+            .frame(width: 466 - 226.6, alignment: .leading)
+            .placed(x: 226.6, y: 56.2, h: 50)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
