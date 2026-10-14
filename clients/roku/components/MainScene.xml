@@ -269,7 +269,7 @@
       <TrackedText id="browsePreviewMeta" translation="[153.6,454.9]" />
       <TrackedText id="browsePreviewMeta2" translation="[194.4,454.9]" />
       <TrackedText id="browsePreviewOverview" translation="[153.6,494.7]" />
-      <MarkupGrid id="browseGrid" translation="[783.4,154]" itemComponentName="PosterCard"
+      <MarkupGrid id="browseGrid" translation="[775.4,139]" itemComponentName="PosterCard"
         numColumns="3" numRows="4" itemSize="[353.5,240.5]" itemSpacing="[0,0]"
         focusBitmapBlendColor="0x00000000" vertFocusAnimationStyle="floatingFocus" />
       <Label id="browseHint" translation="[200,1020]" width="1700" height="40" text="" scale="[0.62,0.62]" color="0xA9B7C9FF" />

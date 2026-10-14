@@ -2773,7 +2773,7 @@ sub applyBrowseView()
         m.browseGrid.translation = [792, 157]
     else
         applyBrowseArtworkSize()
-        m.browseGrid.translation = [783.4, 154]
+        m.browseGrid.translation = [775.4, 139]
     end if
 end sub
 
@@ -2965,6 +2965,11 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
         ' The browse grid sits 8 px higher and each card 8 px lower in its cell: the lift and ring are not clipped at the top row.
         item.AddField("padTop", "float", false)
         if grid.id = "browseGrid" then item.padTop = 8
+        ' Screen view reserves the focus lift, ring and glow overflow inside the grid's clip (8 px sides, 15 px top, grid shifted to match).
+        if grid.id = "browseGrid" and m.browseView = "screen"
+            item.AddField("focusRingOutsideArt", "boolean", false)
+            item.focusRingOutsideArt = true
+        end if
         if grid.id = "browseGrid" and m.browseView <> "screen"
             item.AddField("artW", "float", false)
             item.AddField("artH", "float", false)
@@ -2993,8 +2998,8 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
             if columns < 1 then columns = 3
             column = artIndex mod columns
             rowIndex = Int(artIndex / columns)
-            x = m.browseGrid.translation[0] + column * (m.browseGrid.itemSize[0] + m.browseGrid.itemSpacing[0])
-            y = m.browseGrid.translation[1] + rowIndex * (m.browseGrid.itemSize[1] + m.browseGrid.itemSpacing[1]) + item.padTop
+            x = m.browseGrid.translation[0] + 8 + column * (m.browseGrid.itemSize[0] + m.browseGrid.itemSpacing[0])
+            y = m.browseGrid.translation[1] + 15 + rowIndex * (m.browseGrid.itemSize[1] + m.browseGrid.itemSpacing[1]) + item.padTop
             artWidth = 220 * cardScale
             artHeight = 124 * cardScale
             slot = m.artActiveScope + "-r" + rowIndex.ToStr() + "-c" + column.ToStr()
@@ -3022,9 +3027,9 @@ sub onBrowseItemFocused(event as Object)
     ' Web keeps the focused row 70 px clear of the bottom edge once the grid scrolls (its rows then sit 56 px higher).
     if m.browseView = "screen"
         if Int(itemIndex / m.browseGrid.numColumns) >= 4
-            m.browseGrid.translation = [783.4, 98]
+            m.browseGrid.translation = [775.4, 83]
         else
-            m.browseGrid.translation = [783.4, 154]
+            m.browseGrid.translation = [775.4, 139]
         end if
     end if
     moreAvailable = m.browseTotal = invalid or m.browseItems.Count() < m.browseTotal
