@@ -116,7 +116,7 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 16)
             }
-            .frame(height: 147)
+            .frame(height: WMRailCard.height)
             .padding(.top, first ? 21 : 18)
         }
         .padding(.bottom, 66)

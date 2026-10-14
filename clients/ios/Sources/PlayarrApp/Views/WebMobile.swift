@@ -486,28 +486,30 @@ extension Work {
     }
 }
 
-/// Home rail card (`tv-home-card`): 179x101 art, title and meta lines.
+/// Home rail card (`tv-home-card`): since web #924 the phone cards share one width with the library grid,
+/// (viewport - 16 gutter - 52 rail pad - 12 gap) / 2, with the library card's text sizes.
 struct WMRailCard: View {
     let work: Work
     let apiClient: PlayarrAPIClient
     var unseen = true
     var focused = false
 
+    static var height: CGFloat { WMLibraryCard.width * 9 / 16 + 46 }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
-                .frame(width: 179, height: 101)
+                .frame(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16)
                 .background(WM.artFill)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
-            WMText(work.title, 12.48, 630, lh: 18.72).padding(.top, 10)
-            WMText(work.singularKindYearLabel, 9.92, 400, color: WM.muted, lh: 14.88).padding(.top, 2.28)
+            WMText(work.title, 10.4, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
+            WMText(work.singularKindYearLabel, 8.2, 400, color: WM.muted, lh: 12.3).padding(.leading, 2)
         }
-        .frame(width: 179, height: 147, alignment: .topLeading)
-
+        .frame(width: WMLibraryCard.width, height: WMRailCard.height, alignment: .topLeading)
     }
 }
 
