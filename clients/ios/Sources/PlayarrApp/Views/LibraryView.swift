@@ -262,7 +262,7 @@ struct LibraryView: View {
                 if phone && !viewModel.isSearchMode {
                     WMLibraryHeader(
                         title: title,
-                        detail: "\((viewModel.total ?? Int64(viewModel.works.count)).formatted(.number.grouping(.automatic))) titles",
+                        detail: "\((viewModel.total ?? Int64(viewModel.works.count)).formatted(.number.grouping(.automatic))) \(viewModel.selectedKind == .artist ? "artists" : "titles")",
                         onBack: goHome,
                         onFilters: { showingFilters = true }
                     )
@@ -540,7 +540,7 @@ struct LibraryView: View {
             WMHeaderCircleButton(width: 43, height: 43, glyph: "←", action: goHome).offset(x: 122 * scale, y: 55 * scale)
             WMText(title, 24, 520, lh: 36, ls: -1).offset(x: 182 * scale, y: 57 * scale)
             if let total = viewModel.total {
-                WMText("\(total.formatted(.number.grouping(.automatic))) TITLES", 9, 760, color: WM.inkSoft, lh: 14, ls: 0.6)
+                WMText("\(total.formatted(.number.grouping(.automatic))) \(viewModel.selectedKind == .artist ? "ARTISTS" : "TITLES")", 9, 760, color: WM.inkSoft, lh: 14, ls: 0.6)
                     .offset(x: 181 * scale, y: 101 * scale)
             }
             HStack {
