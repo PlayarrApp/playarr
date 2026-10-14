@@ -1,0 +1,1 @@
+- Nura library cards get the web's resting shadow and a larger unseen dot; the letter rail highlights the first title's letter.

@@ -24,7 +24,7 @@ button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avata
 .pa-art-title { font-size: 9.28px; color: @pa_muted; }
 .pa-cap-title { font-size: 8.8px; font-weight: 610; color: @pa_ink; }
 .pa-cap-meta { font-size: 6.88px; color: @pa_muted; }
-.pa-unseen { min-width: 5px; min-height: 5px; border-radius: 999px; background: @pa_brand; border: 1.5px solid #f4f0f1; }
+.pa-unseen { min-width: 6px; min-height: 6px; border-radius: 999px; background: @pa_brand; border: 1.5px solid #f4f0f1; }
 .pa-art.selected { box-shadow: 0 0 0 3px alpha(@pa_brand_ink, 0.9), 0 0 26px alpha(@pa_brand, 0.45); }
 .pa-home-focus-halo.selected {
   box-shadow: 0 0 20px 4px alpha(@pa_focus_glow, 0.45), 0 0 0 3px @pa_focus_glow, 0 11px 22px rgba(56, 38, 33, 0.22), 0 26px 52px rgba(56, 38, 33, 0.32);

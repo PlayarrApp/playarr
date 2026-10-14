@@ -210,12 +210,15 @@ impl Lib {
             let a = self.app.clone();
             let first = self.flow.is_empty();
             if first {
+                // The web highlights the first title's letter, not always "#".
+                self.mark_letter(letter_of(&w.title));
                 if let Some(k) = ["backdrop", "poster"].iter().find(|k| w.has_image(k)) {
                     self.imgs.load(Client::artwork_path(&w.id, k, 780), &self.backdrop);
                 }
             }
             let opts = CardOpts {
                 selected: first,
+                home_art: true,
                 unseen: self.app.is_unseen(&w),
                 ..Default::default()
             };
