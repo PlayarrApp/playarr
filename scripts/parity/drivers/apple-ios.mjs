@@ -117,13 +117,15 @@ export async function createDriver() {
     async screenshot(file) {
       const id = basename(file, ".png");
       const open = /^\/(movies|series)\/([0-9a-f-]{36})$/.exec(wanted); // film-detail and series-detail are opened by the suite's pinned id
-      await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (NATIVE[id] ?? id), [], device === "ipad" && id === "series-detail");
+      // Opt-in: the geometry markers are collected only when IPAD_LAYOUT_DIAGNOSTICS=true; a normal capture never fails on them.
+      const layoutDiagnostics = process.env.IPAD_LAYOUT_DIAGNOSTICS === "true" && device === "ipad" && id === "series-detail";
+      await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (NATIVE[id] ?? id), [], layoutDiagnostics);
       await sleep(id.startsWith("player") ? 30000 : 14000);
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
-      if (device === "ipad" && id === "series-detail") {
+      if (layoutDiagnostics) {
         let diagnostics = "";
         try {
           diagnostics = run("xcrun", ["simctl", "spawn", udid, "log", "show", "--info", "--last", "5m", "--style", "compact",
