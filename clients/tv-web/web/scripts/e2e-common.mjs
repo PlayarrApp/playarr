@@ -45,9 +45,9 @@ export async function boot(serverOptions = {}, { realisticAuth = false } = {}) {
     console.log(`${ok ? "PASS" : "FAIL"}  ${name}${ok ? "" : `  -- ${detail}`}`);
   };
   // `server` (optional) is another mock started with `startServer`: the page then signs in to that one.
-  async function open(path, { width = 1920, height = 1080, theme = "dark", server: other, init } = {}) {
+  async function open(path, { width = 1920, height = 1080, theme = "dark", server: other, init, contextOptions } = {}) {
     const base = other ? `http://127.0.0.1:${other.port}` : defaultBase;
-    const context = await browser.newContext({ viewport: { width, height } });
+    const context = await browser.newContext({ viewport: { width, height }, ...contextOptions });
     if (init) await context.addInitScript(init);
     await context.addInitScript(
       ({ base, userId, token }) => {

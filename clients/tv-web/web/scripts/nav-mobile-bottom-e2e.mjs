@@ -9,7 +9,7 @@ const { check, open, finish } = await boot({ movies: 300, series: 40, artists: 3
 const measure = (page) =>
   page.evaluate(async () => {
     const nav = document.querySelector(".app-nav").getBoundingClientRect();
-    const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--mobile-page-gutter")) || 16;
+    const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--mobile-gap")) || 16;
     // Every scroller on the page scrolls to its end (the page, and a library grid when it scrolls itself).
     const scrollers = [document.querySelector(".app-main"), ...document.querySelectorAll(".app-main *")].filter((el) => el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY));
     // Keep scrolling until every page has loaded and the extent has settled (a long library takes many pages).

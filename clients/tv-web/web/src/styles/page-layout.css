@@ -34,13 +34,13 @@
   /* The header row holds Back, the title, the clock and navigation only (the action pills live in the shell column, Q1b). */
   --page-header-height: var(--page-control-height);
   /* Shell action column: where the 30 September launcher sat (commit 54224f36). */
-  --directory-controls-edge: clamp(5px, calc(0.65 * var(--vw)), 14px);
+  --directory-controls-edge: max(clamp(5px, calc(0.65 * var(--vw)), 14px), var(--safe-right));
   --directory-controls-width: clamp(48px, calc(3.6 * var(--vw)), 62px);
   /* Gap between page content and the shell action column (the library grid, and the calendar's week and month). */
   --directory-controls-gap: clamp(18px, calc(1.5 * var(--vw)), 30px);
   /* Alphabet rail: one column of 44px targets (WCAG 2.5.5) plus 6px padding each side; it scrolls when the letters do not fit. */
   --directory-alphabet-width: 56px;
-  --library-rail-left: clamp(28px, calc(2.8 * var(--vw)), 54px);
+  --library-rail-left: max(clamp(28px, calc(2.8 * var(--vw)), 54px), var(--safe-left));
   --library-rail-right: calc(
     var(--directory-controls-edge) + max(var(--directory-controls-width), var(--directory-alphabet-width)) +
       var(--directory-controls-gap)
@@ -132,7 +132,7 @@
     --card-rail-vw: 100;
     --card-pad-left: var(--mobile-page-gutter);
     /* Clears the library letter rail; the poster card is one size everywhere, so every phone card takes this width. */
-    --card-pad-right: var(--mobile-alpha-rail);
+    --card-pad-right: calc(var(--mobile-alpha-rail) + var(--safe-right));
     --card-cols: calc(2 + var(--card-size-step));
     --card-cols-cover: calc(2 + var(--card-size-step));
     --card-grid-gap: 12px;

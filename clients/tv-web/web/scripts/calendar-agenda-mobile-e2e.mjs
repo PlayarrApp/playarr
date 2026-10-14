@@ -65,7 +65,7 @@ for (const theme of ["light", "dark"]) {
   const m = await page.evaluate(() => {
     const vw = document.documentElement.clientWidth;
     const rect = (el) => (el ? el.getBoundingClientRect() : null);
-    const gutterPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--mobile-page-gutter"));
+    const gutterPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--mobile-gap"));
     const entries = [...document.querySelectorAll(".calendar-entry:not(.calendar-entry-skeleton)")].map((e) => e.getBoundingClientRect());
     const nav = document.querySelector(".calendar-nav-inline");
     const header = document.querySelector(".calendar-header");

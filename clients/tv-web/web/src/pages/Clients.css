@@ -649,9 +649,9 @@
 @media (max-width: 560px) {
   .clients-scroll.profile-auth-scroll {
     padding: calc(var(--mobile-top-inset, 14px) + 86px) 16px
-      calc(30px + env(safe-area-inset-bottom));
+      calc(30px + var(--safe-bottom));
     scroll-padding-block: calc(var(--mobile-top-inset, 14px) + 86px)
-      calc(30px + env(safe-area-inset-bottom));
+      calc(30px + var(--safe-bottom));
   }
 
   .clients-hero .auth-title,

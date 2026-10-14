@@ -35,6 +35,11 @@
   --scrim: rgba(0, 0, 0, 0.5);
   /* Layer scale for popovers and modals; drawers, menus and toasts sit above at 1200+. */
   --z-popover: 40;
+  /* Device safe-area insets (notch, cutout, home indicator); 0px where the platform reports none. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
   --z-modal: 1100;
   --font: "Nunito Sans", "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
@@ -2124,9 +2129,9 @@ code {
 
 .toast-viewport {
   position: fixed;
-  top: max(1.5rem, env(safe-area-inset-top));
-  left: max(1.5rem, env(safe-area-inset-left));
-  right: max(1.5rem, env(safe-area-inset-right));
+  top: max(1.5rem, var(--safe-top));
+  left: max(1.5rem, var(--safe-left));
+  right: max(1.5rem, var(--safe-right));
   z-index: var(--z-toast-viewport);
   width: auto;
   max-width: 420px;
@@ -8454,9 +8459,9 @@ html.is-native-scroll-root .profile-auth-scroll {
 
   .profile-auth-scroll {
     padding: calc(var(--mobile-top-inset, 14px) + 86px) 22px
-      calc(30px + env(safe-area-inset-bottom));
+      calc(30px + var(--safe-bottom));
     scroll-padding-block: calc(var(--mobile-top-inset, 14px) + 86px)
-      calc(30px + env(safe-area-inset-bottom));
+      calc(30px + var(--safe-bottom));
   }
 
   .login-profile-page .profile-auth-scroll {
@@ -8480,14 +8485,16 @@ html.is-native-scroll-root .profile-auth-scroll {
 @media (max-width: 760px),
   (max-width: 920px) and (max-height: 500px) and (pointer: coarse) {
   :root {
-    --mobile-page-gutter: 16px;
+    /* The fixed 16px gap (vertical rhythm) and the side gutter, which also clears a landscape notch or cutout. */
+    --mobile-gap: 16px;
+    --mobile-page-gutter: max(var(--mobile-gap), var(--safe-left), var(--safe-right));
     /* The library letter rail: a 44px target column (WCAG 2.5.5) with 4px of margin each side; the grid keeps clear of it. */
     --mobile-alpha-rail: 52px;
-    --mobile-top-inset: max(14px, env(safe-area-inset-top));
+    --mobile-top-inset: max(14px, var(--safe-top));
     /* Top edge of the floating bar above the viewport bottom: its 58px height plus its offset (see .app-nav). */
-    --mobile-nav-height: calc(58px + max(8px, env(safe-area-inset-bottom)));
+    --mobile-nav-height: calc(58px + max(8px, var(--safe-bottom)));
     /* The one bottom padding every scrolling page ends with: the last item clears the bar by one gutter. */
-    --mobile-bottom-clearance: calc(var(--mobile-nav-height) + var(--mobile-page-gutter));
+    --mobile-bottom-clearance: calc(var(--mobile-nav-height) + var(--mobile-gap));
     --screen-x: var(--mobile-page-gutter);
     --screen-y: 20px;
   }
@@ -8538,9 +8545,10 @@ html.is-native-scroll-root .profile-auth-scroll {
 
   .app-nav {
     top: auto;
-    right: 10px;
-    bottom: max(8px, env(safe-area-inset-bottom));
-    left: 10px;
+    right: max(10px, var(--safe-right));
+    bottom: max(8px, var(--safe-bottom));
+    left: max(10px, var(--safe-left));
+    margin: 0;
     width: auto;
     max-width: none;
     height: 58px;
@@ -8915,8 +8923,8 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
     width: min(100%, 430px);
     min-width: 0;
     /* The close button's top inset equals its right inset (20px) unless a device notch needs more. */
-    padding: max(20px, env(safe-area-inset-top)) 20px
-      calc(24px + env(safe-area-inset-bottom));
+    padding: max(20px, var(--safe-top)) max(20px, var(--safe-right))
+      calc(24px + var(--safe-bottom)) 20px;
   }
 
   .tv-filter-choice-grid button,
@@ -9399,7 +9407,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
     flex-direction: column;
     justify-content: center;
     padding: calc(var(--mobile-top-inset) + 28px) 22px
-      calc(30px + env(safe-area-inset-bottom));
+      calc(30px + var(--safe-bottom));
   }
 
   .auth-header {
@@ -9463,7 +9471,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
 
   .player-controls {
     gap: 10px;
-    padding: 0 12px max(14px, env(safe-area-inset-bottom));
+    padding: 0 max(12px, var(--safe-right)) max(14px, var(--safe-bottom)) max(12px, var(--safe-left));
   }
 
   .player-controls-row {
@@ -9504,7 +9512,7 @@ body:not([data-input-mode="remote"]) .tv-episode-rail:focus-within .tv-episode-c
   .player-quality-error {
     position: fixed;
     right: 12px;
-    bottom: calc(96px + env(safe-area-inset-bottom));
+    bottom: calc(96px + var(--safe-bottom));
     left: 12px;
     width: auto;
     max-width: none;
@@ -11217,8 +11225,8 @@ body[data-input-mode="remote"] .circle-focus-host[data-remote-active] .circle-fo
     position: fixed;
     z-index: var(--z-overlay);
     top: calc(var(--mobile-top-inset) + 74px);
-    right: 0;
-    bottom: calc(var(--mobile-nav-height) + var(--mobile-page-gutter));
+    right: var(--safe-right);
+    bottom: calc(var(--mobile-nav-height) + var(--mobile-gap));
     left: auto;
     width: var(--mobile-alpha-rail);
     height: auto;

@@ -82,7 +82,7 @@ describe("Home layout", () => {
 
   it("left-aligns mobile rails at the page gutter instead of the TV left-fade inset", () => {
     const css = readFileSync(new URL("../styles/global.css", import.meta.url), "utf8");
-    const mobile = css.slice(css.indexOf("--mobile-page-gutter: 16px;"));
+    const mobile = css.slice(css.indexOf("--mobile-gap: 16px;"));
     const rule = mobile.match(/\n  \.tv-media-track\s*\{(?<d>[^}]*--tv-track-left-fade[^}]*)\}/)?.groups?.d ?? "";
     expect(rule).toMatch(/--tv-track-left-fade:\s*var\(--mobile-page-gutter\)/);
     expect(rule).toMatch(/padding-left:\s*var\(--mobile-page-gutter\)/);
@@ -93,7 +93,7 @@ describe("Home layout", () => {
 
   it("does not raise the autofocused card on touch layouts unless remote input is active", () => {
     const css = readFileSync(new URL("../styles/global.css", import.meta.url), "utf8");
-    const mobile = css.slice(css.indexOf("--mobile-page-gutter: 16px;"));
+    const mobile = css.slice(css.indexOf("--mobile-gap: 16px;"));
     expect(mobile).toMatch(
       /body:not\(\[data-input-mode="remote"\]\) \.tv-media-track-scroll:focus-within \.tv-home-card\.is-selected,[^{]*\{\s*transform:\s*none/s
     );
