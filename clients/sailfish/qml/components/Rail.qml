@@ -8,6 +8,7 @@ Column {
     property string title
     property var items: []
     property bool showUnwatched: true
+    property bool restRing: false
     signal opened(var work)
     signal held(var work)
     width: parent ? parent.width : 0
@@ -39,6 +40,7 @@ Column {
                 y: 8 * Tokens.u
                 work: modelData
                 cardWidth: root.cardW
+                ring: root.restRing && index === 0
                 showUnwatched: root.showUnwatched
                 onOpened: root.opened(work)
                 onHeld: root.held(work)
