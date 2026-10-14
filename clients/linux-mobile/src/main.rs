@@ -7,6 +7,7 @@ mod icons;
 mod link;
 mod model;
 mod mpris;
+mod profile_sessions;
 mod proxy;
 mod qr;
 mod store;

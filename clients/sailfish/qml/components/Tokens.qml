@@ -24,6 +24,7 @@ QtObject {
     readonly property color danger: dark ? "#ee9297" : "#a8464c"
     readonly property color brandPink: "#cf3157"
     readonly property color brandPinkSoft: "#eaa6b6"
+    readonly property color brandInk: dark ? brandPinkSoft : "#821e36"
     // The web's primary "Play" button is the near-white ink on dark.
     readonly property color primary: dark ? "#f4f0f1" : "#382621"
     readonly property color primaryInk: dark ? "#211d21" : "#ffffff"

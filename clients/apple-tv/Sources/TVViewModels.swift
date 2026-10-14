@@ -31,23 +31,34 @@ final class TVHomeViewModel {
     private(set) var rails: [HomeRail] = []
     /// Web `loadOnDeck`: part-watched titles, most recent first (at most 10), with their progress (0...1).
     private(set) var onDeck: [Work] = []
+    /// True only when the On Deck request completed successfully.
+    private(set) var onDeckResolved = false
+    /// Home displays its resolved rail after the On Deck request completes or fails.
+    private(set) var homeInitialFocusReady = false
     private(set) var progress: [UUID: Double] = [:]
     private let apiClient: PlayarrAPIClient
+    private var onDeckLoadTask: Task<Void, Never>?
+    private var onDeckLoadGeneration = 0
+
+    private struct OnDeckSnapshot {
+        let works: [Work]
+        let progress: [UUID: Double]
+    }
 
     init(apiClient: PlayarrAPIClient) {
         self.apiClient = apiClient
     }
 
     /// shortcut: series that need a Resume choice (stacked resume plans) are not added; add them with the plans API.
-    private func loadOnDeck() async {
-        guard let rows = try? await apiClient.listWatchProgress() else { return }
+    private func loadOnDeck() async -> OnDeckSnapshot? {
+        guard let rows = try? await apiClient.listWatchProgress() else { return nil }
         var seen = Set<UUID>()
         let recent = rows.filter { $0.state == .partWatched }
             .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
             .filter { seen.insert($0.workID).inserted }
             .prefix(10)
-        progress = Dictionary(recent.map { ($0.workID, $0.durationMS > 0 ? Double($0.positionMS) / Double($0.durationMS) : 0) },
-                              uniquingKeysWith: { first, _ in first })
+        let progress = Dictionary(recent.map { ($0.workID, $0.durationMS > 0 ? Double($0.positionMS) / Double($0.durationMS) : 0) },
+                                  uniquingKeysWith: { first, _ in first })
         let api = apiClient
         let works = await withTaskGroup(of: (Int, Work?).self) { group in
             for (index, row) in recent.enumerated() {
@@ -57,7 +68,28 @@ final class TVHomeViewModel {
             for await (index, work) in group { if let work { found.append((index, work)) } }
             return found.sorted { $0.0 < $1.0 }.map(\.1)
         }
-        onDeck = works
+        return OnDeckSnapshot(works: works, progress: progress)
+    }
+
+    private func beginOnDeckLoad() {
+        onDeckLoadGeneration &+= 1
+        let generation = onDeckLoadGeneration
+        onDeckResolved = false
+        homeInitialFocusReady = false
+        onDeckLoadTask?.cancel()
+        onDeckLoadTask = Task { [weak self] in
+            guard let self else { return }
+            let snapshot = await self.loadOnDeck()
+            guard !Task.isCancelled, generation == self.onDeckLoadGeneration else { return }
+            if let snapshot {
+                self.onDeck = snapshot.works
+                self.progress = snapshot.progress
+                self.onDeckResolved = true
+            } else {
+                self.onDeckResolved = false
+            }
+            self.homeInitialFocusReady = true
+        }
     }
 
     func load() async {
@@ -65,8 +97,8 @@ final class TVHomeViewModel {
         // The web Home builds every rail from the server's shelves: when they load, nothing else is needed.
         if TVParityLaunch.requestedScreen == nil, let fetched = try? await apiClient.fetchHomeRails(), !fetched.isEmpty {
             rails = fetched
+            beginOnDeckLoad()
             state = .loaded
-            await loadOnDeck()
             return
         }
         // Offline fixture catalogue only when no access token was injected
@@ -100,6 +132,7 @@ final class TVHomeViewModel {
             // De-dupe while preserving order.
             var seen = Set<UUID>()
             works = works.filter { seen.insert($0.id).inserted }
+            if TVParityLaunch.requestedScreen == nil { beginOnDeckLoad() }
             state = .loaded
         } catch {
             // Parity suite must still paint production rails when the tunnel

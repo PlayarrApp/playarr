@@ -105,6 +105,7 @@
  * `isApiOk` from `net/ApiResult.ets`.
  */
 
+import { nunito } from '../design/Typography';
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { media } from '@kit.MediaKit';
@@ -299,6 +300,13 @@ struct Player {
   @State private qualityOpen: boolean = false;
   /** The info drawer (title and stream facts) is open. */
   @State private infoOpen: boolean = false;
+  /** The player's output is muted (the control bar's volume button); it stays muted across items of the session. */
+  @State private muted: boolean = false;
+  /** What the previous and next buttons can do: something earlier in this session, something queued after the current item. */
+  @State private canPrevious: boolean = false;
+  @State private canNext: boolean = false;
+  /** The items played before the current one in this session (most recent last). */
+  private history: QueueItem[] = [];
   @State private qualityLabel: string = '';
   /** The viewer's audio pick for this session (a stream index), kept across a quality change. */
   private userAudioStreamIndex: number | null = null;
@@ -606,6 +614,9 @@ struct Player {
     this.reporter = reporter;
 
     await this.controller.attachSource(info, options.startPositionMs);
+    if (this.muted) {
+      this.controller.setVolume(0);
+    }
     await this.attachDefaultSubtitleIfNamed(info);
 
     this.phase = 'ready';
@@ -839,6 +850,8 @@ struct Player {
 
   private resetEndMachine(): void {
     const next = this.upNext.length > 0 ? this.upNext[0] : null;
+    this.canNext = next !== null;
+    this.canPrevious = this.history.length > 0;
     this.endMachine = new EndOfPlaybackMachine(
       next !== null,
       true,
@@ -914,6 +927,7 @@ struct Player {
     if (next === null) {
       return;
     }
+    this.history.push(this.currentQueueItem());
     this.upNext = this.upNext.slice(1);
     const workChanged = next.workId !== this.activeWorkId;
     this.activeMediaFileId = next.mediaFileId;
@@ -925,6 +939,62 @@ struct Player {
     }
     this.resetEndMachine();
     await this.negotiateAndAttach({});
+  }
+
+  /** The control bar's volume button: mutes the player's own output, or restores it. */
+  private toggleMute(): void {
+    this.muted = !this.muted;
+    this.controller.setVolume(this.muted ? 0 : 1);
+  }
+
+  /** The control bar's Next (and the media key): plays the next queued item now, remembering the current one for Previous. */
+  private async skipToNext(): Promise<void> {
+    const next = this.upNext.length > 0 ? this.upNext[0] : null;
+    if (next === null || this.renegotiating) {
+      return;
+    }
+    this.history.push(this.currentQueueItem());
+    this.upNext = this.upNext.slice(1);
+    await this.switchTo(next);
+  }
+
+  /** The control bar's Previous (and the media key): goes back to the item played before this one, which then plays Next again. */
+  private async skipToPrevious(): Promise<void> {
+    const previous = this.history.length > 0 ? this.history[this.history.length - 1] : null;
+    if (previous === null || this.renegotiating) {
+      return;
+    }
+    this.history = this.history.slice(0, this.history.length - 1);
+    this.upNext = [this.currentQueueItem()].concat(this.upNext);
+    await this.switchTo(previous);
+  }
+
+  private currentQueueItem(): QueueItem {
+    const item: QueueItem = { mediaFileId: this.activeMediaFileId, workId: this.activeWorkId, title: this.title, immediate: false };
+    return item;
+  }
+
+  /** Leaves the current item mid-playback for `item`: the old session is stopped first (brief 4.10), then the new one is negotiated. */
+  private async switchTo(item: QueueItem): Promise<void> {
+    this.renegotiating = true;
+    const oldReporter = this.reporter;
+    if (oldReporter !== null) {
+      await oldReporter.teardown({ kind: 'stop', reason: 'user_stopped' }, this.controller.getCurrentPositionMs());
+    }
+    this.clearHeartbeatTimer();
+    const workChanged = item.workId !== this.activeWorkId;
+    this.activeMediaFileId = item.mediaFileId;
+    this.activeWorkId = item.workId;
+    this.title = item.title;
+    this.userSubtitleChoice = null;
+    this.userAudioStreamIndex = null;
+    if (workChanged) {
+      this.currentWork = null;
+      void this.loadTitle();
+    }
+    this.resetEndMachine();
+    await this.negotiateAndAttach({});
+    this.renegotiating = false;
   }
 
   /** Spec section 5: `/similar` for the finished work (with the repository's
@@ -1205,7 +1275,15 @@ struct Player {
       void this.controller.pause();
       return;
     }
-    // 'up' / 'down' / 'next' / 'previous' -- no root-level meaning on this
+    if (action === 'next') {
+      void this.skipToNext();
+      return;
+    }
+    if (action === 'previous') {
+      void this.skipToPrevious();
+      return;
+    }
+    // 'up' / 'down' -- no root-level meaning on this
     // screen (no secondary affordance row to enter via Up/Down per brief
     // 6.3, and next/previous-episode navigation is out of this slice's
     // scope). The key is still stopped by the caller below.
@@ -1248,13 +1326,13 @@ struct Player {
           .height(this.overlayTextSize() * 2)
           .color(toResourceColor(PLAYER_TEXT_PRIMARY))
       } else {
-        Text(this.errorMessage)
+        Text(this.errorMessage).fontFamily(nunito(400))
           .fontSize(this.overlayTextSize())
           .fontColor(toResourceColor(PLAYER_TEXT_PRIMARY))
           .textAlign(TextAlign.Center)
           .padding({ left: Spacing.xl, right: Spacing.xl })
 
-        Text('Retry')
+        Text('Retry').fontFamily(nunito(700))
           .fontSize(this.overlayTextSize())
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(PLAYER_TEXT_PRIMARY))
@@ -1364,7 +1442,7 @@ struct Player {
         }
 
         if (this.phase === 'ready' && this.subtitleCueText.length > 0) {
-          Text(this.subtitleCueText)
+          Text(this.subtitleCueText).fontFamily(nunito(400))
             .fontSize(isTvMetrics() ? tv(SUBTITLE_FONT_SIZE) : SUBTITLE_FONT_SIZE)
             .fontColor(toResourceColor(PLAYER_TEXT_PRIMARY))
             .textAlign(TextAlign.Center)
@@ -1399,6 +1477,18 @@ struct Player {
             },
             onBack: () => {
               this.handleBack();
+            },
+            canPrevious: this.canPrevious,
+            canNext: this.canNext,
+            onPrevious: () => {
+              void this.skipToPrevious();
+            },
+            onNext: () => {
+              void this.skipToNext();
+            },
+            muted: this.muted,
+            onToggleMute: () => {
+              this.toggleMute();
             },
             hasTracks: this.hasTracks,
             onOpenTracks: () => {

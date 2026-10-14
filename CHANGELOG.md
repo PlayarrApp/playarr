@@ -13,6 +13,27 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The isolated macOS Search smoke retains its confirmed Home readiness snapshot and reports safe navigation-stage evidence when Search cannot be reached.
+- Guarded Apple wall suite selection now handles an empty argument list safely under Bash nounset.
+- The tvOS navigation rail now draws web-matched vector paths for its shared tabs. macOS retains its existing SF Symbols.
+- macOS Home card movement now applies focus to the registered child button and updates the Home selection mirror from the observed focus change, avoiding competing SwiftUI focus bindings.
+- macOS and tvOS Home wait for the On Deck request to succeed or fail before showing Home rails; the network layer timeout governs, and the navigation remains available while Home shows its skeleton. Only the current On Deck request generation can update rail and progress state. The primary rail keeps server shelf membership and avoids repeating On Deck cards in the fallback movie rail.
+- The Home nav-to-stage focus handoff is claimed once per route entry and cancelled when the viewer moves focus before it runs. Its initial target is captured once, so late On Deck results do not move focus or trigger another reset.
+- macOS Escape and Back now pop pushed title pages to their originating library route, while modal, focus-layer drawer, and cover Back actions keep priority.
+- macOS Library and Search cards now update their selected work from the child button's observed focus, without competing outer focus bindings.
+- The Home nav-to-stage focus handoff is claimed once per route entry and cancelled when the viewer moves focus before it runs. macOS Right uses the last focused navigation target when selection has cleared the transient focus binding, preserving stage-entry intent until lazy Home content registers. Late On Deck results do not trigger another initial focus reset.
+- Production D-pad Home now measures card/nav frames; Left uses the web directional score and Right from Home nav restores the same leading card. Inactive nav items remain ineligible outside the one-shot handoff.
+- Home waits for the On Deck request to succeed or fail before drawing rails; the navigation stays usable while its skeleton is visible.
+- The iPad wall now keeps a pristine iOS 18.5 runtime package cache, reports safe package metadata, saves only after runtime registration, and makes one bounded fresh-import fallback when a successful cache import leaves the runtime unavailable.
+- VIDAA Back now leaves an empty Search field and returns to the previous page.
+- Keep the native Tizen Search Filters action above focused result cards while navigating.
+- Android artwork requests now use the server's `w` resize parameter so native cards request the same source size as web.
+- Sailfish routes to Profiles when saved sessions exist but no session is active, while preserving SignIn when none exist and Home for an active session.
+- Show the selected work's runtime in the Fire TV Library preview while keeping catalog metadata immediately available.
+- Match the Fire TV Library top edge fade to the viewport so the focused-card glow clears the top edge without changing focus or grid geometry.
+- Keep viewport-intersecting Library rows rendered during focus scrolling animations on Fire TV, so earlier visible rows no longer disappear.
+- Keep the iPhone Series tab selected while a series detail route is visible, preserving the originating content stack.
+- Hide legacy Chromium scrollbars in the webOS Calendar week view without changing scroll behaviour.
 - Android phone Home card metadata now uses the same muted text colour as the web client in both themes.
 - Android phone Home rails now preserve the focused artwork glow above and below cards without shifting the rail or extending its edge fade into surrounding content.
 - Align Android TV Home rail headings with the measured web positions without moving their cards.
@@ -351,6 +372,16 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- HarmonyOS TV player: previous and next buttons (and the media keys) move through the session queue; the -10 and +10 buttons are gone from the bar as on web (seeking stays on the D-pad left and right).
+- HarmonyOS TV player: a volume button mutes and restores the player output (it stays muted across items of the session).
+- HarmonyOS TV: Settings > Profile avatar picks a built-in avatar, saved to the profile as web does, and the nav rail and Profiles show it. Custom photo upload is not available yet.
+- HarmonyOS TV: Settings > Your data exports and imports your data through one-time QR codes (the ten-foot flow web uses): prepare an export and show its download code, or open an upload code, then preview and apply the import.
+- HarmonyOS TV: Settings > Customise Home shows, hides, reorders and resets the Home rails with web's calls.
+- HarmonyOS TV: Settings > Invite a friend requests an invite from the admin and shows the one-use QR and link once approved, as web does (no approval push notifications).
+- Android phone drawers blur the page beneath them on Android 12 and later. Filters keep the bottom navigation above the panel; the Actions global backdrop overlays and blocks it, matching the web layout.
+- Linux phone users can switch between profiles already linked on the device and unlock a saved PIN-protected profile.
+- Show the selected playlist type and name in the native Tizen Search preview, with display-only line breaks for long names.
+- Open playlist Search results in the native Tizen playlist directory and restore Search focus on Back.
 - Tizen's Playlists directory now previews the first three unique poster or backdrop covers from each playlist and its descendants.
 - Add a native Roku Clients route with sideload instructions and clear notes about Roku's browser and download limits.
 - Tizen now provides a native Playlists directory with root and nested playlist navigation, preserving route state when returning to the directory.
@@ -559,6 +590,13 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS: text uses the bundled Nunito Sans, web's font, on every screen (the hosted Previewer cannot load custom fonts, so its captures still show the system font).
+- Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
+- Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
+- Match native Tizen Search playlist result cards to the web media glyph, artwork gradients, rounded corners and composed focused-card geometry.
+- Separate the focused Tizen Search result title and kind label into web-matched inset columns.
+- Match the Sailfish unseen marker outer size and border to the mobile web card.
+- Match the Sailfish library count colour to the web brand ink in both light and dark themes.
 - Match the Android phone light-theme card focus glow to the web card accent.
 - Android phone library cards now show the web-matched focus glow and apply the web lift and art scale only during keyboard navigation, while touch interaction stays at rest.
 - Xbox and Windows UWP now apply the web's grayscale, contrast and brightness key-art filter to shared backdrops, with alpha-correct pixel output and stale-request protection.
@@ -2919,6 +2957,11 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- macOS library-grid parity diagnostics now identify the focused row and column, with start state reported only when the actual entry target is known.
+- DEBUG macOS arrow-key diagnostics now report safe focus transitions, registered-target counts, and numeric selected frames without labels or identifiers.
+- Add an isolated, opt-in macOS Search-results focus smoke outside the shared parity suite denominator. Focused helper tests pass; no Apple runtime or live Search run has been executed.
+- Add an opt-in iPhone XCTest for opening a Series from Home and Search, checking the selected Series tab, and verifying Back restores each origin without starting playback.
+- Apple wall web references and native runs now share validated suite-selection arguments, including check filters and player skipping; the Mac visible-parity mode follows that validated selection and remains capture-, stream- and chain-gated.
 - Prepare the selected Xcode installation and wait boundedly for an available iOS 18 runtime before building the iPad iOS wall app.
 - Prepare the selected Xcode installation before importing the required iOS 18.5 simulator runtime, then poll boundedly for an available iOS 18 runtime on iPad wall jobs.
 - Android TV parity captures now bound ADB calls and fail when screen focus does not become ready before the deadline.

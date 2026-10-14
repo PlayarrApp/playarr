@@ -4,6 +4,7 @@
  * response `pages/Player.ets` already holds, nothing is fetched here.
  */
 
+import { nunito } from '../design/Typography';
 import { Drawer } from '../design/components/Drawer';
 import { activeColors, toResourceColor } from '../design/Theme';
 import { tv } from '../design/Metrics';
@@ -32,19 +33,19 @@ export struct PlayerInfoDrawer {
   @Builder
   private infoBody(): void {
     Column({ space: tv(SECTION_GAP) }) {
-      Text(this.title)
+      Text(this.title).fontFamily(nunito(500))
         .fontSize(tv(TITLE_SIZE))
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
         .width('100%')
       if (this.meta.length > 0) {
-        Text(this.meta)
+        Text(this.meta).fontFamily(nunito(400))
           .fontSize(tv(META_SIZE))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width('100%')
       }
       if (this.synopsis.length > 0) {
-        Text(this.synopsis)
+        Text(this.synopsis).fontFamily(nunito(400))
           .fontSize(tv(SYNOPSIS_SIZE))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .maxLines(8)
@@ -54,11 +55,11 @@ export struct PlayerInfoDrawer {
       Column({ space: tv(10) }) {
         ForEach(this.facts, (fact: InfoFact) => {
           Row({ space: tv(12) }) {
-            Text(fact.label)
+            Text(fact.label).fontFamily(nunito(400))
               .fontSize(tv(FACT_SIZE))
               .fontColor(toResourceColor(activeColors().inkMuted))
               .width(tv(FACT_LABEL_WIDTH))
-            Text(fact.value)
+            Text(fact.value).fontFamily(nunito(400))
               .fontSize(tv(FACT_SIZE))
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)

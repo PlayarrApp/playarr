@@ -92,6 +92,7 @@
  * `SPINNER_BORDER_WIDTH`.
  */
 
+import { nunito } from '../Typography';
 import { image } from '@kit.ImageKit';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
@@ -349,7 +350,7 @@ export struct PosterCard {
       .scale({ x: this.artworkScale(), y: this.artworkScale() })
       .shadow(this.shadowLayer())
 
-      Text(this.title)
+      Text(this.title).fontFamily(nunito(this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT))
         .width(this.cardWidth)
         .fontSize(this.titleFontSize)
         .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
@@ -358,7 +359,7 @@ export struct PosterCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
 
       if (this.subtitle.length > 0) {
-        Text(this.subtitle)
+        Text(this.subtitle).fontFamily(nunito(400))
           .width(this.cardWidth)
           .fontSize(this.subtitleFontSize)
           .fontWeight(FontWeight.Normal)

@@ -106,6 +106,7 @@
  * establish for brief literals outside `core/Tokens.ts`'s current scope.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry, TouchGeometry } from '../Metrics';
@@ -261,7 +262,7 @@ export struct MediaRail {
 
     Column({ space: this.headingGap }) {
       if (this.heading.length > 0) {
-        Text(this.heading)
+        Text(this.heading).fontFamily(nunito(this.headingWeight))
           .fontSize(this.headingSize)
           .fontWeight(this.headingWeight)
           .fontColor(toResourceColor(activeColors().ink))

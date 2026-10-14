@@ -1,3 +1,4 @@
+import Observation
 import PlayarrKit
 import SwiftUI
 import UIKit
@@ -5,6 +6,28 @@ import UIKit
 private struct PlayarrChromeHiddenKey: PreferenceKey {
     static let defaultValue = false
     static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+}
+
+@MainActor
+@Observable
+final class VisibleWorkDetailRoutes {
+    private(set) var workKinds: [UUID: WorkKind] = [:]
+    private(set) var activationOrder: [UUID] = []
+
+    var activeKind: WorkKind? {
+        activationOrder.reversed().compactMap { workKinds[$0] }.first
+    }
+
+    func activate(id: UUID, kind: WorkKind) {
+        workKinds[id] = kind
+        activationOrder.removeAll { $0 == id }
+        activationOrder.append(id)
+    }
+
+    func deactivate(id: UUID) {
+        workKinds[id] = nil
+        activationOrder.removeAll { $0 == id }
+    }
 }
 
 extension View {
@@ -78,88 +101,123 @@ struct RootView: View {
     }
 }
 
-private struct AuthenticatedPlayarrShell: View {
-    enum Destination: Hashable {
-        case downloads
-        case search
-        case home
-        case library(WorkKind)
-        case playlists
-        case watchlist
-        case requests
-        case calendar
-        case profiles
-        case settings
-        #if DEBUG
-        case detail
-        case player
-        #endif
+enum AppDestination: Hashable {
+    case downloads
+    case search
+    case home
+    case library(WorkKind)
+    case playlists
+    case watchlist
+    case requests
+    case calendar
+    case profiles
+    case settings
+    #if DEBUG
+    case detail
+    case player
+    #endif
 
-        var title: String {
-            switch self {
-            case .downloads: "Downloads"
-            case .search: "Search"
-            case .home: "Home"
-            case .library(let kind): kind.displayName
-            case .playlists: "Playlists"
-            case .watchlist: "Watchlist"
-            case .requests: "Requests"
-            case .calendar: "Calendar"
-            case .profiles: "Profiles"
-            case .settings: "Profile"
-            #if DEBUG
-            case .detail: "Title"
-            case .player: "Player"
-            #endif
-            }
-        }
-
-        var webIcon: WMIcon {
-            switch self {
-            case .downloads: .downloads
-            case .search: .search
-            case .home: .home
-            case .library(let kind):
-                switch kind {
-                case .movie: .movies
-                case .series: .series
-                case .site: .sites
-                case .artist, .author: .music
-                }
-            case .playlists: .playlists
-            case .watchlist, .requests: .watchlist
-            case .calendar: .calendar
-            case .profiles, .settings: .home
-            #if DEBUG
-            case .detail: .movies
-            case .player: .movies
-            #endif
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .downloads: "arrow.down.circle"
-            case .search: "magnifyingglass"
-            case .home: "house"
-            case .library(let kind): kind.symbolName
-            case .playlists: "music.note.list"
-            case .watchlist: "bookmark"
-            case .requests: "tray.and.arrow.down"
-            case .calendar: "calendar"
-            case .profiles: "person.2"
-            case .settings: "person.crop.circle"
-            #if DEBUG
-            case .detail: "play.rectangle"
-            case .player: "play.rectangle"
-            #endif
-            }
+    var phoneAccessibilityIdentifier: String {
+        switch self {
+        case .home: "phone-tab-home"
+        case .search: "phone-tab-search"
+        case .library(.series): "phone-tab-series"
+        case .library(.movie): "phone-tab-movies"
+        default: "phone-tab-\(title.lowercased().replacingOccurrences(of: " ", with: "-"))"
         }
     }
+
+    var title: String {
+        switch self {
+        case .downloads: "Downloads"
+        case .search: "Search"
+        case .home: "Home"
+        case .library(let kind): kind.displayName
+        case .playlists: "Playlists"
+        case .watchlist: "Watchlist"
+        case .requests: "Requests"
+        case .calendar: "Calendar"
+        case .profiles: "Profiles"
+        case .settings: "Profile"
+        #if DEBUG
+        case .detail: "Title"
+        case .player: "Player"
+        #endif
+        }
+    }
+
+    var webIcon: WMIcon {
+        switch self {
+        case .downloads: .downloads
+        case .search: .search
+        case .home: .home
+        case .library(let kind):
+            switch kind {
+            case .movie: .movies
+            case .series: .series
+            case .site: .sites
+            case .artist, .author: .music
+            }
+        case .playlists: .playlists
+        case .watchlist, .requests: .watchlist
+        case .calendar: .calendar
+        case .profiles, .settings: .home
+        #if DEBUG
+        case .detail: .movies
+        case .player: .movies
+        #endif
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .downloads: "arrow.down.circle"
+        case .search: "magnifyingglass"
+        case .home: "house"
+        case .library(let kind): kind.symbolName
+        case .playlists: "music.note.list"
+        case .watchlist: "bookmark"
+        case .requests: "tray.and.arrow.down"
+        case .calendar: "calendar"
+        case .profiles: "person.2"
+        case .settings: "person.crop.circle"
+        #if DEBUG
+        case .detail: "play.rectangle"
+        case .player: "play.rectangle"
+        #endif
+        }
+    }
+
+    func phoneNavigationSelection(visibleDetailKind: WorkKind?, debugDetailKind: WorkKind?) -> Self {
+        if let visibleDetailKind { return .library(visibleDetailKind) }
+        #if DEBUG
+        if case .detail = self, let debugDetailKind {
+            return .library(debugDetailKind)
+        }
+        #endif
+        return self
+    }
+
+    static func debugDetailKind(for screen: String?) -> WorkKind? {
+        #if DEBUG
+        switch screen {
+        case "detail-series": .series
+        case "detail-film": .movie
+        default: nil
+        }
+        #else
+        nil
+        #endif
+    }
+}
+
+private struct AuthenticatedPlayarrShell: View {
+    typealias Destination = AppDestination
 
     let environment: AppEnvironment
     @State private var selected: Destination = .home
     @State private var availableKinds: Set<WorkKind> = []
+    @State private var visibleDetailRoutes = VisibleWorkDetailRoutes()
     @State private var homeViewModel: HomeViewModel
     @State private var chromeHidden = false
     @State private var household: HouseholdViewModel
@@ -226,6 +284,7 @@ private struct AuthenticatedPlayarrShell: View {
             }
         }
         .background(PlayarrStyle.background.ignoresSafeArea())
+        .environment(visibleDetailRoutes)
         .task {
             #if DEBUG
             // `detail:movie:id=<work id>` opens that exact title (the suite pins film-detail and series-detail by id).
@@ -408,16 +467,18 @@ private struct AuthenticatedPlayarrShell: View {
                             Button { select(destination) } label: {
                                 WMIconView(
                                     icon: destination.webIcon,
-                                    color: selected == destination ? WM.shell : WM.muted
+                                    color: phoneSelectedDestination == destination ? WM.shell : WM.muted
                                 )
                                 .frame(width: 44, height: 46)
                                 .background(
-                                    selected == destination ? WM.ink : .clear,
+                                    phoneSelectedDestination == destination ? WM.ink : .clear,
                                     in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 )
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(destination.title)
+                            .accessibilityIdentifier(destination.phoneAccessibilityIdentifier)
+                            .accessibilityAddTraits(phoneSelectedDestination == destination ? .isSelected : [])
                         }
                     }
                     .padding(5)
@@ -556,5 +617,17 @@ private struct AuthenticatedPlayarrShell: View {
         result.append(.requests)
         result.append(.calendar)
         return result
+    }
+
+    private var phoneSelectedDestination: Destination {
+        let visibleKind = visibleDetailRoutes.activeKind
+        #if DEBUG
+        // Only these direct debug routes have a deterministic kind before detail data loads.
+        let routeKind = Destination.debugDetailKind(for: ParityLaunch.screen)
+        let debugKind = demoDetailViewModel.detail?.work.kind ?? routeKind
+        return selected.phoneNavigationSelection(visibleDetailKind: visibleKind, debugDetailKind: debugKind)
+        #else
+        return selected.phoneNavigationSelection(visibleDetailKind: visibleKind, debugDetailKind: nil)
+        #endif
     }
 }

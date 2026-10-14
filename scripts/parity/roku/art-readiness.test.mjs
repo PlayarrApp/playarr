@@ -97,31 +97,11 @@ test("Series readiness gates visible grid art and the sourced browse hero", () =
   assert.equal(artReadiness(missingVisibleSet.generations.get("series:15"), { scope: "series" }).reason, "no-required-art-slots");
 });
 
-test("Calendar readiness accepts bounded content-free poster slots and rejects an incomplete manifest", () => {
-  const state = createArtReadinessState();
-  assert.deepEqual(event("slot|20|calendar|calendar-r0-c0|1|802.4|259.8|40|60|0", 1), {
-    type: "slot", generation: 20, scope: "calendar", slot: "calendar-r0-c0", hasSource: true,
-    x: 802.4, y: 259.8, width: 40, height: 60, version: 0, seq: 1,
-  });
-  reduceArtEvent(state, event("slot|20|calendar|calendar-r0-c0|1|802.4|259.8|40|60|0", 1));
-  reduceArtEvent(state, event("status|20|calendar|calendar-r0-c0|ready|0", 2));
-  reduceArtEvent(state, event("begin|20|calendar|1|1", 3));
-  reduceArtEvent(state, event("finish|20|calendar", 4));
-  assert.deepEqual(artReadiness(state.generations.get("calendar:20"), { scope: "calendar" }), { ready: true, reason: "ready" });
-
-  const overflow = createArtReadinessState();
-  reduceArtEvent(overflow, event("begin|21|calendar|1|2", 5));
-  reduceArtEvent(overflow, event("slot|21|calendar|calendar-r0-c0|1|802.4|259.8|40|60|0", 6));
-  reduceArtEvent(overflow, event("finish|21|calendar", 7));
-  assert.equal(artReadiness(overflow.generations.get("calendar:21"), { scope: "calendar" }).reason, "telemetry-incomplete");
-});
-
 test("invalid and non-whitelisted telemetry is ignored", () => {
   assert.equal(parseArtEvent("status|1|home|home-r0-c0|ready|0|a title", 1), null);
   assert.equal(parseArtEvent("status|1|home|home-r0-c0|loading|0", 1), null);
   assert.equal(parseArtEvent("slot|1|home|media-123|1|0|0|10|10|0", 1), null);
   assert.equal(parseArtEvent("status|1|home|movies-r0-c0|ready|0", 1), null);
-  assert.equal(parseArtEvent("slot|1|calendar|calendar-entry-abc|1|0|0|40|60|0", 1), null);
 });
 
 test("reset removes generations from a previous channel launch", () => {

@@ -23,11 +23,23 @@ MouseArea {
         return k === "movie" ? qsTr("Movie") : k === "series" ? qsTr("Series") : k === "artist" ? qsTr("Artist") : k === "author" ? qsTr("Author") : ""
     }
 
-    RectangularGlow {   // web card shadow (0 10px 20px of the ink tone); invisible on the dark theme
+    RectangularGlow {   // web card shadow (0 10px 20px of the ink tone); keep the light-theme treatment
         visible: !Tokens.dark
         y: 10 * Tokens.u; width: art.width; height: art.height
         glowRadius: 14 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
         color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.16)
+    }
+    RectangularGlow {
+        visible: Tokens.dark
+        y: 3 * Tokens.u; width: art.width; height: art.height
+        glowRadius: 8 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
+        color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.1)
+    }
+    RectangularGlow {
+        visible: Tokens.dark
+        y: 10 * Tokens.u; width: art.width; height: art.height
+        glowRadius: 10 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
+        color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.14)
     }
     Artwork {
         id: art
@@ -48,10 +60,10 @@ MouseArea {
     }
     Rectangle {
         visible: root.showUnwatched && (!root.prog || root.prog.state === "unseen")
-        width: 10 * Tokens.u; height: width; radius: width / 2
+        width: 9 * Tokens.u; height: width; radius: width / 2
         anchors { top: art.top; right: art.right; topMargin: 7 * Tokens.u; rightMargin: 7 * Tokens.u }
         color: Tokens.brandPink
-        border.width: 1.6 * Tokens.u
+        border.width: 2 * Tokens.u
         border.color: "#ffffff"
     }
     Column {

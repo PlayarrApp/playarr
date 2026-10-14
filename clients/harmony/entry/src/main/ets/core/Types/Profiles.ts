@@ -69,3 +69,38 @@ export interface ProfilePinSetting {
 export interface UpdateProfilePinRequest {
   pin: string | null;
 }
+
+/** The wire shape of an avatar choice: a preset id (`kind` "preset") or a JPEG data URL (`kind` "custom"). */
+export interface RemoteAvatarPreference {
+  kind: string;
+  value: string;
+}
+
+/** `GET`/`PUT /api/v1/users/me/profile-avatar`: `preference` is null until one is chosen. */
+export interface ProfileAvatarSetting {
+  preference: RemoteAvatarPreference | null;
+}
+
+/** `PUT /api/v1/users/me/profile-avatar` body. */
+export interface UpdateProfileAvatarRequest {
+  preference: RemoteAvatarPreference;
+}
+
+/** `GET /api/v1/users/me/user-invite-request` (the body is empty or null when there is none). `status` is
+ * "pending", "approved", "denied" or "generated". */
+export interface UserInviteRequest {
+  id: string;
+  status: string;
+  message?: string | null;
+}
+
+/** `POST /api/v1/users/me/user-invite-request` body. */
+export interface CreateUserInviteRequest {
+  message?: string;
+}
+
+/** `POST /api/v1/users/me/user-invite-request/generate`: the one-use token, shown only now. */
+export interface UserInvite {
+  invite_token: string;
+  expires_at: string;
+}

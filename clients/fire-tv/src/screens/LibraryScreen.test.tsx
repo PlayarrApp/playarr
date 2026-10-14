@@ -76,6 +76,14 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {status, headers: {'Content-Type': 'application/json'}});
 }
 
+function deferred<T>(): {promise: Promise<T>; resolve: (value: T) => void} {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((accept) => {
+    resolve = accept;
+  });
+  return {promise, resolve};
+}
+
 function fakeNavigation(): LibraryScreenNavigation & {navigate: jest.Mock} {
   return {navigate: jest.fn()};
 }
@@ -138,6 +146,67 @@ describe('LibraryScreen', () => {
 
     expect(allText(renderer)).toContain('The First Film');
     expect(allText(renderer)).toContain('Second Feature');
+  });
+
+  it('keeps catalog preview metadata immediate and only shows runtime for the focused work', async () => {
+    const first = work({
+      id: 'w1',
+      title: 'Test Movie A',
+      release_date: '2021-03-04',
+      genres: ['Sample Genre A'],
+      overview: 'Catalog overview A.',
+    });
+    const second = work({
+      id: 'w2',
+      title: 'Test Movie B',
+      release_date: '2022-05-06',
+      genres: ['Sample Genre B'],
+      overview: 'Catalog overview B.',
+    });
+    const firstDetail = deferred<Response>();
+    const secondDetail = deferred<Response>();
+    mockCatalogFetch((url) => {
+      if (url.endsWith('/catalog/w1')) return firstDetail.promise;
+      if (url.endsWith('/catalog/w2')) return secondDetail.promise;
+      return jsonResponse({items: [first, second], total: 2});
+    });
+
+    const renderer = await renderLibrary(fakeNavigation());
+    expect(allText(renderer)).toContain('Test Movie A');
+    expect(allText(renderer)).toContain('2021');
+    expect(allText(renderer)).toContain('Sample Genre A');
+    expect(allText(renderer)).toContain('Catalog overview A.');
+    expect(allText(renderer)).not.toContain('45 min');
+
+    await act(async () => {
+      firstDetail.resolve(
+        jsonResponse({available_on: [], children: 'Movie', media_file_id: 'mf-a', runtime_ms: 45 * 60_000, work: first})
+      );
+      await firstDetail.promise;
+    });
+    const firstReadyText = allText(renderer);
+    expect(firstReadyText).toContain('45 min');
+    expect(firstReadyText.indexOf('45 min')).toBeLessThan(firstReadyText.indexOf('Catalog overview A.'));
+
+    await act(async () => {
+      renderer.root.findByProps({accessibilityLabel: 'Test Movie B'}).props.onFocus({nativeEvent: {target: 1}});
+    });
+    expect(allText(renderer)).toContain('Test Movie B');
+    expect(allText(renderer)).toContain('2022');
+    expect(allText(renderer)).toContain('Sample Genre B');
+    expect(allText(renderer)).toContain('Catalog overview B.');
+    expect(allText(renderer)).not.toContain('45 min');
+    expect(allText(renderer)).not.toContain('2h 17m');
+
+    await act(async () => {
+      secondDetail.resolve(
+        jsonResponse({available_on: [], children: 'Movie', media_file_id: 'mf-b', runtime_ms: 137 * 60_000, work: second})
+      );
+      await secondDetail.promise;
+    });
+    const secondReadyText = allText(renderer);
+    expect(secondReadyText).toContain('2h 17m');
+    expect(secondReadyText.indexOf('2h 17m')).toBeLessThan(secondReadyText.indexOf('Catalog overview B.'));
   });
 
   it('shows the error state when the catalog request fails', async () => {

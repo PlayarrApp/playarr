@@ -104,7 +104,7 @@ internal fun PlayarrPageHeaderRow(
     val webText = LocalPlayarrWebTextStyle.current
     val title = spec.title
     // Web phone: the 21.6 px title used by Search, Settings and the detail pages (library headers use 17.6 px).
-    val large = spec.largeTitle || spec.variant == PlayarrHeaderVariant.Detail
+    val large = spec.largeTitle || spec.variant == PlayarrHeaderVariant.Detail || !tv
     val subtitle = spec.detail
     val reservedStartPx = if (tv) with(density) { (PlayarrClockReservedStart - metrics.start).roundToPx() } else null
     SubcomposeLayout(modifier) { constraints ->
@@ -251,9 +251,9 @@ private fun PlayarrPhoneBackPill(
             onClick = onClick,
             interactionSource = source,
             modifier = Modifier.size(metrics.controlWidth, metrics.control).graphicsLayer { scaleX = scale; scaleY = scale }
-                .then(if (focused || focusScale > 1f) Modifier.playarrFocusRing(PlayarrRingShape.Ellipse) else Modifier)
+                .then(if (focused || focusScale > 1f) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
                 .semantics { this.contentDescription = contentDescription },
-            shape = PlayarrEllipseShape,
+            shape = androidx.compose.foundation.shape.CircleShape,
             color = if (active) palette.ink else palette.surfaceStrong.copy(alpha = 0.7f),
             contentColor = if (active) palette.background else palette.inkSoft,
             border = BorderStroke(1.dp, palette.pillBorder),

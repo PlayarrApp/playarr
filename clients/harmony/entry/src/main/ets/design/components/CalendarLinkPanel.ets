@@ -6,6 +6,7 @@
  * QR is the way to move the link to a phone).
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -97,7 +98,7 @@ export struct CalendarLinkPanel {
 
   @Builder
   private pill(label: string, onTap: () => void): void {
-    Text(label)
+    Text(label).fontFamily(nunito(400))
       .fontSize(tv(PILL_SIZE))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
@@ -111,7 +112,7 @@ export struct CalendarLinkPanel {
 
   @Builder
   private body(text: string, muted: boolean): void {
-    Text(text)
+    Text(text).fontFamily(nunito(400))
       .fontSize(tv(TEXT_SIZE))
       .fontColor(toResourceColor(muted ? activeColors().inkSoft : activeColors().ink))
       .width(tv(PANEL_WIDTH))
@@ -136,7 +137,7 @@ export struct CalendarLinkPanel {
           .color('#000000')
           .backgroundColor('#FFFFFF')
           .focusable(false)
-        Text(this.url)
+        Text(this.url).fontFamily(nunito(400))
           .fontSize(tv(11))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width(tv(PANEL_WIDTH))
@@ -146,7 +147,7 @@ export struct CalendarLinkPanel {
       if (this.needsReset && this.url.length === 0) {
         this.body('Your link was created on another device and is not stored here. Reset it to get a new link to copy.', true)
       }
-      Text('Add it to your calendar app')
+      Text('Add it to your calendar app').fontFamily(nunito(500))
         .fontSize(tv(HEADING_SIZE))
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))

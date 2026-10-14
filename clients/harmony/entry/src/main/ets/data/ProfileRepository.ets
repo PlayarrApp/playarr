@@ -22,6 +22,7 @@
 
 import { getPlayarrClient } from '../AppContainer';
 import { ApiResult } from '../net/ApiResult';
+import { presetFromRemote } from '../core/AvatarPreset.ts';
 
 import {
   profilesUrl,
@@ -29,6 +30,8 @@ import {
   capabilitiesUrl,
   playerPreferencesUrl,
   profilePinUrl,
+  profileAvatarUrl,
+  userInviteRequestUrl,
 } from '../core/Endpoints.ts';
 import {
   AvailableProfileResponse,
@@ -38,6 +41,11 @@ import {
   PlayerPreferences,
   ProfilePinSetting,
   UpdateProfilePinRequest,
+  ProfileAvatarSetting,
+  UpdateProfileAvatarRequest,
+  UserInviteRequest,
+  CreateUserInviteRequest,
+  UserInvite,
 } from '../core/Types/Profiles.ts';
 
 /**
@@ -112,4 +120,48 @@ export function getProfilePinSetting(): Promise<ApiResult<ProfilePinSetting>> {
 /** `PATCH /api/v1/users/me/profile-pin`: a four-digit PIN sets or replaces the lock, `null` removes it. */
 export function updateProfilePinSetting(pin: string | null): Promise<ApiResult<ProfilePinSetting>> {
   return getPlayarrClient().patchJson<UpdateProfilePinRequest, ProfilePinSetting>(profilePinUrl(), { pin: pin });
+}
+
+/** AppStorage key holding the signed-in user's chosen avatar preset ('' when none: the id-based default shows). */
+export const CURRENT_AVATAR_KEY: string = 'currentAvatarPreset';
+let avatarSynced: boolean = false;
+
+/** `GET /api/v1/users/me/profile-avatar` and publish the preset for the nav rail and the picker (once per run). */
+export async function syncCurrentAvatar(force: boolean = false): Promise<void> {
+  if (avatarSynced && !force) {
+    return;
+  }
+  const result = await getPlayarrClient().getJson<ProfileAvatarSetting>(profileAvatarUrl());
+  if (result.kind === 'ok') {
+    avatarSynced = true;
+    const preference = result.value.preference;
+    AppStorage.setOrCreate<string>(CURRENT_AVATAR_KEY, preference !== null ? presetFromRemote(preference.kind, preference.value) : '');
+  }
+}
+
+/** `PUT /api/v1/users/me/profile-avatar` with a preset; publishes it on success. */
+export async function saveAvatarPreset(preset: string): Promise<boolean> {
+  const result = await getPlayarrClient().putJson<UpdateProfileAvatarRequest, ProfileAvatarSetting>(
+    profileAvatarUrl(), { preference: { kind: 'preset', value: preset } });
+  if (result.kind === 'ok') {
+    AppStorage.setOrCreate<string>(CURRENT_AVATAR_KEY, preset);
+    return true;
+  }
+  return false;
+}
+
+/** `GET /api/v1/users/me/user-invite-request`: this user's request, or an empty/null body when there is none. */
+export function getMyInviteRequest(): Promise<ApiResult<UserInviteRequest | null>> {
+  return getPlayarrClient().getJson<UserInviteRequest | null>(userInviteRequestUrl());
+}
+
+/** `POST /api/v1/users/me/user-invite-request`: ask the admin for a friend invite. */
+export function createInviteRequest(message: string): Promise<ApiResult<UserInviteRequest>> {
+  const body: CreateUserInviteRequest = message.length > 0 ? { message: message } : {};
+  return getPlayarrClient().postJson<CreateUserInviteRequest, UserInviteRequest>(userInviteRequestUrl(), body);
+}
+
+/** `POST /api/v1/users/me/user-invite-request/generate`: issue the approved invite (a one-use token). */
+export function generateApprovedInvite(): Promise<ApiResult<UserInvite>> {
+  return getPlayarrClient().postJson<Object, UserInvite>(userInviteRequestUrl() + '/generate', new Object());
 }

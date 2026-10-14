@@ -72,7 +72,7 @@ import {
 } from '../lib/libraryView';
 import {languageDisplayName, toggleLanguage} from '../lib/languageFilters';
 import type {LanguageFacets} from '@playarr-tv/api-client';
-import {useCatalogBrowse} from '@playarr-tv/api-client/react';
+import {useCatalogBrowse, useWorkDetail} from '@playarr-tv/api-client/react';
 import {useApiClient} from '../api/ApiClientProvider';
 import {artworkAuthHeaders, preferredArtworkKind, workArtworkUrl} from '../api/artworkUrl';
 import {CAPABILITIES} from '../platform/capabilities';
@@ -83,6 +83,8 @@ import {layout, text} from '../theme/styles';
 import {sh, sw} from '../theme/scale';
 import {ROUTES, type RouteName} from '../navigation/routes';
 import {reportFocus, reportQuery, takePendingQuery} from '../debug/parityControl';
+import {computeLibraryWindow, nextLibraryScrollOffset} from './libraryWindow';
+import {runtimeLabel} from '../lib/runtimeLabel';
 
 export type LibraryKind = Extract<WorkKind, 'movie' | 'series' | 'site' | 'artist'>;
 
@@ -260,8 +262,10 @@ const LIST_ART_W = 172.8;
 const LIST_ART_H = 97.2;
 const GRID_X = 783.4;
 const GRID_Y = 162;
-/** The grid scrolls under the page header: clipped below it, with the web's edge fades. */
+/** The grid content viewport starts at y=0; EdgeFade overlays begin separately at GRID_CLIP_TOP=150. */
 const GRID_CLIP_TOP = 150;
+const GRID_CLIP_BLEED_X = 48;
+const GRID_CLIP_BLEED_TOP = GRID_CLIP_TOP;
 const PAGE_SIZE = 200;
 const CARD_W = 327.2;
 const CARD_H = 184;
@@ -330,6 +334,13 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
   const [facets, setFacets] = useState<LanguageFacets | null>(null);
   const loadingMore = useRef(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const currentScrollOffset = useRef(0);
+  useEffect(() => {
+    const listener = scrollY.addListener(({value}) => {
+      currentScrollOffset.current = Math.max(0, -value);
+    });
+    return () => scrollY.removeListener(listener);
+  }, [scrollY]);
   useEffect(() => () => scrollY.stopAnimation(), [scrollY]);
   const detailRoute = kind === 'artist' ? ROUTES.musicDetail : ROUTES.workDetail;
   const label = KIND_LABEL[kind];
@@ -418,27 +429,35 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
   });
   const row = Math.floor(focusIndex / cols);
   const gridOffset = useRef(0);
+  const cardExtent = listView ? rowPitch - 24 : layout.cardH + 33;
+  const nextGridOffset = nextLibraryScrollOffset(gridOffset.current, row, rowPitch, cardExtent, GRID_Y - 7);
   useEffect(() => {
-    // The web's smoothScrollIntoView ("nearest"): the grid stays put until the focused card (art plus label) would leave
-    // [33.5, 1036.5], then moves just far enough; it does not return to the top on its own (measured on the live web).
-    const cardTop = GRID_Y - 7 + row * rowPitch - gridOffset.current;
-    const cardBottom = cardTop + (listView ? rowPitch - 24 : layout.cardH + 33);
-    let next = gridOffset.current;
-    if (cardBottom > 1036.5) next += cardBottom - 1036.5;
-    else if (cardTop < 33.5) next -= 33.5 - cardTop;
-    next = Math.max(0, next);
-    if (next !== gridOffset.current) {
-      gridOffset.current = next;
+    // The web's smoothScrollIntoView ("nearest") moves only when the focused card leaves [33.5, 1036.5].
+    if (nextGridOffset !== gridOffset.current) {
+      gridOffset.current = nextGridOffset;
       scrollY.stopAnimation();
-      Animated.timing(scrollY, {toValue: -next, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+      Animated.timing(scrollY, {toValue: -nextGridOffset, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start(({finished}) => {
+        if (finished) currentScrollOffset.current = nextGridOffset;
+      });
     }
     if (items && focusIndex > items.length - cols * 4) loadMore();
-  }, [row, rowPitch, cols, focusIndex, items, loadMore, scrollY, listView, layout.cardH]);
+  }, [nextGridOffset, cols, focusIndex, items, loadMore, scrollY]);
 
   const dark = scheme === 'dark';
   const activeLetter = selected ? workLetter(selected) : null;
-  const firstVisible = Math.max(0, (row - 2) * cols);
-  const visible = items === null ? [] : items.slice(firstVisible, (row + (listView ? 8 : 5)) * cols);
+  const libraryWindow = computeLibraryWindow({
+    itemCount: items?.length ?? 0,
+    columns: cols,
+    rowPitch,
+    cardTop: GRID_Y - 7,
+    cardExtent,
+    viewportTop: 0,
+    viewportBottom: 1080,
+    offsets: [currentScrollOffset.current, gridOffset.current, nextGridOffset],
+    overscanRows: 1,
+  });
+  const firstVisible = libraryWindow.startIndex;
+  const visible = items === null ? [] : items.slice(firstVisible, libraryWindow.endIndex);
   const locale = language === 'en' ? 'en-GB' : language;
 
   const update = (patch: Partial<{view: LibraryView; size: ArtworkSize; sort: LibrarySort; order: SortOrder}>): void => {
@@ -503,6 +522,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
           title={selected.title}
           meta={[releaseYearOf(selected), selected.genres.join(' \u00b7 ')].filter((run): run is string => Boolean(run))}
           overview={selected.overview}
+          metaContent={<LibraryRuntime key={selected.id} workId={selected.id} />}
         />
       ) : null}
       <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} />
@@ -514,8 +534,8 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
           </T>
         </Box>
       ) : null}
-      <Box x={GRID_X - 24} y={GRID_CLIP_TOP} w={1920 - GRID_X + 24} h={1080 - GRID_CLIP_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
-        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 24)), top: u(-GRID_CLIP_TOP), width: u(1920), transform: [{translateY: scrollY}]}} pointerEvents="box-none">
+      <Box x={GRID_X - 24 - GRID_CLIP_BLEED_X} y={GRID_CLIP_TOP - GRID_CLIP_BLEED_TOP} w={1920 - GRID_X + 24 + GRID_CLIP_BLEED_X} h={1080 - GRID_CLIP_TOP + GRID_CLIP_BLEED_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
+        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 24 - GRID_CLIP_BLEED_X)), top: u(-(GRID_CLIP_TOP - GRID_CLIP_BLEED_TOP)), width: u(1920), transform: [{translateY: scrollY}]}} pointerEvents="box-none">
           {visible.map((work, offset) => {
             const index = firstVisible + offset;
             const col = index % cols;
@@ -542,7 +562,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
         </Animated.View>
       </Box>
       {look.sort === 'title' ? <Alphabet active={activeLetter} onJump={(letter) => jumpTo(letter)} /> : null}
-      <EdgeFade side="top" active={row > 0} x={GRID_X - 24} y={GRID_CLIP_TOP} w={1920 - GRID_X + 24} h={1080 - GRID_CLIP_TOP} />
+      <EdgeFade side="top" active={row > 0} x={GRID_X - 24} y={0} w={1920 - GRID_X + 24} h={1080} />
       <EdgeFade
         side="bottom"
         active={items !== null && Math.ceil((total ?? items.length) / cols) > row + (listView ? 7 : 4)}
@@ -622,6 +642,23 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
 /** The release year (or "2011–2019" for an ended series), never the added date: web's `yearRangeLabel`. */
 function releaseYearOf(work: Work): string | undefined {
   return yearRangeLabel(work) ?? undefined;
+}
+
+/** Shows detail-sourced runtime for the selected work; the key resets async state when focus changes. */
+function LibraryRuntime({workId}: {workId: string}): React.ReactElement | null {
+  const client = useApiClient();
+  const {t} = useLanguage();
+  const {colour} = useTheme();
+  const state = useWorkDetail(client, workId);
+  const label = state.status === 'ready' ? runtimeLabel(state.data.runtime_ms, t) : null;
+  if (!label) return null;
+  return (
+    <View style={{marginRight: u(12.8)}}>
+      <T size={12.096} weight={400} lh={18.1} color={colour.inkMuted} lines={1}>
+        {label}
+      </T>
+    </View>
+  );
 }
 
 interface CardProps {

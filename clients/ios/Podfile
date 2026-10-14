@@ -3,7 +3,7 @@ use_frameworks! :linkage => :static
 
 project 'Playarr.xcodeproj'
 
-target 'PlayarrApp' do
+target 'Playarr' do
   pod 'google-cast-sdk', '= 4.8.6'
 
   target 'PlayarrAppTests' do

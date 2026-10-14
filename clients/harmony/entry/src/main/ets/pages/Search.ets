@@ -6,6 +6,7 @@
  * Not yet here (13.10017): the Filters tile and drawer, recent searches.
  */
 
+import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../design/Theme';
@@ -265,7 +266,7 @@ export struct SearchScreen {
       .borderRadius(tv(EMPTY_ART_SIZE / 2))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
-      Text(message)
+      Text(message).fontFamily(nunito(500))
         .fontSize(tv(EMPTY_TEXT_SIZE))
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
@@ -347,7 +348,7 @@ export struct SearchScreen {
           this.onQueryChange(value);
         })
       if (this.query.length > 0) {
-        Text('Clear')
+        Text('Clear').fontFamily(nunito(700))
           .fontSize(tv(CLEAR_SIZE))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
@@ -409,7 +410,7 @@ export struct SearchScreen {
         .width(tv(PREVIEW_WIDTH))
         .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PREVIEW_TOP) })
     } else {
-      Text('Find any available movie, series, artist or playlist.')
+      Text('Find any available movie, series, artist or playlist.').fontFamily(nunito(400))
         .fontSize(tv(PROMPT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
         .width(tv(PROMPT_WIDTH))
@@ -497,7 +498,7 @@ export struct SearchScreen {
           .borderRadius(36)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
-          Text(this.searched ? 'No matching titles or playlists.' : 'Start typing to search.')
+          Text(this.searched ? 'No matching titles or playlists.' : 'Start typing to search.').fontFamily(nunito(500))
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))

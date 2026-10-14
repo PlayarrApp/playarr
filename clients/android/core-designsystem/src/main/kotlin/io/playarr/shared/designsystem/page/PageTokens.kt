@@ -125,7 +125,7 @@ object PlayarrPageTokens {
         // Web phone shell action column: `right: var(--mobile-page-gutter)`, a row of 44 px tiles flush with the content grid (the avatar moved to the bottom nav).
         headerEnd = 16.dp,
         bodyEnd = 16.dp,
-        control = 38.dp,
+        control = 44.dp,
         controlWidth = 44.dp,
         pillWidth = 44.dp,
         pillHeight = 44.dp,

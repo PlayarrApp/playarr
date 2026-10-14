@@ -24,7 +24,7 @@
 
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
-import { resolveAvatarPreset } from "../main/ets/core/AvatarPreset";
+import { resolveAvatarPreset, presetFromRemote } from "../main/ets/core/AvatarPreset";
 
 interface AvatarFixture {
   userId: string;
@@ -87,5 +87,13 @@ describe("resolveAvatarPreset: edge cases", () => {
       const preset: string = resolveAvatarPreset(fixture.userId);
       assert.equal(validPresets.indexOf(preset) >= 0, true);
     }
+  });
+});
+
+describe("presetFromRemote", () => {
+  it("maps a saved server preference to a preset only when it is a known preset", () => {
+    assert.equal(presetFromRemote("preset", "cat"), "cat");
+    assert.equal(presetFromRemote("preset", "wizard"), "");
+    assert.equal(presetFromRemote("custom", "data:image/jpeg;base64,AAAA"), "");
   });
 });

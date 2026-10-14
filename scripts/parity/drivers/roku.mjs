@@ -71,79 +71,6 @@ export function parseParityLine(line) {
   return { kind: match[1], value: match[2] };
 }
 
-export function parseBrowseKeyArtDiagnostic(value, seq) {
-  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
-  const parts = value.trim().split("|");
-  if (parts.length !== 7) return null;
-  const [scope, rawGeneration, rawVersion, point, loadStatus, pendingUriNonempty, currentUriMatchesPending] = parts;
-  const generation = Number(rawGeneration);
-  const version = Number(rawVersion);
-  if (!["movies", "series"].includes(scope) || !Number.isSafeInteger(generation) || generation < 1 || !Number.isSafeInteger(version) || version < 1) return null;
-  if (!["request", "timer", "observer"].includes(point) || !["none", "loading", "ready", "failed", "unknown"].includes(loadStatus)) return null;
-  if (!/^[01]$/.test(pendingUriNonempty) || !/^[01]$/.test(currentUriMatchesPending)) return null;
-  if (currentUriMatchesPending === "1" && pendingUriNonempty !== "1") return null;
-  return {
-    scope,
-    generation,
-    version,
-    point,
-    loadStatus,
-    pendingUriNonempty: pendingUriNonempty === "1",
-    currentUriMatchesPending: currentUriMatchesPending === "1",
-    seq,
-  };
-}
-
-export function parseBrowseAlphabetFocusDiagnostic(value, seq) {
-  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
-  const parts = value.trim().split("|");
-  if (parts.length !== 4) return null;
-  const [action, rawIndex, gridFocus, sceneFocus] = parts;
-  const index = Number(rawIndex);
-  if (!["enter", "move", "exit"].includes(action) || !Number.isSafeInteger(index) || index < 0 || index > 26) return null;
-  if (!/^[01]$/.test(gridFocus) || !/^[01]$/.test(sceneFocus)) return null;
-  return { action, index, gridInFocusChain: gridFocus === "1", sceneInFocusChain: sceneFocus === "1", seq };
-}
-
-export function parseBrowseAlphabetGeometryDiagnostic(value, seq) {
-  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
-  const parts = value.trim().split("|");
-  if (parts.length !== 7) return null;
-  const [rectType, viewportType, rawViewportHeight, resolutionType, resolutionHeightType, stageType, rawStageHeight] = parts;
-  const numericToken = /^\d+(?:\.\d+)?$/;
-  if (!numericToken.test(rawViewportHeight) || !numericToken.test(rawStageHeight)) return null;
-  const viewportHeight = Number(rawViewportHeight);
-  const stageHeight = Number(rawStageHeight);
-  const numberTypes = new Set(["integer", "longinteger", "float", "double"]);
-  const isHeight = (height) => Number.isFinite(height) && height > 0 && height <= 4320;
-  if (!["assoc", "other"].includes(rectType) || !numberTypes.has(viewportType)
-      || !["assoc", "other"].includes(resolutionType) || ![...numberTypes, "other"].includes(resolutionHeightType)
-      || !numberTypes.has(stageType)
-      || !isHeight(viewportHeight) || !isHeight(stageHeight)) return null;
-  return { rectType, viewportType, viewportHeight, resolutionType, resolutionHeightType, stageType, stageHeight, seq };
-}
-
-export function parseBrowseGridHandoffDiagnostic(value, seq) {
-  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
-  const parts = value.trim().split("|");
-  if (parts.length !== 4) return null;
-  const [action, rawIndex, rawColumns, edgeMatch] = parts;
-  const itemIndex = Number(rawIndex);
-  const columns = Number(rawColumns);
-  if (action !== "right" || !Number.isSafeInteger(itemIndex) || itemIndex < 0 || itemIndex > 1000) return null;
-  if (!Number.isSafeInteger(columns) || columns < 1 || columns > 100 || !/^[01]$/.test(edgeMatch)) return null;
-  return { action, itemIndex, columns, edgeMatch: edgeMatch === "1", seq };
-}
-
-export function parseBrowseGridObserverDiagnostic(value, seq) {
-  if (typeof value !== "string" || !Number.isSafeInteger(seq) || seq < 1) return null;
-  const parts = value.trim().split("|");
-  if (parts.length !== 3) return null;
-  const [phase, gridFocus, sceneFocus] = parts;
-  if (!["entry", "after"].includes(phase) || !/^[01]$/.test(gridFocus) || !/^[01]$/.test(sceneFocus)) return null;
-  return { phase, gridInFocusChain: gridFocus === "1", sceneInFocusChain: sceneFocus === "1", seq };
-}
-
 export function parseCalendarFocus(value) {
   const match = /^([A-Za-z]+)\|(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/.exec(value.trim());
   if (!match || !CALENDAR_ACTIONS.has(match[1])) return null;
@@ -220,7 +147,7 @@ export function createParityState() {
     calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
     calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
     calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(), browseKeyArtDiagnostics: [], browseAlphabetFocusDiagnostics: [], browseAlphabetGeometryDiagnostics: [], browseGridHandoffDiagnostics: [], browseGridObserverDiagnostics: [],
+    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0 }, artState: createArtReadinessState(),
   };
 }
 
@@ -241,7 +168,6 @@ export function applyParityLine(state, line) {
     if (state.screen === "home") state.artMarkers.home = state.eventSeq;
   } else if (kind === "page") {
     state.page = value.trim();
-    if (state.page === "calendar") state.artMarkers.calendar = state.eventSeq;
     if (state.page !== "calendar") {
       state.calendarView = "";
       state.calendarContent = null;
@@ -253,7 +179,6 @@ export function applyParityLine(state, line) {
     state.calendarView = view;
     state.calendarViewSeq += 1;
     state.calendarViewScreenSeq = state.screenSeq;
-    state.artMarkers.calendar = state.eventSeq;
   } else if (kind === "calendarFocus") {
     const focus = parseCalendarFocus(value);
     if (!focus) return false;
@@ -285,31 +210,6 @@ export function applyParityLine(state, line) {
   } else if (kind === "art") {
     const event = parseArtEvent(value, state.eventSeq);
     if (!event || event.type !== "slot" || intersectingSlots([event]).length > 0) reduceArtEvent(state.artState, event);
-  } else if (kind === "browseKeyArt") {
-    const diagnostic = parseBrowseKeyArtDiagnostic(value, state.eventSeq);
-    if (!diagnostic) return false;
-    state.browseKeyArtDiagnostics.push(diagnostic);
-    if (state.browseKeyArtDiagnostics.length > 32) state.browseKeyArtDiagnostics.shift();
-  } else if (kind === "browseAlphabetFocus") {
-    const diagnostic = parseBrowseAlphabetFocusDiagnostic(value, state.eventSeq);
-    if (!diagnostic) return false;
-    state.browseAlphabetFocusDiagnostics.push(diagnostic);
-    if (state.browseAlphabetFocusDiagnostics.length > 32) state.browseAlphabetFocusDiagnostics.shift();
-  } else if (kind === "browseAlphabetGeometry") {
-    const diagnostic = parseBrowseAlphabetGeometryDiagnostic(value, state.eventSeq);
-    if (!diagnostic) return false;
-    state.browseAlphabetGeometryDiagnostics.push(diagnostic);
-    if (state.browseAlphabetGeometryDiagnostics.length > 8) state.browseAlphabetGeometryDiagnostics.shift();
-  } else if (kind === "browseGridHandoff") {
-    const diagnostic = parseBrowseGridHandoffDiagnostic(value, state.eventSeq);
-    if (!diagnostic) return false;
-    state.browseGridHandoffDiagnostics.push(diagnostic);
-    if (state.browseGridHandoffDiagnostics.length > 32) state.browseGridHandoffDiagnostics.shift();
-  } else if (kind === "browseGridObserver") {
-    const diagnostic = parseBrowseGridObserverDiagnostic(value, state.eventSeq);
-    if (!diagnostic) return false;
-    state.browseGridObserverDiagnostics.push(diagnostic);
-    if (state.browseGridObserverDiagnostics.length > 32) state.browseGridObserverDiagnostics.shift();
   } else if (kind === "focus") {
     const positioned = /^(.*)\|@([0-9]+):([0-9]+)$/.exec(value.trim());
     state.focus = positioned
@@ -756,7 +656,7 @@ export function createDriver({ out, args = [] } = {}) {
         const result = artReadiness(candidates[0], { scope, afterSeq });
         if (result.ready) return;
         lastReason = result.reason;
-        if (result.reason === "art-failed" || result.reason === "no-required-art-slots" || result.reason === "telemetry-incomplete") break;
+        if (result.reason === "art-failed" || result.reason === "no-required-art-slots") break;
       }
       await sleep(250);
     }
@@ -772,12 +672,7 @@ export function createDriver({ out, args = [] } = {}) {
     await sleep(4000);
     if (artEnabled) {
       resetArtReadinessState(parityState.artState);
-      parityState.artMarkers = { home: 0, movies: 0, series: 0, calendar: 0 };
-      parityState.browseKeyArtDiagnostics = [];
-      parityState.browseAlphabetFocusDiagnostics = [];
-      parityState.browseAlphabetGeometryDiagnostics = [];
-      parityState.browseGridHandoffDiagnostics = [];
-      parityState.browseGridObserverDiagnostics = [];
+      parityState.artMarkers = { home: 0, movies: 0, series: 0 };
     }
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
@@ -1126,11 +1021,6 @@ export function createDriver({ out, args = [] } = {}) {
       return lastRoute;
     },
     async focused() { assertDebug(); return focus; },
-    async browseKeyArtDiagnostics() { assertDebug(); return parityState.browseKeyArtDiagnostics.map((event) => ({ ...event })); },
-    async browseAlphabetFocusDiagnostics() { assertDebug(); return parityState.browseAlphabetFocusDiagnostics.map((event) => ({ ...event })); },
-    async browseAlphabetGeometryDiagnostics() { assertDebug(); return parityState.browseAlphabetGeometryDiagnostics.map((event) => ({ ...event })); },
-    async browseGridHandoffDiagnostics() { assertDebug(); return parityState.browseGridHandoffDiagnostics.map((event) => ({ ...event })); },
-    async browseGridObserverDiagnostics() { assertDebug(); return parityState.browseGridObserverDiagnostics.map((event) => ({ ...event })); },
     async screenshot(file) {
       assertDebug();
       if (!out) throw new Error("suite runner output path is required");
@@ -1139,7 +1029,6 @@ export function createDriver({ out, args = [] } = {}) {
       if (artEnabled && screen === "home") { await waitForArt("home"); await sleep(1000); }
       if (artEnabled && screen === "browse" && ["movie", "movies"].includes(browse)) await waitForArt("movies");
       if (artEnabled && screen === "browse" && browse === "series") await waitForArt("series");
-      if (artEnabled && screen === "page" && page === "calendar" && (parityState.calendarView === "week" || parityState.calendarView === "agenda")) await waitForArt("calendar");
       const { jpeg, generation } = captureFrame();
       mkdirSync(dirname(resolve(file)), { recursive: true });
       const png = pngFromJpeg(jpeg);

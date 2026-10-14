@@ -45,6 +45,22 @@ export function isBackKey(event: BackKeyEvent): boolean {
   }
 }
 
+/** VIDAA reports its mandatory Back/Return key as Backspace (keyCode 8). */
+export function isVidaaBackKey(event: BackKeyEvent): boolean {
+  if (event.keyCode !== 8 || !isEmptySearchInput(event.target)) return isBackKey(event);
+  return true;
+}
+
+function isEmptySearchInput(target: unknown): boolean {
+  if (target == null || typeof target !== "object") return false;
+  const node = target as { tagName?: string; type?: string; value?: string };
+  return (
+    node.tagName?.toUpperCase() === "INPUT" &&
+    node.type?.toLowerCase() === "search" &&
+    node.value === ""
+  );
+}
+
 /** Open layers that own the next Back press: dialogs, drawers, modal panels and menus. */
 export const BACK_LAYER_SELECTOR = '[role="dialog"], [aria-modal="true"], [role="menu"]';
 

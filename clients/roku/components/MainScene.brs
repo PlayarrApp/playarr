@@ -3070,7 +3070,6 @@ sub updateBrowsePreview(work as Object)
         if m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
             m.browseArtTelemetryVersion += 1
             m.browseArtTelemetryArmed = false
-            emitBrowseKeyArtDiagnostic("request")
             previewSlot = m.artActiveScope + "-preview"
             if uri <> ""
                 emitArtSlot(m.artActiveGeneration, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
@@ -3112,7 +3111,6 @@ sub onBrowseKeyArtTimer()
     m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
     m.browseKeyArt.uri = uri
     if m.browseArtTelemetryArmed
-        emitBrowseKeyArtDiagnostic("timer")
         emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "pending", m.browseArtTelemetryVersion)
         sampleBrowseKeyArtStatus()
     end if
@@ -3122,31 +3120,7 @@ sub onBrowseKeyArtTimer()
 end sub
 
 sub onBrowseKeyArtLoadStatus()
-    emitBrowseKeyArtDiagnostic("observer")
     sampleBrowseKeyArtStatus()
-end sub
-
-sub emitBrowseKeyArtDiagnostic(point as String)
-    if not m.artTelemetryEnabled or m.browseKeyArt = invalid then return
-    if (m.artActiveScope <> "movies" and m.artActiveScope <> "series") or m.artActiveGeneration < 1 or m.browseArtTelemetryVersion < 1 then return
-    if point <> "request" and point <> "timer" and point <> "observer" then return
-
-    loadStatus = "unknown"
-    if m.browseKeyArt.loadStatus = "none" then loadStatus = "none"
-    if m.browseKeyArt.loadStatus = "loading" then loadStatus = "loading"
-    if m.browseKeyArt.loadStatus = "ready" then loadStatus = "ready"
-    if m.browseKeyArt.loadStatus = "failed" then loadStatus = "failed"
-
-    pendingUri = ""
-    if m.browseKeyArtPendingUri <> invalid then pendingUri = m.browseKeyArtPendingUri
-    currentUri = ""
-    if m.browseKeyArt.uri <> invalid then currentUri = m.browseKeyArt.uri
-    pendingNonempty = "0"
-    if pendingUri <> "" then pendingNonempty = "1"
-    matchesPending = "0"
-    if pendingUri <> "" and currentUri <> "" and currentUri = pendingUri then matchesPending = "1"
-
-    parityEmit("browseKeyArt", m.artActiveScope + "|" + m.artActiveGeneration.ToStr() + "|" + m.browseArtTelemetryVersion.ToStr() + "|" + point + "|" + loadStatus + "|" + pendingNonempty + "|" + matchesPending)
 end sub
 
 sub sampleBrowseKeyArtStatus()
@@ -6896,7 +6870,7 @@ end sub
 
 function beginArtGeneration(scope as String) as Integer
     if not m.artTelemetryEnabled then return 0
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return 0
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return 0
     m.artGeneration += 1
     m.artActiveGeneration = m.artGeneration
     m.artActiveScope = scope
@@ -6906,7 +6880,7 @@ end function
 
 sub announceArtGeneration(generation as Integer, scope as String, hasArt as Boolean)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
     hasArtText = "0"
     if hasArt then hasArtText = "1"
     parityEmit("art", "begin|" + generation.ToStr() + "|" + scope + "|" + hasArtText + "|" + m.artExpectedSlots.Count().ToStr())
@@ -6914,13 +6888,13 @@ end sub
 
 sub finishArtGeneration(generation as Integer, scope as String)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
     parityEmit("art", "finish|" + generation.ToStr() + "|" + scope)
 end sub
 
 sub emitArtSlot(generation as Integer, scope as String, slot as String, hasSource as Boolean, x as Float, y as Float, width as Float, height as Float, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
     if not artRectVisible(x, y, width, height) then return
     hasSourceText = "0"
     if hasSource then hasSourceText = "1"
@@ -6934,7 +6908,7 @@ end sub
 
 sub emitArtStatus(generation as Integer, scope as String, slot as String, status as String, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
     if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
     parityEmit("art", "status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr())
 end sub

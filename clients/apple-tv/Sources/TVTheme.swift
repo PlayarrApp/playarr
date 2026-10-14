@@ -531,12 +531,253 @@ enum TVNavTab: String, CaseIterable, Identifiable {
     }
 }
 
+/// Paths ported from the web sidebar's 24x24, 1.8px currentColor SVGs.
+struct TVNavIconVector {
+    static let viewBoxSize: CGFloat = 24
+    static let strokeWidth: CGFloat = 1.8
+    static let renderedSize: CGFloat = 20
+
+    let strokes: [Path]
+    let fills: [Path]
+
+    var bounds: CGRect {
+        (strokes + fills).reduce(.null) { $0.union($1.boundingRect) }
+    }
+
+    static func forTab(_ tab: TVNavTab) -> TVNavIconVector? {
+        switch tab {
+        case .home:
+            return .init(strokes: [
+                path { $0.move(to: pt(3, 11.5)); $0.addLine(to: pt(12, 4)); $0.addLine(to: pt(21, 11.5)) },
+                path {
+                    $0.move(to: pt(5.5, 9.5)); $0.addLine(to: pt(5.5, 20))
+                    $0.addLine(to: pt(18.5, 20)); $0.addLine(to: pt(18.5, 9.5))
+                },
+                path {
+                    $0.move(to: pt(10, 20)); $0.addLine(to: pt(10, 14))
+                    $0.addLine(to: pt(14, 14)); $0.addLine(to: pt(14, 20))
+                },
+            ], fills: [])
+        case .search:
+            return .init(strokes: [
+                ellipse(10.5, 10.5, 6.5),
+                path { $0.move(to: pt(15.5, 15.5)); $0.addLine(to: pt(20, 20)) },
+            ], fills: [])
+        case .downloads:
+            return .init(strokes: [
+                path { $0.move(to: pt(12, 3)); $0.addLine(to: pt(12, 15)) },
+                path { $0.move(to: pt(7, 10.5)); $0.addLine(to: pt(12, 15)); $0.addLine(to: pt(17, 10.5)) },
+                path {
+                    $0.move(to: pt(4.5, 18.5)); $0.addLine(to: pt(4.5, 20))
+                    $0.addCurve(to: pt(5.5, 21), control1: pt(4.5, 20.5523), control2: pt(4.9477, 21))
+                    $0.addLine(to: pt(18.5, 21))
+                    $0.addCurve(to: pt(19.5, 20), control1: pt(19.0523, 21), control2: pt(19.5, 20.5523))
+                    $0.addLine(to: pt(19.5, 18.5))
+                },
+            ], fills: [])
+        case .series:
+            return .init(strokes: [
+                roundedRect(4, 4, 16, 16, 2),
+                path {
+                    $0.move(to: pt(8, 9)); $0.addLine(to: pt(16, 9))
+                    $0.move(to: pt(8, 13)); $0.addLine(to: pt(16, 13))
+                    $0.move(to: pt(8, 17)); $0.addLine(to: pt(13, 17))
+                },
+                path { $0.move(to: pt(10, 1)); $0.addLine(to: pt(12, 4)); $0.addLine(to: pt(14, 1)) },
+            ], fills: [])
+        case .movies:
+            return .init(strokes: [
+                roundedRect(3, 5, 18, 14, 2),
+                path {
+                    $0.move(to: pt(7, 5)); $0.addLine(to: pt(9, 2))
+                    $0.move(to: pt(13, 5)); $0.addLine(to: pt(15, 2))
+                    $0.move(to: pt(19, 5)); $0.addLine(to: pt(21, 2))
+                },
+            ], fills: [closedPath { $0.move(to: pt(10, 10)); $0.addLine(to: pt(15, 12.5)); $0.addLine(to: pt(10, 15)) }])
+        case .music:
+            return .init(strokes: [
+                path {
+                    $0.move(to: pt(9, 18)); $0.addLine(to: pt(9, 6)); $0.addLine(to: pt(19, 4))
+                    $0.addLine(to: pt(19, 16)); $0.move(to: pt(9, 10)); $0.addLine(to: pt(19, 8))
+                    $0.addEllipse(in: CGRect(x: 4, y: 16, width: 5, height: 5))
+                    $0.addEllipse(in: CGRect(x: 14, y: 14, width: 5, height: 5))
+                },
+            ], fills: [])
+        case .playlists:
+            return .init(strokes: [
+                path {
+                    $0.move(to: pt(5, 6)); $0.addLine(to: pt(15, 6))
+                    $0.move(to: pt(5, 10)); $0.addLine(to: pt(15, 10))
+                    $0.move(to: pt(5, 14)); $0.addLine(to: pt(11, 14))
+                    $0.move(to: pt(17, 13.5)); $0.addLine(to: pt(17, 19.5))
+                    $0.move(to: pt(17, 13.5)); $0.addLine(to: pt(21, 12)); $0.addLine(to: pt(21, 17.5))
+                    $0.addEllipse(in: CGRect(x: 14, y: 18, width: 3, height: 3))
+                    $0.addEllipse(in: CGRect(x: 18, y: 16, width: 3, height: 3))
+                },
+            ], fills: [])
+        case .watchlist, .requests:
+            return .init(strokes: [
+                path {
+                    $0.move(to: pt(6, 3.5)); $0.addLine(to: pt(18, 3.5))
+                    $0.addCurve(to: pt(19, 4.5), control1: pt(18.5523, 3.5), control2: pt(19, 3.9477))
+                    $0.addLine(to: pt(19, 21)); $0.addLine(to: pt(12, 16.5))
+                    $0.addLine(to: pt(5, 21)); $0.addLine(to: pt(5, 4.5))
+                    $0.addCurve(to: pt(6, 3.5), control1: pt(5, 3.9477), control2: pt(5.4477, 3.5))
+                    $0.closeSubpath()
+                    $0.move(to: pt(12, 7.5)); $0.addLine(to: pt(12, 12.5))
+                    $0.move(to: pt(9.5, 10)); $0.addLine(to: pt(14.5, 10))
+                },
+            ], fills: [])
+        case .calendar:
+            return .init(strokes: [
+                roundedRect(3.5, 5, 17, 15, 2),
+                path {
+                    $0.move(to: pt(3.5, 10)); $0.addLine(to: pt(20.5, 10))
+                    $0.move(to: pt(8, 3)); $0.addLine(to: pt(8, 7))
+                    $0.move(to: pt(16, 3)); $0.addLine(to: pt(16, 7))
+                },
+            ], fills: [])
+        case .settings:
+            return nil
+        }
+    }
+
+    private static func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: y) }
+
+    private static func path(_ draw: (inout Path) -> Void) -> Path {
+        var value = Path()
+        draw(&value)
+        return value
+    }
+
+    private static func closedPath(_ draw: (inout Path) -> Void) -> Path {
+        path { value in draw(&value); value.closeSubpath() }
+    }
+
+    private static func ellipse(_ x: CGFloat, _ y: CGFloat, _ radius: CGFloat) -> Path {
+        Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: 2 * radius, height: 2 * radius))
+    }
+
+    private static func roundedRect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat, _ radius: CGFloat) -> Path {
+        Path(roundedRect: CGRect(x: x, y: y, width: width, height: height), cornerSize: CGSize(width: radius, height: radius))
+    }
+}
+
+#if os(tvOS)
+private struct TVNavVectorIcon: View {
+    let tab: TVNavTab
+
+    var body: some View {
+        if let vector = TVNavIconVector.forTab(tab) {
+            Canvas { context, size in
+                let scale = min(size.width, size.height) / TVNavIconVector.viewBoxSize
+                let transform = CGAffineTransform(scaleX: scale, y: scale)
+                let style = StrokeStyle(lineWidth: TVNavIconVector.strokeWidth * scale, lineCap: .round, lineJoin: .round)
+                for path in vector.strokes {
+                    context.stroke(path.applying(transform), with: .foreground, style: style)
+                }
+                for path in vector.fills {
+                    context.fill(path.applying(transform), with: .foreground)
+                }
+            }
+            .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
+            .accessibilityHidden(true)
+        } else {
+            Image(systemName: tab.systemImage)
+                .font(.system(size: 20, weight: .medium))
+        }
+    }
+}
+#endif
+
 /// Focus identity shared between floating nav and main stage.
 enum TVShellFocus: Hashable {
     case nav(TVNavTab)
     /// The profile tile at the foot of the nav: part of the nav, so Up from it walks the tabs (web).
     case navProfile
     case stage
+}
+
+struct TVHomeCardFocusRequest: Equatable, Identifiable {
+    let id: UUID
+    let target: HomeRailCardFocus
+
+    init(target: HomeRailCardFocus) {
+        id = UUID()
+        self.target = target
+    }
+}
+
+enum TVHomeNavFocusGeometry {
+    static func nearestTarget(from source: CGRect, navFrames: [TVNavTab: CGRect]) -> TVNavTab? {
+        navFrames.compactMap { tab, frame -> (tab: TVNavTab, score: CGFloat)? in
+            guard frame.width > 0, frame.height > 0,
+                  let score = scoreLeftCandidate(from: source, to: frame) else { return nil }
+            return (tab, score)
+        }.min { lhs, rhs in
+            if lhs.score != rhs.score { return lhs.score < rhs.score }
+            return (TVNavTab.allCases.firstIndex(of: lhs.tab) ?? Int.max)
+                < (TVNavTab.allCases.firstIndex(of: rhs.tab) ?? Int.max)
+        }?.tab
+    }
+
+    /// Port of web `scoreDirectionalCandidate(from, to, "left")` in focusGeometry.ts.
+    static func scoreLeftCandidate(from source: CGRect, to target: CGRect) -> CGFloat? {
+        let dx = target.midX - source.midX
+        let dy = target.midY - source.midY
+        guard dx < -2 else { return nil }
+
+        let primary = abs(dx)
+        let lateral = abs(dy)
+        let overlap = max(0, min(source.maxY, target.maxY) - max(source.minY, target.minY))
+        let crossAxisSize = min(source.height, target.height)
+        let coneAllowance = primary * 0.85 + crossAxisSize * 0.2
+        guard overlap > 0 || lateral <= coneAllowance else { return nil }
+
+        return primary + lateral * 4 - min(overlap, 180) * 0.55
+    }
+}
+
+struct TVHomeNavFocusHandoff {
+    private(set) var oneShotNavTarget: TVNavTab? = nil
+    private(set) var returnTarget: HomeRailCardFocus? = nil
+
+    mutating func begin(from card: HomeRailCardFocus, frame: CGRect, navFrames: [TVNavTab: CGRect]) -> TVNavTab? {
+        guard let target = TVHomeNavFocusGeometry.nearestTarget(from: frame, navFrames: navFrames) else { return nil }
+        returnTarget = card
+        oneShotNavTarget = target
+        return target
+    }
+
+    mutating func takeReturnTarget(isHomeRoot: Bool) -> HomeRailCardFocus? {
+        guard isHomeRoot else { return nil }
+        defer {
+            returnTarget = nil
+            oneShotNavTarget = nil
+        }
+        return returnTarget
+    }
+
+    mutating func reset() {
+        oneShotNavTarget = nil
+        returnTarget = nil
+    }
+
+    static func allowsNavFocus(
+        _ tab: TVNavTab,
+        activeTab: TVNavTab,
+        navHasFocus: Bool,
+        oneShotTarget: TVNavTab?
+    ) -> Bool {
+        navHasFocus || tab == activeTab || tab == oneShotTarget
+    }
+}
+
+private struct TVNavFramesPreferenceKey: PreferenceKey {
+    static var defaultValue: [TVNavTab: CGRect] = [:]
+    static func reduce(value: inout [TVNavTab: CGRect], nextValue: () -> [TVNavTab: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
+    }
 }
 
 struct TVHomeFocusHandoff {
@@ -546,8 +787,10 @@ struct TVHomeFocusHandoff {
         pending = tab == .home
     }
 
-    mutating func claim(isHomeRoot: Bool) -> Bool {
-        guard pending, isHomeRoot else { return false }
+    mutating func cancel() { pending = false }
+
+    mutating func claim(isHomeRoot: Bool, targetRegistered: Bool = true) -> Bool {
+        guard pending, isHomeRoot, targetRegistered else { return false }
         pending = false
         return true
     }
@@ -559,24 +802,102 @@ private struct RequestNavFocusKey: EnvironmentKey {
     static let defaultValue: () -> Void = {}
 }
 
+private struct RequestHomeNavFocusKey: EnvironmentKey {
+    static let defaultValue: (HomeRailCardFocus, CGRect) -> Bool = { _, _ in false }
+}
+
+private struct HomeCardFocusReturnRequestKey: EnvironmentKey {
+    static let defaultValue: TVHomeCardFocusRequest? = nil
+}
+
+struct TVHomeStageFocusRequest {
+    let parityID: String
+    let rail: Int
+    let index: Int
+    let completion: (Bool) -> Void
+}
+
 private struct RequestStageFocusKey: EnvironmentKey {
+    static let defaultValue: (TVHomeStageFocusRequest) -> Void = { $0.completion(false) }
+}
+
+private struct CancelStageFocusRequestKey: EnvironmentKey {
     static let defaultValue: () -> Void = {}
 }
 
 extension EnvironmentValues {
+    var requestHomeNavFocus: (HomeRailCardFocus, CGRect) -> Bool {
+        get { self[RequestHomeNavFocusKey.self] }
+        set { self[RequestHomeNavFocusKey.self] = newValue }
+    }
+
+    var homeCardFocusReturnRequest: TVHomeCardFocusRequest? {
+        get { self[HomeCardFocusReturnRequestKey.self] }
+        set { self[HomeCardFocusReturnRequestKey.self] = newValue }
+    }
+
     var requestNavFocus: () -> Void {
         get { self[RequestNavFocusKey.self] }
         set { self[RequestNavFocusKey.self] = newValue }
     }
 
-    var requestStageFocus: () -> Void {
+    var requestStageFocus: (TVHomeStageFocusRequest) -> Void {
         get { self[RequestStageFocusKey.self] }
         set { self[RequestStageFocusKey.self] = newValue }
+    }
+
+    var cancelStageFocusRequest: () -> Void {
+        get { self[CancelStageFocusRequestKey.self] }
+        set { self[CancelStageFocusRequestKey.self] = newValue }
+    }
+}
+
+/// Web TV navigation's vertical safe area, measured from the 1920x1080 web rail and expressed
+/// with the same viewport-height clamps as `.app-nav`.
+struct TVFloatingNavLayout {
+    let topInset: CGFloat
+    let bottomInset: CGFloat
+
+    static func metrics(height: CGFloat) -> TVFloatingNavLayout {
+        let viewportUnit = max(0, height)
+        let header = min(max(viewportUnit * 0.052, 34), 66)
+        let controlGap = min(max(viewportUnit * 0.012, 6.4), 14.4)
+        let bottom = min(max(viewportUnit * 0.032, 22), 46) - 14
+        return TVFloatingNavLayout(
+            topInset: header + 44 + controlGap,
+            bottomInset: max(0, bottom)
+        )
+    }
+
+    /// Intrinsic centre for an unscaled nav tile, using the shell's grouped spacing.
+    static func tileCenterY(index: Int, groupCounts: [Int], height: CGFloat) -> CGFloat? {
+        guard index >= 0, groupCounts.allSatisfy({ $0 >= 0 }),
+              index < groupCounts.reduce(0, +) else { return nil }
+        let metrics = metrics(height: height)
+        var remaining = index
+        var groupTop = metrics.topInset + DesignTokens.Shell.navGroupPadding
+        for (groupIndex, count) in groupCounts.enumerated() {
+            if remaining < count {
+                return groupTop + DesignTokens.Shell.navGroupPadding
+                    + DesignTokens.Shell.navItemSize / 2
+                    + CGFloat(remaining) * (DesignTokens.Shell.navItemSize + DesignTokens.Shell.navGroupGap)
+            }
+            remaining -= count
+            let groupHeight = CGFloat(count) * DesignTokens.Shell.navItemSize
+                + CGFloat(max(0, count - 1)) * DesignTokens.Shell.navGroupGap
+                + DesignTokens.Shell.navGroupPadding * 2
+            groupTop += groupHeight
+            if groupIndex < groupCounts.count - 1 {
+                groupTop += 14
+            }
+        }
+        return nil
     }
 }
 
 struct TVFloatingNav: View {
     @Binding var selection: TVNavTab
+    @Environment(\.cancelStageFocusRequest) private var cancelStageFocusRequest
     /// When true, suppress tvOS focus lift so parity captures match web chrome.
     var suppressFocusChrome: Bool = false
     /// SPA library/home frames omit the settings group from the left rail.
@@ -587,6 +908,10 @@ struct TVFloatingNav: View {
     var focusNamespace: Namespace.ID? = nil
     /// When true, the active tab is the preferred default focus target.
     var preferDefaultFocus: Bool = false
+    /// A single measured target may temporarily enter focus from the Home rail.
+    var oneShotFocusTarget: TVNavTab? = nil
+    var onNavFramesChange: ([TVNavTab: CGRect]) -> Void = { _ in }
+    var onRequestHomeReturn: () -> Void = {}
 
     /// Same three groups as the web shell (`.app-nav`). Music joins the browse group only when
     /// the library has music (`showMusic`).
@@ -607,18 +932,32 @@ struct TVFloatingNav: View {
     var profile: TVNavProfile? = nil
 
     var body: some View {
-        // Whole nav is one centred column (web: top 50% + translateY(-50%)).
-        // Settings sits just under the primary group, not pinned to the footer.
-        VStack(spacing: 14) {
-            ForEach(navGroups, id: \.self) { navGroup(tabs: $0) }
-            if showSettings {
-                navGroup(tabs: [.settings])
+        GeometryReader { geometry in
+            let metrics = TVFloatingNavLayout.metrics(height: geometry.size.height)
+            VStack(spacing: 0) {
+                ScrollView(.vertical) {
+                    VStack(spacing: 14) {
+                        ForEach(navGroups, id: \.self) { navGroup(tabs: $0) }
+                        if showSettings {
+                            navGroup(tabs: [.settings])
+                        }
+                    }
+                    // Web rail keeps the first group clear of the header/page controls and
+                    // preserves room for focused group shadows at both scroll edges.
+                    .padding(.vertical, DesignTokens.Shell.navGroupPadding)
+                }
+                .scrollIndicators(.hidden)
+
+                if let profile {
+                    profileGroup(profile)
+                }
             }
-            if let profile {
-                profileGroup(profile)
-            }
+            .padding(.top, metrics.topInset)
+            .padding(.bottom, metrics.bottomInset)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: DesignTokens.Shell.navItemSize + DesignTokens.Shell.navGroupPadding * 2)
+        .onPreferenceChange(TVNavFramesPreferenceKey.self, perform: onNavFramesChange)
     }
 
     private func navGroup(tabs: [TVNavTab]) -> some View {
@@ -683,7 +1022,9 @@ struct TVFloatingNav: View {
     private func navButton(_ tab: TVNavTab) -> some View {
         let isActive = selection == tab
         let isFocused = externalFocus.wrappedValue == .nav(tab)
+        let isOneShotFocusTarget = oneShotFocusTarget == tab
         let button = Button {
+            if selection == tab { cancelStageFocusRequest() }
             selection = tab
             externalFocus.wrappedValue = .nav(tab)
             // Web: Select on a tab opens the page and puts focus on its first item (the page loads a moment later).
@@ -695,8 +1036,12 @@ struct TVFloatingNav: View {
             }
         } label: {
             VStack(spacing: 5) {
+                #if os(tvOS)
+                TVNavVectorIcon(tab: tab)
+                #else
                 Image(systemName: tab.systemImage)
                     .font(.system(size: 20, weight: .medium))
+                #endif
                 Text(tab.title)
                     .font(TVTheme.font(size: 9, weight: .semibold))
                     .tracking(0.3)
@@ -725,26 +1070,47 @@ struct TVFloatingNav: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .accessibilityLabel(tab.title)
         .focused(externalFocus, equals: .nav(tab))
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: TVNavFramesPreferenceKey.self,
+                    value: [tab: proxy.frame(in: tvScreenSpace)]
+                )
+            }
+        }
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: isFocused) { _, now in TVParityState.setFocus(tab.title, now, id: "nav-" + tab.rawValue, rail: "nav", index: TVNavTab.allCases.firstIndex(of: tab)) }
         #endif
-        // not .focusable: on a Button it adds a second, inert focus target. While focus is outside the nav only the
-        // active tab can take it, so Left from the page lands on the active tab (web), not the nearest one.
+        // not .focusable: on a Button it adds a second, inert focus target. Outside the nav only the active tab can
+        // take focus, except for the one measured target during a Home-leading-card handoff.
         #if os(macOS)
         // The mouse must reach every tab (hover, click); only the remote needs the one-active-tab rule above.
         .disabled(suppressFocusChrome)
         #else
-        .disabled(suppressFocusChrome || (!navHasFocus && !isActive))
+        .disabled(suppressFocusChrome || !TVHomeNavFocusHandoff.allowsNavFocus(
+            tab,
+            activeTab: selection,
+            navHasFocus: navHasFocus,
+            oneShotTarget: isOneShotFocusTarget ? oneShotFocusTarget : nil
+        ))
         #endif
         .focusEffectDisabled(suppressFocusChrome)
         .onMoveCommand { direction in
             // Right from any dock item jumps into the stage (first rail card).
             if direction == .right {
-                externalFocus.wrappedValue = .stage
+                if selection == .home {
+                    onRequestHomeReturn()
+                } else {
+                    externalFocus.wrappedValue = .stage
+                }
+            } else {
+                cancelStageFocusRequest()
             }
         }
 
-        if let focusNamespace, preferDefaultFocus, isActive {
+        if let focusNamespace, oneShotFocusTarget == tab {
+            button.prefersDefaultFocus(true, in: focusNamespace)
+        } else if let focusNamespace, preferDefaultFocus, isActive {
             button.prefersDefaultFocus(true, in: focusNamespace)
         } else {
             button

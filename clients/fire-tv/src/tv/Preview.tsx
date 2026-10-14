@@ -9,12 +9,14 @@ export interface PreviewProps {
   title: string;
   /** Meta runs: the first in the soft ink, the rest muted. */
   meta?: readonly string[];
+  /** Additional content rendered in the metadata row after the text runs. */
+  metaContent?: React.ReactNode;
   overview?: string | null;
   /** Content drawn between the overview and the page (actions). */
   children?: React.ReactNode;
 }
 
-export function Preview({kicker, title, meta, overview, children}: PreviewProps): React.ReactElement {
+export function Preview({kicker, title, meta, metaContent, overview, children}: PreviewProps): React.ReactElement {
   const {colour} = useTheme();
   return (
     <Box x={153.6} y={259.2} w={455} pointerEvents="box-none">
@@ -28,15 +30,16 @@ export function Preview({kicker, title, meta, overview, children}: PreviewProps)
           {title}
         </T>
       </View>
-      {meta && meta.length > 0 ? (
+      {(meta && meta.length > 0) || metaContent ? (
         <View style={{marginTop: u(27), flexDirection: 'row', flexWrap: 'wrap'}}>
-          {meta.map((run, index) => (
+          {meta?.map((run, index) => (
             <View key={`${index}:${run}`} style={{marginRight: u(12.8)}}>
               <T size={12.096} weight={400} lh={18.1} color={index === 0 ? colour.inkSoft : colour.inkMuted}>
                 {run}
               </T>
             </View>
           ))}
+          {metaContent}
         </View>
       ) : null}
       {overview ? (

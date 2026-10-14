@@ -10,6 +10,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 pub fn build(app: Rc<App>) -> gtk4::Widget {
+    let flow_generation = app.flow_generation();
     let root = gtk4::Box::new(gtk4::Orientation::Vertical, 14);
     root.add_css_class("pa-page");
     root.set_halign(gtk4::Align::Fill);
@@ -91,6 +92,7 @@ pub fn build(app: Rc<App>) -> gtk4::Widget {
 
     struct Ui {
         app: Rc<App>,
+        flow_generation: u64,
         generation: Rc<Cell<u32>>,
         qr_pic: gtk4::Picture,
         code_label: gtk4::Label,
@@ -100,6 +102,7 @@ pub fn build(app: Rc<App>) -> gtk4::Widget {
     }
     let ui = Rc::new(Ui {
         app,
+        flow_generation,
         generation: generation.clone(),
         qr_pic,
         code_label,
@@ -109,6 +112,9 @@ pub fn build(app: Rc<App>) -> gtk4::Widget {
     });
 
     fn start(ui: Rc<Ui>) {
+        if ui.app.flow_generation() != ui.flow_generation {
+            return;
+        }
         let gen = ui.generation.get() + 1;
         ui.generation.set(gen);
         let origin = link::broker_origin();
@@ -116,6 +122,7 @@ pub fn build(app: Rc<App>) -> gtk4::Widget {
         bg(
             move || link::request_code(&o2),
             move |res| match res {
+                _ if ui.app.flow_generation() != ui.flow_generation => {}
                 Ok(code) => show_code(ui, origin, code, gen),
                 Err(e) => {
                     ui.status.set_label(&format!("{e} Retrying…"));
@@ -150,7 +157,7 @@ pub fn build(app: Rc<App>) -> gtk4::Widget {
         interval: std::time::Duration,
     ) {
         glib::timeout_add_local_once(interval, move || {
-            if ui.generation.get() != gen {
+            if ui.generation.get() != gen || ui.app.flow_generation() != ui.flow_generation {
                 return;
             }
             if std::time::Instant::now() >= deadline {
@@ -160,7 +167,7 @@ pub fn build(app: Rc<App>) -> gtk4::Widget {
             bg(
                 move || link::poll(&o, &d),
                 move |res| {
-                    if ui.generation.get() != gen {
+                    if ui.generation.get() != gen || ui.app.flow_generation() != ui.flow_generation {
                         return;
                     }
                     match res {
@@ -173,6 +180,9 @@ pub fn build(app: Rc<App>) -> gtk4::Widget {
                                 move || link::exchange(&c2),
                                 move |tok| match tok {
                                     Ok(t) => {
+                                        if ui.app.flow_generation() != ui.flow_generation {
+                                            return;
+                                        }
                                         let device_id = store::jwt_claim(&t.access_token, "device_id")
                                             .unwrap_or_else(store::new_device_id);
                                         let session = Session {
@@ -181,9 +191,38 @@ pub fn build(app: Rc<App>) -> gtk4::Widget {
                                             refresh_token: t.refresh_token,
                                             device_id,
                                         };
-                                        store::save_session(&session);
-                                        ui.generation.set(ui.generation.get() + 1);
-                                        ui.app.signed_in(api::Client::new(session));
+                                        ui.status.set_label("Saving profile session…");
+                                        let flow = ui.app.flow_generation.clone();
+                                        let expected = ui.flow_generation;
+                                        let session_to_save = session.clone();
+                                        let ui_after_save = ui.clone();
+                                        bg(
+                                            move || {
+                                                crate::profile_sessions::save_link_session(
+                                                    &session_to_save,
+                                                    flow,
+                                                    expected,
+                                                )
+                                                .map_err(|error| error.to_string())
+                                            },
+                                            move |saved| {
+                                                if ui_after_save.app.flow_generation() != ui_after_save.flow_generation
+                                                {
+                                                    return;
+                                                }
+                                                match saved {
+                                                    Ok(()) => {
+                                                        ui_after_save
+                                                            .generation
+                                                            .set(ui_after_save.generation.get() + 1);
+                                                        ui_after_save.app.signed_in(api::Client::new(session));
+                                                    }
+                                                    Err(error) => ui_after_save.status.set_label(&format!(
+                                                        "Could not save this profile safely: {error}"
+                                                    )),
+                                                }
+                                            },
+                                        );
                                     }
                                     Err(e) => {
                                         ui.status.set_label(&format!("{e} Getting a new code…"));

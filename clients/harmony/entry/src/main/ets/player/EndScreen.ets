@@ -15,6 +15,7 @@
  * Always dark, like the rest of the player (brief 5.6).
  */
 
+import { nunito } from '../design/Typography';
 import { Spacing, Radii, BRAND_PINK } from '../core/Tokens';
 import type { RgbaColor } from '../core/Tokens';
 import { toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -46,7 +47,7 @@ struct EndButton {
 
   build() {
 
-    Text(this.label)
+    Text(this.label).fontFamily(nunito(700))
       .fontSize(isTvMetrics() ? tv(BUTTON_SIZE_TV) : BUTTON_SIZE_TOUCH)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(CARD_TEXT_PRIMARY))
@@ -110,14 +111,14 @@ export struct EndScreen {
 
     Scroll() {
       Column({ space: Spacing.lg }) {
-        Text(this.heading())
+        Text(this.heading()).fontFamily(nunito(700))
           .fontSize(isTvMetrics() ? tv(HEADING_SIZE_TV) : HEADING_SIZE_TOUCH)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(CARD_TEXT_PRIMARY))
           .maxLines(2)
 
         if ((this.nextTitle.length > 0)) {
-          Text(this.nextTitle)
+          Text(this.nextTitle).fontFamily(nunito(400))
             .fontSize(isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH)
             .fontColor(toResourceColorWithAlpha(CARD_TEXT_PRIMARY, 0.85))
             .maxLines(2)
@@ -145,7 +146,7 @@ export struct EndScreen {
         }
 
         if (this.hasSuggestions) {
-          Text('More like this')
+          Text('More like this').fontFamily(nunito(700))
             .fontSize(isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(CARD_TEXT_PRIMARY))

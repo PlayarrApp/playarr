@@ -3,6 +3,7 @@
  * buttons on the right edge; the current letter is filled with ink. Geometry from the live web TV DOM.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -37,7 +38,7 @@ export struct AlphabetRail {
   private touchRail(): void {
     Column() {
       ForEach(this.letters, (letter: string) => {
-        Text(letter)
+        Text(letter).fontFamily(nunito(500))
           .width(TOUCH_LETTER_WIDTH)
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
@@ -71,7 +72,7 @@ export struct AlphabetRail {
     Scroll() {
       Column() {
         ForEach(this.letters, (letter: string) => {
-          Text(letter)
+          Text(letter).fontFamily(nunito(400))
             .width(tv(BUTTON_SIZE))
             .height(tv(BUTTON_SIZE))
             .textAlign(TextAlign.Center)

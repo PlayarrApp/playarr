@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { expandKeys, focusForCheck, routeMatches, validateSuite } from "./suite-lib.mjs";
-import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseBrowseAlphabetFocusDiagnostic, parseBrowseAlphabetGeometryDiagnostic, parseBrowseGridHandoffDiagnostic, parseBrowseGridObserverDiagnostic, parseBrowseKeyArtDiagnostic, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
 
@@ -357,21 +357,6 @@ test("Roku artwork readiness gates a fresh current population with explicit empt
   assert.equal(artReadiness(generation, { scope: "home", afterSeq: generation.beginSeq }).reason, "no-fresh-generation");
 });
 
-test("Roku Calendar art readiness is scoped to the current view generation", () => {
-  const state = createParityState();
-  applyParityLine(state, "PARITY|screen|page");
-  applyParityLine(state, "PARITY|page|calendar");
-  applyParityLine(state, "PARITY|calendarView|week");
-  const marker = state.artMarkers.calendar;
-  applyParityLine(state, "PARITY|art|slot|3|calendar|calendar-r0-c0|1|802.4|259.8|40|60|0");
-  applyParityLine(state, "PARITY|art|status|3|calendar|calendar-r0-c0|ready|0");
-  applyParityLine(state, "PARITY|art|begin|3|calendar|1|1");
-  applyParityLine(state, "PARITY|art|finish|3|calendar");
-  const generation = state.artState.generations.get("calendar:3");
-  assert.deepEqual(artReadiness(generation, { scope: "calendar", afterSeq: marker }), { ready: true, reason: "ready" });
-  assert.equal(artReadiness(generation, { scope: "calendar", afterSeq: state.eventSeq }).reason, "no-fresh-generation");
-});
-
 test("Roku Movies readiness does not treat a recoverable retry as terminal failure", () => {
   const state = createParityState();
   applyParityLine(state, "PARITY|browse|movie");
@@ -384,108 +369,6 @@ test("Roku Movies readiness does not treat a recoverable retry as terminal failu
   assert.equal(artReadiness(generation, { scope: "movies", afterSeq: marker }).reason, "art-pending");
   applyParityLine(state, "PARITY|art|status|3|movies|movies-r0-c0|ready|0");
   assert.deepEqual(artReadiness(generation, { scope: "movies", afterSeq: marker }), { ready: true, reason: "ready" });
-});
-
-test("Roku browse key-art diagnostics retain only bounded safe status and URI booleans", () => {
-  const state = createParityState();
-  const first = "movies|4|2|request|ready|1|0";
-  assert.deepEqual(parseBrowseKeyArtDiagnostic(first, 7), {
-    scope: "movies", generation: 4, version: 2, point: "request", loadStatus: "ready",
-    pendingUriNonempty: true, currentUriMatchesPending: false, seq: 7,
-  });
-  assert.equal(parseBrowseKeyArtDiagnostic("movies|4|2|timer|loading|1|1", 8)?.currentUriMatchesPending, true);
-  assert.equal(parseBrowseKeyArtDiagnostic("movies|4|2|observer|failed|1|0", 9)?.loadStatus, "failed");
-  assert.equal(parseBrowseKeyArtDiagnostic("movies|4|2|request|https://private.invalid/poster|1|0", 10), null);
-  assert.equal(parseBrowseKeyArtDiagnostic("movies|4|2|request|ready|0|1", 11), null);
-  assert.equal(applyParityLine(state, "PARITY|browseKeyArt|movies|4|2|request|ready|1|0"), true);
-  for (let version = 1; version <= 40; version += 1) {
-    assert.equal(applyParityLine(state, `PARITY|browseKeyArt|series|9|${version}|observer|loading|1|1`), true);
-  }
-  assert.equal(state.browseKeyArtDiagnostics.length, 32);
-  assert.equal(state.browseKeyArtDiagnostics[0].version, 9);
-  assert.equal(state.browseKeyArtDiagnostics.at(-1).version, 40);
-  assert.doesNotMatch(JSON.stringify(state.browseKeyArtDiagnostics), /private|https?:|token|title/i);
-});
-
-test("Roku alphabet focus diagnostics allowlist actions, indices, focus booleans and bounded history", () => {
-  assert.deepEqual(parseBrowseAlphabetFocusDiagnostic("enter|0|0|1", 1), {
-    action: "enter", index: 0, gridInFocusChain: false, sceneInFocusChain: true, seq: 1,
-  });
-  assert.equal(parseBrowseAlphabetFocusDiagnostic("move|19|0|1", 2)?.index, 19);
-  assert.equal(parseBrowseAlphabetFocusDiagnostic("exit|26|1|1", 3)?.gridInFocusChain, true);
-  assert.equal(parseBrowseAlphabetFocusDiagnostic("focus|27|0|1", 4), null);
-  assert.equal(parseBrowseAlphabetFocusDiagnostic("enter|0|true|false", 5), null);
-  assert.equal(parseBrowseAlphabetFocusDiagnostic("enter|0|0|1|private title", 6), null);
-
-  const state = createParityState();
-  assert.equal(applyParityLine(state, "PARITY|browseAlphabetFocus|enter|0|0|1"), true);
-  for (let index = 0; index < 40; index += 1) {
-    assert.equal(applyParityLine(state, `PARITY|browseAlphabetFocus|move|${index % 27}|0|1`), true);
-  }
-  assert.equal(state.browseAlphabetFocusDiagnostics.length, 32);
-  assert.equal(state.browseAlphabetFocusDiagnostics[0].seq, 10);
-  assert.equal(state.browseAlphabetFocusDiagnostics.at(-1).index, 12);
-  assert.doesNotMatch(JSON.stringify(state.browseAlphabetFocusDiagnostics), /private|https?:|title|uri|token/i);
-});
-
-test("Roku alphabet geometry diagnostics accept documented rect and Scene shapes with bounded numeric dimensions", () => {
-  const sevenFieldEvent = "assoc|integer|810|assoc|integer|integer|1080";
-  assert.deepEqual(parseBrowseAlphabetGeometryDiagnostic(sevenFieldEvent, 7), {
-    rectType: "assoc", viewportType: "integer", viewportHeight: 810,
-    resolutionType: "assoc", resolutionHeightType: "integer", stageType: "integer", stageHeight: 1080, seq: 7,
-  });
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|1080", 7), null);
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc||810|assoc|integer|integer|1080", 7), null);
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|float|810.5|assoc|float|float|1080.5", 8)?.viewportHeight, 810.5);
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("other|integer|810|assoc|integer|integer|1080", 9)?.rectType, "other");
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|assoc|810|assoc|integer|integer|1080", 10), null);
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|0|assoc|integer|integer|1080", 11), null);
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|other|other|integer|1080", 12)?.resolutionType, "other");
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|other|integer|1080", 13)?.resolutionHeightType, "other");
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|NaN", 14), null);
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|1e3", 15), null);
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|4321", 16), null);
-  assert.equal(parseBrowseAlphabetGeometryDiagnostic("assoc|integer|810|assoc|integer|integer|1080|private", 17), null);
-
-  const state = createParityState();
-  assert.equal(applyParityLine(state, "PARITY|browseAlphabetGeometry|assoc|integer|810|assoc|integer|integer|1080"), true);
-  for (let height = 100; height < 1100; height += 100) {
-    assert.equal(applyParityLine(state, `PARITY|browseAlphabetGeometry|assoc|integer|810|assoc|integer|integer|${height}`), true);
-  }
-  assert.equal(state.browseAlphabetGeometryDiagnostics.length, 8);
-  assert.equal(state.browseAlphabetGeometryDiagnostics[0].stageHeight, 300);
-  assert.equal(state.browseAlphabetGeometryDiagnostics.at(-1).stageHeight, 1000);
-  assert.doesNotMatch(JSON.stringify(state.browseAlphabetGeometryDiagnostics), /private|https?:|title|uri|token/i);
-});
-
-test("Roku browse-grid handoff diagnostics retain numeric edge state and observer focus booleans", () => {
-  assert.deepEqual(parseBrowseGridHandoffDiagnostic("right|14|3|1", 1), {
-    action: "right", itemIndex: 14, columns: 3, edgeMatch: true, seq: 1,
-  });
-  assert.equal(parseBrowseGridHandoffDiagnostic("right|13|3|0", 2)?.edgeMatch, false);
-  assert.equal(parseBrowseGridHandoffDiagnostic("right|1001|3|1", 3), null);
-  assert.equal(parseBrowseGridHandoffDiagnostic("right|14|0|1", 4), null);
-  assert.equal(parseBrowseGridHandoffDiagnostic("right|14|3|1|private title", 5), null);
-  assert.deepEqual(parseBrowseGridObserverDiagnostic("entry|1|1", 6), {
-    phase: "entry", gridInFocusChain: true, sceneInFocusChain: true, seq: 6,
-  });
-  assert.deepEqual(parseBrowseGridObserverDiagnostic("after|0|1", 7), {
-    phase: "after", gridInFocusChain: false, sceneInFocusChain: true, seq: 7,
-  });
-  assert.equal(parseBrowseGridObserverDiagnostic("callback|0|1", 8), null);
-
-  const state = createParityState();
-  assert.equal(applyParityLine(state, "PARITY|browseGridHandoff|right|14|3|1"), true);
-  assert.equal(applyParityLine(state, "PARITY|browseGridObserver|entry|1|1"), true);
-  for (let index = 0; index < 40; index += 1) {
-    assert.equal(applyParityLine(state, `PARITY|browseGridHandoff|right|${index}|3|${index === 39 ? 1 : 0}`), true);
-    assert.equal(applyParityLine(state, `PARITY|browseGridObserver|${index % 2 ? "after" : "entry"}|0|1`), true);
-  }
-  assert.equal(state.browseGridHandoffDiagnostics.length, 32);
-  assert.equal(state.browseGridHandoffDiagnostics.at(-1).itemIndex, 39);
-  assert.equal(state.browseGridHandoffDiagnostics.at(-1).edgeMatch, true);
-  assert.equal(state.browseGridObserverDiagnostics.length, 32);
-  assert.doesNotMatch(JSON.stringify({ handoff: state.browseGridHandoffDiagnostics, observer: state.browseGridObserverDiagnostics }), /private|https?:|title|uri|token/i);
 });
 
 test("Roku waits through transient pairing until a fresh Profiles screen arrives", () => {

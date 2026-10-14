@@ -1,16 +1,105 @@
 import PlayarrKit
 import SwiftUI
 
+enum TVHomeRailMembership {
+    /// Web Home builds On Deck first when present, otherwise eight recent unique works, then keeps each server shelf.
+    static func server(
+        rails: [(title: String, works: [Work])],
+        onDeck: [Work]
+    ) -> [(title: String, works: [Work])] {
+        let all = rails.flatMap(\.works).enumerated()
+            .sorted { lhs, rhs in
+                lhs.element.addedAt != rhs.element.addedAt
+                    ? lhs.element.addedAt > rhs.element.addedAt
+                    : lhs.offset < rhs.offset
+            }
+            .map(\.element)
+        var seen = Set<UUID>()
+        var recent: [Work] = []
+        for work in all where seen.insert(work.id).inserted {
+            recent.append(work)
+            if recent.count >= 8 { break }
+        }
+        let primary = onDeck.isEmpty
+            ? (title: "Start watching", works: recent)
+            : (title: "On deck", works: Array(onDeck.prefix(10)))
+        return ([primary] + rails).filter { !$0.works.isEmpty }
+    }
+
+    static func fallback(
+        works: [Work],
+        onDeck: [Work]
+    ) -> [(title: String, works: [Work])] {
+        let movies = works.filter { $0.kind == .movie }
+        let mixed = works.filter { $0.kind == .series }
+            + works.filter { $0.kind != .series && $0.kind != .artist }
+        var used = Set<UUID>()
+        func takeUnused(_ source: [Work], count: Int) -> [Work] {
+            var selected: [Work] = []
+            for work in source where used.insert(work.id).inserted {
+                selected.append(work)
+                if selected.count >= count { break }
+            }
+            return selected
+        }
+        let primary: [Work]
+        let title: String
+        if onDeck.isEmpty {
+            title = "Start watching"
+            primary = takeUnused(mixed, count: 10)
+        } else {
+            title = "On deck"
+            primary = Array(onDeck.prefix(10))
+            used.formUnion(primary.map(\.id))
+        }
+        let newMovies = takeUnused(movies, count: 12)
+        return [(title, primary), ("New movies", newMovies)].filter { !$0.works.isEmpty }
+    }
+}
+
+struct HomeRailCardFocus: Hashable {
+    let rail: String
+    let workID: UUID
+}
+
+private struct HomeCardFramesPreferenceKey: PreferenceKey {
+    static var defaultValue: [HomeRailCardFocus: CGRect] = [:]
+    static func reduce(value: inout [HomeRailCardFocus: CGRect], nextValue: () -> [HomeRailCardFocus: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
+    }
+}
+
+struct TVHomeInitialFocus {
+    private(set) var wasCaptured = false
+    private(set) var target: HomeRailCardFocus?
+
+    mutating func capture(_ candidate: HomeRailCardFocus?) {
+        guard !wasCaptured else { return }
+        wasCaptured = true
+        target = candidate
+    }
+}
+
 struct TVHomeView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Environment(TVDisplayPreferences.self) private var displayPreferences
     @Environment(\.requestNavFocus) private var requestNavFocus
+    @Environment(\.requestHomeNavFocus) private var requestHomeNavFocus
+    @Environment(\.homeCardFocusReturnRequest) private var homeCardFocusReturnRequest
     @Environment(\.requestStageFocus) private var requestStageFocus
+    @Environment(\.cancelStageFocusRequest) private var cancelStageFocusRequest
     @State private var viewModel: TVHomeViewModel?
     /// Focus target is rail+work so the same title never lights up on two rails.
+    #if os(macOS)
+    @State private var focusedCard: HomeRailCardFocus?
+    #else
     @FocusState private var focusedCard: HomeRailCardFocus?
+    #endif
+    /// Freeze the default target on first Home appearance; late On Deck updates must not move focus.
+    @State private var initialFocus = TVHomeInitialFocus()
     /// Leading work ids per rail — Left on these hands focus to the dock.
     @State private var leadingWorkIDs: Set<UUID> = []
+    @State private var homeCardFrames: [HomeRailCardFocus: CGRect] = [:]
 
     var body: some View {
         Group {
@@ -25,12 +114,9 @@ struct TVHomeView: View {
             viewModel = model
             await model.load()
         }
-    }
-
-    /// Stable focus key: rail id + work id (works may not repeat across rails).
-    private struct HomeRailCardFocus: Hashable {
-        let rail: String
-        let workID: UUID
+        .onChange(of: homeCardFocusReturnRequest) { _, request in
+            if let request { focusedCard = request.target }
+        }
     }
 
     @ViewBuilder
@@ -42,7 +128,9 @@ struct TVHomeView: View {
             TVErrorView(title: "Couldn’t load your library", message: message) {
                 Task { await viewModel.load() }
             }
-        case .loaded where viewModel.works.isEmpty && viewModel.rails.isEmpty:
+        case .loaded where TVParityLaunch.requestedScreen == nil && !viewModel.homeInitialFocusReady:
+            TVHomeSkeleton()
+        case .loaded where viewModel.works.isEmpty && viewModel.rails.isEmpty && viewModel.onDeck.isEmpty:
             ContentUnavailableView(
                 "Your library is empty",
                 systemImage: "rectangle.stack",
@@ -101,18 +189,53 @@ struct TVHomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .defaultFocus($focusedCard, firstFocus)
+        #if !os(macOS)
+        .defaultFocus($focusedCard, initialFocus.wasCaptured ? initialFocus.target : firstFocus)
+        #endif
+        .onPreferenceChange(HomeCardFramesPreferenceKey.self) { homeCardFrames = $0 }
+        .onAppear { initialFocus.capture(firstFocus) }
         // The lead rail can change after the first paint (On deck arrives): keep focus on a card that still exists.
-        .task(id: firstFocus) {
-            // The lazy rail creates its cards after this first layout pass: wait a frame or two before focusing.
+        .task {
+            // The lazy rail creates its cards after this first layout pass: wait a frame or two before the one-shot handoff.
             try? await Task.sleep(for: .milliseconds(200))
             guard !Task.isCancelled else { return }
-            let ids = Set(rails.flatMap(\.works).map(\.id))
-            if focusedCard.map({ !ids.contains($0.workID) }) ?? true { focusedCard = firstFocus }
-            // The shell's tab-change observer arms the one-shot; focus content only after its lazy targets exist.
-            if firstFocus != nil { requestStageFocus() }
+            initialFocus.capture(firstFocus)
+            // The shell's tab-change observer arms the one-shot. User movement cancels it; late rail updates never reset focus.
+            if let target = initialFocus.target {
+                guard let rail = Int(target.rail.dropFirst()) else { return }
+                let request = TVHomeStageFocusRequest(
+                    parityID: target.workID.uuidString,
+                    rail: rail,
+                    index: 0,
+                    completion: { _ in }
+                )
+                requestStageFocus(request)
+            }
         }
+        #if DEBUG && os(macOS)
+        .onChange(of: focusedCard) { previous, current in
+            reportMacHomeFocusChange(from: previous, to: current, rails: rails)
+        }
+        #endif
     }
+
+    #if DEBUG && os(macOS)
+    private func reportMacHomeFocusChange(
+        from previous: HomeRailCardFocus?,
+        to current: HomeRailCardFocus?,
+        rails: [(title: String, works: [Work])]
+    ) {
+        guard previous != current, MacFocusEngine.shared.topLayer == 0 else { return }
+        func report(_ focus: HomeRailCardFocus, focused: Bool) {
+            guard let rail = Int(focus.rail.dropFirst()), rails.indices.contains(rail),
+                  let index = rails[rail].works.firstIndex(where: { $0.id == focus.workID }) else { return }
+            let work = rails[rail].works[index]
+            TVParityState.setFocus(work.title, focused, id: focus.workID.uuidString, rail: rail, index: index)
+        }
+        if let previous { report(previous, focused: false) }
+        if let current { report(current, focused: true) }
+    }
+    #endif
 
     /// Web: an 8 px left bleed keeps the first card's focus glow unclipped.
     private static let cardBleed: CGFloat = 8
@@ -121,9 +244,13 @@ struct TVHomeView: View {
 
     /// The server shelves with the web's primary rail first; older servers without shelves get the local rails.
     private static func productionRails(_ viewModel: TVHomeViewModel) -> [(title: String, works: [Work])] {
-        if !viewModel.rails.isEmpty { return liveRailDefinitions(viewModel) }
-        let (start, movies) = homeRailMembership(works: viewModel.works, interactive: true)
-        return [("Start watching", start), ("New movies", movies)].filter { !$0.works.isEmpty }
+        if !viewModel.rails.isEmpty {
+            return TVHomeRailMembership.server(
+                rails: viewModel.rails.map { (title: $0.title, works: $0.items) },
+                onDeck: viewModel.onDeck
+            )
+        }
+        return TVHomeRailMembership.fallback(works: viewModel.works, onDeck: viewModel.onDeck)
     }
 
     private func webRail(id: String, title: String, works: [Work]) -> some View {
@@ -145,7 +272,37 @@ struct TVHomeView: View {
                         }
                         .buttonStyle(TVFocusableCardButtonStyle())
                         .focusEffectDisabled()
+                        #if os(macOS)
+                        .environment(\.macFocusBindingBridge, MacFocusBindingBridge(
+                            focusChanged: { isFocused in
+                                if isFocused { focusedCard = focus }
+                                else if focusedCard == focus { focusedCard = nil }
+                            },
+                            restore: {
+                                let engine = MacFocusEngine.shared
+                                engine.requestHomeCardRestore(
+                                    parityID: work.id.uuidString, rail: Int(id.dropFirst()) ?? 0, index: index
+                                )
+                            }
+                        ))
+                        #else
                         .focused($focusedCard, equals: focus)
+                        #endif
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: HomeCardFramesPreferenceKey.self,
+                                    value: [focus: proxy.frame(in: tvScreenSpace)]
+                                )
+                            }
+                        }
+                        .onMoveCommand { direction in
+                            cancelStageFocusRequest()
+                            if direction == .left, index == 0,
+                               let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
+                                focusedCard = nil
+                            }
+                        }
                     }
                 }
                 .padding(.leading, Self.cardBleed)
@@ -314,12 +471,15 @@ struct TVHomeView: View {
         .padding(.leading, leadingPad)
         .padding(.top, y1 - headingH)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        #if !os(macOS)
         .defaultFocus($focusedCard, defaultFocus)
+        #endif
         .onAppear {
             if focusedCard == nil {
                 focusedCard = defaultFocus
             }
         }
+        .onPreferenceChange(HomeCardFramesPreferenceKey.self) { homeCardFrames = $0 }
     }
 
     private func interactiveRail(
@@ -358,12 +518,29 @@ struct TVHomeView: View {
                             )
                         }
                         .buttonStyle(.card)
+                        #if !os(macOS)
                         .focused($focusedCard, equals: focus)
+                        #endif
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: HomeCardFramesPreferenceKey.self,
+                                    value: [focus: proxy.frame(in: tvScreenSpace)]
+                                )
+                            }
+                        }
                         .onMoveCommand { direction in
+                            cancelStageFocusRequest()
                             // Per-card Left at the rail head → dock.
                             if direction == .left, index == 0 {
+                                #if os(tvOS)
+                                if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
+                                    focusedCard = nil
+                                }
+                                #else
                                 focusedCard = nil
                                 requestNavFocus()
+                                #endif
                             }
                         }
                     }
@@ -426,28 +603,12 @@ struct TVHomeView: View {
         .allowsHitTesting(false)
     }
 
-    /// Mirrors web `Home.tsx`: the primary rail is the most recently added unique works (8),
-    /// followed by the server's own rails.
+    /// Mirrors web `Home.tsx`: On Deck or the recent primary rail, followed by the configured server shelves.
     private static func liveRailDefinitions(_ viewModel: TVHomeViewModel) -> [(title: String, works: [Work])] {
-        let all = viewModel.rails.flatMap(\.items).enumerated()
-            .sorted { lhs, rhs in
-                lhs.element.addedAt != rhs.element.addedAt
-                    ? lhs.element.addedAt > rhs.element.addedAt
-                    : lhs.offset < rhs.offset
-            }
-            .map(\.element)
-        var seen = Set<UUID>()
-        var primary: [Work] = []
-        for work in all where seen.insert(work.id).inserted {
-            primary.append(work)
-            if primary.count >= 8 { break }
-        }
-        // Web Home: "On deck" (part-watched, at most 10) when there is any, else "Start watching" (8 most recent).
-        let lead: (title: String, works: [Work]) = viewModel.onDeck.isEmpty
-            ? ("Start watching", primary)
-            : ("On deck", Array(viewModel.onDeck.prefix(10)))
-        let definitions: [(title: String, works: [Work])] = [lead] + viewModel.rails.map { ($0.title, $0.items) }
-        return definitions.filter { !$0.works.isEmpty }
+        TVHomeRailMembership.server(
+            rails: viewModel.rails.map { (title: $0.title, works: $0.items) },
+            onDeck: viewModel.onDeck
+        )
     }
 
     /// Frozen live layout: web `.tv-home-rails` geometry measured on the 1920x1080 reference.
@@ -972,7 +1133,11 @@ struct TVSearchView: View {
     @Environment(TVDisplayPreferences.self) private var displayPreferences
     @State private var viewModel: TVSearchViewModel?
     @FocusState private var searchFieldFocused: Bool
+    #if os(macOS)
+    @State private var focusedWorkID: UUID?
+    #else
     @FocusState private var focusedWorkID: UUID?
+    #endif
     private var frozen: Bool { TVParityLaunch.frozen }
 
     var body: some View {
@@ -1011,6 +1176,20 @@ struct TVSearchView: View {
     private func selectedWork(_ model: TVSearchViewModel) -> Work? {
         model.results.first { $0.id == focusedWorkID } ?? model.results.first
     }
+
+    #if os(macOS)
+    private func macFocusBridge(for work: Work) -> MacFocusBindingBridge {
+        MacFocusBindingBridge(
+            focusChanged: { isFocused in
+                if isFocused { focusedWorkID = work.id }
+                else if focusedWorkID == work.id { focusedWorkID = nil }
+            },
+            restore: {
+                // MacFocusEngine's layer settle restores the last-focused child when the drawer disappears.
+            }
+        )
+    }
+    #endif
 
     @ViewBuilder
     private func searchContent(_ model: TVSearchViewModel) -> some View {
@@ -1164,7 +1343,11 @@ struct TVSearchView: View {
                             .animation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.23), value: selected)
                     }
                     .buttonStyle(TVFocusableCardButtonStyle())
+                    #if os(macOS)
+                    .environment(\.macFocusBindingBridge, macFocusBridge(for: work))
+                    #else
                     .focused($focusedWorkID, equals: work.id)
+                    #endif
                     .disabled(frozen) // not .focusable: on a Button it adds a second, inert focus target
                     .focusEffectDisabled()
                 }
@@ -1296,7 +1479,11 @@ struct TVLibraryKindView: View {
     /// The title focus returns to when it re-enters the grid, and whether the next focus is such an entry.
     @State private var lastFocusedID: UUID?
     @State private var entryPending = true
+    #if os(macOS)
+    @State private var selectedID: UUID?
+    #else
     @FocusState private var selectedID: UUID?
+    #endif
     @State private var didLoad = false
     /// The server's count for the header ("1,754 titles"); nil when it skipped the count.
     @State private var total: Int?
@@ -1319,6 +1506,20 @@ struct TVLibraryKindView: View {
         }
         return items.first
     }
+
+    #if os(macOS)
+    private func macFocusBridge(for work: Work) -> MacFocusBindingBridge {
+        MacFocusBindingBridge(
+            focusChanged: { isFocused in
+                if isFocused { selectedID = work.id }
+                else if selectedID == work.id { selectedID = nil }
+            },
+            restore: {
+                // MacFocusEngine's layer settle restores the last-focused child when the drawer disappears.
+            }
+        )
+    }
+    #endif
 
     var body: some View {
         GeometryReader { geo in
@@ -1529,7 +1730,8 @@ struct TVLibraryKindView: View {
                     width: artW,
                     artHeight: artH,
                     showTitle: true,
-                    artIncludesDot: true
+                    artIncludesDot: true,
+                    gridPosition: TVParityGridPosition(itemIndex: index, columns: cols)
                 )
                 // Top-leading placement (not centre) so art top matches SPA y.
                 .frame(width: artW, height: artH + titleBlock, alignment: .topLeading)
@@ -1561,11 +1763,12 @@ struct TVLibraryKindView: View {
                 alignment: .leading,
                 spacing: 27
             ) {
-                ForEach(items) { work in
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, work in
                     if view == "list" {
                         libraryRow(work)
                     } else {
-                        libraryCard(work: work, width: cardW, artHeight: artH, showTitle: true, artIncludesDot: false)
+                        libraryCard(work: work, width: cardW, artHeight: artH, showTitle: true, artIncludesDot: false,
+                                    gridPosition: TVParityGridPosition(itemIndex: index, columns: cols))
                     }
                 }
             }
@@ -1578,16 +1781,22 @@ struct TVLibraryKindView: View {
         // Web: the first title is focused when the page opens and whenever focus enters the grid from outside
         // (the nav, the header); `.userInitiated` applies it on every entry, not only the first.
         .focusSection()
+        #if !os(macOS)
         .defaultFocus($selectedID, items.first?.id, priority: .userInitiated)
+        #endif
         // Entering the grid from outside (nav, header) lands on the last focused title, else the first (web), never on
         // the card that happens to sit level with the nav item.
         .onChange(of: selectedID) { previous, current in
             guard let current else { return }
+            #if os(macOS)
+            lastFocusedID = current
+            #else
             if previous == nil, entryPending, let target = lastFocusedID ?? items.first?.id {
                 entryPending = false
                 if target != current { selectedID = target; return }
             }
             lastFocusedID = current
+            #endif
         }
         .onChange(of: selectedID == nil) { _, left in if left { entryPending = true } }
         // Web scroll edge fade: content leaving the top fades out before the header line (owner rule).
@@ -1606,10 +1815,12 @@ struct TVLibraryKindView: View {
         width: CGFloat,
         artHeight: CGFloat,
         showTitle: Bool,
-        artIncludesDot: Bool
+        artIncludesDot: Bool,
+        gridPosition: TVParityGridPosition? = nil
     ) -> some View {
         let isSelected = selected?.id == work.id
-        return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil) {
+        return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
+                            parityGridPosition: gridPosition) {
             // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
             // `strong { font-size: clamp(0.54rem, 0.6vw, 0.74rem) → ~11.5 @ 1920,
             // font-weight: 610, letter-spacing: -0.015em }`.
@@ -1672,7 +1883,11 @@ struct TVLibraryKindView: View {
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle())
+        #if os(macOS)
+        .environment(\.macFocusBindingBridge, macFocusBridge(for: work))
+        #else
         .focused($selectedID, equals: work.id)
+        #endif
         .disabled(parityMode) // not .focusable: on a Button it adds a second, inert focus target
         .focusEffectDisabled(parityMode)
         .onMoveCommand { direction in
@@ -1713,7 +1928,11 @@ struct TVLibraryKindView: View {
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle())
+        #if os(macOS)
+        .environment(\.macFocusBindingBridge, macFocusBridge(for: work))
+        #else
         .focused($selectedID, equals: work.id)
+        #endif
         .disabled(parityMode)
         .focusEffectDisabled()
     }

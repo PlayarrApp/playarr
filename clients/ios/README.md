@@ -24,7 +24,7 @@ playback. The signed release workflow also builds the native Apple TV app from `
 2. Open `Playarr.xcworkspace` so the Google Cast pod is linked.
 3. Select the shared `PlayarrApp` scheme.
 4. Choose an iPhone or iPad destination.
-5. For a physical device, select the `PlayarrApp` target and set your development team under
+5. For a physical device, select the `Playarr` target and set your development team under
    Signing & Capabilities.
 6. Run the app and sign in with the Playarr Server URL, username, and password.
 

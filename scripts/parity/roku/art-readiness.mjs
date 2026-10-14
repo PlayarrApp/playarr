@@ -1,5 +1,5 @@
-const SCOPES = new Set(["home", "movies", "series", "calendar"]);
-const SLOT = /^(?:(?:home|movies|series)-(?:hero|preview|r\d+-c\d+)|calendar-r0-c\d+)$/;
+const SCOPES = new Set(["home", "movies", "series"]);
+const SLOT = /^(?:home|movies|series)-(?:hero|preview|r\d+-c\d+)$/;
 const STATUSES = new Set(["pending", "ready", "failed", "empty"]);
 const validSlot = (scope, slot) => slot.startsWith(`${scope}-`) && SLOT.test(slot);
 

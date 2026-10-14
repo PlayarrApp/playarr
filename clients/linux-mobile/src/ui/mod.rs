@@ -16,7 +16,7 @@ pub mod settings;
 pub mod shell;
 pub mod simple;
 
-use crate::api::Client;
+use crate::api::{self, Client};
 use crate::store;
 use gtk4::prelude::*;
 use gtk4::{gio, glib};
@@ -24,6 +24,10 @@ use libadwaita as adw;
 use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::{
+    atomic::{AtomicBool, AtomicU64, Ordering},
+    Arc,
+};
 
 /// Runs `work` on a worker thread and `done` on the GTK main loop with its result.
 pub fn bg<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static, done: impl FnOnce(T) + 'static) {
@@ -42,6 +46,9 @@ pub struct App {
     pub stack: gtk4::Stack,
     pub nav: adw::NavigationView,
     pub client: RefCell<Option<Client>>,
+    pub flow_generation: Arc<AtomicU64>,
+    pub signout_pending: AtomicBool,
+    pub pin_dialog: RefCell<Option<adw::AlertDialog>>,
     pub proxy: RefCell<Option<crate::proxy::Proxy>>,
     /// Switches the shell tab by name (set by the shell).
     pub select_tab: RefCell<Option<TabSelector>>,
@@ -68,16 +75,55 @@ impl App {
 
     /// Entry after launch: a saved session goes to the profile picker, otherwise the link page.
     pub fn start(self: &Rc<Self>) {
-        match store::load_session() {
-            Some(s) if std::env::var("PLAYARR_ROUTE").is_ok() || std::env::var("PLAYARR_CONTROL").is_ok() => {
-                self.enter(Client::new(s))
-            }
-            Some(s) => self.signed_in(Client::new(s)),
-            None => self.show_link(),
+        let generation = self.flow_generation();
+        let app = self.clone();
+        bg(
+            move || api::with_session_rotation(store::load_session),
+            move |result| {
+                if app.flow_generation() != generation {
+                    return;
+                }
+                match result {
+                    Ok(Some(session))
+                        if std::env::var("PLAYARR_ROUTE").is_ok() || std::env::var("PLAYARR_CONTROL").is_ok() =>
+                    {
+                        app.enter(Client::new(session))
+                    }
+                    Ok(Some(session)) => app.signed_in(Client::new(session)),
+                    Ok(None) => app.show_link(),
+                    Err(error) => app.show_error(&format!("Could not load saved profile sessions: {error}")),
+                }
+            },
+        );
+    }
+
+    pub fn flow_generation(&self) -> u64 {
+        self.flow_generation.load(Ordering::SeqCst)
+    }
+
+    pub fn is_signing_out(&self) -> bool {
+        self.signout_pending.load(Ordering::SeqCst)
+    }
+
+    pub fn invalidate_flow(&self) -> u64 {
+        let generation = self.flow_generation.fetch_add(1, Ordering::SeqCst) + 1;
+        let dialog = self.pin_dialog.borrow_mut().take();
+        if let Some(dialog) = dialog {
+            dialog.force_close();
         }
+        generation
+    }
+
+    pub fn show_error(self: &Rc<Self>, message: &str) {
+        let dialog = adw::AlertDialog::new(Some(message), None);
+        dialog.add_response("ok", "OK");
+        dialog.set_close_response("ok");
+        dialog.present(Some(&self.window));
     }
 
     pub fn show_link(self: &Rc<Self>) {
+        self.invalidate_flow();
+        self.signout_pending.store(false, Ordering::SeqCst);
         self.client.replace(None);
         let page = link::build(self.clone());
         self.show("link", &page);
@@ -91,15 +137,20 @@ impl App {
 
     /// The signed-in shell: tab pages in a navigation view that detail pages push onto.
     pub fn enter(self: &Rc<Self>, client: Client) {
+        let generation = self.invalidate_flow();
         self.client.replace(Some(client.clone()));
         let app = self.clone();
         cards::set_actions_handler(move |w| actions::show(&app, w));
         downloads::init(self, client.clone());
         let imgs = images::Images::new(client.clone());
         let (me, c2) = (self.clone(), client.clone());
+        let flow = me.flow_generation.clone();
         bg(
             move || (c2.avatar_preset(), c2.all_progress().unwrap_or_default()),
             move |(preset, progress)| {
+                if !crate::profile_sessions::generation_is_current(&flow, generation) {
+                    return;
+                }
                 me.watch
                     .replace(progress.into_iter().map(|p| (p.work_id, p.state)).collect());
                 let (pages, nav_bar) = shell::build(me.clone(), client, imgs, preset);
@@ -440,8 +491,25 @@ impl App {
     }
 
     pub fn sign_out(self: &Rc<Self>) {
-        store::clear_session();
-        self.show_link();
+        if self.signout_pending.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let generation = self.invalidate_flow();
+        let flow = self.flow_generation.clone();
+        let app = self.clone();
+        bg(
+            move || crate::profile_sessions::sign_out(flow, generation).map_err(|error| error.to_string()),
+            move |result| {
+                if app.flow_generation() != generation {
+                    return;
+                }
+                app.signout_pending.store(false, Ordering::SeqCst);
+                match result {
+                    Ok(()) => app.show_link(),
+                    Err(error) => app.show_error(&format!("Could not sign out safely: {error}")),
+                }
+            },
+        );
     }
 }
 
@@ -460,6 +528,9 @@ pub fn build_window(app: &adw::Application) {
         stack,
         nav: adw::NavigationView::new(),
         client: RefCell::new(None),
+        flow_generation: Arc::new(AtomicU64::new(0)),
+        signout_pending: AtomicBool::new(false),
+        pin_dialog: RefCell::new(None),
         proxy: RefCell::new(None),
         select_tab: RefCell::new(None),
         hooks: RefCell::default(),
