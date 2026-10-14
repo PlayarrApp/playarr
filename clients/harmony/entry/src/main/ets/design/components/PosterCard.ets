@@ -419,6 +419,8 @@ export struct PosterCard {
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
+          // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
+          .padding(this.softCaption ? { top: 9, left: 2.3 } : { top: 0 })
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {

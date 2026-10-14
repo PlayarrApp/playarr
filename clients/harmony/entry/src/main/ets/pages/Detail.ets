@@ -197,6 +197,11 @@ const PLAY_BUTTON_HEIGHT_TOUCH: number = 48;
 const PLAY_BUTTON_ICON_SIZE: number = 18;
 const PLAY_BUTTON_LABEL_SIZE: number = 16;
 const HERO_TOUCH_HEIGHT: number = 340;
+const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
+const TOUCH_SETTLE_ATTEMPTS: number = 12;
+/** Web phone series detail, next-up episode in the middle: the page scrolled by about this much (measured on the 360 vp reference). */
+const TOUCH_SETTLE_FALLBACK_VP: number = 377;
+const TOUCH_SETTLE_INTERVAL_MS: number = 250;
 /** Phone: where the text block starts (the backdrop's lower part is under it, faded). */
 const TOUCH_TEXT_TOP: number = 343;
 
@@ -761,6 +766,9 @@ struct Detail {
   private currentSeriesRailOffsets: Map<string, number> = new Map();
   private seasonRowAreas: Map<string, DetailSeasonRowArea> = new Map();
   private seriesStackScroller: Scroller = new Scroller();
+  /** Phone: the page scroller, and whether the next-up episode has been brought to the middle yet. */
+  private touchScroller: Scroller = new Scroller();
+  private touchEpisodeSettled: boolean = false;
   @State private cast: Credit[] = [];
   @State private actionsOpen: boolean = false;
   /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
@@ -800,6 +808,8 @@ struct Detail {
     this.targetSeriesEpisodeCentered = false;
     this.seriesFocusedRowIsTarget = false;
     this.seriesStackScroller = new Scroller();
+    this.touchScroller = new Scroller();
+    this.touchEpisodeSettled = false;
     this.cast = [];
     this.actionsOpen = false;
     this.optionsOpen = false;
@@ -2107,6 +2117,45 @@ struct Detail {
     }
   }
 
+  /** Phone (web focuses the next-up episode and scrolls it to the middle of the page): once the card is laid out, centre it and focus it.
+   * Polls for the plan and the card, then stops; any touch or key press cancels it. */
+  private settleTouchEpisode(attempt: number): void {
+    const detail = this.detail;
+    const plan = this.resumePlan;
+    if (this.touchEpisodeSettled || this.episodeFocusSuppressed || (detail !== null && detail.work.kind !== 'series')) {
+      return;
+    }
+    if (attempt > TOUCH_SETTLE_ATTEMPTS) {
+      // shortcut: the Previewer's getRectangleById is a mock that reports no size, so land on web's measured scroll instead; a device never gets here
+      this.touchEpisodeSettled = true;
+      this.touchScroller.scrollTo({ xOffset: 0, yOffset: TOUCH_SETTLE_FALLBACK_VP, animation: false });
+      return;
+    }
+    const retry = (): void => {
+      setTimeout((): void => { this.settleTouchEpisode(attempt + 1); }, TOUCH_SETTLE_INTERVAL_MS);
+    };
+    if (detail === null || plan === null || !hasSeriesResumeTarget(detail, plan) || plan.target === undefined || plan.target === null) {
+      retry();
+      return;
+    }
+    const cardId = seriesEpisodeFocusId(plan.target.episode_id);
+    try {
+      const ctx = this.getUIContext();
+      const card = ctx.getComponentUtils().getRectangleById(cardId);
+      const page = ctx.getComponentUtils().getRectangleById(TOUCH_SCROLL_ID);
+      if (card.size.height <= 0 || page.size.height <= 0) {
+        retry();
+        return;
+      }
+      const delta = ctx.px2vp(card.windowOffset.y + card.size.height / 2 - page.windowOffset.y - page.size.height / 2);
+      this.touchScroller.scrollBy(0, delta);
+      this.touchEpisodeSettled = true;
+      ctx.getFocusController().requestFocus(cardId);
+    } catch (_err) {
+      retry();
+    }
+  }
+
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
@@ -2167,6 +2216,9 @@ struct Detail {
   private touchLayout(): void {
 
     Stack({ alignContent: Alignment.TopStart }) {
+      // web: the art, Back row and text are one page, so they scroll away together
+      Scroll(this.touchScroller) {
+       Stack({ alignContent: Alignment.TopStart }) {
       if (this.heroArtwork !== undefined) {
         Image(this.heroArtwork)
           .width('100%')
@@ -2185,7 +2237,6 @@ struct Detail {
           colors: [[toResourceColorWithAlpha(activeColors().bg, 0.78), 0.0], [toResourceColorWithAlpha(activeColors().bg, 0.9), 0.55], [toResourceColor(activeColors().bg), 1.0]],
         })
 
-      Scroll() {
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column({ space: 10 }) {
             Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? kindLabel(this.detail.work.kind) : '')).fontFamily(nunito(900))
@@ -2231,9 +2282,6 @@ struct Detail {
         })
         .width('100%')
         .alignItems(HorizontalAlign.Start)
-      }
-      .width('100%')
-      .height('100%')
 
       Row({ space: 12 }) {
         Text('←').fontFamily(nunito(700))
@@ -2256,6 +2304,16 @@ struct Detail {
       }
       .padding({ left: 16, top: 12 })
       .alignItems(VerticalAlign.Center)
+       }
+       .width('100%')
+      }
+      .id(TOUCH_SCROLL_ID)
+      .width('100%')
+      .height('100%')
+      .align(Alignment.Top)
+      .scrollBar(BarState.Off)
+      .edgeEffect(EdgeEffect.None)
+      .onAppear(() => { this.settleTouchEpisode(0); })
 
       if (this.touchActionsOpen && this.detail !== null) {
         TitleActionsDrawer({

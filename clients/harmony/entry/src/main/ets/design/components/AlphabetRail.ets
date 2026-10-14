@@ -22,6 +22,7 @@ const TOUCH_RAIL_TOP: number = 88;
 const TOUCH_RAIL_BOTTOM: number = 82;
 const TOUCH_LETTER_WIDTH: number = 44;
 const TOUCH_LETTER_SIZE: number = 8.5;
+const TOUCH_DISC: number = 22;
 
 @Component
 export struct AlphabetRail {
@@ -38,18 +39,24 @@ export struct AlphabetRail {
   private touchRail(): void {
     Column() {
       ForEach(this.letters, (letter: string) => {
-        Text(letter).fontFamily(nunito(500))
-          .width(TOUCH_LETTER_WIDTH)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .fontSize(TOUCH_LETTER_SIZE)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
-          .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.82) : Color.Transparent)
-          .borderRadius(22)
-          .onClick(() => {
-            this.onJump(letter);
-          })
+        // a 44 vp target around web's 22 vp letter disc
+        Column() {
+          Text(letter).fontFamily(nunito(500))
+            .width(TOUCH_DISC)
+            .height(TOUCH_DISC)
+            .textAlign(TextAlign.Center)
+            .fontSize(TOUCH_LETTER_SIZE)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
+            .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.82) : Color.Transparent)
+            .borderRadius(TOUCH_DISC / 2)
+        }
+        .width(TOUCH_LETTER_WIDTH)
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+        .onClick(() => {
+          this.onJump(letter);
+        })
       }, (letter: string): string => letter)
     }
     .width(TOUCH_RAIL_WIDTH)

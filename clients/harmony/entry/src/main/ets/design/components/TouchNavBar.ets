@@ -14,14 +14,19 @@ import { resolveAvatarPreset } from '../../core/AvatarPreset';
 import { getCatalogKinds } from '../../data/CatalogRepository';
 import { buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../../navigation/NavItems';
 
-const BAR_HEIGHT: number = 64;
-/** The bar spans the page less its 12 vp side margins. */
-const NAV_WIDTH: string = 'calc(100% - 24vp)';
-const TILE_WIDTH: number = 46;
-const TILE_HEIGHT: number = 44;
+// Web phone `.app-nav`: 58 tall, 10 from each side, 8 above the bottom, 5 padding, 2 between the 44 x 46 tiles, radius 20.
+/** The bar spans the page less its side margins. */
+const NAV_WIDTH: string = 'calc(100% - 20vp)';
+const BAR_HEIGHT: number = 58;
+const BAR_SIDE: number = 10;
+const BAR_BOTTOM: number = 8;
+const BAR_PADDING: number = 5;
+const BAR_RADIUS: number = 20;
+const TILE_WIDTH: number = 44;
+const TILE_HEIGHT: number = 46;
 const TILE_RADIUS: number = 14;
-const ICON_SIZE: number = 22;
-const AVATAR_SIZE: number = 28;
+const ICON_SIZE: number = 21;
+const AVATAR_SIZE: number = 21;
 
 @Component
 export struct TouchNavBar {
@@ -73,7 +78,7 @@ export struct TouchNavBar {
   build() {
     Row() {
       Scroll() {
-        Row({ space: 4 }) {
+        Row({ space: 2 }) {
           Column() {
             ProfileAvatar({ presetId: resolveAvatarPreset(this.profileId), diameter: AVATAR_SIZE })
               .focusable(false)
@@ -88,7 +93,10 @@ export struct TouchNavBar {
             this.tile(item)
           }, (item: NavRailItem): string => item.id)
         }
-        .padding({ left: 8, right: 8 })
+        .padding({ left: BAR_PADDING, right: BAR_PADDING })
+        // web `justify-content: space-around`: spread over the bar when the tiles fit, scroll when they do not
+        .constraintSize({ minWidth: '100%' })
+        .justifyContent(FlexAlign.SpaceAround)
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
@@ -99,9 +107,10 @@ export struct TouchNavBar {
     .width(NAV_WIDTH)
     .height(BAR_HEIGHT)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.94))
-    .borderRadius(32)
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.88))
+    .borderRadius(BAR_RADIUS)
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-    .margin({ left: 12, right: 12, bottom: 12, top: 4 })
+    .shadow({ radius: 20, color: 'rgba(31, 14, 20, 0.2)', offsetY: 14 })
+    .margin({ left: BAR_SIDE, right: BAR_SIDE, bottom: BAR_BOTTOM, top: 4 })
   }
 }

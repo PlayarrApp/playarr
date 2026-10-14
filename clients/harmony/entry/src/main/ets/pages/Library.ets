@@ -162,7 +162,7 @@ const TOUCH_GUTTER: number = 16;
 /** The letter rail's column: a 44 vp target with 4 vp of margin each side. */
 const TOUCH_ALPHA_RAIL: number = 52;
 const TOUCH_CARD_GAP: number = 12;
-const TOUCH_ROW_GAP: number = 33;
+const TOUCH_ROW_GAP: number = 24;
 /** Web phone card caption (the poster card's title size at 360 vp). */
 const TOUCH_LIBRARY_TITLE_SIZE: number = 8;
 /** The TV card caption size (`PosterCard`'s own default), passed through unchanged. */

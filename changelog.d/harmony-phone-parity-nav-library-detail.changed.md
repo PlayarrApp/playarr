@@ -1,0 +1,1 @@
+- HarmonyOS phone: the bottom nav bar, library captions and letter rail, and the series detail scroll position follow the web phone layout.
