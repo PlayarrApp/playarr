@@ -1,1 +1,0 @@
-- Android: the tablet's library grid top padding and row gap follow web's viewport-height tokens, so its rows line up with the web reference.

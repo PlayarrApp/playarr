@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Nura title page: the hero art now draws on film pages (a late-loaded picture was not repainted), and the page covers it only once scrolled.
 - Fix VIDAA debug mirror captures so the scaled TV stage fills the requested output instead of leaving blank right and bottom areas.
 - Restore the shell clock's en-GB weekday and month on VIDAA firmware with incomplete Intl date data.
 - Xbox: Search works again (the server answers a page, not a bare list); the title actions drawer matches the web (Download, Add to Playlist, taller filled rows, filled Close button, semibold title); the calendar month cells use the web's in-month and out-of-month fills.
@@ -616,6 +617,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android: the tablet's library grid top padding and row gap follow web's viewport-height tokens, so its rows line up with the web reference.
 - VIDAA: the stage transform now reports element rects and the window size in stage pixels (VIDAA only), so rail centring and left-to-nav focus match web on the real TV.
 - HarmonyOS TV: the page backdrop follows the web (art confined to the left half under the stage wash), Detail draws it the same way as Home, and the Home wash has its web stops.
 - Android: tablets wider than 760 dp now show web's wide layout (left nav rail, hero panel beside a three-column library grid, wide Home and detail pages) drawn on web's 1920 px canvas scaled to the screen width; phones are unchanged.
