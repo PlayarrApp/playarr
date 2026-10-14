@@ -83,6 +83,12 @@ sub init()
     m.libraryTitle = m.top.findNode("libraryTitle")
     m.homeGroup = m.top.findNode("homeGroup")
     m.homeStage = m.top.findNode("homeStage")
+    m.homeStage.findNode("homeRailFrostLayer").visible = true
+    m.homeHeroDetailTimer = m.top.findNode("homeHeroDetailTimer")
+    m.homeHeroFocusedWorkId = ""
+    m.homeHeroPendingWorkId = ""
+    m.pendingHomeHeroRequest = invalid
+    m.homeHeroRuntimeById = {}
     m.homeContent = m.homeStage.contentTarget
     m.artTelemetryEnabled = false
     if m.global.parityArtEnabled = true then m.artTelemetryEnabled = true
@@ -342,6 +348,9 @@ sub init()
     m.playerAutoHideTimer.ObserveField("fire", "hidePlayerControls")
     if m.browseKeyArtTimer <> invalid
         m.browseKeyArtTimer.ObserveField("fire", "onBrowseKeyArtTimer")
+    end if
+    if m.homeHeroDetailTimer <> invalid
+        m.homeHeroDetailTimer.ObserveField("fire", "onHomeHeroDetailTimer")
     end if
 
     m.requestBusy = false
@@ -645,9 +654,18 @@ sub flushPendingApiRequests()
         startApiRequest(req)
         return
     end if
-    if m.pendingApiQueue = invalid or m.pendingApiQueue.Count() = 0 then return
-    req = m.pendingApiQueue.Shift()
-    startApiRequest(req)
+    if m.pendingApiQueue.Count() > 0
+        req = m.pendingApiQueue.Shift()
+        startApiRequest(req)
+        return
+    end if
+    if m.pendingHomeHeroRequest <> invalid
+        req = m.pendingHomeHeroRequest
+        m.pendingHomeHeroRequest = invalid
+        if m.top.screenState = "home" and req.workId = m.homeHeroFocusedWorkId and m.homeHeroRuntimeById.Lookup(req.workId) = invalid
+            startApiRequest(req)
+        end if
+    end if
 end sub
 
 sub flushPendingPlaybackRequest()
@@ -675,6 +693,11 @@ sub onApiResult(event as Object)
         end if
         if action = "hostedLinkPoll" and result.status = 404
             beginHostedLink()
+            return
+        end if
+        if action = "homeHeroDetail"
+            if request.workId <> invalid then m.homeHeroRuntimeById[request.workId] = 0
+            flushPendingPlaybackRequest()
             return
         end if
         handleApiFailure(action, result)
@@ -755,6 +778,8 @@ sub onApiResult(event as Object)
         acceptWatchProgress(result.data)
     else if action = "homeWorkDetail"
         acceptHomeWorkDetail(result.data)
+    else if action = "homeHeroDetail"
+        acceptHomeHeroDetail(request.workId, result.data)
     else if action = "homeFallback"
         m.homeFallbackItems = filterHomePrimaryKinds(itemsFromCatalog(result.data))
         ' Web mergeRecent(series, movie, site) for Start watching; sites gated.
@@ -3525,18 +3550,23 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         item.artHeaders = artworkHeaders(item.hdPosterUrl, headers)
         item.AddField("activeRailFactor", "float", false)
         item.activeRailFactor = activeRailFactor
-        ' Similar Titles (detailSimilar) passes 1.5 to match the real,
-        ' larger .tv-title-card sizing used there -- see PosterCard.xml's
-        ' cardScale comment. Home's rails never pass this, so it defaults
-        ' to a no-op 1.
+        item.AddField("focusRingOutsideArt", "boolean", false)
+        item.focusRingOutsideArt = homeRailIndex(row) >= 0
+        item.AddField("homeCardFocusStyle", "boolean", false)
+        item.homeCardFocusStyle = homeRailIndex(row) >= 0
+        ' Home and Similar Titles pass scaled art dimensions to match their
+        ' respective web cards. homeCardFocusStyle separates Home's 6px /
+        ' 1.025 focus transform from the larger layout scale.
         item.AddField("cardScale", "float", false)
         item.cardScale = cardScale
         if artEnabledForRow
             focusOffset = 0
             if row.focusXOffset <> invalid and row.focusXOffset.Count() > 0 then focusOffset = row.focusXOffset[0]
-            artX = m.homeContent.translation[0] + row.translation[0] + focusOffset + artCardIndex * (row.rowItemSize[0][0] + row.rowItemSpacing[0][0])
-            artY = m.homeContent.translation[1] + m.homeRailPool[artRowIndex].group.translation[1] + row.translation[1]
-            artW = row.rowItemSize[0][0]
+            artInsetX = 8
+            artInsetY = 15
+            artX = m.homeContent.translation[0] + row.translation[0] + focusOffset + artInsetX + artCardIndex * (row.rowItemSize[0][0] + row.rowItemSpacing[0][0])
+            artY = m.homeContent.translation[1] + m.homeRailPool[artRowIndex].group.translation[1] + row.translation[1] + artInsetY
+            artW = row.rowItemSize[0][0] - (artInsetX * 2)
             artH = artW * 9 / 16
             artSlotName = "home-r" + artRowIndex.ToStr() + "-c" + artCardIndex.ToStr()
             if artRectVisible(artX, artY, artW, artH)
@@ -3710,9 +3740,13 @@ function createHomeRail(contentTarget as Object) as Object
     group = CreateObject("roSGNode", "Group")
     group.visible = false
 
-    ' Rail heading (web .tv-rail h2: 17.7 px, weight 610, -0.03em tracking), drawn glyph by glyph (TrackedText).
+    ' Rail heading matches Web's uniform .tv-rail h2 typography; focus changes the card, not the heading.
     title = CreateObject("roSGNode", "TrackedText")
-    title.translation = [0, 0]
+    title.translation = [0, -21]
+    ' Fresh 1920x1080 r11 Web glyph bounds are about 4% wider for both
+    ' Home rail headings. Widen only the tracked heading group so its font
+    ' size, line height, tracking and vertical alignment stay unchanged.
+    title.scale = [1.04, 1]
     group.AppendChild(title)
 
     row = CreateObject("roSGNode", "RowList")
@@ -3732,12 +3766,14 @@ function createHomeRail(contentTarget as Object) as Object
     ' landscape thumbnail, 220x124 art + 220x165 total card, 24px gap) --
     ' see PosterCard.xml's header comment for the full measurement notes.
     ' The viewport starts 96 px left of the track so scrolled cards continue into the gutter, where the scroll fade covers them.
-    row.itemSize = [1134, 250]
-    ' RowList rounds item geometry to whole pixels: a 220 box on a 244 pitch (web 243.8) with the art drawn 218.9 wide.
-    ' Web Home cards are 327 x 184 art on a 352 px pitch (measured on the live web: rects of the card images).
-    row.rowItemSize = [[327, 250]]
-    row.rowItemSpacing = [[25, 0]]
-    row.rowHeights = [250]
+    row.itemSize = [1134, 320]
+    ' Home reserves 8 px horizontally and 15 px vertically for the focused
+    ' card's lifted/scaled outer ring. The extra item height contains the
+    ' full shadow canvas below the art, so its blur fades before the RowList
+    ' clip instead of ending at the old 262 px row boundary.
+    row.rowItemSize = [[343, 320]]
+    row.rowItemSpacing = [[9, 0]]
+    row.rowHeights = [320]
     row.showRowLabel = false
     row.focusXOffset = [96]
     row.rowFocusAnimationStyle = "floatingFocus"
@@ -3746,7 +3782,7 @@ function createHomeRail(contentTarget as Object) as Object
     ' focus-ring bitmap, which would otherwise draw an unwanted white
     ' outline with no basis in tv-web's actual CSS.
     row.focusBitmapBlendColor = &h00000000
-    row.translation = [-96, 41.1]
+    row.translation = [-104, 26.1]
     group.AppendChild(row)
 
     contentTarget.AppendChild(group)
@@ -4212,7 +4248,7 @@ sub finishHomeLoad()
         rail.group.visible = true
         rail.group.translation = [0, y]
         rail.label = candidate.label
-        setRailTitle(rail, railIndex = 0)
+        setRailTitle(rail)
         isActiveRail = false
         if railIndex = 0 then isActiveRail = true
         buildRailContent(rail.row, rail.works, isActiveRail, 1.4864, m.artActiveGeneration, "home", railIndex)
@@ -4253,6 +4289,8 @@ end sub
 
 sub updateHeroFromWork(work as Object)
     if work = invalid then return
+    workId = JsonString(work.id)
+    m.homeHeroFocusedWorkId = workId
     m.homeStage.stageTitle = work.title
     ' Web hero kicker is "SERIES · CRIME" (kind + first genre), not bare kind.
     kicker = UCase(work.kind)
@@ -4268,12 +4306,60 @@ sub updateHeroFromWork(work as Object)
         if meta <> "" then meta += "  •  "
         meta += joinStrings(work.genres, ", ")
     end if
-    ' Web Home shows no meta row under the hero title (year and genres live on the detail page).
+    ' Web Home shows the focused work's runtime when its detail has loaded; year and genres stay on the detail page.
     m.homeStage.stageMeta = ""
+    if workId <> ""
+        runtimeMs = m.homeHeroRuntimeById.Lookup(workId)
+        if runtimeMs <> invalid
+            m.homeStage.stageMeta = formatRuntime(runtimeMs)
+        else if m.homeHeroDetailTimer <> invalid
+            m.homeHeroPendingWorkId = workId
+            m.homeHeroDetailTimer.control = "stop"
+            m.homeHeroDetailTimer.duration = 0.35
+            m.homeHeroDetailTimer.control = "start"
+        end if
+    end if
     overview = ""
     if work.overview <> invalid then overview = work.overview
     m.homeStage.stageOverview = overview
     setStageKeyArt(m.homeStage, heroArtworkUrl(work))
+end sub
+
+sub onHomeHeroDetailTimer()
+    if m.homeHeroDetailTimer <> invalid then m.homeHeroDetailTimer.control = "stop"
+    workId = m.homeHeroPendingWorkId
+    m.homeHeroPendingWorkId = ""
+    if workId = "" or m.top.screenState <> "home" or workId <> m.homeHeroFocusedWorkId then return
+    if m.homeHeroRuntimeById.Lookup(workId) <> invalid then return
+    request = {
+        action: "homeHeroDetail"
+        method: "GET"
+        path: "/api/v1/catalog/" + UrlEncode(workId)
+        url: m.serverUrl + "/api/v1/catalog/" + UrlEncode(workId)
+        body: invalid
+        accessToken: m.accessToken
+        workId: workId
+    }
+    if m.requestBusy or m.pendingApiQueue.Count() > 0
+        m.pendingHomeHeroRequest = request
+    else
+        startApiRequest(request)
+    end if
+end sub
+
+sub acceptHomeHeroDetail(workId as Dynamic, data as Dynamic)
+    if workId = invalid then return
+    if workId = "" then return
+    runtimeMs = 0
+    if data <> invalid
+        if data.runtime_ms <> invalid
+            if data.runtime_ms > 0 then runtimeMs = data.runtime_ms
+        end if
+    end if
+    m.homeHeroRuntimeById[workId] = runtimeMs
+    if m.top.screenState = "home" and m.homeHeroFocusedWorkId = workId
+        m.homeStage.stageMeta = formatRuntime(runtimeMs)
+    end if
 end sub
 
 ' Authenticated artwork proxy for TvStage key-art Posters (Bearer required).
@@ -4350,7 +4436,12 @@ sub homeRailTrack(row as Object, idx as Integer)
                 ' further right than the whole-card step the RowList takes, moving left it lines up with the track start.
                 shift = 0.0
                 if rail.rightAligned = true and rail.first > 0 then shift = 33.9
-                rail.row.translation = [-96 + shift, 41.1]
+                ' Keep the card artwork at the same origin used when the rail
+                ' is created. Home RowList items reserve 8px horizontally and
+                ' 15px vertically for the outer focus ring, so the pre-clearance
+                ' tracking origin [-96, 41.1] displaced every focused card.
+                ' Preserve only the web-matched horizontal scroll adjustment.
+                rail.row.translation = [-104 + shift, 26.1]
             end if
             rail.last = idx
             return
@@ -4358,26 +4449,11 @@ sub homeRailTrack(row as Object, idx as Integer)
     end for
 end sub
 
-' The focused rail's heading is drawn 1.158 times larger (web scales the active rail's h2); the others use the base size.
-sub setRailTitle(rail as Object, active as Boolean)
+' Home headings keep the same Web typography regardless of which rail owns card focus.
+sub setRailTitle(rail as Object)
     if rail.label = invalid then return
-    if active
-        rail.title.spec = { text: rail.label, size: 20, weight: 600, tracking: -0.614, role: "ink" }
-        rail.title.translation = [0, -2]
-    else
-        rail.title.spec = { text: rail.label, size: 18, weight: 600, tracking: -0.53, role: "ink" }
-        rail.title.translation = [0, 3]
-    end if
-end sub
-
-sub homeRailTitleFocus(railIndex as Integer, active as Boolean)
-    if railIndex < 0 or railIndex >= m.visibleRails.Count() then return
-    for each rail in m.homeRailPool
-        if rail.row.isSameNode(m.visibleRails[railIndex].row)
-            setRailTitle(rail, active)
-            return
-        end if
-    end for
+    rail.title.spec = { text: rail.label, size: 18, weight: 600, tracking: -0.53, role: "ink" }
+    rail.title.translation = [0, -21]
 end sub
 
 sub onHomeItemSelected(event as Object)
@@ -4421,8 +4497,7 @@ function moveHomeFocus(delta as Integer) as Boolean
     if oldIndex >= 0 and oldIndex < m.visibleRails.Count()
         oldRail = m.visibleRails[oldIndex]
         oldRail.row.SetFocus(false)
-        buildRailContent(oldRail.row, oldRail.works, false)
-        homeRailTitleFocus(oldIndex, false)
+        buildRailContent(oldRail.row, oldRail.works, false, 1.4864)
     end if
     m.homeFocusIndex = newIndex
     newRail = m.visibleRails[newIndex]
@@ -4439,8 +4514,7 @@ function moveHomeFocus(delta as Integer) as Boolean
         newRail.last = desired
         newRail.row.jumpToRowItem = [0, desired]
     end if
-    buildRailContent(newRail.row, newRail.works, true)
-    homeRailTitleFocus(newIndex, true)
+    buildRailContent(newRail.row, newRail.works, true, 1.4864)
     newRail.row.SetFocus(true)
     if desired = 0 and m.homeLeftProxy <> invalid then m.homeLeftProxy.SetFocus(true)
     scrollHomeToFocusedRail()

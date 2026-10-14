@@ -224,6 +224,7 @@
       attach as siblings of it, not inside it.
     -->
     <Group id="homeGroup" visible="false">
+      <Rectangle id="homeSurface" width="1920" height="1080" color="0x1B181BFF" />
       <TvStage id="homeStage" />
     </Group>
 
@@ -757,6 +758,8 @@
     <Timer id="playerAutoHideTimer" duration="5" repeat="false" />
     <!-- Deferred browse key-art download so acceptBrowseCatalog can paint first. -->
     <Timer id="browseKeyArtTimer" duration="0.5" repeat="false" />
+    <!-- Delay Home hero detail hydration until remote focus settles on a work. -->
+    <Timer id="homeHeroDetailTimer" duration="0.35" repeat="false" />
   </children>
   <script type="text/brightscript" uri="pkg:/source/Fonts.brs" />
   <script type="text/brightscript" uri="pkg:/source/Theme.brs" />

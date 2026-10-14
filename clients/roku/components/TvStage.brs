@@ -9,7 +9,10 @@
 sub init()
     PlayarrFontifyTree(m.top)
     ThemeSetRole(m.top.findNode("keyArtFade"), "bg")
+    ThemeSetRole(m.top.findNode("homeRailFrostLight"), "homeRailFrost")
+    ThemeSetRole(m.top.findNode("homeRailFrostDark"), "homeRailFrost")
     ThemeInitComponent()
+    m.global.observeField("themeMode", "onStageThemeChanged")
     m.keyArtLayer = m.top.findNode("keyArtLayer")
     m.keyArt = m.top.findNode("keyArt")
     m.keyArtRetryTimer = m.top.findNode("keyArtRetryTimer")
@@ -28,6 +31,11 @@ sub init()
     m.top.contentTarget = m.contentPanel
 
     resetForEntrance()
+end sub
+
+sub onStageThemeChanged()
+    m.top.findNode("homeRailFrostLight").visible = m.global.themeMode = "light"
+    m.top.findNode("homeRailFrostDark").visible = m.global.themeMode <> "light"
 end sub
 
 ' Restores the pre-entrance (hidden/offset) state of every animated layer so
@@ -112,8 +120,8 @@ sub onStageMetaChange()
 end sub
 
 sub onStageOverviewChange()
-    ' Web synopsis: 12.9 px (drawn at 14: Roku renders small text about 8 % narrower), 20.3 px lines, 336 px wide, five lines.
-    m.stageOverviewLabel.spec = { text: m.top.stageOverview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 5 }
+    ' Web .tv-preview-overview is 12.864 px, weight 600, and 324 px wide at 1920x1080; Roku keeps the matched small-text line height.
+    m.stageOverviewLabel.spec = { text: m.top.stageOverview, size: 14, weight: 600, tracking: 0, role: "inkMuted", width: 324, lineHeight: 20.33, maxLines: 5 }
     layoutStageText()
 end sub
 

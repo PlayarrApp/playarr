@@ -58,6 +58,7 @@ function ThemeTokens(mode as String) as Object
             focusRing: &h382621FF
             ' Right-hand content panel of the page shell (--surface blended with --surface-soft).
             panel: &hEFEEEEFF
+            homeRailFrost: &hF0EEEFff
             ' Status chip tint (.calendar-badge): rgba(91,127,209,.24), the same in both themes.
             statusTint: &h5B7FD13D
             ' Player chrome is the same over video in both themes: white ink on a dark scrim (global.css .player-*).
@@ -103,6 +104,7 @@ function ThemeTokens(mode as String) as Object
         profileShadow: &h1F0E14FF
         focusRing: &hFFFFFFFF
         panel: &h282227FF
+        homeRailFrost: &h282327FF
         statusTint: &h5B7FD13D
         ' Player chrome is the same over video in both themes: white ink on a dark scrim (global.css .player-*).
         playerInk: &hFFFFFFFF

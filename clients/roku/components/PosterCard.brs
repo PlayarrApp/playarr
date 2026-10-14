@@ -7,6 +7,9 @@ sub init()
     ThemeSetRole(m.top.findNode("focusRing"), "cardGlow")
     ThemeSetRole(m.top.findNode("focusGlow"), "cardGlow")
     ThemeInitComponent()
+    m.focusRingInset = 0
+    m.cardContentInsetX = 0
+    m.cardContentInsetY = 0
     m.focusRing = m.top.findNode("focusRing")
     m.focusGlow = m.top.findNode("focusGlow")
     m.poster = m.top.findNode("poster")
@@ -62,7 +65,23 @@ sub onContentChanged()
     if content.listMode = true then listMode = true
     m.padTop = 0
     if content.padTop <> invalid then m.padTop = content.padTop
-    m.cardRoot.translation = [0, m.padTop]
+    m.focusRingOutsideArt = false
+    if content.focusRingOutsideArt <> invalid
+        if content.focusRingOutsideArt = true then m.focusRingOutsideArt = true
+    end if
+    m.homeCardFocusStyle = false
+    if content.homeCardFocusStyle <> invalid
+        if content.homeCardFocusStyle = true then m.homeCardFocusStyle = true
+    end if
+    m.focusRingInset = 0
+    m.cardContentInsetX = 0
+    m.cardContentInsetY = 0
+    if m.focusRingOutsideArt
+        m.focusRingInset = 3
+        m.cardContentInsetX = 8
+        m.cardContentInsetY = 15
+    end if
+    m.cardRoot.translation = [m.cardContentInsetX, m.padTop + m.cardContentInsetY]
     layoutCard(cardScale, artW, artH, listMode)
     ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
     m.titleY = m.cardTitleY
@@ -205,7 +224,7 @@ sub onFocusChanged()
     liftY = -cardFocusLift() * effective
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
-    m.liftInterp.keyValue = [m.cardRoot.translation, [0, m.padTop + liftY]]
+    m.liftInterp.keyValue = [m.cardRoot.translation, [m.cardContentInsetX, m.padTop + m.cardContentInsetY + liftY]]
     m.scaleInterp.key = [0, 1]
     m.scaleInterp.keyValue = [m.artGroup.scale, [artScale, artScale]]
     m.focusAnim.control = "stop"
@@ -219,15 +238,17 @@ function CapitalizeFirst(value as Dynamic) as String
     return UCase(Left(value, 1)) + Right(value, Len(value) - 1)
 end function
 
-' Media-card focus values, pinned from the web (docs/design/page-layout.md section 5, reference commit de371253): a Home card
-' lifts 6 px; a grid card (cardScale > 1) lifts 5 px; the art zooms 1.025 (grid 1.015). The shadow bitmaps carry the web
-' shadows (tools/make_assets.py card_shadow). Lifts are CSS px at the 1920 x 1080 layout, divided by the card scale on use.
+' Media-card focus values, pinned from the web (docs/design/page-layout.md section 5, reference commit de371253): Home
+' lifts 6 px and zooms art 1.025; library grids lift 5 px and zoom art 1.015. Home cards use a larger source-art scale,
+' so identify their focus style explicitly instead of inferring it from cardScale. The shadow bitmaps carry the web shadows.
 function cardFocusLift() as Float
+    if m.homeCardFocusStyle then return 6
     if m.cardScaleValue > 1 then return 5
     return 6
 end function
 
 function cardFocusScale() as Float
+    if m.homeCardFocusStyle then return 0.025
     if m.cardScaleValue > 1 then return 0.015
     return 0.025
 end function
@@ -298,19 +319,45 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.unwatchedBadge.translation = [artW - 23.5, 9.5]
     m.progressTrack.translation = [0, artH - 3]
     m.progressTrack.width = artW
-    ' Inside the art's edge: a list clips its items at its own bounds, so a ring outside the art would lose its top and left.
-    m.focusRing.translation = [0, 0]
-    m.focusRing.width = artW
-    m.focusRing.height = artH
-    m.focusGlow.translation = [-90, -90]
-    m.focusGlow.width = artW + 180
-    m.focusGlow.height = artH + 180
-    m.restShadow.translation = [-90, -90]
-    m.restShadow.width = artW + 180
-    m.restShadow.height = artH + 180
-    m.focusShadow.translation = [-90, -90]
-    m.focusShadow.width = artW + 180
-    m.focusShadow.height = artH + 180
+    ' Home RowList items reserve a 3 px inset around the art so this outer ring stays inside the item viewport.
+    focusInset = 0
+    if m.focusRingOutsideArt then focusInset = 3
+    m.focusRing.translation = [-focusInset, -focusInset]
+    m.focusRing.width = artW + (focusInset * 2)
+    m.focusRing.height = artH + (focusInset * 2)
+    if m.homeCardFocusStyle
+        ' card-glow.png has a 220x124 mask centred in a 400x304 canvas with
+        ' 90px margins. Home artwork is laid out at the 1.4864 card scale, so
+        ' scale the full glow bitmap and its margins together to keep that mask
+        ' aligned to the artwork with the generated blur proportions intact.
+        glowScale = cardScale
+        m.focusGlow.translation = [-90 * glowScale, -90 * glowScale]
+        m.focusGlow.width = 400 * glowScale
+        m.focusGlow.height = 304 * glowScale
+    else
+        m.focusGlow.translation = [-90, -90]
+        m.focusGlow.width = artW + 180
+        m.focusGlow.height = artH + 180
+    end if
+    if m.homeCardFocusStyle
+        ' The shadow masks share the same 400x304 canvas and 90px margins as
+        ' the Home glow. Scale the full canvas so its opaque shape remains
+        ' aligned with the card art at Home's larger layout scale.
+        shadowScale = cardScale
+        m.restShadow.translation = [-90 * shadowScale, -90 * shadowScale]
+        m.restShadow.width = 400 * shadowScale
+        m.restShadow.height = 304 * shadowScale
+        m.focusShadow.translation = [-90 * shadowScale, -90 * shadowScale]
+        m.focusShadow.width = 400 * shadowScale
+        m.focusShadow.height = 304 * shadowScale
+    else
+        m.restShadow.translation = [-90, -90]
+        m.restShadow.width = artW + 180
+        m.restShadow.height = artH + 180
+        m.focusShadow.translation = [-90, -90]
+        m.focusShadow.width = artW + 180
+        m.focusShadow.height = artH + 180
+    end if
     titleGap = 9.9
     if cardScale > 1 then titleGap = 11.5
     m.titleY = artH + titleGap
