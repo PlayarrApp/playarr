@@ -99,8 +99,8 @@ const screens = {
   // The calendar opens on the month view; the range switcher (header, left of Previous) chooses Month, Week or Agenda. The month grid's Up
   // from the Sunday cell of the first week reaches Today, then Left twice the range switcher.
   "calendar-month": async () => { await toHome(); await dock(7, 16); },
-  "calendar-week": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", ...Array(6).fill("Right"), "Up", "Left", "Left", "Select"], 0.8); await sleep(3); await presses(["Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
-  "calendar-agenda": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", ...Array(6).fill("Right"), "Up", "Left", "Left", "Select"], 0.8); await sleep(3); await presses(["Down", "Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
+  "calendar-week": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Right", "Right", "Right", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
+  "calendar-agenda": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Right", "Right", "Right", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
   // Library: the Info (*) key enters the alphabet strip, Up from its first letter reaches Filters, Select opens the panel.
   filters: async () => { await toHome(); await dock(3, 14); await presses(["Info", "Up"], 1); await press("Select", 3); },
   watchlist: async () => { await toHome(); await dock(5, 6); },
