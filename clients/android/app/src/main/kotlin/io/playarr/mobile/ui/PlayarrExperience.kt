@@ -3681,7 +3681,10 @@ internal fun LibraryResults(
     val padding = PaddingValues(start = if (isTelevision) 32.dp else 16.dp, end = if (isTelevision) 82.dp else railWidth, top = if (isTelevision) 18.dp else 60.dp, bottom = 104.dp)
     // Web `.tv-title-grid-content` at 1920: 51.3 px start, 105.7 px end, 162 px first row, 25.92 x 27 gaps.
     // Television: web's first column starts at x 783.4 (measured on the live grid).
-    val screenPadding = if (isTelevision) PaddingValues(start = 53.7.dp, end = 103.3.dp, top = 22.dp, bottom = 104.dp) else padding
+    // Web `--library-rail-top` clamp(128, 15 vu, 174) less the 140 dp the header already takes, and the row gap clamp(22, 2.5 vu, 36).
+    val tvGridTop = webVu(128f, 15f, 174f) - 140.dp
+    val tvRowGap = webVu(22f, 2.5f, 36f)
+    val screenPadding = if (isTelevision) PaddingValues(start = 53.7.dp, end = 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
     when (viewMode) {
         LibraryViewMode.Screen -> LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(2),
@@ -3689,7 +3692,7 @@ internal fun LibraryResults(
             modifier = Modifier.fillMaxSize(),
             contentPadding = screenPadding,
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.92.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isTelevision) 27.dp else 24.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 24.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
                 val openLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title)

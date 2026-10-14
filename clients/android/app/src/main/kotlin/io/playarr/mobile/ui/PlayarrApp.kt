@@ -494,6 +494,7 @@ fun PlayarrApp(
         if (stageScale == 1f) content() else CompositionLocalProvider(
             androidx.compose.ui.platform.LocalDensity provides stageDensity,
             androidx.compose.ui.platform.LocalConfiguration provides stageConfiguration,
+            LocalStageScale provides stageScale,
             content = content,
         )
     }
