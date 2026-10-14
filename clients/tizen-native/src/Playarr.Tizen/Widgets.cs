@@ -6,7 +6,22 @@ using Tizen.NUI.BaseComponents;
 namespace Playarr.Tizen;
 
 /// <summary>A media card (web .media-card): art with watch state, title and optional sub line. One component for Home and the grids.</summary>
-internal static class Widgets { public const float RailEndInset = 46.4f; }
+internal static class Widgets
+{
+    public const float RailEndInset = 46.4f;
+
+    /// <summary>Web focus ring on a rail item (chapter thumbnail, cast circle): 3 px, brand red in light and pale pink in dark, with the soft glow. Add it inside the clipped art and show it on focus.</summary>
+    public static (View Ring, View Glow) RailRing(PlayarrTheme t, float w, float h, float radius, float x = 0)
+    {
+        var rc = t.Name == "dark" ? new Color(t.BrandInk.R, t.BrandInk.G, t.BrandInk.B, 0.95f) : new Color(0.647f, 0.153f, 0.271f, 1);
+        var ring = new View { Size = new Size(w, h), CornerRadius = radius, BorderlineWidth = 3, BorderlineColor = rc, BorderlineOffset = -1 };
+        ring.Show(false);
+        // the glow sits on its own view behind the art: a shadow on the clipped art squares off its corners
+        var glow = new View { PositionX = x, Size = new Size(w, h), CornerRadius = radius, BoxShadow = new Shadow(14, new Color(rc.R, rc.G, rc.B, 0.4f), new Vector2(0, 4), new Vector2(0, 0)) };
+        glow.Show(false);
+        return (ring, glow);
+    }
+}
 
 internal sealed class MediaCard
 {

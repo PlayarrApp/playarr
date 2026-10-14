@@ -28,7 +28,8 @@ internal sealed class PeopleRail
             disc.ClippingMode = ClippingModeType.ClipChildren;
             disc.Add(Ui.Text(c.Initials, 0, 31, 28, 600, t.InkSoft, Circle, 42, HorizontalAlignment.Center));
             if (c.HasHeadshot) env.Images.Apply(disc, $"/api/v1/artwork/person/{c.PersonId}?w=240", Circle, Circle);
-            box.Add(disc);
+            var (ring, glow) = Widgets.RailRing(t, Circle, Circle, Circle / 2, 24.2f); disc.Add(ring);
+            box.Add(glow); box.Add(disc);
             var name = Ui.Text(c.Name, 0, Circle + 17, 11.52f, 700, t.Ink, 152.8f, 17.28f, HorizontalAlignment.Center, spacing: -0.17f);
             box.Add(name);
             if (c.Subtitle is { } sub) box.Add(Ui.Text(sub, 0, Circle + 37, 8.832f, 400, t.InkMuted, 152.8f, 13.248f, HorizontalAlignment.Center));
@@ -37,7 +38,7 @@ internal sealed class PeopleRail
             {
                 Rect = () => new Box(x + 24.2f - Scroll, headingY + 80.7f + stackY(), Circle, Circle),
                 Label = (c.Name + (c.Subtitle is null ? "" : ", " + c.Subtitle)).ToLowerInvariant(),
-                Style = f => { disc.Scale = f ? new Vector3(1.04f, 1.04f, 1) : new Vector3(1, 1, 1); disc.PositionY = f ? -6 : 0; },
+                Style = f => { disc.Scale = f ? new Vector3(1.04f, 1.04f, 1) : new Vector3(1, 1, 1); disc.PositionY = f ? -6 : 0; ring.Show(f); if (f) ring.RaiseToTop(); glow.Show(f); glow.Scale = disc.Scale; glow.PositionY = disc.PositionY; },
                 Focused = () => { Reveal(idx); focused?.Invoke(this); },
             });
         }

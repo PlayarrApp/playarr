@@ -165,7 +165,8 @@ internal sealed class DetailScreen : IPage
             _ = SetThumbAsync(art, file, c.StartMs);
             art.Add(Ui.Gradient(0, 0, 268, 150.8f, false, (0, new Rgba(0, 0, 0, 0.05f)), (1, new Rgba(0, 0, 0, 0.48f))));
             art.Add(Ui.Text((c.Index + 1).ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
-            box.Add(art);
+            var (ring, glow) = Widgets.RailRing(_t, 268, 150.8f, 13.44f); art.Add(ring);
+            box.Add(glow); box.Add(art);
             box.Add(Ui.Text(DetailModel.Clock(c.StartMs), 0, 165.3f, 8.832f, 700, _t.InkMuted, 40, 13.248f));
             var tt = Ui.Text(c.Title, 25.8f, 162.3f, 11.52f, 700, _t.Ink, 242, 17.28f, spacing: -0.17f);
             box.Add(tt);
@@ -175,7 +176,7 @@ internal sealed class DetailScreen : IPage
             {
                 Rect = () => new Box(x - _chapterScroll, 620.7f + _stackY, 268, 150.8f), Label = $"play from {c.Title}".ToLowerInvariant(),
                 Select = () => PlayFrom(startMs),
-                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; tt.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.Ink); },
+                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Show(f); if (f) ring.RaiseToTop(); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = f ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink); },
                 Focused = () => { SetStackY(0); ScrollChapters(idx); },
             });
         }
