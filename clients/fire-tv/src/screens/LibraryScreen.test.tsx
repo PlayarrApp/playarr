@@ -189,7 +189,7 @@ describe('LibraryScreen', () => {
     expect(firstReadyText.indexOf('45 min')).toBeLessThan(firstReadyText.indexOf('Catalog overview A.'));
 
     await act(async () => {
-      renderer.root.findByProps({accessibilityLabel: 'Test Movie B'}).props.onFocus();
+      renderer.root.findByProps({accessibilityLabel: 'Test Movie B'}).props.onFocus({nativeEvent: {target: 1}});
     });
     expect(allText(renderer)).toContain('Test Movie B');
     expect(allText(renderer)).toContain('2022');
