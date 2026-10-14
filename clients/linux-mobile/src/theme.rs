@@ -67,7 +67,7 @@ pub fn css(dark: bool) -> String {
         t.bg, t.surface, t.surface_strong, t.surface_soft, t.ink, t.ink_soft, t.ink_muted, t.line, t.brand, t.brand_ink,
         t.focus_glow, t.on_accent, t.accent, t.shadow, t.wash
     );
-    // The detail hero's opacity and filter are the web's: .72 and darkened in dark, .42 and lightened in light.
+    // The detail hero's opacity and filter come from the web references: dark .5 and darkened, light .16 and lightened.
     // Bottom of the art: a soft fade from about 150 px; once the page is scrolled over it, dark has the web's hard edge
     // at 183 px (web references).
     let hard = if dark {
@@ -75,10 +75,15 @@ pub fn css(dark: bool) -> String {
     } else {
         ""
     };
-    let edge = "linear-gradient(0deg, @pa_bg 4%, alpha(@pa_bg, 0) 34%)";
+    // Soft fade up the whole art when unscrolled (the web shows its film art dissolving into the page).
+    let edge = if dark {
+        "linear-gradient(0deg, @pa_bg 4%, alpha(@pa_bg, 0.55) 55%, alpha(@pa_bg, 0.3) 100%)"
+    } else {
+        "linear-gradient(0deg, @pa_bg 4%, alpha(@pa_bg, 0) 34%)"
+    };
     let hero = format!(
         ".pa-khero-fade {{ background: {edge}; }}\n{hard}.pa-key-art.pa-khero {{ opacity: {}; filter: {}; }}\n",
-        if dark { "0.72" } else { "0.24" },
+        if dark { "0.5" } else { "0.16" },
         if dark {
             "grayscale(1) contrast(0.82) brightness(0.6)"
         } else {

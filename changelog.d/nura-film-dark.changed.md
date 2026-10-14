@@ -1,0 +1,1 @@
+- Nura title page: dark hero art dimmer and dissolving into the page as the web's.
