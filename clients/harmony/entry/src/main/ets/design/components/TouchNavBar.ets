@@ -5,6 +5,7 @@
  * Sizes are web CSS px, which are vp on the phone profile.
  */
 
+import { atLeast } from '../../core/SafeInsets';
 import { activeColors, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { ProfileAvatar } from './ProfileAvatar';
@@ -15,8 +16,6 @@ import { getCatalogKinds } from '../../data/CatalogRepository';
 import { buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../../navigation/NavItems';
 
 // Web phone `.app-nav`: 58 tall, 10 from each side, 8 above the bottom, 5 padding, 2 between the 44 x 46 tiles, radius 20.
-/** The bar spans the page less its side margins. */
-const NAV_WIDTH: string = 'calc(100% - 20vp)';
 const BAR_HEIGHT: number = 58;
 const BAR_SIDE: number = 10;
 const BAR_BOTTOM: number = 8;
@@ -36,6 +35,9 @@ export struct TouchNavBar {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('currentProfileId') private profileId: string = '';
+  @StorageProp('safeBottom') private safeBottom: number = 0;
+  @StorageProp('safeLeft') private safeLeft: number = 0;
+  @StorageProp('safeRight') private safeRight: number = 0;
 
   @State private items: NavRailItem[] = [];
 
@@ -104,13 +106,13 @@ export struct TouchNavBar {
       .width('100%')
       .height(BAR_HEIGHT)
     }
-    .width(NAV_WIDTH)
+    .width(`calc(100% - ${atLeast(BAR_SIDE, this.safeLeft) + atLeast(BAR_SIDE, this.safeRight)}vp)`)
     .height(BAR_HEIGHT)
     .alignItems(VerticalAlign.Center)
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.88))
     .borderRadius(BAR_RADIUS)
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
     .shadow({ radius: 20, color: 'rgba(31, 14, 20, 0.2)', offsetY: 14 })
-    .margin({ left: BAR_SIDE, right: BAR_SIDE, bottom: BAR_BOTTOM, top: 4 })
+    .margin({ left: atLeast(BAR_SIDE, this.safeLeft), right: atLeast(BAR_SIDE, this.safeRight), bottom: atLeast(BAR_BOTTOM, this.safeBottom), top: 4 })
   }
 }

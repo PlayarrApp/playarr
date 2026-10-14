@@ -447,7 +447,8 @@ struct Player {
     this.windowHandle = null;
     try {
       await win.setWindowSystemBarEnable(['status', 'navigation']);
-      await win.setWindowLayoutFullScreen(false);
+      // stay edge to edge: the pages place content from the safe-area insets
+      await win.setWindowLayoutFullScreen(true);
     } catch (err) {
       const asError = err as Error;
       logWarn(LOG_TAG, 'failed to restore window chrome: ' + asError.message);

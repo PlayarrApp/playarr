@@ -4,6 +4,7 @@
  * long-press actions, downloads) uses this. It overlays the page; the page is never rebuilt behind it.
  */
 
+import { atLeast } from '../../core/SafeInsets';
 import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
@@ -45,6 +46,10 @@ export struct Drawer {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
+  @StorageProp('safeTop') private safeTop: number = 0;
+  @StorageProp('safeBottom') private safeBottom: number = 0;
+  @StorageProp('safeLeft') private safeLeft: number = 0;
+  @StorageProp('safeRight') private safeRight: number = 0;
 
   build() {
     Column() {
@@ -82,7 +87,7 @@ export struct Drawer {
       }
       .width('100%')
       .alignItems(VerticalAlign.Top)
-      .margin({ top: isTvMetrics() ? tv(HEADER_TOP) : TOUCH_HEADER_TOP })
+      .margin({ top: isTvMetrics() ? tv(HEADER_TOP) : atLeast(TOUCH_HEADER_TOP, this.safeTop) })
       Scroll() {
         Column() {
           this.body()
@@ -99,7 +104,11 @@ export struct Drawer {
     }
     .width(isTvMetrics() ? tv(DRAWER_WIDTH) : '100%')
     .height('100%')
-    .padding({ left: isTvMetrics() ? tv(PADDING_H) : TOUCH_PADDING_H, right: isTvMetrics() ? tv(PADDING_H) : TOUCH_PADDING_H })
+    .padding({
+      left: isTvMetrics() ? tv(PADDING_H) : atLeast(TOUCH_PADDING_H, this.safeLeft),
+      right: isTvMetrics() ? tv(PADDING_H) : atLeast(TOUCH_PADDING_H, this.safeRight),
+      bottom: isTvMetrics() ? 0 : 24 + this.safeBottom,
+    })
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, DRAWER_BG_ALPHA))
     .shadow({ radius: tv(90), offsetX: -tv(32), offsetY: 0, color: SHADOW_COLOR })
     .position({ x: '100%', y: 0 })

@@ -16,6 +16,8 @@ import type { NavRailItem } from './NavRail';
 import { PlayarrLogo } from './PlayarrLogo';
 import { Clock } from './Clock';
 import { BRAND_PINK_SOFT } from '../../core/Tokens';
+import { atLeast } from '../../core/SafeInsets';
+
 import { getCatalogKinds } from '../../data/CatalogRepository';
 import { buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../../navigation/NavItems';
 import { getNavStack, popRoute } from '../../navigation/NavStack';
@@ -57,6 +59,10 @@ export struct PageShell {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
+  @StorageProp('safeTop') private safeTop: number = 0;
+  @StorageProp('safeBottom') private safeBottom: number = 0;
+  @StorageProp('safeLeft') private safeLeft: number = 0;
+  @StorageProp('safeRight') private safeRight: number = 0;
 
   @State private navItems: NavRailItem[] = [];
 
@@ -168,7 +174,7 @@ export struct PageShell {
         }
       }
       .width('100%')
-      .padding({ left: 16, right: 16, top: 17, bottom: this.kicker.length > 0 ? 2 : 12 })
+      .padding({ left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight), top: atLeast(17, this.safeTop), bottom: this.kicker.length > 0 ? 2 : 12 })
       .alignItems(VerticalAlign.Center)
       if (this.kicker.length > 0) {
         // Web phone: the pink count or section line sits under the title, level with it.
@@ -179,7 +185,7 @@ export struct PageShell {
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(BRAND_PINK_SOFT))
           .width('100%')
-          .padding({ left: 71, top: 8, bottom: 3 })
+          .padding({ left: 55 + atLeast(16, this.safeLeft), top: 8, bottom: 3 })
       }
       Column() {
         this.touchContent()

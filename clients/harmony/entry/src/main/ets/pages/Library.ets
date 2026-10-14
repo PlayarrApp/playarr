@@ -124,6 +124,7 @@ import { cardGeometry, normaliseArtworkSize } from '../core/ArtworkSize';
 import type { ArtworkSizeName, CardGeometry } from '../core/ArtworkSize';
 import { PageShell } from '../design/components/PageShell';
 import { TouchIconButton } from '../design/components/TouchIconButton';
+import { atLeast } from '../core/SafeInsets';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
 import type { Choice } from '../design/components/ChoiceSegments';
@@ -455,6 +456,10 @@ struct LibraryGridCell {
 
 @Component
 export struct Library {
+  @StorageProp('safeTop') private safeTop: number = 0;
+  @StorageProp('safeBottom') private safeBottom: number = 0;
+  @StorageProp('safeLeft') private safeLeft: number = 0;
+  @StorageProp('safeRight') private safeRight: number = 0;
   /** Set once at construction from `LibraryRouteParams.kind`; never
    * mutated by this page itself. */
   @Prop kind: string = '';
@@ -759,6 +764,7 @@ export struct Library {
       })
       if (this.sort === 'title' && this.items.length > 0) {
         AlphabetRail({
+          rightInset: this.safeRight,
           letters: alphabetFor(this.order),
           activeLetter: this.activeLetter,
           onJump: (letter: string): void => {
@@ -881,7 +887,7 @@ export struct Library {
           .columnsGap(TOUCH_CARD_GAP)
           .rowsGap(TOUCH_ROW_GAP)
           .edgeEffect(EdgeEffect.Spring)
-          .padding({ left: TOUCH_GUTTER, right: TOUCH_ALPHA_RAIL, bottom: Spacing.lg })
+          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, bottom: Spacing.lg })
           .onAreaChange((_oldValue: Area, newValue: Area) => {
             this.measuredWidthVp = lengthToVp(newValue.width);
           })
@@ -913,7 +919,7 @@ export struct Library {
   private touchCardWidthVp(): number {
     const w = this.measuredWidthVp > 0 ? this.measuredWidthVp : FALLBACK_TOUCH_GRID_WIDTH_VP;
     const cols = this.touchColumns();
-    return (w - TOUCH_GUTTER - TOUCH_ALPHA_RAIL - TOUCH_CARD_GAP * (cols - 1)) / cols;
+    return (w - atLeast(TOUCH_GUTTER, this.safeLeft) - TOUCH_ALPHA_RAIL - this.safeRight - TOUCH_CARD_GAP * (cols - 1)) / cols;
   }
 
   private touchCardHeightVp(): number {

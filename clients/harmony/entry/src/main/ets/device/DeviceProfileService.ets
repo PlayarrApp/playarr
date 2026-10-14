@@ -34,6 +34,7 @@ import { deviceInfo } from '@kit.BasicServicesKit';
 import { display, window } from '@kit.ArkUI';
 
 import { DeviceProfile, resolveProfile } from '../core/DeviceProfile.ts';
+import { installSafeAreaService } from './SafeAreaService';
 import { logError } from '../util/Log';
 
 // AppStorage keys. Exported so `design/Metrics.ets`, `design/Theme.ets` and
@@ -110,6 +111,10 @@ export function installDeviceProfileService(windowStage: window.WindowStage): vo
     const win: window.Window = windowStage.getMainWindowSync();
 
     publishDeviceProfile(deviceType, win);
+    // TV keeps its overscan-free stage; phones and tablets lay out edge to edge and read their insets
+    if (deviceType !== 'tv') {
+      installSafeAreaService(win);
+    }
 
     win.on('windowSizeChange', (): void => {
       try {

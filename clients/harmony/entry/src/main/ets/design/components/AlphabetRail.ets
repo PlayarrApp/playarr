@@ -26,6 +26,8 @@ const TOUCH_DISC: number = 22;
 
 @Component
 export struct AlphabetRail {
+  /** Phone: the right safe-area inset; the rail's right edge sits at it. */
+  @Prop rightInset: number = 0;
   @Prop letters: string[] = [];
   @Prop activeLetter: string = '';
   /** Called with the chosen letter. Plain callback field (functions are not observable state). */
@@ -62,7 +64,7 @@ export struct AlphabetRail {
     .width(TOUCH_RAIL_WIDTH)
     .height(`calc(100% - ${TOUCH_RAIL_TOP + TOUCH_RAIL_BOTTOM}vp)`)
     .alignItems(HorizontalAlign.Center)
-    .position({ x: '100%', y: TOUCH_RAIL_TOP })
+    .position({ x: `calc(100% - ${this.rightInset}vp)`, y: TOUCH_RAIL_TOP })
     .markAnchor({ x: '100%', y: 0 })
   }
 

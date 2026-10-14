@@ -119,6 +119,7 @@ import { HOME_NAV_ID, buildNavRailItems, navigateFromRail } from '../navigation/
 import { PageShell } from '../design/components/PageShell';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { TouchNavBar } from '../design/components/TouchNavBar';
+import { atLeast } from '../core/SafeInsets';
 import { NavPill } from '../design/components/NavPill';
 import type { NavPillItem } from '../design/components/NavPill';
 import { PosterCard } from '../design/components/PosterCard';
@@ -431,6 +432,10 @@ function heroMetaLinesFor(runtime: string): string[] {
 
 @Component
 export struct Home {
+  @StorageProp('safeTop') private safeTop: number = 0;
+  @StorageProp('safeBottom') private safeBottom: number = 0;
+  @StorageProp('safeLeft') private safeLeft: number = 0;
+  @StorageProp('safeRight') private safeRight: number = 0;
   @State private loading: boolean = true;
   @State private showError: boolean = false;
   @State private errorMessage: string = '';
@@ -975,7 +980,7 @@ export struct Home {
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
-    .padding({ top: TOUCH_RAILS_TOP, bottom: TOUCH_BOTTOM_NAV_CLEARANCE, left: Spacing.md, right: Spacing.md })
+    .padding({ top: TOUCH_RAILS_TOP, bottom: TOUCH_BOTTOM_NAV_CLEARANCE, left: atLeast(Spacing.md, this.safeLeft), right: atLeast(Spacing.md, this.safeRight) })
   }
 
   /** TV: `Stage` (hero + rails) with `NavRail` as a sibling in one full-bleed

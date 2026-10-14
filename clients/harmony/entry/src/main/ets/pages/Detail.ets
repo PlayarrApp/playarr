@@ -106,6 +106,7 @@ import { LengthMetrics } from '@kit.ArkUI';
 
 import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan, clearResumeChoices } from '../data/CatalogRepository';
 import { resumeButtonLabel, resumeKicker, resumeTargetFile } from '../core/ResumePlan';
+import { atLeast } from '../core/SafeInsets';
 import { hasSeriesResumeTarget, metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
 import {
   EpisodeFocusGate,
@@ -774,6 +775,10 @@ struct Detail {
   private currentSeriesRailOffsets: Map<string, number> = new Map();
   private seasonRowAreas: Map<string, DetailSeasonRowArea> = new Map();
   private seriesStackScroller: Scroller = new Scroller();
+  @StorageProp('safeTop') private safeTop: number = 0;
+  @StorageProp('safeBottom') private safeBottom: number = 0;
+  @StorageProp('safeLeft') private safeLeft: number = 0;
+  @StorageProp('safeRight') private safeRight: number = 0;
   /** Phone: the page scroller, and whether the next-up episode has been brought to the middle yet. */
   private touchScroller: Scroller = new Scroller();
   private touchEpisodeSettled: boolean = false;
@@ -2276,8 +2281,8 @@ struct Detail {
         .padding({
           top: TOUCH_TEXT_TOP,
           bottom: TouchGeometry.detailListBottom,
-          left: Spacing.lg,
-          right: Spacing.lg,
+          left: atLeast(Spacing.lg, this.safeLeft),
+          right: atLeast(Spacing.lg, this.safeRight),
         })
         .width('100%')
         .alignItems(HorizontalAlign.Start)
@@ -2301,7 +2306,7 @@ struct Detail {
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
       }
-      .padding({ left: 16, top: 12 })
+      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(12, this.safeTop) })
       .alignItems(VerticalAlign.Center)
        }
        .width('100%')

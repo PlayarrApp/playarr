@@ -1,0 +1,1 @@
+- HarmonyOS phone: content sits below the notch or cutout and above the gesture bar in portrait and landscape, with backgrounds and art edge to edge.
