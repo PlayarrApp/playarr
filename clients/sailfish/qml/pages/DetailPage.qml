@@ -460,6 +460,7 @@ PlayarrPage {
                                 }
                         }
                     }
+                                            EdgeFade { target: epList; horizontal: true; size: 38 * Tokens.u }   // web: --page-edge-fade-size
                     }
                 }
             }
