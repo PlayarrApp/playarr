@@ -10,8 +10,9 @@ QtObject {
     // Safe area: content sits below a notch or camera cutout and above the bottom gesture area; backgrounds still bleed.
     property real testTop: 0       // emulator smoke scripts set this to simulate a cutout
     property real testBottom: 0
-    readonly property real safeTop: Math.max(testTop, Screen.topCutout && Screen.topCutout.height ? Screen.topCutout.height : 0)
-    readonly property real safeBottom: Math.max(testBottom, Screen.bottomCutout && Screen.bottomCutout.height ? Screen.bottomCutout.height : 0)
+    // Web (#1314) uses max(base, inset): the layout already carries the 14 px top and 8 px bottom base, so only the excess is added.
+    readonly property real safeTop: Math.max(0, Math.max(testTop, Screen.topCutout && Screen.topCutout.height ? Screen.topCutout.height : 0) - 14 * u)
+    readonly property real safeBottom: Math.max(0, Math.max(testBottom, Screen.bottomCutout && Screen.bottomCutout.height ? Screen.bottomCutout.height : 0) - 8 * u)
 
     // Pages sit on the web's surface colour (the web token `bg` is only the outer shell).
     readonly property color bg: dark ? "#1b181b" : "#fbfaf9"
