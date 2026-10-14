@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fix VIDAA debug mirror captures so the scaled TV stage fills the requested output instead of leaving blank right and bottom areas.
+- Restore the shell clock's en-GB weekday and month on VIDAA firmware with incomplete Intl date data.
 - The isolated macOS Search smoke retains its confirmed Home readiness snapshot and reports safe navigation-stage evidence when Search cannot be reached.
 - Guarded Apple wall suite selection now handles an empty argument list safely under Bash nounset.
 - The tvOS navigation rail now draws web-matched vector paths for its shared tabs. macOS retains its existing SF Symbols.
