@@ -54,6 +54,9 @@ namespace Playarr.Xbox.Views
 
         public static Color BrandInk => Parse(IsLight ? "#821E36" : "#EAA6B6");
 
+        /// <summary>The card focus glow: <c>--card-glow-color</c>, brand-ink in dark and brand-strong in light.</summary>
+        public static Color CardGlow => Parse(IsLight ? "#A52745" : "#EAA6B6");
+
         public static Color InkMuted => Parse(IsLight ? "#4D4248" : "#C2B5BB");
 
         public static Color Success => Parse(IsLight ? "#224C3A" : "#8AC5A5");

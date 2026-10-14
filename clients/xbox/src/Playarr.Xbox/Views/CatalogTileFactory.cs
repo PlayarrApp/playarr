@@ -98,7 +98,7 @@ namespace Playarr.Xbox.Views
                         }
                     }
 
-                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25, 24)));
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25, 25.5)));
                     _gridCardContainerStyle = style;
                 }
 
@@ -180,7 +180,7 @@ namespace Playarr.Xbox.Views
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(2, 12, 0, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                // Library grid rows repeat every 240 px, as the web's 184 px art, 12 px gap, 19 px title and 25 px row gap.
+                // Library grid rows repeat every 240.5 px, as the web: 184 px art, 12 px gap, 19 px title and a 25.5 px row gap.
                 LineHeight = caption ? 0 : 19,
                 LineStackingStrategy = caption ? LineStackingStrategy.MaxHeight : LineStackingStrategy.BlockLineHeight,
             });

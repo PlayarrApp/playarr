@@ -366,7 +366,7 @@ namespace Playarr.Xbox.Views
                     list.Items.Add(CastCard(credit));
                 }
 
-                CardFocus.Attach(list);
+                CardFocus.Attach(list, halo: false);
                 var section = new StackPanel { Margin = new Thickness(0, _viewModel.IsSeries ? 44 : 60, 0, 0) };
                 section.Children.Add(new TextBlock { Text = "Cast", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
                 section.Children.Add(new TextBlock
@@ -504,7 +504,7 @@ namespace Playarr.Xbox.Views
                     App.Navigation.Navigate(typeof(PlayerPage), new PlayerNavigationParameter(file, resumePositionMs: chapter.StartMs, title: _viewModel.Title, workId: _viewModel.WorkId));
                 }
             };
-            CardFocus.Attach(list);
+            CardFocus.Attach(list, halo: false);
             var section = new StackPanel { Margin = new Thickness(0, 195, 0, 0) };
             section.Children.Add(new TextBlock { Text = "Chapters", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
             section.Children.Add(new TextBlock
@@ -804,7 +804,7 @@ namespace Playarr.Xbox.Views
                         PlayButton_Click(this, new RoutedEventArgs());
                     }
                 };
-                CardFocus.Attach(list);
+                CardFocus.Attach(list, halo: false);
                 list.GotFocus += (s, e) =>
                 {
                     if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: EpisodeDetail episode } })

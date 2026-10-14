@@ -124,7 +124,11 @@ namespace Playarr.Xbox.ViewModels
         /// The web's card overlay (<c>WatchStateOverlay</c>): a part-watched title shows its progress line, a title with no
         /// watch history (or an unseen one) shows the brand dot. The most advanced state per title wins.
         /// </summary>
-        private static async Task MarkWatchStateAsync(IEnumerable<HomeRail> rails, Task<IList<WatchProgress>> progressTask)
+        internal static Task MarkWatchStateAsync(IEnumerable<HomeRail> rails, Task<IList<WatchProgress>> progressTask) =>
+            MarkWatchStateAsync(rails.SelectMany(r => r.Items), progressTask);
+
+        /// <summary>The same overlay for any list of titles (the library grid).</summary>
+        internal static async Task MarkWatchStateAsync(IEnumerable<Work> works, Task<IList<WatchProgress>> progressTask)
         {
             IList<WatchProgress> rows;
             try
@@ -146,7 +150,7 @@ namespace Playarr.Xbox.ViewModels
                 }
             }
 
-            foreach (var work in rails.SelectMany(r => r.Items))
+            foreach (var work in works)
             {
                 if (byWork.TryGetValue(work.Id, out var row))
                 {

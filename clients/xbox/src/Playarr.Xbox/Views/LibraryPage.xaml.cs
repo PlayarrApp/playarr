@@ -163,7 +163,17 @@ namespace Playarr.Xbox.Views
             {
                 var button = new Button
                 {
-                    Content = new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"] },
+                    // The web marks the active letter ("#" until the viewer jumps) with a filled circle.
+                    Content = letter == '#'
+                        ? new Border
+                        {
+                            Width = 24,
+                            Height = 24,
+                            CornerRadius = new CornerRadius(12),
+                            Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInk"],
+                            Child = new TextBlock { Text = "#", FontSize = 10, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceStrong"] },
+                        }
+                        : (object)new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"] },
                     Width = 40,
                     Height = 44,
                     Padding = new Thickness(0),

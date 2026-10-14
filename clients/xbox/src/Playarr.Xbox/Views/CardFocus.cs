@@ -18,7 +18,8 @@ namespace Playarr.Xbox.Views
         private const double Lift = -7;
         private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(260);
 
-        public static void Attach(ListViewBase list)
+        /// <param name="halo">False for rails inside a clipped scroller that has no room for the soft glow and the art scale (title page rails).</param>
+        public static void Attach(ListViewBase list, bool halo = true)
         {
             // No selection, hover, press or focus fill: the web card shows only the lift, the scale and the glow ring.
             list.ContainerContentChanging += (s, e) =>
@@ -29,8 +30,8 @@ namespace Playarr.Xbox.Views
                     ClearFill(container);
                 }
             };
-            list.GotFocus += (s, e) => Apply(e.OriginalSource, true);
-            list.LostFocus += (s, e) => Apply(e.OriginalSource, false);
+            list.GotFocus += (s, e) => Apply(e.OriginalSource, true, halo);
+            list.LostFocus += (s, e) => Apply(e.OriginalSource, false, halo);
         }
 
         /// <summary>
@@ -74,7 +75,90 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private static void Apply(object source, bool focused)
+        /// <summary>
+        /// The glow's soft part, <c>0 0 20px 4px</c> at 45 % of the glow colour beyond the 3 px ring: stacked outward 2 px
+        /// strokes fading with distance, on a zero-size canvas that is the card's last child (it never moves the art).
+        /// </summary>
+        private static void SetSoftGlow(Panel card, Grid art, bool focused)
+        {
+            Canvas? canvas = null;
+            foreach (var child in card.Children)
+            {
+                if (child is Canvas { Tag: "glow" } existing)
+                {
+                    canvas = existing;
+                }
+            }
+
+            if (canvas == null)
+            {
+                if (!focused || art.ActualWidth <= 0)
+                {
+                    return;
+                }
+
+                canvas = new Canvas { Tag = "glow", Height = 0, Width = 0, HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
+                var radius = art.CornerRadius.TopLeft;
+                // The canvas starts below the card's stacked children; the art's top edge is that far up.
+                var above = 0d;
+                foreach (var child in card.Children)
+                {
+                    above += ((FrameworkElement)child).ActualHeight;
+                }
+
+                for (var k = 0; k < 11; k++)
+                {
+                    // Distance from the art edge: the spread (to 7 px) is solid, the 20 px blur fades the rest.
+                    var d = 3 + k * 2;
+                    var fade = k < 2 ? 1 : Math.Pow(1 - (k - 1) / 11.0, 2);
+                    var color = Theme.CardGlow;
+                    canvas.Children.Add(new Border
+                    {
+                        Tag = d,
+                        Width = art.ActualWidth + 2 * d,
+                        Height = art.ActualHeight + 2 * d,
+                        CornerRadius = new CornerRadius(radius + d),
+                        BorderThickness = new Thickness(2),
+                        BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb((byte)(255 * 0.45 * fade), color.R, color.G, color.B)),
+                    });
+                    Canvas.SetLeft((FrameworkElement)canvas.Children[canvas.Children.Count - 1], -d);
+                    Canvas.SetTop((FrameworkElement)canvas.Children[canvas.Children.Count - 1], -d - above);
+                }
+
+                // Below the ring: the canvas sits in the card's coordinates, whose origin is the art's top-left.
+                card.Children.Add(canvas);
+            }
+
+            canvas.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>The soft glow and the art scale (<c>--card-art-scale</c>, 1.025 about the centre; the caption stays put).</summary>
+        private static void ApplyHalo(Panel card, Grid art, bool focused)
+        {
+            SetSoftGlow(card, art, focused);
+            if (!(art.RenderTransform is ScaleTransform scale))
+            {
+                scale = new ScaleTransform { ScaleX = 1, ScaleY = 1 };
+                art.RenderTransform = scale;
+                art.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+            }
+
+            var target = focused ? 1.025 : 1;
+            var grow = new Storyboard();
+            foreach (var axis in new[] { "ScaleX", "ScaleY" })
+            {
+                var frames = new DoubleAnimationUsingKeyFrames();
+                frames.KeyFrames.Add(new SplineDoubleKeyFrame { Value = target, KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(240)), KeySpline = new KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.2, 0.8), ControlPoint2 = new Windows.Foundation.Point(0.2, 1) } });
+                Storyboard.SetTarget(frames, scale);
+                Storyboard.SetTargetProperty(frames, axis);
+                grow.Children.Add(frames);
+            }
+
+            grow.Begin();
+
+        }
+
+        private static void Apply(object source, bool focused, bool halo)
         {
             if (!(source is SelectorItem { ContentTemplateRoot: Panel card }) || card.Children.Count == 0 || !(card.Children[0] is Grid art))
             {
@@ -98,7 +182,7 @@ namespace Playarr.Xbox.Views
                 {
                     Tag = "ring",
                     BorderThickness = new Thickness(3),
-                    BorderBrush = (Brush)Application.Current.Resources["PlayarrBrandInk"],
+                    BorderBrush = new SolidColorBrush(Theme.CardGlow),
                     CornerRadius = art.CornerRadius,
                     IsHitTestVisible = false,
                     Visibility = Visibility.Collapsed,
@@ -107,6 +191,10 @@ namespace Playarr.Xbox.Views
             }
 
             ring.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;
+            if (halo)
+            {
+                ApplyHalo(card, art, focused);
+            }
 
             if (!(card.RenderTransform is TranslateTransform move))
             {

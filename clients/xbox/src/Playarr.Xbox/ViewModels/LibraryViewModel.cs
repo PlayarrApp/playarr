@@ -205,6 +205,8 @@ namespace Playarr.Xbox.ViewModels
                     }
                 }
 
+                // The web's card overlay: a progress line or the unseen dot (best effort: cards stay plain without it).
+                await HomeViewModel.MarkWatchStateAsync(works, _environment.ApiClient.ListWatchProgressAsync());
                 Works = works;
             }
             catch (ApiException error)
