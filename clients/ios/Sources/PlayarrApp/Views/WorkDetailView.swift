@@ -576,6 +576,7 @@ struct WorkDetailView: View {
                 .padding(.top, tabletScale.map { tabletArtInset * $0 } ?? 8)
                 .padding(.bottom, tabletScale == nil ? 8 : 0)
             }
+            .scrollClipDisabled() // the selected episode's ring, glow and lift are not cut by the rail
             .frame(height: tabletScale.map { 278.03125 * $0 }, alignment: .topLeading)
             .scrollIndicators(.hidden)
         }

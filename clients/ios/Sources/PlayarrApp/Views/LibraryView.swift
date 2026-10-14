@@ -490,6 +490,7 @@ struct LibraryView: View {
                         .padding(.top, phone ? 92 : max(128, proxy.size.height * 0.15))
                         .padding(.bottom, phone ? 118 : max(48, proxy.size.height * 0.06))
                     }
+                    .scrollClipDisabled() // the first tile's focus ring and glow are not cut at the grid edge
                     .overlay(alignment: .topTrailing) {
                         if !phone && !viewModel.isSearchMode && viewModel.viewMode != .list {
                             tabletAlphabetRail(scrollProxy, height: proxy.size.height - 263 - 24)

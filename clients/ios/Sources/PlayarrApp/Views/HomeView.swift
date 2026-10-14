@@ -290,6 +290,7 @@ struct HomeView: View {
                 .padding(.horizontal, phone ? HomeLayout.phoneGutter : 24)
                 .padding(.vertical, 8)
             }
+            .scrollClipDisabled() // card shadows and the focus glow reach past the rail's frame, as on web
             .frame(
                 width: railWidth,
                 height: HomeLayout.carouselHeight(cardWidth: mediaCardWidth, phone: phone),
