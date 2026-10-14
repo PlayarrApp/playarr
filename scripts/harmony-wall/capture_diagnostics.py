@@ -628,3 +628,34 @@ def write_detail_summary(out_dir, *, theme, accepted, failure, frame_path, stage
     with open(os.path.join(debug_dir, filename), "w", encoding="utf-8") as stream:
         json.dump(summary, stream, sort_keys=True)
     return summary
+
+
+def phone_flat_card_rows(image, *, min_run_px=500, min_rows=100):
+    """Phone episode cards drawn as grey placeholders: a flat, single-colour block as wide as a card (167 vp or more) and
+    tall as one (about 33 vp or more per 100 px rows), in a colour other than the page. Real art never has 500 identical pixels in a
+    row for 100 rows; buttons are narrower and carry text. Returns the number of such blocks found (0 means art is drawn)."""
+    rgb = image.convert("RGB")
+    width, height = rgb.size
+    px = rgb.load()
+    page = px[min(20, width - 1), height // 2]
+    blocks, run_rows = 0, {}
+    for y in range(0, height):
+        row_hits = set()
+        x = 0
+        while x < width:
+            colour = px[x, y]
+            start = x
+            while x < width and px[x, y] == colour:
+                x += 1
+            if x - start >= min_run_px and colour != page:
+                row_hits.add((colour, start // 40))
+        # a block continues while the same colour keeps a wide run at about the same left edge
+        nxt = {}
+        for key in row_hits:
+            nxt[key] = run_rows.get(key, 0) + 1
+        for key, count in run_rows.items():
+            if key not in nxt and count >= min_rows:
+                blocks += 1
+        run_rows = nxt
+    blocks += sum(1 for count in run_rows.values() if count >= min_rows)
+    return blocks

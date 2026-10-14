@@ -1,4 +1,5 @@
 import io
+import os
 import json
 import unittest
 from unittest.mock import MagicMock, mock_open, patch
@@ -8,13 +9,28 @@ from capture_diagnostics import (MAX_IMAGE_PAYLOAD_BYTES, analyze_episode_art_fr
                                  save_rejected_frame, summarize_detail_events,
                                  summarize_detail_image_payload_events, summarize_detail_layout_events,
                                  series_focus_failure, write_detail_summary, confirm_detail_route_source,
-                                 summarize_detail_load_events)
+                                 summarize_detail_load_events, phone_flat_card_rows)
 from PIL import Image, ImageDraw
 
 
 class FakeFrame:
     def save(self, path):
         self.path = path
+
+
+class PhonePlaceholderTests(unittest.TestCase):
+    def test_real_phone_frame_with_grey_episode_cards_is_flagged(self):
+        # a crop of the series-detail frame in hosted run 38618985458 (dark), accepted at the time with both cards still grey
+        frame = Image.open(os.path.join(os.path.dirname(__file__), "fixtures", "phone-series-detail-placeholders.png"))
+        self.assertGreaterEqual(phone_flat_card_rows(frame), 1)
+
+    def test_drawn_art_and_narrow_buttons_are_not_flagged(self):
+        frame = Image.new("RGB", (1080, 1000), (21, 19, 22))
+        draw = ImageDraw.Draw(frame)
+        draw.rounded_rectangle((36, 100, 436, 232), 40, fill=(49, 42, 49))  # a 400 px pill: narrower than a card
+        art = Image.effect_noise((561, 315), 80).convert("RGB")
+        frame.paste(art, (36, 400))
+        self.assertEqual(phone_flat_card_rows(frame), 0)
 
 
 class CaptureDiagnosticsTests(unittest.TestCase):

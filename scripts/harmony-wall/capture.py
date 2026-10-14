@@ -11,7 +11,7 @@ from capture_diagnostics import (save_rejected_frame, summarize_detail_events,
                                  summarize_detail_layout_events, summarize_detail_image_payload_events,
                                  analyze_episode_art_frame, episode_art_events_ready, decoded_art_is_accepted,
                                  series_focus_failure, write_detail_summary, confirm_detail_route_source,
-                                 summarize_detail_load_events)
+                                 summarize_detail_load_events, phone_flat_card_rows)
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
@@ -530,6 +530,14 @@ else:
         while time.time() < deadline:
             state = json.loads(get("/state"))
             if state.get("route") == "Detail" and state.get("work_id") == work_id:
+                if kind == "series":
+                    # the episode cards must show art: a frame with grey placeholder cards is waited on, then refused
+                    art_end = time.time() + 120
+                    while phone_flat_card_rows(png()) > 0 and time.time() < art_end:
+                        time.sleep(5)
+                    if phone_flat_card_rows(png()) > 0:
+                        debug(name + "-placeholder-art")
+                        raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")
                 snap(name, folder, 100000)
                 return
             time.sleep(0.5)
