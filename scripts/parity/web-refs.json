@@ -43,6 +43,22 @@
       ],
       "actionsTitle": "The 5th Wave"
     },
+    "android-tablet": {
+      "viewport": [
+        1280,
+        800
+      ],
+      "dpr": 2,
+      "mobile": false,
+      "pixels": [
+        2560,
+        1600
+      ],
+      "dirs": [
+        "android-tablet"
+      ],
+      "actionsTitle": "The 5th Wave"
+    },
     "iphone": {
       "viewport": [
         393,
