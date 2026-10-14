@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: Settings > Appearance groups follow the web: a sentence-case heading, the note above the choice, and a divider between groups.
 - Match inactive Android TV navigation text and icons to the web muted foreground in light and dark themes.
 - Align iPad detail copy width and series rail placement with the shared stage layout.
 - Xbox: library cards show the web watch-state overlay, Filters uses the web's slider icon and the A-Z rail marks the active letter.
