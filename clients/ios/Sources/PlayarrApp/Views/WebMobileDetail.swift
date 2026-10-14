@@ -168,6 +168,12 @@ private enum WMFormat {
         return Self.display.string(from: day)
     }
 
+    static func yearRange(releaseDate: String?, endDate: String?) -> String? {
+        guard let releaseDate, let start = Int(releaseDate.prefix(4)), (1000...9999).contains(start) else { return nil }
+        guard let endDate, let end = Int(endDate.prefix(4)), end > start else { return String(start) }
+        return "\(start)–\(end)"
+    }
+
     private static let parser: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -257,7 +263,7 @@ struct WMDetailPage: View {
             items.append((work.singularKind, true))
         }
         if let runtimeMs, runtimeMs > 0 { items.append((WMFormat.runtime(runtimeMs), false)) }
-        if let year = work.releaseDate?.prefix(4), year.count == 4 { items.append((String(year), false)) }
+        if let year = WMFormat.yearRange(releaseDate: work.releaseDate, endDate: work.endDate) { items.append((year, false)) }
         if isSeries, let aired = WMFormat.date(selectedEpisode?.detail.episode.airDate) {
             items.append(("Aired  \(aired)", false))
         } else if let released = WMFormat.date(work.releaseDate) {
@@ -322,9 +328,13 @@ struct WMDetailPage: View {
     private var header: some View {
         ZStack(alignment: .topLeading) {
             WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: onBack)
+                .accessibilityIdentifier("detail-back")
                 .offset(x: 16, y: WM.topInset + 2)
-            WMText(work.kind.displayName, 21.6, 580, lh: 32.4, ls: -0.972)
-                .offset(x: 68, y: WM.topInset + 5)
+            VStack(alignment: .leading, spacing: 5.6) {
+                WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972)
+                WMText(work.title.uppercased(), 10.56, 820, color: WM.brandInk, lh: 15.84, ls: 0.8448)
+            }
+            .offset(x: 68, y: WM.topInset + 2)
         }
     }
 
@@ -332,7 +342,7 @@ struct WMDetailPage: View {
 
     private var copy: some View {
         VStack(alignment: .leading, spacing: 0) {
-            WMText(kicker, 10.56, 820, color: WM.pink, lh: 15.84, ls: 0.8448)
+            WMText(kicker, 10.56, 820, color: WM.brandInk, lh: 15.84, ls: 0.8448)
             Text(work.title)
                 .font(WM.font(39, 560))
                 .tracking(-2.808)
@@ -350,7 +360,7 @@ struct WMDetailPage: View {
             }
             HStack(spacing: 10) {
                 ForEach(Array(metaItems.enumerated()), id: \.offset) { _, item in
-                    WMText(item.0, 10.24, item.1 ? 680 : 400, color: item.1 ? WM.inkSoft : WM.muted, lh: 15.36)
+                    WMText(item.0, 10.24, item.1 ? 680 : 400, color: item.1 ? WM.inkSoft : WM.detailMuted, lh: 15.36)
                         .fixedSize()
                 }
             }
@@ -364,7 +374,7 @@ struct WMDetailPage: View {
             if let synopsis, !synopsis.isEmpty {
                 Text(synopsis)
                     .font(WM.font(11.52))
-                    .foregroundStyle(WM.muted)
+                    .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
                     .frame(width: 347, alignment: .topLeading)
                     .padding(.top, isSeries ? 10.6 : 12.04)
@@ -526,7 +536,7 @@ struct WMDetailPage: View {
         Button { Task { await model.toggleWatchlist() } } label: {
             pill(
                 width: width, fill: WM.chip.opacity(0.72), glyph: model.listed ? "✓" : "+", glyphSize: 9.2,
-                glyphColor: WM.pink, label: model.listed ? "On watchlist" : "Add to watchlist",
+                glyphColor: WM.pink, label: model.listed ? "Remove from watchlist" : "Add to watchlist",
                 labelSize: 8, labelColor: WM.ink, gap: 9
             )
         }
@@ -538,7 +548,7 @@ struct WMDetailPage: View {
     private func heading(_ title: String, _ sub: String?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             WMText(title, 16, 610, lh: 24, ls: -0.48)
-            if let sub { WMText(sub, 10.56, 400, color: WM.muted, lh: 15.84) }
+            if let sub { WMText(sub, 10.56, 400, color: WM.detailMuted, lh: 15.84) }
         }
         .padding(.leading, 16)
     }
@@ -547,7 +557,7 @@ struct WMDetailPage: View {
         VStack(alignment: .leading, spacing: 0) {
             if isSeries {
                 ForEach(Array(seasons.enumerated()), id: \.element.season.id) { index, season in
-                    seasonTrack(season, first: index == 0)
+                    seasonTrack(season)
                 }
             } else if !model.chapters.isEmpty, let mediaFileID = detail.mediaFileID {
                 chapterTrack(mediaFileID: mediaFileID)
@@ -567,7 +577,7 @@ struct WMDetailPage: View {
         .padding(.top, 28)
     }
 
-    private func seasonTrack(_ season: SeasonDetail, first: Bool) -> some View {
+    private func seasonTrack(_ season: SeasonDetail) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             heading(
                 season.season.title ?? "Season \(season.season.seasonNumber)",
@@ -576,8 +586,8 @@ struct WMDetailPage: View {
             .padding(.top, 24)
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 12) {
-                    ForEach(Array(season.episodes.enumerated()), id: \.element.id) { index, episode in
-                        episodeCard(episode, season: season.season, focused: first && index == 0)
+                    ForEach(season.episodes, id: \.id) { episode in
+                        episodeCard(episode, season: season.season, focused: episode.id == selectedEpisode?.detail.id)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -602,15 +612,26 @@ struct WMDetailPage: View {
             }
             .frame(width: 179, height: 101)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .wmCardShadow()
+            .overlay {
+                if focused {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(WM.cardGlowColor, lineWidth: 3)
+                        .padding(-1.5)
+                }
+            }
+            .shadow(color: focused ? WM.cardGlowColor.opacity(0.45) : .clear, radius: focused ? 20 : 0)
+            .scaleEffect(focused ? 1.025 : 1, anchor: .top)
             .overlay(alignment: .topTrailing) { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
             HStack(spacing: 9) {
-                WMText(code(season, episode.episode), 9.92, 700, color: WM.muted, lh: 14.88).fixedSize()
-                WMText(title, 12.48, 610, lh: 18.72, ls: -0.1872)
+                WMText(code(season, episode.episode), 9.92, 700, color: focused ? WM.ink : WM.detailMuted, lh: 14.88).fixedSize()
+                WMText(title, 12.48, 610, color: WM.ink, lh: 18.72, ls: -0.1872)
             }
             .frame(width: 179, alignment: .leading)
             .padding(.top, 7)
         }
         .frame(width: 179, height: 127, alignment: .topLeading)
+        .offset(y: focused ? -7 : 0)
 
         return Group {
             if let mediaFileID = episode.mediaFileID {
@@ -697,7 +718,7 @@ struct WMDetailPage: View {
                 .frame(width: 179, height: 101)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 HStack(spacing: 9) {
-                    WMText(WMFormat.clock(chapter.startMS), 9.92, 700, color: WM.muted, lh: 14.88).fixedSize()
+                    WMText(WMFormat.clock(chapter.startMS), 9.92, 700, color: WM.detailMuted, lh: 14.88).fixedSize()
                     WMText(chapter.title ?? "Chapter \(chapter.index + 1)", 12.48, 610, lh: 18.72)
                 }
                 .frame(width: 179, alignment: .leading)

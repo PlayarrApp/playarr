@@ -245,6 +245,7 @@ public struct Work: Codable, Identifiable, Hashable, Sendable {
     public var monitored: Bool
     public var availability: Availability
     public var releaseDate: String?
+    public var endDate: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -260,6 +261,7 @@ public struct Work: Codable, Identifiable, Hashable, Sendable {
         case monitored
         case availability
         case releaseDate = "release_date"
+        case endDate = "end_date"
     }
 
     public init(
@@ -275,7 +277,8 @@ public struct Work: Codable, Identifiable, Hashable, Sendable {
         addedAt: Date,
         monitored: Bool,
         availability: Availability,
-        releaseDate: String? = nil
+        releaseDate: String? = nil,
+        endDate: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -290,6 +293,7 @@ public struct Work: Codable, Identifiable, Hashable, Sendable {
         self.monitored = monitored
         self.availability = availability
         self.releaseDate = releaseDate
+        self.endDate = endDate
     }
 }
 

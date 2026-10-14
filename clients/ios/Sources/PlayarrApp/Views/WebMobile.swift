@@ -13,7 +13,10 @@ enum WM {
     static let ink = PlayarrStyle.ink
     static let inkSoft = PlayarrStyle.inkSoft
     static let muted = PlayarrStyle.muted
+    static let detailMuted = adaptive(light: (77, 66, 72), dark: (194, 181, 187))
     static let pink = PlayarrStyle.pink
+    static let brandInk = adaptive(light: (130, 30, 54), dark: (234, 166, 182))
+    static let cardGlowColor = adaptive(light: (165, 39, 69), dark: (234, 166, 182))
     static let artFill = adaptive(light: (223, 220, 221), dark: (49, 42, 48))
     static let chip = PlayarrStyle.surfaceStrong
     static let line = adaptive(light: (56, 38, 33), dark: (223, 220, 221))

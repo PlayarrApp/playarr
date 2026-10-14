@@ -19,6 +19,23 @@ public class DownloadTests
         }
     }
 
+    private sealed class GatedApi(byte[] data) : IDownloadsApi
+    {
+        public long LastFrom = -1;
+        public TaskCompletionSource<bool> FileRequested { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<bool> ContinueFile { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task<DownloadTicket> CreateAsync(Guid f, string q, CancellationToken ct = default) => Task.FromResult(new DownloadTicket("t-ready", DownloadState.Ready, "mp4", data.Length, null));
+        public Task<DownloadTicket> GetAsync(string id, CancellationToken ct = default) => Task.FromResult(new DownloadTicket(id, DownloadState.Ready, "mp4", data.Length, null));
+        public Task CancelAsync(string id, CancellationToken ct = default) => Task.CompletedTask;
+        public async Task<HttpResponseMessage> FileAsync(string id, long from, CancellationToken ct = default)
+        {
+            LastFrom = from;
+            FileRequested.TrySetResult(true);
+            await ContinueFile.Task.WaitAsync(ct);
+            return new HttpResponseMessage(from > 0 ? HttpStatusCode.PartialContent : HttpStatusCode.OK) { Content = new ByteArrayContent(data[(int)from..]) };
+        }
+    }
+
     private static async Task WaitAsync(Func<bool> done) { for (var i = 0; i < 200 && !done(); i++) await Task.Delay(25); }
 
     [Fact]
@@ -33,6 +50,43 @@ public class DownloadTests
         Assert.Single(new DownloadStore(dir).Load());
         await engine.RemoveAsync("t1");
         Assert.Null(engine.PlayablePath("t1")); Assert.True(api.Cancelled); Assert.Empty(new DownloadStore(dir).Load());
+    }
+
+    [Fact]
+    public async Task Ready_notification_can_read_the_complete_final_file()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        var data = Enumerable.Range(0, 4000).Select(i => (byte)(i % 251)).ToArray();
+        var store = new DownloadStore(dir);
+        var api = new GatedApi(data);
+        var record = new DownloadRecord { Id = "t-ready", Container = "mp4", TotalBytes = data.Length, State = DownloadState.Paused, QualityId = "original" };
+        Directory.CreateDirectory(Path.Combine(dir, "files"));
+        File.WriteAllBytes(store.FilePath(record), data[..1500]);
+        store.Save([record]);
+        var engine = new DownloadEngine(api, store);
+        engine.Recover();
+        record = engine.Records.Single();
+        var readyBytes = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        engine.Changed += () =>
+        {
+            if (record.State != DownloadState.Ready) return;
+            try
+            {
+                using var finalFile = new FileStream(store.FilePath(record), FileMode.Open, FileAccess.Read, FileShare.None);
+                using var contents = new MemoryStream();
+                finalFile.CopyTo(contents);
+                readyBytes.TrySetResult(contents.ToArray());
+            }
+            catch (Exception error) { readyBytes.TrySetException(error); }
+        };
+
+        engine.Resume(record.Id);
+        await api.FileRequested.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        api.ContinueFile.TrySetResult(true);
+        var observed = await readyBytes.Task.WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.Equal(1500, api.LastFrom);
+        Assert.Equal(data, observed);
     }
 
     [Fact]

@@ -47,6 +47,7 @@
  */
 
 
+import { registerNunito } from '../design/Typography';
 import { getServerDirectory, getSessionManager, savedThemeChoice } from '../AppContainer';
 import type { DeviceProfile } from '../core/DeviceProfile';
 import { DEVICE_PROFILE_STORAGE_KEY } from '../device/DeviceProfileService';
@@ -81,6 +82,7 @@ struct Index {
 
 
   aboutToAppear(): void {
+    registerNunito(this.getUIContext());
     savedThemeChoice().then((mode: ThemeModeSetting) => {
       setThemeModeSetting(mode);
     });

@@ -3,6 +3,7 @@
  * accent colour and a bold label, on surface-soft with a 14 radius, 14 apart. Lives in the shared `Drawer` body.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -35,11 +36,11 @@ export struct ActionList {
     Column({ space: tv(ROW_GAP) }) {
       ForEach(this.actions, (action: ActionItem) => {
         Row() {
-          Text(action.glyph)
+          Text(action.glyph).fontFamily(nunito(400))
             .width(tv(GLYPH_COLUMN))
             .fontSize(tv(GLYPH_SIZE))
             .fontColor(toResourceColor(activeColors().accent))
-          Text(action.label)
+          Text(action.label).fontFamily(nunito(700))
             .fontSize(tv(LABEL_SIZE))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))

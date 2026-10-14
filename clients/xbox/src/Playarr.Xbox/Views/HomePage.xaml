@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{StaticResource PlayarrSurface}">
 
     <!--
         The real home/catalog screen, replacing the Screens-phase placeholder
@@ -45,7 +45,7 @@
             x:Name="RailsScroll"
             VerticalScrollBarVisibility="Hidden"
             HorizontalScrollMode="Disabled">
-            <StackPanel x:Name="RailsPanel" Margin="881,403,0,48" Spacing="56" />
+            <StackPanel x:Name="RailsPanel" Margin="881,403,0,48" Spacing="40" />
         </ScrollViewer>
     </Grid>
 </Page>

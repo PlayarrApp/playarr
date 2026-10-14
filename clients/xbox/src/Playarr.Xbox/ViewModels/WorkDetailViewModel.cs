@@ -133,6 +133,25 @@ namespace Playarr.Xbox.ViewModels
         public long? ResumePositionMs =>
             PlayableMediaFileId is { } id && _progress.TryGetValue(id, out var p) && p.State == WatchState.InProgress && p.PositionMs > 0 ? p.PositionMs : (long?)null;
 
+        /// <summary>
+        /// An episode card's watch state as the web's <c>WatchStateOverlay</c> draws it: a progress percentage for a part-watched
+        /// file, the unseen dot when the file has no history, neither once watched.
+        /// </summary>
+        public (double? Percent, bool Unwatched) EpisodeWatch(EpisodeDetail detail)
+        {
+            if (detail.MediaFileId is not { } file || !_progress.TryGetValue(file, out var p))
+            {
+                return (null, true);
+            }
+
+            if (p.State == WatchState.InProgress)
+            {
+                return (p.DurationMs > 0 ? Math.Min(100, Math.Max(0, p.PositionMs * 100.0 / p.DurationMs)) : 0, false);
+            }
+
+            return (null, p.State != WatchState.Watched);
+        }
+
         public bool CanPlay => PlayableMediaFileId.HasValue;
 
         /// <summary>A film's runtime from its media file (null for a series, or before a file has synced).</summary>

@@ -463,8 +463,8 @@ const HomeCard = memo(function HomeCard(props: {
   onActions: (work: Work) => void;
 }): React.ReactElement {
   const {work, mediaFileId, title, progress, progressReady, first, last, cardRef, index, railIndex, baseUrl, token, selected, subtitle, onFocusItem, onOpen, onActions} = props;
-  const onFocus = useCallback(() => {
-    reportFocus(work.title, {rail: railIndex, index});
+  const onFocus = useCallback((event: {nativeEvent: {target: number}}) => {
+    reportFocus(work.title, {rail: railIndex, index}, undefined, event.nativeEvent.target);
     onFocusItem(railIndex, index);
   }, [onFocusItem, railIndex, index, work.title]);
   const selfRef = useRef<View | null>(null);

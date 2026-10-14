@@ -4,8 +4,10 @@ using System.ComponentModel;
 using Windows.UI.Text;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI.Xaml.Shapes;
 using Playarr.Core.Models;
 using Playarr.Xbox;
 using Playarr.Xbox.ViewModels;
@@ -45,7 +47,12 @@ namespace Playarr.Xbox.Views
         public WorkDetailPage()
         {
             InitializeComponent();
-            BackdropFade.Fill = Theme.LeftFade();
+            BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
+            BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
+            BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
+            BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
+            BackdropStageWashRight.Fill = Theme.KeyArtStageWashRight();
+            BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.Filled(Ui.Pill("\u2637  Playback", OpenPlaybackDrawer, 142));
             PlaybackButton.Height = 64;
         }
@@ -124,8 +131,8 @@ namespace Playarr.Xbox.Views
             if (work != null && !ReferenceEquals(_backdropWork, work))
             {
                 _backdropWork = work;
-                BackdropImage.Opacity = Theme.IsLight && work.Kind == WorkKind.Series ? 0.1 : 0.35;
-                Artwork.Load(BackdropImage, work, 1280, new[] { ImageKind.Backdrop }, requestWidth: 1280);
+                BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
+                Artwork.Load(BackdropImage, work, 999, new[] { ImageKind.Backdrop }, requestWidth: 780, applyKeyArtFilter: true);
             }
 
             RenderActions();
@@ -776,6 +783,8 @@ namespace Playarr.Xbox.Views
                     Height = 210,
                     ItemContainerStyle = CatalogTileFactory.CardContainerStyle,
                 };
+                // Match the web episode rail's compensated 12 px top bleed without moving cards or season rails.
+                CardFocus.ReserveTopLiftRoom(list, 12);
                 ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
                 ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
                 ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);
@@ -784,7 +793,7 @@ namespace Playarr.Xbox.Views
                     "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
                 foreach (var episode in season.Episodes)
                 {
-                    list.Items.Add(EpisodeCard(_viewModel.Work, season.Season.SeasonNumber, episode));
+                    list.Items.Add(EpisodeCard(_viewModel.Work, season.Season.SeasonNumber, episode, _viewModel.EpisodeWatch(episode)));
                 }
 
                 list.ItemClick += (s, e) =>
@@ -821,7 +830,7 @@ namespace Playarr.Xbox.Views
             AppendCast();
         }
 
-        private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail)
+        private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail, (double? Percent, bool Unwatched) watch)
         {
             var episode = detail.Episode;
             var art = new Grid
@@ -831,12 +840,95 @@ namespace Playarr.Xbox.Views
                 CornerRadius = new CornerRadius(12),
                 Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
-            if (series != null && episode.Images.Count > 0)
+            if (series != null)
             {
-                // The server's cached, resized episode still (the source URL may sit behind a private scheme).
-                var still = new Image { Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
+                var diagnosticCard = EpisodeArtworkDiagnostics.NewCard();
+                var still = new Image { Width = 268, Height = 151, Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
+                var requested = false;
+                var watchingViewport = false;
+                Windows.Foundation.TypedEventHandler<FrameworkElement, EffectiveViewportChangedEventArgs> viewportChanged = null!;
+                Action startWatchingViewport = null!;
+                Action stopWatchingViewport = null!;
+                viewportChanged = (_, args) =>
+                {
+                    var viewport = args.EffectiveViewport;
+                    var intersects = EpisodeArtworkResolver.IntersectsCard(
+                        viewport.X,
+                        viewport.Y,
+                        viewport.Width,
+                        viewport.Height,
+                        still.ActualWidth,
+                        still.ActualHeight);
+                    EpisodeArtworkDiagnostics.Viewport(
+                        diagnosticCard,
+                        viewport.X,
+                        viewport.Y,
+                        viewport.Width,
+                        viewport.Height,
+                        still.ActualWidth,
+                        still.ActualHeight,
+                        art.ActualWidth,
+                        art.ActualHeight,
+                        intersects,
+                        requested);
+                    if (requested || !intersects)
+                    {
+                        return;
+                    }
+
+                    EpisodeArtworkDiagnostics.RequestTransition(diagnosticCard, requested, true);
+                    requested = true;
+                    stopWatchingViewport();
+                    Artwork.LoadEpisodeCard(still, series, episode, detail.MediaFileId, 268, diagnosticCard);
+                };
+                startWatchingViewport = () =>
+                {
+                    if (!requested && !watchingViewport)
+                    {
+                        still.EffectiveViewportChanged += viewportChanged;
+                        watchingViewport = true;
+                    }
+                };
+                stopWatchingViewport = () =>
+                {
+                    if (watchingViewport)
+                    {
+                        still.EffectiveViewportChanged -= viewportChanged;
+                        watchingViewport = false;
+                    }
+                };
+                still.Loaded += (_, __) =>
+                {
+                    EpisodeArtworkDiagnostics.ImageLoaded(diagnosticCard, still.ActualWidth, still.ActualHeight, art.ActualWidth, art.ActualHeight);
+                    startWatchingViewport();
+                };
+                still.Unloaded += (_, __) => stopWatchingViewport();
+                startWatchingViewport();
                 art.Children.Add(still);
-                Artwork.LoadEpisode(still, series, episode, 268);
+            }
+
+            if (watch.Percent is { } percent)
+            {
+                // .tv-watch-progress: a 3 px brand line along the bottom edge on a 20 % white track.
+                var track = new Grid { Height = 3, VerticalAlignment = VerticalAlignment.Bottom, Background = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(51, 255, 255, 255)), IsHitTestVisible = false };
+                track.Children.Add(new Border { Width = Math.Max(3, 268 * percent / 100), HorizontalAlignment = HorizontalAlignment.Left, Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrBrand"] });
+                art.Children.Add(track);
+            }
+            else if (watch.Unwatched)
+            {
+                // .tv-watch-unseen: a brand dot with a white ring in the top right corner.
+                art.Children.Add(new Ellipse
+                {
+                    Width = 13,
+                    Height = 13,
+                    Margin = new Thickness(0, 10, 10, 0),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Fill = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrBrand"],
+                    Stroke = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false,
+                });
             }
 
             art.Children.Add(new TextBlock

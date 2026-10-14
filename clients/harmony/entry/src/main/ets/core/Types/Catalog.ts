@@ -109,3 +109,20 @@ export interface ViewSummary {
   is_default: boolean;
   default_order?: number | null;
 }
+
+/** One rail in `GET /api/v1/home/rails/preferences`: the rails the admin enabled, in the caller's order. */
+export interface RailPreferenceEntry {
+  id: string;
+  title: string;
+  hidden: boolean;
+}
+
+export interface RailPreferencesResponse {
+  rails: RailPreferenceEntry[];
+}
+
+/** `PUT /api/v1/home/rails/preferences` body: the full order plus the hidden set. */
+export interface RailPreferencesRequest {
+  order: string[];
+  hidden: string[];
+}

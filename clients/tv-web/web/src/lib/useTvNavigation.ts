@@ -34,7 +34,8 @@ import {
   pickNearestByEdgeDistance,
   titleGridNeighbourIndex,
 } from "./focusGeometry";
-import { isBackKey } from "./backKey";
+import { isBackKey, isVidaaBackKey } from "./backKey";
+import { IS_VIDAA } from "./clientPlatform";
 import { ensureLibraryIndex } from "./libraryIndexRegistry";
 import { runPageBack } from "./pageBack";
 
@@ -1765,8 +1766,7 @@ export function useTvNavigation(
       userInteracted = true;
       if (handleDirectionalKeyDown(event)) return;
 
-      const isBack =
-        isBackKey(event);
+      const isBack = IS_VIDAA ? isVidaaBackKey(event) : isBackKey(event);
       if (isBack) {
         // A dialog or panel already consumed this press.
         if (event.defaultPrevented) return;

@@ -69,7 +69,11 @@ sub init()
     m.profilesSignOutBtn = m.top.findNode("profilesSignOutBtn")
     m.profilesSettingsHit = m.top.findNode("profilesSettingsHit")
     m.profilesSignOutHit = m.top.findNode("profilesSignOutHit")
+    m.profilesClientsBtn = m.top.findNode("profilesClientsBtn")
+    m.profilesClientsFocus = m.top.findNode("profilesClientsFocus")
+    m.profilesClientsHit = m.top.findNode("profilesClientsHit")
     m.profilesFocusIndex = 0
+    m.profilesAddIndex = -1
     m.settingsGroup = m.top.findNode("settingsGroup")
     m.settingsSectionList = m.top.findNode("settingsSectionList")
     m.settingsDetail = m.top.findNode("settingsDetail")
@@ -79,7 +83,22 @@ sub init()
     m.libraryTitle = m.top.findNode("libraryTitle")
     m.homeGroup = m.top.findNode("homeGroup")
     m.homeStage = m.top.findNode("homeStage")
+    m.homeStage.findNode("homeRailFrostLayer").visible = true
+    m.homeHeroDetailTimer = m.top.findNode("homeHeroDetailTimer")
+    m.homeHeroFocusedWorkId = ""
+    m.homeHeroPendingWorkId = ""
+    m.pendingHomeHeroRequest = invalid
+    m.homeHeroRuntimeById = {}
     m.homeContent = m.homeStage.contentTarget
+    m.artTelemetryEnabled = false
+    if m.global.parityArtEnabled = true then m.artTelemetryEnabled = true
+    m.artGeneration = 0
+    m.artActiveGeneration = 0
+    m.artActiveScope = ""
+    m.artActiveHasArt = false
+    m.artExpectedSlots = []
+    m.browseArtTelemetryVersion = 0
+    m.browseArtTelemetryArmed = false
     m.navDock = m.top.findNode("navDock")
     m.navHighlights = []
     m.navIcons = []
@@ -107,6 +126,7 @@ sub init()
     m.browseTitle = m.top.findNode("browseTitle")
     m.browseCountLabel = m.top.findNode("browseCountLabel")
     m.browseKeyArt = m.top.findNode("browseKeyArt")
+    if m.browseKeyArt <> invalid then m.browseKeyArt.ObserveField("loadStatus", "onBrowseKeyArtLoadStatus")
     m.browseKeyArtFade = m.top.findNode("browseKeyArtFade")
     ThemeSetRole(m.browseKeyArtFade, "bg")
     m.browsePreviewKind = m.top.findNode("browsePreviewKind")
@@ -328,6 +348,9 @@ sub init()
     m.playerAutoHideTimer.ObserveField("fire", "hidePlayerControls")
     if m.browseKeyArtTimer <> invalid
         m.browseKeyArtTimer.ObserveField("fire", "onBrowseKeyArtTimer")
+    end if
+    if m.homeHeroDetailTimer <> invalid
+        m.homeHeroDetailTimer.ObserveField("fire", "onHomeHeroDetailTimer")
     end if
 
     m.requestBusy = false
@@ -631,9 +654,18 @@ sub flushPendingApiRequests()
         startApiRequest(req)
         return
     end if
-    if m.pendingApiQueue = invalid or m.pendingApiQueue.Count() = 0 then return
-    req = m.pendingApiQueue.Shift()
-    startApiRequest(req)
+    if m.pendingApiQueue.Count() > 0
+        req = m.pendingApiQueue.Shift()
+        startApiRequest(req)
+        return
+    end if
+    if m.pendingHomeHeroRequest <> invalid
+        req = m.pendingHomeHeroRequest
+        m.pendingHomeHeroRequest = invalid
+        if m.top.screenState = "home" and req.workId = m.homeHeroFocusedWorkId and m.homeHeroRuntimeById.Lookup(req.workId) = invalid
+            startApiRequest(req)
+        end if
+    end if
 end sub
 
 sub flushPendingPlaybackRequest()
@@ -661,6 +693,11 @@ sub onApiResult(event as Object)
         end if
         if action = "hostedLinkPoll" and result.status = 404
             beginHostedLink()
+            return
+        end if
+        if action = "homeHeroDetail"
+            if request.workId <> invalid then m.homeHeroRuntimeById[request.workId] = 0
+            flushPendingPlaybackRequest()
             return
         end if
         handleApiFailure(action, result)
@@ -741,6 +778,8 @@ sub onApiResult(event as Object)
         acceptWatchProgress(result.data)
     else if action = "homeWorkDetail"
         acceptHomeWorkDetail(result.data)
+    else if action = "homeHeroDetail"
+        acceptHomeHeroDetail(request.workId, result.data)
     else if action = "homeFallback"
         m.homeFallbackItems = filterHomePrimaryKinds(itemsFromCatalog(result.data))
         ' Web mergeRecent(series, movie, site) for Start watching; sites gated.
@@ -1313,6 +1352,7 @@ sub setThemePreference(preference as String)
     applyAppTheme()
     applyPairingChrome()
     applyProfilesChrome()
+    applyClientsChrome()
 end sub
 
 ' Recolour the whole scene for the resolved theme. The XML is authored with the dark literals; ThemeApplyTree maps each
@@ -1343,6 +1383,8 @@ sub onPairingThemeDialogButton(event as Object)
     if m.top.screenState = "profiles"
         if m.profilesThemeHit <> invalid then m.profilesThemeHit.SetFocus(true)
         applyProfilesChromeFocus()
+    else if m.top.screenState = "page" and m.pageKind = "clients"
+        focusClientsHeader("clientsTheme")
     else if m.pairingThemeHit <> invalid
         m.pairingThemeHit.SetFocus(true)
     end if
@@ -1356,9 +1398,12 @@ sub onPairingLanguageDialogButton(event as Object)
     settingsRefresh()
     refreshPairingCopy()
     applyProfilesChrome()
+    applyClientsChrome()
     if m.top.screenState = "profiles"
         if m.profilesLangHit <> invalid then m.profilesLangHit.SetFocus(true)
         applyProfilesChromeFocus()
+    else if m.top.screenState = "page" and m.pageKind = "clients"
+        focusClientsHeader("clientsLanguage")
     else if m.pairingLangHit <> invalid
         m.pairingLangHit.SetFocus(true)
     end if
@@ -1563,6 +1608,15 @@ sub focusProfilesRowOnCurrent()
     m.profilesRow.SetFocus(true)
 end sub
 
+' Private parity diagnostics report the visible profile label, never account ids or credentials.
+sub emitProfileFocusTelemetry(index as Integer)
+    if m.profiles = invalid or index < 0 or index >= m.profiles.Count() then return
+    profile = m.profiles[index]
+    if profile <> invalid and profile.display_name <> invalid and profile.display_name <> ""
+        parityEmit("focus", profile.display_name)
+    end if
+end sub
+
 ' Web TvStageChrome + profile-actions under the focused avatar.
 sub applyProfilesChrome()
     theme = ResolvePairingTheme(m.themePreference)
@@ -1620,6 +1674,7 @@ sub applyProfilesChromeFocus()
     langF = m.profilesLangHit <> invalid and m.profilesLangHit.IsInFocusChain()
     settingsF = m.profilesSettingsHit <> invalid and m.profilesSettingsHit.IsInFocusChain()
     signOutF = m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
+    clientsF = m.profilesClientsHit <> invalid and m.profilesClientsHit.IsInFocusChain()
     if m.profilesThemePill <> invalid then m.profilesThemePill.uri = pairingChromeUri("theme", themeF)
     if m.profilesLangPill <> invalid then m.profilesLangPill.uri = pairingChromeUri("lang", langF)
     ' Gear and Sign out images have a light-theme twin (theme tokens, brand red kept).
@@ -1638,6 +1693,13 @@ sub applyProfilesChromeFocus()
         else
             m.profilesSignOutBtn.uri = "pkg:/images/profiles-signout" + suffix + ".png"
         end if
+    end if
+    if m.profilesClientsFocus <> invalid
+        m.profilesClientsFocus.visible = clientsF
+        m.profilesClientsFocus.blendColor = ThemeColor("focusRing")
+    end if
+    if m.profilesClientsBtn <> invalid
+        m.profilesClientsBtn.uri = "pkg:/images/profiles-clients" + suffix + ".png"
     end if
 end sub
 
@@ -1668,7 +1730,6 @@ sub updateProfileActionsLayout()
         m.profilesSignOutHit.visible = true
         m.profilesSignOutHit.focusable = true
     end if
-
     targetIndex = m.profilesFocusIndex
     if targetIndex = invalid then targetIndex = 0
     if targetIndex < 0 or targetIndex >= m.profiles.Count()
@@ -1707,6 +1768,9 @@ sub onProfilesRowFocused(event as Object)
     position = event.GetData()
     if position = invalid or position.Count() < 2 then return
     m.profilesFocusIndex = position[1]
+    if m.profilesRow <> invalid and m.profilesRow.HasFocus()
+        emitProfileFocusTelemetry(position[1])
+    end if
     updateProfileActionsLayout()
 end sub
 
@@ -1790,8 +1854,7 @@ sub buildProfileAvatarContent(profiles as Object)
     ' Real tv-web's own "+" circle (confirmed live: Profiles.tsx renders it
     ' as a genuine extra avatar-shaped button in the same row, titled "Sign
     ' in" / "ADD ANOTHER PROFILE"), not a separate text menu item -- this
-    ' was "Link another profile" in profileActions below until this pass;
-    ' onProfileSelected (below) detects this by index = list.Count().
+    ' was "Link another profile" in profileActions below until this pass.
     addItem = rowNode.CreateChild("ContentNode")
     addItem.title = "Sign in"
     addItem.AddField("presetId", "string", false)
@@ -1803,6 +1866,9 @@ sub buildProfileAvatarContent(profiles as Object)
     addItem.AddField("statusText", "string", false)
     addItem.statusText = "ADD ANOTHER PROFILE"
     ' Keep full status line (was truncating as "ADD ANOTHER…").
+    ' Capture the row index after the zero-profile fallback viewer has been
+    ' added, so D-pad routing identifies the actual synthetic Sign in item.
+    m.profilesAddIndex = list.Count()
     list.Push(addItem)
 
     ' 368px item boxes contain the translated 336px shadow at 1.09 scale,
@@ -2364,6 +2430,9 @@ end sub
 ' ---------------------------------------------------------------------------
 
 sub openBrowse(kind as String, label as String)
+    m.artActiveGeneration = 0
+    m.artActiveScope = ""
+    m.browseArtTelemetryArmed = false
     m.browseKind = kind
     parityEmit("browse", kind)
     m.browseLabel = label
@@ -2427,7 +2496,15 @@ sub acceptBrowseCatalog(data as Object, append as Boolean)
     showOnly("browse")
     m.top.screenState = "browse"
     m.browseGrid.SetFocus(true)
-    if not append then updateBrowsePreview(m.browseItems[0])
+    if not append and m.browseItems.Count() > 0
+        updateBrowsePreview(m.browseItems[0])
+    else if append and m.artActiveGeneration > 0
+        declareCurrentBrowsePreviewArt(m.artActiveGeneration)
+    end if
+    if m.artActiveGeneration > 0
+        announceArtGeneration(m.artActiveGeneration, m.artActiveScope, m.artActiveHasArt)
+        finishArtGeneration(m.artActiveGeneration, m.artActiveScope)
+    end if
 end sub
 
 ' Library heading (web .page-header h1: 33.6 px, weight 580, -0.045em tracking).
@@ -2441,6 +2518,14 @@ sub rebuildBrowseContent()
     ' client-side so the first page matches web freezes.
     if m.browseSort = "title"
         m.browseItems = sortWorksByTitleNumeric(m.browseItems, m.browseOrder)
+    end if
+    m.artActiveGeneration = 0
+    m.artActiveScope = ""
+    if m.artTelemetryEnabled and (m.browseKind = "movie" or m.browseKind = "series")
+        m.artActiveScope = "movies"
+        if m.browseKind = "series" then m.artActiveScope = "series"
+        m.artActiveHasArt = worksHaveCardArt(m.browseItems)
+        m.artActiveGeneration = beginArtGeneration(m.artActiveScope)
     end if
     buildGridContent(m.browseGrid, m.browseItems, browseCardScale())
     ' Web heading: h1 = "Movies", span = "1,730 TITLES" (not "50 of 1730").
@@ -2764,6 +2849,17 @@ sub updateBrowsePreview(work as Object)
     if m.browseKeyArt <> invalid
         uri = heroArtworkUrl(work)
         m.browseKeyArtPendingUri = uri
+        if m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
+            m.browseArtTelemetryVersion += 1
+            m.browseArtTelemetryArmed = false
+            previewSlot = m.artActiveScope + "-preview"
+            if uri <> ""
+                emitArtSlot(m.artActiveGeneration, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+                emitArtStatus(m.artActiveGeneration, m.artActiveScope, previewSlot, "pending", m.browseArtTelemetryVersion)
+            else
+                emitArtOptionalEmpty(m.artActiveGeneration, m.artActiveScope, previewSlot, m.browseArtTelemetryVersion)
+            end if
+        end if
         if uri = ""
             m.browseKeyArt.uri = ""
             m.browseKeyArt.visible = false
@@ -2780,6 +2876,7 @@ sub onBrowseKeyArtTimer()
     uri = m.browseKeyArtPendingUri
     if m.browseKeyArt = invalid then return
     if uri = invalid or uri = ""
+        m.browseArtTelemetryArmed = false
         m.browseKeyArt.uri = ""
         m.browseKeyArt.visible = false
         return
@@ -2793,10 +2890,42 @@ sub onBrowseKeyArtTimer()
     m.browseKeyArt.SetHttpAgent(agent)
     m.browseKeyArt.loadWidth = 1038
     m.browseKeyArt.loadHeight = 1191
+    m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
     m.browseKeyArt.uri = uri
+    if m.browseArtTelemetryArmed
+        emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "pending", m.browseArtTelemetryVersion)
+        sampleBrowseKeyArtStatus()
+    end if
     if Instr(1, uri, "style=stage-light") > 0 then m.browseKeyArt.opacity = 0.15 else if Instr(1, uri, "style=stage") > 0 then m.browseKeyArt.opacity = 0.15 else m.browseKeyArt.opacity = 0.4
     m.browseKeyArt.visible = true
     m.browseKeyArtFade.visible = true
+end sub
+
+sub onBrowseKeyArtLoadStatus()
+    sampleBrowseKeyArtStatus()
+end sub
+
+sub sampleBrowseKeyArtStatus()
+    if not m.browseArtTelemetryArmed then return
+    if m.browseKeyArt.loadStatus = "ready"
+        emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "ready", m.browseArtTelemetryVersion)
+    else if m.browseKeyArt.loadStatus = "failed"
+        emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "failed", m.browseArtTelemetryVersion)
+    end if
+end sub
+
+sub declareCurrentBrowsePreviewArt(generation as Integer)
+    uri = m.browseKeyArtPendingUri
+    if uri = invalid or uri = ""
+        m.browseArtTelemetryArmed = false
+        return
+    end if
+    if m.browseArtTelemetryVersion < 1 then m.browseArtTelemetryVersion = 1
+    m.browseArtTelemetryArmed = true
+    previewSlot = m.artActiveScope + "-preview"
+    emitArtSlot(generation, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+    emitArtStatus(generation, m.artActiveScope, previewSlot, "pending", m.browseArtTelemetryVersion)
+    if m.browseKeyArt.uri = uri then sampleBrowseKeyArtStatus()
 end sub
 
 ' Flat-content counterpart to buildRailContent() below: MarkupGrid takes one
@@ -2805,6 +2934,7 @@ end sub
 sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
     root = CreateObject("roSGNode", "ContentNode")
     headers = ClientHeaders(m.accessToken)
+    artIndex = 0
     for each work in works
         item = root.CreateChild("ContentNode")
         item.id = work.id
@@ -2858,6 +2988,22 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
                 item.subtitleOverride = line
             end if
         end if
+        if grid.id = "browseGrid" and m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0 and m.browseView = "screen"
+            columns = m.browseGrid.numColumns
+            if columns < 1 then columns = 3
+            column = artIndex mod columns
+            rowIndex = Int(artIndex / columns)
+            x = m.browseGrid.translation[0] + column * (m.browseGrid.itemSize[0] + m.browseGrid.itemSpacing[0])
+            y = m.browseGrid.translation[1] + rowIndex * (m.browseGrid.itemSize[1] + m.browseGrid.itemSpacing[1]) + item.padTop
+            artWidth = 220 * cardScale
+            artHeight = 124 * cardScale
+            slot = m.artActiveScope + "-r" + rowIndex.ToStr() + "-c" + column.ToStr()
+            if artRectVisible(x, y, artWidth, artHeight)
+                addPosterArtTelemetry(item, m.artActiveGeneration, m.artActiveScope, slot, 0)
+                emitArtSlot(m.artActiveGeneration, m.artActiveScope, slot, item.hdPosterUrl <> "", x, y, artWidth, artHeight, 0)
+            end if
+        end if
+        artIndex += 1
     end for
     grid.content = root
 end sub
@@ -3364,12 +3510,20 @@ end sub
 ' the first place. Content is rebuilt with the correct flag both at initial
 ' finishHomeLoad() (only rail 0 active) and on every moveHomeFocus() rail
 ' switch (old rail rebuilt false, new rail rebuilt true).
-sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardScale = 0.995 as Float)
+sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardScale = 0.995 as Float, artGeneration = 0 as Integer, artScope = "" as String, artRow = -1 as Integer)
     root = CreateObject("roSGNode", "ContentNode")
     rowNode = root.CreateChild("ContentNode")
     headers = ClientHeaders(m.accessToken)
     activeRailFactor = 0.0
     if isActive then activeRailFactor = 1.0
+    artRowIndex = artRow
+    if artRowIndex < 0 then artRowIndex = homeRailIndex(row)
+    generation = artGeneration
+    scope = artScope
+    if generation = 0 and m.artActiveScope = "home" then generation = m.artActiveGeneration
+    if scope = "" then scope = m.artActiveScope
+    artEnabledForRow = m.artTelemetryEnabled and scope = "home" and generation > 0 and artRowIndex >= 0
+    artCardIndex = 0
     for each work in works
         item = rowNode.CreateChild("ContentNode")
         item.id = work.id
@@ -3396,12 +3550,31 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         item.artHeaders = artworkHeaders(item.hdPosterUrl, headers)
         item.AddField("activeRailFactor", "float", false)
         item.activeRailFactor = activeRailFactor
-        ' Similar Titles (detailSimilar) passes 1.5 to match the real,
-        ' larger .tv-title-card sizing used there -- see PosterCard.xml's
-        ' cardScale comment. Home's rails never pass this, so it defaults
-        ' to a no-op 1.
+        item.AddField("focusRingOutsideArt", "boolean", false)
+        item.focusRingOutsideArt = homeRailIndex(row) >= 0
+        item.AddField("homeCardFocusStyle", "boolean", false)
+        item.homeCardFocusStyle = homeRailIndex(row) >= 0
+        ' Home and Similar Titles pass scaled art dimensions to match their
+        ' respective web cards. homeCardFocusStyle separates Home's 6px /
+        ' 1.025 focus transform from the larger layout scale.
         item.AddField("cardScale", "float", false)
         item.cardScale = cardScale
+        if artEnabledForRow
+            focusOffset = 0
+            if row.focusXOffset <> invalid and row.focusXOffset.Count() > 0 then focusOffset = row.focusXOffset[0]
+            artInsetX = 8
+            artInsetY = 15
+            artX = m.homeContent.translation[0] + row.translation[0] + focusOffset + artInsetX + artCardIndex * (row.rowItemSize[0][0] + row.rowItemSpacing[0][0])
+            artY = m.homeContent.translation[1] + m.homeRailPool[artRowIndex].group.translation[1] + row.translation[1] + artInsetY
+            artW = row.rowItemSize[0][0] - (artInsetX * 2)
+            artH = artW * 9 / 16
+            artSlotName = "home-r" + artRowIndex.ToStr() + "-c" + artCardIndex.ToStr()
+            if artRectVisible(artX, artY, artW, artH)
+                addPosterArtTelemetry(item, generation, "home", artSlotName, 0)
+                emitArtSlot(generation, "home", artSlotName, item.hdPosterUrl <> "", artX, artY, artW, artH, 0)
+            end if
+        end if
+        artCardIndex += 1
     end for
     row.content = root
 end sub
@@ -3567,9 +3740,13 @@ function createHomeRail(contentTarget as Object) as Object
     group = CreateObject("roSGNode", "Group")
     group.visible = false
 
-    ' Rail heading (web .tv-rail h2: 17.7 px, weight 610, -0.03em tracking), drawn glyph by glyph (TrackedText).
+    ' Rail heading matches Web's uniform .tv-rail h2 typography; focus changes the card, not the heading.
     title = CreateObject("roSGNode", "TrackedText")
-    title.translation = [0, 0]
+    title.translation = [0, -21]
+    ' Fresh 1920x1080 r11 Web glyph bounds are about 4% wider for both
+    ' Home rail headings. Widen only the tracked heading group so its font
+    ' size, line height, tracking and vertical alignment stay unchanged.
+    title.scale = [1.04, 1]
     group.AppendChild(title)
 
     row = CreateObject("roSGNode", "RowList")
@@ -3589,12 +3766,14 @@ function createHomeRail(contentTarget as Object) as Object
     ' landscape thumbnail, 220x124 art + 220x165 total card, 24px gap) --
     ' see PosterCard.xml's header comment for the full measurement notes.
     ' The viewport starts 96 px left of the track so scrolled cards continue into the gutter, where the scroll fade covers them.
-    row.itemSize = [1134, 250]
-    ' RowList rounds item geometry to whole pixels: a 220 box on a 244 pitch (web 243.8) with the art drawn 218.9 wide.
-    ' Web Home cards are 327 x 184 art on a 352 px pitch (measured on the live web: rects of the card images).
-    row.rowItemSize = [[327, 250]]
-    row.rowItemSpacing = [[25, 0]]
-    row.rowHeights = [250]
+    row.itemSize = [1134, 320]
+    ' Home reserves 8 px horizontally and 15 px vertically for the focused
+    ' card's lifted/scaled outer ring. The extra item height contains the
+    ' full shadow canvas below the art, so its blur fades before the RowList
+    ' clip instead of ending at the old 262 px row boundary.
+    row.rowItemSize = [[343, 320]]
+    row.rowItemSpacing = [[9, 0]]
+    row.rowHeights = [320]
     row.showRowLabel = false
     row.focusXOffset = [96]
     row.rowFocusAnimationStyle = "floatingFocus"
@@ -3603,7 +3782,7 @@ function createHomeRail(contentTarget as Object) as Object
     ' focus-ring bitmap, which would otherwise draw an unwanted white
     ' outline with no basis in tv-web's actual CSS.
     row.focusBitmapBlendColor = &h00000000
-    row.translation = [-96, 41.1]
+    row.translation = [-104, 26.1]
     group.AppendChild(row)
 
     contentTarget.AppendChild(group)
@@ -4037,8 +4216,29 @@ sub finishHomeLoad()
         pooled.group.visible = false
     end for
 
+    m.artActiveGeneration = 0
+    m.artActiveScope = ""
+    homeHasArt = worksHaveHomeArt(candidates)
+    if m.artTelemetryEnabled
+        m.artActiveScope = "home"
+        m.artActiveHasArt = homeHasArt
+        m.artActiveGeneration = beginArtGeneration("home")
+        heroUri = heroArtworkUrl(candidates[0].works[0])
+        m.homeStage.artTelemetryGeneration = m.artActiveGeneration
+        m.homeStage.artTelemetryScope = "home"
+        m.homeStage.artTelemetrySlot = "home-hero"
+        m.homeStage.artTelemetryVersion = 0
+        m.homeStage.artTelemetryActive = heroUri <> ""
+        if heroUri <> ""
+            emitArtSlot(m.artActiveGeneration, "home", "home-hero", true, -20, -22.9, 1038, 1191, 0)
+        end if
+    else
+        m.homeStage.artTelemetryActive = false
+    end if
     ' The hero art is the slowest download (a 4 MB stage image): request it before the cards so it is first in the queue.
     updateHeroFromWork(candidates[0].works[0])
+    ' Reset scroll before deriving current screen-space art slots.
+    m.homeContent.translation = [881.6, 422.9]
     m.visibleRails = []
     y = 0
     railIndex = 0
@@ -4048,10 +4248,10 @@ sub finishHomeLoad()
         rail.group.visible = true
         rail.group.translation = [0, y]
         rail.label = candidate.label
-        setRailTitle(rail, railIndex = 0)
+        setRailTitle(rail)
         isActiveRail = false
         if railIndex = 0 then isActiveRail = true
-        buildRailContent(rail.row, rail.works, isActiveRail, 1.4864)
+        buildRailContent(rail.row, rail.works, isActiveRail, 1.4864, m.artActiveGeneration, "home", railIndex)
         m.visibleRails.Push({ row: rail.row, works: rail.works, first: 0, col: 0, last: 0, jumping: -1, rightAligned: false })
         ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards).
         y += 366
@@ -4063,7 +4263,6 @@ sub finishHomeLoad()
     ' scrollHomeToFocusedRail) -- the entrance animation only plays once
     ' ever (m.homeShown below), so a return trip to Home would otherwise
     ' keep whatever scroll position Back left it at.
-    m.homeContent.translation = [881.6, 422.9]
     showOnly("home")
     m.top.screenState = "home"
     ' Reveal rails/hero first, then load key-art. Key-art used to block the
@@ -4082,10 +4281,16 @@ sub finishHomeLoad()
     end if
     updateHeroFromWork(m.visibleRails[0].works[0])
     m.visibleRails[0].row.SetFocus(true)
+    if m.artActiveGeneration > 0
+        announceArtGeneration(m.artActiveGeneration, "home", homeHasArt)
+        finishArtGeneration(m.artActiveGeneration, "home")
+    end if
 end sub
 
 sub updateHeroFromWork(work as Object)
     if work = invalid then return
+    workId = JsonString(work.id)
+    m.homeHeroFocusedWorkId = workId
     m.homeStage.stageTitle = work.title
     ' Web hero kicker is "SERIES · CRIME" (kind + first genre), not bare kind.
     kicker = UCase(work.kind)
@@ -4101,12 +4306,60 @@ sub updateHeroFromWork(work as Object)
         if meta <> "" then meta += "  •  "
         meta += joinStrings(work.genres, ", ")
     end if
-    ' Web Home shows no meta row under the hero title (year and genres live on the detail page).
+    ' Web Home shows the focused work's runtime when its detail has loaded; year and genres stay on the detail page.
     m.homeStage.stageMeta = ""
+    if workId <> ""
+        runtimeMs = m.homeHeroRuntimeById.Lookup(workId)
+        if runtimeMs <> invalid
+            m.homeStage.stageMeta = formatRuntime(runtimeMs)
+        else if m.homeHeroDetailTimer <> invalid
+            m.homeHeroPendingWorkId = workId
+            m.homeHeroDetailTimer.control = "stop"
+            m.homeHeroDetailTimer.duration = 0.35
+            m.homeHeroDetailTimer.control = "start"
+        end if
+    end if
     overview = ""
     if work.overview <> invalid then overview = work.overview
     m.homeStage.stageOverview = overview
     setStageKeyArt(m.homeStage, heroArtworkUrl(work))
+end sub
+
+sub onHomeHeroDetailTimer()
+    if m.homeHeroDetailTimer <> invalid then m.homeHeroDetailTimer.control = "stop"
+    workId = m.homeHeroPendingWorkId
+    m.homeHeroPendingWorkId = ""
+    if workId = "" or m.top.screenState <> "home" or workId <> m.homeHeroFocusedWorkId then return
+    if m.homeHeroRuntimeById.Lookup(workId) <> invalid then return
+    request = {
+        action: "homeHeroDetail"
+        method: "GET"
+        path: "/api/v1/catalog/" + UrlEncode(workId)
+        url: m.serverUrl + "/api/v1/catalog/" + UrlEncode(workId)
+        body: invalid
+        accessToken: m.accessToken
+        workId: workId
+    }
+    if m.requestBusy or m.pendingApiQueue.Count() > 0
+        m.pendingHomeHeroRequest = request
+    else
+        startApiRequest(request)
+    end if
+end sub
+
+sub acceptHomeHeroDetail(workId as Dynamic, data as Dynamic)
+    if workId = invalid then return
+    if workId = "" then return
+    runtimeMs = 0
+    if data <> invalid
+        if data.runtime_ms <> invalid
+            if data.runtime_ms > 0 then runtimeMs = data.runtime_ms
+        end if
+    end if
+    m.homeHeroRuntimeById[workId] = runtimeMs
+    if m.top.screenState = "home" and m.homeHeroFocusedWorkId = workId
+        m.homeStage.stageMeta = formatRuntime(runtimeMs)
+    end if
 end sub
 
 ' Authenticated artwork proxy for TvStage key-art Posters (Bearer required).
@@ -4183,7 +4436,12 @@ sub homeRailTrack(row as Object, idx as Integer)
                 ' further right than the whole-card step the RowList takes, moving left it lines up with the track start.
                 shift = 0.0
                 if rail.rightAligned = true and rail.first > 0 then shift = 33.9
-                rail.row.translation = [-96 + shift, 41.1]
+                ' Keep the card artwork at the same origin used when the rail
+                ' is created. Home RowList items reserve 8px horizontally and
+                ' 15px vertically for the outer focus ring, so the pre-clearance
+                ' tracking origin [-96, 41.1] displaced every focused card.
+                ' Preserve only the web-matched horizontal scroll adjustment.
+                rail.row.translation = [-104 + shift, 26.1]
             end if
             rail.last = idx
             return
@@ -4191,26 +4449,11 @@ sub homeRailTrack(row as Object, idx as Integer)
     end for
 end sub
 
-' The focused rail's heading is drawn 1.158 times larger (web scales the active rail's h2); the others use the base size.
-sub setRailTitle(rail as Object, active as Boolean)
+' Home headings keep the same Web typography regardless of which rail owns card focus.
+sub setRailTitle(rail as Object)
     if rail.label = invalid then return
-    if active
-        rail.title.spec = { text: rail.label, size: 20, weight: 600, tracking: -0.614, role: "ink" }
-        rail.title.translation = [0, -2]
-    else
-        rail.title.spec = { text: rail.label, size: 18, weight: 600, tracking: -0.53, role: "ink" }
-        rail.title.translation = [0, 3]
-    end if
-end sub
-
-sub homeRailTitleFocus(railIndex as Integer, active as Boolean)
-    if railIndex < 0 or railIndex >= m.visibleRails.Count() then return
-    for each rail in m.homeRailPool
-        if rail.row.isSameNode(m.visibleRails[railIndex].row)
-            setRailTitle(rail, active)
-            return
-        end if
-    end for
+    rail.title.spec = { text: rail.label, size: 18, weight: 600, tracking: -0.53, role: "ink" }
+    rail.title.translation = [0, -21]
 end sub
 
 sub onHomeItemSelected(event as Object)
@@ -4254,8 +4497,7 @@ function moveHomeFocus(delta as Integer) as Boolean
     if oldIndex >= 0 and oldIndex < m.visibleRails.Count()
         oldRail = m.visibleRails[oldIndex]
         oldRail.row.SetFocus(false)
-        buildRailContent(oldRail.row, oldRail.works, false)
-        homeRailTitleFocus(oldIndex, false)
+        buildRailContent(oldRail.row, oldRail.works, false, 1.4864)
     end if
     m.homeFocusIndex = newIndex
     newRail = m.visibleRails[newIndex]
@@ -4272,8 +4514,7 @@ function moveHomeFocus(delta as Integer) as Boolean
         newRail.last = desired
         newRail.row.jumpToRowItem = [0, desired]
     end if
-    buildRailContent(newRail.row, newRail.works, true)
-    homeRailTitleFocus(newIndex, true)
+    buildRailContent(newRail.row, newRail.works, true, 1.4864)
     newRail.row.SetFocus(true)
     if desired = 0 and m.homeLeftProxy <> invalid then m.homeLeftProxy.SetFocus(true)
     scrollHomeToFocusedRail()
@@ -6384,11 +6625,110 @@ sub showStatus(title as String, message as String, busy as Boolean)
     m.top.SetFocus(true)
 end sub
 
-' Parity-suite hook (scripts/parity/roku/driver.mjs reads the debug console): one "PARITY|<kind>|<text>" line per screen change
+' Parity-suite hook (scripts/parity/drivers/roku.mjs reads the debug console): one "PARITY|<kind>|<text>" line per screen change
 ' and focus change. The Roku has no accessibility query over ECP, so the driver learns the screen and the focused item from here.
 sub parityEmit(kind as String, text as String)
     print "PARITY|" + kind + "|" + text
 end sub
+
+function beginArtGeneration(scope as String) as Integer
+    if not m.artTelemetryEnabled then return 0
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return 0
+    m.artGeneration += 1
+    m.artActiveGeneration = m.artGeneration
+    m.artActiveScope = scope
+    m.artExpectedSlots = []
+    return m.artGeneration
+end function
+
+sub announceArtGeneration(generation as Integer, scope as String, hasArt as Boolean)
+    if not m.artTelemetryEnabled or generation < 1 then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    hasArtText = "0"
+    if hasArt then hasArtText = "1"
+    parityEmit("art", "begin|" + generation.ToStr() + "|" + scope + "|" + hasArtText + "|" + m.artExpectedSlots.Count().ToStr())
+end sub
+
+sub finishArtGeneration(generation as Integer, scope as String)
+    if not m.artTelemetryEnabled or generation < 1 then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    parityEmit("art", "finish|" + generation.ToStr() + "|" + scope)
+end sub
+
+sub emitArtSlot(generation as Integer, scope as String, slot as String, hasSource as Boolean, x as Float, y as Float, width as Float, height as Float, version as Integer)
+    if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if not artRectVisible(x, y, width, height) then return
+    hasSourceText = "0"
+    if hasSource then hasSourceText = "1"
+    found = false
+    for each existingSlot in m.artExpectedSlots
+        if existingSlot = slot then found = true
+    end for
+    if not found then m.artExpectedSlots.Push(slot)
+    parityEmit("art", "slot|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + hasSourceText + "|" + x.ToStr() + "|" + y.ToStr() + "|" + width.ToStr() + "|" + height.ToStr() + "|" + version.ToStr())
+end sub
+
+sub emitArtStatus(generation as Integer, scope as String, slot as String, status as String, version as Integer)
+    if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
+    parityEmit("art", "status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr())
+end sub
+
+sub emitArtOptionalEmpty(generation as Integer, scope as String, slot as String, version as Integer)
+    if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
+    if (scope <> "movies" and scope <> "series") or slot <> (scope + "-preview") then return
+    remaining = []
+    for each expectedSlot in m.artExpectedSlots
+        if expectedSlot <> slot then remaining.Push(expectedSlot)
+    end for
+    m.artExpectedSlots = remaining
+    parityEmit("art", "optional-empty|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + version.ToStr())
+end sub
+
+sub addPosterArtTelemetry(item as Object, generation as Integer, scope as String, slot as String, version as Integer)
+    if item = invalid or generation < 1 then return
+    item.AddField("parityArtRequired", "boolean", false)
+    item.parityArtRequired = true
+    item.AddField("parityArtGeneration", "integer", false)
+    item.parityArtGeneration = generation
+    item.AddField("parityArtScope", "string", false)
+    item.parityArtScope = scope
+    item.AddField("parityArtSlot", "string", false)
+    item.parityArtSlot = slot
+    item.AddField("parityArtVersion", "integer", false)
+    item.parityArtVersion = version
+end sub
+
+function artRectVisible(x as Float, y as Float, width as Float, height as Float) as Boolean
+    return width > 0 and height > 0 and x < 1920 and y < 1080 and x + width > 0 and y + height > 0
+end function
+
+function worksHaveCardArt(works as Object) as Boolean
+    if works = invalid then return false
+    for each work in works
+        if cardArtworkUrl(work) <> "" then return true
+    end for
+    return false
+end function
+
+function worksHaveHomeArt(candidates as Object) as Boolean
+    if candidates = invalid then return false
+    for each candidate in candidates
+        if worksHaveCardArt(candidate.works) then return true
+        if candidate.works.Count() > 0 and heroArtworkUrl(candidate.works[0]) <> "" then return true
+    end for
+    return false
+end function
+
+function homeRailIndex(row as Object) as Integer
+    if row = invalid then return -1
+    for index = 0 to m.homeRailPool.Count() - 1
+        if m.homeRailPool[index].row.isSameNode(row) then return index
+    end for
+    return -1
+end function
 
 function parityWorkLabel(work as Object) as String
     year = ""
@@ -6400,7 +6740,8 @@ sub showOnly(name as String)
     parityEmit("screen", name)
     ' tv-web Profiles is a full-canvas picker with no left nav dock / clock chrome.
     ' Hide the signed-in shell on pre-auth and profiles so those screens match web.
-    m.persistentHeader.visible = name <> "status" and name <> "pairing" and name <> "profiles"
+    clientsIndex = name = "page" and m.pageKind = "clients"
+    m.persistentHeader.visible = name <> "status" and name <> "pairing" and name <> "profiles" and not clientsIndex
     m.statusGroup.visible = name = "status"
     m.pairingGroup.visible = name = "pairing"
     m.profilesGroup.visible = name = "profiles"
@@ -6737,6 +7078,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         else if m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
             signOutFromProfiles()
             return true
+        else if m.profilesClientsHit <> invalid and m.profilesClientsHit.IsInFocusChain()
+            openPage("clients")
+            return true
         end if
     else if state = "profiles" and key = "right"
         if m.profilesThemeHit <> invalid and m.profilesThemeHit.IsInFocusChain()
@@ -6745,6 +7089,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             return true
         else if m.profilesSettingsHit <> invalid and m.profilesSettingsHit.IsInFocusChain()
             if m.profilesSignOutHit <> invalid then m.profilesSignOutHit.SetFocus(true)
+            applyProfilesChromeFocus()
+            return true
+        else if m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
+            if m.profilesClientsHit <> invalid then m.profilesClientsHit.SetFocus(true)
             applyProfilesChromeFocus()
             return true
         end if
@@ -6757,6 +7105,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             if m.profilesSettingsHit <> invalid then m.profilesSettingsHit.SetFocus(true)
             applyProfilesChromeFocus()
             return true
+        else if m.profilesClientsHit <> invalid and m.profilesClientsHit.IsInFocusChain()
+            if m.profilesSignOutHit <> invalid then m.profilesSignOutHit.SetFocus(true)
+            applyProfilesChromeFocus()
+            return true
         end if
     else if state = "profiles" and key = "down"
         if m.profilesThemeHit <> invalid and m.profilesThemeHit.IsInFocusChain() or (m.profilesLangHit <> invalid and m.profilesLangHit.IsInFocusChain())
@@ -6764,14 +7116,23 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             applyProfilesChromeFocus()
             return true
         else if m.profilesRow.HasFocus()
+            if m.profilesFocusIndex = m.profilesAddIndex and m.profilesClientsHit <> invalid
+                m.profilesClientsHit.SetFocus(true)
+                applyProfilesChromeFocus()
+                return true
+            end if
             if m.profileActionsGroup <> invalid and m.profileActionsGroup.visible
                 if m.profilesSettingsHit <> invalid then m.profilesSettingsHit.SetFocus(true)
                 applyProfilesChromeFocus()
                 return true
             end if
+        else if m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()
+            if m.profilesClientsHit <> invalid then m.profilesClientsHit.SetFocus(true)
+            applyProfilesChromeFocus()
+            return true
         end if
     else if state = "profiles" and key = "up"
-        if m.profilesSettingsHit <> invalid and m.profilesSettingsHit.IsInFocusChain() or (m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain())
+        if m.profilesSettingsHit <> invalid and m.profilesSettingsHit.IsInFocusChain() or (m.profilesSignOutHit <> invalid and m.profilesSignOutHit.IsInFocusChain()) or (m.profilesClientsHit <> invalid and m.profilesClientsHit.IsInFocusChain())
             if m.profilesRow <> invalid then m.profilesRow.SetFocus(true)
             applyProfilesChromeFocus()
             return true

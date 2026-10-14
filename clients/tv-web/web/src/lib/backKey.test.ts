@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasOpenBackLayer, isBackKey } from "./backKey";
+import { hasOpenBackLayer, isBackKey, isVidaaBackKey } from "./backKey";
 
 const key = (key: string, extra: Record<string, unknown> = {}) =>
   ({ key, ...extra }) as unknown as KeyboardEvent;
@@ -36,6 +36,29 @@ describe("isBackKey", () => {
   it("ignores modified Backspace and Escape", () => {
     expect(isBackKey(key("Backspace", { altKey: true }))).toBe(false);
     expect(isBackKey(key("Escape", { ctrlKey: true }))).toBe(false);
+  });
+});
+
+describe("isVidaaBackKey", () => {
+  it("routes VIDAA Back from an empty Search input", () => {
+    const input = { tagName: "INPUT", type: "search", value: "" };
+    expect(isVidaaBackKey(key("Backspace", { keyCode: 8, target: input }))).toBe(true);
+  });
+
+  it("preserves text editing and only broadens the empty Search input case", () => {
+    const populatedSearch = { tagName: "INPUT", type: "search", value: "sample" };
+    const textInput = { tagName: "INPUT", type: "text", value: "" };
+    expect(isVidaaBackKey(key("Backspace", { keyCode: 8, target: populatedSearch }))).toBe(false);
+    expect(isVidaaBackKey(key("Backspace", { keyCode: 8, target: textInput }))).toBe(false);
+    expect(isBackKey(key("Backspace", { keyCode: 8, target: textInput }))).toBe(false);
+    expect(
+      isBackKey(
+        key("Backspace", {
+          keyCode: 8,
+          target: { tagName: "INPUT", type: "search", value: "" },
+        })
+      )
+    ).toBe(false);
   });
 });
 

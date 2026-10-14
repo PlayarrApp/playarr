@@ -65,6 +65,7 @@
  * on the topmost rail's own item content to target it explicitly.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -74,6 +75,7 @@ import type { RgbaColor } from '../../core/Tokens';
 import { FOCUS_LIFT } from './FocusLift';
 import { ProfileAvatar } from './ProfileAvatar';
 import { resolveAvatarPreset } from '../../core/AvatarPreset';
+import { syncCurrentAvatar } from '../../data/ProfileRepository';
 import { clientVersion } from '../../core/AppConfig';
 
 /** The id the rail reports when the profile tile is activated. */
@@ -174,7 +176,7 @@ struct NavTile {
         .draggable(false)
         .focusable(false)
 
-      Text(this.item.label)
+      Text(this.item.label).fontFamily(nunito(TvGeometry.navTileLabelWeight))
         .fontSize(tv(TvGeometry.navTileLabelSize))
         .fontWeight(TvGeometry.navTileLabelWeight)
         .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
@@ -223,6 +225,12 @@ export struct NavRail {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
+  /** The avatar chosen in Settings > Profile avatar ('' until one is saved on the server). */
+  @StorageProp('currentAvatarPreset') private avatarOverride: string = '';
+
+  aboutToAppear(): void {
+    syncCurrentAvatar();
+  }
   /** The signed-in profile, set by the profile picker when it loads (web's foot-of-rail identity tile). */
   @StorageProp('currentProfileName') private profileName: string = '';
   @StorageProp('currentProfileId') private profileId: string = '';
@@ -295,9 +303,9 @@ export struct NavRail {
   private profileGroup(): void {
     Column({ space: tv(4) }) {
       Column({ space: NAV_TILE_ICON_LABEL_GAP }) {
-        ProfileAvatar({ presetId: resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE) })
+        ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE) })
           .focusable(false)
-        Text(this.firstName())
+        Text(this.firstName()).fontFamily(nunito(TvGeometry.navTileLabelWeight))
           .fontSize(tv(TvGeometry.navTileLabelSize))
           .fontWeight(TvGeometry.navTileLabelWeight)
           .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
@@ -331,7 +339,7 @@ export struct NavRail {
       color: toResourceColorWithAlpha(activeColors().ink, TvGeometry.navGroupBorderOpacity),
     })
     .margin({ top: tv(this.profileGroupMargin()) })
-    Text('v' + clientVersion)
+    Text('v' + clientVersion).fontFamily(nunito(400))
       .fontSize(tv(VERSION_SIZE))
       .fontColor(toResourceColor(activeColors().inkMuted))
       .width(tv(TvGeometry.navTileSize + 2 * TvGeometry.navGroupPaddingH))

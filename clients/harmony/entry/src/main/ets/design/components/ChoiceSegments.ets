@@ -3,6 +3,7 @@
  * a small uppercase heading over equal-width choice tiles, the chosen one filled with ink.
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -55,18 +56,18 @@ export struct ChoiceSegments {
   build() {
     Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP) }) {
       if (this.large) {
-        Text(this.heading)
+        Text(this.heading).fontFamily(nunito(500))
           .fontSize(tv(LARGE_HEADING_SIZE))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
         if (this.description !== '') {
-          Text(this.description)
+          Text(this.description).fontFamily(nunito(400))
             .fontSize(tv(DESCRIPTION_SIZE))
             .fontColor(toResourceColor(activeColors().inkSoft))
         }
       } else {
-        Text(this.heading)
+        Text(this.heading).fontFamily(nunito(700))
           .fontSize(tv(HEADING_SIZE))
           .fontWeight(FontWeight.Bold)
           .letterSpacing(tv(HEADING_LETTER_SPACING))
@@ -75,7 +76,7 @@ export struct ChoiceSegments {
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
-          Text(choice.label)
+          Text(choice.label).fontFamily(nunito(700))
             .width(tv(this.choiceWidth()))
             .height(tv(CHOICE_HEIGHT))
             .textAlign(TextAlign.Center)

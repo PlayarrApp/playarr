@@ -38,7 +38,7 @@ internal sealed class SearchScreen : IPage
     private readonly List<WorkCard> _items = new();
     private readonly List<SearchResultTarget> _targets = new();
     private readonly List<Work> _searchResults = new();
-    private readonly List<PlaylistInfo> _playlists = new();
+    private readonly List<PlaylistTreeEntry> _playlists = new();
     private readonly List<DiscoveryTitle> _games = new();
     private readonly List<Focusable> _side = new();
     private View? _filterTile;
@@ -47,14 +47,21 @@ internal sealed class SearchScreen : IPage
     private int _sideFocus = -1;
     private float _scroll;
     private CancellationTokenSource? _search;
-    private Task<IList<PlaylistInfo>>? _playlistsRequest;
+    private Task<IReadOnlyList<PlaylistTreeEntry>>? _playlistsRequest;
     private readonly global::Tizen.NUI.Timer _debounce;
     private string _query = "";
     private string _mediaType = "all";
     private FiltersDrawer? _filters;
     private bool _removed;
+    private SearchFocusState? _restoreFocus;
 
     public View Root => _root;
+    public object? SaveState() => new SearchFocusState(_focus, _scroll);
+    public void RestoreState(object state)
+    {
+        if (state is SearchFocusState focus) _restoreFocus = focus;
+    }
+
     public string Route
     {
         get
@@ -124,6 +131,7 @@ internal sealed class SearchScreen : IPage
         _results.PositionX = -729.6f;
         clip.Add(_results);
         _root.Add(clip);
+        _filterTile?.RaiseToTop();
         _debounce = new global::Tizen.NUI.Timer(300);
         _debounce.Tick += (_, _) => { _ = RunSearchAsync(_query); return false; };
         SetFieldFocus(true);
@@ -266,7 +274,7 @@ internal sealed class SearchScreen : IPage
         {
             SynchronizationContextHolder.Post(() =>
             {
-                if (!cts.IsCancellationRequested) Show(new List<Work>(), new List<PlaylistInfo>(), new List<DiscoveryTitle>(), q);
+                if (!cts.IsCancellationRequested) Show(new List<Work>(), new List<PlaylistTreeEntry>(), new List<DiscoveryTitle>(), q);
             });
             return;
         }
@@ -280,7 +288,7 @@ internal sealed class SearchScreen : IPage
                 : Task.FromResult<IReadOnlyList<Work>>(Array.Empty<Work>());
             var playlistTask = includePlaylists
                 ? LoadPlaylistsAsync()
-                : Task.FromResult<IList<PlaylistInfo>>(new List<PlaylistInfo>());
+                : Task.FromResult<IReadOnlyList<PlaylistTreeEntry>>(Array.Empty<PlaylistTreeEntry>());
             var gameTask = includeGames
                 ? new DiscoverySearch(_env.Api, SearchHttp).SearchGamesAsync(q, 25, cts.Token)
                 : Task.FromResult(new DiscoverySearchResponse());
@@ -293,7 +301,7 @@ internal sealed class SearchScreen : IPage
             var playlistResult = await playlistResultTask.ConfigureAwait(false);
             var gameResult = await gameResultTask.ConfigureAwait(false);
             var works = workResult.Value ?? Array.Empty<Work>();
-            var playlists = playlistResult.Value ?? new List<PlaylistInfo>();
+            var playlists = playlistResult.Value ?? Array.Empty<PlaylistTreeEntry>();
             var gameResponse = gameResult.Value ?? new DiscoverySearchResponse();
             var games = gameResponse.Titles;
             var notices = new List<string>();
@@ -323,9 +331,9 @@ internal sealed class SearchScreen : IPage
         }
     }
 
-    private async Task<IList<PlaylistInfo>> LoadPlaylistsAsync()
+    private async Task<IReadOnlyList<PlaylistTreeEntry>> LoadPlaylistsAsync()
     {
-        var request = _playlistsRequest ??= _env.Api.ListPlaylistsAsync();
+        var request = _playlistsRequest ??= new PlaylistDirectoryApi(_env.Api, SearchHttp).LoadAsync();
         try { return await request.ConfigureAwait(false); }
         catch
         {
@@ -340,7 +348,7 @@ internal sealed class SearchScreen : IPage
         catch (Exception error) { return (default, error); }
     }
 
-    private void Show(List<Work> works, List<PlaylistInfo> playlists, List<DiscoveryTitle> games, string q, string? notice = null)
+    private void Show(List<Work> works, List<PlaylistTreeEntry> playlists, List<DiscoveryTitle> games, string q, string? notice = null)
     {
         _searchResults.Clear(); _searchResults.AddRange(works);
         _playlists.Clear(); _playlists.AddRange(playlists);
@@ -355,7 +363,7 @@ internal sealed class SearchScreen : IPage
     {
         foreach (var c in _cards) { _results.Remove(c.Box); c.Box.Dispose(); }
         _cards.Clear(); _items.Clear(); _targets.Clear(); _focus = -1; _scroll = 0; _results.PositionY = 0;
-        var targets = SearchResults.Build(_query, _mediaType, _searchResults, _playlists, _games);
+        var targets = SearchResults.Build(_query, _mediaType, _searchResults, _playlists.Select(entry => entry.Playlist), _games);
         var gameEmpty = _mediaType == "game" && _query.Length > 0 && targets.Count == 0;
         _empty.Show(targets.Count == 0 && _query.Length == 0);
         _prompt.Text = gameEmpty ? "Choose a different title or refine your search." : "";
@@ -379,6 +387,12 @@ internal sealed class SearchScreen : IPage
         if (_items.Count > 0 && _targets[0].Work is not null) { _panel.Show(_items[0], kickerOverride: _items[0].Sub, metaLead: HomeModel.MetaLead(_items[0])); _keyArt.Set(_items[0].BackdropUrl); }
         else { _panel.Root.Show(false); }
         _panel.Root.Show(_items.Count > 0 && _targets[0].Work is not null);
+        if (_restoreFocus is { } restore)
+        {
+            _restoreFocus = null;
+            _scroll = restore.ScrollOffset;
+            SetFocus(restore.ResolveResultIndex(_items.Count));
+        }
     }
 
     private void AddResult(WorkCard card, SearchResultTarget target, int index)
@@ -415,6 +429,11 @@ internal sealed class SearchScreen : IPage
             _panel.Show(_items[index], kickerOverride: _items[index].Sub, metaLead: HomeModel.MetaLead(_items[index]));
             _keyArt.Set(_items[index].BackdropUrl);
         }
+        else if (SearchResults.PlaylistPreview(_targets[index]) is { } playlistPreview)
+        {
+            _panel.ShowPlaylistPreview(playlistPreview);
+            _keyArt.Set(null);
+        }
         else
         {
             _panel.Root.Show(false);
@@ -448,7 +467,8 @@ internal sealed class SearchScreen : IPage
             case RemoteKey.Select:
                 var target = _targets[_focus];
                 if (target.Work is not null) _env.Navigate(HomeScreen.DetailRoute(_items[_focus]));
-                else if (target.Playlist is not null) Toast("Playlist pages are not available in this app yet.");
+                else if (target.Playlist is { } playlist)
+                    _env.Navigate(PlaylistDirectoryModel.RouteForSelection(_playlists, playlist.Id).ToRoute());
                 else if (target.Game is not null) Toast("Game actions are not available in this app yet.");
                 return true;
             case RemoteKey.Back: SetFocus(-1); return true;

@@ -5,6 +5,7 @@ import {
 import { installWebOsDownloadToasts } from "./webosNotifications.mjs";
 import { installWebOsDynamicRange, queryWebOsHdr } from "./webosCaps.mjs";
 import { installLegacyHas } from "../../../tooling/legacy-has.mjs";
+import "./webosCompatibility.css";
 
 document.documentElement.dataset.platform = "tv-webos";
 installWebOsLifecycle();

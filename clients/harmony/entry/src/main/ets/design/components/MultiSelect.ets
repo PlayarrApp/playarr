@@ -4,6 +4,7 @@
  * the trigger opens a list of options with check boxes. Sizes are web's at 1920x1080 (1rem = 19.2 px).
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -73,7 +74,7 @@ export struct MultiSelect {
 
   build() {
     Column({ space: tv(HEADING_GAP) }) {
-      Text(this.heading)
+      Text(this.heading).fontFamily(nunito(700))
         .fontSize(tv(HEADING_SIZE))
         .fontWeight(FontWeight.Bold)
         .letterSpacing(tv(HEADING_LETTER_SPACING))
@@ -83,11 +84,11 @@ export struct MultiSelect {
         Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
           ForEach(this.selected, (value: string) => {
             Row({ space: tv(8.64) }) {
-              Text(this.labelOf(value))
+              Text(this.labelOf(value)).fontFamily(nunito(700))
                 .fontSize(tv(CONTROL_FONT))
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().bg))
-              Text('×')
+              Text('×').fontFamily(nunito(700))
                 .fontSize(tv(CONTROL_FONT))
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().bg))
@@ -105,12 +106,12 @@ export struct MultiSelect {
             })
           }, (value: string): string => value)
           Row() {
-            Text(this.selected.length === 0 ? this.noneLabel : this.addLabel)
+            Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(nunito(700))
               .fontSize(tv(CONTROL_FONT))
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)
-            Text('⌄')
+            Text('⌄').fontFamily(nunito(400))
               .fontSize(tv(CONTROL_FONT))
               .fontColor(toResourceColor(activeColors().inkMuted))
               .rotate({ angle: this.open ? 180 : 0 })
@@ -136,7 +137,7 @@ export struct MultiSelect {
           Column() {
             ForEach(this.options, (option: Choice) => {
               Row({ space: tv(OPTION_GAP) }) {
-                Text(this.isOn(option.value) ? '✓' : '')
+                Text(this.isOn(option.value) ? '✓' : '').fontFamily(nunito(400))
                   .fontSize(tv(CHECK_FONT))
                   .fontColor(toResourceColor(this.isOn(option.value) ? activeColors().bg : activeColors().ink))
                   .textAlign(TextAlign.Center)
@@ -145,7 +146,7 @@ export struct MultiSelect {
                   .borderRadius(tv(BOX_RADIUS))
                   .border({ width: 2, color: toResourceColor(activeColors().ink) })
                   .backgroundColor(this.isOn(option.value) ? toResourceColor(activeColors().ink) : Color.Transparent)
-                Text(option.label)
+                Text(option.label).fontFamily(nunito(400))
                   .fontSize(tv(CONTROL_FONT))
                   .fontColor(toResourceColor(activeColors().ink))
                   .layoutWeight(1)

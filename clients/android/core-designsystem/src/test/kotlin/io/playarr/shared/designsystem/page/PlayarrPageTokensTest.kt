@@ -29,7 +29,7 @@ class PlayarrPageTokensTest {
         assertEquals(16.dp, phone.start)
         assertEquals(16.dp, phone.headerEnd)
         assertEquals(16.dp, phone.bodyEnd)
-        assertEquals(38.dp, phone.control)
+        assertEquals(44.dp, phone.control)
         assertEquals(44.dp, phone.pillWidth)
         assertEquals(44.dp, phone.pillHeight)
         assertEquals(72.dp, phone.safeBottom)

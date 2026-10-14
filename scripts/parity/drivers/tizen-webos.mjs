@@ -306,6 +306,9 @@ export async function createDriver() {
       }
       await sleep(device === "webos" ? 1000 : 350);
     },
+    // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
+    async playhead() { return ev(`(() => { const v = document.querySelector("video"); return v ? v.currentTime : null; })()`).catch(() => null); },
+    async panelOpen() { return !!(await ev(`[...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)`).catch(() => false)); },
     async location() { return (await ev("location.hash.replace(/^#/, '')")) ?? null; },
     async focused() {
       return ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null;

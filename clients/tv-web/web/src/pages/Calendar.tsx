@@ -179,7 +179,14 @@ function utcFormatter(locale: string, options: Intl.DateTimeFormatOptions): Intl
 }
 
 function formatDayHeading(day: Day, locale: string): string {
-  return utcFormatter(locale, { weekday: "long", day: "numeric", month: "long" }).format(parseDay(day));
+  const formatter = utcFormatter(locale, { weekday: "long", day: "numeric", month: "long" });
+  const date = parseDay(day);
+  if (locale !== "en-GB") return formatter.format(date);
+  // Browser ICU versions vary in weekday punctuation; joining ordered fields preserves the web's comma-free label.
+  return formatter.formatToParts(date)
+    .filter((part) => part.type === "weekday" || part.type === "day" || part.type === "month")
+    .map((part) => part.value)
+    .join(" ");
 }
 
 export function formatRangeLabel(view: CalendarView, anchor: Day, firstDay: number, locale: string): string {
