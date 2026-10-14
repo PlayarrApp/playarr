@@ -1,1 +1,0 @@
-- Keep the focused Home halo unclipped and aligned with its card while horizontal rails scroll.
