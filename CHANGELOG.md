@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- On iPhone and iPad, content now stays below the notch or Dynamic Island and above the home indicator in portrait and landscape. Phone screens, the bottom navigation and the library panels respect the side safe areas, the player controls and panels clear the landscape notch, and page content starts below the real top inset. Backgrounds and artwork stay full-bleed.
 - Fix the VIDAA debug mirror drawing each Home and detail rail 104 stage px too tall (the gap between a show's seasons), and report track rects in its layout facts.
 - Web detail pages: the Playback, Play, Download and Watchlist buttons show the hover look when focused with keyboard or D-pad, and their focus ring is no longer dimmed by the left nav rail.
 - Xbox: page headers match the web again: the subtitle sits beside the title after a thin divider and is not pink; it drops under the title only when there is no room.
