@@ -1,1 +1,0 @@
-- Xbox: library cards show the web watch-state overlay, Filters uses the web's slider icon and the A-Z rail marks the active letter.

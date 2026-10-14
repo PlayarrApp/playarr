@@ -1,1 +1,0 @@
-- Align iPad detail copy width and series rail placement with the shared stage layout.

@@ -13,6 +13,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Match inactive Android TV navigation text and icons to the web muted foreground in light and dark themes.
+- Align iPad detail copy width and series rail placement with the shared stage layout.
+- Xbox: library cards show the web watch-state overlay, Filters uses the web's slider icon and the A-Z rail marks the active letter.
 - A long playlist name no longer widens the Nura window (which pushed the header action and letter rail off screen on every tab).
 - Xbox: Home rail heading-to-card gap and the overview offset match the web.
 - Match Android TV Profiles captions and kicker to the web theme colours.
@@ -601,6 +604,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Match the Nura search page's empty state to the web: placeholder, search-minus ring and "Start typing to search."
 - HarmonyOS TV series detail takes episode artwork in web's source order (episode thumbnail at width 540, then the media thumbnail, then the title's backdrop or poster).
 - Harmony TV series detail copy follows the selected next-up episode when its resume target is present.
 - Harmony TV series detail now presents season rows with episode artwork, numbers, and web-aligned captions, with a guarded initial focus request for the next-up episode.

@@ -1,1 +1,0 @@
-- Match inactive Android TV navigation text and icons to the web muted foreground in light and dark themes.
