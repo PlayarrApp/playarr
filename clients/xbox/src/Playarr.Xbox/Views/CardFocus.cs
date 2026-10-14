@@ -35,6 +35,25 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>
+        /// Web's focus overflow (docs: 48 px each side for lift, ring and glow): grows the list's clip box by
+        /// <paramref name="room"/> on every side and pads its items back, so cards, rails and pages keep their layout.
+        /// </summary>
+        public static void ReserveFocusRoom(ListViewBase list, double left = 48, double top = 48, double right = 48, double bottom = 48)
+        {
+            list.Margin = new Thickness(list.Margin.Left - left, list.Margin.Top - top, list.Margin.Right - right, list.Margin.Bottom - bottom);
+            list.Padding = new Thickness(list.Padding.Left + left, list.Padding.Top + top, list.Padding.Right + right, list.Padding.Bottom + bottom);
+            if (!double.IsNaN(list.Height))
+            {
+                list.Height += top + bottom;
+            }
+
+            if (!double.IsNaN(list.Width))
+            {
+                list.Width += left + right;
+            }
+        }
+
+        /// <summary>
         /// Expands a rail's top clip area for the focused-card lift without moving its resting cards or changing the
         /// rail's contribution to its parent layout. This mirrors the web rails' top padding and compensating margin.
         /// </summary>
@@ -99,17 +118,17 @@ namespace Playarr.Xbox.Views
 
                 canvas = new Canvas { Tag = "glow", Height = 0, Width = 0, HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
                 var radius = art.CornerRadius.TopLeft;
-                // The canvas starts below the card's stacked children; the art's top edge is that far up.
-                var above = 0d;
+                // The canvas starts below the card's stacked children, so the art's top-left is that far up.
+                var origin = new Windows.Foundation.Point(0, 0);
                 foreach (var child in card.Children)
                 {
-                    above += ((FrameworkElement)child).ActualHeight;
+                    origin.Y -= ((FrameworkElement)child).ActualHeight + ((FrameworkElement)child).Margin.Top + ((FrameworkElement)child).Margin.Bottom;
                 }
 
                 for (var k = 0; k < 11; k++)
                 {
                     // Distance from the art edge: the spread (to 7 px) is solid, the 20 px blur fades the rest.
-                    var d = 3 + k * 2;
+                    var d = 1 + k * 2; // the 3 px ring sits inside the art edge, so the halo starts at the edge
                     var fade = k < 2 ? 1 : Math.Pow(1 - (k - 1) / 11.0, 2);
                     var color = Theme.CardGlow;
                     canvas.Children.Add(new Border
@@ -121,12 +140,12 @@ namespace Playarr.Xbox.Views
                         BorderThickness = new Thickness(2),
                         BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb((byte)(255 * 0.45 * fade), color.R, color.G, color.B)),
                     });
-                    Canvas.SetLeft((FrameworkElement)canvas.Children[canvas.Children.Count - 1], -d);
-                    Canvas.SetTop((FrameworkElement)canvas.Children[canvas.Children.Count - 1], -d - above);
+                    Canvas.SetLeft((FrameworkElement)canvas.Children[canvas.Children.Count - 1], origin.X - d);
+                    Canvas.SetTop((FrameworkElement)canvas.Children[canvas.Children.Count - 1], origin.Y - d);
                 }
 
-                // Below the ring: the canvas sits in the card's coordinates, whose origin is the art's top-left.
                 card.Children.Add(canvas);
+
             }
 
             canvas.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;

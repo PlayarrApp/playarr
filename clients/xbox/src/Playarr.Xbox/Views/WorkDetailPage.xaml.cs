@@ -355,6 +355,7 @@ namespace Playarr.Xbox.Views
                     Height = 190,
                     ItemContainerStyle = CatalogTileFactory.CardContainerStyle,
                 };
+                CardFocus.ReserveFocusRoom(list);
                 ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
                 ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
                 ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);
@@ -486,6 +487,7 @@ namespace Playarr.Xbox.Views
                 Height = 210,
                 ItemContainerStyle = CatalogTileFactory.CardContainerStyle,
             };
+            CardFocus.ReserveFocusRoom(list);
             ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
             ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
             ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);
@@ -783,8 +785,7 @@ namespace Playarr.Xbox.Views
                     Height = 210,
                     ItemContainerStyle = CatalogTileFactory.CardContainerStyle,
                 };
-                // Match the web episode rail's compensated 12 px top bleed without moving cards or season rails.
-                CardFocus.ReserveTopLiftRoom(list, 12);
+                CardFocus.ReserveFocusRoom(list);
                 ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
                 ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
                 ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);

@@ -127,8 +127,8 @@
         </StackPanel>
 
         <!-- Series: one rail per season (web "Season N" + "N episodes" + episode thumbnails), from x=881. -->
-        <ScrollViewer Margin="881,0,0,0" VerticalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled">
-            <StackPanel x:Name="SeriesPanel" Margin="0,345,0,48" Spacing="0" Visibility="Collapsed" />
+        <ScrollViewer Margin="833,0,0,0" VerticalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled">
+            <StackPanel x:Name="SeriesPanel" Margin="48,345,0,48" Spacing="0" Visibility="Collapsed" />
         </ScrollViewer>
     </Grid>
 </Page>

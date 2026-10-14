@@ -104,9 +104,9 @@
 
         <GridView
             x:Name="WorksGridView"
-            Width="1080"
-            Margin="783,0,0,0"
-            Padding="0,162,0,48"
+            Width="1128"
+            Margin="735,0,0,0"
+            Padding="48,162,0,48"
             HorizontalAlignment="Left"
             SelectionMode="None"
             IsItemClickEnabled="True"

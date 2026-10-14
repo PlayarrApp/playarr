@@ -1,0 +1,1 @@
+- Xbox: focused cards on Home, the library grid and the title-page rails are no longer cropped by their container: the web's 48 px focus overflow is reserved for the lift, ring and glow.
