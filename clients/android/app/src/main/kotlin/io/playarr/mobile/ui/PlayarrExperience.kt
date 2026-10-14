@@ -1770,6 +1770,10 @@ internal fun PlayarrExperience(
                             .focusProperties { canFocus = false }
                             .onFocusChanged { navFocusState.value = it.hasFocus },
                         currentEntryFocus = navEntryFocus,
+                        // Web's phone bar starts with the profile avatar.
+                        tvProfile = TvProfileTile(currentUserId.orEmpty(), profileName, profileAvatar, profileDescription) {
+                            navController.openExperienceTopLevel("profiles")
+                        },
                     )
                 }
                 if (isTelevision && visibleDestinations.isEmpty()) ProfileControl(
@@ -1832,6 +1836,10 @@ internal fun PlayarrExperience(
                             onNavigate = { navController.openExperienceTopLevel(it) },
                             modifier = Modifier.align(Alignment.BottomCenter).onFocusChanged { navFocusState.value = it.hasFocus },
                             currentEntryFocus = navEntryFocus,
+                            tvProfile = TvProfileTile(
+                                currentUserId.orEmpty(), profileName, profileAvatar,
+                                playarrString(PlayarrString.ProfileControl, "name" to profileName),
+                            ) { navController.openExperienceTopLevel("profiles") },
                         )
                     } else {
                         ProfileControl(
