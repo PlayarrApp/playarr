@@ -134,7 +134,7 @@ Item {
                 width: 26 * Tokens.u; height: 19 * Tokens.u
                 onClicked: root.jumpTo(modelData)
                 Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
-                            color: Tokens.dark ? "#d4d1d4" : Tokens.ink }
+                            color: Tokens.dark ? "#d4d1d4" : Qt.rgba(0.22, 0.15, 0.13, 0.78) }   // web: ink at 78%
                 Label { anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.96 * Tokens.u
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#1b181b" : "#ffffff") : Tokens.inkSoft }
             }

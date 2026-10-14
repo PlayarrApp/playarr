@@ -57,6 +57,12 @@ MouseArea {
         height: Math.round(width * (root.poster ? 3 / 2 : 9 / 16) + (root.poster ? 0 : 0.2))
         opacity: root.pressed ? 0.7 : 1
     }
+    RectangularGlow {   // the ring's soft halo, as web's focus box-shadow
+        visible: root.ring
+        z: -1; y: 6 * Tokens.u; width: art.width; height: art.height
+        glowRadius: 14 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
+        color: Qt.rgba(Tokens.brandInk.r, Tokens.brandInk.g, Tokens.brandInk.b, 0.35)
+    }
     Rectangle {
         visible: root.ring
         anchors { fill: art; margins: -3 * Tokens.u }

@@ -427,6 +427,12 @@ PlayarrPage {
                                         width: visible ? parent.width * Math.min(1, epCard.pr.position_ms / epCard.pr.duration_ms) : 0
                                     }
                                 }
+                                RectangularGlow {   // the ring's soft halo
+                                    visible: !!page.target && page.target.id === modelData.media_file_id
+                                    z: -1; y: 6 * Tokens.u; width: thumb.width; height: thumb.height
+                                    glowRadius: 14 * Tokens.u; spread: 0.1; cornerRadius: thumb.radius + glowRadius
+                                    color: Qt.rgba(Tokens.brandInk.r, Tokens.brandInk.g, Tokens.brandInk.b, 0.35)
+                                }
                                 Rectangle {   // web focus ring on the next-up episode
                                     visible: !!page.target && page.target.id === modelData.media_file_id
                                     anchors { fill: thumb; margins: -3 * Tokens.u }
