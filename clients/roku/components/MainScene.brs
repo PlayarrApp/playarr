@@ -5737,7 +5737,7 @@ sub updateSeriesEpisodeHeader()
     m.detailEpisodeTitle.visible = true
     m.detailEpisodeTitle.translation = [153.6, titleBottom + 19.5]
     m.detailEpisodeTitle.spec = { text: epTitle, size: 21, weight: 600, tracking: -0.739, role: "inkSoft", width: 312, lineHeight: 24.3, maxLines: 1 }
-    metaY = titleBottom + 70.7
+    metaY = titleBottom + 69.7
     parts = []
     parts.Push({ text: "Season " + season.season_number.ToStr(), role: "inkSoft", weight: 700 })
     parts.Push({ text: code, role: "inkMuted", weight: 400 })
@@ -5757,7 +5757,7 @@ sub updateSeriesEpisodeHeader()
             node.visible = false
         end if
     end for
-    nextY = metaY + 22.3
+    nextY = metaY + 31.3
     if m.detailLagText <> invalid and m.detailLagText <> ""
         m.detailAvailability.translation = [153.6, nextY]
         m.detailAvailability.spec = { text: m.detailLagText, size: 19, weight: 600, tracking: 0, role: "ink", width: 455, lineHeight: 28.8, maxLines: 1 }
@@ -5771,7 +5771,7 @@ sub updateSeriesEpisodeHeader()
     if overview = "" then overview = JsonString(work.overview)
     m.detailSynopsis.translation = [153.6, nextY]
     m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 5 }
-    m.detailActions.translation = [0, nextY + 20.33 * m.detailSynopsis.lineCount + 13 - 508.6]
+    m.detailActions.translation = [0, nextY + 20.33 * m.detailSynopsis.lineCount + 11 - 508.6]
     m.detailActions.layoutKind = "series"
     label = "Start"
     if epDetail.media_file_id <> invalid and m.detailResumeIds <> invalid and m.detailResumeIds[epDetail.media_file_id] = true then label = "Resume"
