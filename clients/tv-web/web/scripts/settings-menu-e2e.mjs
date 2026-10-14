@@ -58,7 +58,8 @@ const measure = ([itemSel, active]) => {
   const out = [];
   for (const idx of [...new Set(pick)]) {
     const el = items[idx];
-    if (!active) { el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); }
+    el.scrollIntoView({ block: "center" });
+    if (!active) el.focus({ preventScroll: true });
     const sc = scrollerOf(el);
     const clip = sc.getBoundingClientRect();
     // The fixed nav rail paints over the left edge of the page: the visible clip starts at its right edge.
@@ -78,6 +79,15 @@ const measure = ([itemSel, active]) => {
       const [ox = 0, , blur = 0, spread = 0] = nums;
       L = Math.max(L, blur + spread - ox);
     }
+    // The ring itself: the outline (with its offset) and every zero-blur box-shadow spread. Painted fully means inside the scroller on
+    // all four sides and clear of the fixed rail on the left (the rail's right edge is the page clearance less its 12px gap).
+    let ring = cs.outlineStyle !== "none" ? parseFloat(cs.outlineWidth) + parseFloat(cs.outlineOffset || "0") : 0;
+    for (const sh of shadows) { const n = sh.replace(/(rgba?|color|oklab|oklch|color-mix)\((?:[^()]|\([^)]*\))*\)/g, "").trim().split(/\s+/).map(parseFloat); if (!/inset/.test(sh) && n.length === 4 && n[2] === 0) ring = Math.max(ring, n[3] - Math.abs(n[0])); }
+    const clearProbe = document.createElement("div");
+    clearProbe.style.cssText = "position:fixed;left:0;top:0;width:var(--tv-nav-clearance, 0px);height:0";
+    el.appendChild(clearProbe);
+    const ringRail = Math.max(0, clearProbe.getBoundingClientRect().width - 12);
+    clearProbe.remove();
     const outline = cs.outlineStyle !== "none" ? parseFloat(cs.outlineWidth) + parseFloat(cs.outlineOffset || "0") : 0;
     L = Math.max(L, outline);
     const textEls = [...el.querySelectorAll("strong, span, h2, h3, p")].filter((t) => t.textContent.trim());
@@ -87,7 +97,7 @@ const measure = ([itemSel, active]) => {
     const panel = el.closest(".tv-downloads-panel");
     let gutter = null;
     if (panel) { const pr = panel.getBoundingClientRect(); const room = parseFloat(getComputedStyle(panel).getPropertyValue("--list-glow-room")) || 0; gutter = pr.left + room + parseFloat(getComputedStyle(panel).paddingRight); }
-    out.push({ idx, tag: el.className, itemLeft: r.left, textLeft, clipLeft: Math.max(clip.left, railRight), clipRight: clip.right, itemRight: r.right, clipTop: clip.top, clipBottom: clip.bottom, glowLeft: r.left - L, glow: L, lift: new DOMMatrix(cs.transform === "none" ? undefined : cs.transform).m42, gutter, scrollerClass: sc.className });
+    out.push({ idx, tag: el.className, itemLeft: r.left, textLeft, clipLeft: Math.max(clip.left, railRight), clipRight: clip.right, itemRight: r.right, itemTop: r.top, itemBottom: r.bottom, clipTop: clip.top, clipBottom: clip.bottom, glowLeft: r.left - L, glow: L, lift: new DOMMatrix(cs.transform === "none" ? undefined : cs.transform).m42, gutter, scrollerClass: sc.className, ring, ringRail });
   }
   return { count: items.length, out };
 };
@@ -137,6 +147,8 @@ for (const theme of ["light", "dark"]) {
         if (route === "/settings") check(`${tag}: focus uses the shared card treatment (glow ${o.glow.toFixed(0)}px, lift ${o.lift}px)`, o.glow >= 40 && o.lift < 0, "plain outline, no card glow or lift");
         // The right side too (the scroller's overflow clips the glow there as well): row 1.10085.
         if (route === "/settings") check(`${tag}: full glow (${o.glow.toFixed(0)}px) inside the clip rect on the right`, o.itemRight + o.glow <= o.clipRight + 0.5, `itemRight=${o.itemRight} glow=${o.glow} clipRight=${o.clipRight}`);
+        // Owner 2026-10-14: the focus ring is fully painted on all four sides, inside its scroller and not under the rail.
+        if (route === "/settings") check(`${tag}: focus ring (${o.ring}px) fully painted, inside its scroller and clear of the rail`, o.itemLeft - o.ring >= Math.max(o.clipLeft, o.ringRail) - 0.5 && o.itemRight + o.ring <= o.clipRight + 0.5 && o.itemTop - o.ring >= o.clipTop - 0.5 && o.itemBottom + o.ring <= o.clipBottom + 0.5, `ring=${o.ring} itemLeft=${o.itemLeft} clipLeft=${o.clipLeft} rail=${o.ringRail} itemRight=${o.itemRight} clipRight=${o.clipRight} top=${o.itemTop}/${o.clipTop} bottom=${o.itemBottom}/${o.clipBottom}`);
         check(`${tag}: text not clipped on the left`, o.textLeft >= o.clipLeft, `textLeft=${o.textLeft} clipLeft=${o.clipLeft}`);
         if (o.gutter !== null) check(`${tag}: left edge on the page content gutter`, Math.abs(o.itemLeft - o.gutter) <= 1, `itemLeft=${o.itemLeft} gutter=${o.gutter}`);
       }
