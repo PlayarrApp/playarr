@@ -1,1 +1,0 @@
-- Android TV: the page header subtitle sits beside the title after a divider (wrapping under a rule only when it does not fit), detail action pills take the hover look on focus, the library grid starts on web's pixel column, and the Preferences section name follows the web header.
