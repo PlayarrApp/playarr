@@ -292,7 +292,7 @@ struct WMDetailPage: View {
                         actions
                         tracks
                     }
-                    .padding(.top, 365)
+                    .padding(.top, 368.5)
                 }
                 .frame(width: 390, alignment: .topLeading)
                 .padding(.bottom, 140)
