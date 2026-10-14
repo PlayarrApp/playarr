@@ -39,6 +39,23 @@ fn rail_row(children: impl IntoIterator<Item = gtk4::Button>, selected: bool) ->
         .hscrollbar_policy(gtk4::PolicyType::Automatic)
         .propagate_natural_height(true)
         .build();
+    // GTK scrolls a focused card only just into view: keep the page gutter beside it, so the last card's ring and
+    // glow are not cut at the screen edge.
+    for card in &cards {
+        let (adj, row) = (scrolled.hadjustment(), row.downgrade());
+        card.connect_has_focus_notify(move |card| {
+            let Some(row) = row.upgrade().filter(|_| card.has_focus()) else {
+                return;
+            };
+            let Some(b) = card.compute_bounds(&row) else { return };
+            let (left, right) = (f64::from(b.x()) - 16.0, f64::from(b.x() + b.width()) + 16.0);
+            if right > adj.value() + adj.page_size() {
+                adj.set_value(right - adj.page_size());
+            } else if left < adj.value() {
+                adj.set_value(left.max(0.0));
+            }
+        });
+    }
     RailRow {
         scrolled,
         cards,
