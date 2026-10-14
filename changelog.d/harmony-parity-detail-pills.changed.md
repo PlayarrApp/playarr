@@ -1,1 +1,0 @@
-- HarmonyOS TV detail: the meta is web chips (10.6 px), the action pills use the web sizes, and the season rows use the web 314 px pitch.

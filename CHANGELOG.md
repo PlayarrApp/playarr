@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Web: every page header subtitle is the Movies, Series and Music one again: beside the title after a vertical divider, in the page ink (not pink), wrapping under the title only when there is no room. Reverts the under-title pink kicker.
+- Xbox: the Calendar gets the web's Calendar link and Filters tiles (folds in the Calendar filters and link drawer work); the title actions drawer has a bold close X and a solid Play glyph.
 - Web: loading skeletons in the Library, Music, Search and detail pages now have the exact size, gap and position of the media cards that replace them (they reuse the card classes and tokens), covered by the new `skeleton-size-e2e` script.
 - Nura title page: the hero art now draws on film pages (a late-loaded picture was not repainted), and the page covers it only once scrolled.
 - Fix VIDAA debug mirror captures so the scaled TV stage fills the requested output instead of leaving blank right and bottom areas.
@@ -618,6 +620,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS TV detail: the meta is web chips (10.6 px), the action pills use the web sizes, and the season rows use the web 314 px pitch.
 - HarmonyOS phone: the bottom nav bar, library captions and letter rail, and the series detail scroll position follow the web phone layout.
 - Nura calendar rows (agenda and week) follow the web phone: surface row, hairline border, availability bar, TODAY pill.
 - Nura title page: dark hero art dimmer and dissolving into the page as the web's.
