@@ -23,11 +23,17 @@ MouseArea {
         return k === "movie" ? qsTr("Movie") : k === "series" ? qsTr("Series") : k === "artist" ? qsTr("Artist") : k === "author" ? qsTr("Author") : ""
     }
 
-    RectangularGlow {   // web card shadow (0 10px 20px of the ink tone); keep the light-theme treatment
+    RectangularGlow {   // web: 0 10px 20px rgba(56,38,33,.14)
         visible: !Tokens.dark
         y: 10 * Tokens.u; width: art.width; height: art.height
-        glowRadius: 14 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
-        color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.16)
+        glowRadius: 10 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
+        color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.14)
+    }
+    RectangularGlow {   // web: 0 3px 8px rgba(56,38,33,.10)
+        visible: !Tokens.dark
+        y: 3 * Tokens.u; width: art.width; height: art.height
+        glowRadius: 8 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
+        color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.1)
     }
     RectangularGlow {
         visible: Tokens.dark
