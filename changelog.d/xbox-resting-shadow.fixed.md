@@ -1,1 +1,0 @@
-- Xbox: library, search and Home cards draw the web's resting shadow (visible in the light theme).

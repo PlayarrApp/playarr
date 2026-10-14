@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: library, search and Home cards draw the web's resting shadow (visible in the light theme).
 - Web: a mouse wheel or trackpad scroll over a rail now scrolls Home and the detail pages, and after such a scroll Left or Right along a rail brings the focused card back on screen.
 - On iPhone and iPad, content now stays below the notch or Dynamic Island and above the home indicator in portrait and landscape. Phone screens, the bottom navigation and the library panels respect the side safe areas, the player controls and panels clear the landscape notch, and page content starts below the real top inset. Backgrounds and artwork stay full-bleed.
 - Fix the VIDAA debug mirror drawing each Home and detail rail 104 stage px too tall (the gap between a show's seasons), and report track rects in its layout facts.
