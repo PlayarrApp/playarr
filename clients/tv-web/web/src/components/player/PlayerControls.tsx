@@ -20,6 +20,7 @@ import {
 import { audioTrackLabel, subtitleTrackLabel } from "../../lib/trackLabels";
 import { CastButton } from "./CastButton";
 import { isBackKey } from "../../lib/backKey";
+import { stageClientX } from "../../lib/tvStageScale";
 import {
   AudioTrackIcon,
   FullscreenEnterIcon,
@@ -299,7 +300,7 @@ export function PlayerControls({
       const track = trackRef.current;
       if (!track || duration <= 0) return 0;
       const rect = track.getBoundingClientRect();
-      const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+      const ratio = rect.width > 0 ? (stageClientX(event.clientX) - rect.left) / rect.width : 0;
       return Math.min(duration, Math.max(0, ratio * duration));
     },
     [duration]

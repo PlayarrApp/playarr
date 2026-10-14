@@ -3,7 +3,7 @@
 // Posts a downscaled JPEG of the app plus layout/focus facts to the local dev receiver that serves this
 // build, every ~2 s and on every focus change. The receiver origin is the page's own origin and the
 // token comes from the launch URL (?mirrorToken=...), so nothing about the environment is baked in.
-import { focusInfo, visibleText } from "./mirrorSnapshot";
+import { focusInfo, selectorFor, visibleText } from "./mirrorSnapshot";
 import { mirrorCaptureGeometry } from "./mirrorCaptureGeometry";
 import { localeTagFor } from "../lib/i18n/languages";
 
@@ -103,6 +103,7 @@ function layoutEnv(): Record<string, unknown> {
         : null;
     })(),
     keys: keyLog.slice(),
+    scrolled: Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((e) => e.scrollTop > 0 || e.scrollLeft > 0).map((e) => `${selectorFor(e)} ${Math.round(e.scrollLeft)},${Math.round(e.scrollTop)}`).slice(0, 6),
     // Rects the TV browser reports (stage scale debugging): first Home card and the nav items, plus scroll offsets.
     geo: (() => {
       const r4 = (e: Element | null) => { if (!e) return null; const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(Math.round); };
@@ -162,7 +163,11 @@ export function startDebugMirror(): void {
       // logical stage is rendered once at the requested output density.
       const zoom = parseFloat(document.documentElement.style.getPropertyValue("--stage-zoom")) || 1;
       const hasStageBodyTransform = Boolean(document.body.style.transform && zoom !== 1);
-      const geometry = mirrorCaptureGeometry(window.innerWidth, window.innerHeight, zoom, TARGET_WIDTH, hasStageBodyTransform);
+      const geometry = mirrorCaptureGeometry(
+        // With the stage transform window.innerWidth/Height are already stage pixels (tvStageScale.ts); the geometry wants the real viewport.
+        hasStageBodyTransform ? window.innerWidth * zoom : window.innerWidth,
+        hasStageBodyTransform ? window.innerHeight * zoom : window.innerHeight,
+        zoom, TARGET_WIDTH, hasStageBodyTransform);
       const stageW = geometry.width;
       const stageH = geometry.height;
       const bg = window.getComputedStyle(document.body).backgroundColor || "#000";
@@ -176,11 +181,19 @@ export function startDebugMirror(): void {
           errors.push("font embed: " + String((err as Error).message).slice(0, 120));
         }
       }
+      // html-to-image clones without scroll offsets, so a rail the page has scrolled (Home, the library grid) would be drawn
+      // unscrolled. Tag every scrolled container and let the embedded CSS translate its children by the offset.
+      const scrolled = Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((e) => e.scrollTop > 0 || e.scrollLeft > 0);
+      let scrollCss = "";
+      scrolled.forEach((e, i) => {
+        e.setAttribute("data-mirror-scroll", String(i));
+        scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
+      });
       image = await withTimeout(
         (usePng ? toPng : toJpeg)(document.body, {
           // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
           // native scrollbars the TV does not show: hide them in the rendered copy.
-          fontEmbedCSS: `${fontCss}\n*::-webkit-scrollbar{display:none}*{scrollbar-width:none}`,
+          fontEmbedCSS: `${fontCss}\n*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
           // Cross-origin media (posters, video) would stall or taint the render: leave it out.
           filter: (node) => {
             // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far
@@ -210,7 +223,7 @@ export function startDebugMirror(): void {
         }),
         60000,
         "html-to-image render",
-      );
+      ).finally(() => scrolled.forEach((e) => e.removeAttribute("data-mirror-scroll")));
     } catch (err) {
       captureError = String((err && (err as Error).message) || err).slice(0, 300);
     }

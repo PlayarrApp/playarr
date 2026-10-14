@@ -1,0 +1,2 @@
+- Fix VIDAA debug mirror captures so the scaled TV stage fills the requested output instead of leaving blank right and bottom areas.
+- Restore the shell clock's en-GB weekday and month on VIDAA firmware with incomplete Intl date data.

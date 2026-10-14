@@ -46,6 +46,7 @@ import {
 import { Button } from "../ui";
 import { Drawer } from "../shell";
 import { isBackKey } from "../../lib/backKey";
+import { stageClientX } from "../../lib/tvStageScale";
 
 const SEEK_STEP_SECONDS = 10;
 const AUTO_HIDE_MS = 5000;
@@ -1209,7 +1210,7 @@ export function PlayerSurface({
             // of a single tap waits out the double-tap window.
             const rect = event.currentTarget.getBoundingClientRect();
             const result = doubleTapRef.current.tap(
-              event.clientX - rect.left,
+              stageClientX(event.clientX) - rect.left,
               rect.width,
               event.timeStamp
             );

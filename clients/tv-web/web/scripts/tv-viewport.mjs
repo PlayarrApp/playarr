@@ -146,8 +146,10 @@ async function signedInScreens([family, width, height, dpr]) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const scroller = document.scrollingElement ?? root;
-      if (scroller.scrollWidth > vw + 1) out.push(`page is ${scroller.scrollWidth}px wide in a ${vw}px viewport`);
-      if (scroller.scrollHeight > vh + 1) out.push(`page is ${scroller.scrollHeight}px tall in a ${vh}px viewport`);
+      // VIDAA's stage transform reports rects and the window in stage pixels, but scroll extents stay real-screen pixels.
+      const z = document.body.style.transform ? parseFloat(root.style.getPropertyValue("--stage-zoom")) || 1 : 1;
+      if (scroller.scrollWidth / z > vw + 1) out.push(`page is ${Math.round(scroller.scrollWidth / z)}px wide in a ${vw}px viewport`);
+      if (scroller.scrollHeight / z > vh + 1) out.push(`page is ${Math.round(scroller.scrollHeight / z)}px tall in a ${vh}px viewport`);
       for (const el of document.querySelectorAll(".app-nav a, .app-nav button")) {
         const r = el.getBoundingClientRect();
         if (r.width < 2 || r.height < 2) continue;
