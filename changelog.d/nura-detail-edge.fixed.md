@@ -1,1 +1,0 @@
-- Nura title page: the hero art's bottom fade now spans the art, as the web's.
