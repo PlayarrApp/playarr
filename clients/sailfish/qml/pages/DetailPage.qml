@@ -276,7 +276,7 @@ PlayarrPage {
                     visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.overview
                     text: page.target && page.target.episode ? (page.target.episode.episode.overview || "") : ""
                     wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-                    color: Tokens.inkSoft; font.family: Tokens.family580; font.pixelSize: 12 * Tokens.u; lineHeight: 0.94
+                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 11.7 * Tokens.u; lineHeight: 0.94
                 }
                 // The web lays the actions over a faded slice of the series backdrop.
                 Item {
