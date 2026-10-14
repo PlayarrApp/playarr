@@ -32,6 +32,8 @@ pub struct Loaded {
     resume: Option<(String, i64, String)>,
     /// Series: the next-up episode (season number, episode id) the page opens on.
     focus: Option<(i32, String)>,
+    /// Series: watch progress by media file, for the episode cards' unseen dot and progress bar.
+    progress: std::collections::HashMap<String, crate::model::WatchProgress>,
 }
 
 fn fetch(c: &Client, id: &str) -> Result<Loaded, crate::api::ApiError> {
@@ -65,7 +67,21 @@ fn fetch(c: &Client, id: &str) -> Result<Loaded, crate::api::ApiError> {
                     .map(|e| (s.season.season_number, e.episode.id.clone()))
             });
     }
-    Ok(Loaded { detail, resume, focus })
+    let progress = if detail.work.kind == "series" {
+        c.all_progress()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|p| (p.media_file_id.clone(), p))
+            .collect()
+    } else {
+        Default::default()
+    };
+    Ok(Loaded {
+        detail,
+        resume,
+        focus,
+        progress,
+    })
 }
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk4::Widget {
@@ -88,8 +104,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
         b
     };
     root.set_child(Some(&art));
-    // The web's page scrolls under its sticky art: the top 93 px of the art is covered by the page.
-    root.add_overlay(&fade(93, "pa-khero-cover"));
+    // The web's page scrolls under its sticky art: the top 86 px of the art is covered by the page.
+    root.add_overlay(&fade(86, "pa-khero-cover"));
     root.add_overlay(&fade(223, "pa-khero-edge"));
     root.add_overlay(&fade(223, "pa-khero-fade"));
     root.add_overlay(&fade(485, "pa-khero-wash"));
@@ -323,6 +339,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             .lines(3)
             .ellipsize(gtk4::pango::EllipsizeMode::End)
             .xalign(0.0)
+            // The web's synopsis is 52ch wide, 17 px short of the page's right margin.
+            .margin_end(17)
             .build();
         l.set_height_request(50);
         l.set_valign(gtk4::Align::Start);
@@ -479,6 +497,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             season,
             &title,
             l.focus.as_ref().map(|f| f.1.as_str()),
+            &l.progress,
             &queue,
             play.clone(),
         ));
@@ -486,7 +505,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     if series && !seasons.is_empty() {
         // Open scrolled to the next-up episode's season, as the web does.
         let adj = scroll.vadjustment();
-        let target = 417.5 + 235.0 * focus_index as f64;
+        let target = 415.5 + 238.0 * focus_index as f64;
         gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(900), move || adj.set_value(target));
     }
 }
@@ -500,6 +519,7 @@ fn season_rail(
     season: &SeasonDetail,
     series_title: &str,
     focus: Option<&str>,
+    progress: &std::collections::HashMap<String, crate::model::WatchProgress>,
     queue: &[(String, String)],
     play: impl Fn(String, i64, String) + Clone + 'static,
 ) -> gtk4::Box {
@@ -524,8 +544,8 @@ fn season_rail(
             .css_classes(["pa-season-count"])
             .xalign(0.0)
             .margin_start(FOCUS_ROOM)
-            .margin_top(8)
-            .margin_bottom(17 - FOCUS_ROOM)
+            .margin_top(5)
+            .margin_bottom(19 - FOCUS_ROOM)
             .build(),
     );
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
@@ -535,10 +555,13 @@ fn season_rail(
     row.set_margin_top(FOCUS_ROOM);
     row.set_margin_bottom(FOCUS_ROOM);
     col.set_margin_start(-FOCUS_ROOM);
+    // The web's rail runs to the screen edge, past the page's 16 px side margin.
+    col.set_margin_end(-16);
     for e in &season.episodes {
         let pic = gtk4::Picture::builder()
             .content_fit(gtk4::ContentFit::Cover)
             .can_shrink(true)
+            .css_classes(["pa-ep-pic"])
             .build();
         let frame = gtk4::Overlay::builder()
             .child(&pic)
@@ -553,6 +576,8 @@ fn season_rail(
             format!("/api/v1/artwork/episode/{series_id}/{}/thumb?w=540", e.episode.id),
             &pic,
         );
+        // The web's `.tv-episode-art::after` shade.
+        frame.add_overlay(&gtk4::Box::builder().css_classes(["pa-ep-shade"]).build());
         frame.add_overlay(
             &gtk4::Label::builder()
                 .label(format!("{:02}", e.episode.episode_number))
@@ -560,12 +585,36 @@ fn season_rail(
                 .halign(gtk4::Align::End)
                 .valign(gtk4::Align::End)
                 .margin_end(10)
-                .margin_bottom(6)
+                .margin_bottom(10)
                 .build(),
         );
+        // The web's WatchStateOverlay: a progress bar for a part-watched episode, the red dot for an unseen one.
+        let watch = e.media_file_id.as_ref().and_then(|f| progress.get(f));
+        match watch.map(|p| p.state.as_str()) {
+            Some("part_watched") => {
+                let p = watch.map_or(0.0, |p| p.position_ms as f64 / p.duration_ms.max(1) as f64);
+                frame.add_overlay(
+                    &gtk4::ProgressBar::builder()
+                        .fraction(p.clamp(0.0, 1.0))
+                        .valign(gtk4::Align::End)
+                        .css_classes(["pa-progress"])
+                        .build(),
+                );
+            }
+            None | Some("unseen") => frame.add_overlay(
+                &gtk4::Box::builder()
+                    .css_classes(["pa-unseen"])
+                    .halign(gtk4::Align::End)
+                    .valign(gtk4::Align::Start)
+                    .margin_top(7)
+                    .margin_end(7)
+                    .build(),
+            ),
+            _ => {}
+        }
         let card = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         card.append(&frame);
-        let cap = gtk4::Box::builder().spacing(8).margin_top(14).build();
+        let cap = gtk4::Box::builder().spacing(8).margin_top(12).build();
         cap.append(
             &gtk4::Label::builder()
                 .label(format!("S{:02} · E{:02}", n, e.episode.episode_number))
@@ -638,8 +687,18 @@ fn season_rail(
             adj.set_value(i as f64 * (EP_W + 12) as f64)
         });
     }
-    col.append(&rail);
-    col.set_margin_bottom(35 - FOCUS_ROOM);
+    // The web's shared scroller edge fade: the rail dims toward its right edge.
+    let fade = gtk4::Box::builder()
+        .css_classes(["pa-edge-fade"])
+        .halign(gtk4::Align::End)
+        .can_target(false)
+        .build();
+    fade.set_size_request(38, -1);
+    let faded = gtk4::Overlay::new();
+    faded.set_child(Some(&rail));
+    faded.add_overlay(&fade);
+    col.append(&faded);
+    col.set_margin_bottom(39 - FOCUS_ROOM);
     col
 }
 

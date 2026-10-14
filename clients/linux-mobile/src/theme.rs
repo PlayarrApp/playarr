@@ -79,7 +79,7 @@ pub fn css(dark: bool) -> String {
     let edge = if dark {
         "linear-gradient(0deg, @pa_bg 4%, alpha(@pa_bg, 0.55) 55%, alpha(@pa_bg, 0.3) 100%)"
     } else {
-        "linear-gradient(0deg, @pa_bg 4%, alpha(@pa_bg, 0) 34%)"
+        "linear-gradient(0deg, @pa_bg 8%, alpha(@pa_bg, 0) 45%)"
     };
     let hero = format!(
         ".pa-khero-fade {{ background: {edge}; }}\n{hard}.pa-key-art.pa-khero {{ opacity: {}; filter: {}; }}\n",

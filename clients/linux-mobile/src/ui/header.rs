@@ -85,8 +85,8 @@ impl Header {
         self.title.set_label(text);
     }
 
+    /// The web hides the header subtitle on a phone (title only, #1299), so the text is kept but never shown.
     pub fn set_subtitle(&self, text: &str) {
-        self.subtitle.set_label(&text.to_uppercase());
-        self.subtitle.set_visible(!text.is_empty());
+        self.subtitle.set_label(text);
     }
 }
