@@ -12,6 +12,7 @@ struct WorkDetailView: View {
     @State private var playlists: [Playlist] = []
     @State private var playlistMessage: String?
     @State private var selectedAlbumID: UUID?
+    @State private var initialTabletScrollWorkID: UUID?
     @State private var visibleDetailRouteID = UUID()
     @State private var isVisible = false
 
@@ -169,42 +170,54 @@ struct WorkDetailView: View {
     }
 
     private func tabletDetail(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
-        ZStack(alignment: .topLeading) {
-            PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .opacity(scheme == .dark ? 0.3 : 0.07)
-                .overlay {
-                    LinearGradient(
-                        colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                }
-
-            detailCopy(detail, phone: false)
-                .frame(width: proxy.size.width * 0.205, alignment: .leading)
-                .padding(.leading, proxy.size.width * 0.088)
-                .padding(.top, proxy.size.height * 0.24)
-
-            if hasVisibleChildren(detail.children) || hasDiscoveryContent {
-                ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: 30) {
-                        children(for: detail.children)
-                        discoveryContent
+        ScrollViewReader { scrollProxy in
+            ZStack(alignment: .topLeading) {
+                PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .opacity(scheme == .dark ? 0.3 : 0.07)
+                    .overlay {
+                        LinearGradient(
+                            colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     }
-                        .padding(.leading, 0)
-                        .padding(.top, proxy.size.height * (detail.work.kind == .series ? 0.67 : 0.25)) // web tablet: Chapters at y 260, Season 1 at y 695 of 1024
+
+                detailCopy(detail, phone: false)
+                    .frame(width: min(proxy.size.width * 0.24, 455), alignment: .leading)
+                    .padding(.leading, proxy.size.width * 0.088)
+                    .padding(.top, proxy.size.height * 0.24)
+
+                if hasVisibleChildren(detail.children) || hasDiscoveryContent {
+                    ScrollView(.vertical) {
+                        VStack(alignment: .leading, spacing: 30) {
+                            children(for: detail.children, tabletScale: proxy.size.width / 1366)
+                            discoveryContent
+                        }
+                        .padding(.leading, proxy.size.width * 0.088)
+                        .padding(.top, proxy.size.height * (detail.work.kind == .series ? 0.5 : 0.25))
                         .padding(.bottom, proxy.size.height * 0.5)
-                }
-                .frame(width: proxy.size.width * 0.267, height: proxy.size.height)
-                .offset(x: proxy.size.width * 0.733) // rails start at x 1002 of 1366 and run off the edge
-                .scrollIndicators(.hidden)
-                .background {
-                    LinearGradient(
-                        colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    }
+                    .frame(width: proxy.size.width * 0.62, height: proxy.size.height)
+                    .background {
+                        LinearGradient(
+                            colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    }
+                    .scrollIndicators(.hidden)
+                    .offset(x: proxy.size.width * 0.38)
+                    .task(id: detail.work.id) {
+                        guard initialTabletScrollWorkID != detail.work.id,
+                              case .series(let seasons) = detail.children,
+                              let firstSeason = seasons.first else { return }
+
+                        await Task.yield()
+                        guard !Task.isCancelled, initialTabletScrollWorkID != detail.work.id else { return }
+                        scrollProxy.scrollTo(firstSeason.season.id, anchor: .center)
+                        initialTabletScrollWorkID = detail.work.id
+                    }
                 }
             }
         }
@@ -382,14 +395,16 @@ struct WorkDetailView: View {
     }
 
     @ViewBuilder
-    private func children(for children: WorkChildren) -> some View {
+    private func children(for children: WorkChildren, tabletScale: CGFloat? = nil) -> some View {
         switch children {
         case .movie:
             EmptyView()
         case .series(let seasons):
-            VStack(alignment: .leading, spacing: 34) {
+            let spacing = tabletScale.map { (251.46875 - 304.28125) * $0 } ?? 34
+            VStack(alignment: .leading, spacing: spacing) {
                 ForEach(seasons, id: \.season.id) { season in
-                    seasonEpisodeTrack(season)
+                    seasonEpisodeTrack(season, tabletScale: tabletScale)
+                        .id(season.season.id)
                 }
             }
         case .artist(let albums):
@@ -508,47 +523,86 @@ struct WorkDetailView: View {
         return PlaybackQueueBuilder.episodes(after: episodeID, seriesTitle: detail.work.title, seasons: seasons)
     }
 
-    private func seasonEpisodeTrack(_ season: SeasonDetail) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(season.season.title ?? "Season \(season.season.seasonNumber)")
-                    .font(.custom("Avenir Next", fixedSize: 18).weight(.semibold))
-                    .foregroundStyle(PlayarrStyle.ink)
-                Spacer()
-                Text("\(season.episodes.count) episodes")
-                    .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
-                    .foregroundStyle(PlayarrStyle.muted)
-                DownloadTriggerButton(
-                    candidates: season.episodes.compactMap { episode in
-                        episode.mediaFileID.map {
-                            candidate(
-                                mediaFileID: $0,
-                                title: episode.episode.title ?? "Episode \(episode.episode.episodeNumber)",
-                                subtitle: season.season.title ?? "Season \(season.season.seasonNumber)"
-                            )
-                        }
-                    },
-                    apiClient: apiClient,
-                    downloadRepository: downloadRepository
-                )
-                .foregroundStyle(PlayarrStyle.muted)
-                .accessibilityLabel("Download all episodes in this season")
+    private func seasonEpisodeTrack(_ season: SeasonDetail, tabletScale: CGFloat? = nil) -> some View {
+        let cardWidth = tabletScale.map { 196.015 * $0 } ?? 210
+        let cardHeight = tabletScale.map { 110.252 * $0 } ?? 118
+        // At 1366x1024 the web track heading is 33.875pt, its scroller starts 26.25pt below it, and artwork starts 42pt into the scroller.
+        let tabletHeadingHeight: CGFloat = 33.875
+        let tabletScrollTop: CGFloat = 26.25
+        let tabletArtInset: CGFloat = 42
+        let trackSpacing = tabletScale.map { (tabletScrollTop - tabletHeadingHeight) * $0 } ?? 10
+        return VStack(alignment: .leading, spacing: trackSpacing) {
+            if let tabletScale {
+                VStack(alignment: .leading, spacing: 4 * tabletScale) {
+                    Text(season.season.title ?? "Season \(season.season.seasonNumber)")
+                        .font(DesignFont.font(12.567 * tabletScale, 610))
+                        .tracking(-0.377 * tabletScale)
+                        .foregroundStyle(PlayarrStyle.ink)
+                    Text("\(season.episodes.count) episodes")
+                        .font(DesignFont.font(7.36 * tabletScale, 400))
+                        .foregroundStyle(PlayarrStyle.muted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: tabletHeadingHeight * tabletScale, alignment: .topLeading)
+                .padding(.trailing, 32.784 * tabletScale)
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(season.season.title ?? "Season \(season.season.seasonNumber)")
+                        .font(.custom("Avenir Next", fixedSize: 18).weight(.semibold))
+                        .foregroundStyle(PlayarrStyle.ink)
+                    Spacer()
+                    Text("\(season.episodes.count) episodes")
+                        .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
+                        .foregroundStyle(PlayarrStyle.muted)
+                    seasonDownloadButton(season)
+                }
             }
 
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(season.episodes) { episode in
-                        episodeCard(episode, seasonNumber: season.season.seasonNumber)
+                        episodeCard(
+                            episode,
+                            seasonNumber: season.season.seasonNumber,
+                            cardWidth: cardWidth,
+                            cardHeight: cardHeight
+                        )
                     }
                 }
-                .padding(.vertical, 8)
+                .padding(.top, tabletScale.map { tabletArtInset * $0 } ?? 8)
+                .padding(.bottom, tabletScale == nil ? 8 : 0)
             }
+            .frame(height: tabletScale.map { 278.03125 * $0 }, alignment: .topLeading)
             .scrollIndicators(.hidden)
         }
+        .frame(height: tabletScale.map { 304.28125 * $0 }, alignment: .topLeading)
+    }
+
+    private func seasonDownloadButton(_ season: SeasonDetail) -> some View {
+        DownloadTriggerButton(
+            candidates: season.episodes.compactMap { episode in
+                episode.mediaFileID.map {
+                    candidate(
+                        mediaFileID: $0,
+                        title: episode.episode.title ?? "Episode \(episode.episode.episodeNumber)",
+                        subtitle: season.season.title ?? "Season \(season.season.seasonNumber)"
+                    )
+                }
+            },
+            apiClient: apiClient,
+            downloadRepository: downloadRepository
+        )
+        .foregroundStyle(PlayarrStyle.muted)
+        .accessibilityLabel("Download all episodes in this season")
     }
 
     @ViewBuilder
-    private func episodeCard(_ detail: EpisodeDetail, seasonNumber: Int32) -> some View {
+    private func episodeCard(
+        _ detail: EpisodeDetail,
+        seasonNumber: Int32,
+        cardWidth: CGFloat = 210,
+        cardHeight: CGFloat = 118
+    ) -> some View {
         let episode = detail.episode
         let title = episode.title ?? "Episode \(episode.episodeNumber)"
         let label = "S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))"
@@ -570,7 +624,14 @@ struct WorkDetailView: View {
                         )
                     )
                 } label: {
-                    episodeCardLabel(detail: detail, title: title, label: label, playable: true)
+                    episodeCardLabel(
+                        detail: detail,
+                        title: title,
+                        label: label,
+                        playable: true,
+                        cardWidth: cardWidth,
+                        cardHeight: cardHeight
+                    )
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
@@ -583,17 +644,31 @@ struct WorkDetailView: View {
                     }
                 }
             } else {
-                episodeCardLabel(detail: detail, title: title, label: label, playable: false)
+                episodeCardLabel(
+                    detail: detail,
+                    title: title,
+                    label: label,
+                    playable: false,
+                    cardWidth: cardWidth,
+                    cardHeight: cardHeight
+                )
             }
         }
     }
 
-    private func episodeCardLabel(detail: EpisodeDetail, title: String, label: String, playable: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+    private func episodeCardLabel(
+        detail: EpisodeDetail,
+        title: String,
+        label: String,
+        playable: Bool,
+        cardWidth: CGFloat = 210,
+        cardHeight: CGFloat = 118
+    ) -> some View {
+        return VStack(alignment: .leading, spacing: 7) {
             ZStack(alignment: .bottomLeading) {
                 if let work = viewModel.detail?.work {
                     WMRemoteImage(apiClient: apiClient, sources: episodeArtworkSources(detail, workID: work.id))
-                        .frame(width: 210, height: 118)
+                        .frame(width: cardWidth, height: cardHeight)
                         .background(PlayarrStyle.surfaceStrong.opacity(0.7))
                 } else {
                     PlayarrStyle.surfaceStrong
@@ -612,7 +687,7 @@ struct WorkDetailView: View {
                 }
                 .padding(10)
             }
-            .frame(width: 210, height: 118)
+            .frame(width: cardWidth, height: cardHeight)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
 
@@ -624,7 +699,7 @@ struct WorkDetailView: View {
                 .font(.custom("Avenir Next", fixedSize: 10).weight(.semibold))
                 .foregroundStyle(PlayarrStyle.muted)
         }
-        .frame(width: 210, alignment: .leading)
+        .frame(width: cardWidth, alignment: .leading)
     }
 
     private func episodeArtworkSources(_ episode: EpisodeDetail, workID: UUID) -> [WMRemoteImage.Source] {
