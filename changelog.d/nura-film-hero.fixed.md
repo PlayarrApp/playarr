@@ -1,0 +1,1 @@
+- Nura title page: the hero art now draws on film pages (a late-loaded picture was not repainted), and the page covers it only once scrolled.

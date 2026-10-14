@@ -244,5 +244,6 @@ dropdown.pa-dropdown.pa-filter > button { min-height: 54px; border-radius: 12px;
 
 /* Detail hero fades, as the web phone's .tv-key-art::after and .tv-stage-wash */
 .pa-khero-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }
-.pa-khero-cover { background: @pa_bg; }
+.pa-khero-cover { background: @pa_bg; opacity: 0; }
+.pa-khero-root.scrolled .pa-khero-cover { opacity: 1; }
 .pa-khero-wash { background: linear-gradient(0deg, @pa_bg 34%, alpha(@pa_bg, 0) 68%); }

@@ -70,6 +70,7 @@ fn fetch(c: &Client, id: &str) -> Result<Loaded, crate::api::ApiError> {
 
 pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk4::Widget {
     let root = gtk4::Overlay::new();
+    root.add_css_class("pa-khero-root");
     // Key art behind everything, as the web phone's `.tv-key-art`: a 360 x 223 backdrop, its right edge, left edge and
     // bottom faded into the page, then a 485 px wash over the top of the page.
     let art = gtk4::Picture::builder()
@@ -107,6 +108,17 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
         .css_classes(["pa-page", "pa-transparent"])
         .build();
     root.add_overlay(&scroll);
+    // The web's page scrolls over its sticky art: once scrolled, the page covers the art's top and (dark) cuts its bottom.
+    {
+        let root = root.clone();
+        scroll.vadjustment().connect_value_changed(move |a| {
+            if a.value() > 20.0 {
+                root.add_css_class("scrolled");
+            } else {
+                root.remove_css_class("scrolled");
+            }
+        });
+    }
     let scroll2 = scroll.clone();
 
     // Header: round back button, section name, the title in small caps.

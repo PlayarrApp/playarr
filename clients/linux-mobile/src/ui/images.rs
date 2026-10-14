@@ -37,6 +37,14 @@ impl Images {
                     cache.borrow_mut().insert(key, t.clone());
                     if let Some(p) = weak.upgrade() {
                         p.set_paintable(Some(&t));
+                        // GSK's cairo renderer sometimes keeps a stale frame for a picture that gets its image late.
+                        let again = p.downgrade();
+                        glib::idle_add_local_once(move || {
+                            if let Some(p) = again.upgrade() {
+                                p.set_visible(false);
+                                p.set_visible(true);
+                            }
+                        });
                     }
                 }
             },
