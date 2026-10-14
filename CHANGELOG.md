@@ -3023,6 +3023,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Harmony wall: the phone series-detail capture waits for episode art and refuses a frame with grey placeholder cards.
 - Harmony wall: the capture also waits while the app reports a request in flight, so a card a lazy list had not built yet is not captured as a placeholder.
 - Harmony wall: the player capture shows the app background where the Previewer drew its grey surface placeholder.
 - Harmony wall: the capture also waits for the series-detail watchlist pill's pending `discover/resolve` (counted with the poster placeholders).

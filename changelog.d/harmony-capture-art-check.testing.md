@@ -1,1 +1,0 @@
-- Harmony wall: the phone series-detail capture waits for episode art and refuses a frame with grey placeholder cards.
