@@ -1,1 +1,0 @@
-- HarmonyOS phone: the page header no longer shows a pink subtitle under the title, as web.

@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Web detail pages: the Playback, Play, Download and Watchlist buttons show the hover look when focused with keyboard or D-pad, and their focus ring is no longer dimmed by the left nav rail.
 - Xbox: page headers match the web again: the subtitle sits beside the title after a thin divider and is not pink; it drops under the title only when there is no room.
 - Web: every page header subtitle is the Movies, Series and Music one again: beside the title after a vertical divider, in the page ink (not pink), wrapping under the title only when there is no room. Reverts the under-title pink kicker.
 - Xbox: the Calendar gets the web's Calendar link and Filters tiles (folds in the Calendar filters and link drawer work); the title actions drawer has a bold close X and a solid Play glyph.
@@ -621,6 +622,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: the page header no longer shows a pink subtitle under the title, as web.
 - Android: the tablet's navigation rail uses web's fixed 64 px tiles, and its page start, header top, hero copy and library card rail follow web's viewport clamps, so the wide layout lines up with the web reference at 1280x800.
 - HarmonyOS phone: content sits below the notch or cutout and above the gesture bar in portrait and landscape, with backgrounds and art edge to edge.
 - HarmonyOS TV detail: the meta is web chips (10.6 px), the action pills use the web sizes, and the season rows use the web 314 px pitch.
@@ -3011,6 +3013,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Harmony wall: the capture also waits while the app reports a request in flight, so a card a lazy list had not built yet is not captured as a placeholder.
 - Harmony wall: the player capture shows the app background where the Previewer drew its grey surface placeholder.
 - Harmony wall: the capture also waits for the series-detail watchlist pill's pending `discover/resolve` (counted with the poster placeholders).
 - Harmony wall capture: API calls bypass the Previewer's artwork gate and the capture waits until the app reports no pending request, so Home art and the watchlist state are loaded before the frame is taken.

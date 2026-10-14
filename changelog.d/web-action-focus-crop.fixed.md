@@ -1,1 +1,0 @@
-- Web detail pages: the Playback, Play, Download and Watchlist buttons show the hover look when focused with keyboard or D-pad, and their focus ring is no longer dimmed by the left nav rail.

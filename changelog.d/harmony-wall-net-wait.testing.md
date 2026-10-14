@@ -1,1 +1,0 @@
-- Harmony wall: the capture also waits while the app reports a request in flight, so a card a lazy list had not built yet is not captured as a placeholder.
