@@ -1,22 +1,12 @@
 #!/usr/bin/env node
-// Owner rule 2026-10-10: "Subtitles must only ever be the small design, like media pages."
-// Opens every routed page that has a header subtitle at 1920x1080 and 1280x720 and checks that the subtitle carries the
-// shared .page-subtitle class and has the same computed font size, weight, colour, letter spacing and case as the
-// media-page kicker (.tv-detail-kicker on a film page), in both themes. Runs against the deterministic mock API, or a
-// fixture server with --base.
-//
-// It also checks the subtitle's place: directly under the title, left-aligned with it, the same distance below it on
-// every page, with Back level with the title (a subtitle that sits beside the title on one page and under it on
-// another, as Settings did, fails).
-//
-// It also checks the subtitle's place: directly under the title, left-aligned with it, the same distance below it on
-// every page, with Back level with the title (a subtitle beside the title on one page and under it on another, as on
-// Settings, fails). `--device-test [--site url]` runs the same checks on the live web app as the PLAYARR_DEVICE_TEST_*
-// account from ~/.secrets (credentials are never printed).
+// Owner rule 2026-10-14: every page header subtitle is the Movies, Series and Music one. Opens every routed page that has
+// a header subtitle at 1920x1080 and 1280x720 in both themes and checks that it has the same computed font size, weight,
+// colour (the page ink, never the pink kicker), letter spacing and case as the Movies subtitle, and the same place:
+// beside the title with the 1px divider, or, only when the header marked itself wrapped, under the title with the rule.
+// Runs against the deterministic mock API, or a fixture server with --base. `--device-test [--site url]` runs the same
+// checks on the live web app as the PLAYARR_DEVICE_TEST_* account from ~/.secrets (credentials are never printed).
 //
 //   node scripts/subtitle-style-e2e.mjs [--dist dist] [--no-build] [--base http://127.0.0.1:18484] [--device-test]
-//   node scripts/subtitle-style-e2e.mjs --device-test [--site https://...]   (live: logs in as the PLAYARR_DEVICE_TEST_* account
-//                                                                           from ~/.secrets; credentials are never printed)
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -65,12 +55,19 @@ const PAGES = [
 ];
 const PROPS = ["fontSize", "fontWeight", "color", "letterSpacing", "textTransform", "fontStyle"];
 const read = (props) => {
-  const el = document.querySelector(".page-header-detail, .page-subtitle");
-  const kicker = document.querySelector(".tv-detail-kicker");
-  const pick = (node) => node ? Object.fromEntries(props.map((p) => [p, getComputedStyle(node)[p]])) : null;
-  const box = (node) => { if (!node) return null; const r = node.getBoundingClientRect(); return { left: r.left, top: r.top, bottom: r.bottom }; };
+  const el = document.querySelector(".page-header-detail");
   const header = document.querySelector(".page-header");
-  return { subtitle: pick(el), cls: el?.className ?? null, text: el?.textContent?.trim() ?? "", kicker: pick(kicker), geo: { sub: box(el), title: box(header?.querySelector("h1")), back: box(header?.querySelector(".tv-page-back")) } };
+  const style = el ? getComputedStyle(el) : null;
+  const box = (node) => { if (!node) return null; const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
+  const shown = el && style.display !== "none";
+  return {
+    subtitle: shown ? Object.fromEntries(props.map((p) => [p, style[p]])) : null,
+    cls: el?.className ?? null,
+    wrapped: header?.classList.contains("is-detail-wrapped") ?? false,
+    borderLeft: style?.borderLeftWidth ?? null,
+    borderTop: style?.borderTopWidth ?? null,
+    geo: { sub: box(el), title: box(header?.querySelector("h1")) },
+  };
 };
 
 const browser = await launchChromium();
@@ -96,31 +93,24 @@ for (const theme of ["light", "dark"]) {
       await page.waitForTimeout(600);
       results.push([id, await page.evaluate(read, PROPS)]);
     }
-    // The media-page kicker is the reference; take it from the film page of this run.
-    const film = results.find(([id]) => id === "film-detail")?.[1];
-    reference = film?.kicker ?? null;
-    if (!reference) { console.log(`FAIL  ${theme} ${vp.width}: no media-page kicker found`); failed++; }
-    const gaps = new Map();
+    const reference = results.find(([id]) => id === "movies")?.[1].subtitle;
+    if (!reference) { console.log(`FAIL  ${theme} ${vp.width}: no Movies subtitle found`); failed++; }
     for (const [id, r] of results) {
-      if (!r.subtitle) { if (/^(movies|series|music|search|playlists|folders|downloads|watchlist|requests|calendar)$/.test(id)) console.log(`note  ${theme} ${vp.width} ${id}: no subtitle on this page state`); continue; }
-      const sameClass = /\bpage-subtitle\b/.test(r.cls ?? "");
+      if (!r.subtitle) { console.log(`note  ${theme} ${vp.width} ${id}: no subtitle shown on this page state`); continue; }
       const diffs = reference ? PROPS.filter((p) => r.subtitle[p] !== reference[p]) : PROPS;
-      // Place: under the title, left-aligned with it, Back level with the title; the gap is the same on every page.
       const g = r.geo;
-      const gap = g.sub && g.title ? Math.round((g.sub.top - g.title.bottom) * 10) / 10 : null;
-      gaps.set(id, gap);
-      const placed = Boolean(g.sub && g.title && g.back) && Math.abs(g.sub.left - g.title.left) <= 1 && gap !== null && gap >= -1 && Math.abs(g.back.top - g.title.top) <= 1;
-      const ok = sameClass && diffs.length === 0 && placed;
-      if (!placed) diffs.push(`place(sub=${JSON.stringify(g.sub)},title=${JSON.stringify(g.title)},back=${JSON.stringify(g.back)})`);
+      const beside = g.sub.left >= g.title.right - 1 && g.sub.top < g.title.bottom && r.borderLeft === "1px";
+      const under = r.wrapped && g.sub.top >= g.title.bottom - 1 && r.borderTop === "1px";
+      if (!(beside || under)) diffs.push(`place(wrapped=${r.wrapped},sub=${JSON.stringify(g.sub)},title=${JSON.stringify(g.title)},borders=${r.borderLeft}/${r.borderTop})`);
+      if (/page-subtitle|is-section|tv-detail-heading-item/.test(r.cls ?? "")) diffs.push(`class=${r.cls}`);
+      const ok = diffs.length === 0;
       if (!ok) failed++;
-      console.log(`${ok ? "PASS" : "FAIL"}  ${theme} ${vp.width} ${id}: ${r.subtitle.fontSize} ${r.subtitle.color}${ok ? "" : ` class=${r.cls} diffs=${diffs.join(",")}`}`);
+      console.log(`${ok ? "PASS" : "FAIL"}  ${theme} ${vp.width} ${id}: ${r.subtitle.fontSize} ${r.subtitle.color} ${r.wrapped ? "wrapped" : "beside"}${ok ? "" : ` diffs=${diffs.join(",")}`}`);
     }
-    const distinct = [...new Set([...gaps.values()].filter((v) => v !== null).map((v) => Math.round(v)))];
-    if (distinct.length > 1) { failed++; console.log(`FAIL  ${theme} ${vp.width}: the subtitle sits ${distinct.join(" / ")}px below the title on different pages: ${JSON.stringify([...gaps])}`); }
     await context.close();
   }
 }
 await browser.close();
 server?.close?.();
-console.log(failed ? `${failed} check(s) failed` : "all subtitles share the one small style");
+console.log(failed ? `${failed} check(s) failed` : "all header subtitles share the one Movies style");
 process.exit(failed ? 1 : 0);

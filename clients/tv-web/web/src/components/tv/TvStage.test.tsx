@@ -22,11 +22,14 @@ describe("detail page heading", () => {
     );
 
     expect(markup).toContain("<h1>Music</h1>");
-    expect(markup).toContain('<span class="page-header-detail page-subtitle">Sample Band</span>');
+    expect(markup).toContain('<span class="page-header-detail">Sample Band</span>');
     expect(markup).not.toContain(">|<");
 
     const css = readFileSync(new URL("../../styles/page-layout.css", import.meta.url), "utf8");
-    expect(css).not.toContain("border-left: 1px solid var(--line-strong)");
+    const divider = css.match(/\.tv-library-heading > \.page-header-title-block > span\s*\{(?<d>[^}]*)\}/)?.groups?.d;
+    expect(divider).toContain("padding-left: var(--page-header-gap)");
+    expect(divider).toContain("border-left: 1px solid var(--line-strong)");
+    expect(divider).toContain("color: var(--ink)");
   });
 });
 

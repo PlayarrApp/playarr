@@ -68,7 +68,7 @@ describe("SettingsIndexPage", () => {
     const markup = renderSettingsRoute("/settings");
 
     expect(markup).toContain('class="settings-options-list"');
-    expect(markup).toContain('class="tv-library-heading page-header has-subtitle"');
+    expect(markup).toContain('class="tv-library-heading page-header"');
     expect(markup).toContain(
       'class="tv-library tv-directory settings-page settings-workspace-page settings-index-route"'
     );
@@ -79,7 +79,7 @@ describe("SettingsIndexPage", () => {
     expect(markup).toContain('data-navigation-scroll-key="settings:options"');
     expect(markup).toContain('id="settings-active-option"');
     expect(markup).toContain("Appearance controls");
-    expect(markup).toContain('<span class="page-header-detail page-subtitle">Appearance</span>');
+    expect(markup).toContain('<span class="page-header-detail">Appearance</span>');
   });
 
   it("returns focus to the list only at the detail panel's left boundary", () => {
@@ -139,7 +139,7 @@ describe("SettingsIndexPage", () => {
       /\.settings-index-route \.settings-detail-panel,\s*\.settings-detail-route \.settings-options-panel\s*\{[^}]*display:\s*none/s
     );
     expect(css).toMatch(
-      /\.page-header\[data-mobile-show="title"\] > \.page-header-title-block > \.page-header-detail\s*\{[^}]*display:\s*none/s
+      /\.page-header\[data-mobile-show="title"\] > \.page-header-title-block > \.page-header-detail,\s*\.page-header\[data-mobile-show="detail"\] h1\s*\{[^}]*display:\s*none/s
     );
     expect(css).toMatch(
       /\.settings-index-route \.settings-option-copy small,\s*\.settings-index-route \.settings-option-arrow\s*\{[^}]*display:\s*block/s

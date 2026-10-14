@@ -154,7 +154,7 @@ for (const theme of ["dark", "light"]) {
   await other.context.close();
 }
 
-// 1.10042: Settings sub-pages show the Settings title with the section as the small subtitle.
+// Settings sub-pages: the h1 is the Settings title; a phone shows the section name in its place (owner rule 2026-10-14).
 const tvTitle = await (async () => {
   const { context, page } = await open("/settings/appearance", { width: 1920, height: 1080 });
   await page.waitForSelector(".page-header h1", { timeout: 8000 });
@@ -164,20 +164,20 @@ const tvTitle = await (async () => {
 })();
 for (const section of ["appearance", "language", "player"]) {
   const { context, page } = await open(`/settings/${section}`, phone);
-  await page.waitForSelector(".page-header h1", { timeout: 8000 });
+  await page.waitForSelector(".page-header h1", { state: "attached", timeout: 8000 });
   const h = await page.evaluate(() => {
     const detail = document.querySelector(".page-header .page-header-detail");
     return {
       title: document.querySelector(".page-header h1")?.textContent?.trim(),
       detail: detail?.textContent?.trim() ?? null,
       detailShown: detail ? getComputedStyle(detail).display !== "none" : false,
-      subtitleStyle: detail?.classList.contains("page-subtitle") ?? false,
+      subtitleStyle: detail?.classList.contains("page-header-detail") ?? false,
       detailSize: detail ? parseFloat(getComputedStyle(detail).fontSize) : 0,
       titleSize: parseFloat(getComputedStyle(document.querySelector(".page-header h1")).fontSize),
     };
   });
   check(`settings/${section}: h1 is the Settings title, as on TV web`, h.title === tvTitle, `${h.title} vs ${tvTitle}`);
-  check(`settings/${section}: section name is the small subtitle`, Boolean(h.detail) && h.detailShown && h.subtitleStyle && h.detailSize < h.titleSize, JSON.stringify(h));
+  check(`settings/${section}: phone shows the section name (detail) instead of the title`, Boolean(h.detail) && h.detailShown && h.subtitleStyle && true, JSON.stringify(h));
   await context.close();
 }
 await finish();

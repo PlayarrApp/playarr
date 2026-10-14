@@ -1,0 +1,1 @@
+- Web: every page header subtitle is the Movies, Series and Music one again: beside the title after a vertical divider, in the page ink (not pink), wrapping under the title only when there is no room. Reverts the under-title pink kicker.

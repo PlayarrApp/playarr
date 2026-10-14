@@ -238,12 +238,12 @@ export interface PageLayoutProps {
 // PageHeader.tsx (existing, tightened): REMOVE className and detailClassName.
 export interface PageHeaderProps {
   title: ReactNode;
-  detail?: ReactNode;                   // the page subtitle: always the one small media-page style (.page-subtitle); wraps under the title when it collides
+  detail?: ReactNode;                   // the page subtitle: the one Movies-style header subtitle beside the title after a divider; wraps under the title only when it collides
   back: { label: string } & ({ to: string } | { onBack: () => void }) | { kind: "none" };
   actions?: PageAction[];               // rendered by PageActions in the canonical order
   backRef?: Ref<HTMLElement>;
   backProps?: Record<`data-${string}`, string | boolean | undefined>;
-  /** Detail-page variant (today's TvDetailHeading): detail is the item title, in the same small subtitle style. */
+  /** Detail-page variant (today's TvDetailHeading): detail is the item title, in the same subtitle style. */
   variant?: "page" | "detail";
 }
 
