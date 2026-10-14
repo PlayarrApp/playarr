@@ -4741,7 +4741,21 @@ private fun TelevisionSearchBody(
         }
         // Copy column (x 153.6): search pill, Filters pill, preview.
         var focused by remember { mutableStateOf(false) }
+        var initialSearchFocusHandled by remember { mutableStateOf(false) }
         val searchFieldFocus = remember { FocusRequester() }
+        val softwareKeyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+        if (query.isBlank() && !filtersOpen && !initialSearchFocusHandled) {
+            // Web `data-tv-focus-default` lands on the empty Search field when there is no selected result.
+            TvDefaultFocusEffect(Unit) {
+                val requested = runCatching { searchFieldFocus.requestFocus() }.getOrDefault(false)
+                if (requested) {
+                    // Keep the web TV focus ring without covering the page with Android's soft keyboard.
+                    kotlinx.coroutines.delay(200)
+                    softwareKeyboardController?.hide()
+                }
+                initialSearchFocusHandled = true
+            }
+        }
         val ringPink = WebKicker
         Row(
             Modifier
@@ -4770,6 +4784,14 @@ private fun TelevisionSearchBody(
                     .padding(start = 13.dp)
                     .focusRequester(searchFieldFocus)
                     .onFocusChanged { focused = it.isFocused }
+                    .onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER) {
+                            softwareKeyboardController?.show()
+                            true
+                        } else {
+                            false
+                        }
+                    }
                     .playarrSingleLineArrowNavigation(),
                 decorationBox = { inner ->
                     Box(contentAlignment = Alignment.CenterStart) {

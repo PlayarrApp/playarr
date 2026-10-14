@@ -1,0 +1,1 @@
+- Android TV Search now gives default D-pad focus to its empty search field when entering the idle Search page, without opening the on-screen keyboard until Select is pressed.
