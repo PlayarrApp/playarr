@@ -67,7 +67,7 @@ struct HomeView: View {
     /// 179x101 cards, no featured-title copy (numbers from the web layout dump).
     private var phoneContent: some View {
         ZStack(alignment: .topLeading) {
-            WM.page
+            WM.page.ignoresSafeArea()
             WMKeyArt(
                 work: viewModel.featuredWork, apiClient: apiClient, lightOpacity: 0.41, webMask: true,
                 fadeStops: [(0, 0), (84, 0), (148, 1)]
@@ -78,13 +78,15 @@ struct HomeView: View {
                         phoneRail(rail, first: index == 0)
                     }
                 }
-                .padding(.top, 89)
+                .padding(.top, 89 + WM.topShift)
                 .padding(.bottom, 130)
             }
             .scrollIndicators(.hidden)
             .refreshable { await viewModel.load() }
+            .keepInsideSafeArea()
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     /// Debug parity captures and the navigation UI test can focus the first Series card.

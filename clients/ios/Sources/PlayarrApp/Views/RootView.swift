@@ -64,7 +64,7 @@ struct RootView: View {
         }
         .preferredColorScheme(preferredColourScheme)
         #if DEBUG
-        .statusBarHidden(ParityLaunch.isActive) // the web references have no system status bar
+        .statusBarHidden(ParityLaunch.zeroInsets) // the web references have no system status bar
         #endif
         .updateGate(updateViewModel)
         .task {
@@ -315,7 +315,8 @@ private struct AuthenticatedPlayarrShell: View {
                 onAskGuardian: { Task { await household.askGuardian() } },
                 onSwitchProfile: { select(.profiles) }
             )
-            .ignoresSafeArea()
+            .ignoresSafeArea(edges: .vertical)
+            .webGutter()
         } else if let minutes = household.remainingMinutes {
             VStack {
                 HouseholdRemainingBadge(minutes: minutes)
@@ -413,7 +414,8 @@ private struct AuthenticatedPlayarrShell: View {
                 stageChrome(proxy: proxy)
             }
         }
-        .ignoresSafeArea(edges: UIDevice.current.userInterfaceIdiom == .phone ? .all : [])
+        .ignoresSafeArea(edges: UIDevice.current.userInterfaceIdiom == .phone ? .vertical : [])
+        .webGutter(base: 10)
         .allowsHitTesting(true)
     }
 

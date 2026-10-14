@@ -197,7 +197,8 @@ struct CalendarView: View {
             roundButton("\u{2192}", label: "Next period") { Task { await viewModel.step(1) } }
                 .offset(x: 216, y: 138)
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     private func chipLabel(_ text: String, size: CGFloat = 10.4, ls: CGFloat = 1.6, weight: Int = 400) -> some View {
@@ -273,6 +274,7 @@ struct CalendarView: View {
             .frame(width: 390, height: 1100, alignment: .topLeading)
         }
         .scrollIndicators(.hidden)
+        .keepInsideSafeArea()
     }
 
     private func termLabel(_ text: String) -> some View {

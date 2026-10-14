@@ -122,12 +122,13 @@ struct WorkDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
-                .padding(.top, phone ? max(56, proxy.safeAreaInsets.top + 6) : min(76, max(38, proxy.size.height * 0.062)))
+                .padding(.top, phone ? max(56, WM.safeTop + 6) : min(76, max(38, proxy.size.height * 0.062)))
                 }
             }
         }
-        .background(PlayarrStyle.surface)
-        .ignoresSafeArea()
+        .background(PlayarrStyle.surface.ignoresSafeArea())
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     /// Films and series on a phone use the web mobile title page.
@@ -160,6 +161,7 @@ struct WorkDetailView: View {
             }
         }
         .scrollIndicators(.hidden)
+        .keepInsideSafeArea()
     }
 
     /// Web tablet title page header (1366 pt): back circle at x 122, the library name at x 182, the title as a pink kicker below.

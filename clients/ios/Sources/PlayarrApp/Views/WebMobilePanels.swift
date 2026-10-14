@@ -115,6 +115,7 @@ struct WMPanelPage<Content: View>: View {
                 .frame(width: 390, height: height, alignment: .topLeading)
             }
             .scrollIndicators(.hidden)
+            .keepInsideSafeArea()
             Button(action: onBack) {
                 Text("\u{2190}")
                     .font(WM.font(12.8, 720))
@@ -142,7 +143,8 @@ struct WMPanelPage<Content: View>: View {
                 .offset(x: 68, y: WM.topInset + 24.4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 }
 

@@ -107,7 +107,8 @@ struct ProfilesView: View {
                 stageContent(proxy: proxy)
             }
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     private func dropdown<Items: View>(
@@ -325,7 +326,7 @@ struct ProfilesView: View {
 
             ZStack(alignment: .top) {
                 profileBackground
-                profileChrome(phone: phone, safeTop: proxy.safeAreaInsets.top)
+                profileChrome(phone: phone, safeTop: WM.safeTop)
 
                 VStack(spacing: 7) {
                     Text("PROFILES")
@@ -337,7 +338,7 @@ struct ProfilesView: View {
                         .tracking(phone ? -2.7 : -4.6)
                         .foregroundStyle(PlayarrStyle.ink)
                 }
-                .padding(.top, phone ? max(118, proxy.safeAreaInsets.top + 78) : min(164, proxy.size.height * 0.15))
+                .padding(.top, phone ? max(118, WM.safeTop + 78) : min(164, proxy.size.height * 0.15))
 
                 ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: phone ? 22 : min(44, proxy.size.width * 0.022)) {

@@ -81,6 +81,9 @@ enum ParityLaunch {
         return ISO8601DateFormatter().date(from: raw)
     }
     static var isActive: Bool { server != nil && user != nil }
+    /// `PLAYARR_REAL_INSETS=1`: keep the real safe-area insets and status bar (the safe-area capture test). A parity
+    /// capture otherwise reports zero insets, because the web references have none.
+    static var zeroInsets: Bool { isActive && environmentValue("PLAYARR_REAL_INSETS") != "1" }
     /// `--playarr-parity-landscape`: rotates the window to landscape (a wall tile shows the iPad 4:3 landscape).
     @MainActor static func applyLandscape() {
         guard ProcessInfo.processInfo.arguments.contains("--playarr-parity-landscape") else { return }

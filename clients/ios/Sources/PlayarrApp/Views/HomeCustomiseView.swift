@@ -98,11 +98,12 @@ struct HomeCustomiseView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 84)
+                .padding(.top, 84 + WM.topShift)
                 .padding(.bottom, 130)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
+            .keepInsideSafeArea()
 
             WMHeaderCircleButton(width: 42, height: 38, glyph: "\u{2190}", action: { dismiss() })
                 .offset(x: 16, y: WM.topInset + 2)
@@ -110,7 +111,8 @@ struct HomeCustomiseView: View {
                 .frame(height: 38)
                 .offset(x: 68, y: WM.topInset + 2)
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
         .navigationBarHidden(true)
         .playarrChromeHidden()
         .task { await model.load() }

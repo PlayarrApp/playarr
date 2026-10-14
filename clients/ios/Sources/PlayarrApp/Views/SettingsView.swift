@@ -97,13 +97,14 @@ struct SettingsView: View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
             ZStack {
-                if phone && selected == nil { WM.page } else { settingsBackground }
-                if phone { phoneLayout(safeTop: proxy.safeAreaInsets.top) }
+                if phone && selected == nil { WM.page.ignoresSafeArea() } else { settingsBackground.ignoresSafeArea() }
+                if phone { phoneLayout(safeTop: WM.safeTop) }
                 else { wideLayout(proxy: proxy) }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
         .navigationBarHidden(true)
         .task { await loadRemoteSettings() }
         .onChange(of: photoItem) { _, item in
@@ -166,11 +167,12 @@ struct SettingsView: View {
                     }
                 }
                 .padding(.leading, 16)
-                .padding(.top, 84)
+                .padding(.top, 84 + WM.topShift)
                 .padding(.bottom, 130)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .scrollIndicators(.hidden)
+            .keepInsideSafeArea()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }

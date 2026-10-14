@@ -1,0 +1,1 @@
+- On iPhone and iPad, content now stays below the notch or Dynamic Island and above the home indicator in portrait and landscape. Phone screens, the bottom navigation and the library panels respect the side safe areas, the player controls and panels clear the landscape notch, and page content starts below the real top inset. Backgrounds and artwork stay full-bleed.

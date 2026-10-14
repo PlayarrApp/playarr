@@ -209,7 +209,7 @@ struct PlaylistsView: View {
                         }
                         .padding(.leading, leading)
                         .padding(.trailing, trailing)
-                        .padding(.top, phone ? 92 : max(128, proxy.size.height * 0.15))
+                        .padding(.top, phone ? 92 + WM.topShift : max(128, proxy.size.height * 0.15))
                         .padding(.bottom, phone ? 118 : 70)
                     }
                 }
@@ -250,11 +250,12 @@ struct PlaylistsView: View {
                 .foregroundStyle(PlayarrStyle.ink)
                 .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
                 .padding(.trailing, phone ? 66 : max(22, proxy.size.width * 0.024))
-                .padding(.top, phone ? max(56, proxy.safeAreaInsets.top + 6) : min(66, max(34, proxy.size.height * 0.052)))
+                .padding(.top, phone ? max(56, WM.safeTop + 6) : min(66, max(34, proxy.size.height * 0.052)))
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     private var playlistEditor: some View {
@@ -472,11 +473,12 @@ struct PlaylistDetailView: View {
                 }
                 .foregroundStyle(PlayarrStyle.ink)
                 .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
-                .padding(.top, phone ? max(56, proxy.safeAreaInsets.top + 6) : min(66, max(34, proxy.size.height * 0.052)))
+                .padding(.top, phone ? max(56, WM.safeTop + 6) : min(66, max(34, proxy.size.height * 0.052)))
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     private func playlistTrack(phone: Bool, proxy: GeometryProxy) -> some View {

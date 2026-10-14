@@ -265,7 +265,7 @@ struct PlayerView: View {
 
     private var bottomInset: CGFloat {
         #if DEBUG
-        if ParityLaunch.isActive { return 14 }
+        if ParityLaunch.zeroInsets { return 14 }
         #endif
         return max(14, WM.safeArea.bottom)
     }
@@ -273,13 +273,13 @@ struct PlayerView: View {
     private func topButtons(size: CGSize) -> some View {
         ZStack(alignment: .topLeading) {
             circleButton(.minimise, size: 20, label: "Minimise") { dismiss() }
-                .offset(x: size.width - 16 - 44 - 8 - 44, y: topInset)
+                .offset(x: size.width - max(16, WM.trailingInset) - 44 - 8 - 44, y: topInset)
             circleButton(.close, size: 22, label: "Close") { dismiss() }
-                .offset(x: size.width - 16 - 44, y: topInset)
+                .offset(x: size.width - max(16, WM.trailingInset) - 44, y: topInset)
             if showsCastAffordance {
                 CastButton(tintColor: .white)
                     .frame(width: 32, height: 32)
-                    .offset(x: 16, y: topInset + 6)
+                    .offset(x: max(16, WM.leadingInset), y: topInset + 6)
             }
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
@@ -304,7 +304,7 @@ struct PlayerView: View {
         let shownTime = scrubTime ?? viewModel.currentTime
         let selectedQuality = viewModel.qualityOptions.first { $0.id == viewModel.selectedQualityID } ?? viewModel.qualityOptions.first
         return VStack(spacing: 10) {
-            seekTrack(viewModel, width: size.width - 24)
+            seekTrack(viewModel, width: size.width - max(12, WM.leadingInset) - max(12, WM.trailingInset))
             VStack(spacing: 2) {
                 HStack(spacing: 5.6) {
                     Text(playerTimeString(shownTime))
@@ -359,7 +359,8 @@ struct PlayerView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 12)
+        .padding(.leading, max(12, WM.leadingInset))
+        .padding(.trailing, max(12, WM.trailingInset))
         .padding(.bottom, bottomInset)
         .frame(width: size.width, height: size.height, alignment: .bottom)
     }
@@ -468,7 +469,7 @@ struct PlayerView: View {
 
     @ViewBuilder
     private func menuPanel(_ menu: PlayerMenu, _ viewModel: PlayerViewModel, size: CGSize) -> some View {
-        let panelWidth = min(size.width - 24, 620)
+        let panelWidth = min(size.width - max(12, WM.leadingInset) - max(12, WM.trailingInset), 620)
         let bottom = 96 + safeBottomForPanel
         Group {
             switch menu {
@@ -551,7 +552,7 @@ struct PlayerView: View {
 
     private var safeBottomForPanel: CGFloat {
         #if DEBUG
-        if ParityLaunch.isActive { return 0 }
+        if ParityLaunch.zeroInsets { return 0 }
         #endif
         return WM.safeArea.bottom
     }

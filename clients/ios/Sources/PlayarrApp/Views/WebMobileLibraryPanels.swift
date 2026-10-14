@@ -12,14 +12,15 @@ private struct WMPanelFrame<Content: View>: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             WM.page.opacity(0.97).ignoresSafeArea()
-            WMText(kicker.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1).offset(x: 21, y: 17)
-            WMText(title, 24, 520, lh: 34, ls: -1).offset(x: 21, y: 33)
+            WMText(kicker.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1).offset(x: 21, y: 17 + WM.safeTop)
+            WMText(title, 24, 520, lh: 34, ls: -1).offset(x: 21, y: 33 + WM.safeTop)
             HStack { Spacer(); WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose) }
-                .padding(.trailing, 21).offset(y: 22)
-            content().padding(.horizontal, 21).padding(.top, 95)
+                .padding(.trailing, 21).offset(y: 22 + WM.safeTop)
+            content().padding(.horizontal, 21).padding(.top, 95 + WM.safeTop)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 }
 

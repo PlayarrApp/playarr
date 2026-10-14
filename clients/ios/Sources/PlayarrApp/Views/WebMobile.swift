@@ -55,7 +55,7 @@ enum WM {
     /// capture runs the web with no safe area, so it uses the 14px floor.
     @MainActor static var topInset: CGFloat {
         #if DEBUG
-        if ParityLaunch.isActive { return 14 }
+        if ParityLaunch.zeroInsets { return 14 }
         #endif
         return max(14, safeArea.top)
     }
@@ -63,9 +63,35 @@ enum WM {
     /// Bottom offset of the floating nav: max(8px, safe-area-inset-bottom).
     @MainActor static var bottomInset: CGFloat {
         #if DEBUG
-        if ParityLaunch.isActive { return 8 }
+        if ParityLaunch.zeroInsets { return 8 }
         #endif
         return max(8, safeArea.bottom)
+    }
+
+    /// How far the phone header sits below the web's 14 px floor; page content that starts under it moves down by this much.
+    @MainActor static var topShift: CGFloat { topInset - 14 }
+
+    /// Raw top safe-area inset (notch or Dynamic Island); 0 in a parity capture, which has no system chrome.
+    @MainActor static var safeTop: CGFloat {
+        #if DEBUG
+        if ParityLaunch.zeroInsets { return 0 }
+        #endif
+        return safeArea.top
+    }
+
+    /// Side safe-area insets (landscape notch side, rounded corners); 0 in a parity capture.
+    @MainActor static var leadingInset: CGFloat {
+        #if DEBUG
+        if ParityLaunch.zeroInsets { return 0 }
+        #endif
+        return safeArea.left
+    }
+
+    @MainActor static var trailingInset: CGFloat {
+        #if DEBUG
+        if ParityLaunch.zeroInsets { return 0 }
+        #endif
+        return safeArea.right
     }
 
     @MainActor static var safeArea: UIEdgeInsets {
@@ -631,5 +657,30 @@ extension EnvironmentValues {
     var playarrGoHome: () -> Void {
         get { self[PlayarrGoHomeKey.self] }
         set { self[PlayarrGoHomeKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// The web's mobile gutter is max(base, side inset): inside a container already inset by the side safe area,
+    /// pull the edges out by up to `base` so a content margin of `base` lands on the inset itself (zero in portrait).
+    @MainActor
+    func webGutter(base: CGFloat = 16) -> some View {
+        padding(.leading, -min(base, WM.leadingInset)).padding(.trailing, -min(base, WM.trailingInset))
+    }
+}
+
+extension View {
+    /// Page content (and scrolling) stays inside the safe area: nothing draws behind the notch, the Dynamic Island or
+    /// the landscape cutout. Backgrounds and hero art are separate layers that still run edge to edge. The screen root
+    /// pulls its edges out by `webGutter`, so that amount is added back on the sides.
+    @MainActor
+    func keepInsideSafeArea() -> some View {
+        mask {
+            Rectangle()
+                .padding(.top, WM.safeTop)
+                .padding(.leading, min(16, WM.leadingInset))
+                .padding(.trailing, min(16, WM.trailingInset))
+                .ignoresSafeArea(edges: .vertical)
+        }
     }
 }

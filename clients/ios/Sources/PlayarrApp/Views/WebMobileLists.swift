@@ -19,11 +19,12 @@ private struct WMListPage<Content: View>: View {
                     VStack(alignment: .leading, spacing: 9.6) { content() }
                         .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
                         .padding(.trailing, phone ? 16 : max(22, proxy.size.width * 0.024))
-                        .padding(.top, phone ? 84 : max(110, proxy.size.height * 0.13))
+                        .padding(.top, phone ? 84 + WM.topShift : max(110, proxy.size.height * 0.13))
                         .padding(.bottom, 130)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .scrollIndicators(.hidden)
+                .keepInsideSafeArea()
 
                 let top = WM.topInset + 1
                 WMHeaderCircleButton(width: 44, height: 40, glyph: "←", action: onBack)
@@ -33,8 +34,9 @@ private struct WMListPage<Content: View>: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
-        .background(WM.page)
-        .ignoresSafeArea()
+        .background(WM.page.ignoresSafeArea())
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
         .navigationBarHidden(true)
     }
 }

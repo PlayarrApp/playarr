@@ -212,6 +212,7 @@ struct LibraryView: View {
                 .padding(.bottom, 130)
             }
             .scrollIndicators(.hidden)
+            .keepInsideSafeArea()
 
             ZStack(alignment: .topLeading) {
                 WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: goHome)
@@ -221,7 +222,8 @@ struct LibraryView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     private func scopeLabel(_ scope: LibraryViewModel.SearchScope) -> String {
@@ -276,8 +278,9 @@ struct LibraryView: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .background(PlayarrStyle.surface)
-        .ignoresSafeArea()
+        .background(PlayarrStyle.surface.ignoresSafeArea())
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     private var libraryContent: some View {
@@ -299,7 +302,8 @@ struct LibraryView: View {
                 alphabetRail(proxy)
             }
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     /// Web tablet letter rail: 44 pt targets that scroll when the 27 letters do not fit (the first 16 show).
@@ -383,12 +387,14 @@ struct LibraryView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 84)
+            .padding(.top, 84 + WM.topShift)
             .padding(.bottom, 130)
         }
         .scrollIndicators(.hidden)
         .refreshable { await viewModel.load() }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
+        .keepInsideSafeArea()
     }
 
     private var stageLibraryContent: some View {
@@ -487,7 +493,7 @@ struct LibraryView: View {
                         }
                         .padding(.leading, gutter)
                         .padding(.trailing, trailing)
-                        .padding(.top, phone ? 92 : max(128, proxy.size.height * 0.15))
+                        .padding(.top, phone ? 92 + WM.topShift : max(128, proxy.size.height * 0.15))
                         .padding(.bottom, phone ? 118 : max(48, proxy.size.height * 0.06))
                     }
                     .scrollClipDisabled() // the first tile's focus ring and glow are not cut at the grid edge
@@ -630,7 +636,7 @@ struct LibraryView: View {
         }
         .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
         .padding(.trailing, phone ? 66 : max(22, proxy.size.width * 0.024))
-        .padding(.top, phone ? max(56, proxy.safeAreaInsets.top + 6) : min(66, max(34, proxy.size.height * 0.052)))
+        .padding(.top, phone ? max(56, WM.safeTop + 6) : min(66, max(34, proxy.size.height * 0.052)))
     }
 
     private func playlistSearchCard(_ playlist: Playlist, width: CGFloat) -> some View {

@@ -37,7 +37,7 @@ function latestRuntime(runtimes, platform, requestedOs) {
 
 function deviceType(deviceTypes, platform, requestedName) {
   if (platform === "ios") {
-    const exact = deviceTypes.find((item) => item.name === requestedName && item.identifier.startsWith("com.apple.CoreSimulator.SimDeviceType.iPhone-"));
+    const exact = deviceTypes.find((item) => item.name === requestedName && /^com\.apple\.CoreSimulator\.SimDeviceType\.(iPhone|iPad)-/.test(item.identifier));
     if (!exact) throw new Error(`Requested iOS Simulator device type is unavailable: ${requestedName}`);
     return exact;
   }

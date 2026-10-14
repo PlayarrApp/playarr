@@ -278,13 +278,27 @@ struct WMDetailPage: View {
         return work.overview
     }
 
+    @State private var scrolled = false
+
     // MARK: Body
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            WM.page
+            WM.page.ignoresSafeArea()
+            // Hero art keeps running behind the top inset while the scroll view below is masked clear of it.
+            artBackdrop(width: 406)
+                .frame(height: WM.safeTop, alignment: .top)
+                .clipped()
+                // Fade out the last points so the strip ends without a seam against the page colour.
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: scrolled ? 0.5 : 1), .init(color: .black.opacity(scrolled ? 0 : 1), location: 1)], startPoint: .top, endPoint: .bottom))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             ScrollView(.vertical) {
                 ZStack(alignment: .topLeading) {
+                    // Reports whether the page has scrolled, so the art strip fades only once it no longer continues below.
+                    GeometryReader { geo in
+                        Color.clear.preference(key: DetailScrollKey.self, value: geo.frame(in: .named("detailScroll")).minY < -2)
+                    }
+                    .frame(height: 0)
                     artBackdrop
                     header
                     VStack(alignment: .leading, spacing: 0) {
@@ -297,9 +311,13 @@ struct WMDetailPage: View {
                 .frame(width: 390, alignment: .topLeading)
                 .padding(.bottom, 140)
             }
+            .coordinateSpace(name: "detailScroll")
+            .onPreferenceChange(DetailScrollKey.self) { scrolled = $0 }
             .scrollIndicators(.hidden)
+            .keepInsideSafeArea()
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
         .task { await model.load(mediaFileID: playMediaFileID, runtimeMs: runtimeMs) }
         .sheet(isPresented: $showingDownload) {
             DownloadOptionsSheet(
@@ -315,13 +333,16 @@ struct WMDetailPage: View {
         }
     }
 
-    private var artBackdrop: some View {
+    private var artBackdrop: some View { artBackdrop(width: 390) }
+
+    /// The hero art at `width` (the 390 pt web canvas, or the full screen for the strip behind the top inset).
+    private func artBackdrop(width: CGFloat) -> some View {
         WMKeyArt(
             work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5,
             lightOpacity: 0.41, webMask: true,
             fadeStops: [(0, 0), (120, 0), (160, 0.25), (200, 0.47), (240, isSeries ? 0.83 : 0.9), (270, 1)]
         )
-            .frame(width: 390, height: 608, alignment: .topLeading)
+            .frame(width: width, height: 608, alignment: .topLeading)
             .clipped()
     }
 
@@ -854,4 +875,9 @@ struct PlaybackSettingsSheet: View {
             message = "Playback settings could not be saved"
         }
     }
+}
+
+private struct DetailScrollKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }

@@ -79,7 +79,8 @@ struct DownloadsView: View {
             WMText("Downloads", 21.6, 580, lh: 32, ls: -0.972).offset(x: 68, y: WM.topInset + 5)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
+        .webGutter()
     }
 
     private var content: some View {
