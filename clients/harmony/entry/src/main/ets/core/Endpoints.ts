@@ -237,8 +237,16 @@ export function artworkAlbumUrl(artistWorkId: string, albumId: string, kind: str
   return "/api/v1/artwork/album/" + artistWorkId + "/" + albumId + "/" + kind;
 }
 
-export function mediaThumbnailUrl(mediaFileId: string): string {
-  return "/api/v1/media/" + mediaFileId + "/thumbnail";
+export function artworkEpisodeUrl(seriesWorkId: string, episodeId: string, kind: string, width: number): string {
+  return "/api/v1/artwork/episode/" + seriesWorkId + "/" + episodeId + "/" + kind + "?w=" + String(width);
+}
+
+export function mediaThumbnailUrl(mediaFileId: string, positionMs?: number): string {
+  const path = "/api/v1/media/" + mediaFileId + "/thumbnail";
+  if (positionMs === undefined) {
+    return path;
+  }
+  return path + "?position_ms=" + String(positionMs);
 }
 
 // -- 4.10 Playback negotiation ------------------------------------------------

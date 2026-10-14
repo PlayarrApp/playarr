@@ -99,6 +99,8 @@ import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS, INTERACTION_TITLE_CARD_MS } from '../Motion';
 import { BRAND_PINK, Spacing, Radii, LightColors, TvGeometry } from '../../core/Tokens';
+import { SERIES_EPISODE_CAPTION_TITLE_GAP, SERIES_EPISODE_CAPTION_TOP_PADDING } from '../../core/SeriesEpisodePresentation';
+import { NonEmptyComponentIdModifier } from '../ComponentMeasurement';
 import { FOCUS_LIFT, effectiveFocusPercent, DEFAULT_ACTIVE_RAIL_FACTOR } from './FocusLift';
 import type { FocusLiftDelta } from './FocusLift';
 import { Skeleton } from './Skeleton';
@@ -160,6 +162,9 @@ export struct PosterCard {
   /** Selects the focus delta / shadow pair / interaction duration. */
   @Prop variant: PosterCardVariant = 'home';
 
+  @Prop measurementId: string = '';
+  @Prop imageMeasurementId: string = '';
+
   /** The artwork bitmap. `undefined` (the default) renders a `Skeleton`
    * placeholder -- artwork fetching is a later slice's job, this component
    * never fetches anything itself. */
@@ -191,6 +196,10 @@ export struct PosterCard {
 
   @Prop title: string = '';
   @Prop subtitle: string = '';
+  /** Optional series-card caption rendered before the episode title. */
+  @Prop episodeCaption: string = '';
+  /** Optional episode number rendered over the lower-right of the artwork. */
+  @Prop episodeNumberOverlay: string = '';
 
   @Prop titleFontSize: number = CARD_TITLE_FONT_SIZE_TV;
   @Prop subtitleFontSize: number = CARD_SUBTITLE_FONT_SIZE_TV;
@@ -209,6 +218,7 @@ export struct PosterCard {
   onFocused: () => void = () => {};
   /** Holding OK (or a touch long press) opens the title actions, as web's long-press menu. The release that follows is not a click. */
   onLongPress: () => void = () => {};
+  onArtworkAreaChanged: () => void = () => {};
   private longPressFired: boolean = false;
 
   // Tracked purely to force a re-render when the theme changes; the actual
@@ -305,16 +315,36 @@ export struct PosterCard {
     return Math.round(Math.max(0, Math.min(1, this.progress)) * 100);
   }
 
+  private episodeCopySpacerLetterSpacing(): number {
+    const ui = this.getUIContext();
+    const spaceWidthVp = ui.px2vp(ui.getMeasureUtils().measureText({
+      textContent: ' ',
+      fontSize: this.subtitleFontSize,
+      fontWeight: FontWeight.Bold,
+    }));
+    return Math.max(0, tv(SERIES_EPISODE_CAPTION_TITLE_GAP) - spaceWidthVp);
+  }
+
+  private episodeOverlayX(): number {
+    return this.cardWidth - tv(36);
+  }
+
+  private episodeOverlayY(): number {
+    return this.cardHeight - tv(33);
+  }
+
   build() {
 
-    Column({ space: Spacing.xs }) {
+    Column({ space: this.episodeCaption.length > 0 ? 0 : Spacing.xs }) {
       Stack({ alignContent: Alignment.Bottom }) {
         if (this.artwork !== undefined) {
           Image(this.artwork)
+            .attributeModifier(new NonEmptyComponentIdModifier(this.imageMeasurementId))
             .width('100%')
             .height('100%')
             .objectFit(ImageFit.Cover)
             .draggable(false)
+            .onAreaChange((_oldArea: Area, _area: Area) => { this.onArtworkAreaChanged(); })
         } else {
           Skeleton({ blockWidth: this.cardWidth, blockHeight: this.cardHeight, radius: this.resolvedArtworkRadius() })
         }
@@ -342,6 +372,17 @@ export struct PosterCard {
             .shadow({ radius: tv(9), color: 'rgba(31, 14, 20, 0.45)', offsetY: tv(2) })
             .position({ x: this.cardWidth - this.dotSize() - this.dotInset(), y: this.dotInset() })
         }
+        if (this.episodeNumberOverlay.length > 0) {
+          Text(this.episodeNumberOverlay).fontFamily(nunito(600))
+            .width(tv(24))
+            .fontSize(tv(20))
+            .fontWeight(600)
+            .fontColor('#ffffff')
+            .textAlign(TextAlign.End)
+            .maxLines(1)
+            .shadow({ radius: tv(4), color: 'rgba(0, 0, 0, 0.75)', offsetY: tv(1) })
+            .position({ x: this.episodeOverlayX(), y: this.episodeOverlayY() })
+        }
       }
       .width(this.cardWidth)
       .height(this.cardHeight)
@@ -350,15 +391,37 @@ export struct PosterCard {
       .scale({ x: this.artworkScale(), y: this.artworkScale() })
       .shadow(this.shadowLayer())
 
-      Text(this.title).fontFamily(nunito(this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT))
+      if (this.episodeCaption.length > 0) {
+        Text() {
+          Span(this.episodeCaption)
+            .fontSize(this.subtitleFontSize)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(toResourceColor(activeColors().inkMuted))
+          Span(' ')
+            .fontSize(this.subtitleFontSize)
+            .letterSpacing(this.episodeCopySpacerLetterSpacing())
+          Span(this.title)
+            .fontSize(this.titleFontSize)
+            .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+            .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
+            .letterSpacing(tv(this.titleFontSize * -0.015))
+        }
+        .fontFamily(nunito(400))
         .width(this.cardWidth)
-        .fontSize(this.titleFontSize)
-        .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
-        .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) })
+      } else {
+        Text(this.title).fontFamily(nunito(this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT))
+          .width(this.cardWidth)
+          .fontSize(this.titleFontSize)
+          .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+          .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
 
-      if (this.subtitle.length > 0) {
+      if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
         Text(this.subtitle).fontFamily(nunito(400))
           .width(this.cardWidth)
           .fontSize(this.subtitleFontSize)

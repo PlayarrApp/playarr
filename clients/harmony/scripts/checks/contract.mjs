@@ -138,6 +138,55 @@ function checkClientVersionPin(harmonyDir, errors, warnings) {
   }
 }
 
+function checkDetailObservedArtwork(harmonyDir, errors, warnings) {
+  const text = checkFileContract(
+    harmonyDir,
+    'entry/src/main/ets/pages/Detail.ets',
+    {
+      requiredSubstrings: [
+        '@Observed\nclass DetailArtworkStore',
+        '@Track revision: number = 0;',
+        '@Track private pixelMaps: Map<string, image.PixelMap> = new Map<string, image.PixelMap>();',
+        'beginGeneration(): number',
+        'isCurrentGeneration(generation: number): boolean',
+        'setArtwork(generation: number, rowId: string, pixelMap: image.PixelMap): void',
+        '@ObjectLink artworkStore: DetailArtworkStore;',
+        '@Builder\n  private posterCard(): void {\n    PosterCard({\n      variant: this.variant,',
+        'this.posterCard()',
+        'artwork: this.artworkStore.getArtwork(this.rowId),',
+        'this.artworkStore.setArtwork(generation, item.id, thumb.value);',
+        'artworkStore: this.artworkStore,',
+        'rowId: (item as DetailRow).id,',
+        'DetailRowArtworkCard({',
+        'private seriesEpisodeItem(item: MediaRailItem, index: number, activeRailFactor: number, railId: string): void',
+        'focusId: seriesEpisodeFocusId((item as DetailRow).id),',
+        'railId: rail.id,',
+        '(rail: DetailRail): string => rail.id',
+      ],
+    },
+    errors,
+    warnings
+  );
+  if (text === null) return;
+
+  const observedCardCount = (text.match(/DetailRowArtworkCard\(\{/g) || []).length;
+  if (observedCardCount !== 6) {
+    errors.push(`entry/src/main/ets/pages/Detail.ets: expected all six TV/touch Detail row card builders to use the observed artwork child, found ${observedCardCount}`);
+  }
+
+  const rowIdStoreCount = (text.match(/rowId: (?:(?:\(item as DetailRow\)\.id)|episodeId),/g) || []).length;
+  if (rowIdStoreCount !== 6) {
+    errors.push(`entry/src/main/ets/pages/Detail.ets: expected all six Detail card paths to use the shared artwork store by row ID, found ${rowIdStoreCount}`);
+  }
+  if (/artworkState/.test(text)) {
+    errors.push('entry/src/main/ets/pages/Detail.ets: artwork must be stored outside the unobserved DetailRow wrapper');
+  }
+
+  if (/@Prop\s+\w+\s*:\s*\([^\n]*=>/.test(text)) {
+    errors.push('entry/src/main/ets/pages/Detail.ets: observed artwork row component must not add function-valued @Prop fields');
+  }
+}
+
 export function checkContract(harmonyDir) {
   const errors = [];
   const warnings = [];
@@ -202,6 +251,7 @@ export function checkContract(harmonyDir) {
   );
 
   checkArtworkOriginGuard(harmonyDir, errors, warnings);
+  checkDetailObservedArtwork(harmonyDir, errors, warnings);
 
   checkFileContract(
     harmonyDir,
@@ -232,7 +282,22 @@ export function checkContract(harmonyDir) {
   checkFileContract(
     harmonyDir,
     'entry/src/main/ets/design/components/PosterCard.ets',
-    { requiredSubstrings: ['.focusable(true)'] },
+    { requiredSubstrings: [
+      '.focusable(true)',
+      '.attributeModifier(new NonEmptyComponentIdModifier(this.imageMeasurementId))',
+    ] },
+    errors,
+    warnings
+  );
+
+  checkFileContract(
+    harmonyDir,
+    'entry/src/main/ets/pages/Detail.ets',
+    { requiredSubstrings: [
+      'Column() {\n        this.posterCard()\n      }',
+      '.id(this.focusId.length > 0 ? this.focusId : \'detail-card-\' + this.rowId)',
+      '.attributeModifier(new NonEmptyComponentIdModifier(this.measurementId))',
+    ] },
     errors,
     warnings
   );

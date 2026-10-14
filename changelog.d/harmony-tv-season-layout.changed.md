@@ -1,0 +1,1 @@
+- Harmony TV series detail now presents season rows with episode artwork, numbers, and web-aligned captions, with a guarded initial focus request for the next-up episode.

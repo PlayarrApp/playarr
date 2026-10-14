@@ -46,7 +46,8 @@ function two(n: number): string {
 
 /** The plan's target episode (with its season), or undefined without a plan or when the detail does not list it. */
 export function planEpisode(detail: WorkDetail, plan: ResumePlan | null): EpisodeDetail | undefined {
-  if (plan === null || plan.target === undefined || plan.target === null) {
+  if (detail.work.kind !== 'series' || plan === null || plan.series_work_id !== detail.work.id ||
+      plan.target === undefined || plan.target === null) {
     return undefined;
   }
   const wanted = plan.target.episode_id;
@@ -59,6 +60,11 @@ export function planEpisode(detail: WorkDetail, plan: ResumePlan | null): Episod
     }
   }
   return undefined;
+}
+
+/** True only when the plan's target is a listed episode on this same series work. */
+export function hasSeriesResumeTarget(detail: WorkDetail, plan: ResumePlan | null): boolean {
+  return detail.work.kind === 'series' && planEpisode(detail, plan) !== undefined;
 }
 
 /** The last year a series has an episode air, to write "2011–2017"; '' when none is known. */
@@ -129,11 +135,18 @@ export function planEpisodeTitle(detail: WorkDetail, plan: ResumePlan | null): s
   return item !== undefined && item.episode.title !== undefined && item.episode.title !== null ? item.episode.title : '';
 }
 
-/** The synopsis under it: the target episode's overview for a series that has one, else the work's. */
+/** The synopsis under it: selected episode, selected season, then work overview. */
 export function planSynopsis(detail: WorkDetail, plan: ResumePlan | null): string {
   const item = planEpisode(detail, plan);
   if (item !== undefined && item.episode.overview !== undefined && item.episode.overview !== null && item.episode.overview.length > 0) {
     return item.episode.overview;
+  }
+  if (item !== undefined) {
+    const selectedSeason = seasonsOf(detail).find((season: SeasonDetail): boolean => season.season.id === item.episode.season_id);
+    if (selectedSeason !== undefined && selectedSeason.season.overview !== undefined &&
+        selectedSeason.season.overview !== null && selectedSeason.season.overview.length > 0) {
+      return selectedSeason.season.overview;
+    }
   }
   return detail.work.overview !== null ? detail.work.overview : '';
 }

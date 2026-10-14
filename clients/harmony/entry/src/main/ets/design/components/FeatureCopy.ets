@@ -43,6 +43,15 @@ const HERO_TITLE_FONT_WEIGHT: number = 600;
 const HERO_TITLE_LETTER_SPACING: number = HERO_TITLE_FONT_SIZE * -0.072;
 const HERO_TITLE_LINE_HEIGHT: number = 62;
 const HERO_TITLE_MAX_WIDTH: number = 373;
+// Web `.tv-detail-copy h2:not(.tv-detail-title)` at 1920x1080.
+const EPISODE_TITLE_FONT_SIZE: number = 21.12;
+// ArkUI uses 100-step weights; 600 is the nearest native weight to web 570.
+const EPISODE_TITLE_FONT_WEIGHT: number = 600;
+const EPISODE_TITLE_LETTER_SPACING: number = EPISODE_TITLE_FONT_SIZE * -0.035;
+const EPISODE_TITLE_LINE_HEIGHT: number = EPISODE_TITLE_FONT_SIZE * 1.15;
+const EPISODE_TITLE_MAX_CHARS: number = 24;
+const EPISODE_TITLE_MARGIN_TOP: number = 19.44;
+const EPISODE_META_MARGIN_TOP: number = 27;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
@@ -68,6 +77,8 @@ export struct FeatureCopy {
    * gives this component -- the source CSS never line-clamps the title,
    * only `text-wrap: balance`s it, which `balancedTitle()` reproduces. */
   @Prop title: string = '';
+  /** Selected episode title shown under the work title on TV Detail. */
+  @Prop subtitle: string = '';
   /** Short stacked meta lines (e.g. "2024 - Drama - 2h 15m", then a
    * secondary line). The LAST entry always renders in the smaller, muted
    * treatment, matching `.tv-title-meta span:last-child` -- pass a single
@@ -110,6 +121,15 @@ export struct FeatureCopy {
     }, ui.vp2px(tv(HERO_TITLE_MAX_WIDTH)));
   }
 
+  private episodeSubtitleMaxWidth(): number {
+    const ui = this.getUIContext();
+    return ui.px2vp(ui.getMeasureUtils().measureText({
+      textContent: '0'.repeat(EPISODE_TITLE_MAX_CHARS),
+      fontSize: tv(EPISODE_TITLE_FONT_SIZE),
+      fontWeight: EPISODE_TITLE_FONT_WEIGHT,
+    }));
+  }
+
   build() {
     Column() {
       if (this.kicker.length > 0) {
@@ -132,6 +152,17 @@ export struct FeatureCopy {
           .fontColor(toResourceColor(activeColors().ink))
       }
 
+      if (this.subtitle.length > 0) {
+        Text(this.subtitle).fontFamily(nunito(EPISODE_TITLE_FONT_WEIGHT))
+          .fontSize(tv(EPISODE_TITLE_FONT_SIZE))
+          .fontWeight(EPISODE_TITLE_FONT_WEIGHT)
+          .letterSpacing(tv(EPISODE_TITLE_LETTER_SPACING))
+          .lineHeight(tv(EPISODE_TITLE_LINE_HEIGHT))
+          .fontColor(toResourceColor(activeColors().inkSoft))
+          .constraintSize({ maxWidth: this.episodeSubtitleMaxWidth() })
+          .margin({ top: tv(EPISODE_TITLE_MARGIN_TOP) })
+      }
+
       if (this.metaLines.length > 0) {
         Column() {
           ForEach(
@@ -146,7 +177,7 @@ export struct FeatureCopy {
           )
         }
         .alignItems(HorizontalAlign.Start)
-        .margin({ top: tv(GAP_TITLE_META) })
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META) })
       }
 
       if (this.synopsis.length > 0) {

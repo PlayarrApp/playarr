@@ -172,6 +172,8 @@ export struct MediaRail {
    * comment) and, if left at the default on more than one instance, rails
    * would share focus-group state with each other. */
   @Prop railId: string = 'media-rail';
+  /** Optional ComponentUtils ID for callers that need current list bounds. */
+  @Prop measurementId: string = '';
 
   @Prop heading: string = '';
 
@@ -199,6 +201,14 @@ export struct MediaRail {
   /** The card row's height. A horizontal `List` with no height fills its parent, so a column of rails
    * needs it set; `0` leaves the List unsized (a rail that is the only child of a sized box). */
   @Prop listHeight: number = 0;
+
+  /** Optional one-time initial item reveal for a caller-owned focus target. */
+  @Prop @Watch('onInitialItemIndexChanged') initialItemIndex: number = -1;
+  onInitialItemPositioned: () => void = () => {};
+  onListAreaChange: (area: Area) => void = (_area: Area) => {};
+  onListOffsetChange: (offset: number) => void = (_offset: number) => {};
+  onItemAreaChange: (itemId: string, index: number, area: Area, railOffset: number) => void =
+    (_itemId: string, _index: number, _area: Area, _railOffset: number) => {};
 
   /** The rail-wide lift factor applied while this rail holds NO focus at
    * all -- see `DEFAULT_UNFOCUSED_RAIL_FACTOR`'s comment. */
@@ -232,6 +242,22 @@ export struct MediaRail {
   /** `1` while this rail's focus group holds focus, `unfocusedRailFactor`
    * otherwise -- this file's `activeRailFactor`. */
   @State private activeRailFactor: number = DEFAULT_UNFOCUSED_RAIL_FACTOR;
+  private listScroller: ListScroller = new ListScroller();
+  private listHasAppeared: boolean = false;
+  private appliedInitialItemIndex: number = -1;
+
+  private onInitialItemIndexChanged(): void {
+    this.scrollToInitialItem();
+  }
+
+  private scrollToInitialItem(): void {
+    if (!this.listHasAppeared || this.initialItemIndex < 0 || this.appliedInitialItemIndex === this.initialItemIndex) {
+      return;
+    }
+    this.appliedInitialItemIndex = this.initialItemIndex;
+    this.listScroller.scrollToIndex(this.initialItemIndex, false, ScrollAlign.CENTER);
+    this.onInitialItemPositioned();
+  }
 
   private setActive(active: boolean): void {
     // `fallback` is read into a local first (rather than inlining `active ?
@@ -273,13 +299,16 @@ export struct MediaRail {
           .scale({ x: (1 + (FOCUS_LIFT.railHeading.scale - 1) * this.headingEffective()), y: (1 + (FOCUS_LIFT.railHeading.scale - 1) * this.headingEffective()), centerX: 0, centerY: '50%' })
       }
 
-      List({ space: this.itemGap }) {
+      List({ space: this.itemGap, scroller: this.listScroller }) {
         ForEach(
           this.items,
           (item: MediaRailItem, index: number) => {
             ListItem() {
               this.itemBuilder(item, index, this.activeRailFactor)
             }
+            .onAreaChange((_oldArea: Area, area: Area) => {
+              this.onItemAreaChange(item.id, index, area, this.listScroller.currentOffset().xOffset);
+            })
           },
           (item: MediaRailItem): string => item.id + ':' + (item.stamp ?? '')
         )
@@ -291,11 +320,24 @@ export struct MediaRail {
       .padding({ left: RAIL_CLIP_INSET_START, bottom: RAIL_CLIP_INSET_BOTTOM })
       .margin({ left: -RAIL_CLIP_INSET_START, bottom: -RAIL_CLIP_INSET_BOTTOM })
       .focusScopeId(this.railId, true, true)
+      .id(this.measurementId.length > 0 ? this.measurementId : this.railId + '-list')
       .onFocus(() => {
         this.setActive(true);
       })
       .onBlur(() => {
         this.setActive(false);
+      })
+      .onAppear(() => {
+        this.listHasAppeared = true;
+        this.onListOffsetChange(this.listScroller.currentOffset().xOffset);
+        this.scrollToInitialItem();
+      })
+      .onAreaChange((_oldArea: Area, area: Area) => {
+        this.onListOffsetChange(this.listScroller.currentOffset().xOffset);
+        this.onListAreaChange(area);
+      })
+      .onScroll((_xOffset: number, _yOffset: number) => {
+        this.onListOffsetChange(this.listScroller.currentOffset().xOffset);
       })
     }
     .alignItems(HorizontalAlign.Start)

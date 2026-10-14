@@ -13,6 +13,7 @@ import argparse
 import base64
 import http.server
 import json
+import math
 import os
 import socket
 import struct
@@ -23,6 +24,7 @@ import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sim_vnc  # noqa: E402  (copied next to this file from scripts/sim-vnc)
+from capture_diagnostics import MAX_IMAGE_PAYLOAD_BYTES, image_payload_metrics  # noqa: E402
 
 # OpenHarmony KeyCode values (range the Previewer accepts: 2000-2119)
 OH_KEYS = {"up": 2012, "down": 2013, "left": 2014, "right": 2015, "ok": 2054, "center": 2016, "space": 2050, "esc": 2070, "tab": 2049, "enter": 2054, "pagedown": 2020}
@@ -34,21 +36,571 @@ KEYSYM = {0xFF52: "up", 0xFF54: "down", 0xFF51: "left", 0xFF53: "right", 0xFF0D:
 ROUTE_BOX = {"name": ""}
 # Parity state the patched app reports (route, library kind, last focused item); GET /state returns it with the derived label.
 IMAGES: dict = {}  # id -> bytes, posted by the patched app (the Previewer cannot decode images itself)
+IMAGE_METRICS: dict[str, dict] = {}  # ephemeral /img key -> numeric diagnostics, never written to artifacts
+IMAGE_SCOPES: dict[str, dict] = {}  # ephemeral /img key -> in-memory Detail row scope
+IMAGE_DIAGNOSTICS_LOCK = threading.Lock()
+IMAGE_DIAGNOSTICS_LIMIT = 256
+# A series-detail capture emits well over 300 events; keep enough that the target and route events are never evicted.
+DEBUG_EVENT_LIMIT = 3000
+DEBUG_EVENTS_LOCK = threading.Lock()
 STATE = {"route": "", "kind": "", "focused": None, "lib_kind": ""}
+DEBUG_SEQUENCE = 0
+DETAIL_IMAGE_STAGES = {
+    "source", "fetch-start", "fetch-ok", "fetch-error", "bridge-source-ready",
+    "assigned", "image-source", "image-area-positive", "image-area-zero", "on-complete", "on-error",
+    "row-match-found", "row-match-missing", "artwork-state-present", "artwork-state-absent", "artwork-state-mutated",
+    "artwork-store-present", "artwork-store-absent", "artwork-store-updated",
+    "poster-artwork-prop-undefined", "poster-artwork-prop-present",
+    "poster-render-artwork-undefined", "poster-render-artwork-present",
+    "visible-item-artwork-state-absent", "visible-item-artwork-state-present",
+}
+DETAIL_LAYOUT_STAGES = {
+    "detail-rails-count", "rail-items-count", "rail-item-appear",
+    "rail-items-prop-update-count", "rail-items-prop-update-artwork-count",
+    "poster-card-root-area", "poster-card-art-area", "rail-list-area",
+    "rail-list-height-explicit", "rail-list-height-default-fill",
+    "series-focus-request-count", "series-focused-row-is-target",
+    "series-target-season-row-area", "series-target-season-centre-delta-vp",
+    "series-target-card-visibility", "series-target-area-sample",
+    "episode-card-container-report", "episode-card-container-receiver",
+    "series-focus-request-issued", "series-focus-request-result",
+    "detail-preview-generation-scope",
+    "detail-row-area-geometry", "target-episode-initial-index-watch",
+    "target-episode-initial-index-watch-hook-ran", "target-episode-list-appeared",
+    "target-episode-list-appeared-hook-ran", "target-episode-initial-index-applied",
+    "target-episode-live-item-count-at-callback", "target-episode-positioned-callback",
+    "target-episode-live-prop-target-found", "target-episode-live-prop-target-index",
+    "target-episode-live-prop-target-at-callback-found", "target-episode-live-prop-target-at-callback-index",
+    "target-episode-callback-captured-item-count", "target-episode-callback-captured-target-found",
+    "target-episode-callback-captured-target-index", "target-episode-callback-live-rail-found",
+    "target-episode-callback-live-item-count", "target-episode-callback-live-target-found",
+    "target-episode-callback-live-target-index",
+    "resume-plan-loaded", "target-present", "target-in-any-rail", "target-card-mounted",
+    "target-season-scroll-requested", "target-episode-scroll-requested", "focus-pending", "focus-suppressed",
+    "focus-request-count",
+}
+DETAIL_LOAD_RESULT_CATEGORIES = {"ok", "http_failure", "network_failure"}
+DETAIL_LOAD_ERROR_CATEGORIES = {
+    "", "timeout", "no_connection", "cancelled", "unknown", "general", "oauth", "upgrade_required",
+    "not_json", "malformed",
+}
+DETAIL_RENDER_STATES = {"loading", "error", "detail-ready"}
+
+
+def valid_numeric_image_key(image_id: str) -> bool:
+    return 0 < len(image_id) <= 16 and all("0" <= character <= "9" for character in image_id)
+
+
+def _valid_image_scope(body: dict) -> dict | None:
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    parent_work_id = str(body.get("parent_work_id", ""))
+    row_id = str(body.get("row_id", ""))
+    try:
+        generation = int(body.get("generation", 0))
+    except (TypeError, ValueError):
+        return None
+    if (route != "Detail" or not work_id or work_id != parent_work_id or not row_id
+            or generation <= 0):
+        return None
+    current_generation = STATE.get("route_generation", 0)
+    if generation < current_generation:
+        return None
+    if (generation == current_generation and current_generation > 0
+            and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
+        return None
+    return {
+        "route": route,
+        "work_id": work_id,
+        "parent_work_id": parent_work_id,
+        "row_id": row_id,
+        "generation": generation,
+    }
+
+
+def _append_image_payload_event(scope: dict, metrics: dict) -> None:
+    if metrics.get("decode_status") == "malformed":
+        category = "detail-image-payload-decode-error"
+        numeric_metrics = None
+    elif metrics.get("decode_status") == "oversized":
+        category = "detail-image-payload-oversized"
+        numeric_metrics = None
+    else:
+        category = "detail-image-payload-metrics"
+        numeric_metrics = {
+            key: value for key, value in metrics.items()
+            if (key != "decode_status" and isinstance(value, (int, float))
+                and not isinstance(value, bool) and math.isfinite(value))
+        }
+    append_debug_event(category, route=scope["route"], work_id=scope["work_id"],
+                       parent_work_id=scope["parent_work_id"], row_id=scope["row_id"],
+                       generation=scope["generation"], metrics=numeric_metrics)
+
+
+def _join_image_metrics_scope(image_id: str) -> None:
+    scope = IMAGE_SCOPES.get(image_id)
+    metrics = IMAGE_METRICS.get(image_id)
+    if scope is not None and metrics is not None:
+        del IMAGE_SCOPES[image_id]
+        del IMAGE_METRICS[image_id]
+        if _valid_image_scope(scope) is not None:
+            _append_image_payload_event(scope, metrics)
+
+
+def record_image_upload(image_id: str, payload: bytes) -> str:
+    """Cache only decodable bounded images; retain metrics and failures without payload bytes."""
+    if not valid_numeric_image_key(image_id):
+        return "invalid-key"
+    metrics = image_payload_metrics(payload)
+    status = metrics.get("decode_status", "malformed")
+    if status != "ok":
+        record_image_payload_status(image_id, status)
+        return status
+    IMAGES[image_id] = payload
+    if not image_id.isdigit() or len(image_id) > 16:
+        return status
+    with IMAGE_DIAGNOSTICS_LOCK:
+        IMAGE_METRICS[image_id] = metrics
+        _join_image_metrics_scope(image_id)
+        while len(IMAGE_METRICS) > IMAGE_DIAGNOSTICS_LIMIT:
+            IMAGE_METRICS.pop(next(iter(IMAGE_METRICS)))
+    return status
+
+
+def record_image_payload_status(image_id: str, status: str) -> None:
+    """Record a bounded decode stage when rejecting a body before reading it."""
+    if not valid_numeric_image_key(image_id) or status not in ("malformed", "oversized"):
+        return
+    with IMAGE_DIAGNOSTICS_LOCK:
+        IMAGE_METRICS[image_id] = {"decode_status": status}
+        _join_image_metrics_scope(image_id)
+        while len(IMAGE_METRICS) > IMAGE_DIAGNOSTICS_LIMIT:
+            IMAGE_METRICS.pop(next(iter(IMAGE_METRICS)))
+
+
+def append_detail_image_payload_scope(body: dict) -> bool:
+    """Join an ephemeral numeric /img key to a valid Detail row only in bridge memory."""
+    image_id = str(body.get("image_id", ""))
+    if not valid_numeric_image_key(image_id):
+        return False
+    scope = _valid_image_scope(body)
+    if scope is None:
+        return False
+    with IMAGE_DIAGNOSTICS_LOCK:
+        IMAGE_SCOPES[image_id] = scope
+        _join_image_metrics_scope(image_id)
+        while len(IMAGE_SCOPES) > IMAGE_DIAGNOSTICS_LIMIT:
+            IMAGE_SCOPES.pop(next(iter(IMAGE_SCOPES)))
+    return True
+
+
+def append_debug_event(category: str, *, route: str = "", work_id: str = "", parent_work_id: str = "",
+                       row_id: str = "", generation: int = 0, metrics: dict | None = None) -> dict:
+    global DEBUG_SEQUENCE
+    with DEBUG_EVENTS_LOCK:
+        DEBUG_SEQUENCE += 1
+        event = {
+            "sequence": DEBUG_SEQUENCE,
+            "category": category,
+            "timestamp": time.monotonic(),
+            "route": route or STATE.get("route", ""),
+            "work_id": work_id or STATE.get("work_id", ""),
+            "generation": generation or STATE.get("route_generation", 0),
+        }
+        if parent_work_id and row_id:
+            event["parent_work_id"] = parent_work_id
+            event["row_id"] = row_id
+        if metrics:
+            event.update(metrics)
+        STATE["debug_events"] = (STATE.get("debug_events", []) + [event])[-DEBUG_EVENT_LIMIT:]
+        STATE["debug_sequence"] = DEBUG_SEQUENCE
+    return event
+
+
+def snapshot_state() -> dict:
+    """Copy bridge state and complete debug events under the event publication lock."""
+    with DEBUG_EVENTS_LOCK:
+        snapshot = dict(STATE)
+        snapshot["debug_events"] = [dict(event) for event in STATE.get("debug_events", [])]
+        return snapshot
+
+
+def append_detail_load_event(body: dict) -> bool:
+    """Accept content-free Detail load diagnostics from the preview overlay only."""
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    try:
+        generation_raw = body.get("generation", 0)
+        load_sequence_raw = body.get("load_sequence", 0)
+        if (isinstance(generation_raw, bool) or not isinstance(generation_raw, int)
+                or isinstance(load_sequence_raw, bool) or not isinstance(load_sequence_raw, int)):
+            return False
+        generation = generation_raw
+        load_sequence = load_sequence_raw
+    except (TypeError, ValueError):
+        return False
+    stage = body.get("stage")
+    render_state = body.get("render_state")
+    if (route != "Detail" or not work_id or generation <= 0 or load_sequence <= 0
+            or stage not in ("load-start", "api-result", "render-state")
+            or render_state not in DETAIL_RENDER_STATES):
+        return False
+    current_generation = STATE.get("route_generation", 0)
+    if (generation != current_generation or STATE.get("route") != route
+            or STATE.get("work_id") != work_id):
+        return False
+
+    metrics = {"load_sequence": load_sequence, "render_state": render_state}
+    active_load_sequence = STATE.get("detail_load_sequence", 0)
+    if load_sequence < active_load_sequence:
+        return False
+    if stage == "load-start" and render_state != "loading":
+        return False
+    if stage == "api-result":
+        result_category = body.get("result_category")
+        error_category = body.get("error_category", "")
+        status = body.get("status", -1)
+        if result_category not in DETAIL_LOAD_RESULT_CATEGORIES:
+            return False
+        if (isinstance(status, bool) or not isinstance(status, int)
+                or status != -1 and not 100 <= status <= 599):
+            return False
+        if error_category not in DETAIL_LOAD_ERROR_CATEGORIES:
+            return False
+        if result_category == "ok" and (status < 200 or status >= 300 or error_category):
+            return False
+        if result_category == "network_failure" and (status != -1 or not error_category):
+            return False
+        if result_category == "http_failure" and (not 400 <= status <= 599 or not error_category):
+            return False
+        metrics.update({"result_category": result_category, "status": status,
+                        "error_category": error_category})
+    elif stage == "render-state" and render_state not in DETAIL_RENDER_STATES:
+        return False
+    if load_sequence > active_load_sequence:
+        STATE["detail_load_sequence"] = load_sequence
+    append_debug_event("detail-load-" + stage, route=route, work_id=work_id,
+                       generation=generation, metrics=metrics)
+    return True
+
+
+def append_row_image_event(body: dict) -> bool:
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    parent_work_id = str(body.get("parent_work_id", ""))
+    row_id = str(body.get("row_id", ""))
+    try:
+        generation = int(body.get("generation", 0))
+    except (TypeError, ValueError):
+        return False
+    if route != "Detail" or not work_id or work_id != parent_work_id or not row_id or generation <= 0:
+        return False
+    current_generation = STATE.get("route_generation", 0)
+    if generation < current_generation:
+        return False
+    if (generation == current_generation and current_generation > 0
+            and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
+        return False
+    append_debug_event("detail-row-image-complete", route=route, work_id=work_id,
+                       parent_work_id=parent_work_id, row_id=row_id, generation=generation)
+    return True
+
+
+def append_detail_image_stage(body: dict) -> bool:
+    """Accept a scoped preview-only image stage without exposing IDs in logs/artifacts."""
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    parent_work_id = str(body.get("parent_work_id", ""))
+    row_id = str(body.get("row_id", ""))
+    stage = str(body.get("stage", ""))
+    try:
+        generation = int(body.get("generation", 0))
+    except (TypeError, ValueError):
+        return False
+    if (route != "Detail" or not work_id or work_id != parent_work_id or not row_id
+            or generation <= 0 or stage not in DETAIL_IMAGE_STAGES):
+        return False
+    current_generation = STATE.get("route_generation", 0)
+    if generation < current_generation:
+        return False
+    if (generation == current_generation and current_generation > 0
+            and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
+        return False
+    append_debug_event("detail-row-image-" + stage, route=route, work_id=work_id,
+                       parent_work_id=parent_work_id, row_id=row_id, generation=generation)
+    return True
+
+
+def append_detail_layout_stage(body: dict) -> bool:
+    """Accept only scoped layout stages and numeric measurements."""
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    stage = str(body.get("stage", ""))
+    try:
+        generation = int(body.get("generation", 0))
+    except (TypeError, ValueError):
+        return False
+    if route != "Detail" or not work_id or generation <= 0 or stage not in DETAIL_LAYOUT_STAGES:
+        return False
+    current_generation = STATE.get("route_generation", 0)
+    if generation < current_generation:
+        return False
+    if (generation == current_generation and current_generation > 0
+            and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
+        return False
+    numeric = {}
+    if stage == "episode-card-container-report":
+        predicate_fields = (
+            "report_invoked", "sender_route_ok", "sender_work_present", "sender_work_matches",
+            "sender_generation_matches", "sender_rect_finite", "sender_rect_positive",
+            "sender_density_valid",
+        )
+        for field in predicate_fields:
+            value = body.get(field)
+            if isinstance(value, bool) or not isinstance(value, int) or value not in (0, 1):
+                return False
+            numeric[field] = value
+        geometry_fields = ("x_vp", "y_vp", "width_vp", "height_vp", "density")
+        for field in geometry_fields:
+            value = body.get(field)
+            if value is None:
+                continue
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or (isinstance(value, float) and not math.isfinite(value)) or abs(value) > 1000000):
+                return False
+            numeric[field] = value
+        if numeric["sender_rect_finite"] == 1 and any(field not in numeric for field in geometry_fields[:4]):
+            return False
+        if numeric["sender_density_valid"] == 1 and "density" not in numeric:
+            return False
+    elif stage == "series-target-card-visibility":
+        expected = {"visible", "intersection_width_vp", "intersection_height_vp", "page_offset_vp",
+                    "rail_offset_vp", "offsets_fresh"}
+        if any(field not in body for field in expected):
+            return False
+        for field in expected:
+            raw = body[field]
+            if (isinstance(raw, bool) or not isinstance(raw, (int, float))
+                    or (isinstance(raw, float) and not math.isfinite(raw)) or abs(raw) > 1000000):
+                return False
+        if (body["visible"] not in (0, 1) or body["offsets_fresh"] not in (0, 1)
+                or body["intersection_width_vp"] < 0 or body["intersection_height_vp"] < 0):
+            return False
+        numeric.update({
+            "visible": body["visible"],
+            "intersection_width_vp": body["intersection_width_vp"],
+            "intersection_height_vp": body["intersection_height_vp"],
+            "page_offset_vp": body["page_offset_vp"],
+            "rail_offset_vp": body["rail_offset_vp"],
+            "offsets_fresh": body["offsets_fresh"],
+        })
+    elif stage == "series-target-area-sample":
+        present = body.get("present")
+        if isinstance(present, bool) or present not in (0, 1):
+            return False
+        fields = ("width_vp", "height_vp", "page_offset_vp", "rail_offset_vp")
+        values = {field: body.get(field) for field in fields}
+        if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in values.values()):
+            return False
+        if any(abs(value) > 1000000 or not math.isfinite(value) for value in values.values()):
+            return False
+        sampled_at_ms = body.get("sampled_at_ms")
+        if (isinstance(sampled_at_ms, bool) or not isinstance(sampled_at_ms, int)
+                or sampled_at_ms < 1000000000000 or sampled_at_ms > 10000000000000
+                or values["width_vp"] <= 0 or values["height_vp"] <= 0):
+            return False
+        numeric.update({"present": present, **values, "sampled_at_ms": sampled_at_ms})
+    elif stage == "detail-preview-generation-scope":
+        captured = body.get("captured_generation")
+        live = body.get("live_generation")
+        matches = body.get("scope_matches")
+        if (isinstance(captured, bool) or not isinstance(captured, int) or captured <= 0 or captured > 1000000
+                or isinstance(live, bool) or not isinstance(live, int) or live != generation
+                or live <= 0 or live > 1000000
+                or isinstance(matches, bool) or matches not in (0, 1)
+                or matches != (1 if captured == live else 0)):
+            return False
+        numeric.update({"captured_generation": captured, "live_generation": live, "scope_matches": matches})
+    elif stage == "detail-row-area-geometry":
+        type_codes = {0, 1, 2, 3, 4, 5}
+        unit_codes = {0, 1, 2, 3, 4, 5, 6}
+        for name in ("x", "y", "global_x", "global_y", "width", "height"):
+            type_field = name + "_type_code"
+            unit_field = name + "_unit_code"
+            type_code = body.get(type_field)
+            unit_code = body.get(unit_field)
+            if (isinstance(type_code, bool) or not isinstance(type_code, int) or type_code not in type_codes
+                    or isinstance(unit_code, bool) or not isinstance(unit_code, int) or unit_code not in unit_codes):
+                return False
+            numeric[type_field] = type_code
+            numeric[unit_field] = unit_code
+            raw = body.get(name)
+            if raw is None:
+                continue
+            if (isinstance(raw, bool) or not isinstance(raw, (int, float))
+                    or (isinstance(raw, float) and not math.isfinite(raw)) or abs(raw) > 1000000):
+                return False
+            numeric[name] = raw
+        if "width" in numeric and "height" in numeric:
+            numeric["area"] = numeric["width"] * numeric["height"]
+    elif stage in ("series-focus-request-issued", "series-focus-request-result",
+                   "series-focused-row-is-target"):
+        raw = body.get("value")
+        if isinstance(raw, bool) or raw not in (0, 1):
+            return False
+        numeric["value"] = raw
+    for field in (() if stage in ("series-target-card-visibility", "series-target-area-sample",
+                                  "detail-preview-generation-scope",
+                                  "series-focus-request-issued",
+                                  "series-focus-request-result", "series-focused-row-is-target") else ("value", "width", "height")):
+        raw = body.get(field)
+        if raw is None:
+            continue
+        signed_centre_delta = field == "value" and stage == "series-target-season-centre-delta-vp"
+        minimum = -1000000 if signed_centre_delta else -1
+        if (isinstance(raw, bool) or not isinstance(raw, (int, float))
+                or (isinstance(raw, float) and not math.isfinite(raw)) or raw < minimum):
+            return False
+        if raw > 1000000:
+            return False
+        if raw >= 0 or signed_centre_delta:
+            numeric[field] = raw
+    if "width" in numeric and "height" in numeric:
+        numeric["area"] = numeric["width"] * numeric["height"]
+    append_debug_event("detail-layout-" + stage, route=route, work_id=work_id,
+                       generation=generation, metrics=numeric)
+    return True
+
+
+def _detail_row_scope(body: dict) -> dict | None:
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    parent_work_id = str(body.get("parent_work_id", ""))
+    row_id = str(body.get("row_id", ""))
+    try:
+        generation = int(body.get("generation", 0))
+    except (TypeError, ValueError):
+        return None
+    if route != "Detail" or not work_id or parent_work_id != work_id or not row_id or generation <= 0:
+        return None
+    current_generation = STATE.get("route_generation", 0)
+    if generation < current_generation:
+        return None
+    if (generation == current_generation and current_generation > 0
+            and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
+        return None
+    return {"route": route, "work_id": work_id, "parent_work_id": parent_work_id,
+            "row_id": row_id, "generation": generation}
+
+
+def append_detail_episode_target(body: dict) -> bool:
+    scope = _detail_row_scope(body)
+    if scope is None:
+        return False
+    append_debug_event("detail-episode-target", **scope)
+    return True
+
+
+def _append_detail_episode_card_area_event(body: dict, *, category: str = "detail-episode-card-area",
+                                          extra_metrics: dict | None = None) -> dict | None:
+    scope = _detail_row_scope(body)
+    if scope is None:
+        return None
+    metrics = {}
+    for field in ("x_vp", "y_vp", "width_vp", "height_vp", "density"):
+        raw = body.get(field)
+        if (isinstance(raw, bool) or not isinstance(raw, (int, float))
+                or (isinstance(raw, float) and not math.isfinite(raw))
+                or raw < -1000000 or raw > 1000000):
+            return None
+        metrics[field] = raw
+    if (metrics["width_vp"] <= 0 or metrics["height_vp"] <= 0
+            or metrics["density"] <= 0 or metrics["density"] > 10):
+        return None
+    if extra_metrics:
+        metrics.update(extra_metrics)
+    return append_debug_event(category, **scope, metrics=metrics)
+
+
+def append_detail_episode_card_area(body: dict) -> bool:
+    return _append_detail_episode_card_area_event(body) is not None
+
+
+def _append_container_area_receiver_outcome(accepted: bool, reason_code: int) -> None:
+    route = STATE.get("route", "")
+    work_id = STATE.get("work_id", "")
+    generation = STATE.get("route_generation", 0)
+    if route != "Detail" or not work_id or not isinstance(generation, int) or generation <= 0:
+        return
+    append_debug_event("detail-layout-episode-card-container-receiver", route=route, work_id=work_id,
+                       generation=generation,
+                       metrics={"accepted": 1 if accepted else 0, "reason_code": reason_code})
+
+
+def append_detail_episode_card_container_area(body: dict) -> bool:
+    event = _append_detail_episode_card_area_event(
+        body, category="detail-episode-card-container-area",
+        extra_metrics={"receiver_accepted": 1, "receiver_reason_code": 0})
+    if event is not None:
+        return True
+    # Keep rejection evidence scoped to current bridge state, never the rejected identifiers.
+    _append_container_area_receiver_outcome(False, _container_area_rejection_code(body))
+    return False
+
+
+def _container_area_rejection_code(body: dict) -> int:
+    """Return a bounded reason enum for the rejected area body."""
+    route = str(body.get("route", ""))
+    work_id = str(body.get("work_id", ""))
+    parent_work_id = str(body.get("parent_work_id", ""))
+    row_id = str(body.get("row_id", ""))
+    try:
+        generation = int(body.get("generation", 0))
+    except (TypeError, ValueError):
+        return 1
+    if route != "Detail" or not work_id or parent_work_id != work_id or not row_id or generation <= 0:
+        return 1
+    current_generation = STATE.get("route_generation", 0)
+    if generation < current_generation or (generation == current_generation and current_generation > 0
+            and (STATE.get("route") != route or STATE.get("work_id") != work_id)):
+        return 2
+    for field in ("x_vp", "y_vp", "width_vp", "height_vp", "density"):
+        value = body.get(field)
+        if (isinstance(value, bool) or not isinstance(value, (int, float))
+                or (isinstance(value, float) and not math.isfinite(value))
+                or value < -1000000 or value > 1000000):
+            return 3
+    if body["width_vp"] <= 0 or body["height_vp"] <= 0 or body["density"] <= 0 or body["density"] > 10:
+        return 4
+    return 0
 
 
 def apply_state(q):
     if "route" in q:
-        STATE["route"] = q["route"][0]
+        route = q["route"][0]
+        work_id = q.get("work", [""])[0] if route == "Detail" else ""
+        previous_route = STATE.get("route", "")
+        previous_work_id = STATE.get("work_id", "")
+        previous_generation = STATE.get("route_generation", 0)
+        try:
+            generation = int(q.get("generation", ["0"])[0])
+        except (TypeError, ValueError):
+            generation = 0
+        if "generation" in q and generation < STATE.get("route_generation", 0):
+            return
+        STATE["route"] = route
         STATE["kind"] = q.get("kind", [""])[0]
-        if STATE["route"] == "Detail":
-            STATE["work_id"] = q.get("work", [""])[0]
+        STATE["work_id"] = work_id
+        STATE["route_generation"] = max(STATE.get("route_generation", 0), generation)
+        if route != "Detail" or route != previous_route or work_id != previous_work_id or generation != previous_generation:
+            STATE["detail_load_sequence"] = 0
         if STATE["route"] == "Library":
             STATE["lib_kind"] = STATE["kind"]
     if "dbg" in q:
         STATE["dbg"] = q["dbg"][0]
         STATE.setdefault("dbglog", []).append(q["dbg"][0])
         del STATE["dbglog"][:-300]
+        append_debug_event(q["dbg"][0].split(":", 1)[0][:64])
     if "nav" in q:
         STATE["focused"] = q["nav"][0]
     if "title" in q:
@@ -392,7 +944,7 @@ def main():
                 apply_state(query)
                 return self._reply(200, b"ok")
             if url.path == "/state":
-                return self._reply(200, json.dumps(STATE).encode(), "application/json")
+                return self._reply(200, json.dumps(snapshot_state()).encode(), "application/json")
             if url.path.startswith("/keylong/"):
                 name = url.path[9:]
                 if name not in OH_KEYS:
@@ -409,12 +961,64 @@ def main():
             return self._reply(404, b"")
 
         def do_POST(self):  # noqa: N802
-            raw = self.rfile.read(int(self.headers.get("content-length", "0")))
             url = urllib.parse.urlparse(self.path)
             if url.path == "/imgput":
-                IMAGES[urllib.parse.parse_qs(url.query)["id"][0]] = raw
+                image_id = urllib.parse.parse_qs(url.query).get("id", [""])[0]
+                if not valid_numeric_image_key(image_id):
+                    return self._reply(400, b"invalid image key")
+                try:
+                    content_length = int(self.headers.get("content-length", "0"))
+                except ValueError:
+                    return self._reply(400, b"invalid image payload length")
+                if content_length <= 0:
+                    return self._reply(400, b"empty image payload")
+                if content_length > MAX_IMAGE_PAYLOAD_BYTES:
+                    record_image_payload_status(image_id, "oversized")
+                    return self._reply(413, b"image payload too large")
+                raw = self.rfile.read(content_length)
+                if len(raw) != content_length:
+                    return self._reply(400, b"truncated image payload")
+                status = record_image_upload(image_id, raw)
+                if status == "oversized":
+                    return self._reply(413, b"image payload too large")
+                if status != "ok":
+                    return self._reply(415, b"unsupported image payload")
                 return self._reply(200, b"ok")
+            raw = self.rfile.read(int(self.headers.get("content-length", "0")))
             body = json.loads(raw or b"{}")
+            if url.path == "/preview-state":
+                apply_state({
+                    "route": [str(body.get("route", ""))],
+                    "kind": [str(body.get("kind", ""))],
+                    "work": [str(body.get("work_id", ""))],
+                    "generation": [str(body.get("generation", "0"))],
+                })
+                return self._reply(200, b"ok")
+            if url.path == "/row-image":
+                # Compatibility for older local overlays; capture.py gates on the staged on-complete event below.
+                append_row_image_event(body)
+                return self._reply(200, b"ok")
+            if url.path == "/row-image-stage":
+                append_detail_image_stage(body)
+                return self._reply(200, b"ok")
+            if url.path == "/image-metrics-scope":
+                append_detail_image_payload_scope(body)
+                return self._reply(200, b"ok")
+            if url.path == "/layout-stage":
+                append_detail_layout_stage(body)
+                return self._reply(200, b"ok")
+            if url.path == "/detail-load":
+                append_detail_load_event(body)
+                return self._reply(200, b"ok")
+            if url.path == "/episode-target":
+                append_detail_episode_target(body)
+                return self._reply(200, b"ok")
+            if url.path == "/episode-card-area":
+                append_detail_episode_card_area(body)
+                return self._reply(200, b"ok")
+            if url.path == "/episode-card-container-area":
+                append_detail_episode_card_container_area(body)
+                return self._reply(200, b"ok")
             ok = commands.send(body["command"], body.get("args"), body.get("type", "action"))
             return self._reply(200 if ok else 503, b"ok")
 

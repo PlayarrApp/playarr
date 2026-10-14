@@ -257,6 +257,11 @@ export function getResumePlan(seriesId: string): Promise<ApiResult<ResumePlan>> 
   return getPlayarrClient().getJson<ResumePlan>(catalogResumePlanUrl(seriesId));
 }
 
+/** `DELETE /api/v1/catalog/{id}/resume-plan/choices`: forget the remembered resume choices (web's Ask again). */
+export function clearResumeChoices(seriesId: string): Promise<ApiResult<Object>> {
+  return getPlayarrClient().deleteJson<Object>(catalogResumePlanUrl(seriesId) + '/choices');
+}
+
 /** `GET /api/v1/catalog/{id}/credits`: the work's cast and crew. */
 export function getWorkCredits(id: string): Promise<ApiResult<WorkCredits>> {
   return getPlayarrClient().getJson<WorkCredits>(catalogCreditsUrl(id));
