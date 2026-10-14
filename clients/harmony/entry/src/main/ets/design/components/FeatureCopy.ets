@@ -21,6 +21,7 @@
  * web is the reference (docs/parity/README.md).
  */
 
+import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -112,7 +113,7 @@ export struct FeatureCopy {
   build() {
     Column() {
       if (this.kicker.length > 0) {
-        Text(this.kicker)
+        Text(this.kicker).fontFamily(nunito(KICKER_FONT_WEIGHT))
           .fontSize(tv(KICKER_FONT_SIZE))
           .fontWeight(KICKER_FONT_WEIGHT)
           .letterSpacing(tv(KICKER_LETTER_SPACING))
@@ -122,7 +123,7 @@ export struct FeatureCopy {
       }
 
       if (this.title.length > 0) {
-        Text(this.balancedTitle())
+        Text(this.balancedTitle()).fontFamily(nunito(HERO_TITLE_FONT_WEIGHT))
           .fontSize(tv(HERO_TITLE_FONT_SIZE))
           .fontWeight(HERO_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
@@ -136,7 +137,7 @@ export struct FeatureCopy {
           ForEach(
             this.metaLines,
             (line: string) => {
-              Text(line)
+              Text(line).fontFamily(nunito(COPY_TEXT_FONT_WEIGHT))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE))
                 .fontWeight(COPY_TEXT_FONT_WEIGHT)
                 .fontColor(this.copyTextColor())
@@ -149,7 +150,7 @@ export struct FeatureCopy {
       }
 
       if (this.synopsis.length > 0) {
-        Text(this.synopsis)
+        Text(this.synopsis).fontFamily(nunito(COPY_TEXT_FONT_WEIGHT))
           .fontSize(tv(COPY_TEXT_FONT_SIZE))
           .fontWeight(COPY_TEXT_FONT_WEIGHT)
           .lineHeight(tv(SYNOPSIS_LINE_HEIGHT))

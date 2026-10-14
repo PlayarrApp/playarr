@@ -50,6 +50,7 @@
  * button IS `FocusLift`+`Motion` in action).
  */
 
+import { nunito } from '../design/Typography';
 import type { DeviceProfile } from '../core/DeviceProfile';
 import {
   activeColors,
@@ -157,7 +158,7 @@ struct DesignGallery {
 
   @Builder
   private sectionHeader(title: string): void {
-    Text(title)
+    Text(title).fontFamily(nunito(700))
       .fontSize(GALLERY_SECTION_FONT_SIZE)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().ink))
@@ -166,7 +167,7 @@ struct DesignGallery {
 
   @Builder
   private subLabel(text: string): void {
-    Text(text)
+    Text(text).fontFamily(nunito(500))
       .fontSize(GALLERY_LABEL_FONT_SIZE)
       .fontWeight(FontWeight.Medium)
       .fontColor(toResourceColor(activeColors().inkSoft))
@@ -190,7 +191,7 @@ struct DesignGallery {
         .backgroundColor(toResourceColor(dark))
         .border({ width: 1, color: toResourceColor(DarkColors.lineStrong) })
 
-      Text(label)
+      Text(label).fontFamily(nunito(400))
         .fontSize(GALLERY_BODY_FONT_SIZE)
         .fontColor(toResourceColor(activeColors().ink))
     }
@@ -200,14 +201,14 @@ struct DesignGallery {
   @Builder
   private metricsCompareRow(label: string, tvValue: number, touchValue: number): void {
     Row({ space: Spacing.sm }) {
-      Text(label)
+      Text(label).fontFamily(nunito(400))
         .fontSize(GALLERY_BODY_FONT_SIZE)
         .fontColor(toResourceColor(activeColors().ink))
         .width(200)
-      Text(`TV ${tvValue}`)
+      Text(`TV ${tvValue}`).fontFamily(nunito(400))
         .fontSize(GALLERY_CAPTION_FONT_SIZE)
         .fontColor(toResourceColor(activeColors().inkSoft))
-      Text(`Touch ${touchValue}`)
+      Text(`Touch ${touchValue}`).fontFamily(nunito(400))
         .fontSize(GALLERY_CAPTION_FONT_SIZE)
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
@@ -217,11 +218,11 @@ struct DesignGallery {
   @Builder
   private motionRow(label: string, ms: number): void {
     Row({ space: Spacing.sm }) {
-      Text(label)
+      Text(label).fontFamily(nunito(400))
         .fontSize(GALLERY_BODY_FONT_SIZE)
         .fontColor(toResourceColor(activeColors().ink))
         .width(220)
-      Text(`${ms}ms`)
+      Text(`${ms}ms`).fontFamily(nunito(400))
         .fontSize(GALLERY_CAPTION_FONT_SIZE)
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
@@ -231,14 +232,14 @@ struct DesignGallery {
   @Builder
   private focusLiftRow(label: string, delta: FocusLiftDelta): void {
     Row({ space: Spacing.sm }) {
-      Text(label)
+      Text(label).fontFamily(nunito(400))
         .fontSize(GALLERY_BODY_FONT_SIZE)
         .fontColor(toResourceColor(activeColors().ink))
         .width(200)
-      Text(`translateY ${delta.translateY ?? 0}`)
+      Text(`translateY ${delta.translateY ?? 0}`).fontFamily(nunito(400))
         .fontSize(GALLERY_CAPTION_FONT_SIZE)
         .fontColor(toResourceColor(activeColors().inkSoft))
-      Text(`scale ${delta.scale}`)
+      Text(`scale ${delta.scale}`).fontFamily(nunito(400))
         .fontSize(GALLERY_CAPTION_FONT_SIZE)
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
@@ -297,7 +298,7 @@ struct DesignGallery {
     Scroll() {
       Column({ space: Spacing.sm }) {
         // -- Title + theme toggle -------------------------------------------
-        Text($r('app.string.design_gallery_title'))
+        Text($r('app.string.design_gallery_title')).fontFamily(nunito(700))
           .fontSize(GALLERY_TITLE_FONT_SIZE)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
@@ -306,7 +307,7 @@ struct DesignGallery {
           'Debug-only visual review of every design/ component, in both ' +
             'themes (toggle below) and at both the TV and touch metric scales ' +
             '(shown side by side per section). Excluded from release builds.'
-        )
+        ).fontFamily(nunito(400))
           .fontSize(GALLERY_BODY_FONT_SIZE)
           .fontColor(toResourceColor(activeColors().inkSoft))
 
@@ -340,7 +341,7 @@ struct DesignGallery {
         }
         .margin({ top: Spacing.xs })
 
-        Text(`Theme override: ${getThemeModeSetting()} -> resolved: ${resolvedThemeMode()}`)
+        Text(`Theme override: ${getThemeModeSetting()} -> resolved: ${resolvedThemeMode()}`).fontFamily(nunito(400))
           .fontSize(GALLERY_CAPTION_FONT_SIZE)
           .fontColor(toResourceColor(activeColors().inkSoft))
 
@@ -366,10 +367,10 @@ struct DesignGallery {
 
         // -- Metrics (design/Metrics.ets) ------------------------------------
         this.sectionHeader('Metrics reference (design/Metrics.ets)')
-        Text(`Live device profile metrics key: ${activeMetricsKey()}`)
+        Text(`Live device profile metrics key: ${activeMetricsKey()}`).fontFamily(nunito(400))
           .fontSize(GALLERY_BODY_FONT_SIZE)
           .fontColor(toResourceColor(activeColors().inkSoft))
-        Text(`Live TV scale factor (windowWidthVp / 1920): ${tvScaleFactor()}`)
+        Text(`Live TV scale factor (windowWidthVp / 1920): ${tvScaleFactor()}`).fontFamily(nunito(400))
           .fontSize(GALLERY_BODY_FONT_SIZE)
           .fontColor(toResourceColor(activeColors().inkSoft))
         this.metricsCompareRow(
@@ -390,14 +391,14 @@ struct DesignGallery {
         Text(
           `Entry curve control points: [${MotionTokens.entryCurve[0]}, ${MotionTokens.entryCurve[1]}, ` +
             `${MotionTokens.entryCurve[2]}, ${MotionTokens.entryCurve[3]}]`
-        )
+        ).fontFamily(nunito(400))
           .fontSize(GALLERY_CAPTION_FONT_SIZE)
           .fontColor(toResourceColor(activeColors().inkSoft))
         Text(
           `Interaction curve control points: [${MotionTokens.interactionCurve[0]}, ` +
             `${MotionTokens.interactionCurve[1]}, ${MotionTokens.interactionCurve[2]}, ` +
             `${MotionTokens.interactionCurve[3]}]`
-        )
+        ).fontFamily(nunito(400))
           .fontSize(GALLERY_CAPTION_FONT_SIZE)
           .fontColor(toResourceColor(activeColors().inkSoft))
         this.motionRow('Entry -- key art', ENTRY_KEY_ART_MS)

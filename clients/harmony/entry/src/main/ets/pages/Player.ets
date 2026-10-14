@@ -105,6 +105,7 @@
  * `isApiOk` from `net/ApiResult.ets`.
  */
 
+import { nunito } from '../design/Typography';
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { media } from '@kit.MediaKit';
@@ -1325,13 +1326,13 @@ struct Player {
           .height(this.overlayTextSize() * 2)
           .color(toResourceColor(PLAYER_TEXT_PRIMARY))
       } else {
-        Text(this.errorMessage)
+        Text(this.errorMessage).fontFamily(nunito(400))
           .fontSize(this.overlayTextSize())
           .fontColor(toResourceColor(PLAYER_TEXT_PRIMARY))
           .textAlign(TextAlign.Center)
           .padding({ left: Spacing.xl, right: Spacing.xl })
 
-        Text('Retry')
+        Text('Retry').fontFamily(nunito(700))
           .fontSize(this.overlayTextSize())
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(PLAYER_TEXT_PRIMARY))
@@ -1441,7 +1442,7 @@ struct Player {
         }
 
         if (this.phase === 'ready' && this.subtitleCueText.length > 0) {
-          Text(this.subtitleCueText)
+          Text(this.subtitleCueText).fontFamily(nunito(400))
             .fontSize(isTvMetrics() ? tv(SUBTITLE_FONT_SIZE) : SUBTITLE_FONT_SIZE)
             .fontColor(toResourceColor(PLAYER_TEXT_PRIMARY))
             .textAlign(TextAlign.Center)

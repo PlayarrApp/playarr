@@ -100,6 +100,7 @@
  * reject outright.
  */
 
+import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
 
@@ -1008,10 +1009,10 @@ struct Detail {
   private playButton(enabled: boolean, height: number): void {
 
     Row({ space: Spacing.sm }) {
-      Text('▶')
+      Text('▶').fontFamily(nunito(400))
         .fontSize(PLAY_BUTTON_ICON_SIZE)
         .fontColor(toResourceColor(activeColors().onAccent))
-      Text(this.primaryLabel())
+      Text(this.primaryLabel()).fontFamily(nunito(700))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .fontSize(PLAY_BUTTON_LABEL_SIZE)
@@ -1096,10 +1097,10 @@ struct Detail {
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
     Row({ space: tv(10) }) {
-      Text(glyph)
+      Text(glyph).fontFamily(nunito(400))
         .fontSize(tv(12))
         .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().accent))
-      Text(label)
+      Text(label).fontFamily(nunito(700))
         .fontSize(tv(13))
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().ink))
@@ -1178,7 +1179,7 @@ struct Detail {
   private castItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     Column({ space: tv(8) }) {
       Stack() {
-        Text(initialsOf((item as CastRow).name))
+        Text(initialsOf((item as CastRow).name)).fontFamily(nunito(500))
           .fontSize(tv(CAST_INITIALS_SIZE))
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.6))
@@ -1197,7 +1198,7 @@ struct Detail {
       .backgroundColor(toResourceColorWithAlpha(activeColors().ink, 0.08))
       .focusable(true)
 
-      Text((item as CastRow).name)
+      Text((item as CastRow).name).fontFamily(nunito(400))
         .fontSize(tv(12))
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
@@ -1222,10 +1223,10 @@ struct Detail {
   @Builder
   private railHeading(heading: string, count: string): void {
     Column({ space: tv(4) }) {
-      Text(heading)
+      Text(heading).fontFamily(nunito(400))
         .fontSize(tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(count)
+      Text(count).fontFamily(nunito(400))
         .fontSize(tv(11))
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
@@ -1411,7 +1412,7 @@ struct Detail {
   private touchMetaChips(): void {
     Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(12), cross: LengthMetrics.vp(4) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
-        Text(chip)
+        Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
           .fontSize(11)
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
           .fontColor(toResourceColor(index === 0 ? activeColors().ink : activeColors().inkSoft))
@@ -1423,7 +1424,7 @@ struct Detail {
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
   private touchActionButton(label: string, onTap: () => void): void {
-    Text(label)
+    Text(label).fontFamily(nunito(500))
       .fontSize(11)
       .fontWeight(FontWeight.Medium)
       .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1486,28 +1487,28 @@ struct Detail {
       Scroll() {
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column({ space: 10 }) {
-            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? kindLabel(this.detail.work.kind) : ''))
+            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? kindLabel(this.detail.work.kind) : '')).fontFamily(nunito(900))
               .fontSize(10.56)
               .height(16)
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(BRAND_PINK_SOFT))
-            Text(this.detail !== null ? this.detail.work.title : '')
+            Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
               .fontSize(36)
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-1.6)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
-              Text(planEpisodeTitle(this.detail, this.resumePlan))
+              Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunito(500))
                 .fontSize(14.4)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
             }
             this.touchMetaChips()
-            Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '')
+            Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunito(400))
               .fontSize(12)
               .fontColor(toResourceColor(activeColors().inkSoft))
               .lineHeight(18)
@@ -1534,7 +1535,7 @@ struct Detail {
       .height('100%')
 
       Row({ space: 12 }) {
-        Text('←')
+        Text('←').fontFamily(nunito(700))
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1547,7 +1548,7 @@ struct Detail {
           .onClick(() => {
             popRoute(getNavStack());
           })
-        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? 'Series' : kindLabel(this.detail.work.kind) + 's') : '')
+        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? 'Series' : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
           .fontSize(22)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))

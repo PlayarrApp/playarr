@@ -144,6 +144,7 @@
  *   for brief literals with no home in `core/Tokens.ts`.
  */
 
+import { nunito } from '../design/Typography';
 import { isTvMetrics, tv, activeGeometry } from '../design/Metrics';
 import { TvGeometry, TouchGeometry, BRAND_PINK, Spacing } from '../core/Tokens';
 import type { RgbaColor } from '../core/Tokens';
@@ -352,7 +353,7 @@ struct ChromeButton {
       if (this.showGlyph) {
         PlayPauseGlyph({ isPlaying: this.isPlaying, glyphSize: this.glyphSize })
       } else {
-        Text(this.label)
+        Text(this.label).fontFamily(nunito(700))
           .fontSize(this.fontSize)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
@@ -629,9 +630,9 @@ export struct PlayerChrome {
             }),
           })
           if (this.isLive()) {
-            Text('LIVE').fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
+            Text('LIVE').fontFamily(nunito(700)).fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
           } else {
-            Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
+            Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunito(400))
               .fontSize(tv(TV_TIME_FONT_SIZE))
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
@@ -715,7 +716,7 @@ export struct PlayerChrome {
       .width('100%')
       .justifyContent(FlexAlign.Start)
 
-      Text(this.title)
+      Text(this.title).fontFamily(nunito(500))
         .width('100%')
         .fontSize(this.titleFontSize)
         .fontWeight(FontWeight.Medium)
@@ -744,15 +745,15 @@ export struct PlayerChrome {
           .width('100%')
 
           Row() {
-            Text(formatClockMs(this.positionMs)).fontSize(TIME_LABEL_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-            Text(('-' + formatClockMs(this.remainingMs()))).fontSize(TIME_LABEL_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+            Text(formatClockMs(this.positionMs)).fontFamily(nunito(400)).fontSize(TIME_LABEL_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+            Text(('-' + formatClockMs(this.remainingMs()))).fontFamily(nunito(400)).fontSize(TIME_LABEL_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
           .width('100%')
           .justifyContent(FlexAlign.SpaceBetween)
         } else {
           Row() {
-            Text(formatClockMs(this.positionMs)).fontSize(TIME_LABEL_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-            Text('LIVE').fontSize(TIME_LABEL_FONT_SIZE).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
+            Text(formatClockMs(this.positionMs)).fontFamily(nunito(400)).fontSize(TIME_LABEL_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+            Text('LIVE').fontFamily(nunito(700)).fontSize(TIME_LABEL_FONT_SIZE).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
           }
           .width('100%')
           .justifyContent(FlexAlign.SpaceBetween)
