@@ -623,6 +623,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: series detail shows Start, Add to watchlist and Add to Playlist in one row, as web.
 - HarmonyOS phone: series detail season rows use web's phone card size and spacing (TV unchanged).
 - Harmony wall: the preview's series episode card patch follows the phone card width.
 - HarmonyOS TV: the light-theme kicker uses the web crimson (#821e36) and the hero copy sits 3 vp lower, as web.
