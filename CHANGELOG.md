@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: focused cards and rings on Search, Playlists, a playlist, Downloads and the profile picker are no longer cropped by their container: the web's 48 px focus overflow is reserved there too.
 - Xbox: focused cards on Home, the library grid and the title-page rails are no longer cropped by their container: the web's 48 px focus overflow is reserved for the lift, ring and glow.
 - Nura's series episode rail no longer crops the focused episode's ring and glow.
 - Xbox: Settings > Appearance groups follow the web: a sentence-case heading, the note above the choice, and a divider between groups.

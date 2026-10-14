@@ -1,1 +1,0 @@
-- Xbox: focused cards and rings on Search, Playlists, a playlist, Downloads and the profile picker are no longer cropped by their container: the web's 48 px focus overflow is reserved there too.
