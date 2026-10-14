@@ -2202,8 +2202,74 @@ struct Detail {
       })
   }
 
+  /** Phone series (web phone series detail): one row, the Start pill and the two secondary actions, labels at web's 8 vp. */
+  @Builder
+  private touchSeriesAction(label: string, onTap: () => void): void {
+    Row({ space: 4 }) {
+      Text('+').fontFamily(nunito(500))
+        .fontSize(8)
+        .fontColor(toResourceColor(BRAND_PINK_SOFT))
+      Text(label).fontFamily(nunito(500))
+        .fontSize(8)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .maxLines(1)
+    }
+    .layoutWeight(1)
+    .height(44)
+    .justifyContent(FlexAlign.Center)
+    .borderRadius(22)
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+    .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+    .onClick(() => {
+      this.cancelInitialEpisodeFocus();
+      onTap();
+    })
+  }
+
+  @Builder
+  private touchSeriesActionRow(): void {
+    Row({ space: 8 }) {
+      Row({ space: 6 }) {
+        Text('▶').fontFamily(nunito(400)).fontSize(9).fontColor(toResourceColor(activeColors().onAccent))
+        Text(this.primaryLabel()).fontFamily(nunito(700))
+          .fontSize(11)
+          .fontWeight(FontWeight.Bold)
+          .maxLines(1)
+          .fontColor(toResourceColor(activeColors().onAccent))
+      }
+      .width(100)
+      .height(44)
+      .justifyContent(FlexAlign.Center)
+      .borderRadius(22)
+      .backgroundColor(this.primaryMediaFileId !== null ? toResourceColor(activeColors().accent) : toResourceColor(activeColors().inkMuted))
+      .opacity(this.primaryMediaFileId !== null ? 1 : 0.6)
+      .focusable(this.primaryMediaFileId !== null)
+      .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
+      .onClick(() => {
+        this.playPrimary();
+      })
+      this.touchSeriesAction(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
+        this.toggleWatchlist();
+      })
+      this.touchSeriesAction('Add to Playlist', (): void => {
+        this.touchActionsOpen = true;
+      })
+    }
+    .width('100%')
+  }
+
   @Builder
   private touchActionRows(): void {
+    if (this.detail !== null && this.detail.work.kind === 'series') {
+      this.touchSeriesActionRow()
+    } else {
+      this.touchMovieActionRows()
+    }
+  }
+
+  @Builder
+  private touchMovieActionRows(): void {
     Row({ space: 8 }) {
       this.touchActionButton('Download', (): void => {
         this.touchActionsOpen = true;

@@ -1,0 +1,1 @@
+- HarmonyOS phone: series detail shows Start, Add to watchlist and Add to Playlist in one row, as web.
