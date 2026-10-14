@@ -1,0 +1,1 @@
+- Match the Nura Home card resting shadow to Home web tokens in both themes.
