@@ -6,6 +6,8 @@ using Tizen.NUI.BaseComponents;
 namespace Playarr.Tizen;
 
 /// <summary>A media card (web .media-card): art with watch state, title and optional sub line. One component for Home and the grids.</summary>
+internal static class Widgets { public const float RailEndInset = 46.4f; }
+
 internal sealed class MediaCard
 {
     public const float Width = 327.2f, Height = 184f;

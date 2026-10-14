@@ -45,7 +45,7 @@ internal sealed class PeopleRail
 
     private void Reveal(int index)
     {
-        var visible = TizenClient.DesignWidth - RailX;
+        var visible = TizenClient.DesignWidth - RailX - Widgets.RailEndInset; // web keeps the focused card clear of the screen edge: room for its scale, ring and glow
         var right = (index + 1) * Pitch - 25f;
         if (right - Scroll > visible) Scroll = right - visible;
         if (index * Pitch < Scroll) Scroll = index * Pitch;

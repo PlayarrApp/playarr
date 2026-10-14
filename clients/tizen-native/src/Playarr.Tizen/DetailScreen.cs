@@ -207,7 +207,7 @@ internal sealed class DetailScreen : IPage
 
     private void ScrollChapters(int index)
     {
-        var visible = TizenClient.DesignWidth - RailX;
+        var visible = TizenClient.DesignWidth - RailX - Widgets.RailEndInset; // web keeps the focused card clear of the screen edge: room for its scale, ring and glow
         var right = (index + 1) * ChapterPitch - 25f;
         if (right - _chapterScroll > visible) _chapterScroll = right - visible;
         if (index * ChapterPitch < _chapterScroll) _chapterScroll = index * ChapterPitch;

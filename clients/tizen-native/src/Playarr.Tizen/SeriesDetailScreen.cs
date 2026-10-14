@@ -179,7 +179,7 @@ internal sealed class SeriesDetailScreen : IPage
     {
         _activeRail = rail;
         var r = _rails[rail];
-        var visible = TizenClient.DesignWidth - RailX;
+        var visible = TizenClient.DesignWidth - RailX - Widgets.RailEndInset; // web keeps the focused card clear of the screen edge: room for its scale, ring and glow
         var right = (col + 1) * CardPitch - 25f;
         if (right - r.Scroll > visible) r.Scroll = right - visible;
         if (col * CardPitch < r.Scroll) r.Scroll = col * CardPitch;

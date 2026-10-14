@@ -135,7 +135,7 @@ internal sealed class HomeScreen : IPage
         if (_rails.Count > 0) _rails[_rail].Cards[_card].SetFocused(false);
         _rail = rail; _card = card;
         var rv = _rails[rail];
-        var visible = TizenClient.DesignWidth - RailX;
+        var visible = TizenClient.DesignWidth - RailX - Widgets.RailEndInset; // web keeps the focused card clear of the screen edge: room for its scale, ring and glow
         var right = (card + 1) * Pitch - 24.8f;
         if (right - rv.Scroll > visible) rv.Scroll = right - visible;
         if (card * Pitch < rv.Scroll) rv.Scroll = card * Pitch;
