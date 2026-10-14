@@ -389,7 +389,8 @@
         "right*2",
         "select"
       ],
-      "wait": 6000
+      "wait": 6000,
+      "observe": "panel"
     },
     {
       "id": "player-panel-close",
@@ -399,7 +400,8 @@
         "select",
         "back"
       ],
-      "wait": 6000
+      "wait": 6000,
+      "observe": "panel"
     }
   ],
   "downloadMedia": {

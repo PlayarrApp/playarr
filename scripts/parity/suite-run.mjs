@@ -105,7 +105,11 @@ if (only.includes("dpad")) {
         const from = suite.screens.find((x) => x.id === d.from);
         await reach(from);
         // The player needs a known state before the first key: playing, controls up, focus on play/pause (driver.playerReady), else a fixed wait.
-        if (d.wait) { if (driver.playerReady) await driver.playerReady(); else await sleep(d.wait); }
+        if (d.wait) {
+          if (driver.playerReady) await driver.playerReady(); else await sleep(d.wait);
+          // Every driver: the playhead must be past 1 s before the first key (a slow player eats keys and shows the wrong state).
+          if (driver.playhead) { const t0 = Date.now(); while (Date.now() - t0 < 45000 && !((await driver.playhead()) > 1)) await sleep(500); if (!((await driver.playhead()) > 1)) throw new Error("player did not start playing within 45 s"); }
+        }
         if (d.start) {
           const at = focusForCheck(await driver.focused(), d.id).position;
           startOk = !at || samePosition(at, d.start); // a driver without position cannot assert the start
@@ -115,6 +119,8 @@ if (only.includes("dpad")) {
         await sleep(800);
         actual = focusForCheck(await driver.focused(), d.id);
         // observe "state": where the app is (route shape, ids dropped), for Back out of the player: the focus label there varies with timing.
+        // observe "panel": whether the audio/subtitle panel is open (driver.panelOpen), else the focused label.
+        if (d.observe === "panel" && driver.panelOpen) actual = { ...actual, label: `panel:${(await driver.panelOpen()) ? "open" : "closed"}` };
         if (d.observe === "state") actual = { ...actual, label: `${(await driver.location()).split("?")[0].split("/").filter(Boolean).map((s, i) => (i ? ":id" : s)).join("/")}` };
       } catch (e) { console.log(`ERR dpad ${d.id}: ${e.message.split("\n")[0]}`); }
       if (!actual?.label) continue;

@@ -421,6 +421,8 @@ export async function createDriver() {
         return !!v && v.readyState >= 2 && !v.paused && v.currentTime > 0.5 && !!c && !c.classList.contains("is-hidden") && !!document.activeElement?.closest("[data-player-default-focus]");
       }, null, { timeout: 30000, polling: 250 });
     },
+    async playhead() { return page.evaluate(() => document.querySelector("video")?.currentTime ?? null); },
+    async panelOpen() { return page.evaluate(() => [...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)); },
     async route(r, { requireHeroAction = false } = {}) {
       await page.goto(web + r, { waitUntil: "load" });
       detailActionRequired = requireHeroAction && /^\/(?:movies|series)\/[^/]+\/?(?:\?.*)?$/.test(r);

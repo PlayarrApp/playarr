@@ -44,10 +44,10 @@
     "player-up-seek": "seek",
     "player-up-down": "play-pause",
     "player-ok-toggle": "play-pause",
-    "player-panel-open": "offno subtitles\u2713",
-    "player-panel-close": "subtitles: off",
-    "player-back": "movies/:id",
-    "player-back-back": "movies",
+    "player-panel-open": "panel:open",
+    "player-panel-close": "panel:closed",
+    "player-back": "player/:id",
+    "player-back-back": "movies/:id",
     "nav-right-stage": {
       "label": "first Home card",
       "position": {
