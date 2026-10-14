@@ -416,11 +416,9 @@ PlayarrPage {
                                     OpacityMask { anchors.fill: parent; source: thumbGrey; maskSource: thumbMask }
                                     Label { anchors { right: parent.right; bottom: parent.bottom; rightMargin: 11.5 * Tokens.u; bottomMargin: 8.8 * Tokens.u }
                                             text: ("0" + modelData.episode.episode_number).slice(-2); color: "#ffffff"; font.family: Tokens.family580; font.pixelSize: 12.8 * Tokens.u }
-                                    Rectangle {
+                                    UnseenDot {
                                         visible: !epCard.pr || epCard.pr.state === "unseen"
-                                        width: 9 * Tokens.u; height: width; radius: width / 2
                                         anchors { top: parent.top; right: parent.right; topMargin: 7 * Tokens.u; rightMargin: 7 * Tokens.u }
-                                        color: Tokens.brandPink; border.width: 1.6 * Tokens.u; border.color: "#ffffff"
                                     }
                                     Rectangle {
                                         visible: !!epCard.pr && epCard.pr.state === "part_watched" && epCard.pr.duration_ms > 0

@@ -71,13 +71,9 @@ MouseArea {
         width: visible ? art.width * Math.min(1, root.prog.position_ms / root.prog.duration_ms) : 0
         color: Tokens.brandPink
     }
-    Rectangle {
+    UnseenDot {
         visible: root.showUnwatched && (!root.prog || root.prog.state === "unseen")
-        width: 9 * Tokens.u; height: width; radius: width / 2
         anchors { top: art.top; right: art.right; topMargin: 7 * Tokens.u; rightMargin: 7 * Tokens.u }
-        color: Tokens.brandPink
-        border.width: 2 * Tokens.u
-        border.color: "#ffffff"
     }
     Column {
         id: caption
@@ -88,7 +84,8 @@ MouseArea {
             text: work ? (work.deckTitle || work.title) : ""
             elide: Text.ElideRight
             color: Tokens.ink
-            font.family: Tokens.family580
+            font.family: Tokens.family610   // web --card-title-weight: 610
+            font.letterSpacing: -0.015 * 8.9 * Tokens.u
             font.pixelSize: 8.9 * Tokens.u
         }
         Label {

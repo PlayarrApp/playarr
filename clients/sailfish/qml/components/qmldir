@@ -2,6 +2,7 @@ singleton Tokens 1.0 Tokens.qml
 PlayarrPage 1.0 PlayarrPage.qml
 Artwork 1.0 Artwork.qml
 WorkCard 1.0 WorkCard.qml
+UnseenDot 1.0 UnseenDot.qml
 Rail 1.0 Rail.qml
 Avatar 1.0 Avatar.qml
 NavBar 1.0 NavBar.qml
