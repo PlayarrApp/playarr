@@ -633,6 +633,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: the page header shows the title and subtitle side by side with a divider (wrapping under the title only when there is no room), and the subtitle is no longer pink, as the web does.
 - Xbox: the resting card shadow follows the web's two-layer falloff.
 - Align the shared Apple TV floating navigation with the measured web header/page-control safe area and footer-pinned profile layout, with responsive inset coverage. This shared SwiftUI change affects tvOS and macOS.
 - HarmonyOS phone: series detail shows Start, Add to watchlist and Add to Playlist in one row, as web.
