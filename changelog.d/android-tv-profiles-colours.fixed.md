@@ -1,0 +1,1 @@
+- Match Android TV Profiles captions and kicker to the web theme colours.

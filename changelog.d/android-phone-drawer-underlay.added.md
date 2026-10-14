@@ -1,0 +1,1 @@
+- Android phone Filters and Actions drawers blur the page beneath them on Android 12 and later while keeping the bottom navigation available.

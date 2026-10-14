@@ -27,8 +27,11 @@ data class PlayarrWebPalette(
     val inkMuted: Color,
     val accent: Color,
 ) {
-    /** The exact web `--ink-muted` colour used by phone placeholders and action glyphs. */
-    val phoneInkMuted: Color get() = if (dark) Color(0xFFC2B5BB) else Color(0xFF4D4248)
+    /** The exact web `--ink-muted` colour for web-matched native captions. */
+    val webInkMuted: Color get() = if (dark) Color(0xFFC2B5BB) else Color(0xFF4D4248)
+
+    /** The web muted token used by phone placeholders and action glyphs. */
+    val phoneInkMuted: Color get() = webInkMuted
 
     /**
      * The focus ring colour (`--focus-ring-color`): white in the dark theme, the theme's near-black ink in the light
