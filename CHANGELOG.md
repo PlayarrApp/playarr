@@ -620,6 +620,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: content sits below the notch or cutout and above the gesture bar in portrait and landscape, with backgrounds and art edge to edge.
 - HarmonyOS TV detail: the meta is web chips (10.6 px), the action pills use the web sizes, and the season rows use the web 314 px pitch.
 - HarmonyOS phone: the bottom nav bar, library captions and letter rail, and the series detail scroll position follow the web phone layout.
 - Nura calendar rows (agenda and week) follow the web phone: surface row, hairline border, availability bar, TODAY pill.
