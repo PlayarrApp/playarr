@@ -93,9 +93,9 @@
 
         <GridView
             x:Name="ResultsGrid"
-            Width="1080"
-            Margin="783,0,0,0"
-            Padding="0,162,0,48"
+            Width="1128"
+            Margin="735,0,0,0"
+            Padding="48,162,0,48"
             HorizontalAlignment="Left"
             IsItemClickEnabled="True"
             SelectionMode="None"

@@ -47,6 +47,7 @@ namespace Playarr.Xbox.Views
         {
             InitializeComponent();
             _viewModel = new ProfilesViewModel(App.Environment);
+            CardFocus.ReserveFocusRoom(ProfilesScrollViewer);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)

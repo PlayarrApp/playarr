@@ -38,7 +38,7 @@ namespace Playarr.Xbox.Views
         /// Web's focus overflow (docs: 48 px each side for lift, ring and glow): grows the list's clip box by
         /// <paramref name="room"/> on every side and pads its items back, so cards, rails and pages keep their layout.
         /// </summary>
-        public static void ReserveFocusRoom(ListViewBase list, double left = 48, double top = 48, double right = 48, double bottom = 48)
+        public static void ReserveFocusRoom(Control list, double left = 48, double top = 48, double right = 48, double bottom = 48)
         {
             list.Margin = new Thickness(list.Margin.Left - left, list.Margin.Top - top, list.Margin.Right - right, list.Margin.Bottom - bottom);
             list.Padding = new Thickness(list.Padding.Left + left, list.Padding.Top + top, list.Padding.Right + right, list.Padding.Bottom + bottom);
