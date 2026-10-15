@@ -1,5 +1,6 @@
 import PlayarrKit
 import SwiftUI
+import UIKit
 
 /// Web phone panels of the library: "Filters" (`LIBRARY CONTROLS`) and "Title actions". Both are full-page panels that
 /// leave the floating nav visible, with the 44 pt close button at the top right (measured on the live web at 393 pt).
@@ -9,18 +10,54 @@ private struct WMPanelFrame<Content: View>: View {
     let onClose: () -> Void
     @ViewBuilder let content: () -> Content
 
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+
+    @ViewBuilder
+    private var panelBackground: some View {
+        if isPad {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .overlay(WM.chip.opacity(0.94))
+                .ignoresSafeArea()
+        } else {
+            WM.page.opacity(0.97).ignoresSafeArea()
+        }
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
-            WM.page.opacity(0.97).ignoresSafeArea()
-            WMText(kicker.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1).offset(x: 21, y: 17 + WM.safeTop)
-            WMText(title, 24, 520, lh: 34, ls: -1).offset(x: 21, y: 33 + WM.safeTop)
-            HStack { Spacer(); WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose) }
-                // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
-                .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
-                .padding(.trailing, 21).offset(y: 22 + WM.safeTop)
+            panelBackground
+            if isPad {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        WMText(kicker.uppercased(), 7.2, 700, color: WM.muted, lh: 11, ls: 1)
+                        WMText(title, 27.32, 520, lh: 33, ls: -0.8)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose)
+                        // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
+                        .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
+                }
+                .padding(.horizontal, 34)
+                .padding(.top, 51 + WM.safeTop)
+            } else {
+                WMText(kicker.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1).offset(x: 21, y: 17 + WM.safeTop)
+                WMText(title, 24, 520, lh: 34, ls: -1).offset(x: 21, y: 33 + WM.safeTop)
+                HStack { Spacer(); WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose) }
+                    // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
+                    .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
+                    .padding(.trailing, 21).offset(y: 22 + WM.safeTop)
+            }
             // The whole panel scrolls (web: the drawer body scrolls to its last row, clear of the floating nav).
             ScrollView(.vertical) {
-                content().padding(.horizontal, 21).padding(.top, 95 + WM.safeTop).padding(.bottom, 130)
+                content()
+                    .padding(.horizontal, isPad ? 34 : 21)
+                    .padding(.top, (isPad ? 140 : 95) + WM.safeTop)
+                    .padding(.bottom, isPad ? 96 : 130)
             }
             .scrollIndicators(.hidden)
             .webEdgeFade(.vertical, size: 38)
@@ -112,6 +149,7 @@ struct WMLibraryFiltersPanel: View {
 
 struct WMTitleActionsPanel: View {
     @Environment(\.colorScheme) private var scheme
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
     let work: Work
     let apiClient: PlayarrAPIClient
     let onPlay: () -> Void
@@ -121,14 +159,19 @@ struct WMTitleActionsPanel: View {
     private func row(_ glyph: String, _ label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 0) {
-                Text(glyph).font(WM.font(15, 700)).foregroundStyle(WM.pink).frame(width: 30)
-                Text(label).font(WM.font(15, 600)).foregroundStyle(WM.ink).padding(.leading, 14)
+                Text(glyph).font(WM.font(15, 700)).foregroundStyle(WM.pink).frame(width: isPad ? 42 : 30)
+                Text(label).font(WM.font(15, 600)).foregroundStyle(WM.ink).padding(.leading, isPad ? 0 : 14)
                 Spacer()
             }
-            .padding(.horizontal, 17)
-            .frame(height: 67)
-            .background(scheme == .light ? WM.ink.opacity(0.17) : WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
+            .padding(.horizontal, isPad ? 18 : 17)
+            .frame(minHeight: isPad ? 68 : 67, maxHeight: isPad ? nil : 67)
+            .background(
+                isPad
+                    ? WM.artFill
+                    : (scheme == .light ? WM.ink.opacity(0.17) : WM.chip.opacity(0.66)),
+                in: RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous)
+            )
+            .overlay(RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -144,7 +187,7 @@ struct WMTitleActionsPanel: View {
 
     var body: some View {
         WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose) {
-            VStack(spacing: 15) {
+            VStack(spacing: isPad ? 14 : 15) {
                 row("▶", "Play", action: onPlay)
                 row("⇩", "Download", action: onDownload)
                 row("+", "Add to Playlist", action: onPlay)
