@@ -29,6 +29,8 @@ struct WorkDetailView: View {
     @State private var initialTabletScrollWorkID: UUID?
     @State private var tabletMovieModel: WMDetailModel?
     @State private var showingTabletPlayback = false
+    /// Media files this profile has any progress on; an episode with none shows the web's unseen dot.
+    @State private var progressedMediaFileIDs: Set<UUID>?
     @State private var showingTabletDownload = false
     @State private var visibleDetailRouteID = UUID()
     @State private var isVisible = false
@@ -295,6 +297,11 @@ struct WorkDetailView: View {
                 }
             }
             .coordinateSpace(name: "tabletDetailLayoutDiagnostics")
+            .task(id: detail.work.id) {
+                guard detail.work.kind == .series, progressedMediaFileIDs == nil else { return }
+                let progress = (try? await apiClient.listWatchProgress()) ?? []
+                progressedMediaFileIDs = Set(progress.map(\.mediaFileID))
+            }
             .task(id: detail.work.id) {
                 guard detail.work.kind == .movie, tabletMovieModel == nil else { return }
                 let model = WMDetailModel(apiClient: apiClient, work: detail.work)
@@ -1441,6 +1448,12 @@ struct WorkDetailView: View {
                             .background(.black.opacity(0.56), in: Circle())
                     }
                     .padding(10)
+                }
+                if let tabletScale, playable, let seen = progressedMediaFileIDs,
+                   let file = detail.mediaFileID, !seen.contains(file) {
+                    WMUnseenDot()
+                        .padding(.top, 7 * tabletScale).padding(.trailing, 7 * tabletScale)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 }
             }
             .frame(width: cardWidth, height: cardHeight)

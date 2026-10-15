@@ -1,0 +1,1 @@
+- On iPad series detail, episode cards the profile has not watched show the web's pink unseen dot at the top right.
