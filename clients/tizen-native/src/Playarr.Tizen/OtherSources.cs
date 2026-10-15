@@ -33,6 +33,16 @@ internal sealed class OtherSources
     public List<Row> Rows { get; } = new();
     public float Height { get; private set; }
 
+    /// <summary>Web .tv-discovery-note: the loading line (no heading) or, once loaded with nothing to show, the heading and the "none" line.</summary>
+    public static OtherSources Note(AppEnv env, float top, string text, bool withHeading)
+    {
+        var s = new OtherSources(env, Array.Empty<DiscoveryTitle>(), top);
+        if (!withHeading) s.Root.Remove(s.Root.Children[0]);
+        s.Root.Add(Ui.Text(text, X, withHeading ? 28 : 0, 11.52f, 400, env.Theme.InkMuted, Width, 17));
+        s.Height = 0;
+        return s;
+    }
+
     public OtherSources(AppEnv env, IReadOnlyList<DiscoveryTitle> titles, float top)
     {
         _env = env; _t = env.Theme;

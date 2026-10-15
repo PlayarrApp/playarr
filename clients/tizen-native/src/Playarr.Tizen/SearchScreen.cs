@@ -409,25 +409,29 @@ internal sealed class SearchScreen : IPage
     {
         if (_query.Length == 0 || _mediaType is not ("all" or "movie" or "series")) return;
         var gen = _extrasGen; var q = _query; var cts = _search;
+        var top = () => FirstRowY + (int)Math.Ceiling(_items.Count / (float)Columns) * RowPitch - 38.2f + 36;
+        void Place(OtherSources next)
+        {
+            if (_extras is not null) { _results.Remove(_extras.Root); _extras.Root.Dispose(); }
+            _extras = next; _results.Add(next.Root); UpdateFades();
+        }
+        Place(OtherSources.Note(_env, top(), "Checking other sources\u2026", false));
         _ = Task.Run(async () =>
         {
+            string? failed = null; IReadOnlyList<DiscoveryTitle> titles = Array.Empty<DiscoveryTitle>();
             try
             {
                 var response = await new DiscoverySearch(_env.Api, SearchHttp).SearchAsync(q, "media", 25, cts?.Token ?? default).ConfigureAwait(false);
-                var titles = DiscoverySearch.ExtraTitles(response.Titles);
-                if (titles.Count == 0) return;
-                SynchronizationContextHolder.Post(() =>
-                {
-                    if (gen != _extrasGen || _removed) return;
-                    var rows = (int)Math.Ceiling(_items.Count / (float)Columns);
-                    // web: the section starts 36 px under the grid, whose last row has no trailing gap (38.2 px)
-                    var top = FirstRowY + rows * RowPitch - 38.2f + 36;
-                    _extras = new OtherSources(_env, titles, top);
-                    _results.Add(_extras.Root);
-                    UpdateFades();
-                });
+                titles = DiscoverySearch.ExtraTitles(response.Titles);
             }
-            catch (Exception e) { Dbg.Log("SEARCH extras failed: " + e.Message); }
+            catch (Exception e) { Dbg.Log("SEARCH extras failed: " + e.Message); failed = "Other sources are unavailable right now."; }
+            SynchronizationContextHolder.Post(() =>
+            {
+                if (gen != _extrasGen || _removed) return;
+                Place(failed is not null ? OtherSources.Note(_env, top(), failed, false)
+                    : titles.Count == 0 ? OtherSources.Note(_env, top(), "Nothing found in other sources.", true)
+                    : new OtherSources(_env, titles, top()));
+            });
         });
     }
 
@@ -463,7 +467,7 @@ internal sealed class SearchScreen : IPage
 
     private bool ExtrasKey(RemoteKey key)
     {
-        if (_extras is null) { _xRow = -1; return true; }
+        if (_extras is null || _extras.Rows.Count == 0) { _xRow = -1; return true; }
         var rows = _extras.Rows;
         switch (key)
         {
@@ -473,7 +477,10 @@ internal sealed class SearchScreen : IPage
                 SetExtraRing(false); _xRow = -1;
                 { var last = (_items.Count - 1) / Columns; SetFocus(Math.Min(_items.Count - 1, last * Columns + (_xLink ? 0 : Columns - 1))); }
                 return true;
-            case RemoteKey.Left: if (!_xLink && rows[_xRow].LibraryWork is not null) FocusExtras(_xRow, true); return true;
+            case RemoteKey.Left:
+                if (!_xLink && rows[_xRow].LibraryWork is not null) FocusExtras(_xRow, true);
+                else { SetExtraRing(false); _xRow = -1; SetFocus(-1); } // nothing further left: as from the first result column, back to the query
+                return true;
             case RemoteKey.Right: if (_xLink) FocusExtras(_xRow, false); return true;
             case RemoteKey.Select:
                 var row = rows[_xRow];

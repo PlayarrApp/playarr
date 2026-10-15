@@ -44,7 +44,7 @@ internal sealed class SeriesDetailScreen : IPage
         _env = env; _t = env.Theme; _id = id; _images = new AuthImage(env.Api);
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
-        _keyArt = new KeyArt(env);
+        _keyArt = new KeyArt(env, armed: true); // web paints the key art as soon as focus lands on the first episode
         _root.Add(_keyArt.Root);
         _root.Add(_content);
         _ = LoadAsync();
@@ -126,7 +126,8 @@ internal sealed class SeriesDetailScreen : IPage
                 art.Add(Ui.Box(0, 147.8f, 268, 3, new Rgba(1, 1, 1, 0.2f)));
                 art.Add(Ui.Box(0, 147.8f, Math.Max(3, 268 * (float)inProgress.Fraction), 3, _t.Brand));
             }
-            box.Add(art);
+            var (ring, glow) = Widgets.RailRing(_t, 268, 150.8f, 13.44f); art.Add(ring);
+            box.Add(glow); box.Add(art);
             if (unseen)
             {
                 var dot = Ui.Box(268 - 23.6f, 10.6f, 13, 13, _t.Brand, 6.5f);
@@ -146,7 +147,7 @@ internal sealed class SeriesDetailScreen : IPage
                 Rect = () => new Box(x - rail.Scroll, FocusedHeadingY - (_activeRail - railIdx) * RailPitch + 80.7f, 268, 150.8f),
                 Label = $"play {code}".ToLowerInvariant(),
                 Select = () => PlayEpisode(epc),
-                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; tt.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.Ink); },
+                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Show(f); if (f) ring.RaiseToTop(); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.Ink); },
                 Focused = () => OnEpisodeFocused(railIdx, col, epc, seasonc),
             });
         }

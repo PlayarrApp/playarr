@@ -262,7 +262,7 @@ internal sealed class CalendarScreen : IPage
             ? $"{members.Count} episodes · " + string.Join(", ", members.Select(m => CalendarRules.EpisodeCode(m.SeasonNumber, m.EpisodeNumber)))
             : string.Join(" · ", new[] { CalendarRules.EpisodeCode(e.SeasonNumber, e.EpisodeNumber), e.Subtitle }.Where(s => !string.IsNullOrEmpty(s)));
         var textW = w - 70.4f - 16f;
-        var h = 106.9f + (sub.Length * 9.6f > textW ? 28.8f : 0);
+        var h = 106.9f + (sub.Length * 9.6f > textW ? 28.8f : 0) - (sub.Length == 0 ? 28.5f : 0); // web: an entry without a subtitle line is 28.5 px shorter
         // web .calendar-entry: --surface-strong with a 4 px left border (--success when available, else --ink-muted); the border colour is the card, the surface sits 4 px in
         var card = Ui.Box(x, y, w, h, CalendarRules.Tone(e, _today) == CalendarTone.Available ? ToneColor(CalendarTone.Available) : _t.InkMuted, 12);
         var surface = Ui.Box(4, 0, w - 4, h, _t.SurfaceStrong, 12); surface.BorderlineWidth = 1; surface.BorderlineColor = Ui.C(_t.Line);
@@ -305,7 +305,7 @@ internal sealed class CalendarScreen : IPage
         var lines = Ui.Paragraph(_panel, e.Title, 153.6f, 291.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
         var my = 291.5f + 62.208f * lines + 22.6f;
         var code = CalendarRules.EpisodeCode(e.SeasonNumber, e.EpisodeNumber);
-        var day = CalendarRules.LocalDay(e).ToString("dddd, d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB"));
+        var day = CalendarRules.LocalDay(e).ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB")) + (CalendarRules.ReleaseInstant(e) is { } when ? " \u00b7 " + when.ToLocalTime().ToString("HH:mm") : " \u00b7 All day"); // web: day, then the time or All day
         _panel.Add(Ui.Text(string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, _t.InkSoft, 700, 19.584f));
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 800, 0) + 17;
