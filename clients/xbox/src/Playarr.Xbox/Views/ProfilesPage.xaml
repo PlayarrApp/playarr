@@ -15,7 +15,7 @@
         built in code (ProfilesPage.xaml.cs) since they come from a
         runtime-loaded list, not static XAML.
     -->
-    <Grid>
+    <Grid x:Name="Root">
         <!-- Web TV profile picker: logo top left, "PROFILES" eyebrow, large title, 270 px avatar circles. -->
         <Image
             Source="ms-appx:///Assets/Square44x44Logo.png"
@@ -81,7 +81,7 @@
                     x:Name="ProfilesPanel"
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
-                    Spacing="16" />
+                    Spacing="26" />
             </ScrollViewer>
         </StackPanel>
     </Grid>

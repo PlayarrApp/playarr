@@ -1,0 +1,1 @@
+- Xbox: the profile picker shows the web's selected look, gear and Sign out, an add-profile tile, Theme and Language selectors and a Clients link.
