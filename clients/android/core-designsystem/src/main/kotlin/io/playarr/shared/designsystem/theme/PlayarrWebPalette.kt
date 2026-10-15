@@ -72,8 +72,8 @@ data class PlayarrWebPalette(
             surfaceStrong = Color(0xFF211D21),
             surfaceSoft = Color(0xFF312A30),
             ink = Color(0xFFF4F0F1),
-            inkSoft = Color(0xFFC5B8BD),
-            inkMuted = Color(0xFF887A82),
+            inkSoft = Color(0xFFCDC1C6),
+            inkMuted = Color(0xFFC2B5BB),
             accent = Color(0xFFDFDCDD),
         )
         val Light = PlayarrWebPalette(
@@ -83,9 +83,9 @@ data class PlayarrWebPalette(
             surfaceStrong = Color.White,
             surfaceSoft = Color(0xFFDFDCDD),
             ink = Color(0xFF382621),
-            inkSoft = Color(0xFF675961),
-            inkMuted = Color(0xFFA5969E),
-            accent = Color(0xFF675961),
+            inkSoft = Color(0xFF443A40),
+            inkMuted = Color(0xFF4D4248),
+            accent = Color(0xFF4D4248),
         )
 
         fun of(dark: Boolean): PlayarrWebPalette = if (dark) Dark else Light

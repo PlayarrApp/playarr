@@ -209,15 +209,15 @@ internal fun PlayarrPageHeaderRow(
     }
 }
 
-/** Web television header subtitle beside the title: small, uppercase, the soft ink colour (not the brand pink). */
+/** Web television header subtitle beside the title: small, uppercase, the page ink (not the brand pink). */
 @Composable
 private fun PlayarrTvInlineSubtitle(text: String) {
     Text(
         text.uppercase(),
-        color = PlayarrWebTheme.palette.inkSoft,
+        color = PlayarrWebTheme.palette.ink,
         fontSize = 11.136.sp,
         lineHeight = 16.sp,
-        fontWeight = FontWeight(750),
+        fontWeight = FontWeight(680),
         letterSpacing = 0.501.sp,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,

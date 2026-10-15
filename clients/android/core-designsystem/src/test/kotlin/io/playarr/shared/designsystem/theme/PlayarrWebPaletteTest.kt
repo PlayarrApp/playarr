@@ -10,7 +10,7 @@ class PlayarrWebPaletteTest {
     @Test
     fun accentIsNeutralInBothThemes() {
         assertEquals(Color(0xFFDFDCDD), PlayarrWebPalette.Dark.accent)
-        assertEquals(Color(0xFF675961), PlayarrWebPalette.Light.accent)
+        assertEquals(Color(0xFF4D4248), PlayarrWebPalette.Light.accent) // web --accent (#1421: was the stale #675961)
     }
 
     @Test
