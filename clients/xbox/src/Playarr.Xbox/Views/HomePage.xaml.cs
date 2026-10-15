@@ -131,6 +131,25 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        /// <summary>
+        /// Web Home keeps the focused rail at the middle of the screen: the rails track pads half a viewport top and bottom
+        /// and each vertical move scrolls the focused card to that line (about 52 % down), so the rail above and below show.
+        /// </summary>
+        private void CentreRail(FrameworkElement item)
+        {
+            if (RailsScroll.ActualHeight <= 0)
+            {
+                return;
+            }
+
+            var top = item.TransformToVisual(RailsScroll).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
+            var delta = top + 92 - RailsScroll.ActualHeight * 0.52;
+            if (System.Math.Abs(delta) > 2)
+            {
+                RailsScroll.ChangeView(null, System.Math.Max(0, RailsScroll.VerticalOffset + delta), null, false);
+            }
+        }
+
         private Control? RestoreOrFirst(ListView firstList)
         {
             if (_restoreId is { } id)
@@ -189,8 +208,9 @@ namespace Playarr.Xbox.Views
             CardActions.Attach(list, id => rail.Items.FirstOrDefault(w => w.Id == id));
             list.GotFocus += (s, e) =>
             {
-                if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: Guid id } })
+                if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: Guid id } } focusedItem)
                 {
+                    CentreRail(focusedItem);
                     FocusClaim.Remember("home", id);
                     Detail.Show(rail.Items.FirstOrDefault(w => w.Id == id), withKind: true);
                 }

@@ -45,7 +45,7 @@
             x:Name="RailsScroll"
             VerticalScrollBarVisibility="Hidden"
             HorizontalScrollMode="Disabled">
-            <StackPanel x:Name="RailsPanel" Margin="881,403,0,48" Spacing="40" />
+            <StackPanel x:Name="RailsPanel" Margin="881,403,0,540" Spacing="40" />
         </ScrollViewer>
     </Grid>
 </Page>

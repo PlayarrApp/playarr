@@ -1,0 +1,1 @@
+- Xbox: moving between Home rails scrolls the focused rail to the middle of the screen, as the web.
