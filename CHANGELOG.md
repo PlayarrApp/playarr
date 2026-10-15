@@ -659,6 +659,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone Home rails run to the screen edge at their end, dimmed by the end fade, as web's do.
 - HarmonyOS: Library Filters gain web's Audio and Subtitle language selects, the View buttons read List, Screen and Cover with icons, the phone drawer close button is filled, and the phone Library column count follows the artwork size.
 - Fire TV: the title actions drawer's Play glyph is drawn in the brand pink instead of an orange emoji.
 - HarmonyOS phone: Home honours the Covers setting and the artwork size (portrait 2:3 cards and the 1 to 3 column widths web uses on a phone); the wall captures Home in each poster mode.

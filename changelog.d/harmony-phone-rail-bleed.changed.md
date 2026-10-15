@@ -1,1 +1,0 @@
-- HarmonyOS phone Home rails run to the screen edge at their end, dimmed by the end fade, as web's do.
