@@ -36,7 +36,7 @@ internal sealed class DownloadsScreen : IPage
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _root.Add(back);
-        _root.Add(Ui.Text("Downloads", 226.6f, 56.2f, 33.6f, 700, _t.Ink, 600, 50, spacing: -1.51f));
+        _root.Add(Ui.Text("Downloads", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 600, 50, spacing: -1.51f));
         var clip = new View { PositionY = ViewTop, Size = new Size(TizenClient.DesignWidth, ViewH), ClippingMode = ClippingModeType.ClipChildren };
         clip.Add(_list);
         _root.Add(clip);

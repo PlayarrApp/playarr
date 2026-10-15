@@ -47,7 +47,7 @@ internal sealed class MediaCard
     /// <param name="scale">Focus scale (home 1.025, library 1.04).</param>
     /// <param name="lift">Focus lift in px (negative = up).</param>
     public MediaCard(AppEnv env, PlayarrTheme t, WorkCard card, float x, float y, bool showSub, float titleInset, float scale, float lift,
-        float blur, float shadowY, float shadowAlpha, float boxHeight = 230f, float boxScale = 1f, float boxLift = 0f, float focusHeight = Height, bool showRing = true)
+        float blur, float shadowY, float shadowAlpha, float boxHeight = 230f, float boxScale = 1f, float boxLift = 0f, float focusHeight = Height, bool showRing = true, float restBlur = 0)
     {
         _t = t; _scale = scale; _lift = lift; _blur = blur; _shadowY = shadowY; _shadowAlpha = shadowAlpha;
         _boxScale = boxScale; _boxLift = boxLift; _boxY = y; _focusHeight = focusHeight;
@@ -64,6 +64,13 @@ internal sealed class MediaCard
             Art.Add(Ui.Box(0, Height - 3, Math.Max(3, Width * (float)card.Progress), 3, t.Brand));
         }
         if (card.StackOptions > 1) AddStack(card, snapW);
+        if (restBlur > 0)
+        {
+            // web's second shadow layer (a CSS box-shadow list has two): a sibling behind the art that follows its lift and scale
+            _shadow2 = new View { PositionX = Art.PositionX, PositionY = Art.PositionY, Size = new Size(snapW, snapH), CornerRadius = 12.48f };
+            Box.Add(_shadow2);
+        }
+        _restBlur = restBlur;
         Box.Add(Art);
         if (showRing)
         {
@@ -83,9 +90,11 @@ internal sealed class MediaCard
         Title = Ui.Text(card.Title, titleInset, Height + 11.5f + drop, 11.904f, 700, t.Ink, Width - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
         if (showSub) Box.Add(Ui.Text(card.Sub, titleInset, Height + 31.9f + drop, 8.832f, 400, t.InkMuted, Width - titleInset * 2, 13.248f));
+        if (restBlur > 0) SetFocused(false); // paints the resting shadows
     }
 
-    private View? _stackNear, _stackFar;
+    private View? _stackNear, _stackFar, _shadow2;
+    private readonly float _restBlur;
 
     /// <summary>
     /// Web .tv-home-card.is-stacked: the art sits 10 px lower under two offset slivers (shadow 0 -5px 0 -2px and 0 -10px 0 -4px, ink over
@@ -126,7 +135,15 @@ internal sealed class MediaCard
             ? focused
                 ? new Shadow(52, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.28f), new Vector2(0, 22), new Vector2(0, 0))
                 : new Shadow(34, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.16f), new Vector2(0, 12), new Vector2(0, 0))
-            : focused && !_playlistCollage ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0)) : null;
+            : focused && !_playlistCollage ? new Shadow(_blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha), new Vector2(0, _shadowY), new Vector2(0, 0))
+            : _restBlur > 0 ? new Shadow(_restBlur, new Color(56 / 255f, 38 / 255f, 33 / 255f, _restBlur > 21 ? 0.16f : 0.14f), new Vector2(0, 10), new Vector2(0, 0)) : null;
+        if (_shadow2 is not null)
+        {
+            _shadow2.Scale = Art.Scale; _shadow2.PositionY = Art.PositionY;
+            // web: focused 0 11px 22px (home) or 0 10px 20px (library) at about two thirds of the main alpha; at rest 0 3px 8px at 10 %
+            _shadow2.BoxShadow = focused ? new Shadow(_blur * 0.42f, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha * 0.68f), new Vector2(0, _shadowY * 0.42f), new Vector2(0, 0))
+                : new Shadow(_restBlur * 0.4f, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.10f), new Vector2(0, 3), new Vector2(0, 0));
+        }
         if (_searchPlaylistFocusGlow is not null)
         {
             var glowColor = _t.Name == "dark" ? _t.BrandInk : Rgba.Hex(0xa52745);
@@ -218,7 +235,7 @@ internal sealed class MediaCard
     }
 
     public static MediaCard Home(AppEnv env, WorkCard card, float x, float y) =>
-        new(env, env.Theme, card, x, y, showSub: true, titleInset: 0, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f);
+        new(env, env.Theme, card, x, y, showSub: true, titleInset: 0, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22);
 
     /// <summary>Search result: title and kind share the web's inset two-column caption row.</summary>
     public static MediaCard Search(AppEnv env, WorkCard card, float x, float y)
@@ -281,7 +298,7 @@ internal sealed class MediaCard
         first.A * (1 - secondWeight) + second.A * secondWeight);
 
     public static MediaCard Library(AppEnv env, WorkCard card, float x, float y) =>
-        new(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f);
+        new(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20);
 
     /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>
     public static MediaCard PlaylistDirectory(AppEnv env, WorkCard card, float x, float y)

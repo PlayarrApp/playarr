@@ -68,6 +68,9 @@ namespace Playarr.Core.Networking
         /// <summary><c>GET /api/v1/catalog/{id}/resume-plan</c>: where a series' Start / Resume / Watch again button goes.</summary>
         Task<ResumePlan> GetResumePlanAsync(Guid seriesWorkId, CancellationToken cancellationToken = default);
 
+        /// <summary><c>GET /api/v1/playback/resume-plans</c>: the resume plans of every series the viewer has history in, newest first.</summary>
+        Task<IList<ResumePlan>> ListResumePlansAsync(CancellationToken cancellationToken = default);
+
         /// <summary><c>POST /api/v1/catalog/{id}/resume-plan/choice</c>: records the option the viewer picked.</summary>
         Task RecordResumeChoiceAsync(Guid seriesWorkId, ResumeOption option, CancellationToken cancellationToken = default);
 
@@ -374,6 +377,9 @@ namespace Playarr.Core.Networking
 
         public Task<IList<MediaChapter>> GetMediaChaptersAsync(Guid mediaFileId, CancellationToken cancellationToken = default) =>
             GetAsync<IList<MediaChapter>>($"/api/v1/media/{mediaFileId:D}/chapters", null, authenticated: true, cancellationToken);
+
+        public Task<IList<ResumePlan>> ListResumePlansAsync(CancellationToken cancellationToken = default) =>
+            GetAsync<IList<ResumePlan>>("/api/v1/playback/resume-plans", null, authenticated: true, cancellationToken);
 
         public Task<ResumePlan> GetResumePlanAsync(Guid seriesWorkId, CancellationToken cancellationToken = default) =>
             GetAsync<ResumePlan>($"/api/v1/catalog/{seriesWorkId:D}/resume-plan", null, authenticated: true, cancellationToken);

@@ -108,9 +108,12 @@ internal sealed class Shell : View
 
     private void AddGroup(float y, float h)
     {
-        var box = Ui.Box(RailX, y, RailW, h, new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.56f), 22);
+        // light: the fill is opaque (strong surface 56 % over the page surface) because the box shadow would show through a translucent fill; web clips it outside the border box
+        var fill = _theme.Name == "dark" ? new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.56f)
+            : new Rgba(_theme.SurfaceStrong.R * 0.56f + _theme.Surface.R * 0.44f, _theme.SurfaceStrong.G * 0.56f + _theme.Surface.G * 0.44f, _theme.SurfaceStrong.B * 0.56f + _theme.Surface.B * 0.44f);
+        var box = Ui.Box(RailX, y, RailW, h, fill, 22);
         box.BorderlineWidth = 1;
-        box.BorderlineColor = Ui.LineA(_theme, 0.48f); // web: line at 48 %
+        box.BorderlineColor = Ui.LineA(_theme, _theme.Line.A * 0.48f); // web: the line colour at 48 % of its own alpha
         // light only: on the dark rail the web shadow (warm brown at 10 %) is not visible, and ours read as a pink halo
         if (_theme.Name != "dark") box.BoxShadow = new Shadow(42, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.1f), new Vector2(0, 14), new Vector2(0, 0));
         _chrome.Add(box);

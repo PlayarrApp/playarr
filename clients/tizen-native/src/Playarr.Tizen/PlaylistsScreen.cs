@@ -60,7 +60,7 @@ internal sealed class PlaylistsScreen : IPage
         back.BorderlineColor = Ui.LineA(_theme, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _theme.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _root.Add(back);
-        _title = Ui.Text("Playlists", 226.6f, 56.2f, 33.6f, 700, _theme.Ink, 600, 50, spacing: -1.51f);
+        _title = Ui.Text("Playlists", 226.6f, 56.2f, 33.6f, 600, _theme.Ink, 600, 50, spacing: -1.51f);
         _root.Add(_title);
         _count = new PageSubtitle(env, _root, "Playlists");
         _eyebrow = Ui.Text("YOUR COLLECTION", 153.6f, 259.2f, 12.288f, 800, _theme.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f);

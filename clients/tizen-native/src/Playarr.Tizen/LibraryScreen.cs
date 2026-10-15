@@ -87,7 +87,7 @@ internal sealed class LibraryScreen : IPage
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _root.Add(back);
-        _root.Add(Ui.Text(_title, 226.6f, 56.2f, 33.6f, 700, _t.Ink, 400, 50, spacing: -1.51f));
+        _root.Add(Ui.Text(_title, 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _subtitle = new PageSubtitle(_env, _root, _title);
     }
 

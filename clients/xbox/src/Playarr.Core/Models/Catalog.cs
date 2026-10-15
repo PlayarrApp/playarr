@@ -451,6 +451,8 @@ namespace Playarr.Core.Models
     /// <summary>The server's plan for a series' primary button: <c>action</c> is "start", "restart" or "resume".</summary>
     public sealed class ResumePlan
     {
+        [JsonProperty("series_work_id")] public Guid SeriesWorkId { get; set; }
+
         [JsonProperty("action")] public string Action { get; set; } = string.Empty;
 
         [JsonProperty("needs_choice")] public bool NeedsChoice { get; set; }

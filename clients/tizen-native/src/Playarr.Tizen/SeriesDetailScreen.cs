@@ -72,7 +72,7 @@ internal sealed class SeriesDetailScreen : IPage
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _content.Add(back);
-        _content.Add(Ui.Text("Series", 226.6f, 56.2f, 33.6f, 700, _t.Ink, 400, 50, spacing: -1.51f));
+        _content.Add(Ui.Text("Series", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         new PageSubtitle(_env, _content, "Series").Set(w.Title);
         _content.Add(_copy);
 

@@ -63,23 +63,31 @@ internal sealed class HomeScreen : IPage
             var progress = await _env.Api.ListWatchProgressAsync();
             var deck = new List<Work>();
             var episodes = new Dictionary<Guid, OnDeckEpisode>();
-            foreach (var row in HomeModel.OnDeckRows(progress))
+            IList<ResumePlan> allPlans = new List<ResumePlan>();
+            try { allPlans = await _env.Api.ListResumePlansAsync(); } catch (Exception) { /* an older server has no plans */ }
+            var stacked = allPlans.Where(p => HomeModel.IsStacked(p)).GroupBy(p => p.SeriesWorkId).ToDictionary(g => g.Key, g => g.First());
+            var rows = HomeModel.OnDeckRows(progress);
+            async Task Add(Guid workId, Guid? file, WatchProgress? row)
             {
                 try
                 {
-                    var detail = await _env.Api.GetWorkAsync(row.WorkId);
+                    var detail = await _env.Api.GetWorkAsync(workId);
                     if (detail.Work.Kind is WorkKind.Series or WorkKind.Site)
                     {
                         // web: a series is on deck as its lead episode (a stacked plan's target, else the last played); no episode drops the card
-                        ResumePlan? plan = null;
-                        try { plan = await _env.Api.GetResumePlanAsync(row.WorkId); } catch (Exception) { /* an older server has no plan */ }
-                        if (HomeModel.FindEpisode(detail.Children, HomeModel.LeadFile(row, plan)) is not { } ep) continue;
-                        episodes[detail.Work.Id] = HomeModel.IsStacked(plan) ? ep with { StackOptions = plan!.Options.Count } : ep;
+                        stacked.TryGetValue(workId, out var plan);
+                        var lead = row is not null ? HomeModel.LeadFile(row, plan) : file;
+                        if (lead is not { } lf || HomeModel.FindEpisode(detail.Children, lf) is not { } ep) return;
+                        episodes[detail.Work.Id] = plan is not null ? ep with { StackOptions = plan.Options.Count } : ep;
                     }
                     deck.Add(detail.Work);
                 }
                 catch (Exception) { /* one bad title drops only its card */ }
             }
+            foreach (var row in rows) await Add(row.WorkId, null, row);
+            // web: series that need a choice but have no part-watched episode still belong on deck
+            foreach (var plan in stacked.Values.Where(p => rows.All(r => r.WorkId != p.SeriesWorkId)).Take(Math.Max(0, 10 - rows.Count)))
+                await Add(plan.SeriesWorkId, plan.Target?.MediaFileId, null);
             var rails = await railsTask;
             var model = HomeModel.Build(rails.Rails.ToList(), deck, HomeModel.IndexByWork(progress), episodes);
             SynchronizationContextHolder.Post(() => { try { Populate(model); } catch (Exception e) { Dbg.Log("HOME populate failed: " + e); } });
