@@ -428,7 +428,7 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.subtitleFontSize)
           .fontWeight(FontWeight.Normal)
-          .fontColor(toResourceColor(activeColors().ink))
+          .fontColor(toResourceColor(this.softCaption ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }

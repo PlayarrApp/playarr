@@ -1605,13 +1605,13 @@ struct Detail {
   private playButton(enabled: boolean, height: number): void {
 
     Row({ space: Spacing.sm }) {
-      Text('▶').fontFamily(nunito(400))
-        .fontSize(PLAY_BUTTON_ICON_SIZE)
+      Text('►').fontFamily(nunito(400))
+        .fontSize(isTvMetrics() ? PLAY_BUTTON_ICON_SIZE : 9)
         .fontColor(toResourceColor(activeColors().onAccent))
       Text(this.primaryLabel()).fontFamily(nunito(700))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .fontSize(PLAY_BUTTON_LABEL_SIZE)
+        .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().onAccent))
     }
@@ -2183,15 +2183,16 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(12), cross: LengthMetrics.vp(4) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(4) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
-          .fontSize(11)
+          .fontSize(10.24)
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
           .fontColor(toResourceColor(index === 0 ? activeColors().ink : activeColors().inkSoft))
       }, (chip: string, index: number): string => index.toString() + chip)
     }
     .width('100%')
+    .margin({ top: 12 })
   }
 
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
@@ -2241,7 +2242,7 @@ struct Detail {
   private touchSeriesActionRow(): void {
     Row({ space: 8 }) {
       Row({ space: 6 }) {
-        Text('▶').fontFamily(nunito(400)).fontSize(9).fontColor(toResourceColor(activeColors().onAccent))
+        Text('►').fontFamily(nunito(400)).fontSize(9).fontColor(toResourceColor(activeColors().onAccent))
         Text(this.primaryLabel()).fontFamily(nunito(700))
           .fontSize(11)
           .fontWeight(FontWeight.Bold)
@@ -2297,7 +2298,7 @@ struct Detail {
         this.touchActionsOpen = true;
       })
     }
-    .margin({ top: 4 })
+    .margin({ top: 12 })
   }
 
   /** Phone (web phone detail): the backdrop fading into the page at the top, Back over it, then the pink kind line, the title, the
@@ -2328,7 +2329,7 @@ struct Detail {
         })
 
         Column({ space: TouchGeometry.detailListSpacing }) {
-          Column({ space: 10 }) {
+          Column() {
             Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? kindLabel(this.detail.work.kind) : '')).fontFamily(nunito(900))
               .fontSize(10.56)
               .height(16)
@@ -2336,6 +2337,7 @@ struct Detail {
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(BRAND_PINK_SOFT))
+              .margin({ bottom: 10 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
               .fontSize(36)
               .fontWeight(FontWeight.Medium)
@@ -2348,15 +2350,21 @@ struct Detail {
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
+                .margin({ top: 8 })
             }
             this.touchMetaChips()
             Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunito(400))
-              .fontSize(12)
+              .fontSize(11.52)
               .fontColor(toResourceColor(activeColors().inkSoft))
-              .lineHeight(18)
+              .lineHeight(16.7)
+              .margin({ top: 10 })
               .maxLines(3)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
-            this.touchActionRows()
+            Column() {
+              this.touchActionRows()
+            }
+            .width('100%')
+            .margin({ top: 14 })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)

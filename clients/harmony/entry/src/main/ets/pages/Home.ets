@@ -183,8 +183,8 @@ const TOP_RAIL_MORE_SERIES: string = 'moreSeries';
  * (12/10) -- `design/components/PosterCard.ets`'s own header comment names
  * these as the documented touch override, matching `pages/DesignGallery.ets`'s
  * `touchRailItem` demo exactly. */
-const TOUCH_CARD_TITLE_FONT_SIZE: number = 9;
-const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 8;
+const TOUCH_CARD_TITLE_FONT_SIZE: number = 8;
+const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 7;
 
 /** `TouchGeometryTokens` has no dedicated rail-to-rail spacing field (only
  * `railItemGap`, the gap BETWEEN cards inside one rail) -- a reasoned,
@@ -844,6 +844,7 @@ export struct Home {
       cardHeight: Math.round((TOUCH_HOME_CARD_WIDTH * 9) / 16),
       artworkRadius: Radii.homeCardArtworkTouch,
       titleFontSize: TOUCH_CARD_TITLE_FONT_SIZE,
+      softCaption: true,
       subtitleFontSize: TOUCH_CARD_SUBTITLE_FONT_SIZE,
       activeRailFactor: activeRailFactor,
       onSelect: ((): void => {

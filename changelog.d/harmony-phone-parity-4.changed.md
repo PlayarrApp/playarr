@@ -1,0 +1,1 @@
+- HarmonyOS phone: detail text spacing and sizes, calendar agenda card type and height, and home card captions follow the web phone layout (TV unchanged).

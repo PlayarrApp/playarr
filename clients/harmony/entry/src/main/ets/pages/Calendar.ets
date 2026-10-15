@@ -99,6 +99,15 @@ const POSTER_RADIUS: number = 6;
 const POSTER_GAP: number = 15;
 const ENTRY_TITLE_SIZE: number = 19.2;
 const ENTRY_META_SIZE: number = 12.8;
+/** Web phone agenda card, measured on the 360 vp reference: smaller type and a 92 vp card than the TV's. */
+const PHONE_ENTRY_TITLE_SIZE: number = 16;
+const PHONE_ENTRY_META_SIZE: number = 10.88;
+const PHONE_ENTRY_HEIGHT: number = 92;
+const PHONE_PILL_SIZE: number = 11.2;
+const PHONE_PILL_HEIGHT: number = 22.5;
+const PHONE_DAY_HEADING_SIZE: number = 14.4;
+const PHONE_ENTRY_GAP: number = 15;
+const PHONE_CONTROL_FONT: number = 11.2;
 const ENTRY_META_GAP: number = 12;
 // Web `.status-pill`: 13.44/750, tone at 14% over the surface with a 60% tone border.
 const PILL_SIZE: number = 13.44;
@@ -323,12 +332,12 @@ export struct ReleaseCalendar {
   @Builder
   private statusPill(tone: EntryPillTone): void {
     Text(pillLabel(tone)).fontFamily(nunito(700))
-      .fontSize(tv(PILL_SIZE))
+      .fontSize(isTvMetrics() ? tv(PILL_SIZE) : PHONE_PILL_SIZE)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().ink))
-      .height(tv(PILL_HEIGHT))
+      .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
       .padding({ left: tv(PILL_PADDING_H), right: tv(PILL_PADDING_H) })
-      .borderRadius(tv(PILL_HEIGHT / 2))
+      .borderRadius(isTvMetrics() ? tv(PILL_HEIGHT / 2) : PHONE_PILL_HEIGHT / 2)
       .backgroundColor(toResourceColorWithAlpha(toneColor(tone), 0.14))
       .border({ width: 1, color: toResourceColorWithAlpha(toneColor(tone), 0.6) })
   }
@@ -344,21 +353,21 @@ export struct ReleaseCalendar {
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
       Column() {
         Text(item.title).fontFamily(nunito(500))
-          .fontSize(tv(ENTRY_TITLE_SIZE))
+          .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         Text(itemSubtitle(item)).fontFamily(nunito(400))
-          .fontSize(tv(ENTRY_TITLE_SIZE))
+          .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         Row({ space: tv(ENTRY_META_GAP) }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(tv(ENTRY_META_SIZE)).fontColor(toResourceColor(activeColors().inkMuted))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunito(400)).fontSize(tv(ENTRY_META_SIZE)).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(activeColors().inkMuted))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(tv(ENTRY_META_SIZE)).fontColor(toResourceColor(activeColors().inkMuted))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(activeColors().inkMuted))
           }
           this.statusPill(itemPillTone(item, this.today))
         }
@@ -368,7 +377,7 @@ export struct ReleaseCalendar {
       .layoutWeight(1)
     }
     .width(isTvMetrics() ? tv(width) : '100%')
-    .height(tv(ENTRY_HEIGHT))
+    .height(isTvMetrics() ? tv(ENTRY_HEIGHT) : PHONE_ENTRY_HEIGHT)
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
@@ -395,7 +404,7 @@ export struct ReleaseCalendar {
   private dayHeader(day: string): void {
     Row({ space: tv(10) }) {
       Text(dayHeading(day)).fontFamily(nunito(500))
-        .fontSize(tv(DAY_HEADING_SIZE))
+        .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColorWithAlpha(activeColors().ink, day === this.today ? 0.9 : 1))
       if (day === this.today) {
@@ -883,7 +892,7 @@ export struct ReleaseCalendar {
   private touchControls(): void {
     Row({ space: 8 }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunito(700))
-        .fontSize(14)
+        .fontSize(PHONE_CONTROL_FONT)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(44)
@@ -912,7 +921,7 @@ export struct ReleaseCalendar {
   @Builder
   private touchControl(label: string, width: number, onTap: () => void): void {
     Text(label).fontFamily(nunito(700))
-      .fontSize(14)
+      .fontSize(PHONE_CONTROL_FONT)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .textAlign(TextAlign.Center)
@@ -943,7 +952,7 @@ export struct ReleaseCalendar {
       List({ space: 16 }) {
         ForEach(this.groups, (group: DayGroup) => {
           ListItem() {
-            Column({ space: tv(ENTRY_GAP) }) {
+            Column({ space: PHONE_ENTRY_GAP }) {
               this.dayHeader(group.day)
               ForEach(groupSeriesEpisodes(group.entries), (item: CalendarItem) => {
                 this.entryCard(item, 0)
