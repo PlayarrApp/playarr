@@ -661,6 +661,7 @@ Steps only the repository owner can perform.
 | 10501 | Harmony TV Covers Home row offset as web, series-detail first episode focused in captures | done | parity-harmony | harmony-sd-focus | 5.10102 | 2026-10-16 18:00 ICT | PR open: #1498. Web covers ref measured (web-covers/home.png): On deck row centred on the page, 51 vp higher than ours; row pitch already matches (469). PR #1498 merged 2026-10-15. |
 | 10545 | iPhone hardware keyboard focus moves between cards on Home and the library grids | done | parity-iphone | iphone-r3-focus | | 2026-10-17 18:00 ICT | The keyboard runner (#1495) showed Tab and arrows left the ring on the first card; cards are now focusable and the ring follows focus. PR open: #1510 PR #1510 merged 2026-10-15. |
 | 10553 | Android TV Home rail anchor at every artwork size and in Covers mode (owner request 2026-10-16) | done | atv-parity worker | atv-cover | | 2026-10-16 22:00 ICT | PR open: #1517. Next-free row picked from the board and open PRs. PR #1517 merged 2026-10-15. |
+| 10464 | iPhone round 3 motion audit: scripted Home scroll, panels, poster light frames | in_review | parity-iphone | iphone-r3-motion2 | | 2026-10-17 18:00 ICT | Debug motion script and frame bursts; fixes for differences follow in this row. PR open: #1489 |
 
 ## 18. Public repository readiness (2026-10-05)
 
