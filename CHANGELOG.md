@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS: the light-theme key-art backdrop is as faint as on the web, and the library grid no longer shows a hard edge where card shadows were clipped.
 - Match the iPad library drawer's translucent surface and blur treatment while preserving the phone panel appearance.
 - Android TV: Home rails sit on web's row at every artwork size and in Covers mode (the first row lifts by half the card's extra height, as web centres the focused rail).
 - macOS: the first card of every Home rail keeps its focus ring and glow (no longer clipped at the left edge) and rails fade at the right end as on the web.

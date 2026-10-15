@@ -1,1 +1,0 @@
-- macOS: the light-theme key-art backdrop is as faint as on the web, and the library grid no longer shows a hard edge where card shadows were clipped.

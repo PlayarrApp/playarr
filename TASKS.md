@@ -109,6 +109,7 @@ Steps only the repository owner can perform.
 | 10404 | macOS music light: retry failed artwork fetches as the web does | done | parity-apple | macos-artwork-retry | 57.10025 | 2026-10-16 12:00 ICT | PR open: #1446. Four Music cards stayed text tiles in every capture because AsyncImage never retries; the macOS build now retries up to four times. PR #1446 merged 2026-10-15. |
 | 10454 | macOS round 2: authenticated music artwork, Back restores the opened card, Filters drawer close ring and choice outlines, focus-settle wait and crop captures in the driver | done | parity-apple | macos-round2 | 57.10025 | 2026-10-16 18:00 ICT | PR open: #1465. PR #1465 merged 2026-10-15. |
 | 10460 | macOS round 3: Home screen artwork = Covers on Home, motion and popout capture crops | in_progress | parity-apple | macos-crops-optin | 57.10025 | 2026-10-16 18:00 ICT | PR #1478 merged 2026-10-15. Follow-up: the crops made the hosted suite step hit its 60 min limit before dpad.json (run 38781127369); crops now run only without dpad. PR open: #1507. |
+| 10560 | macOS light parity: backdrop opacity as web, grid shadow clearance, driver settle after Select | done | parity-apple | macos-light-shared | 57.10025 | 2026-10-17 12:00 ICT | PR open: #1518. PR #1518 merged 2026-10-15. |
 
 ## 1. Web follow-ups (2026-10-10)
 
