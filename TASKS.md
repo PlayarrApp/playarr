@@ -634,6 +634,7 @@ Steps only the repository owner can perform.
 | 10480 | Harmony phone round 3: poster mode on Home, motion checks | done | parity-harmony | harmony-phone-round3 | | 2026-10-16 12:00 ICT | Phone Home ignored Settings > Home screen artwork and the artwork size; cards now follow web (2 + step columns, 2:3 for Covers). Scrolling, drawers and the player could not be driven in the Previewer (no swipe or wheel endpoint, no real focus). PR open: #1477. PR #1477 merged 2026-10-15. |
 | 10462 | iPhone round 3: poster mode (Covers) and artwork size settings, Home and libraries | done | parity-iphone | iphone-r3-motion | | 2026-10-17 12:00 ICT | Settings > Appearance gains Home screen artwork (Thumbnails or Covers) and Artwork size; Home rails and library grids follow, with web phone widths. PR open: #1476 PR #1476 merged 2026-10-15. |
 | 10481 | Harmony TV poster mode (Covers) capture and round 3 motion audit | in_review | parity-harmony | harmony-round3 | 5.10102 | 2026-10-16 12:00 ICT | PR open: #1481. Capture-only: POSTER_MODE walk (Settings Covers, each size). Audit findings listed in the PR. |
+| 10463 | iPhone round 3: small artwork width, panel scroll evidence | done | parity-iphone | iphone-r3-floor | | 2026-10-17 12:00 ICT | Drops the 110 pt card floor the web --card-w lacks, so small artwork keeps three columns inside the letter-rail pad. PR open: #1480 PR #1480 merged 2026-10-15. |
 
 ## 18. Public repository readiness (2026-10-05)
 
