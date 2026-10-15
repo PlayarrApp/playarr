@@ -7258,8 +7258,13 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: clamp(126px, calc(16 * var(--viewport-unit)), 184px) clamp(44px, calc(4.2 * var(--vw)), 82px)
-    clamp(88px, calc(11 * var(--viewport-unit)), 132px) clamp(50px, calc(5 * var(--vw)), 96px);
+  /* The focused card's glow tail (20px blur) reaches past the column budget: the grid ends this much earlier so the
+     whole glow box clears the Filters button. The grid shifts left by the same amount; card size is unchanged. */
+  --search-glow-room: 6px;
+  /* Side padding is the card padding the --card-w columns are sized for (page-layout.css): the grid ends left of the
+     shell action column like the Library grid, instead of running behind the Filters button. */
+  padding: clamp(126px, calc(16 * var(--viewport-unit)), 184px) calc(var(--card-pad-right) + var(--search-glow-room))
+    clamp(88px, calc(11 * var(--viewport-unit)), 132px) calc(var(--card-pad-left) - var(--search-glow-room));
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;

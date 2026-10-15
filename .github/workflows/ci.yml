@@ -888,6 +888,11 @@ jobs:
         working-directory: clients/tv-web/web
         run: node scripts/edge-fade-e2e.mjs
 
+      - name: Search results stay left of the Filters button (TV, tablet, phone, both themes)
+        if: matrix.shard == 'drawer'
+        working-directory: clients/tv-web/web
+        run: node scripts/search-contain-e2e.mjs
+
       - name: Keyboard e2e (BACK keys, focus start and restore)
         if: startsWith(matrix.shard, 'nav-')
         working-directory: clients/tv-web/web
