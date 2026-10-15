@@ -605,6 +605,7 @@ Steps only the repository owner can perform.
 | 10427 | Tablet player-controls web reference: live capture at a chosen viewport and dpr | done | parity-linux-phones | tablet-player-ref-1015 | | 2026-10-16 18:00 ICT | PR open: #1444. capture-web-live --viewport --dpr (default 1920x1080 at 1); web-refs.json liveScreens for android-tablet. Refs captured 1280x800 at 2. Android tablet player-controls dark 98.52; light has no device capture yet. PR #1444 merged 2026-10-15. |
 | 10428 | Tizen Search extras notes, calendar agenda rows, series-detail episode ring | done | client-tizen-native | tizen-playlists-fades-10428 | 17.10418 | 2026-10-16 18:00 ICT | PR open: #1450. Other sources loading and none notes, agenda rows without a subtitle 28.5 px shorter, agenda detail day line as web, series-detail episode focus ring and glow and key art from the start. PR #1450 merged 2026-10-15. |
 | 10419 | Android TV parity round 4: edge fades, library card focus, dedicated D-pad account tooling (owner request 2026-10-15) | done | atv-parity worker | atv-parity-3 | | 2026-10-15 22:00 ICT | PR open: #1449. Library 95.7/94.2/93.7 dark (movies/series/music) on the emulator. PR #1449 merged 2026-10-15. |
+| 10399 | Android tablet parity: header clamps, home rails, date format, scroll fade, settings capture | done | claude | android-tablet-header-clamps | | 2026-10-16 12:00 ICT | PR open: #1429. Tablet 91.76 overall (dark 93.31, light 90.20) before the header fix. PR #1429 merged 2026-10-15. |
 
 ## 18. Public repository readiness (2026-10-05)
 
