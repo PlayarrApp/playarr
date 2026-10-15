@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- On iPad, the navigation rail pills are solid with the web's border, the Library preview art is faint in light, the series preview shows its year range, Library cards show the unseen dot, and the film page opens with Play focused and ringed.
 - macOS: music artwork from *arr sources loads with the session token, Back from a title restores focus to the card that opened it, and the Filters drawer shows the round close button with its focus ring, outlined choice buttons and the View glyphs.
 - macOS: library artwork that fails to load is tried again, as on the web, instead of staying a text tile.
 - macOS: the library page preview, alphabet rail and focused card ring follow the web light layout.

@@ -1,1 +1,0 @@
-- On iPad, the navigation rail pills are solid with the web's border, the Library preview art is faint in light, the series preview shows its year range, Library cards show the unseen dot, and the film page opens with Play focused and ringed.
