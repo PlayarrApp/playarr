@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- On iPad series detail, episode cards the profile has not watched show the web's pink unseen dot at the top right.
 - Xbox: Back from a title shows the library at once with focus on the card you left, not on the nav rail.
 - On iPad, the Library preview title is the web's 42 pt on a .9 line pitch, so "2 Broke Girls" stays on one line and "2 Fast 2 Furious" breaks after "Fast"; the grid card captions are the web's size and the row gap is a point tighter.
 - On iPad, the film page shows the web's layout: the header says Movies (it said Series), the copy has the genre kicker, a two-line title, one meta line (runtime, year, release date, genres) and the synopsis, with Download, Playback and Play in one row and the watchlist and playlist pills beneath; the right side lists the film's Chapters and a Cast rail with round headshots. The backdrop is as faint as the web's in dark.
