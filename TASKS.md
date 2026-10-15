@@ -561,7 +561,7 @@ Steps only the repository owner can perform.
 | 10362 | Xbox profile picker polish: avatar ring concentric, add-tile caption unclipped, pill row pitch | in_progress | parity-xbox | xbox-profiles-polish | | 2026-10-15 22:00 ICT | Follow-up to 10319 from the VM check. |
 | 10380 | Harmony phone parity: detail text rhythm, agenda card type and home captions | in_review | parity-harmony | harmony-phone-parity-4 | | 2026-10-16 12:00 ICT | Phone detail synopsis and meta at web's sizes with web's spacing, play glyph without the emoji box, calendar agenda cards at web's phone type and 92 vp height, home captions soft as on web. TV unchanged. PR open: #1376. |
 | 10372 | Xbox polish from the VM check: week heading gap and TODAY tag, profile glow inside its tile | in_progress | parity-xbox | xbox-polish2 | | 2026-10-15 22:00 ICT | Follow-up to 10319 and 10320. |
-| 10381 | Tizen library grid panel frost as web | in_review | client-tizen-native | tizen-library-wash | 17.10222 | 2026-10-16 18:00 ICT | PR open: #1382. Movies, Series and Music light were about 95 because web frosts the right 1190 px (.tv-library-grid-panel gradient) and native had none. |
+| 10381 | Tizen library grid panel frost as web | done | client-tizen-native | tizen-library-wash | 17.10222 | 2026-10-16 18:00 ICT | PR open: #1382. Movies, Series and Music light were about 95 because web frosts the right 1190 px (.tv-library-grid-panel gradient) and native had none. PR #1382 merged 2026-10-15. |
 
 ## 18. Public repository readiness (2026-10-05)
 
