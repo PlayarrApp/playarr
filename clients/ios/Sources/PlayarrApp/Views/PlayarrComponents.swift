@@ -86,13 +86,25 @@ private final class ArtworkLoader {
             }
         }
 
-        do {
-            let data = try await apiClient.fetchArtwork(workID: work.id, kind: kind)
-            image = UIImage(data: data)
-            if let image { Self.cache.setObject(image, forKey: cacheKey) }
-            failed = image == nil
-        } catch {
-            failed = true
+        // A cell that scrolls off cancels its task, and a rail that loads many cells at once can see a transient failure: neither
+        // may leave the placeholder up while the cell is still on screen, so retry a failed fetch with a short back-off.
+        for attempt in 0..<3 {
+            do {
+                let data = try await apiClient.fetchArtwork(workID: work.id, kind: kind)
+                image = UIImage(data: data)
+                if let image { Self.cache.setObject(image, forKey: cacheKey) }
+                failed = image == nil
+                return
+            } catch is CancellationError {
+                return
+            } catch let error as URLError where error.code == .cancelled {
+                return
+            } catch {
+                if case APIError.notFound = error { failed = true; return }
+                failed = true
+                if Task.isCancelled || attempt == 2 { return }
+                try? await Task.sleep(nanoseconds: UInt64(600_000_000 * (attempt + 1)))
+            }
         }
     }
 }
