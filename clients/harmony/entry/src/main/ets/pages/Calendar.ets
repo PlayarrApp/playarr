@@ -101,8 +101,10 @@ const ENTRY_TITLE_SIZE: number = 19.2;
 const ENTRY_META_SIZE: number = 12.8;
 /** Web phone agenda card, measured on the 360 vp reference: smaller type and a 92 vp card than the TV's. */
 const PHONE_ENTRY_TITLE_SIZE: number = 16;
-const PHONE_ENTRY_META_SIZE: number = 10.88;
+const PHONE_ENTRY_META_SIZE: number = 14;
 const PHONE_ENTRY_HEIGHT: number = 92;
+/** A card without a subtitle line (a movie) is 15 vp shorter on web. */
+const PHONE_ENTRY_HEIGHT_NO_SUBTITLE: number = 77;
 const PHONE_PILL_SIZE: number = 11.2;
 const PHONE_PILL_HEIGHT: number = 22.5;
 const PHONE_DAY_HEADING_SIZE: number = 14.4;
@@ -358,16 +360,18 @@ export struct ReleaseCalendar {
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(itemSubtitle(item)).fontFamily(nunito(400))
-          .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
-          .fontColor(toResourceColor(activeColors().inkSoft))
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        if (isTvMetrics() || itemSubtitle(item).length > 0) {
+          Text(itemSubtitle(item)).fontFamily(nunito(400))
+            .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
+            .fontColor(toResourceColor(activeColors().inkSoft))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
         Row({ space: tv(ENTRY_META_GAP) }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(activeColors().inkMuted))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(activeColors().inkMuted))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           }
           this.statusPill(itemPillTone(item, this.today))
         }
@@ -377,7 +381,7 @@ export struct ReleaseCalendar {
       .layoutWeight(1)
     }
     .width(isTvMetrics() ? tv(width) : '100%')
-    .height(isTvMetrics() ? tv(ENTRY_HEIGHT) : PHONE_ENTRY_HEIGHT)
+    .height(isTvMetrics() ? tv(ENTRY_HEIGHT) : (itemSubtitle(item).length > 0 ? PHONE_ENTRY_HEIGHT : PHONE_ENTRY_HEIGHT_NO_SUBTITLE))
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
@@ -965,6 +969,7 @@ export struct ReleaseCalendar {
       .width('100%')
       .layoutWeight(1)
       .padding({ left: 16, right: 16, bottom: 16 })
+      .margin({ top: -5 })
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
     }

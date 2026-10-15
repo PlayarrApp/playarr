@@ -2390,8 +2390,8 @@ struct Detail {
         .padding({
           top: TOUCH_TEXT_TOP,
           bottom: TouchGeometry.detailListBottom,
-          left: atLeast(Spacing.lg, this.safeLeft),
-          right: atLeast(Spacing.lg, this.safeRight),
+          left: atLeast(16, this.safeLeft),
+          right: atLeast(16, this.safeRight),
         })
         .width('100%')
         .alignItems(HorizontalAlign.Start)

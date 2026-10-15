@@ -585,7 +585,8 @@ else:
     for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
                            ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
                            ("settings", "settings", 40000), ("profiles", "profiles", 40000)):
-        guarded(name, lambda: (route(r, 40 if name == 'home' else 15), snap(name, folder, floor)))
+        # the picker opens with the current profile focused (ring and lift) on web; the Previewer window has no focus until a key arrives
+        guarded(name, lambda: (route(r, 40 if name == 'home' else 15), key("tab") if name == "profiles" else None, time.sleep(2), snap(name, folder, floor)))
     route("library:movie", 15); settle()
     open_filters("movies"); guarded("filters", lambda: snap("filters", folder, 40000)); click(*CLOSE_DRAWER); time.sleep(3)
     longclick(*CARDS[0]); time.sleep(5); debug("movies-actions-open"); guarded("actions", lambda: snap("actions", folder, 40000))

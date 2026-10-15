@@ -38,6 +38,8 @@ export struct SelectField {
   @Prop selectWidth: number = 268;
   /** Trigger height; the phone's selects are shorter than the TV's. */
   @Prop minHeight: number = MIN_HEIGHT;
+  /** Corner radius; the phone picker's selects are square-cornered as on web. */
+  @Prop radius: number = RADIUS;
   @Prop disabled: boolean = false;
   onChange: (value: string) => void = () => {};
 
@@ -77,7 +79,7 @@ export struct SelectField {
       .width(tv(this.selectWidth))
       .constraintSize({ minHeight: tv(this.minHeight) })
       .padding({ left: tv(PADDING_H), right: tv(PADDING_H), top: tv(PADDING_V), bottom: tv(PADDING_V) })
-      .borderRadius(tv(RADIUS))
+      .borderRadius(tv(this.radius))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, LINE_ALPHA * 0.3) })
       .backgroundColor(this.fill(this.highlighted === '#trigger'))
       .opacity(this.disabled ? 0.5 : 1)
@@ -113,7 +115,7 @@ export struct SelectField {
               .width('100%')
               .constraintSize({ minHeight: tv(this.minHeight) })
               .padding({ left: tv(PADDING_H), right: tv(PADDING_H), top: tv(PADDING_V), bottom: tv(PADDING_V) })
-              .borderRadius(tv(RADIUS))
+              .borderRadius(tv(this.radius))
               .border({ width: 1, color: option.value === this.value ? toResourceColor(activeColors().ink) :
                 toResourceColorWithAlpha(activeColors().ink, LINE_ALPHA * 0.3) })
               .backgroundColor(this.fill(this.highlighted === option.value))

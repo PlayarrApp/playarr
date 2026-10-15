@@ -118,6 +118,7 @@ const PHONE_HEADING_SIZE: number = 38.4;
 const PHONE_KICKER_TOP: number = 68;
 const PHONE_CHOICES_TOP: number = 54;
 const PHONE_SELECT_HEIGHT: number = 48;
+const PHONE_SELECT_RADIUS: number = 2;
 const PHONE_SELECT_WIDTH: number = 112.5;
 const PHONE_SELECT_TOP: number = 14;
 const PHONE_SELECT_RIGHT: number = 14;
@@ -403,6 +404,7 @@ struct Profiles {
           value: this.themeSetting,
           selectWidth: isTvMetrics() ? THEME_SELECT_WIDTH : PHONE_SELECT_WIDTH,
           minHeight: isTvMetrics() ? 56 : PHONE_SELECT_HEIGHT,
+          radius: isTvMetrics() ? 12 : PHONE_SELECT_RADIUS,
           onChange: (value: string): void => {
             setThemeModeSetting(value as ThemeModeSetting);
             saveThemeChoice(value as ThemeModeSetting);
@@ -415,6 +417,7 @@ struct Profiles {
             value: 'auto',
             selectWidth: PHONE_SELECT_WIDTH,
             minHeight: PHONE_SELECT_HEIGHT,
+            radius: PHONE_SELECT_RADIUS,
             onChange: (_value: string): void => {},
           })
         }
