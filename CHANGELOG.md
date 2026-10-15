@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: the Calendar week day heading sits at web's height and tags today; the profile glow is no longer clipped to a box.
 - Xbox: the profile picker's selected avatar and ring scale together, the add tile's caption is no longer clipped, and the action pills sit at web's height.
 - Xbox: the profile picker's Add tile asks before signing out; Cancel keeps the session.
 - Xbox: LEFT from a card enters the rail at the item level with the card art, as the web.

@@ -560,6 +560,8 @@ Steps only the repository owner can perform.
 | 10349 | Harmony hosted captures: build patch anchor repaired after #1370, five attempts, smaller poster JPEGs | done | parity-harmony | harmony-capture-retries | 5.10102 | 2026-10-15 18:00 ICT | PR open: #1374. #1370 added a second episodeNumberOverlay line to Detail.ets, so the capture's Detail patch (assert count 1) failed and every hosted Harmony build broke. PR #1374 merged 2026-10-15. |
 | 10362 | Xbox profile picker polish: avatar ring concentric, add-tile caption unclipped, pill row pitch | in_progress | parity-xbox | xbox-profiles-polish | | 2026-10-15 22:00 ICT | Follow-up to 10319 from the VM check. |
 | 10380 | Harmony phone parity: detail text rhythm, agenda card type and home captions | in_review | parity-harmony | harmony-phone-parity-4 | | 2026-10-16 12:00 ICT | Phone detail synopsis and meta at web's sizes with web's spacing, play glyph without the emoji box, calendar agenda cards at web's phone type and 92 vp height, home captions soft as on web. TV unchanged. PR open: #1376. |
+| 10372 | Xbox polish from the VM check: week heading gap and TODAY tag, profile glow inside its tile | in_progress | parity-xbox | xbox-polish2 | | 2026-10-15 22:00 ICT | Follow-up to 10319 and 10320. |
+| 10381 | Tizen library grid panel frost as web | in_review | client-tizen-native | tizen-library-wash | 17.10222 | 2026-10-16 18:00 ICT | PR open: #1382. Movies, Series and Music light were about 95 because web frosts the right 1190 px (.tv-library-grid-panel gradient) and native had none. |
 
 ## 18. Public repository readiness (2026-10-05)
 
