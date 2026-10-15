@@ -806,7 +806,8 @@ struct Detail {
   /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
   @State private touchActionsOpen: boolean = false;
   /** Phone Play: web's focus style (`.tv-detail-play:focus-visible`: brand-strong fill, white label, 1.06 scale). */
-  @State private playFocused: boolean = false;
+  // starts true on the phone: web opens with Play focused, and the Previewer window never reports the focus
+  @State private playFocused: boolean = !isTvMetrics();
   @State private optionsOpen: boolean = false;
   /** On this profile's watchlist: null until the server has answered. */
   @State private listed: boolean | null = null;
