@@ -1100,6 +1100,8 @@ export struct Library {
       metaLines: this.hero !== undefined ? heroMetaLines(this.hero) : [],
       synopsis: this.hero !== undefined && this.hero.overview !== null ? this.hero.overview : '',
       scrollRails: false,
+      railFrost: true,
+      railFrostWidthPct: 65,
       railsSlot: (): void => {
         this.tvGrid();
       },

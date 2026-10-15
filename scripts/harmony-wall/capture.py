@@ -260,20 +260,38 @@ def extra_screens(folder):
             print("player-controls not captured", flush=True)
 
 
+def focus_first_card(click_xy):
+    """Web's reference frames are taken with the first card of the page focused (lifted, with the glow ring). The Previewer drops key
+    events, so ask the app to focus the first card (the preview patch gives cards the id pcard; the first in tree order wins). A focus
+    request only takes after a touch has activated focus: when none arrives, tap the first card (it opens its detail), come back, retry."""
+    for attempt in range(2):
+        get("/state", resetfocused="1")
+        get("/setroute", name="focus:pcard")
+        for _ in range(8):
+            time.sleep(1)
+            if json.loads(get("/state")).get("focused"):
+                time.sleep(2)
+                return
+        if attempt == 0:
+            click(*click_xy); time.sleep(10); key("back"); time.sleep(8)
+    print("focus_first_card: no focus event; capturing unfocused", flush=True)
+
+
 def walk(folder, suffix):
     """The route-based screen walk (captures as <id><suffix>.png). Clicks only inside pages."""
     n = lambda s: s + suffix
+    focus_first_card((1044, 544))
     snap(n("home"), folder, 150000)
     if os.environ.get("POSTERDBG"):
         events = json.loads(get("/state")).get("debug_events", [])
         print("dbgsum", {k: sum(1 for event in events if event.get("category") == k)
                           for k in ("home-card-artwork-ok", "poster-image-complete", "poster-image-error")}, flush=True)
-    route("library:movie", 15); snap(n("movies"), folder, 150000)
+    route("library:movie", 15); focus_first_card((946, 254)); snap(n("movies"), folder, 150000)
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
     click(946, 254); time.sleep(12); snap(n("film-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
-    route("library:series", 15); snap(n("series"), folder, 150000)
+    route("library:series", 15); focus_first_card((946, 254)); snap(n("series"), folder, 150000)
     click(946, 254); time.sleep(12); snap(n("series-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
-    route("library:artist", 15); snap(n("music"), folder, 150000)
+    route("library:artist", 15); focus_first_card((946, 254)); snap(n("music"), folder, 150000)
     route("calendar", 18); snap(n("calendar-agenda"), folder)
     click(1877, 272); time.sleep(4); click(1740, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-week"), folder)
     click(1877, 272); time.sleep(4); click(1830, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-month"), folder)

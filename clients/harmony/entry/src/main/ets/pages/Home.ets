@@ -132,7 +132,9 @@ import {
   getHomeRails,
 } from '../data/CatalogRepository';
 import type { ContinueWatchingEntry } from '../data/CatalogRepository';
-import { getWorkDetail } from '../data/CatalogRepository';
+import { getWorkDetail, listWatchProgress } from '../data/CatalogRepository';
+import { indexWatchProgressByWork, watchMarkFor } from '../core/WatchState';
+import type { WatchProgress } from '../core/Types/Playback';
 import { formatRuntimeLabel } from '../core/RuntimeLabel';
 import {
   fetchWorkArtworkByPriority,
@@ -452,6 +454,9 @@ export struct Home {
   @State private hero: HomeCardItem | undefined = undefined;
   /** The hero's runtime label, from its work detail ('' until it loads), keyed by `heroRuntimeId`. */
   @State private heroRuntime: string = '';
+  /** Web Home: the watch list, once; until it loads cards draw no unseen dot. */
+  @State private watchIndex: Map<string, WatchProgress> = new Map<string, WatchProgress>();
+  @State private watchLoaded: boolean = false;
   private heroRuntimeId: string = '';
   /** Settings > Appearance: Home screen artwork ('thumbnail' or 'cover') and the artwork size. */
   @State private homeView: string = 'thumbnail';
@@ -483,6 +488,20 @@ export struct Home {
 
   aboutToAppear(): void {
     this.load();
+    this.loadWatchMarks();
+  }
+
+  private async loadWatchMarks(): Promise<void> {
+    const result = await listWatchProgress();
+    if (result.kind === 'ok') {
+      this.watchIndex = indexWatchProgressByWork(result.value);
+      this.watchLoaded = true;
+    }
+  }
+
+  /** The unseen dot for a card without a progress bar (web `WatchStateOverlay`). */
+  private unseenFor(item: HomeCardItem): boolean {
+    return item.progress < 0 && watchMarkFor(this.watchIndex.get(item.id), this.watchLoaded).unseen;
   }
 
   /** The card every rail uses (web `--card-w` / `--card-w-cover`): landscape thumbnails or portrait covers. */
@@ -788,6 +807,7 @@ export struct Home {
         title: ((item as HomeCardItem).title),
         subtitle: ((item as HomeCardItem).subtitle),
         progress: ((item as HomeCardItem).progress),
+        unseen: this.unseenFor(item as HomeCardItem),
         artwork: ((item as HomeCardItem).artwork),
         activeRailFactor: activeRailFactor,
         onSelect: ((): void => {
@@ -810,6 +830,7 @@ export struct Home {
         title: ((item as HomeCardItem).title),
         subtitle: ((item as HomeCardItem).subtitle),
         progress: ((item as HomeCardItem).progress),
+        unseen: this.unseenFor(item as HomeCardItem),
         artwork: ((item as HomeCardItem).artwork),
         activeRailFactor: activeRailFactor,
         onSelect: ((): void => {

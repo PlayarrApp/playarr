@@ -129,6 +129,8 @@ export struct Stage {
   @Prop synopsis: string = '';
   /** Home: draw web's rails frost (`.tv-home-rails` background). */
   @Prop railFrost: boolean = false;
+  /** Width of that frost from the right edge, in percent: Home's rails 62, Library's grid panel 65. */
+  @Prop railFrostWidthPct: number = 62;
   @Prop metaGapAdjust: number = 0;
   @Prop synopsisGapAdjust: number = 0;
 
@@ -301,14 +303,14 @@ export struct Stage {
   }
 
   /** Web `.tv-home-rails`: the right 62% of the page carries a frost (surface-soft 48% over surface-strong, 44% in dark) that fades in from
-   * transparent at its left edge. Only Home asks for it (`railFrost`); Library draws its own panel. */
+   * transparent at its left edge. Home (62%) and Library (`.tv-library-grid-panel`, 65%) ask for it (`railFrost`). */
   @Builder
   private railFrostLayer(): void {
     if (this.railFrost) {
       Row()
-        .width('62%')
+        .width(`${this.railFrostWidthPct}%`)
         .height('100%')
-        .position({ x: '38%', y: 0 })
+        .position({ x: `${100 - this.railFrostWidthPct}%`, y: 0 })
         .hitTestBehavior(HitTestMode.Transparent)
         .linearGradient({
           angle: HORIZONTAL_ANGLE,

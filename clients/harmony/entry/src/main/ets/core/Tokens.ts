@@ -179,7 +179,7 @@ export const Motion: MotionTokens = {
   entryRailsMs: 700,
   entryRailsDelayMs: 120,
   drawerMs: 280,
-  interactionCardMs: 220,
+  interactionCardMs: 260, // web .tv-home-card transform 260ms; its art (shadow, scale) runs 240ms ease, folded into this one animation
   interactionTitleCardMs: 260,
   interactionNavExpandMs: 280,
   fadeOpacityMs: 180,
@@ -372,12 +372,12 @@ export const TvGeometry: TvGeometryTokens = {
   homeRailsLeft: 730,
   homeRailsWidth: 1190,
   homeRailsInsetLeft: 152,
-  homeRailsTop: 402,
+  homeRailsTop: 405,
   // Web rail pitch is 366 (heading 26, gap 30, card 213, 97 to the next heading); the list height
   // includes room for the focus lift and caption, so the gap between rails is smaller here.
-  homeRailsHeadingGap: 30,
+  homeRailsHeadingGap: 38, // web: heading 49 above the cards (was 41); the caption's 10 vp joined the row
   homeRailsListHeight: 250,
-  homeRailsRowGap: 79,
+  homeRailsRowGap: 81,
 
   utilityRowTop: 56,
   utilityRowHeight: 50,
@@ -404,7 +404,7 @@ export const TvGeometry: TvGeometryTokens = {
   libraryGridCardWidth: 327,
   libraryGridCardHeight: 184,
   // Web row pitch is 240.5; its caption box sits 12 below the art where PosterCard's sits 5 below.
-  libraryGridRowGap: 38,
+  libraryGridRowGap: 28, // 38 before the caption moved 10 vp lower (row pitch stays 240)
   libraryGridColumnGap: 26.5,
   libraryGridCardRadius: 12.48,
   azIndexRailRight: 22,

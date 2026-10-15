@@ -119,6 +119,11 @@ interface ShadowLayerSpec {
 }
 
 /** Brief 5.6, "Card art at rest (home)" / "Card art focused (home)". */
+/** Web `.tv-title-card-copy` / `.tv-home-card` caption: 0.72rem under the art and 0.12rem in from the card edge (measured on the 2026-10-15
+ * refs: caption rows 10 vp lower, text 2 vp further right than before). */
+const TV_CAPTION_TOP_GAP: number = 10;
+const TV_CAPTION_INSET: number = 2;
+const FOCUS_RING_WIDTH: number = 3;
 const HOME_SHADOW_REST: ShadowLayerSpec[] = [
   { offsetY: 10, radius: 22, alpha: 0.16 },
   { offsetY: 3, radius: 9, alpha: 0.1 },
@@ -412,6 +417,7 @@ export struct PosterCard {
       .borderRadius(this.resolvedArtworkRadius())
       .scale({ x: this.artworkScale(), y: this.artworkScale() })
       .shadow(this.shadowLayer())
+      .outline({ width: tv(FOCUS_RING_WIDTH), color: isTvMetrics() ? this.focusRingColor(this.effective()) : "rgba(0, 0, 0, 0)", radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
       if (!isTvMetrics()) {
         // web's card focus ring and glow (3 vp ring, 20 vp glow at 45%): drawn over the art so the layout never shifts; the TV keeps its lift
         Column()
@@ -457,7 +463,7 @@ export struct PosterCard {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
-          .padding(this.softCaption ? { top: 9, left: 2.3 } : { top: 0 })
+          .padding(this.softCaption ? { top: 9, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
@@ -468,6 +474,7 @@ export struct PosterCard {
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .padding({ left: this.softCaption ? 2.3 : tv(TV_CAPTION_INSET) })
       }
     }
     .width(this.cardWidth)

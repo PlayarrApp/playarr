@@ -616,6 +616,8 @@ def apply_state(q):
             STATE["detail_load_sequence"] = 0
         if STATE["route"] == "Library":
             STATE["lib_kind"] = STATE["kind"]
+    if "resetfocused" in q:
+        STATE["focused"] = None
     if "resetdbg" in q:
         STATE["dbgcount"] = {}
     if "img" in q:

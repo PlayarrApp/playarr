@@ -1,7 +1,7 @@
 /**
  * The shared focus treatment for every content component in the Playarr
  * design system (brief section 5.8): a geometric LIFT -- `translateY` +
- * `scale` + an upgraded shadow -- never a focus ring/outline. HarmonyOS
+ * `scale` + an upgraded shadow (+ the card glow ring, an `.outline()`, owner 2026-10-09). HarmonyOS
  * hides the focus ring by default on the TV profile (brief 6.3); Playarr's
  * own visual identity never re-adds one, on any profile.
  *
@@ -34,9 +34,9 @@
  *    Roku port shipped: every rail's "selected" card appeared lifted at
  *    once, including the three rails that did not hold focus.
  * 4. Apply ONLY `.translateY(...)`, `.scale(...)` and a shadow upgrade
- *    (swap between a "rest" and "focused" shadow). Never set `.border()`,
- *    an outline, or any other focus-ring attribute as part of the focus
- *    response.
+ *    (swap between a "rest" and "focused" shadow). Cards also draw web's
+ *    3 px glow ring (owner 2026-10-09, `--card-glow`) as a layout-neutral
+ *    `.outline()` (PosterCard); never `.border()`, which would shift layout.
  *
  * Example (a card hosted inside a rail):
  *

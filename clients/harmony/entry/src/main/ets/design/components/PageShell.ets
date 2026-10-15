@@ -31,6 +31,7 @@ const HEADER_GAP: number = 23;
 // Web `.page-header-detail`: 0.58vw (11.136 px), weight 680, tracking .045em.
 const DETAIL_SIZE: number = 11.136;
 const DETAIL_LETTER_SPACING: number = 0.501;
+const DETAIL_WEIGHT: number = 680; // web .page-header-title-block > span
 const CLOCK_STOP: number = 478;
 const WRAP_GAP: number = 5.6;
 const WRAP_PAD_TOP: number = 6.4;
@@ -88,18 +89,18 @@ export struct PageShell {
   }
 
   private detailTextWidth(): number {
-    return Math.ceil(this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, 700, DETAIL_LETTER_SPACING)) + 2;
+    return Math.ceil(this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, DETAIL_WEIGHT, DETAIL_LETTER_SPACING)) + 2;
   }
 
   private wrappedColumnWidth(): number {
     const title = this.measureHeaderText(this.title, TITLE_SIZE, 500, TITLE_LETTER_SPACING);
-    const detail = this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, 700, DETAIL_LETTER_SPACING);
+    const detail = this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, DETAIL_WEIGHT, DETAIL_LETTER_SPACING);
     return Math.ceil(Math.max(title, detail)) + 2;
   }
 
   private detailFitsInline(): boolean {
     const title = this.measureHeaderText(this.title, TITLE_SIZE, 500, TITLE_LETTER_SPACING);
-    const detail = this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, 700, DETAIL_LETTER_SPACING);
+    const detail = this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, DETAIL_WEIGHT, DETAIL_LETTER_SPACING);
     const right = tv(TvGeometry.titlePanelLeft + HEADER_SIZE + HEADER_GAP) + title + tv(HEADER_GAP) + detail + tv(HEADER_GAP + 1);
     return right + tv(16) <= tv(CLOCK_STOP);
   }
@@ -137,7 +138,7 @@ export struct PageShell {
   private headerDetail(inline: boolean): void {
     Text(this.kicker).fontFamily(nunito(700))
       .fontSize(tv(DETAIL_SIZE))
-      .fontWeight(FontWeight.Bold)
+      .fontWeight(DETAIL_WEIGHT)
       .letterSpacing(tv(DETAIL_LETTER_SPACING))
       .textCase(TextCase.UpperCase)
       .fontColor(toResourceColor(activeColors().ink))
@@ -232,9 +233,9 @@ export struct PageShell {
             })
           Column() {
             Text(this.title).fontFamily(nunito(500))
-              .fontSize(22)
+              .fontSize(21.6) // web 1.35rem
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(-0.5)
+              .letterSpacing(-0.972) // web -0.045em
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
           }
