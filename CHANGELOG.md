@@ -649,6 +649,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: series and film detail text rhythm, the movie action row sizes, the genre kicker and the next-up episode focus follow web; the wall seeds the test user's progress so Home's On deck is stable.
+- HarmonyOS phone player controls follow the web phone layout: round minimise and close at the top right, progress track, centred time, one transport row and an info row.
 - Android: the shared palette's ink-soft, ink-muted and light accent tokens carry web's values, and the TV header subtitle uses web's page ink at weight 680.
 - HarmonyOS phone cards draw web's second shadow layer; the capture reopens a series page whose episode stills stall.
 - Xbox: the library grid fades toward its top and bottom edges where content continues, as the web.
