@@ -8,6 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -377,9 +379,25 @@ internal fun Modifier.tvRailItem(rails: TvRails, rail: Int, index: Int): Modifie
         rails.register(rail, index, slot)
         onDispose { rails.unregister(rail, index, slot) }
     }
+    // A tablet keeps web's rail end padding (`scroll-padding-inline`, clamp(22, 2.4 vw, 46) css px) when focus scrolls a card into view,
+    // so the last card's ring and glow are not cut by the screen edge. Television keeps the tuned behaviour.
+    val tablet = LocalStageScale.current != 1f
+    val padPx = with(androidx.compose.ui.platform.LocalDensity.current) { webVw(22f, 2.4f, 46f).toPx() }
+    val bringIntoView = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     return this
         .onPreviewKeyEvent { rails.onKey(rail, index, it) }
         .focusRequester(slot.requester)
+        .then(
+            if (!tablet) Modifier else Modifier
+                .bringIntoViewRequester(bringIntoView)
+                .onFocusChanged { state ->
+                    if (state.isFocused) scope.launch {
+                        val size = slot.coords?.size
+                        if (size != null) bringIntoView.bringIntoView(androidx.compose.ui.geometry.Rect(-padPx, 0f, size.width + padPx, size.height.toFloat()))
+                    }
+                },
+        )
         .onGloballyPositioned { slot.coords = it }
 }
 

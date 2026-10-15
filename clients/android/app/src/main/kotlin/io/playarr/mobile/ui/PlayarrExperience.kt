@@ -2295,22 +2295,24 @@ private fun TvNavTile(
 ) {
     val contentEntry = LocalTvContentEntry.current
     var focused by remember { mutableStateOf(false) }
+    val tabletNav = LocalStageScale.current != 1f
     val navScale = rememberPlayarrFocusScale(
         focused = focused,
-        focusedScale = FocusMotion.navFocusScale,
+        focusedScale = if (tabletNav) 1.1f else FocusMotion.navFocusScale,
         unfocusedScale = if (selected) FocusMotion.navSelectedScale else FocusMotion.restScale,
         label = "tvNavFocus",
     )
     Surface(
         onClick = onClick,
         // Focus is a ring, never a fill: only the current page keeps the soft fill.
-        color = if (selected) WebInk.copy(alpha = 0.09f) else Color.Transparent,
+        // Web (width > 760, global.css `.app-nav-link:focus-visible`): no outline, a 14% ink fill and a 1.1 scale; a tablet draws that.
+        color = if (tabletNav && focused) WebInk.copy(alpha = 0.14f) else if (selected) WebInk.copy(alpha = 0.09f) else Color.Transparent,
         contentColor = if (selected || focused) WebInk else PlayarrWebTheme.palette.webInkMuted,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .size(width = 64.dp, height = web?.linkHeight ?: 64.dp)
             .scale(navScale)
-            .webFocusRing(focused, radius = 16.dp, offset = 2.dp)
+            .webFocusRing(focused && !tabletNav, radius = 16.dp, offset = 2.dp)
             .then(if (entryFocus != null) Modifier.focusRequester(entryFocus) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)
@@ -3408,7 +3410,7 @@ internal fun ExperienceMediaRail(
             fadeCrossAxisStartInset = if (isTelevision) 0.dp else phoneFocusTopHeadroom,
             fadeCrossAxisEndInset = if (isTelevision) 0.dp else phoneFocusBottomHeadroom,
             modifier = trackModifier,
-            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = 20.dp, top = tvTrackHeadroom, bottom = (12f * cssDp).dp) else PaddingValues(
+            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = tabletTrackEnd(20.dp), top = tvTrackHeadroom, bottom = (12f * cssDp).dp) else PaddingValues(
                 start = 16.dp,
                 end = 20.dp,
                 top = 10.dp + phoneFocusTopHeadroom,
@@ -7135,7 +7137,7 @@ internal fun SeriesEpisodeBrowser(
                 // The viewport reaches 40 dp left of the heading line so a focused first tile's ring, corner and glow are not clipped (web's track left gutter).
                 modifier = if (isTelevision) Modifier.padding(top = 18.3.dp + 13.6.dp * tabletDetail).extendStart(40.dp) else Modifier,
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp else 12.dp),
-                contentPadding = if (isTelevision) PaddingValues(start = 44.dp, top = 18.dp, end = 24.dp) else PaddingValues(vertical = 6.dp),
+                contentPadding = if (isTelevision) PaddingValues(start = 44.dp, top = 18.dp, end = tabletTrackEnd(24.dp)) else PaddingValues(vertical = 6.dp),
             ) {
                 itemsIndexed(season.episodes, key = { _, it -> it.episode.id }) { episodeIndex, episode ->
                     EpisodeDetailCard(
@@ -7549,7 +7551,7 @@ private fun WebMediaTrack(
             state = state ?: androidx.compose.foundation.lazy.rememberLazyListState(),
             // Measured against web at 1280 x 800: 10 css px more under the heading; the viewport reaches left so a focused first tile is not clipped.
             modifier = Modifier.padding(top = 17.2.dp + 15.dp * tabletTrack).extendStart(40.dp),
-            contentPadding = PaddingValues(start = 44.dp, top = 18.dp, end = 24.dp),
+            contentPadding = PaddingValues(start = 44.dp, top = 18.dp, end = tabletTrackEnd(24.dp)),
             horizontalArrangement = Arrangement.spacedBy(25.dp),
             content = cards,
         )
@@ -10310,3 +10312,7 @@ private fun rememberPlayarrNowPlayingArtwork(work: Work?, fallbackServerUrl: Str
 @Composable
 private fun homeStageVerticalScale(): Float =
     if (LocalStageScale.current == 1f) 1f else androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / 1080f
+
+/** Web's rail `scroll-padding-inline` / end padding clamp(22, 2.4 vw, 46) css px: a tablet keeps it clear of the screen edge so the last card's ring and glow are not cut (television keeps its tuned value). */
+@Composable
+private fun tabletTrackEnd(tv: Dp): Dp = if (LocalStageScale.current == 1f) tv else webVw(22f, 2.4f, 46f)
