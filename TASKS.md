@@ -563,6 +563,7 @@ Steps only the repository owner can perform.
 | 10372 | Xbox polish from the VM check: week heading gap and TODAY tag, profile glow inside its tile | in_progress | parity-xbox | xbox-polish2 | | 2026-10-15 22:00 ICT | Follow-up to 10319 and 10320. |
 | 10381 | Tizen library grid panel frost as web | done | client-tizen-native | tizen-library-wash | 17.10222 | 2026-10-16 18:00 ICT | PR open: #1382. Movies, Series and Music light were about 95 because web frosts the right 1190 px (.tv-library-grid-panel gradient) and native had none. PR #1382 merged 2026-10-15. |
 | 10385 | Harmony phone Profiles picker as web | done | parity-harmony | harmony-phone-parity-6 | | 2026-10-16 12:00 ICT | Left-aligned Who is watching heading, 144 vp avatars with name and status, Dark and Auto selects, settings and sign-out actions, Clients pill at the bottom right; the capture clicks the new avatar position. TV unchanged. PR open: #1385. PR #1385 merged 2026-10-15. |
+| 10386 | Harmony hosted TV captures: one Previewer job per theme | done | parity-harmony | harmony-tv-theme-jobs | 5.10102 | 2026-10-15 18:00 ICT | PR open: #1388. In 6 of 8 hosted runs the light Home captured after the in-app theme toggle stalled its image loading (2 images completed against 66-80); a Previewer started in light mode (-cm) does not. PR #1388 merged 2026-10-15. |
 
 ## 18. Public repository readiness (2026-10-05)
 
