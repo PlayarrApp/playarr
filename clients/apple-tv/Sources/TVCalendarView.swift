@@ -60,7 +60,7 @@ struct TVCalendarView: View {
             panel = .link
             Task { await model.loadFeedStatus() }
         }
-        pill("Filters", symbol: "line.3.horizontal.decrease", slot: 1) { panel = .filters }
+        pill("Filters", symbol: "slider.horizontal.3", slot: 1) { panel = .filters }
 
         switch model.loadState {
         case .loading:

@@ -1204,7 +1204,7 @@ struct TVSearchView: View {
         }
 
         // Web: Filters is the shell action column tile, as on the libraries.
-        TVHeaderPill(label: "Filters", symbol: "line.3.horizontal.decrease", width: 62)
+        TVHeaderPill(label: "Filters", symbol: "slider.horizontal.3", width: 62)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             .padding(.trailing, TVShellActionColumn.edge)
             .padding(.top, TVShellActionColumn.top)
@@ -1581,7 +1581,7 @@ struct TVLibraryKindView: View {
                 alphabetRail
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .padding(.trailing, 1920 - 1876.5 - DesignTokens.Shell.libraryAlphabetWidth / 2)
-                    .padding(.top, 277.2 - (25.6 - 9.2) / 2)
+                    .padding(.top, 277)
                     .zIndex(20)
 
                 if playlistID == nil, !listsPlaylists {
@@ -1980,27 +1980,36 @@ struct TVLibraryKindView: View {
     /// Web `.page-filters-button`: the shared TVHeaderPill tile in the shell action column; opens the Filters drawer.
     private var filterLauncher: some View {
         Button { filtersOpen = true } label: {
-            TVHeaderPill(label: "Filters", symbol: "line.3.horizontal.decrease", width: TVShellActionColumn.width)
+            TVHeaderPill(label: "Filters", symbol: "slider.horizontal.3", width: TVShellActionColumn.width)
         }
         .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
         .focusEffectDisabled()
     }
 
-    /// Web: letters `#`, A to Z, 9.2px, 25.6px pitch from y 277; the current title's letter sits in a light disc.
+    /// Web: letters `#`, A to Z, 9.2px, 44px pitch from y 277 (`#` centred on 299), a 24px light disc on the current title's
+    /// letter, and the column runs off the bottom of the stage under a soft fade (the Q at y 1047 is already faint).
     private var alphabetRail: some View {
         let letters = ["#"] + (0..<26).map { String(UnicodeScalar(65 + $0)!) }
-        let current = selected.map { String($0.title.prefix(1)).uppercased() } ?? "A"
+        // Web: a title that does not start with a letter (a digit) sits under `#`.
+        let first = selected.map { String($0.title.prefix(1)).uppercased() } ?? "#"
+        let current = letters.contains(first) ? first : "#"
         return VStack(spacing: 0) {
             ForEach(letters, id: \.self) { letter in
                 let active = letter == current
                 Text(letter)
                     .font(TVTheme.font(size: 9.2, weight: .regular))
                     .foregroundStyle(active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
-                    .frame(width: 18, height: 18)
+                    .frame(width: 24, height: 24)
                     .background(Circle().fill(active ? DesignTokens.Color.textSecondary : Color.clear))
-                    .frame(width: DesignTokens.Shell.libraryAlphabetWidth, height: 25.6)
+                    .frame(width: DesignTokens.Shell.libraryAlphabetWidth, height: 44)
             }
         }
+        .frame(height: 1080 - 277, alignment: .top)
+        .clipped()
+        .mask(
+            LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.8),
+                                   .init(color: .black.opacity(0.2), location: 1)], startPoint: .top, endPoint: .bottom)
+        )
     }
 
     @ViewBuilder
