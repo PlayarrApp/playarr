@@ -100,7 +100,7 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
     m.pcTimeEnd.translation = [sepX + 8.7, 981.8]
     m.pcPlay.uri = "pkg:/images/player-pause.png"
     if m.video.state = "paused" then m.pcPlay.uri = "pkg:/images/player-play.png"
-    m.pcQualityText.text = playerQualityLabel()
+    m.pcQualityText.text = playerQualityButtonLabel()
     glyph = "HD"
     if m.qualityPref <> invalid and Left(m.qualityPref, 2) = "SD" then glyph = "SD"
     m.pcQualityGlyph.text = glyph
@@ -209,6 +209,16 @@ sub playerChromeActivate(id as String)
         playerPanelOpen(id)
     end if
 end sub
+
+' Web's quality button: the choice, then the stream's bitrate ("Original · 35.9 Mbps") once the player reports it.
+function playerQualityButtonLabel() as String
+    label = playerQualityLabel()
+    stream = m.video.streamInfo
+    if stream <> invalid and stream.streamBitrate <> invalid and stream.streamBitrate > 500000
+        label = label + " · " + (Int(stream.streamBitrate / 100000) / 10).ToStr() + " Mbps"
+    end if
+    return label
+end function
 
 function playerQualityLabel() as String
     choice = m.qualityPref
