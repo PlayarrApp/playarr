@@ -1,1 +1,0 @@
-- HarmonyOS phone: square profile selects, calendar agenda meta type, series detail side padding and a circular profile avatar clip follow web; the wall labels the picker theme with the preview mode and focuses the current profile.

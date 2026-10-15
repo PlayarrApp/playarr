@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- On iPad, the film page shows the web's layout: the header says Movies (it said Series), the copy has the genre kicker, a two-line title, one meta line (runtime, year, release date, genres) and the synopsis, with Download, Playback and Play in one row and the watchlist and playlist pills beneath; the right side lists the film's Chapters and a Cast rail with round headshots. The backdrop is as faint as the web's in dark.
 - Xbox: the Calendar week day heading sits at web's height and tags today; the profile glow is no longer clipped to a box.
 - Xbox: the profile picker's selected avatar and ring scale together, the add tile's caption is no longer clipped, and the action pills sit at web's height.
 - Xbox: the profile picker's Add tile asks before signing out; Cancel keeps the session.
@@ -640,6 +641,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: square profile selects, calendar agenda meta type, series detail side padding and a circular profile avatar clip follow web; the wall labels the picker theme with the preview mode and focuses the current profile.
 - HarmonyOS phone: the detail play glyph is a drawn triangle and the profile picker sits closer to web's vertical rhythm.
 - HarmonyOS phone: the profile picker follows the web phone layout (left-aligned heading, 144 vp avatars, theme and language selects, Clients pill).
 - HarmonyOS phone detail: the play glyph is a plain triangle and the action rows are left aligned.
