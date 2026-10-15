@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -186,6 +187,27 @@ namespace Playarr.Xbox.Views
             return row;
         }
 
+        /// <summary>
+        /// This app holds one paired account, so adding a profile means signing out and pairing another; the viewer
+        /// confirms first, and Cancel leaves the current session untouched.
+        /// shortcut: pairing alongside the live session (swap only on success) needs a login mode and shell-state work; add it if owners ask.
+        /// </summary>
+        private async void ConfirmAddProfile()
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Sign in with another account?",
+                Content = new TextBlock { Text = "You will be signed out of this profile on this device until you sign in again.", TextWrapping = TextWrapping.WrapWholeWords, MaxWidth = 480 },
+                PrimaryButtonText = "Sign out and continue",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+            };
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                SignOut();
+            }
+        }
+
         private void SignOut()
         {
             Services.RemoteHostService.Instance.Stop();
@@ -353,8 +375,7 @@ namespace Playarr.Xbox.Views
                 Margin = new Thickness(0, 0, 0, 12),
             });
 
-            // shortcut: this app holds one paired account, so "add another profile" signs out and pairs a different one.
-            return BuildTile(plate, "Sign in", "ADD ANOTHER PROFILE", false, (s, e) => SignOut(), false, null);
+            return BuildTile(plate, "Sign in", "ADD ANOTHER PROFILE", false, (s, e) => ConfirmAddProfile(), false, null);
         }
 
         private Button BuildSelector(string glyph, string text, IEnumerable<(string Label, System.Action Pick)> options, double width)
