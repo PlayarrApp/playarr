@@ -649,6 +649,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android: the shared palette's ink-soft, ink-muted and light accent tokens carry web's values, and the TV header subtitle uses web's page ink at weight 680.
 - HarmonyOS phone cards draw web's second shadow layer; the capture reopens a series page whose episode stills stall.
 - Xbox: the library grid fades toward its top and bottom edges where content continues, as the web.
 - HarmonyOS: ink-soft, ink-muted, accent, danger and success colours match the web tokens in light and dark (TV included).

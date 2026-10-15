@@ -1,1 +1,0 @@
-- Android: the shared palette's ink-soft, ink-muted and light accent tokens carry web's values, and the TV header subtitle uses web's page ink at weight 680.
