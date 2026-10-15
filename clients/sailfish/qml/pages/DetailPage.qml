@@ -350,8 +350,8 @@ PlayarrPage {
                         width: col.width; height: 178.8 * Tokens.u * 9 / 16 + 58 * Tokens.u
                     ListView {
                         id: epList
-                        y: -8 * Tokens.u; width: col.width   // room for the focus ring and shadows inside the clip
-                        height: parent.height + 16 * Tokens.u
+                        y: -24 * Tokens.u; width: col.width   // room for the focus ring and its glow above the card inside the clip
+                        height: parent.height + 32 * Tokens.u
                         orientation: ListView.Horizontal
                         spacing: 12.2 * Tokens.u
                         leftMargin: Tokens.pad
@@ -368,7 +368,7 @@ PlayarrPage {
                         Component.onCompleted: railTimer.start()
                         Connections { target: page; onTargetChanged: railTimer.restart() }
                         delegate: MouseArea {
-                                y: 8 * Tokens.u
+                                y: 24 * Tokens.u
                                 id: epCard
                                 readonly property real cw: 178.8 * Tokens.u
                                 width: cw
@@ -426,17 +426,32 @@ PlayarrPage {
                                         width: visible ? parent.width * Math.min(1, epCard.pr.position_ms / epCard.pr.duration_ms) : 0
                                     }
                                 }
-                                RectangularGlow {   // the ring's soft halo
-                                    visible: !!page.target && page.target.id === modelData.media_file_id
-                                    z: -1; y: 6 * Tokens.u; width: thumb.width; height: thumb.height
-                                    glowRadius: 14 * Tokens.u; spread: 0.1; cornerRadius: thumb.radius + glowRadius
-                                    color: Qt.rgba(Tokens.brandInk.r, Tokens.brandInk.g, Tokens.brandInk.b, 0.35)
+                                readonly property bool next: !!page.target && page.target.id === modelData.media_file_id
+                                readonly property color ringColor: Tokens.dark ? Qt.rgba(197 / 255, 138 / 255, 151 / 255, 1) : Qt.rgba(141 / 255, 37 / 255, 60 / 255, 1)
+                                // Web's focused card (page-layout.css --card-shadow-focus), as WorkCard draws it.
+                                RectangularGlow {
+                                    visible: epCard.next
+                                    z: -1; y: 24 * Tokens.u; width: thumb.width; height: thumb.height
+                                    glowRadius: 24 * Tokens.u; spread: 0.1; cornerRadius: thumb.radius + glowRadius
+                                    color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.3)
+                                }
+                                RectangularGlow {
+                                    visible: epCard.next
+                                    z: -1; y: 10 * Tokens.u; width: thumb.width; height: thumb.height
+                                    glowRadius: 10 * Tokens.u; spread: 0.1; cornerRadius: thumb.radius + glowRadius
+                                    color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.2)
+                                }
+                                RectangularGlow {
+                                    visible: epCard.next
+                                    z: -1; width: thumb.width; height: thumb.height
+                                    glowRadius: 10 * Tokens.u; spread: 0.25; cornerRadius: thumb.radius + glowRadius
+                                    color: Qt.rgba(epCard.ringColor.r, epCard.ringColor.g, epCard.ringColor.b, 0.45)
                                 }
                                 Rectangle {   // web focus ring on the next-up episode
-                                    visible: !!page.target && page.target.id === modelData.media_file_id
+                                    visible: epCard.next
                                     anchors { fill: thumb; margins: -3 * Tokens.u }
                                     radius: thumb.radius + 3 * Tokens.u; color: "transparent"
-                                    border.width: 3 * Tokens.u; border.color: Tokens.brandInk
+                                    border.width: 3 * Tokens.u; border.color: epCard.ringColor
                                 }
                                 Row {
                                     anchors { top: thumb.bottom; topMargin: 12 * Tokens.u; left: parent.left; right: parent.right; }
