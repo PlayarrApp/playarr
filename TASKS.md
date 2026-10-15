@@ -558,6 +558,7 @@ Steps only the repository owner can perform.
 | 10361 | Xbox profile picker: Add tile confirms before signing out | in_progress | parity-xbox | xbox-add-profile-confirm | | 2026-10-15 22:00 ICT | Follow-up to 10319. Pairing alongside the live session (swap on success) is the larger option and is not built; the Add tile asks first and Cancel leaves the session intact. Not yet checked on the VM (host I/O pause). |
 | 10349 | Harmony hosted captures: build patch anchor repaired after #1370, five attempts, smaller poster JPEGs | done | parity-harmony | harmony-capture-retries | 5.10102 | 2026-10-15 18:00 ICT | PR open: #1374. #1370 added a second episodeNumberOverlay line to Detail.ets, so the capture's Detail patch (assert count 1) failed and every hosted Harmony build broke. PR #1374 merged 2026-10-15. |
 | 10362 | Xbox profile picker polish: avatar ring concentric, add-tile caption unclipped, pill row pitch | in_progress | parity-xbox | xbox-profiles-polish | | 2026-10-15 22:00 ICT | Follow-up to 10319 from the VM check. |
+| 10380 | Harmony phone parity: detail text rhythm, agenda card type and home captions | in_review | parity-harmony | harmony-phone-parity-4 | | 2026-10-16 12:00 ICT | Phone detail synopsis and meta at web's sizes with web's spacing, play glyph without the emoji box, calendar agenda cards at web's phone type and 92 vp height, home captions soft as on web. TV unchanged. PR open: #1376. |
 
 ## 18. Public repository readiness (2026-10-05)
 
