@@ -14,6 +14,7 @@ MouseArea {
     property string icon: ""
     property real iconSize: fontSize
     property string labelFamily: Tokens.family
+    property bool restRing: false   // web draws the focus ring on the first focusable control at rest (calendar Today)
     property bool natural: icon !== ""
     readonly property real naturalWidth: Math.ceil(iconLbl.implicitWidth + 9 * Tokens.u + tm.implicitWidth) + 32 * Tokens.u
     implicitHeight: 40 * Tokens.u
@@ -25,6 +26,11 @@ MouseArea {
         border.width: root.primary || root.fill.a > 0 ? 0 : 1
         border.color: Tokens.line
         opacity: root.pressed ? 0.7 : 1
+    }
+    Rectangle {
+        visible: root.restRing
+        anchors { fill: parent; margins: -3.5 * Tokens.u }
+        radius: height / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary
     }
     Label { id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.pixelSize: root.fontSize; }
     Row {

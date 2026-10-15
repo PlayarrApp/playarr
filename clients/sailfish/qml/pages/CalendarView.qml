@@ -96,7 +96,7 @@ Item {
         spacing: 10 * Tokens.u
         PillButton { text: root.range.label; labelFamily: Tokens.family610; fontSize: 11.5 * Tokens.u; implicitHeight: 43.7 * Tokens.u; implicitWidth: (root.mode === "week" ? 103.6 : root.mode === "month" ? 91.4 : 126) * Tokens.u }
         PillButton { text: "←"; fontSize: 9 * Tokens.u; implicitHeight: 43.7 * Tokens.u; implicitWidth: 41.6 * Tokens.u; onClicked: root.page-- }
-        PillButton { text: qsTr("Today"); labelFamily: Tokens.family610; fontSize: 11.5 * Tokens.u; implicitHeight: 43.7 * Tokens.u; implicitWidth: 72.1 * Tokens.u; onClicked: root.page = 0 }
+        PillButton { text: qsTr("Today"); restRing: true; labelFamily: Tokens.family610; fontSize: 11.5 * Tokens.u; implicitHeight: 43.7 * Tokens.u; implicitWidth: 72.1 * Tokens.u; onClicked: root.page = 0 }
         PillButton { text: "→"; fontSize: 9 * Tokens.u; implicitHeight: 43.7 * Tokens.u; implicitWidth: 43.7 * Tokens.u; onClicked: root.page++ }
     }
     // Month: wide cells (a chip for the first title, the day number and "+N more"), scrolled sideways, as on the web phone.
