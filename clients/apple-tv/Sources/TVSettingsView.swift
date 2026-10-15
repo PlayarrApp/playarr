@@ -123,7 +123,13 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
                     .placed(x: 0, y: 422.5, w: 995, h: 20.3)
+                #if os(macOS)
+                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: [110.5, 78], y: 459) { index in
+                    displayPreferences.homeCovers = index == 1
+                }
+                #else
                 choice(["Thumbnails", "Covers"], selected: 0, widths: [110.5, 78], y: 459)
+                #endif
                 Rectangle()
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
                     .frame(width: 995, height: 1)

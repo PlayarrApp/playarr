@@ -173,7 +173,8 @@ struct TVHomeView: View {
             }
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 365.9 - railHeight(displayPreferences.cardWidth)) {
+                    // The gap between rails stays the thumbnail layout's; Covers rails are taller, so the pitch grows (web).
+                    VStack(alignment: .leading, spacing: 365.9 - (61.8 + TVWebHomeCard.height(width: displayPreferences.cardWidth) + 24)) {
                         ForEach(Array(rails.enumerated()), id: \.offset) { index, rail in
                             webRail(id: "r\(index)", title: rail.title, works: rail.works).id("r\(index)")
                         }
@@ -243,7 +244,22 @@ struct TVHomeView: View {
     /// Web: an 8 px left bleed keeps the first card's focus glow unclipped.
     private static let cardBleed: CGFloat = 8
     /// Heading (26.5) and the gap to the art (35.3), plus the card (art and caption) and the track's 18/24 padding.
-    private func railHeight(_ width: CGFloat) -> CGFloat { 61.8 + TVWebHomeCard.height(width: width) + 24 }
+    /// Home cards: the artwork-size column width, or the cover width when Home artwork is Covers (macOS only).
+    private var homeCovers: Bool {
+        #if os(macOS)
+        return displayPreferences.homeCovers
+        #else
+        return false
+        #endif
+    }
+
+    private var homeCardWidth: CGFloat {
+        #if os(macOS)
+        return displayPreferences.homeCovers ? displayPreferences.coverCardWidth : displayPreferences.cardWidth
+        #else
+        return displayPreferences.cardWidth
+        #endif
+    }
 
     /// The server shelves with the web's primary rail first; older servers without shelves get the local rails.
     private static func productionRails(_ viewModel: TVHomeViewModel) -> [(title: String, works: [Work])] {
@@ -271,7 +287,7 @@ struct TVHomeView: View {
                         TVCardButton(work: work, parityPosition: (Int(id.dropFirst()) ?? 0, index)) {
                             TVWebHomeCard(work: work, apiClient: environment.apiClient, focused: focusedCard == focus,
                                           progress: id == "r0" ? viewModel?.progress[work.id] : nil,
-                                          artWidth: displayPreferences.cardWidth)
+                                          artWidth: homeCardWidth, cover: homeCovers)
                         }
                         .buttonStyle(TVFocusableCardButtonStyle())
                         .focusEffectDisabled()
@@ -944,14 +960,16 @@ struct TVWebHomeCard: View {
     var progress: Double? = nil
     /// The artwork size setting's card width (medium 327.2); 16:9 art.
     var artWidth: CGFloat = 327.2
+    /// Home screen artwork = Covers (macOS): portrait 2:3 art from the posters, as the web `is-cover-view`.
+    var cover = false
 
-    private var artHeight: CGFloat { artWidth * 9 / 16 }
-    static func height(width: CGFloat) -> CGFloat { width * 9 / 16 + 11.5 + 17.9 + 2.5 + 11.5 }
+    private var artHeight: CGFloat { cover ? artWidth * 1.5 : artWidth * 9 / 16 }
+    static func height(width: CGFloat, cover: Bool = false) -> CGFloat { (cover ? width * 1.5 : width * 9 / 16) + 11.5 + 17.9 + 2.5 + 11.5 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
-                TVWorkArt(work: work, apiClient: apiClient)
+                TVWorkArt(work: work, apiClient: apiClient, posterFirst: cover)
                     .frame(width: artWidth, height: artHeight)
                     .overlay(alignment: .bottomLeading) {
                         if let progress {

@@ -183,7 +183,17 @@
   ],
   "crops": [
     { "id": "movies-deep", "from": "movies", "keys": ["down*60"] },
-    { "id": "music-last", "from": "music", "keys": ["down*14", "right*2"] }
+    { "id": "music-last", "from": "music", "keys": ["down*14", "right*2"] },
+    { "id": "home-down1-mid", "from": "home", "keys": ["down"], "settle": 0 },
+    { "id": "home-down1", "from": "home", "keys": ["down"] },
+    { "id": "home-down2", "from": "home", "keys": ["down", "down"] },
+    { "id": "home-down3", "from": "home", "keys": ["down", "down", "down"] },
+    { "id": "home-up-again", "from": "home", "keys": ["down", "down", "down", "up", "up"] },
+    { "id": "home-right-end", "from": "home", "keys": ["right*14"] },
+    { "id": "filters-bottom", "from": "filters", "keys": ["down*14"] },
+    { "id": "home-covers", "from": "home", "keys": [], "launchArgs": ["-com.playarr.playarr.tvos.homeCovers", "YES"] },
+    { "id": "home-covers-down1", "from": "home", "keys": ["down"], "launchArgs": ["-com.playarr.playarr.tvos.homeCovers", "YES"] },
+    { "id": "home-covers-right-end", "from": "home", "keys": ["right*14"], "launchArgs": ["-com.playarr.playarr.tvos.homeCovers", "YES"] }
   ],
   "dpad": [
     {

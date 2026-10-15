@@ -90,13 +90,15 @@ if (only.includes("screens") && driver.endCrops) {
     mkdirSync(join(out, theme, "crops"), { recursive: true });
     for (const c of suite.crops ?? []) {
       try {
+        await driver.setLaunchArgs?.(c.launchArgs ?? []); // e.g. Home artwork = Covers
         await reach(suite.screens.find((x) => x.id === c.from));
         await press(c.keys);
-        await sleep(1200);
+        await sleep(c.settle ?? 1200); // settle 0: a frame while the move is still animating
         await driver.screenshot(join(out, theme, "crops", `${c.id}.png`));
         console.log(`ok ${theme} crop ${c.id}`);
       } catch (e) { console.log(`FAIL ${theme} crop ${c.id}: ${e.message.split("\n")[0]}`); } // a crop never fails the run
     }
+    await driver.setLaunchArgs?.([]);
   }
 }
 // A scored run without the web expected file would write expected: null for every result and overwrite a good dpad.json/performance.json.

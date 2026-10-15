@@ -200,6 +200,7 @@ export async function createDriver({ args = [], out } = {}) {
     await sleep(150);
   };
   const frontmost = () => { if (mac || process.env.IDB) return; try { run("osascript", ["-e", 'tell application "Simulator" to activate']); } catch { /* keep going: keys may still land */ } };
+  let stickyArgs = []; // launch arguments every launch carries (a crop's Home-artwork setting)
   const launch = async (extra = [], wait = 22000) => {
     if (mac) {
       if (macLogHasLaunched) {
@@ -209,7 +210,7 @@ export async function createDriver({ args = [], out } = {}) {
       // The sign-in behind a launch can fail for a moment (the server throttles back-to-back logins): retry with a pause.
       for (let attempt = 1; ; attempt += 1) {
         try {
-          run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
+          run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...stickyArgs, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
           break;
         } catch (e) {
           if (attempt >= 4) throw e;
@@ -304,6 +305,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       if (!process.env.IDB) { run("open", ["-a", "Simulator", "--args", "-CurrentDeviceUDID", udid]); await sleep(6000); }
       await launch();
     },
+    setLaunchArgs(args) { stickyArgs = args; },
     endCrops: mac, // suite `crops`: the last row / item of a grid, for the focus-crop audit
     async stop() { collectMacFocusKeyLog({ final: true }); },
     async setTheme(t) { if (t !== theme) { theme = t; await launch(); } },
