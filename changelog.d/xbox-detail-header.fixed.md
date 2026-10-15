@@ -1,1 +1,0 @@
-- Xbox: the title-page header puts the title's name beside the page title after a divider, as the web.

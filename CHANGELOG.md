@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: the title-page header puts the title's name beside the page title after a divider, as the web.
 - macOS: the library page preview, alphabet rail and focused card ring follow the web light layout.
 - Xbox: focused cards get the web's focus shadow; page titles and header subtitles use the web's letter-spacing.
 - On iPad, the Library grid, the title-page scroller and the episode, chapter and cast rails fade their end edge as the web does: the content dims to 30% over 64 pt along the web's smoothstep ramp, and the start side stays clear.
