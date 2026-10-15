@@ -61,7 +61,7 @@ export async function createDriver() {
     run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrMuted", "--playarr-parity-server", e.SERVER_URL, "--playarr-parity-user", e.TEST_USERNAME,
       "--playarr-parity-password", e.TEST_PASSWORD, "--playarr-parity-route", route, "--playarr-parity-theme", theme,
       ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...(process.env.PARITY_FOCUS ? ["--playarr-parity-focus", process.env.PARITY_FOCUS] : []),
-      ...(process.env.PARITY_COVERS === "1" ? ["--playarr-parity-covers"] : []), ...(process.env.PARITY_SIZE ? ["--playarr-parity-size", process.env.PARITY_SIZE] : []), ...extra], { env: launchEnv });
+      ...(process.env.PARITY_MOTION === "1" ? ["--playarr-parity-motion"] : []), ...(process.env.PARITY_COVERS === "1" ? ["--playarr-parity-covers"] : []), ...(process.env.PARITY_SIZE ? ["--playarr-parity-size", process.env.PARITY_SIZE] : []), ...extra], { env: launchEnv });
     for (let i = 0; i < 60 && !state().signedIn; i += 1) await sleep(1000);
     if (!state().signedIn) throw new Error("signed out");
   };
@@ -150,6 +150,15 @@ export async function createDriver() {
       const layoutDiagnostics = process.env.IPAD_LAYOUT_DIAGNOSTICS === "true" && device === "ipad" && id === "series-detail";
       await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (NATIVE[id] ?? id), [], layoutDiagnostics);
       await sleep(id.startsWith("player") ? 30000 : 14000);
+      if (process.env.PARITY_MOTION === "1" && id === "home") { // frame bursts: 5 frames about 150 ms apart after every scripted step
+        const dir = `${file}.motion`; run("mkdir", ["-p", dir]);
+        let seen = 0;
+        for (let t = 0; t < 300 && !state().motionDone; t += 1) {
+          const step = state().motionStep ?? 0;
+          if (step > seen) { seen = step; for (let i = 0; i < 5; i += 1) { run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", join(dir, `step-${String(step).padStart(2, "0")}-${i}.png`)]); await sleep(150); } }
+          else await sleep(400);
+        }
+      }
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       // A slow first paint can leave the "Opening ..." splash on screen after the fixed wait: take frames 4 s apart until
       // two consecutive frames are byte-identical (at most 8 tries), so the capture is the settled screen, never a transition.

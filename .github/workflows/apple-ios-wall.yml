@@ -29,6 +29,10 @@ on:
         description: Also capture focus crops (first, last and top-row card of every rail and grid) into the artifact's focus-<mode> folders
         type: boolean
         default: false
+      motion:
+        description: Also run the scripted Home scroll (every rail down and up, each rail to its last card) with 5-frame bursts per step into motion/
+        type: boolean
+        default: false
       poster:
         description: Also capture Home and the libraries with Covers and each artwork size into poster-<size> folders
         type: boolean
@@ -304,6 +308,7 @@ jobs:
           SCREENS: ${{ inputs.screens }}
           FOCUS: ${{ inputs.focus }}
           POSTER: ${{ inputs.poster }}
+          MOTION: ${{ inputs.motion }}
         run: |
           set -uo pipefail
           out="$RUNNER_TEMP/capture"; mkdir -p "$out"
@@ -317,6 +322,9 @@ jobs:
           # Playback is scored against the suite's own expectation (every case plays); touch devices have no D-pad values.
           echo '{"suite":1,"dpad":{},"playback":{}}' > "$RUNNER_TEMP/expected.json"
           node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --reset-progress --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
+          if [[ "$MOTION" == true && $only == screens ]]; then
+            PARITY_MOTION=1 node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/motion" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home || true
+          fi
           if [[ "$POSTER" == true && $only == screens ]]; then
             for size in small medium large; do
               PARITY_COVERS=1 PARITY_SIZE=$size node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/poster-$size" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music || true

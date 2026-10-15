@@ -31,6 +31,7 @@ struct HomeView: View {
     @FocusState private var focusedWork: UUID?
     @Environment(\.colorScheme) private var scheme
     @AppStorage(WMArtwork.homeViewKey) private var homeView = "thumbnail"
+    @State private var motionRail: Int?
     @AppStorage(WMArtwork.sizeKey) private var artworkSize = "medium"
 
     var body: some View {
@@ -76,33 +77,52 @@ struct HomeView: View {
                 work: viewModel.featuredWork, apiClient: apiClient, lightOpacity: 0.41, webMask: true,
                 fadeStops: [(0, 0), (84, 0), (148, 1)]
             )
+            ScrollViewReader { vertical in
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(viewModel.rails.enumerated()), id: \.element.id) { index, rail in
-                        phoneRail(rail, first: index == 0)
+                        phoneRail(rail, first: index == 0, index: index).id(rail.id)
                     }
                 }
                 .padding(.top, 91.67 + WM.topShift)
                 .padding(.bottom, 130)
             }
+            .task(id: viewModel.rails.count) { await runMotion(vertical) }
             .scrollIndicators(.hidden)
             .refreshable { await viewModel.load() }
             .keepInsideSafeArea()
             .webEdgeFade(.vertical, size: 38)
+            }
         }
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
     }
 
     /// Debug parity captures and the navigation UI test can focus the first Series card.
-    private func scrollTarget(_ rail: HomeViewModel.Rail, first: Bool) -> UUID? {
+    private func scrollTarget(_ rail: HomeViewModel.Rail, first: Bool, index: Int) -> UUID? {
         #if DEBUG
+        if motionRail == index, let last = rail.works.last { return last.id }
         if ParityLaunch.selectsHomeSeries,
            let series = rail.works.first(where: { $0.kind == .series }) { return series.id }
         if ParityLaunch.focus == "last", let last = rail.works.last { return last.id }
         if first, let card = ParityLaunch.homeScrollCard, rail.works.indices.contains(card) { return rail.works[card].id }
         #endif
         return nil
+    }
+
+    /// Parity motion script: each step is recorded so the driver bursts frames while the scroll settles.
+    private func runMotion(_ vertical: ScrollViewProxy) async {
+        #if DEBUG
+        guard ParityLaunch.motion, viewModel.rails.count > 1 else { return }
+        var step = 0
+        func mark() async { step += 1; ParityLaunch.record("motionStep", step); try? await Task.sleep(nanoseconds: 4_000_000_000) }
+        try? await Task.sleep(nanoseconds: 16_000_000_000)
+        let rails = viewModel.rails
+        for i in 1..<rails.count { withAnimation(.easeInOut(duration: 0.6)) { vertical.scrollTo(rails[i].id, anchor: UnitPoint(x: 0, y: 98 / (UIScreen.main.bounds.height - 215))) }; await mark() }
+        for i in stride(from: rails.count - 2, through: 0, by: -1) { withAnimation(.easeInOut(duration: 0.6)) { vertical.scrollTo(rails[i].id, anchor: UnitPoint(x: 0, y: 98 / (UIScreen.main.bounds.height - 215))) }; await mark() }
+        for i in 0..<rails.count { motionRail = i; await mark() }
+        ParityLaunch.record("motionDone", true)
+        #endif
     }
 
     private func phoneRailFocused(first: Bool, index: Int, count: Int) -> Bool {
@@ -112,10 +132,10 @@ struct HomeView: View {
         return first && index == 0
     }
 
-    private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool) -> some View {
+    private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool, index railIndex: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(rail.title, 16, 610, lh: 24, ls: -0.48).padding(.horizontal, 16)
-            WMFadingRail(scrollTo: scrollTarget(rail, first: first), scrollAnchor: ParityLaunch.focus == "last" ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
+            WMFadingRail(scrollTo: scrollTarget(rail, first: first, index: railIndex), scrollAnchor: (ParityLaunch.focus == "last" || motionRail == railIndex) ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(Array(rail.works.enumerated()), id: \.element.id) { index, work in
                         workLink(work) {
@@ -415,6 +435,9 @@ struct WMFadingRail<Content: View>: View {
                 // The mask must not clip the focused card's shadow above and below the track.
                 .padding(.vertical, -60)
             )
+            .onChange(of: scrollTo) { _, new in
+                if let new { withAnimation(.easeInOut(duration: 0.6)) { proxy.scrollTo(new, anchor: scrollAnchor) } }
+            }
             .task {
                 guard let scrollTo else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)

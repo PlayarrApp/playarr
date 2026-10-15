@@ -60,6 +60,9 @@ enum ParityLaunch {
         guard let v = value("--playarr-parity-size"), ["small", "medium", "large"].contains(v) else { return "medium" }
         return v
     }
+    /// `--playarr-parity-motion`: Home runs a scripted scroll (down through every rail, back up, then each rail to its last
+    /// card) and records the step in parity-state.json for the driver's frame bursts.
+    static var motion: Bool { ProcessInfo.processInfo.arguments.contains("--playarr-parity-motion") }
     static var selectsHomeSeries: Bool { environmentValue("PLAYARR_PARITY_SELECT_HOME_SERIES") == "1" }
     /// `--playarr-parity-play <media file id>` with route `play`: opens the player on that file and plays it (suite playback cases).
     static var playFile: String? { value("--playarr-parity-play") }
