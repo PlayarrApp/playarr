@@ -521,6 +521,9 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     page.set_margin_bottom(110);
     let head = header::build(&app, title, "filters");
+    // The web header keeps its subtitle row on a phone even though the text is hidden (#1299): the grid starts 18 px
+    // lower than the bare title row, which the hidden subtitle no longer supplies.
+    head.widget.set_margin_bottom(21);
     page.append(&head.widget);
     let flow = CardGrid::new();
     page.append(&flow.widget);
