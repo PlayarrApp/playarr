@@ -7,7 +7,7 @@ import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.re
 from PIL import Image
 from backend_preflight import check_backend
 from screen_selection import TV_SCREEN_IDS, parse_tv_screens, player_is_skipped
-from capture_diagnostics import (save_rejected_frame, summarize_detail_events,
+from capture_diagnostics import (posters_stalled, tv_flat_card_blocks, home_recent_flat, save_rejected_frame, summarize_detail_events,
                                  summarize_detail_layout_events, summarize_detail_image_payload_events,
                                  analyze_episode_art_frame, episode_art_events_ready, decoded_art_is_accepted,
                                  series_focus_failure, write_detail_summary, confirm_detail_route_source,
@@ -65,6 +65,10 @@ def too_plain(img: Image.Image, floor: int) -> bool:
 
 class Skip(Exception):
     pass
+
+
+class PostersStalled(Exception):
+    """Not caught by snap's retries: waiting does not unstick the Previewer; the workflow restarts it (two retries, then the job fails)."""
 
 
 MISSING = []
@@ -138,6 +142,19 @@ def snap(name, folder, floor=60000, frame_observer=None, before_frame=None):
 
 def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
     settle()
+    try:  # diagnostics: what the app reported at the moment of the frame (poster placeholders, network, image events)
+        st = json.loads(get("/state"))
+        print(f"[settle] {name} theme={THEME} img_pending={st.get('img_pending')} net_idle={st.get('net_idle')} dbg={ {k: v for k, v in (st.get('dbgcount') or {}).items() if not k[:4] in ('skel', 'img+', 'done', 'fail')} }", flush=True)
+        skel = {}
+        for k, v in (st.get('dbgcount') or {}).items():  # titles whose placeholder appeared more often than it went away
+            if k.startswith('skel'):
+                skel[k[5:]] = skel.get(k[5:], 0) + (v if k[4] == '+' else -v)
+        dbgc = st.get('dbgcount') or {}
+        shown = {k[4:] for k in dbgc if k.startswith('img+')}  # artwork reached the card but the image has not completed
+        print(f"[settle] image set, not complete: {sorted(shown - {k[5:] for k in dbgc if k.startswith('done+')})} failed: {sorted(k[5:] for k in dbgc if k.startswith('fail+'))}", flush=True)
+        print(f"[settle] still on placeholder: {sorted(t for t, n in skel.items() if n > 0)}", flush=True)
+    except (ValueError, OSError, SystemExit):
+        pass
     if b"[JsEngine Crash]" in open(log, "rb").read():
         debug("crash-" + name)
         raise RuntimeError("the Previewer's JS engine crashed: every later frame would be the frozen last one")
@@ -145,6 +162,15 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
         before_frame()
     img = png()
     debug('snap-' + name, img)
+    if device == "tv" and not os.environ.get("CALIBRATE"):
+        try:
+            completes = (json.loads(get("/state")).get("dbgcount") or {}).get("poster-image-complete", 0)
+        except (ValueError, OSError, SystemExit):
+            completes = None
+        blocks = tv_flat_card_blocks(img)
+        if posters_stalled(name, completes, blocks, name == "home" and home_recent_flat(img)):
+            img.save(os.path.join(out, "_rejected-" + name + ".png"))
+            raise PostersStalled(f"{name}: image pipeline stalled (completed={completes}, placeholder blocks={blocks})")
     if frame_observer is not None:
         frame_observer(img)
     digest = hashlib.md5(img.tobytes()).hexdigest()
@@ -162,6 +188,10 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
         abort(f"{name} is too plain: an error or signed-out screen")
     img.save(os.path.join(folder, name + ".png"))
+    try:
+        get("/state", resetdbg="1")  # the next frame's dump counts only what happens after this one
+    except (OSError, SystemExit):
+        pass
     print("captured", name, get("/health").decode().strip()[:80], flush=True)
 
 

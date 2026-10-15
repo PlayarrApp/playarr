@@ -9,7 +9,8 @@ from capture_diagnostics import (MAX_IMAGE_PAYLOAD_BYTES, analyze_episode_art_fr
                                  save_rejected_frame, summarize_detail_events,
                                  summarize_detail_image_payload_events, summarize_detail_layout_events,
                                  series_focus_failure, write_detail_summary, confirm_detail_route_source,
-                                 summarize_detail_load_events, phone_flat_card_rows)
+                                 summarize_detail_load_events, phone_flat_card_rows,
+                                 home_recent_flat, posters_stalled, tv_flat_card_blocks)
 from PIL import Image, ImageDraw
 
 
@@ -588,3 +589,31 @@ class CaptureDiagnosticsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PosterStallGuardTests(unittest.TestCase):
+    def home(self, art):
+        frame = Image.new("RGB", (1920, 1080), (250, 249, 248))
+        draw = ImageDraw.Draw(frame)
+        for x in (882, 1234, 1586):
+            draw.rectangle((x, 809, x + 326, 992), fill=(224, 222, 223))
+            if art:
+                for i in range(0, 300, 10):
+                    draw.rectangle((x + i, 809, x + i + 5, 992), fill=(i % 255, (i * 3) % 255, (i * 7) % 255))
+        return frame
+
+    def test_grey_recent_cards_are_stalled(self):
+        frame = self.home(art=False)
+        self.assertTrue(home_recent_flat(frame))
+        self.assertGreaterEqual(tv_flat_card_blocks(frame), 2)
+        self.assertTrue(posters_stalled("home", 70, tv_flat_card_blocks(frame), True))
+
+    def test_drawn_posters_pass(self):
+        frame = self.home(art=True)
+        self.assertFalse(home_recent_flat(frame))
+        self.assertFalse(posters_stalled("home", 70, tv_flat_card_blocks(frame), False))
+
+    def test_home_with_few_completed_images_is_stalled_other_screens_are_not(self):
+        self.assertTrue(posters_stalled("home", 5, 0))
+        self.assertFalse(posters_stalled("movies", 5, 0))
+        self.assertFalse(posters_stalled("home", None, 0))

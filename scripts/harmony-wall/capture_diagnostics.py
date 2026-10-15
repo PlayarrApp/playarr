@@ -659,3 +659,43 @@ def phone_flat_card_rows(image, *, min_run_px=500, min_rows=100):
         run_rows = nxt
     blocks += sum(1 for count in run_rows.values() if count >= min_rows)
     return blocks
+
+
+def tv_flat_card_blocks(image, *, card=(300, 160), step=40, tolerance=16):
+    """TV poster cards still on their placeholder: a card-sized window (right of the nav rail) whose pixels barely vary and whose colour is not
+    the page's. Real art never fills 300x160 px that evenly. Returns the number of distinct blocks (a grid cell counts once)."""
+    rgb = image.convert("RGB")
+    width, height = rgb.size
+    page = rgb.getpixel((min(700, width - 1), 120))
+    cells = set()
+    for y in range(380, height - card[1] + 1, step):
+        for x in range(860, width - card[0] + 1, step):
+            box = rgb.crop((x, y, x + card[0], y + card[1]))
+            extrema = box.getextrema()
+            if any(high - low > tolerance for low, high in extrema):
+                continue
+            mean = [(low + high) // 2 for low, high in extrema]
+            if any(abs(mean[i] - page[i]) > 6 for i in range(3)):
+                cells.add((x // 330, y // 200))
+    return len(cells)
+
+
+HOME_RECENT_CARDS = tuple((x + 20, 830, x + 300, 970) for x in (882, 1234, 1586))  # the first three Recently Added posters, inset
+
+
+def home_recent_flat(image, *, tolerance=40):
+    """Any of the first three Recently Added posters still a flat placeholder (dark one 17 levels, light gradient 16; real art 255)."""
+    rgb = image.convert("RGB")
+    return any(max(high - low for low, high in rgb.crop(box).getextrema()) <= tolerance for box in HOME_RECENT_CARDS)
+
+
+POSTER_STALL_MIN_COMPLETE = 15  # Home: a good Previewer process completes 66-80 images by the frame, a stalled one 2-6
+POSTER_STALL_MIN_BLOCKS = 2
+
+
+def posters_stalled(name, image_completes, flat_blocks, home_flat=False):
+    """True when the Previewer's image pipeline has stalled for this frame: Home's first Recently Added posters are flat, or two or more
+    flat card blocks show on any screen, or Home completed far fewer images than a healthy process. The caller restarts the Previewer."""
+    if flat_blocks >= POSTER_STALL_MIN_BLOCKS or (name == "home" and home_flat):
+        return True
+    return name == "home" and image_completes is not None and image_completes < POSTER_STALL_MIN_COMPLETE

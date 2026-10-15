@@ -596,6 +596,8 @@ def apply_state(q):
             STATE["detail_load_sequence"] = 0
         if STATE["route"] == "Library":
             STATE["lib_kind"] = STATE["kind"]
+    if "resetdbg" in q:
+        STATE["dbgcount"] = {}
     if "img" in q:
         # Poster cards still showing their placeholder (the app adds one when a placeholder appears and removes one when it goes).
         try:
@@ -610,6 +612,8 @@ def apply_state(q):
         if q["dbg"][0].startswith("http:"):
             print(f"[http] {time.monotonic():.1f} {q['dbg'][0][:140]}", flush=True)
         STATE["dbg"] = q["dbg"][0]
+        if not q["dbg"][0].startswith("http:"):  # per-name totals for the capture's settle dump (the http lines flood dbglog)
+            STATE.setdefault("dbgcount", {})[q["dbg"][0][:40]] = STATE.get("dbgcount", {}).get(q["dbg"][0][:40], 0) + 1
         STATE.setdefault("dbglog", []).append(q["dbg"][0])
         del STATE["dbglog"][:-300]
         append_debug_event(q["dbg"][0].split(":", 1)[0][:64])
@@ -950,6 +954,7 @@ def main():
             if url.path.startswith("/img/"):
                 data = IMAGES.get(url.path[5:])
                 if data is None:
+                    print(f"[img404] {time.monotonic():.1f} {url.path}", flush=True)
                     return self._reply(404, b"")
                 return self._reply(200, data, "image/png" if data[:1] == b"\x89" else "image/jpeg")
             if url.path == "/state" and query:
