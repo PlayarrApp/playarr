@@ -8,6 +8,7 @@ struct LibraryView: View {
     let downloadRepository: DownloadRepository
     let title: String
     @Environment(\.playarrGoHome) private var goHome
+    @AppStorage(PlayarrArtworkPrefs.sizeKey) private var artworkSize = "medium"
     @State private var showingFilters = false
     /// Works this profile has any progress on; a grid card for any other work shows the web's unseen dot.
     @State private var progressedWorkIDs: Set<UUID>?
@@ -431,7 +432,8 @@ struct LibraryView: View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
             let panelWidth = phone ? proxy.size.width : proxy.size.width * 0.65
-            let columnCount = viewModel.viewMode == .list ? 1 : (viewModel.viewMode == .cover ? (phone ? 3 : 5) : (phone ? 2 : 3))
+            let step = phone ? 0 : PlayarrArtworkPrefs.columnStep(artworkSize)
+            let columnCount = viewModel.viewMode == .list ? 1 : max(1, (viewModel.viewMode == .cover ? (phone ? 3 : 5) : (phone ? 2 : 3)) + step)
             // Web tablet: the grid starts at 557 of 1366 pt and the three 229 pt columns end 85 pt before the panel edge.
             let gutter: CGFloat = phone ? 16 : max(28, proxy.size.width * 0.058)
             let trailing: CGFloat = phone ? 16 : max(80, proxy.size.width * 0.065)

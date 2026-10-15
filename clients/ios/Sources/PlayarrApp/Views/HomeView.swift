@@ -274,7 +274,14 @@ struct HomeView: View {
     }
 
     private func mediaRail(_ rail: HomeViewModel.Rail, phone: Bool, width: CGFloat) -> some View {
-        let mediaCardWidth = HomeLayout.cardWidth(viewportWidth: width, phone: phone)
+        let covers = !phone && homeView == "cover"
+        // Web: a poster is the Library cover card (5 columns at tablet width, one more or fewer by artwork size); a
+        // thumbnail keeps its width but follows the size step the same way.
+        let step = phone ? 0 : PlayarrArtworkPrefs.columnStep(artworkSize)
+        let thumbWidth = HomeLayout.cardWidth(viewportWidth: width, phone: phone)
+        let coverColumns = CGFloat(max(1, 5 + step))
+        let posterWidth = (width * 0.65 - max(28, width * 0.058) - max(80, width * 0.065) - min(28, width * 0.0135) * (coverColumns - 1)) / coverColumns
+        let mediaCardWidth = covers ? posterWidth : thumbWidth * 3 / CGFloat(max(1, 3 + step))
         let railWidth = HomeLayout.railWidth(viewportWidth: width, phone: phone)
         return VStack(alignment: .leading, spacing: phone ? 8 : 22) {
             VStack(alignment: .leading, spacing: 3) {
@@ -292,12 +299,16 @@ struct HomeView: View {
                 LazyHStack(alignment: .top, spacing: phone ? 12 : 18) {
                     ForEach(rail.works) { work in
                         workLink(work) {
-                            PlayarrMediaCard(
-                                work: work,
-                                apiClient: apiClient,
-                                progress: viewModel.progressByWorkID[work.id],
-                                width: mediaCardWidth
-                            )
+                            if covers {
+                                PlayarrPosterCard(work: work, apiClient: apiClient, width: mediaCardWidth)
+                            } else {
+                                PlayarrMediaCard(
+                                    work: work,
+                                    apiClient: apiClient,
+                                    progress: viewModel.progressByWorkID[work.id],
+                                    width: mediaCardWidth
+                                )
+                            }
                         }
                     }
                 }
@@ -307,7 +318,7 @@ struct HomeView: View {
             .scrollClipDisabled() // card shadows and the focus glow reach past the rail's frame, as on web
             .frame(
                 width: railWidth,
-                height: HomeLayout.carouselHeight(cardWidth: mediaCardWidth, phone: phone),
+                height: covers ? mediaCardWidth * 1.5 + 46 : HomeLayout.carouselHeight(cardWidth: mediaCardWidth, phone: phone),
                 alignment: .leading
             )
             .scrollIndicators(.hidden)

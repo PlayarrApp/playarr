@@ -294,22 +294,20 @@ struct PlayarrMediaCard: View {
 struct PlayarrPosterCard: View {
     let work: Work
     let apiClient: PlayarrAPIClient
+    var width: CGFloat = 150
+    var progress: WatchProgress?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             PlayarrArtwork(work: work, kind: .poster, apiClient: apiClient)
                 .aspectRatio(2 / 3, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .shadow(color: PlayarrStyle.ink.opacity(0.12), radius: 18, y: 8)
-            Text(work.title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(1)
-            Text(work.kindYearLabel)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(PlayarrStyle.muted)
-                .textCase(.uppercase)
+                .frame(width: width)
+                .clipShape(RoundedRectangle(cornerRadius: min(13, max(8, width * 0.058)), style: .continuous))
+                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.14), radius: 10, y: 10)
+                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.1), radius: 4, y: 3)
+            WMText(work.title, 11.2, 600, lh: 17, ls: -0.1).padding(.top, 3)
         }
+        .frame(width: width, alignment: .leading)
     }
 }
 
@@ -395,4 +393,14 @@ extension Work {
         }
         return "\(kind.displayName) · \(year)"
     }
+}
+
+
+/// The web's two artwork settings (Settings > Appearance): Home artwork (thumbnails or portrait covers) and artwork
+/// size (small, medium, large = one column more, the default, one column fewer).
+enum PlayarrArtworkPrefs {
+    static let homeViewKey = WMArtwork.homeViewKey
+    static let sizeKey = WMArtwork.sizeKey
+    /// Web `--card-size-step`: small +1 column, large -1.
+    static func columnStep(_ size: String) -> Int { size == "small" ? 1 : size == "large" ? -1 : 0 }
 }

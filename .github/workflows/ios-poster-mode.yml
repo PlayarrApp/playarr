@@ -1,0 +1,99 @@
+name: iOS poster mode capture
+
+# Renders iPad Home and Movies with Home screen artwork Covers and each artwork size (launch arguments set the defaults) and uploads the screenshots.
+
+on:
+  pull_request:
+    paths:
+      - clients/ios/**
+      - .github/workflows/ios-poster-mode.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-poster-mode-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Poster mode capture (${{ matrix.device }})
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [ipad]
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Prepare the CocoaPods workspace
+        run: bash clients/ios/scripts/prepare.sh
+
+      - name: Pick the simulator device
+        id: pick
+        env:
+          KIND: ${{ matrix.device }}
+        run: |
+          xcrun simctl list devicetypes
+          xcrun simctl list runtimes
+          # Query the installed iOS device types: an iPhone with a Dynamic Island, or the largest iPad.
+          name=$(xcrun simctl list devicetypes -j | python3 -c '
+          import json, os, sys
+          names = [d["name"] for d in json.load(sys.stdin)["devicetypes"] if d["identifier"].startswith("com.apple.CoreSimulator.SimDeviceType.")]
+          if os.environ["KIND"] == "iphone":
+              pick = [n for n in names if n == "iPhone 17"] or [n for n in names if n.startswith("iPhone 17") and "e" != n[-1]]
+          else:
+              pick = [n for n in names if n.startswith("iPad Air 13-inch")] or [n for n in names if n.startswith("iPad") and "GB" not in n]
+          print(sorted(pick)[-1])
+          ')
+          echo "Using $name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Create an isolated test simulator
+        id: simulator
+        env:
+          INPUT_DESTINATION: platform=iOS Simulator,name=${{ steps.pick.outputs.name }}
+        run: node .github/scripts/apple-test-simulator/main.js
+
+      - name: Render the screens
+        working-directory: clients/ios
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          TEST_RUNNER_PLAYARR_POSTER_MODE_CAPTURE: "1"
+          TEST_RUNNER_PLAYARR_UI_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_RUNNER_PLAYARR_UI_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_RUNNER_PLAYARR_UI_TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+        run: |
+          set -euo pipefail
+          [[ "$SIMULATOR_UDID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
+          xcodebuild test -scheme PlayarrApp -configuration Debug \
+            -only-testing:PlayarrAppUITests/PosterModeCaptureUITests \
+            -resultBundlePath "$RUNNER_TEMP/poster-mode.xcresult" \
+            -workspace "$GITHUB_WORKSPACE/clients/ios/Playarr.xcworkspace" \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" 2>&1 | tee "$RUNNER_TEMP/poster-mode-log.txt"
+          grep -Fq "PosterModeCaptureUITests testHeaders]' passed" "$RUNNER_TEMP/poster-mode-log.txt"
+
+      - name: Export the screenshots
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/shots"
+          xcrun xcresulttool export attachments --path "$RUNNER_TEMP/poster-mode.xcresult" --output-path "$RUNNER_TEMP/shots" || true
+
+      - name: Upload the screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: poster-mode-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Delete the test simulator
+        if: ${{ always() && steps.simulator.outputs.udid != '' }}
+        env:
+          STATE_simulator_udid: ${{ steps.simulator.outputs.udid }}
+        run: node .github/scripts/apple-test-simulator/cleanup.js

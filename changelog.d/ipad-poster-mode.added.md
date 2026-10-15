@@ -1,0 +1,1 @@
+- On iPad, Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) settings. Covers draws Home rails as portrait posters at the Library cover card width, and the size changes the Library column count and the Home card width.
