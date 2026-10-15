@@ -1,1 +1,0 @@
-- The shell clock date prints "Thu 15 October" on every engine in en-GB; webOS added a comma after the weekday.
