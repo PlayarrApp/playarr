@@ -500,13 +500,9 @@ struct LibraryView: View {
                                 PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false)
                                     .overlay(alignment: .top) {
                                         // Web focuses the first tile of a library on arrival: a pink ring with a soft glow.
-                                        if phone && work.id == viewModel.works.first?.id {
-                                            WMFocusRing(width: cardWidth, height: cardWidth * 9 / 16).frame(width: cardWidth, height: cardWidth * 9 / 16)
-                                        } else if !phone && work.id == viewModel.works.first?.id {
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .stroke(WM.cardGlowColor, lineWidth: 3)
+                                        if work.id == viewModel.works.first?.id {
+                                            WMFocusRing(width: cardWidth, height: cardWidth * 9 / 16, cornerRadius: min(13, max(8, cardWidth * 0.058)))
                                                 .frame(width: cardWidth, height: cardWidth * 9 / 16)
-                                                .shadow(color: WM.cardGlowColor.opacity(0.45), radius: 14)
                                         }
                                     }
                             }

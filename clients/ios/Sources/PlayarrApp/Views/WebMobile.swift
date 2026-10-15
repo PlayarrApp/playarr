@@ -540,17 +540,29 @@ struct WMRailCard: View {
     }
 }
 
-/// Web focus ring: a 3 pt ring flush against the art with a wide soft glow. Drawn outside the layout, so nothing shifts.
+/// Web focus ring (`--card-glow`): a 3 pt ring flush against the art plus a filled glow, `0 0 20px 4px` at 45% (a CSS blur
+/// of 20 is a SwiftUI radius of 10), drawn only outside the art as a box-shadow is. An overlay, so nothing shifts.
 struct WMFocusRing: View {
     let width: CGFloat
     let height: CGFloat
+    var cornerRadius: CGFloat = 10
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 11.5, style: .continuous)
-            .stroke(WM.cardGlowColor, lineWidth: 3)
-            .frame(width: width + 3, height: height + 3)
-            .shadow(color: WM.cardGlowColor.opacity(0.4), radius: 18, y: 4)
-            .allowsHitTesting(false)
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius + 4, style: .continuous)
+                .fill(WM.cardGlowColor.opacity(0.45))
+                .frame(width: width + 8, height: height + 8)
+                .blur(radius: 10)
+                .mask {
+                    Rectangle().fill(.white).padding(-60)
+                        .overlay { RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).frame(width: width, height: height).blendMode(.destinationOut) }
+                        .compositingGroup()
+                }
+            RoundedRectangle(cornerRadius: cornerRadius + 1.5, style: .continuous)
+                .stroke(WM.cardGlowColor, lineWidth: 3)
+                .frame(width: width + 3, height: height + 3)
+        }
+        .allowsHitTesting(false)
     }
 }
 
