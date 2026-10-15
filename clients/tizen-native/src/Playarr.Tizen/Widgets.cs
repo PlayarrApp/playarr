@@ -35,7 +35,8 @@ internal sealed class MediaCard
     private readonly float _boxScale, _boxLift, _boxY, _focusHeight;
     private readonly View? _ring;
     private View? _searchPlaylistFocusGlow;
-    private readonly float _artDy;
+    private float _artDy;
+    private const float StackDrop = 10f;
     private View? _playlistIcon;
     private bool _playlistCollage;
     private bool _playlistCoverSet;
@@ -62,6 +63,7 @@ internal sealed class MediaCard
             Art.Add(Ui.Box(0, Height - 3, Width, 3, new Rgba(1, 1, 1, 0.2f)));
             Art.Add(Ui.Box(0, Height - 3, Math.Max(3, Width * (float)card.Progress), 3, t.Brand));
         }
+        if (card.StackOptions > 1) AddStack(card, snapW);
         Box.Add(Art);
         if (showRing)
         {
@@ -77,14 +79,45 @@ internal sealed class MediaCard
             dot.BorderlineWidth = 2; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
             Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
-        Title = Ui.Text(card.Title, titleInset, Height + 11.5f, 11.904f, 700, t.Ink, Width - titleInset * 2, 17.856f, spacing: -0.18f);
+        var drop = card.StackOptions > 1 ? StackDrop : 0;
+        Title = Ui.Text(card.Title, titleInset, Height + 11.5f + drop, 11.904f, 700, t.Ink, Width - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
-        if (showSub) Box.Add(Ui.Text(card.Sub, titleInset, Height + 31.9f, 8.832f, 400, t.InkMuted, Width - titleInset * 2, 13.248f));
+        if (showSub) Box.Add(Ui.Text(card.Sub, titleInset, Height + 31.9f + drop, 8.832f, 400, t.InkMuted, Width - titleInset * 2, 13.248f));
+    }
+
+    private View? _stackNear, _stackFar;
+
+    /// <summary>
+    /// Web .tv-home-card.is-stacked: the art sits 10 px lower under two offset slivers (shadow 0 -5px 0 -2px and 0 -10px 0 -4px, ink over
+    /// the soft surface), with a "N ways to continue" badge in its top-left corner.
+    /// </summary>
+    private void AddStack(WorkCard card, float artWidth)
+    {
+        Art.PositionY += StackDrop;
+        _artDy += StackDrop;
+        _stackFar = new View { PositionX = 4, PositionY = StackDrop - 6, Size = new Size(artWidth - 8, Height - 8), CornerRadius = 8.5f };
+        _stackNear = new View { PositionX = 2, PositionY = StackDrop - 3, Size = new Size(artWidth - 4, Height - 4), CornerRadius = 10.5f };
+        PaintStack(false);
+        Box.Add(_stackFar); Box.Add(_stackNear);
+        var label = $"{card.StackOptions} ways to continue";
+        var w = Ui.TextWidth(label, 8.96f, 400, 0.358f) + 17.6f;
+        var badge = Ui.Box(8, 8, w, 19.8f, new Rgba(8 / 255f, 8 / 255f, 10 / 255f, 0.72f), 9.9f);
+        badge.Add(Ui.Text(label, 0, 3.2f, 8.96f, 400, new Rgba(1, 1, 1), w, 13.4f, HorizontalAlignment.Center, spacing: 0.358f));
+        Art.Add(badge);
+    }
+
+    private void PaintStack(bool focused)
+    {
+        if (_stackNear is null || _stackFar is null) return;
+        Color Mix(float a) { var i = _t.Ink; var s = _t.SurfaceSoft; return new Color(i.R * a + s.R * (1 - a), i.G * a + s.G * (1 - a), i.B * a + s.B * (1 - a), 1); }
+        _stackNear.BackgroundColor = Mix(focused ? 0.30f : 0.24f);
+        _stackFar.BackgroundColor = Mix(focused ? 0.18f : 0.13f);
     }
 
     public void SetFocused(bool focused)
     {
         _focused = focused;
+        PaintStack(focused);
         Box.Scale = focused ? new Vector3(_boxScale, _boxScale, 1) : new Vector3(1, 1, 1);
         Box.PositionY = _boxY + (focused ? _boxLift : 0);
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);

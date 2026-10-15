@@ -41,6 +41,39 @@ public class HomeModelTests
     }
 
     [Fact]
+    public void OnDeckSeriesIsItsLeadEpisodeCard()
+    {
+        var series = new Work { Id = Guid.NewGuid(), Kind = WorkKind.Series, Title = "Show", Genres = { "Drama" } };
+        var file = Guid.NewGuid();
+        var children = new WorkChildren { ParentKind = WorkKind.Series };
+        var season = new SeasonDetail { Season = new Season { SeasonNumber = 2 } };
+        season.Episodes.Add(new EpisodeDetail { MediaFileId = Guid.NewGuid(), Episode = new Episode { EpisodeNumber = 1, Title = "Other" } });
+        season.Episodes.Add(new EpisodeDetail { MediaFileId = file, Episode = new Episode { EpisodeNumber = 5, Title = null, Overview = "About it" } });
+        children.Seasons.Add(season);
+        var ep = HomeModel.FindEpisode(children, file)!;
+        Assert.Equal(2, ep.SeasonNumber);
+        Assert.Null(HomeModel.FindEpisode(children, Guid.NewGuid()));
+        var rails = HomeModel.Build(Array.Empty<HomeRail>(), new[] { series }, HomeModel.IndexByWork(Array.Empty<WatchProgress>()), new Dictionary<Guid, OnDeckEpisode> { [series.Id] = ep });
+        var card = rails[0].Cards[0];
+        Assert.Equal("Episode 5", card.Title);
+        Assert.Equal("Show \u00b7 S02 E05", card.Sub);
+        Assert.Equal("About it", card.Overview);
+        Assert.Equal($"/api/v1/media/{file:D}/thumbnail", card.ThumbUrl);
+        Assert.Equal(series.Id, card.WorkId);
+    }
+
+    [Fact]
+    public void StackedPlanLeadsOtherwiseTheLastPlayedFile()
+    {
+        var row = new WatchProgress { MediaFileId = Guid.NewGuid() };
+        var lead = Guid.NewGuid();
+        var stacked = new ResumePlan { NeedsChoice = true, Target = new ResumeOption { MediaFileId = lead }, Options = { new ResumeOption(), new ResumeOption() } };
+        Assert.Equal(lead, HomeModel.LeadFile(row, stacked));
+        Assert.Equal(row.MediaFileId, HomeModel.LeadFile(row, new ResumePlan { Target = new ResumeOption { MediaFileId = lead } }));
+        Assert.Equal(row.MediaFileId, HomeModel.LeadFile(row, null));
+    }
+
+    [Fact]
     public void WithoutOnDeckTheFirstRailIsStartWatching()
     {
         var a = W("A");

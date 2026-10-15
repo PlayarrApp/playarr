@@ -8,7 +8,7 @@ namespace Playarr.Tizen;
 /// <summary>Web Home: key art, the details panel for the focused title, and the rails (measured from web at 1920x1080).</summary>
 internal sealed class HomeScreen : IPage
 {
-    private const float RailX = 881.6f, Pitch = 352f, FocusedHeadingY = 402f, RailPitchY = 365.9f, ClipX = 729.6f;
+    private const float RailX = 881.6f, Pitch = 352f, FocusedHeadingY = 402f, RailPitchY = 365.9f, StackedExtra = 5f, ClipX = 729.6f;
 
     private readonly AppEnv _env;
     private readonly PlayarrTheme _t;
@@ -36,6 +36,7 @@ internal sealed class HomeScreen : IPage
         public View Row = new();
         public List<MediaCard> Cards = new();
         public float Scroll;
+        public float Y;
     }
 
     public HomeScreen(AppEnv env)
@@ -61,12 +62,26 @@ internal sealed class HomeScreen : IPage
             var railsTask = _env.Api.GetHomeRailsAsync();
             var progress = await _env.Api.ListWatchProgressAsync();
             var deck = new List<Work>();
+            var episodes = new Dictionary<Guid, OnDeckEpisode>();
             foreach (var row in HomeModel.OnDeckRows(progress))
             {
-                try { deck.Add((await _env.Api.GetWorkAsync(row.WorkId)).Work); } catch (Exception) { /* one bad title drops only its card */ }
+                try
+                {
+                    var detail = await _env.Api.GetWorkAsync(row.WorkId);
+                    if (detail.Work.Kind is WorkKind.Series or WorkKind.Site)
+                    {
+                        // web: a series is on deck as its lead episode (a stacked plan's target, else the last played); no episode drops the card
+                        ResumePlan? plan = null;
+                        try { plan = await _env.Api.GetResumePlanAsync(row.WorkId); } catch (Exception) { /* an older server has no plan */ }
+                        if (HomeModel.FindEpisode(detail.Children, HomeModel.LeadFile(row, plan)) is not { } ep) continue;
+                        episodes[detail.Work.Id] = HomeModel.IsStacked(plan) ? ep with { StackOptions = plan!.Options.Count } : ep;
+                    }
+                    deck.Add(detail.Work);
+                }
+                catch (Exception) { /* one bad title drops only its card */ }
             }
             var rails = await railsTask;
-            var model = HomeModel.Build(rails.Rails.ToList(), deck, HomeModel.IndexByWork(progress));
+            var model = HomeModel.Build(rails.Rails.ToList(), deck, HomeModel.IndexByWork(progress), episodes);
             SynchronizationContextHolder.Post(() => { try { Populate(model); } catch (Exception e) { Dbg.Log("HOME populate failed: " + e); } });
         }
         catch (Exception e) { Dbg.Log("HOME load failed: " + e); }
@@ -74,10 +89,10 @@ internal sealed class HomeScreen : IPage
 
     private void Populate(IReadOnlyList<RailModel> model)
     {
+        var y = 0f;
         for (var i = 0; i < model.Count; i++)
         {
-            var rv = new RailView { Model = model[i] };
-            var y = i * RailPitchY;
+            var rv = new RailView { Model = model[i], Y = y };
             _stack.Add(Ui.Text(model[i].Title, RailX, y, 17.664f, 700, _t.Ink, 800, 26.496f, spacing: -0.53f));
             rv.Row.PositionY = y + 61.8f; rv.Row.Size = new Size(4000, 260);
             for (var c = 0; c < model[i].Cards.Count; c++)
@@ -88,6 +103,8 @@ internal sealed class HomeScreen : IPage
             }
             _stack.Add(rv.Row);
             _rails.Add(rv);
+            // web: a stacked (several ways to continue) card makes its rail taller, which pushes every rail below it down
+            y += RailPitchY + (model[i].Cards.Any(c => c.StackOptions > 1) ? StackedExtra : 0);
         }
         if (_restore is { } r && r.Rail < _rails.Count && r.Card < _rails[r.Rail].Cards.Count) { _restore = null; Focus(r.Rail, r.Card); } else Focus(0, 0);
     }
@@ -140,7 +157,7 @@ internal sealed class HomeScreen : IPage
         if (right - rv.Scroll > visible) rv.Scroll = right - visible;
         if (card * Pitch < rv.Scroll) rv.Scroll = card * Pitch;
         rv.Row.PositionX = -rv.Scroll;
-        _stack.PositionY = FocusedHeadingY - rail * RailPitchY;
+        _stack.PositionY = FocusedHeadingY - rv.Y;
         rv.Cards[card].SetFocused(true);
         var model = rv.Model.Cards[card];
         _panel.Show(model, metaLead: null);
