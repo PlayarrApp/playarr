@@ -135,15 +135,6 @@ PlayarrPage {
                             filled: true
                             onBackClicked: pageStack.pop()
                         }
-                        Label {
-                            x: 70 * Tokens.u
-                            y: 66 * Tokens.u
-                            text: work.title.toUpperCase()
-                            color: Tokens.brandPinkSoft
-                            font.family: Tokens.family820
-                            font.letterSpacing: 1.4 * Tokens.u
-                            font.pixelSize: 9.6 * Tokens.u
-                        }
                     }
                 }
             }
@@ -152,7 +143,7 @@ PlayarrPage {
                 text: work.genres && work.genres.length ? work.genres[0].toUpperCase() : ""
                 visible: text !== ""
                 height: implicitHeight - 6.5 * Tokens.u
-                color: Tokens.brandPinkSoft
+                color: Tokens.brandInk
                 font.family: Tokens.family820
                 font.letterSpacing: 1 * Tokens.u
                 font.pixelSize: 10 * Tokens.u
@@ -217,7 +208,8 @@ PlayarrPage {
                     onClicked: pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work })
                 }
                 PillButton {
-                    primary: true
+                    primary: work.kind !== "movie"
+                    fill: work.kind === "movie" ? "#a52745" : "transparent"; fillInk: "#ffffff"   // web: the film's Play holds the default focus, drawn crimson
                     icon: "\u25B6"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
                     fontSize: 11 * Tokens.u
                     implicitHeight: 44 * Tokens.u
