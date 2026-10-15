@@ -9,7 +9,7 @@ namespace Playarr.Tizen;
 internal sealed class SearchScreen : IPage
 {
     private static readonly float[] ColX = { 825.6f, 1178.7f, 1531.8f };
-    private const float FirstRowY = 172.8f, RowPitch = 251.2f, FocusedRowMaxY = 926.4f;
+    private const float FirstRowY = 172.8f, RowPitch = 251.2f, FocusedRowMaxY = 819f;
     private const int Columns = 3;
     private static readonly HttpClient SearchHttp = new();
     private static readonly (string Value, string Label, WorkKind? Kind)[] MediaTypes =

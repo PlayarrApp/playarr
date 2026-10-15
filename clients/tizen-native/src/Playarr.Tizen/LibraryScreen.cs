@@ -19,6 +19,7 @@ internal sealed class LibraryScreen : IPage
     private readonly View _root = new();
     private readonly View _grid = new();
     private readonly KeyArt _keyArt;
+    private View? _fadeTop, _fadeBottom;
     private readonly DetailsPanel _panel;
     private readonly Dictionary<int, MediaCard> _views = new();
     private readonly List<WorkCard> _items = new();
@@ -62,6 +63,9 @@ internal sealed class LibraryScreen : IPage
         _grid.PositionX = -ClipX;
         clip.Add(_grid);
         _root.Add(clip);
+        _fadeTop = Ui.EdgeFade(ClipX, 0, TizenClient.DesignWidth - ClipX, _t.Surface, true);
+        _fadeBottom = Ui.EdgeFade(ClipX, TizenClient.DesignHeight, TizenClient.DesignWidth - ClipX, _t.Surface, false);
+        _fadeTop.Show(false); _root.Add(_fadeTop); _root.Add(_fadeBottom);
         BuildHeader();
         BuildSide();
         _ = LoadAsync(0);
@@ -298,6 +302,10 @@ internal sealed class LibraryScreen : IPage
     private void Refresh()
     {
         _grid.PositionY = -_scroll;
+        // web: the scroller fades at the start edge once scrolled and at the end edge while more rows are below
+        var contentH = FirstRowY + (float)Math.Ceiling(Math.Max(_items.Count, (int)_total) / (float)Columns) * RowPitch + 110;
+        _fadeTop?.Show(_scroll > 0.5f);
+        _fadeBottom?.Show(_scroll + TizenClient.DesignHeight < contentH - 1);
         var first = Math.Max(0, (int)Math.Floor(_scroll / RowPitch) - 1);
         var last = first + 6;
         foreach (var i in _views.Keys.Where(i => i / Columns < first || i / Columns > last).ToList())

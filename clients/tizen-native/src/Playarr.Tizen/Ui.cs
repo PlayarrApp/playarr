@@ -182,6 +182,19 @@ internal static class Ui
         return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
     }
 
+    /// <summary>
+    /// The web scroll-edge fade (page-layout.css [data-fade-axis]): content is masked down to the 30 % floor at the edge, easing back to full over
+    /// 59.4 px with smoothstep stops at 25/50/75 % of the size. A mask cannot be cloned here, so this overlays the surface colour with the inverse alpha.
+    /// </summary>
+    public static View EdgeFade(float x, float y, float w, Rgba surface, bool atTop)
+    {
+        const float size = 59.4f, floor = 0.3f;
+        float A(float k) => 1 - (floor + (1 - floor) * k);
+        var edge = new[] { (0f, A(0)), (0.25f, A(0.156f)), (0.5f, A(0.5f)), (0.75f, A(0.844f)), (1f, A(1)) };
+        var stops = (atTop ? edge : edge.Reverse().Select(e => (1 - e.Item1, e.Item2))).Select(e => (e.Item1, new Rgba(surface.R, surface.G, surface.B, e.Item2))).ToArray();
+        return Gradient(x, atTop ? y : y - size, w, size, false, stops);
+    }
+
     /// <summary>Angled gradient rendered at the target aspect ratio so its direction is preserved when displayed.</summary>
     public static View DiagonalGradient(float x, float y, float w, float h, float degrees, params (float At, Rgba Color)[] stops)
     {
