@@ -148,6 +148,10 @@ import { getNavStack, pushRoute, popRoute } from '../navigation/NavStack';
 
 import { logWarn } from '../util/Log';
 
+/** Room inside the grid, each side, for a focused card's ring (3), glow (20 blur + 4 spread) and lift: the Grid clips to its own box, so the first
+ * and last columns' glow was cut. The margin pulls the grid back by the same amount, so the cards do not move. */
+const LIBRARY_GLOW_ROOM: number = 28;
+
 const LOG_TAG: string = 'Library';
 
 /** Brief 9, Slice 6: "within 10 of the loaded tail". */
@@ -973,10 +977,10 @@ export struct Library {
     .columnsTemplate(columnsTemplateFor(this.card(true).columns))
     .columnsGap(tv(this.card(true).gap))
     .rowsGap(tv(COVER_GAP_Y))
-    .width(tv(this.card(true).width * this.card(true).columns + this.card(true).gap * (this.card(true).columns - 1)))
+    .width(tv(2 * LIBRARY_GLOW_ROOM + this.card(true).width * this.card(true).columns + this.card(true).gap * (this.card(true).columns - 1)))
     .height('100%')
-    .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop) })
-    .margin({ left: tv(TvGeometry.libraryGridInsetLeft) })
+    .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop), left: tv(LIBRARY_GLOW_ROOM), right: tv(LIBRARY_GLOW_ROOM) })
+    .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
     .onScrollIndex((_first: number, last: number) => {
@@ -1028,11 +1032,11 @@ export struct Library {
         (work: Work): string => work.id
       )
     }
-    .width(tv(TvGeometry.libraryGridCardWidth * TvGeometry.libraryGridColumns +
+    .width(tv(2 * LIBRARY_GLOW_ROOM + TvGeometry.libraryGridCardWidth * TvGeometry.libraryGridColumns +
       TvGeometry.libraryGridColumnGap * (TvGeometry.libraryGridColumns - 1)))
     .height('100%')
-    .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop) })
-    .margin({ left: tv(TvGeometry.libraryGridInsetLeft) })
+    .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop), left: tv(LIBRARY_GLOW_ROOM), right: tv(LIBRARY_GLOW_ROOM) })
+    .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
     .scrollBar(BarState.Off)
     .onScrollIndex((_first: number, last: number) => {
       this.maybeLoadMore(last);
@@ -1075,10 +1079,10 @@ export struct Library {
     .columnsTemplate(columnsTemplateFor(this.card(false).columns))
     .columnsGap(tv(this.card(false).gap))
     .rowsGap(tv(TvGeometry.libraryGridRowGap))
-    .width(tv(this.card(false).width * this.card(false).columns + this.card(false).gap * (this.card(false).columns - 1)))
+    .width(tv(2 * LIBRARY_GLOW_ROOM + this.card(false).width * this.card(false).columns + this.card(false).gap * (this.card(false).columns - 1)))
     .height('100%')
-    .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop) })
-    .margin({ left: tv(TvGeometry.libraryGridInsetLeft) })
+    .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop), left: tv(LIBRARY_GLOW_ROOM), right: tv(LIBRARY_GLOW_ROOM) })
+    .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
     .onScrollIndex((_first: number, last: number) => {
