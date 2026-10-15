@@ -666,7 +666,7 @@ def tv_flat_card_blocks(image, *, card=(300, 160), step=40, tolerance=16):
     the page's. Real art never fills 300x160 px that evenly. Returns the number of distinct blocks (a grid cell counts once)."""
     rgb = image.convert("RGB")
     width, height = rgb.size
-    page = rgb.getpixel((min(700, width - 1), 120))
+    page = rgb.getpixel((min(1850, width - 1), 120))  # the right column: Home draws a frost there that differs from the left page colour
     cells = set()
     for y in range(380, height - card[1] + 1, step):
         for x in range(860, width - card[0] + 1, step):

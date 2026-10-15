@@ -127,6 +127,8 @@ export struct Stage {
   @Prop title: string = '';
   @Prop metaLines: string[] = [];
   @Prop synopsis: string = '';
+  /** Home: draw web's rails frost (`.tv-home-rails` background). */
+  @Prop railFrost: boolean = false;
   @Prop metaGapAdjust: number = 0;
   @Prop synopsisGapAdjust: number = 0;
 
@@ -298,6 +300,27 @@ export struct Stage {
       })
   }
 
+  /** Web `.tv-home-rails`: the right 62% of the page carries a frost (surface-soft 48% over surface-strong, 44% in dark) that fades in from
+   * transparent at its left edge. Only Home asks for it (`railFrost`); Library draws its own panel. */
+  @Builder
+  private railFrostLayer(): void {
+    if (this.railFrost) {
+      Row()
+        .width('62%')
+        .height('100%')
+        .position({ x: '38%', y: 0 })
+        .hitTestBehavior(HitTestMode.Transparent)
+        .linearGradient({
+          angle: HORIZONTAL_ANGLE,
+          colors: resolvedThemeMode() === 'dark' ?
+            [['rgba(40, 35, 40, 0)', 0], ['rgba(40, 35, 40, 0.72)', 0.12], ['rgba(40, 35, 40, 0.9)', 0.34],
+              ['rgba(40, 35, 40, 0.97)', 0.62], ['rgba(40, 35, 40, 1)', 1]] :
+            [['rgba(240, 238, 239, 0)', 0], ['rgba(240, 238, 239, 0.68)', 0.12], ['rgba(240, 238, 239, 0.88)', 0.34],
+              ['rgba(240, 238, 239, 0.96)', 0.62], ['rgba(240, 238, 239, 1)', 1]],
+        })
+    }
+  }
+
   @Builder
   private titlePanelLayer(): void {
     Column() {
@@ -357,6 +380,7 @@ export struct Stage {
       this.verticalScrimLayer()
       this.stageWashLeftLayer()
       this.stageWashRightLayer()
+      this.railFrostLayer()
       this.titlePanelLayer()
       this.railPanelLayer()
     }
