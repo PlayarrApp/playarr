@@ -53,14 +53,14 @@ export async function createDriver() {
     async start() { run("write", "parity.on", "1"); },
     async setTheme(t) {
       if (t === theme) return;
-      await coldStart(); await click(960, 495, 12);
+      await coldStart(); await click(817, 494, 12);
       await click(...RAIL["/settings"]);
       await click(t === "light" ? 1294 : 1637, 250, 4);
       theme = t;
     },
     async home() {
       await coldStart();
-      await click(960, 495, 3);
+      await click(817, 494, 3);
       await until((t) => t.screen === "home" && t.focus, 90, "Home with its first card focused");
       await sleep(8000);
       run("move", 1919, 600);
