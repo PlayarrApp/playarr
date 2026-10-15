@@ -1539,6 +1539,15 @@ struct Detail {
     }
   }
 
+  /** The episode web rings on open: the resume target, else (everything watched) the first episode of the first season. */
+  private nextUpEpisodeId(): string {
+    const plan = this.resumePlan;
+    if (plan !== null && plan.target !== undefined && plan.target !== null) {
+      return plan.target.episode_id;
+    }
+    return this.rails.length > 0 && this.rails[0].items.length > 0 ? this.rails[0].items[0].id : '';
+  }
+
   @Builder
   private seriesEpisodeItem(item: MediaRailItem, index: number, activeRailFactor: number, railId: string): void {
     DetailRowArtworkCard({
@@ -1554,7 +1563,7 @@ struct Detail {
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
       focusId: seriesEpisodeFocusId((item as DetailRow).id),
-      ringOn: !isTvMetrics() && this.resumePlan !== null && this.resumePlan.target !== undefined && this.resumePlan.target !== null && this.resumePlan.target.episode_id === (item as DetailRow).id,
+      ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,
       cardWidth: this.seriesCardWidth(),
       cardHeight: Math.round(this.seriesCardWidth() * 9 / 16),
       activeRailFactor: activeRailFactor,
