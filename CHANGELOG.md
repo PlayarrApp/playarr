@@ -655,6 +655,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Harmony wall: the preview's series episode builder keeps the next-up ring and the unseen dot.
 - HarmonyOS phone: Home cards and series episodes draw the unseen dot as web does; the wall's series-detail guard also spots gradient placeholder cards.
 - Xbox: nav rail focus uses the web's ink fill and scale, Home rails fade at their edges, and dark focused cards drop the extra shadow.
 - Android TV: the library grid shows web's scroll-edge fade (0.3 floor, eased over clamp(38, 5.5 vu, 64)), focused library cards use web's lift, shadow and the theme's card glow colour, and the dedicated D-pad account tooling is in `scripts/parity/dpad-account.mjs`.

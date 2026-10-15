@@ -623,6 +623,7 @@ Steps only the repository owner can perform.
 | 10436 | iPhone round 2: Filters close ring, chips and selects as web, Home last-card gutter, focus-last scroll, detail pill shadow | in_review | parity-iphone | iphone-r2-rest | | 2026-10-16 12:00 ICT | Items 2 to 7 of the iPhone round-2 batch; the web has no border on detail pills, so only the shadow changes. PR open: #1459 |
 | 10456 | VIDAA and webOS audit follow-ups: Home rail end checked, shell clock date without comma | done | parity-vidaa | vidaa-home-rail-end | | 2026-10-16 18:00 ICT | PR open: #1468 PR #1468 merged 2026-10-15. |
 | 10455 | Tizen round 2: drawers, detail focus, right-panel frost, Playlists crop | done | client-tizen-native | tizen-round2-10455 | 17.10428 | 2026-10-16 18:00 ICT | PR open: #1470. Drawer close glyph, view chip glyphs and weights, Filters tile glyph and no bleed-through, Play and Playback focus colours and scale, right-panel frost on film and series detail, Playlists focused-row limit 819. PR #1470 merged 2026-10-15. |
+| 10446 | Harmony wall: preview series episode builder keeps ring and unseen dot | in_review | parity-harmony | harmony-phone-parity-19 | | 2026-10-16 12:00 ICT | patch_state.py swaps in its own seriesEpisodeItem, so the ringOn and unseen arguments (#1445, #1458) never reached the captured cards; the copy now passes them and a contract test pins it. PR open: #1471. |
 
 ## 18. Public repository readiness (2026-10-05)
 
