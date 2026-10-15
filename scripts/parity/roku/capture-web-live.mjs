@@ -32,6 +32,9 @@ const fontCss = fontFile
   ? `@font-face{font-family:"ParityFont";src:url(data:font/ttf;base64,${readFileSync(fontFile).toString("base64")});font-weight:100 1000}:root{--font:"ParityFont",sans-serif!important}*,*::before,*::after{font-family:"ParityFont",sans-serif!important}`
   : "";
 const dumpDom = args.includes("--dump-dom");
+// A device that cannot store downloads (Roku): the web app hides Downloads when neither OPFS nor IndexedDB exists (detectDownloadStorage),
+// so remove both before the app starts and the nav dock matches the device.
+const noDownloads = args.includes("--no-downloads");
 const only = (opt("screens", "") ?? "").split(",").filter(Boolean);
 const username = process.env.PLAYARR_DEVICE_TEST_USERNAME;
 const password = process.env.PLAYARR_DEVICE_TEST_PASSWORD;
@@ -133,6 +136,12 @@ try {
             localStorage.setItem("playarr.activeProfile.v1", JSON.stringify({ profileKey: "parity", apiBaseUrl: base, userId: s.user_id }));
           } catch {}
         }, { base, s, dev: DEVICE, theme });
+        if (noDownloads) {
+          await context.addInitScript(() => {
+            try { Object.defineProperty(navigator.storage, "getDirectory", { value: undefined }); } catch {}
+            try { Object.defineProperty(window, "indexedDB", { value: undefined }); } catch {}
+          });
+        }
         if (fontCss) {
           await context.addInitScript((css) => {
             const add = () => {
