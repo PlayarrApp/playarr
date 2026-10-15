@@ -2581,8 +2581,9 @@ code {
     rgba(255, 151, 181, 0.92) 62%,
     rgba(255, 255, 255, 0.96)
   );
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 38%, transparent);
   box-shadow:
-    0 0 10px color-mix(in srgb, var(--brand) 38%, transparent),
+    0 0 10px var(--shadow-tint-1),
     0 0 22px rgba(255, 137, 171, 0.16);
   opacity: 0.58;
   transform: scaleY(0.08);
@@ -2637,7 +2638,8 @@ code {
 }
 
 .player-shell-minimised {
-  border: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
+  --border-tint: color-mix(in srgb, var(--line) 68%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 18px;
   background: color-mix(in srgb, var(--surface-strong) 88%, #090708);
   box-shadow:
@@ -2827,10 +2829,11 @@ code {
 .mini-player-hit-target:focus-visible,
 body[data-input-mode="remote"] .mini-player-hit-target:focus {
   outline: 0;
+  --shadow-tint-1: color-mix(in srgb, var(--player-accent) 24%, transparent);
   box-shadow:
     inset 0 0 0 4px #ffffff,
     inset 0 0 0 8px var(--player-accent),
-    inset 0 0 46px color-mix(in srgb, var(--player-accent) 24%, transparent);
+    inset 0 0 46px var(--shadow-tint-1);
 }
 
 .mini-player-hit-target:focus-visible ~ .mini-player-details .mini-player-title,
@@ -2839,7 +2842,8 @@ body[data-input-mode="remote"]
   ~ .mini-player-details
   .mini-player-title {
   color: #ffffff;
-  text-shadow: 0 0 18px color-mix(in srgb, var(--player-accent) 70%, transparent);
+  --shadow-tint-1: color-mix(in srgb, var(--player-accent) 70%, transparent);
+  text-shadow: 0 0 18px var(--shadow-tint-1);
 }
 
 .mini-player-hit-target:focus-visible ~ .mini-player-maximise,
@@ -3123,7 +3127,8 @@ body[data-input-mode="remote"] .player-seek-track:focus {
   height: 15px;
   border-radius: 50%;
   background: var(--player-accent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent);
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 20%, transparent);
+  box-shadow: 0 0 0 4px var(--shadow-tint-1);
   opacity: 0;
   transform: translate(-50%, -50%);
 }
@@ -3717,7 +3722,8 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   height: 7px;
   border-radius: 50%;
   background: var(--player-accent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--brand) 72%, transparent);
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 72%, transparent);
+  box-shadow: 0 0 12px var(--shadow-tint-1);
 }
 
 @media (max-width: 1100px) {
@@ -3957,7 +3963,8 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   display: flex;
   gap: 0.35rem;
   padding: 0.38rem;
-  border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  --border-tint: color-mix(in srgb, var(--line) 65%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-strong) 64%, transparent);
   box-shadow: 0 20px 55px rgba(56, 38, 33, 0.12);
@@ -4639,7 +4646,8 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   flex-direction: column;
   gap: var(--tv-nav-gap);
   padding: 0.42rem 0.36rem;
-  border: 1px solid color-mix(in srgb, var(--line) 48%, transparent);
+  --border-tint: color-mix(in srgb, var(--line) 48%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 22px;
   background: color-mix(in srgb, var(--surface-strong) 56%, transparent);
   box-shadow: 0 14px 42px rgba(56, 38, 33, 0.1);
@@ -4684,7 +4692,8 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   border: 0;
   background: color-mix(in srgb, var(--ink) 9%, transparent);
   color: var(--ink);
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--ink) 7%, transparent);
+  --shadow-tint-1: color-mix(in srgb, var(--ink) 7%, transparent);
+  box-shadow: 0 12px 30px var(--shadow-tint-1);
   backdrop-filter: blur(18px) saturate(118%);
   transform: scale(1.05);
 }
@@ -4754,7 +4763,8 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   justify-content: center;
   gap: 0.35rem;
   padding: 0.45rem 0.25rem;
-  border: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
+  --border-tint: color-mix(in srgb, var(--line) 68%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 14px;
   background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
   color: var(--ink-muted);
@@ -5074,7 +5084,8 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   justify-content: center;
   gap: 0.55rem;
   padding: 0.65rem 0.6rem;
-  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  --border-tint: color-mix(in srgb, var(--line) 76%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-soft) 64%, transparent);
   color: var(--ink-muted);
@@ -5613,7 +5624,8 @@ body[data-input-mode="remote"] .tv-search-result[data-remote-active] .tv-search-
 .tv-mini-loader {
   width: 20px;
   height: 20px;
-  border: 2px solid color-mix(in srgb, var(--ink-muted) 24%, transparent);
+  --border-tint: color-mix(in srgb, var(--ink-muted) 24%, transparent);
+  border: 2px solid var(--border-tint);
   border-top-color: var(--brand);
   border-radius: 50%;
   animation: tv-loader-spin 720ms linear infinite;
@@ -5711,7 +5723,8 @@ body[data-input-mode="remote"] .tv-search-result[data-remote-active] .tv-search-
   display: grid;
   place-items: center;
   aspect-ratio: 1;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 50%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 50%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 50%;
   background: color-mix(in srgb, var(--surface-strong) 54%, transparent);
 }
@@ -5733,7 +5746,8 @@ body[data-input-mode="remote"] .tv-search-result[data-remote-active] .tv-search-
 .tv-empty-state-art i {
   position: absolute;
   inset: 0;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 58%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 58%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: clamp(8px, calc(0.7 * var(--vw)), 13px);
   background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
   box-shadow: 0 9px 24px rgba(31, 14, 20, 0.08);
@@ -5961,7 +5975,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
 }
 
 .tv-playlist-card-cover {
-  border: 1px solid color-mix(in srgb, var(--line-strong) 76%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 76%, transparent);
+  border: 1px solid var(--border-tint);
 }
 
 .tv-playlist-card-cover img {
@@ -6025,7 +6040,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   justify-content: center;
   gap: 0.65rem;
   padding: 0.7rem 0.8rem;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 74%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 74%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-soft) 68%, transparent);
   color: var(--ink-muted);
@@ -6049,7 +6065,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
 .tv-playlist-media-type-switch button:hover {
   border-color: color-mix(in srgb, var(--brand) 76%, transparent);
   color: var(--ink);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 16%, transparent);
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 16%, transparent);
+  box-shadow: 0 0 0 4px var(--shadow-tint-1);
   transform: scale(1.025);
 }
 
@@ -6073,7 +6090,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   width: 100%;
   min-height: clamp(48px, calc(4 * var(--vw)), 62px);
   padding: 0 clamp(15px, calc(1.3 * var(--vw)), 22px);
-  border: 1px solid color-mix(in srgb, var(--line-strong) 74%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 74%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-soft) 68%, transparent);
   color: var(--ink);
@@ -6213,9 +6231,11 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
 
 .tv-home-card.is-stacked .tv-home-card-art {
   margin-top: 10px;
+  --shadow-tint-1: color-mix(in srgb, var(--ink) 24%, var(--surface-soft));
+  --shadow-tint-2: color-mix(in srgb, var(--ink) 13%, var(--surface-soft));
   box-shadow:
-    0 -5px 0 -2px color-mix(in srgb, var(--ink) 24%, var(--surface-soft)),
-    0 -10px 0 -4px color-mix(in srgb, var(--ink) 13%, var(--surface-soft)),
+    0 -5px 0 -2px var(--shadow-tint-1),
+    0 -10px 0 -4px var(--shadow-tint-2),
     0 10px 22px rgba(56, 38, 33, 0.16);
 }
 
@@ -6223,9 +6243,11 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
 .tv-home-card.is-stacked:focus-visible .tv-home-card-art,
 .tv-home-rail:focus-within .tv-home-card.is-stacked.is-selected .tv-home-card-art,
 .tv-media-track-scroll:focus-within .tv-home-card.is-stacked.is-selected .tv-home-card-art {
+  --shadow-tint-1: color-mix(in srgb, var(--ink) 30%, var(--surface-soft));
+  --shadow-tint-2: color-mix(in srgb, var(--ink) 18%, var(--surface-soft));
   box-shadow:
-    0 -5px 0 -2px color-mix(in srgb, var(--ink) 30%, var(--surface-soft)),
-    0 -10px 0 -4px color-mix(in srgb, var(--ink) 18%, var(--surface-soft)),
+    0 -5px 0 -2px var(--shadow-tint-1),
+    0 -10px 0 -4px var(--shadow-tint-2),
     0 26px 52px rgba(56, 38, 33, 0.32);
 }
 
@@ -6982,7 +7004,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   height: 100%;
   min-width: 3px;
   background: var(--brand);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--brand) 70%, transparent);
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 70%, transparent);
+  box-shadow: 0 0 8px var(--shadow-tint-1);
 }
 
 .tv-watch-unseen {
@@ -6995,9 +7018,10 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   border: 2px solid rgba(255, 255, 255, 0.94);
   border-radius: 50%;
   background: var(--brand);
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 35%, transparent);
   box-shadow:
     0 2px 9px rgba(31, 14, 20, 0.45),
-    0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent);
+    0 0 0 1px var(--shadow-tint-1);
 }
 
 .tv-compact-loading {
@@ -7029,7 +7053,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   height: 9px;
   border-radius: 50%;
   background: var(--brand);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--brand) 28%, transparent);
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 28%, transparent);
+  box-shadow: 0 6px 18px var(--shadow-tint-1);
 }
 
 .tv-orbit-loader i:nth-child(1) {
@@ -7114,7 +7139,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   gap: clamp(8px, calc(0.7 * var(--vw)), 13px);
   margin-top: clamp(28px, calc(4 * var(--viewport-unit)), 52px);
   padding: 7px 8px 7px clamp(16px, calc(1.4 * var(--vw)), 24px);
-  border: 1px solid color-mix(in srgb, var(--line-strong) 76%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 76%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
   box-shadow: 0 18px 52px rgba(31, 14, 20, 0.12);
@@ -7567,7 +7593,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   display: grid;
   place-items: center;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 66%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 66%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 50%;
   background:
     radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.28), transparent 27%),
@@ -7626,9 +7653,10 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
 
 .profile-avatar-button:hover .profile-avatar,
 .profile-choice.is-selected .profile-avatar {
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 42%, transparent);
   box-shadow:
     0 22px 52px rgba(31, 14, 20, 0.18),
-    0 0 0 4px color-mix(in srgb, var(--brand) 42%, transparent);
+    0 0 0 4px var(--shadow-tint-1);
   transform: scale(1.035);
 }
 
@@ -7670,7 +7698,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   justify-content: center;
   gap: 0.45rem;
   padding: 0.65rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 70%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-strong) 64%, transparent);
   color: var(--ink-soft);
@@ -7751,7 +7780,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   align-items: center;
   gap: 0.55rem;
   padding: 0.65rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 70%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
   color: var(--ink-soft);
@@ -7789,7 +7819,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
 .profile-update-button {
   min-height: 44px;
   padding: 0.65rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 70%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
   color: var(--ink-soft);
@@ -8111,7 +8142,8 @@ html.is-native-scroll-root .profile-auth-scroll {
   display: inline-flex;
   align-items: center;
   padding: 0.55rem 0.9rem;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 70%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-strong) 64%, transparent);
   color: var(--ink-soft);
@@ -8129,7 +8161,8 @@ html.is-native-scroll-root .profile-auth-scroll {
 
 .legal-copy {
   padding: clamp(24px, calc(4 * var(--vw)), 52px);
-  border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 70%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: clamp(20px, calc(2.2 * var(--vw)), 32px);
   background: color-mix(in srgb, var(--surface-strong) 68%, transparent);
   box-shadow: 0 24px 70px rgba(31, 14, 20, 0.1);
@@ -9753,7 +9786,8 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
 .download-quality-drawer-field input[type="number"] {
   height: clamp(40px, calc(3.4 * var(--vw)), 52px);
   padding: 0 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  --border-tint: color-mix(in srgb, var(--line) 76%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 10px;
   background: var(--surface-soft);
   color: var(--ink);
@@ -10296,7 +10330,8 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
   gap: 0.45rem;
   min-height: 44px;
   padding: 0 1rem;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 76%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 76%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
   color: inherit;
@@ -10829,7 +10864,8 @@ body[data-input-mode="remote"] .quality-matrix.is-player .quality-matrix-choice:
   --dp-soft: color-mix(in srgb, var(--ink) 88%, var(--surface));
   --dp-eyebrow: var(--brand-ink);
   isolation: isolate;
-  text-shadow: 0 0 14px color-mix(in srgb, var(--surface) 90%, transparent);
+  --shadow-tint-1: color-mix(in srgb, var(--surface) 90%, transparent);
+  text-shadow: 0 0 14px var(--shadow-tint-1);
 }
 
 .details-panel::before {
@@ -10909,7 +10945,8 @@ body[data-input-mode="remote"] .quality-matrix.is-player .quality-matrix-choice:
   display: inline-flex;
   align-items: center;
   padding: 0.18rem 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--pill-tone) 60%, transparent);
+  --border-tint: color-mix(in srgb, var(--pill-tone) 60%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 999px;
   background: color-mix(in srgb, var(--pill-tone) 14%, var(--surface));
   color: var(--ink);
@@ -11016,9 +11053,11 @@ body[data-input-mode="remote"] .tv-home-card[data-remote-active] .tv-home-card-a
 .tv-home-rail:focus-within .tv-home-card.is-stacked.is-selected .tv-home-card-art,
 .tv-media-track-scroll:focus-within .tv-home-card.is-stacked.is-selected .tv-home-card-art,
 body[data-input-mode="remote"] .tv-home-card.is-stacked[data-remote-active] .tv-home-card-art {
+  --shadow-tint-1: color-mix(in srgb, var(--ink) 30%, var(--surface-soft));
+  --shadow-tint-2: color-mix(in srgb, var(--ink) 18%, var(--surface-soft));
   box-shadow:
-    0 -5px 0 -2px color-mix(in srgb, var(--ink) 30%, var(--surface-soft)),
-    0 -10px 0 -4px color-mix(in srgb, var(--ink) 18%, var(--surface-soft)),
+    0 -5px 0 -2px var(--shadow-tint-1),
+    0 -10px 0 -4px var(--shadow-tint-2),
     0 26px 52px rgba(56, 38, 33, 0.32),
     var(--card-glow) !important;
 }
@@ -11062,7 +11101,8 @@ body[data-input-mode="remote"] .circle-focus-host[data-remote-active] .circle-fo
   align-items: center;
   gap: 0.6rem;
   padding: 0.55rem 0.8rem;
-  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  --border-tint: color-mix(in srgb, var(--line) 76%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-soft) 64%, transparent);
   color: var(--ink);

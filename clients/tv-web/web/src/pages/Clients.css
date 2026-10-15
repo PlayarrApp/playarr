@@ -127,7 +127,8 @@
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 66%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 66%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 50%;
   background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
   box-shadow: none;
@@ -247,9 +248,10 @@
 }
 
 .client-platform:hover .client-platform-icon {
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 42%, transparent);
   box-shadow:
     0 22px 52px rgba(31, 14, 20, 0.18),
-    0 0 0 4px color-mix(in srgb, var(--brand) 42%, transparent);
+    0 0 0 4px var(--shadow-tint-1);
   transform: scale(1.035);
 }
 
@@ -258,9 +260,10 @@
 }
 
 .client-choice.is-active .client-platform-icon {
+  --shadow-tint-1: color-mix(in srgb, var(--brand) 42%, transparent);
   box-shadow:
     0 22px 52px rgba(31, 14, 20, 0.18),
-    0 0 0 4px color-mix(in srgb, var(--brand) 42%, transparent);
+    0 0 0 4px var(--shadow-tint-1);
 }
 
 .client-details-content {
@@ -287,7 +290,8 @@
   width: min(100%, 760px);
   margin-inline: auto;
   padding: clamp(30px, calc(4 * var(--vw)), 48px);
-  border: 1px solid color-mix(in srgb, var(--line-strong) 68%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 68%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 28px;
   background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
   box-shadow: 0 22px 58px rgba(31, 14, 20, 0.1);
@@ -399,7 +403,8 @@
 
 .smart-tv-package-note {
   padding: 0.85rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 56%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 56%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 16px;
   background: color-mix(in srgb, var(--surface) 72%, transparent);
   font-size: 0.76rem;
@@ -423,7 +428,8 @@
   width: min(100%, 660px);
   margin: 2rem auto 0;
   padding: 1.2rem 1.4rem;
-  border: 1px solid color-mix(in srgb, #a16627 36%, var(--line));
+  --border-tint: color-mix(in srgb, #a16627 36%, var(--line));
+  border: 1px solid var(--border-tint);
   border-radius: 20px;
   background: color-mix(in srgb, #a16627 8%, var(--surface-strong));
 }
@@ -452,7 +458,8 @@
   width: min(100%, 920px);
   margin-inline: auto;
   padding: clamp(30px, calc(4 * var(--vw)), 48px);
-  border: 1px solid color-mix(in srgb, var(--line-strong) 68%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 68%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 28px;
   background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
   box-shadow: 0 22px 58px rgba(31, 14, 20, 0.1);
@@ -531,7 +538,8 @@
   grid-template-columns: auto 1fr;
   gap: 1rem;
   padding: clamp(20px, calc(2.4 * var(--vw)), 30px);
-  border: 1px solid color-mix(in srgb, var(--line-strong) 62%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 62%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 18px;
   background: color-mix(in srgb, var(--surface) 74%, transparent);
 }
@@ -617,7 +625,8 @@
   display: block;
   white-space: pre-wrap;
   padding: 0.62rem 0.72rem;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 52%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 52%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 10px;
   background: color-mix(in srgb, var(--surface-strong) 88%, #111 4%);
   color: var(--ink);

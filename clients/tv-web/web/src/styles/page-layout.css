@@ -327,7 +327,8 @@
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 66%, transparent);
+  --border-tint: color-mix(in srgb, var(--line-strong) 66%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 50%;
   background: color-mix(in srgb, var(--surface-strong) 70%, transparent);
   color: var(--ink-soft);
@@ -421,7 +422,8 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .tv-page-back 
   justify-content: center;
   gap: 0.35rem;
   padding: 0.45rem 0.25rem;
-  border: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
+  --border-tint: color-mix(in srgb, var(--line) 68%, transparent);
+  border: 1px solid var(--border-tint);
   border-radius: 14px;
   background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
   color: var(--ink-muted);

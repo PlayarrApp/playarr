@@ -290,7 +290,8 @@
   outline: 0;
   text-decoration: underline 3px var(--card-glow-color);
   text-underline-offset: 4px;
-  text-shadow: 0 0 14px color-mix(in srgb, var(--card-glow-color) 55%, transparent);
+  --shadow-tint-1: color-mix(in srgb, var(--card-glow-color) 55%, transparent);
+  text-shadow: 0 0 14px var(--shadow-tint-1);
 }
 
 .calendar-line.is-selected .calendar-line-text {
