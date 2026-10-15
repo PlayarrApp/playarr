@@ -661,6 +661,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: Home rails really run to the screen edge at their end (the list is widened, not padded), and the wall re-checks the saved series-detail frame for grey placeholder cards.
 - Fire TV: Settings > Appearance has web's Artwork size (small, medium, large); Home cards and rails follow it as web does, and the Library takes the same one size.
 - Android TV: the Home rail list shows web's vertical scroll-edge fade (0.3 floor, eased) like every other scroller.
 - Xbox: moving between Home rails scrolls the focused rail to the middle of the screen, as the web.
