@@ -1,0 +1,1 @@
+- Settings > Appearance: with the remote, Down from the theme row now reaches Thumbnails and Covers (it used to skip to the artwork-size row), so poster mode can be switched on every client.
