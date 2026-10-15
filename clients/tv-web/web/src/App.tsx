@@ -455,7 +455,7 @@ function AppShell() {
             })}
           >
             <span className="app-clock-time">{formatTime(now, localeTag)}</span>
-            <span className="app-clock-date">{formatShellClockDate(now, localeTag, IS_VIDAA)}</span>
+            <span className="app-clock-date">{formatShellClockDate(now, localeTag)}</span>
           </div>
 
           <div className="app-utility">

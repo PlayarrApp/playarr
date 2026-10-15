@@ -14,9 +14,9 @@ const ENGLISH_MONTHS = [
   "December",
 ] as const;
 
-/** Formats the shell date, with a fallback for VIDAA's incomplete en-GB ICU data. */
-export function formatShellClockDate(date: Date, locale: string, isVidaa: boolean): string {
-  if (!isVidaa || locale !== "en-GB") {
+/** Formats the shell date. en-GB is built from parts: VIDAA's ICU returns only the day for the combined format, and webOS's puts a comma after the weekday. */
+export function formatShellClockDate(date: Date, locale: string): string {
+  if (locale !== "en-GB") {
     return new Intl.DateTimeFormat(locale, {
       weekday: "short",
       day: "numeric",
@@ -24,7 +24,7 @@ export function formatShellClockDate(date: Date, locale: string, isVidaa: boolea
     }).format(date);
   }
 
-  // Some VIDAA firmware returns only the day part for this combined Intl format.
+  // Engines disagree on the combined en-GB format (day only on some VIDAA firmware, "Thu, 15 October" on webOS).
   // The matching Web en-GB pattern is the short weekday, day, then long month.
   const day = new Intl.DateTimeFormat(locale, { day: "numeric" }).format(date);
   return `${ENGLISH_WEEKDAYS[date.getDay()]} ${day} ${ENGLISH_MONTHS[date.getMonth()]}`;
