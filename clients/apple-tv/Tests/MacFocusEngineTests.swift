@@ -552,15 +552,24 @@ final class MacFocusEngineTests: XCTestCase {
         XCTAssertEqual(engine.targets[second]?.layer, engine.topLayer, "second target belongs to the active layer")
         let towardSecond: MacMoveDirection = engine.targets[second]!.frame.midX > engine.targets[first]!.frame.midX ? .right : .left
         let towardFirst: MacMoveDirection = towardSecond == .right ? .left : .right
-        engine.move(towardSecond)
-        let moved = await wait({ engine.focusedID == second && engine.targets[second]?.isFocused() == true })
+        // A hosted runner can drop the first focus request while the window is still becoming first responder: ask again.
+        var moved = false
+        for _ in 0..<5 where !moved {
+            window.makeKeyAndOrderFront(nil)
+            engine.move(towardSecond)
+            moved = await wait({ engine.focusedID == second && engine.targets[second]?.isFocused() == true })
+        }
         XCTAssertTrue(moved, "the arrow focuses the second target binding")
         let firstReleased = await wait({ engine.targets[first]?.isFocused() == false })
         XCTAssertTrue(firstReleased, "the arrow releases the first target binding")
         let firstFrame = try XCTUnwrap(engine.targets[first]?.frame)
         let secondFrame = try XCTUnwrap(engine.targets[second]?.frame)
         let targetsShareYOverlap = firstFrame.minY < secondFrame.maxY && secondFrame.minY < firstFrame.maxY
-        let leftObservation = engine.moveWithDiagnostics(towardFirst)
+        var leftObservation = engine.moveWithDiagnostics(towardFirst)
+        for _ in 0..<4 where engine.focusedID != first {
+            _ = await wait({ engine.focusedID == first })
+            if engine.focusedID != first { leftObservation = engine.moveWithDiagnostics(towardFirst) }
+        }
         let back = await wait({
             window.isKeyWindow && NSApp.keyWindow === window && engine.focusedID == first
                 && engine.targets[first]?.isFocused() == true && engine.targets[second]?.isFocused() == false

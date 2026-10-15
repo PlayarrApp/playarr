@@ -1778,8 +1778,7 @@ struct TVLibraryKindView: View {
         let gap: CGFloat = cover ? 19.2 : 25.92
         let cardW = view == "list" ? 1033.44 : cover ? (1033.44 - 19.2 * CGFloat(cols - 1)) / CGFloat(cols) : displayPreferences.cardWidth
         let artH = cover ? cardW * 1.5 : cardW * 9 / 16
-        return ScrollViewReader { proxy in
-        ScrollView(.vertical, showsIndicators: false) {
+        let grid = ScrollView(.vertical, showsIndicators: false) {
             LazyVGrid(
                 columns: Array(
                     repeating: GridItem(.fixed(cardW), spacing: gap),
@@ -1828,12 +1827,6 @@ struct TVLibraryKindView: View {
             #endif
         }
         .onChange(of: selectedID == nil) { _, left in if left { entryPending = true } }
-        #if os(macOS)
-        // Back from a detail: web restores the card that opened it. Same transaction as the pop, before the settle step.
-        .onReceive(NotificationCenter.default.publisher(for: .macGridReturnFocus)) { _ in restoreOpenedCard(proxy) }
-        .onAppear { restoreOpenedCard(proxy) }
-        .onChange(of: items.count) { _, _ in restoreOpenedCard(proxy) }
-        #endif
         // Web scroll edge fade: content leaving the top fades out before the header line (owner rule).
         .mask(
             LinearGradient(
@@ -1843,7 +1836,18 @@ struct TVLibraryKindView: View {
             )
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+        #if os(macOS)
+        // Back from a detail: web restores the card that opened it. Same transaction as the pop, before the settle step.
+        // Only the Mac wraps the grid in a ScrollViewReader: tvOS keeps the exact view tree its focus parity was verified on.
+        return ScrollViewReader { proxy in
+            grid
+                .onReceive(NotificationCenter.default.publisher(for: .macGridReturnFocus)) { _ in restoreOpenedCard(proxy) }
+                .onAppear { restoreOpenedCard(proxy) }
+                .onChange(of: items.count) { _, _ in restoreOpenedCard(proxy) }
         }
+        #else
+        return grid
+        #endif
     }
 
     private func libraryCard(
