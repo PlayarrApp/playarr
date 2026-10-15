@@ -260,21 +260,17 @@ def extra_screens(folder):
             print("player-controls not captured", flush=True)
 
 
-def focus_first_card(click_xy):
-    """Web's reference frames are taken with the first card of the page focused (lifted, with the glow ring). The Previewer drops key
-    events, so ask the app to focus the first card (the preview patch gives cards the id pcard; the first in tree order wins). A focus
-    request only takes after a touch has activated focus: when none arrives, tap the first card (it opens its detail), come back, retry."""
-    for attempt in range(2):
-        get("/state", resetfocused="1")
-        get("/setroute", name="focus:pcard")
-        for _ in range(8):
-            time.sleep(1)
-            if json.loads(get("/state")).get("focused"):
-                time.sleep(2)
-                return
-        if attempt == 0:
-            click(*click_xy); time.sleep(10); key("back"); time.sleep(8)
-    print("focus_first_card: no focus event; capturing unfocused", flush=True)
+def focus_first_card(click_xy=None):
+    """Web's reference frames are taken with the first card of the page focused (lifted, with the glow ring). The Previewer never delivers
+    a focus event, so the preview patch turns PosterCard's state-driven focused look (ringOn) on for the first card on screen."""
+    get("/state", resetfocused="1")
+    get("/setroute", name="focus:pcard")
+    for _ in range(10):
+        time.sleep(1)
+        if json.loads(get("/state")).get("focused"):
+            time.sleep(2)
+            return
+    print("focus_first_card: no card answered; capturing unfocused", flush=True)
 
 
 def walk(folder, suffix):

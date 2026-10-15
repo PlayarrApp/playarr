@@ -277,7 +277,8 @@ export struct PosterCard {
   }
 
   private effective(): number {
-    return effectiveFocusPercent(this.focusPercent, this.activeRailFactor);
+    // ringOn: the state-driven focused look (lift, shadow, ring, glow) for frames where real focus cannot be had (capture builds, current item)
+    return Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), this.ringOn ? 1 : 0);
   }
 
   private cardTranslateY(): number {
@@ -419,19 +420,18 @@ export struct PosterCard {
       .borderRadius(this.resolvedArtworkRadius())
       .scale({ x: this.artworkScale(), y: this.artworkScale() })
       .shadow(this.shadowLayer())
-      .outline({ width: tv(FOCUS_RING_WIDTH), color: isTvMetrics() ? this.focusRingColor(this.effective()) : "rgba(0, 0, 0, 0)", radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
-      if (!isTvMetrics()) {
-        // web's card focus ring and glow (3 vp ring, 20 vp glow at 45%): drawn over the art so the layout never shifts; the TV keeps its lift
-        Column()
-          .width(this.cardWidth)
-          .height(this.cardHeight)
-          .borderRadius(this.resolvedArtworkRadius())
-          .border({ width: 3, color: this.focusRingColor(1) })
-          .opacity(Math.max(this.effective(), this.ringOn ? 1 : 0))
-          .scale({ x: this.artworkScale(), y: this.artworkScale() })
-          .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
-          .hitTestBehavior(HitTestMode.None)
-      }
+      .outline({ width: tv(FOCUS_RING_WIDTH), color: isTvMetrics() ? this.focusRingColor(this.effective()) : 'rgba(0, 0, 0, 0)', radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
+      // web's card focus ring and glow (3 vp ring, 20 vp glow at 45%): drawn over the art so the layout never shifts. The phone draws the
+      // ring here as a border; the TV's ring is the outline above (outside the art, as web), so this layer is only its glow.
+      Column()
+        .width(this.cardWidth)
+        .height(this.cardHeight)
+        .borderRadius(this.resolvedArtworkRadius())
+        .border({ width: isTvMetrics() ? 0 : 3, color: this.focusRingColor(1) })
+        .opacity(this.effective())
+        .scale({ x: this.artworkScale(), y: this.artworkScale() })
+        .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
+        .hitTestBehavior(HitTestMode.None)
       }
       .width(this.cardWidth)
       .height(this.cardHeight)

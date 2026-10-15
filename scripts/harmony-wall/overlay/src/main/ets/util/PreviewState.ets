@@ -468,3 +468,55 @@ export function reportCardFocus(title: string, subtitle: string): void {
 export function reportNavFocus(label: string): void {
   previewReport('nav=' + encodeURIComponent(label));
 }
+
+// Capture-only focused look: the Previewer never delivers a focus event, so the parity route `focus:<id>` turns the state-driven focused
+// look (PosterCard.ringOn: lift, shadow, ring, glow) on for the first card on screen (top row, then leftmost). Production focus is untouched.
+class PreviewCardEntry {
+  setOn: (on: boolean) => void;
+  x: number = 0;
+  y: number = 0;
+  alive: boolean = true;
+  constructor(setOn: (on: boolean) => void) {
+    this.setOn = setOn;
+  }
+}
+
+const PREVIEW_CARDS: PreviewCardEntry[] = [];
+
+export function previewRegisterCard(setOn: (on: boolean) => void): number {
+  PREVIEW_CARDS.push(new PreviewCardEntry(setOn));
+  return PREVIEW_CARDS.length - 1;
+}
+
+export function previewUnregisterCard(index: number): void {
+  if (index >= 0 && index < PREVIEW_CARDS.length) {
+    PREVIEW_CARDS[index].alive = false;
+  }
+}
+
+export function previewCardMoved(index: number, area: Area): void {
+  if (index >= 0 && index < PREVIEW_CARDS.length) {
+    PREVIEW_CARDS[index].x = Number(area.globalPosition.x);
+    PREVIEW_CARDS[index].y = Number(area.globalPosition.y);
+  }
+}
+
+/** Focused look on the live card nearest the top-left of the content area (x past the nav rail), off on every other. */
+export function previewFocusFirstCard(): string {
+  let best: number = -1;
+  for (let i = 0; i < PREVIEW_CARDS.length; i++) {
+    const card: PreviewCardEntry = PREVIEW_CARDS[i];
+    if (!card.alive || card.x < 500 || card.y < 100 || card.y > 1000) {
+      continue;
+    }
+    if (best < 0 || card.y < PREVIEW_CARDS[best].y - 20 || (Math.abs(card.y - PREVIEW_CARDS[best].y) <= 20 && card.x < PREVIEW_CARDS[best].x)) {
+      best = i;
+    }
+  }
+  for (let i = 0; i < PREVIEW_CARDS.length; i++) {
+    if (PREVIEW_CARDS[i].alive) {
+      PREVIEW_CARDS[i].setOn(i === best);
+    }
+  }
+  return best >= 0 ? 'ok:' + PREVIEW_CARDS[best].x.toString() + ',' + PREVIEW_CARDS[best].y.toString() : 'none';
+}

@@ -484,3 +484,13 @@ class PreviewPatchContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PreviewFocusLookTests(unittest.TestCase):
+    def test_card_patch_registers_for_the_capture_only_focused_look(self):
+        poster = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/design/components/PosterCard.ets").read_text(encoding="utf-8")
+        patched = patch_state.card(poster)
+        self.assertIn("previewRegisterCard", patched)
+        self.assertIn("(this.ringOn || this.previewRingOn) ? 1 : 0", patched)
+        self.assertIn("previewCardMoved(this.previewCardEntry, area);", patched)
+        self.assertNotIn("previewRingOn", poster)  # production source is untouched

@@ -18,8 +18,14 @@ def apply_once(s, fn):
     return fn(s)
 
 def card(s):
-    s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { reportCardFocus, previewReport, reportDetailLayoutStageForScope, reportDetailRowImageStageForScope, reportDetailEpisodeCardAreaForMeasurement } from '../../util/PreviewState';", 1)
+    s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { previewRegisterCard, previewUnregisterCard, previewCardMoved, reportCardFocus, previewReport, reportDetailLayoutStageForScope, reportDetailRowImageStageForScope, reportDetailEpisodeCardAreaForMeasurement } from '../../util/PreviewState';", 1)
     s = s.replace("  @Prop artwork: image.PixelMap | undefined = undefined;", "  @Prop previewRoute: string = '';\n  @Prop previewWorkId: string = '';\n  @Prop previewRowId: string = '';\n  @Prop previewGeneration: number = 0;\n  @Prop previewRailId: string = '';\n  @Prop previewOccurrence: number = -1;\n  @Prop @Watch('previewArtworkUpdated') artwork: image.PixelMap | undefined = undefined;", 1)
+    life = "  private longPressFired: boolean = false;\n"
+    assert s.count(life) == 1
+    s = s.replace(life, life + "  @State previewRingOn: boolean = false;\n  private previewCardEntry: number = -1;\n  aboutToAppear(): void {\n    this.previewCardEntry = previewRegisterCard((on: boolean): void => { this.previewRingOn = on; });\n  }\n  aboutToDisappear(): void {\n    previewUnregisterCard(this.previewCardEntry);\n  }\n", 1)
+    ring = "Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), this.ringOn ? 1 : 0)"
+    assert s.count(ring) == 1
+    s = s.replace(ring, "Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), (this.ringOn || this.previewRingOn) ? 1 : 0)", 1)
     image_ctor = re.compile(r"(?m)^(?P<indent>[ \t]*)Image\(this\.artwork\)\n")
     assert len(list(image_ctor.finditer(s))) == 1
     image_hooks = """            .onAppear(() => { previewReport('dbg=' + encodeURIComponent('img+' + this.title)); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'poster-render-artwork-present'); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'image-source'); })
@@ -34,7 +40,7 @@ def card(s):
     s = s.replace("    .focusable(true)\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", "    .focusable(true)\n    .id('pcard')\n    .focusOnTouch(true)\n    .onFocus(() => {\n      this.setFocused(true);\n      this.onFocused();", 1)
     s = s.replace("          Skeleton({ blockWidth: this.cardWidth, blockHeight: this.cardHeight, radius: this.resolvedArtworkRadius() })", "          Skeleton({ blockWidth: this.cardWidth, blockHeight: this.cardHeight, radius: this.resolvedArtworkRadius() })\n            .onAppear(() => { previewReport('img=1'); previewReport('dbg=' + encodeURIComponent('skel+' + this.title)); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'poster-render-artwork-undefined'); })\n            .onDisAppear(() => { previewReport('img=-1'); previewReport('dbg=' + encodeURIComponent('skel-' + this.title)); })", 1)
     s = s.replace("      .width(this.cardWidth)\n      .height(this.cardHeight)\n      .clip(true)", "      .width(this.cardWidth)\n      .height(this.cardHeight)\n      .onAreaChange((_old: Area, area: Area) => { reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'poster-card-art-area', 0, Number(area.width), Number(area.height)); })\n      .clip(true)", 1)
-    s = s.replace("    .width(this.cardWidth)\n    .alignItems(HorizontalAlign.Start)", "    .width(this.cardWidth)\n    .onAreaChange((_old: Area, area: Area) => { reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'poster-card-root-area', 0, Number(area.width), Number(area.height)); })\n    .alignItems(HorizontalAlign.Start)", 1)
+    s = s.replace("    .width(this.cardWidth)\n    .alignItems(HorizontalAlign.Start)", "    .width(this.cardWidth)\n    .onAreaChange((_old: Area, area: Area) => { previewCardMoved(this.previewCardEntry, area); reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'poster-card-root-area', 0, Number(area.width), Number(area.height)); })\n    .alignItems(HorizontalAlign.Start)", 1)
     build_forms = (
         "  build() {\n\n    Column({ space: Spacing.xs }) {",
         "  build() {\n\n    Column({ space: this.episodeCaption.length > 0 ? 0 : Spacing.xs }) {",
@@ -59,7 +65,7 @@ def nav(s):
     return s.replace(old, "    .focusOnTouch(true)\n    .onFocus(() => {\n      this.setFocused(true);\n      reportNavFocus(this.item.label);\n    })\n", 1)
 
 def index(s):
-    s = s.replace("import { http } from '@kit.NetworkKit';", "import { http } from '@kit.NetworkKit';\nimport { previewReport, reportPreviewRoute, setPreviewRouteContext } from '../util/PreviewState';", 1)
+    s = s.replace("import { http } from '@kit.NetworkKit';", "import { http } from '@kit.NetworkKit';\nimport { previewFocusFirstCard, previewReport, reportPreviewRoute, setPreviewRouteContext } from '../util/PreviewState';", 1)
     old = "  private previewPollOnce(): void {\n"
     assert old in s
     report = """  private previewReportState(): void {

@@ -57,6 +57,12 @@ methods = """
     if (name.indexOf('focus:') === 0) {
       this.getUIContext().getFocusController().activate(true, false);
       let result: string = 'ok';
+      if (name === 'focus:pcard') {
+        result = previewFocusFirstCard();
+        previewReport('dbg=' + encodeURIComponent('pcard-state:' + result));
+        previewReport('title=' + encodeURIComponent('state-focused') + '&sub=');
+        return;
+      }
       try {
         this.getUIContext().getFocusController().requestFocus(name.substring(6));
       } catch (err) {
