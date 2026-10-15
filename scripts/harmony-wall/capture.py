@@ -707,7 +707,7 @@ else:
         route("profiles", 8); route("settings", 12); click(540, 300); time.sleep(6)
         click(*size_btn); time.sleep(2)
         route("library:movie", 15); settle()
-        open_filters(name); click(*COVER_VIEW_BTN); time.sleep(3); click(*CLOSE_DRAWER); time.sleep(4)
+        open_filters(name); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(4); click(*CLOSE_DRAWER); time.sleep(4)
         snap(name, folder, 100000)
 
     for nm, btn in (("library-covers-small", SMALL_BTN), ("library-covers-medium", MEDIUM_BTN), ("library-covers-large", LARGE_BTN)):

@@ -1,0 +1,1 @@
+- HarmonyOS phone: Filters multi-selects run the drawer's full width, and the Covers capture waits for the drawer before choosing the view.

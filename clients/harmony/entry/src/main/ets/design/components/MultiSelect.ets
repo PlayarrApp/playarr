@@ -7,10 +7,12 @@
 import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
-import { tv } from '../Metrics';
+import { isTvMetrics, tv } from '../Metrics';
 import type { Choice } from './ChoiceSegments';
 
 const SECTION_WIDTH: number = 268;
+/** Phone drawers are the page wide (360 vp less 20 padding each side), as ChoiceSegments' sections. */
+const TOUCH_DRAWER_SECTION_WIDTH: number = 320;
 const HEADING_SIZE: number = 9.6;
 const HEADING_LETTER_SPACING: number = 0.672;
 const HEADING_GAP: number = 13;
@@ -127,7 +129,7 @@ export struct MultiSelect {
             this.open = !this.open;
           })
         }
-        .width(tv(SECTION_WIDTH))
+        .width(isTvMetrics() ? tv(SECTION_WIDTH) : TOUCH_DRAWER_SECTION_WIDTH)
         .padding(tv(FIELD_PADDING))
         .borderRadius(tv(FIELD_RADIUS))
         .border({ width: 1, color: this.lineStrong() })
@@ -161,7 +163,7 @@ export struct MultiSelect {
               })
             }, (option: Choice): string => `${option.value}:${this.isOn(option.value)}`)
           }
-          .width(tv(SECTION_WIDTH))
+          .width(isTvMetrics() ? tv(SECTION_WIDTH) : TOUCH_DRAWER_SECTION_WIDTH)
           .padding(tv(FIELD_PADDING))
           .borderRadius(tv(FIELD_RADIUS))
           .border({ width: 1, color: this.lineStrong() })
