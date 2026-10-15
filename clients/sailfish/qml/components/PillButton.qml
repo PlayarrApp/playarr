@@ -50,7 +50,7 @@ MouseArea {
             id: iconLbl
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
-            color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : (Tokens.dark ? Tokens.brandPinkSoft : Tokens.brandPink)
+            color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize
         }
         Label {

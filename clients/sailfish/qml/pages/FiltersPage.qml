@@ -39,6 +39,10 @@ PlayarrPage {
             width: 43.7 * Tokens.u; height: width
             onClicked: pageStack.pop()
             Rectangle { anchors.fill: parent; radius: width / 2; color: page.chip; border.width: 1; border.color: Tokens.lineStrong }
+            Rectangle {   // web: the drawer's close button takes the focus on open, so it holds the ring (2 px, 3 css px off)
+                anchors { fill: parent; margins: -4 * Tokens.u }
+                radius: width / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.dark ? "#ffffff" : Tokens.ink
+            }
             Label { anchors.centerIn: parent; text: "\u2715"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10 * Tokens.u }
         }
         // View: icon over label.
@@ -115,7 +119,7 @@ PlayarrPage {
                 MouseArea {
                     width: parent.width; height: 57.4 * Tokens.u
                     onClicked: page.openSelect = parent.opened ? "" : modelData.key
-                    Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: page.chip; border.width: 1; border.color: Tokens.lineStrong }
+                    Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: Tokens.dark ? page.chip : "#e8e6e6"; border.width: 1; border.color: Tokens.lineStrong }   // measured web select fill
                     Label {
                         x: 19.8 * Tokens.u; anchors.verticalCenter: parent.verticalCenter
                         text: { for (var i = 0; i < page.languages.length; ++i) if (page.languages[i].id === parent.parent.cur) return page.languages[i].label; return "" }

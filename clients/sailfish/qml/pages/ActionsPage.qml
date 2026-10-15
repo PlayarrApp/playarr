@@ -88,7 +88,7 @@ PlayarrPage {
                     Label { anchors.centerIn: parent; text: "\u2715"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10 * Tokens.u }
                 }
             }
-            ActionRow { glyph: "▶"; text: qsTr("Play"); primary: Tokens.dark; onClicked: page.play() }
+            ActionRow { glyph: "▶"; text: qsTr("Play"); primary: true; onClicked: page.play() }
             ActionRow { glyph: "⤓"; text: qsTr("Download"); visible: !!page.detail && !!page.detail.media_file_id; onClicked: page.download() }
             ActionRow { glyph: "+"; text: qsTr("Add to Playlist"); visible: page.playlists.length > 0; onClicked: page.showPlaylists = !page.showPlaylists }
             Repeater {

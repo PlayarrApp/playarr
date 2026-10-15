@@ -196,7 +196,7 @@ Item {
                             onClicked: root.openEntry(modelData)
                             // Left border: we have it (playable, green) or not, never which library; the card sits over it so it curves with the corners.
                             Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: card.pressed ? 0.6 : 1 }
-                            Rectangle { x: 3.4 * Tokens.u; width: parent.width - 3.4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.dark ? "#363136" : "#e3dfdf"; opacity: card.pressed ? 0.6 : 1 }
+                            Rectangle { x: 4 * Tokens.u; width: parent.width - 4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: Tokens.dark ? "#4d494c" : "#c7c2c1"; opacity: card.pressed ? 0.6 : 1 }
                             Rectangle {
                                 id: poster
                                 x: Math.round(15.7 * Tokens.u)   // whole pixels, as web snaps image rects

@@ -15,9 +15,12 @@ MouseArea {
         anchors.fill: parent
         radius: 10 * Tokens.u
         color: Tokens.dark ? Tokens.surfaceStrong : Tokens.surfaceSoft
-        border.width: root.primary ? 2 : 0
-        border.color: Tokens.ink
         opacity: root.pressed ? 0.6 : 1
+    }
+    Rectangle {   // web default focus: the first row holds the 2 px ring, 3 css px off the row (ink in light, white in dark)
+        visible: root.primary
+        anchors { fill: parent; margins: -4 * Tokens.u }
+        radius: 10 * Tokens.u + 4 * Tokens.u; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.dark ? "#ffffff" : Tokens.ink
     }
     Label { id: g; x: 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: root.glyph; color: Tokens.brandPink; font.pixelSize: 20 * Tokens.u; width: 28 * Tokens.u }
     Label { id: label; anchors { left: g.right; leftMargin: 14 * Tokens.u; right: parent.right; verticalCenter: parent.verticalCenter }
