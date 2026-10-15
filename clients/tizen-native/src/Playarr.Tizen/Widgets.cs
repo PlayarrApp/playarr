@@ -194,12 +194,12 @@ internal sealed class MediaCard
                 foreground.R * foregroundAmount + background.R * (1 - foregroundAmount),
                 foreground.G * foregroundAmount + background.G * (1 - foregroundAmount),
                 foreground.B * foregroundAmount + background.B * (1 - foregroundAmount));
-            var empty = Ui.DiagonalGradient(0, 0, Width, Height, 135,
+            var empty = Ui.DiagonalGradient(0, 0, W, H, 135,
                 (0, Mix(_t.Brand, _t.SurfaceSoft, 0.18f)), (1, _t.SurfaceSoft));
             empty.CornerRadius = 12.48f;
             empty.BoxShadow = new Shadow(30, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.08f), new Vector2(0, 12), new Vector2(0, 0));
             Art.Add(empty);
-            Art.Add(Ui.Text(playlistName, 20, 65, 18, 600, _t.Ink, Width - 40, 44,
+            Art.Add(Ui.Text(playlistName, 20, 65, 18, 600, _t.Ink, W - 40, 44,
                 HorizontalAlignment.Center, multiline: true, maxLines: 2));
             if (_focused) _ring?.RaiseToTop();
             return;
@@ -213,10 +213,10 @@ internal sealed class MediaCard
             var work = covers[index];
             var inset = index * 0.05f;
             var horizontalInset = inset * 0.7f;
-            var x = Width * horizontalInset;
-            var y = Height * inset;
-            var width = Width * (1 - 2 * horizontalInset);
-            var height = Height * (1 - inset);
+            var x = W * horizontalInset;
+            var y = H * inset;
+            var width = W * (1 - 2 * horizontalInset);
+            var height = H * (1 - inset);
             var layer = new View
             {
                 PositionX = x,
@@ -248,12 +248,13 @@ internal sealed class MediaCard
     private static WorkCard CoverCard(WorkCard c) => c.PosterUrl is { Length: > 0 } && c.ThumbUrl?.Contains("/thumbnail", StringComparison.Ordinal) != true ? c with { ThumbUrl = c.PosterUrl } : c;
 
     /// <summary>Search result: title and kind share the web's inset two-column caption row.</summary>
-    public static MediaCard Search(AppEnv env, WorkCard card, float x, float y)
+    public static MediaCard Search(AppEnv env, WorkCard card, float x, float y, CardLayout? cardLayout = null)
     {
+        var l = cardLayout ?? CardLayout.Library(false, "medium");
         var isPlaylist = card.Kind == WorkKind.Unknown && card.Kicker == "Playlist";
         var c = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f,
             scale: isPlaylist ? 1.025f : 1.015f, lift: isPlaylist ? 0 : -6, blur: 52, shadowY: 22, shadowAlpha: 0.28f,
-            boxScale: isPlaylist ? 1.015f : 1f, boxLift: isPlaylist ? -6 : 0);
+            boxScale: isPlaylist ? 1.015f : 1f, boxLift: isPlaylist ? -6 : 0, boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight);
         if (card.Kind == WorkKind.Unknown)
         {
             if (card.Kicker == "Playlist")
@@ -261,15 +262,15 @@ internal sealed class MediaCard
                 var theme = env.Theme;
                 var linearStart = BlendThemeColor(theme.SurfaceSoft, theme.SurfaceStrong, 0.12f);
                 c.Art.BackgroundColor = Ui.C(theme.SurfaceStrong);
-                var linear = Ui.DiagonalGradient(0, 0, Width, Height, 145, (0, linearStart), (1, theme.SurfaceStrong));
+                var linear = Ui.DiagonalGradient(0, 0, c.W, c.H, 145, (0, linearStart), (1, theme.SurfaceStrong));
                 linear.CornerRadius = 12.48f;
-                var radial = Ui.RadialGradient(0, 0, Width, Height, new Rgba(theme.Brand.R, theme.Brand.G, theme.Brand.B, 0.34f), 0.76f, 0.22f, 0.42f);
+                var radial = Ui.RadialGradient(0, 0, c.W, c.H, new Rgba(theme.Brand.R, theme.Brand.G, theme.Brand.B, 0.34f), 0.76f, 0.22f, 0.42f);
                 radial.CornerRadius = 12.48f;
                 c.Art.Add(linear);
                 c.Art.Add(radial);
-                var iconSize = Math.Max(42f, Width * 0.34f);
-                var iconX = (Width - iconSize) / 2;
-                var iconY = (Height - iconSize) / 2;
+                var iconSize = Math.Max(42f, c.W * 0.34f);
+                var iconX = (c.W - iconSize) / 2;
+                var iconY = (c.H - iconSize) / 2;
                 var stroke = BlendThemeColor(theme.Ink, theme.Brand, 0.24f);
                 c.Art.Add(Ui.Icon("search-playlist-fill", iconX, iconY, iconSize, new Rgba(theme.Brand.R, theme.Brand.G, theme.Brand.B, 0.22f)));
                 c.Art.Add(Ui.Icon("search-playlist-lines", iconX, iconY, iconSize, stroke));
@@ -291,13 +292,13 @@ internal sealed class MediaCard
                 c.Box.Add(c._searchPlaylistFocusGlow);
                 c._searchPlaylistFocusGlow.LowerToBottom();
             }
-            else c.Art.Add(Ui.Icon("games", Width / 2 - 32, Height / 2 - 32, 64, env.Theme.InkMuted));
+            else c.Art.Add(Ui.Icon("games", c.W / 2 - 32, c.H / 2 - 32, 64, env.Theme.InkMuted));
         }
         var kind = card.Sub.ToUpperInvariant();
-        var layout = SearchCaptionLayout.Create(Width, 1.92f, Ui.TextWidth(kind, 8.448f, 700, 0), 9.6f);
+        var layout = SearchCaptionLayout.Create(c.W, 1.92f, Ui.TextWidth(kind, 8.448f, 700, 0), 9.6f);
         c.Title.PositionX = layout.TitleX;
         c.Title.Size = new Size(layout.TitleWidth, 17.856f);
-        c.Box.Add(Ui.Text(kind, layout.CaptionX, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, layout.CaptionWidth, 12.672f, HorizontalAlignment.End));
+        c.Box.Add(Ui.Text(kind, layout.CaptionX, c.H + 14.5f, 8.448f, 700, env.Theme.InkMuted, layout.CaptionWidth, 12.672f, HorizontalAlignment.End));
         return c;
     }
 
@@ -315,20 +316,22 @@ internal sealed class MediaCard
     }
 
     /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>
-    public static MediaCard PlaylistDirectory(AppEnv env, WorkCard card, float x, float y)
+    public static MediaCard PlaylistDirectory(AppEnv env, WorkCard card, float x, float y, CardLayout? cardLayout = null)
     {
+        var l = cardLayout ?? CardLayout.Library(false, "medium");
         var media = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.025f, lift: 0,
-            blur: 52, shadowY: 24, shadowAlpha: 0.30f, boxHeight: 213.4f, boxScale: 1.015f, boxLift: -5f, focusHeight: 213.4f);
+            blur: 52, shadowY: 24, shadowAlpha: 0.30f, boxHeight: l.CardHeight, boxScale: 1.015f, boxLift: -5f, focusHeight: l.CardHeight, artW: l.Width, artH: l.ArtHeight);
         media._playlistCollage = true;
         AddPlaylistKind(media, env, card);
         return media;
     }
 
     /// <summary>Playlist detail card: web lifts the card 6 px and scales its art 1.025 without scaling the caption.</summary>
-    public static MediaCard PlaylistDetail(AppEnv env, WorkCard card, float x, float y)
+    public static MediaCard PlaylistDetail(AppEnv env, WorkCard card, float x, float y, CardLayout? cardLayout = null)
     {
+        var l = cardLayout ?? CardLayout.Library(false, "medium");
         var media = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.025f, lift: 0,
-            blur: 52, shadowY: 26, shadowAlpha: 0.32f, boxHeight: 213.4f, boxLift: -6f, focusHeight: 213.4f, showRing: false);
+            blur: 52, shadowY: 26, shadowAlpha: 0.32f, boxHeight: l.CardHeight, boxLift: -6f, focusHeight: l.CardHeight, showRing: false, artW: l.Width, artH: l.ArtHeight);
         if (card.Kind == WorkKind.Unknown) AddPlaylistKind(media, env, card);
         return media;
     }
@@ -337,11 +340,11 @@ internal sealed class MediaCard
     {
         if (card.Kind == WorkKind.Unknown)
         {
-            var icon = Ui.Icon("playlists", Width / 2 - 32, Height / 2 - 32, 64, env.Theme.InkMuted);
+            var icon = Ui.Icon("playlists", media.W / 2 - 32, media.H / 2 - 32, 64, env.Theme.InkMuted);
             media._playlistIcon = icon;
             media.Art.Add(icon);
         }
-        media.Box.Add(Ui.Text(card.Sub.ToUpperInvariant(), 0, Height + 14.5f, 8.448f, 700, env.Theme.InkMuted, Width, 12.672f, HorizontalAlignment.End));
+        media.Box.Add(Ui.Text(card.Sub.ToUpperInvariant(), 0, media.H + 14.5f, 8.448f, 700, env.Theme.InkMuted, media.W, 12.672f, HorizontalAlignment.End));
     }
 }
 
@@ -446,7 +449,7 @@ internal sealed class DetailsPanel
         if (meta.Length > 0) Root.Add(Ui.Text(meta, 153.6f, metaY, metaSize, 600, Soft(t), 455, _library ? 19.584f : 18, spacing: 0));
         var oy = metaY + (_library ? 41.2f : 40.9f);
         var ovLine = _library ? 21.842f : 20.325f; var ovSize = _library ? 13.824f : 12.864f;
-        var ovLines = Ui.Paragraph(Root, card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 336, ovLine, 0, _library ? 5 : 4);
+        var ovLines = Ui.Paragraph(Root, card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 336, ovLine, 0, 5); // web clamps the preview overview at 5 lines on every page
         var top = ky; var bottom = oy + ovLines * ovLine;
         var scrim = Ui.PanelScrim(t, 153.6f, top, 455, bottom - top);
         Root.Add(scrim); scrim.LowerToBottom();

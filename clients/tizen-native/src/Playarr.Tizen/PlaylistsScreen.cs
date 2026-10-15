@@ -8,9 +8,12 @@ namespace Playarr.Tizen;
 /// <summary>Native playlist directory and root/child detail route.</summary>
 internal sealed class PlaylistsScreen : IPage
 {
-    private const float ClipX = 729.6f, DirectoryFirstRowY = 162f, DetailFirstRowY = 421.719f, RowPitch = 251.2f, FocusedRowMaxY = 819f;
-    private static readonly float[] DirectoryColX = { 783.36f, 1136.46f, 1489.56f };
-    private static readonly float[] DetailColX = { 881.609f, 1234.709f, 1587.809f };
+    private const float ClipX = 729.6f, DirectoryFirstRowY = 162f, DetailFirstRowY = 421.719f, FocusedRowMaxY = 819f;
+    private CardLayout _layout;
+    private float RowPitch => _layout.CardHeight + 37.8f;
+    private int Cols => _layout.Columns;
+    private float DirectoryColXAt(int c) => 783.36f + c * _layout.LibraryPitchX;
+    private float DetailColXAt(int c) => 881.609f + c * _layout.LibraryPitchX;
     private static readonly HttpClient PlaylistHttp = new();
     private static readonly SemaphoreSlim CoverLoadLimit = new(3);
     private sealed record SavedState(Guid? DirectorySelection, int Focus, float Scroll);
@@ -49,7 +52,7 @@ internal sealed class PlaylistsScreen : IPage
 
     public PlaylistsScreen(AppEnv env, string route)
     {
-        _env = env;
+        _env = env; _layout = CardLayout.Library(false, env.Store.Appearance().ArtworkSize);
         _theme = env.Theme;
         _route = PlaylistRouteState.Parse(route);
         _directorySelection = _route.PlaylistId;
@@ -198,12 +201,12 @@ internal sealed class PlaylistsScreen : IPage
     private void AddPlaylistCard(PlaylistTreeEntry entry, int index, Action select)
     {
         var directory = _route.PlaylistId is null;
-        var row = index / 3;
-        var x = directory ? DirectoryColX[index % 3] : DetailColX[index % 3];
+        var row = index / Cols;
+        var x = directory ? DirectoryColXAt(index % Cols) : DetailColXAt(index % Cols);
         var y = (directory ? DirectoryFirstRowY : DetailFirstRowY) + row * RowPitch;
         var cardModel = new WorkCard(entry.Playlist.Id, WorkKind.Unknown, entry.Playlist.Name,
             entry.Playlist.IsSystem ? "System playlist" : "Playlist", "Playlist", "", null, null, null, 0, false);
-        var card = directory ? MediaCard.PlaylistDirectory(_env, cardModel, x, y) : MediaCard.PlaylistDetail(_env, cardModel, x, y);
+        var card = directory ? MediaCard.PlaylistDirectory(_env, cardModel, x, y, _layout) : MediaCard.PlaylistDetail(_env, cardModel, x, y, _layout);
         AddCard(card, index, entry.Playlist.Name.ToLowerInvariant(), select, x, y);
         if (directory && _coverRequest is { } coverRequest)
             _ = LoadDirectoryCoversAsync(entry, card, coverRequest.Token);
@@ -271,9 +274,9 @@ internal sealed class PlaylistsScreen : IPage
     private void AddWorkCard(Work work, int index)
     {
         var cardModel = HomeModel.Card(work, new Dictionary<Guid, WatchProgress>(), true);
-        var x = DetailColX[index % 3];
-        var y = DetailFirstRowY + index / 3 * RowPitch;
-        var card = MediaCard.PlaylistDetail(_env, cardModel, x, y);
+        var x = DetailColXAt(index % Cols);
+        var y = DetailFirstRowY + index / Cols * RowPitch;
+        var card = MediaCard.PlaylistDetail(_env, cardModel, x, y, _layout);
         AddCard(card, index, (work.Title + " " + WorkLabels.KindWithYear(work)).Trim().ToLowerInvariant(),
             () => _env.Navigate(HomeScreen.DetailRoute(cardModel)), x, y);
     }
@@ -393,13 +396,13 @@ internal sealed class PlaylistsScreen : IPage
     private void FocusAt(int index)
     {
         if (index < 0 || index >= _focus.Items.Count) return;
-        var row = index / 3;
+        var row = index / Cols;
         var firstRowY = _route.PlaylistId is null ? DirectoryFirstRowY : DetailFirstRowY;
         _scroll = Math.Clamp(_scroll, firstRowY + row * RowPitch - FocusedRowMaxY, row * RowPitch);
         _results.PositionY = -_scroll;
         // web scroll-edge fades: at the start once scrolled, at the end while rows remain
         var firstY = _route.PlaylistId is null ? DirectoryFirstRowY : DetailFirstRowY;
-        var contentH = firstY + (float)Math.Ceiling(_focus.Items.Count / 3f) * RowPitch + 80;
+        var contentH = firstY + (float)Math.Ceiling(_focus.Items.Count / (float)Cols) * RowPitch + 80;
         _fadeTop?.Show(_scroll > 0.5f); _fadeBottom?.Show(_scroll + TizenClient.DesignHeight < contentH - 1);
         _focus.Set(index);
     }

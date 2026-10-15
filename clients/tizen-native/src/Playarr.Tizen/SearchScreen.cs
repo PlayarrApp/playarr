@@ -8,9 +8,11 @@ namespace Playarr.Tizen;
 /// <summary>Search (web /search): the query pill and prompt on the left, results in a three-column grid. Measured at 1920x1080.</summary>
 internal sealed class SearchScreen : IPage
 {
-    private static readonly float[] ColX = { 825.6f, 1178.7f, 1531.8f };
-    private const float FirstRowY = 172.8f, RowPitch = 251.2f, FocusedRowMaxY = 819f;
-    private const int Columns = 3;
+    private CardLayout _layout;
+    private float ColXAt(int c) => 825.6f + c * _layout.LibraryPitchX;
+    private const float FirstRowY = 172.8f, FocusedRowMaxY = 819f;
+    private float RowPitch => _layout.CardHeight + 37.8f; // web: caption plus 37.8 px between rows
+    private int Columns => _layout.Columns;
     private static readonly HttpClient SearchHttp = new();
     private static readonly (string Value, string Label, WorkKind? Kind)[] MediaTypes =
     {
@@ -78,11 +80,11 @@ internal sealed class SearchScreen : IPage
         }
     }
     public string? FocusedLabel => _filters?.FocusedLabel ?? (_xRow >= 0 && _extras is not null ? (_xLink ? $"open {_extras.Rows[_xRow].Title.Title}" : (_extras.Rows[_xRow].Listed ? "\u2713remove from watchlist" : "+add to watchlist")).ToLowerInvariant() : null) ?? (_sideFocus >= 0 ? _side[_sideFocus].Label : _focus < 0 ? "search" : $"open {_items[_focus].Title}".ToLowerInvariant());
-    public float FocusCentreY => _filters is not null ? 79 : _sideFocus >= 0 ? _side[_sideFocus].Rect().CentreY : _focus < 0 ? 210.8f : FirstRowY - _scroll + (_focus / Columns) * RowPitch + MediaCard.Height / 2;
+    public float FocusCentreY => _filters is not null ? 79 : _sideFocus >= 0 ? _side[_sideFocus].Rect().CentreY : _focus < 0 ? 210.8f : FirstRowY - _scroll + (_focus / Columns) * RowPitch + _layout.ArtHeight / 2;
 
     public SearchScreen(AppEnv env, string route = "/search")
     {
-        _env = env; _t = env.Theme;
+        _env = env; _layout = CardLayout.Library(false, env.Store.Appearance().ArtworkSize); _t = env.Theme;
         _query = ReadQuery(route, "q");
         var requestedType = ReadQuery(route, "type");
         var requestedOption = MediaTypes.FirstOrDefault(t => t.Value == requestedType);
@@ -498,7 +500,7 @@ internal sealed class SearchScreen : IPage
     private void AddResult(WorkCard card, SearchResultTarget target, int index)
     {
         _items.Add(card); _targets.Add(target);
-        var mediaCard = MediaCard.Search(_env, card, ColX[index % Columns], FirstRowY + (index / Columns) * RowPitch);
+        var mediaCard = MediaCard.Search(_env, card, ColXAt(index % Columns), FirstRowY + (index / Columns) * RowPitch, _layout);
         _results.Add(mediaCard.Box); _cards.Add(mediaCard);
     }
 
@@ -598,7 +600,7 @@ internal sealed class SearchScreen : IPage
             _side[_sideFocus].Style(false); _sideFocus = -1;
             if (_items.Count == 0) { SetFocus(-1); return true; }
             var candidates = Enumerable.Range(0, _items.Count).Where(i => i % Columns == Columns - 1 || i == _items.Count - 1);
-            var best = candidates.OrderBy(i => Math.Abs(FirstRowY - _scroll + (i / Columns) * RowPitch + MediaCard.Height / 2 - cy)).First();
+            var best = candidates.OrderBy(i => Math.Abs(FirstRowY - _scroll + (i / Columns) * RowPitch + _layout.ArtHeight / 2 - cy)).First();
             SetFocus(best);
             return true;
         }
