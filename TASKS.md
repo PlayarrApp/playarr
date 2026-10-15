@@ -595,6 +595,7 @@ Steps only the repository owner can perform.
 | 10393 | Android TV parity round 3: web ink tokens, dedicated D-pad account (owner request 2026-10-15) | in_review | atv-parity worker | atv-parity-2b | | 2026-10-15 20:00 ICT | PR open: #1421. D-pad 12/12 on the dedicated device-test-dpad account. |
 | 10420 | Harmony phone player chrome and series, film detail, seeded progress as web | done | parity-harmony | harmony-phone-parity-11 | | 2026-10-16 12:00 ICT | Phone player controls rebuilt to web's layout (top-right round buttons, progress track, centred time, transport row, info row). TV unchanged. PR open: #1430. PR #1430 merged 2026-10-15. |
 | 10418 | Tizen Search Other sources, edge fades on Search, Playlists and Downloads | in_review | client-tizen-native | tizen-other-sources-10418 | 17.10415 | 2026-10-16 18:00 ICT | PR open: #1433. Other sources list with Add to watchlist as web (DiscoveryExtras), D-pad flow from the last result row, scroll-edge fades on three more pages. |
+| 10421 | Web ref capture can hide Downloads for devices without storage (capture-refs driver) | in_review | parity-roku | roku-no-downloads-refs-10414 | | 2026-10-16 18:00 ICT | PLAYARR_WEB_NO_DOWNLOADS=1 removes OPFS and IndexedDB in the shared web driver, so capture-refs shows the nav dock of a device that cannot download. Roku refs use it. PR open: #1432. |
 
 ## 18. Public repository readiness (2026-10-05)
 
