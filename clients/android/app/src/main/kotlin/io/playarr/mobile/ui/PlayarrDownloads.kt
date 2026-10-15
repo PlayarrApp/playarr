@@ -257,7 +257,7 @@ internal fun ExperienceDownloadsScreen(
     }
     PlayarrPageLayout(
         pageId = PlayarrPageId.Downloads,
-        header = playarrPageHeader(title = playarrString(PlayarrString.DownloadsTitle), onBack = onBack, subtitle = if (isOnline) null else playarrString(PlayarrString.DownloadsOffline).uppercase(LocalPlayarrLanguage.current.locale)),
+        header = playarrPageHeader(title = playarrString(PlayarrString.DownloadsTitle), onBack = onBack, subtitle = if (isOnline || !isTelevision) null else playarrString(PlayarrString.DownloadsOffline).uppercase(LocalPlayarrLanguage.current.locale)),
     ) {
         Text(
             playarrString(

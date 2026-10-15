@@ -94,7 +94,7 @@ internal fun ExperienceFoldersScreen(
     }
     PlayarrPageLayout(
         pageId = PlayarrPageId.Folders,
-        header = playarrPageHeader(title = playarrString(PlayarrString.FoldersTitle), onBack = { if (!holder.up(rootCount)) onBack() }, subtitle = detail, filters = if (root == null) {
+        header = playarrPageHeader(title = playarrString(PlayarrString.FoldersTitle), onBack = { if (!holder.up(rootCount)) onBack() }, subtitle = detail.takeIf { isTelevision }, filters = if (root == null) {
             null
         } else {
             PlayarrFilterAction(

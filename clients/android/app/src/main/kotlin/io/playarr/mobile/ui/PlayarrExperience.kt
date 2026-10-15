@@ -4212,7 +4212,8 @@ private fun ExperienceLibraryScreen(
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Library,
                 header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }, largeTitle = true, countLine = true,
-                subtitle = playarrString(
+                // Web hides the header subtitle on phones (#1299).
+                subtitle = if (!isTelevision) null else playarrString(
                     PlayarrString.LibraryCollectionCount,
                     "count" to java.text.NumberFormat.getIntegerInstance(language.locale).format(libraryTotal ?: state.value.size.toLong()),
                     "collection" to collection,
