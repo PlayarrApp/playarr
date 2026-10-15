@@ -265,7 +265,7 @@ Steps only the repository owner can perform.
 | 10102 | HarmonyOS TV and phone parity on GitHub-hosted Windows runners (Previewer with Mesa llvmpipe) while the MacBook travels | in_progress | parity-harmony | | | 2026-10-15 18:00 ICT | Owner request. Hosted HAP compile already runs on PRs (#836). ETA reset by coordinator 2026-10-14. |
 | 10103 | Apple (tvOS, macOS, iPhone, iPad) parity and streams on GitHub-hosted runners while the MacBook travels: tvOS and macOS show an error screen after sign-in, tailnet DNS | in_progress | parity-apple | | | 2026-10-15 18:00 ICT | Owner request. Hosted Apple wall workflow merged in #777; open: error screen after sign-in on tvOS and macOS, tailnet DNS. ETA reset by coordinator 2026-10-14. |
 | 10300 | Fire TV: page header as web (title, divider, subtitle side by side; subtitle not pink) | in_review | parity-firetv | firetv-page-header | | 2026-10-15 12:00 ICT | PR open: #1356 |
-| 10371 | Fire TV: title actions drawer rows as web (68 px rows, larger label) | in_review | parity-firetv | firetv-focus-crop-audit | | 2026-10-16 12:00 ICT | PR open: #1366 (draft, device check pending) |
+| 10371 | Fire TV: title actions drawer rows as web (68 px rows, larger label) | done | parity-firetv | firetv-focus-crop-audit | | 2026-10-16 12:00 ICT | PR open: #1366 (draft, device check pending) PR #1366 merged 2026-10-15. |
 
 ## 6. Web accessibility AAA (2026-10-09)
 
