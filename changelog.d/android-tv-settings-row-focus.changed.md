@@ -1,0 +1,1 @@
+- Android TV: the focused Settings section row takes web's grey fill with no outline, and the detail action pills' focus ring sits 2 px off the pill as on web.

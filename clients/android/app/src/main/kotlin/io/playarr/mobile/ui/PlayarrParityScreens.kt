@@ -4280,8 +4280,8 @@ private fun TvSettingsBody(
                         .fillMaxWidth()
                         .height(rowHeight)
                         .then(if (index == 0) Modifier.focusRequester(firstRow) else Modifier)
-                        .background(if (selected && !focused) TvSettingsPalette.selectedRow else TvSettingsPalette.listBackground)
-                        .webFocusRing(focused, radius = 0.dp, offset = (-3).dp)
+                        // Web: the focused or selected section row takes the grey fill; the focus indicator is the fill, no outline.
+                        .background(if (selected || focused) TvSettingsPalette.selectedRow else TvSettingsPalette.listBackground)
                         .onFocusChanged { focused = it.isFocused; if (it.isFocused) onPick(candidate) }
                         .clickable { onPick(candidate) },
                 ) {

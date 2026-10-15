@@ -3722,7 +3722,7 @@ internal fun WebDetailPill(
                 ambientColor = Color(0xFF382621).copy(alpha = 0.12f), spotColor = Color(0xFF382621).copy(alpha = if (primary) 0.18f else 0.12f),
             ))
             .scale(scale)
-            .webFocusRing(focused, offset = 3.dp)
+            .webFocusRing(focused, offset = 2.dp)
             .onFocusChanged { focused = it.isFocused },
     ) {
         Row(
