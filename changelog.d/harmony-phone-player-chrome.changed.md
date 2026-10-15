@@ -1,0 +1,1 @@
+- HarmonyOS phone player controls follow the web phone layout: round minimise and close at the top right, progress track, centred time, one transport row and an info row.

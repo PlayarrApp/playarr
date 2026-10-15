@@ -2174,6 +2174,14 @@ struct Detail {
       // shortcut: the Previewer's getRectangleById is a mock that reports no size, so land on web's measured scroll instead; a device never gets here
       this.touchEpisodeSettled = true;
       this.touchScroller.scrollTo({ xOffset: 0, yOffset: TOUCH_SETTLE_FALLBACK_VP, animation: false });
+      // web opens with the next-up episode focused; the mock reports no size, so focus it by id as the device path does
+      if (detail !== null && plan !== null && plan.target !== undefined && plan.target !== null) {
+        try {
+          this.getUIContext().getFocusController().requestFocus(seriesEpisodeFocusId(plan.target.episode_id));
+        } catch (_err) {
+          // the card is not laid out yet: nothing to focus
+        }
+      }
       return;
     }
     const retry = (): void => {
@@ -2218,12 +2226,13 @@ struct Detail {
 
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
-  private touchActionButton(label: string, onTap: () => void): void {
-    Text(label).fontFamily(nunito(500))
-      .fontSize(11)
+  private touchActionButton(label: string, onTap: () => void, size: number = 8, glyph: string = ''): void {
+    Text(glyph.length > 0 ? glyph + '  ' + label : label).fontFamily(nunito(500))
+      .fontSize(size)
       .fontWeight(FontWeight.Medium)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .height(44)
+      .textAlign(TextAlign.Center)
       .padding({ left: 16, right: 16 })
       .borderRadius(22)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
@@ -2305,19 +2314,19 @@ struct Detail {
     Row({ space: 8 }) {
       this.touchActionButton('Download', (): void => {
         this.touchActionsOpen = true;
-      })
+      }, 8)
       this.touchActionButton('Playback', (): void => {
         this.touchActionsOpen = true;
-      })
+      }, 11)
       this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
     }
     Row({ space: 8 }) {
       this.touchActionButton(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
         this.toggleWatchlist();
-      })
+      }, 8, this.listed === true ? '\u2713' : '+')
       this.touchActionButton('Add to Playlist', (): void => {
         this.touchActionsOpen = true;
-      })
+      }, 8, '+')
     }
     .margin({ top: 12 })
   }
@@ -2351,7 +2360,7 @@ struct Detail {
 
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column() {
-            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? kindLabel(this.detail.work.kind) : '')).fontFamily(nunito(900))
+            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunito(900))
               .fontSize(10.56)
               .height(16)
               .fontWeight(FontWeight.Bolder)
@@ -2371,14 +2380,14 @@ struct Detail {
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
-                .margin({ top: 8 })
+                .margin({ top: 3 })
             }
             this.touchMetaChips()
             Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunito(400))
               .fontSize(11.52)
               .fontColor(toResourceColor(activeColors().inkSoft))
               .lineHeight(16.7)
-              .margin({ top: 10 })
+              .margin({ top: this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 15 : 10 })
               .maxLines(3)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
             Column() {
@@ -2422,7 +2431,7 @@ struct Detail {
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
       }
-      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(12, this.safeTop) })
+      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(17.5, this.safeTop) })
       .alignItems(VerticalAlign.Center)
        }
        .width('100%')

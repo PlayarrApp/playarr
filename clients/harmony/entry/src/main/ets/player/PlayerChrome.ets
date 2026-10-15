@@ -179,6 +179,16 @@ const PROGRESS_TRACK_HEIGHT: number = 4;
 const CIRCLE_FILL_ALPHA: number = 0.08;
 const CIRCLE_RING_ALPHA: number = 0.4;
 // Web TV player (1920x1080): the close button, the progress track and the transport row.
+// Phone (web phone player, 360 vp reference).
+const PHONE_TOP_BUTTON: number = 43;
+const PHONE_SIDE: number = 12;
+const PHONE_TOP: number = 14;
+const PHONE_BOTTOM: number = 18;
+const PHONE_BAR_GAP: number = 14;
+const PHONE_TRACK_HEIGHT: number = 6;
+const PHONE_PLAY_SIZE: number = 52;
+const PHONE_SEEK_SIZE: number = 36;
+const PHONE_TIME_FONT_SIZE: number = 11.5;
 const TV_CLOSE_SIZE: number = 48;
 const TV_CLOSE_RIGHT: number = 58;
 const TV_CLOSE_TOP: number = 38;
@@ -698,114 +708,90 @@ export struct PlayerChrome {
     .hitTestBehavior(this.visible ? HitTestMode.Default : HitTestMode.Transparent)
   }
 
+  /** One round phone control: web's 36 vp circle (or the 52 vp play circle), glyph at the given size. */
+  @Builder
+  private phoneButton(label: string, size: number, fontSize: number, active: boolean, onTap: () => void): void {
+    ChromeButton({
+      label: label,
+      circle: true,
+      active: active,
+      buttonWidth: size,
+      buttonHeight: size,
+      fontSize: fontSize,
+      onActivate: onTap,
+      notifyFocusChanged: ((focused: boolean): void => {
+        this.setChildFocused(focused);
+      }),
+    })
+  }
+
+  /** Web phone player (360 vp reference): round minimise and close at the top right; at the bottom a thin progress track, the time
+   * centred under it, one row of previous / play / next / volume / subtitles and a second row of the quality and info buttons. */
   @Builder
   private touchBar(): void {
-
-    Column({ space: this.gap }) {
-      Row() {
-        ChromeButton({
-          label: (isTvMetrics() ? 'Back' : '<'),
-          buttonWidth: (isTvMetrics() ? BACK_BUTTON_WIDTH_TV : this.topButtonHeight),
-          buttonHeight: this.topButtonHeight,
-          onActivate: this.onBack,
-          notifyFocusChanged: ((focused: boolean): void => {
-      this.setChildFocused(focused);
-    }),
-        })
+    Column() {
+      Row({ space: 8 }) {
+        this.phoneButton('\u2921', PHONE_TOP_BUTTON, 16, true, this.onBack)
+        this.phoneButton('\u00D7', PHONE_TOP_BUTTON, 22, true, this.onBack)
       }
       .width('100%')
-      .justifyContent(FlexAlign.Start)
+      .justifyContent(FlexAlign.End)
+      .padding({ right: PHONE_SIDE + 5, top: PHONE_TOP })
 
-      Text(this.title).fontFamily(nunito(500))
-        .width('100%')
-        .fontSize(this.titleFontSize)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      Blank()
 
-      Column({ space: Spacing.xs }) {
+      Column({ space: PHONE_BAR_GAP }) {
         if (!this.isLive()) {
-          Stack({ alignContent: Alignment.Start }) {
-            Row()
-              .width('100%')
-              .height(PROGRESS_TRACK_HEIGHT)
-              .backgroundColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CHROME_TRACK_ALPHA))
-
-            Row()
-              .width(`${this.bufferedPercent()}%`)
-              .height(PROGRESS_TRACK_HEIGHT)
-              .backgroundColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CHROME_BUFFERED_ALPHA))
-
-            Row()
-              .width(`${this.progressPercent()}%`)
-              .height(PROGRESS_TRACK_HEIGHT)
-              .backgroundColor(toResourceColor(BRAND_PINK))
-          }
-          .width('100%')
-
-          Row() {
-            Text(formatClockMs(this.positionMs)).fontFamily(nunito(400)).fontSize(TIME_LABEL_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-            Text(('-' + formatClockMs(this.remainingMs()))).fontFamily(nunito(400)).fontSize(TIME_LABEL_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-          }
-          .width('100%')
-          .justifyContent(FlexAlign.SpaceBetween)
+          this.progressTrack(PHONE_TRACK_HEIGHT)
+          Text(formatClockMs(this.positionMs) + '  /  ' + formatClockMs(this.durationMs)).fontFamily(nunito(400))
+            .fontSize(PHONE_TIME_FONT_SIZE)
+            .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
         } else {
-          Row() {
-            Text(formatClockMs(this.positionMs)).fontFamily(nunito(400)).fontSize(TIME_LABEL_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-            Text('LIVE').fontFamily(nunito(700)).fontSize(TIME_LABEL_FONT_SIZE).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
-          }
-          .width('100%')
-          .justifyContent(FlexAlign.SpaceBetween)
+          Text('LIVE').fontFamily(nunito(700)).fontSize(PHONE_TIME_FONT_SIZE).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
         }
+        Row() {
+          this.phoneButton('\u23EE', PHONE_SEEK_SIZE, 14, this.canPrevious, this.onPrevious)
+          ChromeButton({
+            showGlyph: true,
+            circle: true,
+            ringWidth: 2,
+            isPlaying: this.isPlaying,
+            glyphSize: PHONE_PLAY_SIZE / 2.4,
+            buttonWidth: PHONE_PLAY_SIZE,
+            buttonHeight: PHONE_PLAY_SIZE,
+            onActivate: this.onTogglePlayPause,
+            notifyFocusChanged: ((focused: boolean): void => {
+              this.setChildFocused(focused);
+            }),
+          })
+          this.phoneButton('\u23ED', PHONE_SEEK_SIZE, 14, this.canNext, this.onNext)
+          this.phoneButton(this.muted ? 'Muted' : 'Vol', PHONE_SEEK_SIZE, 10, true, this.onToggleMute)
+          this.phoneButton('-10s', PHONE_SEEK_SIZE, 10, true, this.onSeekBack)
+          this.phoneButton('+10s', PHONE_SEEK_SIZE, 10, true, this.onSeekForward)
+          if (this.hasTracks) {
+            this.phoneButton('CC', PHONE_SEEK_SIZE, 11, true, this.onOpenTracks)
+          }
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.SpaceBetween)
+        .alignItems(VerticalAlign.Center)
+        Row({ space: PHONE_BAR_GAP }) {
+          if (this.qualityLabel.length > 0) {
+            Text(this.qualityLabel).fontFamily(nunito(700))
+              .fontSize(PHONE_TIME_FONT_SIZE)
+              .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+          }
+          this.phoneButton('i', PHONE_SEEK_SIZE, 14, true, this.onOpenInfo)
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.Center)
+        .alignItems(VerticalAlign.Center)
       }
       .width('100%')
-
-      Row({ space: this.gap }) {
-        ChromeButton({
-          label: '-10s',
-          buttonWidth: defaultChromeTransportBoxSize(),
-          buttonHeight: defaultChromeTransportBoxSize(),
-          onActivate: this.onSeekBack,
-          notifyFocusChanged: ((focused: boolean): void => {
-      this.setChildFocused(focused);
-    }),
-        })
-
-        ChromeButton({
-          showGlyph: true,
-          isPlaying: this.isPlaying,
-          glyphSize: this.playIconSize,
-          buttonWidth: defaultChromeTransportBoxSize(),
-          buttonHeight: defaultChromeTransportBoxSize(),
-          onActivate: this.onTogglePlayPause,
-          notifyFocusChanged: ((focused: boolean): void => {
-      this.setChildFocused(focused);
-    }),
-        })
-
-        ChromeButton({
-          label: '+10s',
-          buttonWidth: defaultChromeTransportBoxSize(),
-          buttonHeight: defaultChromeTransportBoxSize(),
-          onActivate: this.onSeekForward,
-          notifyFocusChanged: ((focused: boolean): void => {
-      this.setChildFocused(focused);
-    }),
-        })
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.Center)
+      .padding({ left: PHONE_SIDE, right: PHONE_SIDE, bottom: PHONE_BOTTOM })
     }
     .width('100%')
-    .padding({ left: this.paddingH, right: this.paddingH, top: this.paddingV, bottom: this.paddingV })
-    .linearGradient({
-      angle: 180,
-      colors: [
-        [toResourceColor(CHROME_GRADIENT_TOP), 0],
-        [toResourceColor(CHROME_GRADIENT_BOTTOM), 1],
-      ],
-    })
+    .height('100%')
     .opacity(this.chromeOpacity)
     .hitTestBehavior(this.visible ? HitTestMode.Default : HitTestMode.Transparent)
   }

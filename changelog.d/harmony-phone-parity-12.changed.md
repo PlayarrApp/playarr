@@ -1,0 +1,1 @@
+- HarmonyOS phone: series and film detail text rhythm, the movie action row sizes, the genre kicker and the next-up episode focus follow web; the wall seeds the test user's progress so Home's On deck is stable.
