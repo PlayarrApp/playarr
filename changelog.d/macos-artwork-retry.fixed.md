@@ -1,1 +1,0 @@
-- macOS: library artwork that fails to load is tried again, as on the web, instead of staying a text tile.

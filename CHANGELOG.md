@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS: library artwork that fails to load is tried again, as on the web, instead of staying a text tile.
+- macOS: the library page preview, alphabet rail and focused card ring follow the web light layout.
 - Xbox: the title-page header puts the title's name beside the page title after a divider, as the web.
 - macOS: the library page preview, alphabet rail and focused card ring follow the web light layout.
 - Xbox: focused cards get the web's focus shadow; page titles and header subtitles use the web's letter-spacing.
