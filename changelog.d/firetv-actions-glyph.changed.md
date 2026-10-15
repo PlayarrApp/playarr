@@ -1,0 +1,1 @@
+- Fire TV: the title actions drawer's Play glyph is drawn in the brand pink instead of an orange emoji.

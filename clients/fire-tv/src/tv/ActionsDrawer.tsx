@@ -130,9 +130,14 @@ function ActionRow({glyph, label, y, first, onPress, onReveal}: {glyph: string; 
       style={{position: 'absolute', left: u(46), top: u(y), width: u(268), height: u(ROW_H), borderRadius: u(14), backgroundColor: colour.surfaceSoft, flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(18)}}
     >
       <View style={{width: u(42)}}>
-        <T size={19.52} weight={600} color="#cf3157">
-          {glyph}
-        </T>
+        {glyph === '▶' ? (
+          // Vega draws U+25B6 as a colour emoji; a drawn triangle keeps web's pink text glyph.
+          <View style={{width: 0, height: 0, marginLeft: u(2), borderTopWidth: u(8), borderBottomWidth: u(8), borderLeftWidth: u(13), borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#cf3157'}} />
+        ) : (
+          <T size={19.52} weight={600} color="#cf3157">
+            {glyph}
+          </T>
+        )}
       </View>
       <T size={19.2} weight={700} color={colour.ink} lines={1}>
         {label}
