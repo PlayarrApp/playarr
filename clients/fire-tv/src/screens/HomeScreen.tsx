@@ -4,6 +4,7 @@
  * (the merged "Start watching" rail first, then the server's rails, then the sites rails).
  */
 import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {readArtworkSize, type ArtworkSize} from '../lib/libraryView';
 import {readHomeView} from './settings/panels';
 import {Animated, Easing, findNodeHandle, Pressable, View} from 'react-native';
 import {useNavigation, type NavigationProp, type ParamListBase} from '@amazon-devices/react-navigation__native';
@@ -52,8 +53,20 @@ export interface HomeLayout {
   cardH: number;
   cover: boolean;
 }
-const THUMBNAIL_LAYOUT: HomeLayout = {railPitch: 365.9, firstHeadingY: 402, cardPitch: 352.1, cardW: 327.2, artH: 184.05, cardH: 227.2, cover: false};
-const COVER_LAYOUT: HomeLayout = {railPitch: 468.7, firstHeadingY: 351, cardPitch: 216.2, cardW: 191.3, artH: 286.9, cardH: 330.05, cover: true};
+/** Web's `--card-w` / `--card-w-cover`: the 62 vw rail less its padding, split into 3 (thumbnail) or 5 (cover) columns, one more when small and one fewer when large. */
+const COLUMNS: Record<'thumbnail' | 'cover', Record<ArtworkSize, number>> = {thumbnail: {small: 4, medium: 3, large: 2}, cover: {small: 6, medium: 5, large: 4}};
+const GRID_GAP = {thumbnail: 25.92, cover: 19.2};
+const RAIL_PAD = 156.96;
+const HOME_CARD_GAP = 24.96;
+const COPY_H = 43.15;
+export function homeLayout(view: 'thumbnail' | 'cover', size: ArtworkSize): HomeLayout {
+  const cols = COLUMNS[view][size];
+  const cardW = (1190.4 - RAIL_PAD - (cols - 1) * GRID_GAP[view]) / cols;
+  const artH = view === 'cover' ? cardW * 1.5 : (cardW * 9) / 16;
+  const cardH = artH + COPY_H;
+  // The stack keeps its centre: a taller card moves the first heading up by half the extra height.
+  return {railPitch: cardH + 138.7, firstHeadingY: 402 - (cardH - 227.2) / 2, cardPitch: cardW + HOME_CARD_GAP, cardW, artH, cardH, cover: view === 'cover'};
+}
 /**
  * The web snaps each card to a whole pixel from its fractional position (x = 881.6 + n * pitch); the device's row layout
  * rounds every card's width and margin separately and drifts by a pixel per card, so cards are placed one by one instead.
@@ -172,8 +185,12 @@ export function HomeScreen(): React.ReactElement {
   const [focus, setFocus] = useState<{rail: number; item: number}>({rail: 0, item: 0});
   // Settings > Appearance > Home screen artwork; re-read whenever Home is shown again.
   const [homeView, setHomeView] = useState(readHomeView);
-  useEffect(() => navigation.addListener('focus', () => setHomeView(readHomeView())), [navigation]);
-  const layout = homeView === 'cover' ? COVER_LAYOUT : THUMBNAIL_LAYOUT;
+  const [artworkSize, setArtworkSize] = useState<ArtworkSize>(() => readArtworkSize() ?? 'medium');
+  useEffect(() => navigation.addListener('focus', () => {
+    setHomeView(readHomeView());
+    setArtworkSize(readArtworkSize() ?? 'medium');
+  }), [navigation]);
+  const layout = useMemo(() => homeLayout(homeView, artworkSize), [homeView, artworkSize]);
   const [actionsWork, setActionsWork] = useState<Work | null>(null);
   const [playlistWork, setPlaylistWork] = useState<Work | null>(null);
   const onTop = useOnTop();
@@ -354,7 +371,7 @@ const WINDOW_BEFORE = 1;
 const WINDOW_AFTER = 5;
 
 /** The cards to mount for a rail scrolled by `scrolled` px: `[first, last]` indices, always including the focused card. */
-export function railWindow(count: number, scrolled: number, focusedItem: number, pitch = THUMBNAIL_LAYOUT.cardPitch): [number, number] {
+export function railWindow(count: number, scrolled: number, focusedItem: number, pitch = 352.1): [number, number] {
   const first = Math.floor(scrolled / pitch);
   let lo = Math.max(0, first - WINDOW_BEFORE);
   let hi = Math.min(count - 1, first + WINDOW_AFTER);

@@ -46,6 +46,26 @@ function coerceView(kind: LibraryKind, view: LibraryView | undefined): LibraryVi
 
 const key = (name: string, kind: LibraryKind) => `playarr.${name}.${kind}`;
 
+/** Web's one artwork size for Home, Library, Search and more (Settings > Appearance); the per-kind keys are the old Library-only choice. */
+export const ARTWORK_SIZE_KEY = "playarr.artworkSize";
+
+export function readArtworkSize(storage: Pick<Storage, "getItem"> | null = defaultStorage()): ArtworkSize | undefined {
+  try {
+    return pick(SIZES, storage?.getItem(ARTWORK_SIZE_KEY));
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeArtworkSize(size: ArtworkSize, storage: (Pick<Storage, "setItem"> & Partial<Pick<Storage, "removeItem">>) | null = defaultStorage()): void {
+  try {
+    if (size === LIBRARY_VIEW_DEFAULTS.size) storage?.removeItem?.(ARTWORK_SIZE_KEY);
+    else storage?.setItem(ARTWORK_SIZE_KEY, size);
+  } catch {
+    // Storage unavailable: the choice lasts for this session only.
+  }
+}
+
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
 function defaultStorage(): StorageLike | null {
@@ -67,7 +87,7 @@ export function storedLibraryView(kind: LibraryKind, storage: StorageLike | null
   };
   return {
     view: coerceView(kind, pick(VIEWS, read("libraryView"))) ?? LIBRARY_VIEW_DEFAULTS.view,
-    size: pick(SIZES, read("artworkSize")) ?? LIBRARY_VIEW_DEFAULTS.size,
+    size: readArtworkSize(storage as Pick<Storage, "getItem">) ?? pick(SIZES, read("artworkSize")) ?? LIBRARY_VIEW_DEFAULTS.size,
     sort: pick(SORTS, read("librarySort")) ?? LIBRARY_VIEW_DEFAULTS.sort,
     order: pick(ORDERS, read("libraryOrder")) ?? LIBRARY_VIEW_DEFAULTS.order,
   };
@@ -82,6 +102,7 @@ export function rememberLibraryView(
   for (const field of LIBRARY_VIEW_PARAMS) {
     const value = patch[field];
     if (value === undefined) continue;
+    if (field === "size") writeArtworkSize(value as ArtworkSize, storage);
     try {
       storage?.setItem(key(names[field], kind), value);
     } catch {

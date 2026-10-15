@@ -10,12 +10,12 @@ describe('library view', () => {
     expect(storedLibraryView('movie', memory())).toEqual(LIBRARY_VIEW_DEFAULTS);
   });
 
-  it('remembers each choice per kind', () => {
+  it('remembers view, sort and order per kind, and the artwork size for every kind (web: one global size)', () => {
     const storage = memory();
     rememberLibraryView('movie', {view: 'list', size: 'small'}, storage);
     rememberLibraryView('series', {sort: 'date_added', order: 'desc'}, storage);
     expect(storedLibraryView('movie', storage)).toEqual({...LIBRARY_VIEW_DEFAULTS, view: 'list', size: 'small'});
-    expect(storedLibraryView('series', storage)).toEqual({...LIBRARY_VIEW_DEFAULTS, sort: 'date_added', order: 'desc'});
+    expect(storedLibraryView('series', storage)).toEqual({...LIBRARY_VIEW_DEFAULTS, size: 'small', sort: 'date_added', order: 'desc'});
   });
 
   it('ignores stored values it does not know and keeps Cover Flow to artists', () => {

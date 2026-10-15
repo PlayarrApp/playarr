@@ -19,6 +19,8 @@ import {Dropdown} from '../../tv/Dropdown';
 import {Button, Divider, Field, FormLabel, Hint, Muted, SectionTitle, Segmented} from '../../tv/forms';
 import {Box, T, u} from '../../tv/kit';
 
+import {readArtworkSize, writeArtworkSize, type ArtworkSize} from '../../lib/libraryView';
+
 const HOME_VIEW_KEY = 'playarr.homeView';
 
 export function readHomeView(): 'thumbnail' | 'cover' {
@@ -41,6 +43,7 @@ export function AppearancePanel(): React.ReactElement {
   const {preference, setPreference, colour} = useTheme();
   const {t} = useLanguage();
   const [homeView, setHomeView] = useState(readHomeView);
+  const [artworkSize, setArtworkSize] = useState<ArtworkSize>(() => readArtworkSize() ?? 'medium');
   const label = (id: ThemePreference): string =>
     id === 'light' ? t('components.themeDropdown.optionLight') : id === 'dark' ? t('components.themeDropdown.optionDark') : t('components.themeDropdown.optionSystem');
   return (
@@ -74,6 +77,28 @@ export function AppearancePanel(): React.ReactElement {
           if (typeof localStorage === 'undefined') return;
           if (next === 'thumbnail') localStorage.removeItem(HOME_VIEW_KEY);
           else localStorage.setItem(HOME_VIEW_KEY, next);
+        }}
+      />
+      <Gap h={30.2} />
+      <Divider w={1042.3} />
+      <Gap h={30.2} />
+      <SectionTitle>{t('settings.appearance.artworkSizeTitle')}</SectionTitle>
+      <Gap h={5.6} />
+      <T size={13.12} weight={400} lh={20.3} color={colour.inkMuted}>
+        {t('settings.appearance.artworkSizeDescription')}
+      </T>
+      <Gap h={16.2} />
+      <Segmented
+        accessibilityLabel={t('settings.appearance.artworkSizeAriaLabel')}
+        value={artworkSize}
+        options={[
+          {id: 'small', label: t('pages.library.sizeSmall')},
+          {id: 'medium', label: t('pages.library.sizeMedium')},
+          {id: 'large', label: t('pages.library.sizeLarge')},
+        ]}
+        onChange={(next) => {
+          setArtworkSize(next as ArtworkSize);
+          writeArtworkSize(next as ArtworkSize);
         }}
       />
     </PanelBox>
