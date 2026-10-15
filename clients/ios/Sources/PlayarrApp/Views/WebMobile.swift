@@ -470,6 +470,15 @@ struct WMChipShadow: ViewModifier {
     }
 }
 
+/// Web detail action pills (`.tv-detail-playback-settings`): no border, `0 14px 38px` at 12% in light.
+struct WMPillShadow: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        content.shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(scheme == .dark ? 0 : 0.12), radius: 19, y: 14)
+    }
+}
+
 /// Soft drop shadow under card artwork.
 struct WMCardShadow: ViewModifier {
     @Environment(\.colorScheme) private var scheme
@@ -481,6 +490,7 @@ struct WMCardShadow: ViewModifier {
 
 extension View {
     func wmChipShadow() -> some View { modifier(WMChipShadow()) }
+    func wmPillShadow() -> some View { modifier(WMPillShadow()) }
     func wmCardShadow() -> some View { modifier(WMCardShadow()) }
 }
 

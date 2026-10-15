@@ -437,7 +437,7 @@ struct WMDetailPage: View {
         }
         .frame(width: width, height: height)
         .background(fill, in: Capsule())
-        .wmChipShadow()
+        .wmPillShadow()
     }
 
     private var actions: some View {

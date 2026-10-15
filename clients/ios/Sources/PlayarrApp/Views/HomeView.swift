@@ -111,7 +111,7 @@ struct HomeView: View {
     private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(rail.title, 16, 610, lh: 24, ls: -0.48).padding(.horizontal, 16)
-            WMFadingRail(scrollTo: scrollTarget(rail, first: first), scrollAnchor: ParityLaunch.focus == "last" ? .trailing : .leading) {
+            WMFadingRail(scrollTo: scrollTarget(rail, first: first), scrollAnchor: ParityLaunch.focus == "last" ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(Array(rail.works.enumerated()), id: \.element.id) { index, work in
                         workLink(work) {

@@ -15,6 +15,8 @@ private struct WMPanelFrame<Content: View>: View {
             WMText(kicker.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1).offset(x: 21, y: 17 + WM.safeTop)
             WMText(title, 24, 520, lh: 34, ls: -1).offset(x: 21, y: 33 + WM.safeTop)
             HStack { Spacer(); WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose) }
+                // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
+                .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
                 .padding(.trailing, 21).offset(y: 22 + WM.safeTop)
             content().padding(.horizontal, 21).padding(.top, 95 + WM.safeTop)
         }
@@ -40,14 +42,17 @@ private struct WMChoice: View {
             }
             .foregroundStyle(selected ? WM.page : WM.inkSoft)
             .frame(maxWidth: .infinity).frame(height: height)
-            .background(selected ? WM.ink : (scheme == .light ? WM.ink.opacity(0.12) : WM.chip.opacity(0.66)), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
+            // Web `.tv-filter-choice-grid button`: surface-soft at 64% with a 1 px border of line at 76%; the active one is solid ink.
+            .background(selected ? WM.ink : WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
+            .scaleEffect(selected ? 1.025 : 1)
         }
         .buttonStyle(.plain)
     }
 }
 
 private struct WMLanguageBox: View {
+    @Environment(\.colorScheme) private var scheme
     let label: String
     var body: some View {
         HStack {
@@ -57,8 +62,9 @@ private struct WMLanguageBox: View {
         }
         .padding(.horizontal, 19)
         .frame(height: 58)
-        .background(WM.chip.opacity(0.4), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(0.3), lineWidth: 1.5))
+        // Web `.ui-select-trigger`: the same fill and 1 px border as the filter chips.
+        .background(WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
         .accessibilityLabel(label)
     }
 }

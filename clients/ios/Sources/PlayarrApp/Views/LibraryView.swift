@@ -421,8 +421,9 @@ struct LibraryView: View {
         .task(id: viewModel.works.count) {
             #if DEBUG
             guard ParityLaunch.focus == "last", let last = viewModel.works.last else { return }
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            reader.scrollTo(last.id, anchor: .bottom)
+            // The grid pages in as it nears the end: wait for the last page to settle, then scroll to its last card.
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            reader.scrollTo(last.id, anchor: UnitPoint(x: 0.5, y: 0.8)) // above the nav pill, so the ring is in frame
             #endif
         }
         }
