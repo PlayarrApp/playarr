@@ -4,6 +4,8 @@ import UIKit
 
 struct LibraryView: View {
     @State private var viewModel: LibraryViewModel
+    /// Hardware-keyboard focus (Tab and arrows): the ring follows it, and starts on the first card as on the web.
+    @FocusState private var focusedWork: UUID?
     let apiClient: PlayarrAPIClient
     let downloadRepository: DownloadRepository
     let title: String
@@ -197,9 +199,12 @@ struct LibraryView: View {
                                         downloadRepository: downloadRepository
                                     )
                                 } label: {
-                                    WMSearchCard(work: work, apiClient: apiClient, focused: index == 0)
+                                    WMSearchCard(work: work, apiClient: apiClient, focused: focusedWork.map { $0 == work.id } ?? false)
                                 }
                                 .buttonStyle(.plain)
+                                .focusable()
+                                .focused($focusedWork, equals: work.id)
+                                .focusEffectDisabled()
                                 .accessibilityIdentifier("search-work-\(work.id.uuidString)")
                                 .accessibilityLabel(work.title)
                             }
@@ -397,10 +402,13 @@ struct LibraryView: View {
                             downloadRepository: downloadRepository
                         )
                     } label: {
-                        WMLibraryCard(work: work, apiClient: apiClient, focused: phoneGridFocused(index: index), cover: viewModel.viewMode == .cover)
+                        WMLibraryCard(work: work, apiClient: apiClient, focused: focusedWork.map { $0 == work.id } ?? phoneGridFocused(index: index), cover: viewModel.viewMode == .cover)
                     }
                     .id(work.id)
                     .buttonStyle(.plain)
+                    .focusable()
+                    .focused($focusedWork, equals: work.id)
+                    .focusEffectDisabled()
                     .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                     .task {
                         if work.id == viewModel.works.last?.id { await viewModel.loadMore() }

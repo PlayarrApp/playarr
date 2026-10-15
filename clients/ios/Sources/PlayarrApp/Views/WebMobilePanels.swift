@@ -98,12 +98,18 @@ extension Text {
 }
 
 /// Settings detail page: dark back button, the section name over its description, and the panel.
+private struct WMPanelScrollKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct WMPanelPage<Content: View>: View {
     let kicker: String
     let subtitle: String
     let height: CGFloat
     let onBack: () -> Void
     @ViewBuilder let content: () -> Content
+    @State private var scrolled: CGFloat = 0
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -113,9 +119,33 @@ struct WMPanelPage<Content: View>: View {
                     content()
                 }
                 .frame(width: 390, height: height, alignment: .topLeading)
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: WMPanelScrollKey.self, value: -geo.frame(in: .named("wm-panel")).minY)
+                })
             }
+            .coordinateSpace(name: "wm-panel")
+            .onPreferenceChange(WMPanelScrollKey.self) { scrolled = $0 }
             .scrollIndicators(.hidden)
             .keepInsideSafeArea()
+            // Web (data-fade-clear): the scroller is clipped at the header's bottom edge, with a 38 pt fade below it, so rows
+            // scroll away under the header and never show behind the back button and title.
+            .mask {
+                GeometryReader { proxy in
+                    let clear = min(0.9, (WM.topInset + 48) / max(1, proxy.size.height))
+                    let ramp = min(0.2, 38 / max(1, proxy.size.height)) * min(1, max(0, scrolled / 38)) // the fade grows with the scrolled distance
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0), .init(color: .clear, location: clear),
+                            .init(color: .black.opacity(0.156), location: clear + ramp * 0.25),
+                            .init(color: .black.opacity(0.5), location: clear + ramp * 0.5),
+                            .init(color: .black.opacity(0.844), location: clear + ramp * 0.75),
+                            .init(color: .black, location: clear + ramp), .init(color: .black, location: 1),
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                }
+                .ignoresSafeArea()
+            }
             Button(action: onBack) {
                 Text("\u{2190}")
                     .font(WM.font(12.8, 720))

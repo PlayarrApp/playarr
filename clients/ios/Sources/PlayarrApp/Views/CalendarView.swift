@@ -379,6 +379,7 @@ struct CalendarView: View {
             }
         }
         .buttonStyle(.plain)
+        .wmKeyFocus(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func calendarTimeLabel24(_ entry: CalendarEntry) -> String {

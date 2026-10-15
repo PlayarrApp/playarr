@@ -572,6 +572,25 @@ struct WMRailCard: View {
     }
 }
 
+/// Hardware-keyboard focus for a control: focusable with the system halo off, and the web's 3 pt ink ring 2 pt outside the
+/// control's shape while it holds focus (the same ring the Calendar Today button draws).
+struct WMKeyFocus<S: Shape>: ViewModifier {
+    let shape: S
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .focusable()
+            .focused($focused)
+            .focusEffectDisabled()
+            .overlay { if focused { shape.stroke(WM.ink, lineWidth: 3).padding(-3.7).allowsHitTesting(false) } }
+    }
+}
+
+extension View {
+    func wmKeyFocus<S: Shape>(_ shape: S) -> some View { modifier(WMKeyFocus(shape: shape)) }
+}
+
 /// Web focus ring (`--card-glow`): a 3 pt ring flush against the art plus a filled glow, `0 0 20px 4px` at 45% (a CSS blur
 /// of 20 is a SwiftUI radius of 10), drawn only outside the art as a box-shadow is. An overlay, so nothing shifts.
 struct WMFocusRing: View {
@@ -644,6 +663,7 @@ struct WMSearchCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
+                .overlay { if focused { WMFocusRing(width: 173, height: 97.3, cornerRadius: 8) } }
             WMText(work.title, 12.16, 650, lh: 18.24).padding(.top, 11)
             WMText(work.singularKindYearLabel.uppercased(), 9.28, 720, color: WM.muted, lh: 13.92, ls: 0.3)
                 .padding(.top, 2)

@@ -201,6 +201,8 @@ struct WMDetailPage: View {
 
     @State private var model: WMDetailModel
     @State private var showingDownload = false
+    /// Hardware-keyboard focus on an episode card; the selected episode shows the ring until a key moves it.
+    @FocusState private var focusedEpisode: UUID?
     @State private var showingPlayback = false
 
     init(
@@ -458,6 +460,7 @@ struct WMDetailPage: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .wmKeyFocus(Capsule())
                     .disabled(downloadCandidates.isEmpty)
                     .offset(x: 0, y: 2)
                     Button { showingPlayback = true } label: {
@@ -467,6 +470,7 @@ struct WMDetailPage: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .wmKeyFocus(Capsule())
                     .disabled(playMediaFileID == nil)
                     .offset(x: 112, y: 2)
                     playLink
@@ -502,6 +506,7 @@ struct WMDetailPage: View {
                 )
             }
             .buttonStyle(.plain)
+            .wmKeyFocus(Capsule())
         }
     }
 
@@ -529,6 +534,7 @@ struct WMDetailPage: View {
                 )
             }
             .buttonStyle(.plain)
+            .wmKeyFocus(Capsule())
         } else {
             pill(
                 width: 130.1, fill: WM.ink.opacity(0.4), glyph: "▶\u{FE0E}", glyphSize: 9.52,
@@ -551,6 +557,7 @@ struct WMDetailPage: View {
                 glyphColor: WM.pink, label: "Add to Playlist", labelSize: 8, labelColor: WM.ink, gap: 9
             )
         }
+        .wmKeyFocus(Capsule())
     }
 
     private func watchlistButton(width: CGFloat) -> some View {
@@ -562,6 +569,7 @@ struct WMDetailPage: View {
             )
         }
         .buttonStyle(.plain)
+        .wmKeyFocus(Capsule())
     }
 
     // MARK: Tracks
@@ -608,7 +616,7 @@ struct WMDetailPage: View {
             WMFadingRail {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(season.episodes, id: \.id) { episode in
-                        episodeCard(episode, season: season.season, focused: episode.id == selectedEpisode?.detail.id)
+                        episodeCard(episode, season: season.season, focused: focusedEpisode.map { $0 == episode.id } ?? (episode.id == selectedEpisode?.detail.id))
                     }
                 }
                 .padding(.horizontal, 16)
@@ -668,6 +676,9 @@ struct WMDetailPage: View {
                     )
                 } label: { card }
                 .buttonStyle(.plain)
+                .focusable()
+                .focused($focusedEpisode, equals: episode.id)
+                .focusEffectDisabled()
             } else {
                 card
             }

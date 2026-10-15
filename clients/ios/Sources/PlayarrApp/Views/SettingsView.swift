@@ -63,6 +63,8 @@ struct SettingsView: View {
 
     let environment: AppEnvironment
     @AppStorage("com.playarr.ios.appearance") private var appearance = "system"
+    /// Hardware-keyboard focus on the Preferences index rows; the first row shows it until a key moves it.
+    @FocusState private var focusedSection: Section?
     @AppStorage(WMArtwork.homeViewKey) private var homeView = "thumbnail"
     @AppStorage(WMArtwork.sizeKey) private var artworkSize = "medium"
     @AppStorage("com.playarr.ios.language") private var language = "system"
@@ -143,9 +145,10 @@ struct SettingsView: View {
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
                     ForEach(Array(Section.allCases.enumerated()), id: \.element.id) { index, section in
+                        let rowFocused = focusedSection.map { $0 == section } ?? (index == 0)
                         Button { selected = section } label: {
                             ZStack(alignment: .topLeading) {
-                                if index == 0 { WM.artFill }
+                                if rowFocused { WM.artFill }
                                 WMText(section.number, 8.96, 760, color: WM.muted, lh: 13.44).offset(x: 12, y: 15.4)
                                 WMText(section.title, 16, 480, lh: 18.4, ls: -0.56)
                                     .frame(width: 257, alignment: .leading)
@@ -159,13 +162,16 @@ struct SettingsView: View {
                                     .offset(x: 56, y: 46.4)
                                 Text("→")
                                     .font(WM.font(20.8))
-                                    .foregroundStyle(index == 0 ? WM.ink : WM.muted)
-                                    .offset(x: index == 0 ? 330 : 325, y: 28)
+                                    .foregroundStyle(rowFocused ? WM.ink : WM.muted)
+                                    .offset(x: rowFocused ? 330 : 325, y: 28)
                             }
                             .frame(width: 358, height: 88, alignment: .topLeading)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .focusable()
+                        .focused($focusedSection, equals: section)
+                        .focusEffectDisabled()
                     }
                 }
                 .padding(.leading, 16)

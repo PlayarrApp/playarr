@@ -27,6 +27,8 @@ struct HomeView: View {
     let apiClient: PlayarrAPIClient
     let downloadRepository: DownloadRepository
     @State private var downloadTarget: Work?
+    /// Hardware-keyboard focus (Tab and arrows): the ring follows it, and starts on the first card as on the web.
+    @FocusState private var focusedWork: UUID?
     @Environment(\.colorScheme) private var scheme
     @AppStorage(WMArtwork.homeViewKey) private var homeView = "thumbnail"
     @AppStorage(WMArtwork.sizeKey) private var artworkSize = "medium"
@@ -121,7 +123,7 @@ struct HomeView: View {
                                 work: work,
                                 apiClient: apiClient,
                                 unseen: viewModel.progressByWorkID[work.id] == nil,
-                                focused: phoneRailFocused(first: first, index: index, count: rail.works.count),
+                                focused: focusedWork.map { $0 == work.id } ?? phoneRailFocused(first: first, index: index, count: rail.works.count),
                                 cover: homeView == "cover"
                             )
                         }
@@ -337,6 +339,9 @@ struct HomeView: View {
             content()
         }
         .buttonStyle(.plain)
+        .focusable()
+        .focused($focusedWork, equals: work.id)
+        .focusEffectDisabled()
         .accessibilityIdentifier(homeWorkAccessibilityID(work))
         .accessibilityLabel(work.title)
         .contextMenu {
