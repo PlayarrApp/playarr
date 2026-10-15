@@ -265,6 +265,7 @@ Steps only the repository owner can perform.
 | 10102 | HarmonyOS TV and phone parity on GitHub-hosted Windows runners (Previewer with Mesa llvmpipe) while the MacBook travels | in_progress | parity-harmony | | | 2026-10-15 18:00 ICT | Owner request. Hosted HAP compile already runs on PRs (#836). ETA reset by coordinator 2026-10-14. |
 | 10103 | Apple (tvOS, macOS, iPhone, iPad) parity and streams on GitHub-hosted runners while the MacBook travels: tvOS and macOS show an error screen after sign-in, tailnet DNS | in_progress | parity-apple | | | 2026-10-15 18:00 ICT | Owner request. Hosted Apple wall workflow merged in #777; open: error screen after sign-in on tvOS and macOS, tailnet DNS. ETA reset by coordinator 2026-10-14. |
 | 10300 | Fire TV: page header as web (title, divider, subtitle side by side; subtitle not pink) | in_review | parity-firetv | firetv-page-header | | 2026-10-15 12:00 ICT | PR open: #1356 |
+| 10371 | Fire TV: title actions drawer rows as web (68 px rows, larger label) | in_review | parity-firetv | firetv-focus-crop-audit | | 2026-10-16 12:00 ICT | PR open: #1366 (draft, device check pending) |
 
 ## 6. Web accessibility AAA (2026-10-09)
 
@@ -551,6 +552,7 @@ Steps only the repository owner can perform.
 | 10318 | Xbox Left from a Home card enters the rail at web's item (art level, not the whole container) | in_progress | parity-xbox | xbox-rail-entry | | 2026-10-15 22:00 ICT | Web picks Music (nav:5) from the first On-deck card; Xbox picked Playlists because the container's centre includes the title and caption. Not yet verified on the VM (host I/O pause). |
 | 10302 | Harmony TV Home hero copy: meta and synopsis offsets as web | done | parity-harmony | harmony-home-hero-offsets | 5.10102 | 2026-10-15 18:00 ICT | PR open: #1364. Meta 4 vp higher, synopsis 1 vp higher than the Library panel, Home only (rows measured on the 2026-10-15 web refs). Film-detail rails and light music/series: no card geometry gap found (within 2 px); film-detail Cast and chapter label differences need a capture with credits loaded. PR #1364 merged 2026-10-15. |
 | 10319 | Xbox Profiles as web: selected look, gear and Sign out, add tile, Theme and Language selectors, Clients | in_progress | parity-xbox | xbox-profiles-chrome | | 2026-10-15 22:00 ICT | Web reference shows one profile plus the add tile; Check for updates is Android TV only and is left out. Not yet verified on the VM (host I/O pause). |
+| 10320 | Xbox Calendar week at web's type size, card size and row pitch | in_progress | parity-xbox | xbox-calendar-week-sizes | | 2026-10-15 22:00 ICT | Web week: 440 px columns on a 460 px pitch, cards 106 px tall on a 121 px pitch, 19 px title and line, 12.7 px meta, 40x60 posters. Measured from the 15 Oct capture; before and after crops pending the VM (host I/O pause). Agenda has the same undersized text and is not touched here. |
 
 ## 18. Public repository readiness (2026-10-05)
 

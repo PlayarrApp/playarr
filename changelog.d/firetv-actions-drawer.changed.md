@@ -1,1 +1,0 @@
-- Fire TV: the title actions drawer uses web's 68 px rows, 82 px pitch, 14 px radius and larger labels.

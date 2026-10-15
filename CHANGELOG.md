@@ -637,6 +637,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: the title actions drawer uses web's 68 px rows, 82 px pitch, 14 px radius and larger labels.
+- Xbox: Calendar week cards and headings use the web's sizes, spacing and pitch.
 - Xbox: the profile picker shows the web's selected look, gear and Sign out, an add-profile tile, Theme and Language selectors and a Clients link.
 - Android TV: the page header subtitle sits beside the title after a divider (wrapping under a rule only when it does not fit), detail action pills take the hover look on focus, the library grid starts on web's pixel column, and the Preferences section name follows the web header.
 - Fire TV: the page header shows the title and subtitle side by side with a divider (wrapping under the title only when there is no room), and the subtitle is no longer pink, as the web does.

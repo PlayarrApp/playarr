@@ -1,1 +1,0 @@
-- Xbox: Calendar week cards and headings use the web's sizes, spacing and pitch.
