@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: the profile picker's selected avatar and ring scale together, the add tile's caption is no longer clipped, and the action pills sit at web's height.
 - Xbox: the profile picker's Add tile asks before signing out; Cancel keeps the session.
 - Xbox: LEFT from a card enters the rail at the item level with the card art, as the web.
 - On iPad, the navigation rail has the web's three pills (Downloads and Search, the four browse tabs, the four personal tabs) and a separate profile tile; the Library preview art is as faint as the web's in dark, and its title, meta line and synopsis follow the web's size, line pitch and ink.

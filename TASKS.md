@@ -557,6 +557,7 @@ Steps only the repository owner can perform.
 | 10348 | Harmony TV film detail: chapter cards and rail heading gap as web | done | parity-harmony | harmony-film-detail-chapters | 5.10102 | 2026-10-15 18:00 ICT | PR open: #1370. Chapter label as web's tv-episode-copy (time then title on one line, number over the art), heading-to-cards gap as the series seasons. PR #1370 merged 2026-10-15. |
 | 10361 | Xbox profile picker: Add tile confirms before signing out | in_progress | parity-xbox | xbox-add-profile-confirm | | 2026-10-15 22:00 ICT | Follow-up to 10319. Pairing alongside the live session (swap on success) is the larger option and is not built; the Add tile asks first and Cancel leaves the session intact. Not yet checked on the VM (host I/O pause). |
 | 10349 | Harmony hosted captures: build patch anchor repaired after #1370, five attempts, smaller poster JPEGs | done | parity-harmony | harmony-capture-retries | 5.10102 | 2026-10-15 18:00 ICT | PR open: #1374. #1370 added a second episodeNumberOverlay line to Detail.ets, so the capture's Detail patch (assert count 1) failed and every hosted Harmony build broke. PR #1374 merged 2026-10-15. |
+| 10362 | Xbox profile picker polish: avatar ring concentric, add-tile caption unclipped, pill row pitch | in_progress | parity-xbox | xbox-profiles-polish | | 2026-10-15 22:00 ICT | Follow-up to 10319 from the VM check. |
 
 ## 18. Public repository readiness (2026-10-05)
 

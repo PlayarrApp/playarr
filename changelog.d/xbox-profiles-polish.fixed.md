@@ -1,1 +1,0 @@
-- Xbox: the profile picker's selected avatar and ring scale together, the add tile's caption is no longer clipped, and the action pills sit at web's height.
