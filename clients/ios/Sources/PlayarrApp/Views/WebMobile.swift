@@ -536,7 +536,7 @@ enum WMArtwork {
     /// Web phone card: (viewport - 16 gutter - 52 letter-rail pad - 12 per gap) / columns.
     static var cardWidth: CGFloat {
         let n = CGFloat(columns)
-        return max(110, ((UIScreen.main.bounds.width - 16 - 52 - 12 * (n - 1)) / n).rounded())
+        return ((UIScreen.main.bounds.width - 16 - 52 - 12 * (n - 1)) / n).rounded() // web --card-w has no minimum; columns come from --card-cols
     }
     static func artHeight(cover: Bool) -> CGFloat { cardWidth * (cover ? 3 / 2 : 9 / 16) }
 }
