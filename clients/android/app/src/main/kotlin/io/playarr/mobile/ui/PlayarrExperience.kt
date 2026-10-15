@@ -3018,7 +3018,8 @@ private fun ExperienceHomeScreen(
                             start = railGutter,
                             // Web: the first rail heading at y 402 and rail headings 365.9 dp apart with the poster-size cards.
                             top = if (isTelevision) 389.9.dp * homeStageVerticalScale() else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
-                            bottom = if (isTelevision) 120.dp else 98.dp,
+                            // Web `.tv-home-rails` padding-block is half the viewport on both ends, so the last rail can reach the same anchor as the first.
+                            bottom = if (isTelevision) 540.dp * homeStageVerticalScale() else 98.dp,
                         ),
                         verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 52.8.dp else webVu(38f, 5f, 64f) - 1.2.dp),
                     ) {
