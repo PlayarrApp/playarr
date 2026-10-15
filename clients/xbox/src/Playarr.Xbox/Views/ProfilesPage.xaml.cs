@@ -223,13 +223,13 @@ namespace Playarr.Xbox.Views
             var halo = new Canvas { Width = 0, Height = 0, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
             for (var k = 0; k < 5; k++)
             {
-                var grow = 4 + k * 5;
+                var grow = 2 + k * 1.2; // inside the tile button's 8 px padding, or its bounds clip the glow
                 var glow = new Ellipse
                 {
                     Width = AvatarSize + 2 * grow,
                     Height = AvatarSize + 2 * grow,
-                    Stroke = new SolidColorBrush(Color.FromArgb((byte)(0x2A - k * 5), 0xEA, 0xA6, 0xB6)),
-                    StrokeThickness = 5,
+                    Stroke = new SolidColorBrush(Color.FromArgb((byte)(0x38 - k * 10), 0xEA, 0xA6, 0xB6)),
+                    StrokeThickness = 1.6,
                 };
                 Canvas.SetLeft(glow, -grow);
                 Canvas.SetTop(glow, -grow);

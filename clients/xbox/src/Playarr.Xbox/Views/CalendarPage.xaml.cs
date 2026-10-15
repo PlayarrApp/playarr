@@ -472,7 +472,14 @@ namespace Playarr.Xbox.Views
             {
                 var day = start.AddDays(d);
                 var column = new StackPanel { Width = 440, Spacing = 15 };
-                column.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 16.6, FontWeights.SemiBold, "PlayarrInk", new Thickness(0, 0, 0, 4)));
+                var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+                heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 16.6, FontWeights.SemiBold, "PlayarrInk"));
+                if (day == DateTime.Today)
+                {
+                    heading.Children.Add(Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color));
+                }
+
+                column.Children.Add(heading);
                 if (byDay.TryGetValue(day, out var entries))
                 {
                     foreach (var entry in entries)
