@@ -1,6 +1,7 @@
 import QtQuick 2.6
 import "."
 import Sailfish.Silica 1.0
+import QtGraphicalEffects 1.0
 
 // Web's rounded action button; `primary` is the filled "Play" style.
 MouseArea {
@@ -15,10 +16,17 @@ MouseArea {
     property real iconSize: fontSize
     property string labelFamily: Tokens.family
     property bool restRing: false   // web draws the focus ring on the first focusable control at rest (calendar Today)
+    property bool lift: false   // web detail actions: box-shadow 0 14px 38px rgba(56,38,33,.12)
     property bool natural: icon !== ""
     readonly property real naturalWidth: Math.ceil(iconLbl.implicitWidth + 9 * Tokens.u + tm.implicitWidth) + 32 * Tokens.u
     implicitHeight: 40 * Tokens.u
     implicitWidth: natural ? naturalWidth : label.implicitWidth + 40 * Tokens.u
+    RectangularGlow {
+        visible: root.lift
+        y: 14 * Tokens.u; width: parent.width; height: parent.height
+        glowRadius: 19 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius   // blur 38 px is a 19 px radius
+        color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12)
+    }
     Rectangle {
         anchors.fill: parent
         radius: height / 2

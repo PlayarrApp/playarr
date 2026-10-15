@@ -195,6 +195,7 @@ PlayarrPage {
                 // Web: Download is as wide as its content; Playback and Play share the rest equally.
                 readonly property real fillW: (col.width - 2 * Tokens.pad - (dlBtn.visible ? dlBtn.width + spacing : 0) - spacing) / 2
                 PillButton {
+                    lift: true
                     id: dlBtn
                     visible: !!detail && !!detail.media_file_id
                     icon: "\u21E9"; iconSize: 10 * Tokens.u; labelFamily: Tokens.family610
@@ -203,6 +204,7 @@ PlayarrPage {
                     onClicked: page.requestDownload()
                 }
                 PillButton {
+                    lift: true
                     icon: "\u2637"; iconSize: 13 * Tokens.u; labelFamily: Tokens.family610
                     text: qsTr("Playback")
                     width: parent.fillW
@@ -210,6 +212,7 @@ PlayarrPage {
                     onClicked: pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work })
                 }
                 PillButton {
+                    lift: true
                     primary: work.kind !== "movie"
                     fill: work.kind === "movie" ? "#a52745" : "transparent"; fillInk: "#ffffff"   // web: the film's Play holds the default focus, drawn crimson
                     icon: "\u25B6"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
@@ -225,12 +228,14 @@ PlayarrPage {
                 spacing: 8 * Tokens.u
                 visible: !!page.detail
                 PillButton {
+                    lift: true
                     icon: page.inWatchlist ? "\u2713" : "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
                     text: page.inWatchlist ? qsTr("Remove from watchlist") : qsTr("Add to watchlist")
                     fontSize: 8.5 * Tokens.u
                     onClicked: page.toggleWatchlist()
                 }
                 PillButton {
+                    lift: true
                     icon: "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
                     text: qsTr("Add to Playlist")
                     fontSize: 8.5 * Tokens.u
@@ -299,6 +304,7 @@ PlayarrPage {
                         x: Tokens.pad
                         spacing: 8 * Tokens.u
                         PillButton {
+                            lift: true
                             primary: true
                             icon: "\u25B6"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
                             fontSize: 11 * Tokens.u
@@ -308,6 +314,7 @@ PlayarrPage {
                             onClicked: page.resumeSeries()
                         }
                         PillButton {
+                            lift: true
                             id: askBtn
                             visible: !!page.plan && page.plan.action !== "start"
                             icon: "\u21BA"; iconSize: 10 * Tokens.u; labelFamily: Tokens.family610
@@ -317,6 +324,7 @@ PlayarrPage {
                             onClicked: page.askAgain()
                         }
                         PillButton {
+                            lift: true
                             id: wlBtn
                             width: naturalWidth + 1 * Tokens.u   // web's pill runs a little wider than its content
                             icon: page.inWatchlist ? "\u2713" : "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
@@ -326,6 +334,7 @@ PlayarrPage {
                             onClicked: page.toggleWatchlist()
                         }
                         PillButton {
+                            lift: true
                             id: plBtn
                             width: naturalWidth + 3.5 * Tokens.u
                             icon: "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
