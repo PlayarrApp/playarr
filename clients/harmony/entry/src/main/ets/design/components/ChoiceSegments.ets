@@ -17,6 +17,8 @@ export interface Choice {
 
 const SECTION_WIDTH: number = 268;
 const HEADING_SIZE: number = 9.6;
+/** Web's phone drawer section headings (measured on the 360 vp reference: 0.75 of the TV's). */
+const TOUCH_HEADING_SIZE: number = 7.2;
 const HEADING_LETTER_SPACING: number = 0.672;
 const HEADING_GAP: number = 13;
 const CHOICE_HEIGHT: number = 56;
@@ -70,7 +72,7 @@ export struct ChoiceSegments {
         }
       } else {
         Text(this.heading).fontFamily(nunito(700))
-          .fontSize(tv(HEADING_SIZE))
+          .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
           .fontWeight(FontWeight.Bold)
           .letterSpacing(tv(HEADING_LETTER_SPACING))
           .textCase(TextCase.UpperCase)

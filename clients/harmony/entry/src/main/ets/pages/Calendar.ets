@@ -933,7 +933,8 @@ export struct ReleaseCalendar {
       .height(44)
       .borderRadius(22)
       .backgroundColor(toResourceColor(activeColors().bg))
-      .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+      // web opens the page with Today focused (the Previewer reports no focus): the ring is drawn from the state
+      .border(label === 'Today' ? { width: 3, color: toResourceColor(activeColors().ink) } : { width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       .onClick(() => {
         onTap();
       })

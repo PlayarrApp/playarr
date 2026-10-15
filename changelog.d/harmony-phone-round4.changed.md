@@ -1,0 +1,1 @@
+- HarmonyOS phone: drawer section headings, the drawer close button, episode number and unseen dot sizes, and the calendar Today button follow web's phone sizes and focus look; the wall re-seeds the deck right before Home.

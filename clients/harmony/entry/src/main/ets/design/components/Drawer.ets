@@ -56,7 +56,7 @@ export struct Drawer {
       Row() {
         Column({ space: tv(4) }) {
           Text(this.kicker).fontFamily(nunito(700))
-            .fontSize(tv(KICKER_SIZE))
+            .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
             .fontWeight(FontWeight.Bold)
             .letterSpacing(tv(KICKER_LETTER_SPACING))
             .textCase(TextCase.UpperCase)
@@ -72,13 +72,14 @@ export struct Drawer {
         Text('×').fontFamily(nunito(700))
           .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
           .fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(isTvMetrics() ? activeColors().ink : activeColors().bg))
+          .fontColor(toResourceColor(activeColors().ink))
           .textAlign(TextAlign.Center)
           .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
           .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
           .borderRadius(isTvMetrics() ? tv(CLOSE_SIZE / 2) : TOUCH_CLOSE_SIZE / 2)
-          .backgroundColor(toResourceColor(isTvMetrics() ? activeColors().surfaceSoft : activeColors().ink))
-          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
+          .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+          // web opens the drawer with its close button focused: on the phone it carries the focus ring (the Previewer reports no focus)
+          .border(isTvMetrics() ? { width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.15) } : { width: 3, color: toResourceColor(activeColors().ink) })
           .focusable(true)
           .defaultFocus(true)
           .onClick(() => {

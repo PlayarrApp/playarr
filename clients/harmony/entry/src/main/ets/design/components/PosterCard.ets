@@ -235,11 +235,11 @@ export struct PosterCard {
 
   /** The unseen dot: web's 13 px on the TV; 9 vp, 6 in, on the phone grid. */
   private dotSize(): number {
-    return this.softCaption ? 9 : tv(UNSEEN_DOT_SIZE);
+    return this.softCaption || !isTvMetrics() ? 9 : tv(UNSEEN_DOT_SIZE);
   }
 
   private dotInset(): number {
-    return this.softCaption ? 6 : tv(UNSEEN_DOT_INSET);
+    return this.softCaption || !isTvMetrics() ? 6 : tv(UNSEEN_DOT_INSET);
   }
 
   @State private focusPercent: number = 0;
@@ -346,11 +346,11 @@ export struct PosterCard {
   }
 
   private episodeOverlayX(): number {
-    return this.cardWidth - tv(36);
+    return this.cardWidth - (isTvMetrics() ? tv(36) : 23);
   }
 
   private episodeOverlayY(): number {
-    return this.cardHeight - tv(33);
+    return this.cardHeight - (isTvMetrics() ? tv(33) : 21);
   }
 
   build() {
@@ -404,8 +404,8 @@ export struct PosterCard {
         }
         if (this.episodeNumberOverlay.length > 0) {
           Text(this.episodeNumberOverlay).fontFamily(nunito(600))
-            .width(tv(24))
-            .fontSize(tv(20))
+            .width(isTvMetrics() ? tv(24) : 16)
+            .fontSize(isTvMetrics() ? tv(20) : 13)
             .fontWeight(600)
             .fontColor('#ffffff')
             .textAlign(TextAlign.End)

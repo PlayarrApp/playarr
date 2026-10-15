@@ -14,6 +14,7 @@ const SECTION_WIDTH: number = 268;
 /** Phone drawers are the page wide (360 vp less 20 padding each side), as ChoiceSegments' sections. */
 const TOUCH_DRAWER_SECTION_WIDTH: number = 320;
 const HEADING_SIZE: number = 9.6;
+const TOUCH_HEADING_SIZE: number = 7.2;
 const HEADING_LETTER_SPACING: number = 0.672;
 const HEADING_GAP: number = 13;
 const FIELD_PADDING: number = 7.68;
@@ -77,7 +78,7 @@ export struct MultiSelect {
   build() {
     Column({ space: tv(HEADING_GAP) }) {
       Text(this.heading).fontFamily(nunito(700))
-        .fontSize(tv(HEADING_SIZE))
+        .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
         .fontWeight(FontWeight.Bold)
         .letterSpacing(tv(HEADING_LETTER_SPACING))
         .textCase(TextCase.UpperCase)
