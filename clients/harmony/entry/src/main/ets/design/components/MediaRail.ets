@@ -206,6 +206,8 @@ export struct MediaRail {
   /** The card row's height. A horizontal `List` with no height fills its parent, so a column of rails
    * needs it set; `0` leaves the List unsized (a rail that is the only child of a sized box). */
   @Prop listHeight: number = 0;
+  /** Phone: how far the card row runs on past the page padding at its end (web's rails clip at the screen edge, dimmed by the end fade). */
+  @Prop bleedEnd: number = 0;
 
   /** Optional one-time initial item reveal for a caller-owned focus target. */
   @Prop @Watch('onInitialItemIndexChanged') initialItemIndex: number = -1;
@@ -343,8 +345,8 @@ export struct MediaRail {
       .height(this.listHeight > 0 ? this.listHeight + RAIL_CLIP_INSET_TOP : '100%')
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
-      .padding({ left: RAIL_CLIP_INSET_START, top: RAIL_CLIP_INSET_TOP, bottom: RAIL_CLIP_INSET_BOTTOM })
-      .margin({ left: -RAIL_CLIP_INSET_START, top: -RAIL_CLIP_INSET_TOP, bottom: -RAIL_CLIP_INSET_BOTTOM })
+      .padding({ left: RAIL_CLIP_INSET_START, top: RAIL_CLIP_INSET_TOP, bottom: RAIL_CLIP_INSET_BOTTOM, right: this.bleedEnd })
+      .margin({ left: -RAIL_CLIP_INSET_START, top: -RAIL_CLIP_INSET_TOP, bottom: -RAIL_CLIP_INSET_BOTTOM, right: -this.bleedEnd })
       .focusScopeId(this.railId, true, true)
       .id(this.measurementId.length > 0 ? this.measurementId : this.railId + '-list')
       .onFocus(() => {

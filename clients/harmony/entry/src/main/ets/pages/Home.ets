@@ -1005,6 +1005,7 @@ export struct Home {
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
           headingGap: TOUCH_RAIL_HEADING_GAP,
+          bleedEnd: atLeast(Spacing.md, this.safeRight),
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
@@ -1020,6 +1021,7 @@ export struct Home {
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
           headingGap: TOUCH_RAIL_HEADING_GAP,
+          bleedEnd: atLeast(Spacing.md, this.safeRight),
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
