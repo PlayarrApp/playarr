@@ -534,22 +534,22 @@ struct WMRailCard: View {
                 }
                 .overlay { if focused { WMFocusRing(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16) } }
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
-            WMText(work.singularKindYearLabel, 8.2, 400, color: WM.muted, lh: 12.3).padding(.leading, 2)
+            WMText(work.singularKindYearLabel, 7.3, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
         }
         .frame(width: WMLibraryCard.width, height: WMRailCard.height, alignment: .topLeading)
     }
 }
 
-/// Web focus ring: 3 pt ring 2 pt outside the art with a soft glow. Drawn outside the layout, so nothing shifts.
+/// Web focus ring: a 3 pt ring flush against the art with a wide soft glow. Drawn outside the layout, so nothing shifts.
 struct WMFocusRing: View {
     let width: CGFloat
     let height: CGFloat
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 13.5, style: .continuous)
+        RoundedRectangle(cornerRadius: 11.5, style: .continuous)
             .stroke(WM.cardGlowColor, lineWidth: 3)
-            .frame(width: width + 7, height: height + 7)
-            .shadow(color: WM.cardGlowColor.opacity(0.45), radius: 14)
+            .frame(width: width + 3, height: height + 3)
+            .shadow(color: WM.cardGlowColor.opacity(0.4), radius: 18, y: 4)
             .allowsHitTesting(false)
     }
 }
@@ -558,7 +558,7 @@ struct WMFocusRing: View {
 /// Web phone library (#924): cards fit beside the 52 pt letter-rail pad, (393 - 16 gutter - 52 pad - 12 gap) / 2 on the 393 pt
 /// reference, never below 110 pt.
 struct WMLibraryCard: View {
-    static var width: CGFloat { max(110, (UIScreen.main.bounds.width - 16 - 52 - 12) / 2) }
+    static var width: CGFloat { max(110, ((UIScreen.main.bounds.width - 16 - 52 - 12) / 2).rounded()) }
     let work: Work
     let apiClient: PlayarrAPIClient
     var unseen = true
@@ -577,7 +577,7 @@ struct WMLibraryCard: View {
                 .overlay { if focused { WMFocusRing(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16) } }
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
         }
-        .frame(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16 + 28, alignment: .topLeading)
+        .frame(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16 + 27.6, alignment: .topLeading)
 
     }
 }

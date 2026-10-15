@@ -79,3 +79,18 @@ export async function resetProgress(files, env = process.env) {
     if (!r.ok) throw new Error(`reset-progress ${f}: ${r.status}`);
   }
 }
+
+// Files behind the pinned film and series screens (the film's file and every episode of the pinned series), so a reset covers
+// what On deck and the detail screens show, as capture-refs.mjs does for the web references.
+export async function pinnedCatalogFiles(suite, env = process.env) {
+  const srv = env.PLAYARR_SERVER_URL?.replace(/\/$/, "");
+  if (!srv || !env.PLAYARR_USERNAME) return [];
+  const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
+  if (!lr.ok) return [];
+  const h = { authorization: `Bearer ${(await lr.json()).access_token}` };
+  const idOf = (id) => suite.screens.find((s) => s.id === id)?.open?.split("/").pop();
+  const get = async (id) => (id ? await (await fetch(`${srv}/api/v1/catalog/${id}`, { headers: h })).json().catch(() => ({})) : {});
+  const film = await get(idOf("film-detail")), series = await get(idOf("series-detail"));
+  return [film.media_file_id, ...(series.children?.Series ?? []).flatMap((s) => s.episodes ?? []).map((e) => e.media_file_id)].filter(Boolean);
+}

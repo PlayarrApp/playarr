@@ -605,7 +605,7 @@ struct WMDetailPage: View {
                 "\(season.episodes.count) episodes"
             )
             .padding(.top, 24)
-            ScrollView(.horizontal) {
+            WMFadingRail {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(season.episodes, id: \.id) { episode in
                         episodeCard(episode, season: season.season, focused: episode.id == selectedEpisode?.detail.id)
@@ -613,8 +613,6 @@ struct WMDetailPage: View {
                 }
                 .padding(.horizontal, 16)
             }
-            .scrollClipDisabled()
-            .scrollIndicators(.hidden)
             .frame(height: 127)
             .padding(.top, 18)
         }
@@ -695,7 +693,7 @@ struct WMDetailPage: View {
                 model.chaptersFromServer ? "\(model.chapters.count) chapters" : "\(model.chapters.count) scene markers"
             )
             .padding(.top, 24)
-            ScrollView(.horizontal) {
+            WMFadingRail {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(model.chapters) { chapter in
                         chapterCard(chapter, mediaFileID: mediaFileID)
@@ -703,8 +701,6 @@ struct WMDetailPage: View {
                 }
                 .padding(.horizontal, 16)
             }
-            .scrollClipDisabled()
-            .scrollIndicators(.hidden)
             .frame(height: 132)
             .padding(.top, 17)
         }
@@ -753,7 +749,7 @@ struct WMDetailPage: View {
     private var similarTrack: some View {
         VStack(alignment: .leading, spacing: 0) {
             heading("Similar Titles", nil).padding(.top, 24)
-            ScrollView(.horizontal) {
+            WMFadingRail {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(similar) { other in
                         NavigationLink {
@@ -770,8 +766,6 @@ struct WMDetailPage: View {
                 }
                 .padding(.horizontal, 16)
             }
-            .scrollClipDisabled()
-            .scrollIndicators(.hidden)
             .frame(height: 147)
             .padding(.top, 14)
         }

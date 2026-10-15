@@ -288,6 +288,10 @@ jobs:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          # --reset-progress: On deck and Resume start from the state the web references were captured in.
+          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           REF: ${{ inputs.ref || github.event.repository.default_branch }}
           SCREENS: ${{ inputs.screens }}
         run: |
@@ -302,7 +306,7 @@ jobs:
           esac
           # Playback is scored against the suite's own expectation (every case plays); touch devices have no D-pad values.
           echo '{"suite":1,"dpad":{},"playback":{}}' > "$RUNNER_TEMP/expected.json"
-          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
+          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --reset-progress --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
 
       - name: Upload the results
         if: always()

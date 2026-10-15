@@ -7,7 +7,7 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { expandKeys, focusForCheck, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));
@@ -70,7 +70,7 @@ async function reachOnce(screen) {
 }
 
 const summary = { screens: 0, failed: [], dpadFailed: [] };
-if (reset) await resetProgress(pinned()); // before any capture: On deck and Resume start from the same state on every device
+if (reset) await resetProgress([...pinned(), ...await pinnedCatalogFiles(suite)]); // before any capture: On deck and Resume start from the same state on every device
 await driver.start?.({ theme: themes[0] });
 if (only.includes("screens")) {
   for (const theme of themes) {

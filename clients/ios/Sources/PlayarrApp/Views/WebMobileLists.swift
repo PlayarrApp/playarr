@@ -29,8 +29,9 @@ private struct WMListPage<Content: View>: View {
                 let top = WM.topInset + 1
                 WMHeaderCircleButton(width: 44, height: 40, glyph: "←", action: onBack)
                     .offset(x: phone ? 15 : max(102, proxy.size.width * 0.08) - 52, y: top)
-                WMText(title, 21.6, 580, lh: 32, ls: -0.972)
-                    .offset(x: phone ? 68 : max(102, proxy.size.width * 0.08), y: top + 4)
+                // Web: the heading row is 44 pt tall (the back button) with the title line box centred in it.
+                WMText(title, 21.6, 580, lh: 44, ls: -0.972)
+                    .offset(x: phone ? 68 : max(102, proxy.size.width * 0.08), y: top - 2)
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }

@@ -78,7 +78,7 @@ struct HomeView: View {
                         phoneRail(rail, first: index == 0)
                     }
                 }
-                .padding(.top, 92 + WM.topShift)
+                .padding(.top, 91.67 + WM.topShift)
                 .padding(.bottom, 130)
             }
             .scrollIndicators(.hidden)
@@ -121,7 +121,7 @@ struct HomeView: View {
             .frame(height: WMRailCard.height)
             .padding(.top, 18)
         }
-        .padding(.bottom, 45)
+        .padding(.bottom, 45.33)
     }
 
     private func stageContent(proxy: GeometryProxy) -> some View {
@@ -345,6 +345,27 @@ struct WMFadingRail<Content: View>: View {
     var scrollTo: UUID?
     @ViewBuilder var content: () -> Content
     @State private var offset: CGFloat = 0
+    @State private var contentWidth: CGFloat = 0
+
+    /// Web scroll-edge fade (`page-layout.css`): smoothstep ramps. The start side is a clear 16 pt ramp once scrolled; the end
+    /// side, while content continues, dims to 30% over 38 pt at the edge (content stays visible going off screen).
+    private var maskStops: [Gradient.Stop] {
+        let w = UIScreen.main.bounds.width
+        let ease: [(CGFloat, CGFloat)] = [(0, 0), (0.25, 0.156), (0.5, 0.5), (0.75, 0.844), (1, 1)]
+        var stops: [Gradient.Stop] = []
+        if offset > 1 {
+            stops += ease.map { .init(color: .black.opacity($0.1), location: 16 * $0.0 / w) }
+        } else {
+            stops.append(.init(color: .black, location: 0))
+            stops.append(.init(color: .black, location: 16 / w))
+        }
+        if contentWidth - offset > w + 1 {
+            stops += ease.reversed().map { .init(color: .black.opacity(0.3 + 0.7 * $0.1), location: 1 - 38 * $0.0 / w) }
+        } else {
+            stops.append(.init(color: .black, location: 1))
+        }
+        return stops
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -352,22 +373,16 @@ struct WMFadingRail<Content: View>: View {
                 content()
                     .background(GeometryReader { geo in
                         Color.clear.preference(key: WMRailOffsetKey.self, value: -geo.frame(in: .named("wm-rail")).minX)
+                            .preference(key: WMRailWidthKey.self, value: geo.size.width)
                     })
             }
             .coordinateSpace(name: "wm-rail")
             .onPreferenceChange(WMRailOffsetKey.self) { offset = $0 }
+            .onPreferenceChange(WMRailWidthKey.self) { contentWidth = $0 }
             .scrollClipDisabled()
             .scrollIndicators(.hidden)
             .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: offset > 1 ? .clear : .black, location: 0),
-                        .init(color: .black, location: 16 / 390),
-                        .init(color: .black, location: 1),
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
+                LinearGradient(stops: maskStops, startPoint: .leading, endPoint: .trailing)
                 // The mask must not clip the focused card's shadow above and below the track.
                 .padding(.vertical, -60)
             )
@@ -378,6 +393,11 @@ struct WMFadingRail<Content: View>: View {
             }
         }
     }
+}
+
+private struct WMRailWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 private struct WMRailOffsetKey: PreferenceKey {

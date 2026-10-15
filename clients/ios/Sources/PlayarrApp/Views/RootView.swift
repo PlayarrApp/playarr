@@ -464,12 +464,12 @@ private struct AuthenticatedPlayarrShell: View {
                 ScrollView(.horizontal) {
                     HStack(spacing: 2) {
                         // The web phone nav starts with the profile avatar (there is no avatar at the top right).
-                        profileButton(size: 44, avatarSize: 32, ring: false).frame(width: 44, height: 46)
+                        profileButton(size: 44, avatarSize: 21, ring: false).frame(width: 44, height: 46)
                         ForEach(destinations, id: \.self) { destination in
                             Button { select(destination) } label: {
                                 WMIconView(
                                     icon: destination.webIcon,
-                                    color: phoneSelectedDestination == destination ? WM.shell : WM.muted
+                                    color: phoneSelectedDestination == destination ? WM.shell : WM.inkSoft
                                 )
                                 .frame(width: 44, height: 46)
                                 .background(
