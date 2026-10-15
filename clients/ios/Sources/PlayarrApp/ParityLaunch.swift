@@ -53,6 +53,13 @@ enum ParityLaunch {
         guard let v = value("--playarr-parity-focus"), ["first", "last", "top"].contains(v) else { return nil }
         return v
     }
+    /// `--playarr-parity-covers`: Home and the libraries show portrait covers (Settings > Home screen artwork = Covers).
+    static var covers: Bool { ProcessInfo.processInfo.arguments.contains("--playarr-parity-covers") }
+    /// `--playarr-parity-size small|medium|large`: Settings > Artwork size (default medium).
+    static var artworkSize: String {
+        guard let v = value("--playarr-parity-size"), ["small", "medium", "large"].contains(v) else { return "medium" }
+        return v
+    }
     static var selectsHomeSeries: Bool { environmentValue("PLAYARR_PARITY_SELECT_HOME_SERIES") == "1" }
     /// `--playarr-parity-play <media file id>` with route `play`: opens the player on that file and plays it (suite playback cases).
     static var playFile: String? { value("--playarr-parity-play") }

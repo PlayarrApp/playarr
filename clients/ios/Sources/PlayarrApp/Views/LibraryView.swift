@@ -26,6 +26,7 @@ struct LibraryView: View {
         _viewModel = State(initialValue: viewModel)
         #if DEBUG
         _showingFilters = State(initialValue: ParityLaunch.screen == "filters")
+        if ParityLaunch.covers { viewModel.viewMode = .cover }
         #endif
         self.apiClient = apiClient
         self.downloadRepository = downloadRepository
@@ -383,10 +384,7 @@ struct LibraryView: View {
         ScrollViewReader { reader in
         ScrollView(.vertical) {
             LazyVGrid(
-                columns: [
-                    GridItem(.fixed(WMLibraryCard.width), spacing: 12, alignment: .top),
-                    GridItem(.fixed(WMLibraryCard.width), spacing: 12, alignment: .top),
-                ],
+                columns: Array(repeating: GridItem(.fixed(WMLibraryCard.width), spacing: 12, alignment: .top), count: WMArtwork.columns),
                 alignment: .leading,
                 spacing: 21
             ) {
@@ -398,7 +396,7 @@ struct LibraryView: View {
                             downloadRepository: downloadRepository
                         )
                     } label: {
-                        WMLibraryCard(work: work, apiClient: apiClient, focused: phoneGridFocused(index: index))
+                        WMLibraryCard(work: work, apiClient: apiClient, focused: phoneGridFocused(index: index), cover: viewModel.viewMode == .cover)
                     }
                     .id(work.id)
                     .buttonStyle(.plain)

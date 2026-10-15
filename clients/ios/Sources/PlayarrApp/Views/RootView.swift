@@ -46,6 +46,9 @@ struct RootView: View {
         self.environment = environment
         #if DEBUG
         if let theme = ParityLaunch.theme { UserDefaults.standard.set(theme, forKey: "com.playarr.ios.appearance") }
+        // Poster mode and artwork size, as Settings > Appearance sets them; always written so a capture never inherits the last one.
+        UserDefaults.standard.set(ParityLaunch.covers ? "cover" : "thumbnail", forKey: WMArtwork.homeViewKey)
+        UserDefaults.standard.set(ParityLaunch.artworkSize, forKey: WMArtwork.sizeKey)
         #endif
         _updateViewModel = State(initialValue: UpdateViewModel(apiClient: environment.apiClient))
     }

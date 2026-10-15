@@ -28,6 +28,8 @@ struct HomeView: View {
     let downloadRepository: DownloadRepository
     @State private var downloadTarget: Work?
     @Environment(\.colorScheme) private var scheme
+    @AppStorage(WMArtwork.homeViewKey) private var homeView = "thumbnail"
+    @AppStorage(WMArtwork.sizeKey) private var artworkSize = "medium"
 
     var body: some View {
         Group {
@@ -119,7 +121,8 @@ struct HomeView: View {
                                 work: work,
                                 apiClient: apiClient,
                                 unseen: viewModel.progressByWorkID[work.id] == nil,
-                                focused: phoneRailFocused(first: first, index: index, count: rail.works.count)
+                                focused: phoneRailFocused(first: first, index: index, count: rail.works.count),
+                                cover: homeView == "cover"
                             )
                         }
                         .id(work.id)
@@ -127,7 +130,7 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 16)
             }
-            .frame(height: WMRailCard.height)
+            .frame(height: WMRailCard.height(cover: homeView == "cover"))
             .padding(.top, 18)
         }
         .padding(.bottom, 45.33)

@@ -63,6 +63,8 @@ struct SettingsView: View {
 
     let environment: AppEnvironment
     @AppStorage("com.playarr.ios.appearance") private var appearance = "system"
+    @AppStorage(WMArtwork.homeViewKey) private var homeView = "thumbnail"
+    @AppStorage(WMArtwork.sizeKey) private var artworkSize = "medium"
     @AppStorage("com.playarr.ios.language") private var language = "system"
     @AppStorage(NativePlayerDefaults.qualityKey) private var qualityID = "original"
     @AppStorage(NativePlayerDefaults.subtitleModeKey) private var subtitleMode = "off"
@@ -281,11 +283,25 @@ struct SettingsView: View {
     }
 
     private var appearanceContent: some View {
-        settingsCard(title: "Theme", description: "Match the system or choose a fixed appearance.") {
-            Picker("Appearance", selection: $appearance) {
-                Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
+        VStack(alignment: .leading, spacing: 16) {
+            settingsCard(title: "Theme", description: "Match the system or choose a fixed appearance.") {
+                Picker("Appearance", selection: $appearance) {
+                    Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
+                }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
+            settingsCard(title: "Home screen artwork", description: "Show Home rails as wide thumbnails or tall covers.") {
+                Picker("Home screen artwork", selection: $homeView) {
+                    Text("Thumbnails").tag("thumbnail"); Text("Covers").tag("cover")
+                }
+                .pickerStyle(.segmented)
+            }
+            settingsCard(title: "Artwork size", description: "Small shows more cards across, large fewer.") {
+                Picker("Artwork size", selection: $artworkSize) {
+                    Text("Small").tag("small"); Text("Medium").tag("medium"); Text("Large").tag("large")
+                }
+                .pickerStyle(.segmented)
+            }
         }
     }
 

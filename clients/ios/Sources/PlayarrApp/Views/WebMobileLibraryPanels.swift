@@ -18,7 +18,12 @@ private struct WMPanelFrame<Content: View>: View {
                 // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
                 .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
                 .padding(.trailing, 21).offset(y: 22 + WM.safeTop)
-            content().padding(.horizontal, 21).padding(.top, 95 + WM.safeTop)
+            // The whole panel scrolls (web: the drawer body scrolls to its last row, clear of the floating nav).
+            ScrollView(.vertical) {
+                content().padding(.horizontal, 21).padding(.top, 95 + WM.safeTop).padding(.bottom, 130)
+            }
+            .scrollIndicators(.hidden)
+            .webEdgeFade(.vertical, size: 38)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea(edges: .vertical)

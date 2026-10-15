@@ -524,29 +524,51 @@ extension Work {
 
 /// Home rail card (`tv-home-card`): since web #924 the phone cards share one width with the library grid,
 /// (viewport - 16 gutter - 52 rail pad - 12 gap) / 2, with the library card's text sizes.
+/// The two Settings > Appearance choices the web keeps for Home and the grids: artwork shape (Thumbnails or Covers) and
+/// artwork size (a phone shows 2 columns, 3 when small, 1 when large).
+enum WMArtwork {
+    static let homeViewKey = "com.playarr.ios.homeView"
+    static let sizeKey = "com.playarr.ios.artworkSize"
+    static var homeCover: Bool { UserDefaults.standard.string(forKey: homeViewKey) == "cover" }
+    static var columns: Int {
+        switch UserDefaults.standard.string(forKey: sizeKey) { case "small": 3; case "large": 1; default: 2 }
+    }
+    /// Web phone card: (viewport - 16 gutter - 52 letter-rail pad - 12 per gap) / columns.
+    static var cardWidth: CGFloat {
+        let n = CGFloat(columns)
+        return max(110, ((UIScreen.main.bounds.width - 16 - 52 - 12 * (n - 1)) / n).rounded())
+    }
+    static func artHeight(cover: Bool) -> CGFloat { cardWidth * (cover ? 3 / 2 : 9 / 16) }
+}
+
+/// Home rail card (`tv-home-card`): since web #924 the phone cards share one width with the library grid,
+/// (viewport - 16 gutter - 52 rail pad - 12 gap) / columns, with the library card's text sizes. Covers use 2:3 art.
 struct WMRailCard: View {
     let work: Work
     let apiClient: PlayarrAPIClient
     var unseen = true
     var focused = false
+    var cover = false
+    @AppStorage(WMArtwork.sizeKey) private var sizeSetting = "medium"
 
-    static var height: CGFloat { WMLibraryCard.width * 9 / 16 + 46 }
+    static func height(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 46 }
 
     var body: some View {
+        let width = WMArtwork.cardWidth, art = WMArtwork.artHeight(cover: cover)
         VStack(alignment: .leading, spacing: 0) {
-            PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
-                .frame(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16)
+            PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
+                .frame(width: width, height: art)
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
-                .overlay { if focused { WMFocusRing(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16) } }
+                .overlay { if focused { WMFocusRing(width: width, height: art) } }
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
             WMText(work.singularKindYearLabel, 7.3, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
         }
-        .frame(width: WMLibraryCard.width, height: WMRailCard.height, alignment: .topLeading)
+        .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
     }
 }
 
@@ -580,27 +602,31 @@ struct WMFocusRing: View {
 /// Web phone library (#924): cards fit beside the 52 pt letter-rail pad, (393 - 16 gutter - 52 pad - 12 gap) / 2 on the 393 pt
 /// reference, never below 110 pt.
 struct WMLibraryCard: View {
-    static var width: CGFloat { max(110, ((UIScreen.main.bounds.width - 16 - 52 - 12) / 2).rounded()) }
+    static var width: CGFloat { WMArtwork.cardWidth }
     let work: Work
     let apiClient: PlayarrAPIClient
     var unseen = true
     var focused = false
+    var cover = false
+    @AppStorage(WMArtwork.sizeKey) private var sizeSetting = "medium"
+
+    static func rowHeight(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 27.6 }
 
     var body: some View {
+        let width = WMArtwork.cardWidth, art = WMArtwork.artHeight(cover: cover)
         VStack(alignment: .leading, spacing: 0) {
-            PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
-                .frame(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16)
+            PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
+                .frame(width: width, height: art)
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
-                .overlay { if focused { WMFocusRing(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16) } }
+                .overlay { if focused { WMFocusRing(width: width, height: art) } }
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
         }
-        .frame(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16 + 27.6, alignment: .topLeading)
-
+        .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
     }
 }
 
