@@ -27,8 +27,8 @@
  * itself hold focus renders at rest -- the caller (a rail component, a
  * later slice) is responsible for passing its own live focus state down.
  *
- * **No focus ring anywhere.** Only the lift/scale/shadow delta, per brief
- * 5.8's "a lift, not a ring" and brief 6.3's PosterCard acceptance note.
+ * **No focus ring on the TV.** Only the lift/scale/shadow delta, per brief 5.8's "a lift, not a ring" and brief 6.3's PosterCard
+ * acceptance note. The phone draws web's ring and glow over the art (an overlay, so nothing shifts).
  *
  * `Image` defaults to `focusable: false` on HarmonyOS even though it is
  * visually focusable (brief 6.3) -- a poster grid built from bare `Image`s
@@ -93,11 +93,11 @@
 
 import { nunito } from '../Typography';
 import { image } from '@kit.ImageKit';
-import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
+import { activeColors, resolvedThemeMode, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS, INTERACTION_TITLE_CARD_MS } from '../Motion';
-import { BRAND_PINK, Spacing, Radii, LightColors, TvGeometry } from '../../core/Tokens';
+import { BRAND_PINK, BRAND_PINK_SOFT, Spacing, Radii, LightColors, TvGeometry } from '../../core/Tokens';
 import { SERIES_EPISODE_CAPTION_TITLE_GAP, SERIES_EPISODE_CAPTION_TOP_PADDING } from '../../core/SeriesEpisodePresentation';
 import { NonEmptyComponentIdModifier } from '../ComponentMeasurement';
 import { FOCUS_LIFT, effectiveFocusPercent, DEFAULT_ACTIVE_RAIL_FACTOR } from './FocusLift';
@@ -318,6 +318,11 @@ export struct PosterCard {
     return first;
   }
 
+  /** Web's focus ring colour: the soft brand pink in dark, the strong brand crimson in light. */
+  private focusRingColor(alpha: number): string {
+    return resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(BRAND_PINK_SOFT, alpha) : toResourceColorWithAlpha({ r: 165, g: 39, b: 69, a: 1 }, alpha);
+  }
+
   private clampedProgressPercent(): number {
     return Math.round(Math.max(0, Math.min(1, this.progress)) * 100);
   }
@@ -407,6 +412,18 @@ export struct PosterCard {
       .borderRadius(this.resolvedArtworkRadius())
       .scale({ x: this.artworkScale(), y: this.artworkScale() })
       .shadow(this.shadowLayer())
+      if (!isTvMetrics()) {
+        // web's card focus ring and glow (3 vp ring, 20 vp glow at 45%): drawn over the art so the layout never shifts; the TV keeps its lift
+        Column()
+          .width(this.cardWidth)
+          .height(this.cardHeight)
+          .borderRadius(this.resolvedArtworkRadius())
+          .border({ width: 3, color: this.focusRingColor(1) })
+          .opacity(this.effective())
+          .scale({ x: this.artworkScale(), y: this.artworkScale() })
+          .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
+          .hitTestBehavior(HitTestMode.None)
+      }
       }
       .width(this.cardWidth)
       .height(this.cardHeight)

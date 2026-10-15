@@ -1,0 +1,1 @@
+- HarmonyOS phone: detail pages show the floating nav bar, the Play button takes web's focused style and focus, phone cards draw web's focus ring and glow, player previous and next are bare icons.

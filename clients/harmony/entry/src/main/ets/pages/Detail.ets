@@ -171,6 +171,7 @@ import type { MediaRailItem } from '../design/components/MediaRail';
 import { PosterCard } from '../design/components/PosterCard';
 import { PageShell } from '../design/components/PageShell';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
+import { TouchNavBar } from '../design/components/TouchNavBar';
 import { PlaybackOptionsDrawer } from '../design/components/PlaybackOptionsDrawer';
 import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 import { Skeleton } from '../design/components/Skeleton';
@@ -206,6 +207,10 @@ const PHONE_SEASON_HEADER_CARD_GAP: number = 23;
 const PHONE_SEASON_ROW_GAP: number = 35.3;
 // Web: 57 vp from the action row to the first season heading (the hero ends there); the page spacing gave 21.
 const PHONE_SEASONS_TOP_GAP: number = 36;
+/** The floating nav bar's box: its 58 vp height plus the 4 vp above and 8 vp below it. */
+const TOUCH_NAV_BAR_BOX: number = 70;
+/** Web `--brand-strong`, the phone Play button's focused fill. */
+const PLAY_FOCUS_FILL: string = '#a52745';
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
 const TOUCH_SETTLE_ATTEMPTS: number = 12;
 /** Web phone series detail, next-up episode in the middle: the page scrolled by about this much (measured on the 360 vp reference). */
@@ -800,6 +805,8 @@ struct Detail {
   @State private actionsOpen: boolean = false;
   /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
   @State private touchActionsOpen: boolean = false;
+  /** Phone Play: web's focus style (`.tv-detail-play:focus-visible`: brand-strong fill, white label, 1.06 scale). */
+  @State private playFocused: boolean = false;
   @State private optionsOpen: boolean = false;
   /** On this profile's watchlist: null until the server has answered. */
   @State private listed: boolean | null = null;
@@ -1597,12 +1604,16 @@ struct Detail {
     }
   }
 
+  private playInk(): ResourceColor {
+    return this.playFocused && !isTvMetrics() ? '#ffffff' : toResourceColor(activeColors().onAccent);
+  }
+
   /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
   @Builder
   private playTriangle(): void {
     Polygon({ width: 8, height: 9 })
       .points([[0, 0], [0, 9], [8, 4.5]])
-      .fill(toResourceColor(activeColors().onAccent))
+      .fill(this.playInk())
       .width(8)
       .height(9)
   }
@@ -1622,7 +1633,7 @@ struct Detail {
       if (isTvMetrics()) {
         Text('\u25B6').fontFamily(nunito(400))
           .fontSize(PLAY_BUTTON_ICON_SIZE)
-          .fontColor(toResourceColor(activeColors().onAccent))
+          .fontColor(this.playInk())
       } else {
         this.playTriangle()
       }
@@ -1631,7 +1642,7 @@ struct Detail {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)
         .fontWeight(FontWeight.Bold)
-        .fontColor(toResourceColor(activeColors().onAccent))
+        .fontColor(this.playInk())
     }
     .layoutWeight(1)
     .height(height)
@@ -1639,10 +1650,18 @@ struct Detail {
     .borderRadius(Radii.pillFull)
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor((enabled ? toResourceColor(activeColors().accent) : toResourceColor(activeColors().inkMuted)))
+    .backgroundColor((enabled ? (this.playFocused && !isTvMetrics() ? PLAY_FOCUS_FILL : toResourceColor(activeColors().accent)) : toResourceColor(activeColors().inkMuted)))
     .opacity((enabled ? 1 : 0.6))
     .focusable(enabled)
-    .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
+    .defaultFocus(enabled && !isTvMetrics())
+    .scale(this.playFocused && !isTvMetrics() ? { x: 1.06, y: 1.06 } : { x: 1, y: 1 })
+    .onFocus((): void => {
+      this.playFocused = true;
+      this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration)();
+    })
+    .onBlur((): void => {
+      this.playFocused = false;
+    })
     .onClick(() => {
       this.playPrimary();
     })
@@ -2443,6 +2462,11 @@ struct Detail {
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
       .onAppear(() => { this.settleTouchEpisode(0); })
+
+      // web's floating nav bar sits over the page, the browsed kind selected
+      TouchNavBar({ selectedId: this.detail !== null ? this.detail.work.kind : '' })
+        .position({ x: 0, y: '100%' })
+        .markAnchor({ x: 0, y: TOUCH_NAV_BAR_BOX })
 
       if (this.touchActionsOpen && this.detail !== null) {
         TitleActionsDrawer({

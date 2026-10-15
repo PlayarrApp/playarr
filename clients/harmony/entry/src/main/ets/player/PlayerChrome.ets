@@ -725,6 +725,30 @@ export struct PlayerChrome {
     })
   }
 
+  /** Previous / next as web draws them: a bare icon (a bar and a triangle), no circle; dimmed while there is nothing to skip to. */
+  @Builder
+  private phoneSkip(previous: boolean, active: boolean, onTap: () => void): void {
+    Row({ space: 1 }) {
+      if (!previous) {
+        Polygon({ width: 10, height: 12 }).points([[0, 0], [0, 12], [10, 6]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(10).height(12)
+      }
+      Row().width(2.5).height(12).backgroundColor(toResourceColor(CHROME_TEXT_PRIMARY))
+      if (previous) {
+        Polygon({ width: 10, height: 12 }).points([[10, 0], [10, 12], [0, 6]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(10).height(12)
+      }
+    }
+    .width(PHONE_SEEK_SIZE)
+    .height(PHONE_SEEK_SIZE)
+    .justifyContent(FlexAlign.Center)
+    .opacity(active ? 1 : 0.35)
+    .focusable(active)
+    .onClick(() => {
+      if (active) {
+        onTap();
+      }
+    })
+  }
+
   /** Web phone player (360 vp reference): round minimise and close at the top right; at the bottom a thin progress track, the time
    * centred under it, one row of previous / play / next / volume / subtitles and a second row of the quality and info buttons. */
   @Builder
@@ -750,7 +774,7 @@ export struct PlayerChrome {
           Text('LIVE').fontFamily(nunito(700)).fontSize(PHONE_TIME_FONT_SIZE).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
         }
         Row() {
-          this.phoneButton('\u23EE', PHONE_SEEK_SIZE, 14, this.canPrevious, this.onPrevious)
+          this.phoneSkip(true, this.canPrevious, this.onPrevious)
           ChromeButton({
             showGlyph: true,
             circle: true,
@@ -764,7 +788,7 @@ export struct PlayerChrome {
               this.setChildFocused(focused);
             }),
           })
-          this.phoneButton('\u23ED', PHONE_SEEK_SIZE, 14, this.canNext, this.onNext)
+          this.phoneSkip(false, this.canNext, this.onNext)
           this.phoneButton(this.muted ? 'Muted' : 'Vol', PHONE_SEEK_SIZE, 10, true, this.onToggleMute)
           this.phoneButton('-10s', PHONE_SEEK_SIZE, 10, true, this.onSeekBack)
           this.phoneButton('+10s', PHONE_SEEK_SIZE, 10, true, this.onSeekForward)
