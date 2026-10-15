@@ -1,0 +1,1 @@
+- HarmonyOS phone: Home rails really run to the screen edge at their end (the list is widened, not padded), and the wall re-checks the saved series-detail frame for grey placeholder cards.

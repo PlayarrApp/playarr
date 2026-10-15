@@ -605,17 +605,26 @@ else:
                     # the episode cards must show art: a frame with grey placeholder cards is waited on, then refused
                     # The app fetches the episode stills one after another; a stalled request (the dark job's Previewer under load logs
                     # curl code 28 timeouts) leaves it waiting for good, so open the page again every 30 s to start a fresh fetch.
-                    art_end = time.time() + 120
+                    art_end = time.time() + 150
                     next_reopen = time.time() + 30
-                    while phone_flat_card_rows(png()) > 0 and time.time() < art_end:
+                    clean = 0
+                    # Two clean checks in a row, 5 s apart: the page scrolls to the next-up episode after it opens, so a single early
+                    # check can see art that is still above the fold while the cards the frame will show are grey (light, 2026-10-15).
+                    while clean < 2 and time.time() < art_end:
                         time.sleep(5)
-                        if time.time() >= next_reopen and phone_flat_card_rows(png()) > 0:
+                        clean = clean + 1 if phone_flat_card_rows(png()) == 0 else 0
+                        if clean == 0 and time.time() >= next_reopen:
                             route("home", 6); route("detail:" + work_id, 8)
                             next_reopen = time.time() + 30
-                    if phone_flat_card_rows(png()) > 0:
+                    if clean < 2:
                         debug(name + "-placeholder-art")
                         raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")
                 snap(name, folder, 100000)
+                if kind == "series":  # the saved frame itself must show art (the page may have moved since the last check)
+                    saved = os.path.join(folder, name + ".png")
+                    if phone_flat_card_rows(Image.open(saved)) > 0:
+                        os.replace(saved, os.path.join(out, "_debug", name + "-placeholder-saved.png"))
+                        raise Skip(f"{name}: the saved frame shows grey placeholder cards")
                 return
             time.sleep(0.5)
         debug(f"{name}-route-timeout")
@@ -707,7 +716,7 @@ else:
         route("profiles", 8); route("settings", 12); click(540, 300); time.sleep(6)
         click(*size_btn); time.sleep(2)
         route("library:movie", 15); settle()
-        open_filters(name); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(4); click(*CLOSE_DRAWER); time.sleep(4)
+        open_filters(name); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(5); click(*CLOSE_DRAWER); time.sleep(5); settle()
         snap(name, folder, 100000)
 
     for nm, btn in (("library-covers-small", SMALL_BTN), ("library-covers-medium", MEDIUM_BTN), ("library-covers-large", LARGE_BTN)):

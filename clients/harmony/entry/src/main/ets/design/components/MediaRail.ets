@@ -391,13 +391,14 @@ export struct MediaRail {
         )
       }
       .listDirection(Axis.Horizontal)
+      .width(this.bleedEnd > 0 ? `calc(100% + ${this.bleedEnd}vp)` : '100%')
       .overlay(isTvMetrics() ? this.tvEdgeMask() : this.endFade(), isTvMetrics() ? { align: Alignment.TopStart } : { align: Alignment.End })
       .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
       .height(this.listHeight > 0 ? this.listHeight + RAIL_CLIP_INSET_TOP : '100%')
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
-      .padding({ left: RAIL_CLIP_INSET_START, top: RAIL_CLIP_INSET_TOP, bottom: RAIL_CLIP_INSET_BOTTOM, right: this.bleedEnd })
-      .margin({ left: -RAIL_CLIP_INSET_START, top: -RAIL_CLIP_INSET_TOP, bottom: -RAIL_CLIP_INSET_BOTTOM, right: -this.bleedEnd })
+      .padding({ left: RAIL_CLIP_INSET_START, top: RAIL_CLIP_INSET_TOP, bottom: RAIL_CLIP_INSET_BOTTOM })
+      .margin({ left: -RAIL_CLIP_INSET_START, top: -RAIL_CLIP_INSET_TOP, bottom: -RAIL_CLIP_INSET_BOTTOM })
       .focusScopeId(this.railId, true, true)
       .id(this.measurementId.length > 0 ? this.measurementId : this.railId + '-list')
       .onFocus(() => {
