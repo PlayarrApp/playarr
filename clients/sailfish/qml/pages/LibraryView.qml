@@ -86,13 +86,13 @@ Item {
     }
     WorkGrid {
         id: grid
-        anchors { top: count.bottom; topMargin: -8 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { top: count.bottom; topMargin: -24 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
         works: root.works
         mode: root.viewMode
         restRing: true
         busy: root.busy
         done: root.total >= 0 && root.works.length >= root.total
-        topMargin: 11 * Tokens.u   // 8 px of ring and halo room above the first row (the grid starts 8 px higher), then the 3 px gap
+        topMargin: 27 * Tokens.u   // 24 px of ring and glow room above the first row (the grid starts 24 px higher), then the 3 px gap
         bottomMargin: 100 * Tokens.u
         onOpened: root.opened(work)
         onHeld: root.held(work)
