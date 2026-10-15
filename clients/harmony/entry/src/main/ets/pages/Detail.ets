@@ -131,7 +131,9 @@ import {
 } from '../core/SeriesEpisodePresentation';
 import { NonEmptyComponentIdModifier } from '../design/ComponentMeasurement';
 import type { ResumePlan } from '../core/Types/ResumePlan';
-import { getMediaChapters, getWatchProgress } from '../data/PlaybackRepository';
+import type { WatchProgress } from '../core/Types/Playback';
+import { getMediaChapters, getWatchProgress, listWatchProgress } from '../data/PlaybackRepository';
+import { watchMarkFor } from '../core/WatchState';
 import { addToWatchlist, removeFromWatchlist, resolveTitle } from '../data/WatchlistRepository';
 import { snapshotFromWork } from '../core/TitleSnapshot';
 import { formatRuntimeLabel } from '../core/RuntimeLabel';
@@ -335,6 +337,8 @@ interface DetailRow {
   episodeNumberOverlay?: string;
   /** Where playback starts when the row is a chapter; absent plays from the beginning. */
   startMs?: number;
+  /** Changes when the phone's unseen dot or next-up ring changes, so the rail rebuilds the card (ForEach keys on id and stamp). */
+  stamp?: string;
 }
 
 @Component
@@ -356,6 +360,7 @@ struct DetailRowArtworkCard {
   @Prop episodeNumberOverlay: string = '';
   @Prop focusId: string = '';
   @Prop ringOn: boolean = false;
+  @Prop unseen: boolean = false;
 
   onSelect: () => void = () => {};
   onCardAppear: () => void = () => {};
@@ -379,6 +384,7 @@ struct DetailRowArtworkCard {
       episodeCaption: this.episodeCaption,
       episodeNumberOverlay: this.episodeNumberOverlay,
       ringOn: this.ringOn,
+      unseen: this.unseen,
       measurementId: this.measurementId,
       imageMeasurementId: this.imageMeasurementId,
       onFocused: this.onCardFocus,
@@ -809,6 +815,9 @@ struct Detail {
   @State private touchActionsOpen: boolean = false;
   /** Phone Play: web's focus style (`.tv-detail-play:focus-visible`: brand-strong fill, white label, 1.06 scale). */
   // starts true on the phone: web opens with Play focused, and the Previewer window never reports the focus
+  /** Web's unseen dot on episode cards: the viewer's progress rows by media file, once loaded. */
+  @State private episodeProgress: Map<string, WatchProgress> = new Map<string, WatchProgress>();
+  @State private episodeProgressLoaded: boolean = false;
   @State private playFocused: boolean = !isTvMetrics();
   @State private optionsOpen: boolean = false;
   /** On this profile's watchlist: null until the server has answered. */
@@ -887,6 +896,9 @@ struct Detail {
     this.loadSimilar(detail.work, artworkGeneration);
     this.loadCredits(detail.work.id);
     this.loadWatchlistState(detail.work);
+    if (detail.work.kind === 'series' && !isTvMetrics()) {
+      this.loadEpisodeProgress();
+    }
     if (this.primaryMediaFileId !== null && detail.work.kind === 'movie') {
       this.loadResume(this.primaryMediaFileId);
     }
@@ -1539,6 +1551,52 @@ struct Detail {
     }
   }
 
+  private episodeUnseen(row: DetailRow): boolean {
+    const file = row.mediaFileId;
+    return !isTvMetrics() && file !== null && watchMarkFor(this.episodeProgress.get(file), this.episodeProgressLoaded).unseen;
+  }
+
+  /** Phone: give each episode row a stamp that reflects its unseen dot and ring, so the cards redraw when the data arrives. */
+  private restampEpisodes(): void {
+    if (isTvMetrics() || this.detail === null || this.detail.work.kind !== 'series') {
+      return;
+    }
+    const nextUp = this.nextUpEpisodeId();
+    const next: DetailRail[] = [];
+    for (const rail of this.rails) {
+      const items: DetailRow[] = [];
+      for (const row of rail.items) {
+        items.push({
+          id: row.id,
+          title: row.title,
+          subtitle: row.subtitle,
+          mediaFileId: row.mediaFileId,
+          similarWorkId: row.similarWorkId,
+          episodeHasThumb: row.episodeHasThumb,
+          episodeCaption: row.episodeCaption,
+          episodeNumberOverlay: row.episodeNumberOverlay,
+          startMs: row.startMs,
+          stamp: (this.episodeUnseen(row) ? 'u' : 's') + (nextUp === row.id ? 'r' : 'n'),
+        });
+      }
+      next.push({ id: rail.id, heading: rail.heading, items: items });
+    }
+    this.rails = next;
+  }
+
+  private async loadEpisodeProgress(): Promise<void> {
+    const result = await listWatchProgress();
+    if (result.kind === 'ok') {
+      const byFile = new Map<string, WatchProgress>();
+      for (const row of result.value) {
+        byFile.set(row.media_file_id, row);
+      }
+      this.episodeProgress = byFile;
+      this.episodeProgressLoaded = true;
+      this.restampEpisodes();
+    }
+  }
+
   /** The episode web rings on open: the resume target, else (everything watched) the first episode of the first season. */
   private nextUpEpisodeId(): string {
     const plan = this.resumePlan;
@@ -1564,6 +1622,7 @@ struct Detail {
       episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
       focusId: seriesEpisodeFocusId((item as DetailRow).id),
       ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,
+      unseen: this.episodeUnseen(item as DetailRow),
       cardWidth: this.seriesCardWidth(),
       cardHeight: Math.round(this.seriesCardWidth() * 9 / 16),
       activeRailFactor: activeRailFactor,
@@ -1844,6 +1903,7 @@ struct Detail {
       return;
     }
     this.resumePlan = result.value;
+    this.restampEpisodes();
     const target = resumeTargetFile(result.value);
     if (target !== null) {
       this.primaryMediaFileId = target;

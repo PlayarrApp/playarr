@@ -658,7 +658,17 @@ def phone_flat_card_rows(image, *, min_run_px=500, min_rows=100):
                 blocks += 1
         run_rows = nxt
     blocks += sum(1 for count in run_rows.values() if count >= min_rows)
-    return blocks
+    # The placeholder is not always one colour (the light theme draws a soft gradient, and the "01" overlay breaks the runs), so also look
+    # for a card-sized window whose pixels barely vary and whose colour is not the page's. Real art never fills 400x200 px that evenly.
+    cells = set()
+    for y in range(900, height - 200 + 1, 40):
+        for x in range(40, width - 400 + 1, 40):
+            extrema = rgb.crop((x, y, x + 400, y + 200)).getextrema()
+            if any(high - low > 24 for low, high in extrema):
+                continue
+            if any(abs((low + high) // 2 - page[i]) > 6 for i, (low, high) in enumerate(extrema)):
+                cells.add((x // 560, y // 340))
+    return blocks + len(cells)
 
 
 def tv_flat_card_blocks(image, *, card=(300, 160), step=40, tolerance=16):

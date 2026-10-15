@@ -861,6 +861,7 @@ export struct Home {
       subtitle: (item as HomeCardItem).subtitle,
       progress: (item as HomeCardItem).progress,
       artwork: (item as HomeCardItem).artwork,
+      unseen: this.unseenFor(item as HomeCardItem),
       cardWidth: TOUCH_HOME_CARD_WIDTH,
       cardHeight: Math.round((TOUCH_HOME_CARD_WIDTH * 9) / 16),
       artworkRadius: Radii.homeCardArtworkTouch,
