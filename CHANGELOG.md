@@ -649,6 +649,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone cards draw web's second shadow layer; the capture reopens a series page whose episode stills stall.
 - Xbox: the library grid fades toward its top and bottom edges where content continues, as the web.
 - HarmonyOS: ink-soft, ink-muted, accent, danger and success colours match the web tokens in light and dark (TV included).
 - HarmonyOS phone rails fade their end edge as web does (38 vp smoothstep ramp to 30%, TV unchanged).
