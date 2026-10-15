@@ -780,6 +780,21 @@ class Commands:
         time.sleep(seconds)
         return ok and self.send("MouseRelease", {"x": x, "y": y})
 
+    def swipe(self, x1: int, y1: int, x2: int, y2: int, steps: int = 12, ms: int = 300) -> bool:
+        """A drag: press at (x1, y1), `steps` pointer moves spread over about `ms` ms along the line, release at (x2, y2)."""
+        steps = max(1, steps)
+        ok = self.send("MousePress", {"x": x1, "y": y1})
+        for i in range(1, steps + 1):
+            x = round(x1 + (x2 - x1) * i / steps)
+            y = round(y1 + (y2 - y1) * i / steps)
+            ok &= self.send("MouseMove", {"x": x, "y": y})
+            time.sleep(max(0.0, ms / 1000 / steps - 0.03))  # send() already waits about 30 ms
+        return ok and self.send("MouseRelease", {"x": x2, "y": y2})
+
+    def wheel(self, x: int, y: int, rotate: float) -> bool:
+        """A mouse-wheel turn over (x, y): positive scrolls the content up (towards its end), negative back."""
+        return self.send("MouseWheel", {"x": x, "y": y, "rotate": rotate})
+
     def click(self, x: int, y: int) -> bool:
         return self.send("MousePress", {"x": x, "y": y}) and self.send("MouseRelease", {"x": x, "y": y})
 
@@ -958,6 +973,13 @@ def main():
                 return self._reply(200 if commands.key(name) else 503, b"ok")
             if url.path == "/click":
                 ok = commands.click(int(query["x"][0]), int(query["y"][0]))
+                return self._reply(200 if ok else 503, b"ok")
+            if url.path == "/swipe":
+                ok = commands.swipe(int(query["x1"][0]), int(query["y1"][0]), int(query["x2"][0]), int(query["y2"][0]),
+                                    int(query.get("steps", ["12"])[0]), int(query.get("ms", ["300"])[0]))
+                return self._reply(200 if ok else 503, b"ok")
+            if url.path == "/wheel":
+                ok = commands.wheel(int(query["x"][0]), int(query["y"][0]), float(query["rotate"][0]))
                 return self._reply(200 if ok else 503, b"ok")
             if url.path == "/longclick":
                 ok = commands.long_click(int(query["x"][0]), int(query["y"][0]))

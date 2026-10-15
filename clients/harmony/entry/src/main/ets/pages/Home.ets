@@ -1116,6 +1116,7 @@ export struct Home {
         Scroll() {
           this.touchRailsColumn()
         }
+        .scrollBar(BarState.Off)
         .width('100%')
         .height('100%')
       }

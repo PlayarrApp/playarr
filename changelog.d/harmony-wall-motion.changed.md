@@ -1,0 +1,1 @@
+- Harmony wall: the Previewer bridge gains swipe and wheel endpoints and the phone capture records Home, rail and drawer scroll bursts.

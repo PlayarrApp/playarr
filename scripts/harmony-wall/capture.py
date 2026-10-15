@@ -658,6 +658,37 @@ else:
             click(x, y); time.sleep(2)
         route("home", 40); snap(name, folder, 100000)
 
+    # Round 3 motion: swipes through Home, a rail and the drawers, a 5-frame burst (about 150 ms apart) after each step, into _debug/motion-*.png.
+    def burst(name, n=5, gap=0.15):
+        for i in range(n):
+            debug("motion-%s-%d" % (name, i), png()); time.sleep(gap)
+
+    def swipe(x1, y1, x2, y2):
+        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2, steps=12, ms=300)
+
+    def motion_home():
+        route("home", 40); burst("home-00-top")
+        for i in range(1, 5):
+            swipe(540, 1900, 540, 700); burst("home-%02d-down" % i)
+        for i in range(1, 5):
+            swipe(540, 700, 540, 1900); burst("home-%02d-up" % (4 + i))
+        for i in range(1, 4):
+            swipe(990, 1180, 90, 1180); burst("home-rail-%02d-left" % i)
+        for i in range(1, 4):
+            swipe(90, 1180, 990, 1180); burst("home-rail-%02d-right" % (3 + i))
+
+    def motion_drawers():
+        route("library:movie", 15); settle()
+        open_filters("motion"); burst("filters-00-open")
+        for i in range(1, 4):
+            swipe(540, 1900, 540, 500); burst("filters-%02d-up" % i)
+        click(*CLOSE_DRAWER); time.sleep(3)
+        longclick(*CARDS[0]); time.sleep(5); burst("actions-00-open")
+        for i in range(1, 4):
+            swipe(540, 1900, 540, 500); burst("actions-%02d-up" % i)
+
+    guarded("motion-home", motion_home)
+    guarded("motion-drawers", motion_drawers)
     guarded("home-covers", lambda: home_with("home-covers", [COVERS_BTN]))
     guarded("home-covers-small", lambda: home_with("home-covers-small", [SMALL_BTN]))
     guarded("home-covers-large", lambda: home_with("home-covers-large", [LARGE_BTN]))
