@@ -125,6 +125,25 @@ namespace Playarr.Xbox.Views
                     origin.Y -= ((FrameworkElement)child).ActualHeight + ((FrameworkElement)child).Margin.Top + ((FrameworkElement)child).Margin.Bottom;
                 }
 
+                // --card-shadow-focus: 0 24px 48px at 30 % and 0 10px 20px at 20 %, as stacked layers fitted to each Gaussian
+                // (a layer's alpha keeps the stack on A * (1 - Phi(edge / sigma))). It sits before the art, so it paints beneath it.
+                var shadowCanvas = new Canvas { Tag = "focus-shadow", Height = 0, Width = 0, HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
+                foreach (var (offset, grow, alpha) in FocusShadowLayers)
+                {
+                    var shadow = new Border
+                    {
+                        Width = art.ActualWidth + 2 * grow,
+                        Height = art.ActualHeight + 2 * grow,
+                        CornerRadius = new CornerRadius(Math.Max(0, radius + grow)),
+                        Background = new SolidColorBrush(Windows.UI.Color.FromArgb(alpha, 56, 38, 33)),
+                    };
+                    Canvas.SetLeft(shadow, -grow);
+                    Canvas.SetTop(shadow, offset - grow);
+                    shadowCanvas.Children.Add(shadow);
+                }
+
+                card.Children.Insert(0, shadowCanvas);
+
                 for (var k = 0; k < 11; k++)
                 {
                     // Distance from the art edge: the spread (to 7 px) is solid, the 20 px blur fades the rest.
@@ -149,7 +168,20 @@ namespace Playarr.Xbox.Views
             }
 
             canvas.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var child in card.Children)
+            {
+                if (child is Canvas { Tag: "focus-shadow" } focusShadow)
+                {
+                    focusShadow.Visibility = canvas.Visibility;
+                }
+            }
         }
+
+        private static readonly (int Offset, int Grow, byte Alpha)[] FocusShadowLayers =
+        {
+            (24, 60, 1), (24, 48, 1), (24, 42, 2), (24, 36, 3), (24, 30, 3), (24, 24, 5), (24, 18, 6), (24, 12, 7), (24, 6, 9), (24, 0, 8), (24, -6, 9), (24, -12, 9), (24, -18, 7), (24, -24, 6),
+            (10, 24, 1), (10, 18, 2), (10, 15, 2), (10, 12, 3), (10, 9, 4), (10, 6, 5), (10, 3, 6), (10, 0, 7), (10, -3, 7), (10, -6, 5), (10, -9, 5),
+        };
 
         /// <summary>The soft glow and the art scale (<c>--card-art-scale</c>, 1.025 about the centre; the caption stays put).</summary>
         private static void ApplyHalo(Panel card, Grid art, bool focused)

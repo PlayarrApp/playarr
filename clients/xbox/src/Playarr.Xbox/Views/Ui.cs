@@ -42,7 +42,7 @@ namespace Playarr.Xbox.Views
             subtitle.Text = subtitle.Text.ToUpperInvariant();
             subtitle.FontSize = 11;
             subtitle.FontWeight = FontWeights.Bold;
-            subtitle.CharacterSpacing = 60;
+            subtitle.CharacterSpacing = 45; // web: 0.045em
             subtitle.Foreground = Res("PlayarrInk");
             if (string.IsNullOrEmpty(subtitle.Text))
             {

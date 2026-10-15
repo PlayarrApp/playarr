@@ -27,7 +27,7 @@
             Spacing="0">
 
             <TextBlock Text="WELCOME HOME" FontSize="12" FontWeight="Bold" CharacterSpacing="120" Foreground="{StaticResource PlayarrBrandInk}" HorizontalAlignment="Center" />
-            <TextBlock Text="Sign in to Playarr" Style="{StaticResource PlayarrPageTitle}" FontSize="44" HorizontalAlignment="Center" Margin="0,14,0,0" />
+            <TextBlock Text="Sign in to Playarr" Style="{StaticResource PlayarrPageTitle}" CharacterSpacing="0" FontSize="44" HorizontalAlignment="Center" Margin="0,14,0,0" />
             <TextBlock
                 x:Name="DescriptionText"
                 Text="Scan the QR code with your phone or another browser to sign in on this device."

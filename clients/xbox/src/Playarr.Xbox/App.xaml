@@ -39,6 +39,8 @@
                 <Setter Property="FontFamily" Value="{StaticResource PlayarrFont}" />
                 <Setter Property="FontSize" Value="34" />
                 <Setter Property="FontWeight" Value="SemiBold" />
+                <!-- Web page title: letter-spacing -0.045em. -->
+                <Setter Property="CharacterSpacing" Value="-45" />
                 <Setter Property="Foreground" Value="{StaticResource PlayarrInk}" />
             </Style>
             <Style x:Key="PlayarrRailTitle" TargetType="TextBlock">

@@ -1,0 +1,1 @@
+- Xbox: focused cards get the web's focus shadow; page titles and header subtitles use the web's letter-spacing.
