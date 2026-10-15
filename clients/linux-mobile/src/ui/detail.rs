@@ -466,7 +466,6 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         row1.set_margin_bottom(FOCUS_ROOM);
         sw.set_margin_start(-FOCUS_ROOM);
         sw.set_margin_top(-FOCUS_ROOM);
-        sw.set_margin_bottom(-FOCUS_ROOM);
         body.append(&sw);
     } else {
         row2.append(&watch);
@@ -479,7 +478,9 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         body.append(&albums(&l.detail.children.albums, &title, play.clone()));
     }
     let seasons = &l.detail.children.seasons;
-    gap(&body, if series { 53 } else { 28 });
+    // Negative margins do not take the pill scroller's focus room back, so the series gap is shortened by the
+    // room kept above and below (measured against the web capture).
+    gap(&body, if series { 53 - 2 * FOCUS_ROOM } else { 28 });
     let mut focus_index = 0;
     // Next and Previous (on the lock screen or a headset) walk the episodes in order.
     let queue: Vec<(String, String)> = seasons
