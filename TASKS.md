@@ -646,6 +646,7 @@ Steps only the repository owner can perform.
 | 10485 | Harmony phone round 3 motion tooling: swipe and wheel, scroll bursts | done | parity-harmony | harmony-phone-round3b | | 2026-10-16 12:00 ICT | Bridge swipe and wheel endpoints with tests; the phone capture swipes Home, a rail and the drawers with 5-frame bursts. PR open: #1484. PR #1484 merged 2026-10-15. |
 | 10495 | Roku Home Covers (portrait posters) mode and settings focus order | done | parity-roku | roku-round3 | | 2026-10-17 18:00 ICT | Settings > Home screen artwork = Covers now takes effect: Home rails use 2:3 posters at web's 191 px width (rail pitch 470, rails 51 px higher, glow follows the card). Checked on the test Roku against the live web covers Home: card, ring, captions and the second rail line up. Settings Down/Up now prefers the control directly below (it skipped the artwork row). PR open: #1492. PR #1492 merged 2026-10-15. |
 | 10492 | Settings Appearance: Up/Down step through segmented rows so Home artwork (Covers) is reachable with the remote | in_review | parity-vidaa | vidaa-segmented-vertical | | 2026-10-16 18:00 ICT | PR open: #1491. Round 3 poster-mode finding on VIDAA and web. |
+| 10488 | Harmony phone Filters multi-select width | in_review | parity-harmony | harmony-phone-round3e | | 2026-10-16 12:00 ICT | Language selects were 268 vp in a 320 vp drawer (frames of #1487); phone width now. PR open: #1497. |
 
 ## 18. Public repository readiness (2026-10-05)
 
