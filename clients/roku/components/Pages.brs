@@ -2213,7 +2213,7 @@ end sub
 ' Web page header: the subtitle sits beside the title after a thin vertical divider (not pink); it wraps under the title,
 ' above a hairline as wide as the title, only when it does not fit before the clock.
 sub layoutHeaderSub(titleW as Float, label as Object, divider as Object, rule as Object, text as String)
-    label.spec = { text: text, size: 12, weight: 700, tracking: 0.983, role: "ink", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
+    label.spec = { text: text, size: 12, weight: 700, tracking: 0.501, role: "ink", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
     x = 226.6 + titleW + 24
     if x + 1 + 24 + label.textWidth <= 462
         divider.translation = [x, 73]
