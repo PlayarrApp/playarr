@@ -36,7 +36,11 @@ rasterisation).
   account (environment or `~/.secrets`), clears sessionStorage on every document, waits for fonts and images, takes two identical
   shots, and verifies size, theme, title and loading placeholders before copying anything:
   `PARITY_CHROME=/usr/bin/chromium node capture-refs.mjs --parity-root <dir of client folders> [--groups tv,iphone] [--screens home]`.
-  Run it inside a memory scope. The player-controls screen is not part of it.
+  Run it inside a memory scope. `player-controls` is captured live with the video hidden for the non-phone groups (`liveScreens`);
+  the `tv-nodl` group (Roku) hides Downloads. `--dry` prints the plan and checks that the deployed web build holds origin/main's web
+  client; `web/build.json` records that build's `sha` (and `repoSha`). `recapture-round2.mjs` runs the deck reset and then this for
+  all groups. The legend (`update.mjs`, outside the repo) scores `player-controls` inside the `compareRegions` only, so a device
+  video frame cannot count against the black web ref.
 - `scripts/parity/diff.mjs`: pixelmatch diff, per-screen mismatch table and an HTML report. Ignored regions:
   `--mask-rect x,y,w,h[,screen-id]` (CSS px of the layout, repeatable) and the `maskRects` the reference manifest
   records for text that differs per fixture instance (the `settings-server` address, from `maskSelectors` in

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // One command regenerates every web reference screenshot (the pixel reference native clients are scored against).
-//   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset] [--bak <backup dir name>]
+//   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset] [--bak <backup dir name>] [--dry] [--allow-stale-web]
+//   --dry prints the plan (groups, viewports, dirs, Downloads hidden or not, live screens) and the web build sha check, then exits without capturing.
+//   The web build served at PLAYARR_WEB_URL must contain origin/main's web client (no clients/tv-web change between its sha and origin/main), else the run stops (--allow-stale-web overrides).
 // Needs PARITY_CHROME=<chromium path> (or Playwright's own), and the Device Test account in the environment:
 //   PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD (read from ~/.secrets
 //   PLAYARR_DEVICE_TEST_* when unset; never printed).
@@ -29,6 +31,25 @@ const bakName = opt("bak", `web.bak-${manifest.date}`); // --bak <name>: partial
 const partial = args.includes("--bak");
 const copy = !args.includes("--no-copy");
 if (copy && !root) throw new Error("--parity-root <dir> is required (or --no-copy)");
+
+// The web build the refs come from: its sha goes into every refs folder's build.json (sha = web build, repoSha = this checkout).
+const webUrl = (process.env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
+const git = (...a) => execFileSync("git", a, { cwd: here, encoding: "utf8" }).trim();
+const repoSha = git("rev-parse", "HEAD");
+const webBuild = await (await fetch(`${webUrl}/build-info.json`, { cache: "no-store" })).json().catch(() => ({}));
+if (!webBuild.sha) throw new Error(`no sha in ${webUrl}/build-info.json`);
+const mainSha = (() => { try { return git("rev-parse", "origin/main"); } catch { return null; } })();
+const staleWeb = mainSha && webBuild.sha !== mainSha ? git("diff", "--name-only", webBuild.sha, mainSha, "--", "clients/tv-web").split("\n").filter(Boolean) : [];
+console.log(`web build ${webBuild.sha.slice(0, 9)} (built ${webBuild.builtAt}), origin/main ${mainSha?.slice(0, 9) ?? "unknown"}, ${staleWeb.length ? `STALE: ${staleWeb.length} web files differ` : "web client current"}`);
+if (staleWeb.length && !args.includes("--allow-stale-web") && !args.includes("--dry")) throw new Error("the deployed web build lacks origin/main's web client changes (git fetch, wait for the deploy, or --allow-stale-web)");
+if (args.includes("--dry")) {
+  for (const name of groups) {
+    const g = manifest.groups[name];
+    if (!g) throw new Error(`unknown group ${name}`);
+    console.log(`${name}: ${g.viewport.join("x")}@${g.dpr}${g.mobile ? " phone" : ""}${g.noDownloads ? " NO-DOWNLOADS" : ""} -> ${g.dirs.join(",")}; screens ${wantScreens.filter((x) => manifest.screens.includes(x)).length} x dark/light${g.liveScreens ? `, live ${g.liveScreens.join(",")} (video hidden)` : ""}`);
+  }
+  process.exit(0);
+}
 
 // Credentials: environment first, else ~/.secrets (values are never logged).
 const secrets = {};
@@ -83,6 +104,7 @@ for (const name of groups) {
   if (!g) throw new Error(`unknown group ${name}`);
   Object.assign(process.env, { PLAYARR_WEB_VIEWPORT_WIDTH: String(g.viewport[0]), PLAYARR_WEB_VIEWPORT_HEIGHT: String(g.viewport[1]), PLAYARR_WEB_VIEWPORT_DPR: String(g.dpr) });
   if (g.mobile) process.env.PLAYARR_WEB_MOBILE = "1"; else delete process.env.PLAYARR_WEB_MOBILE;
+  if (g.noDownloads) process.env.PLAYARR_WEB_NO_DOWNLOADS = "1"; else delete process.env.PLAYARR_WEB_NO_DOWNLOADS;
   const driver = await (await import(`${driverUrl}?${name}`)).createDriver();
   await driver.start();
   const facts = {};
@@ -113,7 +135,7 @@ for (const name of groups) {
   if (g.liveScreens?.length) {
     const live = join(work, name, "live");
     execFileSync("node", [join(here, "roku", "capture-web-live.mjs"), "--base", srv, "--web", (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, ""), "--out", live,
-      "--screens", g.liveScreens.join(","), "--viewport", g.viewport.join("x"), "--dpr", String(g.dpr)],
+      "--screens", g.liveScreens.join(","), "--viewport", g.viewport.join("x"), "--dpr", String(g.dpr), ...(g.noDownloads ? ["--no-downloads"] : [])],
       { stdio: "inherit", env: { ...process.env, PLAYARR_DEVICE_TEST_USERNAME: env.PLAYARR_USERNAME, PLAYARR_DEVICE_TEST_PASSWORD: env.PLAYARR_PASSWORD } });
     for (const theme of ["dark", "light"]) for (const id of g.liveScreens) cpSync(join(live, "tv", theme, `${id}.png`), join(work, name, theme, `${id}.png`));
   }
@@ -144,7 +166,6 @@ for (const name of groups) {
 }
 if (bad) { console.log(`${bad} problems: nothing copied`); process.exit(1); }
 if (copy) {
-  const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: here, encoding: "utf8" }).trim();
   for (const name of groups) {
     const g = manifest.groups[name];
     for (const d of g.dirs) {
@@ -155,7 +176,7 @@ if (copy) {
         cpSync(join(work, name, "dark", `${id}.png`), join(web, `${id}.png`));
         cpSync(join(work, name, "light", `${id}.png`), join(web, "light", `${id}.png`));
       }
-      if (!partial) writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha, pr: null, captured_at: startedAt, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
+      if (!partial) writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha: webBuild.sha, repoSha, webBuiltAt: webBuild.builtAt, pr: null, captured_at: startedAt, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
       console.log(`published ${name} -> ${d}/web`);
     }
   }
