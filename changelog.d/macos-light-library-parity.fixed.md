@@ -1,1 +1,0 @@
-- macOS: the library page preview, alphabet rail and focused card ring follow the web light layout.
