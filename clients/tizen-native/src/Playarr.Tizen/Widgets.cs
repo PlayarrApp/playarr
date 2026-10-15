@@ -27,6 +27,8 @@ internal sealed class MediaCard
 {
     public const float Width = 327.2f, Height = 184f;
     private const float SearchPlaylistFocusRingWidth = 3f;
+    public float W { get; }
+    public float H { get; }
     public View Box { get; } = new();
     public View Art { get; } = new();
     public TextLabel Title { get; }
@@ -47,21 +49,22 @@ internal sealed class MediaCard
     /// <param name="scale">Focus scale (home 1.025, library 1.04).</param>
     /// <param name="lift">Focus lift in px (negative = up).</param>
     public MediaCard(AppEnv env, PlayarrTheme t, WorkCard card, float x, float y, bool showSub, float titleInset, float scale, float lift,
-        float blur, float shadowY, float shadowAlpha, float boxHeight = 230f, float boxScale = 1f, float boxLift = 0f, float focusHeight = Height, bool showRing = true, float restBlur = 0)
+        float blur, float shadowY, float shadowAlpha, float boxHeight = 230f, float boxScale = 1f, float boxLift = 0f, float focusHeight = 0, bool showRing = true, float restBlur = 0, float artW = Width, float artH = Height)
     {
+        W = artW; H = artH; if (focusHeight <= 0) focusHeight = artH;
         _t = t; _scale = scale; _lift = lift; _blur = blur; _shadowY = shadowY; _shadowAlpha = shadowAlpha;
         _boxScale = boxScale; _boxLift = boxLift; _boxY = y; _focusHeight = focusHeight;
-        Box.PositionX = x; Box.PositionY = y; Box.Size = new Size(Width, boxHeight);
+        Box.PositionX = x; Box.PositionY = y; Box.Size = new Size(W, boxHeight);
         // Chromium snaps an image's rect to whole device pixels (left and right edges rounded); a fractional rect resamples and blurs the poster
-        var snapX = (float)Math.Round(x); var snapY = (float)Math.Round(y); var snapW = (float)Math.Round(x + Width) - snapX; var snapH = (float)Math.Round(y + Height) - snapY;
+        var snapX = (float)Math.Round(x); var snapY = (float)Math.Round(y); var snapW = (float)Math.Round(x + W) - snapX; var snapH = (float)Math.Round(y + H) - snapY;
         _artDy = snapY - y; Art.PositionX = snapX - x; Art.PositionY = _artDy;
         Art.Size = new Size(snapW, snapH); Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
         Art.ClippingMode = ClippingModeType.ClipChildren;
         env.Images.Apply(Art, card.ThumbUrl, snapW, snapH, 12.48f);
         if (card.Progress > 0)
         {
-            Art.Add(Ui.Box(0, Height - 3, Width, 3, new Rgba(1, 1, 1, 0.2f)));
-            Art.Add(Ui.Box(0, Height - 3, Math.Max(3, Width * (float)card.Progress), 3, t.Brand));
+            Art.Add(Ui.Box(0, H - 3, W, 3, new Rgba(1, 1, 1, 0.2f)));
+            Art.Add(Ui.Box(0, H - 3, Math.Max(3, W * (float)card.Progress), 3, t.Brand));
         }
         if (card.StackOptions > 1) AddStack(card, snapW);
         if (restBlur > 0)
@@ -76,20 +79,20 @@ internal sealed class MediaCard
         {
             // web: a 3 px ring on the focused card, the brand red in light and the pale brand pink in dark
             var rc = t.Name == "dark" ? new Color(t.BrandInk.R, t.BrandInk.G, t.BrandInk.B, 0.95f) : new Color(0.647f, 0.153f, 0.271f, 1);
-            _ring = new View { Size = new Size(Width, Height), CornerRadius = 12.48f, BorderlineWidth = 3, BorderlineColor = rc, BorderlineOffset = -1 };
+            _ring = new View { Size = new Size(W, H), CornerRadius = 12.48f, BorderlineWidth = 3, BorderlineColor = rc, BorderlineOffset = -1 };
             _ring.Show(false);
             Art.Add(_ring);
         }
         if (card.Unseen)
         {
-            var dot = Ui.Box(Width - 23.6f, 10.6f, 13, 13, t.Brand, 6.5f);
+            var dot = Ui.Box(W - 23.6f, 10.6f, 13, 13, t.Brand, 6.5f);
             dot.BorderlineWidth = 2; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
             Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
         var drop = card.StackOptions > 1 ? StackDrop : 0;
-        Title = Ui.Text(card.Title, titleInset, Height + 11.5f + drop, 11.904f, 700, t.Ink, Width - titleInset * 2, 17.856f, spacing: -0.18f);
+        Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 700, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
-        if (showSub) Box.Add(Ui.Text(card.Sub, titleInset, Height + 31.9f + drop, 8.832f, 400, t.InkMuted, Width - titleInset * 2, 13.248f));
+        if (showSub) Box.Add(Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f));
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
     }
 
@@ -104,8 +107,8 @@ internal sealed class MediaCard
     {
         Art.PositionY += StackDrop;
         _artDy += StackDrop;
-        _stackFar = new View { PositionX = 4, PositionY = StackDrop - 6, Size = new Size(artWidth - 8, Height - 8), CornerRadius = 8.5f };
-        _stackNear = new View { PositionX = 2, PositionY = StackDrop - 3, Size = new Size(artWidth - 4, Height - 4), CornerRadius = 10.5f };
+        _stackFar = new View { PositionX = 4, PositionY = StackDrop - 6, Size = new Size(artWidth - 8, H - 8), CornerRadius = 8.5f };
+        _stackNear = new View { PositionX = 2, PositionY = StackDrop - 3, Size = new Size(artWidth - 4, H - 4), CornerRadius = 10.5f };
         PaintStack(false);
         Box.Add(_stackFar); Box.Add(_stackNear);
         var label = $"{card.StackOptions} ways to continue";
@@ -167,9 +170,9 @@ internal sealed class MediaCard
 
     public Box FocusRect(float x, float y)
     {
-        var width = Width * _boxScale;
+        var width = W * _boxScale;
         var height = _focusHeight * _boxScale;
-        return new Box(x + (Width - width) / 2, y + _boxLift + (_focusHeight - height) / 2, width, height);
+        return new Box(x + (W - width) / 2, y + _boxLift + (_focusHeight - height) / 2, width, height);
     }
 
     /// <summary>Replaces the directory placeholder with the web's poster-first, backdrop-fallback cover stack.</summary>
@@ -234,8 +237,15 @@ internal sealed class MediaCard
         if (_focused) _ring?.RaiseToTop();
     }
 
-    public static MediaCard Home(AppEnv env, WorkCard card, float x, float y) =>
-        new(env, env.Theme, card, x, y, showSub: true, titleInset: 0, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22);
+    public static MediaCard Home(AppEnv env, WorkCard card, float x, float y, CardLayout? layout = null)
+    {
+        var l = layout ?? CardLayout.From("thumbnail", "medium");
+        return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: true, titleInset: 0, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22,
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight);
+    }
+
+    /// <summary>Web cover view: the poster is the art (poster first, backdrop as the fallback); an On deck episode keeps its frame.</summary>
+    private static WorkCard CoverCard(WorkCard c) => c.PosterUrl is { Length: > 0 } && c.ThumbUrl?.Contains("/thumbnail", StringComparison.Ordinal) != true ? c with { ThumbUrl = c.PosterUrl } : c;
 
     /// <summary>Search result: title and kind share the web's inset two-column caption row.</summary>
     public static MediaCard Search(AppEnv env, WorkCard card, float x, float y)
@@ -297,8 +307,12 @@ internal sealed class MediaCard
         first.B * (1 - secondWeight) + second.B * secondWeight,
         first.A * (1 - secondWeight) + second.A * secondWeight);
 
-    public static MediaCard Library(AppEnv env, WorkCard card, float x, float y) =>
-        new(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20);
+    public static MediaCard Library(AppEnv env, WorkCard card, float x, float y, CardLayout? layout = null)
+    {
+        var l = layout ?? CardLayout.Library(false, "medium");
+        return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20,
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight);
+    }
 
     /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>
     public static MediaCard PlaylistDirectory(AppEnv env, WorkCard card, float x, float y)

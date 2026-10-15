@@ -248,3 +248,31 @@ public class DeviceCapsTests
         Assert.Equal("This title can't be played on this device.", PlaybackClient.Refusal("not json").Message);
     }
 }
+
+public class CardLayoutTests
+{
+    [Theory]
+    [InlineData(false, "medium", 3, 327.2f, 184f)]
+    [InlineData(false, "small", 4, 238.9f, 134.4f)]
+    [InlineData(false, "large", 2, 503.7f, 283.3f)]
+    [InlineData(true, "medium", 5, 191.3f, 286.9f)]
+    [InlineData(true, "small", 6, 156.2f, 234.3f)]
+    [InlineData(true, "large", 4, 243.9f, 365.9f)]
+    public void MatchesTheWebCardAtEachSetting(bool cover, string size, int cols, float width, float artH)
+    {
+        var l = new CardLayout(cover, size);
+        Assert.Equal(cols, l.Columns);
+        Assert.Equal(width, l.Width, 0.15f);
+        Assert.Equal(artH, l.ArtHeight, 0.3f);
+    }
+
+    [Fact]
+    public void HomeRailsStayCentredAndSpaceByTheArtHeight()
+    {
+        var c = CardLayout.From("cover", "medium");
+        Assert.Equal(468.7f, c.HomeRailPitch, 0.3f);
+        Assert.Equal(-51.4f, c.HomeHeadingShift, 0.2f);
+        Assert.Equal(348.7f, c.LibraryPitchY, 0.3f);
+        Assert.Equal(240.4f, CardLayout.Library(false, "medium").LibraryPitchY, 0.2f);
+    }
+}

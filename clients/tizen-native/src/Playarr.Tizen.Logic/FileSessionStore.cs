@@ -78,6 +78,23 @@ public sealed class FileSessionStore(string directory) : ITokenStore
         File.WriteAllText(PrefsFile, new Newtonsoft.Json.Linq.JObject { ["home_view"] = homeView, ["artwork_size"] = artworkSize }.ToString());
     }
 
+    private string LibraryViewFile => Path.Combine(directory, "libraryview.json");
+    /// <summary>The Library view per kind ("screen" default, "cover"), as web's playarr.libraryView.&lt;kind&gt;.</summary>
+    public string LibraryView(string kind)
+    {
+        try { return (string?)Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(LibraryViewFile))[kind] == "cover" ? "cover" : "screen"; }
+        catch (Exception) { return "screen"; }
+    }
+
+    public void SaveLibraryView(string kind, string view)
+    {
+        Directory.CreateDirectory(directory);
+        Newtonsoft.Json.Linq.JObject o;
+        try { o = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(LibraryViewFile)); } catch (Exception) { o = new Newtonsoft.Json.Linq.JObject(); }
+        o[kind] = view;
+        File.WriteAllText(LibraryViewFile, o.ToString());
+    }
+
     private string PlayerFile => Path.Combine(directory, "player.json");
     /// <summary>Settings > Player > Advanced: "Force direct video" and "Force direct audio" (default off, stored on the device).</summary>
     public (bool Video, bool Audio) ForceDirect()

@@ -8,9 +8,13 @@ namespace Playarr.Tizen;
 /// <summary>Movies, Series or Music: the three-column library grid (web Library, 1920x1080 measurements).</summary>
 internal sealed class LibraryScreen : IPage
 {
-    private static readonly float[] ColX = { 783.4f, 1136.4f, 1489.5f };
-    private const float FirstRowY = 162f, RowPitch = 240.4f, FocusedRowMaxY = 826f, ClipX = 729.6f, PageSize = 200;
-    private const int Columns = 3;
+    private const float ColX0 = 783.4f;
+    private CardLayout _layout;
+    private float ColX(int c) => ColX0 + c * _layout.LibraryPitchX;
+    private float RowPitch => _layout.LibraryPitchY;
+    private float FocusedRowMaxY => 1039.4f - _layout.CardHeight; // web keeps the focused card's bottom at 1039.4 whatever its height
+    private int Columns => _layout.Columns;
+    private const float FirstRowY = 162f, ClipX = 729.6f, PageSize = 200;
 
     private readonly AppEnv _env;
     private readonly PlayarrTheme _t;
@@ -47,11 +51,11 @@ internal sealed class LibraryScreen : IPage
     public string Route => _filters is not null ? _baseRoute + "?panel=filters" : _baseRoute;
     public string? FocusedLabel => _filters?.FocusedLabel ?? _drawer?.FocusedLabel ?? (_sideFocus >= 0 ? _side[_sideFocus].Label : _focus < 0 ? null : $"open {_items[_focus].Title}".ToLowerInvariant());
     public bool HasFocusTarget => _items.Count > 0;
-    public float FocusCentreY => FirstRowY - _scroll + (_focus / Columns) * RowPitch + MediaCard.Height / 2;
+    public float FocusCentreY => FirstRowY - _scroll + (_focus / Columns) * RowPitch + _layout.ArtHeight / 2;
 
     public LibraryScreen(AppEnv env, WorkKind kind, string title, string route)
     {
-        _env = env; _t = env.Theme; _kind = kind; _title = title; _baseRoute = route; _progress = _noProgress;
+        _env = env; _t = env.Theme; _kind = kind; _layout = CardLayout.Library(env.Store.LibraryView(kind.ToString().ToLowerInvariant()) == "cover", env.Store.Appearance().ArtworkSize); _title = title; _baseRoute = route; _progress = _noProgress;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
         _keyArt = new KeyArt(env, armed: true);
@@ -175,9 +179,10 @@ internal sealed class LibraryScreen : IPage
     {
         var sections = new[]
         {
-            new FilterSection("View", new[] { "List", "Screen", "Cover" }, 1, i =>
+            new FilterSection("View", new[] { "List", "Screen", "Cover" }, _layout.Cover ? 2 : 1, i =>
             {
-                if (i != 1) { Toast("Only the screen view is available in this app yet."); return false; }
+                if (i == 0) { Toast("The list view is not available in this app yet."); return false; }
+                ApplyView(i == 2);
                 return true;
             }),
             new FilterSection("Sort by", new[] { "Title", "Date Added" }, _sort == "title" ? 0 : 1, i => ApplySort(i == 0 ? "title" : "date_added", _order)),
@@ -191,6 +196,19 @@ internal sealed class LibraryScreen : IPage
     }
 
     private void CloseFilters() { if (_filters is null) return; _tile?.Show(true); _root.Remove(_filters.Root); _filters.Root.Dispose(); _filters = null; }
+
+    /// <summary>Web's Library view: Screen (16:9 thumbnails) or Cover (2:3 posters, five columns), saved per kind.</summary>
+    private void ApplyView(bool cover)
+    {
+        if (cover == _layout.Cover) return;
+        _env.Store.SaveLibraryView(_kind.ToString().ToLowerInvariant(), cover ? "cover" : "screen");
+        _layout = CardLayout.Library(cover, _env.Store.Appearance().ArtworkSize);
+        foreach (var v in _views.Values) { _grid.Remove(v.Box); v.Box.Dispose(); }
+        _views.Clear(); _scroll = 0;
+        var keep = Math.Max(0, _focus);
+        Refresh();
+        if (_items.Count > 0) SetFocus(Math.Min(keep, _items.Count - 1));
+    }
 
     private void ApplySort(string sort, string order)
     {
@@ -262,7 +280,7 @@ internal sealed class LibraryScreen : IPage
             // back to the grid: the card in the last column closest to the side item's height
             var best = _focus; var bestD = float.MaxValue;
             foreach (var kv in _views.Where(kv => kv.Key % Columns == Columns - 1 || kv.Key == _items.Count - 1))
-            { var d = Math.Abs(FirstRowY - _scroll + (kv.Key / Columns) * RowPitch + MediaCard.Height / 2 - cy); if (d < bestD) { bestD = d; best = kv.Key; } }
+            { var d = Math.Abs(FirstRowY - _scroll + (kv.Key / Columns) * RowPitch + _layout.ArtHeight / 2 - cy); if (d < bestD) { bestD = d; best = kv.Key; } }
             SetFocus(best);
             return true;
         }
@@ -305,7 +323,7 @@ internal sealed class LibraryScreen : IPage
             {
                 var i = r * Columns + c;
                 if (i >= _items.Count || _views.ContainsKey(i)) continue;
-                var card = MediaCard.Library(_env, _items[i], ColX[c], FirstRowY + r * RowPitch);
+                var card = MediaCard.Library(_env, _items[i], ColX(c), FirstRowY + r * RowPitch, _layout);
                 _grid.Add(card.Box); _views[i] = card;
                 if (i == _focus) card.SetFocused(true);
             }

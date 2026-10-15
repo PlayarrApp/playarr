@@ -144,6 +144,15 @@ internal sealed class SettingsScreen : IPage
             i => _env.Store.SaveAppearance(i == 1 ? "cover" : "thumbnail", _env.Store.Appearance().ArtworkSize), "Home screen view saved.");
         AppearanceSection(600, "Artwork size", "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.", new[] { "Small", "Medium", "Large" }, artworkSize == "small" ? 0 : artworkSize == "large" ? 2 : 1,
             i => _env.Store.SaveAppearance(_env.Store.Appearance().HomeView, i == 0 ? "small" : i == 2 ? "large" : "medium"), "Artwork size saved.");
+        // web moves Up and Down between the setting rows by column; the geometric search would pick the nearer list row on the left
+        var p0 = _listCount; int[] sizes = { 3, 2, 3 }; var start = new int[3];
+        for (var k = 0; k < 3; k++) start[k] = k == 0 ? p0 : start[k - 1] + sizes[k - 1];
+        for (var k = 0; k < 3; k++)
+            for (var j = 0; j < sizes[k]; j++)
+            {
+                if (k < 2) _focus.Overrides[(start[k] + j, RemoteKey.Down)] = start[k + 1] + Math.Min(j, sizes[k + 1] - 1);
+                if (k > 0) _focus.Overrides[(start[k] + j, RemoteKey.Up)] = start[k - 1] + Math.Min(j, sizes[k - 1] - 1);
+            }
     }
 
     /// <summary>Web Appearance sections below the theme: a heading, a description and a segmented control, each under a hairline (measured at 1920x1080).</summary>

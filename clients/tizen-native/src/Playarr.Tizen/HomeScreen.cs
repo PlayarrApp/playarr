@@ -8,7 +8,7 @@ namespace Playarr.Tizen;
 /// <summary>Web Home: key art, the details panel for the focused title, and the rails (measured from web at 1920x1080).</summary>
 internal sealed class HomeScreen : IPage
 {
-    private const float RailX = 881.6f, Pitch = 352f, FocusedHeadingY = 402f, RailPitchY = 365.9f, StackedExtra = 5f, ClipX = 729.6f;
+    private const float RailX = 881.6f, FocusedHeadingY = 402f, StackedExtra = 5f, ClipX = 729.6f;
 
     private readonly AppEnv _env;
     private readonly PlayarrTheme _t;
@@ -18,6 +18,8 @@ internal sealed class HomeScreen : IPage
     private readonly DetailsPanel _panel;
     private readonly List<RailView> _rails = new();
     private int _rail, _card;
+    private readonly CardLayout _layout;
+    private float Pitch => _layout.HomePitchX;
 
     private (int Rail, int Card)? _restore;
     public object? SaveState() => _rails.Count > 0 ? (_rail, _card) : null;
@@ -41,7 +43,7 @@ internal sealed class HomeScreen : IPage
 
     public HomeScreen(AppEnv env)
     {
-        _env = env; _t = env.Theme;
+        _env = env; var (homeView, artworkSize) = env.Store.Appearance(); _layout = CardLayout.From(homeView, artworkSize); _t = env.Theme;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
         _keyArt = new KeyArt(env, armed: true);
@@ -102,17 +104,17 @@ internal sealed class HomeScreen : IPage
         {
             var rv = new RailView { Model = model[i], Y = y };
             _stack.Add(Ui.Text(model[i].Title, RailX, y, 17.664f, 700, _t.Ink, 800, 26.496f, spacing: -0.53f));
-            rv.Row.PositionY = y + 61.8f; rv.Row.Size = new Size(4000, 260);
+            rv.Row.PositionY = y + 61.8f; rv.Row.Size = new Size(4000, _layout.ArtHeight + 76);
             for (var c = 0; c < model[i].Cards.Count; c++)
             {
-                var card = MediaCard.Home(_env, model[i].Cards[c], RailX + c * Pitch, 0);
+                var card = MediaCard.Home(_env, model[i].Cards[c], RailX + c * Pitch, 0, _layout);
                 rv.Row.Add(card.Box);
                 rv.Cards.Add(card);
             }
             _stack.Add(rv.Row);
             _rails.Add(rv);
             // web: a stacked (several ways to continue) card makes its rail taller, which pushes every rail below it down
-            y += RailPitchY + (model[i].Cards.Any(c => c.StackOptions > 1) ? StackedExtra : 0);
+            y += _layout.HomeRailPitch + (model[i].Cards.Any(c => c.StackOptions > 1) ? StackedExtra : 0);
         }
         if (_restore is { } r && r.Rail < _rails.Count && r.Card < _rails[r.Rail].Cards.Count) { _restore = null; Focus(r.Rail, r.Card); } else Focus(0, 0);
     }
@@ -135,11 +137,11 @@ internal sealed class HomeScreen : IPage
     private void MoveRail(int to)
     {
         if (to < 0 || to >= _rails.Count) return;
-        var cx = RailX + _card * Pitch - _rails[_rail].Scroll + MediaCard.Width / 2;
+        var cx = RailX + _card * Pitch - _rails[_rail].Scroll + _layout.Width / 2;
         var best = 0; var bestD = float.MaxValue;
         for (var i = 0; i < _rails[to].Cards.Count; i++)
         {
-            var d = Math.Abs(RailX + i * Pitch - _rails[to].Scroll + MediaCard.Width / 2 - cx);
+            var d = Math.Abs(RailX + i * Pitch - _rails[to].Scroll + _layout.Width / 2 - cx);
             if (d < bestD) { bestD = d; best = i; }
         }
         Focus(to, best);
@@ -153,7 +155,7 @@ internal sealed class HomeScreen : IPage
     };
 
     /// <summary>Screen centre of the focused card (for the nav's geometric entry).</summary>
-    public float FocusCentreY => FocusedHeadingY + 61.8f + MediaCard.Height / 2;
+    public float FocusCentreY => FocusedHeadingY + _layout.HomeHeadingShift + 61.8f + _layout.ArtHeight / 2;
 
     private void Focus(int rail, int card)
     {
@@ -165,7 +167,7 @@ internal sealed class HomeScreen : IPage
         if (right - rv.Scroll > visible) rv.Scroll = right - visible;
         if (card * Pitch < rv.Scroll) rv.Scroll = card * Pitch;
         rv.Row.PositionX = -rv.Scroll;
-        _stack.PositionY = FocusedHeadingY - rv.Y;
+        _stack.PositionY = FocusedHeadingY + _layout.HomeHeadingShift - rv.Y;
         rv.Cards[card].SetFocused(true);
         var model = rv.Model.Cards[card];
         _panel.Show(model, metaLead: null);
