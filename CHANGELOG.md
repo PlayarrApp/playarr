@@ -434,6 +434,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- On iPad, Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) settings. Covers draws Home rails as portrait posters at the Library cover card width, and the size changes the Library column count and the Home card width.
 - macOS: Settings > Appearance > Home screen artwork now takes effect; Covers shows portrait 2:3 posters on the Home rails at the web cover width.
 - Xbox: the library Filters drawer has a View choice, Screen or Cover, and Cover shows portrait posters as the web.
 - Parity: web-refs.json gains an android-tablet viewport group (1280x800 at 2x, TV layout) so the Android tablet gets its own web references.
@@ -658,6 +659,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS: Library Filters gain web's Audio and Subtitle language selects, the View buttons read List, Screen and Cover with icons, the phone drawer close button is filled, and the phone Library column count follows the artwork size.
 - Fire TV: the title actions drawer's Play glyph is drawn in the brand pink instead of an orange emoji.
 - HarmonyOS phone: Home honours the Covers setting and the artwork size (portrait 2:3 cards and the 1 to 3 column widths web uses on a phone); the wall captures Home in each poster mode.
 - Android TV: the focused Settings section row takes web's grey fill with no outline, and the detail action pills' focus ring sits 2 px off the pill as on web.
