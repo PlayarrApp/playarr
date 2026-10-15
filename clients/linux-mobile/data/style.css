@@ -25,7 +25,7 @@ button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avata
 .pa-cap-title { font-size: 8.8px; font-weight: 610; color: @pa_ink; }
 .pa-cap-meta { font-size: 6.88px; color: @pa_muted; }
 .pa-unseen { min-width: 6px; min-height: 6px; border-radius: 999px; background: @pa_brand; border: 1.5px solid #f4f0f1; }
-.pa-art.selected { box-shadow: 0 0 0 3px alpha(@pa_brand_ink, 0.9), 0 0 26px alpha(@pa_brand, 0.45); }
+.pa-art.selected { box-shadow: 0 0 0 3px @pa_focus_glow, 0 0 20px 4px alpha(@pa_focus_glow, 0.45), 0 24px 48px rgba(56, 38, 33, 0.3), 0 10px 20px rgba(56, 38, 33, 0.2); }
 .pa-home-focus-halo.selected {
   box-shadow: 0 0 20px 4px alpha(@pa_focus_glow, 0.45), 0 0 0 3px @pa_focus_glow, 0 11px 22px rgba(56, 38, 33, 0.22), 0 26px 52px rgba(56, 38, 33, 0.32);
 }
@@ -160,7 +160,7 @@ button.pa-pref:first-child { background: @pa_soft; }
 .pa-pref-desc { font-size: 11px; font-weight: 400; color: @pa_ink_soft; }
 .pa-pref-num { font-size: 9px; font-weight: 700; color: @pa_ink; }
 .pa-key-art.soft { opacity: 0.22; }
-.pa-search:focus-within { outline: 3px solid @pa_ink; outline-offset: 2px; }
+.pa-search:focus-within { outline: 2px solid @pa_ring; outline-offset: 3px; }
 
 /* Detail, measured from the web (360 px viewport) */
 .pa-display { font-size: 36px; font-weight: 560; letter-spacing: -2.6px; }
@@ -218,7 +218,7 @@ dropdown.pa-dropdown > button { background: @pa_bg; border: 1px solid @pa_line; 
 button.pa-letter { background: transparent; border: none; box-shadow: none; padding: 0; min-width: 22px; min-height: 0; font-size: 8.96px; font-weight: 700; color: @pa_muted; border-radius: 999px; }
 button.pa-letter.active { background: alpha(@pa_ink, 0.85); color: @pa_bg; }
 .pa-back-arrow { font-size: 10px; font-weight: 300; color: @pa_ink_soft; }
-.pa-hbtn.ring { outline: 3px solid @pa_ink; outline-offset: 2px; }
+.pa-hbtn.ring { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-row-glyph { color: #cf3157; font-size: 18px; min-width: 22px; }
 .pa-meta-flow flowboxchild { padding: 0; }
 .pa-search text { caret-color: transparent; }
