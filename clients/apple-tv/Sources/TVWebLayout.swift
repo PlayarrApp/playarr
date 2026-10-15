@@ -59,12 +59,14 @@ struct TVRailPanelGradient: View {
                 .init(color: frost, location: 1),
             ]
         }
+        // Web dark `.tv-rail-surface`: `--tv-rail-frost` = surface-soft 44 % mixed into surface-strong, at 72 / 90 / 97 / 100 %.
+        let frost = Color(red: 40.0 / 255, green: 34.7 / 255, blue: 39.6 / 255)
         return [
-            .init(color: DesignTokens.Color.backgroundRaised.opacity(0), location: 0),
-            .init(color: DesignTokens.Color.backgroundRaised.opacity(0.35), location: 0.12),
-            .init(color: DesignTokens.Color.backgroundRaised.opacity(0.55), location: 0.34),
-            .init(color: DesignTokens.Color.backgroundRaised.opacity(0.72), location: 0.62),
-            .init(color: DesignTokens.Color.backgroundRaised.opacity(0.78), location: 1),
+            .init(color: frost.opacity(0), location: 0),
+            .init(color: frost.opacity(0.72), location: 0.12),
+            .init(color: frost.opacity(0.90), location: 0.34),
+            .init(color: frost.opacity(0.97), location: 0.62),
+            .init(color: frost, location: 1),
         ]
     }
 }
@@ -90,6 +92,17 @@ struct TVKeyArtFilter: ViewModifier {
     }
 }
 
+/// The web's eased scroll-edge fade (`[data-fade-axis]` in page-layout.css): smoothstep ramps with coefficients
+/// 0.156 / 0.5 / 0.844 at the quarter points, and a floor under the alpha on the end side.
+enum TVEdgeFade {
+    /// Gradient stops for a ramp from `from` to `to` (fractions of the axis), alpha `low` to `high`.
+    static func ramp(from: CGFloat, to: CGFloat, low: Double, high: Double) -> [Gradient.Stop] {
+        [(0.0, 0.0), (0.25, 0.156), (0.5, 0.5), (0.75, 0.844), (1.0, 1.0)].map { t, k in
+            Gradient.Stop(color: .black.opacity(low + (high - low) * k), location: from + (to - from) * t)
+        }
+    }
+}
+
 /// Web page header: round back button, h1 and an optional detail after a hairline divider.
 struct TVPageHeader: View {
     var title: String
@@ -97,6 +110,9 @@ struct TVPageHeader: View {
     var detail: String? = nil
     /// Settings shows the back button focused (web: a white ring round the same disc).
     var backFocused = false
+    @Environment(\.colorScheme) private var scheme
+    /// Web `--line-strong`: rgba(223, 220, 221, .23) in dark, rgba(56, 38, 33, .28) in light.
+    private var lineStrong: Color { scheme == .dark ? Color(red: 223 / 255, green: 220 / 255, blue: 221 / 255).opacity(0.23) : Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.28) }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -125,8 +141,8 @@ struct TVPageHeader: View {
                 .fixedSize()
             let subtitle = detail.map {
                 Text($0.uppercased())
-                    .font(TVTheme.font(size: 10.3, css: 820))
-                    .tracking(0.82)
+                    .font(TVTheme.font(size: 11.14, css: 680))
+                    .tracking(0.5)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
                     .fixedSize()
@@ -135,14 +151,14 @@ struct TVPageHeader: View {
                 HStack(alignment: .center, spacing: 24) {
                     titleText
                     if let subtitle {
-                        Rectangle().fill(DesignTokens.Color.textPrimary.opacity(0.2)).frame(width: 1, height: 17)
+                        Rectangle().fill(lineStrong).frame(width: 1, height: 17)
                         subtitle
                     }
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     // Web: a hairline under the title where the subtitle wraps below it.
                     titleText.overlay(alignment: .bottom) {
-                        Rectangle().fill(DesignTokens.Color.textPrimary.opacity(0.2)).frame(height: 1).offset(y: 8)
+                        Rectangle().fill(lineStrong).frame(height: 1).offset(y: 8)
                     }
                     if let subtitle { subtitle }
                 }
@@ -421,7 +437,7 @@ struct TVRingButtonStyle: ButtonStyle {
         #if os(macOS)
         private let ringOut: CGFloat = 3.5
         #else
-        private let ringOut: CGFloat = 5
+        private let ringOut: CGFloat = 2
         #endif
 
         var body: some View {

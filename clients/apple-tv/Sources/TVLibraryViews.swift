@@ -662,12 +662,9 @@ struct TVHomeView: View {
                 .frame(width: 1920, height: 1080, alignment: .topLeading)
                 .mask(
                     LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: .clear, location: window / 1920),
-                            .init(color: .black, location: x0 / 1920),
-                            .init(color: .black, location: 1),
-                        ],
+                        stops: [.init(color: .clear, location: 0)]
+                            + TVEdgeFade.ramp(from: window / 1920, to: x0 / 1920, low: 0, high: 1)
+                            + [.init(color: .black, location: 1)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -851,7 +848,7 @@ struct TVHomeCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12.5, style: .continuous))
                     // Pinned web values: rest 0 10 20 .14 + 0 3 8 .10; focused Home 0 26 52 .32 + 0 11 22 .22.
                     .shadow(
-                        color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focusedLook ? 0.32 : 0.14),
+                        color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focusedLook ? 0.32 : 0.16),
                         radius: focusedLook ? 26 : 10,
                         y: focusedLook ? 26 : 10
                     )
@@ -1020,7 +1017,13 @@ struct TVCardFocusGlow: ViewModifier {
                             .blur(radius: 10)
                     )
                     #else
-                    .shadow(color: DesignTokens.Stage.cardGlow.opacity(0.45), radius: 12)
+                    // Web `0 0 20px 4px` at 45 %: a 4 px spread (the wider stroke) blurred by half the 20 px.
+                    .background(
+                        RoundedRectangle(cornerRadius: cornerRadius + 3, style: .continuous)
+                            .stroke(DesignTokens.Stage.cardGlow.opacity(0.45), lineWidth: 8)
+                            .padding(-3)
+                            .blur(radius: 10)
+                    )
                     #endif
             }
         }
@@ -1405,10 +1408,11 @@ struct TVSearchView: View {
                 .padding(.top, 36)
                 .padding(.bottom, 120)
         }
+        // Web `--page-edge-fade-size` clamp(38px, 5.5vh, 64px) = 59.4 px: eased start and end ramps, end floor 0.3.
         .mask(
             LinearGradient(
-                stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 40 / 1080),
-                        .init(color: .black, location: 92 / 1080), .init(color: .black, location: 1)],
+                stops: TVEdgeFade.ramp(from: 0, to: 59.4 / 1080, low: 0, high: 1)
+                    + TVEdgeFade.ramp(from: 1 - 59.4 / 1080, to: 1, low: 1, high: 0.3),
                 startPoint: .top, endPoint: .bottom
             )
         )
@@ -1763,15 +1767,6 @@ struct TVLibraryKindView: View {
         .frame(maxWidth: DesignTokens.Shell.titlePanelWidth, alignment: .leading)
     }
 
-    /// Web library card focus (translateY(-7px) scale(1.025), shadows 0 24 48 and 0 10 20) on macOS, measured against the web
-    /// light reference; tvOS keeps its own value.
-    private static func macCardBlur(_ other: CGFloat, _ mac: CGFloat) -> CGFloat {
-        #if os(macOS)
-        return mac
-        #else
-        return other
-        #endif
-    }
 
     /// Web preview spacing (title top 29, meta 26, overview 25 below, `42ch` overview) on macOS; tvOS keeps its own value.
     private static func macPreviewShift(_ other: CGFloat, _ mac: CGFloat) -> CGFloat {
@@ -1879,10 +1874,12 @@ struct TVLibraryKindView: View {
             }
             .padding(.top, DesignTokens.Shell.libraryRailTop)
             .padding(.bottom, DesignTokens.Shell.libraryRailBottom)
-            .padding(.leading, padL)
+            // The lifted card scales 1.025 about its centre: 12 pt of room on the left keeps its glow and caption from being clipped
+            // (the frame grows by the same 12 pt, so nothing moves).
+            .padding(.leading, padL + 12)
             .padding(.trailing, padR)
         }
-        .frame(width: gridWidth)
+        .frame(width: gridWidth + 12)
         // Web: the first title is focused when the page opens and whenever focus enters the grid from outside
         // (the nav, the header); `.userInitiated` applies it on every entry, not only the first.
         .focusSection()
@@ -1968,13 +1965,13 @@ struct TVLibraryKindView: View {
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)
                             .opacity(isSelected ? 0.3 : 0.14),
-                        radius: isSelected ? Self.macCardBlur(24, 48) : Self.macCardBlur(10, 20),
+                        radius: isSelected ? 48 : 20,
                         y: isSelected ? 24 : 10
                     )
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)
                             .opacity(isSelected ? 0.2 : 0.1),
-                        radius: isSelected ? Self.macCardBlur(10, 20) : Self.macCardBlur(4, 8),
+                        radius: isSelected ? 20 : 8,
                         y: isSelected ? 10 : 3
                     )
                     // SPA fixture crops already include the pink unwatched disc.
@@ -1998,9 +1995,9 @@ struct TVLibraryKindView: View {
             }
             .frame(width: width, alignment: .leading)
             .opacity(isSelected || parityMode ? 1 : 0.92)
-            // Pinned web library focus: translateY(-5px) scale(1.015) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
-            .scaleEffect(isSelected ? Self.macCardBlur(1.015, 1.025) : 1)
-            .offset(y: isSelected ? Self.macCardBlur(-5, -7) : 0)
+            // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
+            .scaleEffect(isSelected ? 1.025 : 1)
+            .offset(y: isSelected ? -7 : 0)
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle())
