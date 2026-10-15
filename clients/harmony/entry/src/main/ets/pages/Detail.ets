@@ -1593,6 +1593,16 @@ struct Detail {
     }
   }
 
+  /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
+  @Builder
+  private playTriangle(): void {
+    Polygon({ width: 8, height: 9 })
+      .points([[0, 0], [0, 9], [8, 4.5]])
+      .fill(toResourceColor(activeColors().onAccent))
+      .width(8)
+      .height(9)
+  }
+
   /** The primary play action: a simple pill (brief 5.8's "primary play
    * action" lift is reproduced via `FocusLift`-free plain opacity/scale
    * here, a deliberately lighter treatment than `Stage.ets`'s own home-hero
@@ -1605,9 +1615,13 @@ struct Detail {
   private playButton(enabled: boolean, height: number): void {
 
     Row({ space: Spacing.sm }) {
-      Text('\u25B6\uFE0E').fontFamily(nunito(400))
-        .fontSize(isTvMetrics() ? PLAY_BUTTON_ICON_SIZE : 9)
-        .fontColor(toResourceColor(activeColors().onAccent))
+      if (isTvMetrics()) {
+        Text('\u25B6').fontFamily(nunito(400))
+          .fontSize(PLAY_BUTTON_ICON_SIZE)
+          .fontColor(toResourceColor(activeColors().onAccent))
+      } else {
+        this.playTriangle()
+      }
       Text(this.primaryLabel()).fontFamily(nunito(700))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -2242,7 +2256,7 @@ struct Detail {
   private touchSeriesActionRow(): void {
     Row({ space: 8 }) {
       Row({ space: 6 }) {
-        Text('\u25B6\uFE0E').fontFamily(nunito(400)).fontSize(9).fontColor(toResourceColor(activeColors().onAccent))
+        this.playTriangle()
         Text(this.primaryLabel()).fontFamily(nunito(700))
           .fontSize(11)
           .fontWeight(FontWeight.Bold)

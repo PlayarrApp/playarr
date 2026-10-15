@@ -115,8 +115,8 @@ const PHONE_CHOICE_GAP: number = 23;
 const PHONE_CHOICES_LEFT: number = 25;
 const PHONE_HEADING_LEFT: number = 32.5;
 const PHONE_HEADING_SIZE: number = 38.4;
-const PHONE_KICKER_TOP: number = 71;
-const PHONE_CHOICES_TOP: number = 47;
+const PHONE_KICKER_TOP: number = 68;
+const PHONE_CHOICES_TOP: number = 54;
 const PHONE_SELECT_HEIGHT: number = 48;
 const PHONE_SELECT_WIDTH: number = 112.5;
 const PHONE_SELECT_TOP: number = 14;
@@ -438,7 +438,7 @@ struct Profiles {
         .letterSpacing(this.pick(-5.806, -2.77))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
-        .margin({ top: this.pick(-13, 1), left: isTvMetrics() ? 0 : PHONE_HEADING_LEFT })
+        .margin({ top: this.pick(-13, -3), left: isTvMetrics() ? 0 : PHONE_HEADING_LEFT })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Row({ space: this.pick(TV_CHOICE_GAP, PHONE_CHOICE_GAP) }) {
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
