@@ -287,6 +287,7 @@ Steps only the repository owner can perform.
 | 10384 | Fire TV: page header and Back focus as web (title 50 px, subtitle 11.14 px/680, Back ring only) | done | parity-firetv | firetv-header-audit | | 2026-10-16 12:00 ICT | PR open: #1414 (verified against web page-layout.css; device check pending) PR #1414 merged 2026-10-15. |
 | 10491 | Fire TV: actions drawer Play glyph pink, not an orange emoji | done | parity-firetv | firetv-round3 | | 2026-10-17 12:00 ICT | PR open: #1486 (device check pending) PR #1486 merged 2026-10-15. |
 | 10496 | iPhone artwork loader retries failed fetches instead of leaving the placeholder | done | parity-iphone | iphone-r3-art | | 2026-10-17 18:00 ICT | Music rail showed placeholder art after a fast scroll where the web had images; the loader marked a failed or cancelled fetch final. PR open: #1494 PR #1494 merged 2026-10-15. |
+| 10544 | Fire TV: Home honours the Covers artwork setting (2:3 cards as web) | done | parity-firetv | firetv-home-covers | | | PR merged: #1493 |
 
 ## 6. Web accessibility AAA (2026-10-09)
 
@@ -652,6 +653,7 @@ Steps only the repository owner can perform.
 | 10500 | Tizen Covers view and artwork size scale Home and Library cards as web | done | client-tizen-native | tizen-artwork-modes | 17.10471 | 2026-10-17 18:00 ICT | PR open: #1496. Home screen artwork Covers draws 2:3 posters with web's five columns and rail pitch, Artwork size shifts the column count, Library gets the Cover view. PR #1496 merged 2026-10-15. |
 | 10542 | Xbox Home scroll: the focused rail sits at the middle of the screen as web | in_progress | parity-xbox | xbox-round3b | | 2026-10-16 05:00 ICT | Round 3 motion: after DOWN web scrolls the focused rail to about 52 % of the screen height (rails above and below show); Xbox left it at about 82 %. Rails track now has half a screen of end padding. |
 | 10543 | Roku player quality button shows the stream bitrate like web | done | parity-roku | roku-player-quality | | 2026-10-17 18:00 ICT | The quality button reads "Original · 35.9 Mbps" once the player reports the stream bitrate (web does). Not done: Minimise pill (Roku keeps one fullscreen Video; no return-with-video path) and cast button (Roku cannot cast). Not verified on the device: the test title did not report a bitrate during the check. PR open: #1505. PR #1505 merged 2026-10-15. |
+| 10483 | Android TV Home vertical edge fade (owner request 2026-10-16) | done | atv-parity worker | atv-home-fade | | 2026-10-16 20:00 ICT | PR open: #1501. PR #1501 merged 2026-10-15. |
 
 ## 18. Public repository readiness (2026-10-05)
 

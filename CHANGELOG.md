@@ -660,6 +660,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android TV: the Home rail list shows web's vertical scroll-edge fade (0.3 floor, eased) like every other scroller.
 - Xbox: moving between Home rails scrolls the focused rail to the middle of the screen, as the web.
 - HarmonyOS phone: Filters multi-selects run the drawer's full width, and the Covers capture waits for the drawer before choosing the view.
 - Fire TV: Settings > Appearance > Home screen artwork = Covers now takes effect on Home, with web's 2:3 cover cards (191 px wide on a 216 px pitch, rails 469 px apart).
