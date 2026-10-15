@@ -1,6 +1,6 @@
 // Reference driver: the web TV client in Playwright (Chromium, 1920x1080, TV user agent). Contract: docs/parity/SUITE.md.
 //   PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD,
-//   PARITY_CHROME (browser path, default Playwright's), PLAYARR_WEB_MOBILE=1, PLAYARR_WEB_USER_AGENT, and
+//   PARITY_CHROME (browser path, default Playwright's), PLAYARR_WEB_MOBILE=1, PLAYARR_WEB_NO_DOWNLOADS=1 (hide Downloads like a device without storage), PLAYARR_WEB_USER_AGENT, and
 //   PLAYARR_WEB_VIEWPORT_WIDTH/HEIGHT/DPR (TV defaults 1920/1080/1; mobile defaults 390/844/3). Sessions are never shared: every run signs in fresh (new
 //   browser profile, so a new device id) and keeps the session in memory only; nothing is written to disk.
 import { writeFileSync } from "node:fs";
@@ -132,6 +132,12 @@ export async function createDriver() {
     await ctx.addInitScript((t) => localStorage.setItem("playarr-theme", t), theme);
     // Restored sessionStorage (scroll positions, focus memory) changes what a route shows: every document starts with it empty.
     await ctx.addInitScript(() => { try { sessionStorage.clear(); } catch {} });
+    // PLAYARR_WEB_NO_DOWNLOADS=1: a device that cannot store downloads (Roku). The web app hides Downloads when neither OPFS nor
+    // IndexedDB exists (detectDownloadStorage), so removing both gives the nav dock such a device shows.
+    if (env.PLAYARR_WEB_NO_DOWNLOADS === "1") await ctx.addInitScript(() => {
+      try { Object.defineProperty(navigator.storage, "getDirectory", { value: undefined }); } catch {}
+      try { Object.defineProperty(window, "indexedDB", { value: undefined }); } catch {}
+    });
     await ctx.grantPermissions(["notifications"], { origin: web }).catch(() => {});
     // Records system notifications (Notifications API) and Media Session handlers; kept in localStorage across reloads.
     await ctx.addInitScript(() => {
