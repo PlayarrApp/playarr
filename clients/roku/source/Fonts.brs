@@ -56,6 +56,7 @@ function PlayarrWeightFor(id as String, size as Integer) as Integer
     if Instr(1, id, "Heading") > 0 then return 700
     if Instr(1, id, "navLabel") = 1 then return 600
     if Instr(1, id, "clockTime") = 1 then return 700
+    if Instr(1, id, "clockDate") = 1 then return 600
     if Instr(1, id, "profileLabel") = 1 then return 600
     if Instr(1, id, "ButtonLabel") > 0 then return 700
     if Instr(1, id, "Code") > 0 then return 700

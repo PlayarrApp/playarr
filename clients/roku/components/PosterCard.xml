@@ -141,6 +141,7 @@
     <Animation id="focusAnim" duration="0.16" easeFunction="inOutCubic">
       <Vector2DFieldInterpolator id="liftInterp" fieldToInterp="cardRoot.translation" />
       <Vector2DFieldInterpolator id="scaleInterp" fieldToInterp="artGroup.scale" />
+      <Vector2DFieldInterpolator id="artLiftInterp" fieldToInterp="artGroup.translation" />
     </Animation>
   </children>
   <script type="text/brightscript" uri="pkg:/source/Fonts.brs" />

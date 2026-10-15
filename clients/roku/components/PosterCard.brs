@@ -41,6 +41,7 @@ sub init()
     m.posterUri = ""
     m.posterRetries = 0
     m.scaleInterp = m.top.findNode("scaleInterp")
+    m.artLiftInterp = m.top.findNode("artLiftInterp")
     m.global.observeField("cardFocusOff", "onFocusChanged")
 end sub
 
@@ -226,6 +227,11 @@ sub onFocusChanged()
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
     m.liftInterp.keyValue = [m.cardRoot.translation, [m.cardContentInsetX, m.padTop + m.cardContentInsetY + liftY]]
+    ' Web grid cards: the art rises a further 5 px beyond the card (measured: ring box 5 px higher than the card lift alone gives).
+    artExtra = 0
+    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then artExtra = -5 * effective
+    m.artLiftInterp.key = [0, 1]
+    m.artLiftInterp.keyValue = [m.artGroup.translation, [0, artExtra]]
     m.scaleInterp.key = [0, 1]
     m.scaleInterp.keyValue = [m.artGroup.scale, [artScale, artScale]]
     m.focusAnim.control = "stop"
@@ -244,13 +250,14 @@ end function
 ' so identify their focus style explicitly instead of inferring it from cardScale. The shadow bitmaps carry the web shadows.
 function cardFocusLift() as Float
     if m.homeCardFocusStyle then return 6
-    if m.cardScaleValue > 1 then return 5
+    if m.cardScaleValue > 1 then return 7
     return 6
 end function
 
 function cardFocusScale() as Float
     if m.homeCardFocusStyle then return 0.025
-    if m.cardScaleValue > 1 then return 0.015
+    ' Web grid card: the card scales 1.015 and its art a further 1.025 (1.015 x 1.025 = 1.0402); measured ring 344 px wide on the live Movies ref.
+    if m.cardScaleValue > 1 then return 0.0402
     return 0.025
 end function
 
