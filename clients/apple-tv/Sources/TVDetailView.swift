@@ -102,8 +102,15 @@ struct TVWorkDetailView: View {
 
     // MARK: Copy column
 
+    /// Web `.tv-detail-title`: `max-width: 9ch; text-wrap: balance`, so two lines split where the longer one is shortest.
     private func titleLines(_ title: String) -> [String] {
-        TVTextWrap.lines(title, weight: 560, size: 69.12, kern: -4.98, width: 379.5)
+        let greedy = TVTextWrap.lines(title, weight: 560, size: 69.12, kern: -4.98, width: 379.5)
+        let words = title.split(separator: " ").map(String.init)
+        guard greedy.count == 2, words.count > 2 else { return greedy }
+        func width(_ text: String) -> CGFloat { TVTextWrap.lines(text, weight: 560, size: 69.12, kern: -4.98, width: 10_000).count == 1 ? TVTextWrap.measure(text, weight: 560, size: 69.12, kern: -4.98) : 10_000 }
+        let best = (1..<words.count).map { i in (words[..<i].joined(separator: " "), words[i...].joined(separator: " ")) }
+            .min { max(width($0.0), width($0.1)) < max(width($1.0), width($1.1)) }
+        return best.map { [$0.0, $0.1] } ?? greedy
     }
 
     private func kicker(_ text: String) -> some View {
@@ -130,18 +137,13 @@ struct TVWorkDetailView: View {
         .placed(x: 153.6, y: 303.5, w: 379.5, h: 62.2 * CGFloat(lines.count))
     }
 
+    /// Web `.tv-detail-meta`: plain spans 0.85rem apart (no dividers); the first is ink-soft and bold, the rest ink-muted.
     private func metaRow(_ parts: [(String, Bool)]) -> some View {
-        HStack(spacing: 6.3) {
-            ForEach(Array(parts.enumerated()), id: \.offset) { index, part in
-                if index > 0 {
-                    Rectangle()
-                        .fill(DesignTokens.Color.borderDefault.opacity(0.5))
-                        .frame(width: 1, height: 9)
-                        .padding(.horizontal, 0.3)
-                }
+        HStack(spacing: 13.6) {
+            ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
                 Text(part.0)
                     .font(TVTheme.font(size: 10.56, weight: part.1 ? .bold : .regular))
-                    .foregroundStyle(part.1 ? DesignTokens.Color.textSecondary : DesignTokens.Color.textDisabled)
+                    .foregroundStyle(part.1 ? DesignTokens.Stage.inkSoft : DesignTokens.Stage.inkMuted)
                     .lineLimit(1)
             }
         }
@@ -157,9 +159,9 @@ struct TVWorkDetailView: View {
         if let runtime = TVWebFormat.runtime(ms: detail.runtimeMs) { parts.append((runtime, false)) }
         if let year = TVWebFormat.year(work.releaseDate) { parts.append((year, false)) }
         if let date = TVWebFormat.date(work.releaseDate) { parts.append(("Released  \(date)", false)) }
-        if let genre = work.genres.first { parts.append((genre, false)) }
+        parts += work.genres.map { ($0, false) }
         let synopsis = work.overview ?? ""
-        let synopsisLines = synopsis.isEmpty ? 0 : max(1, TVTextWrap.lines(synopsis, weight: 400, size: 12.864, kern: 0, width: 313.3).count)
+        let synopsisLines = synopsis.isEmpty ? 0 : min(5, max(1, TVTextWrap.lines(synopsis, weight: 400, size: 12.864, kern: 0, width: 336).count))
         let buttonsY = synopsisY + 20.3 * CGFloat(synopsisLines) + 37.8
         return ZStack(alignment: .topLeading) {
             kicker(work.genres.first ?? work.kind.rawValue)
@@ -168,10 +170,10 @@ struct TVWorkDetailView: View {
             if !synopsis.isEmpty {
                 Text(synopsis)
                     .font(TVTheme.font(size: 12.86, weight: .regular))
-                    .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .lineLimit(4)
-                    .frame(width: 313.3, alignment: .leading)
-                    .placed(x: 153.6, y: synopsisY, w: 313.3, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
+                    .foregroundStyle(DesignTokens.Stage.inkMuted)
+                    .lineLimit(5)
+                    .frame(width: 336, alignment: .leading)
+                    .placed(x: 153.6, y: synopsisY, w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
             }
             actionPill("Download", glyph: "\u{21E9}", x: 153.6, y: buttonsY, width: 142) { showDownloadNote = true }
             actionPill("Playback", symbol: "square.grid.2x2.fill", x: 311.6, y: buttonsY, width: 142)
@@ -231,7 +233,7 @@ struct TVWorkDetailView: View {
             if !synopsis.isEmpty {
                 Text(synopsis)
                     .font(TVTheme.font(size: 12.86, weight: .regular))
-                    .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
                     .frame(width: 336, alignment: .leading)
                     .placed(x: 153.6, y: synopsisY, w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
@@ -261,6 +263,8 @@ struct TVWorkDetailView: View {
                 ? DesignTokens.Color.textPrimary
                 : primary ? DesignTokens.Color.brandPrimary : DesignTokens.Color.backgroundInputDisabled.opacity(0.72)
         )
+        // Web detail pills: no border, `box-shadow: 0 14px 38px rgba(56, 38, 33, .12)`.
+        .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.12), radius: 19, y: 14)
     }
 
     private func actionPill(
@@ -297,7 +301,7 @@ struct TVWorkDetailView: View {
         .background(pillBackground(false))
     }
 
-    private func playLabel(_ text: String, light: Bool) -> some View {
+    private func playLabel(_ text: String, light: Bool, focusedLook: Bool = false) -> some View {
         HStack(spacing: 8.8) {
             Image(systemName: "play.fill")
                 .font(.system(size: 10.1, weight: .regular))
@@ -307,12 +311,20 @@ struct TVWorkDetailView: View {
         .foregroundStyle(light ? DesignTokens.Color.backgroundBase : Color.white)
         .frame(width: 156, height: 64)
         .background(pillBackground(true, light: light))
+        // Web: the focused Play (the default focus on load) is a darker crimson (165, 39, 69) inside the control ring
+        // (3 px, 2 px offset). Live focus draws its own look; the frozen capture has none, so it gets this one.
+        .background { if focusedLook { Capsule().fill(Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255)) } }
+        .overlay {
+            if focusedLook {
+                Capsule().stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5)
+            }
+        }
     }
 
     @ViewBuilder
     private func moviePlay(_ detail: WorkDetail, x: CGFloat, y: CGFloat) -> some View {
         // Web: Play is the focused control on load (scale 1.06).
-        let label = playLabel("Play", light: false).scaleEffect(1.06)
+        let label = playLabel("Play", light: false, focusedLook: frozen).scaleEffect(1.06)
         if let mediaFileID = detail.mediaFileID, !frozen {
             NavigationLink {
                 TVPlayerView(

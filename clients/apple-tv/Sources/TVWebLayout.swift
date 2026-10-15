@@ -195,6 +195,11 @@ struct TVAuthedImage<Placeholder: View>: View {
 
 /// Greedy word wrap using the real font metrics, so multi-line titles break where the web's do.
 enum TVTextWrap {
+    /// Width of one line of text in the real font.
+    static func measure(_ text: String, weight: CGFloat, size: CGFloat, kern: CGFloat) -> CGFloat {
+        let font = TVFontLoader.uiFont(mono: false, size: size, weight: weight)
+        return (text as NSString).size(withAttributes: [.font: font, .kern: kern]).width
+    }
     /// `balanced` mirrors CSS `text-wrap: balance`: the narrowest width that keeps the greedy line count.
     static func lines(_ text: String, weight: CGFloat, size: CGFloat, kern: CGFloat, width: CGFloat, balanced: Bool = false) -> [String] {
         let greedy = greedyLines(text, weight: weight, size: size, kern: kern, width: width)
@@ -464,14 +469,8 @@ struct TVDrawer<Content: View>: View {
     /// Focus moves into the drawer when it opens (web: the panel takes focus; Back closes it).
     @FocusState private var closeFocused: Bool
 
-    /// The web close button is a circle on the Mac reference; tvOS keeps its rounded tile.
-    private static var closeRadius: CGFloat {
-        #if os(macOS)
-        return 25
-        #else
-        return 14
-        #endif
-    }
+    /// The web close button is a circle (the 2026-10-15 refs of every Apple device).
+    private static var closeRadius: CGFloat { 25 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -564,11 +563,9 @@ struct TVChoiceSection<Value: Hashable>: View {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(active ? DesignTokens.Color.textPrimary : DesignTokens.Stage.surfaceSoft.opacity(0.64))
                             )
-                            #if os(macOS)
                             // Web `.tv-filter-choice-grid button`: a 1 px border at 76% of `--line`.
                             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .stroke(DesignTokens.Stage.ink.opacity(0.1), lineWidth: 1))
-                            #endif
                             .scaleEffect(active ? 1.025 : 1)
                     }
                     .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
@@ -579,10 +576,9 @@ struct TVChoiceSection<Value: Hashable>: View {
         .padding(.bottom, 30.3)
     }
 
-    /// The label; on the Mac the View options carry the web's list / screen / cover glyph above it.
+    /// The label; the View options carry the web's list / screen / cover glyph above it.
     @ViewBuilder
     private func choiceLabel(_ option: (value: Value, label: String), active: Bool) -> some View {
-        #if os(macOS)
         if title == "View", let key = option.value as? String {
             VStack(spacing: 7) {
                 TVViewGlyph(kind: key)
@@ -591,13 +587,9 @@ struct TVChoiceSection<Value: Hashable>: View {
         } else {
             Text(option.label)
         }
-        #else
-        Text(option.label)
-        #endif
     }
 }
 
-#if os(macOS)
 /// Web Filters "View" glyphs: three outlined bars for List, three outlined tall boxes for Screen and (narrower) Cover.
 struct TVViewGlyph: View {
     let kind: String
@@ -619,7 +611,6 @@ struct TVViewGlyph: View {
         .frame(height: 14)
     }
 }
-#endif
 
 
 /// Web media actions (`MediaContextMenu`): a long press (650 ms) on a media card opens its actions in the shared drawer.

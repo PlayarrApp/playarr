@@ -1,5 +1,8 @@
 import PlayarrKit
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 enum TVHomeRailMembership {
     /// Web Home builds On Deck first when present, otherwise eight recent unique works, then keeps each server shelf.
@@ -1108,18 +1111,7 @@ struct TVWorkArt: View {
 
     var body: some View {
         if let url {
-            #if os(macOS)
             TVRetryingArt(url: url, load: fetch) { tile }
-            #else
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().scaledToFill()
-                default:
-                    tile
-                }
-            }
-            #endif
         } else {
             tile
         }
@@ -1136,7 +1128,6 @@ struct TVWorkArt: View {
             }
     }
 
-    #if os(macOS)
     /// The server's work-artwork route answers 401 without the bearer token (confirmed with a probe: 200 with it); other
     /// artwork URLs stay public, as before. Goes through `requestData`, which attaches the session's `Authorization`.
     private var fetch: (URL) async throws -> Data {
@@ -1152,25 +1143,21 @@ struct TVWorkArt: View {
             return try await apiClient.requestData(method: "GET", path: url.path, query: items, body: nil, expectedStatuses: [200])
         }
     }
-    #endif
 
     private var url: URL? {
         let order: [ImageKind] = posterFirst ? [.poster, .backdrop] : [.backdrop, .poster]
         let image = order.lazy.compactMap { kind in work.images.first(where: { $0.kind == kind }) }.first ?? work.images.first
         guard let image else { return nil }
-        #if os(macOS)
         // Arr-sourced art (`playarr-arr://`) is no URL the app can fetch; the web asks the server's work-artwork route.
         if image.url.hasPrefix("playarr-arr:") {
             return apiClient.artworkURL(forPath: "/api/v1/artwork/work/\(work.id.uuidString.lowercased())/\(image.kind.rawValue)")
         }
-        #endif
         return apiClient.artworkURL(forPath: image.url)
     }
 }
 
-#if os(macOS)
 /// Like the web artwork (`artwork.tsx`), a failed fetch is tried again; `AsyncImage` gives up on the first error, which left
-/// the same cards as text tiles in every macOS capture.
+/// the same cards as text tiles in every capture (macOS first, then the tvOS music grid).
 struct TVRetryingArt<Placeholder: View>: View {
     let url: URL
     let load: (URL) async throws -> Data
@@ -1187,15 +1174,20 @@ struct TVRetryingArt<Placeholder: View>: View {
                 if attempt > 0 { try? await Task.sleep(nanoseconds: 2_000_000_000) }
                 if Task.isCancelled { return }
                 do {
-                    if let ns = NSImage(data: try await load(url)) { image = Image(nsImage: ns) }
+                    let data = try await load(url)
+                    #if os(macOS)
+                    if let ns = NSImage(data: data) { image = Image(nsImage: ns) }
+                    #else
+                    if let ui = UIImage(data: data) { image = Image(uiImage: ui) }
+                    #endif
                 } catch {
-                    NSLog("PlayarrMac: artwork %@ failed: %@", url.path, String(describing: error))
+                    NSLog("Playarr: artwork %@ failed: %@", url.path, String(describing: error))
                 }
             }
         }
     }
 }
-#endif
+
 
 struct TVSearchView: View {
     @Environment(TVAppEnvironment.self) private var environment
@@ -2008,8 +2000,8 @@ struct TVLibraryKindView: View {
                         radius: isSelected ? 20 : 8,
                         y: isSelected ? 10 : 3
                     )
-                    // SPA fixture crops already include the pink unwatched disc.
-                    if !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
+                    // SPA fixture crops already include the pink unwatched disc. The web Music grid has no watch state: no disc.
+                    if workKind != .artist, !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
                         Circle()
                             .fill(DesignTokens.Color.brandPrimary)
                             .frame(width: 13, height: 13)
