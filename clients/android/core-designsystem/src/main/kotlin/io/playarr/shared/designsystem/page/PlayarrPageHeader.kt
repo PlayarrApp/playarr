@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.semantics.Role
@@ -267,11 +268,13 @@ private fun PlayarrPhoneBackPill(
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     val scale = if (focused) maxOf(focusScale, 1.06f) else focusScale
+    val below = LocalPlayarrBackFocusDown.current?.value
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         Surface(
             onClick = onClick,
             interactionSource = source,
             modifier = Modifier.size(metrics.controlWidth, metrics.control).graphicsLayer { scaleX = scale; scaleY = scale }
+                .then(if (below != null) Modifier.focusProperties { down = below } else Modifier)
                 .then(if (focused || focusScale > 1f) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
                 .semantics { this.contentDescription = contentDescription },
             shape = androidx.compose.foundation.shape.CircleShape,

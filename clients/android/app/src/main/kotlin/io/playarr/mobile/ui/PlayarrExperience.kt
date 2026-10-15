@@ -2895,6 +2895,7 @@ private fun ExperienceOfflineScreen(isTelevision: Boolean) {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ExperienceHomeScreen(
     serverUrl: String,
@@ -3009,6 +3010,12 @@ private fun ExperienceHomeScreen(
                         if (isTelevision && index >= 0) railsState.animateScrollToItem(index)
                     }
                     Box(Modifier.fillMaxSize()) {
+                    // Phone: a focused rail scrolls clear of the bottom nav (98 dp of list padding) instead of settling under it.
+                    val homeDensity = LocalDensity.current
+                    val homeSpec = remember(homeDensity) { MinimalBringIntoViewSpec(0f, with(homeDensity) { 112.dp.toPx() }) }
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides (if (isTelevision) androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current else homeSpec),
+                    ) {
                     // Television: the list reaches left over the rail gutter so each rail's viewport can (see ExperienceMediaRail).
                     val railGutter = if (isTelevision) tvTrackGutter() else 0.dp
                     LazyColumn(
@@ -3059,6 +3066,7 @@ private fun ExperienceHomeScreen(
                                 onRailFocused = { focusedRailKey = rail.key },
                             )
                         }
+                    }
                     }
                     }
                 },
@@ -3441,7 +3449,7 @@ internal fun ExperienceMediaRail(
                     // 327.2 dp and `--card-w-cover` 191.3 dp at 1920 x 1080.
                     width = when (homeView) {
                         PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else phonePosterCardWidth()
-                        PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else 118.dp
+                        PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else phonePosterCardWidth()
                     },
                     homeView = homeView,
                     webPhone = !isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail,
@@ -3806,7 +3814,7 @@ internal fun LibraryResults(
     val screenPadding = if (isTelevision) PaddingValues(start = tvRail?.start ?: 52.7.dp /* web's first column paints at x 783 (rounded), not 784 */, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
     when (viewMode) {
         LibraryViewMode.Screen -> LazyVerticalGrid(
-            columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(2),
+            columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
             state = gridState,
             modifier = Modifier.fillMaxSize().then(if (isTelevision) Modifier.playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical) else Modifier),
             contentPadding = screenPadding,
@@ -3856,7 +3864,7 @@ internal fun LibraryResults(
             }
         }
         LibraryViewMode.Cover -> LazyVerticalGrid(
-            columns = fixedColumns?.let { GridCells.Fixed(it) } ?: GridCells.Adaptive(landscapeWidth * 0.72f),
+            columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth * 0.72f) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
             state = gridState,
             modifier = Modifier.fillMaxSize().then(if (isTelevision) Modifier.playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical) else Modifier),
             contentPadding = padding,
@@ -3864,7 +3872,7 @@ internal fun LibraryResults(
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
-                LibraryCoverCard(work, serverUrl, accessToken, landscapeWidth * 0.72f, work.id == selectedId, onSelected, onOpen, onContext, showUnwatched = progressLoaded && shouldShowPlayarrUnwatchedDot(progressByWork[work.id], true), fillWidth = fixedColumns != null, modifier = if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
+                LibraryCoverCard(work, serverUrl, accessToken, landscapeWidth * 0.72f, work.id == selectedId, onSelected, onOpen, onContext, showUnwatched = progressLoaded && shouldShowPlayarrUnwatchedDot(progressByWork[work.id], true), fillWidth = fixedColumns != null || !isTelevision, modifier = if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
             }
         }
         LibraryViewMode.CoverFlow -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -3934,9 +3942,15 @@ private fun LibraryCoverCard(
 @Composable
 internal fun phonePosterCardWidth(): Dp {
     val viewport = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
-    val available = viewport - 16 - 52
-    val columns = ((available + 12) / (110 + 12)).coerceAtLeast(1)
-    return ((available - (columns - 1) * 12f) / columns).dp
+    val columns = phonePosterColumns(LocalPlayarrDisplayPreferences.current.artworkSize, viewport)
+    return ((viewport - 16 - 52 - (columns - 1) * 12f) / columns).dp
+}
+
+/** Web phone `--card-cols`: 1 below 300 dp, 2 from 300, 3 from 540, shifted by the artwork size (small +1, large -1; never below 1). */
+internal fun phonePosterColumns(size: LibraryArtworkSize, viewportDp: Int): Int {
+    if (viewportDp < 300) return 1
+    val step = when (size) { LibraryArtworkSize.Small -> 1; LibraryArtworkSize.Medium -> 0; LibraryArtworkSize.Large -> -1 }
+    return ((if (viewportDp >= 540) 3 else 2) + step).coerceAtLeast(1)
 }
 
 @Composable
@@ -5724,6 +5738,8 @@ private fun ExperienceDetailScreen(
             var pendingPlaylistTrackId by remember(detail.work.id) { mutableStateOf<String?>(null) }
             var addWorkToPlaylist by remember(detail.work.id) { mutableStateOf(false) }
             var pendingDownloadCandidates by remember(detail.work.id) { mutableStateOf<List<DownloadCandidate>?>(null) }
+            val backFocusDown = remember(detail.work.id) { mutableStateOf<FocusRequester?>(null) }
+            androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalPlayarrBackFocusDown provides backFocusDown) {
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Detail,
                 header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), onBack = onBack, subtitle = detail.work.title, largeTitle = true, countLine = true),
@@ -5854,6 +5870,7 @@ private fun ExperienceDetailScreen(
                 }
             }
             }
+            }
             if (addWorkToPlaylist) {
                 AddToPlaylistDialog(
                     workId = detail.work.id,
@@ -5977,6 +5994,7 @@ private fun PlayarrServerChoiceDialog(
     )
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ExperienceVideoDetailContent(
     detail: WorkDetail,
@@ -6161,6 +6179,10 @@ private fun ExperienceVideoDetailContent(
                 )
             }
         } else {
+            // A focused chapter or episode tile scrolls clear of the bottom nav (112 dp of page padding) instead of settling under it.
+            val detailDensity = LocalDensity.current
+            val detailSpec = remember(detailDensity) { MinimalBringIntoViewSpec(0f, with(detailDensity) { 112.dp.toPx() }) }
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides detailSpec) {
             PhoneVideoDetailBody(
                 detail = detail,
                 series = series,
@@ -6190,6 +6212,7 @@ private fun ExperienceVideoDetailContent(
                 serverUrl = serverUrl,
                 accessToken = accessToken,
             )
+            }
         }
     }
     if (playbackSettingsOpen && mediaFileId != null && moviePlaybackOptions != null) {
@@ -6388,6 +6411,7 @@ private fun PhoneVideoDetailBody(
 }
 
 /** Web phone rail heading (24 px title, 10.56 px count) above a row of 179.4 px cards 12 px apart. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun PhoneDetailRail(
     title: String,
@@ -6411,12 +6435,17 @@ private fun PhoneDetailRail(
             modifier = Modifier.padding(start = 16.dp, top = 4.dp),
         )
         Spacer(Modifier.height(8.dp))
+        // Web `--tv-track-shadow-end` (48 px) after the last tile, kept clear when a focused tile scrolls into view.
+        val railDensity = LocalDensity.current
+        val railSpec = remember(railDensity) { MinimalBringIntoViewSpec(with(railDensity) { 16.dp.toPx() }, with(railDensity) { 48.dp.toPx() }) }
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides railSpec) {
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(start = 16.dp, end = 20.dp, top = 10.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 48.dp, top = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             content = content,
         )
+        }
     }
 }
 
@@ -6497,13 +6526,20 @@ private fun PhoneDetailActions(
     val downloadCandidate = DownloadCandidate(mediaFileId, work.id, title, work.title, posterUrl, if (episode == null) "movie" else "episode")
     val pillColor = WebSurfaceStrong.copy(alpha = 0.72f)
     val series = episode != null
+    // Down from Back lands on the first pill (web action-row order); compose focus search skips the list from the header.
+    val firstPill = remember { FocusRequester() }
+    val backDown = io.playarr.shared.designsystem.page.LocalPlayarrBackFocusDown.current
+    androidx.compose.runtime.DisposableEffect(firstPill, backDown) {
+        backDown?.value = firstPill
+        onDispose { if (backDown?.value === firstPill) backDown.value = null }
+    }
     if (series) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             // Series: the primary Start pill grows to fill the row, the watchlist pill follows.
             PhonePill(
                 onClick = onPlayClick, container = WebInk, fill = true,
                 shadow = WebShadow(18.dp, 46.dp, Color(0xFF382621).copy(alpha = 0.18f)),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).focusRequester(firstPill),
             ) {
                 Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle)
                 Spacer(Modifier.width(10.dp))
@@ -6521,14 +6557,14 @@ private fun PhoneDetailActions(
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         run {
             if (canDownload) {
-                PhonePill(onClick = { onDownload(listOf(downloadCandidate)) }, container = pillColor, width = 104.dp) {
+                PhonePill(onClick = { onDownload(listOf(downloadCandidate)) }, container = pillColor, width = 104.dp, modifier = Modifier.focusRequester(firstPill)) {
                     Text("⇩", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
                     Spacer(Modifier.width(10.dp))
                     Text(playarrString(PlayarrString.DetailDownloadButton), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
                 }
             }
             onPlaybackSettings?.let { open ->
-                PhonePill(onClick = open, container = pillColor, width = 119.dp) {
+                PhonePill(onClick = open, container = pillColor, width = 119.dp, modifier = if (canDownload) Modifier else Modifier.focusRequester(firstPill)) {
                     Text("☷", color = WebKicker, fontSize = 12.88.sp, lineHeight = 19.32.sp, style = WebTextStyle)
                     Spacer(Modifier.width(10.dp))
                     Text(playarrString(PlayarrString.DetailPlayback), color = WebInk, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
@@ -6539,6 +6575,7 @@ private fun PhoneDetailActions(
             PhonePill(
                 onClick = onPlayClick, container = WebInk, width = 118.5.dp,
                 shadow = WebShadow(18.dp, 46.dp, Color(0xFF382621).copy(alpha = 0.18f)),
+                modifier = if (canDownload || onPlaybackSettings != null) Modifier else Modifier.focusRequester(firstPill),
             ) {
                 Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle)
                 Spacer(Modifier.width(10.dp))

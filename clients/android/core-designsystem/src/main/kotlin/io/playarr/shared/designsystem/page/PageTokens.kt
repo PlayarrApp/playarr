@@ -10,6 +10,12 @@ import androidx.compose.ui.unit.dp
 /** The two page layouts: the 1920 x 1080 television layout and the phone layout. */
 enum class PlayarrFormFactor { Tv, Phone }
 
+/**
+ * Phone: where Down from the Back pill lands. A page whose first control compose-focus search cannot reach from Back sets
+ * the state to that control's requester (detail pages: the first action pill); null leaves the default search.
+ */
+val LocalPlayarrBackFocusDown = staticCompositionLocalOf<androidx.compose.runtime.MutableState<androidx.compose.ui.focus.FocusRequester?>?> { null }
+
 /** Provided once, in `MainActivity`. */
 val LocalPlayarrFormFactor = staticCompositionLocalOf { PlayarrFormFactor.Phone }
 
