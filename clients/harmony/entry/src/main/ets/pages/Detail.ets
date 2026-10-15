@@ -229,16 +229,20 @@ const PILL_ROW_GAP: number = 14;
 const PILL_FILL_ALPHA: number = 0.09;
 const COPY_GAP: number = 36;
 const RIGHT_COLUMN_X: number = 882;
-const RIGHT_COLUMN_Y: number = 530;
+const RIGHT_COLUMN_Y: number = 543;
 const RIGHT_COLUMN_WIDTH: number = 1038;
-const RIGHT_COLUMN_HEIGHT: number = 550;
-const RIGHT_COLUMN_GAP: number = 56;
+const RIGHT_COLUMN_HEIGHT: number = 537;
+const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
 const SERIES_COLUMN_TOP: number = 361;
 const SERIES_COLUMN_HEIGHT: number = 719;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
 const CAST_CIRCLE: number = 104;
-const CAST_GAP: number = 73;
+/** Web's first circle starts 24 vp in from the rail edge (the item is wider than ours); ours sat at 10. */
+const CAST_LEFT_INSET: number = 14;
+const CAST_GAP: number = 39; // pitch 177 = item 124 + inset 14 + gap 39
+/** Room under a cast circle for its name and the focus shadow: the list is this much taller than the circle (a list without a height fills the column and pushes everything below it off the page). */
+const CAST_LIST_EXTRA: number = 60;
 const CAST_INITIALS_SIZE: number = 36;
 
 /** One cast entry in a rail: the person's name and headshot link (empty for none). */
@@ -1871,6 +1875,7 @@ struct Detail {
         .textAlign(TextAlign.Center)
     }
     .width(tv(CAST_CIRCLE + 20))
+    .margin({ left: tv(CAST_LEFT_INSET) })
   }
 
   private castRows(): CastRow[] {
@@ -1927,6 +1932,7 @@ struct Detail {
           MediaRail({
             railId: 'chapters',
             headingGap: 0,
+            listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : 0,
             itemGap: tv(TvGeometry.railItemGapTitle),
             items: this.chaptersRail.items,
             itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -1942,6 +1948,7 @@ struct Detail {
           MediaRail({
             railId: 'cast',
             headingGap: 0,
+            listHeight: tv(CAST_CIRCLE + CAST_LIST_EXTRA),
             itemGap: tv(CAST_GAP),
             items: this.castRows(),
             itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
