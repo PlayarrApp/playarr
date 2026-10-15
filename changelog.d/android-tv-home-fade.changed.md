@@ -1,0 +1,1 @@
+- Android TV: the Home rail list shows web's vertical scroll-edge fade (0.3 floor, eased) like every other scroller.

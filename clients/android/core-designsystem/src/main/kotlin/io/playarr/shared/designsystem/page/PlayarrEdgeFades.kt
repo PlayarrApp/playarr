@@ -59,11 +59,11 @@ internal var SemanticsPropertyReceiver.scrollEdges by PlayarrScrollEdgesKey
  * Apply it to the viewport, outside the scrolling modifier. The edges are also published in semantics.
  */
 @Composable
-fun Modifier.playarrEdgeFades(canScrollBackward: Boolean, canScrollForward: Boolean, axis: Orientation): Modifier =
-    playarrEdgeFades(PlayarrScrollEdges.of(canScrollBackward, canScrollForward, axis))
+fun Modifier.playarrEdgeFades(canScrollBackward: Boolean, canScrollForward: Boolean, axis: Orientation, panel: Color? = null): Modifier =
+    playarrEdgeFades(PlayarrScrollEdges.of(canScrollBackward, canScrollForward, axis), panel)
 
 @Composable
-internal fun Modifier.playarrEdgeFades(edges: PlayarrScrollEdges): Modifier {
+internal fun Modifier.playarrEdgeFades(edges: PlayarrScrollEdges, panel: Color? = null): Modifier {
     val config = LocalConfiguration.current
     val dark = PlayarrWebTheme.palette.dark
     // Web `--page-edge-fade-size`: clamp(38px, 5.5 vu, 64px) on every edge and both axes, one viewport unit being 1% of the height.
@@ -72,7 +72,7 @@ internal fun Modifier.playarrEdgeFades(edges: PlayarrScrollEdges): Modifier {
         .semantics { scrollEdges = edges }
         .drawWithContent {
             drawContent()
-            drawRampFades(edges, if (dark) PanelDark else PanelLight, band.toPx())
+            drawRampFades(edges, panel ?: if (dark) PanelDark else PanelLight, band.toPx())
         }
 }
 

@@ -3013,7 +3013,12 @@ private fun ExperienceHomeScreen(
                     val railGutter = if (isTelevision) tvTrackGutter() else 0.dp
                     LazyColumn(
                         state = railsState,
-                        modifier = if (isTelevision) Modifier.fillMaxSize().extendStart(railGutter) else Modifier.fillMaxSize(),
+                        // Web `.tv-home-rails` is a `[data-tv-scroll-container]`: the same vertical edge fade as every scroller (0.3 floor, eased).
+                        modifier = if (isTelevision) Modifier.fillMaxSize().extendStart(railGutter)
+                            .playarrEdgeFades(railsState.canScrollBackward, railsState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical,
+                                // The page behind the rails (measured: 26 luma in dark); the library panel colour is lighter.
+                                panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) })
+                        else Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
                             start = railGutter,
                             // Web: the first rail heading at y 402 and rail headings 365.9 dp apart with the poster-size cards.
