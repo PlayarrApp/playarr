@@ -260,11 +260,14 @@ namespace Playarr.Xbox.Views
                 Background = new SolidColorBrush(Colors.Transparent),
                 BorderThickness = new Thickness(0),
                 Foreground = (Brush)Application.Current.Resources["PlayarrInk"],
-                FocusVisualPrimaryBrush = Theme.FocusRing,
-                FocusVisualPrimaryThickness = new Thickness(2),
-                FocusVisualSecondaryThickness = new Thickness(0),
+                // Web nav focus (global.css .app-nav-link:focus-visible): outline 0, a 14 % ink fill and scale 1.1, no ring.
+                UseSystemFocusVisuals = false,
+                RenderTransform = new ScaleTransform { ScaleX = 1, ScaleY = 1 },
+                RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
                 IsTabStop = page != null,
             };
+            button.GotFocus += (s, e) => ShowRailFocus(button, true);
+            button.LostFocus += (s, e) => ShowRailFocus(button, false);
             if (page != null)
             {
                 button.Click += (s, e) => _frame.Navigate(page, kind);
@@ -273,6 +276,20 @@ namespace Playarr.Xbox.Views
             button.Tag = "nav:" + _items.Count; // top-to-bottom order, read by the parity trace
             _items.Add((button, page ?? typeof(object), kind));
             return button;
+        }
+
+        private readonly HashSet<Button> _current = new HashSet<Button>();
+
+        /// <summary>The focused item takes the web's 14 % ink fill at scale 1.1; the current page keeps its 9 % fill at 1.05.</summary>
+        private void ShowRailFocus(Button button, bool focused)
+        {
+            var ink = ((SolidColorBrush)Application.Current.Resources["PlayarrInk"]).Color;
+            var current = _current.Contains(button);
+            button.Background = focused
+                ? new SolidColorBrush(Color.FromArgb(36, ink.R, ink.G, ink.B))
+                : current ? (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] : new SolidColorBrush(Colors.Transparent);
+            var scale = (ScaleTransform)button.RenderTransform;
+            scale.ScaleX = scale.ScaleY = focused ? 1.1 : current ? 1.05 : 1;
         }
 
         private void Sync(NavigationEventArgs e)
@@ -299,9 +316,8 @@ namespace Playarr.Xbox.Views
             foreach (var (button, page, itemKind) in _items)
             {
                 var current = page == e.SourcePageType && (page != typeof(LibraryPage) || itemKind == kind);
-                button.Background = current
-                    ? (Brush)Application.Current.Resources["PlayarrSurfaceSoft"]
-                    : new SolidColorBrush(Colors.Transparent);
+                if (current) { _current.Add(button); } else { _current.Remove(button); }
+                ShowRailFocus(button, button.FocusState != FocusState.Unfocused);
                 Tint(button, current);
             }
         }

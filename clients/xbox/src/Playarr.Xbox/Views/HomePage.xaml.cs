@@ -37,6 +37,8 @@ namespace Playarr.Xbox.Views
             _viewModel = new HomeViewModel(App.Environment);
             // The rails' scroller would swallow Up/Down to scroll; D-pad Up/Down must move focus to the card above or below.
             RailsScroll.PreviewKeyDown += RailsScroll_PreviewKeyDown;
+            // The rails scroller fades toward its top and bottom where more follows (the detail text on the left does not scroll).
+            EdgeFade.AttachVertical(Root, RailsScroll, 833);
         }
 
         private void RailsScroll_PreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)

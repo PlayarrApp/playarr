@@ -18,7 +18,7 @@ namespace Playarr.Xbox.Views
         private const double Floor = 0.3;
 
         /// <summary>Vertical fade for a scroller (a <see cref="ScrollViewer"/> or a list that owns one) inside <paramref name="host"/>, aligned to its left and width.</summary>
-        public static void AttachVertical(Grid host, FrameworkElement scroller)
+        public static void AttachVertical(Grid host, FrameworkElement scroller, double? left = null)
         {
             var top = Overlay(true);
             var bottom = Overlay(false);
@@ -26,7 +26,7 @@ namespace Playarr.Xbox.Views
             {
                 overlay.HorizontalAlignment = scroller.HorizontalAlignment;
                 overlay.Width = scroller.Width;
-                overlay.Margin = new Thickness(scroller.Margin.Left, 0, 0, 0);
+                overlay.Margin = new Thickness(left ?? scroller.Margin.Left, 0, 0, 0);
                 host.Children.Add(overlay);
             }
 

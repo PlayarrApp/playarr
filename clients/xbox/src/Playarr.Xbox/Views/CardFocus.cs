@@ -128,7 +128,9 @@ namespace Playarr.Xbox.Views
                 // --card-shadow-focus: 0 24px 48px at 30 % and 0 10px 20px at 20 %, as stacked layers fitted to each Gaussian
                 // (a layer's alpha keeps the stack on A * (1 - Phi(edge / sigma))). It sits before the art, so it paints beneath it.
                 var shadowCanvas = new Canvas { Tag = "focus-shadow", Height = 0, Width = 0, HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
-                foreach (var (offset, grow, alpha) in FocusShadowLayers)
+                // Dark theme: the web's shadow colour (56 38 33) is lighter than the dark page, and the measured web dark
+                // ref shows the page colour again 12 px below a focused card, so only light theme gets the extra layers.
+                foreach (var (offset, grow, alpha) in Theme.IsLight ? FocusShadowLayers : System.Array.Empty<(int, int, byte)>())
                 {
                     var shadow = new Border
                     {

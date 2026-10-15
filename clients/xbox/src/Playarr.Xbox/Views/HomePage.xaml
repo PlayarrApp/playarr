@@ -17,7 +17,7 @@
         never an ItemTemplate/{Binding}.
     -->
     <!-- Web TV Home: rails start at the web's x (881 px) under the shell clock; one row per server rail. -->
-    <Grid>
+    <Grid x:Name="Root">
         <!-- Web Home hero: the focused title's detail column, shared with the library pages. -->
         <local:FocusDetail x:Name="Detail" />
 
