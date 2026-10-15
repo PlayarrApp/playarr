@@ -268,7 +268,7 @@ struct CalendarView: View {
         let (label, tint): (String, Color) = entry.hasFile
             ? ("Available", Color(red: 0.42, green: 0.55, blue: 0.50))
             : entry.date > viewModel.today ? ("Upcoming", Color(red: 0.357, green: 0.498, blue: 0.820)) : ("Missing", Color(red: 0.62, green: 0.45, blue: 0.47))
-        return WMText(label, 12.8, 700, lh: 19)
+        return WMText(label, 11.5, 700, lh: 19)
             .fixedSize()
             .padding(.horizontal, 14)
             .frame(height: 22)
@@ -359,9 +359,9 @@ struct CalendarView: View {
                     .offset(x: 70, y: 35)
                     HStack(spacing: 12) {
                         let time = calendarTimeLabel24(entry)
-                        WMText(time.isEmpty || time == "00:00" ? "All day" : time, 12.8, 400, color: WM.muted, lh: 19).fixedSize()
-                        WMText(releaseTypeLabel(entry.releaseType), 12.8, 400, color: WM.muted, lh: 19).fixedSize()
-                        WMText(kindLabel(entry.mediaKind), 12.8, 400, color: WM.muted, lh: 19).fixedSize()
+                        WMText(time.isEmpty || time == "00:00" ? "All day" : time, 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
+                        WMText(releaseTypeLabel(entry.releaseType), 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
+                        WMText(kindLabel(entry.mediaKind), 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
                         agendaBadge(entry)
                     }
                     .offset(x: 70, y: 60)

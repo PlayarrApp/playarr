@@ -358,7 +358,7 @@ struct LibraryView: View {
             } }
             .scrollIndicators(.hidden)
             .frame(width: 44, height: max(0, geo.size.height - 90 - 84), alignment: .top)
-            .offset(x: geo.size.width - 48, y: 90)
+            .offset(x: geo.size.width - 48, y: 87.5)
         }
     }
 
