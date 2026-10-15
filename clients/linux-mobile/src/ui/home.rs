@@ -82,7 +82,17 @@ fn section(title: &str, row: RailRow) -> FocusSection {
             .margin_start(16)
             .build(),
     );
-    content.append(&row.scrolled);
+    // The web's shared scroller edge fade (38 px, eased, to 30% at the end side), as on the detail rails.
+    let fade = gtk4::Box::builder()
+        .css_classes(["pa-edge-fade"])
+        .halign(gtk4::Align::End)
+        .can_target(false)
+        .build();
+    fade.set_size_request(38, -1);
+    let faded = gtk4::Overlay::new();
+    faded.set_child(Some(&row.scrolled));
+    faded.add_overlay(&fade);
+    content.append(&faded);
     let section_overlay = gtk4::Overlay::builder().child(&content).build();
     let halo_layer = gtk4::Fixed::new();
     halo_layer.set_hexpand(true);
