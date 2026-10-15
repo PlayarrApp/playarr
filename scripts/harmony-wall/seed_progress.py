@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Seed the Device Test account's watch progress so Home's On deck matches the web reference run to run: The 5th Wave at 15098 ms and
-nothing else in progress (any other unfinished row is marked completed, which drops it from continue watching).
+nothing else in progress (any other started row is zeroed to unseen, as scratch/20261011-parity/reset-deck-canonical.mjs does, which keeps the unseen dots web shows).
 Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD. Best effort: prints statuses only, never a value, and always exits 0."""
 import json, os, sys, urllib.error, urllib.request, uuid
 
@@ -38,12 +38,12 @@ def main() -> int:
     done = 0
     for row in rows:
         media = row.get("media_file_id") if isinstance(row, dict) else None
-        if not media or media == KEEP or row.get("completed"):
+        if not media or media == KEEP or row.get("state") == "unseen":
             continue
         duration = int(row.get("duration_ms") or row.get("position_ms") or 1)
-        s, _ = call("PUT", "/api/v1/playback/%s/progress" % media, {"position_ms": duration, "duration_ms": duration, "completed": True}, token)
+        s, _ = call("PUT", "/api/v1/playback/%s/progress" % media, {"position_ms": 0, "duration_ms": duration, "completed": False}, token)
         done += 1 if s in (200, 204) else 0
-    print("seed completed others", done, "of", len(rows))
+    print("seed zeroed others", done, "of", len(rows))
     s, _ = call("PUT", "/api/v1/playback/%s/progress" % KEEP, {"position_ms": KEEP_POSITION_MS, "duration_ms": 6742000, "completed": False}, token)
     print("seed keep", s)
     return 0
