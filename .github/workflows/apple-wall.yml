@@ -521,7 +521,8 @@ jobs:
         id: ts
         if: github.event_name == 'workflow_dispatch' && inputs.stream && env.HAVE_TS == 'true'
         continue-on-error: true
-        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        # Pinned to v4.1.3: the v4.2.0 SHA (d1b6cd20) archive returns 404 on codeload, which fails every job at setup.
+        uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
