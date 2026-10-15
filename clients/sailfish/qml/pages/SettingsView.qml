@@ -28,7 +28,7 @@ Item {
     PageTitle { id: head; y: 4 * Tokens.u; restRing: true; title: qsTr("Preferences"); onBackClicked: page.goHome() }
     SilicaListView {
         id: list
-        anchors { top: head.bottom; topMargin: 12 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { top: head.bottom; topMargin: 14 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
         model: page.rows
         clip: true
         bottomMargin: 100 * Tokens.u
@@ -41,10 +41,10 @@ Item {
             Column {
                 anchors { left: parent.left; leftMargin: 71 * Tokens.u; right: arrow.left; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
                 spacing: 4 * Tokens.u
-                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 14.5 * Tokens.u }
+                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 14.5 * Tokens.u }
                 Label { width: parent.width; text: modelData.hint; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 9.5 * Tokens.u }
             }
-            Label { id: arrow; anchors.right: parent.right; anchors.rightMargin: 25.5 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: "→"; color: Tokens.inkSoft; font.pixelSize: 13 * Tokens.u }
+            Label { id: arrow; anchors.right: parent.right; anchors.rightMargin: 25.5 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: "→"; color: Tokens.inkSoft; font.pixelSize: 20 * Tokens.u }
         }
         EdgeFade { target: list }
         VerticalScrollDecorator {}

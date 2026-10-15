@@ -21,7 +21,7 @@ Item {
         width: 43.7 * Tokens.u; height: width
         onClicked: parent.backClicked()
         Rectangle { anchors.fill: parent; radius: width / 2; color: parent.parent.filled ? Tokens.surfaceSoft : "transparent"; border.width: parent.parent.filled ? 0 : 1; border.color: Tokens.lineStrong; opacity: btn.pressed ? 0.5 : 1 }
-        Rectangle { visible: btn.parent.restRing; anchors { fill: parent; margins: -3.5 * Tokens.u } radius: width / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary }
+        Rectangle { visible: btn.parent.restRing; anchors { fill: parent; margins: -4.75 * Tokens.u } radius: width / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary }
         Label { anchors.centerIn: parent; text: "←"; color: Tokens.ink; font.pixelSize: 13 * Tokens.u }
     }
     Label {

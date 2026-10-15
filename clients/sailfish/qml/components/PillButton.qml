@@ -29,7 +29,7 @@ MouseArea {
     }
     Rectangle {
         visible: root.restRing
-        anchors { fill: parent; margins: -3.5 * Tokens.u }
+        anchors { fill: parent; margins: -4 * Tokens.u }
         radius: height / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary
     }
     Label { id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.pixelSize: root.fontSize; }
