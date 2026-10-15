@@ -698,7 +698,9 @@ function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
   const row: DetailRow = {
     id: 'chapter-' + chapter.index.toString(),
     title: title,
-    subtitle: chapterTimeLabel(chapter.start_ms),
+    subtitle: '',
+    episodeCaption: chapterTimeLabel(chapter.start_ms),
+    episodeNumberOverlay: number,
     mediaFileId: mediaFileId,
     similarWorkId: null,
     startMs: chapter.start_ms,
@@ -1906,10 +1908,11 @@ struct Detail {
         )
       }
       if (this.chaptersRail !== null) {
-        Column({ space: tv(12) }) {
+        Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
           this.railHeading('Chapters', this.chaptersRail.items.length.toString() + ' chapters')
           MediaRail({
             railId: 'chapters',
+            headingGap: 0,
             itemGap: tv(TvGeometry.railItemGapTitle),
             items: this.chaptersRail.items,
             itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -1920,10 +1923,11 @@ struct Detail {
         .alignItems(HorizontalAlign.Start)
       }
       if (this.cast.length > 0) {
-        Column({ space: tv(12) }) {
+        Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
           this.railHeading('Cast', this.cast.length.toString() + ' people')
           MediaRail({
             railId: 'cast',
+            headingGap: 0,
             itemGap: tv(CAST_GAP),
             items: this.castRows(),
             itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -2003,6 +2007,8 @@ struct Detail {
       variant: 'titleEpisode',
       title: (item as DetailRow).title,
       subtitle: (item as DetailRow).subtitle,
+      episodeCaption: (item as DetailRow).episodeCaption ?? '',
+      episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
       cardWidth: tv(CHAPTER_CARD_WIDTH),
       cardHeight: tv(CHAPTER_CARD_HEIGHT),
       activeRailFactor: activeRailFactor,
