@@ -57,6 +57,22 @@ if (!episodeFiles.length) throw new Error("pinned series has no episodes in the 
 const pinned = [...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file), film.media_file_id, ...episodeFiles].filter(Boolean);
 if (!args.includes("--no-reset")) { await resetProgress(pinned); await fetch(`${srv}/api/v1/catalog/${seriesId}/resume-plan/choices`, { method: "DELETE", headers: auth }); console.log(`reset progress on ${new Set(pinned).size} pinned files`); }
 
+// Other workers share this account and play the pinned files: reset the detail screen's own files right before its shot and read the progress back.
+const freshAuth = async () => { // the first access token expires during a long run
+  const r = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-refs", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
+  if (!r.ok) throw new Error(`login ${r.status}`);
+  return { authorization: `Bearer ${(await r.json()).access_token}` };
+};
+async function resetDetail(id) {
+  const auth = await freshAuth();
+  const progressOf = async (f) => (await (await fetch(`${srv}/api/v1/playback/${f}/progress`, { headers: auth })).json().catch(() => ({})));
+  const files = (id === "film-detail" ? [film.media_file_id] : episodeFiles).filter(Boolean); // an episode without a file has null
+  await resetProgress(files);
+  if (id === "series-detail") await fetch(`${srv}/api/v1/catalog/${seriesId}/resume-plan/choices`, { method: "DELETE", headers: auth });
+  for (const f of files) { const p = await progressOf(f); if (p.position_ms !== 0 || p.state === "in_progress") throw new Error(`progress of ${f} not reset (${p.state}, ${p.position_ms} ms)`); }
+}
+
 // 2. Capture.
 const startedAt = new Date().toISOString();
 const driverUrl = pathToFileURL(join(here, "drivers", "web.mjs")).href;
@@ -77,6 +93,7 @@ for (const name of groups) {
       let ok = false;
       for (let attempt = 1; attempt <= 3 && !ok; attempt += 1) {
         try {
+          if (!args.includes("--no-reset") && s.id.endsWith("-detail")) await resetDetail(s.id);
           await driver.home();
           if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
           else if (s.open) await driver.route(s.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(s.open) });

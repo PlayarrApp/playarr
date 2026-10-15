@@ -36,6 +36,7 @@ export async function createDriver() {
   };
   const deviceScaleFactor = positiveNumber("PLAYARR_WEB_VIEWPORT_DPR", mobile ? 3 : 1);
   let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false; // session: this run's own storage state, in memory
+  const apiErrors = []; // failing /api/ responses of the current page, named in the error-page failure
   const touched = new Set(); // downloadMedia entries the downloads cases used
   const detailReadyTimeoutMs = 30000;
   const waitForDetailReady = async ({ requireHeroAction = false } = {}) => {
@@ -149,6 +150,8 @@ export async function createDriver() {
       if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; }
     });
     page = await ctx.newPage();
+    apiErrors.length = 0;
+    page.on("response", (r) => { if (r.status() >= 400 && /\/api\//.test(r.url())) apiErrors.push(`${r.status()} ${new URL(r.url()).pathname.replace(/[0-9a-f-]{36}/g, ":id")}`); });
     await page.goto(web + "/", { waitUntil: "load" });
     await page.waitForTimeout(2500);
     if (!(await page.locator(".app-nav").count())) {
@@ -193,7 +196,7 @@ export async function createDriver() {
       timeToFirstFrameSeconds: r.startSeconds ?? null, negotiationStatuses: neg.statuses, no_transcode_capacity: neg.statuses.includes(503), stalled: r.state === "stalled" };
   };
   async function homeOnce() {
-    await page.goto(web + "/", { waitUntil: "load" });
+    await page.goto(web + "/", { waitUntil: "load" }).catch(async (e) => { if (!/interrupted by another navigation/.test(e.message)) throw e; await page.waitForLoadState("load", { timeout: 30000 }); });
     await page.waitForTimeout(2500);
     // Signed out (the server can drop a session when other devices sign in): sign in again once.
     if (!(await page.locator(".app-nav").count())) { try { session = undefined; await open(false); } finally { await page.goto(web + "/", { waitUntil: "load" }); } }
@@ -416,10 +419,10 @@ export async function createDriver() {
     // TV Home proves first-card focus and the Left/Right nav round trip. Mobile Home waits for populated content and settles without TV focus keys.
     async home() {
       let why = "";
-      for (let attempt = 1; attempt <= 4; attempt += 1) {
-        try { return await homeOnce(); } catch (e) { why = e.message; console.log(`  home attempt ${attempt}: ${why.split("\n")[0]}`); }
+      for (let attempt = 1; attempt <= 6; attempt += 1) {
+        try { return await homeOnce(); } catch (e) { why = e.message; console.log(`  home attempt ${attempt}: ${why.split("\n")[0]}`); await new Promise((r) => setTimeout(r, 3000 * attempt)); }
       }
-      throw new Error("Home focus system not ready after 4 loads: " + why);
+      throw new Error("Home focus system not ready after 6 loads: " + why);
     },
     // Known state for the player checks: video playing, controls visible, focus on the play/pause button (waits up to 30 s, else throws).
     async playerReady() {
@@ -455,7 +458,7 @@ export async function createDriver() {
       // Loading placeholders (skeletons, spinners) must be gone: a half-loaded screen is not a capture.
       await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader"), null, { timeout: 20000 }).catch(() => {});
       await page.waitForTimeout(500);
-      if (new URL(page.url()).pathname.startsWith("/login") || (await page.getByText("API request failed").count())) throw new Error("signed out or error page");
+      if (new URL(page.url()).pathname.startsWith("/login") || (await page.getByText("API request failed").count())) throw new Error(`signed out or error page (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"})`);
       const detailRoute = /^\/(movies|series)\/[^/]+\/?$/.test(new URL(page.url()).pathname);
       if (detailRoute) {
         try {
