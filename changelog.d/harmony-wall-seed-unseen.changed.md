@@ -1,1 +1,0 @@
-- Harmony wall: the progress seed zeroes other rows to unseen (as web's refs) instead of marking them completed.

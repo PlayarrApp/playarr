@@ -650,6 +650,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Harmony wall: the progress seed zeroes other rows to unseen (as web's refs) instead of marking them completed.
 - HarmonyOS phone: the series page rings the first episode when everything is watched.
 - HarmonyOS phone: the next-up episode card and the current profile show web's focus ring and glow on open, and the light profile picker uses web's kicker colour and add-tile gradient.
 - HarmonyOS phone: the film Play button opens in web's focused style.
