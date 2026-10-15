@@ -544,12 +544,12 @@ private struct AuthenticatedPlayarrShell: View {
             ForEach(group, id: \.self) { destination in
                 Button { select(destination) } label: {
                     VStack(spacing: 6) {
-                        WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.muted, size: 18)
+                        WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, size: 18)
                         Text(destination.title)
                             .font(WM.font(8.5, 700))
                             .lineLimit(1)
                     }
-                    .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.muted)
+                    .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft)
                     .frame(width: 64, height: 64)
                     .background(
                         selected == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
@@ -562,13 +562,14 @@ private struct AuthenticatedPlayarrShell: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 6)
+        // Web rail pills are solid surface-strong with a 1 px line border (the art never shows through).
         .background(
-            PlayarrStyle.surfaceStrong.opacity(0.56),
+            PlayarrStyle.surfaceStrong,
             in: RoundedRectangle(cornerRadius: 22, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(PlayarrStyle.line.opacity(0.48), lineWidth: 1)
+                .stroke(PlayarrStyle.line, lineWidth: 1)
         }
         .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 21, y: 14)
     }
@@ -584,8 +585,8 @@ private struct AuthenticatedPlayarrShell: View {
                     .lineLimit(1)
             }
             .frame(width: 76, height: 75)
-            .background(PlayarrStyle.surfaceStrong.opacity(0.56), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PlayarrStyle.line.opacity(0.48), lineWidth: 1) }
+            .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PlayarrStyle.line, lineWidth: 1) }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Open profile and settings")

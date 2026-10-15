@@ -9,6 +9,8 @@ struct LibraryView: View {
     let title: String
     @Environment(\.playarrGoHome) private var goHome
     @State private var showingFilters = false
+    /// Works this profile has any progress on; a grid card for any other work shows the web's unseen dot.
+    @State private var progressedWorkIDs: Set<UUID>?
     @State private var filtersOpen = false
     @State private var downloadTarget: Work?
     @Environment(\.colorScheme) private var scheme
@@ -58,6 +60,9 @@ struct LibraryView: View {
         }
         .task {
             if case .idle = viewModel.loadState { await viewModel.load() }
+            if progressedWorkIDs == nil {
+                progressedWorkIDs = Set(((try? await apiClient.listWatchProgress()) ?? []).map(\.workID))
+            }
             #if DEBUG
             // Parity "actions": the first card's actions sheet, which a long press opens.
             if ParityLaunch.screen == "actions", actionsWork == nil { actionsWork = viewModel.works.first }
@@ -245,7 +250,7 @@ struct LibraryView: View {
                     PlayarrArtwork(work: preview, kind: .backdrop, apiClient: apiClient)
                         .frame(width: proxy.size.width * 0.52, height: proxy.size.height)
                         .clipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
-                        .opacity(scheme == .dark ? 0.1 : 0.14)
+                        .opacity(scheme == .dark ? 0.1 : 0.04) // web light: the preview art is nearly invisible on the white page
                         .overlay {
                             LinearGradient(
                                 colors: [PlayarrStyle.surface.opacity(0.2), PlayarrStyle.surface],
@@ -498,6 +503,11 @@ struct LibraryView: View {
                                 libraryListRow(work, width: cardWidth)
                             } else {
                                 PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false)
+                                    .overlay(alignment: .topTrailing) {
+                                        if !phone, let seen = progressedWorkIDs, !seen.contains(work.id) {
+                                            WMUnseenDot().padding(.top, 7).padding(.trailing, 7)
+                                        }
+                                    }
                                     .overlay(alignment: .top) {
                                         // Web focuses the first tile of a library on arrival: a pink ring with a soft glow.
                                         if work.id == viewModel.works.first?.id {
@@ -550,7 +560,7 @@ struct LibraryView: View {
     }
 
     private func previewCopy(_ work: Work) -> some View {
-        let year = work.releaseDate.map { String($0.prefix(4)) }.flatMap { Int($0) != nil ? $0 : nil }
+        let year = WorkDetailView.tabletYearRangeLabel(releaseDate: work.releaseDate, endDate: work.endDate)
         let genres = work.genres.prefix(2).joined(separator: " · ")
         let meta = [year, genres.isEmpty ? nil : genres].compactMap { $0 }.joined(separator: "   ")
         return VStack(alignment: .leading, spacing: 0) {

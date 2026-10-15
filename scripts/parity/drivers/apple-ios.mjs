@@ -150,7 +150,16 @@ export async function createDriver() {
       await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (NATIVE[id] ?? id), [], layoutDiagnostics);
       await sleep(id.startsWith("player") ? 30000 : 14000);
       const raw = device === "ipad" ? `${file}.raw.png` : file;
-      run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
+      // A slow first paint can leave the "Opening ..." splash on screen after the fixed wait: take frames 4 s apart until
+      // two consecutive frames are byte-identical (at most 8 tries), so the capture is the settled screen, never a transition.
+      let previous = null;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
+        const frame = readFileSync(raw);
+        if (previous && frame.equals(previous)) break;
+        previous = frame;
+        await sleep(4000);
+      }
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if (layoutDiagnostics) {

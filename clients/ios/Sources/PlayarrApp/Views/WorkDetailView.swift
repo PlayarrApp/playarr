@@ -32,6 +32,7 @@ struct WorkDetailView: View {
     /// Media files this profile has any progress on; an episode with none shows the web's unseen dot.
     @State private var progressedMediaFileIDs: Set<UUID>?
     @State private var showingTabletDownload = false
+    @FocusState private var playFocused: Bool
     @State private var visibleDetailRouteID = UUID()
     @State private var isVisible = false
 
@@ -555,8 +556,17 @@ struct WorkDetailView: View {
                                 .frame(minWidth: 116.109 * tabletScale, minHeight: 57.359 * tabletScale)
                                 .background(PlayarrStyle.ink, in: Capsule())
                                 .foregroundStyle(PlayarrStyle.background)
+                                // Web: the film page opens with Play focused, drawn as a 3 px ring a few points off the pill.
+                                .overlay {
+                                    if playFocused {
+                                        Capsule().stroke(scheme == .dark ? Color.white : PlayarrStyle.ink, lineWidth: 3 * tabletScale)
+                                            .padding(-6 * tabletScale)
+                                    }
+                                }
                         }
                         .buttonStyle(.plain)
+                        .focused($playFocused)
+                        .onAppear { playFocused = true }
                     }
                     HStack(spacing: 12.294 * tabletScale) {
                         Button { Task { await tabletMovieModel?.toggleWatchlist() } } label: {
