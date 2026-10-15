@@ -25,6 +25,10 @@ on:
         description: Comma-separated screen ids (default - all 15; leave out player-controls while no playback may run)
         type: string
         default: ""
+      focus:
+        description: Also capture focus crops (first, last and top-row card of every rail and grid) into the artifact's focus-<mode> folders
+        type: boolean
+        default: false
       parts:
         description: Comma-separated parts (dark, light, downloads; playback is out of parity)
         type: string
@@ -294,6 +298,7 @@ jobs:
           PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           REF: ${{ inputs.ref || github.event.repository.default_branch }}
           SCREENS: ${{ inputs.screens }}
+          FOCUS: ${{ inputs.focus }}
         run: |
           set -uo pipefail
           out="$RUNNER_TEMP/capture"; mkdir -p "$out"
@@ -307,6 +312,11 @@ jobs:
           # Playback is scored against the suite's own expectation (every case plays); touch devices have no D-pad values.
           echo '{"suite":1,"dpad":{},"playback":{}}' > "$RUNNER_TEMP/expected.json"
           node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --reset-progress --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
+          if [[ "$FOCUS" == true && $only == screens ]]; then
+            for mode in first last top; do
+              PARITY_FOCUS=$mode node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/focus-$mode" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music,film-detail,series-detail || true
+            done
+          fi
 
       - name: Upload the results
         if: always()

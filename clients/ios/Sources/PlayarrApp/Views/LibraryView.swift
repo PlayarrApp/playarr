@@ -362,7 +362,20 @@ struct LibraryView: View {
         }
     }
 
+    private func phoneGridFocused(index: Int) -> Bool {
+        #if DEBUG
+        switch ParityLaunch.focus {
+        case "last": return index == viewModel.works.count - 1
+        case "top": return index == 1
+        case "first": return index == 0
+        default: break
+        }
+        #endif
+        return index == 0
+    }
+
     private var phoneGridScroll: some View {
+        ScrollViewReader { reader in
         ScrollView(.vertical) {
             LazyVGrid(
                 columns: [
@@ -380,8 +393,9 @@ struct LibraryView: View {
                             downloadRepository: downloadRepository
                         )
                     } label: {
-                        WMLibraryCard(work: work, apiClient: apiClient, focused: index == 0)
+                        WMLibraryCard(work: work, apiClient: apiClient, focused: phoneGridFocused(index: index))
                     }
+                    .id(work.id)
                     .buttonStyle(.plain)
                     .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                     .task {
@@ -398,6 +412,15 @@ struct LibraryView: View {
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
         .keepInsideSafeArea()
+        .webEdgeFade(.vertical, size: 38) // web scroll-edge fade, 38 pt on phones
+        .task(id: viewModel.works.count) {
+            #if DEBUG
+            guard ParityLaunch.focus == "last", let last = viewModel.works.last else { return }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            reader.scrollTo(last.id, anchor: .bottom)
+            #endif
+        }
+        }
     }
 
     private var stageLibraryContent: some View {

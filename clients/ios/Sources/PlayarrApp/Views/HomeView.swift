@@ -84,6 +84,7 @@ struct HomeView: View {
             .scrollIndicators(.hidden)
             .refreshable { await viewModel.load() }
             .keepInsideSafeArea()
+            .webEdgeFade(.vertical, size: 38)
         }
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
@@ -94,15 +95,23 @@ struct HomeView: View {
         #if DEBUG
         if ParityLaunch.selectsHomeSeries,
            let series = rail.works.first(where: { $0.kind == .series }) { return series.id }
+        if ParityLaunch.focus == "last", let last = rail.works.last { return last.id }
         if first, let card = ParityLaunch.homeScrollCard, rail.works.indices.contains(card) { return rail.works[card].id }
         #endif
         return nil
     }
 
+    private func phoneRailFocused(first: Bool, index: Int, count: Int) -> Bool {
+        #if DEBUG
+        if let focus = ParityLaunch.focus { return focus == "last" ? index == count - 1 : index == 0 }
+        #endif
+        return first && index == 0
+    }
+
     private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(rail.title, 16, 610, lh: 24, ls: -0.48).padding(.horizontal, 16)
-            WMFadingRail(scrollTo: scrollTarget(rail, first: first)) {
+            WMFadingRail(scrollTo: scrollTarget(rail, first: first), scrollAnchor: ParityLaunch.focus == "last" ? .trailing : .leading) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(Array(rail.works.enumerated()), id: \.element.id) { index, work in
                         workLink(work) {
@@ -110,7 +119,7 @@ struct HomeView: View {
                                 work: work,
                                 apiClient: apiClient,
                                 unseen: viewModel.progressByWorkID[work.id] == nil,
-                                focused: first && index == 0
+                                focused: phoneRailFocused(first: first, index: index, count: rail.works.count)
                             )
                         }
                         .id(work.id)
@@ -343,6 +352,7 @@ struct HomeView: View {
 /// vanish under it rather than hard-cutting. `scrollTo` moves the track to that card on appear (parity captures).
 struct WMFadingRail<Content: View>: View {
     var scrollTo: UUID?
+    var scrollAnchor: UnitPoint = .leading
     @ViewBuilder var content: () -> Content
     @State private var offset: CGFloat = 0
     @State private var contentWidth: CGFloat = 0
@@ -389,7 +399,7 @@ struct WMFadingRail<Content: View>: View {
             .task {
                 guard let scrollTo else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
-                proxy.scrollTo(scrollTo, anchor: .leading)
+                proxy.scrollTo(scrollTo, anchor: scrollAnchor)
             }
         }
     }

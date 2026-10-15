@@ -25,6 +25,7 @@ private struct WMListPage<Content: View>: View {
                 }
                 .scrollIndicators(.hidden)
                 .keepInsideSafeArea()
+                .webEdgeFade(.vertical, size: 38, enabled: phone)
 
                 let top = WM.topInset + 1
                 WMHeaderCircleButton(width: 44, height: 40, glyph: "←", action: onBack)

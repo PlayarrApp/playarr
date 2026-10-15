@@ -47,6 +47,12 @@ enum ParityLaunch {
         guard parts.first == "home-scrolled" else { return nil }
         return parts.count > 1 ? Int(parts[1]) ?? 2 : 2
     }
+    /// `--playarr-parity-focus first|last|top`: draws the focus ring on the first or last card of every rail and grid (last also
+    /// scrolls it into view) and on the second card of a grid's top row, for the focus crop audit.
+    static var focus: String? {
+        guard let v = value("--playarr-parity-focus"), ["first", "last", "top"].contains(v) else { return nil }
+        return v
+    }
     static var selectsHomeSeries: Bool { environmentValue("PLAYARR_PARITY_SELECT_HOME_SERIES") == "1" }
     /// `--playarr-parity-play <media file id>` with route `play`: opens the player on that file and plays it (suite playback cases).
     static var playFile: String? { value("--playarr-parity-play") }

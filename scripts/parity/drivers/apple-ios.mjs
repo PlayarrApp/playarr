@@ -60,7 +60,7 @@ export async function createDriver() {
     if (device === "ipad" && enableLayoutDiagnostics) launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS = "1";
     run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrMuted", "--playarr-parity-server", e.SERVER_URL, "--playarr-parity-user", e.TEST_USERNAME,
       "--playarr-parity-password", e.TEST_PASSWORD, "--playarr-parity-route", route, "--playarr-parity-theme", theme,
-      ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...extra], { env: launchEnv });
+      ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...(process.env.PARITY_FOCUS ? ["--playarr-parity-focus", process.env.PARITY_FOCUS] : []), ...extra], { env: launchEnv });
     for (let i = 0; i < 60 && !state().signedIn; i += 1) await sleep(1000);
     if (!state().signedIn) throw new Error("signed out");
   };
