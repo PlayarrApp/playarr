@@ -270,7 +270,40 @@ struct PlayerView: View {
         return max(14, WM.safeArea.bottom)
     }
 
+    /// Tablet widths use the web's wide player: a labelled Minimise pill beside the close button, both inset from the top right.
+    private func isTablet(_ size: CGSize) -> Bool { !PlayarrLayout.isPhone(size) }
+
     private func topButtons(size: CGSize) -> some View {
+        if isTablet(size) {
+            let s = size.width / 1366
+            return AnyView(ZStack(alignment: .topTrailing) {
+                HStack(spacing: 10 * s) {
+                    Button { dismiss() } label: {
+                        HStack(spacing: 9 * s) {
+                            PlayerGlyphView(glyph: .minimise, size: 17 * s)
+                            WMText("Minimise", 11 * s + 2, 600, color: .white, lh: 16)
+                        }
+                        .padding(.horizontal, 18 * s).frame(height: 48 * s)
+                        .background(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58), in: Capsule())
+                        .overlay(Capsule().strokeBorder(.white.opacity(0.28), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain).accessibilityLabel("Minimise")
+                    Button { dismiss() } label: {
+                        PlayerGlyphView(glyph: .close, size: 15 * s)
+                            .frame(width: 48 * s, height: 48 * s)
+                            .background(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58), in: Circle())
+                            .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain).accessibilityLabel("Close")
+                }
+                .padding(.top, 36 * s).padding(.trailing, max(53 * s, WM.trailingInset))
+            }
+            .frame(width: size.width, height: size.height, alignment: .topTrailing))
+        }
+        return AnyView(phoneTopButtons(size: size))
+    }
+
+    private func phoneTopButtons(size: CGSize) -> some View {
         ZStack(alignment: .topLeading) {
             circleButton(.minimise, size: 20, label: "Minimise") { dismiss() }
                 .offset(x: size.width - max(16, WM.trailingInset) - 44 - 8 - 44, y: topInset)
@@ -303,7 +336,10 @@ struct PlayerView: View {
         let isPlaying = viewModel.engineState == .playing
         let shownTime = scrubTime ?? viewModel.currentTime
         let selectedQuality = viewModel.qualityOptions.first { $0.id == viewModel.selectedQualityID } ?? viewModel.qualityOptions.first
-        return VStack(spacing: 10) {
+        if isTablet(size) {
+            return AnyView(tabletControls(viewModel, size: size, isPlaying: isPlaying, shownTime: shownTime, selectedQuality: selectedQuality, queueEmpty: queueEntries.isEmpty))
+        }
+        return AnyView(VStack(spacing: 10) {
             seekTrack(viewModel, width: size.width - max(12, WM.leadingInset) - max(12, WM.trailingInset))
             VStack(spacing: 2) {
                 HStack(spacing: 5.6) {
@@ -362,6 +398,66 @@ struct PlayerView: View {
         .padding(.leading, max(12, WM.leadingInset))
         .padding(.trailing, max(12, WM.trailingInset))
         .padding(.bottom, bottomInset)
+        .frame(width: size.width, height: size.height, alignment: .bottom))
+    }
+
+    /// Web wide player controls: the seek bar, then one row with previous, a ringed play button, next and the time on the
+    /// left, and volume, subtitles, queue, quality, info and cast on the right (no audio or fill-screen buttons).
+    private func tabletControls(
+        _ viewModel: PlayerViewModel, size: CGSize, isPlaying: Bool, shownTime: Double,
+        selectedQuality: PlaybackQualityOption?, queueEmpty: Bool
+    ) -> some View {
+        let s = size.width / 1366
+        let edge = max(55 * s, WM.leadingInset)
+        return VStack(spacing: 14 * s) {
+            seekTrack(viewModel, width: size.width - edge - max(60 * s, WM.trailingInset))
+            HStack(spacing: 0) {
+                iconButton(.previous, disabled: true, label: "Previous") {}
+                Button {
+                    viewModel.togglePlayPause()
+                    reveal()
+                } label: {
+                    PlayerGlyphView(glyph: isPlaying ? .pause : .play, size: 22 * s + 4)
+                        .frame(width: 60 * s, height: 60 * s)
+                        .background(Circle().fill(.white.opacity(0.14)))
+                        .overlay(Circle().strokeBorder(.white, lineWidth: 2).padding(-3))
+                }
+                .buttonStyle(.plain).accessibilityLabel(isPlaying ? "Pause" : "Play")
+                .padding(.horizontal, 12 * s)
+                iconButton(.next, disabled: queueEmpty, label: "Next") { playQueueEntry(at: 0, viewModel) }
+                HStack(spacing: 5.6) {
+                    Text(playerTimeString(shownTime))
+                    Text("/").foregroundStyle(Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
+                    Text(playerTimeString(viewModel.duration))
+                }
+                .font(WM.font(9.92 + 1).monospacedDigit()).foregroundStyle(.white)
+                .padding(.leading, 28 * s)
+                Spacer(minLength: 24)
+                iconButton(isMuted ? .volumeMuted : .volumeHigh, label: isMuted ? "Unmute" : "Mute") {
+                    viewModel.avPlayer?.isMuted.toggle()
+                    isMuted = viewModel.avPlayer?.isMuted ?? false
+                    reveal()
+                }
+                iconButton(.subtitles, active: activeMenu == .subtitles, label: "Subtitles") { toggle(.subtitles) }
+                iconButton(.playlist, active: activeMenu == .queue, label: "Queue") { toggle(.queue) }
+                Button { toggle(.quality) } label: {
+                    HStack(spacing: 10) {
+                        WMText(PlayerQuality.badge(selectedQuality), 7.68, 650, color: .white, lh: 20, ls: 0.3072)
+                        WMText(PlayerQuality.displayLabel(selectedQuality), 11, 650, color: .white, lh: 16, ls: 0.1)
+                    }
+                    .padding(.horizontal, 12)
+                }
+                .buttonStyle(.plain).disabled(viewModel.qualityOptions.isEmpty)
+                iconButton(.info, active: activeMenu == .info, label: "Playback info") { toggle(.info) }
+                ZStack {
+                    iconButton(.castDevices, label: "Cast to a device") {}
+                    if showsCastAffordance { CastButton(tintColor: .clear).frame(width: 42, height: 42).opacity(0.02) }
+                }
+            }
+        }
+        .padding(.leading, edge)
+        .padding(.trailing, max(60 * s, WM.trailingInset))
+        .padding(.bottom, max(34 * s + 5, bottomInset)) // the web row sits about 5 pt higher
         .frame(width: size.width, height: size.height, alignment: .bottom)
     }
 
