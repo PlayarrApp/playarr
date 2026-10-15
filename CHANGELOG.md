@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS: music artwork from *arr sources loads with the session token, Back from a title restores focus to the card that opened it, and the Filters drawer shows the round close button with its focus ring, outlined choice buttons and the View glyphs.
 - macOS: library artwork that fails to load is tried again, as on the web, instead of staying a text tile.
 - macOS: the library page preview, alphabet rail and focused card ring follow the web light layout.
 - Xbox: the title-page header puts the title's name beside the page title after a divider, as the web.
@@ -652,6 +653,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Xbox: nav rail focus uses the web's ink fill and scale, Home rails fade at their edges, and dark focused cards drop the extra shadow.
 - Android TV: the library grid shows web's scroll-edge fade (0.3 floor, eased over clamp(38, 5.5 vu, 64)), focused library cards use web's lift, shadow and the theme's card glow colour, and the dedicated D-pad account tooling is in `scripts/parity/dpad-account.mjs`.
 - Harmony wall: the progress seed zeroes other rows to unseen (as web's refs) instead of marking them completed.
 - HarmonyOS phone: the series page rings the first episode when everything is watched.

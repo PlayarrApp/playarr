@@ -1,1 +1,0 @@
-- macOS: music artwork from *arr sources loads with the session token, Back from a title restores focus to the card that opened it, and the Filters drawer shows the round close button with its focus ring, outlined choice buttons and the View glyphs.

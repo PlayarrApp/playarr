@@ -1,1 +1,0 @@
-- Xbox: nav rail focus uses the web's ink fill and scale, Home rails fade at their edges, and dark focused cards drop the extra shadow.

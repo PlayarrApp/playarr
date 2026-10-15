@@ -105,6 +105,7 @@ Steps only the repository owner can perform.
 | 10407 | Apple wall: pin tailscale/github-action to v4.1.3 while the v4.2.0 archive returns 404 | done | parity-apple | apple-wall-tailscale-pin | 57.10025 | 2026-10-16 12:00 ICT | PR open: #1407. Every hosted Apple wall job failed in Set up job; v4.1.3 takes the same inputs the step uses. PR #1407 merged 2026-10-15. |
 | 10402 | macOS light parity: library page preview, alphabet rail and focused card ring as web | in_review | parity-apple | macos-light-parity | 57.10025 | 2026-10-16 12:00 ICT | PR open: #1401. Hosted Apple wall captures on main (run 38668170832) put music, series, movies, actions, home and filters lowest in light; fixes are behind `#if os(macOS)`. |
 | 10404 | macOS music light: retry failed artwork fetches as the web does | done | parity-apple | macos-artwork-retry | 57.10025 | 2026-10-16 12:00 ICT | PR open: #1446. Four Music cards stayed text tiles in every capture because AsyncImage never retries; the macOS build now retries up to four times. PR #1446 merged 2026-10-15. |
+| 10454 | macOS round 2: authenticated music artwork, Back restores the opened card, Filters drawer close ring and choice outlines, focus-settle wait and crop captures in the driver | in_review | parity-apple | macos-round2 | 57.10025 | 2026-10-16 18:00 ICT | PR open: #1465. |
 
 ## 1. Web follow-ups (2026-10-10)
 
@@ -612,6 +613,7 @@ Steps only the repository owner can perform.
 | 10432 | Harmony TV and phone cards: state-driven focused look for capture builds, 20 px glow | done | parity-harmony | harmony-focus-state | 5.10102 | 2026-10-15 20:00 ICT | PR open: #1454. The Previewer never delivers focus events, so focus:pcard turns PosterCard.ringOn on for the first card on screen (capture patch only); production focus unchanged. PR #1454 merged 2026-10-15. |
 | 10435 | iOS focus ring as web card glow (shared iPhone and iPad) | done | parity-iphone | iphone-r2-ring | | 2026-10-16 12:00 ICT | WMFocusRing: 3 pt flush ring plus filled 0 0 20px 4px glow at 45%, outside the art only; the iPad grid uses it too. PR open: #1455 PR #1455 merged 2026-10-15. |
 | 10443 | Harmony Library grid glow room, first-card focused look on phone captures | done | parity-harmony | harmony-round2 | 5.10102 | 2026-10-15 22:00 ICT | PR open: #1460. Round 2 items 1-3: grid padding so the 20 vp glow is not clipped (TV three grids), phone capture focuses the first card like web, state focus works at phone widths. PR #1460 merged 2026-10-15. |
+| 10451 | Xbox round 2: nav focus as web, no dark focused-shadow layers, Home rail fades, crop-audit script | in_progress | parity-xbox | xbox-round2 | | 2026-10-16 03:00 ICT | Items: nav focus 14 % ink fill and scale 1.1 without ring (web global.css:4701-4706, verified); dark focused halo removed (web dark ref returns to the page colour 12 px below a focused card; ours stayed 7 levels lighter); Home rails fade at top and bottom; scripts/parity/xbox/crop-audit.sh for the light and dark crop audit. Not done: true composition mask for EdgeFade (flat overlay kept), player-controls capture (needs playback slot). |
 
 ## 18. Public repository readiness (2026-10-05)
 
