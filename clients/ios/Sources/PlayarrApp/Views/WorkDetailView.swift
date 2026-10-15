@@ -249,6 +249,7 @@ struct WorkDetailView: View {
                         )
                     }
                     .scrollIndicators(.hidden)
+                    .webEdgeFade(.vertical)
                     .offset(x: proxy.size.width * 0.38)
                     .task(id: detail.work.id) {
                         guard case .series(let seasons) = detail.children else { return }
@@ -656,6 +657,7 @@ struct WorkDetailView: View {
                     .padding(.top, 26 * tabletScale)
                 }
                 .scrollIndicators(.hidden)
+                .webEdgeFade(.horizontal)
             }
         }
         if !viewModel.credits.cast.isEmpty {
@@ -699,6 +701,7 @@ struct WorkDetailView: View {
                     .padding(.top, 30 * tabletScale)
                 }
                 .scrollIndicators(.hidden)
+                .webEdgeFade(.horizontal)
             }
             .padding(.top, 70 * tabletScale)
         }
@@ -1304,6 +1307,7 @@ struct WorkDetailView: View {
                 .padding(.trailing, tabletScale.map { 2 * glowRoom * $0 } ?? 0)
             }
             .frame(height: tabletScale.map { (278.03125 + 2 * glowRoom) * $0 }, alignment: .topLeading)
+            .webEdgeFade(.horizontal, enabled: tabletScale != nil) // the web fades the rail end to 30% over 64 pt (page-layout.css)
             .padding(.vertical, tabletScale.map { -glowRoom * $0 } ?? 0)
             .padding(.leading, tabletScale.map { -glowRoom * $0 } ?? 0)
             .scrollClipDisabled(tabletScale == nil) // phone: the selected episode's ring, glow and lift are not cut by the rail (#1274)

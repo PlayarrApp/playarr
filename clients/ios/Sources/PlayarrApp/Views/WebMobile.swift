@@ -760,3 +760,32 @@ struct WMTitleWithDetail<Title: View>: View {
         }
     }
 }
+
+extension View {
+    /// The web's scroll-edge fade (`page-layout.css`): on the end side the content dims to 30% over 64 pt along a smoothstep
+    /// ramp (alpha 1, .891, .65, .409, .3 at 0, 25, 50, 75 and 100% of the ramp); the start side is clear.
+    func webEdgeFade(_ axis: Axis, size: CGFloat = 64, enabled: Bool = true) -> some View {
+        mask {
+            GeometryReader { proxy in
+                if enabled {
+                    let length = axis == .horizontal ? proxy.size.width : proxy.size.height
+                    let f = min(0.5, size / max(1, length))
+                    LinearGradient(
+                        stops: [
+                            .init(color: .black, location: 0),
+                            .init(color: .black, location: 1 - f),
+                            .init(color: .black.opacity(0.891), location: 1 - f * 0.75),
+                            .init(color: .black.opacity(0.65), location: 1 - f * 0.5),
+                            .init(color: .black.opacity(0.409), location: 1 - f * 0.25),
+                            .init(color: .black.opacity(0.3), location: 1),
+                        ],
+                        startPoint: axis == .horizontal ? .leading : .top,
+                        endPoint: axis == .horizontal ? .trailing : .bottom
+                    )
+                } else {
+                    Color.black
+                }
+            }
+        }
+    }
+}
