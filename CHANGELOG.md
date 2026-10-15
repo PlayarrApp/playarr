@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Settings > Appearance: with the remote, Down from the theme row now reaches Thumbnails and Covers (it used to skip to the artwork-size row), so poster mode can be switched on every client.
 - Android TV: the last Home rails scroll to the same row as the first (half-viewport bottom padding, as web), instead of stopping low with the previous rail showing.
 - The shell clock date prints "Thu 15 October" on every engine in en-GB; webOS added a comma after the weekday.
 - On iPad, the navigation rail pills are solid with the web's border, the Library preview art is faint in light, the series preview shows its year range, Library cards show the unseen dot, and the film page opens with Play focused and ringed.
