@@ -57,6 +57,7 @@ internal sealed class LibraryScreen : IPage
         _panel = new DetailsPanel(env, library: true);
         _root.Add(_keyArt.Root);
         _root.Add(_panel.Root);
+        _root.Add(GridPanelWash());
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _grid.PositionX = -ClipX;
         clip.Add(_grid);
@@ -64,6 +65,20 @@ internal sealed class LibraryScreen : IPage
         BuildHeader();
         BuildSide();
         _ = LoadAsync(0);
+    }
+
+    /// <summary>
+    /// Web .tv-library-grid-panel: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
+    /// that fades in from nothing at the left edge to full at the right.
+    /// </summary>
+    private View GridPanelWash()
+    {
+        var mix = _t.Name == "dark" ? 0.44f : 0.48f;
+        Rgba Frost(float a) => new(_t.SurfaceSoft.R * mix + _t.SurfaceStrong.R * (1 - mix), _t.SurfaceSoft.G * mix + _t.SurfaceStrong.G * (1 - mix), _t.SurfaceSoft.B * mix + _t.SurfaceStrong.B * (1 - mix), a);
+        var dark = _t.Name == "dark";
+        const float w = 1190;
+        return Ui.Gradient(TizenClient.DesignWidth - w, 0, w, TizenClient.DesignHeight, true,
+            (0, Frost(0)), (0.12f, Frost(dark ? 0.72f : 0.68f)), (0.34f, Frost(dark ? 0.9f : 0.88f)), (0.62f, Frost(dark ? 0.97f : 0.96f)), (1, Frost(1)));
     }
 
     private void BuildHeader()
