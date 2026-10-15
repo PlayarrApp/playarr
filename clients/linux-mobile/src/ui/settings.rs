@@ -75,7 +75,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
 
     let appearance = section_row(1, "Appearance", "Choose this device's theme and home screen layout");
     {
-        let app = app.clone();
+        let (app, client) = (app.clone(), client.clone());
         appearance.connect_clicked(move |_| {
             let col = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
             col.set_margin_start(16);
@@ -110,6 +110,66 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
                 row.append(&b);
             }
             col.append(&row);
+            // Home screen artwork and the artwork size, as the web's Appearance page. A change rebuilds the shell, so
+            // the Home rails and library grids take the new card shape at once.
+            let saved = store::load_settings();
+            let segment = |title: &str,
+                           options: &'static [(&'static str, &'static str)],
+                           current: String,
+                           set: fn(&mut store::Settings, &str)| {
+                let block = gtk4::Box::new(gtk4::Orientation::Vertical, 10);
+                block.set_margin_top(14);
+                block.append(
+                    &gtk4::Label::builder()
+                        .label(title)
+                        .css_classes(["pa-section-label"])
+                        .xalign(0.0)
+                        .build(),
+                );
+                let row = gtk4::Box::builder().spacing(10).homogeneous(true).build();
+                let mut group: Option<gtk4::ToggleButton> = None;
+                for (id, label) in options {
+                    let b = gtk4::ToggleButton::builder()
+                        .label(*label)
+                        .css_classes(["pa-seg-tile"])
+                        .active(*id == current)
+                        .build();
+                    if let Some(g) = &group {
+                        b.set_group(Some(g));
+                    } else {
+                        group = Some(b.clone());
+                    }
+                    let (app, client, id) = (app.clone(), client.clone(), *id);
+                    b.connect_toggled(move |b| {
+                        if b.is_active() {
+                            store::update_settings(|s| set(s, id));
+                            let saved = store::load_settings();
+                            super::cards::set_geometry(saved.home_cover, &saved.artwork_size);
+                            app.close_panel();
+                            app.enter(client.clone());
+                        }
+                    });
+                    row.append(&b);
+                }
+                block.append(&row);
+                block
+            };
+            col.append(&segment(
+                "HOME SCREEN ARTWORK",
+                &[("thumbnail", "Thumbnails"), ("cover", "Covers")],
+                if saved.home_cover {
+                    "cover".into()
+                } else {
+                    "thumbnail".into()
+                },
+                |s, v| s.home_cover = v == "cover",
+            ));
+            col.append(&segment(
+                "ARTWORK SIZE",
+                &[("small", "Small"), ("medium", "Medium"), ("large", "Large")],
+                saved.artwork_size.clone(),
+                |s, v| s.artwork_size = v.into(),
+            ));
             app.present_panel("Preferences", "Appearance", &col, true);
         });
     }

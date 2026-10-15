@@ -41,7 +41,6 @@ pub struct CardGrid {
 }
 
 pub const COL_GAP: i32 = 12;
-const COLS: usize = 2;
 
 impl CardGrid {
     pub fn new() -> Self {
@@ -59,7 +58,7 @@ impl CardGrid {
 
     pub fn append(&self, card: &impl IsA<gtk4::Widget>) {
         let mut cur = self.row.borrow_mut();
-        if cur.as_ref().map_or(true, |(_, n)| *n >= COLS) {
+        if cur.as_ref().map_or(true, |(_, n)| *n >= super::cards::cols()) {
             let row = gtk4::Box::builder().spacing(COL_GAP).build();
             self.widget.append(&row);
             *cur = Some((row, 0));
@@ -355,7 +354,7 @@ impl Lib {
     fn pitch(&self) -> f64 {
         self.flow
             .row_height()
-            .map(|h| (h as f64 + 24.0) / COLS as f64)
+            .map(|h| (h as f64 + 24.0) / super::cards::cols() as f64)
             .unwrap_or(71.0)
     }
 

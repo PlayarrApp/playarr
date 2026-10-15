@@ -292,6 +292,16 @@ pub struct Settings {
     pub force_direct_video: bool,
     #[serde(default)]
     pub force_direct_audio: bool,
+    /// Home screen artwork: portrait covers instead of wide thumbnails (Settings > Appearance).
+    #[serde(default)]
+    pub home_cover: bool,
+    /// Artwork size: "small", "medium" (default) or "large".
+    #[serde(default = "default_artwork_size")]
+    pub artwork_size: String,
+}
+
+fn default_artwork_size() -> String {
+    "medium".into()
 }
 
 impl Default for Settings {
@@ -300,6 +310,8 @@ impl Default for Settings {
             theme: "dark".into(),
             force_direct_video: false,
             force_direct_audio: false,
+            home_cover: false,
+            artwork_size: default_artwork_size(),
         }
     }
 }

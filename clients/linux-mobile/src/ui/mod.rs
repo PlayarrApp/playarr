@@ -141,6 +141,8 @@ impl App {
         self.client.replace(Some(client.clone()));
         let app = self.clone();
         cards::set_actions_handler(move |w| actions::show(&app, w));
+        let saved = crate::store::load_settings();
+        cards::set_geometry(saved.home_cover, &saved.artwork_size);
         downloads::init(self, client.clone());
         let imgs = images::Images::new(client.clone());
         let (me, c2) = (self.clone(), client.clone());

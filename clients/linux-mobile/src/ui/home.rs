@@ -1,5 +1,5 @@
 //! Home: a faded key-art backdrop and horizontal rails of 328 px cards, "On deck" first, then the server's rails.
-use super::cards::{card, CardOpts, RAIL_W};
+use super::cards::{card, home_art_h, home_cover, rail_w, CardOpts};
 use super::images::Images;
 use super::{bg, App};
 use crate::api::Client;
@@ -102,7 +102,7 @@ fn section(title: &str, row: RailRow) -> FocusSection {
     halo.add_css_class("pa-art");
     halo.add_css_class("selected");
     halo.add_css_class("pa-home-focus-halo");
-    halo.set_size_request(RAIL_W, super::cards::ART_H);
+    halo.set_size_request(rail_w(), home_art_h());
     halo.set_can_target(false);
     halo.set_visible(false);
     halo_layer.put(&halo, 0.0, 0.0);
@@ -189,7 +189,7 @@ fn track_focused_cards(sections: &[FocusSection]) {
                 continue;
             };
             let card_right = card_bounds.x() + card.width() as f32;
-            let card_bottom = card_bounds.y() + super::cards::ART_H as f32;
+            let card_bottom = card_bounds.y() + home_art_h() as f32;
             let viewport_right = viewport_bounds.x() + viewport_bounds.width();
             let viewport_bottom = viewport_bounds.y() + viewport_bounds.height();
             if card.width() == 0
@@ -201,7 +201,7 @@ fn track_focused_cards(sections: &[FocusSection]) {
                 halo.set_visible(false);
                 continue;
             }
-            halo.set_size_request(card.width(), super::cards::ART_H);
+            halo.set_size_request(card.width(), home_art_h());
             halo_layer.move_(&halo, card_bounds.x() as f64, card_bounds.y() as f64);
             halo.set_visible(true);
         }
@@ -372,7 +372,13 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                     .map(|d| {
                         set_art(&d.work);
                         let opts = CardOpts {
-                            width: Some(RAIL_W),
+                            width: Some(rail_w()),
+                            art_h: Some(home_art_h()),
+                            kinds: if home_cover() {
+                                &["poster", "backdrop", "thumb"]
+                            } else {
+                                &["backdrop", "thumb", "poster"]
+                            },
                             meta: Some(d.work.meta_line()),
                             progress: Some(d.fraction),
                             home_art: true,
@@ -403,7 +409,13 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                             .map(|w| {
                                 set_art(w);
                                 let opts = CardOpts {
-                                    width: Some(RAIL_W),
+                                    width: Some(rail_w()),
+                                    art_h: Some(home_art_h()),
+                                    kinds: if home_cover() {
+                                        &["poster", "backdrop", "thumb"]
+                                    } else {
+                                        &["backdrop", "thumb", "poster"]
+                                    },
                                     meta: Some(w.meta_line()),
                                     unseen: app.is_unseen(w),
                                     home_art: true,

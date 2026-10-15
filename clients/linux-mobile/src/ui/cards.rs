@@ -15,9 +15,52 @@ pub fn set_actions_handler(f: impl Fn(&Work) + 'static) {
     ACTIONS.with(|a| *a.borrow_mut() = Some(Box::new(f)));
 }
 
-/// The web's one poster card width (--card-w on a 360 phone) and its 16:9 art height.
-pub const ART_H: i32 = 79;
-pub const RAIL_W: i32 = 140;
+thread_local! {
+    /// Home artwork (covers or thumbnails) and the artwork size, from Settings > Appearance.
+    static GEOM: std::cell::Cell<(bool, &'static str)> = const { std::cell::Cell::new((false, "medium")) };
+}
+
+pub fn set_geometry(home_cover: bool, size: &str) {
+    let size = match size {
+        "small" => "small",
+        "large" => "large",
+        _ => "medium",
+    };
+    GEOM.with(|g| g.set((home_cover, size)));
+}
+
+/// Columns beside the 52 px letter rail: the web's `--card-cols` is 2, plus 1 for small and minus 1 for large.
+pub fn cols() -> usize {
+    match GEOM.with(|g| g.get().1) {
+        "small" => 3,
+        "large" => 1,
+        _ => 2,
+    }
+}
+
+/// The web's one poster card width (--card-w on a 360 phone): the 292 px beside the gutters, split into `cols()` with 12 px gaps.
+pub fn rail_w() -> i32 {
+    let cols = cols() as i32;
+    (360 - 16 - 52 - (cols - 1) * 12) / cols
+}
+
+/// Art height of a 16:9 thumbnail card (79 at the default size).
+pub fn art_h() -> i32 {
+    (rail_w() as f64 * 9.0 / 16.0).round() as i32
+}
+
+/// Home rails honour the Covers setting: 2:3 art at the same card width.
+pub fn home_cover() -> bool {
+    GEOM.with(|g| g.get().0)
+}
+
+pub fn home_art_h() -> i32 {
+    if home_cover() {
+        (rail_w() as f64 * 1.5).round() as i32
+    } else {
+        art_h()
+    }
+}
 
 pub struct CardOpts<'a> {
     /// Card width; `None` fills the parent. Defaults to the web's one poster card width.
@@ -33,23 +76,27 @@ pub struct CardOpts<'a> {
     /// Uses the Home rail's resting shadow tokens.
     pub home_art: bool,
     pub kinds: &'a [&'a str],
+    /// Art height; `None` is the 16:9 thumbnail height.
+    pub art_h: Option<i32>,
 }
 
 impl Default for CardOpts<'_> {
     fn default() -> Self {
         CardOpts {
-            width: Some(RAIL_W),
+            width: Some(rail_w()),
             meta: None,
             progress: None,
             selected: false,
             unseen: false,
             home_art: false,
             kinds: &["backdrop", "thumb", "poster"],
+            art_h: None,
         }
     }
 }
 
 pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + 'static) -> gtk4::Button {
+    let art_h = o.art_h.unwrap_or_else(art_h);
     let pic = gtk4::Picture::builder()
         .content_fit(gtk4::ContentFit::Cover)
         .can_shrink(true)
@@ -63,7 +110,7 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
     }
     if let Some(width) = o.width {
         let art_space = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-        art_space.set_size_request(width, ART_H);
+        art_space.set_size_request(width, art_h);
         overlay.set_child(Some(&art_space));
         pic.set_halign(gtk4::Align::Fill);
         pic.set_valign(gtk4::Align::Fill);
@@ -108,7 +155,7 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         );
     }
     // A fixed art height (the web's 16:9 at card width); AspectFrame reported no height inside a button.
-    overlay.set_size_request(-1, ART_H);
+    overlay.set_size_request(-1, art_h);
     let frame = overlay.clone();
     if o.selected {
         frame.add_css_class("selected");
