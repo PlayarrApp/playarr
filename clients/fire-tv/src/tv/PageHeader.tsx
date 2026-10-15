@@ -15,7 +15,7 @@ export interface BackButtonProps {
 }
 
 export function BackButton({onPress, x = 153.6, y = 56.2, size = 50, accessibilityLabel = 'Back', hasTVPreferredFocus}: BackButtonProps): React.ReactElement {
-  const {colour} = useTheme();
+  const {colour, scheme} = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
@@ -34,19 +34,18 @@ export function BackButton({onPress, x = 153.6, y = 56.2, size = 50, accessibili
         borderRadius: 999,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: focused ? colour.ink : mix(colour.surfaceStrong, 0.7),
+        backgroundColor: mix(colour.surfaceStrong, 0.7),
         borderWidth: 1,
-        borderColor: focused ? colour.ink : mix(colour.lineStrong, 0.7),
-        transform: [{scale: focused ? 1.056 : 1}],
+        borderColor: mix(colour.lineStrong, 0.7),
       }}
     >
-      <T size={17.28} weight={720} color={focused ? colour.bg : colour.inkSoft} lh={25.9} dy={3}>
+      <T size={17.28} weight={720} color={colour.inkSoft} lh={25.9} dy={3}>
         {'←'}
       </T>
       {focused ? (
         <View
           pointerEvents="none"
-          style={{position: 'absolute', left: u(-5), top: u(-5), right: u(-5), bottom: u(-5), borderRadius: 999, borderWidth: u(2), borderColor: colour.ink}}
+          style={{position: 'absolute', left: u(-5), top: u(-5), right: u(-5), bottom: u(-5), borderRadius: 999, borderWidth: u(3), borderColor: scheme === 'dark' ? '#ffffff' : colour.ink}}
         />
       ) : null}
     </Pressable>
@@ -78,16 +77,16 @@ export function PageHeader({title, detail, onBack, backLabel, backFocus}: PageHe
   };
   const beside = widths !== null && detail !== undefined && HEADER_X + widths.title + HEADER_GAP * 2 + 1 + widths.detail <= HEADER_BESIDE_LIMIT;
   const subtitle = (
-    <T size={12.288} weight={820} ls={0.983} lh={18.4} color={colour.ink} upper lines={1}>
+    <T size={11.14} weight={680} ls={0.5} lh={16.7} color={colour.ink} upper lines={1}>
       {detail}
     </T>
   );
   return (
     <>
       <BackButton onPress={onBack} accessibilityLabel={backLabel} hasTVPreferredFocus={backFocus} />
-      <View style={{position: 'absolute', left: u(HEADER_X), top: u(56.2), height: u(50.4), flexDirection: 'row', alignItems: 'center'}} pointerEvents="none">
+      <View style={{position: 'absolute', left: u(HEADER_X), top: u(56.2), height: u(50), flexDirection: 'row', alignItems: 'center'}} pointerEvents="none">
         <View onLayout={measure('title')}>
-          <T size={33.6} weight={580} ls={-1.512} lh={50.4} dy={1} color={colour.ink} lines={1}>
+          <T size={33.6} weight={580} ls={-1.512} lh={50} dy={1} color={colour.ink} lines={1}>
             {title}
           </T>
         </View>
@@ -100,7 +99,7 @@ export function PageHeader({title, detail, onBack, backLabel, backFocus}: PageHe
       </View>
       {detail !== undefined ? (
         <View
-          style={{position: 'absolute', left: u(HEADER_X), top: u(beside ? 72.2 : 116.8), opacity: widths === null || beside ? 0 : 1}}
+          style={{position: 'absolute', left: u(HEADER_X), top: u(beside ? 72.7 : 117.65), opacity: widths === null || beside ? 0 : 1}}
           pointerEvents="none"
         >
           <View onLayout={measure('detail')} style={{position: 'absolute', opacity: 0}}>{subtitle}</View>
