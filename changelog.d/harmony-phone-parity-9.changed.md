@@ -1,1 +1,0 @@
-- HarmonyOS phone rails fade their end edge as web does (38 vp smoothstep ramp to 30%, TV unchanged).

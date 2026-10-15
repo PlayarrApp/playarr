@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: focused cards get the web's focus shadow; page titles and header subtitles use the web's letter-spacing.
 - On iPad, the Library grid, the title-page scroller and the episode, chapter and cast rails fade their end edge as the web does: the content dims to 30% over 64 pt along the web's smoothstep ramp, and the start side stays clear.
 - On iPad, the series detail backdrop is as faint as the web's in dark, so the copy and rails are no longer lost against the artwork.
 - Hisense VIDAA: text and navigation no longer glow white. Chromium 111 turned `color-mix()` with a `var()` inside `box-shadow`, `text-shadow` and the `border` shorthand into the text colour; the mixes now sit in custom properties, with the same colours and strengths as before.
@@ -647,6 +648,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS: ink-soft, ink-muted, accent, danger and success colours match the web tokens in light and dark (TV included).
+- HarmonyOS phone rails fade their end edge as web does (38 vp smoothstep ramp to 30%, TV unchanged).
 - Fire TV: the page header title is 50 px tall, the subtitle uses web's size, weight and tracking, and Back shows only the 3 px ring (white in dark) with no fill or scale on focus.
 - HarmonyOS phone: square profile selects, calendar agenda meta type, series detail side padding and a circular profile avatar clip follow web; the wall labels the picker theme with the preview mode and focuses the current profile.
 - HarmonyOS phone: the detail play glyph is a drawn triangle and the profile picker sits closer to web's vertical rhythm.
