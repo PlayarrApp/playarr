@@ -1,1 +1,0 @@
-- Android TV: the last Home rails scroll to the same row as the first (half-viewport bottom padding, as web), instead of stopping low with the previous rail showing.
