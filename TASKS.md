@@ -105,7 +105,7 @@ Steps only the repository owner can perform.
 | 10407 | Apple wall: pin tailscale/github-action to v4.1.3 while the v4.2.0 archive returns 404 | done | parity-apple | apple-wall-tailscale-pin | 57.10025 | 2026-10-16 12:00 ICT | PR open: #1407. Every hosted Apple wall job failed in Set up job; v4.1.3 takes the same inputs the step uses. PR #1407 merged 2026-10-15. |
 | 10402 | macOS light parity: library page preview, alphabet rail and focused card ring as web | in_review | parity-apple | macos-light-parity | 57.10025 | 2026-10-16 12:00 ICT | PR open: #1401. Hosted Apple wall captures on main (run 38668170832) put music, series, movies, actions, home and filters lowest in light; fixes are behind `#if os(macOS)`. |
 | 10404 | macOS music light: retry failed artwork fetches as the web does | done | parity-apple | macos-artwork-retry | 57.10025 | 2026-10-16 12:00 ICT | PR open: #1446. Four Music cards stayed text tiles in every capture because AsyncImage never retries; the macOS build now retries up to four times. PR #1446 merged 2026-10-15. |
-| 10454 | macOS round 2: authenticated music artwork, Back restores the opened card, Filters drawer close ring and choice outlines, focus-settle wait and crop captures in the driver | in_review | parity-apple | macos-round2 | 57.10025 | 2026-10-16 18:00 ICT | PR open: #1465. |
+| 10454 | macOS round 2: authenticated music artwork, Back restores the opened card, Filters drawer close ring and choice outlines, focus-settle wait and crop captures in the driver | done | parity-apple | macos-round2 | 57.10025 | 2026-10-16 18:00 ICT | PR open: #1465. PR #1465 merged 2026-10-15. |
 
 ## 1. Web follow-ups (2026-10-10)
 
