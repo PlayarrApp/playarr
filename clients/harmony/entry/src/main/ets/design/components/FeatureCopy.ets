@@ -97,6 +97,10 @@ export struct FeatureCopy {
    * ellipsis. Empty string hides it entirely -- the home Stage hero
    * renders no synopsis in the source design (only Detail supplies one). */
   @Prop synopsis: string = '';
+  /** Home only: web's Home hero sits its meta 4 vp higher and its synopsis 3 vp further from it than the Library/Detail panel. Added to
+   * the gaps above the meta lines and the synopsis (vp, may be negative). */
+  @Prop metaGapAdjust: number = 0;
+  @Prop synopsisGapAdjust: number = 0;
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
   // actual values always go through design/Theme.ets's resolvers and
@@ -201,7 +205,7 @@ export struct FeatureCopy {
           )
         }
         .alignItems(HorizontalAlign.Start)
-        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META) })
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META + this.metaGapAdjust) })
       }
 
       if (this.synopsis.length > 0) {
@@ -213,7 +217,7 @@ export struct FeatureCopy {
           .constraintSize({ maxWidth: tv(SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .margin({ top: tv(GAP_META_SYNOPSIS) })
+          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust) })
       }
     }
     .width('100%')

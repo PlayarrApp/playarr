@@ -127,6 +127,8 @@ export struct Stage {
   @Prop title: string = '';
   @Prop metaLines: string[] = [];
   @Prop synopsis: string = '';
+  @Prop metaGapAdjust: number = 0;
+  @Prop synopsisGapAdjust: number = 0;
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
   // actual values always go through design/Theme.ets's resolvers and
@@ -304,6 +306,8 @@ export struct Stage {
         title: this.title,
         metaLines: this.metaLines,
         synopsis: this.synopsis,
+        metaGapAdjust: this.metaGapAdjust,
+        synopsisGapAdjust: this.synopsisGapAdjust,
       })
       this.heroExtraSlot()
     }
