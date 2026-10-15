@@ -637,6 +637,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: library grid offset and row pitch, A-Z rail position and series detail season spacing follow the web phone layout (TV unchanged).
 - Fire TV: the title actions drawer uses web's 68 px rows, 82 px pitch, 14 px radius and larger labels.
 - Xbox: Calendar week cards and headings use the web's sizes, spacing and pitch.
 - Xbox: the profile picker shows the web's selected look, gear and Sign out, an add-profile tile, Theme and Language selectors and a Clients link.
