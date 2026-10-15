@@ -106,6 +106,32 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        private static Style? _coverGridCardContainerStyle;
+
+        /// <summary>Library Cover view container: web's 19.2 px column gap and 32.4 px row gap (clamp(26px, 3 vu, 42px)).</summary>
+        public static Style CoverGridCardContainerStyle
+        {
+            get
+            {
+                if (_coverGridCardContainerStyle == null)
+                {
+                    var style = new Style(typeof(GridViewItem));
+                    foreach (var setter in CardContainerStyle.Setters)
+                    {
+                        if (setter is Setter { Property: var property } plain && property != FrameworkElement.MarginProperty)
+                        {
+                            style.Setters.Add(new Setter(property, plain.Value));
+                        }
+                    }
+
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 19.2, 32.4)));
+                    _coverGridCardContainerStyle = style;
+                }
+
+                return _coverGridCardContainerStyle;
+            }
+        }
+
         /// <summary>
         /// Web TV Home card: 328x184 landscape art (thumb, else backdrop; a titled placeholder without art),
         /// then the title and the "Kind · year" caption.

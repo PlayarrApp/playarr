@@ -41,7 +41,7 @@ namespace Playarr.Xbox.Views
         {
             InitializeComponent();
             _viewModel = new LibraryViewModel(App.Environment);
-            WorksGridView.ItemContainerStyle = CatalogTileFactory.GridCardContainerStyle;
+            WorksGridView.ItemContainerStyle = Appearance.LibraryCover ? CatalogTileFactory.CoverGridCardContainerStyle : CatalogTileFactory.GridCardContainerStyle;
             WorksGridView.GotFocus += WorksGridView_GotFocus;
             CardFocus.Attach(WorksGridView);
             EdgeFade.AttachVertical(Root, WorksGridView);
@@ -106,7 +106,7 @@ namespace Playarr.Xbox.Views
                 foreach (var work in _viewModel.Works)
                 {
                     _worksById[work.Id] = work;
-                    WorksGridView.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, caption: false));
+                    WorksGridView.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, caption: false, cover: Appearance.LibraryCover));
                 }
 
                 ShowFocused(_viewModel.Works.Count > 0 ? _viewModel.Works[0] : null);
@@ -212,6 +212,13 @@ namespace Playarr.Xbox.Views
         private void FiltersButton_Click(object sender, RoutedEventArgs e)
         {
             var body = new StackPanel();
+            // shortcut: the web also has List and Cover flow; Xbox has Screen and Cover.
+            body.Children.Add(Drawer.Segmented("View", new[] { "Screen", "Cover" }, Appearance.LibraryCover ? 1 : 0, i =>
+            {
+                Appearance.LibraryCover = i == 1;
+                Drawer.TryCloseCurrent();
+                App.Navigation.NavigateReplacingCurrent(typeof(LibraryPage), _viewModel.SelectedKind!);
+            }));
             body.Children.Add(Drawer.Segmented("Sort by", new[] { "Title", "Date Added" }, _viewModel.SelectedSort == null ? 0 : 1, i =>
             {
                 _viewModel.SelectSort(i == 0 ? null : LibraryViewModel.SortRecentlyAdded);
