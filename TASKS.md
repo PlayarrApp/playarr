@@ -654,6 +654,7 @@ Steps only the repository owner can perform.
 | 10542 | Xbox Home scroll: the focused rail sits at the middle of the screen as web | in_progress | parity-xbox | xbox-round3b | | 2026-10-16 05:00 ICT | Round 3 motion: after DOWN web scrolls the focused rail to about 52 % of the screen height (rails above and below show); Xbox left it at about 82 %. Rails track now has half a screen of end padding. |
 | 10543 | Roku player quality button shows the stream bitrate like web | done | parity-roku | roku-player-quality | | 2026-10-17 18:00 ICT | The quality button reads "Original · 35.9 Mbps" once the player reports the stream bitrate (web does). Not done: Minimise pill (Roku keeps one fullscreen Video; no return-with-video path) and cast button (Roku cannot cast). Not verified on the device: the test title did not report a bitrate during the check. PR open: #1505. PR #1505 merged 2026-10-15. |
 | 10483 | Android TV Home vertical edge fade (owner request 2026-10-16) | done | atv-parity worker | atv-home-fade | | 2026-10-16 20:00 ICT | PR open: #1501. PR #1501 merged 2026-10-15. |
+| 10465 | Android phone round 3: poster mode follows the artwork size like web, detail focus order and last-item crop | in_review | parity-android-phone | android-phone-r3 | | 2026-10-17 18:00 ICT | Round 3. PR open: #1502. Covers and Screen grids and Home cards use web's 1/2/3 phone columns by artwork size; Back then Down reaches the first detail pill; detail rails keep the web end gutter. |
 
 ## 18. Public repository readiness (2026-10-05)
 
