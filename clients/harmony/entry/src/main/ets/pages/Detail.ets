@@ -2008,7 +2008,7 @@ struct Detail {
       title: (item as DetailRow).title,
       subtitle: (item as DetailRow).subtitle,
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
-      episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
+      episodeNumberOverlay: ((item as DetailRow).episodeNumberOverlay ?? ''), // parenthesised: the capture patch anchors on the series card's line
       cardWidth: tv(CHAPTER_CARD_WIDTH),
       cardHeight: tv(CHAPTER_CARD_HEIGHT),
       activeRailFactor: activeRailFactor,

@@ -92,7 +92,7 @@ jobs:
     name: Render on Windows (${{ inputs.device || 'tv' }} ${{ matrix.theme }})
     needs: build
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 100
     strategy:
       fail-fast: false
       matrix:
@@ -173,9 +173,9 @@ jobs:
               -foldable false -bn io.playarr.harmony -srmPath "$I/router_map/default/router_map.json" > "$W/previewer.log" 2>&1 &)
             sleep 3; echo started
           }
-          # The Previewer's libhttp crashes now and then (access violation): start over, with a fresh sign-in, up to three times.
+          # The Previewer's libhttp crashes now and then (access violation): start over, with a fresh sign-in, up to five times (the image-stall guard exits non-zero too).
           ok=0
-          for attempt in 1 2 3; do
+          for attempt in 1 2 3 4 5; do
             rm -rf capture
             launch
             if python scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log "$THEME"; then ok=1; break; fi

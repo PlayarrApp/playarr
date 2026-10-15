@@ -147,6 +147,26 @@ def _join_image_metrics_scope(image_id: str) -> None:
             _append_image_payload_event(scope, metrics)
 
 
+PREVIEW_IMAGE_MAX_EDGE = 1280  # the Previewer decodes in software: full-size posters kept cards grey for minutes
+
+
+def downscale_jpeg(payload: bytes, metrics: dict) -> bytes:
+    """JPEGs wider than the longest on-screen use (the 1920 px hero, drawn faded) are re-encoded at PREVIEW_IMAGE_MAX_EDGE; others pass."""
+    if payload[:2] != b"\xff\xd8" or max(metrics.get("width", 0), metrics.get("height", 0)) <= PREVIEW_IMAGE_MAX_EDGE:
+        return payload
+    import io
+    from PIL import Image
+    try:
+        with Image.open(io.BytesIO(payload)) as image:
+            image = image.convert("RGB")
+            image.thumbnail((PREVIEW_IMAGE_MAX_EDGE, PREVIEW_IMAGE_MAX_EDGE))
+            out = io.BytesIO()
+            image.save(out, "JPEG", quality=88)
+            return out.getvalue()
+    except Exception:
+        return payload
+
+
 def record_image_upload(image_id: str, payload: bytes) -> str:
     """Cache only decodable bounded images; retain metrics and failures without payload bytes."""
     if not valid_numeric_image_key(image_id):
@@ -156,7 +176,7 @@ def record_image_upload(image_id: str, payload: bytes) -> str:
     if status != "ok":
         record_image_payload_status(image_id, status)
         return status
-    IMAGES[image_id] = payload
+    IMAGES[image_id] = downscale_jpeg(payload, metrics)
     if not image_id.isdigit() or len(image_id) > 16:
         return status
     with IMAGE_DIAGNOSTICS_LOCK:
