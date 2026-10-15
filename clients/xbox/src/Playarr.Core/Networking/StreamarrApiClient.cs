@@ -143,6 +143,9 @@ namespace Playarr.Core.Networking
         /// <summary>Saves a library title to the watchlist (<c>POST /api/v1/watchlist</c> with the title snapshot).</summary>
         Task AddToWatchlistAsync(Work work, CancellationToken cancellationToken = default);
 
+        /// <summary>Saves a discovery title (a peer, request or game result) to the watchlist, as web's WatchlistToggle does.</summary>
+        Task AddToWatchlistAsync(DiscoveryTitle title, CancellationToken cancellationToken = default);
+
         /// <summary>Adds a work to a playlist (<c>POST /api/v1/playlists/{id}/items</c>).</summary>
         Task AddToPlaylistAsync(Guid playlistId, Guid workId, CancellationToken cancellationToken = default);
 
@@ -594,6 +597,9 @@ namespace Playarr.Core.Networking
 
         public Task<WatchlistResponse> GetWatchlistAsync(CancellationToken cancellationToken = default) =>
             GetAsync<WatchlistResponse>("/api/v1/watchlist", null, authenticated: true, cancellationToken);
+
+        public Task AddToWatchlistAsync(DiscoveryTitle title, CancellationToken cancellationToken = default) =>
+            SendNoBodyAsync(HttpMethod.Post, "/api/v1/watchlist", WatchlistSnapshot.Json(title), cancellationToken);
 
         public Task AddToWatchlistAsync(Work work, CancellationToken cancellationToken = default) =>
             SendNoBodyAsync(HttpMethod.Post, "/api/v1/watchlist", WatchlistSnapshot.Json(work), cancellationToken);

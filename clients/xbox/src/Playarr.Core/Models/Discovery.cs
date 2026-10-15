@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace Playarr.Core.Models
@@ -32,6 +33,12 @@ namespace Playarr.Core.Models
         [JsonProperty("overview")] public string? Overview { get; set; }
 
         [JsonProperty("sources")] public IList<TitleSource> Sources { get; set; } = new List<TitleSource>();
+
+        [JsonProperty("in_watchlist")] public bool InWatchlist { get; set; }
+
+        [JsonProperty("editions")] public IList<string> Editions { get; set; } = new List<string>();
+
+        [JsonProperty("external_refs")] public Newtonsoft.Json.Linq.JToken? ExternalRefs { get; set; }
     }
 
     /// <summary>What the viewer can do with a title right now: <c>play</c>, <c>resume</c>, <c>request</c>, ...</summary>
@@ -149,6 +156,21 @@ namespace Playarr.Core.Models
     /// <summary>The title snapshot the watchlist endpoint takes (web's <c>snapshotFromWork</c>).</summary>
     public static class WatchlistSnapshot
     {
+        /// <summary>Web <c>snapshotFromTitle</c>: the body of <c>POST /api/v1/watchlist</c> for a discovery title.</summary>
+        public static string Json(DiscoveryTitle title)
+        {
+            var library = title.Sources.FirstOrDefault(source => source.Source == "library" && source.WorkId is not null);
+            return new Newtonsoft.Json.Linq.JObject
+            {
+                ["kind"] = title.Kind,
+                ["title"] = title.Title,
+                ["year"] = title.Year,
+                ["work_id"] = library?.WorkId,
+                ["external_refs"] = title.ExternalRefs ?? new Newtonsoft.Json.Linq.JArray(),
+                ["poster_url"] = title.PosterUrl,
+            }.ToString(Newtonsoft.Json.Formatting.None);
+        }
+
         public static string Json(Work work)
         {
             var refs = new Newtonsoft.Json.Linq.JArray();

@@ -40,6 +40,9 @@ internal sealed class DownloadsScreen : IPage
         var clip = new View { PositionY = ViewTop, Size = new Size(TizenClient.DesignWidth, ViewH), ClippingMode = ClippingModeType.ClipChildren };
         clip.Add(_list);
         _root.Add(clip);
+        _fadeTop = Ui.EdgeFade(0, ViewTop, TizenClient.DesignWidth, _t.Surface, true);
+        _fadeBottom = Ui.EdgeFade(0, ViewTop + ViewH, TizenClient.DesignWidth, _t.Surface, false);
+        _fadeTop.Show(false); _fadeBottom.Show(false); _root.Add(_fadeTop); _root.Add(_fadeBottom);
         _env.Downloads.Changed += MarkDirty;
         _refresh.Tick += (_, _) => { if (_dirty) { _dirty = false; Build(); } return true; };
         _refresh.Start();
@@ -220,6 +223,8 @@ internal sealed class DownloadsScreen : IPage
 
     private void CloseDrawer() { if (_drawer is null) return; _root.Remove(_drawer.Root); _drawer.Root.Dispose(); _drawer = null; }
 
+    private View? _fadeTop, _fadeBottom;
+
     private void Scroll()
     {
         if (_focus.Item is null) return;
@@ -227,6 +232,9 @@ internal sealed class DownloadsScreen : IPage
         if (c + _scroll > ViewH - 120) _scroll = ViewH - 120 - c;
         if (c + _scroll < 120) _scroll = Math.Min(0, 120 - c);
         _list.PositionY = _scroll;
+        // web scroll-edge fades: at the start once scrolled, at the end while rows remain below the view
+        var bottom = _focus.Items.Count == 0 ? 0 : _focus.Items.Max(i => i.Rect().Y + i.Rect().Height) - ViewTop;
+        _fadeTop?.Show(_scroll < -0.5f); _fadeBottom?.Show(bottom + _scroll > ViewH + 1);
     }
 
     private static string StatusText(DownloadRecord r) => r.State switch

@@ -43,6 +43,10 @@ internal sealed class SearchScreen : IPage
     private readonly List<Focusable> _side = new();
     private View? _filterTile;
     private View? _filterCount;
+    private OtherSources? _extras;
+    private View? _fadeTop, _fadeBottom;
+    private int _xRow = -1; private bool _xLink; // focus inside Other sources (row, title link instead of the pill)
+    private int _extrasGen;
     private int _focus = -1;       // -1 = on the query field
     private int _sideFocus = -1;
     private float _scroll;
@@ -73,7 +77,7 @@ internal sealed class SearchScreen : IPage
             return "/search" + (query.Count == 0 ? "" : "?" + string.Join("&", query));
         }
     }
-    public string? FocusedLabel => _filters?.FocusedLabel ?? (_sideFocus >= 0 ? _side[_sideFocus].Label : _focus < 0 ? "search" : $"open {_items[_focus].Title}".ToLowerInvariant());
+    public string? FocusedLabel => _filters?.FocusedLabel ?? (_xRow >= 0 && _extras is not null ? (_xLink ? $"open {_extras.Rows[_xRow].Title.Title}" : (_extras.Rows[_xRow].Listed ? "\u2713remove from watchlist" : "+add to watchlist")).ToLowerInvariant() : null) ?? (_sideFocus >= 0 ? _side[_sideFocus].Label : _focus < 0 ? "search" : $"open {_items[_focus].Title}".ToLowerInvariant());
     public float FocusCentreY => _filters is not null ? 79 : _sideFocus >= 0 ? _side[_sideFocus].Rect().CentreY : _focus < 0 ? 210.8f : FirstRowY - _scroll + (_focus / Columns) * RowPitch + MediaCard.Height / 2;
 
     public SearchScreen(AppEnv env, string route = "/search")
@@ -130,6 +134,9 @@ internal sealed class SearchScreen : IPage
         _results.PositionX = -729.6f;
         clip.Add(_results);
         _root.Add(clip);
+        _fadeTop = Ui.EdgeFade(729.6f, 0, TizenClient.DesignWidth - 729.6f, _t.Surface, true);
+        _fadeBottom = Ui.EdgeFade(729.6f, TizenClient.DesignHeight, TizenClient.DesignWidth - 729.6f, _t.Surface, false);
+        _fadeTop.Show(false); _fadeBottom.Show(false); _root.Add(_fadeTop); _root.Add(_fadeBottom);
         _filterTile?.RaiseToTop();
         _debounce = new global::Tizen.NUI.Timer(300);
         _debounce.Tick += (_, _) => { _ = RunSearchAsync(_query); return false; };
@@ -362,6 +369,8 @@ internal sealed class SearchScreen : IPage
     {
         foreach (var c in _cards) { _results.Remove(c.Box); c.Box.Dispose(); }
         _cards.Clear(); _items.Clear(); _targets.Clear(); _focus = -1; _scroll = 0; _results.PositionY = 0;
+        if (_extras is not null) { _results.Remove(_extras.Root); _extras.Root.Dispose(); _extras = null; }
+        _xRow = -1; _extrasGen++; UpdateFades();
         var targets = SearchResults.Build(_query, _mediaType, _searchResults, _playlists.Select(entry => entry.Playlist), _games);
         var gameEmpty = _mediaType == "game" && _query.Length > 0 && targets.Count == 0;
         _empty.Show(targets.Count == 0 && _query.Length == 0);
@@ -386,12 +395,95 @@ internal sealed class SearchScreen : IPage
         if (_items.Count > 0 && _targets[0].Work is not null) { _panel.Show(_items[0], kickerOverride: _items[0].Sub, metaLead: HomeModel.MetaLead(_items[0])); _keyArt.Set(_items[0].BackdropUrl); }
         else { _panel.Root.Show(false); }
         _panel.Root.Show(_items.Count > 0 && _targets[0].Work is not null);
+        LoadExtras();
         if (_restoreFocus is { } restore)
         {
             _restoreFocus = null;
             _scroll = restore.ScrollOffset;
             SetFocus(restore.ResolveResultIndex(_items.Count));
         }
+    }
+
+    /// <summary>Web DiscoveryExtras: titles beyond the library, under the results (All, Movies and Series searches only).</summary>
+    private void LoadExtras()
+    {
+        if (_query.Length == 0 || _mediaType is not ("all" or "movie" or "series")) return;
+        var gen = _extrasGen; var q = _query; var cts = _search;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var response = await new DiscoverySearch(_env.Api, SearchHttp).SearchAsync(q, "media", 25, cts?.Token ?? default).ConfigureAwait(false);
+                var titles = DiscoverySearch.ExtraTitles(response.Titles);
+                if (titles.Count == 0) return;
+                SynchronizationContextHolder.Post(() =>
+                {
+                    if (gen != _extrasGen || _removed) return;
+                    var rows = (int)Math.Ceiling(_items.Count / (float)Columns);
+                    // web: the section starts 36 px under the grid, whose last row has no trailing gap (38.2 px)
+                    var top = FirstRowY + rows * RowPitch - 38.2f + 36;
+                    _extras = new OtherSources(_env, titles, top);
+                    _results.Add(_extras.Root);
+                    UpdateFades();
+                });
+            }
+            catch (Exception e) { Dbg.Log("SEARCH extras failed: " + e.Message); }
+        });
+    }
+
+    /// <summary>Web scroll-edge fades on the results scroller: at the start once scrolled, at the end while content remains.</summary>
+    private void UpdateFades()
+    {
+        var rows = (int)Math.Ceiling(_items.Count / (float)Columns);
+        var contentH = FirstRowY + rows * RowPitch - 38.2f + 118.8f + (_extras is null ? 0 : 36 + _extras.Height);
+        _fadeTop?.Show(_scroll > 0.5f);
+        _fadeBottom?.Show(_items.Count > 0 && _scroll + TizenClient.DesignHeight < contentH - 1);
+    }
+
+    private void FocusExtras(int row, bool link)
+    {
+        if (_extras is null) return;
+        if (_xRow >= 0) SetExtraRing(false);
+        else if (_focus >= 0) _cards[_focus].SetFocused(false);
+        SetFieldFocus(false);
+        _xRow = row; _xLink = link && _extras.Rows[row].LibraryWork is not null;
+        SetExtraRing(true);
+        var y = _extras.Root.PositionY + _extras.Rows[row].Y;
+        _scroll = Math.Clamp(_scroll, y + OtherSources.RowH + 118.8f - TizenClient.DesignHeight, y - 126f);
+        _results.PositionY = -_scroll;
+        UpdateFades();
+    }
+
+    private void SetExtraRing(bool on)
+    {
+        if (_extras is null || _xRow < 0) return;
+        var r = _extras.Rows[_xRow];
+        (_xLink ? r.LinkRing : r.Ring)?.Show(on);
+    }
+
+    private bool ExtrasKey(RemoteKey key)
+    {
+        if (_extras is null) { _xRow = -1; return true; }
+        var rows = _extras.Rows;
+        switch (key)
+        {
+            case RemoteKey.Down: if (_xRow + 1 < rows.Count) FocusExtras(_xRow + 1, _xLink); return true;
+            case RemoteKey.Up:
+                if (_xRow > 0) { FocusExtras(_xRow - 1, _xLink); return true; }
+                SetExtraRing(false); _xRow = -1;
+                { var last = (_items.Count - 1) / Columns; SetFocus(Math.Min(_items.Count - 1, last * Columns + (_xLink ? 0 : Columns - 1))); }
+                return true;
+            case RemoteKey.Left: if (!_xLink && rows[_xRow].LibraryWork is not null) FocusExtras(_xRow, true); return true;
+            case RemoteKey.Right: if (_xLink) FocusExtras(_xRow, false); return true;
+            case RemoteKey.Select:
+                var row = rows[_xRow];
+                if (_xLink && row.LibraryWork is { } wid)
+                    _env.Navigate(HomeScreen.DetailRoute(new WorkCard(wid, row.Title.Kind == "series" ? WorkKind.Series : row.Title.Kind == "artist" ? WorkKind.Artist : WorkKind.Movie, row.Title.Title, "", "", "", null, null, null, 0, false)));
+                else _ = _extras.ToggleAsync(row, Toast, () => { });
+                return true;
+            case RemoteKey.Back: SetExtraRing(false); _xRow = -1; SetFocus(-1); return true;
+        }
+        return true;
     }
 
     private void AddResult(WorkCard card, SearchResultTarget target, int index)
@@ -422,6 +514,7 @@ internal sealed class SearchScreen : IPage
         var row = index / Columns;
         _scroll = Math.Clamp(_scroll, row * RowPitch - (FocusedRowMaxY - FirstRowY), row * RowPitch);
         _results.PositionY = -_scroll;
+        UpdateFades();
         _cards[index].SetFocused(true);
         if (_targets[index].Work is not null)
         {
@@ -445,6 +538,7 @@ internal sealed class SearchScreen : IPage
         if (key is RemoteKey.Up or RemoteKey.Down or RemoteKey.Left or RemoteKey.Right) _keyArt.Arm();
         if (_filters is not null) return _filters.OnKey(key);
         if (_sideFocus >= 0) return SideKey(key);
+        if (_xRow >= 0) return ExtrasKey(key);
         if (_focus < 0)
         {
             switch (key)
@@ -461,7 +555,10 @@ internal sealed class SearchScreen : IPage
         {
             case RemoteKey.Right: if (col < Columns - 1 && _focus + 1 < _items.Count) SetFocus(_focus + 1); else EnterSide(); return true;
             case RemoteKey.Left: if (col > 0) { SetFocus(_focus - 1); return true; } SetFocus(-1); return true;
-            case RemoteKey.Down: if (_focus + Columns < _items.Count) SetFocus(_focus + Columns); return true;
+            case RemoteKey.Down:
+                if (_focus + Columns < _items.Count) SetFocus(_focus + Columns);
+                else if (_extras is { Rows.Count: > 0 }) FocusExtras(0, col == 0);
+                return true;
             case RemoteKey.Up: if (_focus >= Columns) SetFocus(_focus - Columns); else SetFocus(-1); return true;
             case RemoteKey.Select:
                 var target = _targets[_focus];

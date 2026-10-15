@@ -27,6 +27,7 @@ internal sealed class PlaylistsScreen : IPage
     private readonly TextLabel _status;
     private readonly FocusSet _focus = new();
     private readonly List<MediaCard> _cards = new();
+    private View? _fadeTop, _fadeBottom;
     private PlaylistRouteState _route;
     private IReadOnlyList<PlaylistTreeEntry> _entries = Array.Empty<PlaylistTreeEntry>();
     private Guid? _directorySelection;
@@ -77,6 +78,9 @@ internal sealed class PlaylistsScreen : IPage
         _results.PositionX = -ClipX;
         clip.Add(_results);
         _root.Add(clip);
+        _fadeTop = Ui.EdgeFade(ClipX, 0, TizenClient.DesignWidth - ClipX, _theme.Surface, true);
+        _fadeBottom = Ui.EdgeFade(ClipX, TizenClient.DesignHeight, TizenClient.DesignWidth - ClipX, _theme.Surface, false);
+        _fadeTop.Show(false); _fadeBottom.Show(false); _root.Add(_fadeTop); _root.Add(_fadeBottom);
         _ = LoadAsync();
     }
 
@@ -393,6 +397,10 @@ internal sealed class PlaylistsScreen : IPage
         var firstRowY = _route.PlaylistId is null ? DirectoryFirstRowY : DetailFirstRowY;
         _scroll = Math.Clamp(_scroll, firstRowY + row * RowPitch - FocusedRowMaxY, row * RowPitch);
         _results.PositionY = -_scroll;
+        // web scroll-edge fades: at the start once scrolled, at the end while rows remain
+        var firstY = _route.PlaylistId is null ? DirectoryFirstRowY : DetailFirstRowY;
+        var contentH = firstY + (float)Math.Ceiling(_focus.Items.Count / 3f) * RowPitch + 80;
+        _fadeTop?.Show(_scroll > 0.5f); _fadeBottom?.Show(_scroll + TizenClient.DesignHeight < contentH - 1);
         _focus.Set(index);
     }
 

@@ -141,3 +141,34 @@ public sealed class DiscoverySearchTests
         Assert.Empty(response.Providers);
     }
 }
+
+public class OtherSourcesTests
+{
+    private static DiscoveryTitle T(string kind, params string[] sources)
+    {
+        var t = new DiscoveryTitle { TitleKey = "k", Kind = kind, Title = "T", Year = 2026 };
+        foreach (var s in sources) t.Sources.Add(new TitleSource { Source = s, WorkId = s == "library" ? Guid.Parse("94199bce-b5ab-4cda-8401-35eac8a96157") : null });
+        return t;
+    }
+
+    [Fact]
+    public void ExtraTitlesKeepGamesAndAnythingBeyondTheLibrary()
+    {
+        var extras = DiscoverySearch.ExtraTitles(new[] { T("movie", "library"), T("movie", "library", "request"), T("game", "game"), T("series", "peer") });
+        Assert.Equal(3, extras.Count);
+    }
+
+    [Fact]
+    public void ChipsAreDistinctAndJoinedWithAMiddleDot() =>
+        Assert.Equal("Library · Requestable", DiscoverySearch.SourceChips(T("movie", "library", "request", "request")));
+
+    [Fact]
+    public void WatchlistSnapshotCarriesTheLibraryWorkAndNullYearsStayNull()
+    {
+        var json = Newtonsoft.Json.Linq.JObject.Parse(WatchlistSnapshot.Json(T("movie", "library", "request")));
+        Assert.Equal("94199bce-b5ab-4cda-8401-35eac8a96157", (string?)json["work_id"]);
+        Assert.Equal("movie", (string?)json["kind"]);
+        Assert.Equal(2026, (int?)json["year"]);
+        Assert.Equal(Newtonsoft.Json.Linq.JTokenType.Null, Newtonsoft.Json.Linq.JObject.Parse(WatchlistSnapshot.Json(T("game", "game")))["work_id"]!.Type);
+    }
+}
