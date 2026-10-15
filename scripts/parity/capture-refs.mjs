@@ -109,6 +109,14 @@ for (const name of groups) {
     }
   }
   await driver.stop();
+  // Live-web screens (the player: paused video, controls shown) come from capture-web-live.mjs at this group's viewport.
+  if (g.liveScreens?.length) {
+    const live = join(work, name, "live");
+    execFileSync("node", [join(here, "roku", "capture-web-live.mjs"), "--base", srv, "--web", (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, ""), "--out", live,
+      "--screens", g.liveScreens.join(","), "--viewport", g.viewport.join("x"), "--dpr", String(g.dpr)],
+      { stdio: "inherit", env: { ...process.env, PLAYARR_DEVICE_TEST_USERNAME: env.PLAYARR_USERNAME, PLAYARR_DEVICE_TEST_PASSWORD: env.PLAYARR_PASSWORD } });
+    for (const theme of ["dark", "light"]) for (const id of g.liveScreens) cpSync(join(live, "tv", theme, `${id}.png`), join(work, name, theme, `${id}.png`));
+  }
   writeFileSync(join(work, name, "facts.json"), JSON.stringify({ capturedAt: startedAt, facts }, null, 1));
 }
 if (failed) { console.log(`${failed} screens failed to capture: nothing copied`); process.exit(1); }
@@ -143,7 +151,7 @@ if (copy) {
       const web = join(root, d, "web"), bak = join(root, d, bakName);
       if (existsSync(web) && !existsSync(bak)) cpSync(web, bak, { recursive: true });
       mkdirSync(join(web, "light"), { recursive: true });
-      for (const id of wantScreens) {
+      for (const id of [...wantScreens, ...(g.liveScreens ?? [])]) {
         cpSync(join(work, name, "dark", `${id}.png`), join(web, `${id}.png`));
         cpSync(join(work, name, "light", `${id}.png`), join(web, "light", `${id}.png`));
       }

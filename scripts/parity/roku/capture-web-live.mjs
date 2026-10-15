@@ -3,7 +3,7 @@
 // account the device itself uses, so the Roku capture and this capture show the same data.
 //
 //   PLAYARR_DEVICE_TEST_USERNAME=<user> PLAYARR_DEVICE_TEST_PASSWORD=<password> \
-//     node scripts/parity/roku/capture-web-live.mjs --base https://<server> [--web https://<web client origin>] --out <dir> [--theme light|dark|both] [--screens a,b] [--dump-dom]
+//     node scripts/parity/roku/capture-web-live.mjs --base https://<server> [--web https://<web client origin>] --out <dir> [--theme light|dark|both] [--screens a,b] [--viewport 1920x1080] [--dpr 1] [--dump-dom]
 //
 // Writes <out>/tv/<theme>/<id>.png in the layout scripts/parity/diff.mjs reads (diff the Roku capture against it with the same
 // --mask-rect for the clock). Unlike capture-web.mjs nothing is frozen: the clock and rails are live, so mask them identically on
@@ -35,6 +35,13 @@ const dumpDom = args.includes("--dump-dom");
 // A device that cannot store downloads (Roku): the web app hides Downloads when neither OPFS nor IndexedDB exists (detectDownloadStorage),
 // so remove both before the app starts and the nav dock matches the device.
 const noDownloads = args.includes("--no-downloads");
+// Viewport and device pixel ratio (default the TV's 1920x1080 at 1; a tablet reference is 1280x800 at 2, as web-refs.json).
+const [vw, vh] = (opt("viewport", "1920x1080") ?? "").split("x").map(Number);
+const dpr = Number(opt("dpr", "1"));
+if (!(vw > 0 && vh > 0 && dpr > 0)) {
+  console.error("--viewport must be <width>x<height> and --dpr a positive number");
+  process.exit(2);
+}
 const only = (opt("screens", "") ?? "").split(",").filter(Boolean);
 const username = process.env.PLAYARR_DEVICE_TEST_USERNAME;
 const password = process.env.PLAYARR_DEVICE_TEST_PASSWORD;
@@ -125,7 +132,7 @@ try {
           cachedAt = Date.now();
         }
         const s = cachedSession;
-        const context = await browser.newContext({ userAgent: UA, viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, reducedMotion: "reduce", colorScheme: theme, locale: "en-GB" });
+        const context = await browser.newContext({ userAgent: UA, viewport: { width: vw, height: vh }, deviceScaleFactor: dpr, reducedMotion: "reduce", colorScheme: theme, locale: "en-GB" });
         await context.addInitScript(({ base, s, dev, theme }) => {
           try {
             localStorage.setItem("playarr-theme", theme);

@@ -1,5 +1,5 @@
 {
-  "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces.",
+  "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. liveScreens: screens the driver cannot reach (the player), taken with roku/capture-web-live.mjs at the same viewport and dpr. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces.",
   "date": "20261014",
   "groups": {
     "tv": {
@@ -56,6 +56,9 @@
       ],
       "dirs": [
         "android-tablet"
+      ],
+      "liveScreens": [
+        "player-controls"
       ],
       "actionsTitle": "The 5th Wave"
     },
