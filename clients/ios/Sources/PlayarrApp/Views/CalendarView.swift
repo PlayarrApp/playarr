@@ -95,7 +95,7 @@ struct CalendarView: View {
             formatter.dateFormat = "d MMM"
             let last = formatter.string(from: end)
             formatter.dateFormat = "yyyy"
-            return "\(first) \u{2013} \(last)\n\(formatter.string(from: end))"
+            return "\(first) \u{2013} \(last)"
         }
         formatter.dateFormat = "d MMM yyyy"
         return "\(first) \u{2013} \(formatter.string(from: end))"
@@ -104,7 +104,7 @@ struct CalendarView: View {
     private func roundButton(_ glyph: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             WMText(glyph, 11.52, 720, color: WM.inkSoft, lh: 17.28)
-                .frame(width: 38, height: 38)
+                .frame(width: 44, height: 44)
                 .background(Circle().fill(WM.page))
                 .overlay(Circle().stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
@@ -147,55 +147,50 @@ struct CalendarView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
 
-            WMHeaderCircleButton(width: 42, height: 38, glyph: "\u{2190}", action: goHome)
+            WMHeaderCircleButton(width: 44, height: 44, glyph: "\u{2190}", action: goHome)
                 .offset(x: 16, y: top)
-            WMText("Release Calendar", 17.6, 580, lh: 26.4, ls: -0.792)
-                .frame(height: 38)
-                .offset(x: 68, y: top)
-            // The shell action buttons, at the web's phone positions (x 228 and 280, 44 pt tiles, 14 pt from the top).
+            WMText("Calendar", 17.6, 580, lh: 26.4, ls: -0.792)
+                .frame(height: 44)
+                .offset(x: 70, y: top)
+            // The shell action buttons: 44 pt tiles in the right gutter (web phone, 393 pt wide).
             PlayarrHeaderPill(label: "Calendar link", systemImage: "bell", iconOnly: true) { showingSubscription = true }
-                .offset(x: 228, y: WM.topInset)
+                .offset(x: screenWidth - 111, y: WM.topInset)
             PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", iconOnly: true) { showingFilters = true }
-                .offset(x: 280, y: WM.topInset)
+                .offset(x: screenWidth - 60, y: WM.topInset)
 
-            Menu {
-                Picker("View", selection: Binding(
-                    get: { viewModel.mode },
-                    set: { newMode in Task { await viewModel.setMode(newMode) } }
-                )) {
-                    Text("Agenda").tag(CalendarViewMode.agenda)
-                    Text("Week").tag(CalendarViewMode.week)
-                    Text("Month").tag(CalendarViewMode.month)
+            // Range picker, previous, Today and next, right-aligned in the gutter; Agenda sits 18 pt higher than Week and Month.
+            HStack(spacing: 8) {
+                Menu {
+                    Picker("View", selection: Binding(
+                        get: { viewModel.mode },
+                        set: { newMode in Task { await viewModel.setMode(newMode) } }
+                    )) {
+                        Text("Agenda").tag(CalendarViewMode.agenda)
+                        Text("Week").tag(CalendarViewMode.week)
+                        Text("Month").tag(CalendarViewMode.month)
+                    }
+                } label: {
+                    WMText(phoneRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                        .fixedSize()
+                        .padding(.horizontal, 20.5)
+                        .frame(height: 44)
+                        .background(WM.page, in: Capsule())
+                        .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
-            } label: {
-                ZStack(alignment: .topLeading) {
-                    Text(phoneRangeLabel)
-                        .font(WM.font(16, 640))
-                        .foregroundStyle(WM.ink)
-                        .multilineTextAlignment(.center)
-                        .frame(width: 140, height: 48)
-                        .offset(x: 17, y: 13)
-                    Text("\u{25BE}\u{FE0E}").font(WM.font(11.52, 720)).foregroundStyle(WM.ink)
-                        .frame(width: 7, height: 17).offset(x: 162, y: 28)
+                roundButton("\u{2190}", label: "Previous period") { Task { await viewModel.step(-1) } }
+                Button { Task { await viewModel.goToToday() } } label: {
+                    WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                        .frame(width: 74, height: 44)
+                        .background(WM.page, in: Capsule())
+                        .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
+                        // The web draws a 3 px focus ring 2 px outside the button.
+                        .overlay(Capsule().stroke(WM.ink, lineWidth: 3).padding(-3.7))
                 }
-                .frame(width: 191, height: 74, alignment: .topLeading)
+                .buttonStyle(.plain)
+                roundButton("\u{2192}", label: "Next period") { Task { await viewModel.step(1) } }
             }
-            .offset(x: 16, y: 94)
-
-            roundButton("\u{2190}", label: "Previous period") { Task { await viewModel.step(-1) } }
-                .offset(x: 216, y: 89)
-            Button { Task { await viewModel.goToToday() } } label: {
-                WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
-                    .frame(width: 78, height: 46)
-                    .background(WM.page, in: Capsule())
-                    .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
-                    // The web draws a 3 px focus ring 2 px outside the button.
-                    .overlay(Capsule().stroke(WM.ink, lineWidth: 3).padding(-3.7))
-            }
-            .buttonStyle(.plain)
-            .offset(x: 260, y: 85)
-            roundButton("\u{2192}", label: "Next period") { Task { await viewModel.step(1) } }
-                .offset(x: 216, y: 138)
+            .frame(width: screenWidth - 16, alignment: .trailing)
+            .offset(x: 0, y: (viewModel.mode == .agenda ? 68 : 86) + WM.topShift)
         }
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
@@ -225,53 +220,33 @@ struct CalendarView: View {
         }
     }
 
-    /// Web mobile agenda: the selected release's detail block, then the day groups. Every element sits at
-    /// the box the web layout dump reports (page coordinates, 390 CSS px wide).
+    private var screenWidth: CGFloat { UIScreen.main.bounds.width }
+
+    /// Web mobile agenda: day headings and release cards under the toolbar (page coordinates from the web layout dump).
     private func phoneAgenda(groups: [CalendarDayGroup]) -> some View {
-        let item = viewModel.selectedItem ?? groups.first?.items.first
-        return ScrollView(.vertical) {
-            ZStack(alignment: .topLeading) {
-                if let item, let entry = item.entries.first {
-                    Text("\(kindLabel(entry.mediaKind)) \u{00B7} \(releaseTypeLabel(entry.releaseType))".uppercased())
-                        .font(WM.font(9.28, 760)).tracking(1.6704).foregroundStyle(WM.muted)
-                        .lineLimit(1).frame(height: 14, alignment: .leading).offset(x: 16, y: 192)
-                    WMText(item.title, 22.4, 590, lh: 34, ls: -0.896).offset(x: 16, y: 220)
-                    WMText(
-                        [entry.episodeCode, entry.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} "),
-                        16, 400, lh: 24
-                    )
-                    .offset(x: 16, y: 268)
-                    termLabel("RELEASE").offset(x: 16, y: 307)
-                    WMText(
-                        "\(entry.releaseAt.map { Self.releaseFormatter.string(from: $0) } ?? entry.date)",
-                        16, 400, lh: 22
-                    )
-                    .offset(x: 16, y: 325)
-                    termLabel("STATUS").offset(x: 16, y: 358)
-                    statusBadge(statusLabel(entry), size: 16, height: 22).offset(x: 16, y: 376)
-                    termLabel("REPORTED BY").offset(x: 16, y: 408)
-                    if let source = entry.sources.first {
-                        HStack(spacing: 5) {
-                            WMText(source.sourceName, 16, 400, lh: 24).fixedSize()
-                            WMText("(\(source.sourceKind))", 16, 400, color: WM.muted, lh: 24).fixedSize()
-                        }
-                        .offset(x: 16, y: 426)
-                    }
-                    phoneActions(item: item, entry: entry).offset(x: 16, y: 464)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(groups) { group in
-                        WMText(Self.groupFormatter.string(from: CalendarDays.displayDate(group.day) ?? Date()), 14.4, 640, lh: 22)
-                            .padding(.leading, 4)
-                            .padding(.top, group.id == groups.first?.id ? 0 : 14)
-                        ForEach(group.items) { row in
-                            phoneAgendaCard(row, selected: row.id == item?.id).padding(.top, 6)
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(groups) { group in
+                    HStack(spacing: 12) {
+                        WMText(Self.groupFormatter.string(from: CalendarDays.displayDate(group.day) ?? Date()), 14.4, 640, color: WM.inkSoft, lh: 22)
+                        if group.day == viewModel.today {
+                            WMText("TODAY", 10.4, 700, color: WM.inkSoft, lh: 15.6, ls: 1.5)
+                                .fixedSize()
+                                .padding(.horizontal, 12)
+                                .frame(height: 21)
+                                .overlay(Capsule().stroke(WM.inkSoft, lineWidth: 1))
                         }
                     }
+                    .padding(.top, group.id == groups.first?.id ? 0 : 43)
+                    ForEach(Array(group.items.enumerated()), id: \.element.id) { index, row in
+                        phoneAgendaCard(row).padding(.top, index == 0 ? 25 : 15)
+                    }
                 }
-                .offset(x: 16, y: 537)
             }
-            .frame(width: 390, height: 1100, alignment: .topLeading)
+            .padding(.leading, 16)
+            .padding(.top, 130 + WM.topShift)
+            .padding(.bottom, 130)
+            .frame(width: screenWidth, alignment: .topLeading)
         }
         .scrollIndicators(.hidden)
         .keepInsideSafeArea()
@@ -286,6 +261,19 @@ struct CalendarView: View {
             .fixedSize()
             .padding(.horizontal, size == 16 ? 8 : 6)
             .background(Color(red: 0.357, green: 0.498, blue: 0.820).opacity(0.24), in: Capsule())
+    }
+
+    /// Agenda card state as the web shows it: Available once a file exists, Upcoming before the day, else Missing.
+    private func agendaBadge(_ entry: CalendarEntry) -> some View {
+        let (label, tint): (String, Color) = entry.hasFile
+            ? ("Available", Color(red: 0.42, green: 0.55, blue: 0.50))
+            : entry.date > viewModel.today ? ("Upcoming", Color(red: 0.357, green: 0.498, blue: 0.820)) : ("Missing", Color(red: 0.62, green: 0.45, blue: 0.47))
+        return WMText(label, 12.8, 700, lh: 19)
+            .fixedSize()
+            .padding(.horizontal, 14)
+            .frame(height: 22)
+            .background(tint.opacity(0.24), in: Capsule())
+            .overlay(Capsule().stroke(tint, lineWidth: 1.5))
     }
 
     private func statusLabel(_ entry: CalendarEntry) -> String {
@@ -340,7 +328,7 @@ struct CalendarView: View {
         }
     }
 
-    private func phoneAgendaCard(_ item: CalendarItem, selected: Bool) -> some View {
+    private func phoneAgendaCard(_ item: CalendarItem) -> some View {
         let entry = item.entries.first
         return Button {
             viewModel.select(item)
@@ -369,17 +357,26 @@ struct CalendarView: View {
                     )
                     .frame(width: 220, alignment: .leading)
                     .offset(x: 70, y: 35)
-                    WMText(calendarTimeLabel24(entry), 12.8, 400, color: WM.muted, lh: 19).fixedSize().offset(x: 70, y: 61)
-                    WMText(releaseTypeLabel(entry.releaseType), 12.8, 400, color: WM.muted, lh: 19).fixedSize().offset(x: 116, y: 61)
-                    WMText(kindLabel(entry.mediaKind), 12.8, 400, color: WM.muted, lh: 19).fixedSize().offset(x: 151, y: 61)
-                    statusBadge(statusLabel(entry), size: 12.8, height: 19).offset(x: 215, y: 61)
+                    HStack(spacing: 12) {
+                        let time = calendarTimeLabel24(entry)
+                        WMText(time.isEmpty || time == "00:00" ? "All day" : time, 12.8, 400, color: WM.muted, lh: 19).fixedSize()
+                        WMText(releaseTypeLabel(entry.releaseType), 12.8, 400, color: WM.muted, lh: 19).fixedSize()
+                        WMText(kindLabel(entry.mediaKind), 12.8, 400, color: WM.muted, lh: 19).fixedSize()
+                        agendaBadge(entry)
+                    }
+                    .offset(x: 70, y: 60)
                 }
             }
-            .frame(width: 346, height: 90, alignment: .topLeading)
+            .frame(width: 460, height: 91, alignment: .topLeading)
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(selected ? WM.ink : WM.line.opacity(0.14), lineWidth: selected ? 2 : 1)
+                    .stroke(WM.line.opacity(0.14), lineWidth: 1)
             )
+            .overlay(alignment: .leading) {
+                // The web card's 4 pt leading accent: green once in the library, ink while missing.
+                Rectangle().fill(entry?.hasFile == true ? Color(red: 0.12, green: 0.33, blue: 0.25) : WM.ink)
+                    .frame(width: 4).clipShape(RoundedRectangle(cornerRadius: 2))
+            }
         }
         .buttonStyle(.plain)
     }

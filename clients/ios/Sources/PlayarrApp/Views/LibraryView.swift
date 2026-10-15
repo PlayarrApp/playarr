@@ -335,12 +335,15 @@ struct LibraryView: View {
     /// Web phone letter rail: 27 letters share the height between the page header and the bottom nav, in the 15 pt gutter.
     private func alphabetRail(_ proxy: ScrollViewProxy) -> some View {
         let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
+        // Web marks the letter of the focused tile, which is the first one on arrival.
+        let initial = viewModel.works.first?.title.first.map { String($0).uppercased() } ?? "#"
+        let activeLetter = ("A"..."Z").contains(initial) ? initial : "#"
         return GeometryReader { geo in
             ScrollView(.vertical) { VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
                     ZStack {
-                        if letter == "#" { Circle().fill(WM.ink.opacity(0.78)).frame(width: 22, height: 22) }
-                        Text(letter).font(WM.font(9.5, 700)).foregroundStyle(letter == "#" ? PlayarrStyle.background : WM.muted)
+                        if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 22, height: 22) }
+                        Text(letter).font(WM.font(9.5, 700)).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44).frame(height: 25)
                     .contentShape(Rectangle())
@@ -474,7 +477,9 @@ struct LibraryView: View {
                                 PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false)
                                     .overlay(alignment: .top) {
                                         // Web focuses the first tile of a library on arrival: a pink ring with a soft glow.
-                                        if !phone && work.id == viewModel.works.first?.id {
+                                        if phone && work.id == viewModel.works.first?.id {
+                                            WMFocusRing(width: cardWidth, height: cardWidth * 9 / 16).frame(width: cardWidth, height: cardWidth * 9 / 16)
+                                        } else if !phone && work.id == viewModel.works.first?.id {
                                             RoundedRectangle(cornerRadius: 10, style: .continuous)
                                                 .stroke(WM.cardGlowColor, lineWidth: 3)
                                                 .frame(width: cardWidth, height: cardWidth * 9 / 16)

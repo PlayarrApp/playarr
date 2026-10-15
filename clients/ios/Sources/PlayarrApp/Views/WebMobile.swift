@@ -532,10 +532,25 @@ struct WMRailCard: View {
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
-            WMText(work.title, 10.4, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
+                .overlay { if focused { WMFocusRing(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16) } }
+            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
             WMText(work.singularKindYearLabel, 8.2, 400, color: WM.muted, lh: 12.3).padding(.leading, 2)
         }
         .frame(width: WMLibraryCard.width, height: WMRailCard.height, alignment: .topLeading)
+    }
+}
+
+/// Web focus ring: 3 pt ring 2 pt outside the art with a soft glow. Drawn outside the layout, so nothing shifts.
+struct WMFocusRing: View {
+    let width: CGFloat
+    let height: CGFloat
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 13.5, style: .continuous)
+            .stroke(WM.cardGlowColor, lineWidth: 3)
+            .frame(width: width + 7, height: height + 7)
+            .shadow(color: WM.cardGlowColor.opacity(0.45), radius: 14)
+            .allowsHitTesting(false)
     }
 }
 
@@ -559,7 +574,8 @@ struct WMLibraryCard: View {
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
-            WMText(work.title, 10.4, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
+                .overlay { if focused { WMFocusRing(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16) } }
+            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
         }
         .frame(width: WMLibraryCard.width, height: WMLibraryCard.width * 9 / 16 + 28, alignment: .topLeading)
 

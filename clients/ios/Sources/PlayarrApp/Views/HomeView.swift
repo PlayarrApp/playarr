@@ -78,7 +78,7 @@ struct HomeView: View {
                         phoneRail(rail, first: index == 0)
                     }
                 }
-                .padding(.top, 89 + WM.topShift)
+                .padding(.top, 92 + WM.topShift)
                 .padding(.bottom, 130)
             }
             .scrollIndicators(.hidden)
@@ -119,9 +119,9 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
             }
             .frame(height: WMRailCard.height)
-            .padding(.top, first ? 21 : 18)
+            .padding(.top, 18)
         }
-        .padding(.bottom, 66)
+        .padding(.bottom, 45)
     }
 
     private func stageContent(proxy: GeometryProxy) -> some View {
