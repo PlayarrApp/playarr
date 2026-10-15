@@ -21,7 +21,7 @@
         Web TV library page (1920x1080): Back and title at the shell content edge with the "N TITLES" subtitle, the
         focused title's details on the left, and a 3-column grid of 328x184 landscape cards from x=783.
     -->
-    <Grid>
+    <Grid x:Name="Root">
         <local:FocusDetail x:Name="Detail" />
 
         <!-- Shell action column: Filters (web .tv-filter-launcher tile). -->

@@ -241,6 +241,7 @@
     <Compile Include="Views\Drawer.cs" />
     <Compile Include="Views\CardActions.cs" />
     <Compile Include="Views\CardFocus.cs" />
+    <Compile Include="Views\EdgeFade.cs" />
     <Compile Include="Views\FocusDetail.cs" />
     <Compile Include="Views\Artwork.cs" />
     <Compile Include="Views\EpisodeArtworkDiagnostics.cs" />

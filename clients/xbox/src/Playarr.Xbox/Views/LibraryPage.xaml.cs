@@ -44,6 +44,7 @@ namespace Playarr.Xbox.Views
             WorksGridView.ItemContainerStyle = CatalogTileFactory.GridCardContainerStyle;
             WorksGridView.GotFocus += WorksGridView_GotFocus;
             CardFocus.Attach(WorksGridView);
+            EdgeFade.AttachVertical(Root, WorksGridView);
             CardActions.Attach(WorksGridView, id => _worksById.TryGetValue(id, out var work) ? work : null);
         }
 
