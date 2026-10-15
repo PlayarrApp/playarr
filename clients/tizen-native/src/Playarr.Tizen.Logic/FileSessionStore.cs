@@ -59,6 +59,25 @@ public sealed class FileSessionStore(string directory) : ITokenStore
     public string Theme() => File.Exists(ThemeFile) ? File.ReadAllText(ThemeFile).Trim() : "dark";
     public void SaveTheme(string name) { Directory.CreateDirectory(directory); File.WriteAllText(ThemeFile, name == "light" ? "light" : "dark"); }
 
+    private string PrefsFile => Path.Combine(directory, "appearance.json");
+    /// <summary>Settings > Appearance: the Home view ("thumbnail" or "cover") and the artwork size ("small", "medium", "large"); device-local like web's playarr home-view and artwork-size keys.</summary>
+    public (string HomeView, string ArtworkSize) Appearance()
+    {
+        try
+        {
+            var o = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(PrefsFile));
+            var view = (string?)o["home_view"]; var size = (string?)o["artwork_size"];
+            return (view == "cover" ? "cover" : "thumbnail", size is "small" or "large" ? size : "medium");
+        }
+        catch (Exception) { return ("thumbnail", "medium"); }
+    }
+
+    public void SaveAppearance(string homeView, string artworkSize)
+    {
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(PrefsFile, new Newtonsoft.Json.Linq.JObject { ["home_view"] = homeView, ["artwork_size"] = artworkSize }.ToString());
+    }
+
     private string PlayerFile => Path.Combine(directory, "player.json");
     /// <summary>Settings > Player > Advanced: "Force direct video" and "Force direct audio" (default off, stored on the device).</summary>
     public (bool Video, bool Audio) ForceDirect()

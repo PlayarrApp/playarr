@@ -188,7 +188,7 @@ internal sealed class CalendarScreen : IPage
                 cell.Add(Ui.Text(day.Day.ToString(), 11.8f, CellH - 33, 12.8f, 700, day == _today ? _t.Brand : outside ? _t.InkMuted : _t.Ink, 30, 19.2f));
                 if (list.Count > shown) cell.Add(Ui.Text($"+{list.Count - shown} more", 43, CellH - 33, 12.48f, 400, _t.InkSoft, 90, 18.72f));
                 var cx = x; var cy = y; var d = day;
-                _focus.Items.Add(new Focusable { Rect = () => new Box(cx, cy, CellW, CellH), Label = "day " + d.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB")).ToLowerInvariant(), Style = f => cell.BorderlineColor = f ? new Color(1, 1, 1, 0.9f) : Ui.C(_t.Line) });
+                _focus.Items.Add(new Focusable { Rect = () => new Box(cx, cy, CellW, CellH), Label = "day " + d.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB")).ToLowerInvariant(), Style = f => { cell.BorderlineWidth = f ? 3 : 1; cell.BorderlineColor = f ? (_t.Name == "light" ? Ui.C(_t.Ink) : new Color(1, 1, 1, 0.9f)) : Ui.C(_t.Line); } });
             }
     }
 

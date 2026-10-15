@@ -139,6 +139,41 @@ internal sealed class SettingsScreen : IPage
                 Select = () => { if (name != "system") _env.SetTheme(name); else Toast("Following the system theme is not available on this TV yet."); },
             });
         }
+        var (homeView, artworkSize) = _env.Store.Appearance();
+        AppearanceSection(402, "Home screen artwork", "Show portrait covers instead of wide media thumbnails on the home screen.", new[] { "Thumbnails", "Covers" }, homeView == "cover" ? 1 : 0,
+            i => _env.Store.SaveAppearance(i == 1 ? "cover" : "thumbnail", _env.Store.Appearance().ArtworkSize), "Home screen view saved.");
+        AppearanceSection(600, "Artwork size", "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.", new[] { "Small", "Medium", "Large" }, artworkSize == "small" ? 0 : artworkSize == "large" ? 2 : 1,
+            i => _env.Store.SaveAppearance(_env.Store.Appearance().HomeView, i == 0 ? "small" : i == 2 ? "large" : "medium"), "Artwork size saved.");
+    }
+
+    /// <summary>Web Appearance sections below the theme: a heading, a description and a segmented control, each under a hairline (measured at 1920x1080).</summary>
+    private void AppearanceSection(float top, string title, string description, string[] labels, int selected, Action<int> save, string saved)
+    {
+        _panel.Add(Ui.Box(773.8f, top - 52, 1042.1f, 1, new Rgba(_t.Line.R, _t.Line.G, _t.Line.B, _t.Line.A)));
+        _panel.Add(Ui.Text(title, 773.8f, top, 26.4f, 600, _t.Ink, 800, 39.6f, spacing: -0.92f));
+        _panel.Add(Ui.Text(description, 773.8f, top + 40, 11.2f, 400, _t.InkMuted, 900, 17));
+        var boxes = new List<(View Box, TextLabel Text)>();
+        var gap = 8f; var w = (1042.1f - gap * (labels.Length - 1)) / labels.Length; var y = top + 62;
+        for (var i = 0; i < labels.Length; i++)
+        {
+            var idx = i; var x = 773.8f + i * (w + gap); var active = i == selected;
+            var b = Ui.Box(x, y, w, 56, active ? _t.Ink : _t.SurfaceSoft, 12);
+            b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(_t, 0.153f);
+            var tl = Ui.Text(labels[i], 0, 22.2f, 10.56f, 800, active ? _t.OnAccent : _t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
+            b.Add(tl);
+            var ring = Ring.Make(w, 56, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
+            _panel.Add(b); boxes.Add((b, tl));
+            _focus.Items.Add(new Focusable
+            {
+                Rect = () => new Box(x, y, w, 56), Label = $"{title} {labels[i]}".ToLowerInvariant(), Style = f => ring.Show(f),
+                Select = () =>
+                {
+                    save(idx);
+                    for (var k = 0; k < boxes.Count; k++) { var a = k == idx; boxes[k].Box.BackgroundColor = Ui.C(a ? _t.Ink : _t.SurfaceSoft); boxes[k].Text.TextColor = Ui.C(a ? _t.OnAccent : _t.InkMuted); }
+                    Toast(saved);
+                },
+            });
+        }
     }
 
     private void Toast(string text)

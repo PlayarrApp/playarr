@@ -36,7 +36,7 @@ internal sealed class SeriesDetailScreen : IPage
     public bool IsReady => _focus.Items.Count > 0;
     public View Root => _root;
     public string Route => $"/series/{_id}";
-    public string? FocusedLabel => _dl?.FocusedLabel ?? _focus.Item?.Label;
+    public string? FocusedLabel => _dl?.FocusedLabel ?? (_focus.Item is { } fi && _pillItems.IndexOf(fi) is var pi and >= 0 ? _slots[pi].Label : _focus.Item?.Label);
     public float FocusCentreY => _focus.CurrentRect is { Height: > 0 } r ? r.CentreY : 540;
 
     public SeriesDetailScreen(AppEnv env, Guid id)
@@ -208,24 +208,79 @@ internal sealed class SeriesDetailScreen : IPage
         Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 110.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 3);
         var yb = bas + 183.4f;
         var hasProgress = ep.MediaFileId is { } f && _progress.TryGetValue(f, out var pr) && pr.State == WatchState.InProgress;
-        Pill(_copy, hasProgress ? "Resume" : "Start", "▶", 153.6f, yb, 156, true);
-        var px = 325.6f;
+        _leadEp = ep;
+        EnsurePillSlots();
+        for (var i = 0; i < _slots.Length; i++) _slots[i].Clear();
+        Pill(0, _copy, hasProgress ? "Resume" : "Start", "▶", 153.6f, yb, 156, true, hasProgress ? "resume" : "start", () => { if (_leadEp is { } le) PlayEpisode(le); });
+        var px = 325.6f; var slot = 1;
         // web: "Ask again" only while the resume plan is something other than a plain start
-        if (hasProgress) { Pill(_copy, "Ask again", "↺", px, yb, 142, false); px += 158; }
-        Pill(_copy, "Add to watchlist", "+", px, yb, 142, false);
-        Pill(_copy, "Add to Playlist", "+", px + 158, yb, 142, false);
+        if (hasProgress) { Pill(slot++, _copy, "Ask again", "↺", px, yb, 142, false, "ask again", () => Toast("Resume choices are not available in this app yet.")); px += 158; }
+        Pill(slot++, _copy, "Add to watchlist", "+", px, yb, 142, false, "add to watchlist", () => _ = AddToWatchlistAsync());
+        Pill(slot, _copy, "Add to Playlist", "+", px + 158, yb, 142, false, "add to playlist", () => Toast("Playlists are not available in this app yet."));
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
     }
 
-    private void Pill(View parent, string text, string glyph, float x, float y, float w, bool primary)
+    private sealed class PillSlot
+    {
+        public Box Rect = new(-5000, -5000, 1, 1); public View? Ring; public string Label = ""; public Action? Select; public Action<bool>? Style;
+        public void Clear() { Rect = new Box(-5000, -5000, 1, 1); Ring = null; Label = ""; Select = null; Style = null; }
+    }
+
+    private readonly PillSlot[] _slots = { new(), new(), new(), new() };
+    private EpisodeDetail? _leadEp;
+    private bool _slotsRegistered;
+    private readonly List<Focusable> _pillItems = new();
+
+    /// <summary>The action pills are focusable (web: Start, Ask again, Add to watchlist, Add to Playlist); four fixed focus items follow the episodes, absent pills park off screen.</summary>
+    private void EnsurePillSlots()
+    {
+        if (_slotsRegistered) return;
+        _slotsRegistered = true;
+        foreach (var slot in _slots)
+        {
+            var sl = slot;
+            var item = new Focusable { Rect = () => sl.Rect, Label = "", Select = () => sl.Select?.Invoke(), Style = f => sl.Style?.Invoke(f) };
+            _pillItems.Add(item); _focus.Items.Add(item);
+        }
+    }
+
+    private void Pill(int slotIndex, View parent, string text, string glyph, float x, float y, float w, bool primary, string label, Action select)
     {
         var bg = primary ? _t.Ink : new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f);
         var box = Ui.Box(x, y, w, 64, bg, 32);
         if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
         var textW = text.Length * 6.4f; var startX = (w - (11 + 9.4f + textW)) / 2;
-        box.Add(Ui.Text(glyph, startX, 22.4f, 12.8f, 400, primary ? _t.OnAccent : _t.BrandInk, 15, 19.2f));
-        box.Add(Ui.Text(text, startX + 20.4f, 23.7f, 11.136f, 700, primary ? _t.OnAccent : _t.Ink, textW + 20, 16.7f));
+        var g = Ui.Text(glyph, startX, 22.4f, 12.8f, 400, primary ? _t.OnAccent : _t.BrandInk, 15, 19.2f);
+        var tl = Ui.Text(text, startX + 20.4f, 23.7f, 11.136f, 700, primary ? _t.OnAccent : _t.Ink, textW + 20, 16.7f);
+        box.Add(g); box.Add(tl);
+        var ring = Ring.Make(w, 64, 32, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
         parent.Add(box);
+        var slot = _slots[slotIndex];
+        slot.Rect = new Box(x, y, w, 64); slot.Ring = ring; slot.Label = label; slot.Select = select;
+        // web .tv-detail-play focus: brand-strong fill, white text, scale 1.06 (the primary pill)
+        slot.Style = f =>
+        {
+            ring.Show(f);
+            box.Scale = f && primary ? new Vector3(1.06f, 1.06f, 1) : new Vector3(1, 1, 1);
+            if (primary) { box.BackgroundColor = f ? new Color(0.647f, 0.153f, 0.271f, 1) : Ui.C(_t.Ink); g.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.OnAccent); tl.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.OnAccent); }
+        };
+    }
+
+    private async Task AddToWatchlistAsync()
+    {
+        if (_detail is null) return;
+        try { await _env.Api.AddToWatchlistAsync(_detail.Work).ConfigureAwait(false); SynchronizationContextHolder.Post(() => Toast("Added to your watchlist.")); }
+        catch (Exception e) { Dbg.Log("WATCHLIST add failed: " + e.Message); SynchronizationContextHolder.Post(() => Toast("Watchlist is unavailable right now.")); }
+    }
+
+    private void Toast(string text)
+    {
+        var toast = Ui.Box(560, 960, 800, 56, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.96f), 28);
+        toast.Add(Ui.Text(text, 0, 14, 14, 600, _t.Ink, 800, 28, HorizontalAlignment.Center));
+        _root.Add(toast);
+        var timer = new global::Tizen.NUI.Timer(2500);
+        timer.Tick += (_, _) => { _root.Remove(toast); toast.Dispose(); return false; };
+        timer.Start();
     }
 
     private async Task SetThumbAsync(View art, string? stillPath, Guid? file)
@@ -304,7 +359,12 @@ internal sealed class SeriesDetailScreen : IPage
         {
             case RemoteKey.Select: _focus.Item?.Select?.Invoke(); return true;
             case RemoteKey.Back: return false;
-            default: return _focus.Items.Count == 0 ? key != RemoteKey.Left : (_focus.Move(key) || key != RemoteKey.Left);
+            default:
+                if (_focus.Items.Count == 0) return key != RemoteKey.Left;
+                if (_focus.Move(key)) return true;
+                // from the last pill Right returns to the episode rail (nothing is to its right at the pills' height)
+                if (key == RemoteKey.Right && _focus.Item is { } cur && _pillItems.Contains(cur)) { _focus.Set(_episodes.FindIndex(x => _leadEp is { } le && x.Ep == le) is var li and >= 0 ? li : 0); return true; }
+                return key != RemoteKey.Left;
         }
     }
 }
