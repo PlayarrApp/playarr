@@ -22,11 +22,11 @@
     },
     {
       "name": "ink_soft",
-      "value": "#c5b8bd"
+      "value": "#cdc1c6"
     },
     {
       "name": "ink_muted",
-      "value": "#887a82"
+      "value": "#c2b5bb"
     },
     {
       "name": "line",
@@ -50,7 +50,7 @@
     },
     {
       "name": "danger",
-      "value": "#ee9297"
+      "value": "#f1a4a8"
     },
     {
       "name": "danger_soft",
@@ -58,7 +58,7 @@
     },
     {
       "name": "success",
-      "value": "#7fc09d"
+      "value": "#8ac5a5"
     },
     {
       "name": "focus_outline",

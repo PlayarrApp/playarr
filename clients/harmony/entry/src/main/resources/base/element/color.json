@@ -22,11 +22,11 @@
     },
     {
       "name": "ink_soft",
-      "value": "#675961"
+      "value": "#443a40"
     },
     {
       "name": "ink_muted",
-      "value": "#a5969e"
+      "value": "#4d4248"
     },
     {
       "name": "line",
@@ -38,7 +38,7 @@
     },
     {
       "name": "accent",
-      "value": "#675961"
+      "value": "#4d4248"
     },
     {
       "name": "accent_soft",
@@ -50,7 +50,7 @@
     },
     {
       "name": "danger",
-      "value": "#a8464c"
+      "value": "#722f34"
     },
     {
       "name": "danger_soft",
@@ -58,7 +58,7 @@
     },
     {
       "name": "success",
-      "value": "#347559"
+      "value": "#224c3a"
     },
     {
       "name": "focus_outline",
