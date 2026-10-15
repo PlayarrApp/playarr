@@ -344,9 +344,9 @@ fun Modifier.playarrRailFade(
                     val stops = arrayOf(
                         0f to full,
                         ((size.width - depth) / size.width) to full,
-                        ((size.width - depth * 0.75f) / size.width) to full.copy(alpha = floor + (1f - floor) * 0.156f),
+                        ((size.width - depth * 0.75f) / size.width) to full.copy(alpha = floor + (1f - floor) * 0.844f),
                         ((size.width - depth * 0.5f) / size.width) to full.copy(alpha = floor + (1f - floor) * 0.5f),
-                        ((size.width - depth * 0.25f) / size.width) to full.copy(alpha = floor + (1f - floor) * 0.844f),
+                        ((size.width - depth * 0.25f) / size.width) to full.copy(alpha = floor + (1f - floor) * 0.156f),
                         1f to full.copy(alpha = floor),
                     )
                     drawRect(

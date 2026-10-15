@@ -57,6 +57,8 @@ data class PlayarrPageMetrics(
     val shellColumnEdge: Dp,
     /** Vertical gap between stacked tiles in the shell action column (`.page-header-stack`). */
     val shellColumnGap: Dp,
+    /** `.page-header-detail` font size in sp: clamp(9.92, 0.58 vw, 11.52) css px, 11.136 at 1920. */
+    val subtitleSize: Float = 11.136f,
 ) {
     /** `--page-header-height`: the row grows to the tile (owner ruling Q9). */
     val headerHeight: Dp get() = if (pillHeight > control) pillHeight else control
@@ -161,6 +163,13 @@ object PlayarrPageTokens {
         val navClearance = navEdge + 64f + 12.8f + 2f + 12f
         return Tv.copy(
             headerTop = dp((5.2f * vu).coerceIn(34f, 66f)),
+            // Web `--page-control-height`, `--action-pill-*` and `--page-header-gap` clamp against the viewport: Back is 44 px at 1280.
+            control = dp((2.8f * vw).coerceIn(44f, 50f)),
+            controlWidth = dp((2.8f * vw).coerceIn(44f, 50f)),
+            pillWidth = dp((3.6f * vw).coerceIn(48f, 62f)),
+            pillHeight = dp((5.2f * vw).coerceIn(52f, 72f)),
+            headerGap = dp((1.2f * vw).coerceIn(14f, 24f)),
+            subtitleSize = (0.58f * vw).coerceIn(9.92f, 11.52f) / scale,
             start = dp(maxOf((8f * vw).coerceIn(102f, 160f), navClearance)),
             headerEnd = dp((4f * vw).coerceIn(24f, 96f)),
             shellColumnTop = dp((14f * vu).coerceIn(116f, 164f)),

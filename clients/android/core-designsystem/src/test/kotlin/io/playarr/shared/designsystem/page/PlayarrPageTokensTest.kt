@@ -42,4 +42,19 @@ class PlayarrPageTokensTest {
         assertEquals(72.dp, PlayarrPageTokens.Tv.headerHeight)
         assertEquals(44.dp, PlayarrPageTokens.Phone.headerHeight)
     }
+
+    @Test
+    fun aTabletHeaderTakesWebsViewportClamps() {
+        val scale = 1280f / 1920f
+        val tablet = PlayarrPageTokens.tvFor(1280f, 800f, scale)
+        // Web at 1280 px: Back is 44 css px, the Home header gap clamp(14, 1.2 vw, 24) is 15.36 css px.
+        assertEquals(44f / scale, tablet.control.value, 0.01f)
+        assertEquals(44f / scale, tablet.controlWidth.value, 0.01f)
+        assertEquals(15.36f / scale, tablet.headerGap.value, 0.01f)
+        assertEquals(9.92f / scale, tablet.subtitleSize, 0.01f)
+        val tv = PlayarrPageTokens.tvFor(1920f, 1080f, 1f)
+        assertEquals(50.dp, tv.control)
+        assertEquals(62.dp, tv.pillWidth)
+        assertEquals(72.dp, tv.pillHeight)
+    }
 }

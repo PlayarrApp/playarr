@@ -4235,6 +4235,12 @@ private fun TvSettingsBody(
 ) {
     val locale = LocalPlayarrLanguage.current.locale
     val entries = phoneSettingsIndex
+    // Web's 88 px option rows, 128 px list top and 545 px panel start are css px (clamped at 1280): a tablet draws them at 1 / stage scale.
+    val stage = LocalStageScale.current
+    val tablet = stage != 1f
+    val rowHeight = if (tablet) (88f / stage).dp else 92.dp
+    // Web `--library-rail-top` clamp(128, 15 vu, 174) css px.
+    val listTop = if (tablet) webVu(128f, 15f, 174f) else 162.dp
     // Web default focus: the section list, on the first (selected) section; LEFT/RIGHT then cross to the panel.
     val firstRow = remember { androidx.compose.ui.focus.FocusRequester() }
     TvDefaultFocusEffect(Unit) { runCatching { firstRow.requestFocus() } }
@@ -4261,7 +4267,7 @@ private fun TvSettingsBody(
         val isAdmin by viewModel.isAdmin.collectAsState()
         LazyColumn(
             // Padding, not offset: the list must end at the screen edge so rows past it (11 sections) scroll into view.
-            Modifier.padding(start = playarrPageMetrics(true).start, top = 162.dp).width(480.dp).fillMaxHeight(),
+            Modifier.padding(start = playarrPageMetrics(true).start, top = listTop).width(480.dp).fillMaxHeight(),
         ) {
             // Web lists the admin-only sections (request latency) only for administrators and keeps every section's number.
             val rows = entries.mapIndexed { number, row -> number to row.first }
@@ -4272,7 +4278,7 @@ private fun TvSettingsBody(
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(92.dp)
+                        .height(rowHeight)
                         .then(if (index == 0) Modifier.focusRequester(firstRow) else Modifier)
                         .background(if (selected && !focused) TvSettingsPalette.selectedRow else TvSettingsPalette.listBackground)
                         .webFocusRing(focused, radius = 0.dp, offset = (-3).dp)
@@ -4311,7 +4317,7 @@ private fun TvSettingsBody(
         ) {
         androidx.compose.material3.ProvideTextStyle(outerTextStyle) {
         Column(
-            Modifier.offset(x = 774.dp, y = 212.dp).width(995.dp),
+            Modifier.offset(x = if (tablet) 817.dp else 774.dp, y = if (tablet) 248.dp else 212.dp).width(995.dp),
         ) {
             when (val current = state) {
                 ParityLoad.Loading -> CircularProgressIndicator(color = WebAccent)

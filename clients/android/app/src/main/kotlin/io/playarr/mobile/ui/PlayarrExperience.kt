@@ -2369,16 +2369,17 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
         Text(
             now.format(DateTimeFormatter.ofPattern("HH:mm")),
             color = WebInk,
-            fontSize = 17.28.sp,
+            // Web `.app-clock-time` clamp(13.12, 0.9 vw, 17.6) css px; the date clamp(8.32, 0.58 vw, 11.52), both in --ink.
+            fontSize = webVw(13.12f, 0.9f, 17.6f).value.sp,
             fontWeight = FontWeight(760),
-            letterSpacing = (-0.518).sp,
+            letterSpacing = (-0.03f * webVw(13.12f, 0.9f, 17.6f).value).sp,
         )
         Text(
             dateFormatter.format(now.toLocalDate()).uppercase(locale),
-            color = WebInkMuted,
-            fontSize = 11.136.sp,
+            color = WebInk,
+            fontSize = webVw(8.32f, 0.58f, 11.52f).value.sp,
             fontWeight = FontWeight(640),
-            letterSpacing = 0.445.sp,
+            letterSpacing = (0.04f * webVw(8.32f, 0.58f, 11.52f).value).sp,
         )
     }
 }
@@ -3011,10 +3012,10 @@ private fun ExperienceHomeScreen(
                         contentPadding = PaddingValues(
                             start = railGutter,
                             // Web: the first rail heading at y 402 and rail headings 365.9 dp apart with the poster-size cards.
-                            top = if (isTelevision) 389.9.dp else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
+                            top = if (isTelevision) 389.9.dp * homeStageVerticalScale() else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
                             bottom = if (isTelevision) 120.dp else 98.dp,
                         ),
-                        verticalArrangement = Arrangement.spacedBy(if (isTelevision) 52.8.dp else 54.7.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 52.8.dp else webVu(38f, 5f, 64f) - 1.2.dp),
                     ) {
                         itemsIndexed(current.value, key = { _, rail -> rail.key }) { railIndex, rail ->
                             ExperienceMediaRail(
@@ -3366,11 +3367,13 @@ internal fun ExperienceMediaRail(
         // Web `.tv-media-track-scroll` reserves 18px of normal spacing plus 24px for focused-card shadow above its
         // viewport. Move the extra 36px from the outer spacing into LazyRow content padding, keeping the resting card
         // origin fixed while giving the focus lift, scale and shadow the same unclipped headroom.
-        val tvTrackHeadroom = 42.dp
-        val tvHeadroomAdjustment = tvTrackHeadroom - 6.dp
+        // These are css px in web: a tablet draws them at 1 / stage scale dp, as every other fixed web length.
+        val cssDp = 1f / LocalStageScale.current
+        val tvTrackHeadroom = (42f * cssDp).dp
+        val tvHeadroomAdjustment = tvTrackHeadroom - (6f * cssDp).dp
         // Matched 1920x1080 captures put focused artwork 2px below the web reference in both themes; trim the TV
         // track's outer top offset without changing its content headroom or artwork transform.
-        val tvOuterTopPadding = (if (railIndex == 0) 43.2.dp else 41.2.dp) - tvHeadroomAdjustment - 2.dp
+        val tvOuterTopPadding = ((if (railIndex == 0) 43.2f else 41.2f) * cssDp).dp - tvHeadroomAdjustment - (2f * cssDp).dp
         // Keep the pre-existing 10dp card origin exact: integer-pixel headroom avoids a fractional-density rounding drift.
         val phoneFocusTopHeadroomPx = with(density) { 24.dp.roundToPx() }
         val phoneFocusBottomHeadroomPx = with(density) { 80.dp.roundToPx() }
@@ -3405,7 +3408,7 @@ internal fun ExperienceMediaRail(
             fadeCrossAxisStartInset = if (isTelevision) 0.dp else phoneFocusTopHeadroom,
             fadeCrossAxisEndInset = if (isTelevision) 0.dp else phoneFocusBottomHeadroom,
             modifier = trackModifier,
-            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = 20.dp, top = tvTrackHeadroom, bottom = 12.dp) else PaddingValues(
+            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = 20.dp, top = tvTrackHeadroom, bottom = (12f * cssDp).dp) else PaddingValues(
                 start = 16.dp,
                 end = 20.dp,
                 top = 10.dp + phoneFocusTopHeadroom,
@@ -3701,8 +3704,9 @@ internal fun WebDetailPill(
         color = if (focused) (if (ink || primary) Color(0xFFA52745) else WebInk.copy(alpha = 0.88f)) else if (ink) WebInk else if (primary) WebKicker else WebSurfaceStrong.copy(alpha = 0.72f),
         contentColor = if (focused) (if (ink || primary) Color.White else WebBackground) else if (ink) WebBackground else if (primary) Color.White else WebInk,
         modifier = modifier
-            .height(64.dp)
-            .widthIn(min = if (primary) 156.dp else 142.dp)
+            // Web clamps these against the viewport width (64 / 156 / 142 dp at 1920): a tablet gets its own css px.
+            .height(webVw(44f, 4.2f, 64f))
+            .widthIn(min = if (primary) webVw(112f, 8.5f, 156f) else webVw(104f, 7.6f, 142f))
             .scale(scale)
             .webFocusRing(focused, offset = 3.dp)
             .onFocusChanged { focused = it.isFocused },
@@ -3715,7 +3719,7 @@ internal fun WebDetailPill(
             glyph?.let {
                 Text(it, color = if (focused && (ink || primary)) Color.White else if (ink) WebBackground else if (primary) Color.White else WebKicker, fontSize = if (primary) 10.118.sp else 12.806.sp)
             }
-            Text(label, fontSize = if (primary) 11.904.sp else 11.136.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(label, fontSize = (if (primary) webVw(8.64f, 0.62f, 12.48f) else webVw(8f, 0.58f, 11.52f)).value.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }
@@ -6834,7 +6838,7 @@ private fun VideoDetailActions(
                 // (and clipping "Resume from m:ss" to "Resume").
                 Row(
                     Modifier.wrapContentWidth(Alignment.Start, unbounded = true),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(webVw(10f, 0.9f, 16f)),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (canDownload) downloadPill()
@@ -6847,7 +6851,7 @@ private fun VideoDetailActions(
             // Web `.tv-detail-actions` is 472 wide inside a 455 column: let the pills overflow instead of squeezing.
             Row(
                 Modifier.wrapContentWidth(Alignment.Start, unbounded = true),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(webVw(10f, 0.9f, 16f)),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (episode != null || work.kind != WorkKind.Movie) playPill()
@@ -7072,17 +7076,19 @@ internal fun SeriesEpisodeBrowser(
         }
     }
     val posterUrl = work.images.firstOrNull { it.kind == ImageKind.Poster }?.url
+    // Measured against web at 1280 x 800: the season block starts 16.5 dp lower and each rail pitch is 24 dp longer than the 1080 values give.
+    val tabletDetail = if (isTelevision && LocalStageScale.current != 1f) 1f else 0f
     // TV: web layout, seasons sit directly on the rail gradient; phones keep the glass panel.
     Column(
         modifier = modifier
             .then(
                 if (isTelevision) {
-                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp, top = 357.dp)
+                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp, top = 357.dp + 16.5.dp * tabletDetail)
                 } else {
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
             ),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp + 10.4.dp * tabletDetail),
     ) {
         if (!isTelevision) Text(
             playarrString(PlayarrString.DetailTitleSeasonsAndEpisodes, "title" to work.title),
@@ -7126,9 +7132,10 @@ internal fun SeriesEpisodeBrowser(
             val seasonIndex = seasons.indexOf(season)
             LazyRow(
                 state = if (isTelevision) tvRails.rowState(seasonIndex) else androidx.compose.foundation.lazy.rememberLazyListState(),
-                modifier = if (isTelevision) Modifier.padding(top = 18.3.dp) else Modifier,
+                // The viewport reaches 40 dp left of the heading line so a focused first tile's ring, corner and glow are not clipped (web's track left gutter).
+                modifier = if (isTelevision) Modifier.padding(top = 18.3.dp + 13.6.dp * tabletDetail).extendStart(40.dp) else Modifier,
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp else 12.dp),
-                contentPadding = if (isTelevision) PaddingValues(start = 4.dp, top = 18.dp, end = 24.dp) else PaddingValues(vertical = 6.dp),
+                contentPadding = if (isTelevision) PaddingValues(start = 44.dp, top = 18.dp, end = 24.dp) else PaddingValues(vertical = 6.dp),
             ) {
                 itemsIndexed(season.episodes, key = { _, it -> it.episode.id }) { episodeIndex, episode ->
                     EpisodeDetailCard(
@@ -7390,8 +7397,9 @@ internal fun MovieDetailBrowser(
     if (isTelevision) {
         // Web `.tv-media-track` stack: no panel, sections start at y = 540 and repeat every 314.3 dp.
         Column(
-            modifier.verticalScroll(rememberScrollState()).padding(top = 540.dp, bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(54.dp),
+            // Web's track stack starts at half the viewport height; a tablet's rails are 28 css px further apart than the 1080 gap gives.
+            modifier.verticalScroll(rememberScrollState()).padding(top = 540.dp * homeStageVerticalScale(), bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(54.dp + 42.dp * (if (LocalStageScale.current != 1f) 1f else 0f)),
         ) {
             if (chapters.isNotEmpty()) {
                 WebMediaTrack(
@@ -7531,6 +7539,7 @@ private fun WebMediaTrack(
     state: androidx.compose.foundation.lazy.LazyListState? = null,
     cards: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
+    val tabletTrack = if (LocalStageScale.current != 1f) 1f else 0f
     Column {
         Column(Modifier.padding(start = 0.dp).height(45.5.dp)) {
             Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp)
@@ -7538,8 +7547,9 @@ private fun WebMediaTrack(
         }
         LazyRow(
             state = state ?: androidx.compose.foundation.lazy.rememberLazyListState(),
-            modifier = Modifier.padding(top = 17.2.dp),
-            contentPadding = PaddingValues(start = 4.dp, top = 18.dp, end = 24.dp),
+            // Measured against web at 1280 x 800: 10 css px more under the heading; the viewport reaches left so a focused first tile is not clipped.
+            modifier = Modifier.padding(top = 17.2.dp + 15.dp * tabletTrack).extendStart(40.dp),
+            contentPadding = PaddingValues(start = 44.dp, top = 18.dp, end = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(25.dp),
             content = cards,
         )
@@ -10295,3 +10305,8 @@ private fun rememberPlayarrNowPlayingArtwork(work: Work?, fallbackServerUrl: Str
     }
     return bytes
 }
+
+/** Web's first Home rail sits at a height fraction of the viewport: the 1080 tuning scaled to the stage's own height (1 on television). */
+@Composable
+private fun homeStageVerticalScale(): Float =
+    if (LocalStageScale.current == 1f) 1f else androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / 1080f
