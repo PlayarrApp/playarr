@@ -1053,6 +1053,7 @@ export struct Home {
       metaGapAdjust: -4, // web Home: meta 4 vp higher, synopsis 1 vp higher than the Library panel (frames 2026-10-15)
       synopsisGapAdjust: 3,
       railFrost: true,
+      railsTopAdjust: this.homeView === 'cover' ? -(this.card().height - TvGeometry.libraryGridCardHeight) / 2 : 0,
       // Arrow wrapper keeps `this` = Home; a bare method reference runs with Stage as `this`.
       railsSlot: (): void => {
         this.tvRailsSlot();

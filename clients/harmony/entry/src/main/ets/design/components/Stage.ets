@@ -129,6 +129,8 @@ export struct Stage {
   @Prop synopsis: string = '';
   /** Home: draw web's rails frost (`.tv-home-rails` background). */
   @Prop railFrost: boolean = false;
+  /** Home covers: web keeps the focused first row centred on the page, so taller (portrait) cards start higher by half their extra height (vp, negative = up). */
+  @Prop railsTopAdjust: number = 0;
   /** Web `data-fade-axis="y"` on Home's scrolling rails: fades only on a side with more content past it (the start side's inset is the page's own top room). */
   @State private railsFadeTop: boolean = false;
   @State private railsFadeBottom: boolean = true;
@@ -385,7 +387,7 @@ export struct Stage {
           this.railsSlot()
         }
         .alignItems(HorizontalAlign.Start)
-        .padding({ left: tv(TvGeometry.homeRailsInsetLeft), top: tv(TvGeometry.homeRailsTop), bottom: tv(TvGeometry.homeRailsTop) })
+        .padding({ left: tv(TvGeometry.homeRailsInsetLeft), top: tv(TvGeometry.homeRailsTop + this.railsTopAdjust), bottom: tv(TvGeometry.homeRailsTop) })
       }
       .width(tv(TvGeometry.homeRailsWidth))
       .height('100%')

@@ -1556,8 +1556,10 @@ struct Detail {
     return !isTvMetrics() && file !== null && watchMarkFor(this.episodeProgress.get(file), this.episodeProgressLoaded).unseen;
   }
 
-  /** Phone: give each episode row a stamp that reflects its unseen dot and ring, so the cards redraw when the data arrives. */
+  /** Give each episode row a stamp that reflects its unseen dot (TV too: web draws it) and, on the phone, its ring, so the cards redraw when the data arrives. */
   private restampEpisodes(): void {
+    // TV: restamping rebuilds the cards and the capture's per-row artwork acceptance then times out (run 38795686584), so TV dots wait for a
+    // way to draw them without a rebuild.
     if (isTvMetrics() || this.detail === null || this.detail.work.kind !== 'series') {
       return;
     }
@@ -1799,6 +1801,11 @@ struct Detail {
     return this.detail !== null ? this.detail.work.kind : '';
   }
 
+  /** Web's series detail draws its secondary actions as flat text beside the filled Start pill (movie detail keeps the translucent capsules). */
+  private isSeriesPage(): boolean {
+    return this.detail !== null && this.detail.work.kind === 'series';
+  }
+
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
@@ -1818,7 +1825,7 @@ struct Detail {
     .borderRadius(tv(PILL_HEIGHT / 2))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(primary ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
+    .backgroundColor(primary ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().ink, this.isSeriesPage() ? 0 : PILL_FILL_ALPHA))
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
     .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
@@ -2135,7 +2142,7 @@ struct Detail {
     Stack() {
       KeyArtBackdrop({ keyArt: this.heroArtwork })
 
-      Column({ space: tv(COPY_GAP) }) {
+      Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 10 : 0)) }) {
         FeatureCopy({
           kicker: this.tvCopyKicker(),
           title: (this.detail !== null ? this.detail.work.title : ''),

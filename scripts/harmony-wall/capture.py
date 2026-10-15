@@ -273,6 +273,34 @@ def focus_first_card(click_xy=None):
     print("focus_first_card: no card answered; capturing unfocused", flush=True)
 
 
+def burst(folder, name, count=5):
+    """Five frames about 150 ms apart (the web counterpart is capture-web-motion.mjs --profile tv)."""
+    os.makedirs(folder, exist_ok=True)
+    for i in range(count):
+        png().save(os.path.join(folder, f"harmony-{name}-{i}.png"))
+        time.sleep(0.15)
+
+
+def motion_walk(folder):
+    """Round 3 motion: Home scrolled down through the rails and back up, then along a rail, then Filters scrolled, by pointer swipes
+    (the Previewer drops keys). Frames to capture/motion/<theme>/."""
+    def swipe(x1, y1, x2, y2):
+        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2); time.sleep(0.7)
+
+    route("home", 30); focus_first_card(); burst(folder, "home-00-top")
+    for i in range(1, 5):
+        swipe(1300, 900, 1300, 500); burst(folder, f"home-{i:02d}-down")
+    for i in range(1, 5):
+        swipe(1300, 500, 1300, 900); burst(folder, f"home-{4 + i:02d}-up")
+    for i in range(1, 4):
+        swipe(1800, 930, 1000, 930); burst(folder, f"home-rail-{i:02d}-left")
+    for i in range(1, 4):
+        swipe(900, 930, 1700, 930); burst(folder, f"home-rail-{3 + i:02d}-right")
+    route("library:movie", 15); click(1877, 187); time.sleep(5); burst(folder, "filters-00-open")
+    for i in range(1, 4):
+        swipe(1700, 800, 1700, 200); burst(folder, f"filters-{i:02d}-up")
+
+
 def poster_walk(folder):
     """Round 3, poster mode: Settings > Appearance > Home screen artwork = Covers (touch works in the Previewer), then Home and a library in
     portrait covers at each artwork size; the settings are put back at the end. Frames go to capture/poster/<theme>/."""
@@ -309,7 +337,7 @@ def walk(folder, suffix):
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
     click(946, 254); time.sleep(12); snap(n("film-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
     route("library:series", 15); focus_first_card((946, 254)); snap(n("series"), folder, 150000)
-    click(946, 254); time.sleep(12); snap(n("series-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
+    click(946, 254); time.sleep(12); focus_first_card(); snap(n("series-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
     route("library:artist", 15); focus_first_card((946, 254)); snap(n("music"), folder, 150000)
     route("calendar", 18); snap(n("calendar-agenda"), folder)
     click(1877, 272); time.sleep(4); click(1740, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-week"), folder)
@@ -321,6 +349,8 @@ def walk(folder, suffix):
         click(394, 207); time.sleep(3); click(1645, 285); time.sleep(4)
     snap(n("settings"), folder)
     extra_screens(folder)
+    if os.environ.get("MOTION") == "true" and device == "tv":
+        motion_walk(os.path.join(out, "motion", "dark" if folder.endswith("dark") else "light"))
     if os.environ.get("POSTER_MODE") == "true" and device == "tv":
         poster_walk(os.path.join(out, "poster", "dark" if folder.endswith("dark") else "light"))
 
