@@ -351,7 +351,7 @@ impl App {
 
     /// Opens a screen straight away (`name` or `name:argument`): `home`, `movies`, `series`, `music`,
     /// `search:<text>`, `calendar-agenda|week|month`, `film`, `series-detail`, `player`, `profiles`, `settings`,
-    /// `filters`, `actions`, `play:<media file id>`, `theme:dark|light|system`. Used by the parity capture scripts through `PLAYARR_ROUTE` and `PLAYARR_CONTROL`.
+    /// `filters`, `actions`, `rail-end:<n>`, `play:<media file id>`, `theme:dark|light|system`. Used by the parity capture scripts through `PLAYARR_ROUTE` and `PLAYARR_CONTROL`.
     pub fn route(self: &Rc<Self>, route: &str) {
         let Some(client) = self.client.borrow().clone() else {
             return;
@@ -368,6 +368,10 @@ impl App {
         };
         match name {
             "home" | "movies" | "series" | "music" => select(name),
+            "rail-end" => {
+                select("home");
+                self.hook("rail-end", arg);
+            }
             "search" => {
                 select("search");
                 self.hook("search", arg);

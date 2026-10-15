@@ -418,6 +418,20 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                     }
                 }
             }
+            // Capture hook `rail-end:<n>`: focus the last card of rail n (0 = the first), so a capture sees its ring at the edge.
+            let last_cards: Vec<_> = focus_sections
+                .iter()
+                .filter_map(|s| s.cards.last().map(|c| c.downgrade()))
+                .collect();
+            app.hooks.borrow_mut().insert(
+                "rail-end",
+                Rc::new(move |arg| {
+                    let n = arg.parse::<usize>().unwrap_or(0);
+                    if let Some(card) = last_cards.get(n).and_then(|c| c.upgrade()) {
+                        card.grab_focus();
+                    }
+                }),
+            );
             track_focused_cards(&focus_sections);
         },
     );

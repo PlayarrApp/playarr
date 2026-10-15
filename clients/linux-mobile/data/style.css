@@ -14,7 +14,7 @@ button.pa-secondary { background: @pa_soft; color: @pa_ink; border-radius: 999px
 button.pa-plain { background: transparent; border: none; box-shadow: none; padding: 0; color: @pa_ink; }
 .pa-avatar { border-radius: 999px; }
 .pa-profile-name { font-size: 15px; color: @pa_ink_soft; }
-button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avatar { outline: 3px solid @pa_ink; outline-offset: 3px; }
+button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avatar { outline: 2px solid @pa_ring; outline-offset: 3px; }
 
 /* Cards and rails */
 .pa-art { border-radius: 8px; background: @pa_soft; }
@@ -105,7 +105,7 @@ scrolledwindow.pa-transparent, scrolledwindow.pa-transparent viewport { backgrou
 /* Calendar (web mobile) */
 button.pa-pill, .pa-pill { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; box-shadow: none; min-height: 44px; padding: 0 18px; color: @pa_ink_soft; font-weight: 610; font-size: 12px; }
 button.pa-pill.round { min-width: 44px; padding: 0; }
-button.pa-pill.selected { outline: 3px solid @pa_ink; outline-offset: -1px; }
+button.pa-pill.selected { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-pill-label { font-weight: 610; font-size: 12px; color: @pa_ink_soft; }
 .pa-day-title { font-size: 16px; font-weight: 610; color: @pa_ink; }
 .pa-today-chip { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: @pa_ink_soft; border: 1px solid @pa_ink_soft; border-radius: 999px; padding: 2px 8px; }
@@ -128,6 +128,7 @@ button.pa-pill.selected { outline: 3px solid @pa_ink; outline-offset: -1px; }
 .pa-overview { font-size: 12.5px; color: @pa_ink_soft; }
 button.pa-action { background: alpha(@pa_surface_strong, 0.7); border: none; border-radius: 999px; min-height: 44px; padding: 0 8px; box-shadow: none; }
 button.pa-action.primary { background: @pa_ink; }
+button.pa-action:focus-visible { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-action-label { font-size: 11px; font-weight: 700; color: @pa_ink; }
 button.pa-action.primary .pa-action-label { color: @pa_bg; }
 .pa-season-title { font-size: 19px; font-weight: 610; color: @pa_ink; }
@@ -144,7 +145,7 @@ button.pa-close { background: @pa_ink; border-radius: 999px; min-width: 44px; mi
 .pa-seg-tile { background: transparent; border: 1px solid @pa_line; border-radius: 12px; min-height: 52px; box-shadow: none; color: @pa_ink_soft; font-weight: 610; font-size: 12px; }
 .pa-seg-tile:checked { background: @pa_ink; color: @pa_bg; border-color: @pa_ink; }
 button.pa-row { background: alpha(@pa_surface_strong, 0.8); border: 1px solid @pa_line; border-radius: 12px; min-height: 52px; box-shadow: none; padding: 0 14px; color: @pa_ink; font-size: 14px; }
-button.pa-row.focus { outline: 2px solid @pa_ink; outline-offset: -1px; }
+button.pa-row.focus { outline: 2px solid @pa_ring; outline-offset: 3px; }
 
 /* Profiles */
 .pa-mark { background: @pa_brand; border-radius: 999px; min-width: 38px; min-height: 38px; padding: 10px; }
