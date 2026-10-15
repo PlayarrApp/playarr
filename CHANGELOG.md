@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS: the first card of every Home rail keeps its focus ring and glow (no longer clipped at the left edge) and rails fade at the right end as on the web.
 - Settings > Appearance: with the remote, Down from the theme row now reaches Thumbnails and Covers (it used to skip to the artwork-size row), so poster mode can be switched on every client.
 - Android TV: the last Home rails scroll to the same row as the first (half-viewport bottom padding, as web), instead of stopping low with the previous rail showing.
 - The shell clock date prints "Thu 15 October" on every engine in en-GB; webOS added a comma after the weekday.
