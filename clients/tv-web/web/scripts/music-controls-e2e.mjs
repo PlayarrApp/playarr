@@ -102,9 +102,14 @@ for (const [width, height, theme] of [[1920, 1080, "dark"], [1920, 1080, "light"
   const { context, page } = await open("/music", { width: 1920, height: 1080, contextOptions: SW });
   await page.route(/\/api\/v1\/playback\//, negotiate);
   let fail = true;
-  await page.route(/mock-audio\.wav/, (route) => (fail ? route.fulfill({ status: 503, body: "unavailable" }) : stream(route)));
+  let hits = 0;
+  await page.route(/mock-audio\.wav/, (route) => { hits += 1; return fail ? route.fulfill({ status: 503, body: "unavailable" }) : stream(route); });
   await playFirstTrack(page);
   const alert = page.locator(".player-inline-music-status[role='alert']");
+  // A 503 surfaces as MEDIA_ERR_SRC_NOT_SUPPORTED, which the player treats as a decode failure and answers once with a
+  // silent forced-transcode renegotiation: a second stream request. Retry only after that one has failed as well, or
+  // it races the automatic attempt (and the alert is briefly gone while the attempt loads).
+  for (let waited = 0; waited < 25000 && hits < 2; waited += 100) await page.waitForTimeout(100);
   await alert.waitFor({ timeout: 25000 }).catch(() => {});
   check("failing stream: an error with Retry is shown", (await alert.count()) === 1 && (await alert.getByRole("button").count()) === 1);
   fail = false;

@@ -162,18 +162,21 @@ const slowServer = await startServer({
 });
 /** Counts API reads in flight (the event stream and remote long polls stay open by design and are ignored). */
 const trackRequests = (page) => {
-  const state = { open: 0, started: 0 };
+  const state = { open: 0, started: 0, urls: [] };
   const counted = (request) => /\/api\/v1\//.test(request.url()) && !/\/(events|remote)\b/.test(request.url());
-  page.on("request", (r) => { if (counted(r)) { state.open += 1; state.started += 1; } });
+  page.on("request", (r) => { if (counted(r)) { state.open += 1; state.started += 1; state.urls.push(r.url()); } });
   page.on("requestfinished", (r) => { if (counted(r)) state.open -= 1; });
   page.on("requestfailed", (r) => { if (counted(r)) state.open -= 1; });
   return state;
 };
-/** Waits (bounded) until no API read has been in flight for 400 ms: the dwell's prefetch has landed. */
-const settled = async (page, state, startedBefore = state.started) => {
-  // The dwell's prefetch starts after a debounce that stretches on a loaded runner: "nothing in flight" before it has even started
-  // is not "landed". Wait (bounded) for the first read to start, unless the section was already cached and needs none.
-  if (state.started === startedBefore) await page.waitForEvent("request", { predicate: () => state.started > startedBefore, timeout: 2500 }).catch(() => {});
+/**
+ * Waits (bounded) until no API read has been in flight for 400 ms: the dwell's prefetch has landed. `own` matches the
+ * section's own first read: the dwell's prefetch starts after a debounce that stretches on a loaded runner, and an
+ * unrelated read (Home's last ones) must not stand in for it, or "nothing in flight" is reached before it even started.
+ */
+const settled = async (page, state, startedBefore, own) => {
+  // Wait (bounded) for the section's read to start, unless the section was already cached and needs none.
+  for (let waited = 0; waited < 5000 && !state.urls.slice(startedBefore).some((u) => own.test(u)); waited += 50) await page.waitForTimeout(50);
   let quiet = 0;
   for (let waited = 0; waited < 12000 && quiet < 400; waited += 100) {
     await page.waitForTimeout(100);
@@ -197,17 +200,17 @@ for (const [w, h] of [[1920, 1080], [1280, 720]]) {
       await page.waitForSelector(".tv-home-card", { timeout: 8000 });
       await page.waitForTimeout(300);
       const requests = trackRequests(page);
-      for (const [name, href, ready] of [
-        ["calendar", "/calendar", "[data-page-id='calendar']"],
-        ["playlists", "/playlists", ".tv-title-card, .tv-home-card, .tv-media-track, [data-tv-track-id]"],
-        ["watchlist", "/watchlist", ".tv-watchlist-list"],
-        ["series", "/series", ".tv-title-card"],
-        ["music", "/music", ".tv-title-card"],
+      for (const [name, href, ready, own] of [
+        ["calendar", "/calendar", "[data-page-id='calendar']", /\/api\/v1\/calendar(\?|$)/],
+        ["playlists", "/playlists", ".tv-title-card, .tv-home-card, .tv-media-track, [data-tv-track-id]", /\/api\/v1\/playlists/],
+        ["watchlist", "/watchlist", ".tv-watchlist-list", /\/api\/v1\/watchlist/],
+        ["series", "/series", ".tv-title-card", /\/api\/v1\/catalog\?.*kind=series/],
+        ["music", "/music", ".tv-title-card", /\/api\/v1\/catalog\?.*kind=artist/],
       ]) {
         const startedBefore = requests.started;
         await navTo(page, href);
         // The dwell fires the prefetch (150 ms); wait for it to start and for its slow answers to land before pressing Enter.
-        await settled(page, requests, startedBefore);
+        await settled(page, requests, startedBefore, own);
         await page.evaluate(RECORD);
         console.log("   active before Enter:", name, await page.evaluate(() => document.activeElement?.className?.toString().slice(0, 40)));
         await page.keyboard.press("Enter");
