@@ -4,6 +4,7 @@
  * (the merged "Start watching" rail first, then the server's rails, then the sites rails).
  */
 import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {readHomeView} from './settings/panels';
 import {Animated, Easing, findNodeHandle, Pressable, View} from 'react-native';
 import {useNavigation, type NavigationProp, type ParamListBase} from '@amazon-devices/react-navigation__native';
 import type {ResumePlan, WatchProgress, Work} from '@playarr-tv/api-client';
@@ -36,22 +37,29 @@ interface HomeRail {
   items: Work[];
 }
 
-// The web's bigger Home cards (TV, 1920x1080): 327.2 px wide 16:9 art on a 352.1 px pitch, rails 365.9 px apart.
-const RAIL_PITCH = 365.9;
-const FIRST_HEADING_Y = 402;
-const CARD_PITCH = 352.1;
-const CARD_W = 327.2;
-const ART_H = 184.05;
-/** Art 184.05 + gap 11.25 + title 17.9 + gap 2.5 + subtitle 11.5. */
-const CARD_H = 227.2;
-/** How far the edge fades reach below the card art (the copy lines). */
-const FADE_EXTRA = CARD_H - ART_H;
 /**
- * The web snaps each card to a whole pixel from its fractional position (x = 881.6 + n * 352.1); the device's row layout
+ * Home card metrics at 1920x1080, measured on the web: thumbnail view is 327.2 px wide 16:9 art on a 352.1 px pitch with rails
+ * 365.9 px apart; cover view (Settings > Appearance > Home screen artwork) is 191.3 px wide 2:3 art on a 216.2 px pitch with rails
+ * 468.7 px apart, and the focused rail's heading is held 51 px higher.
+ */
+export interface HomeLayout {
+  railPitch: number;
+  firstHeadingY: number;
+  cardPitch: number;
+  cardW: number;
+  artH: number;
+  /** Art + gap 11.25 + title 17.9 + gap 2.5 + subtitle 11.5. */
+  cardH: number;
+  cover: boolean;
+}
+const THUMBNAIL_LAYOUT: HomeLayout = {railPitch: 365.9, firstHeadingY: 402, cardPitch: 352.1, cardW: 327.2, artH: 184.05, cardH: 227.2, cover: false};
+const COVER_LAYOUT: HomeLayout = {railPitch: 468.7, firstHeadingY: 351, cardPitch: 216.2, cardW: 191.3, artH: 286.9, cardH: 330.05, cover: true};
+/**
+ * The web snaps each card to a whole pixel from its fractional position (x = 881.6 + n * pitch); the device's row layout
  * rounds every card's width and margin separately and drifts by a pixel per card, so cards are placed one by one instead.
  */
-function cardLeft(index: number): number {
-  return Math.round(RAIL_X + index * CARD_PITCH) - RAIL_X;
+function cardLeft(index: number, pitch: number): number {
+  return Math.round(RAIL_X + index * pitch) - RAIL_X;
 }
 const RAIL_X = 881.6;
 
@@ -162,6 +170,10 @@ export function HomeScreen(): React.ReactElement {
   }, [railsState, siteState, onDeck, t]);
 
   const [focus, setFocus] = useState<{rail: number; item: number}>({rail: 0, item: 0});
+  // Settings > Appearance > Home screen artwork; re-read whenever Home is shown again.
+  const [homeView, setHomeView] = useState(readHomeView);
+  useEffect(() => navigation.addListener('focus', () => setHomeView(readHomeView())), [navigation]);
+  const layout = homeView === 'cover' ? COVER_LAYOUT : THUMBNAIL_LAYOUT;
   const [actionsWork, setActionsWork] = useState<Work | null>(null);
   const [playlistWork, setPlaylistWork] = useState<Work | null>(null);
   const onTop = useOnTop();
@@ -190,17 +202,17 @@ export function HomeScreen(): React.ReactElement {
     return scrollXs[rail];
   };
   useEffect(() => {
-    Animated.timing(railY, {toValue: -focus.rail * RAIL_PITCH, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
-  }, [focus.rail, railY]);
+    Animated.timing(railY, {toValue: -focus.rail * layout.railPitch, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+  }, [focus.rail, railY, layout.railPitch]);
   const scrollTargets = useRef<number[]>([]);
   const [scrolled, setScrolled] = useState<number[]>([]);
   // Stable, so the memoised cards and rails do not re-render on every focus move.
   const focusItem = useCallback((rail: number, item: number): void => {
     setFocus((current) => (current.rail === rail && current.item === item ? current : {rail, item}));
     const visible = 1920 - RAIL_X;
-    const left = item * CARD_PITCH;
+    const left = item * layout.cardPitch;
     let target = scrollTargets.current[rail] ?? 0;
-    if (left + CARD_W + 46 > target + visible) target = left + CARD_W + 46 - visible;
+    if (left + layout.cardW + 46 > target + visible) target = left + layout.cardW + 46 - visible;
     if (left < target + 8) target = Math.max(0, left - 8);
     scrollTargets.current[rail] = target;
     setScrolled((current) => {
@@ -211,7 +223,7 @@ export function HomeScreen(): React.ReactElement {
     });
     while (scrollXs.length <= rail) scrollXs.push(new Animated.Value(railLeft));
     Animated.timing(scrollXs[rail], {toValue: railLeft - u(target), duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false}).start();
-  }, [scrollXs, railLeft]);
+  }, [scrollXs, railLeft, layout.cardPitch, layout.cardW]);
   const openWork = useCallback((work: Work) => navigation.navigate(ROUTES.workDetail, {workId: work.id, backTo: ROUTES.home}), [navigation]);
 
   const homeSettled =
@@ -277,6 +289,7 @@ export function HomeScreen(): React.ReactElement {
               onFocusItem={focusItem}
               onOpen={openWork}
               onActions={setActionsWork}
+              layout={layout}
             />
           ))}
         </Animated.View>
@@ -341,8 +354,8 @@ const WINDOW_BEFORE = 1;
 const WINDOW_AFTER = 5;
 
 /** The cards to mount for a rail scrolled by `scrolled` px: `[first, last]` indices, always including the focused card. */
-export function railWindow(count: number, scrolled: number, focusedItem: number): [number, number] {
-  const first = Math.floor(scrolled / CARD_PITCH);
+export function railWindow(count: number, scrolled: number, focusedItem: number, pitch = THUMBNAIL_LAYOUT.cardPitch): [number, number] {
+  const first = Math.floor(scrolled / pitch);
   let lo = Math.max(0, first - WINDOW_BEFORE);
   let hi = Math.min(count - 1, first + WINDOW_AFTER);
   if (focusedItem >= 0) {
@@ -369,15 +382,17 @@ interface HomeRailRowProps {
   onFocusItem: (rail: number, item: number) => void;
   onOpen: (work: Work) => void;
   onActions: (work: Work) => void;
+  layout: HomeLayout;
 }
 
 /** One rail: heading, windowed cards and edge fades. Memoised so a focus move re-renders only the two rails involved. */
 const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.ReactElement {
-  const {rail, railIndex, active, focusedItem, scrolled, scrollX, onDeckByWork, progressByWork, progressReady, baseUrl, token, cardRef, onFocusItem, onOpen, onActions} = props;
+  const {rail, railIndex, active, focusedItem, scrolled, scrollX, onDeckByWork, progressByWork, progressReady, baseUrl, token, cardRef, onFocusItem, onOpen, onActions, layout} = props;
   const {t} = useLanguage();
   const {colour} = useTheme();
-  const headingY = FIRST_HEADING_Y + railIndex * RAIL_PITCH;
-  const [lo, hi] = railWindow(rail.items.length, scrolled, focusedItem);
+  const headingY = layout.firstHeadingY + railIndex * layout.railPitch;
+  const fadeExtra = layout.cardH - layout.artH;
+  const [lo, hi] = railWindow(rail.items.length, scrolled, focusedItem, layout.cardPitch);
   return (
     <View pointerEvents="box-none">
       <RailHeading title={rail.title} x={RAIL_X - 729.6} y={headingY} active={active} colour={colour.ink} />
@@ -386,8 +401,8 @@ const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.Re
           position: 'absolute',
           left: scrollX,
           top: u(headingY + 26.5 + 17.28 + 18),
-          width: u(rail.items.length * CARD_PITCH),
-          height: u(CARD_H),
+          width: u(rail.items.length * layout.cardPitch),
+          height: u(layout.cardH),
         }}
       >
         {rail.items.slice(lo, hi + 1).map((work, offset) => {
@@ -419,19 +434,20 @@ const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.Re
               onOpen={onOpen}
               onActions={onActions}
               subtitle={subtitle}
+              layout={layout}
             />
           );
         })}
       </Animated.View>
-      <EdgeFade kind="gutter" tint side="left" active={scrolled > 0} x={0} y={headingY + 26.5} w={1190.4} h={ART_H + FADE_EXTRA + 47} size={TRACK_GUTTER} />
+      <EdgeFade kind="gutter" tint side="left" active={scrolled > 0} x={0} y={headingY + 26.5} w={1190.4} h={layout.artH + fadeExtra + 47} size={TRACK_GUTTER} />
       <EdgeFade
         kind="mask"
         side="right"
-        active={rail.items.length * CARD_PITCH - scrolled > 1920 - RAIL_X + 8}
+        active={rail.items.length * layout.cardPitch - scrolled > 1920 - RAIL_X + 8}
         x={0}
         y={headingY + 44}
         w={1190.4}
-        h={ART_H + 60}
+        h={layout.artH + 60}
         size={70}
         solid={8}
       />
@@ -458,11 +474,12 @@ const HomeCard = memo(function HomeCard(props: {
   token: string | undefined;
   selected: boolean;
   subtitle: string;
+  layout: HomeLayout;
   onFocusItem: (rail: number, item: number) => void;
   onOpen: (work: Work) => void;
   onActions: (work: Work) => void;
 }): React.ReactElement {
-  const {work, mediaFileId, title, progress, progressReady, first, last, cardRef, index, railIndex, baseUrl, token, selected, subtitle, onFocusItem, onOpen, onActions} = props;
+  const {work, mediaFileId, title, progress, progressReady, first, last, cardRef, index, railIndex, baseUrl, token, selected, subtitle, layout, onFocusItem, onOpen, onActions} = props;
   const onFocus = useCallback((event: {nativeEvent: {target: number}}) => {
     reportFocus(work.title, {rail: railIndex, index}, undefined, event.nativeEvent.target);
     onFocusItem(railIndex, index);
@@ -481,8 +498,8 @@ const HomeCard = memo(function HomeCard(props: {
   const onPress = useCallback(() => onOpen(work), [onOpen, work]);
   const onLongPress = useCallback(() => onActions(work), [onActions, work]);
   const {colour} = useTheme();
-  const kind = preferredArtworkKind(work, ['backdrop', 'poster']);
-  const uri = mediaFileId ? mediaThumbnailUrl(baseUrl, mediaFileId) : kind ? workArtworkUrl(baseUrl, work.id, kind) : undefined;
+  const kind = preferredArtworkKind(work, layout.cover ? ['poster', 'backdrop'] : ['backdrop', 'poster']);
+  const uri = mediaFileId && !layout.cover ? mediaThumbnailUrl(baseUrl, mediaFileId) : kind ? workArtworkUrl(baseUrl, work.id, kind) : undefined;
   return (
     <Pressable
       ref={setRefs}
@@ -493,9 +510,9 @@ const HomeCard = memo(function HomeCard(props: {
       onFocus={onFocus}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={{position: 'absolute', top: 0, left: u(cardLeft(index)), width: u(CARD_W)}}
+      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW)}}
     >
-      <MediaFocus variant="home" focused={selected} width={CARD_W} height={ART_H} radius={12.48}>
+      <MediaFocus variant="home" focused={selected} width={layout.cardW} height={layout.artH} radius={12.48}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceSoft}}>
           <ArtworkImage uri={uri} accessToken={token} style={{width: '100%', height: '100%'}} resizeMode="cover" />
           <WatchState progress={progress} showUnwatched={progressReady} />

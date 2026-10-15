@@ -1,0 +1,1 @@
+- Fire TV: Settings > Appearance > Home screen artwork = Covers now takes effect on Home, with web's 2:3 cover cards (191 px wide on a 216 px pitch, rails 469 px apart).

@@ -10,3 +10,9 @@ describe('railWindow', () => {
     expect(railWindow(12, 0, 9)).toEqual([0, 10]);
   });
 });
+
+describe('railWindow in the cover view', () => {
+  it('uses the cover pitch to find the first visible card', () => {
+    expect(railWindow(30, 216.2 * 10, 10, 216.2)).toEqual([9, 15]);
+  });
+});
