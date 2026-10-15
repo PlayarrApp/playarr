@@ -288,6 +288,7 @@ Steps only the repository owner can perform.
 | 10491 | Fire TV: actions drawer Play glyph pink, not an orange emoji | done | parity-firetv | firetv-round3 | | 2026-10-17 12:00 ICT | PR open: #1486 (device check pending) PR #1486 merged 2026-10-15. |
 | 10496 | iPhone artwork loader retries failed fetches instead of leaving the placeholder | done | parity-iphone | iphone-r3-art | | 2026-10-17 18:00 ICT | Music rail showed placeholder art after a fast scroll where the web had images; the loader marked a failed or cancelled fetch final. PR open: #1494 PR #1494 merged 2026-10-15. |
 | 10544 | Fire TV: Home honours the Covers artwork setting (2:3 cards as web) | done | parity-firetv | firetv-home-covers | | | PR merged: #1493 |
+| 10546 | Fire TV: Artwork size setting (small, medium, large) for Home and Library as web | done | parity-firetv | firetv-artwork-size | | 2026-10-17 12:00 ICT | PR open: #1516 PR #1516 merged 2026-10-15. |
 
 ## 6. Web accessibility AAA (2026-10-09)
 

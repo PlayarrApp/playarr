@@ -1,1 +1,0 @@
-- Fire TV: Settings > Appearance has web's Artwork size (small, medium, large); Home cards and rails follow it as web does, and the Library takes the same one size.

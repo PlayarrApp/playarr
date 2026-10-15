@@ -660,6 +660,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: Settings > Appearance has web's Artwork size (small, medium, large); Home cards and rails follow it as web does, and the Library takes the same one size.
 - Android TV: the Home rail list shows web's vertical scroll-edge fade (0.3 floor, eased) like every other scroller.
 - Xbox: moving between Home rails scrolls the focused rail to the middle of the screen, as the web.
 - HarmonyOS phone: Filters multi-selects run the drawer's full width, and the Covers capture waits for the drawer before choosing the view.
