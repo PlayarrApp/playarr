@@ -1,1 +1,0 @@
-- Match the iPad library drawer's translucent surface and blur treatment while preserving the phone panel appearance.
