@@ -472,14 +472,23 @@ def main() -> None:
                 t = 1 - fn(xx, yy) / 95
                 px2[xx, yy] = (255, 255, 255, round(255 * max(t, 0) ** 1.4))
         img.save(IMAGES / f"{name}.png")
-    # The bottom fade follows the web's measured curve (alpha 0 at 72 px above the edge, squared); the top keeps the 1.4 power.
-    for name, fn, power in (("edge-fade-t", lambda y: y, 1.4), ("edge-fade-b", lambda y: 95 - y, 2.0)):
-        img = Image.new("RGBA", (4, 96), (255, 255, 255, 0))
+    # Vertical fades. Top keeps the 1.4 power. The bottom is web's mask (page-layout.css): a smoothstep ramp over 59.4 px that
+    # keeps a 0.3 floor at the screen edge, so the overlay alpha is 0.7 * (1 - smoothstep(distance from the edge / 59.4)).
+    # Measured per pixel on the live web (movies and Preferences, mask on versus off): 0.93 at 48 px, 0.75 at 36 px, 0.49 at 16 px.
+    def smooth(d):
+        d = max(0.0, min(1.0, d))
+        return d * d * (3 - 2 * d)
+    for name, fn, power in (("edge-fade-t", lambda y: y, 1.4), ("edge-fade-b", None, 0)):
+        img = Image.new("RGBA", (4, 96 if fn else 60), (255, 255, 255, 0))
         px2 = img.load()
-        for yy in range(96):
+        for yy in range(img.size[1]):
             for xx in range(4):
-                t = 1 - fn(yy) / 95
-                px2[xx, yy] = (255, 255, 255, round(255 * max(t, 0) ** power))
+                if fn:
+                    t = 1 - fn(yy) / 95
+                    a = max(t, 0) ** power
+                else:
+                    a = 0.7 * (1 - smooth((59 - yy + 0.5) / 59.4))
+                px2[xx, yy] = (255, 255, 255, round(255 * a))
         img.save(IMAGES / f"{name}.png")
     # Linear alpha ramps (white, tinted at run time): the web's stage gradients (.tv-key-art::after, .tv-stage-wash) are CSS linear
     # gradients from a token colour to transparent, so a stretched ramp bitmap reproduces them without stepped rectangles.
