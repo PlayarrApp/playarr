@@ -453,7 +453,7 @@ struct LibraryView: View {
                         LazyVGrid(
                     columns: Array(repeating: GridItem(.fixed(cardWidth), spacing: gap, alignment: .top), count: columnCount),
                     alignment: .leading,
-                    spacing: phone ? 24 : 28
+                    spacing: phone ? 24 : 27
                         ) {
                     ForEach(viewModel.playlists) { playlist in
                         NavigationLink {
@@ -537,13 +537,20 @@ struct LibraryView: View {
             WMText((work.genres.first ?? work.kind.displayName).uppercased(), 8.6, 800, color: PlayarrStyle.pink, lh: 13, ls: 1.1)
                 .padding(.bottom, 20)
             // The web title block is narrower than the copy below it, so "2 Fast 2 Furious" breaks after "Fast".
+            // The web title is 42 pt on a .9 line pitch in a block about 215 pt wide: "2 Broke Girls" stays on one line,
+            // "2 Fast 2 Furious" breaks after "Fast".
+            let nativeLineHeight = DesignFont.uiFont(
+                family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: 42, weight: 400, fixedAxes: DesignFont.nunitoAxes
+            )?.lineHeight ?? 42 * 1.36
+            let pitchCorrection = 42 * 0.9 - nativeLineHeight
             Text(work.title)
-                .font(WM.font(46, 400))
-                .tracking(-1.6)
-                .lineSpacing(-30)
+                .font(WM.font(42, 400))
+                .tracking(-1.5)
+                .lineSpacing(pitchCorrection)
                 .foregroundStyle(PlayarrStyle.ink)
                 .lineLimit(3)
-                .frame(maxWidth: 190, alignment: .leading)
+                .frame(maxWidth: 215, alignment: .leading)
+                .padding(.bottom, pitchCorrection)
             WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
                 .padding(.top, 26)
             if let overview = work.overview {

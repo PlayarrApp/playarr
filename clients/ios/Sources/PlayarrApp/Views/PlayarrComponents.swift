@@ -284,7 +284,7 @@ struct PlayarrMediaCard: View {
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 10 : 8.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.muted)
             } else {
-                WMText(work.title, 11.2, 600, lh: 17, ls: -0.1).padding(.top, 3)
+                WMText(work.title, 9.6, 600, lh: 15, ls: -0.1).padding(.top, 1)
             }
         }
         .frame(width: width, alignment: .leading)
