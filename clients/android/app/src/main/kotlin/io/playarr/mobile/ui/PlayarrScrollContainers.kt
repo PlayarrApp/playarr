@@ -78,14 +78,15 @@ internal fun PlayarrLazyColumn(
  * px from the viewport start (the rail's fade gutter), does not move the rail at all.
  */
 @OptIn(ExperimentalFoundationApi::class)
-internal class MinimalBringIntoViewSpec(private val startInset: Float) : BringIntoViewSpec {
+internal class MinimalBringIntoViewSpec(private val startInset: Float, private val endInset: Float = 0f) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
         val end = offset + size
+        val limit = containerSize - endInset
         return when {
-            offset >= startInset && end <= containerSize -> 0f
-            size > containerSize - startInset -> offset - startInset
+            offset >= startInset && end <= limit -> 0f
+            size > limit - startInset -> offset - startInset
             offset < startInset -> offset - startInset
-            else -> end - containerSize
+            else -> end - limit
         }
     }
 }
@@ -104,12 +105,17 @@ internal fun PlayarrLazyRow(
     fade: PlayarrFadeKind? = PlayarrFadeKind.Rail,
     /** The rail's viewport extent left of its content start line; non-null fades scrolled-past cards over that gutter only. */
     startGutter: Dp? = null,
+    /** Room kept clear after the last card when a focused card is scrolled into view (web `--tv-track-shadow-end`). */
+    endInset: Dp = 0.dp,
     fadeCrossAxisStartInset: Dp = 0.dp,
     fadeCrossAxisEndInset: Dp = 0.dp,
     content: LazyListScope.() -> Unit,
 ) {
     val density = LocalDensity.current
-    val spec = remember(startGutter, density) { MinimalBringIntoViewSpec(with(density) { (startGutter ?: contentPadding.calculateStartPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)).toPx() }) }
+    // Phone: a focused card never settles closer to the end than the rail's own end padding, so its ring and glow are not cut.
+    val phone = io.playarr.shared.designsystem.page.LocalPlayarrFormFactor.current == io.playarr.shared.designsystem.page.PlayarrFormFactor.Phone
+    val endInset = if (phone) maxOf(endInset, contentPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)) else endInset
+    val spec = remember(startGutter, endInset, density) { MinimalBringIntoViewSpec(with(density) { (startGutter ?: contentPadding.calculateStartPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)).toPx() }, with(density) { endInset.toPx() }) }
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
     LazyRow(
         modifier = when {

@@ -1836,7 +1836,8 @@ internal fun PlayarrExperience(
                                 null
                             }
                         }
-                        .focusProperties { canFocus = !phoneDrawerActive }
+                        // Only while a drawer is open: an unconditional `canFocus = true` here made Down from Back skip every card and pill.
+                        .then(if (phoneDrawerActive) Modifier.focusProperties { canFocus = false } else Modifier)
                         .semantics { if (phoneDrawerActive) invisibleToUser() },
                     content = backgroundContent,
                 )
@@ -3409,12 +3410,14 @@ internal fun ExperienceMediaRail(
             state = railState,
             fade = if (isTelevision) PlayarrFadeKind.Rail else PlayarrFadeKind.PhoneRail,
             startGutter = trackGutter,
+            // Phone: web `--tv-track-shadow-end` (48 px) after the last card, so its ring and glow are not cut at the screen edge.
+            endInset = if (isTelevision) 0.dp else 48.dp,
             fadeCrossAxisStartInset = if (isTelevision) 0.dp else phoneFocusTopHeadroom,
             fadeCrossAxisEndInset = if (isTelevision) 0.dp else phoneFocusBottomHeadroom,
             modifier = trackModifier,
             contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = tabletTrackEnd(20.dp), top = tvTrackHeadroom, bottom = (12f * cssDp).dp) else PaddingValues(
                 start = 16.dp,
-                end = 20.dp,
+                end = 48.dp,
                 top = 10.dp + phoneFocusTopHeadroom,
                 bottom = phoneFocusBottomHeadroom,
             ),
@@ -3673,7 +3676,8 @@ internal fun ExperienceLandscapeCard(
             Text(
                 displayTitle, color = WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
                 letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 1.9.dp, top = 11.5.dp),
+                // Web library caption: 1 px lower than before (measured against the fresh phone refs); the row gap below gives it back.
+                modifier = Modifier.padding(start = 1.9.dp, top = 12.dp),
             )
         } else {
         Text(displayTitle, color = WebInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
@@ -3801,7 +3805,7 @@ internal fun LibraryResults(
             modifier = Modifier.fillMaxSize().then(if (isTelevision) Modifier.playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical) else Modifier),
             contentPadding = screenPadding,
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 24.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 23.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
                 val openLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title)

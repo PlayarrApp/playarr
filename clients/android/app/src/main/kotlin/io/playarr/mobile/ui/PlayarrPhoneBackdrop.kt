@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -244,17 +246,20 @@ internal fun PhonePill(
     fill: Boolean = false,
     content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
 ) {
+    // Web phone: `--page-focus-ring` 2 px, offset 3 px, on a keyboard-focused pill.
+    val source = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by source.collectIsFocusedAsState()
     WebShadowedBox(
         shadows = listOf(shadow),
         shape = androidx.compose.foundation.shape.CircleShape,
-        modifier = modifier,
+        modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp),
         innerModifier = Modifier.background(container),
         innerFill = false,
         innerWidthFill = fill,
     ) {
         androidx.compose.foundation.layout.Row(
             Modifier.height(44.dp).then(if (fill) Modifier.fillMaxWidth() else if (width != null) Modifier.width(width) else Modifier.widthIn(min = 104.dp))
-                .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 16.dp),
+                .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClick = onClick).padding(horizontal = 16.dp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
             content = content,
