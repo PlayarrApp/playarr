@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox: LEFT from a card enters the rail at the item level with the card art, as the web.
 - On iPad, the navigation rail has the web's three pills (Downloads and Search, the four browse tabs, the four personal tabs) and a separate profile tile; the Library preview art is as faint as the web's in dark, and its title, meta line and synopsis follow the web's size, line pitch and ink.
 - On iPad series detail, focusing or tapping an episode card selects it: the detail copy and artwork follow the selection, and a playable card still starts playback directly. The Start/Resume/Watch again button always plays the series resume target (the web chooser for plans that need a choice is not implemented), next to the watchlist and playlist controls. Initial selection follows the resume target, then the first playable episode, centred in its rail; returning from the player keeps the scroll. The tablet rails list playable episodes only, as the web does; phone lists every episode. The last card keeps its focus glow clear of the screen edge.
 - On iPad, page headers show the subtitle beside the title after a vertical divider, in the page ink and never pink (Series and Movies detail, Library count, playlist item count). It wraps under the title behind a rule only when there is no room before the clock. On iPhone the header subtitle is hidden, as on the web, except a Settings section, which shows its name in place of the title.
