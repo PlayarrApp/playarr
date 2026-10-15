@@ -1492,6 +1492,15 @@ struct TVLibraryKindView: View {
 
     private var parityMode: Bool { TVParityLaunch.frozen }
 
+    /// The web reference shows the focused card's ring; the frozen macOS capture draws it too.
+    private var drawsFocusGlow: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return !parityMode
+        #endif
+    }
+
     /// Leftmost grid column ids (SPA 3-col grid) — Left from these → dock.
     private var leadingColumnIDs: Set<UUID> {
         let cols = DesignTokens.Shell.libraryGridColumns
@@ -1691,20 +1700,30 @@ struct TVLibraryKindView: View {
             // native 3479 vs SPA 4996).
             // Wraps like the web heading (max-width 9ch), one 62.2 pt line box per line.
             TVHeroTitle(title: work.title)
-                .padding(.top, 16)
+                .padding(.top, Self.macPreviewShift(16, 29))
             // SPA `.tv-preview-meta`: year then genres with soft separator.
             previewMeta(work)
-                .padding(.top, 22)
+                .padding(.top, Self.macPreviewShift(22, 26))
             if let overview = work.overview, !overview.isEmpty {
                 Text(overview)
                     .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
                     .lineLimit(5)
                     .lineSpacing(4)
-                    .padding(.top, 18)
+                    .padding(.top, Self.macPreviewShift(18, 25))
+                    .frame(maxWidth: Self.macPreviewShift(455, 340), alignment: .leading)
             }
         }
         .frame(maxWidth: DesignTokens.Shell.titlePanelWidth, alignment: .leading)
+    }
+
+    /// Web preview spacing (title top 29, meta 26, overview 25 below, `42ch` overview) on macOS; tvOS keeps its own value.
+    private static func macPreviewShift(_ other: CGFloat, _ mac: CGFloat) -> CGFloat {
+        #if os(macOS)
+        return mac
+        #else
+        return other
+        #endif
     }
 
     private func previewMeta(_ work: Work) -> some View {
@@ -1768,8 +1787,14 @@ struct TVLibraryKindView: View {
     /// Web `.tv-title-grid` at 1920x1080: columns of `--card-w` (327.2 at medium) from x 783.4, 25.92 apart, first row at
     /// y 162, rows 240.4 apart at medium (27 between a card's caption and the next art).
     private func productionTitleGrid(size: CGSize) -> some View {
-        let gridWidth = size.width - 783.4
+        // macOS: room left of the first column for the focused card's ring and glow (never clipped by the scroll view);
+        // the frame widens by the same amount so the cards stay at the web x.
+        #if os(macOS)
+        let padL: CGFloat = 24
+        #else
         let padL: CGFloat = 0
+        #endif
+        let gridWidth = size.width - 783.4 + padL
         let padR: CGFloat = 0
         // Web: screen cards use `--card-w` (3 + step columns, 25.92 apart); cover cards `--card-w-cover`
         // (5 + step columns, 19.2 apart, 2:3); list rows are one column.
@@ -1882,7 +1907,7 @@ struct TVLibraryKindView: View {
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous))
-                    .modifier(TVCardFocusGlow(focused: isSelected && !parityMode, cornerRadius: DesignTokens.Radius.card))
+                    .modifier(TVCardFocusGlow(focused: isSelected && drawsFocusGlow, cornerRadius: DesignTokens.Radius.card))
                     // Pinned web values: rest 0 10 20 .14 + 0 3 8 .10; focused 0 24 48 .30 + 0 10 20 .20.
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)

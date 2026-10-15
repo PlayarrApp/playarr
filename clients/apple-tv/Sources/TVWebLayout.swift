@@ -179,7 +179,19 @@ struct TVAuthedImage<Placeholder: View>: View {
 
 /// Greedy word wrap using the real font metrics, so multi-line titles break where the web's do.
 enum TVTextWrap {
-    static func lines(_ text: String, weight: CGFloat, size: CGFloat, kern: CGFloat, width: CGFloat) -> [String] {
+    /// `balanced` mirrors CSS `text-wrap: balance`: the narrowest width that keeps the greedy line count.
+    static func lines(_ text: String, weight: CGFloat, size: CGFloat, kern: CGFloat, width: CGFloat, balanced: Bool = false) -> [String] {
+        let greedy = greedyLines(text, weight: weight, size: size, kern: kern, width: width)
+        guard balanced, greedy.count > 1 else { return greedy }
+        var lo: CGFloat = 0, hi = width
+        while hi - lo > 1 {
+            let mid = (lo + hi) / 2
+            if greedyLines(text, weight: weight, size: size, kern: kern, width: mid).count <= greedy.count { hi = mid } else { lo = mid }
+        }
+        return greedyLines(text, weight: weight, size: size, kern: kern, width: hi)
+    }
+
+    private static func greedyLines(_ text: String, weight: CGFloat, size: CGFloat, kern: CGFloat, width: CGFloat) -> [String] {
         let font = TVFontLoader.uiFont(mono: false, size: size, weight: weight)
         func measure(_ value: String) -> CGFloat {
             (value as NSString).size(withAttributes: [.font: font, .kern: kern]).width
@@ -375,7 +387,11 @@ struct TVHeroTitle: View {
     var cssWeight: CGFloat = 560
 
     var body: some View {
+        #if os(macOS)
+        let lines = TVTextWrap.lines(title, weight: cssWeight, size: 69.12, kern: -4.98, width: 379.5, balanced: true)
+        #else
         let lines = TVTextWrap.lines(title, weight: cssWeight, size: 69.12, kern: -4.98, width: 379.5)
+        #endif
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(line)
