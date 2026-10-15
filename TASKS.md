@@ -660,6 +660,7 @@ Steps only the repository owner can perform.
 | 10489 | Harmony phone rail bleed width and series-detail saved-frame guard | in_review | parity-harmony | harmony-phone-parity-20 | | 2026-10-16 12:00 ICT | Round 3 recapture (run 38796055060): light rail end edge was still 0.00 of the inner strength (web 0.81) because #1488 only padded the list; the list is now widened. The light series-detail frame published with grey cards although the guard had passed, so two clean checks 5 s apart and a check of the saved file are required. PR open: #1511. |
 | 10501 | Harmony TV Covers Home row offset as web, series-detail first episode focused in captures | done | parity-harmony | harmony-sd-focus | 5.10102 | 2026-10-16 18:00 ICT | PR open: #1498. Web covers ref measured (web-covers/home.png): On deck row centred on the page, 51 vp higher than ours; row pitch already matches (469). PR #1498 merged 2026-10-15. |
 | 10545 | iPhone hardware keyboard focus moves between cards on Home and the library grids | done | parity-iphone | iphone-r3-focus | | 2026-10-17 18:00 ICT | The keyboard runner (#1495) showed Tab and arrows left the ring on the first card; cards are now focusable and the ring follows focus. PR open: #1510 PR #1510 merged 2026-10-15. |
+| 10553 | Android TV Home rail anchor at every artwork size and in Covers mode (owner request 2026-10-16) | done | atv-parity worker | atv-cover | | 2026-10-16 22:00 ICT | PR open: #1517. Next-free row picked from the board and open PRs. PR #1517 merged 2026-10-15. |
 
 ## 18. Public repository readiness (2026-10-05)
 
