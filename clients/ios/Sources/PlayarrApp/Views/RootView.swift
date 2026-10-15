@@ -522,16 +522,20 @@ private struct AuthenticatedPlayarrShell: View {
             PlayarrLogo(size: 30)
                 .offset(x: navEdge + 24.4, y: chromeTop)
 
-            VStack(spacing: 18) {
+            // Web rail: Downloads and Search, then the four browse tabs, then the four personal tabs, each in its own pill.
+            VStack(spacing: 15) {
                 navGroup(Array(destinations.prefix(2)))
                 if destinations.count > 2 {
-                    navGroup(Array(destinations.dropFirst(2)))
+                    navGroup(Array(destinations.dropFirst(2).prefix(4)))
+                }
+                if destinations.count > 6 {
+                    navGroup(Array(destinations.dropFirst(6)))
                 }
             }
-            .offset(x: navEdge, y: max(100, (proxy.size.height - stageNavigationHeight) / 2))
+            .offset(x: navEdge, y: 110 * proxy.size.height / 1024)
 
-            profileButton(size: 46, avatarSize: 34)
-                .offset(x: navEdge + 16, y: proxy.size.height - max(46, proxy.safeAreaInsets.bottom + 46))
+            profileTile
+                .offset(x: navEdge, y: proxy.size.height - max(0, proxy.safeAreaInsets.bottom) - 121 * proxy.size.height / 1024)
         }
     }
 
@@ -567,6 +571,24 @@ private struct AuthenticatedPlayarrShell: View {
                 .stroke(PlayarrStyle.line.opacity(0.48), lineWidth: 1)
         }
         .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 21, y: 14)
+    }
+
+    /// The web rail's profile tile: avatar over the profile name in its own pill, 78 x 75 pt at 1366 wide.
+    private var profileTile: some View {
+        Button { select(.profiles) } label: {
+            VStack(spacing: 4) {
+                currentAvatar(size: 28)
+                Text((environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
+                    .font(WM.font(8.5, 700))
+                    .foregroundStyle(PlayarrStyle.muted)
+                    .lineLimit(1)
+            }
+            .frame(width: 76, height: 75)
+            .background(PlayarrStyle.surfaceStrong.opacity(0.56), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PlayarrStyle.line.opacity(0.48), lineWidth: 1) }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open profile and settings")
     }
 
     private func profileButton(size: CGFloat, avatarSize: CGFloat, ring: Bool = true) -> some View {

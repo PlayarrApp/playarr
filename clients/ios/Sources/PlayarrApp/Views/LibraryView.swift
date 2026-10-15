@@ -245,7 +245,7 @@ struct LibraryView: View {
                     PlayarrArtwork(work: preview, kind: .backdrop, apiClient: apiClient)
                         .frame(width: proxy.size.width * 0.52, height: proxy.size.height)
                         .clipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
-                        .opacity(scheme == .dark ? 0.3 : 0.14)
+                        .opacity(scheme == .dark ? 0.1 : 0.14)
                         .overlay {
                             LinearGradient(
                                 colors: [PlayarrStyle.surface.opacity(0.2), PlayarrStyle.surface],
@@ -526,22 +526,25 @@ struct LibraryView: View {
 
     private func previewCopy(_ work: Work) -> some View {
         let year = work.releaseDate.map { String($0.prefix(4)) }.flatMap { Int($0) != nil ? $0 : nil }
-        let meta = ([year].compactMap { $0 } + [work.genres.prefix(2).joined(separator: " · ")].filter { !$0.isEmpty }).joined(separator: "   |   ")
+        let genres = work.genres.prefix(2).joined(separator: " · ")
+        let meta = [year, genres.isEmpty ? nil : genres].compactMap { $0 }.joined(separator: "   ")
         return VStack(alignment: .leading, spacing: 0) {
             WMText((work.genres.first ?? work.kind.displayName).uppercased(), 8.6, 800, color: PlayarrStyle.pink, lh: 13, ls: 1.1)
                 .padding(.bottom, 20)
+            // The web title block is narrower than the copy below it, so "2 Fast 2 Furious" breaks after "Fast".
             Text(work.title)
                 .font(WM.font(46, 400))
                 .tracking(-1.6)
-                .lineSpacing(-4)
+                .lineSpacing(-30)
                 .foregroundStyle(PlayarrStyle.ink)
                 .lineLimit(3)
+                .frame(maxWidth: 190, alignment: .leading)
             WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
                 .padding(.top, 26)
             if let overview = work.overview {
                 Text(overview)
                     .font(WM.font(11.5, 500))
-                    .foregroundStyle(PlayarrStyle.muted)
+                    .foregroundStyle(PlayarrStyle.inkSoft)
                     .lineSpacing(2.5)
                     .lineLimit(5)
                     .padding(.top, 20)

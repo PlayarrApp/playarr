@@ -1,0 +1,1 @@
+- On iPad, the navigation rail has the web's three pills (Downloads and Search, the four browse tabs, the four personal tabs) and a separate profile tile; the Library preview art is as faint as the web's in dark, and its title, meta line and synopsis follow the web's size, line pitch and ink.
