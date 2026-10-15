@@ -1,1 +1,0 @@
-- On iPad, the series detail backdrop is as faint as the web's in dark, so the copy and rails are no longer lost against the artwork.
