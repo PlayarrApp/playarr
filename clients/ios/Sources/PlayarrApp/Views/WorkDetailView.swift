@@ -207,7 +207,7 @@ struct WorkDetailView: View {
             ZStack(alignment: .topLeading) {
                 PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
                     .frame(width: proxy.size.width, height: proxy.size.height)
-                    .opacity(scheme == .dark ? (detail.work.kind == .movie ? 0.06 : 0.3) : 0.07)
+                    .opacity(scheme == .dark ? (detail.work.kind == .movie || detail.work.kind == .series ? 0.06 : 0.3) : 0.07)
                     .overlay {
                         LinearGradient(
                             colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
