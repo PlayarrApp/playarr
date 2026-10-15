@@ -94,7 +94,9 @@ namespace Playarr.Xbox.Views
             }
 
             double CentreY(FrameworkElement el) => el.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point(0, el.ActualHeight / 2)).Y;
-            var y = CentreY(source);
+            // A card's container also holds its title and caption (and the focus room); the web reads the art's level.
+            var y = CentreY(source is Windows.UI.Xaml.Controls.Primitives.SelectorItem { ContentTemplateRoot: Panel card }
+                && card.Children.OfType<Grid>().FirstOrDefault() is { } art ? art : source);
             Button? best = null;
             foreach (var (button, page, _) in _items)
             {
