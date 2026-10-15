@@ -1,1 +1,0 @@
-- Xbox: the library Filters drawer has a View choice, Screen or Cover, and Cover shows portrait posters as the web.
