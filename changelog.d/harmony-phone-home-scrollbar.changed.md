@@ -1,1 +1,0 @@
-- HarmonyOS phone Home hides its scroll bar, as web does.

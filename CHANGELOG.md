@@ -659,6 +659,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone Home hides its scroll bar, as web does.
+- Harmony wall: the Previewer bridge gains swipe and wheel endpoints and the phone capture records Home, rail and drawer scroll bursts.
 - HarmonyOS phone Home rails run to the screen edge at their end, dimmed by the end fade, as web's do.
 - HarmonyOS: Library Filters gain web's Audio and Subtitle language selects, the View buttons read List, Screen and Cover with icons, the phone drawer close button is filled, and the phone Library column count follows the artwork size.
 - Fire TV: the title actions drawer's Play glyph is drawn in the brand pink instead of an orange emoji.
