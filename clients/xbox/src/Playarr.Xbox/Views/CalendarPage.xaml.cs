@@ -466,17 +466,18 @@ namespace Playarr.Xbox.Views
 
         private UIElement Week(DateTime start, Dictionary<DateTime, List<CalendarEntry>> byDay)
         {
-            var columns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(154, 176, 48, 0) };
+            // Web week: 440 px day columns 20 px apart; cards 106 px tall on a 121 px pitch; day heading 16.6 px.
+            var columns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 20, Margin = new Thickness(154, 170, 48, 0) };
             for (var d = 0; d < 7; d++)
             {
                 var day = start.AddDays(d);
-                var column = new StackPanel { Width = 450, Spacing = 10 };
-                column.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 13, FontWeights.SemiBold, "PlayarrInk"));
+                var column = new StackPanel { Width = 440, Spacing = 15 };
+                column.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 16.6, FontWeights.SemiBold, "PlayarrInk", new Thickness(0, 0, 0, 4)));
                 if (byDay.TryGetValue(day, out var entries))
                 {
                     foreach (var entry in entries)
                     {
-                        column.Children.Add(EntryCard(entry, 450, null));
+                        column.Children.Add(EntryCard(entry, 440, null, web: true));
                     }
                 }
 
@@ -570,16 +571,17 @@ namespace Playarr.Xbox.Views
 
         // ---- shared entry card -------------------------------------------------------------------------------------
 
-        private FrameworkElement EntryCard(CalendarEntry entry, double width, Action? onFocus)
+        /// <param name="web">The week view's card at the web's sizes (19 px title and line, 12.7 px meta, 40x60 poster, 106 px tall).</param>
+        private FrameworkElement EntryCard(CalendarEntry entry, double width, Action? onFocus, bool web = false)
         {
             var card = new Button
             {
                 Width = width,
-                Height = 100,
-                Padding = new Thickness(16, 10, 16, 10),
+                Height = web ? 106 : 100,
+                Padding = web ? new Thickness(16, 8, 12, 8) : new Thickness(16, 10, 16, 10),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 VerticalContentAlignment = VerticalAlignment.Center,
-                CornerRadius = new CornerRadius(10),
+                CornerRadius = new CornerRadius(web ? 12 : 10),
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceStrong"],
                 BorderBrush = (Brush)Application.Current.Resources["PlayarrLine"],
                 BorderThickness = new Thickness(1),
@@ -601,25 +603,25 @@ namespace Playarr.Xbox.Views
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             // Availability is the entry's left accent (owner rule: have it versus not, never the library).
-            var poster = new Border { Width = 34, Height = 52, CornerRadius = new CornerRadius(3), Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] };
+            var poster = new Border { Width = web ? 40 : 34, Height = web ? 60 : 52, CornerRadius = new CornerRadius(web ? 6 : 3), Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] };
             if (Uri.TryCreate(entry.PosterUrl, UriKind.Absolute, out var posterUri))
             {
-                poster.Child = new Image { Source = new BitmapImage(posterUri) { DecodePixelWidth = 68 }, Stretch = Stretch.UniformToFill };
+                poster.Child = new Image { Source = new BitmapImage(posterUri) { DecodePixelWidth = web ? 80 : 68 }, Stretch = Stretch.UniformToFill };
             }
 
             row.Children.Add(poster);
             var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-            text.Children.Add(Ui.Text(entry.Title, 15, FontWeights.SemiBold, "PlayarrInk"));
-            var line2 = Ui.Text(Join(Code(entry), entry.Subtitle ?? string.Empty), 14, FontWeights.Normal, "PlayarrInkSoft");
+            text.Children.Add(Ui.Text(entry.Title, web ? 19 : 15, FontWeights.SemiBold, "PlayarrInk"));
+            var line2 = Ui.Text(Join(Code(entry), entry.Subtitle ?? string.Empty), web ? 19 : 14, FontWeights.Normal, "PlayarrInkSoft");
             line2.TextTrimming = TextTrimming.CharacterEllipsis;
             text.Children.Add(line2);
             var meta = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, 3, 0, 0) };
             foreach (var part in new[] { TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry) })
             {
-                meta.Children.Add(Ui.Text(part, 9, FontWeights.SemiBold, "PlayarrInkSoft"));
+                meta.Children.Add(Ui.Text(part, web ? 12.7 : 9, FontWeights.SemiBold, "PlayarrInkSoft"));
             }
 
-            meta.Children.Add(TonePill(entry));
+            meta.Children.Add(TonePill(entry, web));
             text.Children.Add(meta);
             Grid.SetColumn(text, 1);
             row.Children.Add(text);
@@ -629,22 +631,22 @@ namespace Playarr.Xbox.Views
             accent.Children.Add(card);
             accent.Children.Add(new Border
             {
-                Width = 3,
-                Margin = new Thickness(0, 12, 0, 12),
+                Width = web ? 4 : 3,
+                Margin = web ? new Thickness(0) : new Thickness(0, 12, 0, 12),
                 HorizontalAlignment = HorizontalAlignment.Left,
-                CornerRadius = new CornerRadius(2),
+                CornerRadius = web ? new CornerRadius(12, 0, 0, 12) : new CornerRadius(2),
                 Background = new SolidColorBrush(entry.HasFile ? Available : Absent),
                 IsHitTestVisible = false,
             });
             return accent;
         }
 
-        private static FrameworkElement TonePill(CalendarEntry entry) => CalendarRules.Tone(entry, DateTime.Today) switch
+        private static FrameworkElement TonePill(CalendarEntry entry, bool web = false) => CalendarRules.Tone(entry, DateTime.Today) switch
         {
-            CalendarTone.Available => Ui.StatusPill("Available", Available),
-            CalendarTone.Upcoming => Ui.StatusPill("Upcoming", Theme.BrandInk),
-            CalendarTone.Missing => Ui.StatusPill("Missing", Theme.BrandInk),
-            _ => Ui.StatusPill("Not tracked", Theme.InkMuted),
+            CalendarTone.Available => Ui.StatusPill("Available", Available, web),
+            CalendarTone.Upcoming => Ui.StatusPill("Upcoming", Theme.BrandInk, web),
+            CalendarTone.Missing => Ui.StatusPill("Missing", Theme.BrandInk, web),
+            _ => Ui.StatusPill("Not tracked", Theme.InkMuted, web),
         };
 
         private static string Code(CalendarEntry entry)

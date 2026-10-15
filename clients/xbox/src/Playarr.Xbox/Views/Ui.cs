@@ -158,16 +158,17 @@ namespace Playarr.Xbox.Views
 
         public static void SetPillText(Button pill, string text) => ((TextBlock)pill.Content).Text = text;
 
-        /// <summary>A small outlined status pill ("Available", "Missing").</summary>
-        public static Border StatusPill(string text, Color color) => new Border
+        /// <summary>A small outlined status pill ("Available", "Missing"); <paramref name="web"/> is the calendar week's larger one with a tinted fill and ink text.</summary>
+        public static Border StatusPill(string text, Color color, bool web = false) => new Border
         {
-            Padding = new Thickness(7, 1, 7, 2),
-            CornerRadius = new CornerRadius(9),
-            BorderBrush = new SolidColorBrush(color),
+            Padding = web ? new Thickness(14, 3, 14, 4) : new Thickness(7, 1, 7, 2),
+            CornerRadius = new CornerRadius(web ? 13 : 9),
+            BorderBrush = new SolidColorBrush(web ? Color.FromArgb(0xB0, color.R, color.G, color.B) : color),
+            Background = web ? new SolidColorBrush(Color.FromArgb(0x2E, color.R, color.G, color.B)) : null,
             BorderThickness = new Thickness(1),
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Child = new TextBlock { Text = text, FontSize = 9, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(color) },
+            Child = new TextBlock { Text = text, FontSize = web ? 12.7 : 9, FontWeight = web ? FontWeights.Bold : FontWeights.SemiBold, Foreground = web ? Res("PlayarrInk") : new SolidColorBrush(color) },
         };
     }
 }
