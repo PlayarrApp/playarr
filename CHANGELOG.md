@@ -649,6 +649,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone: the film Play button opens in web's focused style.
 - HarmonyOS phone: detail pages show the floating nav bar, the Play button takes web's focused style and focus, phone cards draw web's focus ring and glow, player previous and next are bare icons.
 - HarmonyOS phone player controls follow the web phone layout: round minimise and close at the top right, progress track, centred time, one transport row and an info row.
 - HarmonyOS phone: series and film detail text rhythm, the movie action row sizes, the genre kicker and the next-up episode focus follow web; the wall seeds the test user's progress so Home's On deck is stable.

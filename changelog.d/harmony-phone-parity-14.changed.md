@@ -1,1 +1,0 @@
-- HarmonyOS phone: the film Play button opens in web's focused style.
