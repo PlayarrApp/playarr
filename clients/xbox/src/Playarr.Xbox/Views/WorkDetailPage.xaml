@@ -57,7 +57,7 @@
             Click="BackButton_Click">
             <FontIcon Glyph="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
         </Button>
-        <StackPanel Margin="228,57,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <StackPanel x:Name="HeaderTitles" Margin="228,57,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
             <TextBlock x:Name="LibraryText" Style="{StaticResource PlayarrPageTitle}" />
             <TextBlock
                 x:Name="SubtitleText"

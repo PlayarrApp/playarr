@@ -99,7 +99,9 @@ namespace Playarr.Xbox.Views
                 WorkKind.Artist => "Music",
                 _ => string.Empty,
             };
-            SubtitleText.Text = _viewModel.Title.ToUpperInvariant();
+            SubtitleText.Text = _viewModel.Title;
+            // The web header: the title beside the subtitle after a divider (not pink), as every other page.
+            Ui.LayoutHeader(HeaderTitles, LibraryText, SubtitleText);
             EyebrowText.Text = work != null && work.Genres.Count > 0 ? work.Genres[0].ToUpperInvariant() : string.Empty;
             // Web meta row: kind, year, then genres, spaced (runtime and release date need fields this client lacks).
             var meta = new System.Collections.Generic.List<string>();
