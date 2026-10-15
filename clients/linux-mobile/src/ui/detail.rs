@@ -459,6 +459,14 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             .hscrollbar_policy(gtk4::PolicyType::Automatic)
             .propagate_natural_height(true)
             .build();
+        // The scroller clips its child: reserve room for the focus ring and glow, and take it back from the
+        // neighbours so the layout does not move (as the episode rail does).
+        row1.set_margin_start(FOCUS_ROOM);
+        row1.set_margin_top(FOCUS_ROOM);
+        row1.set_margin_bottom(FOCUS_ROOM);
+        sw.set_margin_start(-FOCUS_ROOM);
+        sw.set_margin_top(-FOCUS_ROOM);
+        sw.set_margin_bottom(-FOCUS_ROOM);
         body.append(&sw);
     } else {
         row2.append(&watch);
