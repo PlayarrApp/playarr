@@ -41,6 +41,24 @@ public final class WorkDetailViewModel {
         self.workID = workID
     }
 
+    /// Resolves the tablet's initial series detail selection from the resume target,
+    /// falling back to the first playable episode in catalogue order.
+    static func initialSeriesEpisode(
+        seasons: [SeasonDetail],
+        resumeTarget: SeriesResumeTarget?
+    ) -> (season: SeasonDetail, episode: EpisodeDetail)? {
+        let playable = seasons.flatMap { season in
+            season.episodes.filter { $0.mediaFileID != nil }.map { (season, $0) }
+        }
+        if let target = resumeTarget,
+           let next = playable.first(where: { $0.1.id == target.episodeID })
+            ?? playable.first(where: { $0.1.mediaFileID == target.mediaFileID }) {
+            return (next.0, next.1)
+        }
+        guard let first = playable.first else { return nil }
+        return (first.0, first.1)
+    }
+
     public func load() async {
         loadState = .loading
         do {

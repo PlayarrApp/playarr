@@ -7,6 +7,119 @@ import XCTest
 
 @MainActor
 final class WorkDetailViewModelTests: XCTestCase {
+    func testSeriesResumePlanDecodesActionAndChoiceRequirement() throws {
+        let episodeID = UUID()
+        let plan = try JSONDecoder().decode(
+            SeriesResumePlan.self,
+            from: Data("{\"action\":\"resume\",\"needs_choice\":true,\"target\":{\"episode_id\":\"\(episodeID.uuidString)\",\"media_file_id\":null}}".utf8)
+        )
+
+        XCTAssertEqual(plan.action, "resume")
+        XCTAssertEqual(plan.needsChoice, true)
+        XCTAssertEqual(plan.target?.episodeID, episodeID)
+    }
+
+    func testTabletEpisodeRuntimeRoundsToNearestMinute() {
+        XCTAssertEqual(WorkDetailView.runtimeLabel(41 * 60_000 + 29_000), "41 min")
+        XCTAssertEqual(WorkDetailView.runtimeLabel(41 * 60_000 + 30_000), "42 min")
+        XCTAssertEqual(WorkDetailView.runtimeLabel(59 * 60_000 + 30_000), "1h")
+        XCTAssertEqual(WorkDetailView.runtimeLabel(90 * 60_000), "1h 30m")
+    }
+
+    func testTabletYearRangeIncludesOnlyLaterSeriesEndYear() {
+        XCTAssertEqual(WorkDetailView.tabletYearRangeLabel(releaseDate: "2011-01-01", endDate: "2019-01-01"), "2011–2019")
+        XCTAssertEqual(WorkDetailView.tabletYearRangeLabel(releaseDate: "2011-01-01", endDate: "2011-12-31"), "2011")
+        XCTAssertNil(WorkDetailView.tabletYearRangeLabel(releaseDate: nil, endDate: "2019-01-01"))
+    }
+
+    func testTabletSynopsisLineBoxTracksWebLeadingAcrossLineCountsAndAbsentSynopsis() {
+        for fontSize: CGFloat in [9.28, 18.56] {
+            let nativeLineHeight = fontSize * 1.364
+            let metrics = WorkDetailView.tabletSynopsisLayoutMetrics(
+                fontSize: fontSize,
+                nativeLineHeight: nativeLineHeight,
+                hasSynopsis: true
+            )
+            let webLineHeight = fontSize * 1.58
+
+            for lineCount in 1...5 {
+                let nativeTextAndFinalLineBox = CGFloat(lineCount) * nativeLineHeight
+                    + CGFloat(lineCount - 1) * metrics.lineSpacing
+                    + metrics.trailingPadding
+                XCTAssertEqual(nativeTextAndFinalLineBox, CGFloat(lineCount) * webLineHeight, accuracy: 0.001)
+            }
+            XCTAssertEqual(metrics.actionsTopMargin, 12, accuracy: 0.001)
+        }
+
+        let absentSynopsis = WorkDetailView.tabletSynopsisLayoutMetrics(
+            fontSize: 9.28,
+            nativeLineHeight: 12.66,
+            hasSynopsis: false
+        )
+        XCTAssertEqual(absentSynopsis.lineSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(absentSynopsis.trailingPadding, 0, accuracy: 0.001)
+        XCTAssertEqual(absentSynopsis.actionsTopMargin, 12, accuracy: 0.001)
+    }
+
+    func testTabletEpisodeAirDateUsesCurrentLocaleAndUTC() throws {
+        let input = "2026-01-02"
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withFullDate]
+        parser.timeZone = TimeZone(secondsFromGMT: 0)!
+        let date = try XCTUnwrap(parser.date(from: input))
+        let expected = DateFormatter()
+        expected.locale = Locale.current
+        expected.timeZone = TimeZone(secondsFromGMT: 0)!
+        expected.setLocalizedDateFormatFromTemplate("dMMMy")
+
+        XCTAssertEqual(WorkDetailView.airDateLabel(input), expected.string(from: date))
+    }
+
+    func testInitialSeriesEpisodeUsesResumeTargetThenFirstPlayableFallback() throws {
+        let seriesID = UUID()
+        let seasonID = UUID()
+        let firstID = UUID()
+        let nextID = UUID()
+        let nextMediaID = UUID()
+        let season = Season(
+            id: seasonID,
+            seriesWorkID: seriesID,
+            seasonNumber: 1,
+            monitored: true,
+            availability: .available
+        )
+        let seasons = [SeasonDetail(season: season, episodes: [
+            EpisodeDetail(episode: Episode(id: firstID, seasonID: seasonID, episodeNumber: 1, monitored: true, availability: .available), mediaFileID: UUID()),
+            EpisodeDetail(episode: Episode(id: nextID, seasonID: seasonID, episodeNumber: 2, monitored: true, availability: .available), mediaFileID: nextMediaID)
+        ])]
+        let target = try JSONDecoder().decode(
+            SeriesResumeTarget.self,
+            from: Data("{\"episode_id\":\"\(nextID.uuidString)\",\"media_file_id\":\"\(nextMediaID.uuidString)\"}".utf8)
+        )
+
+        let resumed = WorkDetailViewModel.initialSeriesEpisode(
+            seasons: seasons,
+            resumeTarget: target
+        )
+        let fallback = WorkDetailViewModel.initialSeriesEpisode(
+            seasons: seasons,
+            resumeTarget: nil
+        )
+
+        XCTAssertEqual(resumed?.episode.id, nextID)
+        XCTAssertEqual(fallback?.episode.id, firstID)
+
+        let staleEpisodeTarget = try JSONDecoder().decode(
+            SeriesResumeTarget.self,
+            from: Data("{\"episode_id\":\"\(UUID().uuidString)\",\"media_file_id\":\"\(nextMediaID.uuidString)\"}".utf8)
+        )
+        let mediaFileFallback = WorkDetailViewModel.initialSeriesEpisode(
+            seasons: seasons,
+            resumeTarget: staleEpisodeTarget
+        )
+        XCTAssertEqual(mediaFileFallback?.episode.id, nextID)
+    }
+
     func testLoadPublishesFetchedDetail() async {
         let workID = UUID()
         let detail = WorkDetail(
