@@ -418,12 +418,18 @@ struct TVRingButtonStyle: ButtonStyle {
         let label: Label
         let cornerRadius: CGFloat
         @Environment(\.isFocused) private var isFocused
+        #if os(macOS)
+        private let ringOut: CGFloat = 3.5
+        #else
+        private let ringOut: CGFloat = 5
+        #endif
 
         var body: some View {
             label.overlay(
-                RoundedRectangle(cornerRadius: cornerRadius + 5, style: .continuous)
+                // Web `--page-focus-ring`: 3 px ring, 2 px offset (centre 3.5 px out); the web reference's back button measures 5 px.
+                RoundedRectangle(cornerRadius: cornerRadius + ringOut, style: .continuous)
                     .stroke(DesignTokens.Stage.focusRing, lineWidth: 3)
-                    .padding(-5)
+                    .padding(-ringOut)
                     .opacity(isFocused ? 1 : 0)
             )
         }

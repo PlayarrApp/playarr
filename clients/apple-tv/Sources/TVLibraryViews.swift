@@ -1011,7 +1011,17 @@ struct TVCardFocusGlow: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius + 3, style: .continuous)
                     .stroke(DesignTokens.Stage.cardGlow, lineWidth: 3)
                     .padding(-3)
+                    #if os(macOS)
+                    // Web `0 0 20px 4px` glow at 45%: the 4 px spread is a wider faint stroke under the blur.
+                    .background(
+                        RoundedRectangle(cornerRadius: cornerRadius + 7, style: .continuous)
+                            .stroke(DesignTokens.Stage.cardGlow.opacity(0.3), lineWidth: 6)
+                            .padding(-6)
+                            .blur(radius: 10)
+                    )
+                    #else
                     .shadow(color: DesignTokens.Stage.cardGlow.opacity(0.45), radius: 12)
+                    #endif
             }
         }
     }
@@ -1095,6 +1105,9 @@ struct TVWorkArt: View {
 
     var body: some View {
         if let url {
+            #if os(macOS)
+            TVRetryingArt(url: url) { tile }
+            #else
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
@@ -1103,6 +1116,7 @@ struct TVWorkArt: View {
                     tile
                 }
             }
+            #endif
         } else {
             tile
         }
@@ -1121,12 +1135,44 @@ struct TVWorkArt: View {
 
     private var url: URL? {
         let order: [ImageKind] = posterFirst ? [.poster, .backdrop] : [.backdrop, .poster]
-        let path = order.lazy.compactMap { kind in work.images.first(where: { $0.kind == kind })?.url }.first
-            ?? work.images.first?.url
-        guard let path else { return nil }
-        return apiClient.artworkURL(forPath: path)
+        let image = order.lazy.compactMap { kind in work.images.first(where: { $0.kind == kind }) }.first ?? work.images.first
+        guard let image else { return nil }
+        #if os(macOS)
+        // Arr-sourced art (`playarr-arr://`) is no URL the app can fetch; the web asks the server's work-artwork route.
+        if image.url.hasPrefix("playarr-arr:") {
+            return apiClient.artworkURL(forPath: "/api/v1/artwork/work/\(work.id.uuidString.lowercased())/\(image.kind.rawValue)")
+        }
+        #endif
+        return apiClient.artworkURL(forPath: image.url)
     }
 }
+
+#if os(macOS)
+/// Like the web artwork (`artwork.tsx`), a failed fetch is tried again; `AsyncImage` gives up on the first error, which left
+/// the same cards as text tiles in every macOS capture.
+struct TVRetryingArt<Placeholder: View>: View {
+    let url: URL
+    @ViewBuilder let placeholder: () -> Placeholder
+    @State private var image: Image?
+
+    var body: some View {
+        Group {
+            if let image { image.resizable().scaledToFill() } else { placeholder() }
+        }
+        .task(id: url) {
+            // The server can answer 5xx while it fetches a provider image the first time; give it about 20 s.
+            for attempt in 0..<10 where image == nil {
+                if attempt > 0 { try? await Task.sleep(nanoseconds: 2_000_000_000) }
+                if Task.isCancelled { return }
+                if let (data, response) = try? await URLSession.shared.data(from: url),
+                   (response as? HTTPURLResponse)?.statusCode == 200, let ns = NSImage(data: data) {
+                    image = Image(nsImage: ns)
+                }
+            }
+        }
+    }
+}
+#endif
 
 struct TVSearchView: View {
     @Environment(TVAppEnvironment.self) private var environment
@@ -1717,6 +1763,16 @@ struct TVLibraryKindView: View {
         .frame(maxWidth: DesignTokens.Shell.titlePanelWidth, alignment: .leading)
     }
 
+    /// Web library card focus (translateY(-7px) scale(1.025), shadows 0 24 48 and 0 10 20) on macOS, measured against the web
+    /// light reference; tvOS keeps its own value.
+    private static func macCardBlur(_ other: CGFloat, _ mac: CGFloat) -> CGFloat {
+        #if os(macOS)
+        return mac
+        #else
+        return other
+        #endif
+    }
+
     /// Web preview spacing (title top 29, meta 26, overview 25 below, `42ch` overview) on macOS; tvOS keeps its own value.
     private static func macPreviewShift(_ other: CGFloat, _ mac: CGFloat) -> CGFloat {
         #if os(macOS)
@@ -1912,13 +1968,13 @@ struct TVLibraryKindView: View {
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)
                             .opacity(isSelected ? 0.3 : 0.14),
-                        radius: isSelected ? 24 : 10,
+                        radius: isSelected ? Self.macCardBlur(24, 48) : Self.macCardBlur(10, 20),
                         y: isSelected ? 24 : 10
                     )
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)
                             .opacity(isSelected ? 0.2 : 0.1),
-                        radius: isSelected ? 10 : 4,
+                        radius: isSelected ? Self.macCardBlur(10, 20) : Self.macCardBlur(4, 8),
                         y: isSelected ? 10 : 3
                     )
                     // SPA fixture crops already include the pink unwatched disc.
@@ -1943,8 +1999,8 @@ struct TVLibraryKindView: View {
             .frame(width: width, alignment: .leading)
             .opacity(isSelected || parityMode ? 1 : 0.92)
             // Pinned web library focus: translateY(-5px) scale(1.015) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
-            .scaleEffect(isSelected ? 1.015 : 1)
-            .offset(y: isSelected ? -5 : 0)
+            .scaleEffect(isSelected ? Self.macCardBlur(1.015, 1.025) : 1)
+            .offset(y: isSelected ? Self.macCardBlur(-5, -7) : 0)
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle())
