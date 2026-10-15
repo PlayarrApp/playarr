@@ -197,6 +197,8 @@ export struct PosterCard {
   @Prop unseen: boolean = false;
   /** Phone Library caption: medium weight, the muted ink (web phone grid). */
   @Prop softCaption: boolean = false;
+  /** Phone: draw the focus ring and glow without real focus (the Previewer never reports it); web rings the next-up episode on open. */
+  @Prop ringOn: boolean = false;
 
   @Prop title: string = '';
   @Prop subtitle: string = '';
@@ -425,7 +427,7 @@ export struct PosterCard {
           .height(this.cardHeight)
           .borderRadius(this.resolvedArtworkRadius())
           .border({ width: 3, color: this.focusRingColor(1) })
-          .opacity(this.effective())
+          .opacity(Math.max(this.effective(), this.ringOn ? 1 : 0))
           .scale({ x: this.artworkScale(), y: this.artworkScale() })
           .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
           .hitTestBehavior(HitTestMode.None)

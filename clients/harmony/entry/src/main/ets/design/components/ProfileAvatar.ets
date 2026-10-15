@@ -54,11 +54,11 @@
  * caller-supplied prop, unlike `PosterCard.ets`.
  */
 
-import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
+import { activeColors, resolvedThemeMode, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS } from '../Motion';
 import { AvatarPresets, BRAND_PINK_SOFT } from '../../core/Tokens';
-import type { AvatarPreset } from '../../core/Tokens';
+import type { AvatarPreset, RgbaColor } from '../../core/Tokens';
 import { FOCUS_LIFT, effectiveFocusPercent, DEFAULT_ACTIVE_RAIL_FACTOR } from './FocusLift';
 import { CircleShape } from '@kit.ArkUI';
 
@@ -133,6 +133,8 @@ export struct ProfileAvatar {
    * `retry` / `PosterCard.ets`'s `onSelect`. */
   /** Takes the first D-pad focus (web focuses the current profile on open). */
   @Prop initialFocus: boolean = false;
+  /** Phone: show the focus ring and glow without real focus (the Previewer never reports it); web rings the current profile on open. */
+  @Prop ringOn: boolean = false;
 
   onSelect: () => void = () => {};
 
@@ -168,7 +170,11 @@ export struct ProfileAvatar {
   /** "ring opacity → 1" -- rest is fully transparent (`0`), focus is fully
    * opaque (`1`), animated linearly by the same focus progress. */
   private ringOpacity(): number {
-    return this.effective();
+    return Math.max(this.effective(), this.ringOn ? 1 : 0);
+  }
+
+  private ringColour(): RgbaColor {
+    return resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : { r: 165, g: 39, b: 69, a: 1 };
   }
 
   build() {
@@ -217,7 +223,7 @@ export struct ProfileAvatar {
     .clipShape(new CircleShape({ width: this.diameter, height: this.diameter }))
     .border({
       width: RING_WIDTH,
-      color: toResourceColorWithAlpha(BRAND_PINK_SOFT, this.ringOpacity()),
+      color: toResourceColorWithAlpha(this.ringColour(), this.ringOpacity()),
       radius: this.diameter / 2,
     })
     .scale({ x: this.avatarScale(), y: this.avatarScale() })

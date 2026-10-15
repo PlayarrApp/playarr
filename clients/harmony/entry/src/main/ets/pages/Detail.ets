@@ -355,6 +355,7 @@ struct DetailRowArtworkCard {
   @Prop episodeCaption: string = '';
   @Prop episodeNumberOverlay: string = '';
   @Prop focusId: string = '';
+  @Prop ringOn: boolean = false;
 
   onSelect: () => void = () => {};
   onCardAppear: () => void = () => {};
@@ -377,6 +378,7 @@ struct DetailRowArtworkCard {
       activeRailFactor: this.activeRailFactor,
       episodeCaption: this.episodeCaption,
       episodeNumberOverlay: this.episodeNumberOverlay,
+      ringOn: this.ringOn,
       measurementId: this.measurementId,
       imageMeasurementId: this.imageMeasurementId,
       onFocused: this.onCardFocus,
@@ -1552,6 +1554,7 @@ struct Detail {
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
       focusId: seriesEpisodeFocusId((item as DetailRow).id),
+      ringOn: !isTvMetrics() && this.resumePlan !== null && this.resumePlan.target !== undefined && this.resumePlan.target !== null && this.resumePlan.target.episode_id === (item as DetailRow).id,
       cardWidth: this.seriesCardWidth(),
       cardHeight: Math.round(this.seriesCardWidth() * 9 / 16),
       activeRailFactor: activeRailFactor,

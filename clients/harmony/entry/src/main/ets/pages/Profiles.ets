@@ -59,7 +59,7 @@ import { ROUTES } from '../navigation/Routes';
 import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
 import type { Choice } from '../design/components/ChoiceSegments';
 import { openInBrowser } from '../util/ExternalLink';
-import { activeColors, setThemeModeSetting, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
+import { activeColors, resolvedThemeMode, setThemeModeSetting, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS } from '../design/Motion';
@@ -108,6 +108,10 @@ const THEME_SELECT_TOP: number = 50;
 const THEME_SELECT_WIDTH: number = 144;
 const TV_ADD_START: string = '#3d202a';
 const TV_ADD_END: string = '#a82655';
+// Light theme: the add tile's gradient is the pale mix web draws, and the kicker is web's `--brand-ink`.
+const LIGHT_ADD_START: string = '#f3ccd6';
+const LIGHT_ADD_END: string = '#b83f60';
+const BRAND_INK_LIGHT: RgbaColor = { r: 130, g: 30, b: 54, a: 1 };
 const TOUCH_AVATAR_DIAMETER: number = 104;
 // Web phone profile picker (360 vp reference): 144 vp avatars 23 apart from x=25, the heading block from x=32.5, the selects at the top right.
 const PHONE_CHOICE_WIDTH: number = 144;
@@ -431,7 +435,7 @@ struct Profiles {
         .fontWeight(FontWeight.Bolder)
         .letterSpacing(tv(1.348))
         .textCase(TextCase.UpperCase)
-        .fontColor(toResourceColor(BRAND_PINK_SOFT))
+        .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : BRAND_INK_LIGHT))
         .height(tv(16))
         .margin({ top: this.pick(162, PHONE_KICKER_TOP), left: isTvMetrics() ? 0 : 145 })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
@@ -450,6 +454,7 @@ struct Profiles {
               presetId: profile.is_current && this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(profile.id),
               diameter: this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH),
               initialFocus: profile.is_current,
+              ringOn: profile.is_current && !isTvMetrics(),
               onSelect: () => {
                 this.selectProfile(profile);
               },
@@ -489,7 +494,7 @@ struct Profiles {
             Column()
               .width('100%')
               .height('100%')
-              .linearGradient({ angle: 145, colors: [[TV_ADD_START, 0], [TV_ADD_END, 1]] })
+              .linearGradient({ angle: 145, colors: [[resolvedThemeMode() === 'dark' ? TV_ADD_START : LIGHT_ADD_START, 0], [resolvedThemeMode() === 'dark' ? TV_ADD_END : LIGHT_ADD_END, 1]] })
             Column()
               .width('100%')
               .height('100%')

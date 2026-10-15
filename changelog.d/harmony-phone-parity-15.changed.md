@@ -1,0 +1,1 @@
+- HarmonyOS phone: the next-up episode card and the current profile show web's focus ring and glow on open, and the light profile picker uses web's kicker colour and add-tile gradient.
