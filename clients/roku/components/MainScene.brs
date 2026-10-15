@@ -2763,7 +2763,8 @@ sub applyBrowseView()
         m.browseGrid.numRows = 3
         m.browseGrid.itemSize = [210.7, 349]
         m.browseGrid.itemSpacing = [0, 0]
-        m.browseGrid.translation = [783.4, 154]
+        ' The cards reserve the focus lift and ring inside the cell (8 px sides, 15 px top), so the grid sits that far out.
+        m.browseGrid.translation = [775.4, 139]
     else if m.browseView = "list"
         ' Web list view: a 173 x 97 thumbnail with the title and genre line beside it, 122 px apart.
         m.browseGrid.numColumns = 1
@@ -2966,7 +2967,7 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
         item.AddField("padTop", "float", false)
         if grid.id = "browseGrid" then item.padTop = 8
         ' Screen view reserves the focus lift, ring and glow overflow inside the grid's clip (8 px sides, 15 px top, grid shifted to match).
-        if grid.id = "browseGrid" and m.browseView = "screen"
+        if grid.id = "browseGrid" and (m.browseView = "screen" or m.browseView = "cover")
             item.AddField("focusRingOutsideArt", "boolean", false)
             item.focusRingOutsideArt = true
         end if
