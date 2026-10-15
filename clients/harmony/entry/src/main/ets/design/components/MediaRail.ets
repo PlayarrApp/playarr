@@ -107,12 +107,15 @@
  */
 
 import { nunito } from '../Typography';
-import { activeColors, toResourceColor } from '../Theme';
+import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry, TouchGeometry } from '../Metrics';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS } from '../Motion';
 import { Spacing } from '../../core/Tokens';
 import { FOCUS_LIFT, effectiveFocusPercent } from './FocusLift';
+
+/** Web's `--page-edge-fade-size` on a phone. */
+const RAIL_END_FADE_SIZE: number = 38;
 
 /** Brief 5.10's rail clip-inset recipe -- see this file's header comment. */
 const RAIL_CLIP_INSET_BOTTOM: number = 24;
@@ -286,6 +289,26 @@ export struct MediaRail {
     return effectiveFocusPercent(1, this.activeRailFactor);
   }
 
+  /** Phone: web's scroll-edge fade on the end side, a 38 vp smoothstep ramp that dims the cards to 30% at the edge (the alpha stops
+   * are smoothstep(0, .25, .5, .75, 1) x 0.7). The start side is a clear ramp, so nothing is drawn there. Never takes touches. */
+  @Builder
+  private endFade(): void {
+    Column()
+      .width(isTvMetrics() ? 0 : RAIL_END_FADE_SIZE)
+      .height('100%')
+      .linearGradient({
+        angle: 90,
+        colors: [
+          [toResourceColorWithAlpha(activeColors().bg, 0), 0],
+          [toResourceColorWithAlpha(activeColors().bg, 0.109), 0.25],
+          [toResourceColorWithAlpha(activeColors().bg, 0.35), 0.5],
+          [toResourceColorWithAlpha(activeColors().bg, 0.591), 0.75],
+          [toResourceColorWithAlpha(activeColors().bg, 0.7), 1],
+        ],
+      })
+      .hitTestBehavior(HitTestMode.None)
+  }
+
   build() {
 
     Column({ space: this.headingGap }) {
@@ -316,6 +339,7 @@ export struct MediaRail {
         )
       }
       .listDirection(Axis.Horizontal)
+      .overlay(this.endFade(), { align: Alignment.End })
       .height(this.listHeight > 0 ? this.listHeight + RAIL_CLIP_INSET_TOP : '100%')
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
