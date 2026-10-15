@@ -1,0 +1,1 @@
+- HarmonyOS phone: the profile picker follows the web phone layout (left-aligned heading, 144 vp avatars, theme and language selects, Clients pill).

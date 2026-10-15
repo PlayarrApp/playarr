@@ -57,6 +57,7 @@ import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 import { ROUTES } from '../navigation/Routes';
 
 import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
+import type { Choice } from '../design/components/ChoiceSegments';
 import { openInBrowser } from '../util/ExternalLink';
 import { activeColors, setThemeModeSetting, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
@@ -108,6 +109,21 @@ const THEME_SELECT_WIDTH: number = 144;
 const TV_ADD_START: string = '#3d202a';
 const TV_ADD_END: string = '#a82655';
 const TOUCH_AVATAR_DIAMETER: number = 104;
+// Web phone profile picker (360 vp reference): 144 vp avatars 23 apart from x=25, the heading block from x=32.5, the selects at the top right.
+const PHONE_CHOICE_WIDTH: number = 144;
+const PHONE_CHOICE_GAP: number = 23;
+const PHONE_CHOICES_LEFT: number = 25;
+const PHONE_HEADING_LEFT: number = 32.5;
+const PHONE_HEADING_SIZE: number = 38.4;
+const PHONE_KICKER_TOP: number = 71;
+const PHONE_CHOICES_TOP: number = 47;
+const PHONE_SELECT_HEIGHT: number = 48;
+const PHONE_SELECT_WIDTH: number = 112.5;
+const PHONE_SELECT_TOP: number = 14;
+const PHONE_SELECT_RIGHT: number = 14;
+const PHONE_FOOTER_RIGHT: number = 22;
+const PHONE_FOOTER_BOTTOM: number = 23;
+const AUTO_LANGUAGE_CHOICES: Choice[] = [{ value: 'auto', label: 'Auto' }];
 const PIN_DIALOG_AVATAR_DIAMETER: number = 72;
 
 const TILE_MARGIN: number = Spacing.md;
@@ -314,7 +330,7 @@ struct Profiles {
 
   /** Web's foot-of-page pills (Check for updates, Clients): a 44 px pill on surface-strong at 0.64, text only. */
   @Builder
-  private footerPill(label: string, x: number, y: number, onTap: () => void): void {
+  private footerPill(label: string, x: number, y: number, onTap: () => void, phone: boolean = false): void {
     Text(label).fontFamily(nunito(700))
       .fontSize(tv(TV_ACTION_TEXT))
       .fontWeight(FontWeight.Bold)
@@ -324,7 +340,8 @@ struct Profiles {
       .borderRadius(tv(TV_ACTION_HEIGHT / 2))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
-      .position({ x: tv(x), y: tv(y) })
+      .position(phone ? { x: '100%', y: '100%' } : { x: tv(x), y: tv(y) })
+      .markAnchor(phone ? { x: PHONE_FOOTER_RIGHT + 75, y: PHONE_FOOTER_BOTTOM + TV_ACTION_HEIGHT } : { x: 0, y: 0 })
       .focusable(true)
       .onClick(onTap)
   }
@@ -361,14 +378,16 @@ struct Profiles {
   @Builder
   private tvPicker(): void {
     Stack({ alignContent: Alignment.Top }) {
-      PlayarrLogo({ logoSize: tv(TvGeometry.logoSize) })
-        .position({ x: tv(TvGeometry.logoLeft), y: tv(TvGeometry.logoTop) })
+      PlayarrLogo({ logoSize: this.pick(TvGeometry.logoSize, 25) })
+        .position({ x: this.pick(TvGeometry.logoLeft, 25), y: this.pick(TvGeometry.logoTop, 26) })
       // Web's foot-of-page pills: Check for updates (bottom left) and the Clients link (bottom right). HarmonyOS has
       // no in-app installer, so the update check says what web says for a build that cannot update itself.
-      this.footerPill(this.updateNote.length > 0 ? 'Try update again' : 'Check for updates', FOOTER_LEFT, FOOTER_TOP, (): void => {
-        this.updateNote = 'This Playarr build cannot start native updates.';
-      })
-      if (this.updateNote.length > 0) {
+      if (isTvMetrics()) {
+        this.footerPill(this.updateNote.length > 0 ? 'Try update again' : 'Check for updates', FOOTER_LEFT, FOOTER_TOP, (): void => {
+          this.updateNote = 'This Playarr build cannot start native updates.';
+        })
+      }
+      if (this.updateNote.length > 0 && isTvMetrics()) {
         Text(this.updateNote).fontFamily(nunito(400))
           .fontSize(tv(13.4))
           .fontColor(toResourceColor(activeColors().inkSoft))
@@ -376,18 +395,32 @@ struct Profiles {
       }
       this.footerPill('Clients ↗', FOOTER_RIGHT_LEFT, FOOTER_TOP, (): void => {
         openInBrowser(getContext(this), CLIENTS_URL);
-      })
+      }, !isTvMetrics())
       // Web's top-right theme control (the language select needs the Language setting, which is not built here).
-      SelectField({
-        options: THEME_CHOICES,
-        value: this.themeSetting,
-        selectWidth: THEME_SELECT_WIDTH,
-        onChange: (value: string): void => {
-          setThemeModeSetting(value as ThemeModeSetting);
-          saveThemeChoice(value as ThemeModeSetting);
-        },
-      })
-        .position({ x: tv(THEME_SELECT_LEFT), y: tv(THEME_SELECT_TOP) })
+      Row({ space: this.pick(0, 8) }) {
+        SelectField({
+          options: THEME_CHOICES,
+          value: this.themeSetting,
+          selectWidth: isTvMetrics() ? THEME_SELECT_WIDTH : PHONE_SELECT_WIDTH,
+          minHeight: isTvMetrics() ? 56 : PHONE_SELECT_HEIGHT,
+          onChange: (value: string): void => {
+            setThemeModeSetting(value as ThemeModeSetting);
+            saveThemeChoice(value as ThemeModeSetting);
+          },
+        })
+        if (!isTvMetrics()) {
+          // shortcut: web's language select; the Language setting is not built, so Auto is the only choice and the control only mirrors web's layout.
+          SelectField({
+            options: AUTO_LANGUAGE_CHOICES,
+            value: 'auto',
+            selectWidth: PHONE_SELECT_WIDTH,
+            minHeight: PHONE_SELECT_HEIGHT,
+            onChange: (_value: string): void => {},
+          })
+        }
+      }
+        .position(isTvMetrics() ? { x: tv(THEME_SELECT_LEFT), y: tv(THEME_SELECT_TOP) } : { x: '100%', y: PHONE_SELECT_TOP })
+        .markAnchor(isTvMetrics() ? { x: 0, y: 0 } : { x: PHONE_SELECT_RIGHT + PHONE_SELECT_WIDTH * 2 + 8, y: 0 })
         .zIndex(2)
       Column() {
       Text('Profiles').fontFamily(nunito(900))
@@ -397,37 +430,39 @@ struct Profiles {
         .textCase(TextCase.UpperCase)
         .fontColor(toResourceColor(BRAND_PINK_SOFT))
         .height(tv(16))
-        .margin({ top: tv(162) })
+        .margin({ top: this.pick(162, PHONE_KICKER_TOP), left: isTvMetrics() ? 0 : 145 })
+        .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Text('Who’s watching?').fontFamily(nunito(500))
-        .fontSize(tv(80.64))
+        .fontSize(this.pick(80.64, PHONE_HEADING_SIZE))
         .fontWeight(FontWeight.Medium)
-        .letterSpacing(tv(-5.806))
+        .letterSpacing(this.pick(-5.806, -2.77))
         .fontColor(toResourceColor(activeColors().ink))
-        .height(tv(77))
-        .margin({ top: tv(-13) })
-      Row({ space: tv(TV_CHOICE_GAP) }) {
+        .height(this.pick(77, 37))
+        .margin({ top: this.pick(-13, 1), left: isTvMetrics() ? 0 : PHONE_HEADING_LEFT })
+        .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
+      Row({ space: this.pick(TV_CHOICE_GAP, PHONE_CHOICE_GAP) }) {
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
           Column() {
             ProfileAvatar({
               presetId: profile.is_current && this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(profile.id),
-              diameter: tv(TV_CHOICE_WIDTH),
+              diameter: this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH),
               initialFocus: profile.is_current,
               onSelect: () => {
                 this.selectProfile(profile);
               },
             })
             Text(profile.display_name).fontFamily(nunito(700))
-              .fontSize(tv(17.28))
+              .fontSize(this.pick(17.28, 12))
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
-              .margin({ top: tv(6) })
+              .margin({ top: this.pick(6, 14) })
             Text(this.statusLabel(profile)).fontFamily(nunito(700))
-              .fontSize(tv(9.408))
+              .fontSize(this.pick(9.408, 7.3))
               .fontWeight(FontWeight.Bold)
-              .letterSpacing(tv(0.423))
+              .letterSpacing(this.pick(0.423, 0.33))
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(activeColors().inkSoft))
-              .margin({ top: tv(9) })
+              .margin({ top: this.pick(9, 12) })
             if (profile.is_current) {
               Row({ space: tv(9) }) {
                 this.tvActionButton($r('app.media.nav_settings'), '', BRAND_PINK, () => {
@@ -440,7 +475,7 @@ struct Profiles {
               .margin({ top: tv(21) })
             }
           }
-          .width(tv(TV_CHOICE_WIDTH))
+          .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
         // Web on TV: the tile opens the QR sign-in (/login/qr); a successful link returns to the picker.
@@ -457,47 +492,53 @@ struct Profiles {
               .height('100%')
               .radialGradient({
                 center: ['34%', '26%'],
-                radius: tv(TV_CHOICE_WIDTH * 0.27),
+                radius: this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH) * 0.27,
                 colors: [['rgba(255, 255, 255, 0.28)', 0], ['rgba(255, 255, 255, 0)', 1]],
               })
             Text('+').fontFamily(nunito(300))
-              .fontSize(tv(76.8))
+              .fontSize(this.pick(76.8, 45))
               .fontWeight(FontWeight.Lighter)
               .fontColor(toResourceColor(activeColors().inkSoft))
           }
-          .width(tv(TV_CHOICE_WIDTH))
-          .height(tv(TV_CHOICE_WIDTH))
-          .borderRadius(tv(TV_CHOICE_WIDTH / 2))
+          .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
+          .height(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
+          .borderRadius(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH) / 2)
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
           Text($r('app.string.profiles_sign_in')).fontFamily(nunito(700))
-            .fontSize(tv(17.28))
+            .fontSize(this.pick(17.28, 12))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
-            .margin({ top: tv(9) })
+            .margin({ top: this.pick(9, 14) })
           Text($r('app.string.profiles_add_another_profile')).fontFamily(nunito(700))
-            .fontSize(tv(9.408))
+            .fontSize(this.pick(9.408, 7.3))
             .fontWeight(FontWeight.Bold)
-            .letterSpacing(tv(0.423))
+            .letterSpacing(this.pick(0.423, 0.33))
             .textCase(TextCase.UpperCase)
             .textAlign(TextAlign.Center)
             .fontColor(toResourceColor(activeColors().inkSoft))
-            .margin({ top: tv(9) })
+            .margin({ top: this.pick(9, 12) })
         }
-        .width(tv(TV_CHOICE_WIDTH))
+        .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
         .focusable(true)
         .onClick(() => {
           pushRoute(getNavStack(), ROUTES.Pairing);
         })
       }
       .alignItems(VerticalAlign.Top)
-      .margin({ top: tv(TV_CHOICES_TOP - 242) })
+      .margin({ top: this.pick(TV_CHOICES_TOP - 242, PHONE_CHOICES_TOP), left: isTvMetrics() ? 0 : PHONE_CHOICES_LEFT })
+      .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       }
       .width('100%')
       .alignItems(HorizontalAlign.Center)
     }
     .width('100%')
     .height('100%')
+  }
+
+  /** A TV size scaled to the window, or the phone's own size (web phone profile picker). */
+  private pick(tvSize: number, phoneSize: number): number {
+    return isTvMetrics() ? tv(tvSize) : phoneSize;
   }
 
   private avatarDiameter(): number {
@@ -531,7 +572,7 @@ struct Profiles {
   @Builder
   private pageBody(): void {
       Stack() {
-        if (isTvMetrics() && this.viewState === ProfilesViewState.Ready && this.profiles.length > 0) {
+        if (this.viewState === ProfilesViewState.Ready && this.profiles.length > 0) {
           this.tvPicker()
         } else {
         Scroll() {

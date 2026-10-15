@@ -36,6 +36,8 @@ export struct SelectField {
   @Prop options: Choice[] = [];
   @Prop value: string = '';
   @Prop selectWidth: number = 268;
+  /** Trigger height; the phone's selects are shorter than the TV's. */
+  @Prop minHeight: number = MIN_HEIGHT;
   @Prop disabled: boolean = false;
   onChange: (value: string) => void = () => {};
 
@@ -73,7 +75,7 @@ export struct SelectField {
           .rotate({ angle: this.open ? 180 : 0 })
       }
       .width(tv(this.selectWidth))
-      .constraintSize({ minHeight: tv(MIN_HEIGHT) })
+      .constraintSize({ minHeight: tv(this.minHeight) })
       .padding({ left: tv(PADDING_H), right: tv(PADDING_H), top: tv(PADDING_V), bottom: tv(PADDING_V) })
       .borderRadius(tv(RADIUS))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, LINE_ALPHA * 0.3) })
@@ -109,7 +111,7 @@ export struct SelectField {
                   .textAlign(TextAlign.Center)
               }
               .width('100%')
-              .constraintSize({ minHeight: tv(MIN_HEIGHT) })
+              .constraintSize({ minHeight: tv(this.minHeight) })
               .padding({ left: tv(PADDING_H), right: tv(PADDING_H), top: tv(PADDING_V), bottom: tv(PADDING_V) })
               .borderRadius(tv(RADIUS))
               .border({ width: 1, color: option.value === this.value ? toResourceColor(activeColors().ink) :

@@ -231,7 +231,7 @@ time.sleep(20)
 debug("after-approve")
 
 # 2. the profile picker: pick Device Test (alien avatar). Position found by looking at the picker, see PROFILE_CLICK.
-PROFILE_CLICK = {"tv": (846, 505), "phone": (330, 1150)}[device]
+PROFILE_CLICK = {"tv": (846, 505), "phone": (291, 732)}[device]  # phone: the current profile avatar of the web-parity picker (144 vp circle at x 25, y 172, 3 px per vp)
 if device == "phone":
     route("profiles", 8); debug("phone-profiles")
 click(*PROFILE_CLICK)
