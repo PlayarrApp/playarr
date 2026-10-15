@@ -153,7 +153,8 @@ internal sealed class CalendarScreen : IPage
             case CalendarView.Week: RenderWeek(start); break;
             default: RenderAgenda(start); break;
         }
-        if (_focus.Current < 0) _focus.Set(2);
+        // web rests focus on "Today" only in the agenda; month and week show no ring until a key is pressed
+        if (_focus.Current < 0 && _view == CalendarView.Agenda) _focus.Set(2);
         if (_view == CalendarView.Agenda && Visible.OrderBy(CalendarRules.LocalDay).ThenBy(Order).FirstOrDefault() is { } first) ShowEntry(first);
     }
 
@@ -355,7 +356,7 @@ internal sealed class CalendarScreen : IPage
             case RemoteKey.Select: _focus.Item?.Select?.Invoke(); return true;
             case RemoteKey.Back: return false;
             default:
-                if (_focus.Current < 0) { _focus.Set(2); return true; } // starts on "Today" like web
+                if (_focus.Current < 0) _focus.Set(2); // starts on "Today" like web; the key then moves from there as before
                 return _focus.Move(key) || key != RemoteKey.Left;
         }
     }

@@ -110,7 +110,9 @@ internal sealed class Shell : View
     {
         var box = Ui.Box(RailX, y, RailW, h, new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.56f), 22);
         box.BorderlineWidth = 1;
-        box.BorderlineColor = Ui.C(_theme.Line);
+        box.BorderlineColor = Ui.LineA(_theme, 0.48f); // web: line at 48 %
+        // light only: on the dark rail the web shadow (warm brown at 10 %) is not visible, and ours read as a pink halo
+        if (_theme.Name != "dark") box.BoxShadow = new Shadow(42, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.1f), new Vector2(0, 14), new Vector2(0, 0));
         _chrome.Add(box);
     }
 
