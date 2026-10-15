@@ -433,6 +433,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- macOS: Settings > Appearance > Home screen artwork now takes effect; Covers shows portrait 2:3 posters on the Home rails at the web cover width.
 - Xbox: the library Filters drawer has a View choice, Screen or Cover, and Cover shows portrait posters as the web.
 - Parity: web-refs.json gains an android-tablet viewport group (1280x800 at 2x, TV layout) so the Android tablet gets its own web references.
 - Android TV Search now gives default D-pad focus to its empty search field when entering the idle Search page, without opening the on-screen keyboard until Select is pressed.

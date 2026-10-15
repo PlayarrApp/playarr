@@ -107,6 +107,7 @@ Steps only the repository owner can perform.
 | 10402 | macOS light parity: library page preview, alphabet rail and focused card ring as web | in_review | parity-apple | macos-light-parity | 57.10025 | 2026-10-16 12:00 ICT | PR open: #1401. Hosted Apple wall captures on main (run 38668170832) put music, series, movies, actions, home and filters lowest in light; fixes are behind `#if os(macOS)`. |
 | 10404 | macOS music light: retry failed artwork fetches as the web does | done | parity-apple | macos-artwork-retry | 57.10025 | 2026-10-16 12:00 ICT | PR open: #1446. Four Music cards stayed text tiles in every capture because AsyncImage never retries; the macOS build now retries up to four times. PR #1446 merged 2026-10-15. |
 | 10454 | macOS round 2: authenticated music artwork, Back restores the opened card, Filters drawer close ring and choice outlines, focus-settle wait and crop captures in the driver | done | parity-apple | macos-round2 | 57.10025 | 2026-10-16 18:00 ICT | PR open: #1465. PR #1465 merged 2026-10-15. |
+| 10460 | macOS round 3: Home screen artwork = Covers on Home, motion and popout capture crops | done | parity-apple | macos-motion-round3 | 57.10025 | 2026-10-16 18:00 ICT | PR open: #1478. PR #1478 merged 2026-10-15. |
 
 ## 1. Web follow-ups (2026-10-10)
 

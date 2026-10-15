@@ -1,1 +1,0 @@
-- macOS: Settings > Appearance > Home screen artwork now takes effect; Covers shows portrait 2:3 posters on the Home rails at the web cover width.
