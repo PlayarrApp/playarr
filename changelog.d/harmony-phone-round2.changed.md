@@ -1,1 +1,0 @@
-- HarmonyOS phone: Home cards and series episodes draw the unseen dot as web does; the wall's series-detail guard also spots gradient placeholder cards.
