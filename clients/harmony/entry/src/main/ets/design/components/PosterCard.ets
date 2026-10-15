@@ -42,10 +42,9 @@
  * The two-layer "Card art" shadows are copied verbatim as `{offsetY,
  * radius, alpha}` triples and cross-faded continuously from rest to
  * focused via linear interpolation on `effectiveFocusPercent(...)`,
- * applied through ArkUI's `.shadow(Array<ShadowOptions>)` overload (added
- * API 12; this project targets HarmonyOS 6.1 / API 18+ per brief 6.3's
- * `.nextFocus()` note, well past that floor) so both layers composite
- * simultaneously instead of only the more prominent one winning. The tint
+ * applied through ArkUI's `.shadow()`, which takes ONE `ShadowOptions` (there is no array overload). The artwork carries the
+ * first layer; on the phone an opaque same-sized underlay behind it carries the second, so both composite as on web. The TV
+ * keeps the first layer only. The tint
  * colour is `rgba(56,38,33,·)` in brief 5.6 with no stated dark-mode
  * variant (unlike the separate, more generic `shadowSoft`/`shadowFocus`
  * pair in 5.1/5.2, which DO flip to black in dark mode) -- so it is read
@@ -96,7 +95,7 @@ import { nunito } from '../Typography';
 import { image } from '@kit.ImageKit';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
-import { tv } from '../Metrics';
+import { isTvMetrics, tv } from '../Metrics';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS, INTERACTION_TITLE_CARD_MS } from '../Motion';
 import { BRAND_PINK, Spacing, Radii, LightColors, TvGeometry } from '../../core/Tokens';
 import { SERIES_EPISODE_CAPTION_TITLE_GAP, SERIES_EPISODE_CAPTION_TOP_PADDING } from '../../core/SeriesEpisodePresentation';
@@ -288,10 +287,18 @@ export struct PosterCard {
     return from + (to - from) * t;
   }
 
-  /** ArkUI's `.shadow()` takes a single `ShadowOptions` (the brief-5.6 CSS
-   * two-layer `box-shadow` has no direct equivalent), so only the dominant
-   * (first, wider) layer is rendered; the tight second layer is dropped. */
+  /** ArkUI's `.shadow()` takes a single `ShadowOptions` (there is no array overload), so the dominant (first, wider) layer is
+   * the artwork's own shadow. On the phone, the tight second layer of web's two-layer `box-shadow` is drawn by an opaque,
+   * same-sized underlay behind the artwork (`secondShadowLayer()`); the TV keeps its one layer. */
   private shadowLayer(): ShadowOptions {
+    return this.shadowAt(0);
+  }
+
+  private secondShadowLayer(): ShadowOptions {
+    return this.shadowAt(1);
+  }
+
+  private shadowAt(layer: number): ShadowOptions {
     const rest = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_REST : HOME_SHADOW_REST;
     const focused = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_FOCUSED : HOME_SHADOW_FOCUSED;
     const t = this.effective();
@@ -299,9 +306,9 @@ export struct PosterCard {
     // name inside the object literals below -- see `setFocused()`'s
     // comment on why an object-literal value must never start with
     // `this.` directly.
-    const offsetY0 = this.lerp(rest[0].offsetY, focused[0].offsetY, t);
-    const radius0 = this.lerp(rest[0].radius, focused[0].radius, t);
-    const alpha0 = this.lerp(rest[0].alpha, focused[0].alpha, t);
+    const offsetY0 = this.lerp(rest[layer].offsetY, focused[layer].offsetY, t);
+    const radius0 = this.lerp(rest[layer].radius, focused[layer].radius, t);
+    const alpha0 = this.lerp(rest[layer].alpha, focused[layer].alpha, t);
     const first: ShadowOptions = {
       offsetX: 0,
       offsetY: offsetY0,
@@ -336,6 +343,16 @@ export struct PosterCard {
   build() {
 
     Column({ space: this.episodeCaption.length > 0 ? 0 : Spacing.xs }) {
+      Stack() {
+      if (!isTvMetrics()) {
+        Column()
+          .width(this.cardWidth)
+          .height(this.cardHeight)
+          .borderRadius(this.resolvedArtworkRadius())
+          .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+          .scale({ x: this.artworkScale(), y: this.artworkScale() })
+          .shadow(this.secondShadowLayer())
+      }
       Stack({ alignContent: Alignment.Bottom }) {
         if (this.artwork !== undefined) {
           Image(this.artwork)
@@ -390,6 +407,9 @@ export struct PosterCard {
       .borderRadius(this.resolvedArtworkRadius())
       .scale({ x: this.artworkScale(), y: this.artworkScale() })
       .shadow(this.shadowLayer())
+      }
+      .width(this.cardWidth)
+      .height(this.cardHeight)
 
       if (this.episodeCaption.length > 0) {
         Text() {

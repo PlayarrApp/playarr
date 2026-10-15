@@ -563,9 +563,15 @@ else:
             if state.get("route") == "Detail" and state.get("work_id") == work_id:
                 if kind == "series":
                     # the episode cards must show art: a frame with grey placeholder cards is waited on, then refused
+                    # The app fetches the episode stills one after another; a stalled request (the dark job's Previewer under load logs
+                    # curl code 28 timeouts) leaves it waiting for good, so open the page again every 30 s to start a fresh fetch.
                     art_end = time.time() + 120
+                    next_reopen = time.time() + 30
                     while phone_flat_card_rows(png()) > 0 and time.time() < art_end:
                         time.sleep(5)
+                        if time.time() >= next_reopen and phone_flat_card_rows(png()) > 0:
+                            route("home", 6); route("detail:" + work_id, 8)
+                            next_reopen = time.time() + 30
                     if phone_flat_card_rows(png()) > 0:
                         debug(name + "-placeholder-art")
                         raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")

@@ -1,0 +1,1 @@
+- HarmonyOS phone cards draw web's second shadow layer; the capture reopens a series page whose episode stills stall.
