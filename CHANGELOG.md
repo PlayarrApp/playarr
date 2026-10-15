@@ -659,6 +659,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: Settings > Appearance > Home screen artwork = Covers now takes effect on Home, with web's 2:3 cover cards (191 px wide on a 216 px pitch, rails 469 px apart).
 - HarmonyOS phone Home hides its scroll bar, as web does.
 - Harmony wall: the Previewer bridge gains swipe and wheel endpoints and the phone capture records Home, rail and drawer scroll bursts.
 - HarmonyOS phone Home rails run to the screen edge at their end, dimmed by the end fade, as web's do.

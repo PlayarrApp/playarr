@@ -285,6 +285,7 @@ Steps only the repository owner can perform.
 | 10371 | Fire TV: title actions drawer rows as web (68 px rows, larger label) | done | parity-firetv | firetv-focus-crop-audit | | 2026-10-16 12:00 ICT | PR open: #1366 (draft, device check pending) PR #1366 merged 2026-10-15. |
 | 10384 | Fire TV: page header and Back focus as web (title 50 px, subtitle 11.14 px/680, Back ring only) | done | parity-firetv | firetv-header-audit | | 2026-10-16 12:00 ICT | PR open: #1414 (verified against web page-layout.css; device check pending) PR #1414 merged 2026-10-15. |
 | 10491 | Fire TV: actions drawer Play glyph pink, not an orange emoji | done | parity-firetv | firetv-round3 | | 2026-10-17 12:00 ICT | PR open: #1486 (device check pending) PR #1486 merged 2026-10-15. |
+| 10496 | Fire TV: Home honours the Covers artwork setting (2:3 cards as web) | done | parity-firetv | firetv-home-covers | | 2026-10-17 12:00 ICT | PR open: #1493 (device check pending) PR #1493 merged 2026-10-15. |
 
 ## 6. Web accessibility AAA (2026-10-09)
 
