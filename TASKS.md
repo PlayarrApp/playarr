@@ -562,6 +562,7 @@ Steps only the repository owner can perform.
 | 10380 | Harmony phone parity: detail text rhythm, agenda card type and home captions | in_review | parity-harmony | harmony-phone-parity-5 | | 2026-10-16 12:00 ICT | Detail text at web sizes and spacing, agenda cards at web phone type and 92 vp, soft home captions (#1376); follow-up for the play glyph and action-row alignment. PR open: #1384. |
 | 10372 | Xbox polish from the VM check: week heading gap and TODAY tag, profile glow inside its tile | in_progress | parity-xbox | xbox-polish2 | | 2026-10-15 22:00 ICT | Follow-up to 10319 and 10320. |
 | 10381 | Tizen library grid panel frost as web | done | client-tizen-native | tizen-library-wash | 17.10222 | 2026-10-16 18:00 ICT | PR open: #1382. Movies, Series and Music light were about 95 because web frosts the right 1190 px (.tv-library-grid-panel gradient) and native had none. PR #1382 merged 2026-10-15. |
+| 10385 | Harmony phone Profiles picker as web | done | parity-harmony | harmony-phone-parity-6 | | 2026-10-16 12:00 ICT | Left-aligned Who is watching heading, 144 vp avatars with name and status, Dark and Auto selects, settings and sign-out actions, Clients pill at the bottom right; the capture clicks the new avatar position. TV unchanged. PR open: #1385. PR #1385 merged 2026-10-15. |
 
 ## 18. Public repository readiness (2026-10-05)
 
