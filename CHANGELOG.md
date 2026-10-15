@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- On iPad, the Library grid, the title-page scroller and the episode, chapter and cast rails fade their end edge as the web does: the content dims to 30% over 64 pt along the web's smoothstep ramp, and the start side stays clear.
 - On iPad, the series detail backdrop is as faint as the web's in dark, so the copy and rails are no longer lost against the artwork.
 - Hisense VIDAA: text and navigation no longer glow white. Chromium 111 turned `color-mix()` with a `var()` inside `box-shadow`, `text-shadow` and the `border` shorthand into the text colour; the mixes now sit in custom properties, with the same colours and strengths as before.
 - On iPad series detail, episode cards the profile has not watched show the web's pink unseen dot at the top right.

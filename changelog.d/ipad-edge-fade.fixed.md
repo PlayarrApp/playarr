@@ -1,1 +1,0 @@
-- On iPad, the Library grid, the title-page scroller and the episode, chapter and cast rails fade their end edge as the web does: the content dims to 30% over 64 pt along the web's smoothstep ramp, and the start side stays clear.
