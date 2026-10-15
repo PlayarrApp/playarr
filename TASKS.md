@@ -42,6 +42,7 @@ Steps only the repository owner can perform.
 | 10347 | Nura series action pills keep focus room | done | parity-linux-phones | nura/series-pill-focus-room-1015 | | 2026-10-16 18:00 ICT | PR open: #1361. Device check of the pill ring pending until the host recovers. PR #1361 merged 2026-10-15. |
 | 10382 | Nura library grids keep the web header gap | done | parity-linux-phones | nura/library-header-room-1015 | | 2026-10-16 18:00 ICT | PR open: #1377. Movies, Series and Music grids sat 18 px high after the header subtitle was hidden. PR #1377 merged 2026-10-15. |
 | 10401 | Nura series detail and calendar agenda parity | done | parity-linux-phones | nura/series-pill-gap-1015 | | 2026-10-16 18:00 ICT | PR open: #1398. Series seasons sit at the web gap below the action pills. PR #1398 merged 2026-10-15. |
+| 10400 | Sailfish scroll-edge fade as web: 38 px, content dims to 30 % at the end side, smoothstep ramp | in_review | parity-linux-phones | sailfish-edge-fade-1015 | | 2026-10-16 18:00 ICT | Web masks the scroller with a smoothstep ramp whose end floor is 0.3 (page-layout.css), not a fade to the page colour. Sailfish light, emulator, update.mjs: overall 96.25 to 96.38, light 95.72 to 95.99; home 95.48 to 96.02, movies 95.01 to 95.78, series 94.80 to 95.48, music 94.02 to 94.61, series-detail 92.62 to 94.16; calendar-agenda 91.80 to 91.74. PR open: #1406. |
 
 ## 60. Legal pages and project conduct before public release
 
@@ -576,6 +577,7 @@ Steps only the repository owner can perform.
 | 10390 | Apple TV lowest screens: library alphabet rail 44 pt pitch with bottom fade, Filters tile sliders icon | in_progress | parity-apple | tv-grid-lowest | | 2026-10-15 18:00 ICT | Audit of main b036cc3 tvOS dark against the web refs of 2026-10-15 01:47 ICT: series 6.6 %, movies 6.2 %, film-detail 5.4 %, home 3.3 %, settings 3.8 %. Movies and series differ mainly in the alphabet rail (web pitch 44 with a fade, ours 25.6) and the Filters icon (web sliders). Film-detail (title wrap, meta row, action grid, chapters, cast) is the next PR. |
 | 10405 | Roku lowest screens: series-detail episode rows aligned to web | done | parity-roku | roku-series-rows-10405 | | 2026-10-16 18:00 ICT | Episode rail sat 1 px below web's; moved up 1 px. Real Roku vs 15 Oct refs: series-detail dark 93.52 to 94.03, light 92.80 to 93.40. calendar-week light (92.6) still lowest: sub-pixel text and poster resampling. PR open: #1402. PR #1402 merged 2026-10-15. |
 | 10396 | iPhone light parity: music letter rail, calendar agenda meta colour and badge size | in_review | parity-iphone | iphone-light-10396 | | 2026-10-16 12:00 ICT | Letter rail 2.5 pt higher, agenda meta in ink-soft and 11.5 pt badge as web. PR open: #1399 |
+| 10398 | VIDAA: shadows and group borders render as full-strength white glow (color-mix with var inside box-shadow, text-shadow and border on Chromium 111) | in_review | parity-vidaa | vidaa-main-recapture | | 2026-10-15 18:00 ICT | PR open: #1400 |
 
 ## 18. Public repository readiness (2026-10-05)
 

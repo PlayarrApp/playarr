@@ -1,1 +1,0 @@
-- Hisense VIDAA: text and navigation no longer glow white. Chromium 111 turned `color-mix()` with a `var()` inside `box-shadow`, `text-shadow` and the `border` shorthand into the text colour; the mixes now sit in custom properties, with the same colours and strengths as before.

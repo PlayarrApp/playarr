@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Hisense VIDAA: text and navigation no longer glow white. Chromium 111 turned `color-mix()` with a `var()` inside `box-shadow`, `text-shadow` and the `border` shorthand into the text colour; the mixes now sit in custom properties, with the same colours and strengths as before.
 - On iPad series detail, episode cards the profile has not watched show the web's pink unseen dot at the top right.
 - Xbox: Back from a title shows the library at once with focus on the card you left, not on the nav rail.
 - On iPad, the Library preview title is the web's 42 pt on a .9 line pitch, so "2 Broke Girls" stays on one line and "2 Fast 2 Furious" breaks after "Fast"; the grid card captions are the web's size and the row gap is a point tighter.
