@@ -64,6 +64,8 @@ data class PlayarrPageMetrics(
 
 /** The edge fade (`--page-edge-fade`): the web rail-panel glow, with the stronger scrim in the dark theme. */
 object PlayarrEdgeFadeTokens {
+    /** Web `--page-edge-fade-floor`: the content alpha at the very edge. */
+    const val MaskFloor: Float = 0.3f
     /** Light: opacity of the radial shade (`.tv-library-grid-panel.can-scroll-*`). */
     const val LightOpacity: Float = 0.62f
 

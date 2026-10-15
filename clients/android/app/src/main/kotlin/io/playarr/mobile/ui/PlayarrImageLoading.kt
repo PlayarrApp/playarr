@@ -62,6 +62,20 @@ internal class PlayarrFrameThumbnailInterceptor(
     }
 }
 
+/**
+ * Chromium scales a card's artwork down from the served width with mipmapped (trilinear) sampling; a bitmap without mipmaps is
+ * sampled bilinearly, which is visibly sharper and aliased against the web capture. Flag the decoded bitmap so the GPU builds them.
+ */
+internal class PlayarrMipmapInterceptor : Interceptor {
+    override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
+        val result = chain.proceed()
+        if (result is coil3.request.SuccessResult) {
+            (result.image as? coil3.BitmapImage)?.bitmap?.setHasMipMap(true)
+        }
+        return result
+    }
+}
+
 /** The app-wide Coil loader: generous timeouts and bounded frame-thumbnail concurrency. */
 internal fun newPlayarrImageLoader(context: PlatformContext): ImageLoader {
     val client = OkHttpClient.Builder()
@@ -80,6 +94,7 @@ internal fun newPlayarrImageLoader(context: PlatformContext): ImageLoader {
         .components {
             add(OkHttpNetworkFetcherFactory(callFactory = { client }))
             add(PlayarrFrameThumbnailInterceptor())
+            add(PlayarrMipmapInterceptor())
         }
         .build()
 }

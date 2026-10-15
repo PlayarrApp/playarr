@@ -121,3 +121,14 @@ server's facts for the session: source and delivered video, bitrate, dynamic ran
 The device wall legend reads `<dir>/<cand>/dpad.json` and `downloads.json`: passed = results with `pass: true`, out of the suite's
 check count (the D-pad checks in `suite.json`; skipped download cases do not count). Missing results count as failed. `performance.json`
 (only with `--only performance`, same shape) is not scored.
+
+## Dedicated D-pad account
+
+Plays by other runs on the shared Device Test account change its On deck and Resume state, which fails Home D-pad checks at random.
+D-pad runs therefore sign in as `device-test-dpad` (same profile name, libraries and rights as Device Test, The 5th Wave seeded at
+15098 ms). Pixel captures stay on Device Test, because the web references use it.
+
+- Create it once: `node scripts/parity/dpad-account.mjs create` (admin API; adds `PLAYARR_DEVICE_TEST_DPAD_USERNAME` and
+  `PLAYARR_DEVICE_TEST_DPAD_PASSWORD` to `~/.secrets`, backed up first, mode 0600). Re-seed: `node scripts/parity/dpad-account.mjs seed`.
+- A driver wrapper sets `PARITY_ACCOUNT=dpad` for D-pad runs and takes its credentials from `parityCredentials()` in that script,
+  which maps to `PLAYARR_USERNAME` and `PLAYARR_PASSWORD` for `--reset-progress` and for any link-approval helper.

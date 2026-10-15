@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.playarrEdgeFades
 import io.playarr.shared.designsystem.page.PlayarrCardMotions
 import io.playarr.shared.designsystem.page.mediaCardLift
 import io.playarr.shared.designsystem.page.PlayarrPageBody
@@ -3548,16 +3549,17 @@ internal fun ExperienceLandscapeCard(
     }
     Column(Modifier.fillMaxWidth().then(
         when {
-            webTvStyle -> Modifier.mediaCardLift(focused, PlayarrCardMotions.Home)
+            webTvStyle -> Modifier.mediaCardLift(focused, if (webTvLibrary) PlayarrCardMotions.Library else PlayarrCardMotions.Home)
             webPhoneRemoteFocus -> Modifier.mediaCardLift(focused, webPhoneMotion)
             else -> Modifier
         },
     )) {
         WebShadowedBox(
-            shadows = if (webPhone) webCardShadows(selected || focused, webHome, webSearch) else if (webTvStyle) (if (focused) webRemoteFocusShadows else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
+            shadows = if (webPhone) webCardShadows(selected || focused, webHome, webSearch) else if (webTvStyle) (if (focused) (if (webTvLibrary) webCardFocusShadows else webRemoteFocusShadows) else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),
             focusGlow = (webPhone && (selected || focused)) || (webTvStyle && focused),
-            focusGlowColor = if (webPhone) PlayarrWebTheme.palette.phoneCardGlow else null,
+            // Web `--card-glow-color`: brand-strong in light, brand-ink in dark (the palette's card glow), on TV as on the phone.
+            focusGlowColor = if (webPhone || webTvStyle) PlayarrWebTheme.palette.phoneCardGlow else null,
             modifier = Modifier.fillMaxWidth()
                 .aspectRatio(if (homeView == PlayarrHomeViewPreference.Cover) 2f / 3f else 16f / 9f)
                 .then(
@@ -3782,7 +3784,7 @@ internal fun LibraryResults(
         LibraryViewMode.Screen -> LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(2),
             state = gridState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().then(if (isTelevision) Modifier.playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical) else Modifier),
             contentPadding = screenPadding,
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
             verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 24.dp),
@@ -3810,7 +3812,7 @@ internal fun LibraryResults(
             }
         }
         LibraryViewMode.List -> LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().then(if (isTelevision) Modifier.playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical) else Modifier),
             contentPadding = padding,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -3832,7 +3834,7 @@ internal fun LibraryResults(
         LibraryViewMode.Cover -> LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: GridCells.Adaptive(landscapeWidth * 0.72f),
             state = gridState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().then(if (isTelevision) Modifier.playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical) else Modifier),
             contentPadding = padding,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
