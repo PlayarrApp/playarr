@@ -11,9 +11,10 @@ PlayarrPage {
     RadialGradient {
         x: parent.width / 2 - width / 2; y: 0.48 * parent.height - height / 2
         width: 2 * 271 / 1.969 * Tokens.u; height: width
+        horizontalRadius: width / 2; verticalRadius: height / 2   // the default radius is the full box, which left a visible square
         gradient: Gradient {
             GradientStop { position: 0.0; color: Qt.rgba(0xcf / 255, 0x31 / 255, 0x57 / 255, 0.13) }
-            GradientStop { position: 1.0; color: "transparent" }
+            GradientStop { position: 1.0; color: Qt.rgba(0xcf / 255, 0x31 / 255, 0x57 / 255, 0) }
         }
     }
     function openSettings() {
@@ -72,6 +73,19 @@ PlayarrPage {
                     pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"))
                 }
                 onPressAndHold: remorse.execute(qsTr("Removing profile"), function () { Api.removeProfile(modelData.userId) })
+                // Web: the signed-in profile holds the default focus, so its card carries the focused shadow stack (as WorkCard).
+                RectangularGlow {
+                    visible: modelData.active
+                    x: av.x; y: av.y + 24 * Tokens.u; width: av.width; height: av.width
+                    glowRadius: 24 * Tokens.u; spread: 0.1; cornerRadius: width / 2 + glowRadius
+                    color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.3)
+                }
+                RectangularGlow {
+                    visible: modelData.active
+                    x: av.x; y: av.y + 10 * Tokens.u; width: av.width; height: av.width
+                    glowRadius: 10 * Tokens.u; spread: 0.1; cornerRadius: width / 2 + glowRadius
+                    color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.2)
+                }
                 Avatar {
                     id: av
                     y: 4 * Tokens.u; anchors.horizontalCenter: parent.horizontalCenter
