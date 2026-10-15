@@ -96,9 +96,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # phone: each theme in its own parallel job (one Previewer per colour mode). TV: the screens (all), the D-pad checks, the key-reached screens and
+        # phone: each theme in its own parallel job (one Previewer per colour mode). TV: the screens, one job per theme (a light Home captured after the in-app theme toggle never loaded its posters), the D-pad checks, the key-reached screens and
         # the playback cases run as parallel jobs, each signing in on its own session
-        theme: ${{ fromJSON(inputs.device == 'phone' && '["dark","light"]' || ((inputs.tv_screens != 'all') && '["all"]') || (inputs.parts == 'screens' && '["all"]') || (inputs.parts == 'dpad' && '["dpad"]') || '["all","dpad","extra","playback"]') }}
+        theme: ${{ fromJSON(inputs.device == 'phone' && '["dark","light"]' || ((inputs.tv_screens != 'all') && '["all"]') || (inputs.parts == 'screens' && '["dark","light"]') || (inputs.parts == 'dpad' && '["dpad"]') || '["dark","light","dpad","extra","playback"]') }}
     defaults:
       run:
         shell: bash

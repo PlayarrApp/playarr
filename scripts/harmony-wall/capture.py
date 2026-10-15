@@ -519,17 +519,18 @@ if device == "tv":
     else:
         detail_sources = None
         decoded_art = None
-    folder = os.path.join(out, "dark")
+    folder = os.path.join(out, "light" if THEME == "light" else "dark")
     if TV_SELECTION is None:
         route("profiles", 6); snap("profiles", folder)
         # profiles picker -> home needs the same click as the first time
         click(*PROFILE_CLICK); time.sleep(20)
         walk(folder, "")
-        # light: Settings theme toggle (coordinates of the Mac scripts), then the same walk
-        route("settings", 8); click(394, 207); time.sleep(3); click(1295, 285); time.sleep(4)
-        route("profiles", 6); snap("profiles", os.path.join(out, "light"))
-        click(*PROFILE_CLICK); time.sleep(20)
-        walk(os.path.join(out, "light"), "")
+        if THEME == "all":  # the dark and light jobs each start the Previewer in their own colour mode (-cm)
+            # light: Settings theme toggle (coordinates of the Mac scripts), then the same walk
+            route("settings", 8); click(394, 207); time.sleep(3); click(1295, 285); time.sleep(4)
+            route("profiles", 6); snap("profiles", os.path.join(out, "light"))
+            click(*PROFILE_CLICK); time.sleep(20)
+            walk(os.path.join(out, "light"), "")
 else:
     # phone: the web phone shell. Pages by route; the phone's own controls (the header filter button, a card tap or long press)
     # inside a page. Coordinates are px at density 480 (3 px per vp): the header's round buttons sit at the right, 16 vp in.
