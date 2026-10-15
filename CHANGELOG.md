@@ -662,6 +662,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: scroll-edge fades use web's 59.4 px length, five-stop ramp and 30% floor in both themes (the light theme no longer shows a grey bar), and the library details panel text uses web's size, weight and colour.
 - HarmonyOS phone: Home rails really run to the screen edge at their end (the list is widened, not padded), and the wall re-checks the saved series-detail frame for grey placeholder cards.
 - Fire TV: Settings > Appearance has web's Artwork size (small, medium, large); Home cards and rails follow it as web does, and the Library takes the same one size.
 - Android TV: the Home rail list shows web's vertical scroll-edge fade (0.3 floor, eased) like every other scroller.
