@@ -116,6 +116,9 @@ import { FOCUS_LIFT, effectiveFocusPercent } from './FocusLift';
 
 /** Web's `--page-edge-fade-size` on a phone. */
 const RAIL_END_FADE_SIZE: number = 38;
+/** Web TV `--page-edge-fade-size` (5.5 x the 10.8 vp viewport unit, 59.4 at 1920) and `--page-edge-fade-floor`. */
+const TV_EDGE_FADE_SIZE: number = 59.4;
+const TV_EDGE_FADE_FLOOR: number = 0.3;
 
 /** Brief 5.10's rail clip-inset recipe -- see this file's header comment. */
 const RAIL_CLIP_INSET_BOTTOM: number = 24;
@@ -249,6 +252,9 @@ export struct MediaRail {
   /** `1` while this rail's focus group holds focus, `unfocusedRailFactor`
    * otherwise -- this file's `activeRailFactor`. */
   @State private activeRailFactor: number = DEFAULT_UNFOCUSED_RAIL_FACTOR;
+  /** TV: web's `data-fade-start` / `data-fade-end`: the fade shows on a side only while there is more content past it. */
+  @State private fadeStart: boolean = false;
+  @State private fadeEnd: boolean = true;
   private listScroller: ListScroller = new ListScroller();
   private listHasAppeared: boolean = false;
   private appliedInitialItemIndex: number = -1;
@@ -311,6 +317,49 @@ export struct MediaRail {
       .hitTestBehavior(HitTestMode.None)
   }
 
+  /** TV: web's scroll-edge fade as an alpha mask: the list and this layer are drawn offscreen together and the layer's alpha (DST_IN) keeps
+   * the cards at 30% at a faded edge, smoothstep stops over 59.4 vp (so it works over the frosted rails, unlike a flat colour). */
+  @Builder
+  private tvEdgeMask(): void {
+    Row() {
+      Column()
+        .width(this.fadeStart ? TV_EDGE_FADE_SIZE : 0)
+        .height('100%')
+        .linearGradient({ angle: 90, colors: this.fadeColours(true) })
+      Column()
+        .layoutWeight(1)
+        .height('100%')
+        .backgroundColor('rgba(0, 0, 0, 1)')
+      Column()
+        .width(this.fadeEnd ? TV_EDGE_FADE_SIZE : 0)
+        .height('100%')
+        .linearGradient({ angle: 90, colors: this.fadeColours(false) })
+    }
+    .width('100%')
+    .height('100%')
+    .blendMode(BlendMode.DST_IN)
+    .hitTestBehavior(HitTestMode.None)
+  }
+
+  private fadeColours(start: boolean): Array<[string, number]> {
+    const f: number = TV_EDGE_FADE_FLOOR;
+    const a: number[] = [f, f + (1 - f) * 0.156, f + (1 - f) * 0.5, f + (1 - f) * 0.844, 1];
+    const stops: Array<[string, number]> = [];
+    for (let i = 0; i < 5; i++) {
+      const alpha: number = start ? a[i] : a[4 - i];
+      stops.push([`rgba(0, 0, 0, ${alpha})`, i * 0.25]);
+    }
+    return stops;
+  }
+
+  private updateFade(): void {
+    if (!isTvMetrics()) {
+      return;
+    }
+    this.fadeStart = this.listScroller.currentOffset().xOffset > 2;
+    this.fadeEnd = !this.listScroller.isAtEnd();
+  }
+
   build() {
 
     Column({ space: this.headingGap }) {
@@ -335,13 +384,15 @@ export struct MediaRail {
             }
             .onAreaChange((_oldArea: Area, area: Area) => {
               this.onItemAreaChange(item.id, index, area, this.listScroller.currentOffset().xOffset);
+              this.updateFade();
             })
           },
           (item: MediaRailItem): string => item.id + ':' + (item.stamp ?? '')
         )
       }
       .listDirection(Axis.Horizontal)
-      .overlay(this.endFade(), { align: Alignment.End })
+      .overlay(isTvMetrics() ? this.tvEdgeMask() : this.endFade(), isTvMetrics() ? { align: Alignment.TopStart } : { align: Alignment.End })
+      .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
       .height(this.listHeight > 0 ? this.listHeight + RAIL_CLIP_INSET_TOP : '100%')
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
@@ -366,6 +417,7 @@ export struct MediaRail {
       })
       .onScroll((_xOffset: number, _yOffset: number) => {
         this.onListOffsetChange(this.listScroller.currentOffset().xOffset);
+        this.updateFade();
       })
     }
     .alignItems(HorizontalAlign.Start)

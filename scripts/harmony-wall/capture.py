@@ -279,8 +279,14 @@ def poster_walk(folder):
     def choose(x, y):
         route("settings", 8); click(x, y); time.sleep(4)
 
+    def covers_loaded():
+        """The first Recently Added cover (top at y 933) is real art, not the flat placeholder: PostersStalled (the workflow restarts) when not."""
+        img = png().convert("RGB")
+        if max(high - low for low, high in img.crop((902, 960, 1050, 1070)).getextrema()) <= 40:
+            raise PostersStalled("home-covers: Recently Added covers still on their placeholder")
+
     choose(1557, 500)  # Covers
-    route("home", 30); focus_first_card(); snap("home-covers", folder, 100000)
+    route("home", 30); settle(); covers_loaded(); focus_first_card(); snap("home-covers", folder, 100000)
     route("library:series", 15); focus_first_card(); snap("series-covers", folder, 100000)
     choose(1644, 715)  # Large
     route("home", 30); snap("home-covers-large", folder, 100000)

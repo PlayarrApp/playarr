@@ -129,6 +129,10 @@ export struct Stage {
   @Prop synopsis: string = '';
   /** Home: draw web's rails frost (`.tv-home-rails` background). */
   @Prop railFrost: boolean = false;
+  /** Web `data-fade-axis="y"` on Home's scrolling rails: fades only on a side with more content past it (the start side's inset is the page's own top room). */
+  @State private railsFadeTop: boolean = false;
+  @State private railsFadeBottom: boolean = true;
+  private railsScroller: Scroller = new Scroller();
   /** Width of that frost from the right edge, in percent: Home's rails 62, Library's grid panel 65. */
   @Prop railFrostWidthPct: number = 62;
   @Prop metaGapAdjust: number = 0;
@@ -343,11 +347,40 @@ export struct Stage {
     .translate({ x: -tv(COPY_ENTRY_TRANSLATE_X) * (1 - this.copyEntry) })
   }
 
+  @Builder
+  private railsEdgeMask(): void {
+    Column() {
+      Column()
+        .width('100%')
+        .height(this.railsFadeTop ? 59.4 : 0)
+        .linearGradient({ angle: 180, colors: [['rgba(0, 0, 0, 0.3)', 0], ['rgba(0, 0, 0, 0.409)', 0.25], ['rgba(0, 0, 0, 0.65)', 0.5],
+          ['rgba(0, 0, 0, 0.891)', 0.75], ['rgba(0, 0, 0, 1)', 1]] })
+      Column()
+        .width('100%')
+        .layoutWeight(1)
+        .backgroundColor('rgba(0, 0, 0, 1)')
+      Column()
+        .width('100%')
+        .height(this.railsFadeBottom ? 59.4 : 0)
+        .linearGradient({ angle: 180, colors: [['rgba(0, 0, 0, 1)', 0], ['rgba(0, 0, 0, 0.891)', 0.25], ['rgba(0, 0, 0, 0.65)', 0.5],
+          ['rgba(0, 0, 0, 0.409)', 0.75], ['rgba(0, 0, 0, 0.3)', 1]] })
+    }
+    .width('100%')
+    .height('100%')
+    .blendMode(BlendMode.DST_IN)
+    .hitTestBehavior(HitTestMode.Transparent)
+  }
+
+  private updateRailsFade(): void {
+    this.railsFadeTop = this.railsScroller.currentOffset().yOffset > 2;
+    this.railsFadeBottom = !this.railsScroller.isAtEnd();
+  }
+
   // Web TV Home has no panel behind the rails: a plain, natively scrollable full-height column (`.tv-home-rails`).
   @Builder
   private railPanelLayer(): void {
     if (this.scrollRails) {
-      Scroll() {
+      Scroll(this.railsScroller) {
         Column() {
           this.railsSlot()
         }
@@ -359,6 +392,11 @@ export struct Stage {
       .align(Alignment.TopStart)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
+      .overlay(this.railsEdgeMask(), { align: Alignment.TopStart })
+      .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
+      .onScroll((_x: number, _y: number) => {
+        this.updateRailsFade();
+      })
       .position({ x: tv(TvGeometry.homeRailsLeft), y: 0 })
       .opacity(this.railsEntry)
       .translate({ x: tv(RAILS_ENTRY_TRANSLATE_X) * (1 - this.railsEntry) })
