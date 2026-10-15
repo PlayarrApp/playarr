@@ -154,15 +154,17 @@ PlayarrPage {
                 text: work.title
                 wrapMode: Text.Wrap
                 color: Tokens.ink
-                font.family: Tokens.family820
-                font.letterSpacing: -1 * Tokens.u
-                font.pixelSize: 33.5 * Tokens.u
+                font.family: Tokens.family580   // web .tv-detail-title: weight 560, letter-spacing -0.072em
+                font.letterSpacing: -2.8 * Tokens.u
+                font.pixelSize: 38.8 * Tokens.u   // web: clamp(2rem, 10vw, 3.5rem) at 384 px
                 lineHeight: 0.92
-                height: implicitHeight - 0.5 * Tokens.u
+                topPadding: -3 * Tokens.u   // the taller web title sits 6 px higher in its box
+                height: implicitHeight - 2.6 * Tokens.u
             }
             Row {
                 x: Tokens.pad
                 spacing: 11.5 * Tokens.u
+                height: implicitHeight - 1.5 * Tokens.u
                 Label { text: work.kind === "movie" ? qsTr("Movie") : work.kind === "series" ? qsTr("Series") : qsTr("Music"); font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                 Label { visible: !!detail && !!detail.runtime_ms; text: detail ? hm(detail.runtime_ms) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                 Label { visible: !!work.release_date; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
@@ -184,7 +186,7 @@ PlayarrPage {
                 font.family: Tokens.family
                 font.pixelSize: 11.7 * Tokens.u
                 lineHeight: 0.98
-                bottomPadding: 5 * Tokens.u
+                bottomPadding: 1.5 * Tokens.u
             }
             Row {
                 x: Tokens.pad
