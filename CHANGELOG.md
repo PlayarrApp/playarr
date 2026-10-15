@@ -658,6 +658,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: the title actions drawer's Play glyph is drawn in the brand pink instead of an orange emoji.
 - HarmonyOS phone: Home honours the Covers setting and the artwork size (portrait 2:3 cards and the 1 to 3 column widths web uses on a phone); the wall captures Home in each poster mode.
 - Android TV: the focused Settings section row takes web's grey fill with no outline, and the detail action pills' focus ring sits 2 px off the pill as on web.
 - Harmony wall: the preview's series episode builder keeps the next-up ring and the unseen dot.
