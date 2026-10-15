@@ -1,0 +1,1 @@
+- Xbox: Back from a title shows the library at once with focus on the card you left, not on the nav rail.

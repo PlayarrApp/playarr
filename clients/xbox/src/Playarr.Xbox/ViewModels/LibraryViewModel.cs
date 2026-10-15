@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Playarr.Core.Models;
 using Playarr.Core.Networking;
@@ -39,6 +40,13 @@ namespace Playarr.Xbox.ViewModels
         private const int PageLimit = 200;
 
         private readonly XboxAppEnvironment _environment;
+
+        // The last answer per kind, sort and order: Back from a title paints the grid at once (as the web does) so the
+        // remembered card can take focus straight away; the refresh only replaces it when the titles changed.
+        private static readonly Dictionary<string, (IReadOnlyList<Work> Works, long? Total)> Snapshots = new Dictionary<string, (IReadOnlyList<Work>, long?)>();
+        private static IReadOnlyList<WorkKind>? _kindsSnapshot;
+
+        private string SnapshotKey() => $"{SelectedKind}|{SelectedSort}|{Reversed}";
 
         private IReadOnlyList<WorkKind> _kinds = Array.Empty<WorkKind>();
         private WorkKind? _selectedKind;
@@ -155,13 +163,19 @@ namespace Playarr.Xbox.ViewModels
 
         private async Task LoadKindsAndWorksAsync()
         {
-            IsLoadingKinds = true;
+            var haveKinds = _kindsSnapshot != null;
+            if (haveKinds)
+            {
+                Kinds = _kindsSnapshot!;
+            }
+
+            IsLoadingKinds = !haveKinds;
             ErrorMessage = null;
 
             try
             {
                 var kinds = await _environment.ApiClient.ListCatalogKindsAsync();
-                Kinds = new List<WorkKind>(kinds);
+                Kinds = _kindsSnapshot = new List<WorkKind>(kinds);
             }
             catch (ApiException error)
             {
@@ -181,7 +195,15 @@ namespace Playarr.Xbox.ViewModels
 
         private async Task LoadWorksAsync()
         {
-            IsLoadingWorks = true;
+            var key = SnapshotKey();
+            var cached = Snapshots.TryGetValue(key, out var snapshot);
+            if (cached)
+            {
+                Total = snapshot.Total;
+                Works = snapshot.Works;
+            }
+
+            IsLoadingWorks = !cached;
             ErrorMessage = null;
 
             try
@@ -207,7 +229,11 @@ namespace Playarr.Xbox.ViewModels
 
                 // The web's card overlay: a progress line or the unseen dot (best effort: cards stay plain without it).
                 await HomeViewModel.MarkWatchStateAsync(works, _environment.ApiClient.ListWatchProgressAsync());
-                Works = works;
+                Snapshots[key] = (works, page.Total);
+                if (!cached || !works.Select(w => w.Id).SequenceEqual(snapshot.Works.Select(w => w.Id)))
+                {
+                    Works = works;
+                }
             }
             catch (ApiException error)
             {
