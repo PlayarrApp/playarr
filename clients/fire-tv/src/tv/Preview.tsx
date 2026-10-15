@@ -1,6 +1,7 @@
 /** The web's `tv-library-preview`: kicker, 69px title, meta runs and overview on the left of a stage page. */
 import React from 'react';
 import {View} from 'react-native';
+import {blend} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {BalancedT, Box, T, u} from './kit';
 
@@ -18,6 +19,8 @@ export interface PreviewProps {
 
 export function Preview({kicker, title, meta, metaContent, overview, children}: PreviewProps): React.ReactElement {
   const {colour} = useTheme();
+  // Web `.details-panel`: meta and overview are --dp-soft (ink 88% over the surface) at weight 600.
+  const soft = blend(colour.ink, colour.surface, 0.88);
   return (
     <Box x={153.6} y={259.2} w={455} pointerEvents="box-none">
       {kicker ? (
@@ -34,7 +37,7 @@ export function Preview({kicker, title, meta, metaContent, overview, children}: 
         <View style={{marginTop: u(27), flexDirection: 'row', flexWrap: 'wrap'}}>
           {meta?.map((run, index) => (
             <View key={`${index}:${run}`} style={{marginRight: u(12.8)}}>
-              <T size={12.096} weight={400} lh={18.1} color={index === 0 ? colour.inkSoft : colour.inkMuted}>
+              <T size={13.056} weight={600} lh={19.6} color={soft}>
                 {run}
               </T>
             </View>
@@ -44,7 +47,7 @@ export function Preview({kicker, title, meta, metaContent, overview, children}: 
       ) : null}
       {overview ? (
         <View style={{marginTop: u(meta && meta.length > 0 ? 21.6 : 21.6), width: u(324)}}>
-          <T size={12.864} weight={400} lh={20.3} color={colour.inkMuted} lines={5}>
+          <T size={13.824} weight={600} lh={21.8} color={soft} lines={5}>
             {overview}
           </T>
         </View>

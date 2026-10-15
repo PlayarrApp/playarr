@@ -3,9 +3,9 @@
  *
  * Sizes and tokens are the web's: Home and library tracks fade scrolled-past content over a 152 px gutter to the LEFT of
  * the track's start line (the web masks the track; Vega has no masks, so the gutter is covered with the page colour at
- * full opacity fading to clear, and a card at rest sits on the start line, clear). Every other edge is the 54 px shade:
- * the ink glow `rgba(31,14,20)` at 0.58 of 0.42 in light, and the page-background scrim in dark, where an ink shade would
- * be invisible. Opacity animates over 180 ms like the web's transition.
+ * full opacity fading to clear, and a card at rest sits on the start line, clear). Every other edge is the 59.4 px shade:
+ * the page colour laid over the content at 70% at the edge, easing out over five smoothstep stops, in both themes (the web's
+ * mask dims content to 30%). The web has no transition on it, so it switches at once.
  */
 import React, {useEffect, useRef} from 'react';
 import {Animated, Easing, StyleSheet} from 'react-native';
@@ -17,7 +17,13 @@ import {u} from './kit';
 export type EdgeSide = 'left' | 'right' | 'top' | 'bottom';
 
 export const TRACK_GUTTER = 152;
-export const EDGE_SIZE = 54;
+/** Web `--page-edge-fade-size`: clamp(38px, 5.5 * viewport-unit, 64px) = 59.4 px at 1920 x 1080. */
+export const EDGE_SIZE = 59.4;
+/** Web `--page-edge-fade-floor`: content dims to 30% at the edge, in both themes. */
+const FADE_FLOOR = 0.3;
+/** Web's smoothstep ramp stops (page-layout.css: 0.156, 0.5, 0.844 of the way from the floor to 1). */
+const RAMP = [0, 0.25, 0.5, 0.75, 1];
+const RAMP_EASE = [0, 0.156, 0.5, 0.844, 1];
 
 export interface EdgeFadeProps {
   side: EdgeSide;
@@ -42,13 +48,14 @@ export function EdgeFade({side, active, x, y, w, h, size, kind = 'shade', tint, 
   const {colour, scheme} = useTheme();
   const opacity = useRef(new Animated.Value(active ? 1 : 0)).current;
   useEffect(() => {
-    Animated.timing(opacity, {toValue: active ? 1 : 0, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: true}).start();
+    Animated.timing(opacity, {toValue: active ? 1 : 0, duration: 0, easing: Easing.out(Easing.quad), useNativeDriver: true}).start();
   }, [active, opacity]);
 
   const horizontal = side === 'left' || side === 'right';
   const thickness = size ?? (kind === 'gutter' ? TRACK_GUTTER : EDGE_SIZE);
-  const base = kind === 'gutter' || kind === 'mask' ? colour.surface : scheme === 'dark' ? colour.surface : 'rgba(31, 14, 20, 1)';
-  const strength = kind === 'gutter' || kind === 'mask' ? 1 : scheme === 'dark' ? 0.92 : 0.3;
+  // The web dims the content under a mask; without masks the page colour is laid over it, 70% at the edge, in both themes.
+  const base = colour.surface;
+  const strength = kind === 'gutter' || kind === 'mask' ? 1 : 1 - FADE_FLOOR;
   // Colour at the screen edge first, clear last.
   const edge = mix(base, strength);
   const clear = mix(base, 0);
@@ -62,8 +69,8 @@ export function EdgeFade({side, active, x, y, w, h, size, kind = 'shade', tint, 
       ? [edge, edge, clear]
       : kind === 'gutter' && tint
         ? [mix(colour.surface, tintPeak), mix(blend(frost, colour.surface, frostAlpha * 0.35), 0.62 * tintPeak), mix(blend(frost, colour.surface, frostAlpha * 0.7), 0.22 * tintPeak), mix(blend(frost, colour.surface, frostAlpha), 0)]
-        : [edge, mix(base, strength * 0.35), clear];
-  const locations = kind === 'mask' ? [0, Math.min(0.95, solid / thickness), 1] : stops.length === 4 ? [0, 0.35, 0.7, 1] : [0, 0.45, 1];
+        : RAMP_EASE.map((step) => mix(base, strength * (1 - step)));
+  const locations = kind === 'mask' ? [0, Math.min(0.95, solid / thickness), 1] : stops.length === 4 ? [0, 0.35, 0.7, 1] : stops.length === 5 ? RAMP : [0, 0.45, 1];
   const forward = side === 'left' || side === 'top';
   const start = horizontal ? {x: forward ? 0 : 1, y: 0} : {x: 0, y: forward ? 0 : 1};
   const end = horizontal ? {x: forward ? 1 : 0, y: 0} : {x: 0, y: forward ? 1 : 0};

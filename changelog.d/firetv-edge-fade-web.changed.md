@@ -1,0 +1,1 @@
+- Fire TV: scroll-edge fades use web's 59.4 px length, five-stop ramp and 30% floor in both themes (the light theme no longer shows a grey bar), and the library details panel text uses web's size, weight and colour.

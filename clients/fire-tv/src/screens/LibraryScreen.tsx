@@ -44,7 +44,7 @@ import type {ApiClient, WatchProgress, Work, WorkKind} from '@playarr-tv/api-cli
 import {ArtworkImage} from '../components/ArtworkImage';
 import {useLanguage} from '../i18n/LanguageProvider';
 import {useTvBackNavigation} from '../navigation/backPolicy';
-import {mix} from '../theme/color';
+import {blend, mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {yearRangeLabel} from '../lib/workYear';
 import {Icon} from '../shell/icons';
@@ -654,7 +654,7 @@ function LibraryRuntime({workId}: {workId: string}): React.ReactElement | null {
   if (!label) return null;
   return (
     <View style={{marginRight: u(12.8)}}>
-      <T size={12.096} weight={400} lh={18.1} color={colour.inkMuted} lines={1}>
+      <T size={13.056} weight={600} lh={19.6} color={blend(colour.ink, colour.surface, 0.88)} lines={1}>
         {label}
       </T>
     </View>
