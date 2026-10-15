@@ -128,8 +128,9 @@ sub panelAppearance()
     pgRect(m.pageBody, 773.8, 352, 1042, 1, "line")
     pgHeading(382, "Home screen artwork")
     pgHint(426.5, "Show portrait covers instead of wide media thumbnails on the home screen.")
-    ' Portrait covers are not available on Roku yet (the cards are 16:9): the choice stays on Thumbnails and says so.
-    pgSegmentedWide(773.8, 465, 56, ["Thumbnails", "Covers"], 0, "artwork")
+    coverIdx = 0
+    if m.homeCover = true then coverIdx = 1
+    pgSegmentedWide(773.8, 465, 56, ["Thumbnails", "Covers"], coverIdx, "artwork")
     pgRect(m.pageBody, 773.8, 551, 1042, 1, "line")
     pgHeading(581, "Artwork size")
     pgHint(626, "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
@@ -371,7 +372,9 @@ sub settingsAction(item as Object)
         sizes = ["small", "medium", "large"]
         m.artworkSizePref = sizes[item.data]
     else if a = "artwork"
-        ' Thumbnails is the only artwork mode on Roku; Covers keeps it.
+        m.homeCover = item.data = 1
+        SaveHomeCover(m.homeCover)
+        m.homeCoverChanged = true
     else if a = "forceVideo"
         m.forceDirectVideo = item.data = 1
         SaveForceDirect("video", m.forceDirectVideo)

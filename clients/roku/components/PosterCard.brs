@@ -333,7 +333,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.focusRing.translation = [-focusInset, -focusInset]
     m.focusRing.width = artW + (focusInset * 2)
     m.focusRing.height = artH + (focusInset * 2)
-    if m.homeCardFocusStyle
+    if m.homeCardFocusStyle and ovW = 0
         ' card-glow.png has a 220x124 mask centred in a 400x304 canvas with
         ' 90px margins. Home artwork is laid out at the 1.4864 card scale, so
         ' scale the full glow bitmap and its margins together to keep that mask
@@ -347,7 +347,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         m.focusGlow.width = artW + 180
         m.focusGlow.height = artH + 180
     end if
-    if m.homeCardFocusStyle
+    if m.homeCardFocusStyle and ovW = 0
         ' The shadow masks share the same 400x304 canvas and 90px margins as
         ' the Home glow. Scale the full canvas so its opaque shape remains
         ' aligned with the card art at Home's larger layout scale.

@@ -399,6 +399,8 @@ function pageMoveFocus(dir as String) as Boolean
                         score = primary + cross * 4 - overlap * 0.55
                     end if
                 else
+                    ' Up/Down: a control directly below (its span overlaps this one's) is no sideways move, like web's focus order.
+                    if (dir = "up" or dir = "down") and it.x < cur.x + cur.w and it.x + it.w > cur.x then cross = 0
                     score = primary + cross * 2.5
                 end if
             end if

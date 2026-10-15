@@ -957,7 +957,7 @@ class RokuDeviceBugfixTests(unittest.TestCase):
         self.assertTrue((ROOT / "images" / "stage-key-art-fade.png").is_file())
         self.assertIn('translation="[881.6,422.9]"', stage)
         # Rails are 319px apart (web) and use the server's home rails.
-        self.assertIn("y += 366", MAIN)
+        self.assertIn("y += homeRailPitch()", MAIN)
         self.assertIn('"homeRails", "GET", "/api/v1/home/rails"', MAIN)
         self.assertNotIn("takeUnusedWorks(m.homeMovies", MAIN)
         # Home shows every server rail from a RowList pool and On deck resolves episodes, artists and watch progress.

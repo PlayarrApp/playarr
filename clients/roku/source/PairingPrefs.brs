@@ -196,3 +196,14 @@ sub SaveForceDirect(axis as String, value as Boolean)
     end if
     section.Flush()
 end sub
+
+' Settings > Home screen artwork: "cover" shows portrait posters on Home (web's playarr-home-view).
+function LoadHomeCover() as Boolean
+    return PairingPrefsRegistry().Read("home_view") = "cover"
+end function
+
+sub SaveHomeCover(value as Boolean)
+    section = PairingPrefsRegistry()
+    if value then section.Write("home_view", "cover") else section.Write("home_view", "thumbnail")
+    section.Flush()
+end sub

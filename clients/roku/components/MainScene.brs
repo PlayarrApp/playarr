@@ -117,6 +117,7 @@ sub init()
     ' Sites (index 4) starts disabled until catalog/kinds proves access.
     m.navEnabled = [true, true, true, true, false, true, true, true, true, true]
     m.qualityPref = LoadQualityPreference()
+    m.homeCover = LoadHomeCover()
     m.forceDirectVideo = LoadForceDirect("video")
     m.forceDirectAudio = LoadForceDirect("audio")
     m.subtitlePref = LoadSubtitlePreference()
@@ -3554,6 +3555,15 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         item.artHeaders = artworkHeaders(item.hdPosterUrl, headers)
         item.AddField("activeRailFactor", "float", false)
         item.activeRailFactor = activeRailFactor
+        ' Settings > Home screen artwork = Covers: portrait 2:3 art (web --card-w-cover 191 px) from the poster image.
+        if m.homeCover = true and homeRailIndex(row) >= 0
+            item.AddField("artW", "float", false)
+            item.AddField("artH", "float", false)
+            item.artW = 191
+            item.artH = 287
+            item.hdPosterUrl = withArtworkWidth(artworkUrl(work), 540)
+            item.artHeaders = artworkHeaders(item.hdPosterUrl, headers)
+        end if
         item.AddField("focusRingOutsideArt", "boolean", false)
         item.focusRingOutsideArt = homeRailIndex(row) >= 0
         item.AddField("homeCardFocusStyle", "boolean", false)
@@ -4242,9 +4252,10 @@ sub finishHomeLoad()
     ' The hero art is the slowest download (a 4 MB stage image): request it before the cards so it is first in the queue.
     updateHeroFromWork(candidates[0].works[0])
     ' Reset scroll before deriving current screen-space art slots.
-    m.homeContent.translation = [881.6, 422.9]
+    m.homeContent.translation = [881.6, homeContentTop()]
     m.visibleRails = []
     y = 0
+    if m.homeCover = true then y = -51
     railIndex = 0
     for each candidate in candidates
         rail = m.homeRailPool[railIndex]
@@ -4255,10 +4266,19 @@ sub finishHomeLoad()
         setRailTitle(rail)
         isActiveRail = false
         if railIndex = 0 then isActiveRail = true
+        if m.homeCover = true
+            rail.row.rowItemSize = [[207, 423]]
+            rail.row.itemSize = [1134, 423]
+            rail.row.rowHeights = [423]
+        else
+            rail.row.rowItemSize = [[343, 320]]
+            rail.row.itemSize = [1134, 320]
+            rail.row.rowHeights = [320]
+        end if
         buildRailContent(rail.row, rail.works, isActiveRail, 1.4864, m.artActiveGeneration, "home", railIndex)
         m.visibleRails.Push({ row: rail.row, works: rail.works, first: 0, col: 0, last: 0, jumping: -1, rightAligned: false })
-        ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards).
-        y += 366
+        ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards); 470 px with covers.
+        y += homeRailPitch()
         railIndex = railIndex + 1
     end for
 
@@ -4547,8 +4567,8 @@ sub scrollHomeToFocusedRail()
     ' would yank all of Home's rail content to the screen's top-left corner.
     ' Web Home scrolls so the focused rail sits where the first rail sits (rails are 318.4 px apart).
     scrollOffset = 0
-    if m.homeFocusIndex > 0 then scrollOffset = m.homeFocusIndex * 366
-    m.homeContent.translation = [881.6, 422.9 - scrollOffset]
+    if m.homeFocusIndex > 0 then scrollOffset = m.homeFocusIndex * homeRailPitch()
+    m.homeContent.translation = [881.6, homeContentTop() - scrollOffset]
 end sub
 
 ' ---------------------------------------------------------------------------
@@ -6754,6 +6774,11 @@ function parityWorkLabel(work as Object) as String
 end function
 
 sub showOnly(name as String)
+    ' Settings > Home screen artwork changed: rebuild the rails once before Home is shown again.
+    if name = "home" and m.homeCoverChanged = true and m.homeServerRails <> invalid
+        m.homeCoverChanged = false
+        finishHomeLoad()
+    end if
     parityEmit("screen", name)
     ' tv-web Profiles is a full-canvas picker with no left nav dock / clock chrome.
     ' Hide the signed-in shell on pre-auth and profiles so those screens match web.
@@ -7479,4 +7504,14 @@ function WorkYearLabel(work as Object) as String
         if Val(work.end_date.Left(4)) > Val(start) then return start + Chr(8211) + work.end_date.Left(4)
     end if
     return start
+end function
+
+function homeRailPitch() as Integer
+    if m.homeCover = true then return 470
+    return 366
+end function
+
+' The panel stays at web's 422.9; covers rails start 51 px higher inside it (see finishHomeLoad).
+function homeContentTop() as Float
+    return 422.9
 end function
