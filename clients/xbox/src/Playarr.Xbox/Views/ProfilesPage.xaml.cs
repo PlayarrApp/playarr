@@ -121,22 +121,21 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        // Web .profile-avatar: 244 px circle; the selected tile lifts 8 px and scales 1.045 with the avatar at 1.035 and a ring.
+        // Web .profile-avatar: 244 px circle; the selected tile lifts 8 px and scales 1.08 (tile 1.045 times avatar 1.035) with a ring.
         private const double AvatarSize = 244;
 
-        private readonly List<(FrameworkElement Owner, FrameworkElement? Actions, Border Lift, Ellipse Ring, Canvas Halo, ScaleTransform AvatarScale)> _tiles =
-            new List<(FrameworkElement, FrameworkElement?, Border, Ellipse, Canvas, ScaleTransform)>();
+        private readonly List<(FrameworkElement Owner, FrameworkElement? Actions, Border Lift, Ellipse Ring, Canvas Halo)> _tiles =
+            new List<(FrameworkElement, FrameworkElement?, Border, Ellipse, Canvas)>();
 
         /// <summary>Shows the web's selected look (lift, ring, the gear and Sign out row) on the tile that owns <paramref name="owner"/>.</summary>
         private void Select(FrameworkElement owner)
         {
-            foreach (var (tile, actions, lift, ring, halo, scale) in _tiles)
+            foreach (var (tile, actions, lift, ring, halo) in _tiles)
             {
                 var on = ReferenceEquals(tile, owner) || (actions != null && ReferenceEquals(actions, owner));
                 var move = (CompositeTransform)lift.RenderTransform;
                 move.TranslateY = on ? -8 : 0;
-                move.ScaleX = move.ScaleY = on ? 1.045 : 1;
-                scale.ScaleX = scale.ScaleY = on ? 1.035 : 1;
+                move.ScaleX = move.ScaleY = on ? 1.08 : 1; // web: tile 1.045 times avatar 1.035
                 ring.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
                 halo.Visibility = ring.Visibility;
                 if (actions != null)
@@ -172,7 +171,7 @@ namespace Playarr.Xbox.Views
         /// <summary>The web's gear (Settings) and Sign out pills under the selected profile.</summary>
         private StackPanel BuildActions()
         {
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0), Visibility = Visibility.Collapsed };
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 11, 0, 0), Visibility = Visibility.Collapsed };
             var gear = ChromeButton(Glyph("\uE713", 18, "PlayarrBrandInk"), 44, 44, 22);
             gear.Click += (s, e) => App.Navigation.Navigate(typeof(SettingsPage));
             var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Thickness(0) };
@@ -219,8 +218,6 @@ namespace Playarr.Xbox.Views
         /// <summary>One web profile column: avatar plate, name, status and (selected tile only) the action pills.</summary>
         private FrameworkElement BuildTile(UIElement plate, string name, string status, bool nameLock, RoutedEventHandler click, bool withActions, object? tag)
         {
-            var scale = new ScaleTransform { CenterX = AvatarSize / 2, CenterY = AvatarSize / 2 };
-            plate.RenderTransform = scale;
             var ring = new Ellipse { Width = AvatarSize, Height = AvatarSize, Stroke = (Brush)Application.Current.Resources["PlayarrBrandInk"], StrokeThickness = 4, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
             // The glow beyond the ring (UWP has no radial brush): stacked, fading outward strokes on a zero-size canvas.
             var halo = new Canvas { Width = 0, Height = 0, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
@@ -275,7 +272,7 @@ namespace Playarr.Xbox.Views
                 Background = new SolidColorBrush(Colors.Transparent),
                 BorderThickness = new Thickness(0),
                 Padding = new Thickness(8),
-                CornerRadius = new CornerRadius(143),
+                CornerRadius = new CornerRadius(8),
                 VerticalAlignment = VerticalAlignment.Top,
                 UseSystemFocusVisuals = false,
             };
@@ -291,7 +288,7 @@ namespace Playarr.Xbox.Views
                 column.Children.Add(actions);
             }
 
-            _tiles.Add((tile, actions, lift, ring, halo, scale));
+            _tiles.Add((tile, actions, lift, ring, halo));
             return column;
         }
 
