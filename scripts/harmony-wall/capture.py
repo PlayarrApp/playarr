@@ -273,6 +273,23 @@ def focus_first_card(click_xy=None):
     print("focus_first_card: no card answered; capturing unfocused", flush=True)
 
 
+def poster_walk(folder):
+    """Round 3, poster mode: Settings > Appearance > Home screen artwork = Covers (touch works in the Previewer), then Home and a library in
+    portrait covers at each artwork size; the settings are put back at the end. Frames go to capture/poster/<theme>/."""
+    def choose(x, y):
+        route("settings", 8); click(x, y); time.sleep(4)
+
+    choose(1557, 500)  # Covers
+    route("home", 30); focus_first_card(); snap("home-covers", folder, 100000)
+    route("library:series", 15); focus_first_card(); snap("series-covers", folder, 100000)
+    choose(1644, 715)  # Large
+    route("home", 30); snap("home-covers-large", folder, 100000)
+    choose(944, 715)  # Small
+    route("home", 30); snap("home-covers-small", folder, 100000)
+    choose(1294, 715)  # Medium
+    choose(1032, 500)  # Thumbnails
+
+
 def walk(folder, suffix):
     """The route-based screen walk (captures as <id><suffix>.png). Clicks only inside pages."""
     n = lambda s: s + suffix
@@ -298,6 +315,8 @@ def walk(folder, suffix):
         click(394, 207); time.sleep(3); click(1645, 285); time.sleep(4)
     snap(n("settings"), folder)
     extra_screens(folder)
+    if os.environ.get("POSTER_MODE") == "true" and device == "tv":
+        poster_walk(os.path.join(out, "poster", "dark" if folder.endswith("dark") else "light"))
 
 
 if device == "tv" and THEME in ("extra", "playback"):

@@ -34,6 +34,10 @@ on:
         description: Skip the player-controls route while retaining the other full-set captures
         type: boolean
         default: false
+      poster:
+        description: Round 3 poster mode (Home screen artwork = Covers) frames, TV only
+        type: boolean
+        default: false
       rail_patch:
         description: Apply the preview-only MediaRail @Prop patch (turn off to test whether the app needs it)
         type: boolean
@@ -106,6 +110,7 @@ jobs:
       DEVICE: ${{ inputs.device || 'tv' }}
       TV_SCREENS: ${{ inputs.tv_screens || 'all' }}
       SKIP_PLAYER: ${{ inputs.skip_player == true && 'true' || 'false' }}
+      POSTER_MODE: ${{ inputs.poster == true && 'true' || 'false' }}
       MESA_VERSION: 26.2.4
       THEME: ${{ matrix.theme }}
       SDK_BUILD: "31" # the public SDK is 6.1.0.<build>; split so the env-data guard does not read it as an IPv4 address
@@ -202,6 +207,7 @@ jobs:
           path: |
             capture/dark
             capture/light
+            capture/poster
             capture/build.json
             suite/dpad.json
             suite/playback.json
