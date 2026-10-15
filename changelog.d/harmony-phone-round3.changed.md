@@ -1,1 +1,0 @@
-- HarmonyOS phone: Home honours the Covers setting and the artwork size (portrait 2:3 cards and the 1 to 3 column widths web uses on a phone); the wall captures Home in each poster mode.
