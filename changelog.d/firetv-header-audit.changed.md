@@ -1,1 +1,0 @@
-- Fire TV: the page header title is 50 px tall, the subtitle uses web's size, weight and tracking, and Back shows only the 3 px ring (white in dark) with no fill or scale on focus.

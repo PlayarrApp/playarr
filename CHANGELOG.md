@@ -647,6 +647,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Fire TV: the page header title is 50 px tall, the subtitle uses web's size, weight and tracking, and Back shows only the 3 px ring (white in dark) with no fill or scale on focus.
 - HarmonyOS phone: square profile selects, calendar agenda meta type, series detail side padding and a circular profile avatar clip follow web; the wall labels the picker theme with the preview mode and focuses the current profile.
 - HarmonyOS phone: the detail play glyph is a drawn triangle and the profile picker sits closer to web's vertical rhythm.
 - HarmonyOS phone: the profile picker follows the web phone layout (left-aligned heading, 144 vp avatars, theme and language selects, Clients pill).

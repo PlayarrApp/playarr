@@ -272,6 +272,7 @@ Steps only the repository owner can perform.
 | 10103 | Apple (tvOS, macOS, iPhone, iPad) parity and streams on GitHub-hosted runners while the MacBook travels: tvOS and macOS show an error screen after sign-in, tailnet DNS | in_progress | parity-apple | | | 2026-10-15 18:00 ICT | Owner request. Hosted Apple wall workflow merged in #777; open: error screen after sign-in on tvOS and macOS, tailnet DNS. ETA reset by coordinator 2026-10-14. |
 | 10300 | Fire TV: page header as web (title, divider, subtitle side by side; subtitle not pink) | done | parity-firetv | firetv-page-header | | | PR open: #1356 Marked done 2026-10-15: PR #1356 merged. |
 | 10371 | Fire TV: title actions drawer rows as web (68 px rows, larger label) | done | parity-firetv | firetv-focus-crop-audit | | 2026-10-16 12:00 ICT | PR open: #1366 (draft, device check pending) PR #1366 merged 2026-10-15. |
+| 10384 | Fire TV: page header and Back focus as web (title 50 px, subtitle 11.14 px/680, Back ring only) | in_review | parity-firetv | firetv-header-audit | | 2026-10-16 12:00 ICT | PR open: #1414 (verified against web page-layout.css; device check pending) |
 
 ## 6. Web accessibility AAA (2026-10-09)
 
