@@ -181,6 +181,10 @@
       ]
     }
   ],
+  "crops": [
+    { "id": "movies-deep", "from": "movies", "keys": ["down*60"] },
+    { "id": "music-last", "from": "music", "keys": ["down*14", "right*2"] }
+  ],
   "dpad": [
     {
       "id": "home-right",

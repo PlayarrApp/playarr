@@ -467,6 +467,10 @@ enum TVParityState {
     private static var tagID: String?
     private static var position: [String: Any]?
     private static var playback: [String: Any]?
+    private static var items: Int?
+
+    /// How many titles the open library page holds (nil off a library page): the driver waits for a loaded library before a capture.
+    static func setItems(_ count: Int?) { items = count; write() }
 
     /// The player's state for the driver's playback cases: `playing`, `buffering` or `failed`, and the position.
     static func setPlayback(playing: Bool, position: Double, failed: String?) {
@@ -583,7 +587,8 @@ enum TVParityState {
     private static func write() {
         let found = focusState()
         let state: [String: Any] = ["route": route, "focused": (tag ?? found.label) as Any, "item": found.item as Any,
-                                    "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any]
+                                    "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any,
+                                    "items": items as Any]
         // `-PlayarrParityState <path>`: an explicit file (the Mac driver); otherwise the app's Documents folder.
         let args = ProcessInfo.processInfo.arguments
         let explicit = args.firstIndex(of: "-PlayarrParityState").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }

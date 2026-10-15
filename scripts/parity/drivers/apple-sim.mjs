@@ -304,6 +304,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       if (!process.env.IDB) { run("open", ["-a", "Simulator", "--args", "-CurrentDeviceUDID", udid]); await sleep(6000); }
       await launch();
     },
+    endCrops: mac, // suite `crops`: the last row / item of a grid, for the focus-crop audit
     async stop() { collectMacFocusKeyLog({ final: true }); },
     async setTheme(t) { if (t !== theme) { theme = t; await launch(); } },
     async home() { await launch(); },
@@ -332,8 +333,21 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       if (mac) collectMacFocusKeyLog();
     },
     async location() { await sleep(300); return state().route ?? "/"; },
-    async focused() { const s = state(); return s.focused == null ? null : s.position ? { label: s.focused, position: s.position } : s.focused; },
+    // The Mac's focus settles a moment after a key (the layer settle step): wait up to 4 s for a focused item, never report an empty
+    // answer straight away. Bounded, so a screen that really has no focus still ends the check.
+    async focused() {
+      let s = state();
+      if (mac) for (let i = 0; i < 16 && s.focused == null; i += 1) { await sleep(250); s = state(); }
+      return s.focused == null ? null : s.position ? { label: s.focused, position: s.position } : s.focused;
+    },
     async screenshot(file) {
+      // A library page (and the Filters drawer over it) is captured only once its titles have loaded: an empty library behind the
+      // drawer scored 78. Bounded at 40 s; a page that never reports a count (not a library) is not held up.
+      if (mac && /^\/(movies|series|music)/.test(state().route ?? "")) {
+        for (let i = 0; i < 160 && !(state().items > 0); i += 1) await sleep(250);
+        if (!(state().items > 0)) console.log("  library still empty after 40 s, capturing anyway");
+        await sleep(1500); // artwork for the first screenful
+      }
       if (mac) {
         rmSync(file, { force: true });
         run(notify, [`snapshot:${file}`]);

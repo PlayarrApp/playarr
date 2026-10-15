@@ -82,6 +82,23 @@ if (only.includes("screens")) {
     }
   }
 }
+// Extra captures for focus-crop checks (the last row of a long grid, the last item of a short one): not scored, no web ref, and only
+// for a driver that asks for them (`endCrops`). Written to <theme>/crops/<id>.png.
+if (only.includes("screens") && driver.endCrops) {
+  for (const theme of themes) {
+    await driver.setTheme(theme);
+    mkdirSync(join(out, theme, "crops"), { recursive: true });
+    for (const c of suite.crops ?? []) {
+      try {
+        await reach(suite.screens.find((x) => x.id === c.from));
+        await press(c.keys);
+        await sleep(1200);
+        await driver.screenshot(join(out, theme, "crops", `${c.id}.png`));
+        console.log(`ok ${theme} crop ${c.id}`);
+      } catch (e) { console.log(`FAIL ${theme} crop ${c.id}: ${e.message.split("\n")[0]}`); } // a crop never fails the run
+    }
+  }
+}
 // A scored run without the web expected file would write expected: null for every result and overwrite a good dpad.json/performance.json.
 if (!reference && ((only.includes("dpad") && !Object.keys(expected.dpad).length) || (only.includes("performance") && !Object.keys(expected.performance).length))) {
   throw new Error(`no expected values for dpad/performance in ${expSrc}: pass --expected <web expected.json> (or --reference) before scoring`);

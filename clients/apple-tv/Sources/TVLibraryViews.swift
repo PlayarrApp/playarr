@@ -1109,7 +1109,7 @@ struct TVWorkArt: View {
     var body: some View {
         if let url {
             #if os(macOS)
-            TVRetryingArt(url: url) { tile }
+            TVRetryingArt(url: url, load: fetch) { tile }
             #else
             AsyncImage(url: url) { phase in
                 switch phase {
@@ -1136,6 +1136,24 @@ struct TVWorkArt: View {
             }
     }
 
+    #if os(macOS)
+    /// The server's work-artwork route answers 401 without the bearer token (confirmed with a probe: 200 with it); other
+    /// artwork URLs stay public, as before. Goes through `requestData`, which attaches the session's `Authorization`.
+    private var fetch: (URL) async throws -> Data {
+        let id = work.id.uuidString.lowercased()
+        return { [apiClient] url in
+            guard url.path.hasPrefix("/api/v1/artwork/work/") else {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+                return data
+            }
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            NSLog("PlayarrMac: authenticated artwork request %@ for %@", url.path, id)
+            return try await apiClient.requestData(method: "GET", path: url.path, query: items, body: nil, expectedStatuses: [200])
+        }
+    }
+    #endif
+
     private var url: URL? {
         let order: [ImageKind] = posterFirst ? [.poster, .backdrop] : [.backdrop, .poster]
         let image = order.lazy.compactMap { kind in work.images.first(where: { $0.kind == kind }) }.first ?? work.images.first
@@ -1155,6 +1173,7 @@ struct TVWorkArt: View {
 /// the same cards as text tiles in every macOS capture.
 struct TVRetryingArt<Placeholder: View>: View {
     let url: URL
+    let load: (URL) async throws -> Data
     @ViewBuilder let placeholder: () -> Placeholder
     @State private var image: Image?
 
@@ -1167,9 +1186,10 @@ struct TVRetryingArt<Placeholder: View>: View {
             for attempt in 0..<10 where image == nil {
                 if attempt > 0 { try? await Task.sleep(nanoseconds: 2_000_000_000) }
                 if Task.isCancelled { return }
-                if let (data, response) = try? await URLSession.shared.data(from: url),
-                   (response as? HTTPURLResponse)?.statusCode == 200, let ns = NSImage(data: data) {
-                    image = Image(nsImage: ns)
+                do {
+                    if let ns = NSImage(data: try await load(url)) { image = Image(nsImage: ns) }
+                } catch {
+                    NSLog("PlayarrMac: artwork %@ failed: %@", url.path, String(describing: error))
                 }
             }
         }
@@ -1590,6 +1610,15 @@ struct TVLibraryKindView: View {
         NSLog("PlayarrMacTrace restore opened card index=%d", items.firstIndex(where: { $0.id == id }) ?? -1)
         proxy.scrollTo(id, anchor: .center)
         focusRequestID = id
+        // The scroll can hand focus to the card that slides under the resting pointer or the settle step (a dark D-pad run
+        // landed on the third-row card); ask again, bounded, until the opened card holds it.
+        Task { @MainActor in
+            for _ in 0..<4 {
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                if selectedID == id { return }
+                focusRequestID = id
+            }
+        }
     }
     #endif
 
@@ -1922,6 +1951,11 @@ struct TVLibraryKindView: View {
                 .onReceive(NotificationCenter.default.publisher(for: .macGridReturnFocus)) { _ in restoreOpenedCard(proxy) }
                 .onAppear { restoreOpenedCard(proxy) }
                 .onChange(of: items.count) { _, _ in restoreOpenedCard(proxy) }
+                #if DEBUG
+                .onAppear { TVParityState.setItems(items.count) }
+                .onChange(of: items.count) { _, count in TVParityState.setItems(count) }
+                .onDisappear { TVParityState.setItems(nil) }
+                #endif
         }
         #else
         return grid

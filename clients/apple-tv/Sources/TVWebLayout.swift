@@ -464,6 +464,15 @@ struct TVDrawer<Content: View>: View {
     /// Focus moves into the drawer when it opens (web: the panel takes focus; Back closes it).
     @FocusState private var closeFocused: Bool
 
+    /// The web close button is a circle on the Mac reference; tvOS keeps its rounded tile.
+    private static var closeRadius: CGFloat {
+        #if os(macOS)
+        return 25
+        #else
+        return 14
+        #endif
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 0) {
@@ -486,9 +495,19 @@ struct TVDrawer<Content: View>: View {
                         .font(TVTheme.font(size: 26.88, css: 720))
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .frame(width: 48, height: 50)
-                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
+                        .background(RoundedRectangle(cornerRadius: Self.closeRadius, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
+                        #if os(macOS)
+                        // Web `.drawer-close`: a round button with the shared dark focus ring; the frozen capture draws the ring of
+                        // the focused close button too (the web reference opens with it focused).
+                        .overlay {
+                            if TVParityLaunch.frozen, !focusesContent {
+                                RoundedRectangle(cornerRadius: Self.closeRadius + 3.5, style: .continuous)
+                                    .stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5)
+                            }
+                        }
+                        #endif
                 }
-                .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
+                .buttonStyle(TVRingButtonStyle(cornerRadius: Self.closeRadius))
                 .focusEffectDisabled()
                 .focused($closeFocused)
                 #if os(macOS)
@@ -537,7 +556,7 @@ struct TVChoiceSection<Value: Hashable>: View {
                 ForEach(options, id: \.value) { option in
                     let active = option.value == selection
                     Button { selection = option.value } label: {
-                        Text(option.label)
+                        choiceLabel(option, active: active)
                             .font(TVTheme.font(size: 10.56, css: 680))
                             .foregroundStyle(active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                             .frame(width: (268 - 8 * CGFloat(options.count - 1)) / CGFloat(options.count), height: 56)
@@ -545,6 +564,11 @@ struct TVChoiceSection<Value: Hashable>: View {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(active ? DesignTokens.Color.textPrimary : DesignTokens.Stage.surfaceSoft.opacity(0.64))
                             )
+                            #if os(macOS)
+                            // Web `.tv-filter-choice-grid button`: a 1 px border at 76% of `--line`.
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(DesignTokens.Stage.ink.opacity(0.1), lineWidth: 1))
+                            #endif
                             .scaleEffect(active ? 1.025 : 1)
                     }
                     .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
@@ -554,7 +578,48 @@ struct TVChoiceSection<Value: Hashable>: View {
         }
         .padding(.bottom, 30.3)
     }
+
+    /// The label; on the Mac the View options carry the web's list / screen / cover glyph above it.
+    @ViewBuilder
+    private func choiceLabel(_ option: (value: Value, label: String), active: Bool) -> some View {
+        #if os(macOS)
+        if title == "View", let key = option.value as? String {
+            VStack(spacing: 7) {
+                TVViewGlyph(kind: key)
+                Text(option.label)
+            }
+        } else {
+            Text(option.label)
+        }
+        #else
+        Text(option.label)
+        #endif
+    }
 }
+
+#if os(macOS)
+/// Web Filters "View" glyphs: three outlined bars for List, three outlined tall boxes for Screen and (narrower) Cover.
+struct TVViewGlyph: View {
+    let kind: String
+
+    var body: some View {
+        Group {
+            if kind == "list" {
+                VStack(spacing: 1.5) {
+                    ForEach(0..<3, id: \.self) { _ in RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: 20, height: 3.6) }
+                }
+            } else {
+                HStack(spacing: kind == "cover" ? 1.5 : 2) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: kind == "cover" ? 4.5 : 6, height: 13)
+                    }
+                }
+            }
+        }
+        .frame(height: 14)
+    }
+}
+#endif
 
 
 /// Web media actions (`MediaContextMenu`): a long press (650 ms) on a media card opens its actions in the shared drawer.
