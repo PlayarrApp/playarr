@@ -27,6 +27,9 @@ struct WorkDetailView: View {
     @State private var tabletEpisodeSelectionTouched = false
     @FocusState private var focusedTabletEpisodeID: UUID?
     @State private var initialTabletScrollWorkID: UUID?
+    @State private var tabletMovieModel: WMDetailModel?
+    @State private var showingTabletPlayback = false
+    @State private var showingTabletDownload = false
     @State private var visibleDetailRouteID = UUID()
     @State private var isVisible = false
 
@@ -190,7 +193,7 @@ struct WorkDetailView: View {
         return ZStack(alignment: .topLeading) {
             WMHeaderCircleButton(width: 43, height: 43, glyph: "←") { dismiss() }.offset(x: 122 * scale, y: 55 * scale)
             WMTitleWithDetail(detail: detail.work.title, maxWidth: room, size: 9.92, gap: 15) {
-                WMText(detail.work.kind.displayName == "Movie" ? "Movies" : "Series", max(19.2, 24 * scale), 520, lh: 36, ls: -1)
+                WMText(detail.work.kind == .movie ? "Movies" : "Series", max(19.2, 24 * scale), 520, lh: 36, ls: -1)
             }
             .offset(x: 182 * scale, y: 57 * scale)
         }
@@ -202,7 +205,7 @@ struct WorkDetailView: View {
             ZStack(alignment: .topLeading) {
                 PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
                     .frame(width: proxy.size.width, height: proxy.size.height)
-                    .opacity(scheme == .dark ? 0.3 : 0.07)
+                    .opacity(scheme == .dark ? (detail.work.kind == .movie ? 0.06 : 0.3) : 0.07)
                     .overlay {
                         LinearGradient(
                             colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
@@ -221,14 +224,18 @@ struct WorkDetailView: View {
                     .padding(.leading, proxy.size.width * 0.088)
                     .padding(.top, proxy.size.height * 0.24)
 
-                if hasVisibleChildren(detail.children) || hasDiscoveryContent {
+                if hasVisibleChildren(detail.children) || hasDiscoveryContent || detail.work.kind == .movie {
                     ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: 30) {
                             children(for: detail.children, tabletScale: proxy.size.width / 1366)
-                            discoveryContent
+                            if detail.work.kind == .movie {
+                                tabletMovieRails(detail, tabletScale: proxy.size.width / 1366)
+                            } else {
+                                discoveryContent
+                            }
                         }
                         .padding(.leading, proxy.size.width * 0.088)
-                        .padding(.top, proxy.size.height * (detail.work.kind == .series ? 0.5 : 0.25))
+                        .padding(.top, proxy.size.height * (detail.work.kind == .series || detail.work.kind == .movie ? 0.5 : 0.25))
                         .padding(.bottom, proxy.size.height * 0.5)
                     }
                     .frame(width: proxy.size.width * 0.62, height: proxy.size.height)
@@ -288,6 +295,12 @@ struct WorkDetailView: View {
                 }
             }
             .coordinateSpace(name: "tabletDetailLayoutDiagnostics")
+            .task(id: detail.work.id) {
+                guard detail.work.kind == .movie, tabletMovieModel == nil else { return }
+                let model = WMDetailModel(apiClient: apiClient, work: detail.work)
+                tabletMovieModel = model
+                await model.load(mediaFileID: detail.mediaFileID, runtimeMs: detail.runtimeMs)
+            }
         }
     }
 
@@ -380,6 +393,8 @@ struct WorkDetailView: View {
                 tabletScale: tabletScale,
                 tabletVerticalScale: tabletVerticalScale
             )
+        } else if !phone, detail.work.kind == .movie {
+            tabletMovieCopy(detail, tabletScale: tabletScale, tabletVerticalScale: tabletVerticalScale)
         } else {
         VStack(alignment: .leading, spacing: 0) {
             Text(detail.work.kind.displayName.uppercased())
@@ -454,6 +469,238 @@ struct WorkDetailView: View {
             }
         }
         }
+    }
+
+    /// Web tablet film page (1366 pt): genre kicker, a two-line title, one meta line, the synopsis, then Download,
+    /// Playback and Play in a row with the watchlist and playlist pills beneath.
+    private func tabletMovieCopy(_ detail: WorkDetail, tabletScale: CGFloat, tabletVerticalScale: CGFloat) -> some View {
+        let work = detail.work
+        let titleFont = min(80, max(35.2, 3.6 * 1366 / 100)) * tabletScale
+        let titleNativeLineHeight = DesignFont.uiFont(
+            family: "Nunito Sans",
+            postScriptName: DesignFont.nunitoPostScriptName,
+            size: titleFont,
+            weight: 560,
+            fixedAxes: DesignFont.nunitoAxes
+        )?.lineHeight ?? titleFont * 1.36
+        // CSS line-height .9: match its pitch and drop the last line's extra leading, as the series copy does.
+        let titleLineHeightCorrection = titleFont * 0.9 - titleNativeLineHeight
+        let metaFont = DesignFont.font(7.68 * tabletScale, 400)
+        let runtime = detail.runtimeMs.map { Self.runtimeLabel($0) }
+        let year = work.releaseDate.flatMap { Int($0.prefix(4)) }.map(String.init)
+        let released = work.releaseDate.flatMap(Self.airDateLabel).map { "Released \($0)" }
+        let meta = (["Movie", runtime, year, released] + work.genres.prefix(3).map { Optional($0) }).compactMap { $0 }
+        return VStack(alignment: .leading, spacing: 0) {
+            Text((work.genres.first ?? "Movie").uppercased())
+                .font(DesignFont.font(8.75 * tabletScale, 820))
+                .tracking(0.08 * 8.75 * tabletScale)
+                .foregroundStyle(PlayarrStyle.brandInk)
+                .padding(.bottom, 26 * tabletScale)
+            Text(work.title)
+                .font(DesignFont.font(titleFont, 560))
+                .tracking(-0.072 * titleFont)
+                .lineSpacing(titleLineHeightCorrection)
+                .foregroundStyle(PlayarrStyle.ink)
+                .lineLimit(2)
+                .frame(maxWidth: 190 * tabletScale * 1.3, alignment: .leading)
+                .padding(.bottom, titleLineHeightCorrection)
+            HStack(spacing: 13.6 * tabletScale) {
+                ForEach(Array(meta.enumerated()), id: \.offset) { _, item in
+                    Text(item).fixedSize(horizontal: true, vertical: false)
+                }
+            }
+            .font(metaFont)
+            .foregroundStyle(PlayarrStyle.muted)
+            .padding(.top, 22 * tabletVerticalScale)
+            if let overview = work.overview, !overview.isEmpty {
+                Text(overview)
+                    .font(DesignFont.font(9.28 * tabletScale, 400))
+                    .foregroundStyle(PlayarrStyle.inkSoft)
+                    .lineSpacing(5 * tabletScale)
+                    .lineLimit(5)
+                    .frame(maxWidth: Self.nunitoChWidth(42, pointSize: 9.28 * tabletScale) ?? .infinity, alignment: .leading)
+                    .padding(.top, 21.5 * tabletVerticalScale)
+            }
+            if let mediaFileID = detail.mediaFileID {
+                VStack(alignment: .leading, spacing: 12 * tabletScale) {
+                    HStack(spacing: 12.294 * tabletScale) {
+                        Button { showingTabletDownload = true } label: {
+                            tabletSeriesActionLabel("Download", systemImage: "arrow.down", tabletScale: tabletScale)
+                        }
+                        .buttonStyle(.plain)
+                        Button { showingTabletPlayback = true } label: {
+                            tabletSeriesActionLabel("Playback", systemImage: "slider.horizontal.3", tabletScale: tabletScale)
+                        }
+                        .buttonStyle(.plain)
+                        NavigationLink {
+                            PlayerView(
+                                apiClient: apiClient,
+                                downloadRepository: downloadRepository,
+                                initialMediaFileID: mediaFileID.uuidString,
+                                initialTitle: work.title,
+                                suggestionsWorkID: work.id
+                            )
+                        } label: {
+                            Label("Play", systemImage: "play.fill")
+                                .font(DesignFont.font(8.463 * tabletScale, 610))
+                                .padding(.horizontal, 21.6 * tabletScale)
+                                .frame(minWidth: 116.109 * tabletScale, minHeight: 57.359 * tabletScale)
+                                .background(PlayarrStyle.ink, in: Capsule())
+                                .foregroundStyle(PlayarrStyle.background)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    HStack(spacing: 12.294 * tabletScale) {
+                        Button { Task { await tabletMovieModel?.toggleWatchlist() } } label: {
+                            tabletSeriesActionLabel(
+                                tabletMovieModel?.listed == true ? "Remove from watchlist" : "Add to watchlist",
+                                systemImage: tabletMovieModel?.listed == true ? "checkmark" : "plus",
+                                tabletScale: tabletScale
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        Menu {
+                            let availablePlaylists = writablePlaylists(for: work)
+                            if availablePlaylists.isEmpty { Text("No playlists yet") }
+                            ForEach(availablePlaylists) { playlist in
+                                Button(playlist.name) { add(work, to: playlist) }
+                            }
+                        } label: {
+                            tabletSeriesActionLabel("Add to Playlist", systemImage: "plus", tabletScale: tabletScale)
+                        }
+                        .fixedSize()
+                    }
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.top, 33 * tabletVerticalScale)
+            }
+        }
+        .sheet(isPresented: $showingTabletDownload) {
+            if let mediaFileID = detail.mediaFileID {
+                DownloadOptionsSheet(
+                    candidates: [candidate(mediaFileID: mediaFileID, title: work.title, subtitle: nil)],
+                    apiClient: apiClient,
+                    downloadRepository: downloadRepository
+                )
+            }
+        }
+        .sheet(isPresented: $showingTabletPlayback) {
+            if let mediaFileID = detail.mediaFileID {
+                PlaybackSettingsSheet(apiClient: apiClient, mediaFileID: mediaFileID, title: work.title)
+            }
+        }
+    }
+
+    /// Chapters then Cast with round headshots, at the web's tablet positions.
+    @ViewBuilder
+    private func tabletMovieRails(_ detail: WorkDetail, tabletScale: CGFloat) -> some View {
+        if let model = tabletMovieModel, !model.chapters.isEmpty, let mediaFileID = detail.mediaFileID {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Chapters")
+                    .font(DesignFont.font(12.567 * tabletScale, 610))
+                    .foregroundStyle(PlayarrStyle.ink)
+                Text(model.chaptersFromServer ? "\(model.chapters.count) chapters" : "\(model.chapters.count) scene markers")
+                    .font(DesignFont.font(7.36 * tabletScale, 400))
+                    .foregroundStyle(PlayarrStyle.muted)
+                    .padding(.top, 4 * tabletScale)
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: 17 * tabletScale) {
+                        ForEach(model.chapters) { chapter in
+                            NavigationLink {
+                                PlayerView(
+                                    apiClient: apiClient,
+                                    downloadRepository: downloadRepository,
+                                    initialMediaFileID: mediaFileID.uuidString,
+                                    initialTitle: detail.work.title,
+                                    suggestionsWorkID: detail.work.id
+                                )
+                            } label: {
+                                VStack(alignment: .leading, spacing: 8 * tabletScale) {
+                                    ZStack(alignment: .bottomTrailing) {
+                                        WMRemoteImage(
+                                            apiClient: apiClient,
+                                            sources: [WMRemoteImage.Source(
+                                                path: "/api/v1/media/\(mediaFileID.uuidString.lowercased())/thumbnail",
+                                                query: ["position_ms": String(chapter.startMS)]
+                                            )]
+                                        )
+                                        .frame(width: 192 * tabletScale, height: 108 * tabletScale)
+                                        .background(Color.black.opacity(0.5))
+                                        Text(String(format: "%02d", chapter.index + 1))
+                                            .font(DesignFont.font(11 * tabletScale, 560))
+                                            .foregroundStyle(.white)
+                                            .padding(.trailing, 10 * tabletScale).padding(.bottom, 8 * tabletScale)
+                                    }
+                                    .frame(width: 192 * tabletScale, height: 108 * tabletScale)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10 * tabletScale, style: .continuous))
+                                    HStack(spacing: 9 * tabletScale) {
+                                        Text(Self.clockLabel(chapter.startMS))
+                                            .font(DesignFont.font(7 * tabletScale, 700))
+                                            .foregroundStyle(PlayarrStyle.muted)
+                                        Text(chapter.title ?? "Chapter \(chapter.index + 1)")
+                                            .font(DesignFont.font(8 * tabletScale, 610))
+                                            .foregroundStyle(PlayarrStyle.ink)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, 26 * tabletScale)
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+        if !viewModel.credits.cast.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Cast")
+                    .font(DesignFont.font(12.567 * tabletScale, 610))
+                    .foregroundStyle(PlayarrStyle.ink)
+                Text("\(viewModel.credits.cast.count) people")
+                    .font(DesignFont.font(7.36 * tabletScale, 400))
+                    .foregroundStyle(PlayarrStyle.muted)
+                    .padding(.top, 4 * tabletScale)
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: 56 * tabletScale) {
+                        ForEach(Array(viewModel.credits.cast.prefix(24))) { credit in
+                            VStack(spacing: 6 * tabletScale) {
+                                Group {
+                                    if credit.person.headshotURL != nil {
+                                        // The server's resizing proxy, never the metadata provider's original (as the web does).
+                                        WMRemoteImage(apiClient: apiClient, sources: [WMRemoteImage.Source(
+                                            path: "/api/v1/artwork/person/\(credit.person.id.uuidString.lowercased())",
+                                            query: ["w": "240"]
+                                        )])
+                                    } else {
+                                        Circle().fill(PlayarrStyle.surfaceStrong)
+                                    }
+                                }
+                                .frame(width: 74 * tabletScale, height: 74 * tabletScale)
+                                .clipShape(Circle())
+                                Text(credit.person.name)
+                                    .font(DesignFont.font(8 * tabletScale, 700))
+                                    .foregroundStyle(PlayarrStyle.ink)
+                                    .lineLimit(1)
+                                Text(credit.character ?? credit.job ?? "")
+                                    .font(DesignFont.font(6.4 * tabletScale, 400))
+                                    .foregroundStyle(PlayarrStyle.muted)
+                                    .lineLimit(1)
+                            }
+                            .frame(width: 74 * tabletScale)
+                        }
+                    }
+                    .padding(.top, 30 * tabletScale)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .padding(.top, 70 * tabletScale)
+        }
+    }
+
+    static func clockLabel(_ ms: Int64) -> String {
+        let total = Int(ms / 1000)
+        let hours = total / 3600, minutes = (total % 3600) / 60, seconds = total % 60
+        return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, seconds) : String(format: "%d:%02d", minutes, seconds)
     }
 
     private func selectedTabletEpisode(in detail: WorkDetail) -> (season: SeasonDetail, episode: EpisodeDetail)? {
