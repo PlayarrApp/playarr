@@ -652,6 +652,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android TV: the library grid shows web's scroll-edge fade (0.3 floor, eased over clamp(38, 5.5 vu, 64)), focused library cards use web's lift, shadow and the theme's card glow colour, and the dedicated D-pad account tooling is in `scripts/parity/dpad-account.mjs`.
 - Harmony wall: the progress seed zeroes other rows to unseen (as web's refs) instead of marking them completed.
 - HarmonyOS phone: the series page rings the first episode when everything is watched.
 - HarmonyOS phone: the next-up episode card and the current profile show web's focus ring and glow on open, and the light profile picker uses web's kicker colour and add-tile gradient.
