@@ -102,7 +102,7 @@
  */
 
 import { loadAppearance } from '../AppContainer';
-import { cardGeometry, normaliseArtworkSize } from '../core/ArtworkSize';
+import { artworkStep, cardGeometry, normaliseArtworkSize } from '../core/ArtworkSize';
 import type { ArtworkSizeName, CardGeometry } from '../core/ArtworkSize';
 import { image } from '@kit.ImageKit';
 
@@ -195,12 +195,16 @@ const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 7;
  * `TOUCH_GRID_GAP_VP` already follows for an analogous gap brief 5.10 does
  * not name. */
 const TOUCH_RAIL_GAP: number = 50;
-/** The touch rail's card row: the 16:9 card plus its two caption lines (a `List` with no height fills its parent). */
-const TOUCH_RAIL_LIST_HEIGHT: number = 142;
 /** Web phone Home: 328 vp cards (the 360 vp page less 16 each side) and 16 px rail headings. */
 /** Where the first heading sits under the dimmed backdrop (web phone Home). */
 const TOUCH_RAILS_TOP: number = 94;
-const TOUCH_HOME_CARD_WIDTH: number = 140;
+/** The touch card's caption block under the art (name and kind line). */
+const TOUCH_CARD_CAPTION_HEIGHT: number = 63;
+/** Web phone poster card (`--card-w`, `--card-w-cover`): the page less a 16 vp gutter and the 52 vp letter-rail clearance, split into
+ * 2 + artwork-size-step columns 12 vp apart. Landscape cards are 16:9, Covers 2:3; the Home screen artwork setting picks which. */
+const TOUCH_GUTTER: number = 16;
+const TOUCH_RAIL_CLEARANCE: number = 52;
+const TOUCH_CARD_GAP: number = 12;
 const TOUCH_RAIL_HEADING_SIZE: number = 16;
 const TOUCH_RAIL_HEADING_GAP: number = 22;
 
@@ -460,6 +464,8 @@ export struct Home {
   private heroRuntimeId: string = '';
   /** Settings > Appearance: Home screen artwork ('thumbnail' or 'cover') and the artwork size. */
   @State private homeView: string = 'thumbnail';
+  /** The touch rails' measured width in vp (the card columns derive from it); 360 until the first layout. */
+  @State private touchWidthVp: number = 360;
   @State private artworkSize: ArtworkSizeName = 'medium';
   /** Only non-null when `this.hero` came from continue-watching -- see this
    * file's header comment on the hero play button's resume-vs-detail split. */
@@ -502,6 +508,25 @@ export struct Home {
   /** The unseen dot for a card without a progress bar (web `WatchStateOverlay`). */
   private unseenFor(item: HomeCardItem): boolean {
     return item.progress < 0 && watchMarkFor(this.watchIndex.get(item.id), this.watchLoaded).unseen;
+  }
+
+  private touchCardWidth(): number {
+    const columns = Math.max(1, 2 + artworkStep(this.artworkSize));
+    return (this.touchWidthVp - TOUCH_GUTTER - TOUCH_RAIL_CLEARANCE - this.safeRight - TOUCH_CARD_GAP * (columns - 1)) / columns;
+  }
+
+  private touchCardHeight(): number {
+    const w = this.touchCardWidth();
+    return this.homeView === 'cover' ? w * 1.5 : (w * 9) / 16;
+  }
+
+  /** Part of the rails' keys: the cards rebuild when the art mode or the card width changes. */
+  private touchCardKey(): string {
+    return ':' + this.homeView + Math.round(this.touchCardWidth()).toString();
+  }
+
+  private touchListHeight(): number {
+    return Math.round(this.touchCardHeight()) + TOUCH_CARD_CAPTION_HEIGHT;
   }
 
   /** The card every rail uses (web `--card-w` / `--card-w-cover`): landscape thumbnails or portrait covers. */
@@ -862,8 +887,8 @@ export struct Home {
       progress: (item as HomeCardItem).progress,
       artwork: (item as HomeCardItem).artwork,
       unseen: this.unseenFor(item as HomeCardItem),
-      cardWidth: TOUCH_HOME_CARD_WIDTH,
-      cardHeight: Math.round((TOUCH_HOME_CARD_WIDTH * 9) / 16),
+      cardWidth: this.touchCardWidth(),
+      cardHeight: Math.round(this.touchCardHeight()),
       artworkRadius: Radii.homeCardArtworkTouch,
       titleFontSize: TOUCH_CARD_TITLE_FONT_SIZE,
       softCaption: true,
@@ -971,13 +996,13 @@ export struct Home {
     // Web phone Home: "On deck", then the server's rails (Recently Added in Movies ...), every card as wide as the page less its margins.
     Column({ space: TOUCH_RAIL_GAP }) {
       if (this.continueWatchingItems.length > 0) {
-        ForEach([railKey('continue', this.continueWatchingItems)], (_key: string) => {
+        ForEach([railKey('continue', this.continueWatchingItems) + this.touchCardKey()], (_key: string) => {
         MediaRail({
           railId: 'home-continue-watching-touch',
           heading: 'On deck',
           items: this.continueWatchingItems,
           itemGap: TouchGeometry.railItemGap,
-          listHeight: TOUCH_RAIL_LIST_HEIGHT,
+          listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
           headingGap: TOUCH_RAIL_HEADING_GAP,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
@@ -992,18 +1017,24 @@ export struct Home {
           heading: rail.title,
           items: rail.items,
           itemGap: TouchGeometry.railItemGap,
-          listHeight: TOUCH_RAIL_LIST_HEIGHT,
+          listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
           headingGap: TOUCH_RAIL_HEADING_GAP,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
         })
-      }, (rail: HomeServerRail): string => railKey(rail.id, rail.items))
+      }, (rail: HomeServerRail): string => railKey(rail.id, rail.items) + this.touchCardKey())
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding({ top: TOUCH_RAILS_TOP, bottom: TOUCH_BOTTOM_NAV_CLEARANCE, left: atLeast(Spacing.md, this.safeLeft), right: atLeast(Spacing.md, this.safeRight) })
+    .onAreaChange((_old: Area, area: Area) => {
+      const measured = Number(area.width);
+      if (measured > 0 && Math.abs(measured - this.touchWidthVp) > 0.5) {
+        this.touchWidthVp = measured;
+      }
+    })
   }
 
   /** TV: `Stage` (hero + rails) with `NavRail` as a sibling in one full-bleed

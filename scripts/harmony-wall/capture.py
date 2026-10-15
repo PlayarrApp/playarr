@@ -628,6 +628,21 @@ else:
     guarded("calendar-period", period_picker)
     for nm, yy in (("settings-appearance", 300), ("settings-player", 510), ("settings-server", 720)):
         guarded(nm, lambda nm=nm, yy=yy: settings_panel(nm, yy))
+
+    # Round 3 poster mode: Settings > Appearance > Home screen artwork = Covers, then each artwork size, and Home in each (the setting
+    # lives in the Previewer's in-memory preferences, so it takes effect for the Home routes that follow in this run). Buttons at 3 px per vp.
+    COVERS_BTN, SMALL_BTN, LARGE_BTN, MEDIUM_BTN, THUMBS_BTN = (792, 1134), (204, 1830), (876, 1830), (540, 1830), (288, 1134)
+
+    def home_with(name, taps):
+        route("profiles", 8); route("settings", 12); click(540, 300); time.sleep(6)
+        for x, y in taps:
+            click(x, y); time.sleep(2)
+        route("home", 40); snap(name, folder, 100000)
+
+    guarded("home-covers", lambda: home_with("home-covers", [COVERS_BTN]))
+    guarded("home-covers-small", lambda: home_with("home-covers-small", [SMALL_BTN]))
+    guarded("home-covers-large", lambda: home_with("home-covers-large", [LARGE_BTN]))
+    guarded("home-thumbs-large", lambda: home_with("home-thumbs-large", [THUMBS_BTN]))
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
     guarded("player-controls", lambda: (route("player:b9a68b2c-8382-4c34-a6f0-c4dd58f55093", 20), snap("player-controls", folder, 30000)))
 import datetime
