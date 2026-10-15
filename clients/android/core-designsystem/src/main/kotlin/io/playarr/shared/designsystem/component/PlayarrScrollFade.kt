@@ -29,6 +29,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.playarr.shared.designsystem.page.LocalPlayarrFormFactor
+import io.playarr.shared.designsystem.page.PlayarrFormFactor
 
 /*
  * The one scroll-edge fade. The web client draws a soft shadow on every edge of a scroll container that still has
@@ -93,12 +95,21 @@ fun Modifier.playarrEdgeFade(
     val scrimDepth = (LocalConfiguration.current.screenHeightDp * 0.08f).coerceIn(56f, 104f).dp
     val density = LocalDensity.current
     // Dark: the page-background scrim at full strength; light: the ink shade at the web's per-kind opacity.
-    val opacity = if (dark) 1f else kind.lightOpacity
+    val phone = LocalPlayarrFormFactor.current == PlayarrFormFactor.Phone
+    val opacity = if (dark || phone) 1f else kind.lightOpacity
     val start by animateFloatAsState(if (startVisible) opacity else 0f, tween(180), label = "scrollFadeStart")
     val end by animateFloatAsState(if (endVisible) opacity else 0f, tween(180), label = "scrollFadeEnd")
     val edgeStartInsetPx = if (vertical) 0f else with(density) { horizontalEdgeStartInset.toPx() }
     val edgeEndInsetPx = if (vertical) 0f else with(density) { horizontalEdgeEndInset.toPx() }
     if (start <= 0f && end <= 0f) return this
+    // Phone: the web's scroll-edge mask (page-layout.css `[data-fade-axis]`), both themes. TV and tablet keep the overlay.
+    if (phone) {
+        val maskDepth = with(density) { (LocalConfiguration.current.screenHeightDp * 0.055f).coerceIn(38f, 64f).dp.toPx() }
+        return graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.drawWithContent {
+            drawContent()
+            drawWebEdgeMask(vertical, start, end, maskDepth)
+        }
+    }
     return drawWithContent {
         drawContent()
         if (dark) {
@@ -224,6 +235,27 @@ private fun DrawScope.drawFadeEdge(
         val bandSize = if (vertical) Size(boxW, band) else Size(band, boxH)
         drawRect(brush, topLeft = bandTopLeft, size = bandSize)
     }
+}
+
+/**
+ * Web `[data-fade-axis]` mask: alpha 1 across the middle, easing (smoothstep stops 0.156 / 0.5 / 0.844) to a 0.3 floor at
+ * each edge that still has content. [start] and [end] (0 to 1) scale how far that side has faded in.
+ */
+private fun DrawScope.drawWebEdgeMask(vertical: Boolean, start: Float, end: Float, depth: Float) {
+    val length = if (vertical) size.height else size.width
+    if (length <= 0f) return
+    val d = minOf(depth, length / 2f)
+    val floor = 0.3f
+    val ramp = floatArrayOf(0f, 0.156f, 0.5f, 0.844f, 1f)
+    val at = floatArrayOf(0f, 0.25f, 0.5f, 0.75f, 1f)
+    fun alpha(side: Float, r: Float) = 1f - side * (1f - (floor + (1f - floor) * r))
+    val stops = buildList {
+        for (i in ramp.indices) add((at[i] * d / length) to Color.Black.copy(alpha = alpha(start, ramp[i])))
+        for (i in ramp.indices.reversed()) add((1f - at[i] * d / length) to Color.Black.copy(alpha = alpha(end, ramp[i])))
+    }.sortedBy { it.first }.toTypedArray()
+    val brush = if (vertical) Brush.verticalGradient(*stops, startY = 0f, endY = size.height)
+    else Brush.horizontalGradient(*stops, startX = 0f, endX = size.width)
+    drawRect(brush, size = size, blendMode = BlendMode.DstIn)
 }
 
 /** Dark theme: the page background fading to clear from the edge inwards (web `--edge-scrim-*`). */

@@ -138,6 +138,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
@@ -3610,7 +3611,7 @@ internal fun ExperienceLandscapeCard(
                 }
             }
             if (showUnwatched && stackCount <= 1 && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {
-                PlayarrUnwatchedDot(Modifier.align(Alignment.TopEnd).padding(if (webPhone) 7.dp else if (webTvStyle) 10.5.dp else 8.dp), size = if (webPhone) 9.dp else if (webTvStyle) 13.dp else 12.dp)
+                PlayarrUnwatchedDot(Modifier.align(Alignment.TopEnd).padding(if (webPhone) 7.dp else if (webTvStyle) 10.5.dp else 8.dp), size = if (webPhone) 9.dp else if (webTvStyle) 13.dp else 12.dp, halo = webPhone)
             }
             if (stackCount > 1) {
                 Text(
@@ -3720,11 +3721,16 @@ internal fun WebDetailPill(
 private val UnwatchedDotColour = Color(0xFFCF3157)
 
 @Composable
-private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp) {
+private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp, halo: Boolean = false) {
     val label = playarrString(PlayarrString.WatchStateUnwatched)
     Box(
         modifier
             .size(size)
+            // Web `.tv-watch-unseen` box-shadow: `0 2px 9px rgba(31,14,20,.45), 0 0 0 1px brand 35%` (phone only for now).
+            .then(if (halo) Modifier
+                .shadow(4.dp, CircleShape, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
+                .drawBehind { drawCircle(UnwatchedDotColour.copy(alpha = 0.35f), radius = size.toPx() / 2f + 1.dp.toPx() * 0.5f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())) }
+            else Modifier)
             .background(UnwatchedDotColour, CircleShape)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
             .semantics { contentDescription = label },
