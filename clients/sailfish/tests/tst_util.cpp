@@ -99,6 +99,10 @@ int main()
     CHECK(days.at(0).toMap().value("date").toString(), QString("2026-10-10"));
     CHECK(days.at(0).toMap().value("entries").toList().at(0).toMap().value("title").toString(), QString("Y"));
     CHECK(days.at(1).toMap().value("entries").toList().at(0).toMap().value("title").toString(), QString("A"));
+    const QVariantList allDay = CalendarLogic::groupByDate(QVariantList() << en("2026-10-15", "2026-10-15T01:00:00Z", "F") << en("2026-10-15", "", "C")
+                                                                        << en("2026-10-15", "2026-10-15T00:00:00Z", "B"));
+    CHECK(allDay.at(0).toMap().value("entries").toList().at(0).toMap().value("title").toString(), QString("B")); // midnight sorts as all day, then by title
+    CHECK(allDay.at(0).toMap().value("entries").toList().at(1).toMap().value("title").toString(), QString("C"));
     const QDate t(2026, 10, 11); // a Sunday
     QVariantMap w0 = CalendarLogic::rangeFor("week", 0, t, QLocale::c());
     CHECK(w0.value("start").toString(), QString("2026-10-05"));

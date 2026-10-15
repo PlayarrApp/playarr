@@ -19,7 +19,8 @@ inline QString dayHeading(const QString &iso, const QLocale &locale)
     return d.isValid() ? locale.toString(d, QStringLiteral("dddd d MMMM")) : iso;
 }
 
-// Entries grouped by `date`, days ascending; within a day by release_at then title. [{date, entries:[...]}]
+// Entries grouped by `date`, days ascending; within a day by release time then title. A midnight UTC release is a date-only
+// one ("All day" on web), so it sorts with the entries that have no time. [{date, entries:[...]}]
 inline QVariantList groupByDate(const QVariantList &entries)
 {
     QVariantList sorted = entries;
@@ -27,7 +28,11 @@ inline QVariantList groupByDate(const QVariantList &entries)
         const QVariantMap x = a.toMap(), y = b.toMap();
         const QString dx = x.value(QStringLiteral("date")).toString(), dy = y.value(QStringLiteral("date")).toString();
         if (dx != dy) return dx < dy;
-        const QString rx = x.value(QStringLiteral("release_at")).toString(), ry = y.value(QStringLiteral("release_at")).toString();
+        auto at = [](const QVariantMap &m) {
+            const QString r = m.value(QStringLiteral("release_at")).toString();
+            return r.contains(QStringLiteral("T00:00:00")) ? QString() : r;
+        };
+        const QString rx = at(x), ry = at(y);
         if (rx != ry) return rx < ry;
         return x.value(QStringLiteral("title")).toString() < y.value(QStringLiteral("title")).toString();
     });
