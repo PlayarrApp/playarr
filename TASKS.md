@@ -597,6 +597,7 @@ Steps only the repository owner can perform.
 | 10420 | Harmony phone player chrome and series, film detail, seeded progress as web | done | parity-harmony | harmony-phone-parity-13 | | 2026-10-16 12:00 ICT | Third follow-up: floating nav bar on detail pages, Play focused style and default focus, card focus ring and glow on the phone, bare previous and next icons. PR open: #1434. PR #1434 merged 2026-10-15. |
 | 10418 | Tizen Search Other sources, edge fades on Search, Playlists and Downloads | in_review | client-tizen-native | tizen-other-sources-10418 | 17.10415 | 2026-10-16 18:00 ICT | PR open: #1433. Other sources list with Add to watchlist as web (DiscoveryExtras), D-pad flow from the last result row, scroll-edge fades on three more pages. |
 | 10421 | iPhone focus crop audit, vertical edge masks and calendar agenda | in_progress | parity-iphone | iphone-focus-10421 | | 2026-10-16 18:00 ICT | Wall focus mode (first, last, top-row card of every rail and grid) for the crop audit; fixes at the container. |
+| 10417 | Harmony TV Library and Home cards as web: focus ring, caption offset, unseen dots, Library frost, header weight | done | parity-harmony | harmony-library-cards | 5.10102 | 2026-10-15 18:00 ICT | PR open: #1425. Codex audit 3, 8, 17, 18 (4-7 and 9 are #1424 / folded), library gap = capture state plus caption. PR #1425 merged 2026-10-15. |
 
 ## 18. Public repository readiness (2026-10-05)
 
