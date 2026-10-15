@@ -202,7 +202,10 @@ const HERO_TOUCH_HEIGHT: number = 340;
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_SEASON_LIST_HEIGHT: number = 165;
 const PHONE_SEASON_HEADER_CARD_GAP: number = 23;
-const PHONE_SEASON_ROW_GAP: number = 21;
+// Season to season is 237 on web; the phone capture measured 14.3 vp short with 21, so the gap is 35.3.
+const PHONE_SEASON_ROW_GAP: number = 35.3;
+// Web: 57 vp from the action row to the first season heading (the hero ends there); the page spacing gave 21.
+const PHONE_SEASONS_TOP_GAP: number = 36;
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
 const TOUCH_SETTLE_ATTEMPTS: number = 12;
 /** Web phone series detail, next-up episode in the middle: the page scrolled by about this much (measured on the 360 vp reference). */
@@ -1989,6 +1992,7 @@ struct Detail {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
+    .margin({ top: isTvMetrics() ? 0 : PHONE_SEASONS_TOP_GAP })
   }
 
   @Builder

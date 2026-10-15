@@ -1,0 +1,1 @@
+- HarmonyOS phone: library grid offset and row pitch, A-Z rail position and series detail season spacing follow the web phone layout (TV unchanged).

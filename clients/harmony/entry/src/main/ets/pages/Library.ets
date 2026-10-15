@@ -163,7 +163,9 @@ const TOUCH_GUTTER: number = 16;
 /** The letter rail's column: a 44 vp target with 4 vp of margin each side. */
 const TOUCH_ALPHA_RAIL: number = 52;
 const TOUCH_CARD_GAP: number = 12;
-const TOUCH_ROW_GAP: number = 24;
+/** Web phone grid: 127.5 vp between card tops (79 vp card, caption, this gap); the first row starts 12 vp lower than ours did. */
+const TOUCH_ROW_GAP: number = 26.4;
+const TOUCH_GRID_TOP: number = 12;
 /** Web phone card caption (the poster card's title size at 360 vp). */
 const TOUCH_LIBRARY_TITLE_SIZE: number = 8;
 /** The TV card caption size (`PosterCard`'s own default), passed through unchanged. */
@@ -887,7 +889,7 @@ export struct Library {
           .columnsGap(TOUCH_CARD_GAP)
           .rowsGap(TOUCH_ROW_GAP)
           .edgeEffect(EdgeEffect.Spring)
-          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, bottom: Spacing.lg })
+          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP, bottom: Spacing.lg })
           .onAreaChange((_oldValue: Area, newValue: Area) => {
             this.measuredWidthVp = lengthToVp(newValue.width);
           })

@@ -64,8 +64,8 @@ export struct AlphabetRail {
     .width(TOUCH_RAIL_WIDTH)
     .height(`calc(100% - ${TOUCH_RAIL_TOP + TOUCH_RAIL_BOTTOM}vp)`)
     .alignItems(HorizontalAlign.Center)
-    .position({ x: `calc(100% - ${this.rightInset}vp)`, y: TOUCH_RAIL_TOP })
-    .markAnchor({ x: '100%', y: 0 })
+    .position({ x: '100%', y: TOUCH_RAIL_TOP })
+    .markAnchor({ x: TOUCH_RAIL_WIDTH + this.rightInset, y: 0 })
   }
 
   build() {
