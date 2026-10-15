@@ -1,1 +1,0 @@
-- HarmonyOS phone: the detail play glyph is a drawn triangle and the profile picker sits closer to web's vertical rhythm.
