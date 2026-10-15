@@ -81,7 +81,14 @@ struct TVKeyArtFilter: ViewModifier {
             content
                 .saturation(0)
                 .contrast(0.88)
+                #if os(macOS)
+                // Web light `.tv-key-art img`: grayscale, contrast .88, brightness 1.1 at opacity .24 (measured against the movies
+                // reference: the .4 here left the backdrop far stronger than the web's); tvOS keeps its own value.
+                .brightness(0.1)
+                .opacity(0.24)
+                #else
                 .opacity(0.4)
+                #endif
         } else {
             content
                 .saturation(0)

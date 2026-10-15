@@ -1882,10 +1882,10 @@ struct TVLibraryKindView: View {
     /// Web `.tv-title-grid` at 1920x1080: columns of `--card-w` (327.2 at medium) from x 783.4, 25.92 apart, first row at
     /// y 162, rows 240.4 apart at medium (27 between a card's caption and the next art).
     private func productionTitleGrid(size: CGSize) -> some View {
-        // macOS: room left of the first column for the focused card's ring and glow (never clipped by the scroll view);
+        // macOS: room left of the first column for the focused card's ring, glow and shadow (never clipped by the scroll view);
         // the frame widens by the same amount so the cards stay at the web x.
         #if os(macOS)
-        let padL: CGFloat = 24
+        let padL: CGFloat = 48 // the 48 px focused-card shadow blur also stays inside the scroll view, so no hard edge shows at x 759
         #else
         let padL: CGFloat = 0
         #endif

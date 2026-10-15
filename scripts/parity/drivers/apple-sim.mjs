@@ -327,7 +327,9 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         else if (long && existsSync(hold)) run(hold, [String(KEYCODE[name]), "1.1"]);
         else run("osascript", ["-e", `tell application "System Events" to key code ${KEYCODE[name]}`]);
       } finally { if (lock) rmSync(lock, { force: true }); }
-      await sleep(600);
+      // A Select can present a page or a drawer whose focus settles later (Device opens the household page): a key sent before that lands
+      // on the page behind it, which ended the settings and calendar paths on Home (run 38781127369).
+      await sleep(mac && name === "select" ? 1800 : 600);
       if (process.env.DRIVER_TRACE) {
         const s = state(); console.log(`    key ${name}${long ? ":long" : ""} -> ${s.route} | ${s.focused} | ${s.item}`);
         if (mac) await traceMacFocus();
