@@ -5222,7 +5222,7 @@ sub layoutDetailRails()
         return
     end if
     if m.detailEpisodes.visible
-        m.detailEpisodes.translation = [-8, 54]
+        m.detailEpisodes.translation = [-8, 53]
         updateSeasonHeads()
         visibleRows = m.detailSeasons.Count()
         if visibleRows > 3 then visibleRows = 3

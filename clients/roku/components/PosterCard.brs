@@ -113,6 +113,7 @@ sub onContentChanged()
     else
         m.title.translation = [m.cardTitleX, m.titleY]
     end if
+    clampCardTitle(content.title, hasPrefix)
     watchState = ""
     if content.watchState <> invalid then watchState = content.watchState
     m.unwatchedBadge.visible = watchState = "unseen"
@@ -363,6 +364,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.titleY = artH + titleGap
     m.cardTitleY = m.titleY
     m.cardTitleX = 0
+    m.cardArtW = artW
     m.title.translation = [0, m.titleY]
     m.title.width = artW
     m.kind.translation = [0, artH + titleGap + 19.5]
@@ -383,4 +385,24 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     end if
     m.overlayNumber.translation = [artW - 72, artH - 40]
     m.captionPrefix.translation = [0, artH + 12]
+end sub
+
+' Web .tv-title-card-copy strong: one line, text-overflow ellipsis at the card's width.
+sub clampCardTitle(text as String, hasPrefix as Boolean)
+    if m.cardListMode = true or m.cardArtW = invalid or m.cardArtW <= 0 then return
+    avail = m.cardArtW
+    if hasPrefix then avail = avail - m.title.translation[0]
+    ' boundingRect reports the fixed width, so measure with the width unset.
+    fixedWidth = m.title.width
+    m.title.width = 0
+    m.title.text = text
+    if m.title.boundingRect().width * m.title.scale[0] > avail
+        n = Len(text)
+        while n > 1
+            n = n - 1
+            m.title.text = Left(text, n) + "…"
+            if m.title.boundingRect().width * m.title.scale[0] <= avail then exit while
+        end while
+    end if
+    m.title.width = fixedWidth
 end sub
