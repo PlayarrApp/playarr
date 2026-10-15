@@ -250,7 +250,7 @@ export async function createDriver({ args = [], out } = {}) {
       run("xcrun", ["simctl", "spawn", udid, "defaults", "write", bundle, "com.playarr.playarr.tvos.deviceID", "-string", run("python3", [login, "--device-id"], { env }).trim()]);
       tokens.push("-PlayarrServerURL", process.env.SERVER_URL, "-PlayarrAccessToken", access, "-PlayarrRefreshToken", refresh);
     }
-    run("xcrun", ["simctl", "launch", udid, bundle, ...tokens, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...extra]);
+    run("xcrun", ["simctl", "launch", udid, bundle, ...tokens, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...stickyArgs, ...extra]);
     await sleep(wait); // a launch signs in from the seeded session and loads Home
     frontmost(); await sleep(500);
   };
@@ -306,7 +306,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       await launch();
     },
     setLaunchArgs(args) { stickyArgs = args; },
-    endCrops: mac, // suite `crops`: the last row / item of a grid, for the focus-crop audit
+    endCrops: true, // suite `crops`: the last row / item of a grid, for the focus-crop audit
     async stop() { collectMacFocusKeyLog({ final: true }); },
     async setTheme(t) { if (t !== theme) { theme = t; await launch(); } },
     async home() { await launch(); },

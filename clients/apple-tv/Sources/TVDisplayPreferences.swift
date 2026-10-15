@@ -68,7 +68,6 @@ final class TVDisplayPreferences {
 
     var cardColumns: Int { 3 + artworkSize.columnStep }
 
-    #if os(macOS)
     private static let homeCoversKey = "com.playarr.playarr.tvos.homeCovers"
 
     /// Web Settings > Appearance > Home screen artwork (`playarr-home-view`): portrait covers instead of wide thumbnails on Home.
@@ -82,7 +81,6 @@ final class TVDisplayPreferences {
         let columns = CGFloat(5 + artworkSize.columnStep)
         return (1033.44 - (columns - 1) * 19.2) / columns
     }
-    #endif
 
     private static let themeKey = "com.playarr.playarr.tvos.theme"
     private static let languageKey = "com.playarr.playarr.tvos.language"
@@ -100,9 +98,7 @@ final class TVDisplayPreferences {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         artworkSize = defaults.string(forKey: Self.artworkSizeKey).flatMap(ArtworkSize.init(rawValue:)) ?? .medium
-        #if os(macOS)
         homeCovers = defaults.bool(forKey: Self.homeCoversKey)
-        #endif
         if let raw = defaults.string(forKey: Self.themeKey),
            let value = ThemePreference(rawValue: raw) {
             themePreference = value

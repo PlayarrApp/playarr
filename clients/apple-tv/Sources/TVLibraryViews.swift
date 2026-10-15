@@ -244,21 +244,11 @@ struct TVHomeView: View {
     /// Web: an 8 px left bleed keeps the first card's focus glow unclipped.
     private static let cardBleed: CGFloat = 8
     /// Heading (26.5) and the gap to the art (35.3), plus the card (art and caption) and the track's 18/24 padding.
-    /// Home cards: the artwork-size column width, or the cover width when Home artwork is Covers (macOS only).
-    private var homeCovers: Bool {
-        #if os(macOS)
-        return displayPreferences.homeCovers
-        #else
-        return false
-        #endif
-    }
+    /// Home cards: the artwork-size column width, or the cover width when Home artwork is Covers.
+    private var homeCovers: Bool { displayPreferences.homeCovers }
 
     private var homeCardWidth: CGFloat {
-        #if os(macOS)
-        return displayPreferences.homeCovers ? displayPreferences.coverCardWidth : displayPreferences.cardWidth
-        #else
-        return displayPreferences.cardWidth
-        #endif
+        displayPreferences.homeCovers ? displayPreferences.coverCardWidth : displayPreferences.cardWidth
     }
 
     /// The server shelves with the web's primary rail first; older servers without shelves get the local rails.
