@@ -4,7 +4,8 @@ import type { AvailabilityLag, CalendarEntry, CalendarSourceStatus } from "@play
 import { describe, expect, it } from "vitest";
 import { availabilityLagLines } from "../components/AvailabilityLag";
 import { translations } from "../lib/i18n/translations";
-import { DaySections, MonthGrid, formatRangeLabel, monthChipsThatFit } from "./Calendar";
+import { DaySections, MonthGrid, englishShortRange, formatDayHeading, formatRangeButtonLabel, formatRangeLabel, monthChipsThatFit } from "./Calendar";
+import { afterEach, vi } from "vitest";
 
 const en = translations.en;
 const t = (key: keyof typeof en, params?: Record<string, string | number>) =>
@@ -20,6 +21,40 @@ describe("formatRangeLabel", () => {
   it("renders the month and the week range with Intl", () => {
     expect(formatRangeLabel("month", "2026-10-01", 1, "en-GB")).toBe("October 2026");
     expect(formatRangeLabel("week", "2026-10-07", 1, "en-GB")).toBe("5 Oct – 11 Oct 2026");
+  });
+});
+
+describe("calendar labels on an engine whose ICU returns only day numbers (VIDAA)", () => {
+  const real = Intl.DateTimeFormat;
+  afterEach(() => {
+    Intl.DateTimeFormat = real;
+  });
+  function dayOnlyIcu() {
+    class DayOnly extends real {
+      override format(date?: Date | number): string {
+        return String(new Date(date ?? 0).getUTCDate());
+      }
+      override formatRange(start: Date | number, end: Date | number): string {
+        return `${new Date(start).getUTCDate()} – ${new Date(end).getUTCDate()}`;
+      }
+    }
+    Intl.DateTimeFormat = DayOnly as unknown as typeof Intl.DateTimeFormat;
+  }
+
+  it("rebuilds the English day heading and the week button label from tables", () => {
+    dayOnlyIcu();
+    expect(formatDayHeading("2026-10-12", "en-GB")).toBe("Monday 12 October");
+    expect(formatRangeButtonLabel("week", "2026-10-14", 1, "en-GB")).toBe("12 – 18 Oct");
+    expect(formatRangeLabel("week", "2026-10-14", 1, "en-GB")).toBe("12 Oct – 18 Oct 2026");
+  });
+
+  it("leaves a working engine alone", () => {
+    expect(formatDayHeading("2026-10-12", "en-GB")).toBe("Monday 12 October");
+    expect(formatRangeButtonLabel("week", "2026-10-14", 1, "en-GB")).toBe(new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).formatRange(new Date(Date.UTC(2026, 9, 12)), new Date(Date.UTC(2026, 9, 18))));
+  });
+
+  it("builds a range across two months", () => {
+    expect(englishShortRange(new Date(Date.UTC(2026, 8, 28)), new Date(Date.UTC(2026, 9, 4)))).toBe("28 Sep – 4 Oct");
   });
 });
 

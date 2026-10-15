@@ -89,6 +89,7 @@ import { useScrollEdges } from "../lib/useScrollEdges";
 import { MultiSelect } from "../components/ui";
 import "./Calendar.css";
 import { isBackKey } from "../lib/backKey";
+import { ENGLISH_MONTHS, ENGLISH_WEEKDAYS_LONG, lacksNames } from "../lib/shellClockDate";
 
 /**
  * A scroll viewport inside a plain window: the one shared edge fade (`useScrollEdges`) shows on each
@@ -174,19 +175,30 @@ const FOCUS_URL_DEBOUNCE_MS = 250;
 /** Quiet time after a period paints before its neighbours are loaded. */
 const ADJACENT_PREFETCH_DELAY_MS = 400;
 
-function utcFormatter(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+export function utcFormatter(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" });
 }
 
-function formatDayHeading(day: Day, locale: string): string {
+export function formatDayHeading(day: Day, locale: string): string {
   const formatter = utcFormatter(locale, { weekday: "long", day: "numeric", month: "long" });
   const date = parseDay(day);
+  // VIDAA's ICU drops the weekday and month names from this combined format; English is rebuilt from tables.
+  if (locale.startsWith("en") && lacksNames(formatter.format(date))) {
+    return `${ENGLISH_WEEKDAYS_LONG[date.getUTCDay()]!} ${date.getUTCDate()} ${ENGLISH_MONTHS[date.getUTCMonth()]!}`;
+  }
   if (locale !== "en-GB") return formatter.format(date);
   // Browser ICU versions vary in weekday punctuation; joining ordered fields preserves the web's comma-free label.
   return formatter.formatToParts(date)
     .filter((part) => part.type === "weekday" || part.type === "day" || part.type === "month")
     .map((part) => part.value)
     .join(" ");
+}
+
+/** "12 – 18 Oct" or "30 Sep – 6 Oct", built from tables for engines whose `Intl.formatRange` returns only day numbers. */
+export function englishShortRange(start: Date, end: Date): string {
+  const month = (d: Date) => ENGLISH_MONTHS[d.getUTCMonth()]!.slice(0, 3);
+  const sameMonth = start.getUTCMonth() === end.getUTCMonth() && start.getUTCFullYear() === end.getUTCFullYear();
+  return sameMonth ? `${start.getUTCDate()} – ${end.getUTCDate()} ${month(end)}` : `${start.getUTCDate()} ${month(start)} – ${end.getUTCDate()} ${month(end)}`;
 }
 
 export function formatRangeLabel(view: CalendarView, anchor: Day, firstDay: number, locale: string): string {
@@ -196,7 +208,13 @@ export function formatRangeLabel(view: CalendarView, anchor: Day, firstDay: numb
   const range = visibleRange(view, anchor, firstDay);
   const short = utcFormatter(locale, { day: "numeric", month: "short" });
   const withYear = utcFormatter(locale, { day: "numeric", month: "short", year: "numeric" });
-  return `${short.format(parseDay(range.start))} – ${withYear.format(parseDay(range.end))}`;
+  const first = short.format(parseDay(range.start));
+  const last = withYear.format(parseDay(range.end));
+  if (locale.startsWith("en") && (lacksNames(first) || lacksNames(last))) {
+    const month = (d: Day) => ENGLISH_MONTHS[parseDay(d).getUTCMonth()]!.slice(0, 3);
+    return `${parseDay(range.start).getUTCDate()} ${month(range.start)} – ${parseDay(range.end).getUTCDate()} ${month(range.end)} ${parseDay(range.end).getUTCFullYear()}`;
+  }
+  return `${first} – ${last}`;
 }
 
 /**
@@ -208,7 +226,9 @@ export function formatRangeButtonLabel(view: CalendarView, anchor: Day, firstDay
     return utcFormatter(locale, { month: "short", year: "numeric" }).format(parseDay(anchor));
   }
   const range = visibleRange(view, anchor, firstDay);
-  return utcFormatter(locale, { day: "numeric", month: "short" }).formatRange(parseDay(range.start), parseDay(range.end));
+  const formatted = utcFormatter(locale, { day: "numeric", month: "short" }).formatRange(parseDay(range.start), parseDay(range.end));
+  if (locale.startsWith("en") && lacksNames(formatted)) return englishShortRange(parseDay(range.start), parseDay(range.end));
+  return formatted;
 }
 
 function entryTime(entry: CalendarEntry): Date | null {
