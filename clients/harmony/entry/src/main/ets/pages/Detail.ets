@@ -1605,7 +1605,7 @@ struct Detail {
   private playButton(enabled: boolean, height: number): void {
 
     Row({ space: Spacing.sm }) {
-      Text('►').fontFamily(nunito(400))
+      Text('\u25B6\uFE0E').fontFamily(nunito(400))
         .fontSize(isTvMetrics() ? PLAY_BUTTON_ICON_SIZE : 9)
         .fontColor(toResourceColor(activeColors().onAccent))
       Text(this.primaryLabel()).fontFamily(nunito(700))
@@ -2242,7 +2242,7 @@ struct Detail {
   private touchSeriesActionRow(): void {
     Row({ space: 8 }) {
       Row({ space: 6 }) {
-        Text('►').fontFamily(nunito(400)).fontSize(9).fontColor(toResourceColor(activeColors().onAccent))
+        Text('\u25B6\uFE0E').fontFamily(nunito(400)).fontSize(9).fontColor(toResourceColor(activeColors().onAccent))
         Text(this.primaryLabel()).fontFamily(nunito(700))
           .fontSize(11)
           .fontWeight(FontWeight.Bold)
@@ -2364,6 +2364,7 @@ struct Detail {
               this.touchActionRows()
             }
             .width('100%')
+            .alignItems(HorizontalAlign.Start)
             .margin({ top: 14 })
           }
           .width('100%')
