@@ -1,1 +1,0 @@
-- HarmonyOS phone detail: the play glyph is a plain triangle and the action rows are left aligned.

@@ -640,6 +640,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- HarmonyOS phone detail: the play glyph is a plain triangle and the action rows are left aligned.
 - HarmonyOS phone: detail text spacing and sizes, calendar agenda card type and height, and home card captions follow the web phone layout (TV unchanged).
 - HarmonyOS phone: library grid offset and row pitch, A-Z rail position and series detail season spacing follow the web phone layout (TV unchanged).
 - Fire TV: the title actions drawer uses web's 68 px rows, 82 px pitch, 14 px radius and larger labels.
