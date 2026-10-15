@@ -19,7 +19,7 @@ internal sealed class LibraryScreen : IPage
     private readonly View _root = new();
     private readonly View _grid = new();
     private readonly KeyArt _keyArt;
-    private View? _fadeTop, _fadeBottom;
+    private View? _fadeTop, _fadeBottom, _tile;
     private readonly DetailsPanel _panel;
     private readonly Dictionary<int, MediaCard> _views = new();
     private readonly List<WorkCard> _items = new();
@@ -58,7 +58,7 @@ internal sealed class LibraryScreen : IPage
         _panel = new DetailsPanel(env, library: true);
         _root.Add(_keyArt.Root);
         _root.Add(_panel.Root);
-        _root.Add(GridPanelWash());
+        _root.Add(Ui.PanelWash(_t));
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _grid.PositionX = -ClipX;
         clip.Add(_grid);
@@ -69,20 +69,6 @@ internal sealed class LibraryScreen : IPage
         BuildHeader();
         BuildSide();
         _ = LoadAsync(0);
-    }
-
-    /// <summary>
-    /// Web .tv-library-grid-panel: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
-    /// that fades in from nothing at the left edge to full at the right.
-    /// </summary>
-    private View GridPanelWash()
-    {
-        var mix = _t.Name == "dark" ? 0.44f : 0.48f;
-        Rgba Frost(float a) => new(_t.SurfaceSoft.R * mix + _t.SurfaceStrong.R * (1 - mix), _t.SurfaceSoft.G * mix + _t.SurfaceStrong.G * (1 - mix), _t.SurfaceSoft.B * mix + _t.SurfaceStrong.B * (1 - mix), a);
-        var dark = _t.Name == "dark";
-        const float w = 1190;
-        return Ui.Gradient(TizenClient.DesignWidth - w, 0, w, TizenClient.DesignHeight, true,
-            (0, Frost(0)), (0.12f, Frost(dark ? 0.72f : 0.68f)), (0.34f, Frost(dark ? 0.9f : 0.88f)), (0.62f, Frost(dark ? 0.97f : 0.96f)), (1, Frost(1)));
     }
 
     private void BuildHeader()
@@ -100,7 +86,8 @@ internal sealed class LibraryScreen : IPage
         // Filters tile (shell action column: 62x72 at 1845.5,151.2)
         var tile = Ui.Box(1845.5f, 151.2f, 62, 72, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
-        tile.Add(Ui.Icon("library", 19, 15, 24, _t.InkMuted));
+        tile.Add(Ui.Icon("filters", 19, 15, 24, _t.InkMuted)); // web: the sliders glyph
+        _tile = tile;
         tile.Add(Ui.Text("Filters", 0, 44.6f, 8.256f, 700, _t.InkMuted, 62, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));
         var ring = Ring.Make(62, 72, 14, new Rgba(1, 1, 1)); ring.Show(false); tile.Add(ring);
         _root.Add(tile);
@@ -200,9 +187,10 @@ internal sealed class LibraryScreen : IPage
         };
         _filters = new FiltersDrawer(_env, "Library controls", sections, CloseFilters, Toast);
         _root.Add(_filters.Root);
+        _tile?.Show(false); // the drawer blurs what is behind it on web; nothing of the tile shows through
     }
 
-    private void CloseFilters() { if (_filters is null) return; _root.Remove(_filters.Root); _filters.Root.Dispose(); _filters = null; }
+    private void CloseFilters() { if (_filters is null) return; _tile?.Show(true); _root.Remove(_filters.Root); _filters.Root.Dispose(); _filters = null; }
 
     private void ApplySort(string sort, string order)
     {

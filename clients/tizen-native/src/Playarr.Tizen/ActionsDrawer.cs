@@ -22,7 +22,7 @@ internal sealed class ActionsDrawer
         Root.Add(Ui.Text("Title actions", 1606, 55, 9.6f, 800, t.InkMuted, 200, 14.4f, upper: true, spacing: 0.8f));
         Root.Add(Ui.Text(card.Title, 1606, 74, 36.9f, 600, t.Ink, 215, 56.8f, multiline: true, spacing: -1.5f, maxLines: 2));
         var x = Ui.Box(1826, 55, 48, 48, t.SurfaceSoft, 24);
-        x.Add(Ui.Icon("close", 17, 17, 14, t.Ink));
+        x.Add(Ui.Icon("close", 14, 14, 20, t.Ink));
         var xr = Ring.Make(48, 48, 24, new Rgba(1, 1, 1)); xr.Show(false); x.Add(xr);
         Root.Add(x);
         _focus.Items.Add(new Focusable { Rect = () => new Box(1826, 55, 48, 48), Label = "close", Select = _close, Style = f => xr.Show(f) });

@@ -34,6 +34,16 @@ internal sealed class FiltersDrawer
 {
     private readonly FocusSet _focus = new();
     private readonly Action _close;
+
+    private static void AddViewGlyph(View b, int i, float w, Rgba c)
+    {
+        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Ui.Box(w / 2 - 9, 14 + k * 4.5f, 18, 1.8f, c, 0.9f)); return; }
+        for (var k = 0; k < 3; k++)
+        {
+            var r = Ui.Box(w / 2 - 10 + k * 7.5f, 13, 5, 13, null, 1.5f);
+            r.BorderlineWidth = 1.5f; r.BorderlineColor = Ui.C(c); b.Add(r);
+        }
+    }
     public View Root { get; } = new();
     public string? FocusedLabel => _focus.Item?.Label;
 
@@ -47,7 +57,7 @@ internal sealed class FiltersDrawer
         Root.Add(Ui.Text(kicker, 1606, 54, 9.6f, 800, t.InkMuted, 250, 14.4f, upper: true, spacing: 0.67f));
         Root.Add(Ui.Text("Filters", 1606, 71.6f, 38.4f, 600, t.Ink, 200, 57.6f, spacing: -2.1f));
         var x = Ui.Box(1826, 54, 48, 50, t.SurfaceSoft, 25);
-        x.Add(Ui.Icon("close", 17, 18, 14, t.Ink));
+        x.Add(Ui.Icon("close", 14, 15, 20, t.Ink));
         var xr = Ring.Make(48, 50, 25, new Rgba(1, 1, 1)); xr.Show(false); x.Add(xr);
         Root.Add(x);
         _focus.Items.Add(new Focusable { Rect = () => new Box(1826, 54, 48, 50), Label = "close", Select = _close, Style = f => xr.Show(f) });
@@ -91,8 +101,9 @@ internal sealed class FiltersDrawer
                     var idx = i; var bx = 1606 + i % columns * (w + gap); var by = top + i / columns * 64; var active = i == s.Selected;
                     var b = Ui.Box(bx, by, w, 56, active ? t.Ink : t.SurfaceSoft, 12);
                     b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(t, 0.15f);
-                    var label = Ui.Text(s.Options[i], 0, n == 3 ? 33 : 22.2f, 10.56f, 800, active ? t.OnAccent : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
+                    var label = Ui.Text(s.Options[i], 0, n == 3 ? 33 : 22.2f, 10.56f, 700, active ? t.OnAccent : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
                     b.Add(label);
+                    if (n == 3) AddViewGlyph(b, i, w, active ? t.OnAccent : t.InkMuted); // web: a small List / Screen / Cover glyph above the label
                     var ring = Ring.Make(w, 56, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
                     Root.Add(b);
                     choices.Add((b, label));

@@ -40,6 +40,7 @@ internal sealed class DetailScreen : IPage
         _root.BackgroundColor = Ui.C(_t.Surface);
         _keyArt = new KeyArt(env, armed: true);
         _root.Add(_keyArt.Root);
+        _root.Add(Ui.PanelWash(_t)); // web: the right rail panel frosts the key art (the page top is not a surface fade)
         _root.Add(_content);
         _ = LoadAsync();
     }
@@ -111,8 +112,9 @@ internal sealed class DetailScreen : IPage
         var gw = primary ? 8f : 11f;
         var textW = text.Length * 6.4f;
         var startX = (w - (gw + 9.4f + textW)) / 2;
-        box.Add(Ui.Text(glyph, startX, 22.4f, 12.8f, 400, primary ? _t.OnAccent : _t.BrandInk, gw + 4, 19.2f));
-        box.Add(Ui.Text(text, startX + gw + 9.4f, 23.7f, 11.136f, 700, fg, textW + 20, 16.7f));
+        var glyphLabel = Ui.Text(glyph, startX, 22.4f, 12.8f, 400, primary ? _t.OnAccent : _t.BrandInk, gw + 4, 19.2f);
+        var textLabel = Ui.Text(text, startX + gw + 9.4f, 23.7f, 11.136f, 700, fg, textW + 20, 16.7f);
+        box.Add(glyphLabel); box.Add(textLabel);
         var ring = Ring.Make(w, 64, 32, new Rgba(1, 1, 1));
         ring.Show(false);
         box.Add(ring);
@@ -120,7 +122,14 @@ internal sealed class DetailScreen : IPage
         _focus.Items.Add(new Focusable
         {
             Rect = () => new Box(x, y, w, 64), Label = label, Select = select,
-            Style = f => { ring.Show(f); },
+            Style = f =>
+            {
+                ring.Show(f);
+                // web .tv-detail-play focus: brand-strong fill, white text, scale 1.06; Playback: ink at 88 % with the page colour as text, scale 1.06
+                box.Scale = f && (primary || text == "Playback") ? new Vector3(1.06f, 1.06f, 1) : new Vector3(1, 1, 1);
+                if (primary) { box.BackgroundColor = f ? new Color(0.647f, 0.153f, 0.271f, 1) : Ui.C(_t.Ink); glyphLabel.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.OnAccent); textLabel.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.OnAccent); }
+                else if (text == "Playback") { box.BackgroundColor = f ? new Color(_t.Ink.R, _t.Ink.G, _t.Ink.B, 0.88f) : Ui.C(bg); glyphLabel.TextColor = f ? Ui.C(_t.Bg) : Ui.C(_t.BrandInk); textLabel.TextColor = f ? Ui.C(_t.Bg) : Ui.C(_t.Ink); }
+            },
         });
     }
 

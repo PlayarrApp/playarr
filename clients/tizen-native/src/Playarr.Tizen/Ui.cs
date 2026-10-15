@@ -195,6 +195,19 @@ internal static class Ui
         return Gradient(x, atTop ? y : y - size, w, size, false, stops);
     }
 
+    /// <summary>
+    /// Web .tv-library-grid-panel / .tv-rail-surface: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
+    /// that fades in from nothing at the left edge to full at the right.
+    /// </summary>
+    public static View PanelWash(PlayarrTheme t)
+    {
+        var dark = t.Name == "dark"; var mix = dark ? 0.44f : 0.48f;
+        Rgba Frost(float a) => new(t.SurfaceSoft.R * mix + t.SurfaceStrong.R * (1 - mix), t.SurfaceSoft.G * mix + t.SurfaceStrong.G * (1 - mix), t.SurfaceSoft.B * mix + t.SurfaceStrong.B * (1 - mix), a);
+        const float w = 1190;
+        return Gradient(TizenClient.DesignWidth - w, 0, w, TizenClient.DesignHeight, true,
+            (0, Frost(0)), (0.12f, Frost(dark ? 0.72f : 0.68f)), (0.34f, Frost(dark ? 0.9f : 0.88f)), (0.62f, Frost(dark ? 0.97f : 0.96f)), (1, Frost(1)));
+    }
+
     /// <summary>Angled gradient rendered at the target aspect ratio so its direction is preserved when displayed.</summary>
     public static View DiagonalGradient(float x, float y, float w, float h, float degrees, params (float At, Rgba Color)[] stops)
     {

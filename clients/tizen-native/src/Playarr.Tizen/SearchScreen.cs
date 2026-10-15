@@ -199,6 +199,7 @@ internal sealed class SearchScreen : IPage
         if (_sideFocus >= 0) _side[_sideFocus].Style(false);
         _sideFocus = -1;
         _root.Add(_filters.Root);
+        _filterTile?.Show(false);
     }
 
     public void OpenFiltersFromRoute() => OpenFilters();
@@ -207,6 +208,7 @@ internal sealed class SearchScreen : IPage
     {
         if (_filters is null) return;
         _root.Remove(_filters.Root); _filters.Root.Dispose(); _filters = null;
+        _filterTile?.Show(true);
         _sideFocus = 0; _side[_sideFocus].Style(true);
         if (_filterTile is not null) FocusManager.Instance.SetCurrentFocusView(_filterTile);
     }

@@ -46,6 +46,7 @@ internal sealed class SeriesDetailScreen : IPage
         _root.BackgroundColor = Ui.C(_t.Surface);
         _keyArt = new KeyArt(env, armed: true); // web paints the key art as soon as focus lands on the first episode
         _root.Add(_keyArt.Root);
+        _root.Add(Ui.PanelWash(_t)); // web: the right rail panel frosts the key art (the page top is not a surface fade)
         _root.Add(_content);
         _ = LoadAsync();
     }

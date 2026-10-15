@@ -8,7 +8,7 @@ namespace Playarr.Tizen;
 /// <summary>Native playlist directory and root/child detail route.</summary>
 internal sealed class PlaylistsScreen : IPage
 {
-    private const float ClipX = 729.6f, DirectoryFirstRowY = 162f, DetailFirstRowY = 421.719f, RowPitch = 251.2f, FocusedRowMaxY = 926.4f;
+    private const float ClipX = 729.6f, DirectoryFirstRowY = 162f, DetailFirstRowY = 421.719f, RowPitch = 251.2f, FocusedRowMaxY = 819f;
     private static readonly float[] DirectoryColX = { 783.36f, 1136.46f, 1489.56f };
     private static readonly float[] DetailColX = { 881.609f, 1234.709f, 1587.809f };
     private static readonly HttpClient PlaylistHttp = new();
