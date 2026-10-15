@@ -3029,7 +3029,13 @@ private fun ExperienceHomeScreen(
                         contentPadding = PaddingValues(
                             start = railGutter,
                             // Web: the first rail heading at y 402 and rail headings 365.9 dp apart with the poster-size cards.
-                            top = if (isTelevision) 389.9.dp * homeStageVerticalScale() else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
+                            // Web centres the focused rail on the viewport, so a taller card (portrait posters, small thumbnails) lifts the row by half
+                            // the extra height: measured on web at all three sizes in both modes, 389.9 dp at the 327.2 x 184 dp medium thumbnail.
+                            top = if (isTelevision) {
+                                val cardWidth = tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = homeView == PlayarrHomeViewPreference.Cover)
+                                val cardHeight = if (homeView == PlayarrHomeViewPreference.Cover) cardWidth * 1.5f else cardWidth * 9f / 16f
+                                (389.9.dp - (cardHeight - 184.05.dp) / 2f) * homeStageVerticalScale()
+                            } else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
                             // Web `.tv-home-rails` padding-block is half the viewport on both ends, so the last rail can reach the same anchor as the first.
                             bottom = if (isTelevision) 540.dp * homeStageVerticalScale() else 98.dp,
                         ),
