@@ -1,1 +1,0 @@
-- HarmonyOS phone: the series page rings the first episode when everything is watched.
