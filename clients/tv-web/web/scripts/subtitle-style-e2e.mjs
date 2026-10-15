@@ -85,13 +85,31 @@ for (const theme of ["light", "dark"]) {
         localStorage.setItem("playarr.activeProfile.v1", JSON.stringify({ profileKey: "e2e", apiBaseUrl: apiBase, userId: s.user_id }));
       } catch {}
     }, { apiBase, s, theme });
+    // The reduced-motion rule in global.css gives every element a 0.01 ms transition, which turns on transitions for
+    // border and padding. A border then reads as 3px (the `medium` it starts from) or 0px for a frame, and the header's
+    // wrap measure reads those mid-transition values and flips between wrapped and beside. This script checks the
+    // settled style, so transitions are off here; the reduced-motion transition itself is not what it asserts.
+    await context.addInitScript(() => {
+      document.addEventListener("DOMContentLoaded", () => {
+        const style = document.createElement("style");
+        style.textContent = "*, *::before, *::after { transition: none !important; }";
+        document.head.append(style);
+      });
+    });
     const page = await context.newPage();
     const results = [];
     for (const [id, route] of PAGES) {
       await page.goto(`${base}${route}`, { waitUntil: "load" });
       await page.waitForSelector(".page-header", { timeout: 20000 }).catch(() => undefined);
-      await page.waitForTimeout(600);
-      results.push([id, await page.evaluate(read, PROPS)]);
+      // The header re-measures as data, fonts and the actions settle: read until 3 samples 300 ms apart agree (5 s cap), then assert.
+      let last = await page.evaluate(read, PROPS);
+      for (let same = 1, t0 = Date.now(); same < 3 && Date.now() - t0 < 5000;) {
+        await page.waitForTimeout(300);
+          const next = await page.evaluate(read, PROPS);
+        same = JSON.stringify(next) === JSON.stringify(last) ? same + 1 : 1;
+        last = next;
+      }
+      results.push([id, last]);
     }
     const reference = results.find(([id]) => id === "movies")?.[1].subtitle;
     if (!reference) { console.log(`FAIL  ${theme} ${vp.width}: no Movies subtitle found`); failed++; }
