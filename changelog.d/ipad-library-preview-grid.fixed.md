@@ -1,1 +1,0 @@
-- On iPad, the Library preview title is the web's 42 pt on a .9 line pitch, so "2 Broke Girls" stays on one line and "2 Fast 2 Furious" breaks after "Fast"; the grid card captions are the web's size and the row gap is a point tighter.
