@@ -649,6 +649,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Xbox: the library grid fades toward its top and bottom edges where content continues, as the web.
 - HarmonyOS: ink-soft, ink-muted, accent, danger and success colours match the web tokens in light and dark (TV included).
 - HarmonyOS phone rails fade their end edge as web does (38 vp smoothstep ramp to 30%, TV unchanged).
 - Fire TV: the page header title is 50 px tall, the subtitle uses web's size, weight and tracking, and Back shows only the 3 px ring (white in dark) with no fill or scale on focus.

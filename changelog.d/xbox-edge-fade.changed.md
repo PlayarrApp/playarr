@@ -1,1 +1,0 @@
-- Xbox: the library grid fades toward its top and bottom edges where content continues, as the web.
