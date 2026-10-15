@@ -1,1 +1,0 @@
-- Xbox: the profile picker's Add tile asks before signing out; Cancel keeps the session.
