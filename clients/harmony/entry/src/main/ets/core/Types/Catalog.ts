@@ -48,8 +48,23 @@ export interface BrowseQuery {
   tag?: string;
   sort?: string;
   order?: string;
+  /** Comma-separated audio / subtitle languages (ISO 639 codes), web's Library Filters. */
+  audio_lang?: string;
+  subtitle_lang?: string;
   limit?: number;
   offset?: number;
+}
+
+/** One language facet of `GET /api/v1/catalog/languages`: its code, display name and work count. */
+export interface LanguageFacet {
+  code: string;
+  name: string;
+  count: number;
+}
+
+export interface LanguageFacets {
+  audio: LanguageFacet[];
+  subtitle: LanguageFacet[];
 }
 
 /**

@@ -118,9 +118,9 @@ import { libraryCountLabel } from '../core/CountFormat';
 import { AlphabetRail } from '../design/components/AlphabetRail';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
-import { libraryViews, libraryViewLabel, normaliseLibraryView, COVER_GAP_Y } from '../core/LibraryView';
+import { libraryViews, libraryViewLabel, libraryViewIcon, normaliseLibraryView, COVER_GAP_Y } from '../core/LibraryView';
 import { loadLibraryView, saveLibraryView, loadAppearance } from '../AppContainer';
-import { cardGeometry, normaliseArtworkSize } from '../core/ArtworkSize';
+import { artworkStep, cardGeometry, normaliseArtworkSize } from '../core/ArtworkSize';
 import type { ArtworkSizeName, CardGeometry } from '../core/ArtworkSize';
 import { PageShell } from '../design/components/PageShell';
 import { TouchIconButton } from '../design/components/TouchIconButton';
@@ -131,7 +131,9 @@ import type { Choice } from '../design/components/ChoiceSegments';
 import { alphabetFor, firstIndexAtOrAfter, workLetter } from '../core/AlphabetIndex';
 import { Spacing, Radii } from '../core/Tokens';
 
-import { getCatalog, getCatalogKinds, listWatchProgress } from '../data/CatalogRepository';
+import { getCatalog, getCatalogKinds, getLanguageFacets, listWatchProgress } from '../data/CatalogRepository';
+import type { LanguageFacet } from '../core/Types/Catalog';
+import { MultiSelect } from '../design/components/MultiSelect';
 import { indexWatchProgressByWork, watchMarkFor } from '../core/WatchState';
 import { orderWorks } from '../core/LibraryOrder';
 import type { WatchMark } from '../core/WatchState';
@@ -487,6 +489,12 @@ export struct Library {
   @State private activeLetter: string = '#';
   /** The Filters drawer (web `?panel=filters`). */
   @State private filtersOpen: boolean = false;
+  /** Web's Audio and Subtitle language filters: chosen ISO 639 codes, and the facets the server lists for this kind (null until loaded). */
+  @State private audioLangs: string[] = [];
+  @State private subtitleLangs: string[] = [];
+  @State private audioFacets: LanguageFacet[] = [];
+  @State private subtitleFacets: LanguageFacet[] = [];
+  @State private facetsLoaded: boolean = false;
   /** web's View choice: 'list', 'screen' (the default) or 'cover'; remembered per kind. */
   @State private view: string = 'screen';
   /** The title whose long-press actions are open (web's media context menu), or undefined. */
@@ -634,6 +642,37 @@ export struct Library {
     return this.gridCardWidthVp() * COVER_ASPECT_RATIO;
   }
 
+  /** Each list honours every filter except its own language parameter (the server's rule), so both are re-read after a change. */
+  private async loadLanguageFacets(): Promise<void> {
+    const rawKind = this.kind;
+    const result = await getLanguageFacets(rawKind.length > 0 ? (rawKind as WorkKind) : undefined, this.audioLangs.join(','), this.subtitleLangs.join(','));
+    if (result.kind === 'ok') {
+      this.audioFacets = result.value.audio;
+      this.subtitleFacets = result.value.subtitle;
+    }
+    this.facetsLoaded = true;
+  }
+
+  private languageChoices(facets: LanguageFacet[], selected: string[]): Choice[] {
+    const choices: Choice[] = facets.map((facet: LanguageFacet): Choice => ({ value: facet.code, label: facet.name }));
+    for (const code of selected) {
+      if (!choices.some((choice: Choice): boolean => choice.value === code)) {
+        choices.push({ value: code, label: code });
+      }
+    }
+    return choices;
+  }
+
+  private setLanguages(audio: boolean, values: string[]): void {
+    if (audio) {
+      this.audioLangs = values;
+    } else {
+      this.subtitleLangs = values;
+    }
+    this.resetAndReload();
+    this.loadLanguageFacets();
+  }
+
   private resetAndReload(): void {
     this.items = [];
     this.hasMore = true;
@@ -691,6 +730,8 @@ export struct Library {
       kind: effectiveKind,
       sort: sortValue,
       order: orderValue,
+      audio_lang: this.audioLangs.join(','),
+      subtitle_lang: this.subtitleLangs.join(','),
       limit: catalogPageSize,
       offset: offset,
     });
@@ -790,6 +831,7 @@ export struct Library {
       icon: $r('app.media.action_filters'),
       onTap: (): void => {
         this.filtersOpen = true;
+        this.loadLanguageFacets();
       },
     })
   }
@@ -919,7 +961,8 @@ export struct Library {
    * the cards filling the space between the 16 vp gutter and the 52 vp letter rail. A 360 vp phone shows two, 140 wide. */
   private touchColumns(): number {
     const w = this.measuredWidthVp > 0 ? this.measuredWidthVp : FALLBACK_TOUCH_GRID_WIDTH_VP;
-    return w < 300 ? 1 : (w < 540 ? 2 : 3);
+    // web's artwork size setting shifts the count: small +1, large -1 (never below one column)
+    return w < 300 ? 1 : Math.max(1, (w < 540 ? 2 : 3) + artworkStep(this.artworkSize));
   }
 
   private touchCardWidthVp(): number {
@@ -1116,6 +1159,7 @@ export struct Library {
       slot: 0,
       onActivate: (): void => {
         this.filtersOpen = true;
+        this.loadLanguageFacets();
       },
     })
     if (this.sort === 'title') {
@@ -1171,7 +1215,7 @@ export struct Library {
   private filtersBody(): void {
     ChoiceSegments({
       heading: 'View',
-      choices: libraryViews(this.kind).map((value: string): Choice => ({ value: value, label: libraryViewLabel(value) })),
+      choices: libraryViews(this.kind).map((value: string): Choice => ({ value: value, label: libraryViewLabel(value), icon: libraryViewIcon(value) })),
       selected: this.view,
       onChoose: (value: string): void => {
         this.chooseView(value);
@@ -1193,6 +1237,26 @@ export struct Library {
         if (value !== this.order) {
           this.toggleOrder();
         }
+      },
+    })
+    MultiSelect({
+      heading: 'Audio language',
+      options: this.languageChoices(this.audioFacets, this.audioLangs),
+      selected: this.audioLangs,
+      noneLabel: 'Any language',
+      addLabel: 'Add language',
+      onChange: (values: string[]): void => {
+        this.setLanguages(true, values);
+      },
+    })
+    MultiSelect({
+      heading: 'Subtitle language',
+      options: this.languageChoices(this.subtitleFacets, this.subtitleLangs),
+      selected: this.subtitleLangs,
+      noneLabel: 'Any language',
+      addLabel: 'Add language',
+      onChange: (values: string[]): void => {
+        this.setLanguages(false, values);
       },
     })
   }

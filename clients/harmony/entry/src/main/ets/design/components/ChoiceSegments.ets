@@ -11,6 +11,8 @@ import { isTvMetrics, tv } from '../Metrics';
 export interface Choice {
   value: string;
   label: string;
+  /** A glyph drawn above the label (web's View buttons); empty for none. */
+  icon?: string;
 }
 
 const SECTION_WIDTH: number = 268;
@@ -76,7 +78,7 @@ export struct ChoiceSegments {
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
-          Text(choice.label).fontFamily(nunito(700))
+          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + choice.label).fontFamily(nunito(700))
             .width(tv(this.choiceWidth()))
             .height(tv(CHOICE_HEIGHT))
             .textAlign(TextAlign.Center)

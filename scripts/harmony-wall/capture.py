@@ -662,6 +662,19 @@ else:
     guarded("home-covers-small", lambda: home_with("home-covers-small", [SMALL_BTN]))
     guarded("home-covers-large", lambda: home_with("home-covers-large", [LARGE_BTN]))
     guarded("home-thumbs-large", lambda: home_with("home-thumbs-large", [THUMBS_BTN]))
+
+    # Library in Covers mode at each artwork size: set the size in Settings, open Library > Filters, choose the Cover view, close, capture.
+    COVER_VIEW_BTN = (868, 450)
+
+    def library_covers(name, size_btn):
+        route("profiles", 8); route("settings", 12); click(540, 300); time.sleep(6)
+        click(*size_btn); time.sleep(2)
+        route("library:movie", 15); settle()
+        open_filters(name); click(*COVER_VIEW_BTN); time.sleep(3); click(*CLOSE_DRAWER); time.sleep(4)
+        snap(name, folder, 100000)
+
+    for nm, btn in (("library-covers-small", SMALL_BTN), ("library-covers-medium", MEDIUM_BTN), ("library-covers-large", LARGE_BTN)):
+        guarded(nm, lambda nm=nm, btn=btn: library_covers(nm, btn))
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
     guarded("player-controls", lambda: (route("player:b9a68b2c-8382-4c34-a6f0-c4dd58f55093", 20), snap("player-controls", folder, 30000)))
 import datetime

@@ -1,0 +1,1 @@
+- HarmonyOS: Library Filters gain web's Audio and Subtitle language selects, the View buttons read List, Screen and Cover with icons, the phone drawer close button is filled, and the phone Library column count follows the artwork size.

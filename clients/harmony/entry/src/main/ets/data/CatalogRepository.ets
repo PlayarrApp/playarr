@@ -72,6 +72,7 @@ import { WorkDetail, WorkCredits } from '../core/Types/WorkDetail.ts';
 import { ResumePlan } from '../core/Types/ResumePlan.ts';
 import {
   BrowseQuery,
+  LanguageFacets,
   CatalogPage,
   HomeRailsResponse,
   RailPreferencesRequest,
@@ -196,6 +197,12 @@ function buildBrowseQueryString(query: BrowseQuery): string {
   if (query.tag !== undefined) {
     appendQueryPart(parts, 'tag', query.tag);
   }
+  if (query.audio_lang !== undefined && query.audio_lang.length > 0) {
+    appendQueryPart(parts, 'audio_lang', query.audio_lang);
+  }
+  if (query.subtitle_lang !== undefined && query.subtitle_lang.length > 0) {
+    appendQueryPart(parts, 'subtitle_lang', query.subtitle_lang);
+  }
   if (query.sort !== undefined) {
     appendQueryPart(parts, 'sort', query.sort);
   }
@@ -217,6 +224,22 @@ export async function getCatalog(query: BrowseQuery): Promise<ApiResult<CatalogP
   const path = catalogUrl() + buildBrowseQueryString(query);
   const result = await getPlayarrClient().getJson<CatalogPageWire>(path);
   return mapCatalogPageResult(result);
+}
+
+/** `GET /api/v1/catalog/languages`: the audio and subtitle languages of a kind's titles with their counts (web Library Filters). */
+export function getLanguageFacets(kind: WorkKind | undefined, audioLang: string, subtitleLang: string): Promise<ApiResult<LanguageFacets>> {
+  const parts: string[] = [];
+  if (kind !== undefined) {
+    appendQueryPart(parts, 'kind', kind);
+  }
+  appendQueryPart(parts, 'available_only', 'true');
+  if (audioLang.length > 0) {
+    appendQueryPart(parts, 'audio_lang', audioLang);
+  }
+  if (subtitleLang.length > 0) {
+    appendQueryPart(parts, 'subtitle_lang', subtitleLang);
+  }
+  return getPlayarrClient().getJson<LanguageFacets>(catalogUrl() + '/languages' + queryStringFromParts(parts));
 }
 
 /**

@@ -9,10 +9,21 @@ export function libraryViews(kind: string): string[] {
 }
 
 const VIEW_LABELS: Record<string, string> = {
-  list: "list",
-  screen: "screen",
-  cover: "cover",
+  list: "List",
+  screen: "Screen",
+  cover: "Cover",
 };
+
+/** The glyph web draws above a view's label (a stack of rows, three landscape cards, three portrait cards). */
+const VIEW_ICONS: Record<string, string> = {
+  list: "\u2261",
+  screen: "\u25AD\u25AD\u25AD",
+  cover: "\u25AF\u25AF\u25AF",
+};
+
+export function libraryViewIcon(view: string): string {
+  return VIEW_ICONS[view] ?? "";
+}
 
 export function libraryViewLabel(view: string): string {
   return VIEW_LABELS[view] ?? view;

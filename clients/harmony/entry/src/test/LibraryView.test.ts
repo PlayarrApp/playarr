@@ -14,7 +14,7 @@ test("a saved view is kept when offered, else the default", () => {
   assert.equal(normaliseLibraryView("cover-flow", "movie"), "screen");
   assert.equal(normaliseLibraryView("nonsense", "series"), "screen");
   assert.equal(normaliseLibraryView("", "artist"), "screen");
-  assert.equal(libraryViewLabel("list"), "list");
+  assert.equal(libraryViewLabel("list"), "List");
 });
 
 test("the cover wall fits the 1042 wide panel at 2:3", () => {
