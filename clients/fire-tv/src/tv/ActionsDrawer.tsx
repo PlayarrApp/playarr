@@ -29,8 +29,10 @@ export function playableLeaves(detail: Pick<WorkDetail, 'media_file_id' | 'runti
   return detail.media_file_id ? [{mediaFileId: detail.media_file_id, runtimeMs: detail.runtime_ms ?? 0}] : [];
 }
 
-const ROW_H = 64;
-const ROW_PITCH = 80;
+/** Web `.media-context-actions`: 68 px rows, 14 px gap, the first row 35 px below the drawer's content top. */
+const ROW_H = 68;
+const ROW_PITCH = 82;
+const ROWS_TOP = 35;
 
 export function ActionsDrawer({work, onClose, onOpen, onAddToPlaylist}: {work: Work; onClose: () => void; onOpen: () => void; onAddToPlaylist: () => void}): React.ReactElement {
   const client = useApiClient();
@@ -89,14 +91,14 @@ export function ActionsDrawer({work, onClose, onOpen, onAddToPlaylist}: {work: W
         {
           key: 'actions',
           label: '',
-          height: actions.length * ROW_PITCH + (error ? 40 : 0),
+          height: ROWS_TOP + actions.length * ROW_PITCH + (error ? 40 : 0),
           render: (top, reveal) => (
             <>
               {actions.map((action, index) => (
-                <ActionRow key={action.id} glyph={action.glyph} label={action.label} y={top + index * ROW_PITCH} first={index === 0} onPress={action.onPress} onReveal={reveal} />
+                <ActionRow key={action.id} glyph={action.glyph} label={action.label} y={top + ROWS_TOP + index * ROW_PITCH} first={index === 0} onPress={action.onPress} onReveal={reveal} />
               ))}
               {error ? (
-                <View style={{position: 'absolute', left: u(46), top: u(top + actions.length * ROW_PITCH), width: u(268)}}>
+                <View style={{position: 'absolute', left: u(46), top: u(top + ROWS_TOP + actions.length * ROW_PITCH), width: u(268)}}>
                   <T size={11} weight={600} color="#cf3157" lines={2}>
                     {error}
                   </T>
@@ -125,17 +127,17 @@ function ActionRow({glyph, label, y, first, onPress, onReveal}: {glyph: string; 
       }}
       onBlur={() => setFocused(false)}
       onPress={onPress}
-      style={{position: 'absolute', left: u(46), top: u(y), width: u(268), height: u(ROW_H), borderRadius: u(12), backgroundColor: colour.surfaceSoft, flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(18)}}
+      style={{position: 'absolute', left: u(46), top: u(y), width: u(268), height: u(ROW_H), borderRadius: u(14), backgroundColor: colour.surfaceSoft, flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(18)}}
     >
-      <View style={{width: u(24)}}>
-        <T size={13} weight={600} color="#cf3157">
+      <View style={{width: u(42)}}>
+        <T size={19.52} weight={600} color="#cf3157">
           {glyph}
         </T>
       </View>
-      <T size={13.44} weight={700} color={colour.ink} lines={1}>
+      <T size={19.2} weight={700} color={colour.ink} lines={1}>
         {label}
       </T>
-      {focused ? <FocusRing radius={12} /> : null}
+      {focused ? <FocusRing radius={14} /> : null}
     </Pressable>
   );
 }
