@@ -1,0 +1,1 @@
+- macOS: the first card of every Home rail keeps its focus ring and glow (no longer clipped at the left edge) and rails fade at the right end as on the web.

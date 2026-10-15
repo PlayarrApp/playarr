@@ -314,13 +314,28 @@ struct TVHomeView: View {
                         }
                     }
                 }
-                .padding(.leading, Self.cardBleed)
+                .padding(.leading, Self.cardBleed + Self.railClearance)
                 .padding(.trailing, 46)
                 .padding(.top, 18)
                 .padding(.bottom, 24)
             }
             .padding(.top, 35.3 - 18)
+            #if os(macOS)
+            // The first card's ring and glow reach left of the scroll view's clip edge: widen the view by the clearance (the
+            // content padding above puts the cards back at the web x), then fade the end as the web's x scroll-edge mask does.
+            .padding(.leading, -Self.railClearance)
+            .macEdgeFade(axis: .horizontal, endFloor: 0.3)
+            #endif
         }
+    }
+
+    /// Room left of a rail's first card for its focus ring (3 px) and glow (20 px blur) on the Mac; zero elsewhere.
+    private static var railClearance: CGFloat {
+        #if os(macOS)
+        return 24
+        #else
+        return 0
+        #endif
     }
 
     private func parityHomeLoaded(_ viewModel: TVHomeViewModel) -> some View {

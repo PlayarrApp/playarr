@@ -84,7 +84,8 @@ if (only.includes("screens")) {
 }
 // Extra captures for focus-crop checks (the last row of a long grid, the last item of a short one): not scored, no web ref, and only
 // for a driver that asks for them (`endCrops`). Written to <theme>/crops/<id>.png.
-if (only.includes("screens") && driver.endCrops) {
+// Opt-in: only a screens-without-dpad run takes them (about 22 captures, so with the D-pad checks the step hits its 60 min limit before dpad.json).
+if (only.includes("screens") && !only.includes("dpad") && driver.endCrops) {
   for (const theme of themes) {
     await driver.setTheme(theme);
     mkdirSync(join(out, theme, "crops"), { recursive: true });

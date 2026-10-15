@@ -938,3 +938,39 @@ struct TVWorkDetailLoader: View {
         .task(id: workID) { work = try? await environment.apiClient.fetchWork(id: workID).work }
     }
 }
+
+#if os(macOS)
+extension View {
+    /// Web `[data-fade-axis][data-fade-end]` mask: a smoothstep ramp (0.844 / 0.5 / 0.156 at 25 / 50 / 75 %) over the page's edge-fade
+    /// size, down to `endFloor` at the very edge. The start side is left alone: the web fades it only once content has scrolled past.
+    func macEdgeFade(axis: Axis, endFloor: Double, size: CGFloat = 59) -> some View {
+        modifier(MacEdgeFade(axis: axis, endFloor: endFloor, size: size))
+    }
+}
+
+private struct MacEdgeFade: ViewModifier {
+    let axis: Axis
+    let endFloor: Double
+    let size: CGFloat
+
+    func body(content: Content) -> some View {
+        // The GeometryReader sits in the mask, so it takes the masked view's size and never changes the layout.
+        content.mask {
+            GeometryReader { proxy in
+                let length = axis == .horizontal ? proxy.size.width : proxy.size.height
+                let k = min(1, Double(size / max(length, 1)))
+                LinearGradient(stops: [
+                    .init(color: .black, location: 0),
+                    .init(color: .black, location: 1 - k),
+                    .init(color: .black.opacity(alpha(0.844)), location: 1 - k * 0.75),
+                    .init(color: .black.opacity(alpha(0.5)), location: 1 - k * 0.5),
+                    .init(color: .black.opacity(alpha(0.156)), location: 1 - k * 0.25),
+                    .init(color: .black.opacity(endFloor), location: 1),
+                ], startPoint: axis == .horizontal ? .leading : .top, endPoint: axis == .horizontal ? .trailing : .bottom)
+            }
+        }
+    }
+
+    private func alpha(_ t: Double) -> Double { endFloor + (1 - endFloor) * t }
+}
+#endif
