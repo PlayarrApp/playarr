@@ -2569,6 +2569,7 @@ private fun ExperienceNavHost(
             LaunchedEffect(routedId) {
                 if (parityRoute != null && playbackQueue.currentItem == null && routedId.isNotBlank()) viewModel.startPlayback(routedId, emptyList())
             }
+            UnstagedForWebCssPx {
             ExperiencePlayerScreen(
                 mediaFileId = entry.arguments?.getString("mediaFileId").orEmpty(),
                 serverUrl = serverUrl,
@@ -2596,6 +2597,7 @@ private fun ExperienceNavHost(
                 },
                 viewModel = playerViewModel,
             )
+            }
         }
         // `calendar?query=view%3Dagenda%26date%3D2026-10-04` seeds the calendar's SavedStateHandle (the nav arg name is
         // the handle key), carrying the exact query string the web calendar puts in its URL.
@@ -3709,6 +3711,12 @@ internal fun WebDetailPill(
             // Web clamps these against the viewport width (64 / 156 / 142 dp at 1920): a tablet gets its own css px.
             .height(webVw(44f, 4.2f, 64f))
             .widthIn(min = if (primary) webVw(112f, 8.5f, 156f) else webVw(104f, 7.6f, 142f))
+            // Web `.tv-detail-play` / `.tv-detail-download`: 0 14px 38px (Play 18 / 46 at .18) warm-ink shadow; a tablet draws it
+            // behind the pill with the platform shadow (focus modifiers below stay on the Surface).
+            .then(if (LocalStageScale.current == 1f) Modifier else Modifier.shadow(
+                elevation = if (primary) 14.dp else 11.dp, shape = CircleShape, clip = false,
+                ambientColor = Color(0xFF382621).copy(alpha = 0.12f), spotColor = Color(0xFF382621).copy(alpha = if (primary) 0.18f else 0.12f),
+            ))
             .scale(scale)
             .webFocusRing(focused, offset = 3.dp)
             .onFocusChanged { focused = it.isFocused },

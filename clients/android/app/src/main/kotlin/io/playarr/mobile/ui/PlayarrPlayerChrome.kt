@@ -789,7 +789,7 @@ private fun PlayerRoundButton(
         shape = CircleShape,
         modifier = modifier
             .then(if (focusKey != null) Modifier.playerTracked(focusKey) else Modifier)
-            .size(64.dp)
+            .size(webVw(44f, 3.8f, 64f))
             .playerFocusRing(source, CircleShape)
             .semantics { this.contentDescription = contentDescription },
     ) {
@@ -1089,7 +1089,7 @@ internal fun PlayarrTelevisionControlBar(
         Modifier
             .fillMaxWidth()
             // The scrim behind the bar is drawn separately (PlayarrPlayerScrim) so it can rise from the bottom.
-            .padding(start = 70.dp, end = 70.dp, bottom = 58.dp, top = 40.dp),
+            .padding(start = webVw(24f, 4f, 70f), end = webVw(24f, 4f, 70f), bottom = webVw(22f, 3.5f, 58f), top = 40.dp), // web `.player-controls` padding, css px
         verticalArrangement = Arrangement.Bottom,
     ) {
         val scrubSource = remember { MutableInteractionSource() }

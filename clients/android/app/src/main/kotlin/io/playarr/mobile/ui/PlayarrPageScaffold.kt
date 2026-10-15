@@ -462,10 +462,11 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
             contentColor = if (selected) WebBackground else WebInkSoft,
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.10f, 0.12f)),
-            modifier = modifier.height(56.dp).webFocusRing(focused, radius = 12.dp, offset = 2.dp),
+            // Web `.tv-filter-choice-grid button`: min-height clamp(44, 3.6 vw, 56) and font clamp(7.68, 0.55 vw, 10.88) css px (56 / 10.56 at 1920).
+            modifier = modifier.height(webVw(44f, 3.6f, 56f)).webFocusRing(focused, radius = 12.dp, offset = 2.dp),
         ) {
             Box(Modifier.padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
-                Text(label.replaceFirstChar { it.titlecase() }, fontSize = 10.56.sp, lineHeight = 15.84.sp, fontWeight = FontWeight(680), maxLines = 1)
+                Text(label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(680), maxLines = 1)
             }
         }
         return
