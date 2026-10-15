@@ -471,6 +471,8 @@ def detail(s):
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
       focusId: seriesEpisodeFocusId((item as DetailRow).id),
+      ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,
+      unseen: this.episodeUnseen(item as DetailRow),
       cardWidth: this.seriesCardWidth(),
       cardHeight: Math.round(this.seriesCardWidth() * 9 / 16),
       activeRailFactor: activeRailFactor,

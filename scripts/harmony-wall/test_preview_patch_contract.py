@@ -23,6 +23,12 @@ class PreviewPatchContractTests(unittest.TestCase):
         cls.preview_state = (HERE / "overlay/src/main/ets/util/PreviewState.ets").read_text(encoding="utf-8")
         cls.detail_source = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/pages/Detail.ets").read_text(encoding="utf-8")
 
+    def test_preview_series_episode_item_keeps_the_ring_and_unseen_dot(self):
+        # the preview swaps in its own seriesEpisodeItem builder; it must pass what the production one passes
+        self.assertIn("ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,", self.patch_state)
+        self.assertIn("unseen: this.episodeUnseen(item as DetailRow),", self.patch_state)
+        self.assertIn("ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,", self.detail_source)
+
     def test_player_surface_placeholder_is_replaced(self):
         source = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/pages/Player.ets").read_text(encoding="utf-8")
         patched = patch_state.player(source)

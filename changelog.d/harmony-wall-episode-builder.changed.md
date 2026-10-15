@@ -1,0 +1,1 @@
+- Harmony wall: the preview's series episode builder keeps the next-up ring and the unseen dot.
