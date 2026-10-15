@@ -655,6 +655,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android TV: the focused Settings section row takes web's grey fill with no outline, and the detail action pills' focus ring sits 2 px off the pill as on web.
 - Harmony wall: the preview's series episode builder keeps the next-up ring and the unseen dot.
 - HarmonyOS phone: Home cards and series episodes draw the unseen dot as web does; the wall's series-detail guard also spots gradient placeholder cards.
 - Xbox: nav rail focus uses the web's ink fill and scale, Home rails fade at their edges, and dark focused cards drop the extra shadow.
