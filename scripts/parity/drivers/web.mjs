@@ -605,11 +605,11 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       if (page) { await guard(); await page.evaluate(installVisualDate, value); await guard(); }
     },
     async captureBuildIdentity() {
-      await guard();
+      if (page) await guard(); // suite-run reads the build before start(): no page yet, and build-info.json is public
       const response = await fetch(`${web}/build-info.json`, { cache: "no-store" });
       if (!response.ok) throw new Error(`build identity request returned ${response.status}`);
       const info = await response.json();
-      await guard();
+      if (page) await guard();
       if (!info.sha || !info.builtAt) throw new Error("build identity response lacks sha or builtAt");
       if (env.PARITY_EXPECTED_BUILD_SHA && info.sha !== env.PARITY_EXPECTED_BUILD_SHA) throw new Error(`deployed build ${info.sha} does not match pinned build ${env.PARITY_EXPECTED_BUILD_SHA}`);
       return `${info.sha}@${info.builtAt}`;
