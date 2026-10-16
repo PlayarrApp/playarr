@@ -575,6 +575,9 @@ export struct Library {
     const sameWork = this.hero !== undefined && this.hero.id === work.id;
     this.hero = work;
     this.activeLetter = workLetter(work.sort_title, work.title);
+    if (!isTvMetrics()) {
+      return;
+    }
     if (sameWork && (this.heroArtworkWorkId === work.id || this.pendingHeroArtworkWorkId === work.id)) {
       return;
     }
@@ -593,12 +596,15 @@ export struct Library {
     if (result.kind === 'ok') {
       this.heroArtwork = result.value;
       this.heroArtworkWorkId = workId;
+    } else {
+      this.heroArtwork = undefined;
+      this.heroArtworkWorkId = '';
     }
   }
 
   private restartHeroArtworkIfNeeded(): void {
     const hero = this.hero;
-    if (hero === undefined || this.heroArtworkWorkId === hero.id || this.pendingHeroArtworkWorkId === hero.id) {
+    if (!isTvMetrics() || hero === undefined || this.heroArtworkWorkId === hero.id || this.pendingHeroArtworkWorkId === hero.id) {
       return;
     }
     const generation = ++this.heroArtworkGeneration;
