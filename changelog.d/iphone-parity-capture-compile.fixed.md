@@ -1,0 +1,1 @@
+- Fix the iOS parity capture launch so playback capability checks compile against the shared API client contract.
