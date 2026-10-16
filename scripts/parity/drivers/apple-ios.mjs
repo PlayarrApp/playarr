@@ -25,19 +25,27 @@ function readState(work) {
   return env;
 }
 
-// Watch progress on the shared account changes Home and detail: put the pinned files back to unwatched.
-async function resetProgress(files) {
-  try { await resetProgressOnce(files); } catch (e) { console.log(`  progress reset skipped: ${String(e.cause?.code ?? e.message)}`); } // a network blip must not end the run
-}
-async function resetProgressOnce(files) {
-  const e = process.env, server = e.SERVER_URL.replace(/\/$/, "");
-  const post = (path, method, body, token) => fetch(server + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
-  const login = await post("/api/v1/auth/login", "POST", { client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: e.TEST_USERNAME, password: e.TEST_PASSWORD });
-  if (!login.ok) { console.log(`  progress reset: login ${login.status}`); return; }
-  const token = (await login.json()).access_token;
+// Watch progress affects Home and detail captures, so an incomplete reset must abort the run.
+export async function resetProgressOnce(files, { env = process.env, fetchImpl = fetch } = {}) {
+  const server = env.SERVER_URL?.replace(/\/$/, "");
+  if (!server || !env.TEST_USERNAME || !env.TEST_PASSWORD) throw new Error("iOS progress reset requires the approved test account configuration");
+  const post = async (path, method, body, token) => {
+    try {
+      return await fetchImpl(server + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
+    } catch {
+      throw new Error("iOS progress reset request failed due to a network error");
+    }
+  };
+  const login = await post("/api/v1/auth/login", "POST", { client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: env.TEST_USERNAME, password: env.TEST_PASSWORD });
+  if (!login.ok) throw new Error(`iOS progress reset login failed with status ${login.status}`);
+  let token;
+  try { token = (await login.json()).access_token; } catch {
+    throw new Error("iOS progress reset login returned an invalid response");
+  }
+  if (typeof token !== "string" || token.length === 0) throw new Error("iOS progress reset login returned no access token");
   for (const f of files) {
     const r = await post(`/api/v1/playback/${f}/progress`, "PUT", { position_ms: 0, duration_ms: 6454000, completed: false }, token);
-    console.log(`  progress reset ${f.slice(0, 8)}: ${r.status}`);
+    if (!r.ok) throw new Error(`iOS progress reset failed with status ${r.status}`);
   }
 }
 
@@ -158,7 +166,7 @@ export async function createDriver() {
       await launch("home"); // establish the actual authenticated profile before resets or any suite action
       run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
       await sleep(60000); // a fresh simulator shows one-off system banners (Apple Intelligence) in the first minute: let them go
-      await resetProgress([...new Set([...(suite.playback ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // pinned files come from suite.json, never a copy here
+      await resetProgressOnce([...new Set([...(suite.playback ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // pinned files come from suite.json, never a copy here
     },
     async stop() {},
     async setTheme(t) { theme = t; },
@@ -236,16 +244,16 @@ export async function createDriver() {
         if (last.state === "failed") {
           // Diagnosis: the app's own recent log lines about HTTP errors (query strings, which may hold tokens, are cut).
           try { console.log(run("sh", ["-c", `xcrun simctl spawn ${udid} log show --last 1m --style compact --predicate 'processImagePath CONTAINS "PlayarrApp"' | grep -i -E '404|not found|http|error' | sed -E 's/[?][^ ]*//g' | tail -n 12`]).slice(0, 2500)); } catch { /* no log */ }
-          await resetProgress([c.file]); return { state: "error", detail: last.detail || "the player reported a failure" }; }
+          await resetProgressOnce([c.file]); return { state: "error", detail: last.detail || "the player reported a failure" }; }
         if (last.state === "playing" && last.position > 0) { start = (Date.now() - t0) / 1000; p0 = last.position; break; }
         await sleep(1000);
       }
-      if (start === null) { await resetProgress([c.file]); return { state: "stalled", detail: "playback did not start", startSeconds: (Date.now() - t0) / 1000 }; }
+      if (start === null) { await resetProgressOnce([c.file]); return { state: "stalled", detail: "playback did not start", startSeconds: (Date.now() - t0) / 1000 }; }
       await sleep((expect.advanceSeconds + 2) * 1000);
       last = state().playback ?? {};
       const advanced = last.position - p0;
       try { run("xcrun", ["simctl", "terminate", udid, bundle]); } catch { /* gone */ }
-      await resetProgress([c.file]);
+      await resetProgressOnce([c.file]);
       return { state: last.state === "playing" && advanced >= expect.advanceSeconds ? "playing" : "stalled", startSeconds: start, advancedSeconds: advanced };
     },
   };
