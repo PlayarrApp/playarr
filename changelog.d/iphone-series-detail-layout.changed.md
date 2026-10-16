@@ -1,0 +1,1 @@
+- Align iPhone series detail metadata wrapping, genre count and synopsis space with the web layout.

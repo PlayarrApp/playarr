@@ -3,6 +3,50 @@ import PlayarrKit
 import SwiftUI
 import UIKit
 
+private struct WMDetailMetadataLayout: Layout {
+    var horizontalSpacing: CGFloat = 10
+    var verticalSpacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let limit = proposal.width ?? .infinity
+        let placements = metadataPlacements(subviews: subviews, width: limit)
+        return CGSize(width: proposal.width ?? placements.width, height: placements.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let placements = metadataPlacements(subviews: subviews, width: bounds.width)
+        for (index, origin) in placements.origins.enumerated() {
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y),
+                proposal: .unspecified
+            )
+        }
+    }
+
+    private func metadataPlacements(subviews: Subviews, width: CGFloat) -> (origins: [CGPoint], width: CGFloat, height: CGFloat) {
+        var origins: [CGPoint] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var usedWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > width {
+                y += rowHeight + verticalSpacing
+                x = 0
+                rowHeight = 0
+            }
+            origins.append(CGPoint(x: x, y: y))
+            x += size.width + horizontalSpacing
+            usedWidth = max(usedWidth, x - horizontalSpacing)
+            rowHeight = max(rowHeight, size.height)
+        }
+
+        return (origins, usedWidth, y + rowHeight)
+    }
+}
+
 // MARK: - Remote images (episode stills and frame thumbnails)
 
 @MainActor
@@ -271,7 +315,7 @@ struct WMDetailPage: View {
         } else if let released = WMFormat.date(work.releaseDate) {
             items.append(("\(isSeries ? "Premiered" : "Released")  \(released)", false))
         }
-        if !work.genres.isEmpty { items.append((work.genres.joined(separator: ", "), false)) }
+        items.append(contentsOf: work.genres.prefix(3).map { ($0, false) })
         return items
     }
 
@@ -379,25 +423,25 @@ struct WMDetailPage: View {
                 .frame(width: 358, alignment: .leading)
                 .padding(.top, 8.34)
             }
-            HStack(spacing: 10) {
+            WMDetailMetadataLayout(horizontalSpacing: 10, verticalSpacing: 4) {
                 ForEach(Array(metaItems.enumerated()), id: \.offset) { _, item in
                     WMText(item.0, 10.24, item.1 ? 680 : 400, color: item.1 ? WM.inkSoft : WM.detailMuted, lh: 15.36)
-                        .fixedSize()
                 }
             }
-            .frame(width: 358, height: 15.36, alignment: .leading)
+            .frame(width: 358, alignment: .leading)
             .padding(.top, isSeries ? 11.44 : 11.34)
             if isSeries, let lagLine = model.lag?.primaryLine {
                 WMText(lagLine, 16, 640, lh: 24)
                     .frame(width: 358, alignment: .leading)
                     .padding(.top, 7.34)
             }
-            if let synopsis, !synopsis.isEmpty {
-                Text(synopsis)
+            if isSeries || (synopsis?.isEmpty == false) {
+                Text(synopsis ?? "")
                     .font(WM.font(11.52))
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
                     .frame(width: 347, alignment: .topLeading)
+                    .frame(minHeight: isSeries ? 50.112 : nil, alignment: .topLeading)
                     .padding(.top, isSeries ? 10.6 : 12.04)
             }
         }
