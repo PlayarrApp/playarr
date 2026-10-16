@@ -61,6 +61,10 @@ jobs:
           INPUT_DESTINATION: platform=iOS Simulator,name=${{ steps.pick.outputs.name }}
         run: node .github/scripts/apple-test-simulator/main.js
 
+      - name: Select the shared direct-play fixture
+        id: fixture
+        run: echo "file=$(node scripts/parity/apple/direct-play-file.mjs)" >> "$GITHUB_OUTPUT"
+
       - name: Render the screens
         id: render
         working-directory: clients/ios
@@ -70,6 +74,7 @@ jobs:
           TEST_RUNNER_PLAYARR_UI_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           TEST_RUNNER_PLAYARR_UI_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_RUNNER_PLAYARR_UI_TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          TEST_RUNNER_PLAYARR_UI_TEST_PLAY_FILE: ${{ steps.fixture.outputs.file }}
         run: |
           set -euo pipefail
           [[ "$SIMULATOR_UDID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]

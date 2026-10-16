@@ -1,0 +1,1 @@
+- Make iOS safe-area player captures use the parity suite's designated direct-play fixture and verify controls and direct negotiation before attaching the screenshot.

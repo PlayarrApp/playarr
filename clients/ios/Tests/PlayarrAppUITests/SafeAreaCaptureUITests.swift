@@ -5,10 +5,12 @@ import XCTest
 /// navigation and header controls clear the Dynamic Island, the side insets and the home indicator.
 /// Insets are those of iPhone 17 (portrait 62 top, 34 bottom; landscape 62 sides, 21 bottom).
 final class SafeAreaCaptureUITests: XCTestCase {
+    private let playerRoute = "player:movie:@first"
     private let routes = ["home", "movies", "detail:movie:@first", "settings", "player:movie:@first"]
 
     @MainActor
     func testScreensClearTheSafeAreas() throws {
+        continueAfterFailure = false
         let environment = ProcessInfo.processInfo.environment
         guard let server = environment["PLAYARR_UI_TEST_SERVER_URL"], !server.isEmpty,
               let username = environment["PLAYARR_UI_TEST_USERNAME"], !username.isEmpty,
@@ -34,8 +36,18 @@ final class SafeAreaCaptureUITests: XCTestCase {
                     "PLAYARR_PARITY_ROUTE": route,
                     "PLAYARR_REAL_INSETS": "1",
                 ]
+                var launchArguments: [String] = []
+                if route == playerRoute {
+                    guard let file = environment["PLAYARR_UI_TEST_PLAY_FILE"], !file.isEmpty else {
+                        XCTFail("The safe-area player capture requires the shared direct-play fixture.")
+                        app.terminate()
+                        return
+                    }
+                    launchArguments += ["--playarr-parity-play", file]
+                }
                 // The simulator's device rotation does not reach the app on recent iOS: the app rotates its own scene.
-                if orientationName == "landscape" { app.launchArguments = ["--playarr-parity-landscape"] }
+                if orientationName == "landscape" { launchArguments.append("--playarr-parity-landscape") }
+                app.launchArguments = launchArguments
                 app.launch()
                 XCUIDevice.shared.orientation = orientation
                 // The screen has no single ready marker across routes. Do not request a screenshot
@@ -47,6 +59,20 @@ final class SafeAreaCaptureUITests: XCTestCase {
                     return
                 }
                 Thread.sleep(forTimeInterval: 12)
+
+                if route == playerRoute {
+                    XCTAssertFalse(app.staticTexts["Playback failed"].exists, "The player must not show a playback failure before capture.")
+                    let play = app.buttons["Play"]
+                    let pause = app.buttons["Pause"]
+                    XCTAssertTrue(play.waitForExistence(timeout: 30) || pause.waitForExistence(timeout: 1), "The player controls must load before capture.")
+                    let info = app.buttons["Playback info"]
+                    XCTAssertTrue(info.waitForExistence(timeout: 10), "The player info control must load before capture.")
+                    info.tap()
+                    XCTAssertTrue(app.staticTexts["Direct play"].waitForExistence(timeout: 10), "The safe-area player must negotiate direct playback.")
+                    info.tap()
+                    XCTAssertFalse(app.staticTexts["Playback failed"].exists, "The player must remain healthy before the screenshot is attached.")
+                    XCTAssertTrue(play.waitForExistence(timeout: 10) || pause.waitForExistence(timeout: 1), "The player controls must remain loaded before capture.")
+                }
 
                 let shot = XCTAttachment(screenshot: app.screenshot())
                 shot.name = "\(orientationName)-\(route.replacingOccurrences(of: ":", with: "_"))"
