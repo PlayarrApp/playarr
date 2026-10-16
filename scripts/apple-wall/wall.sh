@@ -53,8 +53,10 @@ P
 }
 
 token() { # a fresh sign-in for the Device Test profile: sets ACCESS_TOKEN and REFRESH_TOKEN (the pair one login issued), masked in the log
-  local t; t=$(DEVICE_NAME="${APPLE_WALL_DEVICE_NAME:-wall-$DEVICE}" python3 "$TRUSTED/scripts/apple-wall/login.py") || return 1
-  read -r ACCESS_TOKEN REFRESH_TOKEN <<<"$t"
+  local t; t=$(DEVICE_NAME="${APPLE_WALL_DEVICE_NAME:-wall-$DEVICE}" python3 "$TRUSTED/scripts/apple-wall/login.py" --include-user-id) || return 1
+  read -r ACCESS_TOKEN REFRESH_TOKEN VERIFIED_USER_ID <<<"$t"
+  [[ -n $ACCESS_TOKEN && -n $REFRESH_TOKEN && -n $VERIFIED_USER_ID ]] || return 1
+  printf '%s\n' "$VERIFIED_USER_ID" > "$WORK/verified-user-id"
   echo "::add-mask::$ACCESS_TOKEN" >&2; echo "::add-mask::$REFRESH_TOKEN" >&2
 }
 

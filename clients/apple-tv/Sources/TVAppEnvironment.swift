@@ -523,6 +523,7 @@ final class TVAppEnvironment {
 
     func signOut() {
         Task { try? await tokenStore.clearSession() }
+        currentUserID = ""
         pairingState = .signedOut
         applyAvatar(nil)
     }
