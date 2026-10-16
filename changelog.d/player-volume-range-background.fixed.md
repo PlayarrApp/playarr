@@ -1,0 +1,1 @@
+- Player on Hisense VIDAA: the volume slider no longer sits in a white box.

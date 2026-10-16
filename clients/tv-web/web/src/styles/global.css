@@ -3250,6 +3250,8 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   width: clamp(70px, calc(7 * var(--vw)), 130px);
   /* 44px hit area (WCAG 2.5.5); the 5px bar is drawn in the middle. */
   height: 44px;
+  /* Chromium 111 (VIDAA) paints a white box behind an unstyled range input; only the 5px bar below is wanted. */
+  background-color: transparent;
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 5px;

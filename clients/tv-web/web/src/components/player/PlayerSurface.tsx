@@ -15,7 +15,7 @@ import { CachedArtworkImage } from "../../lib/artwork";
 import { useGlobalMediaControls, useNowPlayingPosition } from "../../lib/useGlobalMediaControls";
 import { useNowPlayingArtwork, useNowPlayingMetadata } from "../../lib/nowPlaying";
 import { useCachedArtwork } from "../../lib/artwork";
-import { IS_TIZEN, IS_TV, IS_WEBOS, type PlayarrWebPlatform } from "../../lib/clientPlatform";
+import { IS_TIZEN, IS_TV, IS_VIDAA, IS_WEBOS, type PlayarrWebPlatform } from "../../lib/clientPlatform";
 import { usesTenFootChrome } from "../../lib/productSurfaces";
 import { createDoubleTapDetector, DOUBLE_TAP_WINDOW_MS } from "../../lib/doubleTapSeek";
 import { isPlayerBackKey, resolvePlayerBack } from "../../lib/playerMounting";
@@ -93,7 +93,7 @@ interface WebKitFullscreenVideo extends HTMLVideoElement {
   webkitDisplayingFullscreen?: boolean;
 }
 
-/** TVs whose remote owns the volume (Tizen, webOS, Android TV) hide the volume slider and fullscreen button. */
+/** TVs whose remote owns the volume (Tizen, webOS, VIDAA, Android TV) hide the volume slider and fullscreen button. */
 export function usesSystemVolumeOnly(isSystemVolumeTv: boolean, userAgent: string): boolean {
   return isSystemVolumeTv || userAgent.includes("PlayarrAndroidTV/");
 }
@@ -558,7 +558,7 @@ export function PlayerSurface({
   } = player;
   const { t } = useLanguage();
   const systemVolumeOnly = usesSystemVolumeOnly(
-    IS_TIZEN || IS_WEBOS,
+    IS_TIZEN || IS_WEBOS || IS_VIDAA,
     typeof navigator !== "undefined" ? navigator.userAgent : ""
   );
 
