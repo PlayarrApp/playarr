@@ -687,7 +687,7 @@ struct LibraryView: View {
                 let overviewLineHeight = overviewFont?.lineHeight ?? overviewSize * 1.36
                 Text(overview)
                     .font(isPad ? WM.font(overviewSize, 600) : WM.font(11.5, 500))
-                    .foregroundStyle(isPad ? WM.detailSoft : PlayarrStyle.inkSoft)
+                    .foregroundStyle(isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
                     .lineSpacing(isPad ? max(0, overviewSize * 1.58 - overviewLineHeight) : 2.5)
                     .lineLimit(5)
                     .frame(maxWidth: isPad ? overviewWidth : nil, alignment: .leading)
