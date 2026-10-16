@@ -278,6 +278,10 @@ time.sleep(20)
 verify_capture_identity()
 if subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")]).returncode != 0:
     abort("canonical progress seeding failed; refusing non-deterministic screenshots")
+# Profile selection may already have mounted Home before the progress seed.
+# Leave it, then return so Home.aboutToAppear fetches the seeded rails anew.
+route("settings", 8)
+route("home", 30)
 debug("after-profile")
 
 SCREENS_TV = None

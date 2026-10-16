@@ -6,7 +6,7 @@ never account or server values, and exits nonzero on any failed verification or 
 """
 import json, os, sys, urllib.error, urllib.request, uuid
 
-KEEP = "a2c2cf1c-2059-4289-88fb-c7882a3ed7b7"  # The 5th Wave
+KEEP = "a2c2cf1c-2059-4289-88fb-c7882a3ed7b7"
 KEEP_POSITION_MS = 15098
 
 

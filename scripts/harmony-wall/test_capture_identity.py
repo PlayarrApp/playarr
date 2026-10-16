@@ -86,6 +86,18 @@ class CaptureIdentityTests(unittest.TestCase):
         self.assertIn('control("/hold", x=x, y=y)', source)
         self.assertIn('control("/swipe", x1=x1, y1=y1, x2=x2, y2=y2, **options)', source)
 
+    def test_seeded_home_is_remounted_before_capture(self):
+        capture = (HERE / "capture.py").read_text(encoding="utf-8")
+        home = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/pages/Home.ets").read_text()
+        seed_end = capture.index('abort("canonical progress seeding failed; refusing non-deterministic screenshots")')
+        settings_route = capture.index('route("settings", 8)', seed_end)
+        home_route = capture.index('route("home", 30)', settings_route)
+        capture_start = capture.index("def capture_selected(", home_route)
+        self.assertLess(seed_end, settings_route)
+        self.assertLess(settings_route, home_route)
+        self.assertLess(home_route, capture_start)
+        self.assertIn("aboutToAppear(): void {\n    this.load();", home)
+
 
 if __name__ == "__main__":
     unittest.main()
