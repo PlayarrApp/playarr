@@ -10,6 +10,7 @@ Item {
     property real radius: Tokens.radius
     property bool hero: false
     property string override: ""     // a specific picture (an episode's frame) instead of the work art
+    property color emptyColor: "transparent" // optional flat fill while a view has no artwork
     readonly property string src: override !== "" ? override : (work ? Api.artwork(work.id, work.images || [], kinds, hero) : "")
 
     function hue(s) {
@@ -41,6 +42,11 @@ Item {
                 font.weight: Font.Bold
                 font.pixelSize: 20 * Tokens.u
             }
+        }
+        Rectangle {
+            anchors.fill: parent
+            color: root.emptyColor
+            visible: root.emptyColor.a > 0 && img.status !== Image.Ready
         }
         Image {
             id: img

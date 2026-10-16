@@ -10,6 +10,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expandKeys } from "../suite-lib.mjs";
+import { cleanupAppProcessScript, newProcessMarker, parseAppProcesses, requireSingleAppProcess, scanAppProcessesScript } from "./process.mjs";
+import { requireRouteReady, routeReadinessProbe, readOwnedRouteLog, serializeSteps } from "./route-readiness.mjs";
+import { detailRouteRequest } from "./detail-route.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(join(here, "..", "suite.json"), "utf8"));
@@ -23,20 +26,38 @@ export async function createDriver() {
   const ssh = (user, cmd) => execFileSync("ssh", [...sshArgs, `${user}@${host}`, cmd], { encoding: "utf8", timeout: 60000 });
   const tmp = mkdtempSync(join(tmpdir(), "sf-driver-"));
   let theme = "dark", seq = [], at = "/";
+  let ownedProcess = null;
   const sequences = suite.screens.filter((s) => s.keys).map((s) => ({ s, k: expandKeys(s.keys).map((x) => x.key + (x.long ? ":long" : "")).join(",") }));
 
-  const KILL = `for p in $(ps -eo pid,comm | awk '$2=="harbour-playarr"{print $1}'); do kill $p; done`;
+  async function cleanupOwnedProcess() {
+    if (!ownedProcess) return;
+    const previous = ownedProcess;
+    ssh("root", cleanupAppProcessScript(previous));
+    ownedProcess = null;
+  }
   // Restart the app with a smoke script; every run starts with the theme so it holds without a stored preference.
-  const launch = (steps) => {
-    const script = [`js:Api.themeMode='${theme}'`, ...steps].join("|");
+  const launch = async (steps, detail = null) => {
+    const marker = newProcessMarker();
+    const resolvedSteps = typeof steps === "function" ? steps(marker) : steps;
+    const checkedSteps = detail ? [...resolvedSteps, ...Array(8).fill(routeReadinessProbe(marker, detail.kind, detail.id))] : resolvedSteps;
+    const script = serializeSteps(theme, checkedSteps);
     writeFileSync(join(tmp, "steps"), script);
     execFileSync("scp", ["-i", env.PLAYARR_SF_SSH_KEY, "-P", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", join(tmp, "steps"), `defaultuser@${host}:/tmp/pa-steps.txt`]);
-    ssh("root", KILL);
+    await cleanupOwnedProcess();
+    const existing = parseAppProcesses(ssh("root", scanAppProcessesScript(marker)), marker);
+    if (existing.length) throw new Error(`Sailfish pre-launch check found ${existing.length} existing app process(es)`);
     ssh("defaultuser", [
       "export XDG_RUNTIME_DIR=/run/user/100000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/100000/dbus/user_bus_socket",
       'export PLAYARR_STEPS="$(cat /tmp/pa-steps.txt)"',
-      "setsid nohup invoker --type=silica-qt5 --no-wait /usr/bin/harbour-playarr >/tmp/pa.log 2>&1 </dev/null &",
+      `setsid nohup invoker --type=silica-qt5 --no-wait /usr/bin/harbour-playarr ${marker} >/tmp/pa.log 2>&1 </dev/null &`,
       "sleep 2"].join("\n"));
+    const output = ssh("root", scanAppProcessesScript(marker));
+    const processes = parseAppProcesses(output, marker);
+    if (processes.length !== 1 || !processes[0].markerPresent) {
+      for (const process of processes.filter((candidate) => candidate.markerPresent)) ssh("root", cleanupAppProcessScript(process));
+      throw new Error(`Sailfish launch preflight expected one marked app, found ${processes.length}`);
+    }
+    ownedProcess = requireSingleAppProcess(output, marker);
   };
   // The first title of a library in the web's order (natural title order), as the web's D-pad path opens it.
   const firstMovie = "pageStack.currentPage.openFirst('movie')";
@@ -44,7 +65,7 @@ export async function createDriver() {
   const section = (n) => [`js:pageStack.currentPage.section='${n}'`];
   const calendar = (m) => [`js:Api.setSetting('cal.mode','${m}')`, ...section("calendar")];
   // [steps, seconds to settle] for a web route as the suite names it.
-  function plan(route, screenId) {
+  function plan(route, screenId, marker = "ROUTE") {
     const [path, q] = route.split("?");
     const view = new URLSearchParams(q ?? "").get("view");
     if (screenId === "actions") return [["wait", "wait", "js:pageStack.currentPage.actionsHome()"], 16];
@@ -55,8 +76,12 @@ export async function createDriver() {
     if (path === "/music") return [["wait", ...section("music")], 14];
     if (path === "/search") return [["wait", ...section("search")], 12];
     if (path === "/calendar") return [["wait", ...calendar(view ?? "agenda")], 18];
-    if (path.startsWith("/movies/")) return [["wait", `js:${firstMovie}`], 16];
-    if (path.startsWith("/series/")) return [["wait", `js:${firstSeries}`], 16];
+    const movieId = path.match(/^\/movies\/([^/]+)\/?$/)?.[1];
+    if (movieId === ":id") return [["wait", `js:${firstMovie}`], 16];
+    if (movieId) return [["wait", detailRouteRequest(movieId, "movie", marker)], 16];
+    const seriesId = path.match(/^\/series\/([^/]+)\/?$/)?.[1];
+    if (seriesId === ":id") return [["wait", `js:${firstSeries}`], 16];
+    if (seriesId) return [["wait", detailRouteRequest(seriesId, "series", marker)], 16];
     if (path === "/settings") return [["wait", ...section("settings")], 12];
     if (path === "/profiles") return [["wait", `js:pageStack.push('${PAGES}/ProfilesPage.qml')`], 12];
     if (path.startsWith("/player/")) return [["wait", `js:${firstMovie}`, "wait", "wait", "js:pageStack.currentPage.play(pageStack.currentPage.target.id,pageStack.currentPage.work.title)",
@@ -64,9 +89,18 @@ export async function createDriver() {
     throw new Error(`no Sailfish mapping for ${route}`);
   }
   async function goto(route, screenId) {
-    const [steps, settle] = plan(route, screenId);
-    launch(steps);
+    const path = route.split("?")[0];
+    const movieId = path.match(/^\/movies\/([^/]+)\/?$/)?.[1];
+    const seriesId = path.match(/^\/series\/([^/]+)\/?$/)?.[1];
+    const detail = movieId ? { kind: "movie", id: movieId === ":id" ? null : movieId } : seriesId ? { kind: "series", id: seriesId === ":id" ? null : seriesId } : null;
+    let settle = 16;
+    await launch((marker) => {
+      const planned = plan(route, screenId, marker);
+      settle = planned[1];
+      return planned[0];
+    }, detail);
     await sleep(settle * 1000);
+    if (detail) requireRouteReady(readOwnedRouteLog(ssh, ownedProcess), ownedProcess.marker);
     at = route.replace(":id", "item");
   }
   const vnc = () => {
@@ -94,9 +128,9 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
 
   return {
     async start() { ssh("defaultuser", "test -s ~/.config/harbour-playarr/harbour-playarr.conf && grep -q refresh ~/.config/harbour-playarr/harbour-playarr.conf"); },
-    async stop() { rmSync(tmp, { recursive: true, force: true }); },
+    async stop() { await cleanupOwnedProcess(); rmSync(tmp, { recursive: true, force: true }); },
     async setTheme(t) { theme = t; },
-    async home() { seq = []; launch(["wait"]); await sleep(12000); at = "/"; },
+    async home() { seq = []; await launch(["wait"]); await sleep(12000); at = "/"; },
     async key(name, { long } = {}) { seq.push(name + (long ? ":long" : "")); },
     async route(path) { await goto(path); },
     // Resolves the recorded key path to a screen and shows it; an unknown path stays on Home (the D-pad checks then fail).
@@ -112,6 +146,11 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     async screenshot(file) {
       const conf = ssh("defaultuser", "cat ~/.config/harbour-playarr/harbour-playarr.conf");
       if (!/refresh=/.test(conf)) throw new Error("signed out: not capturing");
+      if (!ownedProcess) throw new Error("Sailfish app process is not owned by this driver");
+      const current = requireSingleAppProcess(ssh("root", scanAppProcessesScript(ownedProcess.marker)), ownedProcess.marker);
+      if (current.pid !== ownedProcess.pid || current.starttime !== ownedProcess.starttime) {
+        throw new Error("Sailfish process identity changed before capture");
+      }
       const [bin, base] = vnc();
       execFileSync(bin, [...base, "capture", file], { stdio: "ignore" });
       if (!existsSync(file)) throw new Error("capture failed");
@@ -121,7 +160,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     async play(c) {
       const t0 = Date.now();
       const probe = "js:console.log('PLAYPOS',Date.now(),pageStack.currentPage.engine.position)";
-      launch(["wait", "js:console.log('PLAYSTART',Date.now())", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${c.file}',title:'case ${c.id}',startMs:0})`, ...Array(36).fill(probe)]);
+      await launch(["wait", "js:console.log('PLAYSTART',Date.now())", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${c.file}',title:'case ${c.id}',startMs:0})`, ...Array(36).fill(probe)]);
       await sleep(40000);
       const np = mpris();
       await sleep(30000);
