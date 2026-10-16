@@ -1,0 +1,1 @@
+- Sailfish parity actions stop before capture, D-pad input, or playback unless the app's authenticated user matches the configured device-test account.

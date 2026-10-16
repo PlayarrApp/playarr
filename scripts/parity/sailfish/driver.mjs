@@ -10,6 +10,7 @@ import { appIdentityReceipt, cleanupAppProcessScript, newProcessMarker, parseApp
 import { formatOwnedDiagnostics, ownedDiagnosticCommand, preserveBeforeCleanup, requireRouteReady, routeReadinessProbe, readOwnedRouteLog, serializeSteps } from "./route-readiness.mjs";
 import { detailRouteRequest } from "./detail-route.mjs";
 import { keyCommand, parseParityEvents, decodeFocus, hasKeyAckPair, hasKeyCompletion, nextKeyAckPress } from "./navigation.mjs";
+import { verifiedDeviceTestUser as matchesDeviceTestUser } from "./account-identity.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(join(here, "..", "suite.json"), "utf8"));
@@ -28,6 +29,7 @@ export async function createDriver() {
   const tmp = mkdtempSync(join(scratchRoot, "10622-navigation-driver-"));
   let theme = "dark";
   let ownedProcess = null;
+  let verifiedDeviceTestUser = false;
   let diagnosticSequence = 0;
   let identitySequence = 0;
 
@@ -124,6 +126,7 @@ export async function createDriver() {
     throw new Error(`no Sailfish mapping for ${route}`);
   }
   async function goto(route, screenId) {
+    if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified");
     const path = route.split("?")[0];
     const movieId = path.match(/^\/movies\/([^/]+)\/?$/)?.[1];
     const seriesId = path.match(/^\/series\/([^/]+)\/?$/)?.[1];
@@ -183,11 +186,30 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
   }
 
   return {
-    async start() { ssh("defaultuser", "test -s ~/.config/harbour-playarr/harbour-playarr.conf && grep -q refresh ~/.config/harbour-playarr/harbour-playarr.conf"); },
+    async start() {
+      verifiedDeviceTestUser = false;
+      const expected = env.PLAYARR_DEVICE_TEST_USERNAME ?? env.PLAYARR_USERNAME;
+      if (!/^device-test(?:-dpad)?$/i.test(expected ?? "")) throw new Error("a configured device-test username is required to verify the Sailfish signed-in account");
+      ssh("defaultuser", "test -s ~/.config/harbour-playarr/harbour-playarr.conf && grep -q refresh ~/.config/harbour-playarr/harbour-playarr.conf");
+      await launch(["wait", "js:Api.request('GET','/api/v1/users/profiles',null,function(st,p){var c=(p||[]).filter(function(x){return x.is_current});console.log('PARITY_SIGNED_IN_USER',st,c.length===1&&c[0].username)})"]);
+      const deadline = Date.now() + 15000;
+      let signedIn = "";
+      while (Date.now() < deadline) {
+        signedIn = readOwnedRouteLog(ssh, ownedProcess);
+        if (/PARITY_SIGNED_IN_USER\s+\d+\s+/.test(signedIn)) {
+          if (!matchesDeviceTestUser(signedIn, expected)) throw new Error("Sailfish is signed in as an account other than the configured device-test account");
+          verifiedDeviceTestUser = true;
+          return;
+        }
+        await sleep(250);
+      }
+      throw new Error("Unable to verify Sailfish signed-in account; no capture or D-pad actions permitted");
+    },
     async stop() { await cleanupOwnedProcess(); },
     async setTheme(t) { theme = t; },
-    async home() { await launch(["wait"]); await sleep(12000); },
+    async home() { if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified"); await launch(["wait"]); await sleep(12000); },
     async key(name, { long } = {}) {
+      if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified");
       const keysym = keyCommand(name);
       const previous = parseParityEvents(readParityLog(ssh, ownedProcess)).keyAcks;
       if (long) {
@@ -230,6 +252,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
       return state.menuOpen;
     },
     async screenshot(file) {
+      if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified; not capturing");
       const conf = ssh("defaultuser", "cat ~/.config/harbour-playarr/harbour-playarr.conf");
       if (!/refresh=/.test(conf)) throw new Error("signed out: not capturing");
       if (!ownedProcess) throw new Error("Sailfish app process is not owned by this driver");
@@ -243,6 +266,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     // Plays case.file straight in the player and reads the engine position from the app's own log.
     supports: { nowPlaying: true },
     async play(c) {
+      if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified");
       const t0 = Date.now();
       const probe = "js:console.log('PLAYPOS',Date.now(),pageStack.currentPage.engine.position)";
       await launch(["wait", "js:console.log('PLAYSTART',Date.now())", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${c.file}',title:'case ${c.id}',startMs:0})`, ...Array(36).fill(probe)]);
