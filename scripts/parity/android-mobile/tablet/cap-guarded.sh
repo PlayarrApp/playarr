@@ -16,7 +16,8 @@ output_path=$(realpath -m "$O")
 case "$output_path" in "$scratch_root"/*) ;; *) echo "output must be below the authorised scratch directory" >&2; exit 2;; esac
 alias_url=${PARITY_ANDROID_SERVER_ALIAS:?Android app server alias is required}
 [[ -n "${PARITY_ANDROID_FIXTURE_CLOCK:-}" ]] || { echo "shared parity fixture clock is required" >&2; exit 2; }
-python3 -I -c 'import datetime,sys; datetime.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00"))' "$PARITY_ANDROID_FIXTURE_CLOCK" || { echo "fixture clock must be an ISO-8601 instant" >&2; exit 2; }
+[[ "$PARITY_ANDROID_FIXTURE_CLOCK" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || { echo "fixture clock must be a UTC instant with whole seconds" >&2; exit 2; }
+python3 -I -c 'import datetime,sys; datetime.datetime.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ")' "$PARITY_ANDROID_FIXTURE_CLOCK" || { echo "fixture clock is invalid" >&2; exit 2; }
 case "$screen" in
   series-detail)
     [[ -n "${PARITY_SERIES_WORK_ID:-}" && "$PARITY_SERIES_WORK_ID" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "runtime series fixture id is required" >&2; exit 2; }
@@ -50,6 +51,7 @@ top_resumed=$(printf '%s\n' "$activity_output" | awk '/topResumedActivity/ { pri
 [[ "$top_resumed" == *"$pkg"* ]] || { echo "app did not become foreground" >&2; exit 1; }
 route_output=$("$ADB" -s "$ANDROID_SERIAL" logcat -d -s PlayarrParity:I | tr -d '\r')
 [[ "$route_output" == *"$expected_route"* ]] || { echo "fresh route verification failed" >&2; exit 1; }
+[[ "$route_output" == *"clock_consumed=$PARITY_ANDROID_FIXTURE_CLOCK"* ]] || { echo "fixture clock was not consumed" >&2; exit 1; }
 if [[ "$screen" == calendar-week && "$route_output" != *"calendar view=week"* ]]; then
   echo "calendar did not resolve to week view" >&2; exit 1
 fi
