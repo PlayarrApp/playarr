@@ -1,6 +1,6 @@
-// A constructed documentation address connects to a server that listens on 8484 only (the default
+// A constructed synthetic public address connects to a server that listens on 8484 only (the default
 // PLAYARR_HTTP_BIND_ADDR): the client tries the relay name on 443, falls back to :8484, signs in and
-// remembers the port. A documentation-only address is mapped to loopback by Chromium's
+// remembers the port. The synthetic address is mapped to loopback by Chromium's
 // host resolver rules, so no DNS, hosts file or privileged port is involved; nothing listens on 443.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
@@ -13,7 +13,7 @@ import { startServer } from "./nav-perf/server.mjs";
 import { chromiumExecutable } from "./chromium-launch.mjs";
 import { root, opt } from "./e2e-common.mjs";
 
-const RELAY_OCTETS = [203, 0, 113, 10];
+const RELAY_OCTETS = [11, 22, 33, 44];
 const ADDRESS = RELAY_OCTETS.join(".");
 const RELAY_HOST = `v4-${RELAY_OCTETS.join("-")}.relay.playarr.app`;
 const API_PORT = 8484;
