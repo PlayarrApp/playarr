@@ -1,0 +1,1 @@
+- iOS parity captures now use the configured reference clock and fail when consecutive simulator frames never stabilise.

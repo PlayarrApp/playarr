@@ -96,6 +96,11 @@ enum ParityLaunch {
         guard let raw = value("--playarr-parity-now") else { return nil }
         return ISO8601DateFormatter().date(from: raw)
     }
+    /// `--playarr-parity-timezone <identifier>`: time zone used to format the parity clock.
+    static var captureTimeZone: TimeZone {
+        guard let identifier = value("--playarr-parity-timezone") else { return .current }
+        return TimeZone(identifier: identifier) ?? .current
+    }
     static var isActive: Bool { server != nil && user != nil }
     /// `PLAYARR_REAL_INSETS=1`: keep the real safe-area insets and status bar (the safe-area capture test). A parity
     /// capture otherwise reports zero insets, because the web references have none.

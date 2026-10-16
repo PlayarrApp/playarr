@@ -41,6 +41,14 @@ on:
         description: Comma-separated parts (dark, light, downloads; playback is out of parity)
         type: string
         default: dark,light
+      capture_now:
+        description: Optional parity display instant override (default uses the fixture clock)
+        type: string
+        default: ""
+      capture_timezone:
+        description: Parity display time zone
+        type: string
+        default: UTC
 
 permissions:
   contents: read
@@ -310,6 +318,8 @@ jobs:
           FOCUS: ${{ inputs.focus }}
           POSTER: ${{ inputs.poster }}
           MOTION: ${{ inputs.motion }}
+          PARITY_CAPTURE_NOW: ${{ inputs.capture_now }}
+          PARITY_CAPTURE_TIMEZONE: ${{ inputs.capture_timezone || 'UTC' }}
         run: |
           set -uo pipefail
           out="$RUNNER_TEMP/capture"; mkdir -p "$out"

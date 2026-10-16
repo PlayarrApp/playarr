@@ -10,6 +10,7 @@ import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hasApprovedDeviceTestIdentity } from "../device-test-identity.mjs";
+import { captureStableFrame } from "../apple/capture-stability.mjs";
 
 const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "suite.json"), "utf8"));
 
@@ -47,6 +48,16 @@ export async function createDriver() {
   if (device !== "iphone" && device !== "ipad") throw new Error(`apple-ios driver: ${device} is not an iPhone or iPad`);
   const work = process.env.WORK, st = readState(work), udid = st.UDID, bundle = st.BUNDLE;
   if (!udid || !bundle) throw new Error("no simulator in WORK/state.env: run wall.sh up first");
+  const captureNow = e.PARITY_CAPTURE_NOW || run("node", [join(dirname(fileURLToPath(import.meta.url)), "../apple/fixture-clock.mjs")]).trim();
+  const captureTimezone = e.PARITY_CAPTURE_TIMEZONE || "UTC";
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(captureNow)
+      || !Number.isFinite(Date.parse(captureNow))
+      || new Date(captureNow).toISOString() !== (captureNow.includes(".") ? captureNow : `${captureNow.slice(0, -1)}.000Z`)) {
+    throw new Error("PARITY_CAPTURE_NOW must be a valid UTC timestamp");
+  }
+  try { new Intl.DateTimeFormat("en", { timeZone: captureTimezone }); } catch {
+    throw new Error("PARITY_CAPTURE_TIMEZONE must be a valid time zone");
+  }
   let theme = "dark", wanted = "/";
   const statePath = () => join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents", "parity-state.json");
   const state = () => { try { return JSON.parse(readFileSync(statePath(), "utf8")); } catch { return {}; } };
@@ -63,6 +74,7 @@ export async function createDriver() {
     if (device === "ipad" && enableLayoutDiagnostics) launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS = "1";
     run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrMuted", "--playarr-parity-server", e.SERVER_URL, "--playarr-parity-user", e.TEST_USERNAME,
       "--playarr-parity-password", e.TEST_PASSWORD, "--playarr-parity-route", route, "--playarr-parity-theme", theme,
+      "--playarr-parity-now", captureNow, "--playarr-parity-timezone", captureTimezone,
       ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...(process.env.PARITY_FOCUS ? ["--playarr-parity-focus", process.env.PARITY_FOCUS] : []),
       ...(process.env.PARITY_MOTION === "1" ? ["--playarr-parity-motion"] : []), ...(process.env.PARITY_COVERS === "1" ? ["--playarr-parity-covers"] : []), ...(process.env.PARITY_SIZE ? ["--playarr-parity-size", process.env.PARITY_SIZE] : []), ...extra], { env: launchEnv });
     for (let i = 0; i < 60; i += 1) {
@@ -172,16 +184,10 @@ export async function createDriver() {
         }
       }
       const raw = device === "ipad" ? `${file}.raw.png` : file;
-      // A slow first paint can leave the "Opening ..." splash on screen after the fixed wait: take frames 4 s apart until
-      // two consecutive frames are byte-identical (at most 8 tries), so the capture is the settled screen, never a transition.
-      let previous = null;
-      for (let attempt = 0; attempt < 8; attempt += 1) {
+      await captureStableFrame(async () => {
         run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
-        const frame = readFileSync(raw);
-        if (previous && frame.equals(previous)) break;
-        previous = frame;
-        await sleep(4000);
-      }
+        return readFileSync(raw);
+      }, { attempts: 8, intervalMs: 4000, wait: sleep });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if (layoutDiagnostics) {
