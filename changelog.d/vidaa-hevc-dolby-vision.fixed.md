@@ -1,0 +1,1 @@
+- Hisense VIDAA: Dolby Vision profile 5 and other HEVC titles play on the TV's own decoder instead of failing with "colour format can't be converted for this device".

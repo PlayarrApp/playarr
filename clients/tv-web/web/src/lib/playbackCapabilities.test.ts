@@ -19,6 +19,15 @@ describe("playbackCapabilitiesForPlatform", () => {
     }
   );
 
+  it("claims HEVC on VIDAA only when MSE reports it, so Dolby Vision sources are copied to the TV's own decoder", () => {
+    expect(playbackCapabilitiesForPlatform("tv-vidaa", true)).toEqual({
+      containers: "mp4,webm,mp3,m4a",
+      videoCodecs: "h264,h265,vp9",
+      audioCodecs: "aac,opus,mp3",
+    });
+    expect(playbackCapabilitiesForPlatform("tv-vidaa", false).videoCodecs).toBe("h264,vp9");
+  });
+
   it("uses the narrower verified subset for Xbox's built-in Edge browser", () => {
     expect(playbackCapabilitiesForPlatform("xbox")).toEqual({
       containers: "mp4,m4v,webm,mp3,m4a",

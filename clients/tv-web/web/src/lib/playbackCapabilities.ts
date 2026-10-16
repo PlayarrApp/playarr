@@ -40,15 +40,22 @@ export function browserDecodesHevc(): boolean {
   }
 }
 
-// HEVC is not claimed on the vendor TV shells until fragmented-MP4 HEVC HLS
+// HEVC is not claimed on the other vendor TV shells until fragmented-MP4 HEVC HLS
 // (the server's video-copy path) is verified on each one (TASKS 20.260 review);
 // until then HEVC sources reach them as an H.264 transcode.
-/** Conservative common subset for VIDAA's embedded browser and media pipeline. */
-const VIDAA_PLAYBACK_CAPABILITIES: PlaybackCapabilities = {
-  containers: "mp4,webm,mp3,m4a",
-  videoCodecs: "h264,vp9",
-  audioCodecs: "aac,opus,mp3",
-};
+/**
+ * Subset for VIDAA's embedded browser and media pipeline. HEVC is claimed when MSE reports it: the Hisense
+ * MT9602 reports hvc1 and Dolby Vision profiles 5/7/8, and plays the server's HEVC copy (verified on 55A5HX, a
+ * profile 5 4K title plays at its original bitrate). Without the claim a profile 5 source needs a GPU
+ * transcode the node may not have, and playback is refused ("colour format can't be converted").
+ */
+function vidaaPlaybackCapabilities(hevc: boolean): PlaybackCapabilities {
+  return {
+    containers: "mp4,webm,mp3,m4a",
+    videoCodecs: hevc ? "h264,h265,vp9" : "h264,vp9",
+    audioCodecs: "aac,opus,mp3",
+  };
+}
 
 /**
  * Verified subset for Xbox's built-in Chromium/Edge browser (MSE), not the
@@ -89,7 +96,7 @@ export function playbackCapabilitiesForPlatform(
 ): PlaybackCapabilities {
   switch (platform) {
     case "tv-vidaa":
-      return VIDAA_PLAYBACK_CAPABILITIES;
+      return vidaaPlaybackCapabilities(hevc);
     case "tv-webos":
       return WEBOS_PLAYBACK_CAPABILITIES;
     case "tv-tizen":
