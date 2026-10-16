@@ -738,6 +738,8 @@ struct TVHomeView: View {
                 TVKeyArt(url: imageURL(for: hero, prefer: .backdrop, width: wide ? 1920 : nil))
             }
             TVStageWash()
+            // Web `.tv-home .tv-rail-surface`: the frosted right panel the rails sit on (the captured Home draws it too).
+            TVRailPanelGradient(width: 1920 * (1 - DesignTokens.Shell.railLeftInset))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
