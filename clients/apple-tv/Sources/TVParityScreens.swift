@@ -98,18 +98,30 @@ extension TVParityLaunch {
         }
     }
 
-    /// The instant the web references freeze their clock at. The capture script passes the fixture clock
-    /// (`FIXTURE_CLOCK` in `scripts/fixtures/catalog.mjs`) as `-PlayarrParityNow <ISO 8601>`; without it the
-    /// default is 2026-10-07 12:00 UTC.
-    static var frozenNow: Date {
-        let args = ProcessInfo.processInfo.arguments
-        if let idx = args.firstIndex(of: "-PlayarrParityNow"), args.indices.contains(idx + 1) {
-            let plain = ISO8601DateFormatter()
-            let fractional = ISO8601DateFormatter()
-            fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = plain.date(from: args[idx + 1]) ?? fractional.date(from: args[idx + 1]) { return date }
+    /// Optional fixed instant supplied by the parity capture script as `-PlayarrParityNow <ISO 8601>`.
+    static var explicitNow: Date? { parseNow(arguments: ProcessInfo.processInfo.arguments) }
+
+    static func parseNow(arguments: [String]) -> Date? {
+        guard let idx = arguments.firstIndex(of: "-PlayarrParityNow"), arguments.indices.contains(idx + 1) else {
+            return nil
         }
-        return Date(timeIntervalSince1970: 1_791_374_400)
+        let plain = ISO8601DateFormatter()
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return plain.date(from: arguments[idx + 1]) ?? fractional.date(from: arguments[idx + 1])
+    }
+
+    private static let defaultFrozenNow = Date(timeIntervalSince1970: 1_791_374_400)
+
+    static var frozenNow: Date { explicitNow ?? defaultFrozenNow }
+
+    /// One clock policy for calendar data and the shell header. An explicit automation instant
+    /// freezes either surface without changing ordinary launches or fixture-screen activation.
+    static func clockValue(isFrozen: Bool, arguments: [String], wallNow: Date) -> (now: Date, zone: TimeZone) {
+        let explicitNow = parseNow(arguments: arguments)
+        let now = explicitNow ?? (isFrozen ? defaultFrozenNow : wallNow)
+        let zone = (isFrozen || explicitNow != nil) ? (TimeZone(identifier: "UTC") ?? .current) : .current
+        return (now, zone)
     }
 
     /// Static chrome (floating nav, no focus effects, frozen clock): fixture screens and live routes.

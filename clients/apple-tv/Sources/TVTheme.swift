@@ -1184,21 +1184,31 @@ struct TVShellHeader: View {
         .allowsHitTesting(false)
     }
 
-    /// The frozen clock is the instant the web references froze, shown in UTC like the web capture.
+    /// Explicit automation clocks use UTC; otherwise production keeps the device clock and zone.
     private static func timeString(frozen: Bool) -> String {
+        let clock = TVParityLaunch.clockValue(
+            isFrozen: frozen,
+            arguments: ProcessInfo.processInfo.arguments,
+            wallNow: Date()
+        )
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_GB")
         f.dateFormat = "HH:mm"
-        if frozen { f.timeZone = TimeZone(identifier: "UTC") }
-        return f.string(from: frozen ? TVParityLaunch.frozenNow : Date())
+        f.timeZone = clock.zone
+        return f.string(from: clock.now)
     }
 
     private static func dateString(frozen: Bool) -> String {
+        let clock = TVParityLaunch.clockValue(
+            isFrozen: frozen,
+            arguments: ProcessInfo.processInfo.arguments,
+            wallNow: Date()
+        )
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_GB")
         f.dateFormat = "EEE d MMMM"
-        if frozen { f.timeZone = TimeZone(identifier: "UTC") }
-        return f.string(from: frozen ? TVParityLaunch.frozenNow : Date()).uppercased()
+        f.timeZone = clock.zone
+        return f.string(from: clock.now).uppercased()
     }
 }
 

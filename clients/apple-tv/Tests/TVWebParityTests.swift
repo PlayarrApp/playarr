@@ -5,6 +5,52 @@ import XCTest
 
 /// Locks the pieces of the web parity work that are pure functions.
 final class TVWebParityTests: XCTestCase {
+    func testCalendarClockUsesExplicitAutomationInstantWithoutChangingNormalClock() {
+        let fixed = ISO8601DateFormatter().date(from: "2026-10-07T12:00:00Z")!
+        let wall = ISO8601DateFormatter().date(from: "2026-10-17T03:45:00Z")!
+
+        let automated = TVParityLaunch.clockValue(
+            isFrozen: false,
+            arguments: ["PlayarrTV", "-PlayarrParityNow", "2026-10-07T12:00:00Z"],
+            wallNow: wall
+        )
+        XCTAssertEqual(automated.now, fixed)
+        XCTAssertEqual(automated.zone.identifier, "UTC")
+        let automatedLater = TVParityLaunch.clockValue(
+            isFrozen: false,
+            arguments: ["PlayarrTV", "-PlayarrParityNow", "2026-10-07T12:00:00Z"],
+            wallNow: wall.addingTimeInterval(60)
+        )
+        XCTAssertEqual(automatedLater.now, fixed)
+        XCTAssertEqual(automatedLater.zone.identifier, "UTC")
+
+        let ordinaryFirst = TVParityLaunch.clockValue(isFrozen: false, arguments: ["PlayarrTV"], wallNow: wall)
+        let laterWall = wall.addingTimeInterval(60)
+        let ordinaryLater = TVParityLaunch.clockValue(isFrozen: false, arguments: ["PlayarrTV"], wallNow: laterWall)
+        XCTAssertEqual(ordinaryFirst.now, wall)
+        XCTAssertEqual(ordinaryLater.now, laterWall)
+        XCTAssertEqual(ordinaryFirst.zone, .current)
+        XCTAssertEqual(ordinaryLater.zone, .current)
+
+        let invalid = TVParityLaunch.clockValue(
+            isFrozen: false,
+            arguments: ["PlayarrTV", "-PlayarrParityNow", "not-a-date"],
+            wallNow: wall
+        )
+        XCTAssertEqual(invalid.now, wall)
+        XCTAssertEqual(invalid.zone, .current)
+
+        let frozenFallback = TVParityLaunch.clockValue(isFrozen: true, arguments: ["PlayarrTV"], wallNow: wall)
+        XCTAssertEqual(frozenFallback.now, fixed)
+        XCTAssertEqual(frozenFallback.zone.identifier, "UTC")
+    }
+
+    func testExplicitAutomationClockAcceptsFractionalISO8601() {
+        let parsed = TVParityLaunch.parseNow(arguments: ["PlayarrTV", "-PlayarrParityNow", "2026-10-07T12:00:00.125Z"])
+        let expected = ISO8601DateFormatter().date(from: "2026-10-07T12:00:00Z")!.addingTimeInterval(0.125)
+        XCTAssertEqual(parsed, expected)
+    }
+
     func testAppearanceSegmentsFillTheSettingsDetailColumnEqually() {
         XCTAssertEqual(TVSettingsAppearanceLayout.segmentGap, 8)
         for (count, width) in [(3, TVSettingsAppearanceLayout.appearanceDetailWidth), (2, TVSettingsAppearanceLayout.appearanceDetailWidth), (2, 995.0)] {

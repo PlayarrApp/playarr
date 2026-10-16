@@ -1,0 +1,1 @@
+- Apple calendar automation and the shell clock honour an explicit parity instant on ordinary native navigation while normal launches keep a ticking device clock.

@@ -27,11 +27,23 @@ struct TVCalendarView: View {
         #endif
         .task(id: environment.serverURL) {
             // Parity captures freeze the clock and the zone (the web reference does the same); users get their own.
+            let arguments = ProcessInfo.processInfo.arguments
+            let clock = TVParityLaunch.clockValue(
+                isFrozen: TVParityLaunch.isLive,
+                arguments: arguments,
+                wallNow: Date()
+            )
             let model = CalendarViewModel(
                 transport: environment.apiClient,
-                zone: TVParityLaunch.isLive ? (TimeZone(identifier: "UTC") ?? .current) : .current,
+                zone: clock.zone,
                 firstWeekday: 2,
-                now: { TVParityLaunch.isLive ? TVParityLaunch.frozenNow : Date() }
+                now: {
+                    TVParityLaunch.clockValue(
+                        isFrozen: TVParityLaunch.isLive,
+                        arguments: arguments,
+                        wallNow: Date()
+                    ).now
+                }
             )
             viewModel = model
             await model.setMode(.agenda)
