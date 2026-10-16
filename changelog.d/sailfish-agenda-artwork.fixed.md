@@ -1,1 +1,0 @@
-- Sailfish agenda cards now use the web-sized rounded poster crop, and action rows match the web corner radius.

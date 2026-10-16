@@ -13,6 +13,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Sailfish agenda cards now use the web-sized rounded poster crop, and action rows match the web corner radius.
+- Sailfish capture preflight now identifies the actual booster-launched app by executable, NUL-separated argv, a short run marker, PID and start time; cleanup signals only the verified process and fails if it persists.
+- Sailfish capture scripts reject delimiter-invalid or oversized `PLAYARR_STEPS` before launch, avoiding booster environment-string failures. Detail captures open the requested catalogue item and require current-run readiness for its expected kind, ID and loaded detail; readiness logs are read from the owned PID-scoped root journal only after process identity verification.
 - Updated the backend `zip` crate to the smallest non-yanked release, 9.0.3, preserving rejection of unsafe archive entry names after decoding.
 - macOS: Down from Calendar's Today button goes to Filters as on the web, the profiles page gear opens Settings, and Play on a title opens the player in key-driven runs.
 - macOS: the Calendar page opens with the Today button focused, as on the web, and the profiles page names its focused profile for the parity driver.
