@@ -168,7 +168,7 @@ struct WMLibraryFiltersPanel: View {
 }
 
 struct WMTitleActionsPanel: View {
-    private enum FocusTarget: Hashable {
+    private enum FocusTarget: String, Hashable {
         case play, download, playlist, watched, unwatched
     }
 
@@ -184,6 +184,20 @@ struct WMTitleActionsPanel: View {
                     .focusable()
                     .focused($focusedAction, equals: focusTarget)
                     .focusEffectDisabled()
+            } else {
+                content
+            }
+        }
+    }
+
+    private struct TabletDefaultActionFocus: ViewModifier {
+        @FocusState.Binding var focusedAction: FocusTarget?
+        let isPad: Bool
+
+        @ViewBuilder
+        func body(content: Content) -> some View {
+            if isPad {
+                content.defaultFocus($focusedAction, .play, priority: .userInitiated)
             } else {
                 content
             }
@@ -237,18 +251,25 @@ struct WMTitleActionsPanel: View {
         }
     }
 
+    private func recordFocusOutcome(_ target: FocusTarget?) {
+        #if DEBUG
+        guard isPad, ParityLaunch.isActive else { return }
+        NSLog("PlayarrDiagnostic actions_focus=%@", target?.rawValue ?? "none")
+        #endif
+    }
+
     var body: some View {
         WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose, showsCloseFocusRing: !isPad) {
             VStack(spacing: isPad ? 14 : 15) {
-                row("▶", "Play", focusTarget: .play, action: onPlay)
+                row(isPad ? "\u{25B6}\u{FE0E}" : "▶", "Play", focusTarget: .play, action: onPlay)
                 row("⇩", "Download", focusTarget: .download, action: onDownload)
                 row("+", "Add to Playlist", focusTarget: .playlist, action: onPlay)
                 row("✓", "Mark as Watched", focusTarget: .watched) { mark(watched: true) }
                 row("○", "Mark as Unwatched", focusTarget: .unwatched) { mark(watched: false) }
             }
+            .modifier(TabletDefaultActionFocus(focusedAction: $focusedAction, isPad: isPad))
         }
-        .onAppear {
-            if isPad { focusedAction = .play }
-        }
+        .onAppear { recordFocusOutcome(focusedAction) }
+        .onChange(of: focusedAction) { _, target in recordFocusOutcome(target) }
     }
 }

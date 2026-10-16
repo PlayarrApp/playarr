@@ -169,6 +169,9 @@ final class LibraryOverlayParityTests: XCTestCase {
         XCTAssertFalse(LibraryOverlayParity.showsGridFocus(isScreenGrid: true, filtersVisible: true, actionsVisible: false))
         XCTAssertFalse(LibraryOverlayParity.showsGridFocus(isScreenGrid: true, filtersVisible: false, actionsVisible: true))
         XCTAssertFalse(LibraryOverlayParity.showsGridFocus(isScreenGrid: false, filtersVisible: false, actionsVisible: false))
+        XCTAssertTrue(LibraryOverlayParity.allowsGridNativeFocus(isScreenGrid: true, modalVisible: false))
+        XCTAssertFalse(LibraryOverlayParity.allowsGridNativeFocus(isScreenGrid: true, modalVisible: true))
+        XCTAssertFalse(LibraryOverlayParity.allowsGridNativeFocus(isScreenGrid: false, modalVisible: false))
     }
 
     func testActionsFixtureUsesSecondItemAndFallsBackForSingleItem() {
@@ -176,6 +179,21 @@ final class LibraryOverlayParityTests: XCTestCase {
         XCTAssertEqual(LibraryOverlayParity.actionsWork(in: ["only"], isPad: true), "only")
         XCTAssertNil(LibraryOverlayParity.actionsWork(in: [String](), isPad: true))
         XCTAssertEqual(LibraryOverlayParity.actionsWork(in: ["first", "second"], isPad: false), "first")
+    }
+
+    func testActionsPreviewFollowsActionTargetThenFocusedWork() {
+        XCTAssertEqual(
+            LibraryOverlayParity.previewWork(actionsWork: "action", focusedWork: "focused", works: ["first"]),
+            "action"
+        )
+        XCTAssertEqual(
+            LibraryOverlayParity.previewWork(actionsWork: nil, focusedWork: "focused", works: ["first"]),
+            "focused"
+        )
+        XCTAssertEqual(
+            LibraryOverlayParity.previewWork(actionsWork: nil, focusedWork: nil, works: ["first"]),
+            "first"
+        )
     }
 
     func testAlphabetRailTracksTheSortTitleInitial() {

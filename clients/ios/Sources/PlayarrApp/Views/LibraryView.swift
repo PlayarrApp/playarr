@@ -22,6 +22,7 @@ struct LibraryView: View {
     @State private var downloadTarget: Work?
     @Environment(\.colorScheme) private var scheme
     @State private var actionsWork: Work?
+    @State private var actionsRestoreFocusID: UUID?
     @State private var openWork: Work?
     private var isPhoneIdiom: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
@@ -45,6 +46,24 @@ struct LibraryView: View {
         self.apiClient = apiClient
         self.downloadRepository = downloadRepository
         self.title = viewModel.selectedKind?.displayName ?? "Library"
+    }
+
+    private func presentActions(for work: Work) {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            actionsRestoreFocusID = focusedWork ?? work.id
+        }
+        actionsWork = work
+    }
+
+    private func dismissActions(restoreGridFocus: Bool = true) {
+        actionsWork = nil
+        guard restoreGridFocus, UIDevice.current.userInterfaceIdiom == .pad,
+              let restoreID = actionsRestoreFocusID else {
+            actionsRestoreFocusID = nil
+            return
+        }
+        actionsRestoreFocusID = nil
+        focusedWork = restoreID
     }
 
     var body: some View {
@@ -74,7 +93,9 @@ struct LibraryView: View {
             #if DEBUG
             // Match the web action-panel fixture, which opens from the second library card.
             if ParityLaunch.screen == "actions", actionsWork == nil {
-                actionsWork = LibraryOverlayParity.actionsWork(in: viewModel.works, isPad: UIDevice.current.userInterfaceIdiom == .pad)
+                if let target = LibraryOverlayParity.actionsWork(in: viewModel.works, isPad: UIDevice.current.userInterfaceIdiom == .pad) {
+                    presentActions(for: target)
+                }
             }
             #endif
         }
@@ -89,9 +110,9 @@ struct LibraryView: View {
                 } else if let work = actionsWork {
                     WMTitleActionsPanel(
                         work: work, apiClient: apiClient,
-                        onPlay: { actionsWork = nil; openWork = work },
-                        onDownload: { actionsWork = nil; downloadTarget = work },
-                        onClose: { actionsWork = nil }
+                        onPlay: { dismissActions(restoreGridFocus: false); openWork = work },
+                        onDownload: { dismissActions(restoreGridFocus: false); downloadTarget = work },
+                        onClose: { dismissActions() }
                     )
                     .frame(maxWidth: isPhoneIdiom ? .infinity : 352)
                 }
@@ -259,7 +280,12 @@ struct LibraryView: View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
             ZStack(alignment: .topLeading) {
-                if !phone, let preview = viewModel.works.first {
+                let preview = LibraryOverlayParity.previewWork(
+                    actionsWork: actionsWork,
+                    focusedWork: viewModel.works.first(where: { $0.id == focusedWork }),
+                    works: viewModel.works
+                )
+                if !phone, let preview {
                     PlayarrArtwork(work: preview, kind: .backdrop, apiClient: apiClient)
                         .frame(width: proxy.size.width * 0.52, height: proxy.size.height)
                         .clipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
@@ -439,7 +465,7 @@ struct LibraryView: View {
                     .focusable()
                     .focused($focusedWork, equals: work.id)
                     .focusEffectDisabled()
-                    .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
+                    .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in presentActions(for: work) })
                     .task {
                         if work.id == viewModel.works.last?.id { await viewModel.loadMore() }
                     }
@@ -545,7 +571,7 @@ struct LibraryView: View {
                                         .shadow(color: .black.opacity(0.34), radius: 18, y: 10)
                                 }
                                 .buttonStyle(.plain)
-                                .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
+                                .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in presentActions(for: work) })
                                 .task { if work.id == viewModel.works.last?.id { await viewModel.loadMore() } }
                             }
                         }
@@ -606,10 +632,13 @@ struct LibraryView: View {
                         }
                         .id(work.id)
                         .buttonStyle(.plain)
-                        .focusable(matchesWebScreenGrid)
+                        .focusable(LibraryOverlayParity.allowsGridNativeFocus(
+                            isScreenGrid: matchesWebScreenGrid,
+                            modalVisible: showingFilters || actionsWork != nil
+                        ))
                         .focused($focusedWork, equals: work.id)
                         .focusEffectDisabled()
-                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
+                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in presentActions(for: work) })
                         .task {
                             if work.id == viewModel.works.last?.id { await viewModel.loadMore() }
                         }
@@ -622,7 +651,8 @@ struct LibraryView: View {
                         .padding(.bottom, phone ? 118 : max(48, proxy.size.height * 0.06))
                     }
                     .onAppear {
-                        guard matchesWebScreenGrid, let target = tabletGridFocusedWorkID() else { return }
+                        guard matchesWebScreenGrid, actionsWork == nil, !showingFilters,
+                              let target = tabletGridFocusedWorkID() else { return }
                         focusedWork = target
                         #if DEBUG
                         if ParityLaunch.focus == "last" {
@@ -635,7 +665,8 @@ struct LibraryView: View {
                             alphabetScrollTarget = nil
                             return
                         }
-                        guard matchesWebScreenGrid, previous != nil, let target else { return }
+                        guard matchesWebScreenGrid, actionsWork == nil, !showingFilters,
+                              previous != nil, let target else { return }
                         withAnimation(.easeInOut(duration: 0.2)) {
                             scrollProxy.scrollTo(target, anchor: .center)
                         }
@@ -954,6 +985,14 @@ struct LibraryView: View {
 enum LibraryOverlayParity {
     static func showsGridFocus(isScreenGrid: Bool, filtersVisible: Bool, actionsVisible: Bool) -> Bool {
         isScreenGrid && !filtersVisible && !actionsVisible
+    }
+
+    static func allowsGridNativeFocus(isScreenGrid: Bool, modalVisible: Bool) -> Bool {
+        isScreenGrid && !modalVisible
+    }
+
+    static func previewWork<Item>(actionsWork: Item?, focusedWork: Item?, works: [Item]) -> Item? {
+        actionsWork ?? focusedWork ?? works.first
     }
 
     static func actionsWork<Item>(in items: [Item], isPad: Bool) -> Item? {

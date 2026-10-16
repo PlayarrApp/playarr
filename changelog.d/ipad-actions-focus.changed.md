@@ -1,0 +1,1 @@
+- The iPad title actions drawer now previews its selected work, transfers native focus to its Play action, and restores grid focus when closed.
