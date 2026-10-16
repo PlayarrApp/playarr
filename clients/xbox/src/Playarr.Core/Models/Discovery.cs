@@ -5,6 +5,23 @@ using Newtonsoft.Json;
 
 namespace Playarr.Core.Models
 {
+    /// <summary>One language in the Library filter facets: its code, display name and how many works have it.</summary>
+    public sealed class LanguageFacet
+    {
+        [JsonProperty("code")] public string Code { get; set; } = string.Empty;
+
+        [JsonProperty("name")] public string? Name { get; set; }
+
+        [JsonProperty("count")] public int Count { get; set; }
+    }
+
+    public sealed class LanguageFacets
+    {
+        [JsonProperty("audio")] public IList<LanguageFacet> Audio { get; set; } = new List<LanguageFacet>();
+
+        [JsonProperty("subtitle")] public IList<LanguageFacet> Subtitle { get; set; } = new List<LanguageFacet>();
+    }
+
     /// <summary>One source's claim on a title (the library, a peer, a provider).</summary>
     public sealed class TitleSource
     {

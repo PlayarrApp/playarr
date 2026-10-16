@@ -49,7 +49,13 @@ namespace Playarr.Core.Networking
             int? offset = null,
             CancellationToken cancellationToken = default,
             bool availableOnly = false,
-            string? order = null);
+            string? order = null,
+            string? audioLang = null,
+            string? subtitleLang = null);
+
+        /// <summary><c>GET /api/v1/catalog/languages</c>: the audio and subtitle languages (with work counts) for the same filters as the browse call.</summary>
+        Task<LanguageFacets> GetCatalogLanguagesAsync(
+            WorkKind? kind = null, bool availableOnly = false, string? audioLang = null, string? subtitleLang = null, CancellationToken cancellationToken = default);
 
         Task<IList<Work>> SearchCatalogAsync(
             string query,
@@ -309,9 +315,13 @@ namespace Playarr.Core.Networking
             int? offset = null,
             CancellationToken cancellationToken = default,
             bool availableOnly = false,
-            string? order = null)
+            string? order = null,
+            string? audioLang = null,
+            string? subtitleLang = null)
         {
             var query = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(audioLang)) query["audio_lang"] = audioLang!;
+            if (!string.IsNullOrEmpty(subtitleLang)) query["subtitle_lang"] = subtitleLang!;
             if (availableOnly) query["available_only"] = "true";
             if (!string.IsNullOrEmpty(order)) query["order"] = order!;
             if (kind is { } workKind && workKind != WorkKind.Unknown)
@@ -325,6 +335,17 @@ namespace Playarr.Core.Networking
             if (offset is { } o) query["offset"] = o.ToString(CultureInfo.InvariantCulture);
 
             return GetAsync<CatalogPage>("/api/v1/catalog", query, authenticated: true, cancellationToken);
+        }
+
+        public Task<LanguageFacets> GetCatalogLanguagesAsync(
+            WorkKind? kind = null, bool availableOnly = false, string? audioLang = null, string? subtitleLang = null, CancellationToken cancellationToken = default)
+        {
+            var query = new Dictionary<string, string>();
+            if (availableOnly) query["available_only"] = "true";
+            if (kind is { } k && k != WorkKind.Unknown) query["kind"] = WireNameFor(k);
+            if (!string.IsNullOrEmpty(audioLang)) query["audio_lang"] = audioLang!;
+            if (!string.IsNullOrEmpty(subtitleLang)) query["subtitle_lang"] = subtitleLang!;
+            return GetAsync<LanguageFacets>("/api/v1/catalog/languages", query, authenticated: true, cancellationToken);
         }
 
         public async Task<IList<Work>> SearchCatalogAsync(

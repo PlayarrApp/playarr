@@ -142,7 +142,7 @@ internal sealed class LibraryScreen : IPage
         try
         {
             if (offset == 0) _progress = HomeModel.IndexByWork(await _env.Api.ListWatchProgressAsync());
-            var page = await _env.Api.BrowseCatalogAsync(_kind, sort: _sort, order: _order, limit: (int)PageSize, offset: offset, availableOnly: true);
+            var page = await _env.Api.BrowseCatalogAsync(_kind, sort: _sort, order: _order, limit: (int)PageSize, offset: offset, availableOnly: true, audioLang: _audio.Count > 0 ? string.Join(",", _audio) : null, subtitleLang: _subs.Count > 0 ? string.Join(",", _subs) : null);
             SynchronizationContextHolder.Post(() =>
             {
                 _total = (int)(page.Total ?? offset + page.Items.Count);
@@ -177,6 +177,8 @@ internal sealed class LibraryScreen : IPage
 
     private void OpenFilters()
     {
+        var audioSection = FilterSection.Languages("Audio language", _audio, picked => { _audio = picked.ToList(); ReloadItems(); });
+        var subsSection = FilterSection.Languages("Subtitle language", _subs, picked => { _subs = picked.ToList(); ReloadItems(); });
         var sections = new[]
         {
             new FilterSection("View", new[] { "List", "Screen", "Cover" }, _layout.Cover ? 2 : 1, i =>
@@ -187,10 +189,10 @@ internal sealed class LibraryScreen : IPage
             }),
             new FilterSection("Sort by", new[] { "Title", "Date Added" }, _sort == "title" ? 0 : 1, i => ApplySort(i == 0 ? "title" : "date_added", _order)),
             new FilterSection("Order", new[] { "A-Z", "Z-A" }, _order == "asc" ? 0 : 1, i => ApplySort(_sort, i == 0 ? "asc" : "desc")),
-            new FilterSection("Audio language", new[] { "Any language" }, 0, _ => { }, IsSelect: true),
-            new FilterSection("Subtitle language", new[] { "Any language" }, 0, _ => { }, IsSelect: true),
+            audioSection, subsSection,
         };
         _filters = new FiltersDrawer(_env, "Library controls", sections, CloseFilters, Toast);
+        _ = LoadFacetsAsync(audioSection, subsSection);
         _root.Add(_filters.Root);
         _tile?.Show(false); // the drawer blurs what is behind it on web; nothing of the tile shows through
     }
@@ -208,6 +210,35 @@ internal sealed class LibraryScreen : IPage
         var keep = Math.Max(0, _focus);
         Refresh();
         if (_items.Count > 0) SetFocus(Math.Min(keep, _items.Count - 1));
+    }
+
+    private List<string> _audio = new(), _subs = new();
+
+    /// <summary>Web catalogLanguages: the languages (with work counts) for the current filters; the drawer's two selects fill in when they arrive.</summary>
+    private async Task LoadFacetsAsync(FilterSection audio, FilterSection subs)
+    {
+        try
+        {
+            var f = await _env.Api.GetCatalogLanguagesAsync(_kind, true).ConfigureAwait(false);
+            SynchronizationContextHolder.Post(() =>
+            {
+                audio.Facets = f.Audio.OrderByDescending(x => x.Count).ToList(); subs.Facets = f.Subtitle.OrderByDescending(x => x.Count).ToList();
+                _filters?.Refresh();
+            });
+        }
+        catch (Exception e)
+        {
+            Dbg.Log("LIB languages failed: " + e.Message);
+            SynchronizationContextHolder.Post(() => { audio.FacetsFailed = subs.FacetsFailed = true; _filters?.Refresh(); });
+        }
+    }
+
+    /// <summary>Refetches the grid for new filters while the drawer stays open (web changes the URL and refetches).</summary>
+    private void ReloadItems()
+    {
+        foreach (var v in _views.Values) { _grid.Remove(v.Box); v.Box.Dispose(); }
+        _views.Clear(); _works.Clear(); _items.Clear(); _focus = -1; _total = 0; _scroll = 0; _sideFocus = -1;
+        _ = LoadAsync(0);
     }
 
     private void ApplySort(string sort, string order)
