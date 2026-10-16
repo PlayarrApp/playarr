@@ -13,6 +13,23 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Android deterministic capture accepts equivalent ISO instant spellings in the app's clock-consumption log.
+- Stable parity runs now pin the web clock, disable animations, use readiness signals, and record one D-pad observation without retrying failures.
+- Web reference captures now close the browser on every capture-group exit and reject build drift before publishing.
+- Stable catalog resets now include available episode files without rejecting episodes that have no synced file.
+- Android parity clock logging remains observable in production and testable from JVM clock tests.
+- Parity account resets now clear resume choices only for series, avoiding invalid movie or episode reset requests.
+- Web parity sign-in now points the app at its configured server before initial API requests.
+- Parity account restoration skips unchanged progress rows so captures do not refresh their recency.
+- Web parity uses synchronous Playwright polling for stable focus and detail readiness, avoiding premature scores while remote focus settles.
+- Parity account logins now leave the secret store untouched when credentials are unchanged and atomically replace it with a private file when values change.
+- Persist parity capture snapshots for recovery, refresh credentials before restoring account state, and wait for signal cleanup before releasing the account lock.
+- Retain stale locks with recovery snapshots and preserve a tombstone when safely reclaiming stale locks; treat a disabled Android animation scale as the default scale during cleanup.
+- Keep parity login access and refresh tokens in run memory, avoid rewriting unchanged secrets, and reclaim secrets locks only when their recorded process is dead.
+- Limit download cleanup to run-owned downloads, keep cleanup failures non-fatal, and drain interrupted suite work before restoring progress or publishing results.
+- Skip catalogue reads for legacy non-stable captures.
+- Stable web parity runs pin visual dates without freezing real-time expiry and wait for synchronous focus and detail readiness before scoring.
+- Tizen parity cleanup removes only download tickets created by the current run and protects existing tickets during start and grouped actions.
 - Sailfish agenda cards now use the web-sized rounded poster crop, and action rows match the web corner radius.
 - Sailfish capture preflight now identifies the actual booster-launched app by executable, NUL-separated argv, a short run marker, PID and start time; cleanup signals only the verified process and fails if it persists.
 - Sailfish capture scripts reject delimiter-invalid or oversized `PLAYARR_STEPS` before launch, avoiding booster environment-string failures. Detail captures open the requested catalogue item and require current-run readiness for its expected kind, ID and loaded detail; readiness logs are read from the owned PID-scoped root journal only after process identity verification.
@@ -3123,6 +3140,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Keep an expected credentialless startup login rejection from failing browser parity readiness after a successful manual sign-in, while preserving credentialed login failures.
+- Record stable-run and expected-reference provenance for D-pad results, guard reference build stamps, and cover non-stable capture and selective publication regressions.
 - DEBUG macOS arrow-key diagnostics now report safe focus transitions, registered-target counts, and numeric selected frames without labels or identifiers.
 - Harmony wall: the phone series-detail capture waits for episode art and refuses a frame with grey placeholder cards.
 - Harmony wall: the capture also waits while the app reports a request in flight, so a card a lazy list had not built yet is not captured as a placeholder.
@@ -3208,6 +3227,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Documentation
 
+- Document the provenance-checked selective capture review and merge flow.
 - Added a media-server bug and performance test plan (166 cases, sample-media manifest) under docs/testing, parked on the board.
 - Reconcile the task board with the merged PRs of 9 October 2026: statuses, owners, new rows for the owner's requests (rows 9895, 9896).
 - Parity testing matrix: dropped the admin web app row, made the Xbox client device-only, and limited the Browser column to the web client.

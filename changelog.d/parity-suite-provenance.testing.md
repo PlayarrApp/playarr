@@ -1,1 +1,0 @@
-- Record stable-run and expected-reference provenance for D-pad results, guard reference build stamps, and cover non-stable capture and selective publication regressions.

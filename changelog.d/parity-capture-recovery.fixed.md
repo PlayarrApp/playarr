@@ -1,2 +1,0 @@
-- Persist parity capture snapshots for recovery, refresh credentials before restoring account state, and wait for signal cleanup before releasing the account lock.
-- Retain stale locks with recovery snapshots and preserve a tombstone when safely reclaiming stale locks; treat a disabled Android animation scale as the default scale during cleanup.

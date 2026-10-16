@@ -1,1 +1,0 @@
-- Android deterministic capture accepts equivalent ISO instant spellings in the app's clock-consumption log.
