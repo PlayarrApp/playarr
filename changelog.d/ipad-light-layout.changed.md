@@ -1,1 +1,0 @@
-- Align the iPad light-theme library rail, card sizing, grid spacing, and preview title with the web layout.

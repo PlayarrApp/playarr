@@ -673,6 +673,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Align the iPad light-theme library rail, card sizing, grid spacing, and preview title with the web layout.
 - HarmonyOS phone: the Start and Play buttons use web's ink fill with the page colour as label.
 - HarmonyOS phone: drawer section headings, the drawer close button, episode number and unseen dot sizes, and the calendar Today button follow web's phone sizes and focus look; the wall re-seeds the deck right before Home.
 - Fire TV: scroll-edge fades use web's 59.4 px length, five-stop ramp and 30% floor in both themes (the light theme no longer shows a grey bar), and the library details panel text uses web's size, weight and colour.
