@@ -593,3 +593,22 @@ jobs:
           [[ -f $WORK/state.env ]] && . "$WORK/state.env" || true
           [[ -z ${UDID:-} ]] || xcrun simctl delete "$UDID" || true
           bash "$TRUSTED/scripts/apple-wall/wall.sh" stop "$DEVICE"
+
+      # Explicit capture runs are parity gates, not interactive streams. The suite
+      # steps keep continue-on-error so diagnostics and cleanup can finish; this
+      # final check makes capture failures visible after runner cleanup.
+      - name: Require successful explicit suite captures
+        if: >-
+          always() &&
+          github.event_name == 'workflow_dispatch' &&
+          inputs.suite_args != '' &&
+          !inputs.stream &&
+          (matrix.device == 'tvos' || matrix.device == 'macos')
+        env:
+          WEBREF_OUTCOME: ${{ steps.webref.outcome }}
+          SUITE_OUTCOME: ${{ steps.suite.outcome }}
+        run: |
+          if [[ "$WEBREF_OUTCOME" != success || "$SUITE_OUTCOME" != success ]]; then
+            echo "::error::explicit suite capture failed (web reference: $WEBREF_OUTCOME, native suite: $SUITE_OUTCOME)"
+            exit 1
+          fi

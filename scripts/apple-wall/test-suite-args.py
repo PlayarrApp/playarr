@@ -149,4 +149,37 @@ assert workflow.count("node suite-run.mjs") == 2
 assert '${{ inputs.suite_args ||' not in workflow
 assert 'grep -oE -e' not in workflow
 
+# Explicit non-stream suite runs must surface failed captures after cleanup.
+gate_name = "- name: Require successful explicit suite captures"
+gate_start = workflow.index(gate_name)
+gate_block = workflow[gate_start:]
+assert "github.event_name == 'workflow_dispatch'" in gate_block
+assert "inputs.suite_args != ''" in gate_block
+assert "!inputs.stream" in gate_block
+assert "matrix.device == 'tvos' || matrix.device == 'macos'" in gate_block
+assert workflow.index("- name: Delete the simulator") < gate_start
+assert "WEBREF_OUTCOME: ${{ steps.webref.outcome }}" in gate_block
+assert "SUITE_OUTCOME: ${{ steps.suite.outcome }}" in gate_block
+assert '[[ "$WEBREF_OUTCOME" != success || "$SUITE_OUTCOME" != success ]]' in gate_block
+gate_run = re.search(r"^        run: \|\n((?:^          .*\n)+)", gate_block, re.MULTILINE)
+assert gate_run, "capture outcome gate has a shell body"
+gate_script = dedent(gate_run.group(1))
+
+
+def gate(webref: str, suite: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["bash", "-c", gate_script],
+        text=True,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "WEBREF_OUTCOME": webref, "SUITE_OUTCOME": suite},
+    )
+
+
+assert gate("success", "success").returncode == 0
+for failed in (("failure", "success"), ("success", "failure"), ("skipped", "success")):
+    result = gate(*failed)
+    assert result.returncode != 0
+    assert "explicit suite capture failed" in result.stdout
+
 print("workflow suite-selection and visibility checks passed")

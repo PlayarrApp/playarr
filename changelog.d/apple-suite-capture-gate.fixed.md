@@ -1,0 +1,1 @@
+- Explicit non-stream Apple parity suite runs now fail when web-reference or native captures fail, after diagnostic artifacts and runner cleanup complete.
