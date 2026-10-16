@@ -76,9 +76,12 @@ struct RootView: View {
             if ParityLaunch.isActive, let server = ParityLaunch.server, let user = ParityLaunch.user {
                 do {
                     try await environment.signIn(serverURL: server, username: user, password: ParityLaunch.password ?? "")
+                    ParityLaunch.recordSignInOutcome(succeeded: true)
                     ParityLaunch.record("signedIn", true)
                     Task { await ParityDownloads.run(environment.downloadRepository) }
-                } catch {}
+                } catch {
+                    ParityLaunch.recordSignInOutcome(succeeded: false)
+                }
                 return
             }
             #endif

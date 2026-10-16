@@ -62,6 +62,7 @@ jobs:
         run: node .github/scripts/apple-test-simulator/main.js
 
       - name: Render the screens
+        id: render
         working-directory: clients/ios
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
@@ -91,6 +92,35 @@ jobs:
         with:
           name: safe-area-${{ strategy.job-index }}
           path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Export failure diagnostics
+        if: failure()
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          diagnostics="$RUNNER_TEMP/safe-area-diagnostics"
+          mkdir -p "$diagnostics"
+          if [[ -d "$RUNNER_TEMP/safe-area.xcresult" ]]; then
+            xcrun xcresulttool get test-results summary --path "$RUNNER_TEMP/safe-area.xcresult" --format json > "$diagnostics/test-summary.json" 2>&1 || true
+            xcrun xcresulttool export diagnostics --path "$RUNNER_TEMP/safe-area.xcresult" --output-path "$diagnostics/xcresult" > "$diagnostics/xcresult-export.txt" 2>&1 || true
+          fi
+          if [[ -f "$RUNNER_TEMP/safe-area-log.txt" ]]; then
+            cp "$RUNNER_TEMP/safe-area-log.txt" "$diagnostics/xcodebuild.log"
+          fi
+          if [[ -n "$SIMULATOR_UDID" ]]; then
+            xcrun simctl list devices --json > "$diagnostics/simulator-devices.json" 2>&1 || true
+            xcrun simctl get_app_container "$SIMULATOR_UDID" app.playarr.ios app > "$diagnostics/installed-app-container.txt" 2>&1 || true
+            xcrun simctl spawn "$SIMULATOR_UDID" log show --last 10m --style compact --predicate 'process == "SpringBoard" OR process == "Playarr" OR process == "Runner" OR process == "xctest"' > "$diagnostics/simulator.log" 2>&1 || true
+          fi
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: safe-area-diagnostics-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/safe-area-diagnostics
           if-no-files-found: ignore
           retention-days: 14
 

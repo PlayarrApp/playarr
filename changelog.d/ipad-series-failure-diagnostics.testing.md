@@ -1,0 +1,2 @@
+- Retain iOS and iPad series UI-test result summaries, xcresult diagnostics and attachments, scoped simulator logs, and xcodebuild logs on failure; emit non-sensitive DEBUG sign-in, Home load-state, and unique Series-card-count markers for the Home navigation UI test.
+- Fail the iPad safe-area capture clearly when its app window does not appear, and retain failure-only xcresult, xcodebuild, and simulator diagnostics.

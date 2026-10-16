@@ -38,15 +38,21 @@ final class SafeAreaCaptureUITests: XCTestCase {
                 if orientationName == "landscape" { app.launchArguments = ["--playarr-parity-landscape"] }
                 app.launch()
                 XCUIDevice.shared.orientation = orientation
-                // The screen has no single ready marker across routes: wait for the window to settle.
-                _ = app.windows.firstMatch.waitForExistence(timeout: 30)
+                // The screen has no single ready marker across routes. Do not request a screenshot
+                // until XCTest has confirmed that the app window is available.
+                let window = app.windows.firstMatch
+                guard window.waitForExistence(timeout: 30) else {
+                    XCTFail("The app window did not become available for \(orientationName) (\(route)).")
+                    app.terminate()
+                    return
+                }
                 Thread.sleep(forTimeInterval: 12)
 
                 let shot = XCTAttachment(screenshot: app.screenshot())
                 shot.name = "\(orientationName)-\(route.replacingOccurrences(of: ":", with: "_"))"
                 shot.lifetime = .keepAlways
                 add(shot)
-                let frame = app.windows.firstMatch.frame
+                let frame = window.frame
                 XCTAssertEqual(frame.width > frame.height, orientationName == "landscape", "the app window is \(frame.size) in \(orientationName) (\(route))")
 
                 if phone { assertClearances(app, orientationName, route) }

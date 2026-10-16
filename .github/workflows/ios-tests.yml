@@ -73,6 +73,7 @@ jobs:
         run: node .github/scripts/apple-test-simulator/main.js
 
       - name: Run the Xcode tests
+        id: ios-tests
         shell: bash
         working-directory: clients/ios
         timeout-minutes: 45
@@ -94,6 +95,37 @@ jobs:
             exit 1
           fi
           grep -F "$test_case" "$RUNNER_TEMP/ios-log.txt"
+
+      - name: Export failure diagnostics
+        if: ${{ always() && steps.ios-tests.outcome != 'success' }}
+        shell: bash
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -uo pipefail
+          diagnostics="$RUNNER_TEMP/ios-diagnostics"
+          mkdir -p "$diagnostics/attachments"
+          if [[ -d "$RUNNER_TEMP/ios.xcresult" ]]; then
+            xcrun xcresulttool get test-results summary --path "$RUNNER_TEMP/ios.xcresult" --format json > "$diagnostics/test-summary.json" 2>&1 || true
+            xcrun xcresulttool export diagnostics --path "$RUNNER_TEMP/ios.xcresult" --output-path "$diagnostics/xcresult" > "$diagnostics/xcresult-export.txt" 2>&1 || true
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/ios.xcresult" --output-path "$diagnostics/attachments" > "$diagnostics/attachments-export.txt" 2>&1 || true
+          fi
+          if [[ -f "$RUNNER_TEMP/ios-log.txt" ]]; then
+            cp "$RUNNER_TEMP/ios-log.txt" "$diagnostics/xcodebuild.log"
+          fi
+          if [[ -n "$SIMULATOR_UDID" ]]; then
+            xcrun simctl list devices --json > "$diagnostics/simulator-devices.json" 2>&1 || true
+            xcrun simctl spawn "$SIMULATOR_UDID" log show --last 10m --style compact --predicate 'process == "SpringBoard" OR process == "Playarr" OR process == "Runner" OR process == "xctest"' > "$diagnostics/simulator.log" 2>&1 || true
+          fi
+
+      - name: Upload failure diagnostics
+        if: ${{ always() && steps.ios-tests.outcome != 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-diagnostics-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ios-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Delete the test simulator
         if: ${{ always() && steps.simulator.outputs.udid != '' }}

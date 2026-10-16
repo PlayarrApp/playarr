@@ -61,6 +61,7 @@ jobs:
         run: node .github/scripts/apple-test-simulator/main.js
 
       - name: Render the screens
+        id: render
         working-directory: clients/ios
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
@@ -79,9 +80,27 @@ jobs:
 
       - name: Export the screenshots
         if: always()
+        env:
+          RENDER_OUTCOME: ${{ steps.render.outcome }}
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
         run: |
           mkdir -p "$RUNNER_TEMP/shots"
           xcrun xcresulttool export attachments --path "$RUNNER_TEMP/ipad-series.xcresult" --output-path "$RUNNER_TEMP/shots" || true
+          if [[ "$RENDER_OUTCOME" != success ]]; then
+            diagnostics="$RUNNER_TEMP/shots/diagnostics"
+            mkdir -p "$diagnostics"
+            if [[ -d "$RUNNER_TEMP/ipad-series.xcresult" ]]; then
+              xcrun xcresulttool get test-results summary --path "$RUNNER_TEMP/ipad-series.xcresult" --format json > "$diagnostics/test-summary.json" 2>&1 || true
+              xcrun xcresulttool export diagnostics --path "$RUNNER_TEMP/ipad-series.xcresult" --output-path "$diagnostics/xcresult" > "$diagnostics/xcresult-export.txt" 2>&1 || true
+            fi
+            if [[ -f "$RUNNER_TEMP/ipad-series-log.txt" ]]; then
+              cp "$RUNNER_TEMP/ipad-series-log.txt" "$diagnostics/xcodebuild.log"
+            fi
+            if [[ -n "$SIMULATOR_UDID" ]]; then
+              xcrun simctl list devices --json > "$diagnostics/simulator-devices.json" 2>&1 || true
+              xcrun simctl spawn "$SIMULATOR_UDID" log show --last 10m --style compact --predicate 'process == "SpringBoard" OR process == "Playarr" OR process == "Runner" OR process == "xctest"' > "$diagnostics/simulator.log" 2>&1 || true
+            fi
+          fi
 
       - name: Upload the screenshots
         if: always()

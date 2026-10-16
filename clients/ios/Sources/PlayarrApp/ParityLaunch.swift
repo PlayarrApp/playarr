@@ -80,6 +80,24 @@ enum ParityLaunch {
         state[key] = value
         if let data = try? JSONSerialization.data(withJSONObject: state) { try? data.write(to: url) }
     }
+
+    static func recordSignInOutcome(succeeded: Bool) {
+        guard isActive else { return }
+        NSLog("PlayarrDiagnostic sign_in=%@", succeeded ? "success" : "failure")
+    }
+
+    static func recordHomeLoadOutcome(_ state: HomeLoadDiagnosticState, seriesCardCount: Int) {
+        guard isActive, screen == "home" else { return }
+        NSLog("PlayarrDiagnostic home_state=%@ series_cards=%ld", state.rawValue, seriesCardCount)
+    }
+
+    enum HomeLoadDiagnosticState: String {
+        case idle
+        case loading
+        case loaded
+        case failed
+    }
+
     static var isPlayerRoute: Bool { parts.first == "player" || parts.first == "player-quality" }
     static var title: String? {
         ["detail", "player", "player-quality"].contains(parts.first ?? "") && parts.count > 2 ? parts[2] : nil

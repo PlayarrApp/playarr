@@ -56,6 +56,19 @@ struct HomeView: View {
         .task {
             if case .idle = viewModel.loadState { await viewModel.load() }
         }
+        #if DEBUG
+        .onChange(of: viewModel.loadState, initial: true) { _, state in
+            let diagnosticState: ParityLaunch.HomeLoadDiagnosticState
+            switch state {
+            case .idle: diagnosticState = .idle
+            case .loading: diagnosticState = .loading
+            case .loaded: diagnosticState = .loaded
+            case .failed: diagnosticState = .failed
+            }
+            let seriesCardCount = Set(viewModel.rails.flatMap(\.works).filter { $0.kind == .series }.map(\.id)).count
+            ParityLaunch.recordHomeLoadOutcome(diagnosticState, seriesCardCount: seriesCardCount)
+        }
+        #endif
     }
 
     private var loadedContent: some View {
