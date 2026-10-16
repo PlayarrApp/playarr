@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Updated the backend `zip` crate to the smallest non-yanked release, 9.0.3, preserving rejection of unsafe archive entry names after decoding.
 - macOS: Down from Calendar's Today button goes to Filters as on the web, the profiles page gear opens Settings, and Play on a title opens the player in key-driven runs.
 - macOS: the Calendar page opens with the Today button focused, as on the web, and the profiles page names its focused profile for the parity driver.
 - macOS: the last visible row of a library grid fades toward the screen edge as on the web.
