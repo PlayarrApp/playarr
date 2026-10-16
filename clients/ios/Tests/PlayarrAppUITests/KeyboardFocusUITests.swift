@@ -39,6 +39,7 @@ final class KeyboardFocusUITests: XCTestCase {
         return app
     }
 
+    @MainActor
     private func shot(_ app: XCUIApplication, _ name: String, expected: String) throws {
         try requireParityCaptureReady(app, expectedUsername: expected)
         let a = XCTAttachment(screenshot: app.screenshot())
