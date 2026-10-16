@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Align the first Home rail with the Library grid on initial load and keep page content clear of navigation across supported widths.
 - Android deterministic capture accepts equivalent ISO instant spellings in the app's clock-consumption log.
 - Stable parity runs now pin the web clock, disable animations, use readiness signals, and record one D-pad observation without retrying failures.
 - Web reference captures now close the browser on every capture-group exit and reject build drift before publishing.
