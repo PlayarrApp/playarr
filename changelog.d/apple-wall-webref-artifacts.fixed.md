@@ -1,0 +1,1 @@
+- Give each Apple wall matrix variant a distinct web-reference artifact name so light and dark captures do not collide.

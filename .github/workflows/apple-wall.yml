@@ -481,7 +481,7 @@ jobs:
         if: steps.webref.outcome != 'skipped'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: apple-wall-webref-${{ matrix.device }}-${{ github.run_id }}
+          name: apple-wall-webref-${{ matrix.device }}-${{ matrix.slug }}-${{ github.run_id }}
           path: ${{ runner.temp }}/web
           if-no-files-found: ignore
 
