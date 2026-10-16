@@ -19,6 +19,7 @@ import { expandKeys } from "./suite-lib.mjs";
 import { assertBuildIdentityStable, selectedLiveScreens, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
 import { withCaptureState } from "./capture-state.mjs";
 import { deckFromEnv, seedCanonicalDeck } from "./canonical-deck.mjs";
+import { readSecrets } from "./dpad-account.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { PNG } from "pngjs";
 import { verifyDir } from "./verify-refs.mjs";
@@ -81,8 +82,8 @@ const series = await (await fetch(`${srv}/api/v1/catalog/${seriesId}`, { headers
 const episodeFiles = (series.children?.Series ?? []).flatMap((s) => s.episodes ?? []).map((e) => e.media_file_id).filter(Boolean);
 if (!episodeFiles.length || !film.media_file_id) throw new Error("pinned detail media files are missing from the catalogue");
 const pinned = [...stateFiles, film.media_file_id, ...episodeFiles];
-const deck = deckFromEnv();
-if (deck) await seedCanonicalDeck(captureState, deck);
+const deck = deckFromEnv({ ...process.env, PARITY_SEED_CANONICAL: "1" }, readSecrets());
+await seedCanonicalDeck(captureState, deck);
 if (!args.includes("--no-reset")) {
   for (const file of new Set(pinned)) if (file !== deck?.deckFile) await captureState.writeProgress(file, { position_ms: 0, duration_ms: captureState.snapshot.files[file]?.duration_ms ?? 0, completed: false });
   await captureState.clearResumeChoices();

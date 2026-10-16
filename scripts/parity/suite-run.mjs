@@ -13,6 +13,7 @@ import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { mergeSelectedResults } from "./selective-results.mjs";
 import { resolveCaptureEnvironment, withCaptureState } from "./capture-state.mjs";
 import { applyCanonicalDeck } from "./canonical-deck.mjs";
+import { readSecrets } from "./dpad-account.mjs";
 import { assertCaptureManifestTargetAvailable, buildShaFromIdentity, createCaptureManifest, sameCaptureBuildIdentity } from "./capture-manifest.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -43,7 +44,9 @@ const unknownOnly = only.filter((name) => !knownOnly.has(name));
 if (unknownOnly.length) throw new Error(`unknown --only section(s): ${unknownOnly.join(", ")}`);
 const via = opt("via", "keys");
 const reference = args.includes("--reference");
-const deterministic = args.includes("--stable") || process.env.PARITY_STABLE === "1";
+// Stable is the default so client captures match the web refs (fixed clock, canonical On deck); PARITY_STABLE=0 is the only opt-out.
+const deterministic = args.includes("--stable") || process.env.PARITY_STABLE !== "0";
+if (deterministic) process.env.PARITY_SEED_CANONICAL ??= "1";
 if (deterministic && reset) throw new Error("stable capture cannot combine with --reset-progress; seed canonical state before running");
 const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
 const regressionReason = process.env.PARITY_REGRESSION_REASON;
@@ -382,7 +385,7 @@ if (process.env.PARITY_CLIENT) {
     const { env } = context;
     Object.assign(process.env, env);
     let snapshot = context.snapshot;
-    const seeded = await applyCanonicalDeck(context);
+    const seeded = await applyCanonicalDeck(context, process.env, readSecrets());
     if (seeded) snapshot = seeded;
     else {
       await context.clearResumeChoices();
