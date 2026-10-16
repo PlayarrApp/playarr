@@ -8,7 +8,7 @@ const originalEnv = { ...process.env };
 function config(username = "device-test") {
   for (const key of Object.keys(process.env)) if (key.startsWith("PLAYARR_") || key === "PARITY_CLIENT") delete process.env[key];
   Object.assign(process.env, {
-    PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl,
+    PLAYARR_TEST_SERVER_URL: serverUrl,
     PLAYARR_WEB_URL: "https://playarr.example.invalid",
     PLAYARR_USERNAME: username,
     PLAYARR_PASSWORD: "mock-password",
@@ -69,7 +69,7 @@ test("signed-out and owner sessions fail before exported live operations", async
   t.after(() => { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv); });
   config();
   const mocks = browserMock();
-  const driver = await createDriver({ playwright: mocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } });
+  const driver = await createDriver({ playwright: mocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test" } });
   await driver.setDeterministicCapture({ fixedNow: "2026-10-16T00:00:00Z", disableAnimations: true });
   assert.equal(mocks.state.identityReads, 0, "local capture configuration before start needs no identity");
   await assert.rejects(driver.start(), /signed out/);
@@ -85,7 +85,7 @@ test("signed-out and owner sessions fail before exported live operations", async
   assert.equal(mocks.state.closed, true, "stop releases the owned browser even after guard rejection");
 
   const switchMocks = browserMock({ initialSignedIn: true, ownerOnRequest: true });
-  const ownerDriver = await createDriver({ playwright: switchMocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } });
+  const ownerDriver = await createDriver({ playwright: switchMocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test" } });
   await assert.rejects(ownerDriver.start(), /guard rejected/);
   await assert.rejects(ownerDriver.key("down"), /guard rejected/);
   assert.equal(switchMocks.state.operations.some(([kind]) => kind === "keyPress"), false);
@@ -95,7 +95,7 @@ test("a session switch while a key is held still sends key-up", async (t) => {
   t.after(() => { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv); });
   config();
   const mocks = browserMock({ initialSignedIn: true });
-  const driver = await createDriver({ playwright: mocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } });
+  const driver = await createDriver({ playwright: mocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test" } });
   await driver.start();
   assert.equal(mocks.state.identityReads, 2, "bootstrap validates the accepted current account");
   await assert.rejects(driver.key("down", { long: true }), /guard rejected/);
@@ -108,7 +108,7 @@ test("download error diagnostics do not capture after an account switch", async 
   config();
   process.env.PARITY_DEBUG = "mock-debug";
   const mocks = browserMock({ initialSignedIn: true });
-  const driver = await createDriver({ playwright: mocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } });
+  const driver = await createDriver({ playwright: mocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test" } });
   await driver.start();
   mocks.state.ownerAfterIdentityRead = mocks.state.identityReads + 2;
   await assert.rejects(driver.download({ id: "case", action: "unknown", media: { title: "Sample", file: "sample" } }, { withinSeconds: 1 }), /guard rejected/);

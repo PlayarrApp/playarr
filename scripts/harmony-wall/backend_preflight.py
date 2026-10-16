@@ -74,7 +74,10 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output")
     args = parser.parse_args(argv)
-    result = check_backend(os.environ.get("SERVER_URL", ""))
+    server_url = os.environ.get("PLAYARR_TEST_SERVER_URL", "").strip()
+    if not server_url:
+        raise SystemExit("PLAYARR_TEST_SERVER_URL is required")
+    result = check_backend(server_url)
     rendered = json.dumps(result, separators=(",", ":"))
     if args.output:
         try:

@@ -11,6 +11,7 @@
 #      PLAYARR_FIXTURE_CLIP_SECONDS (length of each generated clip, default 6),
 #      FIXTURE_CHILD_WINDOW="start-end" (child schedule, minutes of day UTC).
 set -euo pipefail
+: "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL is required and must name the fixture loopback URL}"
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 for c in node curl ffmpeg ffprobe; do
@@ -54,10 +55,12 @@ fi
 
 # 4. Server.
 if ! alive "${FIX_RUN_DIR}/server.pid"; then
-  echo "==> starting playarr-server on ${FIX_BIND}:${FIX_PORT}"
+  echo "==> starting playarr-server"
   # shellcheck disable=SC2155
   export DATABASE_URL="sqlite://${FIX_DATA_DIR}/playarr.db?mode=rwc"
-  export PLAYARR_HTTP_BIND_ADDR="${FIX_BIND}:${FIX_PORT}"
+  FIX_BIND_ADDR="${FIX_BIND}:${FIX_PORT}"
+  [[ "${FIX_BIND}" != *:* ]] || FIX_BIND_ADDR="[${FIX_BIND}]:${FIX_PORT}"
+  export PLAYARR_HTTP_BIND_ADDR="${FIX_BIND_ADDR}"
   export PLAYARR_METRICS_BIND_ADDR="127.0.0.1:${FIX_METRICS_PORT}"
   export PLAYARR_JWT_SECRET="${FIX_JWT_SECRET}"
   export PLAYARR_AUTH_MODE=full-account
@@ -81,6 +84,6 @@ echo
 node "${FIX_SCRIPT_DIR}/seed.mjs" "${FIX_URL}" "http://127.0.0.1:${FIX_STUB_PORT}" "${FIX_STUB_KEY}"
 
 echo
-echo "Fixture server: ${FIX_URL}   (emulator: http://10.0.2.2:${FIX_PORT})"
+echo "Fixture server ready"
 echo "Users (password in scripts/fixtures/catalog.mjs): fx-admin fx-viewer fx-guardian fx-child fx-child-locked"
 echo "Verify: node scripts/fixtures/verify.mjs   Stop: scripts/fixtures/down.sh"

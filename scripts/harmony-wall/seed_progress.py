@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Seed the Device Test account's watch progress so Home's On deck matches the web reference run to run: The 5th Wave at 15098 ms and
-nothing else in progress (any other started row is zeroed to unseen, as scratch/20261011-parity/reset-deck-canonical.mjs does, which keeps the unseen dots web shows).
-Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD. Best effort: prints statuses only, never a value, and always exits 0."""
+"""Seed the Device Test account's watch progress so Home's On deck matches the web reference run to run: a pinned test item at 15098 ms and
+nothing else in progress (any other started row is zeroed to unseen, as the parity reset helper does, which keeps the unseen dots web shows).
+Environment: PLAYARR_TEST_SERVER_URL, TEST_USERNAME, TEST_PASSWORD. Best effort: prints statuses only, never a value, and always exits 0."""
 import json, os, sys, urllib.error, urllib.request, uuid
 
-SERVER = os.environ["SERVER_URL"].strip().rstrip("/")
-KEEP = "a2c2cf1c-2059-4289-88fb-c7882a3ed7b7"  # The 5th Wave
+SERVER = os.environ.get("PLAYARR_TEST_SERVER_URL", "").strip().rstrip("/")
+if not SERVER: sys.exit("PLAYARR_TEST_SERVER_URL is required")
+KEEP = "a2c2cf1c-2059-4289-88fb-c7882a3ed7b7"
 KEEP_POSITION_MS = 15098
 
 

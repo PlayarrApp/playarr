@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Signs the device test account in to the tvOS app without the QR flow, by seeding the app's saved session.
 
-Logs in against the real server (SERVER_URL, TEST_USERNAME, TEST_PASSWORD from the environment), then writes the
+Logs in against the test server (PLAYARR_TEST_SERVER_URL, TEST_USERNAME, TEST_PASSWORD from the environment), then writes the
 app's UserDefaults on the booted simulator: the server address, the device id and the stored auth session
 (access and refresh token) the app restores at launch and refreshes on its own. Prints statuses only, never values.
 usage: seed_session.py --udid <udid> --bundle <bundle id>
@@ -36,7 +36,9 @@ def main() -> None:
     parser.add_argument("--udid", required=True)
     parser.add_argument("--bundle", required=True)
     args = parser.parse_args()
-    server = os.environ["SERVER_URL"].strip().rstrip("/")
+    server = os.environ.get("PLAYARR_TEST_SERVER_URL", "").strip().rstrip("/")
+    if not server:
+        sys.exit("PLAYARR_TEST_SERVER_URL is required")
     device_id = str(uuid.uuid4()).upper()
     body = json.dumps({"username": os.environ["TEST_USERNAME"], "password": os.environ["TEST_PASSWORD"], "device_id": device_id,
                        "device_name": "tvos-live-sim", "client_platform": "ios", "client_version": "live-sim"}).encode()

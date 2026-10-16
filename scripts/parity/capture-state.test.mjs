@@ -65,7 +65,7 @@ function mockApi(initial = [], { expireFirstToken = false } = {}) {
 const SCRATCH_ROOT = process.env.PLAYARR_PARITY_TEST_OUT;
 if (!SCRATCH_ROOT) throw new Error("PLAYARR_PARITY_TEST_OUT must name a task-specific .data scratch directory");
 async function scratch() { await mkdir(SCRATCH_ROOT, { recursive: true, mode: 0o700 }); return mkdtemp(join(SCRATCH_ROOT, "lock-")); }
-function context(lockDir) { return { client: "web-capture-10620", files: [FILE_A], env: { PLAYARR_SERVER_URL: serverUrl, PARITY_LOCK_DIR: lockDir }, secrets: creds, persistSecrets() {} }; }
+function context(lockDir) { return { client: "web-capture-10620", files: [FILE_A], env: { PLAYARR_TEST_SERVER_URL: serverUrl, PARITY_LOCK_DIR: lockDir }, secrets: creds, persistSecrets() {} }; }
 
 test("client credentials require the isolated client and never fall back to shared D-pad credentials", () => {
   assert.deepEqual(clientSecretKeys("web-capture-10620"), {
@@ -217,7 +217,7 @@ test("termination signals restore state, stop callback work, and release the acc
       };
       const keepAlive = setInterval(() => {}, 1000);
       try {
-        await withCaptureState({ client: "web-capture-10620", files: [file], env: { PLAYARR_SERVER_URL: "https://example.invalid", PARITY_LOCK_DIR: process.env.LOCK_DIR }, secrets: { PLAYARR_PARITY_WEB_CAPTURE_10620_USERNAME: "fixture-user", PLAYARR_PARITY_WEB_CAPTURE_10620_PASSWORD: "fixture-pass" }, persistSecrets() {} }, async ({ writeProgress, registerInterruptCleanup }) => {
+        await withCaptureState({ client: "web-capture-10620", files: [file], env: { PLAYARR_TEST_SERVER_URL: "https://example.invalid", PARITY_LOCK_DIR: process.env.LOCK_DIR }, secrets: { PLAYARR_PARITY_WEB_CAPTURE_10620_USERNAME: "fixture-user", PLAYARR_PARITY_WEB_CAPTURE_10620_PASSWORD: "fixture-pass" }, persistSecrets() {} }, async ({ writeProgress, registerInterruptCleanup }) => {
           registerInterruptCleanup(async () => {
             await new Promise((resolve) => setTimeout(resolve, 50));
             stopped = true;
@@ -349,5 +349,5 @@ test("restore runs after callback failure and account lock serialises concurrent
 
 test("lock directory must be explicit", async () => {
   mockApi();
-  await assert.rejects(withCaptureState({ ...context(undefined), env: { PLAYARR_SERVER_URL: serverUrl } }, async () => {}), /PARITY_LOCK_DIR is required/);
+  await assert.rejects(withCaptureState({ ...context(undefined), env: { PLAYARR_TEST_SERVER_URL: serverUrl } }, async () => {}), /PARITY_LOCK_DIR is required/);
 });

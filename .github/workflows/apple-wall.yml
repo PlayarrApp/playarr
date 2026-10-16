@@ -67,6 +67,7 @@ permissions:
 
 env:
   LEAD_MINUTES: "25" # the successor starts this long before the end of a run
+  PLAYARR_TEST_SERVER_URL: ${{ secrets.PLAYARR_TEST_SERVER_URL }}
 
 # D-pad-only runs use the dedicated device-test-dpad account (its On deck does not drift); the secrets fall back to the shared account when unset.
 jobs:
@@ -393,25 +394,28 @@ jobs:
       - name: Start the simulator, sign in and launch
         timeout-minutes: 15
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
+        run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
+          bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
 
       - name: Interactive Search-results focus smoke
         if: inputs.search_smoke && env.DEVICE == 'macos'
         timeout-minutes: 15
         env:
           TRUSTED: ${{ github.workspace }}/smoke-tools
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           PLAYARR_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           SEARCH_QUERY: ${{ inputs.search_query }}
           PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
         run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
           set -euo pipefail
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
           node apple/search-results-smoke.mjs --query "$SEARCH_QUERY"
@@ -422,12 +426,14 @@ jobs:
         continue-on-error: true # a rejected capture must not stop the stream
         timeout-minutes: 30
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           OUT: ${{ runner.temp }}/capture
           REF: ${{ inputs.ref || github.event.repository.default_branch }}
-        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" capture "$DEVICE"
+        run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
+          bash "$TRUSTED/scripts/apple-wall/wall.sh" capture "$DEVICE"
 
       # Fresh web reference in the same minute (real sign-in through the UI, dark and light), for the pixel diff and the D-pad
       # expectations. Written to $RUNNER_TEMP/web, where the suite looks for expected.json.
@@ -437,12 +443,13 @@ jobs:
         continue-on-error: true
         timeout-minutes: 25
         env:
-          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           PLAYARR_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
           SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
         run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
           set -euo pipefail
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
           WALL_SUITE_ARGS=()
@@ -458,12 +465,13 @@ jobs:
         continue-on-error: true
         timeout-minutes: 60
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           DRIVER_TRACE: "1"
           SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
         run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
           set -euo pipefail
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
           WALL_SUITE_ARGS=()
@@ -539,8 +547,9 @@ jobs:
         if: steps.ts.outcome == 'success'
         continue-on-error: true
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
         run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
           host=$(python3 -c 'import os, urllib.parse as u; print(u.urlparse(os.environ["SERVER_URL"]).hostname)')
           check() { dscacheutil -q host -a name "$host" | grep -q ip_address; }
           if check; then echo "system resolver: ok"; exit 0; fi
@@ -560,7 +569,7 @@ jobs:
         if: steps.ts.outcome == 'success'
         timeout-minutes: 350
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] }}
@@ -570,6 +579,7 @@ jobs:
           REF_INPUT: ${{ inputs.ref }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
           set -euo pipefail
           export STREAM_BIND; STREAM_BIND=$(tailscale ip -4 | head -1)
           export DEADLINE=$(( START + LENGTH * 60 ))

@@ -5,13 +5,14 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
+import { resolveTestServerUrl } from "./test-server-env.mjs";
 
 const args = process.argv.slice(2);
 const out = args[args.indexOf("--out") + 1] ?? "web-covers";
 const secrets = {};
 try { for (const l of readFileSync(join(homedir(), ".secrets"), "utf8").split("\n")) { const i = l.indexOf("="); if (i > 0 && !l.startsWith("#")) secrets[l.slice(0, i)] = l.slice(i + 1).replace(/^["']|["']$/g, ""); } } catch {}
 const env = { ...process.env };
-env.PLAYARR_SERVER_URL ??= secrets.PLAYARR_DEVICE_TEST_SERVER_URL; env.PLAYARR_USERNAME ??= secrets.PLAYARR_DEVICE_TEST_USERNAME; env.PLAYARR_PASSWORD ??= secrets.PLAYARR_DEVICE_TEST_PASSWORD;
+env.PLAYARR_SERVER_URL = resolveTestServerUrl(env); env.PLAYARR_USERNAME ??= secrets.PLAYARR_DEVICE_TEST_USERNAME; env.PLAYARR_PASSWORD ??= secrets.PLAYARR_DEVICE_TEST_PASSWORD;
 const web = (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
 const UA = `Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${["130", "0", "0", "0"].join(".")} Mobile Safari/537.36`;
 const browser = await chromium.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {});

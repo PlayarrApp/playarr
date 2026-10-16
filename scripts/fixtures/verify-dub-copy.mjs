@@ -13,8 +13,9 @@
 import { execSync } from "node:child_process";
 import { login } from "./api.mjs";
 import { FIXTURE_PASSWORD, MOVIES } from "./catalog.mjs";
+import { resolveFixtureServerUrl } from "../parity/fixture-server-env.mjs";
 
-const base = process.argv[2] ?? `http://127.0.0.1:${process.env.PLAYARR_FIXTURE_PORT ?? 18484}`;
+const base = resolveFixtureServerUrl(process.env, process.argv[2] ?? "");
 const STUB_KEY = "fixture-stub-key";
 let failures = 0;
 const check = (ok, what) => {

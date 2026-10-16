@@ -1,7 +1,7 @@
 // iPhone and iPad simulator driver for the shared parity suite (docs/parity/SUITE.md), run with `--via route` and
 // `--only screens,playback` (touch devices have no D-pad). Runs on a GitHub-hosted macOS runner next to
 // scripts/apple-wall/wall.sh (WORK/state.env holds the simulator's UDID and the app's bundle id).
-//   env: WORK, DEVICE (iphone|ipad), SERVER_URL, TEST_USERNAME, TEST_PASSWORD
+//   env: WORK, DEVICE (iphone|ipad), PLAYARR_TEST_SERVER_URL, TEST_USERNAME, TEST_PASSWORD
 // The debug app signs in and opens a screen from launch arguments (clients/ios ParityLaunch.swift) and writes
 // Documents/parity-state.json (signedIn, playback). A launch costs seconds, so route() only records the suite route and
 // screenshot() launches the native screen named by the file (suite ids are unique, routes are not: actions and movies).
@@ -9,6 +9,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveTestServerUrl } from "../test-server-env.mjs";
 
 const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "suite.json"), "utf8"));
 
@@ -28,7 +29,7 @@ async function resetProgress(files) {
   try { await resetProgressOnce(files); } catch (e) { console.log(`  progress reset skipped: ${String(e.cause?.code ?? e.message)}`); } // a network blip must not end the run
 }
 async function resetProgressOnce(files) {
-  const e = process.env, server = e.SERVER_URL.replace(/\/$/, "");
+  const e = process.env, server = resolveTestServerUrl(e);
   const post = (path, method, body, token) => fetch(server + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
   const login = await post("/api/v1/auth/login", "POST", { client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: e.TEST_USERNAME, password: e.TEST_PASSWORD });
   if (!login.ok) { console.log(`  progress reset: login ${login.status}`); return; }
@@ -40,6 +41,7 @@ async function resetProgressOnce(files) {
 }
 
 export async function createDriver() {
+  const server = resolveTestServerUrl(process.env);
   const device = process.env.DEVICE;
   if (device !== "iphone" && device !== "ipad") throw new Error(`apple-ios driver: ${device} is not an iPhone or iPad`);
   const work = process.env.WORK, st = readState(work), udid = st.UDID, bundle = st.BUNDLE;
@@ -58,7 +60,7 @@ export async function createDriver() {
     const launchEnv = { ...process.env };
     delete launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS;
     if (device === "ipad" && enableLayoutDiagnostics) launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS = "1";
-    run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrMuted", "--playarr-parity-server", e.SERVER_URL, "--playarr-parity-user", e.TEST_USERNAME,
+    run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrMuted", "--playarr-parity-server", server, "--playarr-parity-user", e.TEST_USERNAME,
       "--playarr-parity-password", e.TEST_PASSWORD, "--playarr-parity-route", route, "--playarr-parity-theme", theme,
       ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...(process.env.PARITY_FOCUS ? ["--playarr-parity-focus", process.env.PARITY_FOCUS] : []),
       ...(process.env.PARITY_MOTION === "1" ? ["--playarr-parity-motion"] : []), ...(process.env.PARITY_COVERS === "1" ? ["--playarr-parity-covers"] : []), ...(process.env.PARITY_SIZE ? ["--playarr-parity-size", process.env.PARITY_SIZE] : []), ...extra], { env: launchEnv });
@@ -73,7 +75,7 @@ export async function createDriver() {
   };
   // The server's download options for a file (its quality profiles), to pick a quality other than the current one.
   const optionProfiles = async (file) => {
-    const server = process.env.SERVER_URL.replace(/\/$/, "");
+    const server = resolveTestServerUrl(process.env);
     const post = (path, body, token) => fetch(server + path, { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
     const login = await post("/api/v1/auth/login", { client_platform: "ios", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-options", username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD });
     const token = (await login.json()).access_token;

@@ -4,10 +4,11 @@
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { resolveTestServerUrl } from "../../test-server-env.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 const sec = {};
 for (const l of readFileSync(process.env.HOME + "/.secrets", "utf8").split("\n")) { const i = l.indexOf("="); if (i > 0 && !l.startsWith("#")) sec[l.slice(0, i)] = l.slice(i + 1).replace(/^["']|["']$/g, ""); }
-process.env.PLAYARR_SERVER_URL ??= sec.PLAYARR_DEVICE_TEST_SERVER_URL; process.env.PLAYARR_USERNAME ??= sec.PLAYARR_DEVICE_TEST_USERNAME; process.env.PLAYARR_PASSWORD ??= sec.PLAYARR_DEVICE_TEST_PASSWORD;
+process.env.PLAYARR_TEST_SERVER_URL = resolveTestServerUrl(process.env); process.env.PLAYARR_SERVER_URL = process.env.PLAYARR_TEST_SERVER_URL; process.env.PLAYARR_USERNAME ??= sec.PLAYARR_DEVICE_TEST_USERNAME; process.env.PLAYARR_PASSWORD ??= sec.PLAYARR_DEVICE_TEST_PASSWORD;
 Object.assign(process.env, { PLAYARR_WEB_VIEWPORT_WIDTH: "1280", PLAYARR_WEB_VIEWPORT_HEIGHT: "800", PLAYARR_WEB_VIEWPORT_DPR: "2", PARITY_STABLE: "1" });
 const driver = await (await import(pathToFileURL(join(here, "..", "..", "drivers", "web.mjs")).href)).createDriver();
 await driver.start(); await driver.setTheme("dark");

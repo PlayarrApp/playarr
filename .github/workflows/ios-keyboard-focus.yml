@@ -18,6 +18,9 @@ concurrency:
   group: ios-keyboard-focus-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+env:
+  PLAYARR_TEST_SERVER_URL: ${{ secrets.PLAYARR_TEST_SERVER_URL }}
+
 jobs:
   capture:
     name: Keyboard focus capture (iphone)
@@ -63,10 +66,11 @@ jobs:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
           TEST_RUNNER_PLAYARR_KEYBOARD_FOCUS: "1"
           TEST_RUNNER_PLAYARR_UI_TEST_PLAY_FILE: b9a68b2c-8382-4c34-a6f0-c4dd58f55093
-          TEST_RUNNER_PLAYARR_UI_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_RUNNER_PLAYARR_UI_TEST_SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_RUNNER_PLAYARR_UI_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_RUNNER_PLAYARR_UI_TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
         run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
           set -euo pipefail
           [[ "$SIMULATOR_UDID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
           xcodebuild test -test-timeouts-enabled NO -scheme PlayarrApp -configuration Debug \

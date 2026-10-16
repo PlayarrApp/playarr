@@ -1,5 +1,6 @@
 // reset-progress.mjs <media_file_id>: set the device test account's watch progress to 0 (both clients then start at 0).
-const SRV = process.env.SERVER_URL, mf = process.argv[2];
+const SRV = process.env.PLAYARR_TEST_SERVER_URL, mf = process.argv[2];
+if (!SRV) throw new Error("PLAYARR_TEST_SERVER_URL is required");
 const lr = await fetch(SRV + "/api/v1/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-capture", username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD }) });
 if (!lr.ok) throw new Error("login " + lr.status);
 const tok = (await lr.json()).access_token;

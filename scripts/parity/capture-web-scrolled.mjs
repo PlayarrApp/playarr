@@ -2,16 +2,17 @@
 // Web counterpart of the scrolled device captures: Home with its first rail scrolled right by several cards, written as
 // <out>/<layout>/<theme>/home-scrolled.png next to the static references, so a device capture can be compared with web at the
 // same scroll position (and both run through check-edge-fade.mjs).
-//   node capture-web-scrolled.mjs --base http://127.0.0.1:18484 --out <dir> [--theme light|dark|both] [--cards 4]
+//   PLAYARR_TEST_SERVER_URL=<loopback fixture URL> node capture-web-scrolled.mjs [--base <matching URL>] --out <dir> [--theme light|dark|both] [--cards 4]
 // Uses the fixture viewer (password from scripts/fixtures/catalog.mjs, default fixture-pass-0001) and the TV layout (1920x1080).
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
+import { resolveFixtureServerUrl } from "./fixture-server-env.mjs";
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : d; };
-const base = opt("base", "http://127.0.0.1:18484");
+const base = resolveFixtureServerUrl(process.env, opt("base", ""));
 const out = opt("out", "parity-out");
 const themes = opt("theme", "both") === "both" ? ["light", "dark"] : [opt("theme", "dark")];
 const cards = Number(opt("cards", "4"));

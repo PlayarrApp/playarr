@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prints an access token for the device test account on its "Device Test" profile ("<access> <refresh>" on one line, to stdout).
 
-Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD, optional DEVICE_NAME. Errors name the step, never a value.
+Environment: PLAYARR_TEST_SERVER_URL, TEST_USERNAME, TEST_PASSWORD, optional DEVICE_NAME. Errors name the step, never a value.
 """
 import json
 import os
@@ -10,7 +10,9 @@ import urllib.error
 import urllib.request
 import uuid
 
-server = os.environ["SERVER_URL"].strip().rstrip("/")
+server = os.environ.get("PLAYARR_TEST_SERVER_URL", "").strip().rstrip("/")
+if not server:
+    sys.exit("PLAYARR_TEST_SERVER_URL is required")
 # A fixed per-device-name id keeps one registered device per wall device across runs.
 device = {"device_id": "5a1e0000-0000-4000-8000-%012x" % (uuid.uuid5(uuid.NAMESPACE_DNS, "apple-wall." + os.environ.get("DEVICE_NAME", "wall")).int & 0xFFFFFFFFFFFF),
           "device_name": os.environ.get("DEVICE_NAME", "apple-wall"), "client_platform": "ios", "client_version": "parity"}

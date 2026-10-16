@@ -11,7 +11,8 @@
  *   node scripts/appletv-parity-suite.mjs --diff-only --run-dir <dir>
  *
  * Environment:
- *   PLAYARR_WEB_ORIGIN  (default http://127.0.0.1:18484, the fixture server)
+ *   PLAYARR_TEST_SERVER_URL  required loopback fixture server URL
+ *   PLAYARR_WEB_ORIGIN  optional alias that must match PLAYARR_TEST_SERVER_URL
  *   PARITY_USER / PARITY_PASSWORD  sign in before capturing (fixture user, e.g. fx-viewer;
  *                                  the password is in scripts/fixtures/catalog.mjs)
  *   PARITY_TOLERANCE_PCT (default 0.1)
@@ -22,13 +23,14 @@ import pixelmatchImport from "pixelmatch";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveFixtureServerUrl } from "./parity/fixture-server-env.mjs";
 
 const pixelmatch = pixelmatchImport.default || pixelmatchImport;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
-const WEB_ORIGIN = process.env.PLAYARR_WEB_ORIGIN || "http://127.0.0.1:18484";
+const WEB_ORIGIN = resolveFixtureServerUrl(process.env, process.env.PLAYARR_WEB_ORIGIN ?? "");
 const TOLERANCE_PCT = Number(process.env.PARITY_TOLERANCE_PCT || "0.1");
 const VIEWPORT = { width: 1920, height: 1080 };
 
@@ -215,7 +217,7 @@ async function captureReferences(runDir) {
       await page.goto(url, { waitUntil: "networkidle", timeout: 45_000 });
       await page.waitForTimeout(1200);
       await page.screenshot({ path: out, fullPage: false });
-      console.log(`reference ok  ${screen.id}  ${url}`);
+      console.log(`reference ok  ${screen.id}`);
     } catch (err) {
       console.error(`reference FAIL ${screen.id}: ${err.message}`);
       // Write a solid placeholder so the suite still produces numeric rows.

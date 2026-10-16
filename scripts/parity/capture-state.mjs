@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, rm, rmdir, writeFile, readFile, unlink, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { clientSecretKeys, parityCredentials, readSecrets } from "./dpad-account.mjs";
+import { testServerEnvironment } from "./test-server-env.mjs";
 
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HOME_RAILS_PREFERENCES = `/api/v1/${["home", "rails", "preferences"].join("/")}`;
@@ -14,9 +15,7 @@ const slug = (value) => {
 function clientEnvironment(client, env, secrets) {
   const keys = clientSecretKeys(client);
   const credentials = parityCredentials({ ...env, PARITY_CLIENT: client }, secrets);
-  const serverUrl = env.PLAYARR_SERVER_URL ?? env.PLAYARR_DEVICE_TEST_SERVER_URL ?? secrets.PLAYARR_DEVICE_TEST_SERVER_URL;
-  if (!serverUrl) throw new Error("PLAYARR_SERVER_URL or PLAYARR_DEVICE_TEST_SERVER_URL is required");
-  return { ...env, PARITY_CLIENT: client, PARITY_ACCOUNT: client, PLAYARR_SERVER_URL: serverUrl.replace(/\/$/, ""), PLAYARR_USERNAME: credentials.username, PLAYARR_PASSWORD: credentials.password, PARITY_USERNAME_KEY: keys.username, PARITY_PASSWORD_KEY: keys.password };
+  return { ...testServerEnvironment(env), PARITY_CLIENT: client, PARITY_ACCOUNT: client, PLAYARR_USERNAME: credentials.username, PLAYARR_PASSWORD: credentials.password, PARITY_USERNAME_KEY: keys.username, PARITY_PASSWORD_KEY: keys.password };
 }
 
 /** Resolve one explicitly selected isolated account without falling back to the shared device-test user. */

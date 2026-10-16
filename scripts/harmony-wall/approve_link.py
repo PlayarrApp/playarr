@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Approve a device code (RFC 8628 user_code shown by the app) as the Device Test account.
-Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD. Usage: approve_link.py <user_code>. Prints statuses only, never a value."""
+Environment: PLAYARR_TEST_SERVER_URL, TEST_USERNAME, TEST_PASSWORD. Usage: approve_link.py <user_code>. Prints statuses only, never a value."""
 import json, os, sys, urllib.error, urllib.request
 
-server = os.environ["SERVER_URL"].strip().rstrip("/")
+server = os.environ.get("PLAYARR_TEST_SERVER_URL", "").strip().rstrip("/")
+if not server: sys.exit("PLAYARR_TEST_SERVER_URL is required")
 
 
 def call(path, body, token=None):

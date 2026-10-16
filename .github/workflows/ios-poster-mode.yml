@@ -16,6 +16,9 @@ concurrency:
   group: ios-poster-mode-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+env:
+  PLAYARR_TEST_SERVER_URL: ${{ secrets.PLAYARR_TEST_SERVER_URL }}
+
 jobs:
   capture:
     name: Poster mode capture (${{ matrix.device }})
@@ -64,10 +67,11 @@ jobs:
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
           TEST_RUNNER_PLAYARR_POSTER_MODE_CAPTURE: "1"
-          TEST_RUNNER_PLAYARR_UI_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_RUNNER_PLAYARR_UI_TEST_SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_RUNNER_PLAYARR_UI_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_RUNNER_PLAYARR_UI_TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
         run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
           set -euo pipefail
           [[ "$SIMULATOR_UDID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
           xcodebuild test -scheme PlayarrApp -configuration Debug \

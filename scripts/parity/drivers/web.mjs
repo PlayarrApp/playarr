@@ -1,5 +1,5 @@
 // Reference driver: the web TV client in Playwright (Chromium, 1920x1080, TV user agent). Contract: docs/parity/SUITE.md.
-//   PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD,
+//   PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_TEST_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD,
 //   PARITY_CHROME (browser path, default Playwright's), PLAYARR_WEB_MOBILE=1, PLAYARR_WEB_NO_DOWNLOADS=1 (hide Downloads like a device without storage), PLAYARR_WEB_USER_AGENT, and
 //   PLAYARR_WEB_VIEWPORT_WIDTH/HEIGHT/DPR (TV defaults 1920/1080/1; mobile defaults 390/844/3). Sessions are never shared: every run signs in fresh (new
 //   browser profile, so a new device id); login tokens stay in that browser context and are never written to disk.

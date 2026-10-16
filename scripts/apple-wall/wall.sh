@@ -2,11 +2,16 @@
 # Apple device wall on a GitHub-hosted macOS runner (.github/workflows/apple-wall.yml).
 #   wall.sh <build|up|capture|stream> <tvos|iphone|ipad|macos>
 # Environment: SRC (checkout of the ref under test), TRUSTED (checkout of the default branch, source of every script that sees
-# a secret), WORK (scratch dir), and per command: SERVER_URL TEST_USERNAME TEST_PASSWORD (up, capture, stream), OUT and REF
+# a secret), WORK (scratch dir), and per command: PLAYARR_TEST_SERVER_URL TEST_USERNAME TEST_PASSWORD (up, capture, stream), OUT and REF
 # (capture), STREAM_BIND PLAYARR_VNC_PASSWORD DEADLINE DISPATCH_AT (stream). Never prints a secret or a token.
 set -euo pipefail
 cmd=${1:?command}; DEVICE=${2:?device}
 : "${SRC:?}" "${TRUSTED:?}" "${WORK:?}"
+if [[ $cmd == up || $cmd == capture || $cmd == stream || $cmd == launch ]]; then
+  : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL is required}"
+  SERVER_URL=$PLAYARR_TEST_SERVER_URL
+  export SERVER_URL
+fi
 mkdir -p "$WORK"; STATE="$WORK/state.env"
 log() { echo "wall[$DEVICE]: $*"; }
 
@@ -161,7 +166,7 @@ build)
           swiftc -O -o "$WORK/notify" "$TRUSTED/scripts/apple-wall/notify.swift" ;;
   esac ;;
 up)
-  : "${SERVER_URL:?}" "${TEST_USERNAME:?}" "${TEST_PASSWORD:?}"
+  : "${TEST_USERNAME:?}" "${TEST_PASSWORD:?}"
   if [[ $KIND == macos ]]; then
     save APP "$(app_path PlayarrMac.app)"; . "$STATE"; [[ -n $APP ]] || { log "no built app"; exit 1; }
     launch dark; sleep 15

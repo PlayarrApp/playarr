@@ -7,6 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { resolveTestServerUrl } from "../test-server-env.mjs";
 
 // IDB (path of the idb client, with its companion running): headless keys as USB HID usages, no Simulator window, no host keyboard.
 const HID = { up: 82, down: 81, left: 80, right: 79, select: 40, back: 41 };
@@ -133,6 +134,7 @@ function readState(work) {
 }
 
 export async function createDriver({ args = [], out } = {}) {
+  const testServerUrl = resolveTestServerUrl(process.env);
   // The D-pad checks compare against web, where Select on a nav item moves focus into the page (-PlayarrSelectEntersPage).
   const dpadOnly = args.includes("--only") && args[args.indexOf("--only") + 1] === "dpad";
   const device = process.env.DEVICE ?? "tvos";
@@ -244,11 +246,11 @@ export async function createDriver({ args = [], out } = {}) {
     await sleep(1000);
     // A fresh sign-in per launch, as wall.sh does (the saved session may be revoked by the capture step's own launches).
     const login = join(process.env.TRUSTED ?? "", "scripts/apple-wall/login.py"), tokens = [];
-    if (process.env.SERVER_URL && existsSync(login)) {
+    if (existsSync(login)) {
       const env = { ...process.env, DEVICE_NAME: `wall-${device}` };
       const [access, refresh] = run("python3", [login], { env }).trim().split(" ");
       run("xcrun", ["simctl", "spawn", udid, "defaults", "write", bundle, "com.playarr.playarr.tvos.deviceID", "-string", run("python3", [login, "--device-id"], { env }).trim()]);
-      tokens.push("-PlayarrServerURL", process.env.SERVER_URL, "-PlayarrAccessToken", access, "-PlayarrRefreshToken", refresh);
+      tokens.push("-PlayarrServerURL", testServerUrl, "-PlayarrAccessToken", access, "-PlayarrRefreshToken", refresh);
     }
     run("xcrun", ["simctl", "launch", udid, bundle, ...tokens, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...stickyArgs, ...extra]);
     await sleep(wait); // a launch signs in from the seeded session and loads Home

@@ -1,0 +1,1 @@
+- Parity harnesses now require one `PLAYARR_TEST_SERVER_URL` value and derive client aliases from it.

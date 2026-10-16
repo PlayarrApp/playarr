@@ -77,7 +77,7 @@ Stable D-pad runs also require an isolated client account and an explicit scratc
 For example, a full D-pad capture including player checks uses `--only dpad --player`. A navigation-only run uses `--only dpad --skip-player`; its player rows are explicitly skipped and it must be labelled as a navigation subset. To compare repeated runs, keep the same build, suite, fixed clock, canonical state and expected reference. `PARITY_EXPECTED_BUILD_SHA` pins the build and the runner checks it before and after capture. `PARITY_FIXED_NOW` pins wall-clock date while browser timers continue to advance. The web driver disables CSS transitions and Web Animations during stable capture. Stable-focus and detail-readiness predicates are synchronous because Playwright's polling callback does not await returned promises; focus readiness requires stable native focus and, when remote-marker mode is active, agreement with the marker.
 
 Web reference: `--driver drivers/web.mjs --reference --out <dir>/web` (env:
-`PLAYARR_WEB_URL`, `PLAYARR_SERVER_URL`, `PLAYARR_USERNAME`, `PLAYARR_PASSWORD`, `PARITY_CHROME`).
+`PLAYARR_WEB_URL`, required `PLAYARR_TEST_SERVER_URL`, `PLAYARR_USERNAME`, `PLAYARR_PASSWORD`, `PARITY_CHROME`). Legacy client variables `PLAYARR_SERVER_URL`, `PLAYARR_DEVICE_TEST_SERVER_URL`, `PLAYARR_NURA_APP_SERVER_URL`, and `PLAYARR_SAILFISH_PARITY_SERVER_URL` derive from that one canonical value. CI supplies it as the `PLAYARR_TEST_SERVER_URL` secret; local runs must export it explicitly.
 
 ## Session rule: never share sessions
 

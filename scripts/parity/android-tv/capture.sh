@@ -8,16 +8,18 @@
 #
 # Needs: adb on PATH (ANDROID_SERIAL picks the device), the sideload DEBUG APK installed (debug builds honour the parity
 # extras and log image loading), an emulator or box at 1920x1080 / 160 dpi (the script sets en-GB and UTC after clearing
-# the app data, because the references are captured in en-GB and UTC), and the fixture server (scripts/fixtures/up.sh --fresh, PLAYARR_FIXTURE_CLIP_SECONDS=60, PLAYARR_FIXTURE_PUBLIC_HOST=10.0.2.2).
-# Environment: PARITY_SERVER (default http://10.0.2.2:18660), PARITY_PASSWORD (the fixture password),
-# PLAYARR_FIXTURE_DB (optional: the fixture's SQLite file, whose watch_progress is cleared before each run).
+# the app data, because the references are captured in en-GB and UTC), and the fixture server (scripts/fixtures/up.sh --fresh, PLAYARR_FIXTURE_CLIP_SECONDS=60).
+# Environment: PLAYARR_TEST_SERVER_URL (required, loopback fixture URL),
+# PARITY_PASSWORD (optional fixture password), PLAYARR_FIXTURE_DB (optional fixture SQLite file).
 #
 # Each run clears the app data first (a leftover explicit theme, saved profile or paired device would change the screens),
 # signs in as fx-viewer, and chooses the app's own theme (not the system appearance) in the display preferences.
 set -euo pipefail
 out=$1; theme=$2; shift 2
 case $theme in light) pref=Light ;; dark) pref=Dark ;; *) echo "theme must be light or dark" >&2; exit 2 ;; esac
-server=${PARITY_SERVER:-http://10.0.2.2:18660}
+server=$(node --input-type=module -e 'import { resolveFixtureServerUrl } from "./scripts/parity/fixture-server-env.mjs"; process.stdout.write(resolveFixtureServerUrl(process.env));')
+fixture_port=$(node --input-type=module -e 'const u = new URL(process.env.PLAYARR_TEST_SERVER_URL); process.stdout.write(u.port);')
+adb reverse "tcp:$fixture_port" "tcp:$fixture_port" >/dev/null
 password=${PARITY_PASSWORD:-fixture-pass-0001}
 pkg=io.playarr.mobile
 dest="$out/tv/$theme"; mkdir -p "$dest"

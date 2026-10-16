@@ -9,6 +9,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright-core");
+import { resolveTestServerUrl } from "../test-server-env.mjs";
 const ROOT = process.env.PARITY_OUT ?? "parity-out"; // <ROOT>/web, <ROOT>/<cand>, with -light variants
 const XCLICK = new URL("./xclick.py", import.meta.url).pathname;
 const only = process.argv.slice(2);
@@ -114,7 +115,7 @@ for (const d of DEVICES) if (d.cand !== "tizen") await cdpConnect(d);
 for (const d of DEVICES) await devEval(d, `(localStorage.setItem("playarr-theme", ${JSON.stringify(THEME)}), true)`);
 // The web side signs in on its own (its own device id and session), as the device test account on the
 // Device Test profile. Sharing the shell's session would make the two clients rotate each other's refresh token.
-const api = process.env.PLAYARR_DEVICE_TEST_SERVER_URL.replace(/\/$/, "");
+const api = resolveTestServerUrl(process.env);
 const DEV = "5a1e0000-0000-4000-8000-00000000c6a5";
 async function j(path, token, init = {}) {
   let r;
