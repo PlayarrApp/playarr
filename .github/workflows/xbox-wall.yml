@@ -22,9 +22,9 @@ on:
         type: boolean
         default: false
       screens:
-        description: Comma-separated Xbox screens; player-controls is opt-in and requires the configured direct-play fixture secret
+        description: Comma-separated Xbox screens; player-controls requires the configured direct-play fixture secret
         type: string
-        default: home,movies,series,music
+        default: home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,film-detail,series-detail,settings,filters,profiles,player-controls,actions
 
 concurrency:
   group: xbox-wall-device-test-account
@@ -123,7 +123,7 @@ jobs:
           PLAYARR_DEVICE_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           PLAYARR_DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PART: ${{ matrix.part }}
-          SCREENS_INPUT: ${{ inputs.screens || 'home,movies,series,music' }}
+          SCREENS_INPUT: ${{ inputs.screens || 'home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,film-detail,series-detail,settings,filters,profiles,player-controls,actions' }}
           PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID: ${{ secrets.PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID }}
           XBOX_DEBUG_DIR: ${{ github.workspace }}/out/debug
         working-directory: scripts/parity
@@ -133,7 +133,7 @@ jobs:
           case "$PART" in
             screens-*)
               T=${PART#screens-}
-              SCREENS=$(node -e 'const requested = process.env.SCREENS_INPUT.split(","); const allowed = new Set(["home", "movies", "series", "music", "player-controls"]); if (!requested.length || requested.some((id) => !allowed.has(id)) || new Set(requested).size !== requested.length) { console.error("screens must be a unique comma-separated subset of home,movies,series,music,player-controls"); process.exit(1); } process.stdout.write(requested.join(","));')
+              SCREENS=$(node -e 'const requested = process.env.SCREENS_INPUT.split(","); const allowed = new Set(["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"]); if (!requested.length || requested.some((id) => !allowed.has(id)) || new Set(requested).size !== requested.length) { console.error("screens must be a unique comma-separated subset of home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,film-detail,series-detail,settings,filters,profiles,player-controls,actions"); process.exit(1); } process.stdout.write(requested.join(","));')
               if [[ ",$SCREENS," == *",home,"* ]]; then
                 node suite-run.mjs --driver ./drivers/web.mjs --reference --only screens --screens home --themes "$T" --via route --out "$OUT/web-home" --expected "$OUT/web-home/expected.json"
               fi
@@ -141,8 +141,8 @@ jobs:
               mkdir -p "$OUT/dev/light"
               if [ "$T" = light ]; then cp "$OUT"/run/light/*.png "$OUT/dev/light/"; else cp "$OUT"/run/dark/*.png "$OUT/dev/"; fi ;;
             dpad)
-              node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --out "$OUT/web"
-              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --via keys --out "$OUT/run" --expected "$OUT/web/expected.json"
+              node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --player --out "$OUT/web"
+              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --player --via keys --out "$OUT/run" --expected "$OUT/web/expected.json"
               mkdir -p "$OUT/dev"; cp "$OUT/run/dpad.json" "$OUT/dev/" ;;
             playback)
               echo '{"suite":1,"dpad":{},"playback":{"a":{"state":"playing"},"b":{"state":"playing"},"c":{"state":"playing"}}}' > "$OUT/exp.json"

@@ -118,6 +118,8 @@ async function reach(screen) {
   else if (via === "route" || !screen.keys) {
     if (via === "keys" && !screen.keys) console.log(`  ${screen.id}: no keys in the suite, deep linking`);
     await driver.route(screen.route);
+    // The actions sheet has no route: the web opens it with a long press on the second Movies card, so route mode repeats that.
+    if (screen.id === "actions") { await driver.key("right"); await driver.key("select", { long: true }); }
   } else await press(screen.keys);
   assertNotInterrupted();
   await waitReady(screen.id, "route");
