@@ -18,9 +18,13 @@ import { createHash } from "node:crypto";
 import { assertDeviceTestIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 import { readSecrets } from "../dpad-account.mjs";
 import { framesMatch, selectDeviceTestAccount, waitForStableFrames } from "../firetv-readiness.mjs";
+import { execFileBounded } from "../command.mjs";
 import { routeMatches } from "../suite-lib.mjs";
 
 const execFileP = promisify(execFile);
+const execFileUntil = (command, args, options, deadlineMs) => deadlineMs === undefined
+  ? execFileP(command, args, options)
+  : execFileBounded(command, args, { ...options, deadlineMs });
 const VEGA = (process.env.PLAYARR_FIRETV_VEGA ?? "vega").split(" ");
 const DEVICE = process.env.PLAYARR_FIRETV_DEVICE ?? "VirtualDevice";
 const APP = process.env.PLAYARR_FIRETV_APP ?? "com.streamarr.firetv.main";
@@ -32,8 +36,11 @@ const env = { ...process.env, DISPLAY, ...(process.env.PLAYARR_FIRETV_LIBS ? { L
 if (DEVICE !== "VirtualDevice") throw new Error("Fire TV parity driver is restricted to the explicitly named VirtualDevice");
 if (!process.env.ANDROID_ADB_SERVER_PORT) throw new Error("ANDROID_ADB_SERVER_PORT must explicitly select the virtual-device server");
 
-const vega = (...args) => (dbg("vega", args.join(" ").slice(0, 120)), execFileP(VEGA[0], [...VEGA.slice(1), ...args], { env, timeout: 90000, maxBuffer: 1 << 24 }).then((r) => r.stdout + r.stderr));
-const onDevice = (cmd) => vega("device", "run-cmd", "-d", DEVICE, "-c", cmd);
+const vega = (...args) => (dbg("vega", args.join(" ").slice(0, 120)), execFileBounded(VEGA[0], [...VEGA.slice(1), ...args], { env, timeout: 90000, maxBuffer: 1 << 24 }).then((r) => r.stdout + r.stderr));
+const vegaUntil = (deadlineMs, ...args) => (dbg("vega", args.join(" ").slice(0, 120)), execFileBounded(VEGA[0], [...VEGA.slice(1), ...args], { env, timeout: 90000, deadlineMs, maxBuffer: 1 << 24 }).then((r) => r.stdout + r.stderr));
+const onDevice = (cmd, deadlineMs) => deadlineMs === undefined
+  ? vega("device", "run-cmd", "-d", DEVICE, "-c", cmd)
+  : vegaUntil(deadlineMs, "device", "run-cmd", "-d", DEVICE, "-c", cmd);
 const xdo = (...args) => execFileP(XDOTOOL[0], [...XDOTOOL.slice(1), ...args], { env, timeout: 20000 });
 // Keys go to the emulator window, which must have focus.
 async function press(key) {
@@ -59,11 +66,11 @@ if (!process.env.PLAYARR_FIRETV_SCRATCH || !/(^|\/)\.data\/[^/]+\/[^/]+\/scratch
 }
 mkdirSync(scratch, { recursive: true });
 // A small frame of the emulator display (the clock painted out), for telling when the screen has stopped changing.
-async function frame(name) {
+async function frame(name, deadlineMs) {
   const file = join(scratch, name);
   const raw = join(scratch, `${name}.raw.png`);
-  await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", raw], { env });
-  await execFileP("magick", [raw, "-resize", "320x180!", "-fill", "black", "-draw", "rectangle 75,6,135,22", file], { env });
+  await execFileUntil("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", raw], { env }, deadlineMs);
+  await execFileUntil("magick", [raw, "-resize", "320x180!", "-fill", "black", "-draw", "rectangle 75,6,135,22", file], { env }, deadlineMs);
   return file;
 }
 // Waits for matching frames; timeouts are failures, never implicit success.
@@ -88,14 +95,14 @@ export async function createDriver({ out } = {}) {
   const runId = Date.now().toString(36);
   let offsetMs = null; // device clock minus host clock
   const fmt = (ms) => new Date(ms).toISOString().replace("T", " ").slice(0, 19);
-  async function readAnswers() {
+  async function readAnswers(deadlineMs) {
     if (offsetMs === null) {
-      const text = (await onDevice("date -u +'%Y-%m-%d %H:%M:%S'")).trim().split("\n").pop();
+      const text = (await onDevice("date -u +'%Y-%m-%d %H:%M:%S'", deadlineMs)).trim().split("\n").pop();
       offsetMs = Date.parse(text.replace(" ", "T") + "Z") - Date.now();
     }
     // Only the last 25 s: during playback the app logs heavily, and the whole run's log would be megabytes per poll.
     const from = fmt(Date.now() + offsetMs - 25000);
-    const text = await onDevice(`loggingctl log -S '${from}' -v ${APP.replace(/\.main$/, "")}`);
+    const text = await onDevice(`loggingctl log -S '${from}' -v ${APP.replace(/\.main$/, "")}`, deadlineMs);
     for (const line of text.split("\n")) {
       const hit = line.indexOf("PARITY {");
       if (hit < 0) continue;
@@ -106,23 +113,24 @@ export async function createDriver({ out } = {}) {
     }
   }
 
-  async function send(params) {
+  async function send(params, deadlineMs) {
     const n = `${runId}-${++seq}`;
     const query = Object.entries({ ...params, seq: n }).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
-    await onDevice(`vmsgr send 'pkg://${APP}?${query}'`);
+    await onDevice(`vmsgr send 'pkg://${APP}?${query}'`, deadlineMs);
     return n;
   }
-  async function state(timeoutMs = 25000) {
-    const n = await send({ cmd: "state" });
+  async function state(timeoutMs = 25000, deadlineMs) {
+    const cutoff = Math.min(Date.now() + timeoutMs, deadlineMs ?? Infinity);
+    const n = await send({ cmd: "state" }, cutoff);
     const t0 = Date.now();
-    while (Date.now() - t0 < timeoutMs) {
-      await sleep(1200);
-      await readAnswers();
+    while (Date.now() < cutoff) {
+      await sleep(Math.min(1200, Math.max(0, cutoff - Date.now())));
+      await readAnswers(cutoff);
       if (answers.has(n)) return answers.get(n);
     }
     throw new Error("the app did not answer the state request (is it built with PLAYARR_PARITY_CONTROL=1 and in the foreground?)");
   }
-  async function verifyAccount({ selector } = {}) {
+  async function verifyAccount({ selector, deadlineMs } = {}) {
     // Read secrets afresh at each protected boundary so an authorised server
     // update cannot leave a stale allowlist active in a long-running driver.
     const secrets = readSecrets();
@@ -136,7 +144,7 @@ export async function createDriver({ out } = {}) {
       ? canonicalOrigin(process.env.PLAYARR_FIRETV_SERVER_ORIGIN)
       : trustedServerUrl;
     if (allowedUsernames.size === 0) throw new Error("device-test account guard is not configured");
-    const current = await state();
+    const current = await state(25000, deadlineMs);
     assertDeviceTestIdentity({ identity: current.identity, allowedUsernames, expectedServerUrl });
     const selected = selectDeviceTestAccount(current.identity, secrets, selector);
     return { verified: true, ...(selected ? { selected } : {}) };
@@ -155,15 +163,16 @@ export async function createDriver({ out } = {}) {
     return answers.get(n);
   }
   const launch = async () => {
-    await vega("device", "terminate-app", "-d", DEVICE, "--appName", APP).catch(() => {});
-    await sleep(2000);
-    await vega("device", "launch-app", "-d", DEVICE, "--appName", APP);
+    const deadline = Date.now() + 30000;
+    await vegaUntil(deadline, "device", "terminate-app", "-d", DEVICE, "--appName", APP).catch(() => {});
+    if (Date.now() >= deadline) throw new Error("Fire TV app launch exceeded its startup deadline");
+    await sleep(Math.min(2000, deadline - Date.now()));
+    await vegaUntil(deadline, "device", "launch-app", "-d", DEVICE, "--appName", APP);
     // Wait for the app's parity listener with read-only state requests. Startup
     // timing varies; never use a remote key as a readiness probe.
-    const deadline = Date.now() + 30000;
     while (Date.now() < deadline) {
       try {
-        await state(Math.min(5000, Math.max(1000, deadline - Date.now())));
+        await state(Math.min(5000, deadline - Date.now()), deadline);
         return;
       } catch {
         await sleep(500);
@@ -206,7 +215,8 @@ export async function createDriver({ out } = {}) {
       return { package: APP, sourceBuildId: current.parityBuildId, sha256: createHash("sha256").update(bytes).digest("hex") };
     },
     async waitReady({ screen, phase = "capture" } = {}) {
-      await requireAccount();
+      const deadline = Date.now() + 30000;
+      await requireAccount({ deadlineMs: deadline });
       if (!screen || !["route", "focus", "capture"].includes(phase)) throw new Error("Fire TV readiness requires a screen and a supported phase");
       if (!fixedNow) throw new Error("Fire TV readiness requires setDeterministicCapture first");
       const suite = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8"));
@@ -214,14 +224,13 @@ export async function createDriver({ out } = {}) {
       if (phase !== "focus" && !record) throw new Error(`Fire TV readiness does not recognise screen ${screen}`);
       const expected = record ? (record.match ?? record.route) : null;
       const expectedRoute = screen === "actions" ? "/movies?panel=actions" : expected;
-      const deadline = Date.now() + 30000;
       let prior = "";
       let priorActivity = "";
       let stable = 0;
       let priorFrame = null;
       let readinessFrameName = "readiness-a.png";
       while (Date.now() < deadline) {
-        const current = await state(7000);
+        const current = await state(7000, deadline);
         const route = current.route === "/home" ? "/" : current.route;
         const matches = phase === "focus"
           ? typeof route === "string" && route.startsWith("/")
@@ -234,11 +243,11 @@ export async function createDriver({ out } = {}) {
         if (matches && focus && stableKey === prior && idle && activityKey === priorActivity) stable += 1;
         else stable = 0;
         if (matches && stable >= 2) {
-          await requireAccount();
-          const nextFrame = await frame(readinessFrameName);
+          await requireAccount({ deadlineMs: deadline });
+          const nextFrame = await frame(readinessFrameName, deadline);
           readinessFrameName = readinessFrameName === "readiness-a.png" ? "readiness-b.png" : "readiness-a.png";
-          if (priorFrame && await framesMatch((first, second) => execFileP("magick", ["compare", "-metric", "AE", "-fuzz", "2%", first, second, "null:"], { env }), priorFrame, nextFrame)) {
-            const confirmation = await state(7000);
+          if (priorFrame && await framesMatch((first, second) => execFileUntil("magick", ["compare", "-metric", "AE", "-fuzz", "2%", first, second, "null:"], { env }, deadline), priorFrame, nextFrame)) {
+            const confirmation = await state(7000, deadline);
             const sameRoute = confirmation.route === current.route;
             const sameFocus = JSON.stringify(confirmation.focus ?? null) === JSON.stringify(current.focus ?? null);
             const sameActivity = JSON.stringify(confirmation.activity ?? null) === activityKey;
