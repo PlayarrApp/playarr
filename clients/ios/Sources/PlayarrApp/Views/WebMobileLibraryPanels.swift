@@ -8,9 +8,33 @@ private struct WMPanelFrame<Content: View>: View {
     let kicker: String
     let title: String
     let onClose: () -> Void
+    var showsCloseFocusRing = true
     @ViewBuilder let content: () -> Content
+    @FocusState private var closeButtonFocused: Bool
 
     private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+
+    @ViewBuilder
+    private var closeButton: some View {
+        if isPad {
+            WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose)
+                .focusable()
+                .focused($closeButtonFocused)
+                .focusEffectDisabled()
+                .overlay(alignment: .trailing) {
+                    if showsCloseFocusRing || closeButtonFocused {
+                        Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false)
+                    }
+                }
+        } else {
+            WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose)
+                .overlay(alignment: .trailing) {
+                    if showsCloseFocusRing {
+                        Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false)
+                    }
+                }
+        }
+    }
 
     @ViewBuilder
     private var panelBackground: some View {
@@ -38,18 +62,14 @@ private struct WMPanelFrame<Content: View>: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose)
-                        // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
-                        .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
+                    closeButton
                 }
                 .padding(.horizontal, 34)
                 .padding(.top, 51 + WM.safeTop)
             } else {
                 WMText(kicker.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1).offset(x: 21, y: 17 + WM.safeTop)
                 WMText(title, 24, 520, lh: 34, ls: -1).offset(x: 21, y: 33 + WM.safeTop)
-                HStack { Spacer(); WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose) }
-                    // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
-                    .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
+                HStack { Spacer(); closeButton }
                     .padding(.trailing, 21).offset(y: 22 + WM.safeTop)
             }
             // The whole panel scrolls (web: the drawer body scrolls to its last row, clear of the floating nav).
@@ -148,7 +168,30 @@ struct WMLibraryFiltersPanel: View {
 }
 
 struct WMTitleActionsPanel: View {
+    private enum FocusTarget: Hashable {
+        case play, download, playlist, watched, unwatched
+    }
+
+    private struct TabletActionRowFocus: ViewModifier {
+        let focusTarget: FocusTarget
+        @FocusState.Binding var focusedAction: FocusTarget?
+        let isPad: Bool
+
+        @ViewBuilder
+        func body(content: Content) -> some View {
+            if isPad {
+                content
+                    .focusable()
+                    .focused($focusedAction, equals: focusTarget)
+                    .focusEffectDisabled()
+            } else {
+                content
+            }
+        }
+    }
+
     @Environment(\.colorScheme) private var scheme
+    @FocusState private var focusedAction: FocusTarget?
     private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
     let work: Work
     let apiClient: PlayarrAPIClient
@@ -156,7 +199,7 @@ struct WMTitleActionsPanel: View {
     let onDownload: () -> Void
     let onClose: () -> Void
 
-    private func row(_ glyph: String, _ label: String, action: @escaping () -> Void) -> some View {
+    private func row(_ glyph: String, _ label: String, focusTarget: FocusTarget, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 0) {
                 Text(glyph).font(WM.font(15, 700)).foregroundStyle(WM.pink).frame(width: isPad ? 42 : 30)
@@ -174,6 +217,15 @@ struct WMTitleActionsPanel: View {
             .overlay(RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
         }
         .buttonStyle(.plain)
+        .overlay {
+            if isPad, focusedAction == focusTarget {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(WM.ink, lineWidth: 3)
+                    .padding(-5)
+                    .allowsHitTesting(false)
+            }
+        }
+        .modifier(TabletActionRowFocus(focusTarget: focusTarget, focusedAction: $focusedAction, isPad: isPad))
     }
 
     private func mark(watched: Bool) {
@@ -186,14 +238,17 @@ struct WMTitleActionsPanel: View {
     }
 
     var body: some View {
-        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose) {
+        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose, showsCloseFocusRing: !isPad) {
             VStack(spacing: isPad ? 14 : 15) {
-                row("▶", "Play", action: onPlay)
-                row("⇩", "Download", action: onDownload)
-                row("+", "Add to Playlist", action: onPlay)
-                row("✓", "Mark as Watched") { mark(watched: true) }
-                row("○", "Mark as Unwatched") { mark(watched: false) }
+                row("▶", "Play", focusTarget: .play, action: onPlay)
+                row("⇩", "Download", focusTarget: .download, action: onDownload)
+                row("+", "Add to Playlist", focusTarget: .playlist, action: onPlay)
+                row("✓", "Mark as Watched", focusTarget: .watched) { mark(watched: true) }
+                row("○", "Mark as Unwatched", focusTarget: .unwatched) { mark(watched: false) }
             }
+        }
+        .onAppear {
+            if isPad { focusedAction = .play }
         }
     }
 }

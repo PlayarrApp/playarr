@@ -15,6 +15,7 @@ struct LibraryView: View {
     @Environment(\.playarrGoHome) private var goHome
     @AppStorage(PlayarrArtworkPrefs.sizeKey) private var artworkSize = "medium"
     @State private var showingFilters = false
+    @State private var alphabetScrollTarget: UUID?
     /// Works this profile has any progress on; a grid card for any other work shows the web's unseen dot.
     @State private var progressedWorkIDs: Set<UUID>?
     @State private var filtersOpen = false
@@ -71,8 +72,10 @@ struct LibraryView: View {
                 progressedWorkIDs = Set(((try? await apiClient.listWatchProgress()) ?? []).map(\.workID))
             }
             #if DEBUG
-            // Parity "actions": the first card's actions sheet, which a long press opens.
-            if ParityLaunch.screen == "actions", actionsWork == nil { actionsWork = viewModel.works.first }
+            // Match the web action-panel fixture, which opens from the second library card.
+            if ParityLaunch.screen == "actions", actionsWork == nil {
+                actionsWork = LibraryOverlayParity.actionsWork(in: viewModel.works, isPad: UIDevice.current.userInterfaceIdiom == .pad)
+            }
             #endif
         }
         .navigationBarHidden(true)
@@ -324,21 +327,30 @@ struct LibraryView: View {
     /// Web tablet letter rail: 44 pt targets that scroll when the 27 letters do not fit (the first 16 show).
     private func tabletAlphabetRail(_ proxy: ScrollViewProxy, height: CGFloat) -> some View {
         let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
+        let focusedItem = viewModel.works.first(where: { $0.id == focusedWork }) ?? viewModel.works.first
+        let activeLetter = LibraryAlphabet.activeLetter(sortTitle: focusedItem?.sortTitle, title: focusedItem?.title)
         return ScrollView(.vertical) {
             VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
                     ZStack {
-                        if letter == "#" { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
-                        Text(letter).font(WM.font(8.8, 700)).foregroundStyle(letter == "#" ? PlayarrStyle.background : WM.muted)
+                        if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
+                        Text(letter).font(WM.font(8.8, 700)).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         let first = viewModel.works.first { work in
-                            let initial = work.title.first.map { String($0).uppercased() } ?? "#"
-                            return letter == "#" ? !("A"..."Z").contains(initial) : initial == letter
+                            return LibraryAlphabet.activeLetter(sortTitle: work.sortTitle, title: work.title) == letter
                         }
-                        if let first { withAnimation { proxy.scrollTo(first.id, anchor: .top) } }
+                        if let first {
+                            if focusedWork == first.id {
+                                alphabetScrollTarget = nil
+                            } else {
+                                alphabetScrollTarget = first.id
+                                focusedWork = first.id
+                            }
+                            withAnimation { proxy.scrollTo(first.id, anchor: .top) }
+                        }
                     }
                 }
             }
@@ -484,7 +496,13 @@ struct LibraryView: View {
             let viewportHeight = proxy.size.height
             let gutter: CGFloat = phone ? 16 : max(28, viewportWidth * 0.058)
             let matchesWebScreenGrid = !phone && viewModel.viewMode == .screen
-            let selectedTabletWorkID = matchesWebScreenGrid ? tabletGridFocusedWorkID() : nil
+            let selectedTabletWorkID = LibraryOverlayParity.showsGridFocus(
+                isScreenGrid: matchesWebScreenGrid,
+                filtersVisible: showingFilters,
+                actionsVisible: actionsWork != nil
+            )
+                ? tabletGridFocusedWorkID()
+                : nil
             let railInset: CGFloat = phone ? 16 : min(max(28, viewportWidth * 0.028), 54)
             let controlEdge = max(min(max(5, viewportWidth * 0.0065), 14), 0)
             let controlGap = min(max(18, viewportWidth * 0.015), 30)
@@ -613,6 +631,10 @@ struct LibraryView: View {
                         #endif
                     }
                     .onChange(of: focusedWork) { previous, target in
+                        if let target, alphabetScrollTarget == target {
+                            alphabetScrollTarget = nil
+                            return
+                        }
                         guard matchesWebScreenGrid, previous != nil, let target else { return }
                         withAnimation(.easeInOut(duration: 0.2)) {
                             scrollProxy.scrollTo(target, anchor: .center)
@@ -708,11 +730,26 @@ struct LibraryView: View {
             WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
                 .padding(.top, 26)
             if let overview = work.overview {
+                let overviewSize: CGFloat = isPad ? min(max(16 * 0.64, viewportWidth * 0.0072), 16 * 0.92) : 11.5
+                let overviewFont = isPad
+                    ? DesignFont.uiFont(
+                        family: "Nunito Sans",
+                        postScriptName: DesignFont.nunitoPostScriptName,
+                        size: overviewSize,
+                        weight: 600,
+                        fixedAxes: DesignFont.nunitoAxes
+                    )
+                    : nil
+                let overviewWidth = isPad
+                    ? (overviewFont.map { (String(repeating: "0", count: 42) as NSString).size(withAttributes: [.font: $0]).width } ?? overviewSize * 23.5)
+                    : 0
+                let overviewLineHeight = overviewFont?.lineHeight ?? overviewSize * 1.36
                 Text(overview)
-                    .font(WM.font(11.5, 500))
-                    .foregroundStyle(PlayarrStyle.inkSoft)
-                    .lineSpacing(2.5)
+                    .font(isPad ? WM.font(overviewSize, 600) : WM.font(11.5, 500))
+                    .foregroundStyle(isPad ? WM.detailSoft : PlayarrStyle.inkSoft)
+                    .lineSpacing(isPad ? max(0, overviewSize * 1.58 - overviewLineHeight) : 2.5)
                     .lineLimit(5)
+                    .frame(maxWidth: isPad ? overviewWidth : nil, alignment: .leading)
                     .padding(.top, 20)
             }
         }
@@ -911,6 +948,31 @@ struct LibraryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(PlayarrStyle.ink)
+    }
+}
+
+enum LibraryOverlayParity {
+    static func showsGridFocus(isScreenGrid: Bool, filtersVisible: Bool, actionsVisible: Bool) -> Bool {
+        isScreenGrid && !filtersVisible && !actionsVisible
+    }
+
+    static func actionsWork<Item>(in items: [Item], isPad: Bool) -> Item? {
+        guard isPad else { return items.first }
+        return items.dropFirst().first ?? items.first
+    }
+}
+
+enum LibraryAlphabet {
+    static func activeLetter(sortTitle: String?, title: String?) -> String {
+        let source = sortTitle?.isEmpty == false ? sortTitle : title
+        let normalised = source?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .decomposedStringWithCompatibilityMapping
+            .unicodeScalars
+            .filter { !CharacterSet.nonBaseCharacters.contains($0) }
+        guard let first = normalised?.first else { return "#" }
+        let letter = String(first).uppercased()
+        return ("A"..."Z").contains(letter) ? letter : "#"
     }
 }
 

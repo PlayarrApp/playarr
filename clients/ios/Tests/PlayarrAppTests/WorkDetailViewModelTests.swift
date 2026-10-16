@@ -163,6 +163,30 @@ final class WorkDetailViewModelTests: XCTestCase {
     }
 }
 
+final class LibraryOverlayParityTests: XCTestCase {
+    func testLibraryFocusIsSuppressedBehindEitherOverlay() {
+        XCTAssertTrue(LibraryOverlayParity.showsGridFocus(isScreenGrid: true, filtersVisible: false, actionsVisible: false))
+        XCTAssertFalse(LibraryOverlayParity.showsGridFocus(isScreenGrid: true, filtersVisible: true, actionsVisible: false))
+        XCTAssertFalse(LibraryOverlayParity.showsGridFocus(isScreenGrid: true, filtersVisible: false, actionsVisible: true))
+        XCTAssertFalse(LibraryOverlayParity.showsGridFocus(isScreenGrid: false, filtersVisible: false, actionsVisible: false))
+    }
+
+    func testActionsFixtureUsesSecondItemAndFallsBackForSingleItem() {
+        XCTAssertEqual(LibraryOverlayParity.actionsWork(in: ["first", "second", "third"], isPad: true), "second")
+        XCTAssertEqual(LibraryOverlayParity.actionsWork(in: ["only"], isPad: true), "only")
+        XCTAssertNil(LibraryOverlayParity.actionsWork(in: [String](), isPad: true))
+        XCTAssertEqual(LibraryOverlayParity.actionsWork(in: ["first", "second"], isPad: false), "first")
+    }
+
+    func testAlphabetRailTracksTheSortTitleInitial() {
+        XCTAssertEqual(LibraryAlphabet.activeLetter(sortTitle: "Sample entry", title: "Display text"), "S")
+        XCTAssertEqual(LibraryAlphabet.activeLetter(sortTitle: "7 sample entry", title: "Display text"), "#")
+        XCTAssertEqual(LibraryAlphabet.activeLetter(sortTitle: "  Éclair", title: "Display text"), "E")
+        XCTAssertEqual(LibraryAlphabet.activeLetter(sortTitle: "", title: "Fallback title"), "F")
+        XCTAssertEqual(LibraryAlphabet.activeLetter(sortTitle: nil, title: nil), "#")
+    }
+}
+
 @MainActor
 final class HomeParityTests: XCTestCase {
     func testHomeRailsMatchWebOrderingAndDoNotRepeatTitles() {

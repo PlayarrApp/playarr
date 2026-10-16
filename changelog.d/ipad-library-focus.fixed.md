@@ -1,0 +1,1 @@
+- Align iPad library action-panel focus with the web drawer and keep the selected alphabet letter in sync when jumping.
