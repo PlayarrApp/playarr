@@ -60,6 +60,7 @@ jobs:
         run: node .github/scripts/apple-test-simulator/main.js
 
       - name: Render the screens
+        id: render
         working-directory: clients/ios
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
@@ -70,7 +71,23 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$SIMULATOR_UDID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
-          xcodebuild test -scheme PlayarrApp -configuration Debug \
+          DERIVED_DATA="$RUNNER_TEMP/page-header-derived"
+          xcrun simctl boot "$SIMULATOR_UDID"
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b 2>&1 | tee "$RUNNER_TEMP/page-header-boot-log.txt"
+          xcodebuild build-for-testing -scheme PlayarrApp -configuration Debug \
+            -derivedDataPath "$DERIVED_DATA" \
+            -workspace "$GITHUB_WORKSPACE/clients/ios/Playarr.xcworkspace" \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" 2>&1 | tee "$RUNNER_TEMP/page-header-build-log.txt"
+          APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphonesimulator/Playarr.app"
+          [[ -d "$APP_PATH" ]]
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP_PATH/Info.plist")
+          [[ -n "$BUNDLE_ID" ]]
+          xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH" 2>&1 | tee "$RUNNER_TEMP/page-header-install-log.txt"
+          INSTALLED_APP=$(xcrun simctl get_app_container "$SIMULATOR_UDID" "$BUNDLE_ID" app)
+          [[ -d "$INSTALLED_APP" ]]
+          printf 'Installed app bundle %s at %s\n' "$BUNDLE_ID" "$INSTALLED_APP" | tee "$RUNNER_TEMP/page-header-install-check.txt"
+          xcodebuild test-without-building -scheme PlayarrApp -configuration Debug \
+            -derivedDataPath "$DERIVED_DATA" \
             -only-testing:PlayarrAppUITests/PageHeaderCaptureUITests \
             -resultBundlePath "$RUNNER_TEMP/page-header.xcresult" \
             -workspace "$GITHUB_WORKSPACE/clients/ios/Playarr.xcworkspace" \
@@ -79,9 +96,27 @@ jobs:
 
       - name: Export the screenshots
         if: always()
+        env:
+          RENDER_OUTCOME: ${{ steps.render.outcome }}
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
         run: |
           mkdir -p "$RUNNER_TEMP/shots"
           xcrun xcresulttool export attachments --path "$RUNNER_TEMP/page-header.xcresult" --output-path "$RUNNER_TEMP/shots" || true
+          for log in "$RUNNER_TEMP"/page-header-*-log.txt "$RUNNER_TEMP"/page-header-install-check.txt; do
+            if [[ -f "$log" ]]; then cp "$log" "$RUNNER_TEMP/shots/"; fi
+          done
+          if [[ "$RENDER_OUTCOME" != success ]]; then
+            mkdir -p "$RUNNER_TEMP/shots/diagnostics"
+            if [[ -d "$RUNNER_TEMP/page-header.xcresult" ]]; then
+              xcrun xcresulttool get test-results summary --path "$RUNNER_TEMP/page-header.xcresult" --format json > "$RUNNER_TEMP/shots/diagnostics/test-summary.json" 2>&1 || true
+              xcrun xcresulttool export diagnostics --path "$RUNNER_TEMP/page-header.xcresult" --output-path "$RUNNER_TEMP/shots/diagnostics/xcresult" > "$RUNNER_TEMP/shots/diagnostics/xcresult-export.txt" 2>&1 || true
+            fi
+            if [[ -n "$SIMULATOR_UDID" ]]; then
+              xcrun simctl list devices --json > "$RUNNER_TEMP/shots/diagnostics/simulator-devices.json" 2>&1 || true
+              xcrun simctl get_app_container "$SIMULATOR_UDID" app.playarr.ios app > "$RUNNER_TEMP/shots/diagnostics/installed-app-container.txt" 2>&1 || true
+              xcrun simctl spawn "$SIMULATOR_UDID" log show --last 10m --style compact --predicate 'process == "SpringBoard" OR process == "Playarr" OR process == "Runner" OR process == "xctest"' > "$RUNNER_TEMP/shots/diagnostics/simulator-launch.log" 2>&1 || true
+            fi
+          fi
 
       - name: Upload the screenshots
         if: always()

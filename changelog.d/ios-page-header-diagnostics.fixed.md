@@ -1,0 +1,1 @@
+- Wait for the iOS capture simulator to boot and verify app installation before UI tests; retain failure diagnostics when launch stalls.
