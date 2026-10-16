@@ -632,12 +632,12 @@ struct LibraryView: View {
                         }
                         .id(work.id)
                         .buttonStyle(.plain)
-                        .focusable(LibraryOverlayParity.allowsGridNativeFocus(
+                        .modifier(LibraryGridFocusModifier(
                             isScreenGrid: matchesWebScreenGrid,
-                            modalVisible: showingFilters || actionsWork != nil
+                            modalVisible: showingFilters || actionsWork != nil,
+                            focusedWork: $focusedWork,
+                            workID: work.id
                         ))
-                        .focused($focusedWork, equals: work.id)
-                        .focusEffectDisabled()
                         .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in presentActions(for: work) })
                         .task {
                             if work.id == viewModel.works.last?.id { await viewModel.loadMore() }
@@ -998,6 +998,28 @@ enum LibraryOverlayParity {
     static func actionsWork<Item>(in items: [Item], isPad: Bool) -> Item? {
         guard isPad else { return items.first }
         return items.dropFirst().first ?? items.first
+    }
+}
+
+private struct LibraryGridFocusModifier: ViewModifier {
+    let isScreenGrid: Bool
+    let modalVisible: Bool
+    @FocusState.Binding var focusedWork: UUID?
+    let workID: UUID
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isScreenGrid {
+            content
+                .focusable(LibraryOverlayParity.allowsGridNativeFocus(
+                    isScreenGrid: isScreenGrid,
+                    modalVisible: modalVisible
+                ))
+                .focused($focusedWork, equals: workID)
+                .focusEffectDisabled()
+        } else {
+            content
+        }
     }
 }
 

@@ -1,0 +1,1 @@
+- Keep custom focus handling and modal grid suppression on tablet screen-grid links; preserve native focus behaviour in other library layouts.
