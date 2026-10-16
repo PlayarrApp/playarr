@@ -10,6 +10,12 @@ on:
       - clients/ios/**
       - .github/workflows/ios-safe-area.yml
   workflow_dispatch:
+    inputs:
+      exclusive_fixture_window:
+        description: Confirm no other capture is using the shared device-test account
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -23,6 +29,7 @@ jobs:
     name: Safe-area capture (${{ matrix.device }})
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         device: [iphone, ipad]
     runs-on: macos-latest
@@ -75,15 +82,29 @@ jobs:
           TEST_RUNNER_PLAYARR_UI_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_RUNNER_PLAYARR_UI_TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           TEST_RUNNER_PLAYARR_UI_TEST_PLAY_FILE: ${{ steps.fixture.outputs.file }}
+          EVENT_NAME: ${{ github.event_name }}
+          EXCLUSIVE_FIXTURE_WINDOW: ${{ inputs.exclusive_fixture_window }}
         run: |
           set -euo pipefail
           [[ "$SIMULATOR_UDID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$EXCLUSIVE_FIXTURE_WINDOW" == "true" ]]; then
+            export TEST_RUNNER_PLAYARR_SAFE_AREA_EXCLUSIVE_FIXTURE_WINDOW=1
+          fi
           xcodebuild test -scheme PlayarrApp -configuration Debug \
             -only-testing:PlayarrAppUITests/SafeAreaCaptureUITests \
             -resultBundlePath "$RUNNER_TEMP/safe-area.xcresult" \
             -workspace "$GITHUB_WORKSPACE/clients/ios/Playarr.xcworkspace" \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" 2>&1 | tee "$RUNNER_TEMP/safe-area-log.txt"
           grep -Fq "SafeAreaCaptureUITests testScreensClearTheSafeAreas]' passed" "$RUNNER_TEMP/safe-area-log.txt"
+          grep -Fq "SafeAreaCaptureUITests testPlayerFixtureWindowRequiresExplicitOptIn]' passed" "$RUNNER_TEMP/safe-area-log.txt"
+          for route in home movies detail settings; do
+            grep -Fq "SAFE_AREA_ROUTE_${route}=passed" "$RUNNER_TEMP/safe-area-log.txt"
+          done
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$EXCLUSIVE_FIXTURE_WINDOW" == "true" ]]; then
+            grep -Fq "SafeAreaCaptureUITests testPlayerRouteClearsTheSafeAreas]' passed" "$RUNNER_TEMP/safe-area-log.txt"
+          else
+            grep -Fq "SafeAreaCaptureUITests testPlayerRouteClearsTheSafeAreas]' skipped" "$RUNNER_TEMP/safe-area-log.txt"
+          fi
 
       - name: Export the screenshots
         if: always()
