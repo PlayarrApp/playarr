@@ -8,6 +8,7 @@ import "../components/Qr.js" as Qr
 // when it is created, so this device remembers it per server and profile, as the web does.
 PlayarrPage {
     id: page
+    objectName: "calendar-link"
     readonly property real gut: 20.3 * Tokens.u
     readonly property string storeKey: "cal.link." + Api.serverUrl + "|" + Api.profileId
     property string url: Api.setting(storeKey, "")
@@ -55,6 +56,12 @@ PlayarrPage {
         Label { x: page.gut; y: 19 * Tokens.u; text: qsTr("CALENDAR"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 1 * Tokens.u }
         Label { x: page.gut; y: 35.5 * Tokens.u; text: qsTr("Calendar link"); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 21.5 * Tokens.u; font.letterSpacing: -1 * Tokens.u }
         MouseArea {
+            property bool navigationFocusable: true
+            property string parityLabel: qsTr("Close")
+            property bool navigationInitialFocus: true
+            property int parityRail: 0
+            property int parityIndex: 0
+            function navigationActivate() { pageStack.pop() }
             x: parent.width - page.gut - width; y: 20 * Tokens.u
             width: 43.7 * Tokens.u; height: width
             onClicked: pageStack.pop()
@@ -77,7 +84,7 @@ PlayarrPage {
             }
             PillButton {
                 visible: page.failure !== ""; text: qsTr("Try again"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u
-                implicitHeight: 36 * Tokens.u; onClicked: page.open()
+                parityIndex: 1; navigationActivate: function() { page.open() }; implicitHeight: 36 * Tokens.u; onClicked: page.open()
             }
             Label {
                 visible: page.busy && page.url === ""; text: qsTr("Getting your link…")
@@ -98,6 +105,7 @@ PlayarrPage {
                 text: page.copied ? qsTr("Copied") : qsTr("Copy link")
                 labelFamily: Tokens.family820; fontSize: 10.8 * Tokens.u; implicitHeight: 43.7 * Tokens.u; implicitWidth: 92 * Tokens.u
                 fill: Tokens.dark ? "#dfdcdd" : "#4d4248"; fillInk: Tokens.dark ? "#211d21" : "#ffffff"
+                parityIndex: 1; navigationActivate: function() { urlField.selectAll(); urlField.copy(); urlField.deselect(); page.copied = true }
                 onClicked: { urlField.selectAll(); urlField.copy(); urlField.deselect(); page.copied = true }
             }
             Rectangle {
@@ -142,9 +150,9 @@ PlayarrPage {
             }
             Row {
                 spacing: 8 * Tokens.u; visible: page.url !== "" || page.needsReset
-                PillButton { visible: !page.confirming; text: qsTr("Reset link"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u; implicitHeight: 40 * Tokens.u; onClicked: page.confirming = true }
-                PillButton { visible: page.confirming; primary: true; text: qsTr("Reset link"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u; implicitHeight: 40 * Tokens.u; enabled: !page.busy; onClicked: page.reset() }
-                PillButton { visible: page.confirming; text: qsTr("Cancel"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u; implicitHeight: 40 * Tokens.u; onClicked: page.confirming = false }
+                PillButton { visible: !page.confirming; parityIndex: 2; navigationActivate: function() { page.confirming = true }; text: qsTr("Reset link"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u; implicitHeight: 40 * Tokens.u; onClicked: page.confirming = true }
+                PillButton { visible: page.confirming; parityIndex: 3; navigationActivate: function() { page.reset() }; primary: true; text: qsTr("Reset link"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u; implicitHeight: 40 * Tokens.u; enabled: !page.busy; onClicked: page.reset() }
+                PillButton { visible: page.confirming; parityIndex: 4; navigationActivate: function() { page.confirming = false }; text: qsTr("Cancel"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u; implicitHeight: 40 * Tokens.u; onClicked: page.confirming = false }
             }
         }
         VerticalScrollDecorator {}

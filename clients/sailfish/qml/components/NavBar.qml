@@ -36,6 +36,11 @@ Rectangle {
         x: 4.4 * Tokens.u   // web: 46.1 css px cells, the row starts a little in and runs past the bar's right edge
         y: 6 * Tokens.u; height: parent.height - 12 * Tokens.u; width: 8 * 46.1 * Tokens.u
         MouseArea {
+            objectName: "parity-nav-profile"
+            property bool navigationFocusable: true
+            property int parityRail: 0
+            property int parityIndex: 0
+            function navigationActivate() { root.profileClicked() }
             width: 46.1 * Tokens.u
             height: parent.height
             onClicked: root.profileClicked()
@@ -45,6 +50,11 @@ Rectangle {
         Repeater {
             model: root.tabs
             MouseArea {
+                objectName: "parity-nav-" + modelData
+                property bool navigationFocusable: true
+                property int parityRail: 0
+                property int parityIndex: index + 1
+                function navigationActivate() { root.selected(modelData) }
                 width: 46.1 * Tokens.u
                 height: parent.height
                 onClicked: root.selected(modelData)

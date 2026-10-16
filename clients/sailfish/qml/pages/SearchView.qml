@@ -49,6 +49,9 @@ Item {
         Image { x: 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; width: 14 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("search", Tokens.ink) }
         TextInput {
             id: input
+            property bool navigationFocusable: true
+            property bool navigationInitialFocus: true
+            property string parityLabel: input.text || qsTr("Search")
             anchors { left: parent.left; leftMargin: 42 * Tokens.u; right: parent.right; rightMargin: 18 * Tokens.u; verticalCenter: parent.verticalCenter }
             color: Tokens.ink; selectionColor: Tokens.brandPink; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u
             inputMethodHints: Qt.ImhNoPredictiveText

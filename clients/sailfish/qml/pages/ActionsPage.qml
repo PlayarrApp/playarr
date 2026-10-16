@@ -5,9 +5,13 @@ import "../components"
 // Title actions (press and hold a title): play, download, add to playlist, mark watched or unwatched.
 PlayarrPage {
     id: page
+    objectName: "actions"
     property var work
     property var detail: null
     property var playlists: []
+    property bool canDownload: false
+    property bool downloadCapabilityLoaded: false
+    readonly property bool downloadActionVisible: canDownload && !!detail && !!detail.media_file_id
     property bool showPlaylists: false
     property string note: ""
 
@@ -54,6 +58,10 @@ PlayarrPage {
     Component.onCompleted: {
         Api.request("GET", "/api/v1/catalog/" + work.id, null, function (st, d) { if (st === 200 && d) detail = d })
         Api.request("GET", "/api/v1/playlists", null, function (st, d) { if (st === 200 && d) playlists = d.filter(function (p) { return !p.is_system }) })
+        Api.request("GET", "/api/v1/users/me/capabilities", null, function (st, c) {
+            canDownload = st === 200 && c && c.can_download === true
+            downloadCapabilityLoaded = true
+        })
     }
 
     SilicaFlickable {
@@ -81,6 +89,9 @@ PlayarrPage {
                 }
                 MouseArea {
                     id: closeBtn
+                    objectName: "parity-actions-close"
+                    property bool navigationFocusable: true
+                    function navigationActivate() { pageStack.pop() }
                     anchors { right: parent.right; rightMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 20.3 * Tokens.u }
                     width: 43.7 * Tokens.u; height: width
                     onClicked: pageStack.pop()
@@ -88,15 +99,15 @@ PlayarrPage {
                     Label { anchors.centerIn: parent; text: "\u2715"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10 * Tokens.u }
                 }
             }
-            ActionRow { glyph: "▶"; text: qsTr("Play"); primary: true; onClicked: page.play() }
-            ActionRow { glyph: "⤓"; text: qsTr("Download"); visible: !!page.detail && !!page.detail.media_file_id; onClicked: page.download() }
-            ActionRow { glyph: "+"; text: qsTr("Add to Playlist"); visible: page.playlists.length > 0; onClicked: page.showPlaylists = !page.showPlaylists }
+            ActionRow { glyph: "▶"; text: qsTr("Play"); primary: true; navigationInitialFocus: true; parityIndex: 0; navigationActivate: function() { page.play() }; onClicked: page.play() }
+            ActionRow { glyph: "⤓"; text: qsTr("Download"); visible: page.downloadActionVisible; parityIndex: 1; navigationActivate: function() { page.download() }; onClicked: page.download() }
+            ActionRow { glyph: "+"; text: qsTr("Add to Playlist"); visible: page.playlists.length > 0; parityIndex: 2; navigationActivate: function() { page.showPlaylists = !page.showPlaylists }; onClicked: page.showPlaylists = !page.showPlaylists }
             Repeater {
                 model: page.showPlaylists ? page.playlists : []
-                ActionRow { glyph: "♪"; text: modelData.name; x: Tokens.pad * 2; width: col.width - 3 * Tokens.pad; onClicked: page.addTo(modelData) }
+                ActionRow { glyph: "♪"; text: modelData.name; x: Tokens.pad * 2; width: col.width - 3 * Tokens.pad; parityIndex: 3 + index; navigationActivate: function() { page.addTo(modelData) }; onClicked: page.addTo(modelData) }
             }
-            ActionRow { glyph: "✓"; text: qsTr("Mark as Watched"); onClicked: page.mark(true) }
-            ActionRow { glyph: "○"; text: qsTr("Mark as Unwatched"); onClicked: page.mark(false) }
+            ActionRow { glyph: "✓"; text: qsTr("Mark as Watched"); parityIndex: 3 + (page.showPlaylists ? page.playlists.length : 0); navigationActivate: function() { page.mark(true) }; onClicked: page.mark(true) }
+            ActionRow { glyph: "○"; text: qsTr("Mark as Unwatched"); parityIndex: 4 + (page.showPlaylists ? page.playlists.length : 0); navigationActivate: function() { page.mark(false) }; onClicked: page.mark(false) }
             Label { x: Tokens.pad; visible: page.note !== ""; text: page.note; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u }
         }
         EdgeFade { target: flick }
