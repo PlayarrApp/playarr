@@ -1,1 +1,1 @@
-- Align tablet Library alphabet selection and focused-card styling with the web client.
+- Match tablet Library alphabet navigation to web paging, descending rail order, and visible-row tracking, and keep the stage gradient aligned with its offset panel.

@@ -14,6 +14,8 @@ struct LibraryView: View {
     @FocusState private var focusedWork: UUID?
     /// Arrow keys move this card index in the phone grid; the ring and the scroll follow it.
     @State private var keyIndex: Int?
+    @State private var visibleWorkID: UUID?
+    @State private var alphabetJumpTask: Task<Void, Never>?
     @FocusState private var gridKeys: Bool
     let apiClient: PlayarrAPIClient
     let downloadRepository: DownloadRepository
@@ -349,13 +351,14 @@ struct LibraryView: View {
 
     /// Web tablet letter rail: 44 pt targets that scroll when the 27 letters do not fit (the first 16 show).
     private func tabletAlphabetRail(_ proxy: ScrollViewProxy, height: CGFloat) -> some View {
-        let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
-        let activeWork = focusedWork.flatMap { id in viewModel.works.first { $0.id == id } }
+        let displayedLetters = LibraryViewModel.alphabetLetters(order: viewModel.order)
+        let activeWork = visibleWorkID.flatMap { id in viewModel.works.first { $0.id == id } }
+            ?? focusedWork.flatMap { id in viewModel.works.first { $0.id == id } }
             ?? viewModel.works.first
         let activeLetter = activeWork.map(LibraryViewModel.alphabetLetter(for:)) ?? "#"
         return ScrollView(.vertical) {
             VStack(spacing: 0) {
-                ForEach(letters, id: \.self) { letter in
+                ForEach(displayedLetters, id: \.self) { letter in
                     ZStack {
                         if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
                         Text(letter).font(WM.font(8.8, 700)).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
@@ -363,15 +366,12 @@ struct LibraryView: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        let orderedLetters = viewModel.order == "desc" ? Array(letters.reversed()) : letters
-                        guard let targetPosition = orderedLetters.firstIndex(of: letter) else { return }
-                        let first = viewModel.works.first { work in
-                            guard let position = orderedLetters.firstIndex(of: LibraryViewModel.alphabetLetter(for: work)) else { return false }
-                            return position >= targetPosition
-                        }
-                        if let first {
+                        alphabetJumpTask?.cancel()
+                        alphabetJumpTask = Task {
+                            guard let first = await viewModel.firstWork(atOrAfterAlphabetLetter: letter) else { return }
+                            guard !Task.isCancelled else { return }
                             focusedWork = first.id
-                            withAnimation { proxy.scrollTo(first.id, anchor: .top) }
+                            proxy.scrollTo(first.id, anchor: .center)
                         }
                     }
                 }
@@ -603,6 +603,14 @@ struct LibraryView: View {
                         }
                         .focusable(!phone)
                         .focused($focusedWork, equals: work.id)
+                        .background {
+                            GeometryReader { geometry in
+                                Color.clear.preference(
+                                    key: LibraryWorkFrameKey.self,
+                                    value: [work.id: geometry.frame(in: .named("library-work-grid"))]
+                                )
+                            }
+                        }
                         .scaleEffect(
                             !phone && viewModel.viewMode != .list && work.id == (focusedWork ?? viewModel.works.first?.id)
                                 ? LibraryFocusMetrics.tabletCardScale : 1,
@@ -627,6 +635,15 @@ struct LibraryView: View {
                     }
                     .scrollClipDisabled() // the first tile's focus ring and glow are not cut at the grid edge
                     .webEdgeFade(.vertical, enabled: !phone)
+                    .coordinateSpace(name: "library-work-grid")
+                    .onPreferenceChange(LibraryWorkFrameKey.self) { frames in
+                        guard !phone else { return }
+                        visibleWorkID = LibraryViewModel.visibleWorkID(
+                            works: viewModel.works,
+                            frames: frames,
+                            viewportHeight: viewportHeight
+                        )
+                    }
                     .overlay(alignment: .topTrailing) {
                         if !phone && !viewModel.isSearchMode && viewModel.sort == "title" && viewModel.viewMode != .list {
                             tabletAlphabetRail(scrollProxy, height: proxy.size.height - 263 - 24)
@@ -637,9 +654,6 @@ struct LibraryView: View {
                 }
             }
             .frame(width: panelWidth, height: proxy.size.height)
-            .offset(x: phone ? 0 : proxy.size.width * 0.35)
-            .refreshable { await viewModel.load() }
-            .scrollIndicators(.hidden)
             .background {
                 if phone {
                     PlayarrStyle.surface.opacity(0.96)
@@ -664,6 +678,13 @@ struct LibraryView: View {
                     )
                 }
             }
+            .offset(x: phone ? 0 : proxy.size.width * 0.35)
+            .onDisappear {
+                alphabetJumpTask?.cancel()
+                alphabetJumpTask = nil
+            }
+            .refreshable { await viewModel.load() }
+            .scrollIndicators(.hidden)
         }
     }
 
@@ -933,6 +954,14 @@ struct LibraryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(PlayarrStyle.ink)
+    }
+}
+
+private struct LibraryWorkFrameKey: PreferenceKey {
+    static var defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
     }
 }
 

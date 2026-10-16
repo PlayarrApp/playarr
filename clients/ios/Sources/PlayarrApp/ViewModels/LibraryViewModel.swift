@@ -52,10 +52,15 @@ public final class LibraryViewModel {
         alphabetLetter(for: work.sortTitle.isEmpty ? work.title : work.sortTitle)
     }
 
+    static func alphabetLetters(order: String) -> [String] {
+        let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
+        return order == "desc" ? Array(letters.reversed()) : letters
+    }
+
     public var canLoadMore: Bool {
         guard searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         if let total { return Int64(works.count) < total }
-        return works.count == pageSize
+        return receivedFullPage
     }
 
     private let apiClient: PlayarrAPIClient
@@ -63,6 +68,7 @@ public final class LibraryViewModel {
     private var loadRequestID = 0
     private var languageFacetRequestID = 0
     private var languageSelectionRevision = 0
+    private var receivedFullPage = false
 
     public init(apiClient: PlayarrAPIClient) {
         self.apiClient = apiClient
@@ -114,6 +120,7 @@ public final class LibraryViewModel {
                 guard requestID == loadRequestID else { return }
                 works = selectedKind == nil ? page.items : ordered(page.items)
                 total = page.total
+                receivedFullPage = page.items.count == pageSize
             } else {
                 async let foundWorks = apiClient.searchCatalog(query: trimmedQuery, limit: pageSize)
                 async let foundPlaylists = apiClient.listPlaylists()
@@ -195,6 +202,7 @@ public final class LibraryViewModel {
             works.append(contentsOf: page.items.filter { !existing.contains($0.id) })
             works = ordered(works)
             total = page.total ?? total
+            receivedFullPage = page.items.count == pageSize
         } catch {
             // Keep the loaded page visible; pull-to-refresh remains available.
         }
@@ -253,5 +261,67 @@ public final class LibraryViewModel {
     private func toggled(_ code: String, in selection: [String]) -> [String] {
         if selection.contains(code) { return selection.filter { $0 != code } }
         return (selection + [code]).sorted()
+    }
+
+    /// Finds the first work at or after a rail letter in display order, paging to that work or the catalogue end.
+    public func firstWork(atOrAfterAlphabetLetter letter: String) async -> Work? {
+        let requestID = loadRequestID
+        while !Task.isCancelled {
+            guard requestID == loadRequestID else { return nil }
+            if let target = Self.firstWork(atOrAfterAlphabetLetter: letter, order: order, works: works) {
+                return target
+            }
+            // A visible-card request may already be loading the page with the target.
+            while isLoadingMore {
+                do {
+                    try await Task.sleep(nanoseconds: 20_000_000)
+                } catch {
+                    return nil
+                }
+            }
+            guard !Task.isCancelled, requestID == loadRequestID else { return nil }
+            if let target = Self.firstWork(atOrAfterAlphabetLetter: letter, order: order, works: works) {
+                return target
+            }
+            guard canLoadMore else { return works.last }
+            let previousCount = works.count
+            await loadMore()
+            guard !Task.isCancelled, requestID == loadRequestID else { return nil }
+            if works.count == previousCount {
+                return Self.firstWork(atOrAfterAlphabetLetter: letter, order: order, works: works) ?? works.last
+            }
+        }
+        return nil
+    }
+
+    static func firstWork(atOrAfterAlphabetLetter letter: String, order: String, works: [Work]) -> Work? {
+        let orderedLetters = alphabetLetters(order: order)
+        guard let targetPosition = orderedLetters.firstIndex(of: letter) else { return nil }
+        return works.first { work in
+            guard let position = orderedLetters.firstIndex(of: alphabetLetter(for: work)) else { return false }
+            return position >= targetPosition
+        }
+    }
+
+    static func visibleWorkID(works: [Work], frames: [UUID: CGRect], viewportHeight: CGFloat) -> UUID? {
+        let trackingLine = min(64, viewportHeight * 0.1)
+        let positions = works.enumerated().compactMap { index, work -> (index: Int, id: UUID, frame: CGRect)? in
+            guard let frame = frames[work.id] else { return nil }
+            return (index, work.id, frame)
+        }
+        if let crossing = positions
+            .filter({ $0.frame.minY <= trackingLine && $0.frame.maxY >= trackingLine })
+            .min(by: { $0.index < $1.index }) {
+            return crossing.id
+        }
+        let visible = positions.filter { $0.frame.maxY > 0 && $0.frame.minY < viewportHeight }
+        if let preceding = visible
+            .filter({ $0.frame.minY <= trackingLine })
+            .max(by: {
+                $0.frame.minY == $1.frame.minY ? $0.index > $1.index : $0.frame.minY < $1.frame.minY
+            }) {
+            return preceding.id
+        }
+        return visible.min(by: { $0.index < $1.index })?.id
     }
 }
