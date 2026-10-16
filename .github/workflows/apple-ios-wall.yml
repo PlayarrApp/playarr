@@ -188,9 +188,41 @@ jobs:
           }
           download_package() {
             local dir="$1"
+            local log_file="$RUNNER_TEMP/ios18-download-${PART}.log" download_exit=0
             mkdir -p "$dir"
-            xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir" >/dev/null 2>&1 || return 1
-            find_package "$dir"
+            xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir" >"$log_file" 2>&1 || download_exit=$?
+            if (( download_exit != 0 )); then
+              echo "Runtime download command failed with exit=$download_exit"
+              python3 - "$log_file" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          lines = pathlib.Path(sys.argv[1]).read_text(errors="replace").splitlines()
+          user_root = "/" + "Users" + "/"
+          for line in lines[-12:]:
+              line = re.sub(r"https?://\S+", "<url>", line)
+              line = re.sub(re.escape(user_root) + r"[^/\s]+(?:/[^\s]*)?", "<runner-path>", line)
+              line = re.sub(r"(?i)(token|authorization|password|secret)(\s*[:=]\s*)\S+", r"\1\2<redacted>", line)
+              print(line[:500])
+          if not lines:
+              print("Xcode returned no diagnostic output")
+          PY
+              return 1
+            fi
+            if ! find_package "$dir"; then
+              echo "Runtime download command succeeded but did not produce exactly one supported package"
+              python3 - "$dir" <<'PY'
+          import pathlib
+          import sys
+
+          directory = pathlib.Path(sys.argv[1])
+          for entry in sorted(directory.iterdir(), key=lambda item: item.name):
+              kind = "directory" if entry.is_dir() else "file" if entry.is_file() else "other"
+              print(f"Runtime download output: {entry.name} ({kind})")
+          PY
+              return 1
+            fi
           }
           copy_for_import() {
             local source="$1" dest="$2"
