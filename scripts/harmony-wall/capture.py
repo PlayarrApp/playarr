@@ -265,7 +265,6 @@ if code is None:
     abort("no link code for the test server in the Previewer log")
 if subprocess.run([sys.executable, os.path.join(HERE, "approve_link.py"), code]).returncode != 0:
     abort("link code approval failed")
-subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")])  # best effort: Home's On deck matches the web reference
 time.sleep(20)
 verify_capture_identity()
 debug("after-approve")
@@ -277,6 +276,8 @@ if device == "phone":
 click(*PROFILE_CLICK)
 time.sleep(20)
 verify_capture_identity()
+if subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")]).returncode != 0:
+    abort("canonical progress seeding failed; refusing non-deterministic screenshots")
 debug("after-profile")
 
 SCREENS_TV = None
