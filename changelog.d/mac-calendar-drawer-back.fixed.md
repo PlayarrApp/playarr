@@ -1,0 +1,1 @@
+- macOS calendar parity captures now fail if the Filters drawer is left open, and Escape closes the active drawer.

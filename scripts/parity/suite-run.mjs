@@ -8,7 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { assertCalendarPanelClosed, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { mergeSelectedResults } from "./selective-results.mjs";
 import { resolveCaptureEnvironment, withCaptureState } from "./capture-state.mjs";
@@ -156,6 +156,7 @@ if (only.includes("screens")) {
       try {
         await reach(s);
         await waitReady(s.id, "capture");
+        assertCalendarPanelClosed(s.id, await driver.location());
         const path = join(out, theme, `${s.id}.png`);
         await driver.screenshot(path);
         assertNotInterrupted();

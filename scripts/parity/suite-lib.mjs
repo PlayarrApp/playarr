@@ -19,6 +19,13 @@ export function routeMatches(pattern, url) {
   return !pq || [...new URLSearchParams(pq)].every(([k, v]) => u.searchParams.get(k) === v);
 }
 
+export function assertCalendarPanelClosed(screenId, url) {
+  if (!["calendar-month", "calendar-week", "calendar-agenda"].includes(screenId)) return;
+  if (new URL(url, "http://x").searchParams.has("panel")) {
+    throw new Error(`${screenId}: panel remained open at capture (${url})`);
+  }
+}
+
 // D-pad labels share semantic roles across platforms. The action-list Play entry and play/pause
 // control represent different checks: one names the action, while the toggle preserves exact state.
 export function focusForCheck(f, checkId) {

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { assertCalendarPanelClosed, expandKeys, focusForCheck, pinnedCatalogFiles, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
@@ -30,6 +30,14 @@ test("routeMatches", () => {
   assert.ok(!routeMatches("/movies/:id", "/movies"));
   assert.ok(routeMatches("/calendar?view=week", "/calendar?view=week&x=1"));
   assert.ok(!routeMatches("/calendar?view=week", "/calendar?view=month"));
+});
+
+test("calendar captures fail when the Filters panel is still open", () => {
+  assert.doesNotThrow(() => assertCalendarPanelClosed("calendar-month", "/calendar?view=month"));
+  assert.doesNotThrow(() => assertCalendarPanelClosed("calendar-agenda", "/calendar?view=agenda"));
+  assert.throws(() => assertCalendarPanelClosed("calendar-week", "/calendar?view=week&panel=filters"), /panel remained open/);
+  assert.throws(() => assertCalendarPanelClosed("calendar-month", "/calendar?view=month&panel="), /panel remained open/);
+  assert.doesNotThrow(() => assertCalendarPanelClosed("settings", "/settings?panel=filters"));
 });
 
 test("stable catalog lookup requires explicitly resolved account credentials", async () => {

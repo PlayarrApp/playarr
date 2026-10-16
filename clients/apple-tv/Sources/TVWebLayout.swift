@@ -475,6 +475,9 @@ struct TVDrawer<Content: View>: View {
     @ViewBuilder var content: () -> Content
     /// Focus moves into the drawer when it opens (web: the panel takes focus; Back closes it).
     @FocusState private var closeFocused: Bool
+    #if os(macOS)
+    @State private var macBackHandlerID = UUID()
+    #endif
 
     /// The web close button is a circle (the 2026-10-15 refs of every Apple device).
     private static var closeRadius: CGFloat { 25 }
@@ -533,6 +536,13 @@ struct TVDrawer<Content: View>: View {
         .focusSection()
         #if os(macOS)
         .macFocusLayer() // every drawer keeps keyboard focus inside it on the Mac (macOS/MacFocus.swift)
+        .onAppear {
+            MacKeyboard.shared.pushBackHandler(macBackHandlerID) {
+                onClose()
+                return true
+            }
+        }
+        .onDisappear { MacKeyboard.shared.popBackHandler(macBackHandlerID) }
         #endif
         .onExitCommand(perform: onClose)
         .task { if !focusesContent { closeFocused = true } }
