@@ -122,8 +122,13 @@ for (const name of groups) {
     if (!driver.setDeterministicCapture || !driver.waitReady || !driver.captureBuildIdentity) throw new Error("web driver lacks deterministic capture, readiness, or build identity controls");
     await driver.setDeterministicCapture({ fixedNow, disableAnimations: true });
     // start() first: the driver's account guard needs a signed-in page before it will report the build identity.
-    await driver.start();
-    const driverBuild = await driver.captureBuildIdentity();
+    let driverBuild;
+    const started = await runScreenWithRetry(async () => {
+      await driver.stop();
+      await driver.start();
+      driverBuild = await driver.captureBuildIdentity();
+    }, { log: (m) => console.log(`${name} start ${m}`) });
+    if (!started.ok) { console.log(`SKIPPED group ${name}: could not start; its screens go to failed.json`); continue; }
     if (driverBuild !== `${webBuild.sha}@${webBuild.builtAt}`) throw new Error(`web driver build identity ${driverBuild} does not match build-info identity ${webBuild.sha}@${webBuild.builtAt}`);
     for (const theme of ["dark", "light"]) {
       await driver.setTheme(theme);
