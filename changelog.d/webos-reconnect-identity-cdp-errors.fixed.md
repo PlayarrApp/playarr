@@ -1,0 +1,1 @@
+- Report webOS CDP identity-evaluation failures as sanitised harness errors while preserving the device-test account guard.

@@ -14,13 +14,14 @@ const manifest = {
   runtimeEntry: { name: "assets/index-test.js", sha256: digest, observedLoadedInDevice: true },
 };
 
-async function makeDriver({ device = "webos", username = "fixture-device-user", loaded = true, staged = bytes, focused = true, routeReady = true, stableImages = true, fontsReady = true, fontsRejected = false, clockConsumed = true, routeChanges = false, cdpErrorMethod } = {}) {
+async function makeDriver({ device = "webos", username = "fixture-device-user", loaded = true, staged = bytes, focused = true, routeReady = true, stableImages = true, fontsReady = true, fontsRejected = false, clockConsumed = true, routeChanges = false, cdpErrorMethod, cdpIdentityFailureOnReconnect } = {}) {
   const calls = [];
   let routeReads = 0;
+  let socketCount = 0;
   class Socket {
     static CLOSING = 2;
     readyState = 1;
-    constructor() { queueMicrotask(() => this.onopen?.()); }
+    constructor() { socketCount += 1; queueMicrotask(() => this.onopen?.()); }
     send(text) {
       const request = JSON.parse(text);
       calls.push(request);
@@ -51,6 +52,9 @@ async function makeDriver({ device = "webos", username = "fixture-device-user", 
       else if (request.method === "Page.getResourceContent") result = { result: { content: bytes.toString("base64"), base64Encoded: true } };
       const response = { id: request.id, ...result };
       if (request.method === cdpErrorMethod) response.error = { message: "mock CDP protocol error" };
+      const identityReconnect = request.method === "Runtime.evaluate" && request.params.expression.includes('localStorage.getItem("playarr:session")') && socketCount > 1;
+      if (identityReconnect && cdpIdentityFailureOnReconnect === "protocol") response.error = { message: "mock CDP protocol error" };
+      if (identityReconnect && cdpIdentityFailureOnReconnect === "exception") response.result = { exceptionDetails: { text: "sensitive mocked exception detail" } };
       queueMicrotask(() => this.onmessage?.({ data: JSON.stringify(response) }));
     }
     close() { this.readyState = 3; }
@@ -217,6 +221,25 @@ test("webOS reconnect re-registers one owned hook and reports CDP protocol failu
   const protocolFailure = await makeDriver({ cdpErrorMethod: "Page.addScriptToEvaluateOnNewDocument" });
   await assert.rejects(protocolFailure.driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true }), /CDP Page.addScriptToEvaluateOnNewDocument failed/);
   await protocolFailure.driver.stop();
+});
+
+test("webOS reconnect fails closed with sanitised CDP identity evaluation errors", async (t) => {
+  await t.test("protocol error is not misreported as an account rejection", async () => {
+    const { driver } = await makeDriver({ cdpIdentityFailureOnReconnect: "protocol" });
+    await driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
+    await assert.rejects(driver.route("/home"), /CDP Runtime\.evaluate device-test identity failed/);
+    await driver.stop();
+  });
+  await t.test("page exception is reported without exposing exception text", async () => {
+    const { driver } = await makeDriver({ cdpIdentityFailureOnReconnect: "exception" });
+    await driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
+    await assert.rejects(driver.route("/home"), (error) => {
+      assert.match(error.message, /CDP Runtime\.evaluate device-test identity raised a page exception/);
+      assert.doesNotMatch(error.message, /sensitive mocked exception detail/);
+      return true;
+    });
+    await driver.stop();
+  });
 });
 
 test("Tizen keeps deterministic capture unsupported without opening CDP", async () => {

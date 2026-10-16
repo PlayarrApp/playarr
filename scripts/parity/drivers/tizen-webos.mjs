@@ -85,6 +85,7 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
         awaitPromise: true,
         returnByValue: true,
       });
+      assertCdp(identityResponse, "Runtime.evaluate device-test identity");
       const identity = identityResponse.result?.result?.value;
       assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
       await installDeterministicHooks();
