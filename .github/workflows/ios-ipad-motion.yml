@@ -57,6 +57,20 @@ jobs:
           INPUT_DESTINATION: platform=iOS Simulator,name=${{ steps.pick.outputs.name }}
         run: node .github/scripts/apple-test-simulator/main.js
 
+      # Tab and the arrows only move focus between controls when Full Keyboard Access is on; the frames of the first run
+      # were identical for every key. Turn it on in the device's accessibility domain and restart the device.
+      - name: Enable Full Keyboard Access
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -euo pipefail
+          xcrun simctl boot "$SIMULATOR_UDID" || true
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write com.apple.Accessibility FullKeyboardAccessEnabled -bool true
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write com.apple.Accessibility KeyboardAccessEnabled -bool true
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write -g AppleKeyboardUIMode -int 3
+          xcrun simctl shutdown "$SIMULATOR_UDID"
+
       - name: Drive the keyboard and render the frames
         working-directory: clients/ios
         env:
