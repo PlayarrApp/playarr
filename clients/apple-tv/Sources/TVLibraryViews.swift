@@ -138,7 +138,11 @@ struct TVHomeView: View {
 
     #if DEBUG && (os(tvOS) || os(macOS))
     private func parityContentCount(_ viewModel: TVHomeViewModel) -> Int {
-        viewModel.works.count + viewModel.rails.reduce(0) { $0 + $1.works.count } + viewModel.onDeck.count
+        var count = viewModel.works.count + viewModel.onDeck.count
+        for rail in viewModel.rails {
+            count += rail.items.count
+        }
+        return count
     }
 
     private func reportParityContent(_ viewModel: TVHomeViewModel, attach: Bool = false) async {

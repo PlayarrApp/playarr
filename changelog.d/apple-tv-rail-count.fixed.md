@@ -1,0 +1,1 @@
+- Fixed tvOS debug parity builds by counting HomeRail items through the model's `items` property.
