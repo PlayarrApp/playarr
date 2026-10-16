@@ -3126,6 +3126,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- Require parity browser and simulator drivers to verify the authenticated current profile against an explicit device-test account allowlist and trusted server before capture, navigation, playback, or D-pad operations.
 - A PIN-locked profile's stored refresh token can no longer be redeemed without the PIN: the server holds a device-bound unlock lease (granted by login or `POST /api/v1/auth/unlock`, slid by refresh, cleared by `POST /api/v1/auth/lock`) and answers `403 pin_required` without one. Web and Android clients prompt for the PIN and lock a profile when switching away.
 - Playback capability URLs (`playback_session_id` cookie or query) previously skipped all
   account checks after the session was created. They now re-resolve the session owner's
