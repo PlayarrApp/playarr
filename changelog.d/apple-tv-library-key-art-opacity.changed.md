@@ -1,0 +1,1 @@
+- Match tvOS light-mode library key art opacity (0.24) to the wide web TV backdrop, reducing the artwork wash behind the preview.

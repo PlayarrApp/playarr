@@ -87,7 +87,9 @@ struct TVKeyArtFilter: ViewModifier {
                 .brightness(0.1)
                 .opacity(0.24)
                 #else
-                .opacity(0.4)
+                // Web TV uses 0.24 for the light-mode key art on every wide
+                // viewport, including tvOS.
+                .opacity(0.24)
                 #endif
         } else {
             content
