@@ -2,6 +2,7 @@
 import React from 'react';
 import {act, create, type ReactTestRenderer} from 'react-test-renderer';
 import {Pressable, Text} from 'react-native';
+import {focusNode} from '../platform/focus';
 import {clearFocus, reportFocus} from '../debug/parityControl';
 import {ThemeProvider} from '../theme/ThemeProvider';
 import {FilterDrawer} from './FilterDrawer';
@@ -29,6 +30,7 @@ function texts(renderer: ReactTestRenderer): string[] {
 describe('FilterDrawer', () => {
   afterEach(() => {
     jest.clearAllMocks();
+    jest.useRealTimers();
     act(() => {
       for (const renderer of renderers.splice(0)) renderer.unmount();
     });
@@ -119,5 +121,22 @@ describe('FilterDrawer', () => {
     act(() => close.props.onFocus({}));
     expect(reportFocus).toHaveBeenLastCalledWith('search filters close', undefined, expect.any(Object));
     expect(onFocused).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves initial focus to drawer content when close autofocus is disabled', () => {
+    jest.useFakeTimers();
+    let renderer!: ReactTestRenderer;
+    act(() => {
+      renderer = trackRenderer(create(
+        <ThemeProvider>
+          <FilterDrawer kicker="Actions" title="Title" closeLabel="Close" closeAutoFocus={false} onClose={() => undefined} sections={[]} />
+        </ThemeProvider>,
+      ));
+    });
+
+    const close = renderer.root.findByProps({accessibilityLabel: 'Close'});
+    expect(close.props.hasTVPreferredFocus).toBe(false);
+    act(() => jest.advanceTimersByTime(300));
+    expect(focusNode).not.toHaveBeenCalled();
   });
 });

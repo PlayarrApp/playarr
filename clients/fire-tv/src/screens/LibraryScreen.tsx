@@ -545,7 +545,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
               y: GRID_Y + rowIndex * rowPitch,
               baseUrl,
               token: accessToken,
-              selected: index === focusIndex,
+              selected: index === focusIndex && !actionsWork,
               first: index === 0,
               progress: progressByWork.get(work.id),
               progressReady: progressRows !== null,

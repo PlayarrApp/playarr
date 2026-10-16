@@ -70,6 +70,8 @@ export interface FilterDrawerProps {
   onFocused?: () => void;
   /** Optional parity identity for the drawer close button. */
   closeFocusId?: string;
+  /** Keep close out of initial focus when this drawer has a preferred content action. */
+  closeAutoFocus?: boolean;
   /** The 430 px drawer of the title page's playback settings, over the 360 px one of the libraries and the calendar. */
   wide?: boolean;
 }
@@ -94,7 +96,7 @@ function layoutSections(sections: DrawerSection[]): {tops: number[]; end: number
   return {tops, end: y};
 }
 
-export function FilterDrawer({kicker, title, closeLabel, onClose, sections, footer, footerHeight = 0, onFocused, closeFocusId, wide}: FilterDrawerProps): React.ReactElement {
+export function FilterDrawer({kicker, title, closeLabel, onClose, sections, footer, footerHeight = 0, onFocused, closeFocusId, closeAutoFocus = true, wide}: FilterDrawerProps): React.ReactElement {
   const {colour} = useTheme();
   const focusOwner = useRef({}).current;
   useBackLayer(true, onClose);
@@ -145,7 +147,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
                 {title}
               </T>
             </View>
-            <CloseButton label={closeLabel} onPress={onClose} onFocused={() => {
+            <CloseButton label={closeLabel} onPress={onClose} autoFocus={closeAutoFocus} onFocused={() => {
               if (closeFocusId) reportFocus(closeFocusId, undefined, focusOwner);
               onFocused?.();
             }} x={wide ? 1826 - WIDE_X : undefined} />
@@ -185,20 +187,21 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
 }
 
 /** The drawer's close button. It takes focus itself when the drawer opens, even when a tile of the action column held it. */
-export function CloseButton({label, onPress, onFocused, x = 1824.7 - DRAWER_X}: {label: string; onPress: () => void; onFocused?: () => void; x?: number}): React.ReactElement {
+export function CloseButton({label, onPress, onFocused, autoFocus = true, x = 1824.7 - DRAWER_X}: {label: string; onPress: () => void; onFocused?: () => void; autoFocus?: boolean; x?: number}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   const ref = useRef<View>(null);
   useEffect(() => {
+    if (!autoFocus) return undefined;
     const id = setTimeout(() => focusNode(ref), 300);
     return () => clearTimeout(id);
-  }, []);
+  }, [autoFocus]);
   return (
     <Pressable
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
-      hasTVPreferredFocus
+      hasTVPreferredFocus={autoFocus}
       onFocus={() => {
         setFocused(true);
         onFocused?.();
@@ -208,7 +211,7 @@ export function CloseButton({label, onPress, onFocused, x = 1824.7 - DRAWER_X}: 
       style={{
         position: 'absolute',
         left: u(x),
-        top: u(65.2),
+        top: u(54),
         width: u(50.6),
         height: u(52.8),
         borderRadius: 999,

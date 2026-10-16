@@ -1,0 +1,1 @@
+- Fire TV Title actions now keeps initial focus on Play and aligns the drawer close control with the web header.

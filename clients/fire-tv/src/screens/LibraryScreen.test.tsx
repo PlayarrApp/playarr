@@ -14,10 +14,12 @@ import {ApiClientProvider} from '../api/ApiClientProvider';
 import {LanguageProvider} from '../i18n/LanguageProvider';
 import {LibraryScreen, type LibraryScreenNavigation} from './LibraryScreen';
 import {ROUTES} from '../navigation/routes';
+import {MediaFocus} from '../tv/mediaFocus';
 
 // The screen registers a BACK policy with the navigator; these tests render it outside a NavigationContainer.
 jest.mock('../navigation/backPolicy', () => ({useTvBackNavigation: jest.fn()}));
 jest.mock('../platform/remote', () => ({useRemoteKey: jest.fn()}));
+jest.mock('../tv/ActionsDrawer', () => ({ActionsDrawer: () => null}));
 
 /**
  * WORKAROUND, not a fix: `../api/ApiClientProvider.tsx` (built by the
@@ -241,5 +243,17 @@ describe('LibraryScreen', () => {
     });
 
     expect(navigation.navigate).toHaveBeenCalledWith(ROUTES.musicDetail, {workId: 'a1'});
+  });
+
+  it('hides the retained library selection while title actions are open', async () => {
+    mockCatalogFetch(() => jsonResponse({items: [work({id: 'w1', title: 'Test Movie A'})], total: 1}));
+    const renderer = await renderLibrary(fakeNavigation());
+    const artwork = (): boolean => renderer.root.findAllByType(MediaFocus).find((node) => node.props.variant === 'library')!.props.focused;
+
+    expect(artwork()).toBe(true);
+    await act(async () => {
+      renderer.root.findByProps({accessibilityLabel: 'Test Movie A'}).props.onLongPress();
+    });
+    expect(artwork()).toBe(false);
   });
 });

@@ -86,6 +86,7 @@ export function ActionsDrawer({work, onClose, onOpen, onAddToPlaylist}: {work: W
       kicker={t('components.mediaContextMenu.titleActionsHeading')}
       title={work.title}
       closeLabel={t('components.mediaContextMenu.close')}
+      closeAutoFocus={false}
       onClose={onClose}
       sections={[
         {
