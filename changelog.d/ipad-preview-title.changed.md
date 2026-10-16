@@ -1,0 +1,1 @@
+- Balance iPad library preview titles within the web-matched measure and line pitch.

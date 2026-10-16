@@ -676,16 +676,35 @@ struct LibraryView: View {
             let nativeLineHeight = titleFont?.lineHeight ?? titleSize * 1.36
             let pitchCorrection = titleSize * 0.9 - nativeLineHeight
             let nineChWidth = titleFont.map { ("000000000" as NSString).size(withAttributes: [.font: $0]).width } ?? titleSize * 4.5
-            Text(work.title)
-                .font(WM.font(titleSize, titleWeight))
-                .tracking(isPad ? -titleSize * 0.072 : -1.5)
-                .lineSpacing(pitchCorrection)
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(isPad ? nil : 3)
-                .frame(width: isPad ? min(viewportWidth * 0.24, nineChWidth) : nil, alignment: .leading)
-                .frame(maxWidth: isPad ? nil : 215, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: isPad)
-                .padding(.bottom, pitchCorrection)
+            let titleTracking = isPad ? -titleSize * 0.072 : -1.5
+            let titleWidth = isPad ? min(viewportWidth * 0.24, nineChWidth) : 215
+            let balancedLines = isPad ? titleFont.flatMap { BalancedTitleLayout.lines(for: work.title, font: $0, tracking: titleTracking, maxWidth: titleWidth) } : nil
+            if isPad, let balancedLines {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(balancedLines.enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(WM.font(titleSize, titleWeight))
+                            .tracking(titleTracking)
+                            .foregroundStyle(PlayarrStyle.ink)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(height: titleSize * 0.9, alignment: .top)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(work.title)
+            } else {
+                Text(work.title)
+                    .font(WM.font(titleSize, titleWeight))
+                    .tracking(titleTracking)
+                    .lineSpacing(pitchCorrection)
+                    .foregroundStyle(PlayarrStyle.ink)
+                    .lineLimit(isPad ? nil : 3)
+                    .frame(width: isPad ? titleWidth : nil, alignment: .leading)
+                    .frame(maxWidth: isPad ? nil : 215, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: isPad)
+                    .padding(.bottom, pitchCorrection)
+            }
             WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
                 .padding(.top, 26)
             if let overview = work.overview {
