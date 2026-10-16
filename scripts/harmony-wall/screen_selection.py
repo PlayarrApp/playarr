@@ -1,6 +1,12 @@
 """Validation for the TV screen selection accepted by the Harmony wall."""
 
-TV_SCREEN_IDS = ("home", "movies", "film-detail", "series-detail")
+TV_SCREEN_IDS = ("home", "movies", "series", "music", "film-detail", "series-detail")
+TV_LIBRARY_ROUTES = {
+    "home": "home",
+    "movies": "library:movie",
+    "series": "library:series",
+    "music": "library:artist",
+}
 
 
 def parse_tv_screens(value: str):
@@ -19,3 +25,8 @@ def parse_tv_screens(value: str):
 def player_is_skipped(requested: list[str] | None, skip_player: bool) -> bool:
     """A selected subset never visits player; the full set follows its explicit flag."""
     return requested is not None or skip_player
+
+
+def selected_library_route(screen: str) -> str | None:
+    """Return the native route for a selected library screen, or None for a detail route."""
+    return TV_LIBRARY_ROUTES.get(screen)

@@ -27,7 +27,7 @@ on:
         type: string
         default: ''
       tv_screens:
-        description: TV screen IDs as a comma-separated list, or all for the legacy full set
+        description: TV screen IDs (home, movies, series, music, film-detail, series-detail) as a comma-separated list, or all for the full set
         type: string
         default: all
       skip_player:

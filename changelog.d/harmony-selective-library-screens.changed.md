@@ -1,0 +1,1 @@
+- The Harmony wall can capture selected Series and Music library screens without rerunning unrelated screens.

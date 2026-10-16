@@ -6,7 +6,7 @@ dark and light. Aborts, writing nothing more, when a frame is too plain (an erro
 import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
 from backend_preflight import check_backend
-from screen_selection import TV_SCREEN_IDS, parse_tv_screens, player_is_skipped
+from screen_selection import parse_tv_screens, player_is_skipped, selected_library_route
 from capture_diagnostics import (posters_stalled, tv_flat_card_blocks, home_recent_flat, save_rejected_frame, summarize_detail_events,
                                  summarize_detail_layout_events, summarize_detail_image_payload_events,
                                  analyze_episode_art_frame, episode_art_events_ready, decoded_art_is_accepted,
@@ -623,11 +623,9 @@ if device == "tv":
         def capture_selected(folder, theme):
             for name in TV_SELECTION:
                 def capture_one():
-                    if name == "home":
-                        route("home", 8)
-                        snap(name, folder, 150000)
-                    elif name == "movies":
-                        route("library:movie", 15)
+                    library_route = selected_library_route(name)
+                    if library_route is not None:
+                        route(library_route, 8 if name == "home" else 15)
                         snap(name, folder, 150000)
                     else:
                         capture_selected_detail(name, folder, theme)
