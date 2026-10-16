@@ -15,6 +15,16 @@ struct TVWorkDetailView: View {
 
     private var frozen: Bool { TVParityLaunch.frozen }
 
+    /// Whether Play and the episode tiles open and take focus. A live-server run on the Mac is driven by keys and must be able to
+    /// open the player (web: Play is focused on load and Select opens it); only fixture screens are inert.
+    private var interactive: Bool {
+        #if os(macOS)
+        return TVParityLaunch.requestedScreen == nil
+        #else
+        return !frozen
+        #endif
+    }
+
     init(work: Work, apiClient: PlayarrAPIClient) {
         self.work = work
         self.apiClient = apiClient
@@ -61,7 +71,7 @@ struct TVWorkDetailView: View {
             if viewModel.state == .idle { await viewModel.load() }
             try? await Task.sleep(for: .milliseconds(200))
             // Films focus Play; series focus the next-up episode tile instead (owner rule).
-            if !frozen, work.kind != .series { playFocused = true }
+            if interactive, work.kind != .series { playFocused = true }
         }
     }
 
@@ -325,7 +335,7 @@ struct TVWorkDetailView: View {
     private func moviePlay(_ detail: WorkDetail, x: CGFloat, y: CGFloat) -> some View {
         // Web: Play is the focused control on load (scale 1.06).
         let label = playLabel("Play", light: false, focusedLook: frozen).scaleEffect(1.06)
-        if let mediaFileID = detail.mediaFileID, !frozen {
+        if let mediaFileID = detail.mediaFileID, interactive {
             NavigationLink {
                 TVPlayerView(
                     mediaFileID: mediaFileID,

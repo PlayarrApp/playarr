@@ -514,8 +514,14 @@ private struct TVProductionShell<Stage: View>: View {
                 onLinkTV: { showProfiles = false },
                 onManual: {},
                 onSettings: {
-                    showProfiles = false
+                    #if os(macOS)
+                    // Set the tab first: closing the page reports the route of the tab current at that moment (it said Home).
                     nav = .settings
+                    #endif
+                    showProfiles = false
+                    #if !os(macOS)
+                    nav = .settings
+                    #endif
                 }
             )
         }

@@ -1,0 +1,1 @@
+- macOS: Down from Calendar's Today button goes to Filters as on the web, the profiles page gear opens Settings, and Play on a title opens the player in key-driven runs.

@@ -75,6 +75,10 @@ final class MacFocusEngine {
         var secondary: (() -> Void)?
         /// Where focus starts when its layer opens (a drawer's close button), before the first page content.
         var preferred = false
+        /// Named focus tag (`macFocusName`) of this target, and the one Down goes to from it (web: Down from Calendar's Today lands
+        /// on Filters, not on the nearer Calendar link).
+        var focusName: String? = nil
+        var downTo: String? = nil
         /// The SwiftUI focus binding itself, for parity diagnostics independent of the state file tag.
         var isFocused: () -> Bool = { false }
     }
@@ -308,6 +312,10 @@ final class MacFocusEngine {
                     && target.frame.midX < Self.contentArea.minX
             }
         }
+        if direction == .down, let name = from.downTo, let target = candidates.values.first(where: { $0.focusName == name }) {
+            target.focus()
+            return
+        }
         let geometricCandidates = geometricTargets.map { ($0.key, $0.value.frame) }
         let next = Self.nearest(from: from.frame, direction: direction, in: geometricCandidates)
         if let next, let target = candidates[next] {
@@ -451,6 +459,8 @@ private struct MacFocusLayerKey: EnvironmentKey { static let defaultValue = 0 }
 struct MacSecondary { let action: () -> Void }
 private struct MacSecondaryKey: EnvironmentKey { static let defaultValue: MacSecondary? = nil }
 private struct MacPreferredKey: EnvironmentKey { static let defaultValue = false }
+private struct MacFocusNameKey: EnvironmentKey { static let defaultValue: String? = nil }
+private struct MacDownToKey: EnvironmentKey { static let defaultValue: String? = nil }
 struct MacFocusBindingBridge {
     let focusChanged: (Bool) -> Void
     let restore: () -> Void
@@ -472,6 +482,16 @@ extension EnvironmentValues {
     var macFocusLayer: Int {
         get { self[MacFocusLayerKey.self] }
         set { self[MacFocusLayerKey.self] = newValue }
+    }
+
+    var macFocusName: String? {
+        get { self[MacFocusNameKey.self] }
+        set { self[MacFocusNameKey.self] = newValue }
+    }
+
+    var macDownTo: String? {
+        get { self[MacDownToKey.self] }
+        set { self[MacDownToKey.self] = newValue }
     }
 
     var macPreferredFocus: Bool {
@@ -522,6 +542,8 @@ struct MacFocusTarget: ViewModifier {
     @Environment(\.macFocusLayer) private var layer
     @Environment(\.macSecondaryAction) private var secondary
     @Environment(\.macPreferredFocus) private var preferred
+    @Environment(\.macFocusName) private var focusName
+    @Environment(\.macDownTo) private var downTo
     @Environment(\.macParityTag) private var parityTag
     @Environment(\.macFocusBindingBridge) private var focusBridge
     @FocusState private var focused: Bool
@@ -613,6 +635,7 @@ struct MacFocusTarget: ViewModifier {
                                                parityID: parityTag?.id, parityRail: parityTag?.rail, parityIndex: parityTag?.index,
                                                homeRailFocus: bridge != nil && parityTag?.rail != nil,
                                                activate: activate, secondary: secondary?.action, preferred: preferred,
+                                               focusName: focusName, downTo: downTo,
                                                isFocused: focusQuery))
     }
 }
