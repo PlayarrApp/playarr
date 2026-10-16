@@ -29,6 +29,9 @@ struct HomeView: View {
     @State private var downloadTarget: Work?
     /// Hardware-keyboard focus (Tab and arrows): the ring follows it, and starts on the first card as on the web.
     @FocusState private var focusedWork: UUID?
+    /// Arrow keys move this (rail, card) position; the ring and the scroll follow it. Nil until a key is pressed.
+    @State private var keyFocus: (rail: Int, card: Int)?
+    @FocusState private var keysActive: Bool
     @Environment(\.colorScheme) private var scheme
     @AppStorage(WMArtwork.homeViewKey) private var homeView = "thumbnail"
     @State private var motionRail: Int?
@@ -88,6 +91,11 @@ struct HomeView: View {
                 .padding(.bottom, 130)
             }
             .task(id: viewModel.rails.count) { await runMotion(vertical) }
+            .focusable()
+            .focused($keysActive)
+            .focusEffectDisabled()
+            .onAppear { keysActive = true }
+            .onKeyPress(phases: [.down, .repeat]) { press in moveKeyFocus(press.key, vertical) }
             .scrollIndicators(.hidden)
             .refreshable { await viewModel.load() }
             .keepInsideSafeArea()
@@ -100,6 +108,7 @@ struct HomeView: View {
 
     /// Debug parity captures and the navigation UI test can focus the first Series card.
     private func scrollTarget(_ rail: HomeViewModel.Rail, first: Bool, index: Int) -> UUID? {
+        if let key = keyFocus, key.rail == index, rail.works.indices.contains(key.card) { return rail.works[key.card].id }
         #if DEBUG
         if motionRail == index, let last = rail.works.last { return last.id }
         if ParityLaunch.selectsHomeSeries,
@@ -125,6 +134,24 @@ struct HomeView: View {
         #endif
     }
 
+    /// Hardware keyboard: arrows move between cards and rails (the web's spatial navigation), keeping the column when a rail
+    /// changes; the focused rail scrolls into view.
+    private func moveKeyFocus(_ key: KeyEquivalent, _ vertical: ScrollViewProxy) -> KeyPress.Result {
+        let rails = viewModel.rails
+        guard !rails.isEmpty else { return .ignored }
+        var at = keyFocus ?? (rail: 0, card: 0)
+        switch key {
+        case .rightArrow: at.card = min(rails[at.rail].works.count - 1, at.card + 1)
+        case .leftArrow: at.card = max(0, at.card - 1)
+        case .downArrow: at.rail = min(rails.count - 1, at.rail + 1); at.card = min(at.card, max(0, rails[at.rail].works.count - 1))
+        case .upArrow: at.rail = max(0, at.rail - 1); at.card = min(at.card, max(0, rails[at.rail].works.count - 1))
+        default: return .ignored
+        }
+        keyFocus = at
+        withAnimation(.easeInOut(duration: 0.25)) { vertical.scrollTo(rails[at.rail].id, anchor: UnitPoint(x: 0, y: 0.3)) }
+        return .handled
+    }
+
     private func phoneRailFocused(first: Bool, index: Int, count: Int) -> Bool {
         #if DEBUG
         if let focus = ParityLaunch.focus { return focus == "last" ? index == count - 1 : index == 0 }
@@ -135,7 +162,7 @@ struct HomeView: View {
     private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool, index railIndex: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(rail.title, 16, 610, lh: 24, ls: -0.48).padding(.horizontal, 16)
-            WMFadingRail(scrollTo: scrollTarget(rail, first: first, index: railIndex), scrollAnchor: (ParityLaunch.focus == "last" || motionRail == railIndex) ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
+            WMFadingRail(scrollTo: scrollTarget(rail, first: first, index: railIndex), scrollAnchor: keyFocus != nil ? .center : (ParityLaunch.focus == "last" || motionRail == railIndex) ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(Array(rail.works.enumerated()), id: \.element.id) { index, work in
                         workLink(work) {
@@ -143,7 +170,7 @@ struct HomeView: View {
                                 work: work,
                                 apiClient: apiClient,
                                 unseen: viewModel.progressByWorkID[work.id] == nil,
-                                focused: focusedWork.map { $0 == work.id } ?? phoneRailFocused(first: first, index: index, count: rail.works.count),
+                                focused: keyFocus.map { $0.rail == railIndex && $0.card == index } ?? (focusedWork.map { $0 == work.id } ?? phoneRailFocused(first: first, index: index, count: rail.works.count)),
                                 cover: homeView == "cover"
                             )
                         }

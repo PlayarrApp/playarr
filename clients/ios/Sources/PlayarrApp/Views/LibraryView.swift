@@ -6,6 +6,9 @@ struct LibraryView: View {
     @State private var viewModel: LibraryViewModel
     /// Hardware-keyboard focus (Tab and arrows): the ring follows it, and starts on the first card as on the web.
     @FocusState private var focusedWork: UUID?
+    /// Arrow keys move this card index in the phone grid; the ring and the scroll follow it.
+    @State private var keyIndex: Int?
+    @FocusState private var gridKeys: Bool
     let apiClient: PlayarrAPIClient
     let downloadRepository: DownloadRepository
     let title: String
@@ -402,7 +405,7 @@ struct LibraryView: View {
                             downloadRepository: downloadRepository
                         )
                     } label: {
-                        WMLibraryCard(work: work, apiClient: apiClient, focused: focusedWork.map { $0 == work.id } ?? phoneGridFocused(index: index), cover: viewModel.viewMode == .cover)
+                        WMLibraryCard(work: work, apiClient: apiClient, focused: keyIndex.map { $0 == index } ?? (focusedWork.map { $0 == work.id } ?? phoneGridFocused(index: index)), cover: viewModel.viewMode == .cover)
                     }
                     .id(work.id)
                     .buttonStyle(.plain)
@@ -418,6 +421,25 @@ struct LibraryView: View {
             .padding(.horizontal, 16)
             .padding(.top, 84 + WM.topShift)
             .padding(.bottom, 130)
+        }
+        .focusable()
+        .focused($gridKeys)
+        .focusEffectDisabled()
+        .onAppear { gridKeys = true }
+        .onKeyPress(phases: [.down, .repeat]) { press in
+            let count = viewModel.works.count
+            guard count > 0 else { return .ignored }
+            var at = keyIndex ?? 0
+            switch press.key {
+            case .rightArrow: at = min(count - 1, at + 1)
+            case .leftArrow: at = max(0, at - 1)
+            case .downArrow: at = min(count - 1, at + WMArtwork.columns)
+            case .upArrow: at = max(0, at - WMArtwork.columns)
+            default: return .ignored
+            }
+            keyIndex = at
+            withAnimation(.easeInOut(duration: 0.2)) { reader.scrollTo(viewModel.works[at].id, anchor: .center) }
+            return .handled
         }
         .scrollIndicators(.hidden)
         .refreshable { await viewModel.load() }
