@@ -28,6 +28,9 @@ struct DownloadsView: View {
     @Environment(\.playarrGoHome) private var goHome
     @State private var editing: DownloadEditTarget?
     @State private var showingFilters = false
+    #if DEBUG
+    @State private var parityDownloadsLoaded = false
+    #endif
 
     private var isPhone: Bool { PlayarrLayout.isPhone(UIScreen.main.bounds.size) }
 
@@ -46,8 +49,16 @@ struct DownloadsView: View {
         .navigationTitle("Downloads")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.visible, for: .navigationBar)
-        .task { viewModel.refresh() }
+        .task {
+            viewModel.refresh()
+            #if DEBUG
+            parityDownloadsLoaded = true
+            #endif
+        }
         .onAppear { viewModel.refresh() }
+        #if DEBUG
+        .parityScreenLoad(parityDownloadsLoaded ? .ready : .loading)
+        #endif
         .sheet(item: $editing) { target in
             DownloadEditSheet(records: target.records, title: target.title, apiClient: apiClient, downloadRepository: downloadRepository)
         }

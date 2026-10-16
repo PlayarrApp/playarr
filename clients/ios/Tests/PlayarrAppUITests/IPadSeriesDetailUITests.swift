@@ -54,7 +54,8 @@ final class IPadSeriesDetailUITests: XCTestCase {
             ])
         }
         func resetAll() async throws { for e in playable { try await setProgress(e, completed: false, positionMs: 0) } }
-        func shoot(_ name: String, app: XCUIApplication) {
+        func shoot(_ name: String, app: XCUIApplication) throws {
+            try requireParityCaptureReady(app, expectedUsername: username)
             let shot = XCTAttachment(screenshot: app.screenshot())
             shot.name = name
             shot.lifetime = .keepAlways
@@ -64,12 +65,14 @@ final class IPadSeriesDetailUITests: XCTestCase {
             let app = XCUIApplication()
             app.launchEnvironment = [
                 "PLAYARR_PARITY_SERVER": server, "PLAYARR_PARITY_USER": username, "PLAYARR_PARITY_PASSWORD": password,
+                "PLAYARR_PARITY_EXPECTED_USERNAME": username,
                 "PLAYARR_PARITY_ROUTE": "detail:series:id=\(seriesID)", "PLAYARR_REAL_INSETS": "1",
             ]
             app.launch()
             _ = app.windows.firstMatch.waitForExistence(timeout: 30)
+            try requireParityCaptureReady(app, expectedUsername: username)
             Thread.sleep(forTimeInterval: 15)
-            shoot(name, app: app)
+            try shoot(name, app: app)
             XCTAssertFalse(app.staticTexts["Not available yet"].exists, "The tablet rails list playable episodes only.")
             app.terminate()
         }

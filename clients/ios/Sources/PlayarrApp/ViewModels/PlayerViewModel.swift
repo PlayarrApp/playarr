@@ -191,6 +191,17 @@ public final class PlayerViewModel {
                 maxBitrateBps: nil,
                 profile: requestedProfile
             )
+#if DEBUG
+            if ParityLaunch.isPlayerRoute && ParityLaunch.identityVerified {
+                guard info.mode == .direct else {
+                    ParityLaunch.record("directPlay", false)
+                    ParityLaunch.record("failure", "player-negotiated-non-direct")
+                    throw APIError.invalidResponse
+                }
+                ParityLaunch.record("directPlay", true)
+                ParityLaunch.record("actualPlaybackMode", "direct")
+            }
+#endif
             playbackMode = info.mode
             activeMediaFileID = mediaFileID
             activeSessionID = info.sessionID

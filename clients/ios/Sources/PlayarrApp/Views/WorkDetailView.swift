@@ -96,6 +96,7 @@ struct WorkDetailView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .playarrChromeHidden(!(viewModel.detail.map { $0.work.kind == .movie || $0.work.kind == .series } ?? false))
+        .parityScreenLoad(parityLoadState)
         .onAppear {
             isVisible = true
             updateVisibleDetailRoute()
@@ -104,6 +105,14 @@ struct WorkDetailView: View {
         .onDisappear {
             isVisible = false
             visibleDetailRoutes?.deactivate(id: visibleDetailRouteID)
+        }
+    }
+
+    private var parityLoadState: ParityScreenLoad {
+        switch viewModel.loadState {
+        case .loaded where viewModel.detail != nil: .ready
+        case .failed: .failed
+        default: .loading
         }
     }
 
