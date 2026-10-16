@@ -1,0 +1,1 @@
+- Allow an explicit Harmony phone core diagnostic capture to skip player-controls and record the omission, while the default core capture still requires all 15 screens.

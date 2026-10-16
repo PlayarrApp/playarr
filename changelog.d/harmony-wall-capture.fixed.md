@@ -1,0 +1,1 @@
+- Fix the Harmony capture script syntax error and fail a capture run directly instead of retrying it five times.

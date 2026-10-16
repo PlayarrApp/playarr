@@ -1,0 +1,1 @@
+- Route generic Harmony build dependencies through the public npm registry while keeping `@ohos` packages on the HarmonyOS registry.

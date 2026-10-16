@@ -1,0 +1,1 @@
+- Replay transient Harmony preview telemetry failures in order with bridge deduplication, and stop captures when delivery is exhausted.

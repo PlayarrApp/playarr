@@ -1,0 +1,5 @@
+- Align Harmony phone series detail, Home backdrop, and Calendar agenda layout with the web reference.
+- Preserve detail action sizing while matching the borderless web surface, and keep phone season heading typography scoped to series pages.
+- Match the Home phone backdrop's theme treatment, visible height, and native scrims; Harmony ImageFit.Cover still uses its centred crop because ArkUI exposes no object-position control.
+- Match the Home phone rail's surface fade and the web navigation avatar's edge-to-edge artwork sizing.
+- Batch Harmony preview telemetry into bounded one-shot requests and fail captures when delivery errors occur.

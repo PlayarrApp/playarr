@@ -1,0 +1,1 @@
+- Align Harmony phone preview drawer captures with the frozen Web reference by omitting backdrop blur in the copied preview source while keeping product rendering unchanged (17.10623).

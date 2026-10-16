@@ -109,6 +109,8 @@ const PHONE_PILL_SIZE: number = 11.2;
 const PHONE_PILL_HEIGHT: number = 22.5;
 const PHONE_DAY_HEADING_SIZE: number = 14.4;
 const PHONE_ENTRY_GAP: number = 15;
+const PHONE_ENTRY_TEXT_GAP: number = 3;
+const PHONE_AGENDA_CARD_MIN_WIDTH: number = 390;
 const PHONE_CONTROL_FONT: number = 11.2;
 const ENTRY_META_GAP: number = 12;
 // Web `.status-pill`: 13.44/750, tone at 14% over the surface with a 60% tone border.
@@ -345,7 +347,7 @@ export struct ReleaseCalendar {
   }
 
   @Builder
-  private entryCard(item: CalendarItem, width: number): void {
+  private entryCard(item: CalendarItem, width: number, phoneMinWidth: number = 0, phoneTextGap: number = 0): void {
     Row({ space: tv(POSTER_GAP) }) {
       Image(item.entries[0].poster_url !== undefined && item.entries[0].poster_url !== null ? item.entries[0].poster_url : '')
         .width(tv(POSTER_WIDTH))
@@ -353,7 +355,7 @@ export struct ReleaseCalendar {
         .borderRadius(tv(POSTER_RADIUS))
         .objectFit(ImageFit.Cover)
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-      Column() {
+      Column({ space: isTvMetrics() ? 0 : phoneTextGap }) {
         Text(item.title).fontFamily(nunito(500))
           .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
@@ -381,6 +383,7 @@ export struct ReleaseCalendar {
       .layoutWeight(1)
     }
     .width(isTvMetrics() ? tv(width) : '100%')
+    .constraintSize({ minWidth: isTvMetrics() ? 0 : phoneMinWidth })
     .height(isTvMetrics() ? tv(ENTRY_HEIGHT) : (itemSubtitle(item).length > 0 ? PHONE_ENTRY_HEIGHT : PHONE_ENTRY_HEIGHT_NO_SUBTITLE))
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
@@ -402,6 +405,17 @@ export struct ReleaseCalendar {
       this.select(item);
       this.openEntry(item.entries[0]);
     })
+  }
+
+  @Builder
+  private phoneAgendaCard(item: CalendarItem): void {
+    Scroll() {
+      this.entryCard(item, 0, PHONE_AGENDA_CARD_MIN_WIDTH, PHONE_ENTRY_TEXT_GAP)
+    }
+    .scrollable(ScrollDirection.Horizontal)
+    .scrollBar(BarState.Off)
+    .edgeEffect(EdgeEffect.None)
+    .width('100%')
   }
 
   @Builder
@@ -960,7 +974,7 @@ export struct ReleaseCalendar {
             Column({ space: PHONE_ENTRY_GAP }) {
               this.dayHeader(group.day)
               ForEach(groupSeriesEpisodes(group.entries), (item: CalendarItem) => {
-                this.entryCard(item, 0)
+                this.phoneAgendaCard(item)
               }, (item: CalendarItem): string => item.key)
             }
             .alignItems(HorizontalAlign.Start)
@@ -970,7 +984,7 @@ export struct ReleaseCalendar {
       .width('100%')
       .layoutWeight(1)
       .padding({ left: 16, right: 16, bottom: 16 })
-      .margin({ top: -5 })
+      .margin({ top: -12 })
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
     }
@@ -1139,6 +1153,9 @@ export struct ReleaseCalendar {
         touchActions: (): void => {
           this.touchActionButtons();
         },
+        touchOverlay: (): void => {
+          this.touchOverlays();
+        },
         selectedId: CALENDAR_NAV_ID,
         content: (): void => {
           this.pageContent();
@@ -1147,9 +1164,6 @@ export struct ReleaseCalendar {
           this.pageControls();
         },
       })
-      if (!isTvMetrics()) {
-        this.touchOverlays()
-      }
       }
       .width('100%')
       .height('100%')

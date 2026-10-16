@@ -1,0 +1,1 @@
+- Add selector regression coverage for partial viewport intersections, dead or invisible cards, offscreen positions and invalid geometry in the HarmonyOS preview focus route.

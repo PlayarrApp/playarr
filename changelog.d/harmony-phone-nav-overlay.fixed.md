@@ -1,0 +1,1 @@
+- Position the phone navigation bar at the bottom of the screen, above filter overlays and below title actions.

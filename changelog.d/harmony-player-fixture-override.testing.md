@@ -1,0 +1,1 @@
+- The Harmony wall can select a runtime player fixture through a repository secret without recording its identifier in capture manifests.

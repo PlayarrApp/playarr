@@ -1,0 +1,1 @@
+- Native Harmony phone drawers blur their backdrop while keeping the bottom navigation visible above them, matching the web layer order.

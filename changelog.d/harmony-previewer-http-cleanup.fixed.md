@@ -1,0 +1,1 @@
+- Avoid the Harmony Previewer HTTP crash by correcting the duplicated curl handle cleanup in the build 31 capture runtime.
