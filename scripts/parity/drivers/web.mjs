@@ -392,14 +392,15 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     await drainApiErrors();
     assertWebReady(page.url(), apiErrors);
     const path = new URL(page.url()).pathname;
-    if (!path.startsWith("/player/")) await page.waitForSelector(".app-nav-link", { timeout: 30000 });
+    if (path === "/profiles") await page.waitForSelector(".profiles-page", { timeout: 30000 });
+    else if (!path.startsWith("/player/")) await page.waitForSelector(".app-nav-link", { timeout: 30000 });
     if (screen === "home") await page.waitForSelector(".tv-home-card", { timeout: 30000 });
     if (["movies", "series", "calendar", "search"].includes(screen)) await page.waitForSelector("main", { timeout: 30000 });
     if (["/movies", "/series", "/music"].includes(path)) {
       await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
     }
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
-    if (path === "/search") await page.waitForSelector(".tv-search-results-grid, .tv-search-empty", { timeout: 30000 });
+    if (path === "/search") await page.waitForSelector(".tv-search-prompt, .tv-search-results-grid, .tv-search-results .tv-empty-state, .tv-search-results .skeleton-state", { timeout: 30000 });
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
     if (path.startsWith("/player/")) await page.waitForFunction(() => !!document.querySelector("video, .player-error, .player-loading"), null, { timeout: 30000 });
     await settle();

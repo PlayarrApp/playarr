@@ -16,14 +16,14 @@ function config(username = "device-test") {
 }
 
 function browserMock({ initialSignedIn = false, ownerOnRequest = false } = {}) {
-  const state = { operations: [], initScripts: [], contextOptions: null, keyUps: 0, identityReads: 0, ownerOnRequest, ownerAfterIdentityRead: Infinity, switchAfterKeyDown: false, closed: false };
+  const state = { operations: [], initScripts: [], contextOptions: null, currentUrl: "https://playarr.example.invalid/", keyUps: 0, identityReads: 0, ownerOnRequest, ownerAfterIdentityRead: Infinity, switchAfterKeyDown: false, closed: false };
   const page = {
     on() {},
-    async goto(url) { state.operations.push(["goto", url]); if (!initialSignedIn && url.endsWith("/")) throw new Error("mock signed out"); },
+    async goto(url) { state.operations.push(["goto", url]); if (!initialSignedIn && url.endsWith("/")) throw new Error("mock signed out"); state.currentUrl = url; },
     async fill(selector) { state.operations.push(["fill", selector]); },
     async waitForFunction() {},
-    async waitForSelector() {},
-    url() { return "https://playarr.example.invalid/"; },
+    async waitForSelector(selector) { state.operations.push(["waitForSelector", selector]); },
+    url() { return state.currentUrl; },
     async evaluate(fn) {
       if (fn.name === "fetchCurrentIdentity") {
         state.identityReads += 1;
@@ -113,6 +113,45 @@ test("a session switch while a key is held still sends key-up", async (t) => {
   assert.equal(mocks.state.identityReads, 2, "bootstrap validates the accepted current account");
   await assert.rejects(driver.key("down", { long: true }), /guard rejected/);
   assert.equal(mocks.state.keyUps, 1);
+  await driver.stop();
+});
+
+test("web readiness accepts the standalone Profiles page and actual Search states", async (t) => {
+  t.after(() => { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv); });
+  config();
+  const profiles = browserMock({ initialSignedIn: true });
+  const profilesDriver = await createDriver({ playwright: profiles.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } });
+  await profilesDriver.start();
+  profiles.state.operations.length = 0;
+  profiles.state.currentUrl = "https://playarr.example.invalid/profiles";
+  await profilesDriver.waitReady({ screen: "profiles", phase: "route" });
+  const profileWaits = profiles.state.operations.filter(([kind]) => kind === "waitForSelector").map(([, selector]) => selector);
+  assert.ok(profileWaits.includes(".profiles-page"));
+  assert.ok(!profileWaits.includes(".app-nav-link"), "Profiles renders outside AppShell");
+  await profilesDriver.stop();
+
+  const search = browserMock({ initialSignedIn: true });
+  const searchDriver = await createDriver({ playwright: search.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } });
+  await searchDriver.start();
+  search.state.operations.length = 0;
+  search.state.currentUrl = "https://playarr.example.invalid/search";
+  await searchDriver.waitReady({ screen: "search", phase: "route" });
+  const searchWaits = search.state.operations.filter(([kind]) => kind === "waitForSelector").map(([, selector]) => selector);
+  assert.ok(searchWaits.includes(".tv-search-prompt, .tv-search-results-grid, .tv-search-results .tv-empty-state, .tv-search-results .skeleton-state"));
+  await searchDriver.stop();
+});
+
+test("web readiness still checks the isolated account before waiting for page content", async (t) => {
+  t.after(() => { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv); });
+  config();
+  const mocks = browserMock({ initialSignedIn: true });
+  const driver = await createDriver({ playwright: mocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } });
+  await driver.start();
+  mocks.state.currentUrl = "https://playarr.example.invalid/profiles";
+  mocks.state.ownerAfterIdentityRead = mocks.state.identityReads + 1;
+  const priorWaitCount = mocks.state.operations.filter(([kind]) => kind === "waitForSelector").length;
+  await assert.rejects(driver.waitReady({ screen: "profiles", phase: "route" }), /guard rejected/);
+  assert.equal(mocks.state.operations.filter(([kind]) => kind === "waitForSelector").length, priorWaitCount);
   await driver.stop();
 });
 

@@ -1,0 +1,1 @@
+- Fix parity web readiness checks for standalone Profiles and the current Search loading, empty, and results states.
