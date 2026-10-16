@@ -1,0 +1,1 @@
+- Improve iPad library layout parity for Series, Music and Movies.

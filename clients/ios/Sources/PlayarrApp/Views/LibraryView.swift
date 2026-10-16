@@ -269,7 +269,7 @@ struct LibraryView: View {
                             )
                         }
                     previewCopy(preview, viewportWidth: proxy.size.width)
-                        .frame(width: proxy.size.width * 0.205, alignment: .leading)
+                        .frame(width: proxy.size.width * 0.24, alignment: .leading)
                         .padding(.leading, proxy.size.width * 0.088)
                         .padding(.top, proxy.size.height * 0.24)
                         .zIndex(2)
@@ -389,6 +389,21 @@ struct LibraryView: View {
         return index == 0
     }
 
+    private func tabletGridFocusedWorkID() -> UUID? {
+        if let focusedWork, viewModel.works.contains(where: { $0.id == focusedWork }) {
+            return focusedWork
+        }
+        #if DEBUG
+        switch ParityLaunch.focus {
+        case "last": return viewModel.works.last?.id
+        case "top": return viewModel.works.dropFirst().first?.id
+        case "first": return viewModel.works.first?.id
+        default: break
+        }
+        #endif
+        return viewModel.works.first?.id
+    }
+
     private var phoneGridScroll: some View {
         ScrollViewReader { reader in
         ScrollView(.vertical) {
@@ -469,6 +484,7 @@ struct LibraryView: View {
             let viewportHeight = proxy.size.height
             let gutter: CGFloat = phone ? 16 : max(28, viewportWidth * 0.058)
             let matchesWebScreenGrid = !phone && viewModel.viewMode == .screen
+            let selectedTabletWorkID = matchesWebScreenGrid ? tabletGridFocusedWorkID() : nil
             let railInset: CGFloat = phone ? 16 : min(max(28, viewportWidth * 0.028), 54)
             let controlEdge = max(min(max(5, viewportWidth * 0.0065), 14), 0)
             let controlGap = min(max(18, viewportWidth * 0.015), 30)
@@ -548,22 +564,33 @@ struct LibraryView: View {
                             if viewModel.viewMode == .list {
                                 libraryListRow(work, width: cardWidth)
                             } else {
-                                PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false)
+                                PlayarrMediaCard(
+                                    work: work,
+                                    apiClient: apiClient,
+                                    width: cardWidth,
+                                    showsSubtitle: false,
+                                    isFocused: work.id == selectedTabletWorkID
+                                )
                                     .overlay(alignment: .topTrailing) {
                                         if !phone, let seen = progressedWorkIDs, !seen.contains(work.id) {
                                             WMUnseenDot().padding(.top, 7).padding(.trailing, 7)
                                         }
                                     }
                                     .overlay(alignment: .top) {
-                                        // Web focuses the first tile of a library on arrival: a pink ring with a soft glow.
-                                        if work.id == viewModel.works.first?.id {
+                                        if !matchesWebScreenGrid && work.id == viewModel.works.first?.id {
                                             WMFocusRing(width: cardWidth, height: cardWidth * 9 / 16, cornerRadius: min(13, max(8, cardWidth * 0.058)))
                                                 .frame(width: cardWidth, height: cardWidth * 9 / 16)
                                         }
                                     }
+                                    .offset(y: work.id == selectedTabletWorkID ? -5 : 0)
+                                    .scaleEffect(work.id == selectedTabletWorkID ? 1.015 : 1)
                             }
                         }
+                        .id(work.id)
                         .buttonStyle(.plain)
+                        .focusable(matchesWebScreenGrid)
+                        .focused($focusedWork, equals: work.id)
+                        .focusEffectDisabled()
                         .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                         .task {
                             if work.id == viewModel.works.last?.id { await viewModel.loadMore() }
@@ -575,6 +602,21 @@ struct LibraryView: View {
                         .padding(.trailing, trailing)
                         .padding(.top, phone ? 92 + WM.topShift : max(128, proxy.size.height * 0.15))
                         .padding(.bottom, phone ? 118 : max(48, proxy.size.height * 0.06))
+                    }
+                    .onAppear {
+                        guard matchesWebScreenGrid, let target = tabletGridFocusedWorkID() else { return }
+                        focusedWork = target
+                        #if DEBUG
+                        if ParityLaunch.focus == "last" {
+                            scrollProxy.scrollTo(target, anchor: .center)
+                        }
+                        #endif
+                    }
+                    .onChange(of: focusedWork) { previous, target in
+                        guard matchesWebScreenGrid, previous != nil, let target else { return }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            scrollProxy.scrollTo(target, anchor: .center)
+                        }
                     }
                     .scrollClipDisabled() // the first tile's focus ring and glow are not cut at the grid edge
                     .webEdgeFade(.vertical, enabled: !phone)
@@ -628,17 +670,21 @@ struct LibraryView: View {
             let isPad = UIDevice.current.userInterfaceIdiom == .pad
             let titleSize: CGFloat = isPad ? min(max(35.2, viewportWidth * 0.036), 80) : 42
             let titleWeight = isPad ? 560 : 400
-            let nativeLineHeight = DesignFont.uiFont(
+            let titleFont = DesignFont.uiFont(
                 family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: titleSize, weight: titleWeight, fixedAxes: DesignFont.nunitoAxes
-            )?.lineHeight ?? titleSize * 1.36
+            )
+            let nativeLineHeight = titleFont?.lineHeight ?? titleSize * 1.36
             let pitchCorrection = titleSize * 0.9 - nativeLineHeight
+            let nineChWidth = titleFont.map { ("000000000" as NSString).size(withAttributes: [.font: $0]).width } ?? titleSize * 4.5
             Text(work.title)
                 .font(WM.font(titleSize, titleWeight))
                 .tracking(isPad ? -titleSize * 0.072 : -1.5)
                 .lineSpacing(pitchCorrection)
                 .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(3)
-                .frame(maxWidth: 215, alignment: .leading)
+                .lineLimit(isPad ? nil : 3)
+                .frame(width: isPad ? min(viewportWidth * 0.24, nineChWidth) : nil, alignment: .leading)
+                .frame(maxWidth: isPad ? nil : 215, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: isPad)
                 .padding(.bottom, pitchCorrection)
             WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
                 .padding(.top, 26)
@@ -680,7 +726,7 @@ struct LibraryView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.trailing, 16 * scale).offset(y: 83 * scale)
+            .padding(.trailing, 16 * scale).offset(y: min(max(116, proxy.size.height * 0.14), 164))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }

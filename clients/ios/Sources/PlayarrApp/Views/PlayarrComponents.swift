@@ -263,14 +263,30 @@ struct PlayarrMediaCard: View {
     var width: CGFloat = 178
     /// The web tablet library shows the title only; Home keeps the "Movie · 2016" line.
     var showsSubtitle = true
+    /// The web library raises and scales its selected tablet tile; other cards keep their resting layout.
+    var isFocused = false
 
     var body: some View {
+        let focusShadow = Color(red: 56.0 / 255, green: 38.0 / 255, blue: 33.0 / 255)
+
         VStack(alignment: .leading, spacing: 7) {
             PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .frame(width: width)
                 .clipShape(RoundedRectangle(cornerRadius: min(13, max(8, width * 0.058)), style: .continuous))
-                .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 17, y: 6)
+                .shadow(
+                    color: isFocused ? focusShadow.opacity(0.3) : PlayarrStyle.ink.opacity(0.1),
+                    radius: isFocused ? 24 : 17,
+                    y: isFocused ? 10 : 6
+                )
+                .shadow(color: focusShadow.opacity(isFocused ? 0.2 : 0), radius: 10, y: 10)
+                .overlay {
+                    if isFocused {
+                        WMFocusRing(width: width, height: width * 9 / 16, cornerRadius: min(13, max(8, width * 0.058)))
+                            .frame(width: width, height: width * 9 / 16)
+                    }
+                }
+                .scaleEffect(isFocused ? 1.025 : 1)
                 .overlay(alignment: .bottom) {
                     if let progress, progress.durationMS > 0 {
                         GeometryReader { proxy in

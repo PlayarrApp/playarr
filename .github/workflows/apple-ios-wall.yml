@@ -3,7 +3,7 @@ name: Apple iOS wall
 # iPhone and iPad parity runs on GitHub-hosted macOS runners, one parallel job per device and part (dark screens, light
 # screens, playback cases): no chaining. Each job builds the app, boots a simulator, signs in as the device test account
 # and runs the shared suite (scripts/parity, docs/parity/SUITE.md) through drivers/apple-ios.mjs. Artifacts are named
-# apple-wall-<device>-<run id>-<part> and carry build.json plus the part's results. Touch devices skip the D-pad checks.
+# Default-branch captures use apple-wall-<device>-<run id>-<part>; candidate runs use parity-candidate- so the live wall publisher ignores them. Both carry build.json plus the part's results. Touch devices skip the D-pad checks.
 #
 # Safety (public repository): workflow_dispatch only, no pull_request trigger, so forks never get a secret. Each secret is
 # passed to the one step that needs it.
@@ -310,7 +310,7 @@ jobs:
           POSTER: ${{ inputs.poster }}
           MOTION: ${{ inputs.motion }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           out="$RUNNER_TEMP/capture"; mkdir -p "$out"
           printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
             "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$out/build.json"
@@ -323,16 +323,16 @@ jobs:
           echo '{"suite":1,"dpad":{},"playback":{}}' > "$RUNNER_TEMP/expected.json"
           node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --reset-progress --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
           if [[ "$MOTION" == true && $only == screens ]]; then
-            PARITY_MOTION=1 node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/motion" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home || true
+            PARITY_MOTION=1 node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/motion" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home
           fi
           if [[ "$POSTER" == true && $only == screens ]]; then
             for size in small medium large; do
-              PARITY_COVERS=1 PARITY_SIZE=$size node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/poster-$size" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music || true
+              PARITY_COVERS=1 PARITY_SIZE=$size node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/poster-$size" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music
             done
           fi
           if [[ "$FOCUS" == true && $only == screens ]]; then
             for mode in first last top; do
-              PARITY_FOCUS=$mode node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/focus-$mode" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music,film-detail,series-detail || true
+              PARITY_FOCUS=$mode node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/focus-$mode" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music,film-detail,series-detail
             done
           fi
 
@@ -340,7 +340,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: apple-wall-${{ matrix.device }}-${{ github.run_id }}-${{ matrix.part }}
+          name: ${{ github.ref_name != github.event.repository.default_branch && 'parity-candidate' || inputs.ref != '' && inputs.ref != github.event.repository.default_branch && 'parity-candidate' || 'apple-wall' }}-${{ matrix.device }}-${{ github.run_id }}-${{ matrix.part }}
           path: ${{ runner.temp }}/capture
           if-no-files-found: ignore
           retention-days: 14
