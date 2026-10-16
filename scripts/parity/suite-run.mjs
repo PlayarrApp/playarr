@@ -4,10 +4,11 @@
 //                      [--screens home,movies] [--cases movie-download,cancel] [--checks home-right,player-right] [--player | --skip-player] [--reset-progress] [--via keys|route] [--reference | --expected <expected.json>]
 // Writes <out>/<theme>/<id>.png, <out>/dpad.json, <out>/downloads.json (and <out>/performance.json with --only performance) (and expected.json with --reference).
 // A screen is never written unless its end state matches the suite route: a wrong or signed-out screen aborts it.
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync, renameSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, routeStateLabel, validateSuite } from "./suite-lib.mjs";
+import { dpadAttempts, routeAttempts } from "./run-policy.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));
@@ -19,6 +20,7 @@ const only = opt("only", "screens,dpad,downloads").split(",");
 const wantScreens = opt("screens", "").split(",").filter(Boolean);
 const wantCases = opt("cases", "").split(",").filter(Boolean);
 const reset = args.includes("--reset-progress");
+const failFast = args.includes("--fail-fast");
 const pinned = () => [...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file)];
 // Player checks play a title, which changes On deck on the shared account: they run only in the PLAYBACK-PHASE window (the file named by
 // PLAYARR_PLAYBACK_PHASE_FILE exists) or with --player, and never with --skip-player.
@@ -52,17 +54,18 @@ const sameItem = (a, b) => { const t = (s) => s.replace(/^open /, ""); return !!
 async function press(keys) {
   for (const { key, long } of expandKeys(keys)) await driver.key(key, { long });
 }
-// One retry: the first key of a run can land before the app shell has settled.
-async function reach(screen, tries = 2) {
+// Routine local runs retain retries; acceptance runs use --fail-fast so an
+// intermittent failure remains visible instead of being retried to green.
+async function reach(screen, tries = routeAttempts({ failFast })) {
   try { return await reachOnce(screen); } catch (e) { if (tries > 1) return reach(screen, tries - 1); throw e; }
 }
 async function reachOnce(screen) {
   await driver.home();
   // A pinned `open` path is always used (every device shows the same title); otherwise keys, or the route as a fallback.
-  if (screen.open) await driver.route(screen.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(screen.open) });
+  if (screen.open) await driver.route(screen.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(screen.open), screenId: screen.id });
   else if (via === "route" || !screen.keys) {
     if (via === "keys" && !screen.keys) console.log(`  ${screen.id}: no keys in the suite, deep linking`);
-    await driver.route(screen.route);
+    await driver.route(screen.route, { screenId: screen.id });
   } else await press(screen.keys);
   await sleep(1500);
   const at = await driver.location();
@@ -70,6 +73,33 @@ async function reachOnce(screen) {
 }
 
 const summary = { screens: 0, failed: [], dpadFailed: [] };
+let checksFailed = false;
+let failureContext = { stage: "runtime" };
+const allowedCheckIds = new Set([...suite.screens, ...suite.crops ?? [], ...suite.dpad, ...suite.downloads, ...suite.performance].map((item) => item.id));
+function safeFailureCategory(error) {
+  const message = String(error?.message ?? "");
+  if (/ended on/.test(message)) return "route-mismatch";
+  if (/wrong start/.test(message)) return "focus-start-mismatch";
+  if (/no focused item/.test(message)) return "focus-unavailable";
+  if (/did not (?:settle|acknowledge|reach|start)/.test(message)) return "navigation-timeout";
+  return "check-failed";
+}
+function writeFailureReport(error) {
+  const { stage, id, route } = failureContext;
+  const safeId = typeof id === "string" && /^[a-z0-9][a-z0-9-]{0,79}$/.test(id) && allowedCheckIds.has(id) ? id : undefined;
+  const report = {
+    suite: suite.version,
+    stage: ["screens", "dpad", "downloads", "performance", "runtime"].includes(stage) ? stage : "runtime",
+    ...(safeId ? { id: safeId } : {}),
+    ...(typeof route === "string" && /^(?:home|[a-z][a-z0-9-]*(?:\/:id)*(?:\?view=(?:month|week|agenda))?)$/.test(route) ? { route } : {}),
+    category: safeFailureCategory(error),
+  };
+  mkdirSync(out, { recursive: true });
+  const tempPath = join(out, "failure.json.tmp");
+  writeFileSync(tempPath, JSON.stringify(report, null, 2));
+  renameSync(tempPath, join(out, "failure.json"));
+}
+try {
 if (reset) await resetProgress([...pinned(), ...await pinnedCatalogFiles(suite)]); // before any capture: On deck and Resume start from the same state on every device
 await driver.start?.({ theme: themes[0] });
 if (only.includes("screens")) {
@@ -77,8 +107,9 @@ if (only.includes("screens")) {
     await driver.setTheme(theme);
     mkdirSync(join(out, theme), { recursive: true });
     for (const s of suite.screens.filter((x) => !wantScreens.length || wantScreens.includes(x.id))) {
+      failureContext = { stage: "screens", id: s.id, route: routeStateLabel(s.route) };
       try { await reach(s); await driver.screenshot(join(out, theme, `${s.id}.png`)); summary.screens += 1; console.log(`ok ${theme} ${s.id}`); }
-      catch (e) { summary.failed.push(`${theme}/${s.id}`); console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); }
+      catch (e) { summary.failed.push(`${theme}/${s.id}`); checksFailed = true; console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); if (failFast) throw e; }
     }
   }
 }
@@ -112,14 +143,16 @@ if (only.includes("dpad")) {
   const results = [];
   const unstable = [];
   for (const d of suite.dpad.filter((x) => !wantChecks.length || wantChecks.includes(x.id))) {
+    const fromScreen = suite.screens.find((x) => x.id === d.from);
+    failureContext = { stage: "dpad", id: d.id, route: fromScreen ? routeStateLabel(fromScreen.route) : undefined };
     if (isPlayerCheck(d) && !playerAllowed) { // skipped, not failed: no playback outside the window
       results.push({ id: d.id, pass: null, state: "skipped: no PLAYBACK-PHASE" });
       console.log(`skip dpad ${d.id}: no PLAYBACK-PHASE (use --player to force, --skip-player to silence)`);
       continue;
     }
     let actual = null, startOk = true, lastKey = null, agreed = false, why = "";
-    // A check starts from a known focus position (`start`): a wrong start or a lost first key gives a wrong answer, so retry up to 3 times.
-    for (let attempt = 1; attempt <= (reference ? 5 : 3); attempt += 1) {
+    // Acceptance checks run once so any intermittent failure is preserved for diagnosis.
+    for (let attempt = 1; attempt <= dpadAttempts({ failFast, reference }); attempt += 1) {
       actual = null; startOk = true; why = "";
       try {
         const from = suite.screens.find((x) => x.id === d.from);
@@ -133,7 +166,12 @@ if (only.includes("dpad")) {
         if (d.start) {
           const at = focusForCheck(await driver.focused(), d.id).position;
           startOk = !at || samePosition(at, d.start); // a driver without position cannot assert the start
-          if (!startOk) { why = `wrong start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index} (focus lost or the app is not on the screen)`; console.log(`  dpad ${d.id}: start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index} (attempt ${attempt})`); continue; }
+          if (!startOk) {
+            why = `wrong start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index} (focus lost or the app is not on the screen)`;
+            console.log(`  dpad ${d.id}: start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index} (attempt ${attempt})`);
+            if (failFast) throw new Error(`${d.id}: ${why}`);
+            continue;
+          }
         }
         await press(d.keys);
         await sleep(800);
@@ -141,12 +179,20 @@ if (only.includes("dpad")) {
         // observe "state": where the app is (route shape, ids dropped), for Back out of the player: the focus label there varies with timing.
         // observe "panel": whether the audio/subtitle panel is open (driver.panelOpen), else the focused label.
         if (d.observe === "panel" && driver.panelOpen) actual = { ...actual, label: `panel:${(await driver.panelOpen()) ? "open" : "closed"}` };
-        if (d.observe === "state") actual = { ...actual, label: `${(await driver.location()).split("?")[0].split("/").filter(Boolean).map((s, i) => (i ? ":id" : s)).join("/")}` };
-      } catch (e) { why = e.message.split("\n")[0]; console.log(`ERR dpad ${d.id}: ${why}`); }
-      if (!actual?.label) { why ||= "the driver reported no focused item"; continue; }
-      // The reference needs two identical answers in a row: Home rails re-sort while other devices play, which moves a card
-      // between positions mid-check. A device run needs one answer.
-      if (!reference) { agreed = true; break; }
+        if (d.observe === "state") actual = { ...actual, label: routeStateLabel(await driver.location()) };
+      } catch (e) {
+        why = e.message.split("\n")[0];
+        console.log(`ERR dpad ${d.id}: ${why}`);
+        if (failFast) throw e;
+      }
+      if (!actual?.label) {
+        why ||= "the driver reported no focused item";
+        if (failFast) throw new Error(`${d.id}: ${why}`);
+        continue;
+      }
+      // Reference runs normally need two identical answers in a row because Home rails can re-sort mid-check.
+      // Fail-fast records one observation and makes no stability claim.
+      if (!reference || failFast) { agreed = true; break; }
       const key = JSON.stringify(d.compare === "position" ? actual.position ?? actual.label : actual.label);
       if (key === lastKey) { agreed = true; break; }
       lastKey = key;
@@ -158,19 +204,21 @@ if (only.includes("dpad")) {
     const pass = byPosition ? samePosition(actual.position, w.position) : d.id === "player-ok-toggle"
       ? !!actual?.label && actual.label === w.label
       : !!actual?.label && sameItem(actual.label, w.label);
-    if (pass === false) summary.dpadFailed.push(d.id);
+    if (!pass && failFast) throw new Error(`${d.id}: ${why || `focus ${actual?.label} @${actual?.position ? `${actual.position.rail}:${actual.position.index}` : "?"}, expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""}`}`);
+    if (pass === false) { summary.dpadFailed.push(d.id); checksFailed = true; }
     results.push({ id: d.id, pass, compared: byPosition ? "position" : "label", expected: expected.dpad[d.id] ?? null, actual: actual && (actual.position ? actual : actual.label),
       ...(pass ? {} : { detail: why || `focus ${actual?.label} @${actual?.position ? `${actual.position.rail}:${actual.position.index}` : "?"}, expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""}` }) });
     console.log(`${pass ? "pass" : "FAIL"} dpad ${d.id}: ${actual?.label}${actual?.position ? ` @${actual.position.rail}:${actual.position.index}` : ""}${pass ? "" : ` (expected ${w.label}${w.position ? ` @${w.position.rail}:${w.position.index}` : ""})`}`);
   }
   // The reference must never record a null or a wrong-start answer: fail the run and leave the old expected.json alone.
-  if (unstable.length) throw new Error(`reference D-pad checks not stable after 3 attempts: ${unstable.join(", ")}`);
+  if (unstable.length) throw new Error(`reference D-pad checks not stable after ${failFast ? "1 attempt" : "3 attempts"}: ${unstable.join(", ")}`);
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, "dpad.json"), JSON.stringify({ ...stamp, results }, null, 2));
 }
 if (only.includes("performance")) { // the former playback cases a, b, c: a later performance suite, not parity
   const results = [];
   for (const p of suite.performance) {
+    failureContext = { stage: "performance", id: p.id };
     let r;
     try {
       r = await driver.play(p, p.expect);
@@ -179,6 +227,8 @@ if (only.includes("performance")) { // the former playback cases a, b, c: a late
     const np = p.nowPlaying && driver.supports?.nowPlaying ? r.nowPlaying?.ok === true : true;
     if (p.nowPlaying && !driver.supports?.nowPlaying) r.nowPlaying = "not supported";
     const pass = np && r.state === p.expect.state && (r.advancedSeconds ?? 0) >= p.expect.advanceSeconds && (r.startSeconds ?? 1e9) <= p.expect.startWithinSeconds;
+    if (!pass && failFast) throw new Error(`${p.id}: performance check failed`);
+    if (!pass) checksFailed = true;
     if (reference) expected.performance[p.id] = { state: r.state };
     if (reset) await resetProgress([p.file]).catch((e) => console.log(`reset-progress: ${e.message}`));
     results.push({ id: p.id, pass, ...r });
@@ -190,25 +240,36 @@ if (only.includes("performance")) { // the former playback cases a, b, c: a late
 if (only.includes("downloads")) {
   // pass: null means skipped (not supported / not built yet): not a failure and not counted.
   const results = [];
-  for (const d of suite.downloads.filter((x) => !wantCases.length || wantCases.includes(x.id))) {
-    let r;
-    const sup = driver.supports ?? {};
-    if (!sup.downloads) r = { pass: null, state: "not supported" };
-    else if (d.requires && !sup[d.requires]) r = { pass: null, state: d.requires === "grouped-downloads" ? "not built yet" : "not supported" };
-    else {
-      try { r = await driver.download({ ...d, media: suite.downloadMedia[d.media] }, d.expect); } catch (e) { r = { state: "error", detail: e.message.split("\n")[0] }; }
-      r.pass = r.state === d.expect.state;
+  try {
+    for (const d of suite.downloads.filter((x) => !wantCases.length || wantCases.includes(x.id))) {
+      failureContext = { stage: "downloads", id: d.id };
+      let r;
+      const sup = driver.supports ?? {};
+      if (!sup.downloads) r = { pass: null, state: "not supported" };
+      else if (d.requires && !sup[d.requires]) r = { pass: null, state: d.requires === "grouped-downloads" ? "not built yet" : "not supported" };
+      else {
+        try { r = await driver.download({ ...d, media: suite.downloadMedia[d.media] }, d.expect); } catch (e) { r = { state: "error", detail: e.message.split("\n")[0] }; }
+        r.pass = r.state === d.expect.state;
+      }
+      if (reset && d.action === "offline-play") await resetProgress([d.media ? suite.downloadMedia[d.media].file : ""]).catch((e) => console.log(`reset-progress: ${e.message}`));
+      results.push({ id: d.id, ...r });
+      if (r.pass === false && failFast) throw new Error(`${d.id}: download check failed`);
+      if (r.pass === false) checksFailed = true;
+      console.log(`${r.pass === null ? "skip" : r.pass ? "pass" : "FAIL"} downloads ${d.id}: ${JSON.stringify(r)}`);
     }
-    if (reset && d.action === "offline-play") await resetProgress([d.media ? suite.downloadMedia[d.media].file : ""]).catch((e) => console.log(`reset-progress: ${e.message}`));
-    results.push({ id: d.id, ...r });
-    console.log(`${r.pass === null ? "skip" : r.pass ? "pass" : "FAIL"} downloads ${d.id}: ${JSON.stringify(r)}`);
+  } finally {
+    await driver.cleanupDownloads?.();
   }
-  await driver.cleanupDownloads?.();
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, "downloads.json"), JSON.stringify({ ...stamp, results }, null, 2));
 }
-if (reference) { mkdirSync(out, { recursive: true }); writeFileSync(join(out, "expected.json"), JSON.stringify({ suite: suite.version, ...expected }, null, 2)); }
-await driver.stop?.();
+if (reference && !checksFailed) { mkdirSync(out, { recursive: true }); writeFileSync(join(out, "expected.json"), JSON.stringify({ suite: suite.version, ...expected }, null, 2)); }
 console.log(`captured ${summary.screens}, failed ${summary.failed.length}${summary.failed.length ? `: ${summary.failed.join(", ")}` : ""}`);
 if (summary.dpadFailed.length) console.log(`failed D-pad checks ${summary.dpadFailed.length}: ${summary.dpadFailed.join(", ")}`);
-process.exit(summary.failed.length || summary.dpadFailed.length ? 1 : 0);
+process.exitCode = summary.failed.length || summary.dpadFailed.length ? 1 : 0;
+} catch (error) {
+  if (failFast) writeFailureReport(error);
+  throw error;
+} finally {
+  await driver.stop?.();
+}
