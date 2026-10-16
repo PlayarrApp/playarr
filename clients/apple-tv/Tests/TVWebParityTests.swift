@@ -531,6 +531,17 @@ final class TVWebParityTests: XCTestCase {
         XCTAssertEqual(TVWebFormat.clock(ms: 125_000), "2:05")
     }
 
+    func testLibraryYearRangeMatchesWebUTCAndEndDateRules() {
+        XCTAssertEqual(TVWebFormat.yearRange("2011-04-17", endDate: "2019-05-19"), "2011–2019")
+        XCTAssertEqual(TVWebFormat.yearRange("2011-02-01", endDate: "2011-11-01"), "2011")
+        XCTAssertEqual(TVWebFormat.yearRange("2011-02-01", endDate: "2009-01-01"), "2011")
+        XCTAssertEqual(TVWebFormat.yearRange("2011-02-01", endDate: "invalid"), "2011")
+        XCTAssertEqual(TVWebFormat.yearRange("2011-02-01", endDate: nil), "2011")
+        XCTAssertNil(TVWebFormat.yearRange(nil, endDate: "2019-05-19"))
+        XCTAssertNil(TVWebFormat.yearRange("invalid", endDate: "2019-05-19"))
+        XCTAssertEqual(TVWebFormat.yearRange("2019-12-31T23:30:00-02:00", endDate: nil), "2020")
+    }
+
     func testTitleWrapBreaksAtWordBoundaries() {
         let lines = TVTextWrap.lines(
             "Sample Series 1",

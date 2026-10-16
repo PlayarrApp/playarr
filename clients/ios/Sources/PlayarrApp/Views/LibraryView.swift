@@ -76,6 +76,9 @@ struct LibraryView: View {
             #endif
         }
         .navigationBarHidden(true)
+        #if DEBUG
+        .parityScreenLoad(parityLoadState)
+        #endif
         .overlay {
             // Phones: a full-page panel; iPad: the web tablet's 352 pt drawer on the right.
             HStack(spacing: 0) {
@@ -103,6 +106,18 @@ struct LibraryView: View {
             WorkDownloadSheet(work: work, apiClient: apiClient, downloadRepository: downloadRepository)
         }
     }
+
+    #if DEBUG
+    private var parityLoadState: ParityScreenLoad {
+        switch viewModel.loadState {
+        case .loaded, .empty:
+            if ParityLaunch.screen == "actions", actionsWork == nil { return .loading }
+            return .ready
+        case .failed: return .failed
+        case .idle, .loading: return .loading
+        }
+    }
+    #endif
 
     private struct SearchChip: Identifiable {
         let label: String

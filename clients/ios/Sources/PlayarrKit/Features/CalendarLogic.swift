@@ -1,5 +1,23 @@
 import Foundation
 
+/// Locale mapping used by the Web client for calendar week starts and weekday labels.
+/// Unsupported system languages resolve to the Web default, en-GB.
+public func calendarLocaleIdentifier(language: String, systemLanguage: String?) -> String {
+    let resolved = language == "system" ? (systemLanguage ?? "en") : language
+    switch resolved {
+    case "th": return "th-TH"
+    case "ja": return "ja-JP"
+    default: return "en-GB"
+    }
+}
+
+/// First weekday for the selected app language, using Gregorian weekday numbering (Sunday = 1).
+public func calendarFirstWeekday(language: String, systemLanguage: String?) -> Int {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.locale = Locale(identifier: calendarLocaleIdentifier(language: language, systemLanguage: systemLanguage))
+    return calendar.firstWeekday
+}
+
 // Pure, UI-free Release Calendar logic shared by iOS and tvOS. Mirrors the Web
 // (`groupSeriesEpisodes`, `applyCalendarFilters`) and Android (`PlayarrCalendarLogic`) behaviour.
 

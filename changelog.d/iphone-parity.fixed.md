@@ -1,0 +1,1 @@
+- Align native iPhone calendar layouts and episode metadata with the accepted web presentation, and require verified identity, loaded routes, focus movement and direct-play controls in parity acceptance runs.

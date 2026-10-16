@@ -20,8 +20,8 @@ private final class PlaylistsViewModel {
             let loaded = try await apiClient.listPlaylists()
                 .sorted { $0.updatedAt > $1.updatedAt }
             playlists = loaded
-            state = .loaded
             await loadDirectorySummaries(for: loaded)
+            state = .loaded
         } catch let error as APIError {
             state = .failed(error.displayMessage)
         } catch {
@@ -117,6 +117,9 @@ struct PlaylistsView: View {
         .task {
             if case .idle = viewModel.state { await viewModel.load() }
         }
+        #if DEBUG
+        .parityScreenLoad(parityLoadState)
+        #endif
         .navigationBarHidden(true)
         .sheet(isPresented: $showingCreate) { playlistEditor }
         .alert("Rename playlist", isPresented: Binding(
@@ -145,6 +148,16 @@ struct PlaylistsView: View {
             set: { if !$0 { mutationError = nil } }
         )) { Button("OK") { mutationError = nil } } message: { Text(mutationError ?? "") }
     }
+
+    #if DEBUG
+    private var parityLoadState: ParityScreenLoad {
+        switch viewModel.state {
+        case .idle, .loading: .loading
+        case .loaded: .ready
+        case .failed: .failed
+        }
+    }
+    #endif
 
     private var playlistList: some View {
         GeometryReader { proxy in

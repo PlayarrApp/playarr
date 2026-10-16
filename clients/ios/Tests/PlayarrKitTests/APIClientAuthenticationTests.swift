@@ -180,6 +180,54 @@ final class APIClientAuthenticationTests: XCTestCase {
         )
     }
 
+    func testLanguageFacetsAndFilteredBrowseUseWebLanguageContract() async throws {
+        let store = TestTokenStore(
+            session: StoredAuthSession(
+                accessToken: "access",
+                refreshToken: "refresh",
+                tokenType: "Bearer",
+                expiresAt: .distantFuture
+            )
+        )
+        var paths: [String] = []
+        URLProtocolStub.handler = { request in
+            paths.append(request.url!.path)
+            let components = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)
+            let query = Dictionary(uniqueKeysWithValues: (components?.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+            if request.url!.path == "/api/v1/catalog/languages" {
+                XCTAssertEqual(query["available_only"], "true")
+                XCTAssertEqual(query["kind"], "movie")
+                XCTAssertEqual(query["audio_lang"], "en,fr")
+                XCTAssertEqual(query["subtitle_lang"], "es")
+                return Self.response(request, json: #"{"audio":[{"code":"en","name":"English","count":8}],"subtitle":[{"code":"es","name":"Spanish","count":3}]}"#)
+            }
+            XCTAssertEqual(request.url!.path, "/api/v1/catalog")
+            XCTAssertEqual(query["available_only"], "true")
+            XCTAssertEqual(query["kind"], "movie")
+            XCTAssertEqual(query["sort"], "title")
+            XCTAssertEqual(query["order"], "asc")
+            XCTAssertEqual(query["audio_lang"], "en,fr")
+            XCTAssertEqual(query["subtitle_lang"], "es")
+            return Self.response(request, json: #"{"items":[],"total":0}"#)
+        }
+
+        let client = makeClient(store: store)
+        let facets = try await client.catalogLanguages(kind: .movie, audioLang: ["en", "fr"], subtitleLang: ["es"])
+        _ = try await client.browseCatalog(
+            kind: .movie,
+            sort: "title",
+            order: "asc",
+            audioLang: ["en", "fr"],
+            subtitleLang: ["es"],
+            limit: 200,
+            offset: 0
+        )
+
+        XCTAssertEqual(facets.audio.first?.displayName, "English")
+        XCTAssertEqual(facets.subtitle.first?.code, "es")
+        XCTAssertEqual(paths, ["/api/v1/catalog/languages", "/api/v1/catalog"])
+    }
+
     func testAlbumArtworkUsesAuthenticatedWebRoute() async throws {
         let store = TestTokenStore(
             session: StoredAuthSession(

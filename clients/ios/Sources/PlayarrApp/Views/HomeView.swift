@@ -56,6 +56,15 @@ struct HomeView: View {
         .task {
             if case .idle = viewModel.loadState { await viewModel.load() }
         }
+        .parityScreenLoad(parityLoadState)
+    }
+
+    private var parityLoadState: ParityScreenLoad {
+        switch viewModel.loadState {
+        case .loaded: .ready
+        case .failed: .failed
+        case .idle, .loading: .loading
+        }
     }
 
     private var loadedContent: some View {

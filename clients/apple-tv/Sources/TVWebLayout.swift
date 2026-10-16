@@ -261,6 +261,32 @@ enum TVWebFormat {
         return String(iso.prefix(4))
     }
 
+    /// Web `yearRangeLabel`: show the UTC end year only when it is later than the release year.
+    static func yearRange(_ releaseDate: String?, endDate: String?) -> String? {
+        guard let start = yearNumber(releaseDate) else { return nil }
+        guard let end = yearNumber(endDate), end > start else { return String(start) }
+        return "\(start)–\(end)"
+    }
+
+    private static func yearNumber(_ iso: String?) -> Int? {
+        guard let iso, let utc = TimeZone(secondsFromGMT: 0) else { return nil }
+        let parser = ISO8601DateFormatter()
+        parser.timeZone = utc
+        if iso.count == 10 {
+            parser.formatOptions = [.withFullDate]
+        } else {
+            parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if parser.date(from: iso) == nil {
+                parser.formatOptions = [.withInternetDateTime]
+            }
+        }
+        guard let date = parser.date(from: iso) else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = utc
+        let year = calendar.component(.year, from: date)
+        return year > 0 ? year : nil
+    }
+
     static func runtime(ms: Int64?) -> String? {
         guard let ms, ms > 0 else { return nil }
         let minutes = max(1, Int((Double(ms) / 60_000).rounded()))

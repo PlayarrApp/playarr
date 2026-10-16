@@ -15,10 +15,12 @@ final class DetailNavigationUITests: XCTestCase {
             "PLAYARR_PARITY_SERVER": server,
             "PLAYARR_PARITY_USER": username,
             "PLAYARR_PARITY_PASSWORD": password,
+            "PLAYARR_PARITY_EXPECTED_USERNAME": username,
             "PLAYARR_PARITY_ROUTE": "home",
             "PLAYARR_PARITY_SELECT_HOME_SERIES": "1",
         ]
         app.launch()
+        try requireParityCaptureReady(app, expectedUsername: username)
 
         let homeTab = app.buttons["phone-tab-home"]
         let searchTab = app.buttons["phone-tab-search"]
@@ -39,13 +41,16 @@ final class DetailNavigationUITests: XCTestCase {
         tap(until: detailBack, "The selected Series detail must open.") {
             if homeSeries.exists { homeSeries.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
         }
+        try requireParityCaptureReady(app, expectedUsername: username)
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 30), "The selected Series detail must open.")
         XCTAssertTrue(seriesTab.waitForExistence(timeout: 30))
         assertSelected(seriesTab)
         tap(until: homeSeries, "Back must restore Home.") { if detailBack.exists { detailBack.tap() } }
+        try requireParityCaptureReady(app, expectedUsername: username)
         assertSelected(homeTab)
 
         searchTab.tap()
+        try requireParityCaptureReady(app, expectedUsername: username)
         let searchField = app.textFields["search-field"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 30))
         searchField.tap()
@@ -54,9 +59,11 @@ final class DetailNavigationUITests: XCTestCase {
         let result = app.buttons["search-work-\(workID)"]
         XCTAssertTrue(result.waitForExistence(timeout: 60), "Search must return the same Series.")
         tap(until: detailBack, "Search result detail must open.") { if result.exists { result.tap() } }
+        try requireParityCaptureReady(app, expectedUsername: username)
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 30))
         assertSelected(seriesTab)
         tap(until: searchField, "Back must restore Search.") { if detailBack.exists { detailBack.tap() } }
+        try requireParityCaptureReady(app, expectedUsername: username)
         XCTAssertEqual(searchField.value as? String, title)
         assertSelected(searchTab)
     }
