@@ -300,6 +300,7 @@ jobs:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PLAYARR_DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           # --reset-progress: On deck and Resume start from the state the web references were captured in.
           PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}

@@ -39,6 +39,9 @@ extension View {
 struct RootView: View {
     let environment: AppEnvironment
     @State private var updateViewModel: UpdateViewModel
+    #if DEBUG
+    @State private var parityIdentityVerified = false
+    #endif
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("com.playarr.ios.appearance") private var appearance = "system"
 
@@ -61,8 +64,17 @@ struct RootView: View {
             case .signedOut:
                 LoginView(environment: environment)
             case .signedIn:
+                #if DEBUG
+                if ParityLaunch.isActive && !parityIdentityVerified {
+                    PlayarrLoadingView(title: "Verifying test account…")
+                } else {
+                    AuthenticatedPlayarrShell(environment: environment)
+                        .id("\(environment.serverBaseURL.absoluteString)-\(environment.currentUserName ?? "viewer")")
+                }
+                #else
                 AuthenticatedPlayarrShell(environment: environment)
                     .id("\(environment.serverBaseURL.absoluteString)-\(environment.currentUserName ?? "viewer")")
+                #endif
             }
         }
         .preferredColorScheme(preferredColourScheme)
@@ -76,9 +88,23 @@ struct RootView: View {
             if ParityLaunch.isActive, let server = ParityLaunch.server, let user = ParityLaunch.user {
                 do {
                     try await environment.signIn(serverURL: server, username: user, password: ParityLaunch.password ?? "")
+                    let profiles = try await environment.apiClient.listProfiles()
+                    let currentProfiles = profiles.filter(\.isCurrent)
+                    guard currentProfiles.count == 1,
+                          currentProfiles[0].username == user,
+                          currentProfiles[0].id == environment.currentUserID else {
+                        ParityLaunch.record("signedIn", false)
+                        ParityLaunch.record("deviceTestIdentityVerified", false)
+                        return
+                    }
+                    parityIdentityVerified = true
+                    ParityLaunch.record("deviceTestIdentityVerified", true)
                     ParityLaunch.record("signedIn", true)
                     Task { await ParityDownloads.run(environment.downloadRepository) }
-                } catch {}
+                } catch {
+                    ParityLaunch.record("signedIn", false)
+                    ParityLaunch.record("deviceTestIdentityVerified", false)
+                }
                 return
             }
             #endif

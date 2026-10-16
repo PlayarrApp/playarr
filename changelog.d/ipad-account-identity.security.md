@@ -1,0 +1,1 @@
+- Require iOS parity runs to verify the authenticated profile against the approved Device Test account before routing, capture, or playback.

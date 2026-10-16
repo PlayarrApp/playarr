@@ -1,7 +1,7 @@
 // iPhone and iPad simulator driver for the shared parity suite (docs/parity/SUITE.md), run with `--via route` and
 // `--only screens,playback` (touch devices have no D-pad). Runs on a GitHub-hosted macOS runner next to
 // scripts/apple-wall/wall.sh (WORK/state.env holds the simulator's UDID and the app's bundle id).
-//   env: WORK, DEVICE (iphone|ipad), SERVER_URL, TEST_USERNAME, TEST_PASSWORD
+//   env: WORK, DEVICE (iphone|ipad), SERVER_URL, TEST_USERNAME, TEST_PASSWORD, PLAYARR_DEVICE_TEST_USERNAME
 // The debug app signs in and opens a screen from launch arguments (clients/ios ParityLaunch.swift) and writes
 // Documents/parity-state.json (signedIn, playback). A launch costs seconds, so route() only records the suite route and
 // screenshot() launches the native screen named by the file (suite ids are unique, routes are not: actions and movies).
@@ -9,6 +9,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { hasApprovedDeviceTestIdentity } from "../device-test-identity.mjs";
 
 const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "suite.json"), "utf8"));
 
@@ -40,20 +41,22 @@ async function resetProgressOnce(files) {
 }
 
 export async function createDriver() {
+  const e = process.env;
+  if (!hasApprovedDeviceTestIdentity(e, e.TEST_USERNAME)) throw new Error("apple-ios driver: launch account is not the approved Device Test account");
   const device = process.env.DEVICE;
   if (device !== "iphone" && device !== "ipad") throw new Error(`apple-ios driver: ${device} is not an iPhone or iPad`);
   const work = process.env.WORK, st = readState(work), udid = st.UDID, bundle = st.BUNDLE;
   if (!udid || !bundle) throw new Error("no simulator in WORK/state.env: run wall.sh up first");
-  const e = process.env;
   let theme = "dark", wanted = "/";
   const statePath = () => join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents", "parity-state.json");
   const state = () => { try { return JSON.parse(readFileSync(statePath(), "utf8")); } catch { return {}; } };
+  const identityVerified = () => state().deviceTestIdentityVerified === true;
   let launchedAt = "";
   const launch = async (route, extra = [], enableLayoutDiagnostics = false) => {
     const d = new Date(), z = (n) => String(n).padStart(2, "0");
     launchedAt = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; // local time, as `log show --start` reads it
     try { run("xcrun", ["simctl", "terminate", udid, bundle]); } catch { /* not running */ }
-    try { rmSync(statePath(), { force: true }); } catch { /* no container yet */ }
+    rmSync(statePath(), { force: true });
     run("xcrun", ["simctl", "ui", udid, "appearance", theme]);
     const launchEnv = { ...process.env };
     delete launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS;
@@ -62,8 +65,13 @@ export async function createDriver() {
       "--playarr-parity-password", e.TEST_PASSWORD, "--playarr-parity-route", route, "--playarr-parity-theme", theme,
       ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...(process.env.PARITY_FOCUS ? ["--playarr-parity-focus", process.env.PARITY_FOCUS] : []),
       ...(process.env.PARITY_MOTION === "1" ? ["--playarr-parity-motion"] : []), ...(process.env.PARITY_COVERS === "1" ? ["--playarr-parity-covers"] : []), ...(process.env.PARITY_SIZE ? ["--playarr-parity-size", process.env.PARITY_SIZE] : []), ...extra], { env: launchEnv });
-    for (let i = 0; i < 60 && !state().signedIn; i += 1) await sleep(1000);
-    if (!state().signedIn) throw new Error("signed out");
+    for (let i = 0; i < 60; i += 1) {
+      const current = state();
+      if (current.deviceTestIdentityVerified === false) throw new Error("signed-in Device Test identity could not be verified");
+      if (current.signedIn && current.deviceTestIdentityVerified === true) return;
+      await sleep(1000);
+    }
+    throw new Error("signed-in Device Test identity could not be verified");
   };
   let seq = 0, touched = new Set();
   const cmd = (action, m, extra = {}) => { // the debug app polls Documents/parity-cmd.json (ParityDownloads.swift)
@@ -93,7 +101,7 @@ export async function createDriver() {
     async cleanupDownloads() { for (const file of touched) { try { cmd("cancel", { file }); await sleep(1500); } catch { /* app gone */ } } },
     async download(c, expect) {
       const m = c.media;
-      if (!state().signedIn) await launch("home");
+      if (!identityVerified()) await launch("home");
       const within = expect.withinSeconds;
       const start = async () => { cmd("start", m); return until(m, (d) => !!d, 60); };
       const done = (d) => d?.state === "completed";
@@ -135,6 +143,7 @@ export async function createDriver() {
       }
     },
     async start() {
+      await launch("home"); // establish the actual authenticated profile before resets or any suite action
       run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
       await sleep(60000); // a fresh simulator shows one-off system banners (Apple Intelligence) in the first minute: let them go
       await resetProgress([...new Set([...(suite.playback ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // pinned files come from suite.json, never a copy here
