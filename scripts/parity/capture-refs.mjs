@@ -80,17 +80,22 @@ const series = await (await fetch(`${srv}/api/v1/catalog/${seriesId}`, { headers
 const episodeFiles = (series.children?.Series ?? []).flatMap((s) => s.episodes ?? []).map((e) => e.media_file_id).filter(Boolean);
 if (!episodeFiles.length || !film.media_file_id) throw new Error("pinned detail media files are missing from the catalogue");
 const pinned = [...stateFiles, film.media_file_id, ...episodeFiles];
-if (process.env.PARITY_SEED_CANONICAL === "1") {
-  const seedModule = process.env.PARITY_SEED_MODULE;
-  if (!seedModule) throw new Error("PARITY_SEED_MODULE is required when PARITY_SEED_CANONICAL=1");
-  const { seedCanonicalDeck } = await import(pathToFileURL(resolve(seedModule)).href);
-  if (typeof seedCanonicalDeck !== "function") throw new Error("PARITY_SEED_MODULE must export seedCanonicalDeck");
-  await seedCanonicalDeck(captureState, { deckFile: process.env.PARITY_DECK_MEDIA_FILE_ID, positionMs: Number(process.env.PARITY_DECK_POSITION_MS ?? 15098), durationMs: Number(process.env.PARITY_DECK_DURATION_MS ?? 6742000) });
-}
-if (!args.includes("--no-reset")) {
-  for (const file of new Set(pinned)) await captureState.writeProgress(file, { position_ms: 0, duration_ms: captureState.snapshot.files[file]?.duration_ms ?? 0, completed: false });
-  await captureState.clearResumeChoices();
-}
+// Seeds the canonical deck and resets the pinned files' progress; runs at the start and again right before each group's Home capture,
+// so no earlier screen's playback or the previous group's run can leave On deck different from the canonical state.
+const prepareState = async () => {
+  if (process.env.PARITY_SEED_CANONICAL === "1") {
+    const seedModule = process.env.PARITY_SEED_MODULE;
+    if (!seedModule) throw new Error("PARITY_SEED_MODULE is required when PARITY_SEED_CANONICAL=1");
+    const { seedCanonicalDeck } = await import(pathToFileURL(resolve(seedModule)).href);
+    if (typeof seedCanonicalDeck !== "function") throw new Error("PARITY_SEED_MODULE must export seedCanonicalDeck");
+    await seedCanonicalDeck(captureState, { deckFile: process.env.PARITY_DECK_MEDIA_FILE_ID, positionMs: Number(process.env.PARITY_DECK_POSITION_MS ?? 15098), durationMs: Number(process.env.PARITY_DECK_DURATION_MS ?? 6742000) });
+  }
+  if (!args.includes("--no-reset")) {
+    for (const file of new Set(pinned)) await captureState.writeProgress(file, { position_ms: 0, duration_ms: captureState.snapshot.files[file]?.duration_ms ?? 0, completed: false });
+    await captureState.clearResumeChoices();
+  }
+};
+await prepareState();
 const captureSnapshot = await captureState.snapshotNow();
 const stateHash = captureSnapshot.hash;
 
@@ -112,14 +117,17 @@ for (const name of groups) {
   try {
     if (!driver.setDeterministicCapture || !driver.waitReady || !driver.captureBuildIdentity) throw new Error("web driver lacks deterministic capture, readiness, or build identity controls");
     await driver.setDeterministicCapture({ fixedNow, disableAnimations: true });
+    // start() first: the driver's account guard needs a signed-in page before it will report the build identity.
+    await driver.start();
     const driverBuild = await driver.captureBuildIdentity();
     if (driverBuild !== `${webBuild.sha}@${webBuild.builtAt}`) throw new Error(`web driver build identity ${driverBuild} does not match build-info identity ${webBuild.sha}@${webBuild.builtAt}`);
-    await driver.start();
     for (const theme of ["dark", "light"]) {
       await driver.setTheme(theme);
       mkdirSync(join(work, name, theme), { recursive: true });
       for (const s of screens) {
-        try {
+        // A slow relay can fail one request; retry only this screen (never an account-guard rejection).
+        for (let attempt = 1; ; attempt += 1) try {
+          if (s.id === "home") await prepareState();
           await driver.home();
           if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
           else if (s.open) await driver.route(s.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(s.open) });
@@ -132,7 +140,13 @@ for (const name of groups) {
           captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, sha256: createHash("sha256").update(readFileSync(imagePath)).digest("hex"), build: webBuild.sha, checked_at: new Date().toISOString() });
           facts[`${theme}/${s.id}`] = await driver.inspect();
           console.log(`ok ${name} ${theme} ${s.id}`);
-        } catch (e) { console.log(`FAIL ${name} ${theme} ${s.id}: ${e.message.split("\n")[0]}`); throw e; }
+          break;
+        } catch (e) {
+          const retriable = attempt < 5 && !/guard rejected|allowlist|trusted/.test(e.message);
+          console.log(`${retriable ? "retry" : "FAIL"} ${name} ${theme} ${s.id} (${attempt}): ${e.message.split("\n")[0]}`);
+          if (!retriable) throw e;
+          await new Promise((r) => setTimeout(r, 10000 * attempt));
+        }
       }
     }
     const finalDriverBuild = await driver.captureBuildIdentity();
