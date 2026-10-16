@@ -14,10 +14,11 @@ const manifest = {
   runtimeEntry: { name: "assets/index-test.js", sha256: digest, observedLoadedInDevice: true },
 };
 
-async function makeDriver({ device = "webos", username = "fixture-device-user", loaded = true, staged = bytes, focused = true, routeReady = true, stableImages = true, fontsReady = true, fontsRejected = false, clockConsumed = true, routeChanges = false, cdpErrorMethod, cdpIdentityFailureOnReconnect, cdpIdentityFailureMessage } = {}) {
+async function makeDriver({ device = "webos", username = "fixture-device-user", loaded = true, staged = bytes, focused = true, routeReady = true, stableImages = true, fontsReady = true, fontsRejected = false, clockConsumed = true, routeChanges = false, cdpErrorMethod, cdpIdentityFailureOnReconnect, cdpIdentityFailureMessage, identityRequestFailAt = [] } = {}) {
   const calls = [];
   let routeReads = 0;
   let socketCount = 0;
+  let identityReads = 0;
   class Socket {
     static CLOSING = 2;
     readyState = 1;
@@ -57,6 +58,10 @@ async function makeDriver({ device = "webos", username = "fixture-device-user", 
       if (identityReconnect && cdpIdentityFailureOnReconnect === "exception") response.result = { exceptionDetails: {
         text: "Uncaught (in promise)",
         exception: { description: `Error: ${cdpIdentityFailureMessage ?? "sensitive mocked exception detail"}` },
+      } };
+      if (request.method === "Runtime.evaluate" && request.params.expression.includes('localStorage.getItem("playarr:session")') && identityRequestFailAt.includes(++identityReads)) response.result = { exceptionDetails: {
+        text: "Uncaught (in promise)",
+        exception: { description: "Error: device-test account identity request failed" },
       } };
       queueMicrotask(() => this.onmessage?.({ data: JSON.stringify(response) }));
     }
@@ -255,6 +260,15 @@ test("webOS reconnect fails closed with sanitised CDP identity evaluation errors
       return true;
     });
     await driver.stop();
+  });
+  await t.test("guard retries a transient identity request failure a bounded number of times", async () => {
+    const { driver, calls } = await makeDriver({ identityRequestFailAt: [2, 3] });
+    await driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
+    await driver.route("/home");
+    await driver.stop();
+    const failing = await makeDriver({ identityRequestFailAt: [2, 3, 4, 5, 6, 7, 8, 9] });
+    await assert.rejects(failing.driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true }), /identity-request-failed/);
+    await failing.driver.stop();
   });
   await t.test("unknown identity page exception stays generic", async () => {
     const { driver } = await makeDriver({ cdpIdentityFailureOnReconnect: "exception" });

@@ -143,27 +143,32 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
     try { ws.send(JSON.stringify({ id: i, method, params })); }
     catch (error) { clearTimeout(timer); pending.delete(i); reject(error); }
   });
+  const IDENTITY_ERRORS = [
+    ["device-test account identity request failed", "identity-request-failed"],
+    ["device-test account identity unavailable", "identity-session-unavailable"],
+    ["device-test account identity server is invalid", "identity-server-invalid"],
+    ["device-test account identity server is not trusted", "identity-server-untrusted"],
+    ["device-test account identity response invalid", "identity-response-invalid"],
+    ["device-test account identity is missing or ambiguous", "identity-profile-ambiguous"],
+    ["device-test account session changed during identity check", "identity-session-changed"],
+  ];
+  // Only a fixed category is surfaced: the page exception text can carry account or server details.
+  function exceptionCategory(details) {
+    const diagnostic = [details.text, details.exception?.description].filter((value) => typeof value === "string").join("\n");
+    const category = IDENTITY_ERRORS.find(([message]) => diagnostic.includes(message))?.[1];
+    return category ? ` (${category})` : "";
+  }
   function assertCdp(response, method) {
     if (response?.error) throw new Error(`CDP ${method} failed`);
-    if (response?.result?.exceptionDetails) throw new Error(`CDP ${method} raised a page exception`);
+    const details = response?.result?.exceptionDetails;
+    if (details) throw new Error(`CDP ${method} raised a page exception${exceptionCategory(details)}`);
     return response;
   }
   function assertIdentityCdp(response) {
     if (response?.error) throw new Error("CDP Runtime.evaluate device-test identity failed");
     const details = response?.result?.exceptionDetails;
     if (!details) return response;
-    const diagnostic = [details.text, details.exception?.description].filter((value) => typeof value === "string").join("\n");
-    const knownErrors = [
-      ["device-test account identity request failed", "identity-request-failed"],
-      ["device-test account identity unavailable", "identity-session-unavailable"],
-      ["device-test account identity server is invalid", "identity-server-invalid"],
-      ["device-test account identity server is not trusted", "identity-server-untrusted"],
-      ["device-test account identity response invalid", "identity-response-invalid"],
-      ["device-test account identity is missing or ambiguous", "identity-profile-ambiguous"],
-      ["device-test account session changed during identity check", "identity-session-changed"],
-    ];
-    const category = knownErrors.find(([message]) => diagnostic.includes(message))?.[1];
-    throw new Error(`CDP Runtime.evaluate device-test identity raised a page exception${category ? ` (${category})` : ""}`);
+    throw new Error(`CDP Runtime.evaluate device-test identity raised a page exception${exceptionCategory(details)}`);
   }
   async function ev(expr) {
     if (device === "tizen") {
@@ -181,8 +186,19 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
     if (r?.exceptionDetails) throw new Error(r.exceptionDetails.text);
     return r?.result?.value;
   }
+  // The identity request crosses the network to the test server and can time out under load. Only that transport
+  // failure is retried (bounded); a missing, mismatched or non-device-test identity still fails at once.
   async function guard() {
-    const identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+    let identity;
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+        break;
+      } catch (error) {
+        if (attempt >= 3 || !/identity-request-failed/.test(error.message)) throw error;
+        await sleepImpl(2000);
+      }
+    }
     return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   }
   // Reload at a hash route and wait until the app is up again (a reload drops the debug channel for a few seconds).
