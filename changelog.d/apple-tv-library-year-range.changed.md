@@ -1,1 +1,0 @@
-- Show the library preview's release-to-end year range for ended works, matching the web client's UTC year rules.

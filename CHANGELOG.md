@@ -696,6 +696,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Show the library preview's release-to-end year range for ended works, matching the web client's UTC year rules.
 - Align the iPad light-theme library rail, card sizing, grid spacing, and preview title with the web layout.
 - HarmonyOS phone: the Start and Play buttons use web's ink fill with the page colour as label.
 - HarmonyOS phone: drawer section headings, the drawer close button, episode number and unseen dot sizes, and the calendar Today button follow web's phone sizes and focus look; the wall re-seeds the deck right before Home.
