@@ -21,10 +21,12 @@ final class PosterModeCaptureUITests: XCTestCase {
                 app.launchArguments = ["-com.playarr.ios.homeView", view, "-com.playarr.ios.artworkSize", size]
                 app.launchEnvironment = [
                     "PLAYARR_PARITY_SERVER": server, "PLAYARR_PARITY_USER": username, "PLAYARR_PARITY_PASSWORD": password,
+                    "PLAYARR_PARITY_EXPECTED_USERNAME": username,
                     "PLAYARR_PARITY_ROUTE": route,
                 ]
                 app.launch()
                 _ = app.windows.firstMatch.waitForExistence(timeout: 30)
+                try requireParityCaptureReady(app, expectedUsername: username)
                 Thread.sleep(forTimeInterval: 12)
                 let shot = XCTAttachment(screenshot: app.screenshot())
                 shot.name = "\(name)-\(route)"

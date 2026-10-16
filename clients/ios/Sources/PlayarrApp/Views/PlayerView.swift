@@ -92,6 +92,9 @@ struct PlayerView: View {
         .playarrChromeHidden()
         // The player is always dark, whatever the app theme.
         .environment(\.colorScheme, .dark)
+        #if DEBUG
+        .parityScreenLoad(parityLoadState)
+        #endif
         .task {
             if viewModel == nil {
                 let model = PlayerViewModel(engine: AVPlayerEngine(), apiClient: apiClient, downloadRepository: downloadRepository, castCoordinator: castCoordinator)
@@ -182,6 +185,17 @@ struct PlayerView: View {
             viewModel?.viewDidDisappear()
         }
     }
+
+    #if DEBUG
+    private var parityLoadState: ParityScreenLoad {
+        guard ParityLaunch.isPlayerRoute, ParityLaunch.identityVerified else { return .loading }
+        switch viewModel?.loadState {
+        case .playing where viewModel?.playbackMode == .direct: return .ready
+        case .failed: return .failed
+        default: return .loading
+        }
+    }
+    #endif
 
     private var showsCastAffordance: Bool {
         CastSessionCoordinator.isConfigured && !isOfflinePlayback && viewModel?.isPlayingLocalFile != true
