@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDriver } from "./drivers/web.mjs";
+import { createDriver, searchResultsReadyPredicate } from "./drivers/web.mjs";
 
 const serverUrl = "https://server.example.invalid";
 const originalEnv = { ...process.env };
@@ -16,12 +16,39 @@ function config(username = "device-test") {
 }
 
 function browserMock({ initialSignedIn = false, ownerOnRequest = false } = {}) {
-  const state = { operations: [], initScripts: [], contextOptions: null, currentUrl: "https://playarr.example.invalid/", keyUps: 0, identityReads: 0, ownerOnRequest, ownerAfterIdentityRead: Infinity, switchAfterKeyDown: false, closed: false };
+  const state = { operations: [], initScripts: [], contextOptions: null, currentUrl: "https://playarr.example.invalid/", keyUps: 0, identityReads: 0, ownerOnRequest, ownerAfterIdentityRead: Infinity, switchAfterKeyDown: false, closed: false, searchBusy: "false", searchGrid: false, searchEmptyTone: "empty" };
   const page = {
     on() {},
     async goto(url) { state.operations.push(["goto", url]); if (!initialSignedIn && url.endsWith("/")) throw new Error("mock signed out"); state.currentUrl = url; },
     async fill(selector) { state.operations.push(["fill", selector]); },
-    async waitForFunction() {},
+    async waitForFunction(predicate) {
+      state.operations.push(["waitForFunction", predicate.name]);
+      if (predicate !== searchResultsReadyPredicate) return;
+      const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+      Object.defineProperty(globalThis, "document", {
+        configurable: true,
+        value: {
+          querySelector(selector) {
+            assert.equal(selector, ".tv-search-results");
+            return {
+              getAttribute(name) { return name === "aria-busy" ? state.searchBusy : null; },
+              querySelector(selector) {
+                if (selector.includes(".tv-search-results-grid") && state.searchGrid) return {};
+                if (selector.includes(".tone-error") && state.searchEmptyTone === "error") return {};
+                if (selector.includes(".tone-empty") && state.searchEmptyTone === "empty") return {};
+                return null;
+              },
+            };
+          },
+        },
+      });
+      try {
+        if (!predicate()) throw new Error("Search readiness timed out while the results rail was busy or unresolved");
+      } finally {
+        if (previousDocument) Object.defineProperty(globalThis, "document", previousDocument);
+        else delete globalThis.document;
+      }
+    },
     async waitForSelector(selector) { state.operations.push(["waitForSelector", selector]); },
     url() { return state.currentUrl; },
     async evaluate(fn) {
@@ -36,7 +63,11 @@ function browserMock({ initialSignedIn = false, ownerOnRequest = false } = {}) {
     },
     locator(selector) {
       return {
-        async count() { return selector === ".app-nav-link" && initialSignedIn ? 1 : 0; },
+        async count() {
+          if (selector === ".app-nav-link") return initialSignedIn ? 1 : 0;
+          if (selector === ".tv-search-results .tv-empty-state.tone-error") return state.searchEmptyTone === "error" ? 1 : 0;
+          return 0;
+        },
         async fill() { state.operations.push(["fill", selector]); },
         async click() { state.operations.push(["click", selector]); },
         async first() { return this; },
@@ -116,7 +147,7 @@ test("a session switch while a key is held still sends key-up", async (t) => {
   await driver.stop();
 });
 
-test("web readiness accepts the standalone Profiles page and actual Search states", async (t) => {
+test("web readiness accepts standalone Profiles and only settled non-error Search states", async (t) => {
   t.after(() => { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv); });
   config();
   const profiles = browserMock({ initialSignedIn: true });
@@ -136,8 +167,16 @@ test("web readiness accepts the standalone Profiles page and actual Search state
   search.state.operations.length = 0;
   search.state.currentUrl = "https://playarr.example.invalid/search";
   await searchDriver.waitReady({ screen: "search", phase: "route" });
-  const searchWaits = search.state.operations.filter(([kind]) => kind === "waitForSelector").map(([, selector]) => selector);
-  assert.ok(searchWaits.includes(".tv-search-prompt, .tv-search-results-grid, .tv-search-results .tv-empty-state, .tv-search-results .skeleton-state"));
+  assert.ok(search.state.operations.some(([kind, selector]) => kind === "waitForSelector" && selector === ".app-nav-link"));
+
+  search.state.searchBusy = "true";
+  search.state.searchGrid = true;
+  await assert.rejects(searchDriver.waitReady({ screen: "search", phase: "route" }), /results rail was busy/);
+
+  search.state.searchBusy = "false";
+  search.state.searchGrid = false;
+  search.state.searchEmptyTone = "error";
+  await assert.rejects(searchDriver.waitReady({ screen: "search", phase: "route" }), /rendered an error empty state/);
   await searchDriver.stop();
 });
 
@@ -147,11 +186,11 @@ test("web readiness still checks the isolated account before waiting for page co
   const mocks = browserMock({ initialSignedIn: true });
   const driver = await createDriver({ playwright: mocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } });
   await driver.start();
-  mocks.state.currentUrl = "https://playarr.example.invalid/profiles";
+  mocks.state.currentUrl = "https://playarr.example.invalid/search";
   mocks.state.ownerAfterIdentityRead = mocks.state.identityReads + 1;
-  const priorWaitCount = mocks.state.operations.filter(([kind]) => kind === "waitForSelector").length;
-  await assert.rejects(driver.waitReady({ screen: "profiles", phase: "route" }), /guard rejected/);
-  assert.equal(mocks.state.operations.filter(([kind]) => kind === "waitForSelector").length, priorWaitCount);
+  const priorReadinessWaitCount = mocks.state.operations.filter(([kind]) => kind === "waitForSelector" || kind === "waitForFunction").length;
+  await assert.rejects(driver.waitReady({ screen: "search", phase: "route" }), /guard rejected/);
+  assert.equal(mocks.state.operations.filter(([kind]) => kind === "waitForSelector" || kind === "waitForFunction").length, priorReadinessWaitCount);
   await driver.stop();
 });
 

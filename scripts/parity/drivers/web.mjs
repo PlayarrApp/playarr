@@ -185,6 +185,13 @@ export function validateWebTimezone(value) {
   return value;
 }
 
+export function searchResultsReadyPredicate() {
+  const results = document.querySelector(".tv-search-results");
+  if (!results || results.getAttribute("aria-busy") !== "false") return false;
+  if (results.querySelector(".tv-empty-state.tone-error")) return true;
+  return Boolean(results.querySelector(".tv-search-results-grid, .tv-empty-state.is-rail.graphic-search.tone-empty"));
+}
+
 export async function clickIfPresent(locator) {
   if (await locator.count()) await locator.click();
 }
@@ -400,7 +407,12 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
     }
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
-    if (path === "/search") await page.waitForSelector(".tv-search-prompt, .tv-search-results-grid, .tv-search-results .tv-empty-state, .tv-search-results .skeleton-state", { timeout: 30000 });
+    if (path === "/search") {
+      await page.waitForFunction(searchResultsReadyPredicate, null, { timeout: 30000, polling: 250 });
+      if (await page.locator(".tv-search-results .tv-empty-state.tone-error").count()) {
+        throw new Error("Search readiness failed: results rail rendered an error empty state");
+      }
+    }
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
     if (path.startsWith("/player/")) await page.waitForFunction(() => !!document.querySelector("video, .player-error, .player-loading"), null, { timeout: 30000 });
     await settle();

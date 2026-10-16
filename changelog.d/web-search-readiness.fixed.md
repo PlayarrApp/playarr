@@ -1,0 +1,1 @@
+- Wait for the Search results rail to finish loading before accepting its grid or empty state, and fail readiness on an error state.
