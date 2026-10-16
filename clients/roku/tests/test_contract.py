@@ -1037,6 +1037,8 @@ class RokuDeviceBugfixTests(unittest.TestCase):
 
     def test_device_caps_and_force_flags_reach_the_playback_query(self) -> None:
         caps = (ROOT / "source" / "DeviceCaps.brs").read_text(encoding="utf-8")
+        self.assertIn('DeviceCanDecode(di, { Codec: "h264", Profile: profile.Name, Level: profile.Level })', caps)
+        self.assertIn('caps.videoProfiles.Push("h264:" + profile.Name)', caps)
         for field in ("hdr=", "max_bit_depth=", "max_channels=", "force_direct_video=true", "force_direct_audio=true"):
             self.assertIn(field, caps)
         self.assertIn("DeviceCapsQuery(m.deviceCaps, m.forceDirectVideo = true, m.forceDirectAudio = true)", MAIN)

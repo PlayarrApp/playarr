@@ -360,6 +360,10 @@ pub struct StreamHints {
     /// The device renders Dolby Vision profile 5 itself (or the viewer forced direct video), so a
     /// profile 5 picture may be copied untouched. Without it a copy of such a source is refused.
     pub dv_copy_allowed: bool,
+    /// Maximum encoded picture width accepted by the requesting device.
+    pub max_width: Option<u32>,
+    /// Maximum encoded picture height accepted by the requesting device.
+    pub max_height: Option<u32>,
 }
 
 impl StreamHints {
@@ -419,6 +423,29 @@ pub struct SharedTranscodeKey {
     pub strip_dovi: bool,
     /// The audio fold differs per device channel count.
     pub max_audio_channels: Option<u8>,
+    /// Device dimensions affect the encoded output and therefore its identity.
+    pub max_width: Option<u32>,
+    pub max_height: Option<u32>,
+}
+
+fn hls_scale_filter(profile_height: u16, hints: StreamHints) -> String {
+    let height = hints
+        .max_height
+        .filter(|height| *height >= 2)
+        .map_or(u32::from(profile_height), |cap| {
+            cap.min(u32::from(profile_height))
+        });
+    // The rendition ladder is 16:9. Bound both axes so ultrawide inputs do
+    // not retain their full width at a profile's nominal height.
+    let profile_width = (u32::from(profile_height) * 16 / 9) & !1;
+    let width = hints
+        .max_width
+        .filter(|width| *width >= 2)
+        .map_or(profile_width, |cap| cap.min(profile_width));
+    let width_expr = format!("min(iw\\,{width})");
+    format!(
+        "scale=w='{width_expr}':h='min(ih\\,{height})':force_original_aspect_ratio=decrease:force_divisible_by=2"
+    )
 }
 
 /// Builds the ffmpeg argv for transcoding `input_path` into an HLS
@@ -707,7 +734,7 @@ fn build_hls_args(
     if video_copy.is_none() {
         let mut chain = Vec::new();
         if profile.height > 0 {
-            chain.push(format!("scale=-2:min({}\\,ih)", profile.height));
+            chain.push(hls_scale_filter(profile.height, hints));
         }
         if let Some(source) = source {
             chain.push(
@@ -1539,6 +1566,15 @@ impl TranscodeOrchestrator {
             cache.put(key, probed.clone(), std::time::Instant::now());
         }
         probed
+    }
+
+    /// Probe a ready rendition with the configured ffprobe binary before
+    /// reusing it for a device whose output dimensions are constrained.
+    pub async fn probe_rendition(
+        &self,
+        rendition: &playarr_model::Rendition,
+    ) -> Option<video::SourceVideo> {
+        video::probe_source_video_with(&self.ffprobe_binary, &rendition.output_path, 8).await
     }
 
     /// Starts the single-file MP4 transcode of a download ticket with the admission taken by
@@ -3232,7 +3268,7 @@ mod tests {
             let s = parse_source_video(br#"{"streams":[{"color_transfer":"smpte2084"}]}"#).unwrap();
             let args = args_for(&s, false);
             let vf = value(&args, "-vf");
-            assert!(vf.starts_with("scale=-2:min(720\\,ih),zscale="), "{vf}");
+            assert!(vf.starts_with("scale=w='min(iw\\,1280)':h='min(ih\\,720)':force_original_aspect_ratio=decrease:force_divisible_by=2,zscale="), "{vf}");
             assert!(vf.contains("tonemap=tonemap=hable"));
             // Frame properties carry the tags; ffmpeg 7+ ignores the encoder options.
             assert!(vf.ends_with(
@@ -3529,7 +3565,7 @@ mod tests {
                 "-af",
                 "aformat=channel_layouts=5.1|stereo|mono",
                 "-vf",
-                "scale=-2:min(720\\,ih)",
+                "scale=w='min(iw\\,1280)':h='min(ih\\,720)':force_original_aspect_ratio=decrease:force_divisible_by=2",
                 "-b:v",
                 "4000k",
                 "-c:a",
@@ -3646,7 +3682,84 @@ mod tests {
             );
 
             let filter_index = args.iter().position(|arg| arg == "-vf").unwrap();
-            assert_eq!(args[filter_index + 1], "scale=-2:min(480\\,ih)");
+            assert_eq!(args[filter_index + 1], "scale=w='min(iw\\,852)':h='min(ih\\,480)':force_original_aspect_ratio=decrease:force_divisible_by=2");
+        }
+
+        #[test]
+        fn hls_scale_respects_device_caps_and_16_9_profile_bounds() {
+            let profile = TranscodeTargetProfile::resolve("h264-1080p-8mbps");
+            let args = build_hls_args(
+                Path::new("/srv/library/input.mkv"),
+                &profile,
+                Path::new("/srv/session-size"),
+                0,
+                None,
+                None,
+                None,
+                DEFAULT_FFMPEG_THREADS,
+                None,
+                video::ToneMapSupport::default(),
+                StreamHints {
+                    max_width: Some(1920),
+                    max_height: Some(1080),
+                    ..StreamHints::default()
+                },
+            )
+            .expect("HLS arguments should build for supported source settings");
+            let filter_index = args.iter().position(|arg| arg == "-vf").unwrap();
+            let scale = &args[filter_index + 1];
+            assert!(scale.contains("min(iw\\,1920)"), "{scale}");
+            assert!(scale.contains("min(ih\\,1080)"), "{scale}");
+
+            let tighter_device_caps = hls_scale_filter(
+                1080,
+                StreamHints {
+                    max_width: Some(1280),
+                    max_height: Some(720),
+                    ..StreamHints::default()
+                },
+            );
+            assert!(
+                tighter_device_caps.contains("min(iw\\,1280)"),
+                "{tighter_device_caps}"
+            );
+            assert!(
+                tighter_device_caps.contains("min(ih\\,720)"),
+                "{tighter_device_caps}"
+            );
+
+            let looser_device_caps = hls_scale_filter(
+                1080,
+                StreamHints {
+                    max_width: Some(3840),
+                    max_height: Some(2160),
+                    ..StreamHints::default()
+                },
+            );
+            assert!(
+                looser_device_caps.contains("min(iw\\,1920)"),
+                "{looser_device_caps}"
+            );
+            assert!(
+                looser_device_caps.contains("min(ih\\,1080)"),
+                "{looser_device_caps}"
+            );
+
+            // Xbox supplies no per-device width. The profile still limits an
+            // ultrawide frame to 1920 pixels wide at 1080p.
+            let no_device_width = hls_scale_filter(1080, StreamHints::default());
+            assert!(
+                no_device_width.contains("min(iw\\,1920)"),
+                "{no_device_width}"
+            );
+            assert!(
+                no_device_width.contains("min(ih\\,1080)"),
+                "{no_device_width}"
+            );
+
+            // Smaller and portrait inputs are never enlarged or cropped.
+            assert!(no_device_width.contains("force_original_aspect_ratio=decrease"));
+            assert!(no_device_width.contains("force_divisible_by=2"));
         }
 
         #[test]
@@ -4276,6 +4389,8 @@ mod tests {
                 video_copy: false,
                 strip_dovi: false,
                 max_audio_channels: None,
+                max_width: None,
+                max_height: None,
             };
             let (first_playback, second_playback) = (Uuid::new_v4(), Uuid::new_v4());
             let session = orchestrator
@@ -4320,7 +4435,22 @@ mod tests {
                 strip_dovi: true,
                 ..key.clone()
             };
-            for other in [other_start, other_user, other_channels, other_strip] {
+            let other_width = SharedTranscodeKey {
+                max_width: Some(1280),
+                ..key.clone()
+            };
+            let other_height = SharedTranscodeKey {
+                max_height: Some(720),
+                ..key.clone()
+            };
+            for other in [
+                other_start,
+                other_user,
+                other_channels,
+                other_strip,
+                other_width,
+                other_height,
+            ] {
                 assert!(orchestrator
                     .find_shared_transcode(&other)
                     .await

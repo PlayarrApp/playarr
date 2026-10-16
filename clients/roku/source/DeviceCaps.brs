@@ -27,6 +27,19 @@ function DeviceMediaCaps() as Object
         caps.videoCodecs.Push("hevc")
         caps.videoProfiles.Push("hevc:main")
     end if
+    ' Report the H.264 profiles that this decoder confirms. The server treats
+    ' video_profiles as a global codec/profile allowlist, so include H.264
+    ' alongside HEVC instead of making an HEVC-capable Roku reject H.264.
+    for each profile in [
+        { Name: "constrained baseline", Level: "3.1" },
+        { Name: "baseline", Level: "4.1" },
+        { Name: "main", Level: "4.1" },
+        { Name: "high", Level: "4.1" }
+    ]
+        if DeviceCanDecode(di, { Codec: "h264", Profile: profile.Name, Level: profile.Level })
+            caps.videoProfiles.Push("h264:" + profile.Name)
+        end if
+    end for
     if DeviceCanDecode(di, { Codec: "vp9", Profile: "profile 0" }) then caps.videoCodecs.Push("vp9")
     if DeviceCanDecode(di, { Codec: "av1", Profile: "main" }) then caps.videoCodecs.Push("av1")
 

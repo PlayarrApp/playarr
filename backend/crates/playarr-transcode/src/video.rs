@@ -974,6 +974,32 @@ mod tests {
     }
 
     #[test]
+    fn h264_profiles_remain_in_the_global_allowlist_alongside_hevc() {
+        let h264_high = src(
+            r#"{"streams":[{"codec_name":"h264","profile":"High","width":1920,"height":1080,"pix_fmt":"yuv420p"}]}"#,
+        );
+        let mut caps = caps(&["h264", "hevc"], &[]);
+        caps.video_profiles = vec!["hevc:main 10".to_string()];
+        assert_eq!(
+            plan_video(&h264_high, true, &caps, false),
+            VideoPlan::Transcode
+        );
+        caps.video_profiles.push("h264:high".to_string());
+        assert_eq!(
+            plan_video(&h264_high, true, &caps, false),
+            VideoPlan::Copy { strip_dovi: false }
+        );
+
+        let h264_high10 = src(
+            r#"{"streams":[{"codec_name":"h264","profile":"High 10","width":1920,"height":1080,"pix_fmt":"yuv420p10le"}]}"#,
+        );
+        assert_eq!(
+            plan_video(&h264_high10, true, &caps, false),
+            VideoPlan::Transcode
+        );
+    }
+
+    #[test]
     fn force_direct_video_overrides_everything_but_nothing_else() {
         assert_eq!(
             plan_video(&dv(5, 0), false, &caps(&[], &[]), true),

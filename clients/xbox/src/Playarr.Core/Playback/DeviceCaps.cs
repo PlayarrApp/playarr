@@ -44,7 +44,12 @@ namespace Playarr.Core.Playback
             {
                 Hdr = hevc && displayHdr10 ? new[] { "hdr10" } : Array.Empty<string>(),
                 MaxBitDepth = hevc ? 10 : 8,
-                VideoProfiles = hevc ? new[] { "hevc:main 10" } : Array.Empty<string>(),
+                // Xbox Media Foundation supports H.264 High on every model, and HEVC
+                // Main/Main 10 on models with HEVC decode. Keep the server's global
+                // profile allowlist complete for the codecs this client advertises.
+                VideoProfiles = hevc
+                    ? new[] { "h264:baseline", "h264:constrained baseline", "h264:main", "h264:high", "hevc:main", "hevc:main 10" }
+                    : new[] { "h264:baseline", "h264:constrained baseline", "h264:main", "h264:high" },
                 MaxChannels = 6,
                 Passthrough = new[] { "eac3", "ac3" },
                 ForceDirectVideo = forceDirectVideo,

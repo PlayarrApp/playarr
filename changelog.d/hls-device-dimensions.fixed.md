@@ -1,0 +1,2 @@
+- HLS transcodes now respect the selected profile and device dimension limits, and Roku and Xbox report supported H.264 profiles alongside HEVC.
+- Ready renditions are probed before reuse.

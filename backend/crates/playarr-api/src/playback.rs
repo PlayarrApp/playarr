@@ -277,6 +277,36 @@ fn rendition_fits_source(
         || rendition.produced_by == playarr_model::ProducedBy::OnDemand
 }
 
+fn rendition_dimensions_fit(
+    dimensions: &playarr_transcode::video::SourceVideo,
+    profile: &str,
+    max_width: Option<u32>,
+    max_height: Option<u32>,
+) -> bool {
+    if dimensions.width == 0 || dimensions.height == 0 {
+        return false;
+    }
+    let profile = playarr_transcode::TranscodeTargetProfile::resolve(profile);
+    let profile_width = (u32::from(profile.height) * 16 / 9) & !1;
+    dimensions.width <= profile_width
+        && dimensions.height <= u32::from(profile.height)
+        && max_width.is_none_or(|cap| dimensions.width <= cap)
+        && max_height.is_none_or(|cap| dimensions.height <= cap)
+}
+
+async fn rendition_dimensions_fit_request(
+    transcode: &playarr_transcode::TranscodeOrchestrator,
+    rendition: &playarr_model::Rendition,
+    profile: &str,
+    max_width: Option<u32>,
+    max_height: Option<u32>,
+) -> bool {
+    let Some(dimensions) = transcode.probe_rendition(rendition).await else {
+        return false;
+    };
+    rendition_dimensions_fit(&dimensions, profile, max_width, max_height)
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum ColourGate {
     Proceed,
@@ -1136,6 +1166,13 @@ pub(crate) async fn negotiate_playback(
     query: &PlaybackQuery,
     can_transcode: bool,
 ) -> Result<PlaybackInfoResponse, ApiError> {
+    if query.max_width.is_some_and(|value| value < 2)
+        || query.max_height.is_some_and(|value| value < 2)
+    {
+        return Err(ApiError::bad_request(
+            "maximum playback dimensions must be at least two pixels",
+        ));
+    }
     let media_file_id = media_file.id;
     // Sonarr/Radarr may report a path from a remote host. Probe the same
     // locally-resolved source path that direct serving and transcoding use.
@@ -1480,11 +1517,26 @@ pub(crate) async fn negotiate_playback(
     // Step 2: is there already a ready rendition (Tdarr or a previous
     // on-demand session)?
     let existing_rendition = if !requires_audio_selection {
-        state
+        let candidate = state
             .transcode
             .find_existing_rendition(media_file_id, &profile)
             .await?
-            .filter(|rendition| rendition_fits_source(source_video.as_ref(), rendition))
+            .filter(|rendition| rendition_fits_source(source_video.as_ref(), rendition));
+        match candidate {
+            Some(rendition)
+                if rendition_dimensions_fit_request(
+                    &state.transcode,
+                    &rendition,
+                    &profile,
+                    query.max_width,
+                    query.max_height,
+                )
+                .await =>
+            {
+                Some(rendition)
+            }
+            _ => None,
+        }
     } else {
         None
     };
@@ -1549,6 +1601,8 @@ pub(crate) async fn negotiate_playback(
             Some(playarr_transcode::video::VideoPlan::Copy { strip_dovi: true })
         ),
         max_audio_channels: query.max_channels.filter(|_| !query.force_direct_audio),
+        max_width: query.max_width,
+        max_height: query.max_height,
         // A profile 5 copy is planned only for a device that renders it, or when forced.
         dv_copy_allowed: matches!(
             video_plan,
@@ -1600,6 +1654,8 @@ pub(crate) async fn negotiate_playback(
             video_copy: video_copy.is_some(),
             strip_dovi: stream_hints.strip_dovi,
             max_audio_channels: stream_hints.max_audio_channels,
+            max_width: stream_hints.max_width,
+            max_height: stream_hints.max_height,
         });
     // Held across find, spawn and register, so racing first requests attach to one transcode.
     let share_guard = match &share_key {
@@ -2701,6 +2757,16 @@ mod tests {
             false
         )
         .is_some());
+        // A binding bitrate ceiling still prevents copying the video.
+        assert!(video_copy_for_hls(
+            &remux,
+            &caps(&["hevc"], Some(6_000_000)),
+            true,
+            false,
+            None,
+            false
+        )
+        .is_none());
 
         // A lower quality was asked for, or a transcode was forced: no copy.
         assert!(
@@ -2819,6 +2885,74 @@ mod tests {
         assert!(
             video_copy_for_hls(&other, &caps(&["vc1"], None), true, false, None, false).is_none()
         );
+    }
+
+    #[test]
+    fn cached_rendition_dimensions_must_fit_profile_and_device_bounds() {
+        use playarr_transcode::video::SourceVideo;
+        let ultrawide = SourceVideo {
+            width: 2580,
+            height: 1080,
+            ..SourceVideo::default()
+        };
+        assert!(!rendition_dimensions_fit(
+            &ultrawide,
+            "h264-1080p-8mbps",
+            None,
+            None,
+        ));
+        let fhd = SourceVideo {
+            width: 1920,
+            height: 1080,
+            ..SourceVideo::default()
+        };
+        assert!(rendition_dimensions_fit(
+            &fhd,
+            "h264-1080p-8mbps",
+            Some(1920),
+            Some(1080),
+        ));
+        assert!(!rendition_dimensions_fit(
+            &fhd,
+            "h264-1080p-8mbps",
+            Some(1280),
+            Some(1080),
+        ));
+        // A valid cached 720p output remains reusable even when its 4K
+        // source was larger than the selected profile.
+        let cached_720p = SourceVideo {
+            width: 1280,
+            height: 720,
+            ..SourceVideo::default()
+        };
+        assert!(rendition_dimensions_fit(
+            &cached_720p,
+            "h264-720p-4mbps",
+            Some(1920),
+            Some(1080),
+        ));
+        let portrait = SourceVideo {
+            width: 608,
+            height: 1080,
+            ..SourceVideo::default()
+        };
+        assert!(rendition_dimensions_fit(
+            &portrait,
+            "h264-1080p-8mbps",
+            Some(1920),
+            Some(1080),
+        ));
+        let unknown_dimensions = SourceVideo {
+            width: 0,
+            height: 1080,
+            ..SourceVideo::default()
+        };
+        assert!(!rendition_dimensions_fit(
+            &unknown_dimensions,
+            "h264-1080p-8mbps",
+            None,
+            None,
+        ));
     }
 
     #[test]
@@ -3404,7 +3538,12 @@ mod tests {
     async fn existing_rendition_session_carries_the_rendition_id_and_play_method() {
         use playarr_model::{ProducedBy, Rendition, RenditionStatus};
 
-        let (router, state) = test_state().await;
+        let (router, state) = crate::test_support::test_state_with_probe(
+            "/usr/bin/true",
+            1,
+            &crate::test_support::sdr_hevc_720p_ffprobe_stub(),
+        )
+        .await;
         let file = media_file(); // mkv/hevc, incompatible with mp4/h264 client
         let id = file.id;
         let source_instance_id = file.source_instance_id;

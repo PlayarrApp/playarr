@@ -15,7 +15,7 @@ namespace Playarr.Core.Tests
             var q = DeviceCaps.ForXbox(Series, displayHdr10: true, false, false).ToQueryParameters();
             Assert.Equal("hdr10", q["hdr"]);
             Assert.Equal("10", q["max_bit_depth"]);
-            Assert.Equal("hevc:main 10", q["video_profiles"]);
+            Assert.Equal("h264:baseline,h264:constrained baseline,h264:main,h264:high,hevc:main,hevc:main 10", q["video_profiles"]);
             Assert.False(q.ContainsKey("dv_profiles")); // Dolby Vision is never claimed
         }
 
@@ -33,6 +33,7 @@ namespace Playarr.Core.Tests
             var q = DeviceCaps.ForXbox(XboxPlaybackProfile.ForModel(XboxModel.XboxOne), true, false, false).ToQueryParameters();
             Assert.Equal("8", q["max_bit_depth"]);
             Assert.Equal(string.Empty, q["hdr"]);
+            Assert.Equal("h264:baseline,h264:constrained baseline,h264:main,h264:high", q["video_profiles"]);
         }
 
         [Fact]

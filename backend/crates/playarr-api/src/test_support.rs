@@ -500,6 +500,27 @@ pub fn sdr_hevc_ffprobe_stub() -> String {
     .clone()
 }
 
+/// An SDR HEVC ffprobe stand-in that reports valid 720p dimensions for cached-rendition tests.
+pub fn sdr_hevc_720p_ffprobe_stub() -> String {
+    use std::os::unix::fs::PermissionsExt;
+    static STUB: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    STUB.get_or_init(|| {
+        let path = std::env::temp_dir().join(format!(
+            "playarr-api-test-ffprobe-720p-{}",
+            std::process::id()
+        ));
+        std::fs::write(
+            &path,
+            "#!/bin/sh\necho '{\"streams\":[{\"codec_name\":\"hevc\",\"width\":1280,\"height\":720,\"pix_fmt\":\"yuv420p10le\"}]}'\n",
+        )
+        .expect("write ffprobe stub");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod stub");
+        path.to_string_lossy().into_owned()
+    })
+    .clone()
+}
+
 /// An ffprobe stand-in that reports a Dolby Vision profile 5 HEVC stream for any file.
 pub fn dv5_hevc_ffprobe_stub() -> String {
     use std::os::unix::fs::PermissionsExt;
