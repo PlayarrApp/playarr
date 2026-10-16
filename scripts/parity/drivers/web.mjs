@@ -694,9 +694,16 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await guard();
       await waitReady({ screen: new URL(page.url()).pathname.split("/")[1] || "home", phase: "capture" });
       // Every card on screen shows its poster: a card-art without a loaded img is a placeholder (fallback title on grey). Fatal in a stable capture.
-      await page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 });
+      // On timeout the error names what was still unloaded, so a flaky capture can be root-caused from the log.
+      const stuck = (what) => async (error) => {
+        if (error?.name !== "TimeoutError") throw error;
+        const detail = await page.evaluate(() => [...document.querySelectorAll("[class*=card-art]:not([class*=skeleton]) img, .skeleton, [class*=skeleton-], .tv-mini-loader")]
+          .filter((e) => e.tagName !== "IMG" || !(e.complete && e.naturalWidth > 0)).slice(0, 6).map((e) => e.tagName === "IMG" ? `img ${e.currentSrc || e.src} complete=${e.complete} loading=${e.loading}` : `${e.tagName}.${e.className}`)).catch(() => []);
+        throw new Error(`${what} still present after 20000ms on ${page.url()} (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"}): ${detail.join(" | ") || "none found"}`);
+      };
+      await page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 }).catch(stuck("card placeholders"));
       // Loading placeholders (skeletons, spinners) must be gone: a half-loaded screen is not a capture.
-      await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader"), null, { timeout: 20000 });
+      await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader"), null, { timeout: 20000 }).catch(stuck("loading placeholders"));
       if (new URL(page.url()).pathname.startsWith("/login") || (await page.getByText("API request failed").count())) throw new Error(`signed out or error page (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"})`);
       await guard();
       const detailRoute = /^\/(movies|series)\/[^/]+\/?$/.test(new URL(page.url()).pathname);
