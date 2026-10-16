@@ -2030,6 +2030,8 @@ struct TVLibraryKindView: View {
                             .padding(10.8)
                     }
                 }
+                .scaleEffect(isSelected ? 1.025 : 1)
+                .animation(.easeOut(duration: 0.24), value: isSelected)
                 if showTitle {
                     // Fixture SPA crops do not include the title line; draw it.
                     Text(work.title)
@@ -2042,9 +2044,9 @@ struct TVLibraryKindView: View {
             }
             .frame(width: width, alignment: .leading)
             .opacity(isSelected || parityMode ? 1 : 0.92)
-            // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
-            .scaleEffect(isSelected ? 1.025 : 1)
-            .offset(y: isSelected ? -7 : 0)
+            // Web title cards lift by 5px and scale by 1.015; their artwork scales independently by 1.025.
+            .scaleEffect(isSelected ? 1.015 : 1)
+            .offset(y: isSelected ? -5 : 0)
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle())
