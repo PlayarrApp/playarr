@@ -2,6 +2,8 @@ name: iOS iPad series detail capture
 
 # Renders the iPad series detail for a series mixing playable and unplayable episodes with three resume targets (none,
 # the last episode, mid-season) set through the server API, and uploads the screenshots. Hosted macOS runners only.
+# The test mutates shared playback progress. Pull request runs stay visibly skipped; manual runs require explicit
+# confirmation that the shared fixture account has an exclusive window.
 
 on:
   pull_request:
@@ -9,6 +11,12 @@ on:
       - clients/ios/**
       - .github/workflows/ios-ipad-series.yml
   workflow_dispatch:
+    inputs:
+      exclusive_fixture_window:
+        description: Confirm that no other capture uses the shared UI-test account
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -20,6 +28,7 @@ concurrency:
 jobs:
   capture:
     name: iPad series detail capture
+    if: github.event_name == 'workflow_dispatch' && inputs.exclusive_fixture_window
     strategy:
       fail-fast: false
       matrix:
