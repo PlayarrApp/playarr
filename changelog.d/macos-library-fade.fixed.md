@@ -1,1 +1,0 @@
-- macOS: the last visible row of a library grid fades toward the screen edge as on the web.

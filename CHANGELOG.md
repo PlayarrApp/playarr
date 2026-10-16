@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS: the last visible row of a library grid fades toward the screen edge as on the web.
 - Home on slow TVs (webOS with Covers): the first row no longer sits 26 px low until a key is pressed; the stack re-centres when posters finish loading.
 - Android TV: Home rails sit on web's row at every artwork size and in Covers mode (the first row lifts by half the card's extra height, as web centres the focused rail).
 - Android TV: the Library hero shows a series' run ("2011–2017") and the calendar range button names the month once ("12 – 18 Oct"), as web.
