@@ -32,6 +32,30 @@ test("trusted server must come from the device-test server key and match any sup
   assert.throws(() => loadTrustedDeviceTestServerUrl({ secrets: {}, env: {} }), /not configured/);
 });
 
+test("strict device-test environment configuration works without a secrets file", () => {
+  const env = {
+    PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl,
+    PLAYARR_DEVICE_TEST_USERNAME: "device-test",
+    PLAYARR_SERVER_URL: serverUrl,
+    PLAYARR_USERNAME: "device-test",
+  };
+  const missingSecrets = "/missing/device-test-secrets";
+  const allowed = loadAllowedDeviceTestUsernames({ secretsFile: missingSecrets, env });
+  assert.equal(loadTrustedDeviceTestServerUrl({ secretsFile: missingSecrets, env }), serverUrl);
+  assert.equal(trustedLoginUsername(env, allowed, serverUrl), "device-test");
+});
+
+test("generic server configuration is not trusted and must match a strict server", () => {
+  assert.throws(() => loadTrustedDeviceTestServerUrl({
+    secretsFile: "/missing/device-test-secrets",
+    env: { PLAYARR_SERVER_URL: serverUrl },
+  }), /not configured/);
+  assert.throws(() => loadTrustedDeviceTestServerUrl({
+    secretsFile: "/missing/device-test-secrets",
+    env: { PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl, PLAYARR_SERVER_URL: "https://other.example.invalid" },
+  }), /does not match/);
+});
+
 test("authenticated identity must be uniquely current, explicitly allowlisted, and on the trusted server", () => {
   const allowedUsernames = new Set(["device-test"]);
   const identity = { username: "device-test", isCurrentCount: 1, serverUrl };

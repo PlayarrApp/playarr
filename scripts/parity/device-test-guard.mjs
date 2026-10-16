@@ -2,8 +2,17 @@ import { clientSecretKeys, readSecrets } from "./dpad-account.mjs";
 
 const safeUsernameKeys = ["PLAYARR_DEVICE_TEST_USERNAME", "PLAYARR_DEVICE_TEST_DPAD_USERNAME"];
 
+function readOptionalSecrets(file) {
+  try { return readSecrets(file); }
+  catch (error) {
+    if (error?.code === "ENOENT") return {};
+    throw error;
+  }
+}
+
 /** Resolve explicit test-account configuration. PLAYARR_USERNAME is accepted only if independently allowlisted. */
-export function loadAllowedDeviceTestUsernames({ secrets = readSecrets(), env = process.env, client } = {}) {
+export function loadAllowedDeviceTestUsernames({ secrets, secretsFile, env = process.env, client } = {}) {
+  secrets ??= readOptionalSecrets(secretsFile);
   const usernames = new Set();
   for (const key of safeUsernameKeys) {
     const username = secrets[key] ?? env[key];
@@ -41,8 +50,9 @@ function canonicalServerUrl(value) {
   return url.toString().replace(/\/$/, "");
 }
 
-export function loadTrustedDeviceTestServerUrl({ secrets = readSecrets(), env = process.env } = {}) {
-  const trusted = canonicalServerUrl(secrets.PLAYARR_DEVICE_TEST_SERVER_URL);
+export function loadTrustedDeviceTestServerUrl({ secrets, secretsFile, env = process.env } = {}) {
+  secrets ??= readOptionalSecrets(secretsFile);
+  const trusted = canonicalServerUrl(secrets.PLAYARR_DEVICE_TEST_SERVER_URL ?? env.PLAYARR_DEVICE_TEST_SERVER_URL);
   if (env.PLAYARR_SERVER_URL && canonicalServerUrl(env.PLAYARR_SERVER_URL) !== trusted) {
     throw new Error("configured server does not match the trusted device-test server");
   }

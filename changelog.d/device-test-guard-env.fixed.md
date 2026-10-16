@@ -1,0 +1,1 @@
+- Allow the parity device-test guard to use strict device-test environment configuration when the secrets file is absent, while continuing to reject generic server URLs as trust anchors.
