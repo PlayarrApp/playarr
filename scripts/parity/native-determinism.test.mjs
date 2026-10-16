@@ -24,7 +24,8 @@ const driverWith = (state, extraEnv = {}, options = {}) => {
     adbBin: adbPath,
     readinessPollMs: 1,
     readinessTimeoutMs: options.readinessTimeoutMs ?? 10_000,
-    commandTimeoutMs: 1000,
+    // The fake ADB starts a Node subprocess; parallel test workers can delay cold startup beyond one second.
+    commandTimeoutMs: 10_000,
     clock: options.clock ?? { sleep: async () => {}, now: (() => { let time = 0; return () => time++; })() },
     env: { ...process.env, PLAYARR_PARITY_FAKE_ADB_STATE: statePath, ...extraEnv },
   });

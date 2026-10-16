@@ -1,0 +1,3 @@
+- Add guarded deterministic clock and motion controls, readiness checks, and runtime-verified build identity for stable webOS captures.
+- Wait for document fonts to load, with a bounded timeout, before measuring capture readiness.
+- Allow extra startup time for mock ADB subprocesses in deterministic tests running alongside parallel test workers.
