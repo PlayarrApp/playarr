@@ -1,0 +1,1 @@
+- Align tablet Library alphabet selection and focused-card styling with the web client.

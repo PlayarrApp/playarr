@@ -35,6 +35,22 @@ public final class LibraryViewModel {
     public var isSearchMode = false
     public private(set) var isLoadingMore = false
 
+    /// The web library's alphabet rail uses the first ASCII letter of the
+    /// accent-folded sort title, with every other initial grouped under `#`.
+    static func alphabetLetter(for title: String) -> String {
+        let decomposed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            .decomposedStringWithCompatibilityMapping
+            .unicodeScalars
+            .filter { !(0x0300...0x036F).contains(Int($0.value)) }
+        guard let first = String(String.UnicodeScalarView(decomposed)).first else { return "#" }
+        let initial = String(first).uppercased()
+        return initial.count == 1 && initial >= "A" && initial <= "Z" ? initial : "#"
+    }
+
+    static func alphabetLetter(for work: Work) -> String {
+        alphabetLetter(for: work.sortTitle.isEmpty ? work.title : work.sortTitle)
+    }
+
     public var canLoadMore: Bool {
         guard searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         if let total { return Int64(works.count) < total }

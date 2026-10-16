@@ -263,6 +263,8 @@ struct PlayarrMediaCard: View {
     var width: CGFloat = 178
     /// The web tablet library shows the title only; Home keeps the "Movie · 2016" line.
     var showsSubtitle = true
+    /// Library focus expands the art while the owning card applies its own lift and scale.
+    var focused = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -270,7 +272,10 @@ struct PlayarrMediaCard: View {
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .frame(width: width)
                 .clipShape(RoundedRectangle(cornerRadius: min(13, max(8, width * 0.058)), style: .continuous))
+                .scaleEffect(focused ? LibraryFocusMetrics.tabletArtworkScale : 1)
                 .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 17, y: 6)
+                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.3 : 0), radius: focused ? 24 : 0, y: focused ? 12 : 0)
+                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.2 : 0), radius: focused ? 10 : 0, y: focused ? 5 : 0)
                 .overlay(alignment: .bottom) {
                     if let progress, progress.durationMS > 0 {
                         GeometryReader { proxy in

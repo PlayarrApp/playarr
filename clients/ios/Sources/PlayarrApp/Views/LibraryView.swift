@@ -2,6 +2,12 @@ import PlayarrKit
 import SwiftUI
 import UIKit
 
+enum LibraryFocusMetrics {
+    static let tabletCardScale: CGFloat = 1.015
+    static let tabletArtworkScale: CGFloat = 1.025
+    static let tabletLift: CGFloat = -5
+}
+
 struct LibraryView: View {
     @State private var viewModel: LibraryViewModel
     /// Hardware-keyboard focus (Tab and arrows): the ring follows it, and starts on the first card as on the web.
@@ -77,12 +83,12 @@ struct LibraryView: View {
         }
         .navigationBarHidden(true)
         .overlay {
-            // Phones: a full-page panel; iPad: the web tablet's 352 pt drawer on the right.
+            // Phones: a full-page panel; iPad: the web tablet's 360 pt drawer on the right.
             HStack(spacing: 0) {
                 if !isPhoneIdiom { Spacer(minLength: 0) }
                 if showingFilters {
                     WMLibraryFiltersPanel(viewModel: viewModel) { showingFilters = false; Task { await viewModel.load() } }
-                        .frame(maxWidth: isPhoneIdiom ? .infinity : 352)
+                        .frame(maxWidth: isPhoneIdiom ? .infinity : 360)
                 } else if let work = actionsWork {
                     WMTitleActionsPanel(
                         work: work, apiClient: apiClient,
@@ -90,7 +96,7 @@ struct LibraryView: View {
                         onDownload: { actionsWork = nil; downloadTarget = work },
                         onClose: { actionsWork = nil }
                     )
-                    .frame(maxWidth: isPhoneIdiom ? .infinity : 352)
+                    .frame(maxWidth: isPhoneIdiom ? .infinity : 360)
                 }
             }
         }
@@ -329,21 +335,29 @@ struct LibraryView: View {
     /// Web tablet letter rail: 44 pt targets that scroll when the 27 letters do not fit (the first 16 show).
     private func tabletAlphabetRail(_ proxy: ScrollViewProxy, height: CGFloat) -> some View {
         let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
+        let activeWork = focusedWork.flatMap { id in viewModel.works.first { $0.id == id } }
+            ?? viewModel.works.first
+        let activeLetter = activeWork.map(LibraryViewModel.alphabetLetter(for:)) ?? "#"
         return ScrollView(.vertical) {
             VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
                     ZStack {
-                        if letter == "#" { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
-                        Text(letter).font(WM.font(8.8, 700)).foregroundStyle(letter == "#" ? PlayarrStyle.background : WM.muted)
+                        if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
+                        Text(letter).font(WM.font(8.8, 700)).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     .onTapGesture {
+                        let orderedLetters = viewModel.order == "desc" ? Array(letters.reversed()) : letters
+                        guard let targetPosition = orderedLetters.firstIndex(of: letter) else { return }
                         let first = viewModel.works.first { work in
-                            let initial = work.title.first.map { String($0).uppercased() } ?? "#"
-                            return letter == "#" ? !("A"..."Z").contains(initial) : initial == letter
+                            guard let position = orderedLetters.firstIndex(of: LibraryViewModel.alphabetLetter(for: work)) else { return false }
+                            return position >= targetPosition
                         }
-                        if let first { withAnimation { proxy.scrollTo(first.id, anchor: .top) } }
+                        if let first {
+                            focusedWork = first.id
+                            withAnimation { proxy.scrollTo(first.id, anchor: .top) }
+                        }
                     }
                 }
             }
@@ -553,21 +567,36 @@ struct LibraryView: View {
                             if viewModel.viewMode == .list {
                                 libraryListRow(work, width: cardWidth)
                             } else {
-                                PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false)
+                                let focused = work.id == (focusedWork ?? viewModel.works.first?.id)
+                                PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false, focused: !phone && focused)
                                     .overlay(alignment: .topTrailing) {
                                         if !phone, let seen = progressedWorkIDs, !seen.contains(work.id) {
                                             WMUnseenDot().padding(.top, 7).padding(.trailing, 7)
                                         }
                                     }
                                     .overlay(alignment: .top) {
-                                        // Web focuses the first tile of a library on arrival: a pink ring with a soft glow.
-                                        if work.id == viewModel.works.first?.id {
-                                            WMFocusRing(width: cardWidth, height: cardWidth * 9 / 16, cornerRadius: min(13, max(8, cardWidth * 0.058)))
+                                        if focused {
+                                            WMFocusRing(
+                                                width: phone ? cardWidth : cardWidth * LibraryFocusMetrics.tabletArtworkScale,
+                                                height: phone ? cardWidth * 9 / 16 : cardWidth * 9 / 16 * LibraryFocusMetrics.tabletArtworkScale,
+                                                cornerRadius: min(13, max(8, cardWidth * 0.058)) * (phone ? 1 : LibraryFocusMetrics.tabletArtworkScale)
+                                            )
                                                 .frame(width: cardWidth, height: cardWidth * 9 / 16)
                                         }
                                     }
                             }
                         }
+                        .focusable(!phone)
+                        .focused($focusedWork, equals: work.id)
+                        .scaleEffect(
+                            !phone && viewModel.viewMode != .list && work.id == (focusedWork ?? viewModel.works.first?.id)
+                                ? LibraryFocusMetrics.tabletCardScale : 1,
+                            anchor: .center
+                        )
+                        .offset(
+                            y: !phone && viewModel.viewMode != .list && work.id == (focusedWork ?? viewModel.works.first?.id)
+                                ? LibraryFocusMetrics.tabletLift : 0
+                        )
                         .buttonStyle(.plain)
                         .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                         .task {
@@ -584,7 +613,7 @@ struct LibraryView: View {
                     .scrollClipDisabled() // the first tile's focus ring and glow are not cut at the grid edge
                     .webEdgeFade(.vertical, enabled: !phone)
                     .overlay(alignment: .topTrailing) {
-                        if !phone && !viewModel.isSearchMode && viewModel.viewMode != .list {
+                        if !phone && !viewModel.isSearchMode && viewModel.sort == "title" && viewModel.viewMode != .list {
                             tabletAlphabetRail(scrollProxy, height: proxy.size.height - 263 - 24)
                                 .padding(.trailing, 16).padding(.top, 263)
                         }
