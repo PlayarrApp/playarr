@@ -436,12 +436,18 @@ struct WMDetailPage: View {
                     .padding(.top, 7.34)
             }
             if isSeries || (synopsis?.isEmpty == false) {
+                let synopsisSize: CGFloat = 11.52
+                let synopsisLineHeight = synopsisSize * 1.45
+                let synopsisNaturalLineHeight = synopsisSize * 1.364
+                let synopsisPitchCorrection = synopsisLineHeight - synopsisNaturalLineHeight
                 Text(synopsis ?? "")
-                    .font(WM.font(11.52))
+                    .font(WM.font(synopsisSize))
                     .foregroundStyle(WM.detailMuted)
+                    .lineSpacing(synopsisPitchCorrection)
                     .lineLimit(3)
+                    .padding(.top, synopsisPitchCorrection / 2 - 0.3)
                     .frame(width: 347, alignment: .topLeading)
-                    .frame(minHeight: isSeries ? 50.112 : nil, alignment: .topLeading)
+                    .frame(minHeight: isSeries ? 3 * synopsisLineHeight : nil, alignment: .topLeading)
                     .padding(.top, isSeries ? 10.6 : 12.04)
             }
         }
