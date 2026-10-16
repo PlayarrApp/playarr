@@ -682,6 +682,7 @@ Steps only the repository owner can perform.
 | 10599 | Harmony round 3: motion walk, poster extras that cannot fail the capture job | in_review | parity-harmony | harmony-motion | 5.10102 | 2026-10-17 12:00 ICT | PR open: #1533. MOTION=true swipe bursts (Home scroll, rails, Filters) and capture-web-motion --profile tv; a stalled poster walk is skipped. |
 | 10568 | Home first-row position settles after posters load (webOS Covers: y 433 vs web 407 until a key) | in_review | parity-vidaa | vidaa-rail-recentre | | 2026-10-16 18:00 ICT | PR open: #1528 |
 | 10513 | Tizen Library language filters: audio and subtitle selects with the scrolling list | done | client-tizen-native | tizen-r3b | 17.10506 | 2026-10-17 18:00 ICT | PR open: #1536. Audio and Subtitle language selects open web's checkbox list (30 languages with counts), scroll inside the drawer, filter the grid through audio_lang and subtitle_lang; whole drawer scrolls. PR #1536 merged 2026-10-16. |
+| 10604 | Roku player quality button shows the source bitrate for direct play | done | parity-roku | roku-player-bitrate | | 2026-10-17 18:00 ICT | Direct play reports no streamInfo bitrate, so the button read "Original". It now takes the chosen option's video_bitrate_bps from the playback response (web does the same) and rounds to one decimal. Verified on the test Roku with 9 Bullets (feabc8ba, direct): "Original · 15.3 Mbps" rendered earlier build; rounding now 15.4. PR open: #1538. PR #1538 merged 2026-10-16. |
 
 ## 18. Public repository readiness (2026-10-05)
 
