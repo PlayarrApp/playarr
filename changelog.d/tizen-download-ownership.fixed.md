@@ -1,0 +1,1 @@
+- Tizen parity cleanup removes only download tickets created by the current run and protects existing tickets during start and grouped actions.

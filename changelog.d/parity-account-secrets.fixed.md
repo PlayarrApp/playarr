@@ -1,0 +1,1 @@
+- Parity account logins now leave the secret store untouched when credentials are unchanged and atomically replace it with a private file when values change.

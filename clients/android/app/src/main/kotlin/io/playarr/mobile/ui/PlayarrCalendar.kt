@@ -1932,7 +1932,7 @@ internal fun calendarItemTone(item: CalendarItem, today: LocalDate, zone: ZoneId
     return listOf(CalendarPillTone.Missing, CalendarPillTone.Upcoming, CalendarPillTone.Neutral).firstOrNull { it in tones } ?: CalendarPillTone.Available
 }
 
-internal val LocalCalendarToday = androidx.compose.runtime.compositionLocalOf { LocalDate.now() }
+internal val LocalCalendarToday = androidx.compose.runtime.compositionLocalOf { playarrToday() }
 
 /** Web `.status-pill`: the tone at 60% as the border and 14% over the surface as the fill, ink text at weight 750. */
 @Composable

@@ -1,0 +1,1 @@
+- Stable web parity runs pin visual dates without freezing real-time expiry and wait for synchronous focus and detail readiness before scoring.

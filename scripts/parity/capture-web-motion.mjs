@@ -1,86 +1,111 @@
 #!/usr/bin/env node
-// Web counterpart of the Harmony phone motion bursts: the same swipes through Home, a rail and the Filters and Actions panels, a 5-frame
-// burst (about 150 ms apart) after each step, written to <out>/<theme>/web-<step>-<n>.png at the phone reference viewport (360x780 @3).
+// Capture deliberate web motion samples. CSS/Web Animations are disabled so only the requested gesture and frame cadence vary.
 //   node capture-web-motion.mjs --out <dir> [--theme dark|light|both] [--profile phone|tv] [--keys]
-// --keys (TV profile): drive the arrow keys the Apple TV suite crops use (Home down x3 and up, right end, Filters down) instead of swipes.
-// Needs PARITY_CHROME=<chromium path> and the Device Test account (PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD, or the
-// PLAYARR_DEVICE_TEST_* entries of ~/.secrets); never prints them. Run it in a memory scope (see capture-refs.mjs).
-import { mkdirSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+// Requires an isolated PARITY_CLIENT, PARITY_LOCK_DIR, and a valid PARITY_FIXED_NOW or FIXTURE_CLOCK.
+import { mkdirSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { chromium } from "playwright-core";
+import { withCaptureState } from "./capture-state.mjs";
+import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
+import { clickIfPresent, installVisualDate } from "./drivers/web.mjs";
 
 const args = process.argv.slice(2);
-const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : d; };
-const out = opt("out", "web-motion");
-const tv = opt("profile", "phone") === "tv"; // --profile tv: 1920x1080 TV client, swipes in the rails column, Filters via the header button
+const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 && args[i + 1] ? args[i + 1] : d; };
+const out = resolve(opt("out", "web-motion"));
+const tv = opt("profile", "phone") === "tv";
 const keys = args.includes("--keys");
 const themes = opt("theme", "both") === "both" ? ["dark", "light"] : [opt("theme", "dark")];
-const secrets = {};
-try { for (const l of readFileSync(join(homedir(), ".secrets"), "utf8").split("\n")) { const i = l.indexOf("="); if (i > 0 && !l.startsWith("#")) secrets[l.slice(0, i)] = l.slice(i + 1).replace(/^["']|["']$/g, ""); } } catch {}
-const env = { ...process.env };
-env.PLAYARR_SERVER_URL ??= secrets.PLAYARR_DEVICE_TEST_SERVER_URL;
-env.PLAYARR_USERNAME ??= secrets.PLAYARR_DEVICE_TEST_USERNAME;
-env.PLAYARR_PASSWORD ??= secrets.PLAYARR_DEVICE_TEST_PASSWORD;
-if (!env.PLAYARR_SERVER_URL || !env.PLAYARR_USERNAME || !env.PLAYARR_PASSWORD) throw new Error("Device Test credentials missing");
-const web = (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
-const CHROME_VERSION = ["130", "0", "0", "0"].join("."); // joined so the guard against literal IPv4-shaped data does not read it as an address
+const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
+if (!Number.isFinite(Date.parse(fixedNow))) throw new Error("PARITY_FIXED_NOW must be a valid ISO date");
+if (!process.env.PARITY_CLIENT || !process.env.PARITY_LOCK_DIR) throw new Error("PARITY_CLIENT and PARITY_LOCK_DIR are required for isolated web-motion capture");
+const web = (process.env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
+const CHROME_VERSION = ["130", "0", "0", "0"].join(".");
 const MOBILE_UA = `Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROME_VERSION} Mobile Safari/537.36`;
-const browser = await chromium.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {});
-for (const theme of themes) {
-  const dir = join(out, theme); mkdirSync(dir, { recursive: true });
-  const TV_UA = "Mozilla/5.0 (Linux; Android 12; BRAVIA) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 PlayarrAndroidTV/1.0";
-  const ctx = await browser.newContext({ viewport: tv ? { width: 1920, height: 1080 } : { width: 360, height: 780 }, deviceScaleFactor: tv ? 1 : 3, isMobile: !tv, hasTouch: true, userAgent: tv ? TV_UA : MOBILE_UA, colorScheme: theme, locale: "en-GB", timezoneId: "Asia/Bangkok" });
-  await ctx.addInitScript((t) => { localStorage.setItem("playarr-theme", t); try { sessionStorage.clear(); } catch {} }, theme);
-  const page = await ctx.newPage();
-  const cdp = await ctx.newCDPSession(page);
-  await page.goto(`${web}/login`, { waitUntil: "load" });
-  await page.getByText(/sign in manually|manual/i).first().click().catch(() => {});
-  await page.fill('input[name="server-url"]', env.PLAYARR_SERVER_URL);
-  await page.fill('input[name="username"]', env.PLAYARR_USERNAME);
-  await page.fill('input[name="password"]', env.PLAYARR_PASSWORD);
-  await page.locator("button[type=submit]").click();
-  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30000 });
-  await page.waitForTimeout(4000);
-  const burst = async (name) => { for (let i = 0; i < 5; i += 1) { await page.screenshot({ path: join(dir, `web-${name}-${i}.png`) }); await page.waitForTimeout(150); } };
-  // A real touch drag (CDP touch events: Input.synthesizeScrollGesture does not scroll Home's inner scroller): 12 moves over about 300 ms,
-  // the same as the Harmony bridge's /swipe.
-  const swipe = async (x, y, dx, dy) => {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
-    for (let i = 1; i <= 12; i += 1) { await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + dx * i / 12, y: y + dy * i / 12 }] }); await page.waitForTimeout(25); }
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    await page.waitForTimeout(700);
-  };
-  await page.goto(`${web}/`, { waitUntil: "load" });
-  await page.waitForFunction(() => document.querySelector(".tv-home-card"), null, { timeout: 30000 });
-  await page.waitForTimeout(3000);
-  await burst("home-00-top");
-  if (tv && keys) {
-    // Same keys as scripts/parity/suite.json `crops`; web focus starts on the first Home card.
-    const press = async (k, n = 1) => { for (let i = 0; i < n; i += 1) { await page.keyboard.press(k); await page.waitForTimeout(150); } };
-    await page.keyboard.press("ArrowRight"); await page.waitForTimeout(600); await burst("home-00-enter");
-    for (let i = 1; i <= 3; i += 1) { await press("ArrowDown"); await burst(`home-${String(i).padStart(2, "0")}-down`); }
-    for (let i = 1; i <= 2; i += 1) { await press("ArrowUp"); await burst(`home-${String(3 + i).padStart(2, "0")}-up`); }
-    await press("ArrowRight", 14); await burst("home-06-right-end");
-    await page.goto(`${web}/movies`, { waitUntil: "load" }); await page.waitForTimeout(4000);
-    await page.getByRole("button", { name: /filter/i }).first().click().catch(() => {});
-    await page.waitForTimeout(1500); await burst("filters-00-open");
-    await press("ArrowDown", 14); await burst("filters-01-bottom");
-    await ctx.close();
-    continue;
+const TV_UA = "Mozilla/5.0 (Linux; Android 12; BRAVIA) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 PlayarrAndroidTV/1.0";
+
+const waitReady = async (page, screen, phase) => {
+  await page.waitForFunction(({ screen, phase }) => {
+    if (document.fonts?.status !== "loaded") return false;
+    const pendingImages = [...document.images].some((image) => image.getAttribute("src") && (!image.complete || image.naturalWidth === 0));
+    if (pendingImages) return false;
+    if (document.querySelector('[aria-busy="true"], [data-loading="true"]')) return false;
+    if (phase === "route" && screen === "home") return Boolean(document.querySelector(".tv-home-card"));
+    if (phase === "route" && screen === "movies") return Boolean(document.querySelector(".tv-library-card, [data-testid='library-card']"));
+    return true;
+  }, { screen, phase }, { timeout: 30000 });
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+};
+
+await withCaptureState({ client: process.env.PARITY_CLIENT, files: [] }, async (captureState) => {
+  Object.assign(process.env, captureState.env);
+  if (process.env.PARITY_SEED_CANONICAL === "1") {
+    if (!process.env.PARITY_SEED_MODULE) throw new Error("PARITY_SEED_MODULE is required when PARITY_SEED_CANONICAL=1");
+    const { seedCanonicalDeck } = await import(pathToFileURL(resolve(process.env.PARITY_SEED_MODULE)).href);
+    if (typeof seedCanonicalDeck !== "function") throw new Error("PARITY_SEED_MODULE must export seedCanonicalDeck");
+    await seedCanonicalDeck(captureState, { deckFile: process.env.PARITY_DECK_MEDIA_FILE_ID, positionMs: Number(process.env.PARITY_DECK_POSITION_MS ?? 15098), durationMs: Number(process.env.PARITY_DECK_DURATION_MS ?? 6742000) });
   }
-  const RX = tv ? 1300 : 180; // the rails column on the TV
-  const dy = tv ? 400 : 420, y0 = tv ? 900 : 650, y1 = tv ? 500 : 230;
-  for (let i = 1; i <= 4; i += 1) { await swipe(RX, y0, 0, -dy); await burst(`home-${String(i).padStart(2, "0")}-down`); }
-  for (let i = 1; i <= 4; i += 1) { await swipe(RX, y1, 0, dy); await burst(`home-${String(4 + i).padStart(2, "0")}-up`); }
-  const RY = tv ? 930 : 380, RW = tv ? 800 : 300;
-  for (let i = 1; i <= 3; i += 1) { await swipe(tv ? 1800 : 330, RY, -RW, 0); await burst(`home-rail-${String(i).padStart(2, "0")}-left`); }
-  for (let i = 1; i <= 3; i += 1) { await swipe(tv ? 900 : 30, RY, RW, 0); await burst(`home-rail-${String(3 + i).padStart(2, "0")}-right`); }
-  await page.goto(`${web}/movies`, { waitUntil: "load" });
-  await page.waitForTimeout(4000);
-  await page.getByRole("button", { name: /filter/i }).first().click().catch(() => {});
-  await page.waitForTimeout(1500); await burst("filters-00-open");
-  for (let i = 1; i <= 3; i += 1) { await swipe(tv ? 1700 : 180, tv ? 800 : 600, 0, tv ? -600 : -466); await burst(`filters-${String(i).padStart(2, "0")}-up`); }
-  await ctx.close();
-}
-await browser.close();
+  const snapshot = await captureState.snapshotNow();
+  const browser = await chromium.launch(process.env.PARITY_CHROME ? { executablePath: process.env.PARITY_CHROME } : {});
+  captureState.registerInterruptCleanup(() => browser.close());
+  try {
+    for (const theme of themes) {
+      const dir = join(out, theme); mkdirSync(dir, { recursive: true });
+      const ctx = await browser.newContext({ viewport: tv ? { width: 1920, height: 1080 } : { width: 360, height: 780 }, deviceScaleFactor: tv ? 1 : 3, isMobile: !tv, hasTouch: true, userAgent: tv ? TV_UA : MOBILE_UA, colorScheme: theme, locale: "en-GB", timezoneId: "Asia/Bangkok", reducedMotion: "reduce" });
+      await ctx.addInitScript(installVisualDate, fixedNow);
+      await ctx.addInitScript(({ theme }) => {
+        localStorage.setItem("playarr-theme", theme);
+        try { sessionStorage.clear(); } catch {}
+        const css = document.createElement("style");
+        css.textContent = "*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;caret-color:transparent!important}";
+        (document.head ?? document.documentElement).append(css);
+      }, { theme });
+      const page = await ctx.newPage();
+      const cdp = await ctx.newCDPSession(page);
+      await page.goto(`${web}/login`, { waitUntil: "load" });
+      await clickIfPresent(page.getByText(/sign in manually|manual/i).first());
+      await page.fill('input[name="server-url"]', captureState.env.PLAYARR_SERVER_URL);
+      await page.fill('input[name="username"]', captureState.env.PLAYARR_USERNAME);
+      await page.fill('input[name="password"]', captureState.env.PLAYARR_PASSWORD);
+      await page.locator("button[type=submit]").click();
+      await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 30000 });
+      await page.waitForSelector(".app-nav-link", { timeout: 30000 });
+      await page.goto(`${web}/`, { waitUntil: "load" });
+      await waitReady(page, "home", "route");
+      // Five samples at deliberate 150 ms intervals preserve the motion comparison's temporal signal.
+      const burst = async (name) => { for (let i = 0; i < 5; i += 1) { await page.evaluate(() => document.getAnimations({ subtree: true }).forEach((animation) => animation.cancel())); await page.screenshot({ path: join(dir, `web-${name}-${i}.png`) }); if (i < 4) await page.waitForFunction((start) => performance.now() >= start + 150, await page.evaluate(() => performance.now())); } };
+      const swipe = async (x, y, dx, dy) => {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+        for (let i = 1; i <= 12; i += 1) { await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + dx * i / 12, y: y + dy * i / 12 }] }); await page.waitForFunction((start) => performance.now() >= start + 25, await page.evaluate(() => performance.now())); }
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      };
+      await burst("home-00-top");
+      if (tv && keys) {
+        const press = async (key, n = 1) => { for (let i = 0; i < n; i += 1) await page.keyboard.press(key); };
+        await page.keyboard.press("ArrowRight"); await burst("home-00-enter");
+        for (let i = 1; i <= 3; i += 1) { await press("ArrowDown"); await burst(`home-${String(i).padStart(2, "0")}-down`); }
+        for (let i = 1; i <= 2; i += 1) { await press("ArrowUp"); await burst(`home-${String(3 + i).padStart(2, "0")}-up`); }
+        await press("ArrowRight", 14); await burst("home-06-right-end");
+        await page.goto(`${web}/movies`, { waitUntil: "load" }); await waitReady(page, "movies", "route");
+        await page.getByRole("button", { name: /filter/i }).first().click();
+        await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"], [data-testid*="filter"]')].some((node) => node.getClientRects().length > 0)); await burst("filters-00-open");
+        await press("ArrowDown", 14); await burst("filters-01-bottom");
+        await ctx.close();
+        continue;
+      }
+      const RX = tv ? 1300 : 180, dy = tv ? 400 : 420, y0 = tv ? 900 : 650, y1 = tv ? 500 : 230;
+      for (let i = 1; i <= 4; i += 1) { await swipe(RX, y0, 0, -dy); await burst(`home-${String(i).padStart(2, "0")}-down`); }
+      for (let i = 1; i <= 4; i += 1) { await swipe(RX, y1, 0, dy); await burst(`home-${String(4 + i).padStart(2, "0")}-up`); }
+      const RY = tv ? 930 : 380, RW = tv ? 800 : 300;
+      for (let i = 1; i <= 3; i += 1) { await swipe(tv ? 1800 : 330, RY, -RW, 0); await burst(`home-rail-${String(i).padStart(2, "0")}-left`); }
+      for (let i = 1; i <= 3; i += 1) { await swipe(tv ? 900 : 30, RY, RW, 0); await burst(`home-rail-${String(3 + i).padStart(2, "0")}-right`); }
+      await page.goto(`${web}/movies`, { waitUntil: "load" }); await waitReady(page, "movies", "route");
+      await page.getByRole("button", { name: /filter/i }).first().click();
+      await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"], [data-testid*="filter"]')].some((node) => node.getClientRects().length > 0)); await burst("filters-00-open");
+      for (let i = 1; i <= 3; i += 1) { await swipe(tv ? 1700 : 180, tv ? 800 : 600, 0, tv ? -600 : -466); await burst(`filters-${String(i).padStart(2, "0")}-up`); }
+      await ctx.close();
+    }
+  } finally { await browser.close(); }
+  console.log(`motion capture state ${snapshot.hash}; clock ${fixedNow}; animations/transitions suppressed, gesture and 150 ms frame cadence retained`);
+});

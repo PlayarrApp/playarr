@@ -991,6 +991,9 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   return {
+    async setDeterministicCapture() { throw new Error("Roku stable deterministic capture unsupported: the app has no clock or animation pinning hook"); },
+    async captureBuildIdentity() { throw new Error("Roku stable build identity unsupported: deployed package digest is not exposed by this driver"); },
+    async waitReady() { throw new Error("Roku stable deterministic capture unsupported: app readiness is not exposed as a capture signal"); },
     supports: { downloads: false, notifications: false, nowPlaying: false, "grouped-downloads": false },
     async start() {
       resetObservedState();

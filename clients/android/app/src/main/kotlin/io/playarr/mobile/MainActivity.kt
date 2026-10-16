@@ -190,9 +190,15 @@ class MainActivity : ComponentActivity() {
                 systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         }
-        io.playarr.mobile.ui.parityClock = intent.getStringExtra("parity_clock")?.takeIf {
+        val parityClockExtra = intent.getStringExtra("parity_clock")?.takeIf {
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        }?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
+        }
+        io.playarr.mobile.ui.parityClock = parityClockExtra?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
+        io.playarr.mobile.ui.resetParityClockConsumptionMarker()
+        if (parityClockExtra != null && io.playarr.mobile.ui.parityClock != null) {
+            // Exercise the shared app clock provider in every parity launch, including player/profile routes without its UI widget.
+            io.playarr.mobile.ui.playarrNow()
+        }
         // Debuggable builds only: start on a given route so parity captures reach every screen with the D-pad alone.
         val parityTarget = intent.getStringExtra("parity_route")?.takeIf {
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 && it.isNotBlank()

@@ -33,13 +33,12 @@ Devices and how each is run: [DEVICES.md](DEVICES.md).
 - **Now-playing entry**: performance case a (`nowPlaying: true`) also checks that the platform's now-playing entry
   exists with a title, is in the playing state, and that its Pause action pauses the player.
 
-Pinned titles: `film-detail` (2 Fast 2 Furious) and `series-detail` (2 Broke Girls) carry an `open` path with the work id. The runner always
-calls `driver.route(open)` for them, so a driver must open that exact title by id (deep link or its own search), never "the first card":
-web and native then show the same title. The web driver also waits for skeletons, spinners and images to settle before a screenshot.
+Pinned detail checks carry an `open` path with a work id. The runner always
+calls `driver.route(open)` for them, so a driver must open that exact work by id (deep link or its own search), never "the first card":
+web and native then show the same work. The web driver waits for route content, fonts, visible images and loading indicators before a screenshot.
 
-The four Home checks (`compare: "position"` in `suite.json`, each with `start: { rail: 0, index: 0 }`) compare focus **position**, not the label: Home rails reorder
-whenever other devices play on the shared account, so the same key press lands on a different title from run to run. The label stays in
-the result as information. A driver that does not report `position` is compared by label, as before. When a check has `start`, the runner reads `focused()` after `home()` and, if the position differs, re-homes and retries (up to 3 times), so `home()` must leave focus on the first Home card with the key handler live. The web reference fails the run instead of recording a null or wrong-start answer. `expected.json` stores
+The four Home checks (`compare: "position"` in `suite.json`, each with `start: { rail: 0, index: 0 }`) compare focus **position**, not the label. The label stays in
+the result as information. A driver that does not report `position` is compared by label. A wrong start or missing focus fails that single observation; the runner does not repeat a failed navigation check. `expected.json` stores
 `{ label, position }` for these checks, and a plain label for the others.
 
 Keys: `up down left right select back`, `select:long` for a long press, `name*N` to repeat. Nav moves are anchored at
@@ -70,17 +69,21 @@ A device worker writes one ES module exporting `createDriver({ out, args })` tha
 | `play(case, expect)` | Play the media file `case.file` (deep link or the device's own way), return `{ state: "playing"\|"stalled"\|"error", startSeconds, advancedSeconds, detail?, nowPlaying?: { ok } }` (`nowPlaying` only when `case.nowPlaying` and `supports.nowPlaying`). |
 
 Run: `node suite-run.mjs --driver ./my-driver.mjs --out <dir>/<cand>/ [--themes dark] [--only screens,dpad,downloads,performance]
-[--screens home,movies] [--reset-progress] [--via keys|route] [--expected <web>/expected.json]`. A screen whose end state does not match
-the suite route is not written. `--reset-progress` (needs the same `PLAYARR_*` env as the web driver) sets the watch progress of every pinned file back to 0 through the API before the captures and after each playback case and offline-play check, so On deck and Resume stay the same on every device. Web reference: `--driver drivers/web.mjs --reference --out <dir>/web` (env:
+[--screens home,movies] [--checks home-right] [--via keys|route] [--expected <web>/expected.json]`. A screen whose end state does not match
+the suite route is not written. Use `--stable` (or `PARITY_STABLE=1`) for deterministic capture. Stable mode requires a client driver that implements `setDeterministicCapture({ fixedNow, disableAnimations })`, `waitReady({ screen, phase })`, and an identifiable deployed build. Unsupported capabilities fail the run. It takes one observation per check and preserves failures in the score.
+
+Stable D-pad runs also require an isolated client account and an explicit scratch lock directory. `PARITY_CLIENT` selects that account; `PARITY_LOCK_DIR` serialises runs against it. For a canonical navigation fixture, set `PARITY_SEED_CANONICAL=1` and provide local-only `PARITY_SEED_MODULE` and `PARITY_DECK_MEDIA_FILE_ID` values. The runner seeds state while holding the account lock and records only a hash of progress and preferences in provenance. Those fields are restored after the run. Unchanged progress rows are not rewritten, preserving their recency; the API cannot backdate progress rows that the run changed. Resume choices are cleared for setup, are not restored, and are excluded from the state hash. Use only a disposable isolated account whose resume choices may be cleared and whose changed progress recency is acceptable; never point this flow at a personal account or device. A matching state hash therefore describes progress and preferences only, not the complete account state.
+
+For example, a full D-pad capture including player checks uses `--only dpad --player`. A navigation-only run uses `--only dpad --skip-player`; its player rows are explicitly skipped and it must be labelled as a navigation subset. To compare repeated runs, keep the same build, suite, fixed clock, canonical state and expected reference. `PARITY_EXPECTED_BUILD_SHA` pins the build and the runner checks it before and after capture. `PARITY_FIXED_NOW` pins wall-clock date while browser timers continue to advance. The web driver disables CSS transitions and Web Animations during stable capture. Stable-focus and detail-readiness predicates are synchronous because Playwright's polling callback does not await returned promises; focus readiness requires stable native focus and, when remote-marker mode is active, agreement with the marker.
+
+Web reference: `--driver drivers/web.mjs --reference --out <dir>/web` (env:
 `PLAYARR_WEB_URL`, `PLAYARR_SERVER_URL`, `PLAYARR_USERNAME`, `PLAYARR_PASSWORD`, `PARITY_CHROME`).
 
 ## Session rule: never share sessions
 
-Every suite run signs in fresh with its own new device id. Never load, copy or reuse another run's storage state,
-cookies or tokens, and never write a session to disk to reuse it: keep it in memory for the length of the run (the web
-driver carries it across the theme switch in memory only) and delete any state file the run created when it ends.
-Concurrent runs on one account otherwise revoke each other's sessions. The legend and capture scripts follow the same
-rule.
+Every suite run signs in with a fresh device id. Never load or reuse browser storage state, cookies or tokens from
+another run. Keep session material in memory for the run. Stable runs serialise access to the dedicated capture account
+and restore its captured state after the run; do not run concurrent captures against that account.
 
 ## Layout and result files
 
@@ -122,13 +125,10 @@ The device wall legend reads `<dir>/<cand>/dpad.json` and `downloads.json`: pass
 check count (the D-pad checks in `suite.json`; skipped download cases do not count). Missing results count as failed. `performance.json`
 (only with `--only performance`, same shape) is not scored.
 
-## Dedicated D-pad account
+## Deterministic result publication
 
-Plays by other runs on the shared Device Test account change its On deck and Resume state, which fails Home D-pad checks at random.
-D-pad runs therefore sign in as `device-test-dpad` (same profile name, libraries and rights as Device Test, The 5th Wave seeded at
-15098 ms). Pixel captures stay on Device Test, because the web references use it.
-
-- Create it once: `node scripts/parity/dpad-account.mjs create` (admin API; adds `PLAYARR_DEVICE_TEST_DPAD_USERNAME` and
-  `PLAYARR_DEVICE_TEST_DPAD_PASSWORD` to `~/.secrets`, backed up first, mode 0600). Re-seed: `node scripts/parity/dpad-account.mjs seed`.
-- A driver wrapper sets `PARITY_ACCOUNT=dpad` for D-pad runs and takes its credentials from `parityCredentials()` in that script,
-  which maps to `PLAYARR_USERNAME` and `PLAYARR_PASSWORD` for `--reset-progress` and for any link-approval helper.
+Every `dpad.json` result records suite version, build identity, clock pin (`unpinned` for non-stable runs), isolated state hash, stable-run flag, expected-reference SHA-256 and per-check timestamp. Stable screen manifests retain their capture provenance fields. Selective result merges require all D-pad provenance fields to match, so unpinned runs cannot merge into stable results.
+Selective runs (`--checks`) publish only when a complete prior result has matching provenance. The merge preserves all
+untouched IDs and rejects missing/extra IDs or a lower pass count unless `PARITY_REGRESSION_REASON` names the accepted
+regression. A full selection replaces the result set; when it has the same provenance, it also rejects an unacknowledged
+drop in pass count. A complete run against a different build or state is a new baseline and records its provenance.

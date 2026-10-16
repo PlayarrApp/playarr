@@ -1,0 +1,1 @@
+- Keep parity login access and refresh tokens in run memory, avoid rewriting unchanged secrets, and reclaim secrets locks only when their recorded process is dead.

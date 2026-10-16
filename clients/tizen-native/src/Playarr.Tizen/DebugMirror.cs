@@ -62,7 +62,7 @@ internal sealed class DebugMirror
             case "/dl/resume": engine.Resume(q["id"]!); result = new { ok = true }; break;
             case "/dl/remove": await engine.RemoveAsync(q["id"]!); result = new { ok = true }; break;
             case "/dl/keep": engine.EditKeep(q["id"]!, q["type"] == "after-watched" ? new KeepUntil("after-watched", Amount: 1, Unit: "weeks") : KeepUntil.Forever); result = new { ok = true }; break;
-            default: result = engine.Records.Select(r => new { r.Id, state = r.State.ToString(), r.BytesDownloaded, r.TotalBytes, keep = r.Keep.Type, file = engine.PlayablePath(r.Id) != null }).ToList(); break;
+            default: result = engine.Records.Select(r => new { r.Id, r.MediaFileId, r.WorkId, r.SeriesTitle, r.Season, state = r.State.ToString(), r.BytesDownloaded, r.TotalBytes, keep = r.Keep.Type, file = engine.PlayablePath(r.Id) != null }).ToList(); break;
         }
         var bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(result));
         ctx.Response.ContentType = "application/json";

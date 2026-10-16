@@ -1,0 +1,2 @@
+- Limit download cleanup to run-owned downloads, keep cleanup failures non-fatal, and drain interrupted suite work before restoring progress or publishing results.
+- Skip catalogue reads for legacy non-stable captures.

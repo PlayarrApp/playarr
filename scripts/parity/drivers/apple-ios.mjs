@@ -86,6 +86,9 @@ export async function createDriver() {
     return { state: "failed", detail: `timed out after ${seconds} s: ${JSON.stringify(rec(m) ?? null)}` };
   };
   return {
+    async setDeterministicCapture() { throw new Error("iOS stable deterministic capture unsupported: the client cannot disable all SwiftUI animations yet"); },
+    async captureBuildIdentity() { throw new Error("iOS stable build identity unsupported: installed app digest is not exposed by this driver"); },
+    async waitReady() { throw new Error("iOS stable deterministic capture unsupported: readiness is not exposed by this touch-only driver"); },
     supports: { downloads: true, "grouped-downloads": true }, // no notifications: the app posts none
     async cleanupDownloads() { for (const file of touched) { try { cmd("cancel", { file }); await sleep(1500); } catch { /* app gone */ } } },
     async download(c, expect) {

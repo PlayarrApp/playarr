@@ -1,0 +1,1 @@
+- Keep an expected credentialless startup login rejection from failing browser parity readiness after a successful manual sign-in, while preserving credentialed login failures.

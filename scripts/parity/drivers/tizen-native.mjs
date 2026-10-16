@@ -21,34 +21,38 @@ async function call(method, path) {
   return res.json();
 }
 
-export async function createDriver() {
+export async function createDriver({ request = call, delay = sleep } = {}) {
   let state = {};
+  const ownedDownloads = new Set();
   return {
+    async setDeterministicCapture() { throw new Error("Tizen native stable deterministic capture unsupported: the app has no clock or animation pinning hook"); },
+    async captureBuildIdentity() { throw new Error("Tizen native stable build identity unsupported: deployed package digest is not exposed by this driver"); },
+    async waitReady() { throw new Error("Tizen native stable deterministic capture unsupported: readiness is not exposed by the app"); },
     async start() {
       try { execFileSync(SDB, ["-s", SERIAL, "forward", `tcp:${PORT}`, "tcp:8765"], { stdio: "ignore" }); } catch { /* already forwarded */ }
-      state = await call("GET", "/state");
+      state = await request("GET", "/state");
     },
     async stop() {},
-    async setTheme(t) { if (state.theme !== t) { state = await call("POST", `/theme?name=${t}`); await sleep(6000); } },
+    async setTheme(t) { if (state.theme !== t) { state = await request("POST", `/theme?name=${t}`); await delay(6000); } },
     // a page is settled once the app reports it ready (data loaded); a slow server can take far longer than a fixed wait
     async settle(ms) {
-      await sleep(ms);
+      await delay(ms);
       for (let waited = 0; waited < 40000; waited += 1000) {
-        state = await call("GET", "/state");
+        state = await request("GET", "/state");
         if (state.ready !== false) break;
-        await sleep(1000);
+        await delay(1000);
       }
       // chapter and cast images load after the page is ready
-      for (let waited = 0; waited < 25000 && state.pending > 0; waited += 1000) { await sleep(1000); state = await call("GET", "/state"); }
-      await sleep(2500); // posters decode after the page and the image downloads are done
+      for (let waited = 0; waited < 25000 && state.pending > 0; waited += 1000) { await delay(1000); state = await request("GET", "/state"); }
+      await delay(2500); // posters decode after the page and the image downloads are done
     },
-    async home() { state = await call("POST", "/route?path=/"); await this.settle(5000); },
-    async route(p) { state = await call("POST", `/route?path=${encodeURIComponent(p)}`); await this.settle(4000); },
-    async key(k, { long } = {}) { state = await call("POST", `/key?name=${k}${long ? "&long=1" : ""}`); await sleep(long ? 1500 : KEY_MS); },
-    async location() { state = await call("GET", "/state"); return state.route; },
-    async focused() { state = await call("GET", "/state"); return state.focused == null ? null : { label: state.focused, position: state.position ?? null }; },
+    async home() { state = await request("POST", "/route?path=/"); await this.settle(5000); },
+    async route(p) { state = await request("POST", `/route?path=${encodeURIComponent(p)}`); await this.settle(4000); },
+    async key(k, { long } = {}) { state = await request("POST", `/key?name=${k}${long ? "&long=1" : ""}`); await delay(long ? 1500 : KEY_MS); },
+    async location() { state = await request("GET", "/state"); return state.route; },
+    async focused() { state = await request("GET", "/state"); return state.focused == null ? null : { label: state.focused, position: state.position ?? null }; },
     async screenshot(file) {
-      await sleep(2500);
+      await delay(2500);
       execFileSync("import", ["-window", process.env.PLAYARR_TIZEN_WINDOW ?? "root", file], { env: { ...process.env, DISPLAY } });
     },
     // Downloads run through the engine's debug endpoints (the UI path was checked by hand): what is stored, paused and removed is the real
@@ -57,61 +61,78 @@ export async function createDriver() {
     supports: { downloads: true, "grouped-downloads": true },
     async download(c) {
       const m = c.media; const started = Date.now(); const within = (c.expect.withinSeconds ?? 300) * 1000;
-      const list = async () => (await call("GET", "/dl/list"));
+      const list = async () => (await request("GET", "/dl/list"));
       const get = async (id) => (await list()).find((x) => x.Id === id);
-      const waitFor = async (id, pred) => { for (;;) { const d = await get(id); if (d && pred(d)) return d; if (Date.now() - started > within) throw new Error("timeout"); if (d?.state === "Failed") throw new Error("failed"); await sleep(1000); } };
+      const waitFor = async (id, pred) => { for (;;) { const d = await get(id); if (d && pred(d)) return d; if (Date.now() - started > within) throw new Error("timeout"); if (d?.state === "Failed") throw new Error("failed"); await delay(1000); } };
       const q = new URLSearchParams({ file: m.file, work: m.work, title: m.title, quality: "original", ...(m.episode ? { season: String(m.season), episode: String(m.episode), series: m.title } : {}) });
-      const start = async () => (await call("POST", `/dl/start?${q}`)).id;
+      const assertKnownRecords = (records, fields) => {
+        if (records.some((d) => !ownedDownloads.has(d.Id) && fields.some((field) => !Object.hasOwn(d, field)))) {
+          throw new Error("refusing download action while existing tickets cannot be verified");
+        }
+      };
+      const start = async (query = q) => {
+        const before = await list();
+        assertKnownRecords(before, ["Id", "MediaFileId"]);
+        if (before.some((d) => String(d.MediaFileId ?? "").toLowerCase() === String(m.file).toLowerCase() && !ownedDownloads.has(d.Id))) throw new Error("refusing to replace an existing download for this media");
+        const id = (await request("POST", `/dl/start?${query}`)).id;
+        if (!id || before.some((d) => d.Id === id && !ownedDownloads.has(id))) throw new Error("download start reused a pre-existing ticket");
+        ownedDownloads.add(id);
+        return id;
+      };
       try {
         if (c.action === "start") { const id = await start(); await waitFor(id, (d) => d.state === "Ready" && d.file); return { state: "ok", detail: "completed and stored" }; }
         if (c.action === "pause-resume") {
           const id = await start(); const d0 = await waitFor(id, (d) => d.BytesDownloaded > 0);
-          await call("POST", `/dl/pause?id=${id}`); await sleep(1500); const p1 = await get(id); await sleep(3000); const p2 = await get(id);
+          await request("POST", `/dl/pause?id=${id}`); await delay(1500); const p1 = await get(id); await delay(3000); const p2 = await get(id);
           if (p1.state !== "Paused" || p2.BytesDownloaded !== p1.BytesDownloaded) return { state: "failed", detail: "did not stay paused" };
-          await call("POST", `/dl/resume?id=${id}`); await waitFor(id, (d) => d.state === "Ready" && d.file); return { state: "ok", detail: `paused at ${p1.BytesDownloaded}, resumed to completion` };
+          await request("POST", `/dl/resume?id=${id}`); await waitFor(id, (d) => d.state === "Ready" && d.file); return { state: "ok", detail: `paused at ${p1.BytesDownloaded}, resumed to completion` };
         }
-        if (c.action === "cancel") { const id = await start(); await waitFor(id, (d) => d.BytesDownloaded > 0); await call("POST", `/dl/remove?id=${id}`); await sleep(1000); return (await get(id)) ? { state: "failed", detail: "still listed" } : { state: "ok", detail: "removed mid-way" }; }
-        if (c.action === "delete") { const id = await start(); await waitFor(id, (d) => d.state === "Ready" && d.file); await call("POST", `/dl/remove?id=${id}`); await sleep(1000); return (await get(id)) ? { state: "failed", detail: "still listed" } : { state: "ok", detail: "deleted" }; }
-        if (c.action === "edit") { const id = await start(); await waitFor(id, (d) => d.state === "Ready" && d.file); await call("POST", `/dl/keep?id=${id}&type=after-watched`); const d = await get(id); return d.keep === "after-watched" ? { state: "ok", detail: "keep-until edited (quality is fixed once a download exists on this client)" } : { state: "failed", detail: "keep-until not changed" }; }
+        if (c.action === "cancel") { const id = await start(); await waitFor(id, (d) => d.BytesDownloaded > 0); await request("POST", `/dl/remove?id=${id}`); await delay(1000); return (await get(id)) ? { state: "failed", detail: "still listed" } : { state: "ok", detail: "removed mid-way" }; }
+        if (c.action === "delete") { const id = await start(); await waitFor(id, (d) => d.state === "Ready" && d.file); await request("POST", `/dl/remove?id=${id}`); await delay(1000); return (await get(id)) ? { state: "failed", detail: "still listed" } : { state: "ok", detail: "deleted" }; }
+        if (c.action === "edit") { const id = await start(); await waitFor(id, (d) => d.state === "Ready" && d.file); await request("POST", `/dl/keep?id=${id}&type=after-watched`); const d = await get(id); return d.keep === "after-watched" ? { state: "ok", detail: "keep-until edited (quality is fixed once a download exists on this client)" } : { state: "failed", detail: "keep-until not changed" }; }
         if (c.action === "offline-play") {
           const id = await start(); await waitFor(id, (d) => d.state === "Ready" && d.file);
           // the network is not switched off here: the player is pointed at the local file only (no session, no server URL)
-          await call("POST", `/route?path=${encodeURIComponent(`/player/${m.file}?local=${id}`)}`);
-          let p0 = null; for (let i = 0; i < 40 && p0 === null; i++) { await sleep(800); const s = await call("GET", "/state"); if (s.playing) p0 = s.positionMs / 1000; }
+          await request("POST", `/route?path=${encodeURIComponent(`/player/${m.file}?local=${id}`)}`);
+          let p0 = null; for (let i = 0; i < 40 && p0 === null; i++) { await delay(800); const s = await request("GET", "/state"); if (s.playing) p0 = s.positionMs / 1000; }
           if (p0 === null) return { state: "failed", detail: "no frames" };
-          await sleep(4000); const s = await call("GET", "/state");
+          await delay(4000); const s = await request("GET", "/state");
           return s.positionMs / 1000 - p0 >= 3 ? { state: "ok", detail: "offline copy played, clock advanced" } : { state: "failed", detail: "stalled" };
         }
         if (/^(series|season)-(pause|delete)$/.test(c.action)) {
-          // two episodes of the series' first season so a group has more than one member
-          const [scope, act] = c.action.split("-"); const ids = [];
-          for (const [season, episode] of [[m.season, m.episode], [m.season, m.episode + 1]]) {
-            const qq = new URLSearchParams({ file: m.file, work: m.work, title: `${m.title} ${episode}`, quality: "original", season: String(season), episode: String(episode), series: m.title });
-            try { ids.push((await call("POST", `/dl/start?${qq}`)).id); } catch (e) { /* the second ticket may not exist: one member is enough */ }
-            break; // the pinned media has one file: a group of one still proves the group action reaches the engine
-          }
-          await waitFor(ids[0], (d) => d.BytesDownloaded > 0 || d.state === "Ready");
+          const [scope, act] = c.action.split("-");
+          const existing = await list();
+          assertKnownRecords(existing, ["Id", "SeriesTitle"]);
+          if (scope === "season" && existing.some((d) => d.SeriesTitle === m.title && !Object.hasOwn(d, "Season") && !ownedDownloads.has(d.Id))) throw new Error("refusing grouped action while existing tickets cannot be verified");
+          if (existing.some((d) => d.SeriesTitle === m.title && (scope !== "season" || Number(d.Season) === Number(m.season)) && !ownedDownloads.has(d.Id))) throw new Error("refusing grouped action while matching downloads already exist");
+          // The parity fixture pins one media file, which is enough to exercise the grouped action.
+          const qq = new URLSearchParams({ file: m.file, work: m.work, title: `${m.title} ${m.episode}`, quality: "original", season: String(m.season), episode: String(m.episode), series: m.title });
+          const id = await start(qq);
+          await waitFor(id, (d) => d.BytesDownloaded > 0 || d.state === "Ready");
           const gq = new URLSearchParams({ series: m.title, ...(scope === "season" ? { season: String(m.season) } : {}) });
           if (act === "pause") {
-            await call("POST", `/dl/group?${gq}&action=pause`); await sleep(1500); const d = await get(ids[0]);
+            await request("POST", `/dl/group?${gq}&action=pause`); await delay(1500); const d = await get(id);
             if (d.state === "Ready") return { state: "ok", detail: "finished before it could be paused (small file); the group action ran" };
             if (d.state !== "Paused") return { state: "failed", detail: `group pause left ${d.state}` };
             return { state: "ok", detail: `${scope} paused` };
           }
-          await call("POST", `/dl/group?${gq}&action=delete`); await sleep(1000);
-          return (await get(ids[0])) ? { state: "failed", detail: "still listed" } : { state: "ok", detail: `${scope} deleted` };
+          await request("POST", `/dl/group?${gq}&action=delete`); await delay(1000);
+          return (await get(id)) ? { state: "failed", detail: "still listed" } : { state: "ok", detail: `${scope} deleted` };
         }
         return { state: "failed", detail: `unknown action ${c.action}` };
       } catch (e) { return { state: "failed", detail: e.message }; }
     },
-    async cleanupDownloads() { for (const d of await call("GET", "/dl/list")) await call("POST", `/dl/remove?id=${d.Id}`).catch(() => {}); },
+    async cleanupDownloads() {
+      for (const id of ownedDownloads) await request("POST", `/dl/remove?id=${encodeURIComponent(id)}`).catch(() => {});
+      ownedDownloads.clear();
+    },
     async play(c, expect) {
-      state = await call("POST", `/route?path=/player/${c.file}`);
+      state = await request("POST", `/route?path=/player/${c.file}`);
       const t0 = Date.now();
       let p0 = null;
       while (p0 === null && Date.now() - t0 < expect.startWithinSeconds * 1000) {
-        await sleep(800);
-        const s = await call("GET", "/state");
+        await delay(800);
+        const s = await request("GET", "/state");
         if (s.playing) p0 = s.positionMs / 1000;
       }
       if (p0 === null) return { state: "error", detail: "no frames in time" };
@@ -119,8 +140,8 @@ export async function createDriver() {
       // the picture may stall for a moment after the first frame: allow up to 30 s of wall time for the clock to advance
       let p1 = p0;
       for (let waited = 0; waited < 30000 && p1 - p0 < expect.advanceSeconds; waited += 500) {
-        await sleep(500);
-        const s = await call("GET", "/state");
+        await delay(500);
+        const s = await request("GET", "/state");
         if (s.playing) p1 = s.positionMs / 1000;
       }
       return { state: p1 - p0 >= expect.advanceSeconds ? "playing" : "stalled", startSeconds, advancedSeconds: p1 - p0 };

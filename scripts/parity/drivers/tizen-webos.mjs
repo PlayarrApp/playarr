@@ -254,6 +254,9 @@ export async function createDriver() {
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
   return {
+    async setDeterministicCapture() { throw new Error(`${device} stable deterministic capture unsupported: this packaged Chromium client has no app-owned clock and animation contract`); },
+    async captureBuildIdentity() { throw new Error(`${device} stable build identity unsupported: deployed package digest is not exposed by this driver`); },
+    async waitReady() { throw new Error(`${device} stable deterministic capture unsupported: readiness is not exposed through the native app contract`); },
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
     supports: device === "webos" ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
     async start() {

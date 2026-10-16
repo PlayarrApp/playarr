@@ -315,7 +315,7 @@ internal fun ExperienceGuardianApprovalsScreen(
                         current.value.approvals,
                         selfId,
                         guardianFor,
-                        Instant.now(),
+                        playarrInstant(),
                     )
                     if (pending.isEmpty()) {
                         PlayarrEmptyState(

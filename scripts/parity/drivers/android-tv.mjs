@@ -12,16 +12,38 @@ import { writeFileSync } from "node:fs";
 const run = promisify(execFile);
 const KEYS = { up: "DPAD_UP", down: "DPAD_DOWN", left: "DPAD_LEFT", right: "DPAD_RIGHT", select: "DPAD_CENTER", back: "BACK" };
 const LIBRARIES = new Set(["movies", "series", "music", "search", "settings", "profiles", "watchlist", "requests", "downloads", "playlists", "folders"]);
+const instantNanos = (value) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/i.exec(value);
+  if (!match) return null;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, fraction = "", zone] = match;
+  const year = Number(yearText), month = Number(monthText), day = Number(dayText);
+  const hour = Number(hourText), minute = Number(minuteText), second = Number(secondText);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59) return null;
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hour, minute, second, 0);
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  let offsetSeconds = 0;
+  if (zone !== "Z" && zone !== "z") {
+    const offsetHour = Number(zone.slice(1, 3)), offsetMinute = Number(zone.slice(4, 6));
+    if (offsetHour > 23 || offsetMinute > 59) return null;
+    const sign = zone[0] === "+" ? 1 : -1;
+    offsetSeconds = sign * (offsetHour * 3600 + offsetMinute * 60);
+  }
+  const epochSeconds = BigInt(date.getTime() / 1000 - offsetSeconds);
+  const nanos = BigInt(fraction.padEnd(9, "0") || "0");
+  return epochSeconds * 1_000_000_000n + nanos;
+};
 
-export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {} } = {}) {
-  const env = process.env, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
+export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env } = {}) {
+  const env = envOverride, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
   const adbBin = adbOverride ?? (env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb");
   // Injectable clock (tests): the readiness loop's deadline arithmetic then never depends on how long a real process took.
   const now = clock.now ?? Date.now;
   const sleep = clock.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const execBounded = async (command, args, { timeoutMs = commandTimeoutMs, label = "external command", ...options } = {}) => {
     try {
-      return await run(command, args, { ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
+      return await run(command, args, { env, ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
     } catch (e) {
       if (e.killed && e.signal === "SIGTERM") throw new Error(`${label} timed out after ${timeoutMs}ms`);
       throw e;
@@ -53,13 +75,29 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   };
   const shell = (...a) => adb("shell", ...a);
   let theme = "dark";
+  let parityClock = null;
+  let savedAnimationScales = null;
+  const animationScaleKeys = ["window_animation_scale", "transition_animation_scale", "animator_duration_scale"];
 
   const parityLines = async () => (await adb("logcat", "-d", "-s", "PlayarrParity:I")).split("\n").map((l) => l.replace(/^.*PlayarrParity: /, "")).filter(Boolean);
   // pause: the debug build pauses the player at its first frame (a still frame for the player-controls screen); off for playback cases.
   const launch = async (route, pause = true) => {
     await shell("am", "force-stop", pkg);
     await adb("logcat", "-c");
-    await shell("am", "start", "-n", `${pkg}/.MainActivity`, "--es", "parity_route", route, ...(pause ? ["--el", "parity_pause_at_ms", "500"] : []));
+    await shell("am", "start", "-n", `${pkg}/.MainActivity`, "--es", "parity_route", route,
+      ...(parityClock ? ["--es", "parity_clock", parityClock] : []),
+      ...(pause ? ["--el", "parity_pause_at_ms", "500"] : []));
+    if (parityClock) await waitForClockConsumption();
+  };
+  const waitForClockConsumption = async () => {
+    const deadline = now() + Math.min(readinessTimeoutMs, 15_000);
+    const expectedInstant = instantNanos(parityClock);
+    while (now() < deadline) {
+      const consumed = (await parityLines()).some((line) => line.startsWith("clock_consumed=") && instantNanos(line.slice("clock_consumed=".length)) === expectedInstant);
+      if (consumed) return;
+      await sleep(Math.min(250, Math.max(0, deadline - now())));
+    }
+    throw new Error("Android debug app did not confirm consuming PARITY_FIXED_NOW within 15s");
   };
   // Web route to the app's own route string.
   const appRoute = (r) => {
@@ -82,19 +120,18 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   // Wait until the app has put focus on something (a loaded page): keys sent before that are lost.
   const settled = async (timeoutMs = readinessTimeoutMs) => {
     const deadline = now() + timeoutMs;
+    let previousFocus = "", stableFocus = 0;
     while (now() < deadline) {
       await sleep(Math.min(readinessPollMs, deadline - now()));
       if (now() >= deadline) break;
       const xml = await tree();
-      // Loaded: focus sits on content (past the 140 px rail), or the sign-in screen is up.
-      const onContent = (xml.match(/<node [^>]*>/g) ?? []).some((n) => attr(n, "focused") === "true" && attr(n, "focusable") === "true" && (bounds(n)[0] ?? 0) >= 140);
-      if (/Sign in to Playarr/.test(xml) || onContent) {
-        if (now() + 1500 > deadline) break;
-        await sleep(1500);
-        return;
-      }
+      const focus = (xml.match(/<node [^>]*>/g) ?? []).find((n) => attr(n, "focused") === "true" && attr(n, "focusable") === "true") ?? "";
+      if (focus && focus === previousFocus) stableFocus += 1;
+      else stableFocus = 0;
+      if (focus && stableFocus >= 1) return;
+      previousFocus = focus;
     }
-    throw new Error(`screen readiness timed out after ${timeoutMs}ms (no content focus or sign-in screen)`);
+    throw new Error(`screen readiness timed out after ${timeoutMs}ms (no stable accessibility focus)`);
   };
   // The sign-in screen shows a link code; approve it (PARITY_LINK_CMD) and relaunch. Returns true when it had to sign in.
   const relink = async (route, pause) => {
@@ -131,6 +168,65 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   };
   return {
     supports: { nowPlaying: true },
+    async setDeterministicCapture({ fixedNow, disableAnimations } = {}) {
+      if (typeof fixedNow !== "string" || !Number.isFinite(Date.parse(fixedNow)) || instantNanos(fixedNow) === null) throw new Error("Android deterministic capture requires a valid fixedNow ISO date");
+      if (disableAnimations !== true) throw new Error("Android deterministic capture requires disableAnimations: true");
+      parityClock = fixedNow;
+      const scales = {};
+      for (const key of animationScaleKeys) {
+        const value = (await shell("settings", "get", "global", key)).trim();
+        if (!value || value === "null") throw new Error(`Android cannot read system animation scale ${key}`);
+        // A pre-disabled animation scale is not a useful baseline for restoration; return it to Android's normal scale.
+        scales[key] = Number(value) === 0 ? "1" : value;
+      }
+      savedAnimationScales ??= scales;
+      for (const key of animationScaleKeys) {
+        await shell("settings", "put", "global", key, "0");
+        if ((await shell("settings", "get", "global", key)).trim() !== "0") throw new Error(`Android could not disable system animation scale ${key}`);
+      }
+    },
+    async waitReady({ screen, phase = "capture" } = {}) {
+      if (!["route", "focus", "capture"].includes(phase)) throw new Error(`unsupported Android readiness phase: ${phase}`);
+      if (phase === "capture") throw new Error("Android stable capture readiness unsupported: image-idle signals cannot prove route data is loaded, so artwork may still change");
+      const deadline = now() + readinessTimeoutMs;
+      let previous = "", stable = 0;
+      while (now() < deadline) {
+        const lines = await parityLines();
+        const xml = await tree();
+        if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml)) throw new Error(`Android ${phase} readiness reached a sign-in or error screen`);
+        const lastRoute = lines.findLast((line) => line.startsWith("route=")) ?? "";
+        const routeValue = /^route=(\S+)/.exec(lastRoute)?.[1] ?? "";
+        const expectedRoute = ({
+          home: "home", movies: "movies", series: "series", music: "music", search: "search", settings: "settings",
+          profiles: "profiles", filters: "movies", actions: "movies", "calendar-month": "calendar", "calendar-week": "calendar",
+          "calendar-agenda": "calendar", "film-detail": "experience-detail", "series-detail": "experience-detail",
+          "player-controls": "experience-player",
+        })[screen];
+        const routeBase = routeValue.split("/")[0];
+        const knownRoute = routeBase === "home" || LIBRARIES.has(routeBase) || routeBase === "calendar" ||
+          routeBase === "experience-detail" || routeBase === "experience-player";
+        const routeMatchesScreen = knownRoute && (!expectedRoute || routeBase === expectedRoute);
+        const sectionMatchesScreen = screen !== "series-detail" || /\bsection=series(?:\s|$)/.test(lastRoute);
+        const panelMatchesScreen = screen !== "filters" || lines.some((line) => line === "panel=filters");
+        const focus = (xml.match(/<node [^>]*>/g) ?? []).find((node) => {
+          const rect = bounds(node);
+          return attr(node, "focused") === "true" && attr(node, "focusable") === "true" && rect.length === 4 && rect[2] > rect[0] && rect[3] > rect[1] && rect[2] - rect[0] < 1900;
+        });
+        if (focus && focus === previous) stable += 1;
+        else stable = 0;
+        if (focus && stable >= 1 && routeMatchesScreen && sectionMatchesScreen && panelMatchesScreen) return;
+        previous = focus ?? "";
+        await sleep(Math.min(readinessPollMs, Math.max(0, deadline - now())));
+      }
+      throw new Error(`Android ${phase} readiness timed out without stable focused content`);
+    },
+    async captureBuildIdentity() {
+      const apk = (await shell("pm", "path", pkg)).trim().match(/^package:(.+)$/m)?.[1];
+      if (!apk) throw new Error("Android could not resolve the installed APK path for build identity");
+      const digest = (await shell("sha256sum", apk)).trim().match(/^([a-f0-9]{64})\s+/i)?.[1];
+      if (!digest) throw new Error("Android could not verify the installed APK SHA-256 build identity");
+      return { package: pkg, apk, sha256: digest.toLowerCase() };
+    },
     async start() {
       const touch = await shell("dumpsys", "input");
       // A tap (the USB-debugging prompt watcher taps) puts the device in touch mode, which hides every focus state; a key press leaves it.
@@ -195,6 +291,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       return label == null ? null : { label, position };
     },
     async screenshot(file) {
+      if (parityClock) await this.waitReady({ phase: "capture" });
       const xml = await tree();
       if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml.replace(/<node [^>]*package="(?!io\.playarr)[^>]*>/g, ""))) throw new Error("signed out or error screen");
       const png = env.PARITY_XDISPLAY
@@ -224,6 +321,23 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       const r = { state, startSeconds, advancedSeconds };
       if (c.nowPlaying && state === "playing") r.nowPlaying = await nowPlaying();
       return r;
+    },
+    async stop() {
+      if (savedAnimationScales) {
+        const failures = [];
+        for (const key of animationScaleKeys) {
+          try {
+            await shell("settings", "put", "global", key, savedAnimationScales[key]);
+            if ((await shell("settings", "get", "global", key)).trim() !== savedAnimationScales[key]) {
+              throw new Error("restored value did not match");
+            }
+          } catch {
+            failures.push(key);
+          }
+        }
+        savedAnimationScales = null;
+        if (failures.length) throw new Error(`Android failed to restore animation scales: ${failures.join(", ")}`);
+      }
     },
   };
 }

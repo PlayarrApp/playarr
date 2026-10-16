@@ -1,0 +1,8 @@
+- Stable parity runs now pin the web clock, disable animations, use readiness signals, and record one D-pad observation without retrying failures.
+- Web reference captures now close the browser on every capture-group exit and reject build drift before publishing.
+- Stable catalog resets now include available episode files without rejecting episodes that have no synced file.
+- Android parity clock logging remains observable in production and testable from JVM clock tests.
+- Parity account resets now clear resume choices only for series, avoiding invalid movie or episode reset requests.
+- Web parity sign-in now points the app at its configured server before initial API requests.
+- Parity account restoration skips unchanged progress rows so captures do not refresh their recency.
+- Web parity uses synchronous Playwright polling for stable focus and detail readiness, avoiding premature scores while remote focus settles.
