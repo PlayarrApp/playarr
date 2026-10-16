@@ -679,6 +679,7 @@ Steps only the repository owner can perform.
 | 10600 | Harmony TV series detail: synopsis as web, episode dots, first-episode focus, Actions drawer bursts | done | parity-harmony | harmony-sd2 | 5.10102 | 2026-10-17 18:00 ICT | PR open: #1534. Synopsis ink-muted 400; TV episode dots from the card prop (no restamp); state focus ignores cards on hidden pages. PR #1534 merged 2026-10-16. |
 | 10595 | iPhone keyboard: arrows move Home and grid focus; focus on Calendar, Settings, Search and detail; panel header clip; player and select runner | done | parity-iphone | iphone-r3-focus | | 2026-10-17 18:00 ICT | The runner showed the focus system ignored Tab and arrows on Home and grids; Home and grids handle arrows themselves; other screens take focus rings; panels clip under the header. PR open: #1531 PR #1531 merged 2026-10-16. |
 | 10599 | Harmony round 3: motion walk, poster extras that cannot fail the capture job | in_review | parity-harmony | harmony-motion | 5.10102 | 2026-10-17 12:00 ICT | PR open: #1533. MOTION=true swipe bursts (Home scroll, rails, Filters) and capture-web-motion --profile tv; a stalled poster walk is skipped. |
+| 10568 | Home first-row position settles after posters load (webOS Covers: y 433 vs web 407 until a key) | in_review | parity-vidaa | vidaa-rail-recentre | | 2026-10-16 18:00 ICT | PR open: #1528 |
 
 ## 18. Public repository readiness (2026-10-05)
 
