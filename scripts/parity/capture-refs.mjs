@@ -130,7 +130,8 @@ for (const name of groups) {
     if (!started.ok) { console.log(`SKIPPED group ${name}: could not start; its screens go to failed.json`); continue; }
     if (driverBuild !== `${webBuild.sha}@${webBuild.builtAt}`) throw new Error(`web driver build identity ${driverBuild} does not match build-info identity ${webBuild.sha}@${webBuild.builtAt}`);
     for (const theme of ["dark", "light"]) {
-      await driver.setTheme(theme);
+      const themed = await runScreenWithRetry(() => driver.setTheme(theme), { attempts: 1, log: (m) => console.log(`${name} ${theme} theme ${m}`) });
+      if (!themed.ok) { console.log(`SKIPPED ${name} ${theme}: could not switch theme; its screens go to failed.json`); continue; }
       mkdirSync(join(work, name, theme), { recursive: true });
       for (const s of screens) {
         if (targets && !targets.has(captureKey(name, theme, s.id))) continue;
