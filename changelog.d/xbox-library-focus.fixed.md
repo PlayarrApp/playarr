@@ -1,0 +1,2 @@
+- Preserve the focused library card across result refreshes and restore it after returning from a title, while leaving focus on navigation controls when the library did not own focus.
+- Keep the original refresh target through intermediate loading and focus notifications until the target card is restored or the user moves focus.

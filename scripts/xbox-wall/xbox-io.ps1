@@ -60,7 +60,20 @@ switch ($Cmd) {
     $out.Save([IO.Path]::GetFullPath($A), [System.Drawing.Imaging.ImageFormat]::Png)
   }
   'read' { Get-Content (Join-Path (State) 'parity.json') -Raw -Encoding UTF8 }
-  'write' { Set-Content -NoNewline -Path (Join-Path (State) $A) -Value $B }
+  'write' {
+    $path = Join-Path (State) $A
+    $temporaryPath = "$path.tmp"
+    Set-Content -NoNewline -Path $temporaryPath -Value $B
+    Move-Item -Force -Path $temporaryPath -Destination $path
+  }
+  'identity' {
+    $markerPath = Join-Path (State) 'parity.expected-user'
+    $marker = Get-Content $markerPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $marker.nonce = $A
+    $temporaryPath = "$markerPath.tmp"
+    Set-Content -NoNewline -Path $temporaryPath -Value ($marker | ConvertTo-Json -Compress)
+    Move-Item -Force -Path $temporaryPath -Destination $markerPath
+  }
   'res' { "set 1920x1080: $([Win]::Res(1920, 1080)); display now $($screen.Width)x$($screen.Height)" }
   'restart' {
     [Win]::Res(1920, 1080) | Out-Null

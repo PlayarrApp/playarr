@@ -1,0 +1,1 @@
+- Xbox Home now matches the web rail inset, responsive vertical spacing, and directional return-to-navigation geometry.

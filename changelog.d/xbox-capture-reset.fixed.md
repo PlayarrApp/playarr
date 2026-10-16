@@ -1,0 +1,1 @@
+- Keep stale playback-progress resets out of the Xbox screen and D-pad captures, and pause player-controls at the shared two-second reference position.

@@ -4,7 +4,8 @@ name: Xbox wall
 # builds the unsigned sideload package, then PARALLEL matrix jobs sideload it (Developer Mode, loose layout), sign in fresh as the
 # Device Test account (the pairing code is read from the app's parity trace and approved with the repository secrets) and run one
 # part of the shared parity suite each: screens dark, screens light, D-pad, playback. Artifacts follow the other walls' layout:
-# dev/<id>.png, dev/light/<id>.png, dev/build.json, dev/dpad.json, dev/playback.json. Pull them into the legend with
+# dev/<id>.png, dev/light/<id>.png, dev/build.json, dev/dpad.json, dev/playback.json. Home runs also upload a separate guarded
+# web-home reference artifact with home.png, expected.json, and reference-build.json for each theme. Pull Xbox frames into the legend with
 # scripts/xbox-wall/pull-captures.sh.
 # Public repository: workflow_dispatch only, no pull_request trigger. Each secret reaches one step; no frame showing the server
 # address is uploaded.
@@ -17,9 +18,17 @@ on:
         type: string
         default: ""
       playback:
-        description: Also run the playback job (playback is out of parity and tracked as performance, so leave this off)
+        description: Also run the legacy playback performance job, separate from the player-controls parity screen
         type: boolean
         default: false
+      screens:
+        description: Comma-separated Xbox screens; player-controls is opt-in and requires the configured direct-play fixture secret
+        type: string
+        default: home,movies,series,music
+
+concurrency:
+  group: xbox-wall-device-test-account
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -65,6 +74,7 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         part: ${{ fromJSON(inputs.playback && '["screens-dark","screens-light","dpad","playback"]' || '["screens-dark","screens-light","dpad"]') }}
     defaults:
@@ -74,6 +84,8 @@ jobs:
       XBOX_IO: ${{ github.workspace }}\scripts\xbox-wall\xbox-io.cmd
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -96,6 +108,7 @@ jobs:
       - name: Sign in as Device Test
         env:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_ACCOUNT_KEY: PLAYARR_DEVICE_TEST_USERNAME
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
         run: python scripts/xbox-wall/pair.py
@@ -107,37 +120,44 @@ jobs:
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PLAYARR_DEVICE_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PART: ${{ matrix.part }}
+          SCREENS_INPUT: ${{ inputs.screens || 'home,movies,series,music' }}
+          PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID: ${{ secrets.PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID }}
           XBOX_DEBUG_DIR: ${{ github.workspace }}/out/debug
         working-directory: scripts/parity
         run: |
           set -o pipefail
           OUT="$GITHUB_WORKSPACE/out"; mkdir -p "$OUT"
-          # reset the pinned files' watch progress so Home and Resume state match the web reference taken in the same minute
-          for f in b9a68b2c-8382-4c34-a6f0-c4dd58f55093 c9a9f905-3037-4bd7-9c73-2250e8aa347d; do node ../xbox-wall/reset-progress.mjs "$f" || true; done
           case "$PART" in
             screens-*)
               T=${PART#screens-}
-              SCREENS=home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,film-detail,series-detail,settings,filters,profiles,player-controls,actions
-              node suite-run.mjs --driver ./xbox/driver.mjs --only screens --screens "$SCREENS" --themes "$T" --via route --out "$OUT/run" --expected "$OUT/none.json" || true
+              SCREENS=$(node -e 'const requested = process.env.SCREENS_INPUT.split(","); const allowed = new Set(["home", "movies", "series", "music", "player-controls"]); if (!requested.length || requested.some((id) => !allowed.has(id)) || new Set(requested).size !== requested.length) { console.error("screens must be a unique comma-separated subset of home,movies,series,music,player-controls"); process.exit(1); } process.stdout.write(requested.join(","));')
+              if [[ ",$SCREENS," == *",home,"* ]]; then
+                node suite-run.mjs --driver ./drivers/web.mjs --reference --only screens --screens home --themes "$T" --via route --out "$OUT/web-home" --expected "$OUT/web-home/expected.json"
+              fi
+              node suite-run.mjs --driver ./xbox/driver.mjs --only screens --screens "$SCREENS" --themes "$T" --via route --out "$OUT/run" --expected "$OUT/none.json"
               mkdir -p "$OUT/dev/light"
               if [ "$T" = light ]; then cp "$OUT"/run/light/*.png "$OUT/dev/light/"; else cp "$OUT"/run/dark/*.png "$OUT/dev/"; fi ;;
             dpad)
-              node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --out "$OUT/web" || true
-              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --via keys --out "$OUT/run" --expected "$OUT/web/expected.json" || true
+              node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --out "$OUT/web"
+              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --via keys --out "$OUT/run" --expected "$OUT/web/expected.json"
               mkdir -p "$OUT/dev"; cp "$OUT/run/dpad.json" "$OUT/dev/" ;;
             playback)
               echo '{"suite":1,"dpad":{},"playback":{"a":{"state":"playing"},"b":{"state":"playing"},"c":{"state":"playing"}}}' > "$OUT/exp.json"
               node suite-run.mjs --driver ./xbox/driver.mjs --only playback --out "$OUT/run" --expected "$OUT/exp.json" || true
-              for f in b9a68b2c-8382-4c34-a6f0-c4dd58f55093 c9a9f905-3037-4bd7-9c73-2250e8aa347d; do node ../xbox-wall/reset-progress.mjs "$f" || true; done
+              for f in b9a68b2c-8382-4c34-a6f0-c4dd58f55093 c9a9f905-3037-4bd7-9c73-2250e8aa347d; do node ../xbox-wall/reset-progress.mjs "$f"; done
               mkdir -p "$OUT/dev"; cp "$OUT/run/playback.json" "$OUT/dev/" ;;
           esac
       - name: Record the build
         if: success()
         env:
-          BRANCH: ${{ github.ref_name }}
-          SHA: ${{ github.sha }}
-        run: printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s"}\n' "$BRANCH" "${SHA:0:8}" "$(date -u +%FT%TZ)" > out/dev/build.json
+          CHECKOUT_REF: ${{ inputs.ref || github.ref_name }}
+        run: |
+          SHA=$(git rev-parse HEAD)
+          BRANCH=$CHECKOUT_REF
+          printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s"}\n' "$BRANCH" "$SHA" "$(date -u +%FT%TZ)" > out/dev/build.json
       - name: Upload the results
         if: success()
         uses: actions/upload-artifact@v4
@@ -145,6 +165,14 @@ jobs:
           name: xbox-wall-${{ matrix.part }}-${{ github.run_id }}
           path: out/dev
           if-no-files-found: error
+          retention-days: 14
+      - name: Upload the paired web Home reference
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xbox-wall-web-home-${{ matrix.part }}-${{ github.run_id }}
+          path: out/web-home
+          if-no-files-found: ignore
           retention-days: 14
       - name: Upload the debug frames
         if: always()

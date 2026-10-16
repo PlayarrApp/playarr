@@ -1,0 +1,1 @@
+- Xbox library letter navigation now scrolls within the visible rail, follows the focused title and focuses the selected jump destination.

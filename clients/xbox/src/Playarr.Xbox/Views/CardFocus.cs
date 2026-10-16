@@ -71,6 +71,15 @@ namespace Playarr.Xbox.Views
         /// </summary>
         public static void FocusWhenReady(ListViewBase list, Func<Control?> target) => FocusClaim.Start(list, target);
 
+        public static void FocusWhenReady(ListViewBase list, Func<Control?> target, Func<bool> shouldCancel) =>
+            FocusClaim.Start(list, target, shouldCancel);
+
+        public static void FocusWhenReady(ListViewBase list, Func<Control?> target, Func<bool> shouldCancel, Func<bool> isComplete) =>
+            FocusClaim.Start(list, target, shouldCancel, isComplete);
+
+        public static void FocusWhenReady(ListViewBase list, Func<Control?> target, Action onStopped) =>
+            FocusClaim.Start(list, target, () => false, null, onStopped);
+
         public static void FocusFirstWhenReady(ListViewBase list) =>
             FocusClaim.Start(list, () => list.ContainerFromIndex(0) as Control);
 

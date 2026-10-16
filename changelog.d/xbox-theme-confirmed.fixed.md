@@ -1,0 +1,1 @@
+- Xbox parity captures now select the native theme control from its traced bounds and confirm the saved choice and effective theme before capturing.

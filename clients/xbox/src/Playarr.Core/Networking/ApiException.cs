@@ -82,6 +82,20 @@ namespace Playarr.Core.Networking
         /// </summary>
         public bool IsRetryable => Kind != ApiErrorKind.UnprocessableEntity;
 
+        /// <summary>Returns a diagnostic safe for parity traces, without server messages or request details.</summary>
+        public string SafeDiagnosticCode() => StatusCode is { } status
+            ? $"http-{(int)status}"
+            : Kind switch
+            {
+                ApiErrorKind.Transport => "transport",
+                ApiErrorKind.Decoding => "invalid-payload",
+                ApiErrorKind.InvalidResponse => "invalid-response",
+                ApiErrorKind.InvalidBaseUrl => "invalid-server-config",
+                ApiErrorKind.Unauthorized => "unauthorized",
+                ApiErrorKind.NotFound => "not-found",
+                _ => "api-error",
+            };
+
         public static ApiException ForStatus(HttpStatusCode status, ApiErrorBody? body)
         {
             var kind = status switch

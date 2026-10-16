@@ -2,6 +2,7 @@ using System;
 using Windows.UI;
 using Windows.UI.Text;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Automation;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
@@ -119,7 +120,7 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>A labelled group ("SORT BY") with segmented options, the selected one filled like the web.</summary>
-        public static StackPanel Segmented(string label, string[] options, int selected, Action<int> onSelect)
+        public static StackPanel Segmented(string label, string[] options, int selected, Action<int> onSelect, string? automationIdPrefix = null)
         {
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
             var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
@@ -161,6 +162,11 @@ namespace Playarr.Xbox.Views
                     FocusVisualPrimaryThickness = new Thickness(3),
                     FocusVisualSecondaryThickness = new Thickness(0),
                 };
+                if (!string.IsNullOrWhiteSpace(automationIdPrefix))
+                {
+                    AutomationProperties.SetAutomationId(button, $"{automationIdPrefix}.{i}");
+                }
+
                 button.Click += (s, e) => onSelect(index);
                 Grid.SetColumn(button, i % perRow);
                 Grid.SetRow(button, i / perRow);

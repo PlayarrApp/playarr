@@ -1,0 +1,1 @@
+- Let hosted Xbox parity runs capture a validated subset of the Movies, Series and Music screens.

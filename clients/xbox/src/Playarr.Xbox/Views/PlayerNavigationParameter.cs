@@ -25,9 +25,11 @@ namespace Playarr.Xbox.Views
             Guid? workId = null,
             IList<PlaybackQueueItem>? upNext = null,
             IList<PlaybackQueueItem>? previous = null,
-            bool preferLocal = false)
+            bool preferLocal = false,
+            bool requireDirectPlay = false)
         {
             PreferLocal = preferLocal;
+            RequireDirectPlay = requireDirectPlay;
             Previous = previous ?? new List<PlaybackQueueItem>();
             WorkId = workId;
             UpNext = upNext ?? new List<PlaybackQueueItem>();
@@ -47,6 +49,9 @@ namespace Playarr.Xbox.Views
 
         /// <summary>Play the finished download from local storage instead of asking the server.</summary>
         public bool PreferLocal { get; }
+
+        /// <summary>Require the server to negotiate the original file before starting playback.</summary>
+        public bool RequireDirectPlay { get; }
 
         /// <summary>The media file to negotiate and play.</summary>
         public Guid MediaFileId { get; }
