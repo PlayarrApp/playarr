@@ -64,8 +64,11 @@ enum ParityLaunch {
     /// card) and records the step in parity-state.json for the driver's frame bursts.
     static var motion: Bool { ProcessInfo.processInfo.arguments.contains("--playarr-parity-motion") }
     static var selectsHomeSeries: Bool { environmentValue("PLAYARR_PARITY_SELECT_HOME_SERIES") == "1" }
-    /// `--playarr-parity-play <media file id>` with route `play`: opens the player on that file and plays it (suite playback cases).
+    /// `--playarr-parity-play <media file id>` opens the player on that file (suite playback cases).
     static var playFile: String? { value("--playarr-parity-play") }
+    /// Player screenshot captures must not start an HLS/transcode session. The player view model
+    /// checks this immediately after negotiation and before loading the returned URL into AVPlayer.
+    static var requiresDirectPlayback: Bool { playFile != nil && isPlayerRoute }
     /// Routes `calendar-month`, `calendar-week` and `calendar-agenda` open the calendar in that view.
     static var calendarMode: CalendarViewMode? {
         switch parts.first { case "calendar-month": .month; case "calendar-week": .week; case "calendar-agenda": .agenda; default: nil }

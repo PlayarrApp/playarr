@@ -1,0 +1,1 @@
+- Make iPad parity player captures deterministic: select the suite's direct-play fixture, reject non-direct negotiation before loading the stream, keep controls visible on a paused frame, and fail if screenshots never stabilise.

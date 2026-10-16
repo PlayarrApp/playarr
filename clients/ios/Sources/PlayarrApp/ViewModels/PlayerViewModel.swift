@@ -191,6 +191,18 @@ public final class PlayerViewModel {
                 maxBitrateBps: nil,
                 profile: requestedProfile
             )
+#if DEBUG
+            if ParityLaunch.requiresDirectPlayback, info.mode != .direct {
+                playbackMode = info.mode
+                activeSessionID = info.sessionID
+                activeMediaFileID = mediaFileID
+                let message = "Parity player capture requires direct playback; negotiation returned \(info.mode.rawValue)."
+                await failActiveSession(message: message)
+                errorMessage = message
+                loadState = .failed(message)
+                return
+            }
+#endif
             playbackMode = info.mode
             activeMediaFileID = mediaFileID
             activeSessionID = info.sessionID

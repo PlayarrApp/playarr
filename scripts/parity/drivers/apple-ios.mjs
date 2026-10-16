@@ -9,10 +9,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertDirectPlayback, captureStableFrame, directPlayCaptureFile, resetProgress as resetCaptureProgress } from "../apple/capture-stability.mjs";
 
 const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "suite.json"), "utf8"));
 
-const NATIVE = { "film-detail": "detail:movie:@first", "series-detail": "detail:series:@first", "player-controls": "player:movie:@first" };
+const NATIVE = { "film-detail": "detail:movie:@first", "series-detail": "detail:series:@first" };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const run = (cmd, args, options = {}) => execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...options });
 
@@ -23,20 +24,9 @@ function readState(work) {
   return env;
 }
 
-// Watch progress on the shared account changes Home and detail: put the pinned files back to unwatched.
 async function resetProgress(files) {
-  try { await resetProgressOnce(files); } catch (e) { console.log(`  progress reset skipped: ${String(e.cause?.code ?? e.message)}`); } // a network blip must not end the run
-}
-async function resetProgressOnce(files) {
-  const e = process.env, server = e.SERVER_URL.replace(/\/$/, "");
-  const post = (path, method, body, token) => fetch(server + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
-  const login = await post("/api/v1/auth/login", "POST", { client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: e.TEST_USERNAME, password: e.TEST_PASSWORD });
-  if (!login.ok) { console.log(`  progress reset: login ${login.status}`); return; }
-  const token = (await login.json()).access_token;
-  for (const f of files) {
-    const r = await post(`/api/v1/playback/${f}/progress`, "PUT", { position_ms: 0, duration_ms: 6454000, completed: false }, token);
-    console.log(`  progress reset ${f.slice(0, 8)}: ${r.status}`);
-  }
+  const e = process.env;
+  await resetCaptureProgress(files, { serverURL: e.SERVER_URL, username: e.TEST_USERNAME, password: e.TEST_PASSWORD });
 }
 
 export async function createDriver() {
@@ -134,7 +124,7 @@ export async function createDriver() {
     async start() {
       run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
       await sleep(60000); // a fresh simulator shows one-off system banners (Apple Intelligence) in the first minute: let them go
-      await resetProgress([...new Set([...(suite.playback ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // pinned files come from suite.json, never a copy here
+      await resetProgress([...new Set([...(suite.playback ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]); // suite fixtures only, no copied media list
     },
     async stop() {},
     async setTheme(t) { theme = t; },
@@ -148,7 +138,21 @@ export async function createDriver() {
       const open = /^\/(movies|series)\/([0-9a-f-]{36})$/.exec(wanted); // film-detail and series-detail are opened by the suite's pinned id
       // Opt-in: the geometry markers are collected only when IPAD_LAYOUT_DIAGNOSTICS=true; a normal capture never fails on them.
       const layoutDiagnostics = process.env.IPAD_LAYOUT_DIAGNOSTICS === "true" && device === "ipad" && id === "series-detail";
-      await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (NATIVE[id] ?? id), [], layoutDiagnostics);
+      const playerFile = id === "player-controls" ? directPlayCaptureFile(suite) : null;
+      // Keep the player route as well as the file override: PlayerView's DEBUG
+      // parity hook pauses at 2 s and leaves controls visible only on this route.
+      await launch(open && id.endsWith("-detail") ? `detail:${open[1] === "movies" ? "movie" : "series"}:id=${open[2]}` : (playerFile ? "player:movie" : NATIVE[id] ?? id),
+        playerFile ? ["--playarr-parity-play", playerFile] : [], layoutDiagnostics);
+      if (playerFile) {
+        let playback = {};
+        for (let attempt = 0; attempt < 30; attempt += 1) {
+          playback = state().playback ?? {};
+          if (playback.mode) break;
+          if (playback.state === "failed") break;
+          await sleep(500);
+        }
+        assertDirectPlayback(playback);
+      }
       await sleep(id.startsWith("player") ? 30000 : 14000);
       if (process.env.PARITY_MOTION === "1" && id === "home") { // frame bursts: 5 frames about 150 ms apart after every scripted step
         const dir = `${file}.motion`; run("mkdir", ["-p", dir]);
@@ -162,14 +166,10 @@ export async function createDriver() {
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       // A slow first paint can leave the "Opening ..." splash on screen after the fixed wait: take frames 4 s apart until
       // two consecutive frames are byte-identical (at most 8 tries), so the capture is the settled screen, never a transition.
-      let previous = null;
-      for (let attempt = 0; attempt < 8; attempt += 1) {
+      await captureStableFrame(async () => {
         run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
-        const frame = readFileSync(raw);
-        if (previous && frame.equals(previous)) break;
-        previous = frame;
-        await sleep(4000);
-      }
+        return readFileSync(raw);
+      });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if (layoutDiagnostics) {

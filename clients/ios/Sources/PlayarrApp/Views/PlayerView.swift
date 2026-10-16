@@ -153,6 +153,7 @@ struct PlayerView: View {
             while !Task.isCancelled {
                 if let viewModel {
                     var playback: [String: Any] = ["position": viewModel.currentTime]
+                    if let mode = viewModel.playbackMode { playback["mode"] = mode.rawValue }
                     switch (viewModel.loadState, viewModel.engineState) {
                     case (.failed(let message), _), (_, .failed(let message)): playback["state"] = "failed"; playback["detail"] = message
                     case (_, .playing): playback["state"] = "playing"
