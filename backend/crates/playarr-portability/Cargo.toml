@@ -13,4 +13,4 @@ thiserror = { workspace = true }
 uuid = { workspace = true }
 strsim = "0.11"
 unicode-normalization = "0.1"
-zip = { version = "4", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }

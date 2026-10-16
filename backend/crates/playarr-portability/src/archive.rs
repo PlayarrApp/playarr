@@ -100,7 +100,10 @@ pub fn read_package(bytes: &[u8], limits: &Limits) -> Result<UserDataPackage, Pa
         let entry = archive
             .by_index_raw(index)
             .map_err(|_| PackageError::NotZip)?;
-        let name = entry.name().to_owned();
+        let name = entry
+            .name()
+            .map_err(|_| PackageError::UnsafeEntryName)?
+            .into_owned();
         if !safe_entry_name(name.trim_end_matches('/')) {
             return Err(PackageError::UnsafeEntryName);
         }
@@ -412,7 +415,7 @@ mod tests {
         let bytes = package_to_bytes(&sample()).unwrap();
         let mut zip = ZipArchive::new(Cursor::new(bytes)).unwrap();
         let names: Vec<String> = (0..zip.len())
-            .map(|i| zip.by_index(i).unwrap().name().to_owned())
+            .map(|i| zip.by_index(i).unwrap().name().unwrap().into_owned())
             .collect();
         for expected in [
             "README.txt",
@@ -484,6 +487,30 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn non_utf8_entry_names_are_rejected_when_unsafe_after_cp437_decode() {
+        let mut bytes = zip_with(&[("abc", b"x"), (JSON_ENTRY, b"{}")]);
+        let local = bytes
+            .windows(4)
+            .position(|window| window == b"PK\x03\x04")
+            .unwrap();
+        bytes[local + 30] = 0xff;
+        bytes[local + 31] = 0;
+        bytes[local + 32] = 0;
+        let central = bytes
+            .windows(4)
+            .position(|window| window == b"PK\x01\x02")
+            .unwrap();
+        bytes[central + 46] = 0xff;
+        bytes[central + 47] = 0;
+        bytes[central + 48] = 0;
+
+        assert_eq!(
+            read_package(&bytes, &Limits::default()),
+            Err(PackageError::UnsafeEntryName)
+        );
     }
 
     #[test]

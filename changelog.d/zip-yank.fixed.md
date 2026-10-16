@@ -1,0 +1,1 @@
+- Updated the backend `zip` crate to the smallest non-yanked release, 9.0.3, preserving rejection of unsafe archive entry names after decoding.
