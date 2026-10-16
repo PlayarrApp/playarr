@@ -1,8 +1,8 @@
-const DEVICE_TEST_USER = /^device-test(?:-dpad)?$/i;
+const CONFIGURED_USERNAME = /^[^\s\u0000-\u001f\u007f]{1,128}$/;
 
 /** Parse the signed-in app's current profile; token presence is not identity proof. */
 export function verifiedDeviceTestUser(log, expected) {
-  if (!expected || !DEVICE_TEST_USER.test(expected)) return false;
+  if (typeof expected !== "string" || !CONFIGURED_USERNAME.test(expected)) return false;
   const match = String(log).match(/PARITY_SIGNED_IN_USER\s+200\s+(\S+)/);
-  return Boolean(match && DEVICE_TEST_USER.test(match[1]) && match[1] === expected);
+  return Boolean(match && match[1] === expected);
 }

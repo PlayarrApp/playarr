@@ -188,8 +188,8 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
   return {
     async start() {
       verifiedDeviceTestUser = false;
-      const expected = env.PLAYARR_DEVICE_TEST_USERNAME ?? env.PLAYARR_USERNAME;
-      if (!/^device-test(?:-dpad)?$/i.test(expected ?? "")) throw new Error("a configured device-test username is required to verify the Sailfish signed-in account");
+      const expected = env.PLAYARR_DEVICE_TEST_USERNAME;
+      if (typeof expected !== "string" || !expected.trim()) throw new Error("PLAYARR_DEVICE_TEST_USERNAME is required to verify the Sailfish signed-in account");
       ssh("defaultuser", "test -s ~/.config/harbour-playarr/harbour-playarr.conf && grep -q refresh ~/.config/harbour-playarr/harbour-playarr.conf");
       await launch(["wait", "js:Api.request('GET','/api/v1/users/profiles',null,function(st,p){var c=(p||[]).filter(function(x){return x.is_current});console.log('PARITY_SIGNED_IN_USER',st,c.length===1&&c[0].username)})"]);
       const deadline = Date.now() + 15000;
