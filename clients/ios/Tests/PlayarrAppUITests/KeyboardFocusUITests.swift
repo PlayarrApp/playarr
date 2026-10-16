@@ -1,8 +1,19 @@
 import XCTest
 
-/// Verifies identity and route readiness before captures, then checks keyboard focus movement across each phone route,
-/// panel scrolling, selector presentation, and direct-play controls. Captures are attached for visual parity review.
+/// Verifies identity and route readiness before keyboard focus, panel scrolling, selector and (during an explicit
+/// exclusive fixture window) direct-play captures. Frames are attached for visual parity review.
 final class KeyboardFocusUITests: XCTestCase {
+    private func hasExclusiveFixtureWindow(_ environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
+        environment["PLAYARR_KEYBOARD_EXCLUSIVE_FIXTURE_WINDOW"] == "1"
+    }
+
+    func testPlayerFixtureWindowRequiresExplicitOptIn() {
+        XCTAssertFalse(hasExclusiveFixtureWindow([:]))
+        XCTAssertFalse(hasExclusiveFixtureWindow(["PLAYARR_KEYBOARD_EXCLUSIVE_FIXTURE_WINDOW": "true"]))
+        XCTAssertFalse(hasExclusiveFixtureWindow(["PLAYARR_KEYBOARD_EXCLUSIVE_FIXTURE_WINDOW": "0"]))
+        XCTAssertTrue(hasExclusiveFixtureWindow(["PLAYARR_KEYBOARD_EXCLUSIVE_FIXTURE_WINDOW": "1"]))
+    }
+
     private func credentials() throws -> (String, String, String, String, String) {
         let e = ProcessInfo.processInfo.environment
         guard e["PLAYARR_KEYBOARD_FOCUS"] == "1" else { throw XCTSkip("Runs only in the keyboard focus workflow.") }
@@ -151,6 +162,9 @@ final class KeyboardFocusUITests: XCTestCase {
     /// along the seek bar, Tab and Return.
     @MainActor
     func testPlayerControlsShowAndHide() throws {
+        guard hasExclusiveFixtureWindow() else {
+            throw XCTSkip("Playback mutates shared fixture progress and requires an explicit exclusive window.")
+        }
         let c = try credentials()
         let file = c.4
         guard UUID(uuidString: file) != nil else { throw NSError(domain: "PlayarrKeyboardFocus", code: 5, userInfo: [NSLocalizedDescriptionKey: "The configured direct-play fixture ID is invalid."]) }
