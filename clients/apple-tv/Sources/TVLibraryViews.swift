@@ -1794,32 +1794,23 @@ struct TVLibraryKindView: View {
             // native 3479 vs SPA 4996).
             // Wraps like the web heading (max-width 9ch), one 62.2 pt line box per line.
             TVHeroTitle(title: work.title)
-                .padding(.top, Self.macPreviewShift(16, 29))
+                .padding(.top, 29)
             // SPA `.tv-preview-meta`: year then genres with soft separator.
             previewMeta(work)
-                .padding(.top, Self.macPreviewShift(22, 26))
+                .padding(.top, 26)
             if let overview = work.overview, !overview.isEmpty {
                 Text(overview)
                     .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
-                    .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
                     .lineSpacing(4)
-                    .padding(.top, Self.macPreviewShift(18, 25))
-                    .frame(maxWidth: Self.macPreviewShift(455, 340), alignment: .leading)
+                    .padding(.top, 25)
+                    .frame(maxWidth: 340, alignment: .leading)
             }
         }
         .frame(maxWidth: DesignTokens.Shell.titlePanelWidth, alignment: .leading)
     }
 
-
-    /// Web preview spacing (title top 29, meta 26, overview 25 below, `42ch` overview) on macOS; tvOS keeps its own value.
-    private static func macPreviewShift(_ other: CGFloat, _ mac: CGFloat) -> CGFloat {
-        #if os(macOS)
-        return mac
-        #else
-        return other
-        #endif
-    }
 
     private func previewMeta(_ work: Work) -> some View {
         let genreLine = work.genres.prefix(2).joined(separator: " · ")
@@ -2024,7 +2015,7 @@ struct TVLibraryKindView: View {
                         y: isSelected ? 10 : 3
                     )
                     // SPA fixture crops already include the pink unwatched disc. The web Music grid has no watch state: no disc.
-                    if workKind != .artist, !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
+                    if workKind != .artist, workKind != .series, !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
                         Circle()
                             .fill(DesignTokens.Color.brandPrimary)
                             .frame(width: 13, height: 13)

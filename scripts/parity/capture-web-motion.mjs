@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Web counterpart of the Harmony phone motion bursts: the same swipes through Home, a rail and the Filters and Actions panels, a 5-frame
 // burst (about 150 ms apart) after each step, written to <out>/<theme>/web-<step>-<n>.png at the phone reference viewport (360x780 @3).
-//   node capture-web-motion.mjs --out <dir> [--theme dark|light|both] [--profile phone|tv]
+//   node capture-web-motion.mjs --out <dir> [--theme dark|light|both] [--profile phone|tv] [--keys]
+// --keys (TV profile): drive the arrow keys the Apple TV suite crops use (Home down x3 and up, right end, Filters down) instead of swipes.
 // Needs PARITY_CHROME=<chromium path> and the Device Test account (PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD, or the
 // PLAYARR_DEVICE_TEST_* entries of ~/.secrets); never prints them. Run it in a memory scope (see capture-refs.mjs).
 import { mkdirSync, readFileSync } from "node:fs";
@@ -13,6 +14,7 @@ const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : d; };
 const out = opt("out", "web-motion");
 const tv = opt("profile", "phone") === "tv"; // --profile tv: 1920x1080 TV client, swipes in the rails column, Filters via the header button
+const keys = args.includes("--keys");
 const themes = opt("theme", "both") === "both" ? ["dark", "light"] : [opt("theme", "dark")];
 const secrets = {};
 try { for (const l of readFileSync(join(homedir(), ".secrets"), "utf8").split("\n")) { const i = l.indexOf("="); if (i > 0 && !l.startsWith("#")) secrets[l.slice(0, i)] = l.slice(i + 1).replace(/^["']|["']$/g, ""); } } catch {}
@@ -53,6 +55,20 @@ for (const theme of themes) {
   await page.waitForFunction(() => document.querySelector(".tv-home-card"), null, { timeout: 30000 });
   await page.waitForTimeout(3000);
   await burst("home-00-top");
+  if (tv && keys) {
+    // Same keys as scripts/parity/suite.json `crops`; web focus starts on the first Home card.
+    const press = async (k, n = 1) => { for (let i = 0; i < n; i += 1) { await page.keyboard.press(k); await page.waitForTimeout(150); } };
+    await page.keyboard.press("ArrowRight"); await page.waitForTimeout(600); await burst("home-00-enter");
+    for (let i = 1; i <= 3; i += 1) { await press("ArrowDown"); await burst(`home-${String(i).padStart(2, "0")}-down`); }
+    for (let i = 1; i <= 2; i += 1) { await press("ArrowUp"); await burst(`home-${String(3 + i).padStart(2, "0")}-up`); }
+    await press("ArrowRight", 14); await burst("home-06-right-end");
+    await page.goto(`${web}/movies`, { waitUntil: "load" }); await page.waitForTimeout(4000);
+    await page.getByRole("button", { name: /filter/i }).first().click().catch(() => {});
+    await page.waitForTimeout(1500); await burst("filters-00-open");
+    await press("ArrowDown", 14); await burst("filters-01-bottom");
+    await ctx.close();
+    continue;
+  }
   const RX = tv ? 1300 : 180; // the rails column on the TV
   const dy = tv ? 400 : 420, y0 = tv ? 900 : 650, y1 = tv ? 500 : 230;
   for (let i = 1; i <= 4; i += 1) { await swipe(RX, y0, 0, -dy); await burst(`home-${String(i).padStart(2, "0")}-down`); }
