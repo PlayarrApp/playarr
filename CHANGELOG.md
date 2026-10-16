@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Android TV: Home rails sit on web's row at every artwork size and in Covers mode (the first row lifts by half the card's extra height, as web centres the focused rail).
+- Android TV: the Library hero shows a series' run ("2011–2017") and the calendar range button names the month once ("12 – 18 Oct"), as web.
 - Player on Hisense VIDAA: the volume slider no longer sits in a white box.
 - Hisense VIDAA: Dolby Vision profile 5 and other HEVC titles play on the TV's own decoder instead of failing with "colour format can't be converted for this device".
 - Calendar on Hisense VIDAA: day headings read "Monday 12 October" and the week button "12 – 18 Oct" instead of bare day numbers, when the TV's date library returns only the day.
