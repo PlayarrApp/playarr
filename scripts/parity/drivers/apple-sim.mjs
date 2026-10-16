@@ -237,10 +237,9 @@ export async function createDriver({ args = [], out } = {}) {
     screen,
     phase,
     readState: async () => {
-      await assertCurrentUser();
-      const current = state();
+      const current = await assertCurrentUser(); // one read: a second state() could return {} on a transient simctl failure
       if (deterministicFixedNow && (current?.determinism?.clock !== deterministicFixedNow || current?.determinism?.animationsDisabled !== true)) {
-        throw new Error("Apple app did not confirm the requested deterministic clock and animation settings");
+        throw new Error(`Apple app did not confirm the requested deterministic clock and animation settings (reported ${JSON.stringify(current?.determinism ?? null)})`);
       }
       return current;
     },
@@ -318,7 +317,7 @@ export async function createDriver({ args = [], out } = {}) {
   };
   const assertCurrentUser = async () => {
     for (let attempt = 0; attempt < 120; attempt += 1) {
-      try { assertParityStateIdentity(state(), verifiedUserID, launchStartedAt); return; }
+      try { const snapshot = state(); assertParityStateIdentity(snapshot, verifiedUserID, launchStartedAt); return snapshot; }
       catch (error) {
         if (error?.message !== "Apple app signed-in user identity is not fresh") throw error;
       }
