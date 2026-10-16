@@ -47,7 +47,7 @@ final class MacFocusEngineTests: XCTestCase {
         let signOutID = UUID()
         let profileFrame = CGRect(x: 0, y: 0, width: 244, height: 200)
         let settingsFrame = CGRect(x: 42, y: 220, width: 44, height: 44)
-        let signOutFrame = CGRect(x: 95, y: 220, width: 106, height: 44)
+        let signOutFrame = CGRect(x: 60, y: 220, width: 106, height: 44)
 
         XCTAssertEqual(
             MacFocusEngine.nearest(from: profileFrame, direction: .down,
