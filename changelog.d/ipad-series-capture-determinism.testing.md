@@ -1,0 +1,1 @@
+- Await fixture-progress cleanup before the iPad series-detail UI test returns or propagates an error, reject non-success HTTP responses, and fail clearly when the app window is unavailable.

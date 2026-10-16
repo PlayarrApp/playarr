@@ -6,6 +6,23 @@ import XCTest
 final class IPadSeriesDetailUITests: XCTestCase {
     private struct Episode { let id: String; let mediaFileID: String?; let season: Int }
 
+    private enum HarnessError: LocalizedError {
+        case nonHTTPResponse
+        case httpStatus(Int)
+        case appWindowUnavailable
+
+        var errorDescription: String? {
+            switch self {
+            case .nonHTTPResponse:
+                return "The fixture request returned a non-HTTP response."
+            case .httpStatus(let status):
+                return "The fixture request failed with HTTP status \(status)."
+            case .appWindowUnavailable:
+                return "The app window did not become available for the iPad series capture."
+            }
+        }
+    }
+
     @MainActor
     func testResumeTargetsOnAMixedSeries() async throws {
         let env = ProcessInfo.processInfo.environment
@@ -25,7 +42,9 @@ final class IPadSeriesDetailUITests: XCTestCase {
             req.setValue("application/json", forHTTPHeaderField: "content-type")
             if let token { req.setValue("Bearer \(token)", forHTTPHeaderField: "authorization") }
             if let body { req.httpBody = try JSONSerialization.data(withJSONObject: body) }
-            let (data, _) = try await URLSession.shared.data(for: req)
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let response = response as? HTTPURLResponse else { throw HarnessError.nonHTTPResponse }
+            guard (200..<300).contains(response.statusCode) else { throw HarnessError.httpStatus(response.statusCode) }
             return (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
         }
         let login = try await request("POST", "api/v1/auth/login", body: [
@@ -60,37 +79,50 @@ final class IPadSeriesDetailUITests: XCTestCase {
             shot.lifetime = .keepAlways
             add(shot)
         }
-        func render(_ name: String) {
+        func render(_ name: String) throws {
             let app = XCUIApplication()
             app.launchEnvironment = [
                 "PLAYARR_PARITY_SERVER": server, "PLAYARR_PARITY_USER": username, "PLAYARR_PARITY_PASSWORD": password,
                 "PLAYARR_PARITY_ROUTE": "detail:series:id=\(seriesID)", "PLAYARR_REAL_INSETS": "1",
             ]
             app.launch()
-            _ = app.windows.firstMatch.waitForExistence(timeout: 30)
+            guard app.windows.firstMatch.waitForExistence(timeout: 30) else {
+                app.terminate()
+                throw HarnessError.appWindowUnavailable
+            }
             Thread.sleep(forTimeInterval: 15)
             shoot(name, app: app)
             XCTAssertFalse(app.staticTexts["Not available yet"].exists, "The tablet rails list playable episodes only.")
             app.terminate()
         }
 
-        defer { Task { try? await resetAll() } }
-        try await resetAll()
-        render("ipad-series-fresh")
+        do {
+            try await resetAll()
+            try render("ipad-series-fresh")
 
-        // Last playable episode as the resume target.
-        for e in playable.dropLast() { try await setProgress(e, completed: true, positionMs: 1_800_000) }
-        try await setProgress(try XCTUnwrap(playable.last), completed: false, positionMs: 600_000)
-        render("ipad-series-last-episode")
+            // Last playable episode as the resume target.
+            for e in playable.dropLast() { try await setProgress(e, completed: true, positionMs: 1_800_000) }
+            try await setProgress(try XCTUnwrap(playable.last), completed: false, positionMs: 600_000)
+            try render("ipad-series-last-episode")
 
-        // A mid-season target: season 2 episode 5.
-        try await resetAll()
-        let mid = try XCTUnwrap(season2.dropFirst(4).first)
-        for e in playable {
-            if e.id == mid.id { break }
-            try await setProgress(e, completed: true, positionMs: 1_800_000)
+            // A mid-season target: season 2 episode 5.
+            try await resetAll()
+            let mid = try XCTUnwrap(season2.dropFirst(4).first)
+            for e in playable {
+                if e.id == mid.id { break }
+                try await setProgress(e, completed: true, positionMs: 1_800_000)
+            }
+            try await setProgress(mid, completed: false, positionMs: 600_000)
+            try render("ipad-series-mid-season")
+        } catch {
+            let originalError = error
+            do {
+                try await resetAll()
+            } catch {
+                XCTFail("Fixture progress cleanup failed because the server request failed.")
+            }
+            throw originalError
         }
-        try await setProgress(mid, completed: false, positionMs: 600_000)
-        render("ipad-series-mid-season")
+        try await resetAll()
     }
 }
