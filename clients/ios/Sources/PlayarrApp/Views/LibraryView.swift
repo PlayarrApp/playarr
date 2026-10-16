@@ -256,7 +256,12 @@ struct LibraryView: View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
             ZStack(alignment: .topLeading) {
-                if !phone, let preview = viewModel.works.first {
+                let preview = LibraryOverlayParity.previewWork(
+                    actionsWork: actionsWork,
+                    focusedWork: viewModel.works.first(where: { $0.id == focusedWork }),
+                    works: viewModel.works
+                )
+                if !phone, let preview {
                     PlayarrArtwork(work: preview, kind: .backdrop, apiClient: apiClient)
                         .frame(width: proxy.size.width * 0.52, height: proxy.size.height)
                         .clipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
@@ -269,7 +274,7 @@ struct LibraryView: View {
                             )
                         }
                     previewCopy(preview, viewportWidth: proxy.size.width)
-                        .frame(width: proxy.size.width * 0.205, alignment: .leading)
+                        .frame(width: proxy.size.width * 0.24, alignment: .leading)
                         .padding(.leading, proxy.size.width * 0.088)
                         .padding(.top, proxy.size.height * 0.24)
                         .zIndex(2)
@@ -628,26 +633,64 @@ struct LibraryView: View {
             let isPad = UIDevice.current.userInterfaceIdiom == .pad
             let titleSize: CGFloat = isPad ? min(max(35.2, viewportWidth * 0.036), 80) : 42
             let titleWeight = isPad ? 560 : 400
-            let nativeLineHeight = DesignFont.uiFont(
+            let titleFont = DesignFont.uiFont(
                 family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: titleSize, weight: titleWeight, fixedAxes: DesignFont.nunitoAxes
-            )?.lineHeight ?? titleSize * 1.36
+            )
+            let nativeLineHeight = titleFont?.lineHeight ?? titleSize * 1.36
             let pitchCorrection = titleSize * 0.9 - nativeLineHeight
-            Text(work.title)
-                .font(WM.font(titleSize, titleWeight))
-                .tracking(isPad ? -titleSize * 0.072 : -1.5)
-                .lineSpacing(pitchCorrection)
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(3)
-                .frame(maxWidth: 215, alignment: .leading)
-                .padding(.bottom, pitchCorrection)
+            let nineChWidth = titleFont.map { ("000000000" as NSString).size(withAttributes: [.font: $0]).width } ?? titleSize * 4.5
+            let titleTracking = isPad ? -titleSize * 0.072 : -1.5
+            let titleWidth = isPad ? min(viewportWidth * 0.24, nineChWidth) : 215
+            let balancedLines = isPad ? titleFont.flatMap { BalancedTitleLayout.lines(for: work.title, font: $0, tracking: titleTracking, maxWidth: titleWidth) } : nil
+            if isPad, let balancedLines {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(balancedLines.enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(WM.font(titleSize, titleWeight))
+                            .tracking(titleTracking)
+                            .foregroundStyle(PlayarrStyle.ink)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(height: titleSize * 0.9, alignment: .top)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(work.title)
+            } else {
+                Text(work.title)
+                    .font(WM.font(titleSize, titleWeight))
+                    .tracking(titleTracking)
+                    .lineSpacing(pitchCorrection)
+                    .foregroundStyle(PlayarrStyle.ink)
+                    .lineLimit(isPad ? nil : 3)
+                    .frame(width: isPad ? titleWidth : nil, alignment: .leading)
+                    .frame(maxWidth: isPad ? nil : 215, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: isPad)
+                    .padding(.bottom, pitchCorrection)
+            }
             WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
                 .padding(.top, 26)
             if let overview = work.overview {
+                let overviewSize: CGFloat = isPad ? min(max(16 * 0.64, viewportWidth * 0.0072), 16 * 0.92) : 11.5
+                let overviewFont = isPad
+                    ? DesignFont.uiFont(
+                        family: "Nunito Sans",
+                        postScriptName: DesignFont.nunitoPostScriptName,
+                        size: overviewSize,
+                        weight: 600,
+                        fixedAxes: DesignFont.nunitoAxes
+                    )
+                    : nil
+                let overviewWidth = isPad
+                    ? (overviewFont.map { (String(repeating: "0", count: 42) as NSString).size(withAttributes: [.font: $0]).width } ?? overviewSize * 23.5)
+                    : 0
+                let overviewLineHeight = overviewFont?.lineHeight ?? overviewSize * 1.36
                 Text(overview)
-                    .font(WM.font(11.5, 500))
-                    .foregroundStyle(PlayarrStyle.inkSoft)
-                    .lineSpacing(2.5)
+                    .font(isPad ? WM.font(overviewSize, 600) : WM.font(11.5, 500))
+                    .foregroundStyle(isPad ? WM.detailSoft : PlayarrStyle.inkSoft)
+                    .lineSpacing(isPad ? max(0, overviewSize * 1.58 - overviewLineHeight) : 2.5)
                     .lineLimit(5)
+                    .frame(maxWidth: isPad ? overviewWidth : nil, alignment: .leading)
                     .padding(.top, 20)
             }
         }
@@ -680,7 +723,7 @@ struct LibraryView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.trailing, 16 * scale).offset(y: 83 * scale)
+            .padding(.trailing, 16 * scale).offset(y: min(max(116, proxy.size.height * 0.14), 164))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
