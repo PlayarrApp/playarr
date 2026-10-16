@@ -12,6 +12,7 @@ PlayarrPage {
     property bool canDownload: false
     property bool downloadCapabilityLoaded: false
     readonly property bool downloadActionVisible: canDownload && !!detail && !!detail.media_file_id
+    readonly property bool playlistActionVisible: !!work && (work.kind === "movie" || work.kind === "series" || work.kind === "site" || work.kind === "artist")
     property bool showPlaylists: false
     property string note: ""
 
@@ -101,7 +102,8 @@ PlayarrPage {
             }
             ActionRow { glyph: "▶"; text: qsTr("Play"); primary: true; navigationInitialFocus: true; parityIndex: 0; navigationActivate: function() { page.play() }; onClicked: page.play() }
             ActionRow { glyph: "⤓"; text: qsTr("Download"); visible: page.downloadActionVisible; parityIndex: 1; navigationActivate: function() { page.download() }; onClicked: page.download() }
-            ActionRow { glyph: "+"; text: qsTr("Add to Playlist"); visible: page.playlists.length > 0; parityIndex: 2; navigationActivate: function() { page.showPlaylists = !page.showPlaylists }; onClicked: page.showPlaylists = !page.showPlaylists }
+            ActionRow { glyph: "+"; text: qsTr("Add to Playlist"); visible: page.playlistActionVisible; parityIndex: 2; navigationActivate: function() { page.showPlaylists = !page.showPlaylists }; onClicked: page.showPlaylists = !page.showPlaylists }
+            Label { x: Tokens.pad * 2; visible: page.showPlaylists && page.playlists.length === 0; text: qsTr("No personal playlists yet. Create one from the Playlists page."); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u; wrapMode: Text.Wrap; width: col.width - 3 * Tokens.pad }
             Repeater {
                 model: page.showPlaylists ? page.playlists : []
                 ActionRow { glyph: "♪"; text: modelData.name; x: Tokens.pad * 2; width: col.width - 3 * Tokens.pad; parityIndex: 3 + index; navigationActivate: function() { page.addTo(modelData) }; onClicked: page.addTo(modelData) }
