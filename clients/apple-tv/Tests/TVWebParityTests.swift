@@ -80,6 +80,27 @@ final class TVWebParityTests: XCTestCase {
         XCTAssertFalse(TVParityState.beginPanel(expectedBase: "/movies") != nil, "actions does not own filter-facet readiness")
     }
 
+    @MainActor
+    func testDynamicActionsDrawerTitleReportsLoadedReadiness() {
+        TVParityState.setRoute(tab: .movies, path: [])
+        TVParityState.setPanel("Test Movie A")
+
+        XCTAssertEqual(TVParityState.currentPanelContentState, "loaded")
+    }
+
+    @MainActor
+    func testProductLoadingDoesNotRequireDebugTelemetryOutsideCapture() {
+        TVParityState.setRoute(tab: .movies, path: [])
+
+        XCTAssertTrue(TVParityState.canContinueProductLoad(activeCapture: false, lease: nil))
+        XCTAssertFalse(TVParityState.canContinueProductLoad(activeCapture: true, lease: nil), "an active parity capture must refuse a load without its readiness lease")
+
+        let lease = TVParityState.beginContent(expectedBase: "/movies")!
+        XCTAssertTrue(TVParityState.canContinueProductLoad(activeCapture: true, lease: lease))
+        TVParityState.setRoute(tab: .series, path: [])
+        XCTAssertFalse(TVParityState.canContinueProductLoad(activeCapture: true, lease: lease), "a stale capture lease cannot report readiness")
+    }
+
     func testParityReadinessWaitsForAllPaginationPagesAfterFirstPageLoads() {
         var readiness = TVParityPaginationReadiness()
         readiness.begin()
@@ -88,6 +109,19 @@ final class TVWebParityTests: XCTestCase {
 
         readiness.finish()
         XCTAssertEqual(readiness.contentState(afterFirstPage: "loaded"), "loaded")
+    }
+
+    func testPlaylistDetailReadinessUsesTheFullPlaylistRoute() {
+        let playlistID = UUID(uuidString: "12345678-1234-4234-8234-123456789abc")!
+
+        XCTAssertEqual(
+            TVLibraryKindView.parityRouteBase(workKind: nil, listsPlaylists: false, playlistID: playlistID),
+            "/playlists/12345678-1234-4234-8234-123456789abc"
+        )
+        XCTAssertEqual(
+            TVLibraryKindView.parityRouteBase(workKind: nil, listsPlaylists: true, playlistID: nil),
+            "/playlists"
+        )
     }
 #endif
 

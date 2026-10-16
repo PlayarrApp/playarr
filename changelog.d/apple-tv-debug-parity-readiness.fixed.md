@@ -1,0 +1,1 @@
+- Fixed Apple TV debug parity readiness for playlist details and dynamically titled action drawers. Ordinary debug product loads no longer depend on capture telemetry.

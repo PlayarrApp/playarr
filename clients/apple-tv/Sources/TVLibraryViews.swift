@@ -1758,22 +1758,34 @@ struct TVLibraryKindView: View {
                         .scrollClipDisabled()
                         .task(id: "\(audioLangs)-\(subtitleLangs)") {
                             #if DEBUG && (os(tvOS) || os(macOS))
-                            guard let panelLease = await TVParityState.waitForPanel(expectedBase: parityRouteBase) else { return }
+                            let panelLease: TVParityReadinessLease?
+                            if parityCaptureActive {
+                                guard let lease = await TVParityState.waitForPanel(expectedBase: parityRouteBase) else { return }
+                                panelLease = lease
+                            } else {
+                                panelLease = nil
+                            }
                             #endif
                             do {
                                 facets = try await environment.apiClient.catalogLanguages(kind: workKind, audioLang: audioLangs, subtitleLang: subtitleLangs)
                                 #if DEBUG && (os(tvOS) || os(macOS))
-                                guard TVParityState.isCurrentPanel(panelLease), !Task.isCancelled else { return }
-                                TVParityState.setPanelContentState("loaded", lease: panelLease)
+                                guard !Task.isCancelled else { return }
+                                if parityCaptureActive {
+                                    guard let panelLease, TVParityState.isCurrentPanel(panelLease) else { return }
+                                    TVParityState.setPanelContentState("loaded", lease: panelLease)
+                                }
                                 #endif
                             } catch {
                                 #if DEBUG && (os(tvOS) || os(macOS))
-                                guard TVParityState.isCurrentPanel(panelLease), !Task.isCancelled else { return }
+                                guard !Task.isCancelled else { return }
+                                if parityCaptureActive {
+                                    guard let panelLease, TVParityState.isCurrentPanel(panelLease) else { return }
+                                }
                                 #endif
                                 NSLog("PlayarrTV: language facets failed: %@", String(describing: error))
                                 facets = LanguageFacets(audio: [], subtitle: [])
                                 #if DEBUG && (os(tvOS) || os(macOS))
-                                TVParityState.setPanelContentState("failed", lease: panelLease)
+                                if let panelLease { TVParityState.setPanelContentState("failed", lease: panelLease) }
                                 #endif
                             }
                         }
@@ -2050,19 +2062,29 @@ struct TVLibraryKindView: View {
     }
 
     private func attachAndReportParityItems() async {
+        guard parityCaptureActive else { return }
         let lease = await TVParityState.waitForContent(expectedBase: parityRouteBase)
         guard !Task.isCancelled else { return }
         parityContentLease = lease
         reportParityItems()
     }
 
-    private var parityRouteBase: String {
-        if listsPlaylists || playlistID != nil { return "/playlists" }
+    private var parityCaptureActive: Bool {
+        TVParityLaunch.isLive || TVParityLaunch.requestedScreen != nil
+    }
+
+    static func parityRouteBase(workKind: WorkKind?, listsPlaylists: Bool, playlistID: UUID?) -> String {
+        if let playlistID { return "/playlists/\(playlistID.uuidString.lowercased())" }
+        if listsPlaylists { return "/playlists" }
         switch workKind {
         case .movie: return "/movies"
         case .series: return "/series"
         case .artist, .author, .site, .none: return "/music"
         }
+    }
+
+    private var parityRouteBase: String {
+        Self.parityRouteBase(workKind: workKind, listsPlaylists: listsPlaylists, playlistID: playlistID)
     }
     #endif
 
@@ -2321,10 +2343,12 @@ struct TVLibraryKindView: View {
     private func loadItems() async {
         loadFailed = false
         #if DEBUG && (os(tvOS) || os(macOS))
-        parityPagination.begin()
-        let lease = await TVParityState.waitForContentLoad(expectedBase: parityRouteBase)
-        guard let lease, TVParityState.isCurrent(lease), !Task.isCancelled else { return }
-        parityContentLease = lease
+        if parityCaptureActive {
+            parityPagination.begin()
+            let lease = await TVParityState.waitForContentLoad(expectedBase: parityRouteBase)
+            guard TVParityState.canContinueProductLoad(activeCapture: true, lease: lease), !Task.isCancelled else { return }
+            parityContentLease = lease
+        }
         #endif
         // Offline parity: deterministic fixture catalogue (SPA-matching titles).
         if TVParityLaunch.requestedScreen != nil {
@@ -2341,7 +2365,7 @@ struct TVLibraryKindView: View {
         if listsPlaylists || playlistID != nil {
             await loadPlaylists(api)
             #if DEBUG && (os(tvOS) || os(macOS))
-            guard let lease = parityContentLease, TVParityState.isCurrent(lease), !Task.isCancelled else { return }
+            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { return }
             #endif
             #if DEBUG && (os(tvOS) || os(macOS))
             parityPagination.finish()
@@ -2353,7 +2377,7 @@ struct TVLibraryKindView: View {
             // First screenful fast, then the rest of the library in the background (the web pages the whole grid).
             let page = try await api.browseCatalog(kind: workKind, sort: sort, order: order, audioLang: audioLangs, subtitleLang: subtitleLangs, limit: 48, offset: 0)
             #if DEBUG && (os(tvOS) || os(macOS))
-            guard let lease = parityContentLease, TVParityState.isCurrent(lease), !Task.isCancelled else { return }
+            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { return }
             #endif
             items = page.items
             total = page.total.map(Int.init)
@@ -2362,7 +2386,7 @@ struct TVLibraryKindView: View {
             while workKind != nil, !page.items.isEmpty, items.count < (total ?? Int.max) {
                 let next = try await api.browseCatalog(kind: workKind, sort: sort, order: order, audioLang: audioLangs, subtitleLang: subtitleLangs, limit: 500, offset: items.count)
                 #if DEBUG && (os(tvOS) || os(macOS))
-                guard let lease = parityContentLease, TVParityState.isCurrent(lease), !Task.isCancelled else { return }
+                guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { return }
                 #endif
                 if next.items.isEmpty { break }
                 items = Self.ordered(items + next.items, sort: sort, order: order)
@@ -2374,7 +2398,7 @@ struct TVLibraryKindView: View {
             #endif
         } catch {
             #if DEBUG && (os(tvOS) || os(macOS))
-            guard let lease = parityContentLease, TVParityState.isCurrent(lease), !Task.isCancelled else { return }
+            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { return }
             #endif
             loadFailed = true
             didLoad = true // keep what loaded; never show fixture titles to a real user

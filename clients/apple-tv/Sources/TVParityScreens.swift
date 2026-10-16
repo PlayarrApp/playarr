@@ -553,6 +553,12 @@ enum TVParityState {
         contentLease == lease && lease.routeKey == contentRouteKey
     }
 
+    static func canContinueProductLoad(activeCapture: Bool, lease: TVParityReadinessLease?) -> Bool {
+        guard activeCapture else { return true }
+        guard let lease else { return false }
+        return isCurrent(lease)
+    }
+
     static func releaseContent(_ lease: TVParityReadinessLease) {
         guard isCurrent(lease) else { return }
         contentGeneration &+= 1
@@ -641,9 +647,11 @@ enum TVParityState {
         let previous = routeWillChange()
         query["panel"] = title.map { $0.lowercased() == "filters" ? "filters" : "actions" }
         routeDidChange(from: previous)
-        if title?.lowercased() == "actions" { panelContentState = "loaded" }
+        if query["panel"] == "actions" { panelContentState = "loaded" }
         write()
     }
+
+    static var currentPanelContentState: String? { panelContentState }
 
     static func setProfiles(_ open: Bool) {
         base = open ? "/profiles" : base
