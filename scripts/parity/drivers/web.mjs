@@ -274,13 +274,21 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       throw new Error(`Timed out after ${detailReadyTimeoutMs}ms waiting for ${kind} detail readiness: ${missing.join(", ")}`);
     }
   };
+  // On timeout the error names what was still unloaded, so a flaky capture can be root-caused from the log.
+  const stuck = (what) => async (error) => {
+    if (error?.name !== "TimeoutError") throw error;
+    const detail = await page.evaluate(() => [...document.images].filter((e) => !(e.complete && e.naturalWidth > 0)).slice(0, 6)
+      .map((e) => `img ${e.currentSrc || e.src} complete=${e.complete} loading=${e.loading} visible=${e.getBoundingClientRect().width > 0}`)
+      .concat([...document.querySelectorAll(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]")].slice(0, 6).map((e) => `${e.tagName}.${e.className}`))).catch(() => []);
+    throw new Error(`${what} still present after 20000ms on ${page.url()} (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"}): ${detail.join(" | ") || "none found"}`);
+  };
   const settle = async () => {
     await page.evaluate(() => document.fonts.ready);
     await page.waitForFunction(() => [...document.images].filter((i) => {
       const r = i.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
-    }).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 });
-    await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 });
+    }).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 }).catch(stuck("visible images"));
+    await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 }).catch(stuck("loading placeholders"));
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -694,13 +702,6 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await guard();
       await waitReady({ screen: new URL(page.url()).pathname.split("/")[1] || "home", phase: "capture" });
       // Every card on screen shows its poster: a card-art without a loaded img is a placeholder (fallback title on grey). Fatal in a stable capture.
-      // On timeout the error names what was still unloaded, so a flaky capture can be root-caused from the log.
-      const stuck = (what) => async (error) => {
-        if (error?.name !== "TimeoutError") throw error;
-        const detail = await page.evaluate(() => [...document.querySelectorAll("[class*=card-art]:not([class*=skeleton]) img, .skeleton, [class*=skeleton-], .tv-mini-loader")]
-          .filter((e) => e.tagName !== "IMG" || !(e.complete && e.naturalWidth > 0)).slice(0, 6).map((e) => e.tagName === "IMG" ? `img ${e.currentSrc || e.src} complete=${e.complete} loading=${e.loading}` : `${e.tagName}.${e.className}`)).catch(() => []);
-        throw new Error(`${what} still present after 20000ms on ${page.url()} (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"}): ${detail.join(" | ") || "none found"}`);
-      };
       await page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 }).catch(stuck("card placeholders"));
       // Loading placeholders (skeletons, spinners) must be gone: a half-loaded screen is not a capture.
       await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader"), null, { timeout: 20000 }).catch(stuck("loading placeholders"));
