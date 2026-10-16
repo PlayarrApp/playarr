@@ -12,6 +12,7 @@ struct CalendarView: View {
     @State private var showingFilters = false
     @State private var showingSubscription = false
     @State private var detailItem: CalendarItem?
+    @State private var moreDay: String?
 
     init(apiClient: PlayarrAPIClient, downloadRepository: DownloadRepository) {
         self.apiClient = apiClient
@@ -19,12 +20,30 @@ struct CalendarView: View {
         #if DEBUG
         // The parity capture freezes the web clock; the native calendar follows the same instant.
         let frozen = ParityLaunch.frozenNow
-        let model = CalendarViewModel(transport: apiClient, now: { frozen ?? Date() })
+        let model = CalendarViewModel(
+            transport: apiClient,
+            firstWeekday: PlayarrKit.calendarFirstWeekday(
+                language: UserDefaults.standard.string(forKey: "com.playarr.ios.language") ?? "system",
+                systemLanguage: Locale.current.language.languageCode?.identifier
+            ),
+            now: { frozen ?? Date() }
+        )
         if let mode = ParityLaunch.calendarMode { model.mode = mode }
         _viewModel = State(initialValue: model)
         #else
-        _viewModel = State(initialValue: CalendarViewModel(transport: apiClient))
+        _viewModel = State(initialValue: CalendarViewModel(
+            transport: apiClient,
+            firstWeekday: PlayarrKit.calendarFirstWeekday(
+                language: UserDefaults.standard.string(forKey: "com.playarr.ios.language") ?? "system",
+                systemLanguage: Locale.current.language.languageCode?.identifier
+            )
+        ))
         #endif
+    }
+
+    private var calendarLocale: Locale {
+        let language = UserDefaults.standard.string(forKey: "com.playarr.ios.language") ?? "system"
+        return Locale(identifier: PlayarrKit.calendarLocaleIdentifier(language: language, systemLanguage: Locale.current.language.languageCode?.identifier))
     }
 
     var body: some View {
@@ -49,6 +68,7 @@ struct CalendarView: View {
         .background(PlayarrStyle.background.ignoresSafeArea())
         .foregroundStyle(PlayarrStyle.ink)
         .navigationBarHidden(true)
+        .parityScreenLoad(parityLoadState)
         .task { if viewModel.response == nil { await viewModel.load() } }
         .sheet(isPresented: $showingFilters) {
             CalendarFiltersSheet(viewModel: viewModel)
@@ -68,6 +88,58 @@ struct CalendarView: View {
                 }
             }
             .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: Binding(
+            get: { moreDay != nil },
+            set: { if !$0 { moreDay = nil } }
+        )) {
+            NavigationStack {
+                ScrollView {
+                    if let day = moreDay, let group = viewModel.dayGroups.first(where: { $0.day == day }) {
+                        LazyVStack(alignment: .leading, spacing: 10) {
+                            ForEach(group.items) { item in
+                                NavigationLink {
+                                    ScrollView {
+                                        CalendarDetailPane(item: item, apiClient: apiClient, downloadRepository: downloadRepository)
+                                            .padding(20)
+                                    }
+                                    .background(PlayarrStyle.background)
+                                    .navigationTitle(item.title)
+                                } label: {
+                                    HStack(spacing: 10) {
+                                        Image(systemName: "calendar").frame(width: 22).foregroundStyle(PlayarrStyle.inkSoft)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(item.title).font(.custom("Avenir Next", fixedSize: 14).weight(.semibold)).lineLimit(1)
+                                            Text(weekSubtitle(item)).font(.custom("Avenir Next", fixedSize: 11)).foregroundStyle(PlayarrStyle.inkSoft).lineLimit(1)
+                                        }
+                                        Spacer(minLength: 6)
+                                        if let entry = item.entries.first { agendaBadge(entry) }
+                                    }
+                                    .padding(10)
+                                    .background(PlayarrStyle.surfaceStrong.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+                                }
+                                .simultaneousGesture(TapGesture().onEnded { viewModel.select(item) })
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(20)
+                    }
+                }
+                .background(PlayarrStyle.background)
+                .navigationTitle(moreDay.map { dayHeading($0, today: viewModel.today).capitalized } ?? "Calendar")
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) { Button("Done") { moreDay = nil } }
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    private var parityLoadState: ParityScreenLoad {
+        switch viewModel.loadState {
+        case .loaded where viewModel.response != nil: .ready
+        case .failed: .failed
+        default: .loading
         }
     }
 
@@ -516,7 +588,7 @@ struct CalendarView: View {
         case .agenda:
             agenda(phone: phone)
         case .week:
-            dayList(groups: viewModel.dayGroups, phone: phone)
+            if phone { weekTrack } else { dayList(groups: viewModel.dayGroups, phone: false) }
         case .month:
             monthView(phone: phone)
         }
@@ -571,7 +643,115 @@ struct CalendarView: View {
         }
     }
 
+    private var weekTrack: some View {
+        GeometryReader { proxy in
+            let laneWidth = max(300, screenWidth * 0.82)
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 20) {
+                    ForEach(viewModel.dayGroups) { group in
+                        VStack(alignment: .leading, spacing: 6.4) {
+                            Text(dayHeading(group.day, today: viewModel.today))
+                                .font(.custom("Avenir Next", fixedSize: 14.4).weight(.semibold))
+                                .foregroundStyle(group.day == viewModel.today ? PlayarrStyle.pink : PlayarrStyle.muted)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            ScrollView {
+                                LazyVStack(spacing: 13.6) {
+                                    ForEach(group.items) { item in
+                                        weekItemCard(item, width: laneWidth)
+                                    }
+                                    if group.items.isEmpty {
+                                        Text("Nothing scheduled")
+                                            .font(.custom("Avenir Next", fixedSize: 12))
+                                            .foregroundStyle(PlayarrStyle.muted)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(12)
+                                    }
+                                }
+                            }
+                        }
+                        .frame(width: laneWidth, height: proxy.size.height, alignment: .topLeading)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func weekItemCard(_ item: CalendarItem, width: CGFloat) -> some View {
+        let entry = item.entries.first
+        return Button {
+            viewModel.select(item)
+            detailItem = item
+        } label: {
+            HStack(alignment: .center, spacing: 14) {
+                Group {
+                    if let workID = entry?.workID {
+                        WMRemoteImage(
+                            apiClient: apiClient,
+                            sources: [WMRemoteImage.Source(path: "/api/v1/artwork/work/\(workID.uuidString)/poster")]
+                        )
+                    } else {
+                        WM.artFill
+                    }
+                }
+                .frame(width: 40, height: 60)
+                .background(WM.artFill)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 2.4) {
+                    Text(item.title)
+                        .font(.custom("Avenir Next", fixedSize: 16).weight(.semibold))
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(weekSubtitle(item))
+                        .font(.custom("Avenir Next", fixedSize: 16))
+                        .foregroundStyle(PlayarrStyle.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let entry {
+                        CalendarWeekMetadataLayout(horizontalSpacing: 12, verticalSpacing: 3.2) {
+                            Text(calendarTimeLabel(entry) ?? "All day")
+                            Text(releaseTypeLabel(entry.releaseType))
+                            if item.entries.count == 1 { Text(kindLabel(entry.mediaKind)) }
+                            agendaBadge(entry)
+                        }
+                        .font(.custom("Avenir Next", fixedSize: 12.8))
+                        .foregroundStyle(PlayarrStyle.muted)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .frame(width: width, alignment: .leading)
+            .frame(minHeight: 64, alignment: .leading)
+            .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? PlayarrStyle.accent : PlayarrStyle.ink)
+                    .frame(width: 4).padding(.vertical, 8)
+            }
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func weekSubtitle(_ item: CalendarItem) -> String {
+        switch item {
+        case .series(_, _, let entries, let codes): "\(codes) · \(entries.count) episodes"
+        case .single(let entry): [entry.episodeCode, entry.subtitle].compactMap { $0 }.joined(separator: " · ")
+        }
+    }
+
+    @ViewBuilder
     private func monthView(phone: Bool) -> some View {
+        if phone {
+            phoneMonthView
+        } else {
+            desktopMonthView
+        }
+    }
+
+    private var desktopMonthView: some View {
         let window = viewModel.window
         let days = window.days
         let rows = stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
@@ -587,7 +767,7 @@ struct CalendarView: View {
                     }
                 }
                 if let group = groups[selectedDay], !group.items.isEmpty {
-                    dayList(groups: [group], phone: phone).frame(minHeight: 160)
+                    dayList(groups: [group], phone: false).frame(minHeight: 160)
                 } else {
                     Text("Nothing scheduled on \(dayHeading(selectedDay, today: viewModel.today).capitalized)")
                         .font(.custom("Avenir Next", fixedSize: 12))
@@ -596,6 +776,125 @@ struct CalendarView: View {
                 }
             }
         }
+    }
+
+    private var phoneMonthView: some View {
+        GeometryReader { proxy in
+            let window = viewModel.window
+            let days = window.days
+            let rows = stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
+            let groups = Dictionary(uniqueKeysWithValues: viewModel.dayGroups.map { ($0.day, $0) })
+            let gridWidth = max(720, proxy.size.width)
+            let rowHeight = max(0, (proxy.size.height - 32) / CGFloat(max(rows.count, 1)))
+            ScrollView(.horizontal) {
+                VStack(spacing: 0) {
+                    HStack(spacing: 0) {
+                        ForEach(rows.first ?? [], id: \.self) { day in
+                            Text(weekdayHeading(day))
+                                .font(.custom("Avenir Next", fixedSize: 12))
+                                .tracking(0.96)
+                                .foregroundStyle(PlayarrStyle.muted)
+                                .frame(width: gridWidth / 7, height: 32)
+                        }
+                    }
+                    ForEach(rows, id: \.first) { row in
+                        HStack(spacing: 0) {
+                            ForEach(row, id: \.self) { day in
+                                phoneMonthCell(day: day, items: groups[day]?.items ?? [], height: rowHeight)
+                                    .frame(width: gridWidth / 7, height: rowHeight)
+                            }
+                        }
+                    }
+                }
+                .frame(width: gridWidth, height: proxy.size.height, alignment: .top)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func phoneMonthCell(day: String, items: [CalendarItem], height: CGFloat) -> some View {
+        let dayNumber = Int(day.suffix(2)) ?? 0
+        let inMonth = String(day.prefix(7)) == String(viewModel.anchor.prefix(7))
+        let shownCount = max(0, min(items.count, Int((height - 50) / 22)))
+        return VStack(alignment: .leading, spacing: 2) {
+            ForEach(items.prefix(shownCount)) { item in
+                Button {
+                    viewModel.select(item)
+                    viewModel.selectedDay = day
+                    detailItem = item
+                } label: {
+                    HStack(spacing: 4) {
+                        Circle().fill(monthDotColor(item))
+                            .frame(width: 8, height: 8)
+                        Text(monthItemLabel(item))
+                            .font(.custom("Avenir Next", fixedSize: 12))
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .foregroundStyle(PlayarrStyle.inkSoft)
+                    .frame(minHeight: 22)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer(minLength: 0)
+            Button {
+                viewModel.selectedDay = day
+                if items.count > shownCount { moreDay = day }
+            } label: {
+                HStack(spacing: 4) {
+                    Text("\(dayNumber)")
+                        .font(.custom("Avenir Next", fixedSize: 13).weight(day == viewModel.today ? .heavy : .medium))
+                        .foregroundStyle(day == viewModel.today ? PlayarrStyle.pink : (inMonth ? PlayarrStyle.ink : PlayarrStyle.muted))
+                    let hidden = max(0, items.count - shownCount)
+                    if hidden > 0 {
+                        Text("+\(hidden) more").font(.custom("Avenir Next", fixedSize: 12)).foregroundStyle(PlayarrStyle.muted)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 5)
+        .padding(.top, 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(inMonth ? Color.clear : PlayarrStyle.surfaceStrong.opacity(0.4))
+        .overlay(Rectangle().stroke(WM.line.opacity(0.35), lineWidth: 0.5))
+        .overlay {
+            if day == viewModel.today {
+                Rectangle().stroke(PlayarrStyle.pink, lineWidth: 2).padding(1)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func monthItemLabel(_ item: CalendarItem) -> String {
+        switch item {
+        case .series(_, let title, let entries, _): "\(title) · \(entries.count)×"
+        case .single(let entry): entry.title
+        }
+    }
+
+    private func monthDotColor(_ item: CalendarItem) -> Color {
+        let entries = item.entries
+        if entries.allSatisfy(\.hasFile) { return PlayarrStyle.accent }
+        if entries.contains(where: { !$0.hasFile && $0.date <= viewModel.today && $0.monitored }) {
+            return PlayarrStyle.danger
+        }
+        if entries.contains(where: { !$0.hasFile && $0.date > viewModel.today }) {
+            return Color(red: 0.357, green: 0.498, blue: 0.820)
+        }
+        return PlayarrStyle.muted
+    }
+
+    private func weekdayHeading(_ day: String) -> String {
+        guard let date = CalendarDays.displayDate(day) else { return "" }
+        var formatter = DateFormatter()
+        formatter.locale = calendarLocale
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: date).uppercased()
     }
 
     private func monthCell(day: String, count: Int, selected: Bool) -> some View {
@@ -638,6 +937,56 @@ struct CalendarView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct CalendarWeekMetadataLayout: Layout {
+    var horizontalSpacing: CGFloat
+    var verticalSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let availableWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var contentWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + horizontalSpacing + size.width > availableWidth {
+                y += rowHeight + verticalSpacing
+                x = 0
+                rowHeight = 0
+            }
+            if x > 0 { x += horizontalSpacing }
+            x += size.width
+            contentWidth = max(contentWidth, x)
+            rowHeight = max(rowHeight, size.height)
+        }
+
+        return CGSize(width: proposal.width ?? contentWidth, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + horizontalSpacing + size.width > bounds.maxX {
+                y += rowHeight + verticalSpacing
+                x = bounds.minX
+                rowHeight = 0
+            }
+            if x > bounds.minX { x += horizontalSpacing }
+            subview.place(
+                at: CGPoint(x: x, y: y),
+                proposal: ProposedViewSize(width: size.width, height: size.height)
+            )
+            x += size.width
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }
 

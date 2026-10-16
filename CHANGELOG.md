@@ -13,6 +13,12 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Apple wall captures now stop unless the configured device-test account's `Device Test` profile is uniquely identified and confirmed as the active profile before the app launches.
+- Include the authenticated user ID in DEBUG parity state so capture tooling can reject a mismatched signed-in account.
+- Require the Apple simulator driver's app-reported user ID to match the freshly verified device-test login before it sends keys, captures frames, or checks playback.
+- Allow the hosted web-reference step to supply the trusted server and selected device-test username through explicit GitHub secret-backed environment variables.
+- Keep DEBUG parity-state timestamps fresh while the screen is idle so capture guards can reject stale app identity records.
+- Align native iPhone calendar layouts and episode metadata with the accepted web presentation, and require verified identity, loaded routes, focus movement and direct-play controls in parity acceptance runs.
 - Align the first Home rail with the Library grid on initial load and keep page content clear of navigation across supported widths.
 - Android deterministic capture accepts equivalent ISO instant spellings in the app's clock-consumption log.
 - Stable parity runs now pin the web clock, disable animations, use readiness signals, and record one D-pad observation without retrying failures.
@@ -696,6 +702,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Match tvOS light-mode library key art opacity (0.24) to the wide web TV backdrop, reducing the artwork wash behind the preview.
+- Show the library preview's release-to-end year range for ended works, matching the web client's UTC year rules.
 - Align the iPad light-theme library rail, card sizing, grid spacing, and preview title with the web layout.
 - HarmonyOS phone: the Start and Play buttons use web's ink fill with the page colour as label.
 - HarmonyOS phone: drawer section headings, the drawer close button, episode number and unseen dot sizes, and the calendar Today button follow web's phone sizes and focus look; the wall re-seeds the deck right before Home.
@@ -3126,6 +3134,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- Add an opt-in Android TV parity account guard that validates the signed-in device account before capture, D-pad input or playback actions.
 - Require parity browser and simulator drivers to verify the authenticated current profile against an explicit device-test account allowlist and trusted server before capture, navigation, playback, or D-pad operations.
 - A PIN-locked profile's stored refresh token can no longer be redeemed without the PIN: the server holds a device-bound unlock lease (granted by login or `POST /api/v1/auth/unlock`, slid by refresh, cleared by `POST /api/v1/auth/lock`) and answers `403 pin_required` without one. Web and Android clients prompt for the PIN and lock a profile when switching away.
 - Playback capability URLs (`playback_session_id` cookie or query) previously skipped all

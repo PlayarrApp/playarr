@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { assertCanonicalHomeProgress, expandKeys, focusForCheck, pinnedCatalogFiles, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { assertCanonicalHomeProgress, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
@@ -52,7 +52,8 @@ test("stable catalog lookup requires explicitly resolved account credentials", a
 test("stable catalog lookup pins available episode files and tolerates episodes without files", async () => {
   const originalFetch = globalThis.fetch;
   const replies = [
-    { access_token: "test-token" },
+    { access_token: "test-token", user_id: "profile-a" },
+    [{ id: "profile-a", username: "device-test", is_current: true }],
     { media_file_id: "film-file", children: {} },
     { children: { Series: [{ episodes: [{ media_file_id: "episode-file" }, {}, { media_file_id: "another-episode-file" }] }] } },
   ];
@@ -62,6 +63,7 @@ test("stable catalog lookup pins available episode files and tolerates episodes 
       PLAYARR_SERVER_URL: "https://example.com",
       PLAYARR_USERNAME: "isolated-user",
       PLAYARR_PASSWORD: "isolated-password",
+      DEVICE_TEST_USERNAME: "device-test",
     }, { required: true });
     assert.deepEqual(files, ["film-file", "episode-file", "another-episode-file"]);
   } finally {
@@ -150,6 +152,67 @@ test("Home fixture preflight fails closed on unapproved identity and malformed p
     return new Response("unavailable", { status: 503 });
   };
   await assert.rejects(assertCanonicalHomeProgress(approvedEnv, apiError), /progress lookup failed \(503\)/);
+});
+
+test("Home fixture preflight is read-only and runs before the iOS driver starts", () => {
+  const runnerSource = readFileSync(new URL("./suite-run.mjs", import.meta.url), "utf8");
+  const preflight = runnerSource.indexOf('if (preflightHomeFixture) {\n  await assertCanonicalHomeProgress(process.env);');
+  const start = runnerSource.indexOf("await driver.start?.({ theme: themes[0] });");
+  assert.ok(preflight >= 0 && start > preflight, "canonical Home state is checked before app launch");
+
+  const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
+  assert.ok(testRoot, "PLAYARR_PARITY_TEST_OUT must point to task-scoped .data scratch space");
+  const out = mkdtempSync(join(testRoot, "home-preflight-reset-"));
+  try {
+    const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
+    const result = spawnSync(process.execPath, [runner, "--driver", "./drivers/apple-ios.mjs", "--out", out,
+      "--only", "screens", "--screens", "home", "--reset-progress", "--preflight-home-fixture"], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Home fixture preflight cannot run with --reset-progress/);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("stable isolated catalog lookup keeps working without an iOS username alias", async () => {
+  const originalFetch = globalThis.fetch;
+  const replies = [
+    { access_token: "test-token", user_id: "profile-a" },
+    { media_file_id: "film-file", children: {} },
+    { children: { Series: [{ episodes: [{ media_file_id: "episode-file" }] }] } },
+  ];
+  globalThis.fetch = async () => ({ ok: true, json: async () => replies.shift() });
+  try {
+    const files = await pinnedCatalogFiles(suite, {
+      PLAYARR_SERVER_URL: "https://example.com",
+      PLAYARR_USERNAME: "isolated-user",
+      PLAYARR_PASSWORD: "isolated-password",
+    }, { required: true });
+    assert.deepEqual(files, ["film-file", "episode-file"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("progress reset verifies the authenticated current Device Test profile before mutation", async () => {
+  const originalFetch = globalThis.fetch;
+  let mutations = 0;
+  globalThis.fetch = async (url) => {
+    if (String(url).endsWith("/api/v1/auth/login")) return { ok: true, json: async () => ({ access_token: "test-token", user_id: "profile-a" }) };
+    if (String(url).endsWith("/api/v1/users/profiles")) return { ok: true, json: async () => [
+      { id: "profile-b", username: "device-test", is_current: true },
+    ] };
+    if (String(url).includes("/progress")) mutations += 1;
+    return { ok: true, json: async () => ({}) };
+  };
+  try {
+    await assert.rejects(resetProgress(["fixture-file"], {
+      PLAYARR_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "device-test", PLAYARR_PASSWORD: "test-password", DEVICE_TEST_USERNAME: "device-test",
+    }), /expected current Device Test profile/);
+    assert.equal(mutations, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("Roku suite driver requires explicit non-player screen and D-pad allowlists", () => {

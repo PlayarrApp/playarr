@@ -12,6 +12,7 @@ import { assertCanonicalHomeProgress, expandKeys, focusForCheck, pinnedCatalogFi
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { mergeSelectedResults } from "./selective-results.mjs";
 import { resolveCaptureEnvironment, withCaptureState } from "./capture-state.mjs";
+import { applyCanonicalDeck } from "./canonical-deck.mjs";
 import { assertCaptureManifestTargetAvailable, buildShaFromIdentity, createCaptureManifest, sameCaptureBuildIdentity } from "./capture-manifest.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -45,7 +46,10 @@ const via = opt("via", "keys");
 const reference = args.includes("--reference");
 const deterministic = args.includes("--stable") || process.env.PARITY_STABLE === "1";
 if (deterministic && reset) throw new Error("stable capture cannot combine with --reset-progress; seed canonical state before running");
-const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
+if (preflightHomeFixture && reset) throw new Error("Home fixture preflight cannot run with --reset-progress; verify canonical state without mutation");
+const fixedNow = process.env.DEVICE === "ipad"
+  ? (process.env.PARITY_CAPTURE_NOW || FIXTURE_CLOCK)
+  : (process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK);
 const regressionReason = process.env.PARITY_REGRESSION_REASON;
 const unknownThemes = themes.filter((theme) => !suite.themes.includes(theme));
 if (unknownThemes.length) throw new Error(`unknown --themes value(s): ${unknownThemes.join(", ")}`);
@@ -130,6 +134,10 @@ async function reach(screen) {
 }
 
 const summary = { screens: 0, failed: [], dpadFailed: [] };
+if (preflightHomeFixture) {
+  await assertCanonicalHomeProgress(process.env);
+  console.log("Home fixture preflight passed before app launch: one canonical part_watched row");
+}
 if (reset) {
   assertNotInterrupted();
   await resetProgress([...pinned(), ...catalogFiles]);
@@ -395,18 +403,9 @@ if (process.env.PARITY_CLIENT) {
     const { env } = context;
     Object.assign(process.env, env);
     let snapshot = context.snapshot;
-    if (process.env.PARITY_SEED_CANONICAL === "1") {
-      const deckFile = process.env.PARITY_DECK_MEDIA_FILE_ID;
-      if (!deckFile) throw new Error("PARITY_DECK_MEDIA_FILE_ID is required to seed canonical capture state");
-      const seedModule = process.env.PARITY_SEED_MODULE;
-      if (!seedModule) throw new Error("PARITY_SEED_MODULE is required when PARITY_SEED_CANONICAL=1");
-      const { seedCanonicalDeck } = await import(pathToFileURL(resolve(seedModule)).href);
-      ({ snapshot } = await seedCanonicalDeck(context, {
-        deckFile,
-        positionMs: Number(process.env.PARITY_DECK_POSITION_MS ?? 15098),
-        durationMs: Number(process.env.PARITY_DECK_DURATION_MS ?? 6742000),
-      }));
-    } else {
+    const seeded = await applyCanonicalDeck(context);
+    if (seeded) snapshot = seeded;
+    else {
       await context.clearResumeChoices();
       snapshot = await context.snapshotNow();
     }

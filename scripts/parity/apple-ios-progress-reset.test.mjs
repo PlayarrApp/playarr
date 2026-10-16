@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resetProgressOnce } from "./drivers/apple-ios.mjs";
 
-const env = { SERVER_URL: "https://server.example.invalid", TEST_USERNAME: "device-test", TEST_PASSWORD: "mock-password" };
+const env = { SERVER_URL: "https://server.example.invalid", TEST_USERNAME: "device-test", TEST_PASSWORD: "mock-password", DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_USERNAME: "device-test" };
 
 function response({ ok = true, status = 200, body = {} } = {}) {
   return { ok, status, async json() { return body; } };
@@ -23,6 +23,37 @@ test("progress reset rejects a successful login without an access token", async 
   );
 });
 
+test("progress reset stops before progress reads when the current profile does not match", async () => {
+  const paths = [];
+  await assert.rejects(
+    resetProgressOnce(["sample-file"], {
+      env,
+      fetchImpl: async (url) => {
+        const path = new URL(url).pathname;
+        paths.push(path);
+        if (path.endsWith("/auth/login")) return response({ body: { access_token: "mock-token", user_id: "user-a" } });
+        return response({ body: [{ id: "user-b", username: "device-test", is_current: true }] });
+      },
+    }),
+    /expected current Device Test profile/,
+  );
+  assert.deepEqual(paths, ["/api/v1/auth/login", "/api/v1/users/profiles"]);
+});
+
+test("progress reset sanitises malformed profile responses", async () => {
+  let calls = 0;
+  await assert.rejects(
+    resetProgressOnce(["sample-file"], {
+      env,
+      fetchImpl: async () => (++calls === 1
+        ? response({ body: { access_token: "mock-token", user_id: "user-a" } })
+        : { ok: true, status: 200, async json() { throw new Error("secret response body"); } }),
+    }),
+    (error) => error.message === "iOS progress reset profile verification returned an invalid response" && !error.message.includes("secret"),
+  );
+  assert.equal(calls, 2);
+});
+
 test("progress reset sanitises network errors", async () => {
   await assert.rejects(
     resetProgressOnce(["sample-file"], { env, fetchImpl: async () => { throw new Error("secret token and server details"); } }),
@@ -33,7 +64,7 @@ test("progress reset sanitises network errors", async () => {
 test("progress reset rejects any unsuccessful file update without logging file identity", async () => {
   let calls = 0;
   await assert.rejects(
-    resetProgressOnce(["sample-file"], { env, fetchImpl: async () => (++calls === 1 ? response({ body: { access_token: "mock-token" } }) : response({ ok: false, status: 503 })) }),
+    resetProgressOnce(["sample-file"], { env, fetchImpl: async () => (++calls === 1 ? response({ body: { access_token: "mock-token", user_id: "user-a" } }) : calls === 2 ? response({ body: [{ id: "user-a", username: "device-test", is_current: true }] }) : response({ ok: false, status: 503 })) }),
     (error) => error.message === "iOS progress reset failed with status 503" && !error.message.includes("sample-file"),
   );
 });
@@ -44,16 +75,21 @@ test("progress reset completes only after every file update succeeds", async () 
     env,
     fetchImpl: async (url, options) => {
       requests.push({ url, options });
-      return requests.length === 1 ? response({ body: { access_token: "mock-token" } }) : response();
+      if (requests.length === 1) return response({ body: { access_token: "mock-token", user_id: "user-a" } });
+      if (requests.length === 2) return response({ body: [{ id: "user-a", username: "device-test", is_current: true }] });
+      return response();
     },
   });
-  assert.equal(requests.length, 3);
-  assert.equal(requests[1].options.headers.authorization, "Bearer mock-token");
-  assert.equal(requests[2].options.method, "PUT");
+  assert.equal(requests.length, 4);
+  assert.equal(requests[1].url.endsWith("/api/v1/users/profiles"), true);
+  assert.equal(requests[2].options.headers.authorization, "Bearer mock-token");
+  assert.equal(requests[3].options.method, "PUT");
 });
 
 test("Apple wall workflow fails the job when its primary suite command fails", () => {
   const workflow = readFileSync(new URL("../../.github/workflows/apple-ios-wall.yml", import.meta.url), "utf8");
   assert.match(workflow, /set -euo pipefail/);
-  assert.match(workflow, /node suite-run\.mjs --driver \.\/drivers\/apple-ios\.mjs[^\n]*--reset-progress/);
+  assert.match(workflow, /if \[\[ "\$DEVICE" != ipad \]\]; then reset=\(--reset-progress\); fi/);
+  assert.match(workflow, /--preflight-home-fixture/);
+  assert.doesNotMatch(workflow, /suite-run\.mjs --driver \.\/drivers\/apple-ios\.mjs[^\n]*--reset-progress/);
 });

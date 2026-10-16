@@ -44,6 +44,7 @@ public final class AppEnvironment {
     public private(set) var isSignedIn = false
     public private(set) var sessionState: SessionState = .restoring
     public private(set) var currentUserName: String?
+    public private(set) var currentUsername: String?
     public private(set) var currentUserID: UUID?
     public private(set) var currentAvatar: ProfileAvatarPreference?
 
@@ -161,6 +162,7 @@ public final class AppEnvironment {
             peerAddresses: response.peerAddresses
         )
         currentUserName = nil
+        currentUsername = nil
         currentUserID = response.userID
         // The profile's display name from the server, never the username that was typed.
         await refreshCurrentProfileName()
@@ -169,6 +171,8 @@ public final class AppEnvironment {
 
     func prepareServerForSignIn(_ url: URL) {
         guard url != serverBaseURL else { return }
+        currentUsername = nil
+        currentUserID = nil
         suppressAutomaticSessionRestore = true
         defer { suppressAutomaticSessionRestore = false }
         serverBaseURL = url
@@ -192,9 +196,9 @@ public final class AppEnvironment {
             expiresIn: response.expiresIn,
             peerAddresses: response.peerAddresses
         )
-        currentUserName = profile.displayName
         currentUserID = response.userID
-        userDefaults.set(profile.displayName, forKey: Self.userNameDefaultsKey(for: serverBaseURL))
+        currentUsername = nil
+        await refreshCurrentProfileName()
         await refreshCurrentAvatar()
     }
 
@@ -228,6 +232,7 @@ public final class AppEnvironment {
     }
 
     public func restoreSessionState() async {
+        currentUsername = nil
         if demoMode {
             isSignedIn = true
             sessionState = .signedIn
@@ -249,15 +254,23 @@ public final class AppEnvironment {
     /// Resolves the signed-in profile's display name from the server's profile list and remembers it;
     /// keeps the remembered name when the list cannot be read.
     public func refreshCurrentProfileName() async {
-        guard let name = await apiClient.resolveCurrentProfileName(currentUserID: currentUserID) else { return }
-        currentUserName = name
-        userDefaults.set(name, forKey: Self.userNameDefaultsKey(for: serverBaseURL))
+        currentUsername = nil
+        guard let profiles = try? await apiClient.listProfiles(),
+              let currentUserID,
+              profiles.filter(\.isCurrent).count == 1,
+              let current = profiles.first(where: { $0.id == currentUserID && $0.isCurrent }) else {
+            return
+        }
+        currentUsername = current.username
+        currentUserName = current.displayName
+        userDefaults.set(current.displayName, forKey: Self.userNameDefaultsKey(for: serverBaseURL))
     }
 
     public func signOut() async throws {
         try await tokenStore.clearSession()
         isSignedIn = false
         currentUserID = nil
+        currentUsername = nil
         currentAvatar = nil
         sessionState = .signedOut
     }

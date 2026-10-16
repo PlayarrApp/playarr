@@ -118,6 +118,10 @@ struct TVRootView: View {
             if isSignedIn { await environment.refreshShellState() }
         }
         .onAppear {
+#if DEBUG && (os(tvOS) || os(macOS))
+            TVParityState.start()
+            TVParityState.setCurrentUserID(environment.currentUserID)
+#endif
             if let forced = parityForcedTab {
                 selectedTab = forced
             }
@@ -128,6 +132,9 @@ struct TVRootView: View {
                 displayPreferences.themePreference = theme == .light ? .light : .dark
             }
         }
+#if DEBUG && (os(tvOS) || os(macOS))
+        .onChange(of: environment.currentUserID) { _, userID in TVParityState.setCurrentUserID(userID) }
+#endif
     }
 
     private var isSignedIn: Bool {
@@ -419,7 +426,9 @@ private struct TVProductionShell<Stage: View>: View {
                 #if DEBUG && (os(tvOS) || os(macOS))
                 .onChange(of: tab) { _, new in TVParityState.setRoute(tab: new, path: []) }
                 .onChange(of: path) { _, new in TVParityState.setRoute(tab: tab, path: new) }
-                .onAppear { TVParityState.start(); TVParityState.setRoute(tab: tab, path: path) }
+                .onAppear {
+                    TVParityState.setRoute(tab: tab, path: path)
+                }
                 .task {
                     // `-PlayarrOpenWork <id>`: the suite's pinned detail screens open that exact title.
                     let args = ProcessInfo.processInfo.arguments
