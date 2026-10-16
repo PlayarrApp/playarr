@@ -17,6 +17,15 @@ const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: "utf8"
 const MAC_DIRECTIONS = new Set(["up", "down", "left", "right"]);
 const SAFE_BOOLEAN = "(true|false)";
 const SAFE_NUMBER = "-?\\d{1,7}(?:\\.\\d{1,3})?";
+export function validateParityFixedNow(value) {
+  const match = typeof value === "string" && /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|[+-](\d{2}):(\d{2}))$/.exec(value);
+  const [, year, month, day, hour, minute, second, , offsetHour, offsetMinute] = match ?? [];
+  const daysInMonth = match ? new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate() : 0;
+  if (!match || Number(month) < 1 || Number(month) > 12 || Number(day) < 1 || Number(day) > daysInMonth || Number(hour) > 23 || Number(minute) > 59 || Number(second) > 59 || (offsetHour !== undefined && (Number(offsetHour) > 23 || Number(offsetMinute) > 59)) || !Number.isFinite(Date.parse(value))) {
+    throw new Error("PARITY_FIXED_NOW must be a valid ISO 8601 timestamp");
+  }
+  return value;
+}
 const MAX_MAC_LOG_DELTA_BYTES = 256 * 1024;
 const MAX_MAC_KEY_ARTIFACT_BYTES = 64 * 1024;
 const MAC_KEY_ENTRY = new RegExp(`^PlayarrMacFocusKeyEntry seq=(\\d{1,9}) direction=(up|down|left|right) text_responder=${SAFE_BOOLEAN} window_key=${SAFE_BOOLEAN}$`);
@@ -138,6 +147,8 @@ export async function createDriver({ args = [], out } = {}) {
   const device = process.env.DEVICE ?? "tvos";
   if (device !== "tvos" && device !== "macos") throw new Error(`apple-sim driver: ${device} is not supported yet`);
   const mac = device === "macos";
+  const parityNow = process.env.PARITY_FIXED_NOW === undefined ? null : validateParityFixedNow(process.env.PARITY_FIXED_NOW);
+  const parityNowArgs = parityNow ? ["-PlayarrParityNow", parityNow] : [];
   const visibleMacParity = mac && process.env.MAC_PARITY_VISIBLE === "true";
   const outIndex = args.indexOf("--out");
   const suiteOut = outIndex >= 0 && args[outIndex + 1] ? resolve(args[outIndex + 1]) : out ? resolve(out) : null;
@@ -210,7 +221,7 @@ export async function createDriver({ args = [], out } = {}) {
       // The sign-in behind a launch can fail for a moment (the server throttles back-to-back logins): retry with a pause.
       for (let attempt = 1; ; attempt += 1) {
         try {
-          run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...stickyArgs, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
+          run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...stickyArgs, ...parityNowArgs, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
           break;
         } catch (e) {
           if (attempt >= 4) throw e;
@@ -250,7 +261,7 @@ export async function createDriver({ args = [], out } = {}) {
       run("xcrun", ["simctl", "spawn", udid, "defaults", "write", bundle, "com.playarr.playarr.tvos.deviceID", "-string", run("python3", [login, "--device-id"], { env }).trim()]);
       tokens.push("-PlayarrServerURL", process.env.SERVER_URL, "-PlayarrAccessToken", access, "-PlayarrRefreshToken", refresh);
     }
-    run("xcrun", ["simctl", "launch", udid, bundle, ...tokens, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...stickyArgs, ...extra]);
+    run("xcrun", ["simctl", "launch", udid, bundle, ...tokens, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...stickyArgs, ...parityNowArgs, ...extra]);
     await sleep(wait); // a launch signs in from the seeded session and loads Home
     frontmost(); await sleep(500);
   };

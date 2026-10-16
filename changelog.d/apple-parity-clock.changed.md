@@ -1,0 +1,1 @@
+- Align Apple wall web and native parity captures to the same validated fixture clock, with the web reference using UTC.

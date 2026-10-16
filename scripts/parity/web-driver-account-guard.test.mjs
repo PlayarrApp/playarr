@@ -6,7 +6,7 @@ const serverUrl = "https://server.example.invalid";
 const originalEnv = { ...process.env };
 
 function config(username = "device-test") {
-  for (const key of Object.keys(process.env)) if (key.startsWith("PLAYARR_") || key === "PARITY_CLIENT") delete process.env[key];
+  for (const key of Object.keys(process.env)) if (key.startsWith("PLAYARR_") || key === "PARITY_CLIENT" || key === "PARITY_FIXED_NOW") delete process.env[key];
   Object.assign(process.env, {
     PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl,
     PLAYARR_WEB_URL: "https://playarr.example.invalid",
@@ -16,7 +16,7 @@ function config(username = "device-test") {
 }
 
 function browserMock({ initialSignedIn = false, ownerOnRequest = false } = {}) {
-  const state = { operations: [], keyUps: 0, identityReads: 0, ownerOnRequest, ownerAfterIdentityRead: Infinity, switchAfterKeyDown: false, closed: false };
+  const state = { operations: [], initScripts: [], contextOptions: null, keyUps: 0, identityReads: 0, ownerOnRequest, ownerAfterIdentityRead: Infinity, switchAfterKeyDown: false, closed: false };
   const page = {
     on() {},
     async goto(url) { state.operations.push(["goto", url]); if (!initialSignedIn && url.endsWith("/")) throw new Error("mock signed out"); },
@@ -52,14 +52,14 @@ function browserMock({ initialSignedIn = false, ownerOnRequest = false } = {}) {
     async screenshot() { state.operations.push(["screenshot"]); },
   };
   const context = {
-    async addInitScript() {},
+    async addInitScript(fn, ...args) { state.initScripts.push([fn, ...args]); },
     async storageState() { return {}; },
     async grantPermissions() {},
     async newPage() { return page; },
     async close() { state.closed = true; },
   };
   const browser = {
-    async newContext() { return context; },
+    async newContext(options) { state.contextOptions = options; return context; },
     async close() { state.closed = true; },
   };
   return { state, page, playwright: { async launch() { return browser; } } };
@@ -89,6 +89,19 @@ test("signed-out and owner sessions fail before exported live operations", async
   await assert.rejects(ownerDriver.start(), /guard rejected/);
   await assert.rejects(ownerDriver.key("down"), /guard rejected/);
   assert.equal(switchMocks.state.operations.some(([kind]) => kind === "keyPress"), false);
+});
+
+test("web driver applies the optional fixture clock and timezone when creating its context", async (t) => {
+  t.after(() => { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv); });
+  config();
+  process.env.PARITY_FIXED_NOW = "2026-10-07T12:00:00Z";
+  process.env.PLAYARR_WEB_TIMEZONE = "UTC";
+  const mocks = browserMock({ initialSignedIn: true });
+  const driver = await createDriver({ playwright: mocks.playwright, secrets: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } });
+  await driver.start();
+  assert.equal(mocks.state.contextOptions.timezoneId, "UTC");
+  assert.ok(mocks.state.initScripts.some(([fn, value]) => fn.name === "installVisualDate" && value === "2026-10-07T12:00:00Z"), "fixture clock is installed before page code");
+  await driver.stop();
 });
 
 test("a session switch while a key is held still sends key-up", async (t) => {

@@ -67,6 +67,7 @@ permissions:
 
 env:
   LEAD_MINUTES: "25" # the successor starts this long before the end of a run
+  PARITY_FIXED_NOW: "2026-10-07T12:00:00Z"
 
 # D-pad-only runs use the dedicated device-test-dpad account (its On deck does not drift); the secrets fall back to the shared account when unset.
 jobs:
@@ -447,6 +448,7 @@ jobs:
           PLAYARR_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+          PLAYARR_WEB_TIMEZONE: UTC
           SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
         run: |
           set -euo pipefail

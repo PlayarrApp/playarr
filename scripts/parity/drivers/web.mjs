@@ -168,12 +168,31 @@ export function installVisualDate(fixedNow, target = globalThis) {
   target.Date = VisualDate;
 }
 
+export function validateParityFixedNow(value) {
+  const match = typeof value === "string" && /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|[+-](\d{2}):(\d{2}))$/.exec(value);
+  const [, year, month, day, hour, minute, second, , offsetHour, offsetMinute] = match ?? [];
+  const daysInMonth = match ? new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate() : 0;
+  if (!match || Number(month) < 1 || Number(month) > 12 || Number(day) < 1 || Number(day) > daysInMonth || Number(hour) > 23 || Number(minute) > 59 || Number(second) > 59 || (offsetHour !== undefined && (Number(offsetHour) > 23 || Number(offsetMinute) > 59)) || !Number.isFinite(Date.parse(value))) {
+    throw new Error("PARITY_FIXED_NOW must be a valid ISO 8601 timestamp");
+  }
+  return value;
+}
+
+export function validateWebTimezone(value) {
+  if (typeof value !== "string" || !value || value.length > 100) throw new Error("PLAYARR_WEB_TIMEZONE must be a valid timezone");
+  try { new Intl.DateTimeFormat("en", { timeZone: value }); }
+  catch { throw new Error("PLAYARR_WEB_TIMEZONE must be a valid timezone"); }
+  return value;
+}
+
 export async function clickIfPresent(locator) {
   if (await locator.count()) await locator.click();
 }
 
 export async function createDriver({ playwright = chromium, secrets } = {}) {
   const env = process.env, web = (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
+  const initialFixedNow = env.PARITY_FIXED_NOW === undefined ? null : validateParityFixedNow(env.PARITY_FIXED_NOW);
+  const timezoneId = env.PLAYARR_WEB_TIMEZONE === undefined ? "Asia/Bangkok" : validateWebTimezone(env.PLAYARR_WEB_TIMEZONE);
   const allowedUsernames = loadAllowedDeviceTestUsernames({ env, client: env.PARITY_CLIENT, ...(secrets ? { secrets } : {}) });
   const trustedServerUrl = loadTrustedDeviceTestServerUrl({ env, ...(secrets ? { secrets } : {}) });
   if (env.PLAYARR_USERNAME) assertAllowedDeviceTestUsername(env.PLAYARR_USERNAME, allowedUsernames);
@@ -193,7 +212,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     height: positiveInteger("PLAYARR_WEB_VIEWPORT_HEIGHT", mobile ? 844 : 1080),
   };
   const deviceScaleFactor = positiveNumber("PLAYARR_WEB_VIEWPORT_DPR", mobile ? 3 : 1);
-  let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = null, disableAnimations = false;
+  let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = initialFixedNow, disableAnimations = false;
   let manualLoginStarted = false, manualLoginSucceeded = false; // session: this run's own storage state, in memory
   const apiErrors = []; // failing /api/ responses of the current page, named in the error-page failure
   let drainApiErrors = async () => {};
@@ -264,7 +283,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // Refresh tokens rotate: carry this run's live session into the next context (theme switch), or it comes up signed out.
     if (ctx && keep) session = await ctx.storageState();
     cdp = undefined; await ctx?.close();
-    ctx = await browser.newContext({ viewport, deviceScaleFactor, userAgent: env.PLAYARR_WEB_USER_AGENT ?? (mobile ? MOBILE_UA : UA), colorScheme: theme, locale: "en-GB", timezoneId: "Asia/Bangkok",
+    ctx = await browser.newContext({ viewport, deviceScaleFactor, userAgent: env.PLAYARR_WEB_USER_AGENT ?? (mobile ? MOBILE_UA : UA), colorScheme: theme, locale: "en-GB", timezoneId,
       ...(mobile ? { isMobile: true, hasTouch: true } : {}),
       ...(session ? { storageState: session } : {}) });
     await ctx.addInitScript((t) => localStorage.setItem("playarr-theme", t), theme);
