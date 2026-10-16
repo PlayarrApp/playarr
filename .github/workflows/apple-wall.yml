@@ -454,7 +454,7 @@ jobs:
           WALL_SUITE_ARGS=()
           while IFS= read -r arg; do WALL_SUITE_ARGS+=("$arg"); done < <(python3 -c 'import json,sys; print(chr(10).join(json.loads(sys.argv[1])["args"]))' "$SUITE_SELECTION")
           (( ${#WALL_SUITE_ARGS[@]} > 0 )) || { echo '::error::validated suite selection is empty'; exit 1; }
-          node suite-run.mjs --driver ./drivers/web.mjs --reference --out "$RUNNER_TEMP/web" "${WALL_SUITE_ARGS[@]}"
+          node suite-run.mjs --driver ./drivers/web.mjs --reference --out "$RUNNER_TEMP/web" --themes "${THEMES// /,}" "${WALL_SUITE_ARGS[@]}"
 
       # The shared suite (scripts/parity, docs/parity/SUITE.md) through the Apple driver: the 15 screens in both themes (written
       # over the interim captures above), the D-pad checks against the web reference, playback (not yet).
@@ -475,7 +475,7 @@ jobs:
           WALL_SUITE_ARGS=()
           while IFS= read -r arg; do WALL_SUITE_ARGS+=("$arg"); done < <(python3 -c 'import json,sys; print(chr(10).join(json.loads(sys.argv[1])["args"]))' "$SUITE_SELECTION")
           (( ${#WALL_SUITE_ARGS[@]} > 0 )) || { echo '::error::validated suite selection is empty'; exit 1; }
-          node suite-run.mjs --driver ./drivers/apple-sim.mjs --out "$RUNNER_TEMP/capture" --via keys "${WALL_SUITE_ARGS[@]}"
+          node suite-run.mjs --driver ./drivers/apple-sim.mjs --out "$RUNNER_TEMP/capture" --via keys --themes "${THEMES// /,}" "${WALL_SUITE_ARGS[@]}"
 
       - name: Upload the web reference
         if: steps.webref.outcome != 'skipped'

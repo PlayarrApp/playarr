@@ -1,0 +1,1 @@
+- Honour the selected theme in both Apple wall parity suite drivers so dark and light matrix jobs do not repeat each other's captures.
