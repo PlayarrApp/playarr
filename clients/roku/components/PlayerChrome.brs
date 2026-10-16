@@ -213,10 +213,19 @@ end sub
 ' Web's quality button: the choice, then the stream's bitrate ("Original · 35.9 Mbps") once the player reports it.
 function playerQualityButtonLabel() as String
     label = playerQualityLabel()
+    bps = 0
     stream = m.video.streamInfo
-    if stream <> invalid and stream.streamBitrate <> invalid and stream.streamBitrate > 500000
-        label = label + " · " + (Int(stream.streamBitrate / 100000) / 10).ToStr() + " Mbps"
+    if stream <> invalid and stream.streamBitrate <> invalid and stream.streamBitrate > 500000 then bps = stream.streamBitrate
+    ' Direct play reports no stream bitrate: web shows the chosen option's own (the source's for Original).
+    data = m.pcPlaybackInfo
+    if bps = 0 and data <> invalid and data.quality_options <> invalid
+        want = "original"
+        if m.qualityPref <> invalid and m.qualityPref <> "original" then want = ""
+        for each option in data.quality_options
+            if want <> "" and option.id = want and option.video_bitrate_bps <> invalid then bps = option.video_bitrate_bps
+        end for
     end if
+    if bps > 500000 then label = label + " · " + (Int(bps / 100000 + 0.5) / 10).ToStr() + " Mbps"
     return label
 end function
 
