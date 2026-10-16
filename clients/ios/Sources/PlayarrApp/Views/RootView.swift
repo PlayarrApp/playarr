@@ -177,7 +177,9 @@ struct RootView: View {
                             mediaFileID: fileID,
                             containers: ["mp4", "mov", "m4v"],
                             videoCodecs: ["h264", "hevc"],
-                            audioCodecs: ["aac", "ac3", "eac3"]
+                            audioCodecs: ["aac", "ac3", "eac3"],
+                            maxBitrateBps: nil,
+                            profile: nil
                         )
                         guard info.mode == .direct else {
                             ParityLaunch.record("directPlay", false)
