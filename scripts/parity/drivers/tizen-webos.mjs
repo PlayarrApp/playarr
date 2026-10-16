@@ -7,6 +7,7 @@ import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { assertDeviceTestIdentity, fetchCurrentIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const NETLOG = process.env.PARITY_NETLOG ?? join(tmpdir(), "playarr-netlog");
@@ -42,6 +43,8 @@ export async function createDriver() {
   const cdpPort = process.env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
   let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme;
+  const allowedUsernames = loadAllowedDeviceTestUsernames({ env: process.env, client: process.env.PARITY_CLIENT });
+  const trustedServerUrl = loadTrustedDeviceTestServerUrl();
 
   function closeCdp(socket = ws) {
     if (!socket) return;
@@ -140,14 +143,19 @@ export async function createDriver() {
     if (r?.exceptionDetails) throw new Error(r.exceptionDetails.text);
     return r?.result?.value;
   }
+  async function guard() {
+    const identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+    return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
+  }
   // Reload at a hash route and wait until the app is up again (a reload drops the debug channel for a few seconds).
   async function load(route) {
+    await guard();
     if (device === "tizen") {
       // The host is shared and often loaded: allow a slow reload before re-sending (a command polled during a reload is lost).
       for (let a = 0; a < 4; a += 1) {
         writeFileSync(`${NETLOG}/cmd.txt`, `hash:${route}`);
         await sleep(8000);
-        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) return;
+        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) { await guard(); return; }
       }
       throw new Error(`tizen did not reach ${route}`);
     }
@@ -157,6 +165,7 @@ export async function createDriver() {
     closeCdp();
     await cdpConnect();
     loadedTheme = theme;
+    await guard();
   }
   async function until(expr, ms = 90000) {
     const t0 = Date.now();
@@ -220,6 +229,7 @@ export async function createDriver() {
   async function settleVisibleImages(requireVisibleImage = false) {
     let previous = "", stable = 0;
     for (let i = 0; i < 60 && stable < 3; i += 1) {
+      await guard();
       const state = await ev(`(async () => {
         const activeAnimations = (document.getAnimations?.() ?? []).filter((animation) => {
           const endTime = animation.effect?.getComputedTiming().endTime;
@@ -247,6 +257,7 @@ export async function createDriver() {
       else stable = 0;
       previous = state ?? "";
       await sleep(750);
+      await guard();
     }
     if (stable < 3) throw new Error("visible images did not settle before capture");
     await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
@@ -260,16 +271,25 @@ export async function createDriver() {
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
     supports: device === "webos" ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
     async start() {
-      if (device === "webos") await cdpConnect();
+      if (device === "webos") {
+        await cdpConnect();
+        await guard();
+      } else {
+        await guard();
+        execFileSync("xset", ["-display", display, "r", "off"], { stdio: "ignore" });
+      }
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
-      else execFileSync("xset", ["-display", display, "r", "off"], { stdio: "ignore" });
+      await guard();
     },
     async stop() { closeCdp(); },
     async setTheme(t) {
+      await guard();
       await ev(`(localStorage.setItem("playarr-theme", ${JSON.stringify(t)}), true)`);
+      await guard();
       theme = t;
     },
     async home() {
+      await guard();
       await load("/");
       if (!(await until(`document.querySelectorAll(".app-nav-link").length >= 6 && !document.querySelector(".app-nav-link-placeholder") && !!document.querySelector(".tv-home-card")`))) throw new Error("home did not load");
       // A key sent before the first card holds focus is lost.
@@ -277,63 +297,92 @@ export async function createDriver() {
       // Rails fill in asynchronously and reorder the cards: wait until the card list holds still before focusing.
       let last = "", still = 0;
       for (let i = 0; i < 40 && still < 3; i += 1) {
-        const now = await ev(`[...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label") || c.textContent.trim().slice(0, 40)).join("|")`).catch(() => "");
+        await guard();
+        const now = await ev(`[...document.querySelectorAll(".tv-home-card")].map((c) => c.getAttribute("aria-label") || c.textContent.trim().slice(0, 40)).join("|")`);
+        await guard();
         still = now && now === last ? still + 1 : 0; last = now; await sleep(1500);
       }
       console.log(`  home first card: ${last.split("|")[0]}`);
       await sleep(3500); // the key handler attaches a moment after the first focus
+      await guard();
       await routeReady("/");
+      await guard();
     },
     async route(r) {
+      await guard();
       if ((await ev('location.hash.replace(/^#/, "")')) !== r || loadedTheme !== theme) await load(r);
+      await guard();
       await routeReady(r);
+      await guard();
     },
     async key(k, { long } = {}) {
+      await guard();
       // The simulator opens the player slower than web: a key sent while the title is still loading toggles or opens the wrong thing.
       if (device === "webos") {
         const onPlayer = await ev(`/^#\\/player\\//.test(location.hash)`).catch(() => false);
         if (onPlayer && !playerStarted) { await until(`(() => { const v = document.querySelector("video"); return !!v && !v.paused && v.currentTime > 1; })()`, 30000); playerStarted = true; }
         if (!onPlayer) playerStarted = false;
+        await guard();
       }
-      if (device === "tizen") xkey(k, long);
+      if (device === "tizen") {
+        await guard();
+        if (long) {
+          const key = XKEY[k];
+          execFileSync("python3", [XCLICK, display, "down", key], { stdio: "ignore" });
+          try { await sleep(900); await guard(); }
+          finally { execFileSync("python3", [XCLICK, display, "up", key], { stdio: "ignore" }); }
+        } else xkey(k, false);
+      }
       else {
         const c = { key: KEYNAME[k], code: KEYNAME[k], windowsVirtualKeyCode: KEYCODE[k], nativeVirtualKeyCode: KEYCODE[k] };
         if (k === "select") {
           // Chromium needs the character event to run native button activation. rawKeyDown alone
           // focuses controls but does not click action buttons in the webOS simulator.
           await cdp("Input.dispatchKeyEvent", { type: "keyDown", ...c });
-          await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
-        } else await cdp("Input.dispatchKeyEvent", { type: "rawKeyDown", ...c });
-        if (long) await sleep(900);
-        await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c });
+          try {
+            await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
+            if (long) { await sleep(900); await guard(); }
+          } finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
+        } else {
+          await cdp("Input.dispatchKeyEvent", { type: "rawKeyDown", ...c });
+          try { if (long) { await sleep(900); await guard(); } }
+          finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
+        }
       }
       await sleep(device === "webos" ? 1000 : 350);
+      await guard();
     },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
-    async playhead() { return ev(`(() => { const v = document.querySelector("video"); return v ? v.currentTime : null; })()`).catch(() => null); },
-    async panelOpen() { return !!(await ev(`[...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)`).catch(() => false)); },
-    async location() { return (await ev("location.hash.replace(/^#/, '')")) ?? null; },
+    async playhead() { await guard(); const value = await ev(`(() => { const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
+    async panelOpen() { await guard(); const value = !!(await ev(`[...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)`)); await guard(); return value; },
+    async location() { await guard(); const value = (await ev("location.hash.replace(/^#/, '')")) ?? null; await guard(); return value; },
     async focused() {
-      return ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null;
+      await guard();
+      const value = await ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null;
         const label = (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \\d+:\\d+(?::\\d+)?$/i, "Open $1");
         let position = null; const nav = e.closest(".app-nav-link"); const card = e.closest(".tv-home-card");
         if (nav) position = { rail: "nav", index: [...document.querySelectorAll(".app-nav-link")].indexOf(nav) };
         else if (card) { const rail = (c) => (c.getAttribute("data-navigation-focus-key") || "").split(":")[1]; const cards = [...document.querySelectorAll(".tv-home-card")]; const rails = [...new Set(cards.map(rail))];
           position = { rail: rails.indexOf(rail(card)), index: cards.filter((c) => rail(c) === rail(card)).indexOf(card) }; }
         return { label, position }; })()`);
+      await guard();
+      return value;
     },
     async screenshot(file) {
+      await guard();
       if (device === "webos" && (await keyboardVisible())) {
         const searchInput = await ev(`(() => { const e = document.activeElement; return location.hash === "#/search" && e?.matches('input[type="search"]') && e.value === ""; })()`);
         if (!searchInput) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
         const filter = await ev(`(() => { const controls = [...document.querySelectorAll('button[aria-controls="search-filters-drawer"]')]; if (controls.length !== 1) return { error: "expected one Search Filters control" }; const e = controls[0], r = e.getBoundingClientRect(), s = getComputedStyle(e); if (e.disabled || r.width <= 0 || r.height <= 0 || s.display === "none" || s.visibility === "hidden" || Number(s.opacity) === 0) return { error: "Search Filters control is not visible" }; return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
         if (!filter || filter.error) throw new Error(filter?.error ?? "cannot dismiss Search keyboard without its Filters control");
+        await guard();
         await clickDisplayAt(Math.round(filter.x), Math.round(filter.y));
         if (!(await until(`location.hash.includes("/search?panel=filters") && !!document.querySelector(".tv-filter-drawer")`, 10000))) {
           throw new Error("real Filters selection did not open the Search drawer");
         }
         for (let i = 0; i < 10 && (await keyboardVisible()); i += 1) await sleep(300);
         if (await keyboardVisible()) throw new Error("webOS system keyboard remained visible after selecting Filters");
+        await guard();
         xkey("back"); // A real Back closes the drawer and restores focus to the Filters opener.
         if (!(await until(`location.hash === "#/search" && document.activeElement?.getAttribute("aria-label") === "Filters"`, 10000))) {
           throw new Error("closing Search filters did not restore focus to Filters");
@@ -343,17 +392,20 @@ export async function createDriver() {
       if (device === "webos" && (await keyboardVisible())) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
       if (await ev(BAD)) throw new Error("signed out or error page");
       await settleVisibleImages();
+      await guard();
       const xwd = `${file}.xwd`;
       writeFileSync(xwd, execFileSync("xwd", ["-display", display, "-root", "-silent"], { maxBuffer: 64 << 20 }));
+      await guard();
       execFileSync("magick", [`xwd:${xwd}`, `png:${file}`]);
       rmSync(xwd);
     },
     // ---- Downloads cases (webOS only): the same steps as the web driver, as page code over CDP (Playwright cannot attach to Chromium 94).
     async download(c, expect) {
+      await guard();
       if (device !== "webos") return { state: "failed", detail: "not supported by this driver" };
       const m = c.media;
       let step = "";
-      const q = (js) => ev(`(() => { ${js} })()`);
+      const q = async (js) => { await guard(); const value = await ev(`(() => { ${js} })()`); await guard(); return value; };
       const scope = c.action.startsWith("season-") ? "season" : "series"; // the row the case acts on: a season group, a series group, else the item row
       const lvlSel = (n) => `li.tv-download-group[data-level='${n}'] > .tv-download-group-row`;
       const rowSel = m.episode ? lvlSel(1) : `.tv-download-row:not(.tv-download-group-row)`;
@@ -365,26 +417,31 @@ export async function createDriver() {
       const press = async (name, lvl) => q(`${jsFor(lvl)} const b = row && [...row.querySelectorAll("button")].find((x) => new RegExp("^${name}$", "i").test((x.getAttribute("aria-label") || x.textContent).trim())); if (!b) return false; b.click(); return true;`);
       const waitFor = async (re, ms, lvl) => {
         const t0 = Date.now();
-        while (Date.now() - t0 < ms) { const st = await status(lvl); if (re.test(st)) return st; if (/failed/i.test(st)) throw new Error("download failed: " + st); await sleep(1500); }
+        while (Date.now() - t0 < ms) { await guard(); const st = await status(lvl); await guard(); if (re.test(st)) return st; if (/failed/i.test(st)) throw new Error("download failed: " + st); await sleep(1500); }
         throw new Error(`timed out waiting for ${re}: ${await status(lvl)}`);
       };
-      const throttle = (on) => device === "webos" && cdp("Network.emulateNetworkConditions", on ? { offline: false, latency: 50, downloadThroughput: 300 * 1024, uploadThroughput: -1 } : { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
-      const list = async () => { await load("/downloads"); await sleep(2500); };
+      const throttle = async (on) => { await guard(); if (device === "webos") await cdp("Network.emulateNetworkConditions", on ? { offline: false, latency: 50, downloadThroughput: 300 * 1024, uploadThroughput: -1 } : { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }); await guard(); };
+      const list = async () => { await guard(); await load("/downloads"); await guard(); await sleep(2500); };
       const confirmDrawer = () => q(`const b = document.querySelector(".download-quality-drawer .is-primary"); if (!b) return false; b.click(); return true;`);
       const start = async (again = true) => {
+        await guard();
         step = "load";
         await load(m.episode ? `/series/${m.work}` : `/movies/${m.work}`);
         await until(m.episode ? `!!document.querySelector('a.tv-episode-card[href$="${m.file}"]')` : `!!document.querySelector("button.tv-detail-download")`, 30000);
         step = "card";
         if (m.episode) {
           // Long press = Enter held on the focused card, with real key events as a remote sends them.
+          await guard();
           await ev(`(() => { const a = document.querySelector('a.tv-episode-card[href$="${m.file}"]'); a.scrollIntoView({ block: "center" }); a.focus(); return true; })()`);
           await sleep(1200);
           const kc = { key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
-          await cdp("Input.dispatchKeyEvent", { type: "rawKeyDown", ...kc }); await sleep(1000); await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...kc });
+          await guard(); await cdp("Input.dispatchKeyEvent", { type: "rawKeyDown", ...kc });
+          try { await sleep(1000); await guard(); }
+          finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...kc }); }
           await until(`!!document.querySelector(".media-context-drawer")`, 10000);
           step = "drawer"; await sleep(600);
           // Choose Download in the actions drawer.
+          await guard();
           await ev(`(([...document.querySelectorAll(".media-context-drawer button, .media-context-drawer [role=button], .media-context-drawer [tabindex], .media-context-drawer a, .media-context-drawer li")].find((b) => /^\\W*download\\W*$/i.test(b.textContent.trim())) || { click() { throw new Error("no Download action"); } }).click(), true)`);
           await sleep(1500);
         } else for (let i = 0; i < 4 && !(await ev(`!!document.querySelector(".download-quality-drawer")`)); i += 1) { await ev(`document.querySelector("button.tv-detail-download").click()`); await sleep(2000); }
@@ -478,25 +535,28 @@ export async function createDriver() {
       } catch (e) { return bad(`${step}: ${String(e.message).split("\n")[0]}`); }
       finally { await throttle(false).catch(() => {}); await clean().catch(() => {}); }
     },
-    async cleanupDownloads() {},
+    async cleanupDownloads() { await guard(); },
     // Opens the file's player by deep link (as the web driver does), samples the playhead of <video> or Tizen AVPlay.
     async play(c, expect) {
+      await guard();
       const pos = `(() => { const v = document.querySelector("video"); if (v && !v.error && v.readyState >= 2) return v.currentTime;
         try { const a = webapis.avplay; if (a.getState() === "PLAYING") return a.getCurrentTime() / 1000; } catch (e) {} return null; })()`;
       await load("/player/" + c.file);
+      await guard();
       const t0 = Date.now();
       let p0 = null;
-      while (p0 === null && Date.now() - t0 < expect.startWithinSeconds * 1000) { await sleep(500); p0 = await ev(pos).catch(() => null) ?? null; }
+      while (p0 === null && Date.now() - t0 < expect.startWithinSeconds * 1000) { await guard(); await sleep(500); await guard(); p0 = await ev(pos).catch(() => null) ?? null; }
       let out;
       if (p0 === null) out = { state: "error", detail: "no frames in time" };
       else {
         const startSeconds = (Date.now() - t0) / 1000;
         // Playing means the playhead advanced by advanceSeconds within advanceSeconds + 6 s of wall clock (startup buffering eats part of a short window).
         let p1 = p0;
-        for (let i = 0; i < (expect.advanceSeconds + 6) * 2 && p1 - p0 < expect.advanceSeconds; i += 1) { await sleep(500); p1 = (await ev(pos).catch(() => null)) ?? p1; }
+        for (let i = 0; i < (expect.advanceSeconds + 6) * 2 && p1 - p0 < expect.advanceSeconds; i += 1) { await guard(); await sleep(500); await guard(); p1 = (await ev(pos).catch(() => null)) ?? p1; }
         out = { state: p1 - p0 >= expect.advanceSeconds ? "playing" : "stalled", startSeconds, advancedSeconds: p1 - p0 };
       }
       if (device === "webos" && c.nowPlaying && out.state === "playing") {
+        await guard();
         const info = await ev(`(() => { const m = navigator.mediaSession; return { title: m.metadata?.title ?? "", state: m.playbackState, pause: !!window.__mediaHandlers?.pause }; })()`);
         let pausedOk = false;
         if (info.pause) {

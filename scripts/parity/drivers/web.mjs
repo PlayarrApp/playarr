@@ -5,6 +5,7 @@
 //   browser profile, so a new device id); login tokens stay in that browser context and are never written to disk.
 import { writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
+import { assertAllowedDeviceTestUsername, assertDeviceTestPage, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl, trustedLoginUsername } from "../device-test-guard.mjs";
 
 // True when no card-art in view (and none cut by the viewport edge) lacks a loaded poster img.
 const PLACEHOLDER_CARDS_GONE = () => ![...document.querySelectorAll("[class*=card-art]:not([class*=skeleton])")].some((e) => {
@@ -171,8 +172,11 @@ export async function clickIfPresent(locator) {
   if (await locator.count()) await locator.click();
 }
 
-export async function createDriver() {
+export async function createDriver({ playwright = chromium, secrets } = {}) {
   const env = process.env, web = (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
+  const allowedUsernames = loadAllowedDeviceTestUsernames({ env, client: env.PARITY_CLIENT, ...(secrets ? { secrets } : {}) });
+  const trustedServerUrl = loadTrustedDeviceTestServerUrl({ env, ...(secrets ? { secrets } : {}) });
+  if (env.PLAYARR_USERNAME) assertAllowedDeviceTestUsername(env.PLAYARR_USERNAME, allowedUsernames);
   const mobile = env.PLAYARR_WEB_MOBILE === "1";
   const positiveInteger = (name, fallback) => {
     const value = env[name] === undefined ? fallback : Number(env[name]);
@@ -256,6 +260,7 @@ export async function createDriver() {
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   };
   const open = async (keep = true) => {
+    if (page) await guard();
     // Refresh tokens rotate: carry this run's live session into the next context (theme switch), or it comes up signed out.
     if (ctx && keep) session = await ctx.storageState();
     cdp = undefined; await ctx?.close();
@@ -277,7 +282,7 @@ export async function createDriver() {
     // PLAYARR_WEB_INIT_STORAGE='{"playarr-home-view":"cover"}': extra localStorage keys (poster mode, artwork size) for round-3 reference captures.
     if (env.PLAYARR_WEB_INIT_STORAGE) await ctx.addInitScript((kv) => { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v); }, JSON.parse(env.PLAYARR_WEB_INIT_STORAGE));
     // Set the selected server before the app initializes so discovery and sign-in use the configured API host.
-    await installServerApiBaseUrl(ctx, env.PLAYARR_SERVER_URL);
+    await installServerApiBaseUrl(ctx, trustedServerUrl);
     // Restored sessionStorage (scroll positions, focus memory) changes what a route shows: every document starts with it empty.
     await ctx.addInitScript(() => { try { sessionStorage.clear(); } catch {} });
     // PLAYARR_WEB_NO_DOWNLOADS=1: a device that cannot store downloads (Roku). The web app hides Downloads when neither OPFS nor
@@ -311,13 +316,16 @@ export async function createDriver() {
     await page.goto(web + "/", { waitUntil: "load" });
     await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"), null, { timeout: 30000 });
     if (!(await page.locator(".app-nav-link").count())) {
-      if (!env.PLAYARR_USERNAME) throw new Error("signed out and PLAYARR_USERNAME/PLAYARR_PASSWORD not set");
+      assertAllowedDeviceTestUsername(env.PLAYARR_USERNAME, allowedUsernames);
+      const loginUsername = trustedLoginUsername(env, allowedUsernames, trustedServerUrl);
+      const loginPassword = env.PLAYARR_PASSWORD;
+      if (!loginPassword) throw new Error("signed out and PLAYARR_USERNAME/PLAYARR_PASSWORD not set");
       await page.goto(web + "/login", { waitUntil: "load" });
       const manual = page.getByText(/sign in manually|manual/i).first();
       if (await manual.count()) await manual.click();
-      await page.fill('input[name="server-url"]', env.PLAYARR_SERVER_URL);
-      await page.fill('input[name="username"]', env.PLAYARR_USERNAME);
-      await page.fill('input[name="password"]', env.PLAYARR_PASSWORD);
+      await page.fill('input[name="server-url"]', trustedServerUrl);
+      await page.fill('input[name="username"]', loginUsername);
+      await page.fill('input[name="password"]', loginPassword);
       manualLoginStarted = true;
       await page.locator("button[type=submit]").click();
       await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30000 });
@@ -325,17 +333,22 @@ export async function createDriver() {
       manualLoginSucceeded = true;
       clearSuccessfulBootstrapLoginErrors(apiErrors);
     }
+    await assertDeviceTestPage({ page, allowedUsernames, expectedServerUrl: trustedServerUrl });
   };
+  const guard = () => assertDeviceTestPage({ page, allowedUsernames, expectedServerUrl: trustedServerUrl });
   // "Frames advance": the video has data, then its playhead moves by advanceSeconds.
   const frames = async (expect) => {
+    await guard();
     const t0 = Date.now();
     const pos = () => page.evaluate(() => { const v = document.querySelector("video"); return v && !v.error && v.readyState >= 2 ? v.currentTime : null; });
     let p0 = null;
-    while (p0 === null && Date.now() - t0 < expect.startWithinSeconds * 1000) { await page.waitForTimeout(500); p0 = await pos(); }
+    while (p0 === null && Date.now() - t0 < expect.startWithinSeconds * 1000) { await guard(); await page.waitForTimeout(500); await guard(); p0 = await pos(); }
     if (p0 === null) return { state: "error", detail: "no frames in time" };
     const startSeconds = (Date.now() - t0) / 1000;
     await page.waitForTimeout((expect.advanceSeconds + 1) * 1000);
+    await guard();
     const p1 = await pos();
+    await guard();
     return { state: p1 !== null && p1 - p0 >= expect.advanceSeconds ? "playing" : "stalled", startSeconds, advancedSeconds: p1 === null ? 0 : p1 - p0 };
   };
   // Profiling data for the performance epic (not scored): negotiated mode, the server's own play-method facts (source and
@@ -356,6 +369,7 @@ export async function createDriver() {
       timeToFirstFrameSeconds: r.startSeconds ?? null, negotiationStatuses: neg.statuses, no_transcode_capacity: neg.statuses.includes(503), stalled: r.state === "stalled" };
   };
   const waitReady = async ({ screen, phase }) => {
+    await guard();
     await drainApiErrors();
     assertWebReady(page.url(), apiErrors);
     const path = new URL(page.url()).pathname;
@@ -370,13 +384,16 @@ export async function createDriver() {
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
     if (path.startsWith("/player/")) await page.waitForFunction(() => !!document.querySelector("video, .player-error, .player-loading"), null, { timeout: 30000 });
     await settle();
+    await guard();
     if (phase === "focus") {
       const first = await stableFocus();
       if (!first) throw new Error(`focus readiness failed for ${screen}: document body has focus`);
     }
   };
   async function homeOnce() {
+    await guard();
     await page.goto(web + "/", { waitUntil: "load" });
+    await guard();
     await waitReady({ screen: "home", phase: "route" });
     await settle();
     if (!mobile) await waitReady({ screen: "home", phase: "focus" });
@@ -404,8 +421,10 @@ export async function createDriver() {
     return { label, position };
   });
   const stableFocus = async () => {
+    await guard();
     await page.evaluate(() => { document.__parityStableNativeFocus = null; });
     await page.waitForFunction(stableNativeFocus, undefined, { timeout: 5000, polling: "raf" });
+    await guard();
     return focusInfo();
   };
   // ---- Downloads page helpers. A TV episode lives under a series group (series > season > episode); a movie is one row.
@@ -413,10 +432,10 @@ export async function createDriver() {
     const series = () => page.locator("li.tv-download-group[data-level='1'] > .tv-download-group-row", { hasText: m.title });
     const season = () => page.locator("li.tv-download-group[data-level='2'] > .tv-download-group-row", { hasText: `Season ${m.season}` /* shortcut: also matches Season 20, fine for the one pinned season */ });
     const row = () => (m.episode ? series() : page.locator(".tv-download-row:not(.tv-download-group-row)", { hasText: m.title }));
-    const list = async () => { await page.goto(web + "/downloads", { waitUntil: "load" }); await page.waitForTimeout(2500); };
+    const list = async () => { await guard(); await page.goto(web + "/downloads", { waitUntil: "load" }); await guard(); await page.waitForTimeout(2500); };
     const button = (loc, name) => loc.first().getByRole("button", { name: new RegExp(`^${name}$`, "i") });
     // Delete asks for confirmation in a drawer.
-    const del = async (loc) => { await button(loc, "delete").click(); await page.locator(".download-quality-drawer .is-primary").click(); };
+    const del = async (loc) => { await guard(); await button(loc, "delete").click(); await guard(); await page.locator(".download-quality-drawer .is-primary").click(); };
     const gone = () => page.waitForFunction((t) => !document.body.innerText.includes(t) || ![...document.querySelectorAll(".tv-download-row")].some((x) => x.textContent.includes(t)), m.title, { timeout: 20000 }).then(() => true, () => false);
     const expand = async (loc) => { const tog = loc.first().locator("button[aria-expanded]"); if ((await tog.getAttribute("aria-expanded")) === "false") await tog.click(); await page.waitForTimeout(800); };
     const status = async (loc = row()) => ((await loc.first().locator(".tv-download-row-meta").textContent({ timeout: 3000 }).catch(() => "")) ?? "").replace(/\s+/g, " ");
@@ -519,7 +538,7 @@ export async function createDriver() {
           await page.waitForTimeout(1500);
           await page.evaluate(() => document.querySelector("video")?.play().catch(() => {}));
           const f = await frames({ startWithinSeconds: 30, advanceSeconds: 3 });
-          if (f.state !== "playing" && env.PARITY_DEBUG) await page.screenshot({ path: `${env.PARITY_DEBUG}/${c.id}.png` });
+          if (f.state !== "playing" && env.PARITY_DEBUG) { await guard(); await page.screenshot({ path: `${env.PARITY_DEBUG}/${c.id}.png` }); }
           return f.state === "playing" ? ok(`offline frames advanced ${f.advancedSeconds.toFixed(1)}s`) : bad(JSON.stringify(f));
         } finally { await ctx.setOffline(false); }
       }
@@ -565,11 +584,14 @@ export async function createDriver() {
   }
   // Media Session as the now-playing entry: metadata with a title, state "playing", and the pause action pauses the player.
   const nowPlaying = async () => {
+    await guard();
     const info = await page.evaluate(() => { const m = navigator.mediaSession; return { title: m.metadata?.title ?? "", state: m.playbackState, pause: !!window.__mediaHandlers?.pause }; });
     let pausedOk = false;
     if (info.pause) {
       pausedOk = await page.evaluate(async () => { window.__mediaHandlers.pause({ action: "pause" }); await new Promise((r) => setTimeout(r, 800)); return document.querySelector("video")?.paused === true; });
+      await guard();
       await page.evaluate(() => document.querySelector("video")?.play());
+      await guard();
     }
     return { ...info, pausedOk, ok: !!info.title && info.state === "playing" && pausedOk };
   };
@@ -579,58 +601,72 @@ export async function createDriver() {
       if (!value || !Number.isFinite(Date.parse(value))) throw new Error("deterministic capture requires a valid fixedNow date string");
       if (disable !== true) throw new Error("deterministic capture requires animation suppression");
       fixedNow = value; disableAnimations = true;
-      if (ctx) await ctx.addInitScript(installVisualDate, value);
-      if (page) await page.evaluate(installVisualDate, value);
+      if (ctx) { await guard(); await ctx.addInitScript(installVisualDate, value); await guard(); }
+      if (page) { await guard(); await page.evaluate(installVisualDate, value); await guard(); }
     },
     async captureBuildIdentity() {
+      await guard();
       const response = await fetch(`${web}/build-info.json`, { cache: "no-store" });
       if (!response.ok) throw new Error(`build identity request returned ${response.status}`);
       const info = await response.json();
+      await guard();
       if (!info.sha || !info.builtAt) throw new Error("build identity response lacks sha or builtAt");
       if (env.PARITY_EXPECTED_BUILD_SHA && info.sha !== env.PARITY_EXPECTED_BUILD_SHA) throw new Error(`deployed build ${info.sha} does not match pinned build ${env.PARITY_EXPECTED_BUILD_SHA}`);
       return `${info.sha}@${info.builtAt}`;
     },
     waitReady,
-    async start() { browser = await chromium.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}); await open(); },
+    async start() { browser = await playwright.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}); await open(); await guard(); },
     async stop() { await browser?.close(); },
-    async setTheme(t) { if (t !== theme) { theme = t; await open(); } },
+    async setTheme(t) { await guard(); if (t !== theme) { theme = t; await open(); } },
     // TV Home proves first-card focus and the Left/Right nav round trip. Mobile Home waits for populated content and settles without TV focus keys.
     async home() {
+      await guard();
       return homeOnce();
     },
     // Known state for the player checks: video playing, controls visible, focus on the play/pause button (waits up to 30 s, else throws).
     async playerReady() {
+      await guard();
       await page.waitForFunction(() => {
         const v = document.querySelector("video"), c = document.querySelector(".player-controls");
         if (v && v.paused && v.readyState >= 2) v.play().catch(() => {});
         return !!v && v.readyState >= 2 && !v.paused && v.currentTime > 0.5 && !!c && !c.classList.contains("is-hidden") && !!document.activeElement?.closest("[data-player-default-focus]");
       }, null, { timeout: 30000, polling: 250 });
+      await guard();
     },
-    async playhead() { return page.evaluate(() => document.querySelector("video")?.currentTime ?? null); },
-    async panelOpen() { return page.evaluate(() => [...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)); },
+    async playhead() { await guard(); const value = await page.evaluate(() => document.querySelector("video")?.currentTime ?? null); await guard(); return value; },
+    async panelOpen() { await guard(); const value = await page.evaluate(() => [...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)); await guard(); return value; },
     async route(r, { requireHeroAction = false } = {}) {
+      await guard();
       await page.goto(web + r, { waitUntil: "load" });
+      await guard();
       detailActionRequired = requireHeroAction && /^\/(?:movies|series)\/[^/]+\/?(?:\?.*)?$/.test(r);
       await waitForDetailReady({ requireHeroAction: detailActionRequired });
       await settle();
     },
     async key(k, { long } = {}) {
-      if (long) { await page.keyboard.down(KEYS[k]); await page.waitForTimeout(900); await page.keyboard.up(KEYS[k]); }
-      else await page.keyboard.press(KEYS[k]);
+      await guard();
+      if (long) {
+        await page.keyboard.down(KEYS[k]);
+        try { await page.waitForTimeout(900); await guard(); }
+        finally { await page.keyboard.up(KEYS[k]); }
+      } else await page.keyboard.press(KEYS[k]);
+      await guard();
       // The app applies directional keys once per animation frame: let two frames pass before anything reads focus.
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     },
-    async location() { const u = new URL(page.url()); return u.pathname + u.search; },
+    async location() { await guard(); const u = new URL(page.url()); await guard(); return u.pathname + u.search; },
     // { label, position } of the focused item, or null when the page body has focus (a check then fails).
     // position: { rail, index } = Home rail number and card number in it, or { rail: "nav", index } for a nav item; null elsewhere.
-    focused: stableFocus,
+    async focused() { await guard(); return stableFocus(); },
     async screenshot(file) {
+      await guard();
       await waitReady({ screen: new URL(page.url()).pathname.split("/")[1] || "home", phase: "capture" });
       // Every card on screen shows its poster: a card-art without a loaded img is a placeholder (fallback title on grey). Fatal in a stable capture.
       await page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 });
       // Loading placeholders (skeletons, spinners) must be gone: a half-loaded screen is not a capture.
       await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader"), null, { timeout: 20000 });
       if (new URL(page.url()).pathname.startsWith("/login") || (await page.getByText("API request failed").count())) throw new Error(`signed out or error page (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"})`);
+      await guard();
       const detailRoute = /^\/(movies|series)\/[^/]+\/?$/.test(new URL(page.url()).pathname);
       if (detailRoute) {
         try {
@@ -647,15 +683,18 @@ export async function createDriver() {
       }
       if (disableAnimations) {
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await guard();
         writeFileSync(file, await page.screenshot({ animations: "disabled" }));
         return;
       }
+      await guard();
       await page.screenshot({ path: file });
     },
     // Facts about the page as it is now, for the reference verifier: theme, the title on detail pages and action drawers, loading
     // placeholders, open dialogs, broken images, fonts.
     async inspect() {
-      return page.evaluate(() => {
+      await guard();
+      const result = await page.evaluate(() => {
         const t = (e) => e?.textContent?.trim().replace(/\s+/g, " ") ?? null;
         const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
         return {
@@ -672,15 +711,21 @@ export async function createDriver() {
           signedOut: !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"),
         };
       });
+      await guard();
+      return result;
     },
     // Phone layout: long-press on a card is a context-menu event; opens the title-actions drawer of the first library card.
     async openActions() {
+      await guard();
       await page.locator("a[href^='/movies/']").first().dispatchEvent("contextmenu");
+      await guard();
       await page.waitForSelector(".media-context-drawer", { timeout: 10000 });
+      await guard();
       await settle();
     },
     // Plays media file `c.file` (a deep link on web; devices open it by their own means), returns {state, startSeconds, advancedSeconds, proxied}.
     async play(c, expect) {
+      await guard();
       let proxied = false;
       const neg = { statuses: [] }; // every negotiation answer, so a 503 shows even when a retry then succeeds
       const onReq = (r) => { if (r.url().includes("/media/proxy/")) proxied = true; };
@@ -692,14 +737,17 @@ export async function createDriver() {
       page.on("request", onReq); page.on("response", onRes);
       try {
         await page.goto(web + "/player/" + c.file, { waitUntil: "load" });
+        await guard();
         const r = await frames(expect);
         if (c.nowPlaying && r.state === "playing") r.nowPlaying = await nowPlaying();
         r.profile = await profile(neg, r);
+        await guard();
         return { ...r, proxied };
       } finally { page.off("request", onReq); page.off("response", onRes); }
     },
     // Downloads cases (docs/parity/SUITE.md). Returns { state: "ok" | "failed", detail }. Cases clean up after themselves.
     async download(c, expect) {
+      await guard();
       const m = c.media, limit = expect.withinSeconds * 1000;
       const r = dl(m);
       try {
@@ -707,11 +755,11 @@ export async function createDriver() {
         if (await r.row().count()) return { state: "failed", detail: "refusing to replace a pre-existing download" };
         return await dlCase(c, m, r, limit);
       } catch (e) {
-        if (env.PARITY_DEBUG) await page.screenshot({ path: `${env.PARITY_DEBUG}/${c.id}.png` }).catch(() => {});
+        if (env.PARITY_DEBUG) { await guard(); await page.screenshot({ path: `${env.PARITY_DEBUG}/${c.id}.png` }).catch(() => {}); }
         return { state: "failed", detail: e.message.split("\n").filter((l) => !/^\s*$/.test(l)).slice(0, 3).join(" ").replace(/\x1b\[[0-9;]*m/g, "").slice(0, 300) };
-      } finally { await r.throttle(false).catch(() => {}); await r.clean().catch(() => {}); }
+      } finally { await guard(); await r.throttle(false).catch(() => {}); await guard(); await r.clean().catch(() => {}); }
     },
     // Safety net for an aborted run: remove downloads started by this run only.
-    async cleanupDownloads() { for (const media of ownedDownloads.values()) await dl(media).clean().catch(() => {}); ownedDownloads.clear(); },
+    async cleanupDownloads() { await guard(); for (const media of ownedDownloads.values()) { await guard(); await dl(media).clean().catch(() => {}); } ownedDownloads.clear(); },
   };
 }

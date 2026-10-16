@@ -1,0 +1,1 @@
+- Require parity browser and simulator drivers to verify the authenticated current profile against an explicit device-test account allowlist and trusted server before capture, navigation, playback, or D-pad operations.
