@@ -278,12 +278,15 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const stuck = (what) => async (error) => {
     if (error?.name !== "TimeoutError") throw error;
     const detail = await page.evaluate(() => [...document.images].filter((e) => !(e.complete && e.naturalWidth > 0)).slice(0, 6)
-      .map((e) => `img ${e.currentSrc || e.src} complete=${e.complete} loading=${e.loading} visible=${e.getBoundingClientRect().width > 0}`)
+      .map((e) => `img ${e.currentSrc || e.src} complete=${e.complete} loading=${e.loading} rect=${JSON.stringify(["left","top","width","height"].map((k) => Math.round(e.getBoundingClientRect()[k])))} viewport=${innerWidth}x${innerHeight}`)
       .concat([...document.querySelectorAll(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]")].slice(0, 6).map((e) => `${e.tagName}.${e.className}`))).catch(() => []);
     throw new Error(`${what} still present after 20000ms on ${page.url()} (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"}): ${detail.join(" | ") || "none found"}`);
   };
   const settle = async () => {
     await page.evaluate(() => document.fonts.ready);
+    // Chrome never fetches a lazy image whose box sits inside a clipped scroll container (calendar week, dark), so a capture
+    // waited 20 s on an image no one could see. Load them eagerly: the wait below then proves every on-screen image has art.
+    await page.evaluate(() => document.querySelectorAll("img[loading=lazy]").forEach((i) => { i.loading = "eager"; }));
     await page.waitForFunction(() => [...document.images].filter((i) => {
       const r = i.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
