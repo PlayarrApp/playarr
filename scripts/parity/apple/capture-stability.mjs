@@ -10,18 +10,32 @@ export async function captureStableFrame(capture, { attempts = 8, intervalMs = 4
 }
 
 export function directPlayCaptureFile(suite) {
-  const candidate = suite.performance?.find((entry) => entry.id === "b" && entry.file && entry.expect?.state === "playing");
+  const candidate = suite.downloadMedia?.movie?.file;
   if (!candidate) throw new Error("the parity suite has no designated direct-play player capture file");
-  return candidate.file;
+  return candidate;
+}
+
+export function isDirectPlaybackReady(playback) {
+  return (playback?.state === "playing" || playback?.state === "paused")
+    && playback?.mode === "direct"
+    && Number.isFinite(playback?.position)
+    && playback.position > 0;
 }
 
 export function assertDirectPlayback(playback) {
   if (playback?.state === "failed") {
-    throw new Error(`direct-play player capture failed before negotiation: ${playback.detail || "player failed"}`);
+    throw new Error(`direct-play player capture failed: ${playback.detail || "player failed"}`);
   }
   if (playback?.mode !== "direct") {
     throw new Error(`direct-play player capture refused: expected direct negotiation, received ${playback?.mode || "no negotiation result"}`);
   }
+  if (playback?.state !== "playing" && playback?.state !== "paused") {
+    throw new Error(`direct-play player capture not ready: expected playing or paused state, received ${playback?.state || "unknown"}`);
+  }
+  if (!Number.isFinite(playback?.position) || playback.position <= 0) {
+    throw new Error("direct-play player capture not ready: playback position has not advanced");
+  }
+  if (!isDirectPlaybackReady(playback)) throw new Error("direct-play player capture not ready");
 }
 
 export async function resetProgress(files, { serverURL, username, password, fetchImpl = fetch, deviceID = crypto.randomUUID() }) {

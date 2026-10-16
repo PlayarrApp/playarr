@@ -508,6 +508,11 @@ private struct AuthenticatedPlayarrShell: View {
     private func stageChrome(proxy: GeometryProxy) -> some View {
         let navEdge = min(44, max(18, proxy.size.width * 0.022))
         let chromeTop = min(66, max(34, proxy.size.height * 0.052))
+        let clockRightInset = min(38, max(18, proxy.size.width * 0.02))
+        let clockHeight = min(50, max(44, proxy.size.width * 0.028))
+        let clockWidth = max(0, proxy.size.width * 0.35 - clockRightInset)
+        let timeSize = min(17.6, max(13.12, proxy.size.width * 0.009))
+        let dateSize = min(11.52, max(8.32, proxy.size.width * 0.0058))
 
         return ZStack(alignment: .topLeading) {
             // The web hides the clock at tablet widths (761 to 1100 pt) on pages with a header.
@@ -518,15 +523,23 @@ private struct AuthenticatedPlayarrShell: View {
                 #else
                 let clockDate = context.date
                 #endif
-                HStack(alignment: .firstTextBaseline, spacing: 11) {
+                HStack(alignment: .center, spacing: 11.2) {
                     Text(clockDate.formatted(headerTimeStyle))
-                        .font(WM.font(12.5, 800))
-                    Text(clockDate.formatted(headerDateStyle).uppercased())
-                        .font(WM.font(8, 700)).tracking(0.6)
-                        .foregroundStyle(PlayarrStyle.inkSoft)
+                        .font(WM.font(timeSize, 760))
+                        .tracking(-0.03 * timeSize)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                    if proxy.size.width > 1100 {
+                        Text(clockDate.formatted(headerDateStyle).uppercased())
+                            .font(WM.font(dateSize, 640)).tracking(0.04 * dateSize)
+                            .foregroundStyle(PlayarrStyle.ink)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
                 }
+                .frame(width: clockWidth, height: clockHeight, alignment: .trailing)
                 .foregroundStyle(PlayarrStyle.ink)
-                .offset(x: proxy.size.width * 0.24, y: chromeTop + 14)
+                .offset(y: chromeTop)
             }
             }
 

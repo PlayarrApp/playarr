@@ -9,7 +9,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertDirectPlayback, captureStableFrame, directPlayCaptureFile, resetProgress as resetCaptureProgress } from "../apple/capture-stability.mjs";
+import { assertDirectPlayback, captureStableFrame, directPlayCaptureFile, isDirectPlaybackReady, resetProgress as resetCaptureProgress } from "../apple/capture-stability.mjs";
 
 const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "suite.json"), "utf8"));
 
@@ -157,8 +157,9 @@ export async function createDriver() {
         let playback = {};
         for (let attempt = 0; attempt < 30; attempt += 1) {
           playback = state().playback ?? {};
-          if (playback.mode) break;
           if (playback.state === "failed") break;
+          if (playback.mode && playback.mode !== "direct") break;
+          if (isDirectPlaybackReady(playback)) break;
           await sleep(500);
         }
         assertDirectPlayback(playback);

@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { assertDirectPlayback, captureStableFrame, directPlayCaptureFile, resetProgress } from "./capture-stability.mjs";
+
+const suite = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8"));
 
 test("capture waits for two consecutive identical frames", async () => {
   const frames = [Buffer.from("opening"), Buffer.from("settled"), Buffer.from("settled")];
@@ -16,25 +19,22 @@ test("capture fails closed when no consecutive frames match", async () => {
   );
 });
 
-test("player capture selects the suite's designated direct-play case", () => {
-  const selected = directPlayCaptureFile({
-    performance: [
-      { id: "a", file: "first", expect: { state: "playing" } },
-      { id: "b", file: "designated", expect: { state: "playing" } },
-    ],
-  });
-  assert.equal(selected, "designated");
+test("player capture selects the suite's linked movie fixture", () => {
+  assert.equal(directPlayCaptureFile(suite), suite.downloadMedia.movie.file);
 });
 
 test("player capture refuses a suite without its designated direct-play case", () => {
-  assert.throws(() => directPlayCaptureFile({ performance: [] }), /no designated direct-play player capture file/);
+  assert.throws(() => directPlayCaptureFile({ downloadMedia: {} }), /no designated direct-play player capture file/);
 });
 
 test("player capture accepts only confirmed direct negotiation", () => {
-  assert.doesNotThrow(() => assertDirectPlayback({ state: "playing", mode: "direct" }));
-  assert.throws(() => assertDirectPlayback({ state: "playing", mode: "hls" }), /expected direct negotiation, received hls/);
-  assert.throws(() => assertDirectPlayback({ state: "failed", detail: "fixture unavailable" }), /failed before negotiation: fixture unavailable/);
-  assert.throws(() => assertDirectPlayback({ state: "loading" }), /expected direct negotiation, received no negotiation result/);
+  assert.doesNotThrow(() => assertDirectPlayback({ state: "playing", mode: "direct", position: 2 }));
+  assert.doesNotThrow(() => assertDirectPlayback({ state: "paused", mode: "direct", position: 2 }));
+  assert.throws(() => assertDirectPlayback({ state: "playing", mode: "hls", position: 2 }), /expected direct negotiation, received hls/);
+  assert.throws(() => assertDirectPlayback({ state: "failed", mode: "direct", detail: "fixture unavailable" }), /failed: fixture unavailable/);
+  assert.throws(() => assertDirectPlayback({ state: "loading", mode: "direct" }), /not ready: expected playing or paused state, received loading/);
+  assert.throws(() => assertDirectPlayback({ state: "idle", mode: "direct", position: 0 }), /not ready: expected playing or paused state, received idle/);
+  assert.throws(() => assertDirectPlayback({ state: "playing", mode: "direct", position: 0 }), /not ready: playback position has not advanced/);
 });
 
 test("progress reset fails closed on rejected login without logging credentials", async () => {
