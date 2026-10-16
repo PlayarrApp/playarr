@@ -1,0 +1,1 @@
+- Mac profile navigation now sends Down from the selected profile card to its Settings action and keeps focus there on a repeated Down, matching the web profile flow.

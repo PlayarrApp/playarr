@@ -40,6 +40,41 @@ final class MacFocusEngineTests: XCTestCase {
     }
 
     @MainActor
+    func testProfileDownTargetsSettingsByNameAndStaysThereOnRepeatedDown() {
+        let engine = MacFocusEngine()
+        let profileID = UUID()
+        let settingsID = UUID()
+        let signOutID = UUID()
+        let profileFrame = CGRect(x: 0, y: 0, width: 244, height: 200)
+        let settingsFrame = CGRect(x: 42, y: 220, width: 44, height: 44)
+        let signOutFrame = CGRect(x: 95, y: 220, width: 106, height: 44)
+
+        XCTAssertEqual(
+            MacFocusEngine.nearest(from: profileFrame, direction: .down,
+                                   in: [(settingsID, settingsFrame), (signOutID, signOutFrame)]),
+            signOutID,
+            "the unqualified geometry prefers the sign-out pill in this layout"
+        )
+
+        engine.update(profileID, .init(frame: profileFrame, layer: 0, focus: { engine.didFocus(profileID, true) },
+                                       downTo: "profile-settings"))
+        engine.update(settingsID, .init(frame: settingsFrame, layer: 0, focus: { engine.didFocus(settingsID, true) },
+                                        focusName: "profile-settings"))
+        engine.update(signOutID, .init(frame: signOutFrame, layer: 0, focus: { engine.didFocus(signOutID, true) }))
+        engine.didFocus(profileID, true)
+
+        engine.move(.down)
+
+        XCTAssertEqual(engine.focusedID, settingsID, "the named edge follows the web profile Settings action")
+        engine.move(.down)
+        XCTAssertEqual(engine.focusedID, settingsID, "a second Down stays on the Settings action")
+
+        engine.remove(profileID)
+        engine.remove(settingsID)
+        engine.remove(signOutID)
+    }
+
+    @MainActor
     func testHomeFocusClaimMatchesTheFrozenRailAndCardForDuplicateWorkIDs() {
         let engine = MacFocusEngine()
         let railOneID = UUID()
