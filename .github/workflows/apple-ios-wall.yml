@@ -388,28 +388,28 @@ jobs:
           esac
           # Playback is scored against the suite's own expectation (every case plays); touch devices have no D-pad values.
           echo '{"suite":1,"dpad":{},"playback":{}}' > "$RUNNER_TEMP/expected.json"
-          preflight=()
-          if [[ "$DEVICE" == ipad && "$only" == screens && ( -z "$SCREENS" || ",$SCREENS," == *,home,* ) ]]; then preflight=(--preflight-home-fixture); fi
-          home_preflight=()
-          if [[ "$DEVICE" == ipad && "$only" == screens ]]; then home_preflight=(--preflight-home-fixture); fi
-          reset=()
-          if [[ "$DEVICE" != ipad ]]; then reset=(--reset-progress); fi
-          if [[ "$DEVICE" == ipad && "$only" == screens && -n "${preflight[*]}" && "${#reset[@]}" -gt 0 ]]; then
-            echo "::error::iPad Home fixture preflight cannot run with --reset-progress"
-            exit 1
-          fi
-          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" "${reset[@]}" --themes "$themes" --expected "$RUNNER_TEMP/expected.json" "${preflight[@]}" ${SCREENS:+--screens "$SCREENS"}
+          run_suite() {
+            local suite_out="$1" suite_only="$2" suite_screens="$3" reset_progress="$4"
+            local -a suite_args=(--driver ./drivers/apple-ios.mjs --out "$suite_out" --via route --only "$suite_only" --themes "$themes" --expected "$RUNNER_TEMP/expected.json")
+            if [[ "$reset_progress" == true && "$DEVICE" != ipad ]]; then suite_args+=(--reset-progress); fi
+            if [[ "$DEVICE" == ipad && "$suite_only" == screens && ( -z "$suite_screens" || ",$suite_screens," == *,home,* ) ]]; then
+              suite_args+=(--preflight-home-fixture)
+            fi
+            if [[ -n "$suite_screens" ]]; then suite_args+=(--screens "$suite_screens"); fi
+            node suite-run.mjs "${suite_args[@]}"
+          }
+          run_suite "$out" "$only" "$SCREENS" true
           if [[ "$MOTION" == true && $only == screens ]]; then
-            PARITY_MOTION=1 node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/motion" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home "${home_preflight[@]}"
+            PARITY_MOTION=1 run_suite "$out/motion" screens home false
           fi
           if [[ "$POSTER" == true && $only == screens ]]; then
             for size in small medium large; do
-              PARITY_COVERS=1 PARITY_SIZE=$size node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/poster-$size" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music "${home_preflight[@]}"
+              PARITY_COVERS=1 PARITY_SIZE=$size run_suite "$out/poster-$size" screens home,movies,series,music false
             done
           fi
           if [[ "$FOCUS" == true && $only == screens ]]; then
             for mode in first last top; do
-              PARITY_FOCUS=$mode node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/focus-$mode" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music,film-detail,series-detail "${home_preflight[@]}"
+              PARITY_FOCUS=$mode run_suite "$out/focus-$mode" screens home,movies,series,music,film-detail,series-detail false
             done
           fi
 
