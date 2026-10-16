@@ -23,4 +23,5 @@ run settings settings 20 20 20 22 20 20
 run search search 20 20 20 22 22
 run movies movies 22 22 20 20 21 19
 run calendar-week "calendar?query=view%3Dweek%26date%3D2026-10-14" 22 22 20 20 21
+run calendar-month "calendar?query=view%3Dmonth%26date%3D2026-10-14" 22 22 20
 run home home 22 22 20 22 19

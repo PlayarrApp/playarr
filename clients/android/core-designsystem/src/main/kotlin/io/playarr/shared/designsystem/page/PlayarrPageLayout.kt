@@ -29,6 +29,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -139,7 +142,7 @@ internal fun PlayarrPageActions(actions: List<PlayarrPageAction>, modifier: Modi
         orderedForHeader(actions).forEach { action ->
             when (action) {
                 is PlayarrPageAction.Navigation -> Row(Modifier.padding(end = if (tv) 0.dp else 25.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    action.items.forEach { item -> PlayarrNavButton(item) }
+                    action.items.forEachIndexed { index, item -> PlayarrNavButton(item, exitRight = index == action.items.lastIndex) }
                 }
                 is PlayarrPageAction.Panel -> PlayarrActionPill(action.icon, action.label, action.onToggle, active = action.open)
                 is PlayarrPageAction.Link -> PlayarrActionPill(action.icon, action.label, action.onClick)
@@ -152,7 +155,8 @@ internal fun PlayarrPageActions(actions: List<PlayarrPageAction>, modifier: Modi
 
 /** The round period arrow (glyph) or the label pill (Today) of a navigation group. They stay round (owner decision Q10). */
 @Composable
-private fun PlayarrNavButton(item: PlayarrNavItem) {
+private fun PlayarrNavButton(item: PlayarrNavItem, exitRight: Boolean = false) {
+    val rightExit = if (exitRight) LocalPlayarrNavRightExit.current else null
     val palette = PlayarrWebTheme.palette
     val tv = LocalPlayarrFormFactor.current == PlayarrFormFactor.Tv
     val height = PlayarrPageTokens.current().control
@@ -170,6 +174,11 @@ private fun PlayarrNavButton(item: PlayarrNavItem) {
             // Television label pills (Today, the calendar date range) size to their label from 92 dp (web `.ui-btn`); phone keeps 76 dp.
             modifier = (if (glyph != null) Modifier.size(height) else if (tv) Modifier.widthIn(min = 92.dp).height(height) else Modifier.size(76.dp, height))
                 .then(item.modifier)
+                .then(
+                    if (rightExit == null) Modifier else Modifier.onPreviewKeyEvent { e ->
+                        e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionRight && rightExit()
+                    },
+                )
                 .then(if (item.primary) Modifier.graphicsLayer { scaleX = 1.055f; scaleY = 1.055f } else Modifier)
                 // The ring is the focus state (white in dark, ink in light), never alongside another ring and never a fill.
                 .then(if (focused) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
@@ -220,3 +229,6 @@ private fun PlayarrShellActionColumn(actions: List<PlayarrPageAction>, modifier:
         }
     }
 }
+
+/** A page may take over Right from the last navigation button (web's Calendar goes to the first entry, not the bell beside it); null elsewhere. */
+val LocalPlayarrNavRightExit = androidx.compose.runtime.staticCompositionLocalOf<(() -> Boolean)?> { null }

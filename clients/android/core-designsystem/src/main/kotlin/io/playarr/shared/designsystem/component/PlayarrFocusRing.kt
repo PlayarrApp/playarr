@@ -4,6 +4,7 @@ import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.node.DrawModifierNode
@@ -33,8 +34,12 @@ fun Modifier.playarrFocusRing(
     width: Dp = PlayarrFocusRingWidth,
 ): Modifier = if (!focused) {
     this
-} else {
-    drawWithContent {
+} else this.composed {
+    // Opt-in (default off, so television is unchanged): web draws the ring only for :focus-visible, i.e. after a key event.
+    if (LocalPlayarrRingKeyboardOnly.current &&
+        androidx.compose.ui.platform.LocalInputModeManager.current.inputMode != androidx.compose.ui.input.InputMode.Keyboard
+    ) return@composed Modifier
+    Modifier.drawWithContent {
         drawContent()
         val stroke = width.toPx()
         val grow = offset.toPx() + stroke / 2f
@@ -50,6 +55,9 @@ fun Modifier.playarrFocusRing(
         )
     }
 }
+
+/** True where the ring must wait for the first key event (a touch-first tablet: web's `:focus-visible`); false everywhere else. */
+val LocalPlayarrRingKeyboardOnly = staticCompositionLocalOf { false }
 
 /** The colour of the focus ring (web `--focus-outline`); the app provides its palette token, white is the fallback. */
 val LocalPlayarrFocusRing = staticCompositionLocalOf { Color.White }

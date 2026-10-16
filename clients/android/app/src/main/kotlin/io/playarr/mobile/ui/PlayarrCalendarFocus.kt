@@ -430,6 +430,10 @@ internal class TvContentEntry {
     var enter: (() -> Unit)? = null
 }
 
+/** The first entry of the visible calendar view, so Right from the header's Next reaches it (web) instead of the bell beside it. */
+internal class CalendarFirstEntry { var requester: FocusRequester? = null }
+internal val LocalCalendarFirstEntry = androidx.compose.runtime.staticCompositionLocalOf { CalendarFirstEntry() }
+
 internal val LocalTvContentEntry = androidx.compose.runtime.staticCompositionLocalOf { TvContentEntry() }
 
 /** Marks this element as the page's default focus target for entry from the navigation rail. */

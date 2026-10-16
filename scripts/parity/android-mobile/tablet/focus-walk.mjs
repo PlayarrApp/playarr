@@ -16,6 +16,7 @@ const walks = [
   ["search", "/search", ["down", "down", "down", "right", "right"]],
   ["movies", "/movies", ["right", "right", "down", "down", "left", "up"]],
   ["calendar-week", "/calendar?view=week&date=2026-10-14", ["right", "right", "down", "down", "left"]],
+  ["calendar-month", "/calendar?view=month&date=2026-10-14", ["right", "right", "down"]],
   ["home", "/", ["right", "right", "down", "right", "up"]],
 ];
 const lab = async () => { const f = await driver.focused().catch(() => null); return f ? JSON.stringify(f.label ?? f) : "-"; };

@@ -26,6 +26,10 @@ sealed interface PlayarrRingShape {
 fun Modifier.playarrFocusRing(shape: PlayarrRingShape): Modifier {
     val metrics = PlayarrPageTokens.current()
     val colour = PlayarrWebTheme.palette.focusRing
+    // Opt-in (default off, television unchanged): web draws the ring for :focus-visible only, after the first key event.
+    if (io.playarr.shared.designsystem.component.LocalPlayarrRingKeyboardOnly.current &&
+        androidx.compose.ui.platform.LocalInputModeManager.current.inputMode != androidx.compose.ui.input.InputMode.Keyboard
+    ) return this
     return drawBehind {
         val width = metrics.focusRingWidth.toPx()
         // The stroke is centred on its path: push the path out by the offset plus half the width.

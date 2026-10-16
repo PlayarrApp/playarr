@@ -3230,6 +3230,8 @@ internal fun ExperienceParitySettingsScreen(
         }
     }
     if (isTelevision) {
+        val tabletBackFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+        androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalPlayarrBackFocus provides (if (LocalStageScale.current != 1f) tabletBackFocus else null)) {
         PlayarrPageLayout(
             pageId = PlayarrPageId.Settings,
             header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), onBack = onBack, backActive = true),
@@ -3248,6 +3250,7 @@ internal fun ExperienceParitySettingsScreen(
                 connectionTest = connectionTest,
                 viewModel = viewModel,
             )
+        }
         }
         invite?.let { PlayarrInviteDialog(it, viewModel::dismissInvite) }
         return
@@ -4243,7 +4246,9 @@ private fun TvSettingsBody(
     val listTop = if (tablet) webVu(128f, 15f, 174f) else 162.dp
     // Web default focus: the section list, on the first (selected) section; LEFT/RIGHT then cross to the panel.
     val firstRow = remember { androidx.compose.ui.focus.FocusRequester() }
-    TvDefaultFocusEffect(Unit) { runCatching { firstRow.requestFocus() } }
+    // Web's default focus on Settings is the header Back control; the television keeps the first section (its tuned behaviour).
+    val settingsBack = io.playarr.shared.designsystem.page.LocalPlayarrBackFocus.current
+    TvDefaultFocusEffect(Unit) { (settingsBack?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false) || runCatching { firstRow.requestFocus() }.getOrDefault(false) }
     // The page is darker (lighter in the light theme) behind the section list and fades to the panel tone from x 680 to 1150.
     val start = if (webIsDark) Color(0xFF1B181B) else Color(0xFFFBFAF9)
     val mid = if (webIsDark) Color(0xFF252125) else Color(0xFFF3F1F2)

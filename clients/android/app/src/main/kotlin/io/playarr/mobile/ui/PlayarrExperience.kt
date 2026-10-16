@@ -2614,12 +2614,19 @@ private fun ExperienceNavHost(
             deepLinks = listOf(navDeepLink { uriPattern = "playarr://app/calendar?query={query}" }),
         ) {
             ExperienceOnlineGate(isOnline, isTelevision, "calendar") {
+                val calendarFirstEntry = remember { CalendarFirstEntry() }
+                androidx.compose.runtime.CompositionLocalProvider(
+                    io.playarr.shared.designsystem.component.LocalPlayarrRingKeyboardOnly provides (LocalStageScale.current != 1f),
+                    LocalCalendarFirstEntry provides calendarFirstEntry,
+                    io.playarr.shared.designsystem.page.LocalPlayarrNavRightExit provides (if (LocalStageScale.current != 1f) ({ calendarFirstEntry.requester?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false }) else null),
+                ) {
                 ExperienceCalendarRoute(
                     isTelevision = isTelevision,
                     onBack = { navController.openExperienceTopLevel("home") },
                     onOpenWork = { navController.navigate("experience-detail/$it") },
                     onPlay = { navController.navigate("experience-player/$it") },
                 )
+                }
             }
         }
         // `folders?query=root%3D<id>%26path%3DSeason%2520A` seeds the folder view's SavedStateHandle with the exact
@@ -4897,6 +4904,8 @@ private fun TelevisionSearchBody(
         var focused by remember { mutableStateOf(false) }
         var initialSearchFocusHandled by remember { mutableStateOf(false) }
         val searchFieldFocus = remember { FocusRequester() }
+        val searchFocusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        val searchTablet = LocalStageScale.current != 1f
         val softwareKeyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
         if (query.isBlank() && !filtersOpen && !initialSearchFocusHandled) {
             // Web `data-tv-focus-default` lands on the empty Search field when there is no selected result.
@@ -4941,6 +4950,13 @@ private fun TelevisionSearchBody(
                     .onPreviewKeyEvent { event ->
                         if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER) {
                             softwareKeyboardController?.show()
+                            true
+                        } else if (searchTablet && query.isBlank() && !filtersOpen && event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+                            // Web: with no results Down stays in the field (it must not walk off into the navigation rail).
+                            true
+                        } else if (searchTablet && query.isBlank() && event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+                            // Web: Right from the empty field reaches the Filters launcher.
+                            searchFocusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right)
                             true
                         } else {
                             false

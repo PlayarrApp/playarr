@@ -157,8 +157,8 @@ private fun ExperienceCalendarScreen(
 ) {
     val state by viewModel.calendar.state.collectAsState()
     LaunchedEffect(state.mode) { parityLog("calendar view=${state.mode.name.lowercase()}") }
-    // The tablet is touch-first: web's Today focus is only drawn in keyboard modality, so no ring is forced at open (television keeps it).
-    if (isTelevision && LocalStageScale.current == 1f) {
+    // Web focuses Today at open but draws the ring only after a key event (:focus-visible): the tablet keeps the focus and waits for the key for the ring.
+    if (isTelevision) {
         // Web: opening the calendar from the rail puts focus on Today straight away.
         val contentEntry = LocalTvContentEntry.current
         TvDefaultFocusEffect(Unit, takeFirst = true) { runCatching { contentEntry.requester?.requestFocus() } }
@@ -1041,6 +1041,13 @@ private fun CalendarWeekBody(
     val dayItems = remember(groups, zone) { groups.map { groupSeriesEpisodes(it.entries, zone) } }
     val counts = remember(dayItems) { dayItems.map { it.size } }
     val requesters = remember(dayItems) { dayItems.map { column -> column.map { FocusRequester() } } }
+    val firstEntry = LocalCalendarFirstEntry.current
+    // Only a visible week with entries offers a first entry: clear it while loading, empty or when this view leaves composition.
+    val offered = if (loading) null else requesters.firstOrNull { it.isNotEmpty() }?.first()
+    androidx.compose.runtime.DisposableEffect(offered) {
+        firstEntry.requester = offered
+        onDispose { if (firstEntry.requester === offered) firstEntry.requester = null }
+    }
     val track = rememberScrollState()
     val columnScroll = remember(groups.size) { List(groups.size) { ScrollState(0) } }
     androidx.compose.runtime.CompositionLocalProvider(

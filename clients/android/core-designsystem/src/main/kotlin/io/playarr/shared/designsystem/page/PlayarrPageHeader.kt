@@ -33,6 +33,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
@@ -287,6 +288,9 @@ private fun PlayarrPhoneBackPill(
     }
 }
 
+/** A page that wants its header Back control focused on entry (web's default on Settings) provides a requester here; null elsewhere. */
+val LocalPlayarrBackFocus = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.ui.focus.FocusRequester?> { null }
+
 /** The television Back button: a round ghost button that takes only the theme focus ring, never a fill (owner decision Q10). */
 @Composable
 private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
@@ -308,6 +312,7 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
             border = if (active) null else BorderStroke(1.dp, palette.pillBorder),
             modifier = Modifier
                 .size(metrics.controlWidth, metrics.control)
+                .then(LocalPlayarrBackFocus.current?.let { Modifier.focusRequester(it) } ?: Modifier)
                 .then(
                     if (active) Modifier.drawBehind {
                         drawCircle(palette.ink, radius = 29.9.dp.toPx(), style = Stroke(3.dp.toPx()))
