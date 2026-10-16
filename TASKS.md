@@ -113,6 +113,7 @@ Steps only the repository owner can perform.
 | 10560 | macOS light parity: backdrop opacity as web, grid shadow clearance, driver settle after Select | done | parity-apple | macos-light-shared | 57.10025 | 2026-10-17 12:00 ICT | PR open: #1518. PR #1518 merged 2026-10-15. |
 | 10597 | macOS library grid: end-side scroll fade as web | done | parity-apple | macos-library-fade | 57.10025 | 2026-10-17 12:00 ICT | PR open: #1532. PR #1532 merged 2026-10-16. |
 | 10609 | macOS focus: Calendar opens on the Today button (web default focus), profiles page reports focus tags | in_review | parity-apple | macos-focus-fix | 57.10025 | 2026-10-17 12:00 ICT | PR open: #1542. |
+| 10618 | macOS lands where web does: Calendar Down goes to Filters, Settings gear opens Settings, Play opens the player in live runs | in_review | parity-apple | macos-web-parity | 57.10025 | 2026-10-17 12:00 ICT | PR open: #1551. |
 
 ## 1. Web follow-ups (2026-10-10)
 
