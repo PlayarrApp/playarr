@@ -6141,7 +6141,7 @@ private fun ExperienceVideoDetailContent(
                     autoFocusPlay = series == null,
                     playFocus = playFocus,
                     television = true,
-                    modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) 6.dp else 0.dp)),
+                    modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) 9.dp else 0.dp)),
                 )
             }
             if (series != null) {
@@ -6650,7 +6650,7 @@ private fun VideoDetailCopy(
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
             )
-            WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp))
+            WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp + (if (LocalStageScale.current != 1f) 3.7.dp else 0.dp)))
             episode?.episode?.title?.let { title ->
                 Text(
                     title,
@@ -6658,11 +6658,11 @@ private fun VideoDetailCopy(
                     fontSize = 21.sp,
                     fontWeight = FontWeight(570),
                     letterSpacing = (-0.739).sp,
-                    modifier = Modifier.padding(top = 17.dp),
+                    modifier = Modifier.padding(top = 17.dp + (if (LocalStageScale.current != 1f) 2.3.dp else 0.dp)),
                 )
             }
             androidx.compose.foundation.layout.FlowRow(
-                modifier = Modifier.padding(top = 27.dp + (if (LocalStageScale.current != 1f) 6.dp else 0.dp)),
+                modifier = Modifier.padding(top = 27.dp),
                 horizontalArrangement = Arrangement.spacedBy(13.6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -7150,12 +7150,12 @@ internal fun SeriesEpisodeBrowser(
         modifier = modifier
             .then(
                 if (isTelevision) {
-                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp, top = 357.dp + 16.5.dp * tabletDetail)
+                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp, top = 357.dp + 22.5.dp * tabletDetail)
                 } else {
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
             ),
-        verticalArrangement = Arrangement.spacedBy(18.dp + 25.4.dp * tabletDetail),
+        verticalArrangement = Arrangement.spacedBy(18.dp + 49.4.dp * tabletDetail),
     ) {
         if (!isTelevision) Text(
             playarrString(PlayarrString.DetailTitleSeasonsAndEpisodes, "title" to work.title),
@@ -7200,9 +7200,9 @@ internal fun SeriesEpisodeBrowser(
             LazyRow(
                 state = if (isTelevision) tvRails.rowState(seasonIndex) else androidx.compose.foundation.lazy.rememberLazyListState(),
                 // The viewport reaches 40 dp left of the heading line so a focused first tile's ring, corner and glow are not clipped (web's track left gutter).
-                modifier = if (isTelevision) Modifier.padding(top = 18.3.dp + 13.6.dp * tabletDetail).extendStart(40.dp) else Modifier,
+                modifier = if (isTelevision) Modifier.padding(top = 18.3.dp + 5.6.dp * tabletDetail).extendStart(40.dp) else Modifier,
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp else 12.dp),
-                contentPadding = if (isTelevision) PaddingValues(start = 44.dp, top = 18.dp, end = tabletTrackEnd(24.dp)) else PaddingValues(vertical = 6.dp),
+                contentPadding = if (isTelevision) PaddingValues(start = 44.dp, top = 18.dp, end = tabletTrackEnd(24.dp), bottom = 24.dp * tabletDetail) else PaddingValues(vertical = 6.dp),
             ) {
                 itemsIndexed(season.episodes, key = { _, it -> it.episode.id }) { episodeIndex, episode ->
                     EpisodeDetailCard(
