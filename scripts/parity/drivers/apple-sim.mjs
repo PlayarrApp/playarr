@@ -256,7 +256,7 @@ export async function createDriver({ args = [], out } = {}) {
     // A fresh sign-in per launch, as wall.sh does (the saved session may be revoked by the capture step's own launches).
     const login = join(process.env.TRUSTED ?? "", "scripts/apple-wall/login.py"), tokens = [];
     if (process.env.SERVER_URL && existsSync(login)) {
-      const env = { ...process.env, DEVICE_NAME: `wall-${device}` };
+      const env = { ...process.env, DEVICE_NAME: process.env.APPLE_WALL_DEVICE_NAME ?? `wall-${device}` };
       const [access, refresh] = run("python3", [login], { env }).trim().split(" ");
       run("xcrun", ["simctl", "spawn", udid, "defaults", "write", bundle, "com.playarr.playarr.tvos.deviceID", "-string", run("python3", [login, "--device-id"], { env }).trim()]);
       tokens.push("-PlayarrServerURL", process.env.SERVER_URL, "-PlayarrAccessToken", access, "-PlayarrRefreshToken", refresh);

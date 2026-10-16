@@ -53,7 +53,7 @@ P
 }
 
 token() { # a fresh sign-in for the Device Test profile: sets ACCESS_TOKEN and REFRESH_TOKEN (the pair one login issued), masked in the log
-  local t; t=$(DEVICE_NAME="wall-$DEVICE" python3 "$TRUSTED/scripts/apple-wall/login.py") || return 1
+  local t; t=$(DEVICE_NAME="${APPLE_WALL_DEVICE_NAME:-wall-$DEVICE}" python3 "$TRUSTED/scripts/apple-wall/login.py") || return 1
   read -r ACCESS_TOKEN REFRESH_TOKEN <<<"$t"
   echo "::add-mask::$ACCESS_TOKEN" >&2; echo "::add-mask::$REFRESH_TOKEN" >&2
 }
@@ -92,7 +92,7 @@ shot() { # <file.png|jpg>: one frame of the device, never the desktop
 }
 
 pin_device() { # the app must send the device id its token was issued for
-  local id; id=$(DEVICE_NAME="wall-$DEVICE" python3 "$TRUSTED/scripts/apple-wall/login.py" --device-id)
+  local id; id=$(DEVICE_NAME="${APPLE_WALL_DEVICE_NAME:-wall-$DEVICE}" python3 "$TRUSTED/scripts/apple-wall/login.py" --device-id)
   case $KIND in
     tvos) xcrun simctl spawn "$UDID" defaults write "$BUNDLE" com.playarr.playarr.tvos.deviceID -string "$id" ;;
     macos) CFFIXED_USER_HOME="$WORK/machome" defaults write "$BUNDLE" com.playarr.playarr.tvos.deviceID -string "$id" ;;

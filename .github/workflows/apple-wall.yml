@@ -165,6 +165,7 @@ jobs:
     env:
       DEVICE: ${{ matrix.device }}
       THEMES: ${{ matrix.themes }}
+      APPLE_WALL_DEVICE_NAME: wall-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.device }}-${{ matrix.slug }}
       TRUSTED: ${{ github.workspace }}/trusted
       SRC: ${{ github.workspace }}/src
       HAVE_TS: ${{ secrets.TS_OAUTH_SECRET != '' && secrets.TS_OAUTH_CLIENT_ID != '' }}

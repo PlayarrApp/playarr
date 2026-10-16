@@ -1,0 +1,1 @@
+- Give each hosted Apple wall matrix job its own deterministic authentication device identity so parallel theme captures do not revoke one another's refresh-token family.

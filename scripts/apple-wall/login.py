@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prints an access token for the device test account on its "Device Test" profile ("<access> <refresh>" on one line, to stdout).
 
-Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD, optional DEVICE_NAME. Errors name the step, never a value.
+Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD, optional DEVICE_NAME or APPLE_WALL_DEVICE_NAME. Errors name the step, never a value.
 """
 import json
 import os
@@ -11,12 +11,20 @@ import urllib.request
 import uuid
 
 server = os.environ["SERVER_URL"].strip().rstrip("/")
-# A fixed per-device-name id keeps one registered device per wall device across runs.
-device = {"device_id": "5a1e0000-0000-4000-8000-%012x" % (uuid.uuid5(uuid.NAMESPACE_DNS, "apple-wall." + os.environ.get("DEVICE_NAME", "wall")).int & 0xFFFFFFFFFFFF),
-          "device_name": os.environ.get("DEVICE_NAME", "apple-wall"), "client_platform": "ios", "client_version": "parity"}
+
+
+def device_identity():
+    # A hosted matrix job gets its own refresh-token family. Outside the hosted
+    # workflow, retain the stable per-device identity used by existing callers.
+    name = os.environ.get("APPLE_WALL_DEVICE_NAME") or os.environ.get("DEVICE_NAME")
+    seed_name = name or "wall"
+    display_name = name or "apple-wall"
+    return {"device_id": "5a1e0000-0000-4000-8000-%012x" % (uuid.uuid5(uuid.NAMESPACE_DNS, "apple-wall." + seed_name).int & 0xFFFFFFFFFFFF),
+            "device_name": display_name, "client_platform": "ios", "client_version": "parity"}
+
 
 if "--device-id" in sys.argv:  # the id the app must send with this token (the server ties a token to its device)
-    print(device["device_id"])
+    print(device_identity()["device_id"])
     sys.exit(0)
 
 
@@ -34,6 +42,7 @@ def call(path, body=None, token=None, what="request"):
 
 
 def main():
+    device = device_identity()
     login = call("/api/v1/auth/login", dict(device, username=os.environ["TEST_USERNAME"], password=os.environ["TEST_PASSWORD"]), what="login")
     profiles = call("/api/v1/users/profiles", token=login["access_token"], what="profile list")
     profiles = profiles if isinstance(profiles, list) else profiles.get("profiles", [])

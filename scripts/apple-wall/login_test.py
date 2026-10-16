@@ -4,6 +4,7 @@ import io
 import os
 from pathlib import Path
 import unittest
+import uuid
 from unittest.mock import patch
 
 
@@ -62,6 +63,37 @@ class LoginIdentityGuardTests(unittest.TestCase):
     def test_aborts_if_profile_identity_is_missing_before_switch(self):
         with self.assertRaisesRegex(SystemExit, "not found"):
             self.run_login([self.login, [{"display_name": "Device Test"}]])
+
+    def test_default_identity_retains_stable_wall_fallback(self):
+        with patch.dict(os.environ, {"DEVICE_NAME": "", "APPLE_WALL_DEVICE_NAME": ""}):
+            identity = login_module.device_identity()
+        expected = "5a1e0000-0000-4000-8000-%012x" % (
+            uuid.uuid5(uuid.NAMESPACE_DNS, "apple-wall.wall").int & 0xFFFFFFFFFFFF
+        )
+        self.assertEqual(identity["device_id"], expected)
+        self.assertEqual(identity["device_name"], "apple-wall")
+
+    def test_explicit_job_names_isolate_device_ids(self):
+        names = ["wall-run-attempt-macos-dark", "wall-run-attempt-macos-light"]
+        identities = []
+        for name in names:
+            with patch.dict(os.environ, {"APPLE_WALL_DEVICE_NAME": name, "DEVICE_NAME": "wall-macos"}):
+                identities.append(login_module.device_identity())
+        self.assertNotEqual(identities[0]["device_id"], identities[1]["device_id"])
+        self.assertEqual([identity["device_name"] for identity in identities], names)
+
+    def test_login_and_device_id_bootstrap_share_explicit_identity(self):
+        name = "wall-run-attempt-tvos-light"
+        with patch.dict(os.environ, {"APPLE_WALL_DEVICE_NAME": name, "DEVICE_NAME": "wall-tvos"}):
+            expected = login_module.device_identity()
+            call, _ = self.run_login([
+                {"user_id": "device-profile-id", "access_token": "access", "refresh_token": "refresh"},
+                [self.profile],
+                [{**self.profile, "is_current": True}],
+            ])
+            self.assertEqual(call.call_args_list[0].args[1]["device_id"], expected["device_id"])
+            self.assertEqual(call.call_args_list[0].args[1]["device_name"], expected["device_name"])
+            self.assertEqual(login_module.device_identity()["device_id"], expected["device_id"])
 
 
 if __name__ == "__main__":
