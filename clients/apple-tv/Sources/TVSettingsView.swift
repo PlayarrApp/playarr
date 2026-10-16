@@ -1,9 +1,16 @@
 import SwiftUI
 
 enum TVSettingsAppearanceLayout {
-    static let detailWidth: CGFloat = 995
+    static let railWidth: CGFloat = 470.4
+    static let appearanceDetailWidth: CGFloat = 1041.6
+    static let otherDetailWidth: CGFloat = 995
+    static let controlHeight: CGFloat = 56
+    static let controlCornerRadius: CGFloat = 12
+    static let selectedScale: CGFloat = 1.025
+    static let sectionGap: CGFloat = 30.24
+    static let controlGap: CGFloat = 16.2
 
-    static func equalSegmentWidths(count: Int, in width: CGFloat = detailWidth) -> [CGFloat] {
+    static func equalSegmentWidths(count: Int, in width: CGFloat = appearanceDetailWidth) -> [CGFloat] {
         guard count > 0 else { return [] }
         return Array(repeating: width / CGFloat(count), count: count)
     }
@@ -41,7 +48,7 @@ struct TVSettingsView: View {
             // Web: the selected section is the page subtitle (shared small style), nothing else under the title.
             TVPageHeader(title: "Preferences", detail: sections[selectedSection].title, backFocused: true)
 
-            // `.settings-option` rows: x 153.6, y 162, 480.4 x 91.9, pitch 91.9.
+            // `.settings-option` rows: x 153.6, y 162, 470.4 x 91.9, pitch 91.9.
             ForEach(Array(sections.enumerated()), id: \.offset) { index, section in
                 let selected = selectedSection == index
                 let top = 162 + CGFloat(index) * 91.9
@@ -51,7 +58,7 @@ struct TVSettingsView: View {
                     ZStack(alignment: .topLeading) {
                         Rectangle()
                             .fill(selected ? DesignTokens.Color.backgroundRaised : Color.clear)
-                            .frame(width: 480.4, height: 91.9)
+                            .frame(width: TVSettingsAppearanceLayout.railWidth, height: 91.9)
                         Text(section.number)
                             .font(TVTheme.font(size: 9.92, weight: .bold))
                             .foregroundStyle(DesignTokens.Color.textDisabled)
@@ -67,7 +74,7 @@ struct TVSettingsView: View {
                             .foregroundStyle(selected ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
                             .placed(x: selected ? 432.6 : 427.6, y: 30.3, w: 20.8, h: 31.2)
                     }
-                    .frame(width: 480.4, height: 91.9, alignment: .topLeading)
+                    .frame(width: TVSettingsAppearanceLayout.railWidth, height: 91.9, alignment: .topLeading)
                     .modifier(TVNavItemFocusFill(fill: DesignTokens.Color.backgroundRaised, cornerRadius: 0))
                 }
                 // Web settings menu: the focused row gets the selected fill and opens its panel; no system platter.
@@ -75,7 +82,7 @@ struct TVSettingsView: View {
                 .focused($focusedSection, equals: index)
                 .disabled(TVParityLaunch.frozen) // not .focusable: on a Button it adds a second, inert focus target
                 .focusEffectDisabled()
-                .pinned(x: 153.6, y: top, w: 480.4, h: 91.9)
+                .pinned(x: 153.6, y: top, w: TVSettingsAppearanceLayout.railWidth, h: 91.9)
             }
 
             Color.clear.frame(width: 0, height: 0)
@@ -87,14 +94,14 @@ struct TVSettingsView: View {
                     .focusSection()
             }
 
-            // Detail panel at x 773.8 (`.settings-detail-panel`).
+            // Detail panel at x 773.8 (`.settings-detail-panel`, captured web position).
             VStack(alignment: .leading, spacing: 22) {
                 if selectedSection == 0 || (selectedSection == 4 && !TVParityLaunch.frozen) {
                     sectionDetail
                 }
             }
-            .frame(width: 995, alignment: .topLeading)
-            .pinned(x: 773.8, y: selectedSection == 0 ? 0 : 210, w: 995, alignment: .topLeading)
+            .frame(width: selectedSection == 0 ? TVSettingsAppearanceLayout.appearanceDetailWidth : TVSettingsAppearanceLayout.otherDetailWidth, alignment: .topLeading)
+            .pinned(x: 773.8, y: selectedSection == 0 ? 0 : 210, w: selectedSection == 0 ? TVSettingsAppearanceLayout.appearanceDetailWidth : TVSettingsAppearanceLayout.otherDetailWidth, alignment: .topLeading)
             .focusSection()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -115,47 +122,47 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: 210, w: 995, h: 39.6)
+                    .placed(x: 0, y: 210, w: TVSettingsAppearanceLayout.appearanceDetailWidth, h: 39.6)
                 choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: TVSettingsAppearanceLayout.equalSegmentWidths(count: 3), y: 265.8) { index in
                     displayPreferences.themePreference = [.system, .light, .dark][index]
                 }
                 Rectangle()
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
-                    .frame(width: 995, height: 1)
-                    .offset(y: 346)
+                    .frame(width: TVSettingsAppearanceLayout.appearanceDetailWidth, height: 1)
+                    .offset(y: 210 + 39.6 + TVSettingsAppearanceLayout.controlGap + TVSettingsAppearanceLayout.controlHeight + TVSettingsAppearanceLayout.sectionGap)
                 Text("Home screen artwork")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: 377.3, w: 995, h: 39.6)
+                    .placed(x: 0, y: 383.28, w: TVSettingsAppearanceLayout.appearanceDetailWidth, h: 39.6)
                 Text("Show portrait covers instead of wide media thumbnails on the home screen.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .placed(x: 0, y: 422.5, w: 995, h: 20.3)
-                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: TVSettingsAppearanceLayout.equalSegmentWidths(count: 2), y: 459) { index in
+                    .placed(x: 0, y: 428.48, w: TVSettingsAppearanceLayout.appearanceDetailWidth, h: 20.3)
+                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: TVSettingsAppearanceLayout.equalSegmentWidths(count: 2), y: 464.98) { index in
                     displayPreferences.homeCovers = index == 1
                 }
                 Rectangle()
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
-                    .frame(width: 995, height: 1)
-                    .offset(y: 539.5)
+                    .frame(width: TVSettingsAppearanceLayout.appearanceDetailWidth, height: 1)
+                    .offset(y: 551.22)
                 // Web Appearance > Artwork size: one size for all artwork (Home, Library, Search and more).
                 Text("Artwork size")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: 570.8, w: 995, h: 39.6)
+                    .placed(x: 0, y: 582.46, w: TVSettingsAppearanceLayout.appearanceDetailWidth, h: 39.6)
                 Text("Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .placed(x: 0, y: 616, w: 995, h: 20.3)
+                    .placed(x: 0, y: 627.66, w: TVSettingsAppearanceLayout.appearanceDetailWidth, h: 20.3)
                 choice(["Small", "Medium", "Large"],
                        selected: TVDisplayPreferences.ArtworkSize.allCases.firstIndex(of: displayPreferences.artworkSize) ?? 1,
-                       widths: [331.7, 331.7, 331.7], y: 652.5) { index in
+                       widths: TVSettingsAppearanceLayout.equalSegmentWidths(count: 3), y: 664.16) { index in
                     displayPreferences.artworkSize = TVDisplayPreferences.ArtworkSize.allCases[index]
                 }
             }
-            .frame(width: 995, height: 760, alignment: .topLeading) // real height: controls outside a 1-pt frame cannot take focus
+            .frame(width: TVSettingsAppearanceLayout.appearanceDetailWidth, height: 760, alignment: .topLeading) // real height: controls outside a 1-pt frame cannot take focus
         case 4:
             Text("Playarr Server")
                 .font(.system(size: 22, weight: .semibold))
@@ -195,7 +202,7 @@ struct TVSettingsView: View {
         }
     }
 
-    /// Web `.theme-choice`: a bordered segmented control of 48-50px buttons; each is a real, focusable choice.
+    /// Web Appearance controls are 56px high with a 12px radius; each segment is a real, focusable choice.
     private func choice(_ labels: [String], selected: Int, widths: [CGFloat], y: CGFloat, onSelect: ((Int) -> Void)? = nil) -> some View {
         HStack(spacing: 0) {
             ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
@@ -203,16 +210,18 @@ struct TVSettingsView: View {
                     Text(label)
                         .font(TVTheme.font(size: 11.52, weight: .bold))
                         .foregroundStyle(index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
-                        .frame(width: widths[index], height: 50)
+                        .frame(width: widths[index], height: TVSettingsAppearanceLayout.controlHeight)
                         .background(index == selected ? DesignTokens.Color.textPrimary : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: TVSettingsAppearanceLayout.controlCornerRadius, style: .continuous))
+                        .scaleEffect(index == selected ? TVSettingsAppearanceLayout.selectedScale : 1)
                 }
-                .buttonStyle(TVRingButtonStyle(cornerRadius: 0))
+                .buttonStyle(TVRingButtonStyle(cornerRadius: TVSettingsAppearanceLayout.controlCornerRadius))
                 .focusEffectDisabled()
                 .disabled(onSelect == nil || TVParityLaunch.frozen)
             }
         }
         .overlay(Rectangle().stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
-        .pinned(x: 0, y: y, h: 50)
+        .pinned(x: 0, y: y, h: TVSettingsAppearanceLayout.controlHeight)
     }
 
     private func themeChip(_ label: String, selected: Bool) -> some View {

@@ -1,1 +1,2 @@
-- Expand appearance setting segments evenly across the detail column and align library row spacing with the measured web layout.
+- Match macOS Appearance settings to the measured web rail and detail widths, segmented control geometry, selection scale, and section spacing.
+- Expand Appearance setting segments evenly across the detail column and align library row spacing with the measured web layout.
