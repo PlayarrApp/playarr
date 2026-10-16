@@ -5,6 +5,16 @@ import XCTest
 
 /// Locks the pieces of the web parity work that are pure functions.
 final class TVWebParityTests: XCTestCase {
+    func testAppearanceSegmentsFillTheSettingsDetailColumnEqually() {
+        XCTAssertEqual(TVSettingsAppearanceLayout.equalSegmentWidths(count: 3), [995.0 / 3, 995.0 / 3, 995.0 / 3])
+        XCTAssertEqual(TVSettingsAppearanceLayout.equalSegmentWidths(count: 2), [497.5, 497.5])
+        XCTAssertEqual(TVSettingsAppearanceLayout.equalSegmentWidths(count: 0), [])
+    }
+
+    func testLibraryRowsUseTheMeasuredWebCardPitch() {
+        XCTAssertEqual(DesignTokens.Shell.libraryCardPitchY, 240.4, accuracy: 0.001)
+    }
+
     /// Web `orderWorks`: numeric, case-insensitive order on the sort title ("2" before "10").
     func testLibraryTitleOrderIsNumericLikeTheWeb() {
         func work(_ title: String) -> Work {

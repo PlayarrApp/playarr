@@ -1,5 +1,14 @@
 import SwiftUI
 
+enum TVSettingsAppearanceLayout {
+    static let detailWidth: CGFloat = 995
+
+    static func equalSegmentWidths(count: Int, in width: CGFloat = detailWidth) -> [CGFloat] {
+        guard count > 0 else { return [] }
+        return Array(repeating: width / CGFloat(count), count: count)
+    }
+}
+
 struct TVSettingsView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Environment(TVDisplayPreferences.self) private var displayPreferences
@@ -107,7 +116,7 @@ struct TVSettingsView: View {
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .placed(x: 0, y: 210, w: 995, h: 39.6)
-                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [80.4, 67.6, 68.1], y: 265.8) { index in
+                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: TVSettingsAppearanceLayout.equalSegmentWidths(count: 3), y: 265.8) { index in
                     displayPreferences.themePreference = [.system, .light, .dark][index]
                 }
                 Rectangle()
@@ -123,7 +132,7 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
                     .placed(x: 0, y: 422.5, w: 995, h: 20.3)
-                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: [110.5, 78], y: 459) { index in
+                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: TVSettingsAppearanceLayout.equalSegmentWidths(count: 2), y: 459) { index in
                     displayPreferences.homeCovers = index == 1
                 }
                 Rectangle()

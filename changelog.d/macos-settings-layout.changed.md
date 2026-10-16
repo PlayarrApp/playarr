@@ -1,0 +1,1 @@
+- Expand appearance setting segments evenly across the detail column and align library row spacing with the measured web layout.
