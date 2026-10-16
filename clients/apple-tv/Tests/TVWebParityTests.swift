@@ -6,9 +6,14 @@ import XCTest
 /// Locks the pieces of the web parity work that are pure functions.
 final class TVWebParityTests: XCTestCase {
     func testAppearanceSegmentsFillTheSettingsDetailColumnEqually() {
-        XCTAssertEqual(TVSettingsAppearanceLayout.equalSegmentWidths(count: 3), [347.2, 347.2, 347.2])
-        XCTAssertEqual(TVSettingsAppearanceLayout.equalSegmentWidths(count: 2), [520.8, 520.8])
-        XCTAssertEqual(TVSettingsAppearanceLayout.equalSegmentWidths(count: 2, in: 995), [497.5, 497.5])
+        XCTAssertEqual(TVSettingsAppearanceLayout.segmentGap, 8)
+        for (count, width) in [(3, TVSettingsAppearanceLayout.appearanceDetailWidth), (2, TVSettingsAppearanceLayout.appearanceDetailWidth), (2, 995.0)] {
+            let segments = TVSettingsAppearanceLayout.equalSegmentWidths(count: count, in: width)
+            XCTAssertEqual(segments.count, count)
+            XCTAssertTrue(segments.allSatisfy { $0 > 0 })
+            XCTAssertEqual(segments.reduce(0, +) + CGFloat(count - 1) * TVSettingsAppearanceLayout.segmentGap, width, accuracy: 0.001)
+            XCTAssertTrue(segments.dropFirst().allSatisfy { abs($0 - segments[0]) < 0.001 })
+        }
         XCTAssertEqual(TVSettingsAppearanceLayout.equalSegmentWidths(count: 0), [])
     }
 

@@ -1,0 +1,1 @@
+- Match macOS Appearance segmented controls to the web spacing, rounded surfaces, and per-option borders.

@@ -7,12 +7,14 @@ enum TVSettingsAppearanceLayout {
     static let controlHeight: CGFloat = 56
     static let controlCornerRadius: CGFloat = 12
     static let selectedScale: CGFloat = 1.025
+    static let segmentGap: CGFloat = 8
     static let sectionGap: CGFloat = 30.24
     static let controlGap: CGFloat = 16.2
 
     static func equalSegmentWidths(count: Int, in width: CGFloat = appearanceDetailWidth) -> [CGFloat] {
         guard count > 0 else { return [] }
-        return Array(repeating: width / CGFloat(count), count: count)
+        let available = width - CGFloat(count - 1) * segmentGap
+        return Array(repeating: available / CGFloat(count), count: count)
     }
 }
 
@@ -204,14 +206,21 @@ struct TVSettingsView: View {
 
     /// Web Appearance controls are 56px high with a 12px radius; each segment is a real, focusable choice.
     private func choice(_ labels: [String], selected: Int, widths: [CGFloat], y: CGFloat, onSelect: ((Int) -> Void)? = nil) -> some View {
-        HStack(spacing: 0) {
+        HStack(spacing: TVSettingsAppearanceLayout.segmentGap) {
             ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
                 Button { onSelect?(index) } label: {
                     Text(label)
                         .font(TVTheme.font(size: 11.52, weight: .bold))
                         .foregroundStyle(index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                         .frame(width: widths[index], height: TVSettingsAppearanceLayout.controlHeight)
-                        .background(index == selected ? DesignTokens.Color.textPrimary : Color.clear)
+                        .background {
+                            RoundedRectangle(cornerRadius: TVSettingsAppearanceLayout.controlCornerRadius, style: .continuous)
+                                .fill(index == selected ? DesignTokens.Color.textPrimary : DesignTokens.Color.backgroundRaised.opacity(0.64))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: TVSettingsAppearanceLayout.controlCornerRadius, style: .continuous)
+                                        .strokeBorder(DesignTokens.Stage.choiceBorder(selected: index == selected), lineWidth: 1)
+                                }
+                        }
                         .clipShape(RoundedRectangle(cornerRadius: TVSettingsAppearanceLayout.controlCornerRadius, style: .continuous))
                         .scaleEffect(index == selected ? TVSettingsAppearanceLayout.selectedScale : 1)
                 }
@@ -220,7 +229,6 @@ struct TVSettingsView: View {
                 .disabled(onSelect == nil || TVParityLaunch.frozen)
             }
         }
-        .overlay(Rectangle().stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
         .pinned(x: 0, y: y, h: TVSettingsAppearanceLayout.controlHeight)
     }
 

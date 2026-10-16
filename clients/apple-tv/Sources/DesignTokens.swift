@@ -38,6 +38,12 @@ enum DesignTokens {
         static let inkMuted = adaptive(light: 0x4d4248, dark: 0xc2b5bb)
         /// The pre-AAA muted ink, kept only for hairlines and borders (web borders did not change).
         static let line = adaptive(light: 0xa5969e, dark: 0x887a82)
+        /// `--line` at 76% composited over the button's own fill and page backdrop.
+        static func choiceBorder(selected: Bool) -> SwiftUI.Color {
+            selected
+                ? adaptive(light: 0x382621, dark: 0xf2eeef)
+                : adaptive(light: 0xd4d0d0, dark: 0x3b363a)
+        }
         static let accentSoft = adaptive(light: 0xc5b8bd, dark: 0x675961)
         /// `--accent` and `--on-accent` (primary buttons).
         static let accent = adaptive(light: 0x4d4248, dark: 0xdfdcdd)
