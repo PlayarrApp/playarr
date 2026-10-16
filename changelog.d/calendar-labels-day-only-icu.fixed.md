@@ -1,1 +1,0 @@
-- Calendar on Hisense VIDAA: day headings read "Monday 12 October" and the week button "12 – 18 Oct" instead of bare day numbers, when the TV's date library returns only the day.

@@ -1,1 +1,0 @@
-- On iPad, the player controls follow the web's wide player: one row with previous, a ringed play button, next and the time on the left and volume, subtitles, queue, quality, info and cast on the right, and the top has a labelled Minimise pill beside close. Phone is unchanged.

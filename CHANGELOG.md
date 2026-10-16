@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Calendar on Hisense VIDAA: day headings read "Monday 12 October" and the week button "12 – 18 Oct" instead of bare day numbers, when the TV's date library returns only the day.
+- On iPad, the player controls follow the web's wide player: one row with previous, a ringed play button, next and the time on the left and volume, subtitles, queue, quality, info and cast on the right, and the top has a labelled Minimise pill beside close. Phone is unchanged.
 - macOS: the light-theme key-art backdrop is as faint as on the web, and the library grid no longer shows a hard edge where card shadows were clipped.
 - Match the iPad library drawer's translucent surface and blur treatment while preserving the phone panel appearance.
 - Android TV: Home rails sit on web's row at every artwork size and in Covers mode (the first row lifts by half the card's extra height, as web centres the focused rail).
