@@ -38,6 +38,7 @@
     "card-size-e2e",
     "filters-panel-e2e",
     "artwork-size-setting-e2e",
+    "layout-alignment-e2e",
     "download-flow-e2e",
     "downloads-offline-e2e",
     "downloads-edit-quality-e2e",
@@ -67,6 +68,7 @@
   },
   "tracked": {},
   "seconds": {
+    "layout-alignment-e2e": 300,
     "music-controls-e2e": 75,
     "nav-smoke": 83,
     "rail-geometry-e2e": 57,
