@@ -10,6 +10,7 @@ import {getSharedVegaPlaybackEngine} from '../platform/media/VegaPlaybackEngine'
 import type {PlayerScreenHandle} from '../screens/PlayerScreen';
 import {useTheme} from '../theme/ThemeProvider';
 import {currentQuery, installParityControl, PARITY_CONTROL, setPendingQuery} from './parityControl';
+import {readParityIdentity} from './parityIdentity';
 
 /** The slice of the navigation container ref this host uses (the typed ref's route-name union is narrower than the strings it is given). */
 export interface NavRefLike {
@@ -95,32 +96,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         return {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message};
       },
       theme: () => schemeRef.current,
-      identity: async () => {
-        const tokenBefore = await client.getAccessToken();
-        if (typeof tokenBefore !== 'string' || tokenBefore.length === 0) throw new Error('device-test identity unavailable');
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        let profiles: Array<{username?: unknown; is_current?: unknown}>;
-        try {
-          const response = await fetch(client.resolveUrl('/api/v1/users/profiles'), {
-            headers: {Authorization: `Bearer ${tokenBefore}`},
-            signal: controller.signal,
-          });
-          if (!response.ok) throw new Error('device-test identity unavailable');
-          const body: unknown = await response.json();
-          if (!Array.isArray(body)) throw new Error('device-test identity unavailable');
-          profiles = body as Array<{username?: unknown; is_current?: unknown}>;
-        } finally {
-          clearTimeout(timeout);
-        }
-        const tokenAfter = await client.getAccessToken();
-        if (tokenAfter !== tokenBefore) throw new Error('device-test identity changed');
-        const current = profiles.filter((profile) => profile.is_current === true);
-        if (current.length !== 1 || typeof current[0]?.username !== 'string' || current[0].username.trim().length === 0) {
-          throw new Error('device-test identity unavailable');
-        }
-        return {username: current[0].username, isCurrentCount: current.length, serverUrl: client.resolveUrl('/')};
-      },
+      identity: () => readParityIdentity({getAccessToken: () => client.getAccessToken(), serverUrl: client.resolveUrl('/'), profilesUrl: client.resolveUrl('/api/v1/users/profiles')}),
     });
   }, [client, navRef, playerRef]);
 

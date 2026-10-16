@@ -182,4 +182,65 @@ describe('parityControl', () => {
       else process.env.PLAYARR_PARITY_CONTROL = previousFlag;
     }
   });
+
+  it('reports only a bounded identity failure code and omits error details', async () => {
+    const previousFlag = process.env.PLAYARR_PARITY_CONTROL;
+    process.env.PLAYARR_PARITY_CONTROL = '1';
+    let receiveUrl: ((event: {url: string}) => void) | undefined;
+    jest.useFakeTimers();
+    jest.doMock('react-native', () => ({
+      Linking: {
+        getInitialURL: () => Promise.resolve(null),
+        addEventListener: (_type: string, listener: (event: {url: string}) => void) => {
+          receiveUrl = listener;
+          return {remove: jest.fn()};
+        },
+      },
+    }));
+    const log = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    try {
+      let control!: typeof import('./parityControl');
+      jest.isolateModules(() => { control = require('./parityControl') as typeof import('./parityControl'); });
+      let identityCalls = 0;
+      const cleanup = control.installParityControl({
+        location: () => '/profiles', configuredServerUrl: () => 'https://example.invalid',
+        route: () => undefined, open: () => undefined, play: () => undefined,
+        stop: () => undefined, setTheme: () => undefined,
+        player: () => ({state: 'idle', positionSeconds: 0, durationSeconds: 0}), theme: () => 'dark',
+        identity: async () => {
+          identityCalls += 1;
+          if (identityCalls === 1) throw Object.assign(new Error('private-token-and-url'), {parityCode: 'http_status_401'});
+          throw new Error('another-private-token-and-url');
+        },
+      });
+      await Promise.resolve();
+
+      receiveUrl!({url: 'pkg://com.streamarr.firetv.main?cmd=state'});
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const output = String(log.mock.calls.at(-1)?.[0]);
+      const state = JSON.parse(output.replace(/^PARITY /, '')) as {identity: unknown; identityError: string | null};
+      expect(state.identity).toBeNull();
+      expect(state.identityError).toBe('http_status_401');
+      expect(output).not.toContain('private-token-and-url');
+      expect(state.identityError).not.toContain('https://example.invalid');
+
+      receiveUrl!({url: 'pkg://com.streamarr.firetv.main?cmd=state'});
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+      await Promise.resolve();
+      const unknownOutput = String(log.mock.calls.at(-1)?.[0]);
+      expect(JSON.parse(unknownOutput.replace(/^PARITY /, '')).identityError).toBe('unknown');
+      expect(unknownOutput).not.toContain('another-private-token-and-url');
+      cleanup();
+    } finally {
+      log.mockRestore();
+      jest.dontMock('react-native');
+      jest.useRealTimers();
+      if (previousFlag === undefined) delete process.env.PLAYARR_PARITY_CONTROL;
+      else process.env.PLAYARR_PARITY_CONTROL = previousFlag;
+    }
+  });
 });

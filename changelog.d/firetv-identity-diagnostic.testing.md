@@ -1,0 +1,1 @@
+- Fire TV parity control reports a bounded device-test identity failure category to help diagnose blocked captures without exposing credentials or arbitrary error details.

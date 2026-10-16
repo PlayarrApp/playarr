@@ -12,6 +12,7 @@
  */
 import {Linking} from 'react-native';
 import {FocusManager} from '@amazon-devices/react-native-kepler';
+import type {ParityIdentity, ParityIdentityFailureCode} from './parityIdentity';
 
 export const PARITY_CONTROL = process.env.PLAYARR_PARITY_CONTROL === '1';
 
@@ -117,7 +118,21 @@ export interface ParityHooks {
   player(): {state: string; positionSeconds: number; durationSeconds: number; error?: string};
   theme(): string;
   /** Current server-authenticated profile for the driver account guard; never include tokens or credentials. */
-  identity?(): Promise<{username: string; isCurrentCount: number; serverUrl: string}>;
+  identity?(): Promise<ParityIdentity>;
+}
+
+const identityFailureCodes = new Set([
+  'token_missing', 'token_acquisition_failure', 'json_invalid', 'json_not_array',
+  'current_profile_missing', 'current_profile_multiple', 'username_missing',
+  'token_changed', 'timeout', 'network_failure', 'unknown',
+]);
+
+function safeIdentityFailureCode(error: unknown): ParityIdentityFailureCode {
+  const code = error && typeof error === 'object' ? (error as {parityCode?: unknown}).parityCode : undefined;
+  if (typeof code !== 'string') return 'unknown';
+  if (identityFailureCodes.has(code)) return code as ParityIdentityFailureCode;
+  const status = /^http_status_(\d{3})$/.exec(code)?.[1];
+  return status && Number(status) >= 100 && Number(status) <= 599 ? `http_status_${Number(status)}` as ParityIdentityFailureCode : 'unknown';
 }
 
 export function parseCommand(url: string): Record<string, string> | null {
@@ -152,16 +167,17 @@ export function installParityControl(hooks: ParityHooks): () => void {
     // Every command answers with the state, so the driver needs one read after it.
     setTimeout(async () => {
       let identity: Awaited<ReturnType<NonNullable<ParityHooks['identity']>>> | null = null;
+      let identityError: ParityIdentityFailureCode | null = null;
       if (hooks.identity) {
         try { identity = await hooks.identity(); }
-        catch { identity = null; }
+        catch (error) { identity = null; identityError = safeIdentityFailureCode(error); }
       }
       const nativeFocusTag = command.cmd === 'state' ? FocusManager.getFocused() : undefined;
       let focus = lastFocus;
       if (command.cmd === 'state' && focus?.eventTag !== undefined && focus.eventTag !== nativeFocusTag) {
         focus = nativeFocusTag === undefined ? null : focusReportsByEventTag.get(nativeFocusTag)?.focus ?? null;
       }
-      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), configuredServerUrl: hooks.configuredServerUrl?.() ?? null, focus, player: hooks.player(), theme: hooks.theme(), identity, activity: parityActivitySnapshot(), parityClock: process.env.PLAYARR_PARITY_CLOCK ?? null, parityBuildId: process.env.PLAYARR_PARITY_BUILD_ID ?? null, parityAnimationsDisabled: process.env.PLAYARR_PARITY_ANIMATIONS_DISABLED === '1'};
+      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), configuredServerUrl: hooks.configuredServerUrl?.() ?? null, focus, player: hooks.player(), theme: hooks.theme(), identity, identityError, activity: parityActivitySnapshot(), parityClock: process.env.PLAYARR_PARITY_CLOCK ?? null, parityBuildId: process.env.PLAYARR_PARITY_BUILD_ID ?? null, parityAnimationsDisabled: process.env.PLAYARR_PARITY_ANIMATIONS_DISABLED === '1'};
       console.log('PARITY ' + JSON.stringify(command.cmd === 'state' ? {...state, nativeFocusTag} : state));
     }, command.cmd === 'state' ? 0 : 1500);
   };
