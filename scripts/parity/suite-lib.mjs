@@ -1,4 +1,5 @@
 // Shared helpers for the parity suite (suite.json): validation, key expansion, route matching.
+
 const KEY = /^(up|down|left|right|select|back)(:long)?(\*[1-9]\d*)?$/;
 
 export function expandKeys(keys) {
@@ -75,15 +76,17 @@ export function validateSuite(s, legendScreens) {
   return bad;
 }
 
-// Sets the Device Test profile's watch progress of each media file back to 0, so On deck and Resume stay the same on every
-// device. Logs in with its own device id (nothing is stored). env: PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD.
+// Sets the isolated profile's watch progress of each media file back to 0, so On deck and Resume stay the same on every
+// device. Login tokens stay in memory. env: PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD.
 export async function resetProgress(files, env = process.env) {
   const srv = env.PLAYARR_SERVER_URL?.replace(/\/$/, "");
   if (!srv || !env.PLAYARR_USERNAME) throw new Error("--reset-progress needs PLAYARR_SERVER_URL, PLAYARR_USERNAME and PLAYARR_PASSWORD");
   const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
   if (!lr.ok) throw new Error(`reset-progress login ${lr.status}`);
-  const h = { "content-type": "application/json", authorization: `Bearer ${(await lr.json()).access_token}` };
+  const session = await lr.json();
+  if (!session.access_token) throw new Error("reset-progress login returned no access token");
+  const h = { "content-type": "application/json", authorization: `Bearer ${session.access_token}` };
   for (const f of new Set(files)) {
     const meta = await (await fetch(`${srv}/api/v1/media/${f}/metadata`, { headers: h })).json().catch(() => ({}));
     const r = await fetch(`${srv}/api/v1/playback/${f}/progress`, { method: "PUT", headers: h, body: JSON.stringify({ position_ms: 0, duration_ms: meta.duration_ms ?? 0, completed: false }) });
@@ -93,15 +96,42 @@ export async function resetProgress(files, env = process.env) {
 
 // Files behind the pinned film and series screens (the film's file and every episode of the pinned series), so a reset covers
 // what On deck and the detail screens show, as capture-refs.mjs does for the web references.
-export async function pinnedCatalogFiles(suite, env = process.env) {
+export async function pinnedCatalogFiles(suite, env = process.env, { required = false } = {}) {
   const srv = env.PLAYARR_SERVER_URL?.replace(/\/$/, "");
-  if (!srv || !env.PLAYARR_USERNAME) return [];
+  if (!srv || !env.PLAYARR_USERNAME || !env.PLAYARR_PASSWORD) {
+    if (required) throw new Error("stable catalog lookup requires resolved isolated account credentials");
+    return [];
+  }
   const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
-  if (!lr.ok) return [];
-  const h = { authorization: `Bearer ${(await lr.json()).access_token}` };
+  if (!lr.ok) {
+    if (required) throw new Error(`stable catalog lookup login failed with status ${lr.status}`);
+    return [];
+  }
+  const session = await lr.json();
+  if (!session.access_token) {
+    if (required) throw new Error("stable catalog lookup login returned no access token");
+    return [];
+  }
+  const h = { authorization: `Bearer ${session.access_token}` };
   const idOf = (id) => suite.screens.find((s) => s.id === id)?.open?.split("/").pop();
-  const get = async (id) => (id ? await (await fetch(`${srv}/api/v1/catalog/${id}`, { headers: h })).json().catch(() => ({})) : {});
+  const get = async (id) => {
+    if (!id) return {};
+    const response = await fetch(`${srv}/api/v1/catalog/${id}`, { headers: h });
+    if (!response.ok) {
+      if (required) throw new Error(`stable catalog lookup failed with status ${response.status}`);
+      return {};
+    }
+    try { return await response.json(); }
+    catch (error) {
+      if (required) throw new Error(`stable catalog lookup returned invalid JSON: ${error.message}`);
+      return {};
+    }
+  };
   const film = await get(idOf("film-detail")), series = await get(idOf("series-detail"));
-  return [film.media_file_id, ...(series.children?.Series ?? []).flatMap((s) => s.episodes ?? []).map((e) => e.media_file_id)].filter(Boolean);
+  const episodeFiles = (series.children?.Series ?? []).flatMap((s) => s.episodes ?? []).map((episode) => episode.media_file_id).filter(Boolean);
+  if (required && (!film.media_file_id || episodeFiles.length === 0)) {
+    throw new Error("stable catalog lookup did not return the pinned film and an episode file");
+  }
+  return [film.media_file_id, ...episodeFiles].filter(Boolean);
 }

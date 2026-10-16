@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""xclick.py <display> click X Y | text STRING | textenv VARNAME | press KEYSYM  (XTest input for headless Xvnc displays)"""
+"""xclick.py <display> click X Y | text STRING | textenv VARNAME | press KEYSYM | down/up KEYSYM"""
 import sys
 import time
 from Xlib import X, XK, display
@@ -17,11 +17,12 @@ if cmd == "click":
     d.sync()
     time.sleep(0.05)
     xtest.fake_input(d, X.ButtonRelease, 1)
-elif cmd == "hold":
+elif cmd in ("hold", "down", "up"):
     code = d.keysym_to_keycode(XK.string_to_keysym(sys.argv[3]))
-    xtest.fake_input(d, X.KeyPress, code); d.sync()
-    time.sleep(float(sys.argv[4]) / 1000)
-    xtest.fake_input(d, X.KeyRelease, code)
+    xtest.fake_input(d, X.KeyPress if cmd in ("hold", "down") else X.KeyRelease, code); d.sync()
+    if cmd == "hold":
+        try: time.sleep(float(sys.argv[4]) / 1000)
+        finally: xtest.fake_input(d, X.KeyRelease, code)
 elif cmd in ("text", "press", "textenv"):
     import os
     source = os.environ[sys.argv[3]] if cmd == "textenv" else sys.argv[3]

@@ -18,6 +18,9 @@ const ROUTE = { "/": "home", "/calendar": "calendar", "/search": "search", "/set
 export async function createDriver() {
   let evidence = ""; // the media-module failure is logged once, when the Player page first loads
   const driver = {
+    async setDeterministicCapture() { throw new Error("Harmony stable deterministic capture unsupported: Previewer patch has no clock or animation pinning hook"); },
+    async captureBuildIdentity() { throw new Error("Harmony stable build identity unsupported: deployed app digest is not exposed by Previewer driver"); },
+    async waitReady() { throw new Error("Harmony stable deterministic capture unsupported: Previewer does not expose capture readiness"); },
     async key(name, { long } = {}) {
       const k = name === "select" ? "ok" : name;
       await get(`${long ? "/keylong/" : "/key/"}${k}`);

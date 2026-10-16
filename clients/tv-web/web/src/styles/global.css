@@ -6123,7 +6123,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   top: 0;
   right: 0;
   bottom: 0;
-  left: calc(100% - var(--stage-rail-width));
+  /* Starts where the Library grid panel starts (--card-rail-vw), so Home and Library share one left edge. */
+  left: calc(100% - var(--card-rail-vw) * 1%);
   width: auto;
   height: 100%;
   display: grid;
@@ -6532,6 +6533,18 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   overscroll-behavior: contain;
   scroll-padding-block: var(--viewport-half-height);
   scrollbar-width: none;
+}
+
+/* Home opens aligned with the Library: the first rail's top is the Library grid's first row (--library-rail-top) and its
+   cards start at the grid's left edge. The bottom keeps half a viewport so later rails can still centre; the first rail
+   cannot centre above scrollTop 0, so moving back up returns to this start. */
+.tv-home-rails.is-vertical-tracks {
+  --library-rail-top: clamp(128px, calc(15 * var(--viewport-unit)), 174px);
+  padding-top: var(--library-rail-top);
+}
+
+.tv-home-rails .tv-media-track {
+  --tv-track-left-fade: var(--card-pad-left);
 }
 
 .tv-rail-surface.is-static-track {
@@ -8413,7 +8426,6 @@ html.is-native-scroll-root .profile-auth-scroll {
 
   .tv-home-rails {
     right: 0;
-    left: 40%;
     width: auto;
     padding-bottom: calc(var(--viewport-half-height) + 88px);
   }

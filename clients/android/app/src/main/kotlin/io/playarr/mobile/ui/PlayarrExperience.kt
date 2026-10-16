@@ -1742,7 +1742,7 @@ internal fun PlayarrExperience(
                 playerViewModel,
             )
 
-            val remainingMinutes = householdRemainingMinutes(household, java.time.Instant.now())
+            val remainingMinutes = householdRemainingMinutes(household, playarrInstant())
             if (remainingMinutes != null && !isPlayer && !isProfiles && householdBlock == null) {
                 HouseholdRemainingBadge(
                     minutes = remainingMinutes,

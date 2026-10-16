@@ -138,6 +138,9 @@ export async function createDriver({ out } = {}) {
   };
 
   return {
+    async setDeterministicCapture() { throw new Error("Fire TV stable deterministic capture unsupported: the app has no clock or animation pinning hook"); },
+    async captureBuildIdentity() { throw new Error("Fire TV stable build identity unsupported: installed app digest is not exposed by this driver"); },
+    async waitReady() { throw new Error("Fire TV stable deterministic capture unsupported: readiness is not exposed by the app"); },
     supports: { nowPlaying: false },
     /** For one-off scripts (player captures): the raw control-channel calls. */
     raw: { command, state, press },

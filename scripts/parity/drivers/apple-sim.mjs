@@ -278,6 +278,9 @@ export async function createDriver({ args = [], out } = {}) {
       return { state: last.state === "playing" && advanced >= expect.advanceSeconds ? "playing" : "stalled", startSeconds: start, advancedSeconds: advanced };
   };
   return {
+    async setDeterministicCapture() { throw new Error(`Apple ${device} stable deterministic capture unsupported: no platform clock and animation control are available`); },
+    async captureBuildIdentity() { throw new Error(`Apple ${device} stable build identity unsupported: installed app digest is not exposed by this driver`); },
+    async waitReady() { throw new Error(`Apple ${device} stable deterministic capture unsupported: readiness is not exposed`); },
     async start({ theme: t } = {}) {
       theme = t ?? "dark";
       if (mac) {

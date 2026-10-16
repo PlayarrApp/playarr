@@ -3,18 +3,22 @@
 //   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset] [--bak <backup dir name>] [--dry] [--allow-stale-web]
 //   --dry prints the plan (groups, viewports, dirs, Downloads hidden or not, live screens) and the web build sha check, then exits without capturing.
 //   The web build served at PLAYARR_WEB_URL must contain origin/main's web client (no clients/tv-web change between its sha and origin/main), else the run stops (--allow-stale-web overrides).
-// Needs PARITY_CHROME=<chromium path> (or Playwright's own), and the Device Test account in the environment:
-//   PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD (read from ~/.secrets
-//   PLAYARR_DEVICE_TEST_* when unset; never printed).
-// Steps: reset watch progress of the pinned files, capture every screen of web-refs.json x dark/light once per viewport group
-// (fresh sign-in, sessionStorage cleared on every document, fonts and images ready, two identical shots), verify, then back up
+// Needs PARITY_CHROME=<chromium path> (or Playwright's own), PARITY_CLIENT, PARITY_LOCK_DIR, and credentials resolved by capture-state.mjs.
+// Steps: snapshot account state, reset watch progress of the pinned files, capture each selected supported screen x dark/light once per viewport group
+// (fresh sign-in, sessionStorage cleared on every document, fixed fixture clock, deterministic animation policy, readiness checks), verify, then back up
 // each client dir's web/ to web.bak-<date>/ and copy the set to <dir>/web/<id>.png, <dir>/web/light/<id>.png with web/build.json.
+// Each viewport group writes its own <work>/<group>/captures.json with paths relative to that group; its build fields use webBuild.sha,
+// which matches the published web/build.json sha. The driver identity and deployed build are checked before and after capture.
 // Run it inside a memory scope: systemd-run --user --scope -p MemoryHigh=8G -p MemoryMax=12G -p MemorySwapMax=512M -- node capture-refs.mjs ...
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { expandKeys, resetProgress } from "./suite-lib.mjs";
+import { expandKeys } from "./suite-lib.mjs";
+import { assertBuildIdentityStable, selectedLiveScreens, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
+import { withCaptureState } from "./capture-state.mjs";
+import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { PNG } from "pngjs";
 import { verifyDir } from "./verify-refs.mjs";
 
@@ -37,7 +41,7 @@ const webUrl = (process.env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\
 const git = (...a) => execFileSync("git", a, { cwd: here, encoding: "utf8" }).trim();
 const repoSha = git("rev-parse", "HEAD");
 const webBuild = await (await fetch(`${webUrl}/build-info.json`, { cache: "no-store" })).json().catch(() => ({}));
-if (!webBuild.sha) throw new Error(`no sha in ${webUrl}/build-info.json`);
+if (!webBuild.sha || !webBuild.builtAt) throw new Error(`build info at ${webUrl}/build-info.json must include sha and builtAt`);
 const mainSha = (() => { try { return git("rev-parse", "origin/main"); } catch { return null; } })();
 const staleWeb = mainSha && webBuild.sha !== mainSha ? git("diff", "--name-only", webBuild.sha, mainSha, "--", "clients/tv-web").split("\n").filter(Boolean) : [];
 console.log(`web build ${webBuild.sha.slice(0, 9)} (built ${webBuild.builtAt}), origin/main ${mainSha?.slice(0, 9) ?? "unknown"}, ${staleWeb.length ? `STALE: ${staleWeb.length} web files differ` : "web client current"}`);
@@ -51,54 +55,50 @@ if (args.includes("--dry")) {
   process.exit(0);
 }
 
-// Credentials: environment first, else ~/.secrets (values are never logged).
-const secrets = {};
-if (existsSync(join(process.env.HOME, ".secrets"))) for (const l of readFileSync(join(process.env.HOME, ".secrets"), "utf8").split("\n")) { const i = l.indexOf("="); if (i > 0 && !l.startsWith("#")) secrets[l.slice(0, i)] = l.slice(i + 1).replace(/^["']|["']$/g, ""); }
-const env = { ...process.env };
-env.PLAYARR_SERVER_URL ??= secrets.PLAYARR_DEVICE_TEST_SERVER_URL;
-env.PLAYARR_USERNAME ??= secrets.PLAYARR_DEVICE_TEST_USERNAME;
-env.PLAYARR_PASSWORD ??= secrets.PLAYARR_DEVICE_TEST_PASSWORD;
-env.PARITY_STABLE = "1";
-Object.assign(process.env, { PLAYARR_SERVER_URL: env.PLAYARR_SERVER_URL, PLAYARR_USERNAME: env.PLAYARR_USERNAME, PLAYARR_PASSWORD: env.PLAYARR_PASSWORD, PARITY_STABLE: "1" });
-if (!env.PLAYARR_SERVER_URL || !env.PLAYARR_USERNAME || !env.PLAYARR_PASSWORD) throw new Error("Device Test credentials missing (PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD)");
+const requestedLiveScreens = selectedLiveScreens(wantScreens, groups, manifest.groups);
+if (requestedLiveScreens.length) throw new Error(`unsupported live screen capture: ${requestedLiveScreens.join(", ")}; capture-refs only publishes deterministic web-driver screens`);
 
-// 1. Reset watch progress: the suite's pinned files plus the pinned film's own file, so On deck and Resume are the same for every set.
+if (!process.env.PARITY_CLIENT) throw new Error("PARITY_CLIENT is required for isolated web-reference capture");
+if (!process.env.PARITY_LOCK_DIR) throw new Error("PARITY_LOCK_DIR must point to the supplied scratch lock directory");
+const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
+if (!Number.isFinite(Date.parse(fixedNow))) throw new Error("PARITY_FIXED_NOW must be a valid ISO date");
+const stateFiles = [...new Set([...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file)])];
+await withCaptureState({ client: process.env.PARITY_CLIENT, files: stateFiles }, async (captureState) => {
+Object.assign(process.env, captureState.env, { PARITY_STABLE: "1" });
+const env = captureState.env;
 const srv = env.PLAYARR_SERVER_URL.replace(/\/$/, "");
 const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
   body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-refs", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
 if (!lr.ok) throw new Error(`login ${lr.status}`);
-const token = (await lr.json()).access_token, auth = { authorization: `Bearer ${token}` };
+const login = await lr.json();
+if (!login.access_token) throw new Error("reference capture login returned no access token");
+const auth = { authorization: `Bearer ${login.access_token}` };
 const idOf = (id) => suite.screens.find((s) => s.id === id).open.split("/").pop();
-const film = await (await fetch(`${srv}/api/v1/catalog/${idOf("film-detail")}`, { headers: auth })).json().catch(() => ({}));
-// The pinned series: every episode's progress is reset and its recorded resume answers are cleared, so series-detail shows no Resume or Ask-again state.
-const seriesId = idOf("series-detail");
-const series = await (await fetch(`${srv}/api/v1/catalog/${seriesId}`, { headers: auth })).json().catch(() => ({}));
-const episodeFiles = (series.children?.Series ?? []).flatMap((s) => s.episodes ?? []).map((e) => e.media_file_id);
-if (!episodeFiles.length) throw new Error("pinned series has no episodes in the catalogue response");
-const pinned = [...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file), film.media_file_id, ...episodeFiles].filter(Boolean);
-if (!args.includes("--no-reset")) { await resetProgress(pinned); await fetch(`${srv}/api/v1/catalog/${seriesId}/resume-plan/choices`, { method: "DELETE", headers: auth }); console.log(`reset progress on ${new Set(pinned).size} pinned files`); }
-
-// Other workers share this account and play the pinned files: reset the detail screen's own files right before its shot and read the progress back.
-const freshAuth = async () => { // the first access token expires during a long run
-  const r = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-refs", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
-  if (!r.ok) throw new Error(`login ${r.status}`);
-  return { authorization: `Bearer ${(await r.json()).access_token}` };
-};
-async function resetDetail(id) {
-  const auth = await freshAuth();
-  const progressOf = async (f) => (await (await fetch(`${srv}/api/v1/playback/${f}/progress`, { headers: auth })).json().catch(() => ({})));
-  const files = (id === "film-detail" ? [film.media_file_id] : episodeFiles).filter(Boolean); // an episode without a file has null
-  await resetProgress(files);
-  if (id === "series-detail") await fetch(`${srv}/api/v1/catalog/${seriesId}/resume-plan/choices`, { method: "DELETE", headers: auth });
-  for (const f of files) { const p = await progressOf(f); if (p.position_ms !== 0 || p.state === "in_progress") throw new Error(`progress of ${f} not reset (${p.state}, ${p.position_ms} ms)`); }
+const filmId = idOf("film-detail"), seriesId = idOf("series-detail");
+const film = await (await fetch(`${srv}/api/v1/catalog/${filmId}`, { headers: auth })).json();
+const series = await (await fetch(`${srv}/api/v1/catalog/${seriesId}`, { headers: auth })).json();
+const episodeFiles = (series.children?.Series ?? []).flatMap((s) => s.episodes ?? []).map((e) => e.media_file_id).filter(Boolean);
+if (!episodeFiles.length || !film.media_file_id) throw new Error("pinned detail media files are missing from the catalogue");
+const pinned = [...stateFiles, film.media_file_id, ...episodeFiles];
+if (process.env.PARITY_SEED_CANONICAL === "1") {
+  const seedModule = process.env.PARITY_SEED_MODULE;
+  if (!seedModule) throw new Error("PARITY_SEED_MODULE is required when PARITY_SEED_CANONICAL=1");
+  const { seedCanonicalDeck } = await import(pathToFileURL(resolve(seedModule)).href);
+  if (typeof seedCanonicalDeck !== "function") throw new Error("PARITY_SEED_MODULE must export seedCanonicalDeck");
+  await seedCanonicalDeck(captureState, { deckFile: process.env.PARITY_DECK_MEDIA_FILE_ID, positionMs: Number(process.env.PARITY_DECK_POSITION_MS ?? 15098), durationMs: Number(process.env.PARITY_DECK_DURATION_MS ?? 6742000) });
 }
+if (!args.includes("--no-reset")) {
+  for (const file of new Set(pinned)) await captureState.writeProgress(file, { position_ms: 0, duration_ms: captureState.snapshot.files[file]?.duration_ms ?? 0, completed: false });
+  await captureState.clearResumeChoices();
+}
+const captureSnapshot = await captureState.snapshotNow();
+const stateHash = captureSnapshot.hash;
 
-// 2. Capture.
+// Capture.
 const startedAt = new Date().toISOString();
 const driverUrl = pathToFileURL(join(here, "drivers", "web.mjs")).href;
 const screens = suite.screens.filter((s) => manifest.screens.includes(s.id) && wantScreens.includes(s.id));
-let failed = 0;
+const captureRowsByGroup = new Map();
 for (const name of groups) {
   const g = manifest.groups[name];
   if (!g) throw new Error(`unknown group ${name}`);
@@ -106,43 +106,43 @@ for (const name of groups) {
   if (g.mobile) process.env.PLAYARR_WEB_MOBILE = "1"; else delete process.env.PLAYARR_WEB_MOBILE;
   if (g.noDownloads) process.env.PLAYARR_WEB_NO_DOWNLOADS = "1"; else delete process.env.PLAYARR_WEB_NO_DOWNLOADS;
   const driver = await (await import(`${driverUrl}?${name}`)).createDriver();
-  await driver.start();
+  captureState.registerInterruptCleanup(() => driver.stop());
   const facts = {};
-  for (const theme of ["dark", "light"]) {
-    await driver.setTheme(theme);
-    mkdirSync(join(work, name, theme), { recursive: true });
-    for (const s of screens) {
-      let ok = false;
-      for (let attempt = 1; attempt <= 3 && !ok; attempt += 1) {
+  const captureRows = [];
+  try {
+    if (!driver.setDeterministicCapture || !driver.waitReady || !driver.captureBuildIdentity) throw new Error("web driver lacks deterministic capture, readiness, or build identity controls");
+    await driver.setDeterministicCapture({ fixedNow, disableAnimations: true });
+    const driverBuild = await driver.captureBuildIdentity();
+    if (driverBuild !== `${webBuild.sha}@${webBuild.builtAt}`) throw new Error(`web driver build identity ${driverBuild} does not match build-info identity ${webBuild.sha}@${webBuild.builtAt}`);
+    await driver.start();
+    for (const theme of ["dark", "light"]) {
+      await driver.setTheme(theme);
+      mkdirSync(join(work, name, theme), { recursive: true });
+      for (const s of screens) {
         try {
-          if (!args.includes("--no-reset") && s.id.endsWith("-detail")) await resetDetail(s.id);
           await driver.home();
           if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
           else if (s.open) await driver.route(s.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(s.open) });
           else if (!g.mobile && s.keys) for (const { key, long } of expandKeys(s.keys)) await driver.key(key, { long });
           else await driver.route(s.route);
-          await new Promise((r) => setTimeout(r, 1500));
-          await driver.screenshot(join(work, name, theme, `${s.id}.png`));
+          await driver.waitReady({ screen: s.id, phase: "route" });
+          await driver.waitReady({ screen: s.id, phase: "capture" });
+          const imagePath = join(work, name, theme, `${s.id}.png`);
+          await driver.screenshot(imagePath);
+          captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, sha256: createHash("sha256").update(readFileSync(imagePath)).digest("hex"), build: webBuild.sha, checked_at: new Date().toISOString() });
           facts[`${theme}/${s.id}`] = await driver.inspect();
-          ok = true; console.log(`ok ${name} ${theme} ${s.id}`);
-        } catch (e) { console.log(`retry ${name} ${theme} ${s.id} (${attempt}): ${e.message.split("\n")[0]}`); }
+          console.log(`ok ${name} ${theme} ${s.id}`);
+        } catch (e) { console.log(`FAIL ${name} ${theme} ${s.id}: ${e.message.split("\n")[0]}`); throw e; }
       }
-      if (!ok) { failed += 1; console.log(`FAIL ${name} ${theme} ${s.id}`); }
     }
-  }
-  await driver.stop();
-  // Live-web screens (the player: paused video, controls shown) come from capture-web-live.mjs at this group's viewport.
-  if (g.liveScreens?.length) {
-    const live = join(work, name, "live");
-    execFileSync("node", [join(here, "roku", "capture-web-live.mjs"), "--base", srv, "--web", (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, ""), "--out", live,
-      "--screens", g.liveScreens.join(","), "--viewport", g.viewport.join("x"), "--dpr", String(g.dpr), ...(g.noDownloads ? ["--no-downloads"] : [])],
-      { stdio: "inherit", env: { ...process.env, PLAYARR_DEVICE_TEST_USERNAME: env.PLAYARR_USERNAME, PLAYARR_DEVICE_TEST_PASSWORD: env.PLAYARR_PASSWORD } });
-    for (const theme of ["dark", "light"]) for (const id of g.liveScreens) cpSync(join(live, "tv", theme, `${id}.png`), join(work, name, theme, `${id}.png`));
+    const finalDriverBuild = await driver.captureBuildIdentity();
+    assertBuildIdentityStable(driverBuild, finalDriverBuild, `${name} web driver`);
+  } finally {
+    await driver.stop();
   }
   writeFileSync(join(work, name, "facts.json"), JSON.stringify({ capturedAt: startedAt, facts }, null, 1));
+  captureRowsByGroup.set(name, captureRows);
 }
-if (failed) { console.log(`${failed} screens failed to capture: nothing copied`); process.exit(1); }
-
 // Crop fractional-scale rounding (a group's "crop": [w, h]) off the bottom and right edge.
 for (const name of groups) {
   const crop = manifest.groups[name].crop;
@@ -164,7 +164,24 @@ for (const name of groups) {
   for (const p of problems) console.log(`BAD ${name}: ${p}`);
   bad += problems.length;
 }
-if (bad) { console.log(`${bad} problems: nothing copied`); process.exit(1); }
+if (bad) throw new Error(`${bad} reference verification problems; nothing copied`);
+const finalBuildResponse = await fetch(`${webUrl}/build-info.json`, { cache: "no-store" });
+if (!finalBuildResponse.ok) throw new Error(`final build identity request returned ${finalBuildResponse.status}`);
+const finalWebBuild = await finalBuildResponse.json();
+assertBuildIdentityStable(`${webBuild.sha}@${webBuild.builtAt}`, `${finalWebBuild.sha}@${finalWebBuild.builtAt}`, "deployed web");
+const checkedAt = new Date().toISOString();
+for (const name of groups) {
+  const captures = captureRowsByGroup.get(name).map((capture) => ({
+    ...capture,
+    sha256: createHash("sha256").update(readFileSync(join(work, name, capture.path))).digest("hex"),
+  }));
+  writeFileSync(join(work, name, "captures.json"), JSON.stringify({
+    suite: suite.version,
+    checked_at: checkedAt,
+    provenance: { suite: suite.version, build: webBuild.sha, clock: fixedNow, state: stateHash },
+    captures,
+  }, null, 2));
+}
 if (copy) {
   for (const name of groups) {
     const g = manifest.groups[name];
@@ -172,12 +189,13 @@ if (copy) {
       const web = join(root, d, "web"), bak = join(root, d, bakName);
       if (existsSync(web) && !existsSync(bak)) cpSync(web, bak, { recursive: true });
       mkdirSync(join(web, "light"), { recursive: true });
-      for (const id of [...wantScreens, ...(g.liveScreens ?? [])]) {
+      for (const id of screens.map((screen) => screen.id)) {
         cpSync(join(work, name, "dark", `${id}.png`), join(web, `${id}.png`));
         cpSync(join(work, name, "light", `${id}.png`), join(web, "light", `${id}.png`));
       }
-      if (!partial) writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha: webBuild.sha, repoSha, webBuiltAt: webBuild.builtAt, pr: null, captured_at: startedAt, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
+      if (shouldStampReferenceBuild({ partial, liveScreens: g.liveScreens ?? [] })) writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha: webBuild.sha, repoSha, webBuiltAt: webBuild.builtAt, pr: null, captured_at: startedAt, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
       console.log(`published ${name} -> ${d}/web`);
     }
   }
 }
+});

@@ -591,6 +591,12 @@ internal var parityPauseAtMs: Long? = null
  * (`FIXTURE_CLOCK`, 2026-10-07T12:00:00Z) so the agenda, the chrome clock and "today" do not depend on the real date.
  */
 internal var parityClock: java.time.Instant? = null
+private val parityClockConsumptionReported = java.util.concurrent.atomic.AtomicBoolean(false)
+internal var parityClockConsumptionReporter: ((java.time.Instant) -> Unit)? = null
+
+internal fun resetParityClockConsumptionMarker() {
+    parityClockConsumptionReported.set(false)
+}
 
 /** Debug builds: the route the app opens on (`parity_route` launch extra), for D-pad-only parity captures. */
 internal var parityRoute: String? = null
@@ -602,8 +608,15 @@ internal fun parityLog(message: String) {
 /** Debug builds: a media file id to play on launch (`parity_route=player/<id>`), as the other clients' parity drivers do. */
 internal var parityPlay: String? = null
 
+internal fun playarrInstant(): java.time.Instant = parityClock?.also {
+    if (parityClockConsumptionReported.compareAndSet(false, true)) {
+        parityClockConsumptionReporter?.invoke(it)
+            ?: android.util.Log.i("PlayarrParity", "clock_consumed=$it")
+    }
+} ?: java.time.Instant.now()
+
 internal fun playarrNow(zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): java.time.LocalDateTime =
-    parityClock?.let { java.time.LocalDateTime.ofInstant(it, zone) } ?: java.time.LocalDateTime.now(zone)
+    java.time.LocalDateTime.ofInstant(playarrInstant(), zone)
 
 internal fun playarrToday(zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): java.time.LocalDate = playarrNow(zone).toLocalDate()
 
