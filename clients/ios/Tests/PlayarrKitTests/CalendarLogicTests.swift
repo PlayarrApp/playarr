@@ -112,6 +112,21 @@ final class CalendarLogicTests: XCTestCase {
         XCTAssertNil(CalendarDays.parse("2026-13-40"))
     }
 
+    func testCalendarLocaleMatchesWebLanguageFallbackAndWeekStart() {
+        XCTAssertEqual(calendarLocaleIdentifier(language: "en", systemLanguage: "en-US"), "en-GB")
+        XCTAssertEqual(calendarLocaleIdentifier(language: "system", systemLanguage: "ja"), "ja-JP")
+        XCTAssertEqual(calendarLocaleIdentifier(language: "system", systemLanguage: "fr"), "en-GB")
+        XCTAssertEqual(calendarFirstWeekday(language: "en", systemLanguage: "en-US"), 2)
+
+        let window = calendarWindow(
+            mode: .week,
+            anchor: "2026-10-17",
+            firstWeekday: calendarFirstWeekday(language: "en", systemLanguage: "en-US")
+        )
+        XCTAssertEqual(window.start, "2026-10-12")
+        XCTAssertEqual(window.end, "2026-10-18")
+    }
+
     func testLocalDayUsesReleaseInstantInZone() {
         let zone = TimeZone(secondsFromGMT: 3600 * 10)!
         let entry = episode(1, releaseAt: "2026-10-10T20:00:00Z")

@@ -2,6 +2,26 @@
 
 const KEY = /^(up|down|left|right|select|back)(:long)?(\*[1-9]\d*)?$/;
 
+async function loginForProgressReset(server, env) {
+  const lr = await fetch(`${server}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
+  if (!lr.ok) throw new Error(`reset-progress login ${lr.status}`);
+  const session = await lr.json();
+  if (!session.access_token) throw new Error("reset-progress login returned no access token");
+  const expectedUsername = env.DEVICE_TEST_USERNAME;
+  if (expectedUsername) {
+    const response = await fetch(`${server}/api/v1/users/profiles`, { headers: { authorization: `Bearer ${session.access_token}` } });
+    if (!response.ok) throw new Error(`reset-progress profile verification ${response.status}`);
+    const profiles = await response.json();
+    const current = Array.isArray(profiles) ? profiles.filter((profile) => profile?.is_current === true) : [];
+    if (current.length !== 1 || !session.user_id || String(current[0]?.id).toLowerCase() !== String(session.user_id).toLowerCase()
+      || String(current[0]?.username ?? "").toLocaleLowerCase() !== expectedUsername.toLocaleLowerCase()) {
+      throw new Error("reset-progress refused: authenticated profile is not the expected current Device Test profile");
+    }
+  }
+  return session.access_token;
+}
+
 export function expandKeys(keys) {
   return keys.flatMap((k) => {
     const m = KEY.exec(k);
@@ -77,12 +97,8 @@ export function validateSuite(s, legendScreens) {
 export async function resetProgress(files, env = process.env) {
   const srv = env.PLAYARR_SERVER_URL?.replace(/\/$/, "");
   if (!srv || !env.PLAYARR_USERNAME) throw new Error("--reset-progress needs PLAYARR_SERVER_URL, PLAYARR_USERNAME and PLAYARR_PASSWORD");
-  const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
-  if (!lr.ok) throw new Error(`reset-progress login ${lr.status}`);
-  const session = await lr.json();
-  if (!session.access_token) throw new Error("reset-progress login returned no access token");
-  const h = { "content-type": "application/json", authorization: `Bearer ${session.access_token}` };
+  const token = await loginForProgressReset(srv, env);
+  const h = { "content-type": "application/json", authorization: `Bearer ${token}` };
   for (const f of new Set(files)) {
     const meta = await (await fetch(`${srv}/api/v1/media/${f}/metadata`, { headers: h })).json().catch(() => ({}));
     const r = await fetch(`${srv}/api/v1/playback/${f}/progress`, { method: "PUT", headers: h, body: JSON.stringify({ position_ms: 0, duration_ms: meta.duration_ms ?? 0, completed: false }) });
@@ -98,18 +114,13 @@ export async function pinnedCatalogFiles(suite, env = process.env, { required = 
     if (required) throw new Error("stable catalog lookup requires resolved isolated account credentials");
     return [];
   }
-  const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-reset", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
-  if (!lr.ok) {
-    if (required) throw new Error(`stable catalog lookup login failed with status ${lr.status}`);
+  let token;
+  try { token = await loginForProgressReset(srv, env, { requiredIdentity: required }); }
+  catch (error) {
+    if (required) throw error;
     return [];
   }
-  const session = await lr.json();
-  if (!session.access_token) {
-    if (required) throw new Error("stable catalog lookup login returned no access token");
-    return [];
-  }
-  const h = { authorization: `Bearer ${session.access_token}` };
+  const h = { authorization: `Bearer ${token}` };
   const idOf = (id) => suite.screens.find((s) => s.id === id)?.open?.split("/").pop();
   const get = async (id) => {
     if (!id) return {};

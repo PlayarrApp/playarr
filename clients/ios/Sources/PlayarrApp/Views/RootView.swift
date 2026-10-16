@@ -8,6 +8,24 @@ private struct PlayarrChromeHiddenKey: PreferenceKey {
     static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }
 
+enum ParityScreenLoad: String {
+    case loading
+    case ready
+    case failed
+}
+
+struct ParityScreenReadinessKey: PreferenceKey {
+    static let defaultValue: ParityScreenLoad? = nil
+    static func reduce(value: inout ParityScreenLoad?, nextValue: () -> ParityScreenLoad?) {
+        guard let next = nextValue() else { return }
+        switch (value, next) {
+        case (.some(.failed), _), (_, .failed): value = .failed
+        case (.some(.loading), _), (_, .loading): value = .loading
+        default: value = .ready
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class VisibleWorkDetailRoutes {
@@ -34,17 +52,29 @@ extension View {
     func playarrChromeHidden(_ hidden: Bool = true) -> some View {
         preference(key: PlayarrChromeHiddenKey.self, value: hidden)
     }
+
+    func parityScreenLoad(_ state: ParityScreenLoad?) -> some View {
+        #if DEBUG
+        preference(key: ParityScreenReadinessKey.self, value: ParityLaunch.isActive ? state : nil)
+        #else
+        self
+        #endif
+    }
 }
 
 struct RootView: View {
     let environment: AppEnvironment
     @State private var updateViewModel: UpdateViewModel
+    #if DEBUG
+    @State private var parityIdentityVerified = false
+    #endif
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("com.playarr.ios.appearance") private var appearance = "system"
 
     init(environment: AppEnvironment) {
         self.environment = environment
         #if DEBUG
+        if ParityLaunch.isActive { ParityLaunch.resetAcceptanceState() }
         if let theme = ParityLaunch.theme { UserDefaults.standard.set(theme, forKey: "com.playarr.ios.appearance") }
         // Poster mode and artwork size, as Settings > Appearance sets them; always written so a capture never inherits the last one.
         UserDefaults.standard.set(ParityLaunch.covers ? "cover" : "thumbnail", forKey: WMArtwork.homeViewKey)
@@ -61,24 +91,99 @@ struct RootView: View {
             case .signedOut:
                 LoginView(environment: environment)
             case .signedIn:
+                #if DEBUG
+                if ParityLaunch.isActive && !parityIdentityVerified {
+                    PlayarrLoadingView(title: "Verifying device-test account…")
+                } else {
+                    AuthenticatedPlayarrShell(environment: environment)
+                        .id("\(environment.serverBaseURL.absoluteString)-\(environment.currentUserName ?? "viewer")")
+                }
+                #else
                 AuthenticatedPlayarrShell(environment: environment)
                     .id("\(environment.serverBaseURL.absoluteString)-\(environment.currentUserName ?? "viewer")")
+                #endif
             }
+        }
+        .transaction { transaction in
+            #if DEBUG
+            if ParityLaunch.deterministicCapture {
+                transaction.disablesAnimations = true
+                ParityLaunch.recordAnimationsDisabledAfterRootTransaction()
+            }
+            #endif
         }
         .preferredColorScheme(preferredColourScheme)
         #if DEBUG
         .statusBarHidden(ParityLaunch.zeroInsets) // the web references have no system status bar
         #endif
         .updateGate(updateViewModel)
+        #if DEBUG
+        .overlay(alignment: .topLeading) {
+            if ParityLaunch.isActive && ParityLaunch.identityVerified {
+                VStack {
+                    Text("Verified profile")
+                        .accessibilityIdentifier("parity.identityVerified")
+                        .accessibilityValue(environment.currentUsername ?? "")
+                        .font(.system(size: 1))
+                        .foregroundStyle(.clear)
+                }
+                .frame(width: 1, height: 1)
+                .accessibilityElement(children: .contain)
+                .accessibilityHidden(false)
+                .allowsHitTesting(false)
+            }
+        }
+        #endif
         .task {
             #if DEBUG
             ParityLaunch.applyLandscape()
             if ParityLaunch.isActive, let server = ParityLaunch.server, let user = ParityLaunch.user {
+                ParityLaunch.configureDeterministicCapture()
+                if let frozenNow = ParityLaunch.frozenNow {
+                    ParityLaunch.record("frozenNow", ISO8601DateFormatter().string(from: frozenNow))
+                }
                 do {
                     try await environment.signIn(serverURL: server, username: user, password: ParityLaunch.password ?? "")
+                    guard let expected = ParityLaunch.expectedUsername,
+                          let actual = environment.currentUsername,
+                          actual.caseInsensitiveCompare(expected) == .orderedSame else {
+                        ParityLaunch.record("signedIn", false)
+                        ParityLaunch.record("identityVerified", false)
+                        ParityLaunch.record("failure", "identity-mismatch")
+                        return
+                    }
+                    if ParityLaunch.isPlayerRoute {
+                        guard let candidateFile = ParityLaunch.playFile else {
+                            ParityLaunch.record("failure", "direct-play-fixture-missing")
+                            return
+                        }
+                        guard let fileID = UUID(uuidString: candidateFile) else {
+                            ParityLaunch.record("failure", "direct-play-fixture-invalid")
+                            return
+                        }
+                        let info = try await environment.apiClient.playbackInfo(
+                            mediaFileID: fileID,
+                            containers: ["mp4", "mov", "m4v"],
+                            videoCodecs: ["h264", "hevc"],
+                            audioCodecs: ["aac", "ac3", "eac3"]
+                        )
+                        guard info.mode == .direct else {
+                            ParityLaunch.record("directPlay", false)
+                            ParityLaunch.record("failure", "direct-play-unavailable")
+                            return
+                        }
+                        ParityLaunch.record("directPlay", true)
+                        ParityLaunch.record("directPlayFileID", fileID.uuidString)
+                    }
                     ParityLaunch.record("signedIn", true)
+                    ParityLaunch.record("identityVerified", true)
+                    ParityLaunch.record("authenticatedUsername", actual)
+                    parityIdentityVerified = true
                     Task { await ParityDownloads.run(environment.downloadRepository) }
-                } catch {}
+                } catch {
+                    ParityLaunch.record("identityVerified", false)
+                    ParityLaunch.record("failure", "authentication-or-readiness-failed")
+                }
                 return
             }
             #endif
@@ -102,6 +207,7 @@ struct RootView: View {
         default: nil
         }
     }
+
 }
 
 enum AppDestination: Hashable {
@@ -231,6 +337,7 @@ private struct AuthenticatedPlayarrShell: View {
     private let castCoordinator = CastSessionCoordinator.shared
     #if DEBUG
     @State private var demoDetailViewModel: WorkDetailViewModel
+    @State private var screenContentReady = false
     #endif
 
     init(environment: AppEnvironment) {
@@ -288,6 +395,33 @@ private struct AuthenticatedPlayarrShell: View {
         }
         .background(PlayarrStyle.background.ignoresSafeArea())
         .environment(visibleDetailRoutes)
+        .onAppear {
+            #if DEBUG
+            screenContentReady = false
+            #endif
+        }
+        #if DEBUG
+        .overlay(alignment: .topLeading) {
+            if ParityLaunch.isActive {
+                VStack {
+                    Text("Playback negotiation")
+                        .accessibilityIdentifier("parity.directPlay")
+                        .accessibilityValue(ParityLaunch.recordedBool("directPlay").map { String($0) } ?? "pending")
+                        .font(.system(size: 1))
+                        .foregroundStyle(.clear)
+                    Text("Requested route ready")
+                        .accessibilityIdentifier("parity.screenContentReady")
+                        .accessibilityValue(screenContentReady ? "true" : "false")
+                        .font(.system(size: 1))
+                        .foregroundStyle(.clear)
+                }
+                .frame(width: 1, height: 1)
+                .accessibilityElement(children: .contain)
+                .accessibilityHidden(false)
+                .allowsHitTesting(false)
+            }
+        }
+        #endif
         .task {
             #if DEBUG
             // `detail:movie:id=<work id>` opens that exact title (the suite pins film-detail and series-detail by id).
@@ -305,6 +439,23 @@ private struct AuthenticatedPlayarrShell: View {
             #endif
             availableKinds = Set((try? await environment.apiClient.listCatalogKinds()) ?? [])
         }
+        #if DEBUG
+        .onPreferenceChange(ParityScreenReadinessKey.self) { state in
+            guard ParityLaunch.isActive, ParityLaunch.identityVerified else { return }
+            switch state {
+            case .ready:
+                screenContentReady = true
+                ParityLaunch.record("screenContentReady", true)
+            case .failed:
+                screenContentReady = false
+                ParityLaunch.record("screenContentReady", false)
+                ParityLaunch.record("failure", "requested-screen-load-failed")
+            case .loading, .none:
+                screenContentReady = false
+                ParityLaunch.record("screenContentReady", false)
+            }
+        }
+        #endif
         .onPreferenceChange(PlayarrChromeHiddenKey.self) { chromeHidden = $0 }
         .task { await household.poll() }
     }

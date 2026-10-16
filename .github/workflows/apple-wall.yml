@@ -397,6 +397,7 @@ jobs:
         env:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          DEVICE_TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
         run: bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
 
@@ -429,6 +430,7 @@ jobs:
         env:
           SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          DEVICE_TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           OUT: ${{ runner.temp }}/capture
           REF: ${{ inputs.ref || github.event.repository.default_branch }}
