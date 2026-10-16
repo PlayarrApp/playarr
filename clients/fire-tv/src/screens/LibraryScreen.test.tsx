@@ -15,11 +15,23 @@ import {LanguageProvider} from '../i18n/LanguageProvider';
 import {LibraryScreen, type LibraryScreenNavigation} from './LibraryScreen';
 import {ROUTES} from '../navigation/routes';
 import {MediaFocus} from '../tv/mediaFocus';
+import {reportQuery} from '../debug/parityControl';
 
 // The screen registers a BACK policy with the navigator; these tests render it outside a NavigationContainer.
 jest.mock('../navigation/backPolicy', () => ({useTvBackNavigation: jest.fn()}));
 jest.mock('../platform/remote', () => ({useRemoteKey: jest.fn()}));
-jest.mock('../tv/ActionsDrawer', () => ({ActionsDrawer: () => null}));
+jest.mock('../tv/ActionsDrawer', () => {
+  const React = require('react') as typeof import('react');
+  const {Text: MockText} = require('react-native') as typeof import('react-native');
+  return {
+    ActionsDrawer: ({onClose}: {onClose: () => void}) =>
+      React.createElement(MockText, {accessibilityLabel: 'close-actions', onPress: onClose}, 'Close'),
+  };
+});
+jest.mock('../debug/parityControl', () => ({
+  ...jest.requireActual('../debug/parityControl'),
+  reportQuery: jest.fn(),
+}));
 
 /**
  * WORKAROUND, not a fix: `../api/ApiClientProvider.tsx` (built by the
@@ -255,5 +267,20 @@ describe('LibraryScreen', () => {
       renderer.root.findByProps({accessibilityLabel: 'Test Movie A'}).props.onLongPress();
     });
     expect(artwork()).toBe(false);
+  });
+
+  it('reports the actions panel query while open and clears it when closed', async () => {
+    mockCatalogFetch(() => jsonResponse({items: [work({id: 'w1', title: 'Test Movie A'})], total: 1}));
+    const renderer = await renderLibrary(fakeNavigation());
+
+    await act(async () => {
+      renderer.root.findByProps({accessibilityLabel: 'Test Movie A'}).props.onLongPress();
+    });
+    expect(reportQuery).toHaveBeenLastCalledWith('panel', 'actions');
+
+    await act(async () => {
+      renderer.root.findByProps({accessibilityLabel: 'close-actions'}).props.onPress();
+    });
+    expect(reportQuery).toHaveBeenLastCalledWith('panel', null);
   });
 });

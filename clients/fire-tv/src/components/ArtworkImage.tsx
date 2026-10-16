@@ -37,11 +37,13 @@
  * comes from.
  */
 import React, {useEffect, useRef, useState} from 'react';
-import {Image, StyleSheet, View, type ImageResizeMode, type ImageStyle, type StyleProp} from 'react-native';
+import {Image, StyleSheet, View, type ImageResizeMode, type ImageProps, type ImageStyle, type StyleProp} from 'react-native';
 import {CAPABILITIES} from '../platform';
 import {colour} from '../theme/tokens';
 import {artworkAuthHeaders} from '../api/artworkUrl';
 import {bytesToDataUri} from './artworkDataUri';
+import {trackParityActivity} from '../debug/parityControl';
+import {createNativeImageActivityTracker} from './nativeImageActivity';
 
 export interface ArtworkImageProps {
   /** The authed artwork URL, typically built by `api/artworkUrl.ts`'s `workArtworkUrl`/`albumArtworkUrl`. `null`/`undefined` renders `fallback` immediately with no network activity at all. */
@@ -73,18 +75,42 @@ const styles = StyleSheet.create({
   },
 });
 
+function TrackedImage(props: ImageProps): React.ReactElement {
+  const activity = useRef<ReturnType<typeof createNativeImageActivityTracker> | null>(null);
+  if (!activity.current) activity.current = createNativeImageActivityTracker((delta) => trackParityActivity('image', delta));
+  useEffect(() => () => activity.current?.dispose(), []);
+  return (
+    <Image
+      {...props}
+      onLoadStart={() => {
+        activity.current?.start();
+        props.onLoadStart?.();
+      }}
+      onLoadEnd={() => {
+        activity.current?.end();
+        props.onLoadEnd?.();
+      }}
+    />
+  );
+}
+
 /**
  * The `dataUri` strategy's own fetch-and-encode step, split out as a plain
  * async function (rather than inlined in the effect below) purely for
  * readability -- it is still only ever called from this file, so it is not
  * exported.
  */
-async function fetchAsDataUri(uri: string, accessToken: string | undefined): Promise<string> {
-  const response = await fetch(uri, {headers: artworkAuthHeaders(accessToken)});
-  if (!response.ok) throw new Error(`artwork request failed: ${response.status}`);
-  const buffer = await response.arrayBuffer();
-  const mimeType = response.headers.get('content-type') ?? 'image/*';
-  return bytesToDataUri(new Uint8Array(buffer), mimeType);
+async function fetchAsDataUri(uri: string, accessToken: string | undefined, signal: AbortSignal): Promise<string> {
+  trackParityActivity('image', 1);
+  try {
+    const response = await fetch(uri, {headers: artworkAuthHeaders(accessToken), signal});
+    if (!response.ok) throw new Error(`artwork request failed: ${response.status}`);
+    const buffer = await response.arrayBuffer();
+    const mimeType = response.headers.get('content-type') ?? 'image/*';
+    return bytesToDataUri(new Uint8Array(buffer), mimeType);
+  } finally {
+    trackParityActivity('image', -1);
+  }
 }
 
 export function ArtworkImage(props: ArtworkImageProps): React.ReactElement {
@@ -109,7 +135,8 @@ export function ArtworkImage(props: ArtworkImageProps): React.ReactElement {
     setDataUri(undefined);
     if (!useDataUriStrategy || !uri) return;
     let cancelled = false;
-    fetchAsDataUri(uri, accessToken)
+    const controller = new AbortController();
+    fetchAsDataUri(uri, accessToken, controller.signal)
       .then((resolved) => {
         if (!cancelled) setDataUri(resolved);
       })
@@ -118,6 +145,7 @@ export function ArtworkImage(props: ArtworkImageProps): React.ReactElement {
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [uri, accessToken, useDataUriStrategy]);
 
@@ -134,7 +162,7 @@ export function ArtworkImage(props: ArtworkImageProps): React.ReactElement {
       return <View style={[styles.placeholder, style]}>{fallback}</View>;
     }
     return (
-      <Image
+      <TrackedImage
         source={{uri: dataUri}}
         style={[styles.fill, style]}
         resizeMode={resizeMode}
@@ -157,7 +185,7 @@ export function ArtworkImage(props: ArtworkImageProps): React.ReactElement {
         : null;
     return (
       <View style={[styles.fill, style, {overflow: 'hidden'}]} onLayout={(event) => setBox(event.nativeEvent.layout)}>
-        <Image
+        <TrackedImage
           source={{uri, headers: artworkAuthHeaders(accessToken)}}
           style={fit ? {position: 'absolute', ...fit} : styles.fill}
           resizeMode={fit ? 'stretch' : 'cover'}
@@ -173,7 +201,7 @@ export function ArtworkImage(props: ArtworkImageProps): React.ReactElement {
   }
 
   return (
-    <Image
+    <TrackedImage
       source={{uri, headers: artworkAuthHeaders(accessToken)}}
       style={[styles.fill, style]}
       resizeMode={resizeMode}

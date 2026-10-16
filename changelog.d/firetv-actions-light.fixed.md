@@ -1,1 +1,3 @@
 - Fire TV Title actions now keeps initial focus on Play and aligns the drawer close control with the web header.
+- Fire TV parity captures now require a verified current device-test account, stable app readiness, and distinct matching frames.
+- Fire TV startup readiness now uses bounded read-only state requests before any navigation input.

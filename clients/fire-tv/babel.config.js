@@ -7,8 +7,9 @@
 //   PLAYARR_HOSTED_LINK_ORIGIN=http://broker.example:8080  the hosted-link broker (default https://playarr.app)
 //   PLAYARR_PARITY_CLOCK=2026-10-07T12:00:00Z              freeze the app clock (parity captures only)
 //   PLAYARR_PARITY_CONTROL=1                               compile in the parity suite's control channel (src/debug/parityControl.ts)
+//   PLAYARR_PARITY_ANIMATIONS_DISABLED=1                   assert native motion is disabled for deterministic captures
 // Jest keeps the live process.env (no inlining under Jest), so tests can set them.
-const BUILD_TIME_SETTINGS = ['PLAYARR_HOSTED_LINK_ORIGIN', 'PLAYARR_PARITY_CLOCK', 'PLAYARR_PARITY_CONTROL'];
+const BUILD_TIME_SETTINGS = ['PLAYARR_HOSTED_LINK_ORIGIN', 'PLAYARR_PARITY_CLOCK', 'PLAYARR_PARITY_CONTROL', 'PLAYARR_PARITY_ANIMATIONS_DISABLED', 'PLAYARR_PARITY_BUILD_ID'];
 
 function inlineBuildTimeSettings({types: t}) {
   return {
@@ -21,6 +22,16 @@ function inlineBuildTimeSettings({types: t}) {
           path.replaceWith(value ? t.stringLiteral(value) : t.identifier('undefined'));
           return;
         }
+      },
+      CallExpression(path) {
+        if (process.env.JEST_WORKER_ID || process.env.PLAYARR_PARITY_ANIMATIONS_DISABLED !== '1') return;
+        const callee = path.node.callee;
+        if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.object, {name: 'Animated'}) || !t.isIdentifier(callee.property, {name: 'timing'})) return;
+        const options = path.node.arguments[1];
+        if (!t.isObjectExpression(options)) return;
+        const duration = options.properties.find((property) => t.isObjectProperty(property) && t.isIdentifier(property.key, {name: 'duration'}));
+        if (duration && t.isObjectProperty(duration)) duration.value = t.numericLiteral(0);
+        else options.properties.push(t.objectProperty(t.identifier('duration'), t.numericLiteral(0)));
       },
     },
   };

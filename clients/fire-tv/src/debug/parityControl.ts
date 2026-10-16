@@ -64,6 +64,22 @@ export function reportQuery(key: string, value: string | null): void {
 
 const pending: Record<string, string> = {};
 
+let apiRequestsPending = 0;
+let imagesPending = 0;
+let activityRevision = 0;
+
+/** Mark parity-visible network and artwork work without storing request URLs, headers or credentials. */
+export function trackParityActivity(kind: 'api' | 'image', delta: 1 | -1): void {
+  if (!PARITY_CONTROL) return;
+  if (kind === 'api') apiRequestsPending = Math.max(0, apiRequestsPending + delta);
+  else imagesPending = Math.max(0, imagesPending + delta);
+  activityRevision += 1;
+}
+
+export function parityActivitySnapshot(): {apiPending: number; imagesPending: number; revision: number} {
+  return {apiPending: apiRequestsPending, imagesPending, revision: activityRevision};
+}
+
 /** The query of a routed path (`/calendar?view=month`) waits here until the screen it names mounts and takes it. */
 export function setPendingQuery(path: string): void {
   for (const key of Object.keys(pending)) delete pending[key];
@@ -91,6 +107,8 @@ export function currentQuery(keys: readonly string[]): string {
 export interface ParityHooks {
   /** The current route in web terms (`/movies`, `/calendar?view=month`, ...), or null before the shell is up. */
   location(): string | null;
+  /** Current configured server origin, reported independently of authentication. */
+  configuredServerUrl?(): string;
   route(path: string): void;
   open(kind: string, id: string): void;
   play(file: string): void;
@@ -98,6 +116,8 @@ export interface ParityHooks {
   setTheme(name: 'dark' | 'light'): void;
   player(): {state: string; positionSeconds: number; durationSeconds: number; error?: string};
   theme(): string;
+  /** Current server-authenticated profile for the driver account guard; never include tokens or credentials. */
+  identity?(): Promise<{username: string; isCurrentCount: number; serverUrl: string}>;
 }
 
 export function parseCommand(url: string): Record<string, string> | null {
@@ -130,13 +150,18 @@ export function installParityControl(hooks: ParityHooks): () => void {
       return;
     }
     // Every command answers with the state, so the driver needs one read after it.
-    setTimeout(() => {
+    setTimeout(async () => {
+      let identity: Awaited<ReturnType<NonNullable<ParityHooks['identity']>>> | null = null;
+      if (hooks.identity) {
+        try { identity = await hooks.identity(); }
+        catch { identity = null; }
+      }
       const nativeFocusTag = command.cmd === 'state' ? FocusManager.getFocused() : undefined;
       let focus = lastFocus;
       if (command.cmd === 'state' && focus?.eventTag !== undefined && focus.eventTag !== nativeFocusTag) {
         focus = nativeFocusTag === undefined ? null : focusReportsByEventTag.get(nativeFocusTag)?.focus ?? null;
       }
-      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus, player: hooks.player(), theme: hooks.theme()};
+      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), configuredServerUrl: hooks.configuredServerUrl?.() ?? null, focus, player: hooks.player(), theme: hooks.theme(), identity, activity: parityActivitySnapshot(), parityClock: process.env.PLAYARR_PARITY_CLOCK ?? null, parityBuildId: process.env.PLAYARR_PARITY_BUILD_ID ?? null, parityAnimationsDisabled: process.env.PLAYARR_PARITY_ANIMATIONS_DISABLED === '1'};
       console.log('PARITY ' + JSON.stringify(command.cmd === 'state' ? {...state, nativeFocusTag} : state));
     }, command.cmd === 'state' ? 0 : 1500);
   };

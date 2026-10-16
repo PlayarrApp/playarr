@@ -35,6 +35,7 @@
 import {ApiClient, type ApiClientConfig, type PeerAddressBundle} from '@playarr-tv/api-client';
 import {mergeKnownServerGroup, rememberGroup, rememberServerSuccess} from '@playarr-tv/domain';
 import {APP_CONFIG} from '../config/appConfig';
+import {PARITY_CONTROL, trackParityActivity} from '../debug/parityControl';
 
 /**
  * `ApiClientConfig.fetchImpl`'s real declared shape -- it takes the already-
@@ -49,9 +50,17 @@ type RnFetch = (input: Request) => Promise<Response>;
 
 function withServerSuccessTracking(fetchImpl: RnFetch, baseUrl: string): RnFetch {
   return async (input) => {
-    const response = await fetchImpl(input);
-    if (response.ok) rememberServerSuccess(baseUrl);
-    return response;
+    trackParityActivity('api', 1);
+    try {
+      const response = await fetchImpl(input);
+      if (response.ok) rememberServerSuccess(baseUrl);
+      // Fetch resolves when headers arrive. During parity capture, wait for the
+      // body too without consuming the response the API client still needs.
+      if (PARITY_CONTROL) await response.clone().arrayBuffer();
+      return response;
+    } finally {
+      trackParityActivity('api', -1);
+    }
   };
 }
 

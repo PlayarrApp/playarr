@@ -5,6 +5,7 @@
 import React, {useEffect, useRef} from 'react';
 import {APP_SHELL_ROUTE} from '../navigation/AppShellNavigator';
 import {ROUTES} from '../navigation/routes';
+import {useApiClient} from '../api/ApiClientProvider';
 import {getSharedVegaPlaybackEngine} from '../platform/media/VegaPlaybackEngine';
 import type {PlayerScreenHandle} from '../screens/PlayerScreen';
 import {useTheme} from '../theme/ThemeProvider';
@@ -38,6 +39,7 @@ const WEB_TO_ROUTE: Record<string, string> = {
 const ROUTE_TO_WEB: Record<string, string> = Object.fromEntries(Object.entries(WEB_TO_ROUTE).filter(([path]) => path !== '/home').map(([path, name]) => [name, path]));
 
 export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; playerRef: React.RefObject<PlayerScreenHandle>}): React.ReactElement | null {
+  const client = useApiClient();
   const {scheme, setPreference} = useTheme();
   const schemeRef = useRef(scheme);
   schemeRef.current = scheme;
@@ -48,6 +50,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
     if (!PARITY_CONTROL) return undefined;
     const engine = getSharedVegaPlaybackEngine();
     return installParityControl({
+      configuredServerUrl: () => client.resolveUrl('/'),
       location: () => {
         if (playerRef.current?.isVisible()) return `/player/${lastPlayed}`;
         const route = navRef.isReady() ? navRef.getCurrentRoute() : undefined;
@@ -92,8 +95,34 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         return {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message};
       },
       theme: () => schemeRef.current,
+      identity: async () => {
+        const tokenBefore = await client.getAccessToken();
+        if (typeof tokenBefore !== 'string' || tokenBefore.length === 0) throw new Error('device-test identity unavailable');
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        let profiles: Array<{username?: unknown; is_current?: unknown}>;
+        try {
+          const response = await fetch(client.resolveUrl('/api/v1/users/profiles'), {
+            headers: {Authorization: `Bearer ${tokenBefore}`},
+            signal: controller.signal,
+          });
+          if (!response.ok) throw new Error('device-test identity unavailable');
+          const body: unknown = await response.json();
+          if (!Array.isArray(body)) throw new Error('device-test identity unavailable');
+          profiles = body as Array<{username?: unknown; is_current?: unknown}>;
+        } finally {
+          clearTimeout(timeout);
+        }
+        const tokenAfter = await client.getAccessToken();
+        if (tokenAfter !== tokenBefore) throw new Error('device-test identity changed');
+        const current = profiles.filter((profile) => profile.is_current === true);
+        if (current.length !== 1 || typeof current[0]?.username !== 'string' || current[0].username.trim().length === 0) {
+          throw new Error('device-test identity unavailable');
+        }
+        return {username: current[0].username, isCurrentCount: current.length, serverUrl: client.resolveUrl('/')};
+      },
     });
-  }, [navRef, playerRef]);
+  }, [client, navRef, playerRef]);
 
   // While the player is up the app logs heavily and the device log drops lines, so a one-off answer can go missing: repeat
   // the player's state every 2 s then, stamped with the device clock, for the driver to take the latest one.

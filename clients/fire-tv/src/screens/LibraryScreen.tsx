@@ -324,11 +324,11 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
   const [audioLangs, setAudioLangs] = useState<string[]>([]);
   const [subtitleLangs, setSubtitleLangs] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(() => takePendingQuery('panel') === 'filters');
-  useEffect(() => {
-    reportQuery('panel', filtersOpen ? 'filters' : null);
-  }, [filtersOpen]);
   const [languagePicker, setLanguagePicker] = useState<'audio' | 'subs' | null>(null);
   const [actionsWork, setActionsWork] = useState<Work | null>(null);
+  useEffect(() => {
+    reportQuery('panel', actionsWork ? 'actions' : filtersOpen ? 'filters' : null);
+  }, [actionsWork, filtersOpen]);
   const [playlistWork, setPlaylistWork] = useState<Work | null>(null);
   const [drawerFocused, setDrawerFocused] = useState(false);
   const [facets, setFacets] = useState<LanguageFacets | null>(null);
