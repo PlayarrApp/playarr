@@ -17,7 +17,33 @@ export const RAIL_CENTRE_MS = 180;
 /** The track each stack was last centred on: the vertical position is decided once per rail change. */
 const centredTrack = new WeakMap<HTMLElement, HTMLElement>();
 
-export function centreTrackInStack(track: HTMLElement, options: { animate?: boolean } = {}): void {
+/**
+ * Posters and fonts settle after a stack first centres its track, and a late change of the track's height moved its
+ * centre by up to 26 px (Home with Covers on webOS: the first card sat at y 433, not 407, until a key was pressed).
+ * For a short while after centring, a size change of that track re-centres it; any key, wheel or touch ends it.
+ */
+const SETTLE_MS = 2000;
+const settleWatch = new WeakMap<HTMLElement, () => void>();
+
+function watchTrackSettling(stack: HTMLElement, track: HTMLElement): void {
+  if (typeof ResizeObserver === "undefined") return;
+  settleWatch.get(stack)?.();
+  const stop = () => {
+    observer.disconnect();
+    window.clearTimeout(timer);
+    for (const type of ["keydown", "wheel", "touchstart"]) window.removeEventListener(type, stop, true);
+    settleWatch.delete(stack);
+  };
+  const observer = new ResizeObserver(() => {
+    if (settleWatch.get(stack) === stop && centredTrack.get(stack) === track) centreTrackInStack(track, { animate: false, watch: false });
+  });
+  observer.observe(track);
+  const timer = window.setTimeout(stop, SETTLE_MS);
+  for (const type of ["keydown", "wheel", "touchstart"]) window.addEventListener(type, stop, true);
+  settleWatch.set(stack, stop);
+}
+
+export function centreTrackInStack(track: HTMLElement, options: { animate?: boolean; watch?: boolean } = {}): void {
   const stack = track.closest<HTMLElement>(".tv-rail-surface.is-vertical-tracks");
   if (!stack) return;
   centredTrack.set(stack, track);
@@ -30,6 +56,8 @@ export function centreTrackInStack(track: HTMLElement, options: { animate?: bool
   const top = Math.max(0, Math.min(max, target));
   if (options.animate === false) setScrollInstant(stack, { top });
   else smoothScrollTo(stack, { top }, undefined, { duration: RAIL_CENTRE_MS });
+  // Only the opening centre (instant) is watched: a glide between rails changes track sizes on purpose.
+  if (options.animate === false && options.watch !== false) watchTrackSettling(stack, track);
 }
 
 /**

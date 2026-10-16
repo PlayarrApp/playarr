@@ -1,0 +1,1 @@
+- Home on slow TVs (webOS with Covers): the first row no longer sits 26 px low until a key is pressed; the stack re-centres when posters finish loading.
