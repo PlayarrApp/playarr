@@ -268,7 +268,7 @@ struct LibraryView: View {
                                 endPoint: .trailing
                             )
                         }
-                    previewCopy(preview)
+                    previewCopy(preview, viewportWidth: proxy.size.width)
                         .frame(width: proxy.size.width * 0.205, alignment: .leading)
                         .padding(.leading, proxy.size.width * 0.088)
                         .padding(.top, proxy.size.height * 0.24)
@@ -465,10 +465,25 @@ struct LibraryView: View {
             let step = phone ? 0 : PlayarrArtworkPrefs.columnStep(artworkSize)
             let columnCount = viewModel.viewMode == .list ? 1 : max(1, (viewModel.viewMode == .cover ? (phone ? 3 : 5) : (phone ? 2 : 3)) + step)
             // Web tablet: the grid starts at 557 of 1366 pt and the three 229 pt columns end 85 pt before the panel edge.
-            let gutter: CGFloat = phone ? 16 : max(28, proxy.size.width * 0.058)
-            let trailing: CGFloat = phone ? 16 : max(80, proxy.size.width * 0.065)
-            let gap: CGFloat = phone ? 12 : min(28, proxy.size.width * 0.0135)
-            let cardWidth = (panelWidth - gutter - trailing - gap * CGFloat(columnCount - 1)) / CGFloat(columnCount)
+            let viewportWidth = proxy.size.width
+            let viewportHeight = proxy.size.height
+            let gutter: CGFloat = phone ? 16 : max(28, viewportWidth * 0.058)
+            let matchesWebScreenGrid = !phone && viewModel.viewMode == .screen
+            let railInset: CGFloat = phone ? 16 : min(max(28, viewportWidth * 0.028), 54)
+            let controlEdge = max(min(max(5, viewportWidth * 0.0065), 14), 0)
+            let controlGap = min(max(18, viewportWidth * 0.015), 30)
+            let trailing: CGFloat = phone ? 16 : matchesWebScreenGrid
+                ? controlEdge + max(min(max(48, viewportWidth * 0.036), 62), 56) + controlGap
+                : max(80, viewportWidth * 0.065)
+            let gap: CGFloat = phone ? 12 : matchesWebScreenGrid
+                ? min(max(14, viewportWidth * 0.0135), 28)
+                : min(28, viewportWidth * 0.0135)
+            let cardRail = viewportWidth * 0.62
+            let cardWidth = phone
+                ? (panelWidth - gutter - trailing - gap * CGFloat(columnCount - 1)) / CGFloat(columnCount)
+                : matchesWebScreenGrid
+                    ? (cardRail - railInset - trailing - gap * CGFloat(columnCount - 1)) / CGFloat(columnCount)
+                    : (panelWidth - gutter - trailing - gap * CGFloat(columnCount - 1)) / CGFloat(columnCount)
 
             Group {
                 if viewModel.viewMode == .coverFlow {
@@ -512,7 +527,7 @@ struct LibraryView: View {
                         LazyVGrid(
                     columns: Array(repeating: GridItem(.fixed(cardWidth), spacing: gap, alignment: .top), count: columnCount),
                     alignment: .leading,
-                    spacing: phone ? 24 : 27
+                    spacing: phone ? 24 : matchesWebScreenGrid ? min(max(22, viewportHeight * 0.025), 36) : 27
                         ) {
                     ForEach(viewModel.playlists) { playlist in
                         NavigationLink {
@@ -585,28 +600,41 @@ struct LibraryView: View {
                         startPoint: .leading,
                         endPoint: .trailing
                     )
-                } // light: web has no tinted panel behind the grid
+                } else {
+                    let railFrost = Color(red: 239.64 / 255, green: 238.2 / 255, blue: 238.68 / 255)
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: railFrost.opacity(0.68), location: 0.12),
+                            .init(color: railFrost.opacity(0.88), location: 0.34),
+                            .init(color: railFrost.opacity(0.96), location: 0.62),
+                            .init(color: railFrost, location: 1)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                }
             }
         }
     }
 
-    private func previewCopy(_ work: Work) -> some View {
+    private func previewCopy(_ work: Work, viewportWidth: CGFloat) -> some View {
         let year = WorkDetailView.tabletYearRangeLabel(releaseDate: work.releaseDate, endDate: work.endDate)
         let genres = work.genres.prefix(2).joined(separator: " · ")
         let meta = [year, genres.isEmpty ? nil : genres].compactMap { $0 }.joined(separator: "   ")
         return VStack(alignment: .leading, spacing: 0) {
             WMText((work.genres.first ?? work.kind.displayName).uppercased(), 8.6, 800, color: PlayarrStyle.pink, lh: 13, ls: 1.1)
                 .padding(.bottom, 20)
-            // The web title block is narrower than the copy below it, so "2 Fast 2 Furious" breaks after "Fast".
-            // The web title is 42 pt on a .9 line pitch in a block about 215 pt wide: "2 Broke Girls" stays on one line,
-            // "2 Fast 2 Furious" breaks after "Fast".
+            let isPad = UIDevice.current.userInterfaceIdiom == .pad
+            let titleSize: CGFloat = isPad ? min(max(35.2, viewportWidth * 0.036), 80) : 42
+            let titleWeight = isPad ? 560 : 400
             let nativeLineHeight = DesignFont.uiFont(
-                family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: 42, weight: 400, fixedAxes: DesignFont.nunitoAxes
-            )?.lineHeight ?? 42 * 1.36
-            let pitchCorrection = 42 * 0.9 - nativeLineHeight
+                family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: titleSize, weight: titleWeight, fixedAxes: DesignFont.nunitoAxes
+            )?.lineHeight ?? titleSize * 1.36
+            let pitchCorrection = titleSize * 0.9 - nativeLineHeight
             Text(work.title)
-                .font(WM.font(42, 400))
-                .tracking(-1.5)
+                .font(WM.font(titleSize, titleWeight))
+                .tracking(isPad ? -titleSize * 0.072 : -1.5)
                 .lineSpacing(pitchCorrection)
                 .foregroundStyle(PlayarrStyle.ink)
                 .lineLimit(3)
