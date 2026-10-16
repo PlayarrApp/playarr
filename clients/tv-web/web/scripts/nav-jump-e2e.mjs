@@ -160,13 +160,18 @@ const slowServer = await startServer({
   distDir: opt("dist", join(root, "dist")), movies: 60, series: 20, artists: 20, onDeck: 0, playlists: 2, playlistItems: 3, watchlist: 4,
   listDelayMs: 700, calendarDelayMs: 700,
 });
-/** Counts API reads in flight (the event stream and remote long polls stay open by design and are ignored). */
+/**
+ * Counts API reads in flight (the event stream and remote long polls stay open by design and are ignored). Requests are
+ * tracked by identity: a read already in flight when tracking began (Home's last ones) finishes without ever having been
+ * counted, and a bare counter would go negative and read "nothing in flight" while the dwell's own read is still open.
+ */
 const trackRequests = (page) => {
-  const state = { open: 0, started: 0, urls: [] };
+  const inflight = new Set();
+  const state = { get open() { return inflight.size; }, started: 0, urls: [] };
   const counted = (request) => /\/api\/v1\//.test(request.url()) && !/\/(events|remote)\b/.test(request.url());
-  page.on("request", (r) => { if (counted(r)) { state.open += 1; state.started += 1; state.urls.push(r.url()); } });
-  page.on("requestfinished", (r) => { if (counted(r)) state.open -= 1; });
-  page.on("requestfailed", (r) => { if (counted(r)) state.open -= 1; });
+  page.on("request", (r) => { if (counted(r)) { inflight.add(r); state.started += 1; state.urls.push(r.url()); } });
+  page.on("requestfinished", (r) => inflight.delete(r));
+  page.on("requestfailed", (r) => inflight.delete(r));
   return state;
 };
 /**
@@ -180,7 +185,7 @@ const settled = async (page, state, startedBefore, own) => {
   let quiet = 0;
   for (let waited = 0; waited < 12000 && quiet < 400; waited += 100) {
     await page.waitForTimeout(100);
-    quiet = state.open <= 0 ? quiet + 100 : 0;
+    quiet = state.open === 0 ? quiet + 100 : 0;
   }
 };
 const navTo = async (page, href) => {
