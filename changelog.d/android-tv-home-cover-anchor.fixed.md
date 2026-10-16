@@ -1,0 +1,1 @@
+- Android TV: Home rails sit on web's row at every artwork size and in Covers mode (the first row lifts by half the card's extra height, as web centres the focused rail).

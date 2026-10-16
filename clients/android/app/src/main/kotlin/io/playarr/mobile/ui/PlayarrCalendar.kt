@@ -2056,6 +2056,8 @@ internal fun calendarRangeLabelShort(mode: CalendarViewMode, anchor: LocalDate, 
     if (mode == CalendarViewMode.Month) return PlayarrDateFormat("yMMM", locale).format(anchor)
     val end = if (mode == CalendarViewMode.Agenda) window.end.minusDays(1) else window.end
     val day = PlayarrDateFormat("MMMd", locale)
+    // Intl `formatRange`: a span inside one month names the month once ("12 \u2013 18 Oct").
+    if (window.start.year == end.year && window.start.month == end.month) return "${PlayarrDateFormat("d", locale).format(window.start)} \u2013 ${day.format(end)}"
     return "${day.format(window.start)} \u2013 ${day.format(end)}"
 }
 

@@ -3272,7 +3272,8 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                 Row(Modifier.padding(top = 27.dp), horizontalArrangement = Arrangement.spacedBy(12.8.dp)) {
                     // The release year, never the library added date (ruling 2026-10-08); web adds the runtime last.
                     listOfNotNull(
-                        playarrKindYear(work.releaseDate)?.toString(),
+                        // Series show their run ("2011\u20132017") as web does.
+                        playarrYearRange(work.releaseDate, work.endDate),
                         work.genres.take(2).joinToString(" \u00B7 ").ifBlank { kind },
                         runtime,
                     ).forEach {

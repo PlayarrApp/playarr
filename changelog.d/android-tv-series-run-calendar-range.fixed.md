@@ -1,0 +1,1 @@
+- Android TV: the Library hero shows a series' run ("2011–2017") and the calendar range button names the month once ("12 – 18 Oct"), as web.
