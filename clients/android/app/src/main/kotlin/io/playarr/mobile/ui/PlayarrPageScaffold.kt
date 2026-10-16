@@ -79,6 +79,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.drawBehind
@@ -95,6 +96,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import android.graphics.Rect
+import android.os.Build
+import android.view.Gravity
+import android.view.WindowManager
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.InsetDrawable
+import java.util.function.Consumer
 
 /*
  * Screens render through `PlayarrPageLayout` in `core-designsystem` (docs/design/page-layout.md section 8): they name their
@@ -378,6 +386,9 @@ private fun PlayarrTvDrawer(
     initialFocus: FocusRequester? = null,
 ) {
     val dismiss = if (dismissible) onClose else ({})
+    val tablet = LocalStageScale.current != 1f
+    val panelWindow = !tablet && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val blurEnabled = if (panelWindow) rememberApi31TvDrawerBlurEnabled() else false
     Dialog(
         onDismissRequest = dismiss,
         properties = DialogProperties(
@@ -387,8 +398,7 @@ private fun PlayarrTvDrawer(
             decorFitsSystemWindows = false,
         ),
     ) {
-        (androidx.compose.ui.platform.LocalView.current.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.setDimAmount(0f)
-        val tablet = LocalStageScale.current != 1f
+        val view = androidx.compose.ui.platform.LocalView.current
         androidx.compose.runtime.CompositionLocalProvider(LocalTabletDrawerCssPx provides tablet) {
         UnstagedForWebCssPx(densityIsReal = true) {
         // Web `.tv-filter-drawer`: width min(360, 27 vw), padding clamp(38, 5 vu, 62) x clamp(26, 2.5 vw, 46), title clamp(22.4, 2 vw, 38.4), gap clamp(22, 2.8 vu, 34).
@@ -397,6 +407,26 @@ private fun PlayarrTvDrawer(
         val padTop = if (tablet) webVu(38f, 5f, 62f) else 54.dp
         val titleSize = if (tablet) webVw(22.4f, 2f, 38.4f).value else 38.4f
         val gap = if (tablet) webVu(22f, 2.8f, 34f) else 30.dp
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val panelSurface = if (panelWindow) WebSurfaceStrong.copy(alpha = 0.94f).toArgb() else 0
+        androidx.compose.runtime.SideEffect {
+            (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.let { window ->
+                window.setDimAmount(0f)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && panelWindow) {
+                    val shadowGutter = with(density) { 122.dp.roundToPx() }
+                    window.setBackgroundDrawable(PanelBlurInsetDrawable(panelSurface, shadowGutter))
+                    window.setBackgroundBlurRadius(if (blurEnabled) with(density) { 16.dp.roundToPx() } else 0)
+                    // Keep the 122 dp shadow gutter inside the window; the inset drawable bounds blur to the panel.
+                    window.setGravity(Gravity.RIGHT or Gravity.TOP)
+                    window.attributes = window.attributes.apply {
+                        width = with(density) { (drawerWidth + 122.dp).roundToPx() }
+                        height = WindowManager.LayoutParams.MATCH_PARENT
+                        x = 0
+                        y = 0
+                    }
+                }
+            }
+        }
         Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = dismiss)) {
             val shadow = Color(0x3D281A18)
             Box(
@@ -408,7 +438,7 @@ private fun PlayarrTvDrawer(
                             size = androidx.compose.ui.geometry.Size(122.dp.toPx(), size.height),
                         )
                     }
-                    .background(WebSurfaceStrong.copy(alpha = 0.94f))
+                    .background(if (panelWindow) Color.Transparent else WebSurfaceStrong.copy(alpha = 0.94f))
                     .clickable(interactionSource = null, indication = null, enabled = false) {},
             ) {
                 Column(
@@ -451,6 +481,28 @@ private fun PlayarrTvDrawer(
         }
     }
     LaunchedEffect(Unit) { runCatching { (initialFocus ?: focus).requestFocus() } }
+}
+
+@androidx.annotation.RequiresApi(Build.VERSION_CODES.S)
+@Composable
+private fun rememberApi31TvDrawerBlurEnabled(): Boolean {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val windowManager = context.getSystemService(WindowManager::class.java) ?: return false
+    var enabled by remember(windowManager) { mutableStateOf(windowManager.isCrossWindowBlurEnabled) }
+    DisposableEffect(windowManager, context.mainExecutor) {
+        val listener = Consumer<Boolean> { enabled = it }
+        windowManager.addCrossWindowBlurEnabledListener(context.mainExecutor, listener)
+        onDispose { windowManager.removeCrossWindowBlurEnabledListener(listener) }
+    }
+    return enabled
+}
+
+private class PanelBlurInsetDrawable(color: Int, insetLeft: Int) :
+    InsetDrawable(ColorDrawable(color), insetLeft, 0, 0, 0) {
+    override fun getPadding(padding: Rect): Boolean {
+        padding.set(0, 0, 0, 0)
+        return false
+    }
 }
 
 @Composable

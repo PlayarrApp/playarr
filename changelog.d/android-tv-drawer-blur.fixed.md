@@ -1,0 +1,1 @@
+- Add capability-aware Android 12+ backdrop blur to the Android TV filter drawer while preserving its existing tint when system blur is unavailable.
