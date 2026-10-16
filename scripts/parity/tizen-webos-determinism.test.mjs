@@ -14,7 +14,7 @@ const manifest = {
   runtimeEntry: { name: "assets/index-test.js", sha256: digest, observedLoadedInDevice: true },
 };
 
-async function makeDriver({ device = "webos", username = "fixture-device-user", loaded = true, staged = bytes, focused = true, routeReady = true, stableImages = true, fontsReady = true, fontsRejected = false, clockConsumed = true, routeChanges = false, cdpErrorMethod, cdpIdentityFailureOnReconnect, cdpIdentityFailureMessage, identityRequestFailAt = [] } = {}) {
+async function makeDriver({ device = "webos", username = "fixture-device-user", loaded = true, staged = bytes, focused = true, routeReady = true, stableImages = true, fontsReady = true, fontsRejected = false, clockConsumed = true, routeChanges = false, cdpErrorMethod, cdpIdentityFailureOnReconnect, cdpIdentityFailureMessage, identityRequestFailAt = [], identityTransientMessage = "device-test account identity request failed" } = {}) {
   const calls = [];
   let routeReads = 0;
   let socketCount = 0;
@@ -61,7 +61,7 @@ async function makeDriver({ device = "webos", username = "fixture-device-user", 
       } };
       if (request.method === "Runtime.evaluate" && request.params.expression.includes('localStorage.getItem("playarr:session")') && identityRequestFailAt.includes(++identityReads)) response.result = { exceptionDetails: {
         text: "Uncaught (in promise)",
-        exception: { description: "Error: device-test account identity request failed" },
+        exception: { description: `Error: ${identityTransientMessage}` },
       } };
       queueMicrotask(() => this.onmessage?.({ data: JSON.stringify(response) }));
     }
@@ -266,6 +266,10 @@ test("webOS reconnect fails closed with sanitised CDP identity evaluation errors
     await driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
     await driver.route("/home");
     await driver.stop();
+    const rotated = await makeDriver({ identityRequestFailAt: [2], identityTransientMessage: "device-test account session changed during identity check" });
+    await rotated.driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
+    await rotated.driver.route("/home");
+    await rotated.driver.stop();
     const failing = await makeDriver({ identityRequestFailAt: [2, 3, 4, 5, 6, 7, 8, 9] });
     await assert.rejects(failing.driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true }), /identity-request-failed/);
     await failing.driver.stop();

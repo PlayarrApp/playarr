@@ -186,8 +186,8 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
     if (r?.exceptionDetails) throw new Error(r.exceptionDetails.text);
     return r?.result?.value;
   }
-  // The identity request crosses the network to the test server and can time out under load. Only that transport
-  // failure is retried (bounded); a missing, mismatched or non-device-test identity still fails at once.
+  // The identity request crosses the network to the test server and can time out under load, and the app rotates its
+  // token every 15 minutes. Only those two transient failures are retried (bounded); anything else still fails at once.
   async function guard() {
     let identity;
     for (let attempt = 1; ; attempt += 1) {
@@ -195,7 +195,7 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
         identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
         break;
       } catch (error) {
-        if (attempt >= 3 || !/identity-request-failed/.test(error.message)) throw error;
+        if (attempt >= 3 || !/identity-(request-failed|session-changed)/.test(error.message)) throw error;
         await sleepImpl(2000);
       }
     }
