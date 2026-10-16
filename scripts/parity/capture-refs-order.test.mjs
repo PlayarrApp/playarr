@@ -19,6 +19,7 @@ test("the canonical deck is re-seeded immediately before each Home capture", () 
   assert.match(src.slice(at("const prepareState"), at("await prepareState();")), /seedCanonicalDeck/);
 });
 
-test("a screen retry never repeats an account-guard rejection", () => {
-  assert.match(src, /!\/guard rejected\|allowlist\|trusted\/\.test\(e\.message\)/);
+test("the run publishes only a complete set and records skipped screens", () => {
+  assert.ok(at("missingCaptures(") < at("cpSync(join(work, name"));
+  assert.match(src, /failed\.json/);
 });

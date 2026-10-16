@@ -10,13 +10,13 @@
 // Each viewport group writes its own <work>/<group>/captures.json with paths relative to that group; its build fields use webBuild.sha,
 // which matches the published web/build.json sha. The driver identity and deployed build are checked before and after capture.
 // Run it inside a memory scope: systemd-run --user --scope -p MemoryHigh=8G -p MemoryMax=12G -p MemorySwapMax=512M -- node capture-refs.mjs ...
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { expandKeys } from "./suite-lib.mjs";
-import { assertBuildIdentityStable, selectedLiveScreens, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
+import { assertBuildIdentityStable, captureKey, missingCaptures, runScreenWithRetry, selectedLiveScreens, selectTargets, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
 import { withCaptureState } from "./capture-state.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { PNG } from "pngjs";
@@ -34,6 +34,9 @@ const work = resolve(opt("work", join(process.cwd(), "web-refs-work")));
 const bakName = opt("bak", `web.bak-${manifest.date}`); // --bak <name>: partial retake, backs up to that name and leaves build.json alone
 const partial = args.includes("--bak");
 const copy = !args.includes("--no-copy");
+// --only group/theme/screen,... or --failed (the list in <work>/failed.json) recaptures just those screens into the same work dir, keeping the rest.
+const failedFile = join(work, "failed.json");
+const targets = selectTargets({ only: opt("only", null), failed: args.includes("--failed"), failedList: existsSync(failedFile) ? JSON.parse(readFileSync(failedFile, "utf8")) : [] });
 if (copy && !root) throw new Error("--parity-root <dir> is required (or --no-copy)");
 
 // The web build the refs come from: its sha goes into every refs folder's build.json (sha = web build, repoSha = this checkout).
@@ -101,19 +104,20 @@ const stateHash = captureSnapshot.hash;
 
 // Capture.
 const startedAt = new Date().toISOString();
+if (!targets) for (const name of groups) rmSync(join(work, name), { recursive: true, force: true }); // a full pass never inherits images from an earlier one
 const driverUrl = pathToFileURL(join(here, "drivers", "web.mjs")).href;
 const screens = suite.screens.filter((s) => manifest.screens.includes(s.id) && wantScreens.includes(s.id));
-const captureRowsByGroup = new Map();
 for (const name of groups) {
   const g = manifest.groups[name];
   if (!g) throw new Error(`unknown group ${name}`);
+  if (targets && ![...targets].some((k) => k.startsWith(`${name}/`))) continue;
   Object.assign(process.env, { PLAYARR_WEB_VIEWPORT_WIDTH: String(g.viewport[0]), PLAYARR_WEB_VIEWPORT_HEIGHT: String(g.viewport[1]), PLAYARR_WEB_VIEWPORT_DPR: String(g.dpr) });
   if (g.mobile) process.env.PLAYARR_WEB_MOBILE = "1"; else delete process.env.PLAYARR_WEB_MOBILE;
   if (g.noDownloads) process.env.PLAYARR_WEB_NO_DOWNLOADS = "1"; else delete process.env.PLAYARR_WEB_NO_DOWNLOADS;
   const driver = await (await import(`${driverUrl}?${name}`)).createDriver();
   captureState.registerInterruptCleanup(() => driver.stop());
-  const facts = {};
-  const captureRows = [];
+  const factsFile = join(work, name, "facts.json");
+  const facts = targets && existsSync(factsFile) ? JSON.parse(readFileSync(factsFile, "utf8")).facts : {};
   try {
     if (!driver.setDeterministicCapture || !driver.waitReady || !driver.captureBuildIdentity) throw new Error("web driver lacks deterministic capture, readiness, or build identity controls");
     await driver.setDeterministicCapture({ fixedNow, disableAnimations: true });
@@ -125,8 +129,9 @@ for (const name of groups) {
       await driver.setTheme(theme);
       mkdirSync(join(work, name, theme), { recursive: true });
       for (const s of screens) {
-        // A slow relay can fail one request; retry only this screen (never an account-guard rejection).
-        for (let attempt = 1; ; attempt += 1) try {
+        if (targets && !targets.has(captureKey(name, theme, s.id))) continue;
+        // A slow relay can fail a request: retry this screen, then record it in failed.json and carry on (a guard rejection aborts).
+        const result = await runScreenWithRetry(async () => {
           if (s.id === "home") await prepareState();
           await driver.home();
           if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
@@ -135,18 +140,10 @@ for (const name of groups) {
           else await driver.route(s.route);
           await driver.waitReady({ screen: s.id, phase: "route" });
           await driver.waitReady({ screen: s.id, phase: "capture" });
-          const imagePath = join(work, name, theme, `${s.id}.png`);
-          await driver.screenshot(imagePath);
-          captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, sha256: createHash("sha256").update(readFileSync(imagePath)).digest("hex"), build: webBuild.sha, checked_at: new Date().toISOString() });
+          await driver.screenshot(join(work, name, theme, `${s.id}.png`));
           facts[`${theme}/${s.id}`] = await driver.inspect();
-          console.log(`ok ${name} ${theme} ${s.id}`);
-          break;
-        } catch (e) {
-          const retriable = attempt < 5 && !/guard rejected|allowlist|trusted/.test(e.message);
-          console.log(`${retriable ? "retry" : "FAIL"} ${name} ${theme} ${s.id} (${attempt}): ${e.message.split("\n")[0]}`);
-          if (!retriable) throw e;
-          await new Promise((r) => setTimeout(r, 10000 * attempt));
-        }
+        }, { log: (m) => console.log(`${name} ${theme} ${s.id} ${m}`) });
+        console.log(result.ok ? `ok ${name} ${theme} ${s.id}` : `SKIPPED ${name} ${theme} ${s.id}`);
       }
     }
     const finalDriverBuild = await driver.captureBuildIdentity();
@@ -155,8 +152,16 @@ for (const name of groups) {
     await driver.stop();
   }
   writeFileSync(join(work, name, "facts.json"), JSON.stringify({ capturedAt: startedAt, facts }, null, 1));
-  captureRowsByGroup.set(name, captureRows);
 }
+// One web build for every pass of a work dir: refs from two deploys must never be mixed.
+const identityFile = join(work, "build-identity.txt"), identity = `${webBuild.sha}@${webBuild.builtAt}`;
+if (existsSync(identityFile) && readFileSync(identityFile, "utf8") !== identity && targets) throw new Error("the deployed web build changed since the first pass of this work dir; start a full pass in a fresh work dir");
+mkdirSync(work, { recursive: true }); writeFileSync(identityFile, identity);
+// Publish only a complete set: every screen of every group and theme must exist.
+const imageFile = (g, t, id) => join(work, g, t, `${id}.png`);
+const missing = missingCaptures(groups, screens.map((x) => x.id), (g, t, id) => existsSync(imageFile(g, t, id)));
+writeFileSync(failedFile, JSON.stringify(missing, null, 1));
+if (missing.length) { console.log(`INCOMPLETE: ${missing.length} screens missing (listed in ${failedFile}); nothing copied. Rerun with --failed.`); process.exitCode = 3; return; }
 // Crop fractional-scale rounding (a group's "crop": [w, h]) off the bottom and right edge.
 for (const name of groups) {
   const crop = manifest.groups[name].crop;
@@ -185,10 +190,10 @@ const finalWebBuild = await finalBuildResponse.json();
 assertBuildIdentityStable(`${webBuild.sha}@${webBuild.builtAt}`, `${finalWebBuild.sha}@${finalWebBuild.builtAt}`, "deployed web");
 const checkedAt = new Date().toISOString();
 for (const name of groups) {
-  const captures = captureRowsByGroup.get(name).map((capture) => ({
-    ...capture,
-    sha256: createHash("sha256").update(readFileSync(join(work, name, capture.path))).digest("hex"),
-  }));
+  const captures = ["dark", "light"].flatMap((theme) => screens.map((x) => ({
+    id: x.id, theme, path: `${theme}/${x.id}.png`, build: webBuild.sha, checked_at: checkedAt,
+    sha256: createHash("sha256").update(readFileSync(imageFile(name, theme, x.id))).digest("hex"),
+  })));
   writeFileSync(join(work, name, "captures.json"), JSON.stringify({
     suite: suite.version,
     checked_at: checkedAt,
