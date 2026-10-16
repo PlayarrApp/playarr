@@ -132,6 +132,13 @@ export async function fetchCurrentIdentity({ expectedServerUrl } = {}) {
 }
 
 export async function assertDeviceTestPage({ page, allowedUsernames, expectedServerUrl }) {
-  const identity = await page.evaluate(fetchCurrentIdentity, { expectedServerUrl });
+  // The player rotates its access token while a check runs; that surfaces as a changed session or a refused request. The retry
+  // re-reads the session and re-validates the whole identity, so a different account still fails.
+  const read = () => page.evaluate(fetchCurrentIdentity, { expectedServerUrl });
+  const identity = await read().catch(async (error) => {
+    if (!/session changed|identity request failed/.test(String(error?.message))) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return read();
+  });
   return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl });
 }

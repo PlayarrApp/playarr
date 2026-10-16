@@ -108,3 +108,11 @@ test("browser-evaluated identity helper is self-contained after serialisation", 
   const serialised = vm.runInContext(`(${fetchCurrentIdentity.toString()})`, context);
   assert.equal(JSON.stringify(await serialised({ expectedServerUrl: serverUrl })), JSON.stringify({ username: "device-test", isCurrentCount: 1, serverUrl }));
 });
+
+test("a session rotated mid-check is re-validated once, a repeated failure still throws", async () => {
+  const identity = { username: "device-test", isCurrentCount: 1, serverUrl };
+  const flaky = (failures) => { let n = 0; return { evaluate: async () => { if (n++ < failures) throw new Error("device-test account session changed during identity check"); return identity; } }; };
+  const args = { allowedUsernames: new Set(["device-test"]), expectedServerUrl: serverUrl };
+  await assertDeviceTestPage({ page: flaky(1), ...args });
+  await assert.rejects(assertDeviceTestPage({ page: flaky(2), ...args }), /session changed/);
+});
