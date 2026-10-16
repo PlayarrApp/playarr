@@ -444,9 +444,6 @@ jobs:
         continue-on-error: true
         timeout-minutes: 25
         env:
-          PLAYARR_DEVICE_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          PLAYARR_DEVICE_TEST_USERNAME: ${{ !contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_USERNAME || '' }}
-          PLAYARR_DEVICE_TEST_DPAD_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && (secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME) || '' }}
           PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           PLAYARR_DEVICE_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           PLAYARR_DEVICE_TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
