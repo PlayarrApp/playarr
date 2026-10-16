@@ -2143,7 +2143,7 @@ struct Detail {
     Stack() {
       KeyArtBackdrop({ keyArt: this.heroArtwork })
 
-      Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 10 : 0)) }) {
+      Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 20 : 0)) }) {
         FeatureCopy({
           kicker: this.tvCopyKicker(),
           title: (this.detail !== null ? this.detail.work.title : ''),

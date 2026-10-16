@@ -356,7 +356,10 @@ def walk(folder, suffix):
     if os.environ.get("MOTION") == "true" and device == "tv":
         motion_walk(os.path.join(out, "motion", "dark" if folder.endswith("dark") else "light"))
     if os.environ.get("POSTER_MODE") == "true" and device == "tv":
-        poster_walk(os.path.join(out, "poster", "dark" if folder.endswith("dark") else "light"))
+        try:
+            poster_walk(os.path.join(out, "poster", "dark" if folder.endswith("dark") else "light"))
+        except PostersStalled as stalled:  # an extra, not a published screen: the main captures are already taken, so keep them
+            print("poster walk skipped:", stalled, flush=True)
 
 
 if device == "tv" and THEME in ("extra", "playback"):
