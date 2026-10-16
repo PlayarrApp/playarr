@@ -163,6 +163,10 @@ struct TVCalendarView: View {
         .buttonStyle(TVRingButtonStyle(cornerRadius: 25))
         .focusEffectDisabled()
         .disabled(TVParityLaunch.frozen)
+        #if os(macOS)
+        // Web `data-tv-focus-default`: the Today button takes the page's first focus.
+        .macPreferredFocus(label == "Today")
+        #endif
         .placed(x: x, y: 56.2, w: width, h: 50)
     }
 

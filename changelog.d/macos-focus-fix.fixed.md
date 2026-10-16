@@ -1,0 +1,1 @@
+- macOS: the Calendar page opens with the Today button focused, as on the web, and the profiles page names its focused profile for the parity driver.

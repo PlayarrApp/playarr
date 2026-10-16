@@ -1122,6 +1122,12 @@ struct TVProfilesView: View {
             }
             .disabled(switchingID != nil)
             .accessibilityLabel(profile.displayName.isEmpty ? profile.username : profile.displayName)
+            #if os(macOS)
+            // The driver reads the focused profile from the Mac focus engine's tag (the household page reported none, so the
+            // Down, Down, Select path of the Settings capture could not follow focus).
+            .environment(\.macParityTag, MacParityTag(title: profile.displayName.isEmpty ? profile.username : profile.displayName,
+                                                      id: profile.id.uuidString, rail: 0, index: index, gridPosition: nil))
+            #endif
 
             if selected {
                 profileActions(for: profile, scale: s)
@@ -1190,6 +1196,9 @@ struct TVProfilesView: View {
         ))
         .focusEffectDisabled(true)
         .focused($focusedTarget, equals: .add)
+        #if os(macOS)
+        .environment(\.macParityTag, MacParityTag(title: "Add profile", id: "profile-add", rail: 0, index: profiles.count, gridPosition: nil))
+        #endif
         .onChange(of: focusedTarget) { _, newValue in
             if newValue == .add {
                 selectedID = "add"
