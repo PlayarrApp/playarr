@@ -169,6 +169,8 @@ struct Lib {
     loaded: Cell<usize>,
     total: Cell<usize>,
     busy: Cell<bool>,
+    /// The Cover view (View > Cover in Filters): 2:3 posters at the same card width.
+    cover: Cell<bool>,
     /// Bumped on every reset so a late page from the old query is dropped.
     generation: Cell<u32>,
     genres: RefCell<BTreeSet<String>>,
@@ -215,10 +217,17 @@ impl Lib {
                     self.imgs.load(Client::artwork_path(&w.id, k, 780), &self.backdrop);
                 }
             }
+            let cover = self.cover.get();
             let opts = CardOpts {
                 selected: first,
                 home_art: true,
                 unseen: self.app.is_unseen(&w),
+                art_h: cover.then(super::cards::cover_art_h),
+                kinds: if cover {
+                    &["poster", "backdrop", "thumb"]
+                } else {
+                    &["backdrop", "thumb", "poster"]
+                },
                 ..Default::default()
             };
             self.loaded.set(self.loaded.get() + 1);
@@ -410,14 +419,22 @@ impl Lib {
             out
         };
         label("View");
-        // Only the screen view exists in this app; the other two go back to it.
-        let views = tiles(&["List", "Screen", "Cover"], 1);
+        // Screen and Cover are drawn here; the List view is not built yet and goes back to the current view.
+        let views = tiles(&["List", "Screen", "Cover"], usize::from(self.cover.get()) + 1);
         for (i, v) in views.iter().enumerate() {
-            let screen = views[1].clone();
-            v.set_tooltip_text(Some("This app shows titles in the screen view."));
+            let (me, back) = (self.clone(), views[usize::from(self.cover.get()) + 1].clone());
+            if i == 0 {
+                v.set_tooltip_text(Some("The list view is not available in this app yet."));
+            }
             v.connect_toggled(move |b| {
-                if b.is_active() && i != 1 {
-                    screen.set_active(true);
+                if !b.is_active() {
+                    return;
+                }
+                if i == 0 {
+                    back.set_active(true);
+                } else if me.cover.get() != (i == 2) {
+                    me.cover.set(i == 2);
+                    me.reset();
                 }
             });
         }
@@ -591,6 +608,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         loaded: Cell::new(0),
         total: Cell::new(usize::MAX),
         busy: Cell::new(false),
+        cover: Cell::new(false),
         generation: Cell::new(0),
         genres: RefCell::default(),
         buffer: RefCell::default(),

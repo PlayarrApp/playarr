@@ -54,9 +54,14 @@ pub fn home_cover() -> bool {
     GEOM.with(|g| g.get().0)
 }
 
+/// Art height of a 2:3 cover card.
+pub fn cover_art_h() -> i32 {
+    (rail_w() as f64 * 1.5).round() as i32
+}
+
 pub fn home_art_h() -> i32 {
     if home_cover() {
-        (rail_w() as f64 * 1.5).round() as i32
+        cover_art_h()
     } else {
         art_h()
     }
