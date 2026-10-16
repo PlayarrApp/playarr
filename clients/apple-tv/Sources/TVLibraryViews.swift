@@ -1948,6 +1948,11 @@ struct TVLibraryKindView: View {
                 startPoint: .top, endPoint: .bottom
             )
         )
+        #if os(macOS)
+        // Web end-side scroll fade (`--page-edge-fade-floor` .3 over 5.5 vh): the last row dims toward the screen edge. The diff
+        // against the movies reference showed a band of mismatch along the foot of the last visible row.
+        .macEdgeFade(axis: .vertical, endFloor: 0.3)
+        #endif
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
         #if os(macOS)
         // Back from a detail: web restores the card that opened it. Same transaction as the pop, before the settle step.
