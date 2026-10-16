@@ -1,0 +1,1 @@
+- Keep Previewer HTTP request handles alive for the process lifetime to avoid the Previewer's libhttp response-read crash.
