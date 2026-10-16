@@ -13,6 +13,14 @@ PATCH_RAIL_SPEC = importlib.util.spec_from_file_location("harmony_patch_rail", H
 patch_rail_transform = importlib.util.module_from_spec(PATCH_RAIL_SPEC)
 assert PATCH_RAIL_SPEC.loader is not None
 PATCH_RAIL_SPEC.loader.exec_module(patch_rail_transform)
+PATCH_HTTP_SPEC = importlib.util.spec_from_file_location("harmony_patch_http", HERE / "patch_http.py")
+patch_http = importlib.util.module_from_spec(PATCH_HTTP_SPEC)
+assert PATCH_HTTP_SPEC.loader is not None
+PATCH_HTTP_SPEC.loader.exec_module(patch_http)
+PATCH_ARTWORK_SPEC = importlib.util.spec_from_file_location("harmony_patch_artwork", HERE / "patch_artwork.py")
+patch_artwork = importlib.util.module_from_spec(PATCH_ARTWORK_SPEC)
+assert PATCH_ARTWORK_SPEC.loader is not None
+PATCH_ARTWORK_SPEC.loader.exec_module(patch_artwork)
 
 
 class PreviewPatchContractTests(unittest.TestCase):
@@ -34,6 +42,36 @@ class PreviewPatchContractTests(unittest.TestCase):
         patched = patch_state.player(source)
         self.assertNotIn("playarr-player-surface", patched)
         self.assertIn("Column().width('100%').height('100%')", patched)
+
+    def test_preview_http_handles_live_for_the_process_across_api_artwork_and_state_reports(self):
+        transport = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/net/HttpTransport.ets").read_text(encoding="utf-8")
+        artwork = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/data/ArtworkRepository.ets").read_text(encoding="utf-8")
+        preview_state = self.preview_state
+
+        patched_transport = patch_http.patch_source(transport)
+        patched_preview_state = patch_http.patch_source(preview_state)
+        patched_artwork = patch_artwork.patch_source(artwork, "40017", bridge_url="https://example.com")
+        patched_artwork_request = patch_http.patch_source(patched_artwork)
+
+        self.assertIn("const PREVIEW_HTTP_REQUESTS: Array<http.HttpRequest> = [];", patched_transport)
+        self.assertIn("PREVIEW_HTTP_REQUESTS.push(client);\n  const timeoutMs", patched_transport)
+        self.assertIn("await client.request(url, nativeOptions)", patched_transport)
+        self.assertNotIn("client.destroy();", patched_transport)
+        self.assertEqual(patch_http.patch_source(patched_transport), patched_transport)
+        self.assertIn("await sendHttpRequest(url, requestOptions)", patched_artwork)
+        self.assertIn("const base: string = 'https://example.com';", patched_artwork_request)
+        self.assertIn("PREVIEW_HTTP_REQUESTS.push(req);\n  return req.request(", patched_artwork_request)
+        self.assertNotIn("req.destroy();", patched_artwork_request)
+        self.assertEqual(patch_http.patch_source(patched_artwork_request), patched_artwork_request)
+        self.assertIn("const PREVIEW_HTTP_REQUESTS: Array<http.HttpRequest> = [];", patched_preview_state)
+        self.assertEqual(patched_preview_state.count("PREVIEW_HTTP_REQUESTS.push(req);"), 2)
+        for function_name in ("previewReport", "previewPost"):
+            body = patched_preview_state.split("function " + function_name, 1)[1].split("\n}", 1)[0]
+            self.assertLess(body.index("PREVIEW_HTTP_REQUESTS.push(req);"), body.index("req.request("))
+        self.assertNotIn("req.destroy();", patched_preview_state)
+        self.assertEqual(patch_http.patch_source(patched_preview_state), patched_preview_state)
+        self.assertNotIn("PREVIEW_HTTP_REQUESTS.pop", patched_transport + patched_preview_state + patched_artwork_request)
+        self.assertNotIn("PREVIEW_HTTP_REQUESTS.splice", patched_transport + patched_preview_state + patched_artwork_request)
 
     def test_watchlist_resolve_is_counted_as_pending(self):
         patched = patch_state.detail(self.detail_source)
