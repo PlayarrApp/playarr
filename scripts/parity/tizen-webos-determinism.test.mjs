@@ -14,7 +14,7 @@ const manifest = {
   runtimeEntry: { name: "assets/index-test.js", sha256: digest, observedLoadedInDevice: true },
 };
 
-async function makeDriver({ device = "webos", username = "fixture-device-user", loaded = true, staged = bytes, focused = true, routeReady = true, stableImages = true, fontsReady = true, fontsRejected = false, clockConsumed = true, routeChanges = false, cdpErrorMethod, cdpIdentityFailureOnReconnect } = {}) {
+async function makeDriver({ device = "webos", username = "fixture-device-user", loaded = true, staged = bytes, focused = true, routeReady = true, stableImages = true, fontsReady = true, fontsRejected = false, clockConsumed = true, routeChanges = false, cdpErrorMethod, cdpIdentityFailureOnReconnect, cdpIdentityFailureMessage } = {}) {
   const calls = [];
   let routeReads = 0;
   let socketCount = 0;
@@ -54,7 +54,10 @@ async function makeDriver({ device = "webos", username = "fixture-device-user", 
       if (request.method === cdpErrorMethod) response.error = { message: "mock CDP protocol error" };
       const identityReconnect = request.method === "Runtime.evaluate" && request.params.expression.includes('localStorage.getItem("playarr:session")') && socketCount > 1;
       if (identityReconnect && cdpIdentityFailureOnReconnect === "protocol") response.error = { message: "mock CDP protocol error" };
-      if (identityReconnect && cdpIdentityFailureOnReconnect === "exception") response.result = { exceptionDetails: { text: "sensitive mocked exception detail" } };
+      if (identityReconnect && cdpIdentityFailureOnReconnect === "exception") response.result = { exceptionDetails: {
+        text: "Uncaught (in promise)",
+        exception: { description: `Error: ${cdpIdentityFailureMessage ?? "sensitive mocked exception detail"}` },
+      } };
       queueMicrotask(() => this.onmessage?.({ data: JSON.stringify(response) }));
     }
     close() { this.readyState = 3; }
@@ -235,6 +238,29 @@ test("webOS reconnect fails closed with sanitised CDP identity evaluation errors
     await driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
     await assert.rejects(driver.route("/home"), (error) => {
       assert.match(error.message, /CDP Runtime\.evaluate device-test identity raised a page exception/);
+      assert.doesNotMatch(error.message, /sensitive mocked exception detail/);
+      return true;
+    });
+    await driver.stop();
+  });
+  await t.test("known identity failure is reduced to a safe diagnostic category", async () => {
+    const { driver } = await makeDriver({
+      cdpIdentityFailureOnReconnect: "exception",
+      cdpIdentityFailureMessage: "device-test account session changed during identity check: sensitive details",
+    });
+    await driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
+    await assert.rejects(driver.route("/home"), (error) => {
+      assert.match(error.message, /identity-session-changed/);
+      assert.doesNotMatch(error.message, /sensitive details/);
+      return true;
+    });
+    await driver.stop();
+  });
+  await t.test("unknown identity page exception stays generic", async () => {
+    const { driver } = await makeDriver({ cdpIdentityFailureOnReconnect: "exception" });
+    await driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
+    await assert.rejects(driver.route("/home"), (error) => {
+      assert.match(error.message, /raised a page exception$/);
       assert.doesNotMatch(error.message, /sensitive mocked exception detail/);
       return true;
     });

@@ -85,7 +85,7 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
         awaitPromise: true,
         returnByValue: true,
       });
-      assertCdp(identityResponse, "Runtime.evaluate device-test identity");
+      assertIdentityCdp(identityResponse);
       const identity = identityResponse.result?.result?.value;
       assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
       await installDeterministicHooks();
@@ -147,6 +147,23 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
     if (response?.error) throw new Error(`CDP ${method} failed`);
     if (response?.result?.exceptionDetails) throw new Error(`CDP ${method} raised a page exception`);
     return response;
+  }
+  function assertIdentityCdp(response) {
+    if (response?.error) throw new Error("CDP Runtime.evaluate device-test identity failed");
+    const details = response?.result?.exceptionDetails;
+    if (!details) return response;
+    const diagnostic = [details.text, details.exception?.description].filter((value) => typeof value === "string").join("\n");
+    const knownErrors = [
+      ["device-test account identity request failed", "identity-request-failed"],
+      ["device-test account identity unavailable", "identity-session-unavailable"],
+      ["device-test account identity server is invalid", "identity-server-invalid"],
+      ["device-test account identity server is not trusted", "identity-server-untrusted"],
+      ["device-test account identity response invalid", "identity-response-invalid"],
+      ["device-test account identity is missing or ambiguous", "identity-profile-ambiguous"],
+      ["device-test account session changed during identity check", "identity-session-changed"],
+    ];
+    const category = knownErrors.find(([message]) => diagnostic.includes(message))?.[1];
+    throw new Error(`CDP Runtime.evaluate device-test identity raised a page exception${category ? ` (${category})` : ""}`);
   }
   async function ev(expr) {
     if (device === "tizen") {
