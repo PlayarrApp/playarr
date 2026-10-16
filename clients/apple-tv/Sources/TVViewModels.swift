@@ -106,6 +106,8 @@ final class TVHomeViewModel {
         if TVParityLaunch.requestedScreen != nil,
            !Self.tokenInjected {
             works = TVParityFixtures.sampleWorks()
+            onDeckResolved = false
+            homeInitialFocusReady = true
             state = .loaded
             return
         }
@@ -132,13 +134,20 @@ final class TVHomeViewModel {
             // De-dupe while preserving order.
             var seen = Set<UUID>()
             works = works.filter { seen.insert($0.id).inserted }
-            if TVParityLaunch.requestedScreen == nil { beginOnDeckLoad() }
+            if TVParityLaunch.requestedScreen == nil {
+                beginOnDeckLoad()
+            } else {
+                onDeckResolved = false
+                homeInitialFocusReady = true
+            }
             state = .loaded
         } catch {
             // Parity suite must still paint production rails when the tunnel
             // token expires or the API is in full-account mode.
             if TVParityLaunch.requestedScreen != nil {
                 works = TVParityFixtures.sampleWorks()
+                onDeckResolved = false
+                homeInitialFocusReady = true
                 state = .loaded
                 return
             }

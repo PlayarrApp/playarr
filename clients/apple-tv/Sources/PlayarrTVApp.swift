@@ -14,6 +14,12 @@ struct PlayarrTVApp: App {
                 .environment(environment)
                 .environment(displayPreferences)
                 .preferredColorScheme(TVParityLaunch.theme ?? displayPreferences.colorScheme)
+                .transaction { transaction in
+                    if TVParityLaunch.disablesAnimations {
+                        transaction.animation = nil
+                        transaction.disablesAnimations = true
+                    }
+                }
         }
     }
 }

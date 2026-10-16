@@ -8,7 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { cropCaptureTarget, expandKeys, focusForCheck, pinnedCatalogFiles, recordCropFailure, resetProgress, routeMatches, selectScreenCrops, validateSuite } from "./suite-lib.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { mergeSelectedResults } from "./selective-results.mjs";
 import { resolveCaptureEnvironment, withCaptureState } from "./capture-state.mjs";
@@ -43,6 +43,8 @@ if (unknownOnly.length) throw new Error(`unknown --only section(s): ${unknownOnl
 const via = opt("via", "keys");
 const reference = args.includes("--reference");
 const deterministic = args.includes("--stable") || process.env.PARITY_STABLE === "1";
+const repeatProof = args.includes("--repeat-proof") || process.env.PARITY_REPEAT_PROOF === "1";
+if (repeatProof && (deterministic || !only.includes("screens") || only.some((section) => section !== "screens"))) throw new Error("--repeat-proof supports screens-only runs and cannot be combined with full stable mode");
 if (deterministic && reset) throw new Error("stable capture cannot combine with --reset-progress; seed canonical state before running");
 const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
 const regressionReason = process.env.PARITY_REGRESSION_REASON;
@@ -104,7 +106,7 @@ async function press(keys) {
 }
 async function waitReady(screen, phase) {
   assertNotInterrupted();
-  if (!deterministic) return;
+  if (!deterministic && !repeatProof) return;
   if (driver.waitReady) { await driver.waitReady({ screen, phase }); assertNotInterrupted(); return; }
   throw new Error(`stable capture unsupported: driver lacks waitReady(${phase})`);
 }
@@ -125,18 +127,20 @@ async function reach(screen) {
   if (!routeMatches(screen.match ?? screen.route, at)) throw new Error(`${screen.id}: ended on ${at}, expected ${screen.route}`);
 }
 
-const summary = { screens: 0, failed: [], dpadFailed: [] };
+const summary = { screens: 0, failed: [], failedCrops: [], dpadFailed: [] };
+let stableScreenManifest = null;
+const frameDigests = new Map();
 if (reset) {
   assertNotInterrupted();
   await resetProgress([...pinned(), ...catalogFiles]);
   assertNotInterrupted();
 } // before any capture: On deck and Resume start from the same state on every device
-if (deterministic) {
+if (deterministic || repeatProof) {
   if (!driver.setDeterministicCapture) throw new Error("stable capture unsupported: driver lacks setDeterministicCapture");
   await driver.setDeterministicCapture({ fixedNow, disableAnimations: true });
   assertNotInterrupted();
 }
-const buildBeforeCapture = deterministic ? await driver.captureBuildIdentity() : null;
+const buildBeforeCapture = deterministic || repeatProof ? await driver.captureBuildIdentity() : null;
 assertNotInterrupted();
 await driver.start?.({ theme: themes[0] });
 assertNotInterrupted();
@@ -159,21 +163,22 @@ if (only.includes("screens")) {
         const path = join(out, theme, `${s.id}.png`);
         await driver.screenshot(path, { screen: s.id });
         assertNotInterrupted();
-        captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, bytes: readFileSync(path), capturedAt: new Date().toISOString() });
+        const bytes = readFileSync(path);
+        if (repeatProof) {
+          const digest = createHash("sha256").update(bytes).digest("hex");
+          await driver.screenshot(path, { screen: s.id });
+          const repeated = createHash("sha256").update(readFileSync(path)).digest("hex");
+          if (digest !== repeated) throw new Error("repeated deterministic frame digest changed");
+          frameDigests.set(`${theme}/${s.id}`, digest);
+        }
+        captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, bytes, capturedAt: new Date().toISOString() });
         summary.screens += 1;
         console.log(`ok ${theme} ${s.id}`);
       }
       catch (e) { if (signalReceived) throw e; summary.failed.push(`${theme}/${s.id}`); console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); }
     }
   }
-  if (deterministic && summary.failed.length === 0) {
-    if (!captureSnapshot?.hash) throw new Error("stable screen manifest requires an isolated state snapshot");
-    const buildAfterScreens = await driver.captureBuildIdentity?.();
-    if (!buildBeforeCapture || !sameCaptureBuildIdentity(buildBeforeCapture, buildAfterScreens)) throw new Error("stable screen manifest requires an unchanged verified build identity");
-    const captures = createCaptureManifest({ suite: suite.version, buildIdentity: buildAfterScreens, clock: fixedNow, state: captureSnapshot.hash, captures: captureRows });
-    mkdirSync(out, { recursive: true });
-    writeFileSync(join(out, "captures.json"), `${JSON.stringify(captures, null, 2)}\n`, { flag: "wx" });
-  }
+  if (deterministic && summary.failed.length === 0) stableScreenManifest = captureRows;
 }
 // Extra captures for focus-crop checks (the last row of a long grid, the last item of a short one): not scored, no web ref, and only
 // for a driver that asks for them (`endCrops`). Written to <theme>/crops/<id>.png.
@@ -183,20 +188,39 @@ if (only.includes("screens") && !only.includes("dpad") && driver.endCrops) {
     assertNotInterrupted();
     await driver.setTheme(theme);
     mkdirSync(join(out, theme, "crops"), { recursive: true });
-    for (const c of suite.crops ?? []) {
+    const selectedScreenIds = suite.screens.filter((screen) => !wantScreens.length || wantScreens.includes(screen.id)).map((screen) => screen.id);
+    for (const c of selectScreenCrops(suite.crops ?? [], selectedScreenIds)) {
       assertNotInterrupted();
+      const target = cropCaptureTarget(c);
       try {
         await driver.setLaunchArgs?.(c.launchArgs ?? []); // e.g. Home artwork = Covers
         await reach(suite.screens.find((x) => x.id === c.from));
         await press(c.keys);
-        if (deterministic) await waitReady(c.id, "capture");
+        if (deterministic || repeatProof) await waitReady(target.screen, "capture");
         else await sleep(c.settle ?? 1200); // legacy captures can preserve intentional motion sampling
-        await driver.screenshot(join(out, theme, "crops", `${c.id}.png`), { screen: c.id });
+        await driver.screenshot(join(out, theme, "crops", `${target.outputId}.png`), { screen: target.screen });
         console.log(`ok ${theme} crop ${c.id}`);
-      } catch (e) { if (signalReceived) throw e; console.log(`FAIL ${theme} crop ${c.id}: ${e.message.split("\n")[0]}`); } // a crop never fails the run
+      } catch (e) {
+        if (signalReceived) throw e;
+        recordCropFailure(summary, theme, c.id, e);
+        console.log(`FAIL ${theme} crop ${c.id}: ${e.message.split("\n")[0]}`);
+      }
     }
     await driver.setLaunchArgs?.([]);
   }
+}
+if (deterministic && stableScreenManifest && summary.failed.length === 0) {
+  if (!captureSnapshot?.hash) throw new Error("stable screen manifest requires an isolated state snapshot");
+  const buildAfterScreens = await driver.captureBuildIdentity?.();
+  if (!buildBeforeCapture || !sameCaptureBuildIdentity(buildBeforeCapture, buildAfterScreens)) throw new Error("stable screen manifest requires an unchanged verified build identity");
+  const captures = createCaptureManifest({ suite: suite.version, buildIdentity: buildAfterScreens, clock: fixedNow, state: captureSnapshot.hash, captures: stableScreenManifest });
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, "captures.json"), `${JSON.stringify(captures, null, 2)}\n`, { flag: "wx" });
+}
+if (repeatProof && summary.failed.length === 0) {
+  const buildAfter = await driver.captureBuildIdentity?.();
+  if (!sameCaptureBuildIdentity(buildBeforeCapture, buildAfter)) throw new Error("installed app build identity changed during repeat-proof capture");
+  console.log(`repeat-proof passed ${frameDigests.size} screen frames on one installed build`);
 }
 // A scored run without the web expected file would write expected: null for every result and overwrite a good dpad.json/performance.json.
 if (!reference && ((only.includes("dpad") && !Object.keys(expected.dpad).length) || (only.includes("performance") && !Object.keys(expected.performance).length))) {

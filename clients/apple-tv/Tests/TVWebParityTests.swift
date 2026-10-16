@@ -5,6 +5,92 @@ import XCTest
 
 /// Locks the pieces of the web parity work that are pure functions.
 final class TVWebParityTests: XCTestCase {
+#if DEBUG && (os(tvOS) || os(macOS))
+    @MainActor
+    func testParityLeaseWaitsForOwnerRouteAfterChildAppearsFirst() async {
+        TVParityState.setRoute(tab: .movies, path: [])
+        let attachment = Task { await TVParityState.waitForContent(expectedBase: "/") }
+        await Task.yield()
+        TVParityState.setRoute(tab: .home, path: [])
+        let lease = await attachment.value
+
+        XCTAssertNotNil(lease, "a child mounting before the parent route callback must attach once its route is current")
+        XCTAssertTrue(TVParityState.setContent(4, state: "loaded", lease: lease!))
+        TVParityState.setRoute(tab: .movies, path: [])
+        XCTAssertFalse(TVParityState.setContent(8, state: "loaded", lease: lease!), "a stale offscreen view cannot satisfy the active route")
+    }
+
+    @MainActor
+    func testCancelledHomeAttachmentCannotClaimAfterTheViewDisappears() async {
+        TVParityState.setRoute(tab: .movies, path: [])
+        let expiredAttachment = Task { await TVParityState.waitForContent(expectedBase: "/") }
+        await Task.yield()
+        expiredAttachment.cancel()
+        TVParityState.setRoute(tab: .home, path: [])
+
+        let expiredLease = await expiredAttachment.value
+        XCTAssertNil(expiredLease, "a cancelled Home view must not acquire readiness after disappearance")
+        let returningViewLease = await TVParityState.waitForContent(expectedBase: "/")
+        XCTAssertNotNil(returningViewLease, "the returning Home view can acquire a fresh lease")
+    }
+
+    @MainActor
+    func testDisappearingSameRouteOwnerCannotWriteIntoTheReturningView() {
+        TVParityState.setRoute(tab: .home, path: [])
+        let oldView = TVParityState.beginContent(expectedBase: "/")!
+        XCTAssertTrue(TVParityState.setContent(5, state: "loaded", lease: oldView))
+
+        TVParityState.releaseContent(oldView)
+        let newView = TVParityState.claimContent(expectedBase: "/")!
+
+        XCTAssertFalse(TVParityState.setContent(9, state: "loaded", lease: oldView))
+        XCTAssertTrue(TVParityState.isCurrent(newView))
+    }
+
+    @MainActor
+    func testParityLeaseRejectsStalePriorQueryAndInvalidatesActiveLoading() {
+        TVParityState.setRoute(tab: .calendar, path: [])
+        TVParityState.setCalendarView("week")
+        let priorQuery = TVParityState.beginContent(expectedBase: "/calendar")!
+        XCTAssertTrue(TVParityState.setContent(3, state: "loaded", lease: priorQuery))
+
+        TVParityState.setCalendarView("month")
+        let currentQuery = TVParityState.beginContent(expectedBase: "/calendar")!
+        XCTAssertFalse(TVParityState.setContent(9, state: "loaded", lease: priorQuery))
+        XCTAssertTrue(TVParityState.isCurrent(currentQuery))
+        XCTAssertTrue(TVParityState.setContent(nil, state: "loading", lease: currentQuery))
+
+        let retry = TVParityState.beginContent(expectedBase: "/calendar")!
+        XCTAssertFalse(TVParityState.setContent(3, state: "loaded", lease: currentQuery), "starting a new load invalidates the previous loading owner")
+        XCTAssertTrue(TVParityState.setContent(2, state: "loaded", lease: retry))
+    }
+
+    @MainActor
+    func testSameBasePanelTransitionInvalidatesPanelButPreservesCatalogLease() {
+        TVParityState.setRoute(tab: .movies, path: [])
+        let catalog = TVParityState.beginContent(expectedBase: "/movies")!
+        XCTAssertTrue(TVParityState.setContent(12, state: "loaded", lease: catalog))
+
+        TVParityState.setPanel("filters")
+        let filters = TVParityState.beginPanel(expectedBase: "/movies")!
+        TVParityState.setPanel("actions")
+
+        XCTAssertFalse(TVParityState.isCurrentPanel(filters), "closing filters invalidates its pending facet load")
+        XCTAssertTrue(TVParityState.isCurrent(catalog), "overlay transitions must not discard valid catalogue rows")
+        XCTAssertFalse(TVParityState.beginPanel(expectedBase: "/movies") != nil, "actions does not own filter-facet readiness")
+    }
+
+    func testParityReadinessWaitsForAllPaginationPagesAfterFirstPageLoads() {
+        var readiness = TVParityPaginationReadiness()
+        readiness.begin()
+
+        XCTAssertEqual(readiness.contentState(afterFirstPage: "loaded"), "loading")
+
+        readiness.finish()
+        XCTAssertEqual(readiness.contentState(afterFirstPage: "loaded"), "loaded")
+    }
+#endif
+
     /// Web `orderWorks`: numeric, case-insensitive order on the sort title ("2" before "10").
     func testLibraryTitleOrderIsNumericLikeTheWeb() {
         func work(_ title: String) -> Work {

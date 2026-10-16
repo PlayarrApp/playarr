@@ -225,7 +225,7 @@ jobs:
               "--screens": {item["id"] for item in suite.get("screens", [])},
               "--cases": {item["id"] for item in suite.get("downloads", [])},
           }
-          switches = {"--skip-player", "--player"}
+          switches = {"--skip-player", "--player", "--repeat-proof"}
           seen = set()
           index = 0
           while index < len(args):
@@ -443,6 +443,7 @@ jobs:
           PLAYARR_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+          PARITY_FIXED_NOW: "2026-10-07T12:00:00Z"
           SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
         run: |
           set -euo pipefail
@@ -464,6 +465,7 @@ jobs:
           TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           DRIVER_TRACE: "1"
+          PARITY_FIXED_NOW: "2026-10-07T12:00:00Z"
           SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
         run: |
           set -euo pipefail

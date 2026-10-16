@@ -29,6 +29,23 @@ export function focusForCheck(f, checkId) {
   return { label, position: f && typeof f === "object" ? f.position ?? null : null };
 }
 
+// Crop IDs name output artefacts, while `from` names the screen whose native
+// route readiness and screenshot semantics apply.
+export function cropCaptureTarget(crop) {
+  return { outputId: crop.id, screen: crop.from };
+}
+
+export function recordCropFailure(summary, theme, cropId, error) {
+  const entry = `${theme}/crop/${cropId}`;
+  summary.failedCrops.push({ id: entry, error: error.message.split("\n")[0] });
+  summary.failed.push(entry);
+}
+
+export function selectScreenCrops(crops, screenIds) {
+  const selected = new Set(screenIds);
+  return crops.filter((crop) => selected.has(crop.from));
+}
+
 // Returns a list of problems (empty when valid).
 export function validateSuite(s, legendScreens) {
   const bad = [];

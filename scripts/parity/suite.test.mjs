@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { cropCaptureTarget, expandKeys, focusForCheck, pinnedCatalogFiles, recordCropFailure, routeMatches, selectScreenCrops, validateSuite } from "./suite-lib.mjs";
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
@@ -30,6 +30,31 @@ test("routeMatches", () => {
   assert.ok(!routeMatches("/movies/:id", "/movies"));
   assert.ok(routeMatches("/calendar?view=week", "/calendar?view=week&x=1"));
   assert.ok(!routeMatches("/calendar?view=week", "/calendar?view=month"));
+});
+
+test("crop readiness and screenshot use the owning base screen while retaining crop output id", () => {
+  assert.deepEqual(cropCaptureTarget({ id: "home-down1", from: "home" }), { outputId: "home-down1", screen: "home" });
+});
+
+test("screen capture crops are limited to the selected owning screens", () => {
+  const crops = [
+    { id: "home-down1", from: "home" },
+    { id: "movies-down1", from: "movies" },
+    { id: "search-down1", from: "search" },
+  ];
+  assert.deepEqual(selectScreenCrops(crops, ["home", "movies"]).map(({ id }) => id), ["home-down1", "movies-down1"]);
+});
+
+test("crop failures fail the run and remain separately reported", () => {
+  const deterministic = { failed: [], failedCrops: [] };
+  recordCropFailure(deterministic, "dark", "home-down1", new Error("readiness timed out"));
+  assert.deepEqual(deterministic.failed, ["dark/crop/home-down1"]);
+  assert.deepEqual(deterministic.failedCrops, [{ id: "dark/crop/home-down1", error: "readiness timed out" }]);
+
+  const legacy = { failed: [], failedCrops: [] };
+  recordCropFailure(legacy, "dark", "home-down1", new Error("legacy capture error"));
+  assert.deepEqual(legacy.failed, ["dark/crop/home-down1"]);
+  assert.deepEqual(legacy.failedCrops, [{ id: "dark/crop/home-down1", error: "legacy capture error" }]);
 });
 
 test("stable catalog lookup requires explicitly resolved account credentials", async () => {
@@ -631,6 +656,29 @@ export async function createDriver() {
   assert.equal(scored.provenance.stable, false);
   assert.equal(scored.provenance.clock, "unpinned");
   assert.match(scored.provenance.referenceSha256, /^[a-f0-9]{64}$/);
+});
+
+test("screens selection limits crop captures to the selected screens", () => {
+  const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
+  assert.ok(testRoot, "PLAYARR_PARITY_TEST_OUT must be set by test:suite");
+  const base = join(testRoot, `suite-crop-selection-${process.pid}-${Date.now()}`);
+  const driver = join(base, "driver.mjs");
+  const out = join(base, "out");
+  mkdirSync(base, { recursive: true });
+  writeFileSync(driver, `import { writeFileSync } from "node:fs";
+export async function createDriver() { let route = "/"; return {
+  endCrops: true,
+  async home() { route = "/"; }, async route(path) { route = path.replace(":id", "fixture"); },
+  async location() { return route; }, async setTheme() {}, async key() {}, async setLaunchArgs() {},
+  async screenshot(file) { writeFileSync(file, "fixture"); },
+}; }
+`);
+  const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
+  const result = spawnSync(process.execPath, [runner, "--driver", driver, "--out", out, "--only", "screens", "--screens", "home", "--via", "route"], { encoding: "utf8", env: process.env });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const actual = readdirSync(join(out, "dark", "crops")).sort();
+  const expected = suite.crops.filter((crop) => crop.from === "home").map((crop) => `${crop.id}.png`).sort();
+  assert.deepEqual(actual, expected);
 });
 
 test("screens-only runner never invokes download cleanup, even when cleanup throws", () => {

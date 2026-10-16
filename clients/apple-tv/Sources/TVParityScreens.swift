@@ -23,6 +23,16 @@ enum TVParityScreenID: String, CaseIterable {
 enum TVParityLaunch {
     static let argument = "-PlayarrParityScreen"
 
+    static var disablesAnimations: Bool {
+        ProcessInfo.processInfo.arguments.contains("-PlayarrDisableAnimations")
+    }
+
+    static var fixedNowArgument: String? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "-PlayarrParityNow"), args.indices.contains(index + 1) else { return nil }
+        return args[index + 1]
+    }
+
     /// When set, production SwiftUI mounts deterministic fixture state for
     /// honest simctl captures. Apple platforms never use WebView/WKWebView
     /// (or web-ref paint) for parity — native SwiftUI only.
@@ -472,21 +482,123 @@ enum TVParityState {
     private static var items: Int?
     private static var contentState = "loading"
     private static var panelContentState: String?
+    private static var contentGeneration = 0
+    private static var panelGeneration = 0
+    private static var contentLease: TVParityReadinessLease?
+    private static var panelLease: TVParityReadinessLease?
+
+    private static var contentRouteKey: String {
+        base + (query.filter { $0.key != "panel" }.isEmpty ? "" : "?" + query.filter { $0.key != "panel" }.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"))
+    }
+
+    private static var panelRouteKey: String {
+        base + (query.isEmpty ? "" : "?" + query.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"))
+    }
+
+    private static func routeWillChange() -> (content: String, panel: String) {
+        (contentRouteKey, panelRouteKey)
+    }
+
+    private static func routeDidChange(from previous: (content: String, panel: String)) {
+        if previous.content != contentRouteKey {
+            contentGeneration &+= 1
+            contentLease = nil
+            items = nil
+            contentState = "loading"
+        }
+        if previous.panel != panelRouteKey {
+            panelGeneration &+= 1
+            panelLease = nil
+            panelContentState = nil
+        }
+    }
 
     /// The count and load state of the current route, used to refuse empty or failed parity captures.
-    static func setItems(_ count: Int?, state: String? = nil) {
-        items = count
-        contentState = state ?? (count.map { $0 > 0 ? "loaded" : "empty" } ?? "loading")
+    static func beginContent(expectedBase: String) -> TVParityReadinessLease? {
+        guard base == expectedBase else { return nil }
+        contentGeneration &+= 1
+        let lease = TVParityReadinessLease(routeKey: contentRouteKey, generation: contentGeneration)
+        contentLease = lease
+        items = nil
+        contentState = "loading"
+        write()
+        return lease
+    }
+
+    static func claimContent(expectedBase: String) -> TVParityReadinessLease? {
+        guard base == expectedBase else { return nil }
+        if let contentLease, contentLease.routeKey == contentRouteKey { return contentLease }
+        return beginContent(expectedBase: expectedBase)
+    }
+
+    static func waitForContent(expectedBase: String) async -> TVParityReadinessLease? {
+        for _ in 0..<100 {
+            if Task.isCancelled { return nil }
+            if let lease = claimContent(expectedBase: expectedBase) { return lease }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        return nil
+    }
+
+    static func waitForContentLoad(expectedBase: String) async -> TVParityReadinessLease? {
+        for _ in 0..<100 {
+            if Task.isCancelled { return nil }
+            if let lease = beginContent(expectedBase: expectedBase) { return lease }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        return nil
+    }
+
+    static func isCurrent(_ lease: TVParityReadinessLease) -> Bool {
+        contentLease == lease && lease.routeKey == contentRouteKey
+    }
+
+    static func releaseContent(_ lease: TVParityReadinessLease) {
+        guard isCurrent(lease) else { return }
+        contentGeneration &+= 1
+        contentLease = nil
+        items = nil
+        contentState = "loading"
         write()
     }
 
-    static func setContent(state: String, items count: Int) {
+    @discardableResult
+    static func setContent(_ count: Int?, state: String, lease: TVParityReadinessLease) -> Bool {
+        guard isCurrent(lease) else { return false }
         items = count
         contentState = state
         write()
+        return true
     }
 
-    static func setPanelContentState(_ state: String?) { panelContentState = state; write() }
+    static func beginPanel(expectedBase: String) -> TVParityReadinessLease? {
+        guard base == expectedBase, query["panel"] == "filters" else { return nil }
+        panelGeneration &+= 1
+        let lease = TVParityReadinessLease(routeKey: panelRouteKey, generation: panelGeneration)
+        panelLease = lease
+        panelContentState = "loading"
+        write()
+        return lease
+    }
+
+    static func waitForPanel(expectedBase: String) async -> TVParityReadinessLease? {
+        for _ in 0..<100 {
+            if Task.isCancelled { return nil }
+            if base == expectedBase, query["panel"] == "filters" { return beginPanel(expectedBase: expectedBase) }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        return nil
+    }
+
+    static func isCurrentPanel(_ lease: TVParityReadinessLease) -> Bool {
+        panelLease == lease && lease.routeKey == panelRouteKey
+    }
+
+    static func setPanelContentState(_ state: String?, lease: TVParityReadinessLease) {
+        guard isCurrentPanel(lease) else { return }
+        panelContentState = state
+        write()
+    }
 
     /// The authenticated account identity for capture guards. This is a user ID only, never a token.
     static func setCurrentUserID(_ userID: String) { currentUserID = userID; write() }
@@ -517,12 +629,19 @@ enum TVParityState {
         write()
     }
 
-    static func setCalendarView(_ mode: String?) { query["view"] = mode; write() }
+    static func setCalendarView(_ mode: String?) {
+        let previous = routeWillChange()
+        query["view"] = mode
+        routeDidChange(from: previous)
+        write()
+    }
 
     /// An open drawer: `filters` for the Filters drawer, `actions` for any other.
     static func setPanel(_ title: String?) {
+        let previous = routeWillChange()
         query["panel"] = title.map { $0.lowercased() == "filters" ? "filters" : "actions" }
-        panelContentState = title?.lowercased() == "filters" ? "loading" : title == nil ? nil : "loaded"
+        routeDidChange(from: previous)
+        if title?.lowercased() == "actions" { panelContentState = "loaded" }
         write()
     }
 
@@ -534,7 +653,7 @@ enum TVParityState {
     /// The suite's web routes: `/`, `/movies`, `/series`, `/music`, `/search`, `/calendar`, `/settings`, a title
     /// `/movies/<id>` or `/series/<id>`, a playlist `/playlists/<id>`.
     static func setRoute(tab: TVNavTab, path: [TVRoute]) {
-        let previousRoute = base + (query.isEmpty ? "" : "?" + query.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"))
+        let previous = routeWillChange()
         query = tab == .calendar && path.isEmpty ? query.filter { $0.key == "view" } : [:]
         switch path.last {
         case .work(let work):
@@ -544,12 +663,7 @@ enum TVParityState {
         case nil:
             base = tab == .home ? "/" : "/\(tab.rawValue)"
         }
-        let currentRoute = base + (query.isEmpty ? "" : "?" + query.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"))
-        if currentRoute != previousRoute {
-            items = nil
-            contentState = "loading"
-            panelContentState = nil
-        }
+        routeDidChange(from: previous)
         write()
     }
 
@@ -619,7 +733,8 @@ enum TVParityState {
         let state: [String: Any] = ["route": route, "userID": currentUserID, "focused": (tag ?? found.label) as Any, "item": found.item as Any,
                                     "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any,
                                     "items": items as Any, "contentState": contentState,
-                                    "panelContentState": panelContentState as Any]
+                                    "panelContentState": panelContentState as Any,
+                                    "determinism": ["clock": TVParityLaunch.fixedNowArgument ?? "", "animationsDisabled": TVParityLaunch.disablesAnimations]]
         // `-PlayarrParityState <path>`: an explicit file (the Mac driver); otherwise the app's Documents folder.
         let args = ProcessInfo.processInfo.arguments
         let explicit = args.firstIndex(of: "-PlayarrParityState").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
@@ -627,6 +742,23 @@ enum TVParityState {
               let target = explicit.map({ URL(fileURLWithPath: $0) })
                 ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("parity-state.json") else { return }
         do { try data.write(to: target, options: .atomic) } catch { NSLog("PlayarrParity: cannot write %@: %@", target.path, String(describing: error)) }
+    }
+}
+
+/// Pure debug telemetry state, kept separate from the production first-page `didLoad` flag.
+struct TVParityReadinessLease: Equatable {
+    let routeKey: String
+    let generation: Int
+}
+
+struct TVParityPaginationReadiness: Equatable {
+    private(set) var isLoadingAllPages = false
+
+    mutating func begin() { isLoadingAllPages = true }
+    mutating func finish() { isLoadingAllPages = false }
+
+    func contentState(afterFirstPage state: String) -> String {
+        isLoadingAllPages ? "loading" : state
     }
 }
 #endif

@@ -1,0 +1,1 @@
+- Apple parity readiness now ignores stale offscreen route reports and waits for Home focus setup and library pagination to finish. Stable Apple capture pins the native clock, disables SwiftUI transaction animations, and verifies the installed app executable digest.

@@ -5,6 +5,7 @@
 // press holds Return through a CGEvent helper. The route and the focused item come from the app's debug parity-state.json
 // (TVParityState in clients/apple-tv), read through `simctl get_app_container`. Screenshots are `simctl io screenshot`.
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { waitForAppleReadiness } from "../apple-readiness.mjs";
@@ -15,13 +16,26 @@ const KEYCODE = { up: 126, down: 125, left: 123, right: 124, select: 36, back: 5
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts });
 
+export function appleDeterministicLaunchArgs(fixedNow, disableAnimations) {
+  if (typeof fixedNow !== "string" || !Number.isFinite(Date.parse(fixedNow))) throw new Error("Apple deterministic capture requires a valid fixedNow ISO date");
+  if (disableAnimations !== true) throw new Error("Apple deterministic capture requires disableAnimations: true");
+  return ["-PlayarrParityNow", fixedNow, "-PlayarrDisableAnimations"];
+}
+
 const MAC_DIRECTIONS = new Set(["up", "down", "left", "right"]);
 const SAFE_BOOLEAN = "(true|false)";
 const SAFE_NUMBER = "-?\\d{1,7}(?:\\.\\d{1,3})?";
 const MAX_MAC_LOG_DELTA_BYTES = 256 * 1024;
 const MAX_MAC_KEY_ARTIFACT_BYTES = 64 * 1024;
+const APPLE_READINESS_SCREENS = new Set(["home", "movies", "series", "music", "filters", "actions"]);
 const MAC_KEY_ENTRY = new RegExp(`^PlayarrMacFocusKeyEntry seq=(\\d{1,9}) direction=(up|down|left|right) text_responder=${SAFE_BOOLEAN} window_key=${SAFE_BOOLEAN}$`);
 const MAC_KEY_RESULT = new RegExp(`^PlayarrMacFocusKey seq=(\\d{1,9}) direction=(up|down|left|right) responder=(text|other) text_edit_excluded=${SAFE_BOOLEAN} before_focused=${SAFE_BOOLEAN} before_fallback_focused_present=${SAFE_BOOLEAN} before_fallback_equals_before=${SAFE_BOOLEAN} after_focused=${SAFE_BOOLEAN} after_equals_before=${SAFE_BOOLEAN} fallback_ran=${SAFE_BOOLEAN} registered_target_candidates=(\\d{1,6}) chosen_frame=(none|${SAFE_NUMBER},${SAFE_NUMBER},${SAFE_NUMBER},${SAFE_NUMBER}) focused_binding=${SAFE_BOOLEAN} focused_binding_count=(\\d{1,6})$`);
+
+export function assertAppleReadinessScreen(screen, device = "Apple") {
+  if (!APPLE_READINESS_SCREENS.has(screen)) {
+    throw new Error(`${device} readiness unsupported for screen: ${screen ?? "<missing>"}`);
+  }
+}
 
 export class MacFocusLogCursor {
   identity = null;
@@ -214,6 +228,8 @@ export async function createDriver({ args = [], out } = {}) {
   };
   const frontmost = () => { if (mac || process.env.IDB) return; try { run("osascript", ["-e", 'tell application "Simulator" to activate']); } catch { /* keep going: keys may still land */ } };
   let stickyArgs = []; // launch arguments every launch carries (a crop's Home-artwork setting)
+  let deterministicArgs = [];
+  let deterministicFixedNow = null;
   let verifiedUserID = null;
   let launchStartedAt = 0;
   const readinessTimeoutMs = Number(process.env.APPLE_PARITY_READINESS_TIMEOUT_MS) || 30_000;
@@ -222,7 +238,11 @@ export async function createDriver({ args = [], out } = {}) {
     phase,
     readState: async () => {
       await assertCurrentUser();
-      return state();
+      const current = state();
+      if (deterministicFixedNow && (current?.determinism?.clock !== deterministicFixedNow || current?.determinism?.animationsDisabled !== true)) {
+        throw new Error("Apple app did not confirm the requested deterministic clock and animation settings");
+      }
+      return current;
     },
     timeoutMs: readinessTimeoutMs,
   });
@@ -236,7 +256,7 @@ export async function createDriver({ args = [], out } = {}) {
       // The sign-in behind a launch can fail for a moment (the server throttles back-to-back logins): retry with a pause.
       for (let attempt = 1; ; attempt += 1) {
         try {
-          run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...stickyArgs, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
+          run("bash", [wallSh, "launch", "macos", theme, "-"], { env: { ...process.env, LAUNCH_EXTRA: [...extra, ...stickyArgs, ...deterministicArgs, ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), "-PlayarrParityState", macState].join(" ") } });
           break;
         } catch (e) {
           if (attempt >= 4) throw e;
@@ -284,7 +304,7 @@ export async function createDriver({ args = [], out } = {}) {
       tokens.push("-PlayarrServerURL", process.env.SERVER_URL, "-PlayarrAccessToken", access, "-PlayarrRefreshToken", refresh);
     }
     launchStartedAt = Date.now() / 1000;
-    run("xcrun", ["simctl", "launch", udid, bundle, ...tokens, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...stickyArgs, ...extra]);
+    run("xcrun", ["simctl", "launch", udid, bundle, ...tokens, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...stickyArgs, ...deterministicArgs, ...extra]);
     await sleep(wait); // a launch signs in from the seeded session and loads Home
     await assertCurrentUser();
     frontmost(); await sleep(500);
@@ -325,12 +345,27 @@ export async function createDriver({ args = [], out } = {}) {
       return { state: last.state === "playing" && advanced >= expect.advanceSeconds ? "playing" : "stalled", startSeconds: start, advancedSeconds: advanced };
   };
   return {
-    async setDeterministicCapture() { throw new Error(`Apple ${device} stable deterministic capture unsupported: no platform clock and animation control are available`); },
-    async captureBuildIdentity() { throw new Error(`Apple ${device} stable build identity unsupported: installed app digest is not exposed by this driver`); },
-    async waitReady(options) {
-      if (["home", "movies", "series", "music", "filters", "actions"].includes(options?.screen)) {
-        return waitForReady(options);
+    async setDeterministicCapture({ fixedNow, disableAnimations } = {}) {
+      if (mac) throw new Error("Apple macOS stable capture is unsupported; deterministic parity is implemented for tvOS simulators");
+      deterministicArgs = appleDeterministicLaunchArgs(fixedNow, disableAnimations);
+      deterministicFixedNow = fixedNow;
+    },
+    async captureBuildIdentity() {
+      if (mac) throw new Error("Apple macOS stable build identity is unsupported; deterministic parity is implemented for tvOS simulators");
+      const app = run("xcrun", ["simctl", "get_app_container", udid, bundle]).trim();
+      const info = join(app, "Info.plist");
+      const executable = run("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleExecutable", info]).trim();
+      if (!executable || executable.includes("/")) throw new Error("Apple installed app has no valid executable identity");
+      const binary = join(app, executable);
+      const sha256 = createHash("sha256").update(readFileSync(binary)).digest("hex");
+      if (process.env.PARITY_EXPECTED_BUILD_SHA && sha256 !== process.env.PARITY_EXPECTED_BUILD_SHA.toLowerCase()) {
+        throw new Error("installed Apple app digest does not match PARITY_EXPECTED_BUILD_SHA");
       }
+      return { bundle, sha256 };
+    },
+    async waitReady(options) {
+      assertAppleReadinessScreen(options?.screen, `Apple ${device}`);
+      return waitForReady(options);
     },
     async start({ theme: t } = {}) {
       theme = t ?? "dark";

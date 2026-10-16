@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MacFocusKeyCollector, MacFocusLogCursor, serializeMacFocusKeyMarker } from "./drivers/apple-sim.mjs";
+import { appleDeterministicLaunchArgs, assertAppleReadinessScreen, MacFocusKeyCollector, MacFocusLogCursor, serializeMacFocusKeyMarker } from "./drivers/apple-sim.mjs";
+
+test("Apple stable capture pins the app clock and disables SwiftUI animations", () => {
+  assert.deepEqual(appleDeterministicLaunchArgs("2026-10-07T12:00:00Z", true), [
+    "-PlayarrParityNow", "2026-10-07T12:00:00Z", "-PlayarrDisableAnimations",
+  ]);
+  assert.throws(() => appleDeterministicLaunchArgs("not-a-date", true), /valid fixedNow/);
+  assert.throws(() => appleDeterministicLaunchArgs("2026-10-07T12:00:00Z", false), /disableAnimations/);
+});
+
+test("Apple stable readiness throws when a screen is unsupported", () => {
+  assertAppleReadinessScreen("home");
+  assert.throws(() => assertAppleReadinessScreen("detail-movie", "Apple tvOS"), /readiness unsupported for screen: detail-movie/);
+});
 
 const entry = "PlayarrMacFocusKeyEntry seq=12 direction=right text_responder=false window_key=true";
 const result = "PlayarrMacFocusKey seq=12 direction=right responder=other text_edit_excluded=false before_focused=false before_fallback_focused_present=false before_fallback_equals_before=true after_focused=true after_equals_before=false fallback_ran=true registered_target_candidates=3 chosen_frame=10.0,20.0,30.0,40.0 focused_binding=true focused_binding_count=1";
