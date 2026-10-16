@@ -1,0 +1,1 @@
+- Stop only the macOS parity app instance that records its own PID and matches the built app executable.

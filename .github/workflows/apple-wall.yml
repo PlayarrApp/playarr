@@ -590,4 +590,4 @@ jobs:
         run: |
           [[ -f $WORK/state.env ]] && . "$WORK/state.env" || true
           [[ -z ${UDID:-} ]] || xcrun simctl delete "$UDID" || true
-          pkill -x PlayarrMac || true
+          bash "$TRUSTED/scripts/apple-wall/wall.sh" stop "$DEVICE"

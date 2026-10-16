@@ -9,6 +9,7 @@ cmd=${1:?command}; DEVICE=${2:?device}
 : "${SRC:?}" "${TRUSTED:?}" "${WORK:?}"
 mkdir -p "$WORK"; STATE="$WORK/state.env"
 log() { echo "wall[$DEVICE]: $*"; }
+source "$TRUSTED/scripts/apple-wall/owned-process.sh"
 
 case $DEVICE in # kind, vnc port (health text on port+1), bundle id
   tvos)   KIND=tvos;  PORT=5904; BUNDLE=com.playarr.playarr.tvos ;;
@@ -130,10 +131,13 @@ launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route 
         $([[ $DEVICE == ipad ]] && echo --playarr-parity-landscape) >/dev/null ;;
     macos)
       token || return 1 # fresh sign-in per launch (see tvOS above); a failure leaves the running app alone
-      pkill -x PlayarrMac 2>/dev/null || true; sleep 1
+      stop_owned_process "${MAC_APP_PID_FILE:-}" "$APP/Contents/MacOS/PlayarrMac"
       mkdir -p "$WORK/machome"; pin_device
       local open_flags=(-n -g -j)
-      local app_args=(-PlayarrMuted -PlayarrTheme "$theme" -ApplePersistenceIgnoreState YES \
+      local pid_file="$WORK/mac-app.$(uuidgen).pid"
+      MAC_APP_PID_FILE=$pid_file
+      save MAC_APP_PID_FILE "$pid_file"
+      local app_args=(-PlayarrParityProcessIDFile "$pid_file" -PlayarrMuted -PlayarrTheme "$theme" -ApplePersistenceIgnoreState YES \
         -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrRefreshToken "$REFRESH_TOKEN")
       if [[ ${MAC_PARITY_VISIBLE:-false} == true ]]; then
         open_flags=(-n)
@@ -142,7 +146,9 @@ launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route 
       fi
       open "${open_flags[@]}" "$APP" --env CFFIXED_USER_HOME="$WORK/machome" --stdout "$WORK/app.log" --stderr "$WORK/app.log" \
         --args "${app_args[@]}" \
-        $([[ $route != - ]] && echo "-PlayarrParityRoute $route") ${LAUNCH_EXTRA:-} ;; # route "-": a keys-driven launch (the Apple driver)
+        $([[ $route != - ]] && echo "-PlayarrParityRoute $route") ${LAUNCH_EXTRA:-}
+      for _ in {1..100}; do [[ -s $pid_file ]] && break; sleep 0.1; done
+      [[ -s $pid_file ]] || { log "the macOS app did not record its process ID"; return 1; } ;;
   esac
 }
 
@@ -246,5 +252,9 @@ stream)
     sleep 1
   done
   kill $VNC 2>/dev/null || true; log "stream ended" ;;
+stop)
+  if [[ $KIND == macos && -n ${APP:-} ]]; then
+    stop_owned_process "${MAC_APP_PID_FILE:-}" "$APP/Contents/MacOS/PlayarrMac"
+  fi ;;
 *) echo "unknown command $cmd" >&2; exit 2 ;;
 esac

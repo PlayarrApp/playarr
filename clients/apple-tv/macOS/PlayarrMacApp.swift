@@ -20,6 +20,12 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let displayPreferences = TVDisplayPreferences()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEBUG
+        guard writeParityProcessIDFileIfRequested() else {
+            NSApp.terminate(nil)
+            return
+        }
+        #endif
         MacKeyboard.shared.install()
         let root = MacTVStage {
             TVRootView()
@@ -71,6 +77,23 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    #if DEBUG
+    private func writeParityProcessIDFileIfRequested() -> Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let option = arguments.firstIndex(of: "-PlayarrParityProcessIDFile"),
+              arguments.indices.contains(option + 1) else { return true }
+        let fileURL = URL(fileURLWithPath: arguments[option + 1])
+        let processID = "\(ProcessInfo.processInfo.processIdentifier)\n"
+        do {
+            try Data(processID.utf8).write(to: fileURL, options: .atomic)
+            return true
+        } catch {
+            NSLog("Unable to write parity process ID file: %@", error.localizedDescription)
+            return false
+        }
+    }
+    #endif
 }
 
 /// The default 1920x1080 window may be larger than a laptop screen; it is kept at 16:9 rather than squeezed.
