@@ -596,7 +596,11 @@ final class MacFocusEngineTests: XCTestCase {
         }
         XCTAssertTrue(moved, "the arrow focuses the second target binding")
         let firstReleased = await wait({ engine.targets[first]?.isFocused() == false })
-        XCTAssertTrue(firstReleased, "the arrow releases the first target binding")
+        XCTAssertTrue(firstReleased, "the arrow releases the first target binding: " +
+            "engine_on_second=\(engine.focusedID == second) first_binding=\(engine.targets[first]?.isFocused() == true) " +
+            "second_binding=\(engine.targets[second]?.isFocused() == true) key_window=\(window.isKeyWindow) " +
+            "first_responder=\(window.firstResponder.map { String(describing: type(of: $0)) } ?? "none") " +
+            "window_count=\(NSApp.windows.count) key_is_test_window=\(NSApp.keyWindow === window)")
         let firstFrame = try XCTUnwrap(engine.targets[first]?.frame)
         let secondFrame = try XCTUnwrap(engine.targets[second]?.frame)
         let targetsShareYOverlap = firstFrame.minY < secondFrame.maxY && secondFrame.minY < firstFrame.maxY
