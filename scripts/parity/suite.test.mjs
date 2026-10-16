@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { assertCanonicalHomeProgress, expandKeys, focusForCheck, pinnedCatalogFiles, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
@@ -67,6 +67,89 @@ test("stable catalog lookup pins available episode files and tolerates episodes 
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("Home fixture preflight verifies one configured deck row with an approved current identity and performs no writes", async () => {
+  const filmFile = "12345678-1234-4234-8234-1234567890ab";
+  const calls = [];
+  const env = { PLAYARR_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "device-test", PLAYARR_PASSWORD: "secret",
+    PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID: filmFile };
+  const fetchImpl = async (url, options = {}) => {
+    const path = new URL(url).pathname;
+    calls.push({ path, method: options.method ?? "GET" });
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "device-test", is_current: true }]));
+    if (path.endsWith("/playback/progress")) return new Response(JSON.stringify([{ media_file_id: filmFile, state: "part_watched", position_ms: 250, duration_ms: 1000 }]));
+    throw new Error("unexpected request");
+  };
+  const verified = await assertCanonicalHomeProgress(env, fetchImpl);
+  assert.deepEqual({ expectedPartWatched: verified.expectedPartWatched, actualPartWatched: verified.actualPartWatched }, { expectedPartWatched: 1, actualPartWatched: 1 });
+  assert.match(verified.signature, /^[0-9a-f]{64}$/);
+  assert.deepEqual(calls.map(({ path }) => path.split("/").slice(-2).join("/")), ["auth/login", "users/profiles", "playback/progress"]);
+  assert.ok(calls.every(({ method }) => method === "GET" || method === "POST"));
+});
+
+test("Home fixture preflight rejects extra or missing in-progress rows", async () => {
+  const filmFile = "12345678-1234-4234-8234-1234567890ab";
+  const extraFile = "abcdefab-cdef-4abc-8def-abcdefabcdef";
+  const env = { PLAYARR_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "device-test", PLAYARR_PASSWORD: "fixture-pass",
+    PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID: filmFile };
+  const fetchFor = (rows) => async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "device-test", is_current: true }]));
+    if (path.endsWith("/playback/progress")) return new Response(JSON.stringify(rows));
+    return new Response(JSON.stringify({ media_file_id: filmFile }));
+  };
+  await assert.rejects(assertCanonicalHomeProgress(env, fetchFor([
+    { media_file_id: filmFile, state: "part_watched", position_ms: 20, duration_ms: 100 }, { media_file_id: extraFile, state: "part_watched", position_ms: 30, duration_ms: 100 },
+  ])), /expected 1 canonical part_watched row, found 2/);
+  await assert.rejects(assertCanonicalHomeProgress(env, fetchFor([
+    { media_file_id: extraFile, state: "part_watched", position_ms: 20, duration_ms: 100 },
+  ])), /expected 1 canonical part_watched row, found 1/);
+  await assert.rejects(assertCanonicalHomeProgress(env, fetchFor([])), /expected 1 canonical part_watched row, found 0/);
+  await assert.rejects(assertCanonicalHomeProgress(env, fetchFor([
+    { media_file_id: filmFile, state: "part_watched", position_ms: 20, duration_ms: 100 }, { media_file_id: filmFile, state: "part_watched", position_ms: 20, duration_ms: 100 },
+  ])), /progress response schema/);
+});
+
+test("Home fixture preflight fails closed on unapproved identity and malformed progress", async () => {
+  const filmFile = "12345678-1234-4234-8234-1234567890ab";
+  const env = { PLAYARR_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "other-user", PLAYARR_PASSWORD: "fixture-pass",
+    PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID: filmFile };
+  let calls = 0;
+  await assert.rejects(assertCanonicalHomeProgress(env, async () => { calls++; }), /matching a configured Device Test username/);
+  assert.equal(calls, 0, "unapproved account is rejected before login");
+  const approvedEnv = { ...env, PLAYARR_USERNAME: "device-test" };
+  const noCanonicalFile = { ...approvedEnv };
+  delete noCanonicalFile.PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID;
+  await assert.rejects(assertCanonicalHomeProgress(noCanonicalFile, async () => { calls++; }), /requires PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID/);
+  assert.equal(calls, 0, "missing canonical fixture fails before login");
+  let progressReadsAfterIdentityFailure = 0;
+  const fetchImpl = async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "different-user", is_current: true }]));
+    if (path.endsWith("/playback/progress")) progressReadsAfterIdentityFailure++;
+    return new Response("{}", { status: 200 });
+  };
+  await assert.rejects(assertCanonicalHomeProgress(approvedEnv, fetchImpl), /authenticated identity mismatch/);
+  assert.equal(progressReadsAfterIdentityFailure, 0, "progress is not read after an identity mismatch");
+  const malformedProgress = async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "device-test", is_current: true }]));
+    if (path.includes("/catalog/")) return new Response(JSON.stringify({ media_file_id: filmFile }));
+    return new Response(JSON.stringify([{ media_file_id: filmFile, state: "part_watched", position_ms: "250", duration_ms: 1000 }]));
+  };
+  await assert.rejects(assertCanonicalHomeProgress(approvedEnv, malformedProgress), /progress response schema/);
+  const apiError = async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "device-test", is_current: true }]));
+    return new Response("unavailable", { status: 503 });
+  };
+  await assert.rejects(assertCanonicalHomeProgress(approvedEnv, apiError), /progress lookup failed \(503\)/);
 });
 
 test("Roku suite driver requires explicit non-player screen and D-pad allowlists", () => {

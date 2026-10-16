@@ -352,6 +352,8 @@ jobs:
           PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_TEST_SERVER_URL || secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID: ${{ secrets.PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID }}
+          PLAYARR_DEVICE_TEST_DPAD_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME }}
           REF: ${{ inputs.ref || github.event.repository.default_branch }}
           SCREENS: ${{ inputs.screens }}
           FOCUS: ${{ inputs.focus }}
@@ -371,23 +373,27 @@ jobs:
           esac
           # Playback is scored against the suite's own expectation (every case plays); touch devices have no D-pad values.
           echo '{"suite":1,"dpad":{},"playback":{}}' > "$RUNNER_TEMP/expected.json"
-          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --reset-progress --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
+          preflight=()
+          if [[ "$DEVICE" == ipad && "$only" == screens && ( -z "$SCREENS" || ",$SCREENS," == *,home,* ) ]]; then preflight=(--preflight-home-fixture); fi
+          home_preflight=()
+          if [[ "$DEVICE" == ipad && "$only" == screens ]]; then home_preflight=(--preflight-home-fixture); fi
+          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --reset-progress --themes "$themes" --expected "$RUNNER_TEMP/expected.json" "${preflight[@]}" ${SCREENS:+--screens "$SCREENS"}
           if [[ "$MOTION" == true && $only == screens ]]; then
-            PARITY_MOTION=1 node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/motion" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home || true
+            PARITY_MOTION=1 node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/motion" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home "${home_preflight[@]}" || { status=$?; [[ ${#home_preflight[@]} -eq 0 ]] || exit "$status"; }
           fi
           if [[ "$POSTER" == true && $only == screens ]]; then
             for size in small medium large; do
-              PARITY_COVERS=1 PARITY_SIZE=$size node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/poster-$size" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music || true
+              PARITY_COVERS=1 PARITY_SIZE=$size node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/poster-$size" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music "${home_preflight[@]}" || { status=$?; [[ ${#home_preflight[@]} -eq 0 ]] || exit "$status"; }
             done
           fi
           if [[ "$FOCUS" == true && $only == screens ]]; then
             for mode in first last top; do
-              PARITY_FOCUS=$mode node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/focus-$mode" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music,film-detail,series-detail || true
+              PARITY_FOCUS=$mode node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/focus-$mode" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music,film-detail,series-detail "${home_preflight[@]}" || { status=$?; [[ ${#home_preflight[@]} -eq 0 ]] || exit "$status"; }
             done
           fi
 
       - name: Upload the results
-        if: always()
+        if: always() && steps.suite.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: apple-wall-${{ matrix.device }}-${{ github.run_id }}-${{ matrix.part }}

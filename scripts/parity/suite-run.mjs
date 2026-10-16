@@ -8,7 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { assertCanonicalHomeProgress, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { mergeSelectedResults } from "./selective-results.mjs";
 import { resolveCaptureEnvironment, withCaptureState } from "./capture-state.mjs";
@@ -24,6 +24,7 @@ const only = opt("only", "screens,dpad,downloads").split(",");
 const wantScreens = opt("screens", "").split(",").filter(Boolean);
 const wantCases = opt("cases", "").split(",").filter(Boolean);
 const reset = args.includes("--reset-progress");
+const preflightHomeFixture = args.includes("--preflight-home-fixture");
 const pinned = () => [...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file)];
 // Player checks play a title, which changes On deck on the shared account: they run only in the PLAYBACK-PHASE window (the file named by
 // PLAYARR_PLAYBACK_PHASE_FILE exists) or with --player, and never with --skip-player.
@@ -64,6 +65,9 @@ if (!reference && playerAllowed && only.includes("dpad") && suite.dpad.some((d) 
   throw new Error("player-ok-toggle web reference has no exact Play/Pause state; regenerate it with --reference before scoring");
 }
 async function runSuite(captureSnapshot, registerInterruptCleanup) {
+if (preflightHomeFixture && (!only.includes("screens") || (wantScreens.length > 0 && !wantScreens.includes("home")))) {
+  throw new Error("--preflight-home-fixture requires a screen capture that includes Home");
+}
 const driver = await (await import(pathToFileURL(resolve(opt("driver"))).href)).createDriver({ out, args });
 let signalReceived = null;
 let stopPromise = null;
@@ -154,16 +158,34 @@ if (only.includes("screens")) {
     for (const s of selectedScreens) {
       assertNotInterrupted();
       try {
+        let homeFixtureBefore = null;
+        if (preflightHomeFixture && s.id === "home") {
+          homeFixtureBefore = await assertCanonicalHomeProgress(process.env);
+          console.log("Home fixture preflight passed before navigation: one canonical part_watched row");
+        }
         await reach(s);
         await waitReady(s.id, "capture");
         const path = join(out, theme, `${s.id}.png`);
         await driver.screenshot(path);
         assertNotInterrupted();
+        if (preflightHomeFixture && s.id === "home") {
+          const homeFixtureAfter = await assertCanonicalHomeProgress(process.env);
+          if (homeFixtureBefore.signature !== homeFixtureAfter.signature) {
+            throw new Error("Home fixture changed during capture; capture refused");
+          }
+          console.log("Home fixture preflight passed after capture: one canonical part_watched row");
+        }
         captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, bytes: readFileSync(path), capturedAt: new Date().toISOString() });
         summary.screens += 1;
         console.log(`ok ${theme} ${s.id}`);
       }
-      catch (e) { if (signalReceived) throw e; summary.failed.push(`${theme}/${s.id}`); console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); }
+      catch (e) {
+        if (signalReceived) throw e;
+        if (preflightHomeFixture && s.id === "home") {
+          writeFileSync(join(out, "home-fixture-invalid.json"), `${JSON.stringify({ valid: false, reason: "Home fixture verification or capture failed" })}\n`);
+        }
+        summary.failed.push(`${theme}/${s.id}`); console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`);
+      }
     }
   }
   if (deterministic && summary.failed.length === 0) {
