@@ -23,9 +23,12 @@ def card(s):
     life = "  private longPressFired: boolean = false;\n"
     assert s.count(life) == 1
     s = s.replace(life, life + "  @State previewRingOn: boolean = false;\n  private previewCardEntry: number = -1;\n  aboutToAppear(): void {\n    this.previewCardEntry = previewRegisterCard((on: boolean): void => { this.previewRingOn = on; });\n  }\n  aboutToDisappear(): void {\n    previewUnregisterCard(this.previewCardEntry);\n  }\n", 1)
-    ring = "Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), this.ringOn ? 1 : 0)"
+    focus = "return effectiveFocusPercent(this.focusPercent, this.activeRailFactor);"
+    assert s.count(focus) == 1
+    s = s.replace(focus, "return Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), isTvMetrics() && this.previewRingOn ? 1 : 0);", 1)
+    ring = "return Math.max(this.effective(), this.ringOn ? 1 : 0);"
     assert s.count(ring) == 1
-    s = s.replace(ring, "Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), (this.ringOn || this.previewRingOn) ? 1 : 0)", 1)
+    s = s.replace(ring, "return Math.max(this.effective(), this.ringOn ? 1 : 0, !isTvMetrics() && this.previewRingOn ? 1 : 0);", 1)
     image_ctor = re.compile(r"(?m)^(?P<indent>[ \t]*)Image\(this\.artwork\)\n")
     assert len(list(image_ctor.finditer(s))) == 1
     image_hooks = """            .onAppear(() => { previewReport('dbg=' + encodeURIComponent('img+' + this.title)); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'poster-render-artwork-present'); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'image-source'); })
@@ -92,6 +95,13 @@ def home(s):
     old = "    if (result.kind === 'ok') {\n      setItems(patchCardArtwork(getItems(), workId, result.value));"
     assert old in s
     return s.replace(old, "    previewReport('dbg=' + encodeURIComponent('home-card-artwork-' + result.kind));\n" + old, 1)
+
+def profiles(s):
+    s = "import { previewReport } from '../util/PreviewState';\n" + s
+    old = "      this.profiles = result.value;\n"
+    assert s.count(old) == 1
+    report = "      const currentProfile = result.value.find((profile: AvailableProfileResponse): boolean => profile.is_current);\n      if (currentProfile !== undefined) { previewReport('auth=' + encodeURIComponent(currentProfile.id) + '&auth_current=1'); }\n"
+    return s.replace(old, old + report, 1)
 
 def detail(s):
     s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { setPreviewRouteContext, currentPreviewRouteGeneration, reportDetailLayoutStageForScope, reportDetailAreaGeometryForScope, captureDetailRowImageContext, reportDetailRowImageStage, reportDetailImagePayloadScope, reportDetailEpisodeTargetForScope, reportDetailEpisodeCardContainerAreaForScope, reportDetailSeriesTargetCardVisibilityForScope, reportDetailSeriesTargetAreaSampleForScope, reportDetailPreviewGenerationScope, beginPreviewDetailLoad, reportPreviewDetailLoad } from '../util/PreviewState';", 1)
@@ -760,6 +770,7 @@ if __name__ == '__main__':
         raise SystemExit('usage: patch_state.py <ets-root>')
     ROOT = sys.argv[1]
     edit('pages/Home.ets', home)
+    edit('pages/Profiles.ets', profiles)
     edit('design/components/PosterCard.ets', card)
     edit('design/components/NavRail.ets', nav)
     edit('pages/Index.ets', index)

@@ -232,7 +232,20 @@ struct WatchlistView: View {
             if let error = model.removeError { WMListNote(text: error, tone: WM.pink) }
         }
         .task { await model.load() }
+        #if DEBUG
+        .parityScreenLoad(parityLoadState)
+        #endif
     }
+
+    #if DEBUG
+    private var parityLoadState: ParityScreenLoad {
+        switch model.state {
+        case .loading: .loading
+        case .failed: .failed
+        case .ready: .ready
+        }
+    }
+    #endif
 
     private func row(_ entry: WatchlistEntry) -> some View {
         let title = entry.title
@@ -361,7 +374,20 @@ struct RequestsView: View {
         }
         .refreshable { await model.load() }
         .task { await model.load() }
+        #if DEBUG
+        .parityScreenLoad(parityLoadState)
+        #endif
     }
+
+    #if DEBUG
+    private var parityLoadState: ParityScreenLoad {
+        switch model.state {
+        case .loading: .loading
+        case .failed: .failed
+        case .ready: .ready
+        }
+    }
+    #endif
 
     private func metaParts(_ request: RequestView) -> [String] {
         var parts: [String] = []

@@ -18,6 +18,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { expandKeys } from "./suite-lib.mjs";
 import { assertBuildIdentityStable, selectedLiveScreens, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
 import { withCaptureState } from "./capture-state.mjs";
+import { deckFromEnv, seedCanonicalDeck } from "./canonical-deck.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { PNG } from "pngjs";
 import { verifyDir } from "./verify-refs.mjs";
@@ -80,15 +81,10 @@ const series = await (await fetch(`${srv}/api/v1/catalog/${seriesId}`, { headers
 const episodeFiles = (series.children?.Series ?? []).flatMap((s) => s.episodes ?? []).map((e) => e.media_file_id).filter(Boolean);
 if (!episodeFiles.length || !film.media_file_id) throw new Error("pinned detail media files are missing from the catalogue");
 const pinned = [...stateFiles, film.media_file_id, ...episodeFiles];
-if (process.env.PARITY_SEED_CANONICAL === "1") {
-  const seedModule = process.env.PARITY_SEED_MODULE;
-  if (!seedModule) throw new Error("PARITY_SEED_MODULE is required when PARITY_SEED_CANONICAL=1");
-  const { seedCanonicalDeck } = await import(pathToFileURL(resolve(seedModule)).href);
-  if (typeof seedCanonicalDeck !== "function") throw new Error("PARITY_SEED_MODULE must export seedCanonicalDeck");
-  await seedCanonicalDeck(captureState, { deckFile: process.env.PARITY_DECK_MEDIA_FILE_ID, positionMs: Number(process.env.PARITY_DECK_POSITION_MS ?? 15098), durationMs: Number(process.env.PARITY_DECK_DURATION_MS ?? 6742000) });
-}
+const deck = deckFromEnv();
+if (deck) await seedCanonicalDeck(captureState, deck);
 if (!args.includes("--no-reset")) {
-  for (const file of new Set(pinned)) await captureState.writeProgress(file, { position_ms: 0, duration_ms: captureState.snapshot.files[file]?.duration_ms ?? 0, completed: false });
+  for (const file of new Set(pinned)) if (file !== deck?.deckFile) await captureState.writeProgress(file, { position_ms: 0, duration_ms: captureState.snapshot.files[file]?.duration_ms ?? 0, completed: false });
   await captureState.clearResumeChoices();
 }
 const captureSnapshot = await captureState.snapshotNow();

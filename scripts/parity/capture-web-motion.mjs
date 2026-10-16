@@ -2,6 +2,7 @@
 // Capture deliberate web motion samples. CSS/Web Animations are disabled so only the requested gesture and frame cadence vary.
 //   node capture-web-motion.mjs --out <dir> [--theme dark|light|both] [--profile phone|tv] [--keys]
 // Requires an isolated PARITY_CLIENT, PARITY_LOCK_DIR, and a valid PARITY_FIXED_NOW or FIXTURE_CLOCK.
+import { applyCanonicalDeck } from "./canonical-deck.mjs";
 import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -39,12 +40,7 @@ const waitReady = async (page, screen, phase) => {
 
 await withCaptureState({ client: process.env.PARITY_CLIENT, files: [] }, async (captureState) => {
   Object.assign(process.env, captureState.env);
-  if (process.env.PARITY_SEED_CANONICAL === "1") {
-    if (!process.env.PARITY_SEED_MODULE) throw new Error("PARITY_SEED_MODULE is required when PARITY_SEED_CANONICAL=1");
-    const { seedCanonicalDeck } = await import(pathToFileURL(resolve(process.env.PARITY_SEED_MODULE)).href);
-    if (typeof seedCanonicalDeck !== "function") throw new Error("PARITY_SEED_MODULE must export seedCanonicalDeck");
-    await seedCanonicalDeck(captureState, { deckFile: process.env.PARITY_DECK_MEDIA_FILE_ID, positionMs: Number(process.env.PARITY_DECK_POSITION_MS ?? 15098), durationMs: Number(process.env.PARITY_DECK_DURATION_MS ?? 6742000) });
-  }
+  await applyCanonicalDeck(captureState);
   const snapshot = await captureState.snapshotNow();
   const browser = await chromium.launch(process.env.PARITY_CHROME ? { executablePath: process.env.PARITY_CHROME } : {});
   captureState.registerInterruptCleanup(() => browser.close());

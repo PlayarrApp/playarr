@@ -12,6 +12,7 @@ import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatc
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { mergeSelectedResults } from "./selective-results.mjs";
 import { resolveCaptureEnvironment, withCaptureState } from "./capture-state.mjs";
+import { applyCanonicalDeck } from "./canonical-deck.mjs";
 import { assertCaptureManifestTargetAvailable, buildShaFromIdentity, createCaptureManifest, sameCaptureBuildIdentity } from "./capture-manifest.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -141,6 +142,7 @@ assertNotInterrupted();
 await driver.start?.({ theme: themes[0] });
 assertNotInterrupted();
 await waitReady("home", "route");
+const referenceBuildBeforeCapture = reference && !deterministic ? await driver.captureBuildIdentity?.() : null;
 if (only.includes("screens")) {
   const selectedScreens = suite.screens.filter((x) => !wantScreens.length || wantScreens.includes(x.id));
   const selectiveCapture = selectedScreens.length !== suite.screens.length || themes.length !== suite.themes.length || themes.some((theme, index) => theme !== suite.themes[index]);
@@ -173,6 +175,13 @@ if (only.includes("screens")) {
     const captures = createCaptureManifest({ suite: suite.version, buildIdentity: buildAfterScreens, clock: fixedNow, state: captureSnapshot.hash, captures: captureRows });
     mkdirSync(out, { recursive: true });
     writeFileSync(join(out, "captures.json"), `${JSON.stringify(captures, null, 2)}\n`, { flag: "wx" });
+  }
+  if (reference && referenceBuildBeforeCapture && summary.failed.length === 0) {
+    const referenceBuildAfterCapture = await driver.captureBuildIdentity?.();
+    if (!sameCaptureBuildIdentity(referenceBuildBeforeCapture, referenceBuildAfterCapture)) throw new Error("deployed build changed during reference capture");
+    const match = /^([0-9a-f]{40,64})@(.+)$/i.exec(referenceBuildAfterCapture);
+    if (!match || !Number.isFinite(Date.parse(match[2]))) throw new Error("reference capture build identity is invalid");
+    writeFileSync(join(out, "reference-build.json"), `${JSON.stringify({ sha: match[1], built_at: match[2] }, null, 2)}\n`, { flag: "wx" });
   }
 }
 // Extra captures for focus-crop checks (the last row of a long grid, the last item of a short one): not scored, no web ref, and only
@@ -373,18 +382,9 @@ if (process.env.PARITY_CLIENT) {
     const { env } = context;
     Object.assign(process.env, env);
     let snapshot = context.snapshot;
-    if (process.env.PARITY_SEED_CANONICAL === "1") {
-      const deckFile = process.env.PARITY_DECK_MEDIA_FILE_ID;
-      if (!deckFile) throw new Error("PARITY_DECK_MEDIA_FILE_ID is required to seed canonical capture state");
-      const seedModule = process.env.PARITY_SEED_MODULE;
-      if (!seedModule) throw new Error("PARITY_SEED_MODULE is required when PARITY_SEED_CANONICAL=1");
-      const { seedCanonicalDeck } = await import(pathToFileURL(resolve(seedModule)).href);
-      ({ snapshot } = await seedCanonicalDeck(context, {
-        deckFile,
-        positionMs: Number(process.env.PARITY_DECK_POSITION_MS ?? 15098),
-        durationMs: Number(process.env.PARITY_DECK_DURATION_MS ?? 6742000),
-      }));
-    } else {
+    const seeded = await applyCanonicalDeck(context);
+    if (seeded) snapshot = seeded;
+    else {
       await context.clearResumeChoices();
       snapshot = await context.snapshotNow();
     }

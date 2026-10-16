@@ -90,12 +90,9 @@
  * screen's job", since `MediaRail` itself has no attribute-chain access to
  * whatever `itemBuilder` renders).
  *
- * Touch: no hero at all (no touch-profile hero component exists anywhere in
- * `design/components/` -- `FeatureCopy.ets`/`Stage.ets` are both explicitly
- * TV-profile-only per their own header comments) -- just every non-empty
- * rail stacked in a `Scroll`, with `design/components/NavPill.ets` floating
- * at the bottom as a `Stack` sibling, always visible, rails scrolling
- * underneath it (brief 9's own words for this exact split).
+ * Touch: the Web phone backdrop sits behind every non-empty rail stacked in
+ * a `Scroll`, with `design/components/TouchNavBar.ets` at the bottom, always
+ * visible, rails scrolling underneath it (brief 9's own words for this split).
  *
  * Nothing in this file imports `net/` or `auth/` (brief section 3.1,
  * validator-enforced).
@@ -106,7 +103,7 @@ import { artworkStep, cardGeometry, normaliseArtworkSize } from '../core/Artwork
 import type { ArtworkSizeName, CardGeometry } from '../core/ArtworkSize';
 import { image } from '@kit.ImageKit';
 
-import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
+import { activeColors, resolvedThemeMode, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry, TouchGeometry } from '../design/Metrics';
 import { Spacing, Radii } from '../core/Tokens';
@@ -1006,6 +1003,7 @@ export struct Home {
           headingSize: TOUCH_RAIL_HEADING_SIZE,
           headingGap: TOUCH_RAIL_HEADING_GAP,
           bleedEnd: atLeast(Spacing.md, this.safeRight),
+          allowFocusedOverflow: true,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
@@ -1022,6 +1020,7 @@ export struct Home {
           headingSize: TOUCH_RAIL_HEADING_SIZE,
           headingGap: TOUCH_RAIL_HEADING_GAP,
           bleedEnd: atLeast(Spacing.md, this.safeRight),
+          allowFocusedOverflow: true,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
           },
@@ -1089,43 +1088,118 @@ export struct Home {
     })
   }
 
-  /** Touch: the scrollable rails column with `NavPill` floating at the
-   * bottom, always visible, per brief 9's own words. */
+  /** Touch: the full-screen Web backdrop behind a scrollable rails column
+   * and the always-visible bottom navigation bar. */
   @Builder
   private touchContent(): void {
 
-    Column() {
-      Stack({ alignContent: Alignment.TopStart }) {
-        // Web phone Home: the first title's backdrop, dimmed, under the top of the rails.
-        if (this.hero !== undefined && this.hero.artwork !== undefined) {
-          Image(this.hero.artwork)
-            .width('100%')
-            .height(300)
-            .objectFit(ImageFit.Cover)
-            .grayscale(1)
-            .opacity(0.45)
-            .draggable(false)
-            .focusable(false)
-          Column()
-            .width('100%')
-            .height(300)
-            .linearGradient({
-              direction: GradientDirection.Bottom,
-              colors: [[toResourceColorWithAlpha(activeColors().bg, 0.7), 0.0], [toResourceColor(activeColors().bg), 1.0]],
-            })
-        }
-        Scroll() {
-          this.touchRailsColumn()
-        }
-        .scrollBar(BarState.Off)
-        .width('100%')
-        .height('100%')
+    Stack({ alignContent: Alignment.TopStart }) {
+      // Web phone Home: show the first title's backdrop through the same
+      // phone theme treatment and scrims as `.tv-key-art`. ImageFit.Cover
+      // retains ArkUI's centred crop because it exposes no object-position.
+      if (this.hero !== undefined && this.hero.artwork !== undefined) {
+        Image(this.hero.artwork)
+          .width('100%')
+          .height('55%')
+          .objectFit(ImageFit.Cover)
+          .grayscale(1)
+          .contrast(resolvedThemeMode() === 'dark' ? 0.82 : 0.88)
+          .brightness(resolvedThemeMode() === 'dark' ? 0.6 : 1.1)
+          .opacity(resolvedThemeMode() === 'dark' ? 0.72 : 0.42)
+          .scale({ x: 1.04, y: 1.04 })
+          .draggable(false)
+          .focusable(false)
+        // The source CSS image mask fades the key art into the page surface.
+        Row()
+          .width('100%')
+          .height('55%')
+          .hitTestBehavior(HitTestMode.Transparent)
+          .linearGradient({
+            angle: 90,
+            colors: [
+              [toResourceColorWithAlpha(activeColors().surface, 0), 0],
+              [toResourceColorWithAlpha(activeColors().surface, 0), 0.72],
+              [toResourceColor(activeColors().surface), 1],
+            ],
+          })
+        // Web phone `::after`: bottom fade and a lighter left-to-right scrim.
+        Column()
+          .width('100%')
+          .height('100%')
+          .hitTestBehavior(HitTestMode.Transparent)
+          .linearGradient({
+            angle: 0,
+            colors: [
+              [toResourceColor(activeColors().surface), 0],
+              [toResourceColor(activeColors().surface), 0.46],
+              [toResourceColorWithAlpha(activeColors().surface, 0), 0.74],
+              [toResourceColorWithAlpha(activeColors().surface, 0), 1],
+            ],
+          })
+        Row()
+          .width('100%')
+          .height('100%')
+          .hitTestBehavior(HitTestMode.Transparent)
+          .linearGradient({
+            angle: 90,
+            colors: [
+              [toResourceColorWithAlpha(activeColors().surface, 0.54), 0],
+              [toResourceColorWithAlpha(activeColors().surface, 0), 1],
+            ],
+          })
+        // Web phone `.tv-stage-wash`: finish the lower edge over the rails.
+        Column()
+          .width('100%')
+          .height('100%')
+          .hitTestBehavior(HitTestMode.Transparent)
+          .linearGradient({
+            angle: 0,
+            colors: [
+              [toResourceColor(activeColors().surface), 0],
+              [toResourceColor(activeColors().surface), 0.34],
+              [toResourceColorWithAlpha(activeColors().surface, 0), 0.68],
+              [toResourceColorWithAlpha(activeColors().surface, 0), 1],
+            ],
+          })
+      }
+      // Web `.tv-home-rails` starts 58px below the phone top inset and fades
+      // to the page surface over its first 8%. Keep this underlay aligned to
+      // that viewport without changing the Scroll's content geometry.
+      Column() {
+        Blank().height(58)
+        Column()
+          .width('100%')
+          .layoutWeight(1)
+          .hitTestBehavior(HitTestMode.Transparent)
+          .linearGradient({
+            angle: 180,
+            colors: [
+              [toResourceColorWithAlpha(activeColors().surface, 0), 0],
+              [toResourceColor(activeColors().surface), 0.08],
+              [toResourceColor(activeColors().surface), 1],
+            ],
+          })
       }
       .width('100%')
-      .layoutWeight(1)
+      .height('100%')
+      .hitTestBehavior(HitTestMode.Transparent)
+      Column() {
+        Stack({ alignContent: Alignment.TopStart }) {
+          Scroll() {
+            this.touchRailsColumn()
+          }
+          .scrollBar(BarState.Off)
+          .width('100%')
+          .height('100%')
+        }
+        .width('100%')
+        .layoutWeight(1)
 
-      // Web phone shell: the full-width bottom bar, not a floating pill.
-      TouchNavBar({ selectedId: HOME_NAV_ID })
+        // Web phone shell: the full-width bottom bar, not a floating pill.
+        TouchNavBar({ selectedId: HOME_NAV_ID })
+      }
+      .width('100%')
+      .height('100%')
     }
     .width('100%')
     .height('100%')

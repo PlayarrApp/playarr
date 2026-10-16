@@ -4,10 +4,12 @@
 //   PARITY_LINK_CMD (command that approves a TV link code for the Device Test account; the code is appended: the account's
 //   sessions are evicted by other runs, so a signed-out app links again, then carries on),
 //   PARITY_XDISPLAY (e.g. :98: read screenshots from the emulator's X window; the guest screencap can crash some emulators).
+//   PARITY_DEVICE_ACCOUNT_GUARD=android and PARITY_USE_DEVICE_TEST_DPAD=1 enable the approved D-pad account identity guard.
 // The device must already be signed in as the Device Test profile and out of touch mode (a fresh emulator boot is).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { writeFileSync } from "node:fs";
+import { guardAndroidDeviceAccount } from "../capture-state.mjs";
 
 const run = promisify(execFile);
 const KEYS = { up: "DPAD_UP", down: "DPAD_DOWN", left: "DPAD_LEFT", right: "DPAD_RIGHT", select: "DPAD_CENTER", back: "BACK" };
@@ -35,7 +37,7 @@ const instantNanos = (value) => {
   return epochSeconds * 1_000_000_000n + nanos;
 };
 
-export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env } = {}) {
+export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env, accountGuard = guardAndroidDeviceAccount, execute = run } = {}) {
   const env = envOverride, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
   const adbBin = adbOverride ?? (env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb");
   // Injectable clock (tests): the readiness loop's deadline arithmetic then never depends on how long a real process took.
@@ -43,7 +45,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   const sleep = clock.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const execBounded = async (command, args, { timeoutMs = commandTimeoutMs, label = "external command", ...options } = {}) => {
     try {
-      return await run(command, args, { env, ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
+      return await execute(command, args, { env, ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
     } catch (e) {
       if (e.killed && e.signal === "SIGTERM") throw new Error(`${label} timed out after ${timeoutMs}ms`);
       throw e;
@@ -74,6 +76,10 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
     }
   };
   const shell = (...a) => adb("shell", ...a);
+  const guardDeviceAccount = async () => {
+    if (env.PARITY_DEVICE_ACCOUNT_GUARD !== "android") return;
+    await accountGuard({ ...env, PARITY_PACKAGE: pkg });
+  };
   let theme = "dark";
   let parityClock = null;
   let savedAnimationScales = null;
@@ -82,6 +88,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   const parityLines = async () => (await adb("logcat", "-d", "-s", "PlayarrParity:I")).split("\n").map((l) => l.replace(/^.*PlayarrParity: /, "")).filter(Boolean);
   // pause: the debug build pauses the player at its first frame (a still frame for the player-controls screen); off for playback cases.
   const launch = async (route, pause = true) => {
+    await guardDeviceAccount();
     await shell("am", "force-stop", pkg);
     await adb("logcat", "-c");
     await shell("am", "start", "-n", `${pkg}/.MainActivity`, "--es", "parity_route", route,
@@ -169,6 +176,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   return {
     supports: { nowPlaying: true },
     async setDeterministicCapture({ fixedNow, disableAnimations } = {}) {
+      await guardDeviceAccount();
       if (typeof fixedNow !== "string" || !Number.isFinite(Date.parse(fixedNow)) || instantNanos(fixedNow) === null) throw new Error("Android deterministic capture requires a valid fixedNow ISO date");
       if (disableAnimations !== true) throw new Error("Android deterministic capture requires disableAnimations: true");
       parityClock = fixedNow;
@@ -228,6 +236,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       return { package: pkg, apk, sha256: digest.toLowerCase() };
     },
     async start() {
+      await guardDeviceAccount();
       const touch = await shell("dumpsys", "input");
       // A tap (the USB-debugging prompt watcher taps) puts the device in touch mode, which hides every focus state; a key press leaves it.
       if (/TouchMode: 1/.test(touch)) {
@@ -236,6 +245,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       }
     },
     async setTheme(t) {
+      await guardDeviceAccount();
       theme = t;
       const xml = `<?xml version="1.0" encoding="utf-8" standalone="yes" ?><map><string name="theme">${t === "light" ? "Light" : "Dark"}</string></map>`;
       await shell("am", "force-stop", pkg);
@@ -244,6 +254,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
     async home() { await launch("home"); await settled(); await relink("home", true); },
     async route(r) { const a = appRoute(r); await launch(a); await settled(); await relink(a, true); },
     async key(k, { long } = {}) {
+      await guardDeviceAccount();
       await shell("input", "keyevent", ...(long ? ["--longpress"] : []), `KEYCODE_${KEYS[k]}`);
       await sleep(long ? 1500 : k === "select" || k === "back" ? 2500 : 600); // a page change takes a moment to settle focus
     },
@@ -291,6 +302,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       return label == null ? null : { label, position };
     },
     async screenshot(file) {
+      await guardDeviceAccount();
       if (parityClock) await this.waitReady({ phase: "capture" });
       const xml = await tree();
       if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml.replace(/<node [^>]*package="(?!io\.playarr)[^>]*>/g, ""))) throw new Error("signed out or error screen");

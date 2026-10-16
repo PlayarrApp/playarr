@@ -16,12 +16,12 @@ const RAIL_PADDING_TOP: number = 8;
 const BUTTON_SIZE: number = 44;
 const LETTER_SIZE: number = 9.216;
 // Phone (web `.tv-directory .tv-alphabet` under 760 px): fixed on the right edge, 52 wide, from 88 below the top to 82 above the bottom
-// (clear of the floating nav bar); the letters share that height, each 44 wide, 9 px bold.
+// (clear of the floating nav bar); the letters share that height, each 44 wide, 8.96 px bold.
 const TOUCH_RAIL_WIDTH: number = 52;
 const TOUCH_RAIL_TOP: number = 88;
 const TOUCH_RAIL_BOTTOM: number = 82;
 const TOUCH_LETTER_WIDTH: number = 44;
-const TOUCH_LETTER_SIZE: number = 8.5;
+const TOUCH_LETTER_SIZE: number = 8.96;
 const TOUCH_DISC: number = 22;
 
 @Component
@@ -43,14 +43,14 @@ export struct AlphabetRail {
       ForEach(this.letters, (letter: string) => {
         // a 44 vp target around web's 22 vp letter disc
         Column() {
-          Text(letter).fontFamily(nunito(500))
+          Text(letter).fontFamily(nunito(700))
             .width(TOUCH_DISC)
             .height(TOUCH_DISC)
             .textAlign(TextAlign.Center)
             .fontSize(TOUCH_LETTER_SIZE)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
-            .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.82) : Color.Transparent)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
+            .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.78) : Color.Transparent)
             .borderRadius(TOUCH_DISC / 2)
         }
         .width(TOUCH_LETTER_WIDTH)

@@ -23,10 +23,10 @@
       }
     },
     "home-left-nav": {
-      "label": "music",
+      "label": "home",
       "position": {
         "rail": "nav",
-        "index": 5
+        "index": 2
       }
     },
     "nav-down": "calendar",
@@ -57,5 +57,5 @@
     }
   },
   "performance": {},
-  "note": "Web reference for the pinned Device Test state (12 Oct 2026). Home positions depend on the account: On deck currently holds one card, so home-right stays on 0:0. Regenerate with: node suite-run.mjs --driver drivers/web.mjs --reference --only dpad --out <dir>, then copy <dir>/expected.json here."
+  "note": "Web reference for the pinned Device Test state (12 Oct 2026). The home-left-nav position alone was refreshed from hosted run 38951433111 at web SHA 59b9e3a4ab4a19a6cd86628ea3603be4c4e52d80; the frozen Home screenshot and score legend remain from the older layout, so compare Home only with a paired current web capture. Home positions depend on the account: On deck currently holds one card, so home-right stays on 0:0. Regenerate with: node suite-run.mjs --driver drivers/web.mjs --reference --only dpad --out <dir>, then copy <dir>/expected.json here."
 }

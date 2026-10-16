@@ -1,36 +1,52 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { createDriver } from "./drivers/android-tv.mjs";
+import { handleFakeDeterministicAdbCommand, initialFakeAdbState } from "./test-drivers/fake-deterministic-adb.mjs";
 
 const scratchRoot = process.env.PLAYARR_PARITY_TEST_OUT;
 if (!scratchRoot) throw new Error("PLAYARR_PARITY_TEST_OUT must point to task-scoped .data scratch space");
 mkdirSync(scratchRoot, { recursive: true });
 const scratch = mkdtempSync(join(scratchRoot, "native-determinism-"));
-let stateSequence = 0;
-const adbPath = new URL("./test-drivers/fake-deterministic-adb.mjs", import.meta.url).pathname;
-const initialState = () => ({
-  window_animation_scale: "1.0",
-  transition_animation_scale: "0.75",
-  animator_duration_scale: "1.25",
-  launches: [],
-  logs: [],
-});
 const driverWith = (state, extraEnv = {}, options = {}) => {
-  const statePath = join(scratch, `adb-state-${++stateSequence}.json`);
-  writeFileSync(statePath, JSON.stringify(state));
+  const fakeState = { ...initialFakeAdbState(), ...state };
+  const env = { ...process.env, ...extraEnv };
   const driver = createDriver({
-    adbBin: adbPath,
     readinessPollMs: 1,
     readinessTimeoutMs: options.readinessTimeoutMs ?? 10_000,
     // The fake ADB starts a Node subprocess; parallel test workers can delay cold startup beyond one second.
     commandTimeoutMs: 10_000,
     clock: options.clock ?? { sleep: async () => {}, now: (() => { let time = 0; return () => time++; })() },
-    env: { ...process.env, PLAYARR_PARITY_FAKE_ADB_STATE: statePath, ...extraEnv },
+    env,
+    accountGuard: options.accountGuard,
+    execute: async (_command, args, execOptions) => {
+      assert.equal(execOptions.timeout, 1000);
+      assert.equal(execOptions.killSignal, "SIGTERM");
+      assert.equal(execOptions.env, env);
+      return handleFakeDeterministicAdbCommand(fakeState, args[0], args.slice(1), env);
+    },
   });
-  return { driver, readState: () => JSON.parse(readFileSync(statePath, "utf8")) };
+  return { driver, readState: () => structuredClone(fakeState) };
 };
+
+const initialState = () => ({ ...initialFakeAdbState(), transition_animation_scale: "0.75", animator_duration_scale: "1.25" });
+
+test("Android account mismatch blocks device mutations and capture", async () => {
+  let guardCalls = 0;
+  const { driver, readState } = driverWith(initialState(), {
+    PARITY_DEVICE_ACCOUNT_GUARD: "android",
+    PARITY_USE_DEVICE_TEST_DPAD: "1",
+  }, { accountGuard: async () => { guardCalls += 1; throw new Error("Android device account does not match the selected approved account"); } });
+  await assert.rejects(driver.start(), /does not match/);
+  await assert.rejects(driver.setTheme("light"), /does not match/);
+  await assert.rejects(driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true }), /does not match/);
+  await assert.rejects(driver.home(), /does not match/);
+  await assert.rejects(driver.key("down"), /does not match/);
+  await assert.rejects(driver.screenshot(join(scratch, "account-guard.png")), /does not match/);
+  assert.equal(guardCalls, 6);
+  assert.deepEqual(readState(), initialState());
+});
 
 test("Android deterministic capture pins the launch clock and restores animation scales", async () => {
   const { driver, readState } = driverWith(initialState());
@@ -95,6 +111,24 @@ test("Android refuses capture readiness when route data and artwork idle cannot 
 test("Android deterministic capture rejects requests without animation disabling", async () => {
   const { driver } = driverWith(initialState());
   await assert.rejects(driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z" }), /disableAnimations: true/);
+});
+
+test("Android deterministic capture preserves bounded command timeout errors", async () => {
+  const env = {};
+  const driver = createDriver({
+    env,
+    commandTimeoutMs: 37,
+    execute: async (_command, _args, options) => {
+      assert.equal(options.timeout, 37);
+      assert.equal(options.killSignal, "SIGTERM");
+      assert.equal(options.env, env);
+      const error = new Error("process was terminated");
+      error.killed = true;
+      error.signal = "SIGTERM";
+      throw error;
+    },
+  });
+  await assert.rejects(driver.start(), /adb shell dumpsys timed out after 37ms/);
 });
 
 test("Android reports installed APK path and digest as build identity", async () => {

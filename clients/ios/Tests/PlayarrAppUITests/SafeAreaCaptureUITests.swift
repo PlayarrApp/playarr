@@ -5,14 +5,15 @@ import XCTest
 /// navigation and header controls clear the Dynamic Island, the side insets and the home indicator.
 /// Insets are those of iPhone 17 (portrait 62 top, 34 bottom; landscape 62 sides, 21 bottom).
 final class SafeAreaCaptureUITests: XCTestCase {
-    private let routes = ["home", "movies", "detail:movie:@first", "settings", "player:movie:@first"]
+    private let routes = ["home", "movies", "detail:movie:@first", "settings", "player:movie:fixture"]
 
     @MainActor
     func testScreensClearTheSafeAreas() throws {
         let environment = ProcessInfo.processInfo.environment
         guard let server = environment["PLAYARR_UI_TEST_SERVER_URL"], !server.isEmpty,
               let username = environment["PLAYARR_UI_TEST_USERNAME"], !username.isEmpty,
-              let password = environment["PLAYARR_UI_TEST_PASSWORD"], !password.isEmpty else {
+              let password = environment["PLAYARR_UI_TEST_PASSWORD"], !password.isEmpty,
+              let playFile = environment["PLAYARR_UI_TEST_PLAY_FILE"], UUID(uuidString: playFile) != nil else {
             throw XCTSkip("The iOS UI test account is unavailable in this runner.")
         }
         guard environment["PLAYARR_SAFE_AREA_CAPTURE"] == "1" else {
@@ -31,6 +32,8 @@ final class SafeAreaCaptureUITests: XCTestCase {
                     "PLAYARR_PARITY_SERVER": server,
                     "PLAYARR_PARITY_USER": username,
                     "PLAYARR_PARITY_PASSWORD": password,
+                    "PLAYARR_PARITY_EXPECTED_USERNAME": username,
+                    "PLAYARR_PARITY_PLAY_FILE": playFile,
                     "PLAYARR_PARITY_ROUTE": route,
                     "PLAYARR_REAL_INSETS": "1",
                 ]
@@ -40,6 +43,7 @@ final class SafeAreaCaptureUITests: XCTestCase {
                 XCUIDevice.shared.orientation = orientation
                 // The screen has no single ready marker across routes: wait for the window to settle.
                 _ = app.windows.firstMatch.waitForExistence(timeout: 30)
+                try requireParityCaptureReady(app, expectedUsername: username)
                 Thread.sleep(forTimeInterval: 12)
 
                 let shot = XCTAttachment(screenshot: app.screenshot())
@@ -54,6 +58,7 @@ final class SafeAreaCaptureUITests: XCTestCase {
                     // Scrolled: page content must not appear behind the island or the notch side.
                     app.windows.firstMatch.swipeUp(velocity: .slow)
                     Thread.sleep(forTimeInterval: 2)
+                    try requireParityCaptureReady(app, expectedUsername: username)
                     let scrolled = XCTAttachment(screenshot: app.screenshot())
                     scrolled.name = "\(orientationName)-\(route.replacingOccurrences(of: ":", with: "_"))-scrolled"
                     scrolled.lifetime = .keepAlways
@@ -76,7 +81,7 @@ final class SafeAreaCaptureUITests: XCTestCase {
         let tolerance: CGFloat = 2
 
         let tab = app.buttons["phone-tab-home"]
-        if tab.exists, route != "player:movie:@first" {
+        if tab.exists, route != "player:movie:fixture" {
             XCTAssertLessThanOrEqual(tab.frame.maxY, window.maxY - max(8, bottom) + tolerance, "nav clears the home indicator (\(orientationName) \(route))")
             XCTAssertGreaterThanOrEqual(tab.frame.minX, side - tolerance, "nav clears the notch side (\(orientationName) \(route))")
         }
