@@ -1,0 +1,5 @@
+- Apple wall captures now stop unless the configured device-test account's `Device Test` profile is uniquely identified and confirmed as the active profile before the app launches.
+- Include the authenticated user ID in DEBUG parity state so capture tooling can reject a mismatched signed-in account.
+- Require the Apple simulator driver's app-reported user ID to match the freshly verified device-test login before it sends keys, captures frames, or checks playback.
+- Allow the hosted web-reference step to supply the trusted server and selected device-test username through explicit GitHub secret-backed environment variables.
+- Keep DEBUG parity-state timestamps fresh while the screen is idle so capture guards can reject stale app identity records.
