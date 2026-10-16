@@ -674,6 +674,7 @@ Steps only the repository owner can perform.
 | 10580 | Fix flaky nav-jump first-visit skeleton check on web CI | done | web-skeleton-flake | web-skeleton-flake | | 2026-10-16 20:00 ICT | PR open: #1529. The e2e's in-flight counter went negative when a read opened before tracking finished, so the settle wait returned early and Enter hit a cold cache. Requests are now tracked by identity. PR #1529 merged 2026-10-16. |
 | 10567 | VIDAA claims HEVC when MSE reports it, so Dolby Vision profile 5 titles play (were refused 422 unsupported_colour_format) | done | parity-vidaa | vidaa-hevc-copy | | 2026-10-16 18:00 ICT | PR open: #1527 PR #1527 merged 2026-10-16. |
 | 10590 | iOS iPad round 3: hosted driven capture (Home scroll bursts, keyboard focus, panels to the bottom, player controls) | done | | ipad-motion | | 2026-10-17 12:00 ICT | PR open: #1515. Reuses the iPhone worker's keyboard runner (KeyboardFocusUITests, #1495) on an iPad simulator and adds IPadMotionUITests for Home (DOWN through every rail, UP, RIGHT; five frames about 150 ms apart after each key). Frames only; compare with the web in Chromium at the tablet profile. Poster mode frames come from the ios-poster-mode workflow. PR #1515 merged 2026-10-16. |
+| 10566 | VIDAA player: volume range input drew a white box (Chromium 111 UA background) | in_review | parity-vidaa | vidaa-volume-range | | 2026-10-16 18:00 ICT | PR open: #1525 |
 
 ## 18. Public repository readiness (2026-10-05)
 
