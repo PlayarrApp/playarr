@@ -1,1 +1,0 @@
-- Require the Harmony preview capture to acknowledge a selected live card before recording a focused frame, and fail the capture when focus is missing.

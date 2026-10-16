@@ -1,1 +1,0 @@
-- Harmony parity captures now stop unless the signed-in current profile matches the approved test account.

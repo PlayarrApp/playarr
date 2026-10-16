@@ -1,3 +1,0 @@
-- Preserve full-viewport positioning for the Harmony phone library alphabet rail inside the shell overlay.
-- Match the Harmony phone alphabet rail letter size, weight, and colours to the web layout.
-- Keep the phone alphabet rail Stack DSL in a dedicated builder so PreviewArkTS/Rollup can parse the Library overlay while preserving transparent hit testing and its layer order.

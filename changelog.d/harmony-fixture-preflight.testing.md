@@ -1,1 +1,0 @@
-- Harmony capture runs now validate the signed-in device-test profile and pinned detail and progress fixtures before starting the Previewer.

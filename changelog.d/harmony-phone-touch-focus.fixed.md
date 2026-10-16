@@ -1,1 +1,0 @@
-- Match touch-profile selected-card focus to the web reference by keeping the card at its resting position and drawing the focus ring outside the artwork.

@@ -1,1 +1,0 @@
-- Add an opt-in Harmony phone core capture that validates all 15 required screens before skipping optional diagnostics.

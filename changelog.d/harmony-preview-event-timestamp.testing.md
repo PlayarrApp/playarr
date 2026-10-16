@@ -1,2 +1,0 @@
-- Make Harmony preview event privacy coverage deterministic by fixing the event timestamp and checking that it is preserved independently of private image identifiers.
-- Keep image-key privacy assertions scoped to event string fields so coincidental monotonic timestamp digits cannot make the tests flaky.

@@ -1,1 +1,0 @@
-- Remove the native-only transparent border from the phone navigation bar; captured tile content was 5 physical pixels to the right of the web reference across the bar, and a recapture is pending.

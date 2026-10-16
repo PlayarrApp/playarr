@@ -13,6 +13,25 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Native Harmony phone drawers blur their backdrop while keeping the bottom navigation visible above them, matching the web layer order.
+- Route generic Harmony build dependencies through the public npm registry while keeping `@ohos` packages on the HarmonyOS registry.
+- Align Harmony phone preview drawer captures with the frozen Web reference by omitting backdrop blur in the copied preview source while keeping product rendering unchanged (17.10623).
+- Harmony parity captures now stop unless the signed-in current profile matches the approved test account.
+- Home phone rails now let focused card rings and glow render into the reserved rail inset without shifting card or heading positions.
+- Preserve full-viewport positioning for the Harmony phone library alphabet rail inside the shell overlay.
+- Match the Harmony phone alphabet rail letter size, weight, and colours to the web layout.
+- Keep the phone alphabet rail Stack DSL in a dedicated builder so PreviewArkTS/Rollup can parse the Library overlay while preserving transparent hit testing and its layer order.
+- Remove the native-only transparent border from the phone navigation bar; captured tile content was 5 physical pixels to the right of the web reference across the bar, and a recapture is pending.
+- Position the phone navigation bar at the bottom of the screen, above filter overlays and below title actions.
+- Align Harmony phone series detail, Home backdrop, and Calendar agenda layout with the web reference.
+- Preserve detail action sizing while matching the borderless web surface, and keep phone season heading typography scoped to series pages.
+- Match the Home phone backdrop's theme treatment, visible height, and native scrims; Harmony ImageFit.Cover still uses its centred crop because ArkUI exposes no object-position control.
+- Match the Home phone rail's surface fade and the web navigation avatar's edge-to-edge artwork sizing.
+- Batch Harmony preview telemetry into bounded one-shot requests and fail captures when delivery errors occur.
+- Match touch-profile selected-card focus to the web reference by keeping the card at its resting position and drawing the focus ring outside the artwork.
+- Require the Harmony preview capture to acknowledge a selected live card before recording a focused frame, and fail the capture when focus is missing.
+- Avoid the Harmony Previewer HTTP crash by correcting the duplicated curl handle cleanup in the build 31 capture runtime.
+- Fix the Harmony capture script syntax error and fail a capture run directly instead of retrying it five times.
 - Xbox marks the current navigation item with the TV web client's subtle ink tint and scale.
 - Keep stale playback-progress resets out of the Xbox screen and D-pad captures, and pause player-controls at the shared two-second reference position.
 - Xbox Home now matches the web rail inset, responsive vertical spacing, and directional return-to-navigation geometry.
@@ -713,6 +732,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Add an opt-in Harmony phone core capture that validates all 15 required screens before skipping optional diagnostics.
 - The Xbox player-controls capture reads its pinned direct-play fixture from a repository Actions secret instead of exposing the media identifier as a workflow input.
 - Let hosted Xbox parity runs capture a validated subset of the Movies, Series and Music screens.
 - Match tvOS light-mode library key art opacity (0.24) to the wide web TV backdrop, reducing the artwork wash behind the preview.
@@ -3164,6 +3184,13 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Harmony capture runs now validate the signed-in device-test profile and pinned detail and progress fixtures before starting the Previewer.
+- Allow an explicit Harmony phone core diagnostic capture to skip player-controls and record the omission, while the default core capture still requires all 15 screens.
+- Add selector regression coverage for partial viewport intersections, dead or invisible cards, offscreen positions and invalid geometry in the HarmonyOS preview focus route.
+- The Harmony wall can select a runtime player fixture through a repository secret without recording its identifier in capture manifests.
+- Make Harmony preview event privacy coverage deterministic by fixing the event timestamp and checking that it is preserved independently of private image identifiers.
+- Keep image-key privacy assertions scoped to event string fields so coincidental monotonic timestamp digits cannot make the tests flaky.
+- Replay transient Harmony preview telemetry failures in order with bridge deduplication, and stop captures when delivery is exhausted.
 - Require an explicit media-file ID for Xbox player-controls parity captures and verify Direct playback negotiation before opening the player and again before creating its source.
 - Xbox parity automation verifies the signed-in test account before sending input or capturing screenshots, serializes shared-account runs, and fails when its watch-progress reset cannot complete.
 - Keep Android deterministic driver unit tests independent of child-process startup latency while preserving the production bounded-command path.
