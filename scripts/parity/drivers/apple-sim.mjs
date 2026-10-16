@@ -7,6 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { waitForAppleReadiness } from "../apple-readiness.mjs";
 
 // IDB (path of the idb client, with its companion running): headless keys as USB HID usages, no Simulator window, no host keyboard.
 const HID = { up: 82, down: 81, left: 80, right: 79, select: 40, back: 41 };
@@ -215,6 +216,16 @@ export async function createDriver({ args = [], out } = {}) {
   let stickyArgs = []; // launch arguments every launch carries (a crop's Home-artwork setting)
   let verifiedUserID = null;
   let launchStartedAt = 0;
+  const readinessTimeoutMs = Number(process.env.APPLE_PARITY_READINESS_TIMEOUT_MS) || 30_000;
+  const waitForReady = async ({ screen, phase = "capture" } = {}) => waitForAppleReadiness({
+    screen,
+    phase,
+    readState: async () => {
+      await assertCurrentUser();
+      return state();
+    },
+    timeoutMs: readinessTimeoutMs,
+  });
   const launch = async (extra = [], wait = 22000) => {
     if (mac) {
       launchStartedAt = Date.now() / 1000;
@@ -316,7 +327,11 @@ export async function createDriver({ args = [], out } = {}) {
   return {
     async setDeterministicCapture() { throw new Error(`Apple ${device} stable deterministic capture unsupported: no platform clock and animation control are available`); },
     async captureBuildIdentity() { throw new Error(`Apple ${device} stable build identity unsupported: installed app digest is not exposed by this driver`); },
-    async waitReady() { throw new Error(`Apple ${device} stable deterministic capture unsupported: readiness is not exposed`); },
+    async waitReady(options) {
+      if (["home", "movies", "series", "music", "filters", "actions"].includes(options?.screen)) {
+        return waitForReady(options);
+      }
+    },
     async start({ theme: t } = {}) {
       theme = t ?? "dark";
       if (mac) {
@@ -385,15 +400,10 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       if (mac) for (let i = 0; i < 16 && s.focused == null; i += 1) { await sleep(250); s = state(); }
       return s.focused == null ? null : s.position ? { label: s.focused, position: s.position } : s.focused;
     },
-    async screenshot(file) {
+    async screenshot(file, { screen: requestedScreen } = {}) {
       await assertCurrentUser();
-      // A library page (and the Filters drawer over it) is captured only once its titles have loaded: an empty library behind the
-      // drawer scored 78. Bounded at 40 s; a page that never reports a count (not a library) is not held up.
-      if (mac && /^\/(movies|series|music)/.test(state().route ?? "")) {
-        for (let i = 0; i < 160 && !(state().items > 0); i += 1) await sleep(250);
-        if (!(state().items > 0)) console.log("  library still empty after 40 s, capturing anyway");
-        await sleep(1500); // artwork for the first screenful
-      }
+      const strictScreen = ["home", "movies", "series", "music", "filters", "actions"].includes(requestedScreen);
+      if (strictScreen) await waitForReady({ screen: requestedScreen, phase: "capture" });
       await assertCurrentUser();
       if (mac) {
         rmSync(file, { force: true });

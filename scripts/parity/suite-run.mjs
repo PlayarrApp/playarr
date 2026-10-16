@@ -157,7 +157,7 @@ if (only.includes("screens")) {
         await reach(s);
         await waitReady(s.id, "capture");
         const path = join(out, theme, `${s.id}.png`);
-        await driver.screenshot(path);
+        await driver.screenshot(path, { screen: s.id });
         assertNotInterrupted();
         captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, bytes: readFileSync(path), capturedAt: new Date().toISOString() });
         summary.screens += 1;
@@ -191,7 +191,7 @@ if (only.includes("screens") && !only.includes("dpad") && driver.endCrops) {
         await press(c.keys);
         if (deterministic) await waitReady(c.id, "capture");
         else await sleep(c.settle ?? 1200); // legacy captures can preserve intentional motion sampling
-        await driver.screenshot(join(out, theme, "crops", `${c.id}.png`));
+        await driver.screenshot(join(out, theme, "crops", `${c.id}.png`), { screen: c.id });
         console.log(`ok ${theme} crop ${c.id}`);
       } catch (e) { if (signalReceived) throw e; console.log(`FAIL ${theme} crop ${c.id}: ${e.message.split("\n")[0]}`); } // a crop never fails the run
     }

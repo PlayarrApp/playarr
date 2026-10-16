@@ -470,9 +470,23 @@ enum TVParityState {
     private static var position: [String: Any]?
     private static var playback: [String: Any]?
     private static var items: Int?
+    private static var contentState = "loading"
+    private static var panelContentState: String?
 
-    /// How many titles the open library page holds (nil off a library page): the driver waits for a loaded library before a capture.
-    static func setItems(_ count: Int?) { items = count; write() }
+    /// The count and load state of the current route, used to refuse empty or failed parity captures.
+    static func setItems(_ count: Int?, state: String? = nil) {
+        items = count
+        contentState = state ?? (count.map { $0 > 0 ? "loaded" : "empty" } ?? "loading")
+        write()
+    }
+
+    static func setContent(state: String, items count: Int) {
+        items = count
+        contentState = state
+        write()
+    }
+
+    static func setPanelContentState(_ state: String?) { panelContentState = state; write() }
 
     /// The authenticated account identity for capture guards. This is a user ID only, never a token.
     static func setCurrentUserID(_ userID: String) { currentUserID = userID; write() }
@@ -508,6 +522,7 @@ enum TVParityState {
     /// An open drawer: `filters` for the Filters drawer, `actions` for any other.
     static func setPanel(_ title: String?) {
         query["panel"] = title.map { $0.lowercased() == "filters" ? "filters" : "actions" }
+        panelContentState = title?.lowercased() == "filters" ? "loading" : title == nil ? nil : "loaded"
         write()
     }
 
@@ -519,6 +534,7 @@ enum TVParityState {
     /// The suite's web routes: `/`, `/movies`, `/series`, `/music`, `/search`, `/calendar`, `/settings`, a title
     /// `/movies/<id>` or `/series/<id>`, a playlist `/playlists/<id>`.
     static func setRoute(tab: TVNavTab, path: [TVRoute]) {
+        let previousRoute = base + (query.isEmpty ? "" : "?" + query.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"))
         query = tab == .calendar && path.isEmpty ? query.filter { $0.key == "view" } : [:]
         switch path.last {
         case .work(let work):
@@ -527,6 +543,12 @@ enum TVParityState {
             base = "/playlists/\(id.uuidString.lowercased())"
         case nil:
             base = tab == .home ? "/" : "/\(tab.rawValue)"
+        }
+        let currentRoute = base + (query.isEmpty ? "" : "?" + query.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"))
+        if currentRoute != previousRoute {
+            items = nil
+            contentState = "loading"
+            panelContentState = nil
         }
         write()
     }
@@ -596,7 +618,8 @@ enum TVParityState {
         let found = focusState()
         let state: [String: Any] = ["route": route, "userID": currentUserID, "focused": (tag ?? found.label) as Any, "item": found.item as Any,
                                     "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any,
-                                    "items": items as Any]
+                                    "items": items as Any, "contentState": contentState,
+                                    "panelContentState": panelContentState as Any]
         // `-PlayarrParityState <path>`: an explicit file (the Mac driver); otherwise the app's Documents folder.
         let args = ProcessInfo.processInfo.arguments
         let explicit = args.firstIndex(of: "-PlayarrParityState").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }

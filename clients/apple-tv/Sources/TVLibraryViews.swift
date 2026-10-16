@@ -108,6 +108,11 @@ struct TVHomeView: View {
         Group {
             if let viewModel {
                 homeContent(viewModel)
+                    #if DEBUG && (os(tvOS) || os(macOS))
+                    .onAppear { reportParityContent(viewModel) }
+                    .onChange(of: viewModel.state) { _, _ in reportParityContent(viewModel) }
+                    .onChange(of: parityContentCount(viewModel)) { _, _ in reportParityContent(viewModel) }
+                    #endif
             } else {
                 TVHomeSkeleton()
             }
@@ -121,6 +126,23 @@ struct TVHomeView: View {
             if let request { focusedCard = request.target }
         }
     }
+
+    #if DEBUG && (os(tvOS) || os(macOS))
+    private func parityContentCount(_ viewModel: TVHomeViewModel) -> Int {
+        viewModel.works.count + viewModel.rails.reduce(0) { $0 + $1.works.count } + viewModel.onDeck.count
+    }
+
+    private func reportParityContent(_ viewModel: TVHomeViewModel) {
+        let count = parityContentCount(viewModel)
+        let state: String
+        switch viewModel.state {
+        case .idle, .loading: state = "loading"
+        case .failed: state = "failed"
+        case .loaded: state = count > 0 ? "loaded" : "empty"
+        }
+        TVParityState.setContent(state: state, items: count)
+    }
+    #endif
 
     @ViewBuilder
     private func homeContent(_ viewModel: TVHomeViewModel) -> some View {
@@ -1574,6 +1596,7 @@ struct TVLibraryKindView: View {
     @FocusState private var selectedID: UUID?
     #endif
     @State private var didLoad = false
+    @State private var loadFailed = false
     /// The server's count for the header ("1,754 titles"); nil when it skipped the count.
     @State private var total: Int?
 
@@ -1714,11 +1737,20 @@ struct TVLibraryKindView: View {
                         }
                         .scrollClipDisabled()
                         .task(id: "\(audioLangs)-\(subtitleLangs)") {
+                            #if DEBUG && (os(tvOS) || os(macOS))
+                            TVParityState.setPanelContentState("loading")
+                            #endif
                             do {
                                 facets = try await environment.apiClient.catalogLanguages(kind: workKind, audioLang: audioLangs, subtitleLang: subtitleLangs)
+                                #if DEBUG && (os(tvOS) || os(macOS))
+                                TVParityState.setPanelContentState("loaded")
+                                #endif
                             } catch {
                                 NSLog("PlayarrTV: language facets failed: %@", String(describing: error))
                                 facets = LanguageFacets(audio: [], subtitle: [])
+                                #if DEBUG && (os(tvOS) || os(macOS))
+                                TVParityState.setPanelContentState("failed")
+                                #endif
                             }
                         }
                     }
@@ -1965,15 +1997,27 @@ struct TVLibraryKindView: View {
                 .onAppear { restoreOpenedCard(proxy) }
                 .onChange(of: items.count) { _, _ in restoreOpenedCard(proxy) }
                 #if DEBUG
-                .onAppear { TVParityState.setItems(items.count) }
-                .onChange(of: items.count) { _, count in TVParityState.setItems(count) }
+                .onAppear { reportParityItems() }
+                .onChange(of: items.count) { _, _ in reportParityItems() }
                 .onDisappear { TVParityState.setItems(nil) }
                 #endif
         }
         #else
         return grid
+            #if DEBUG && (os(tvOS) || os(macOS))
+            .onAppear { reportParityItems() }
+            .onChange(of: items.count) { _, _ in reportParityItems() }
+            .onDisappear { TVParityState.setItems(nil) }
+            #endif
         #endif
     }
+
+    #if DEBUG && (os(tvOS) || os(macOS))
+    private func reportParityItems() {
+        let state = !didLoad ? "loading" : loadFailed ? "failed" : items.isEmpty ? "empty" : "loaded"
+        TVParityState.setItems(items.count, state: state)
+    }
+    #endif
 
     private func libraryCard(
         work: Work,
@@ -2228,11 +2272,20 @@ struct TVLibraryKindView: View {
 
     @MainActor
     private func loadItems() async {
+        loadFailed = false
+        if !didLoad {
+            #if DEBUG && (os(tvOS) || os(macOS))
+            TVParityState.setItems(items.count, state: "loading")
+            #endif
+        }
         // Offline parity: deterministic fixture catalogue (SPA-matching titles).
         if TVParityLaunch.requestedScreen != nil {
             items = TVParityFixtures.libraryWorks(kind: workKind)
             selectedID = items.first?.id
             didLoad = true
+            #if DEBUG && (os(tvOS) || os(macOS))
+            reportParityItems()
+            #endif
             return
         }
         let api = environment.apiClient
@@ -2245,15 +2298,22 @@ struct TVLibraryKindView: View {
             let page = try await api.browseCatalog(kind: workKind, sort: sort, order: order, audioLang: audioLangs, subtitleLang: subtitleLangs, limit: 48, offset: 0)
             items = page.items
             total = page.total.map(Int.init)
-            didLoad = true
             items = Self.ordered(items, sort: sort, order: order)
             while workKind != nil, !page.items.isEmpty, items.count < (total ?? Int.max) {
                 let next = try await api.browseCatalog(kind: workKind, sort: sort, order: order, audioLang: audioLangs, subtitleLang: subtitleLangs, limit: 500, offset: items.count)
                 if next.items.isEmpty { break }
                 items = Self.ordered(items + next.items, sort: sort, order: order)
             }
+            didLoad = true
+            #if DEBUG && (os(tvOS) || os(macOS))
+            reportParityItems()
+            #endif
         } catch {
+            loadFailed = true
             didLoad = true // keep what loaded; never show fixture titles to a real user
+            #if DEBUG && (os(tvOS) || os(macOS))
+            reportParityItems()
+            #endif
         }
     }
 }
