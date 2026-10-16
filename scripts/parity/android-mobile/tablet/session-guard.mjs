@@ -68,7 +68,8 @@ export function validateActiveSession({ preferences, allowedUsernames, trustedSe
   const currentServerUrl = preferences.get("playarr_current_server_url");
   const currentUserId = preferences.get("playarr_user_id");
   if (!accessToken || !serverUrl || !currentServerUrl || !currentUserId) throw new Error("active Android session is incomplete");
-  if (canonicalUrl(serverUrl) !== canonicalUrl(sessionServerUrl) || canonicalUrl(currentServerUrl) !== canonicalUrl(sessionServerUrl)) throw new Error("active Android session server is not trusted");
+  const trusted = canonicalUrl(trustedServerUrl);
+  if (canonicalUrl(sessionServerUrl) !== trusted || canonicalUrl(serverUrl) !== trusted || canonicalUrl(currentServerUrl) !== trusted) throw new Error("active Android session server is not trusted");
   if (!Array.isArray(profiles)) throw new Error("active Android session identity response is invalid");
   const current = profiles.filter((profile) => profile?.is_current === true);
   if (current.length !== 1 || current[0]?.id !== currentUserId || typeof current[0]?.username !== "string") {
@@ -88,6 +89,7 @@ export async function assertConnectedAndroidSession({ serial, packageName = "io.
   if (!allowedUsernames.size) throw new Error("no Android tablet device-test usernames are allowlisted");
   const trustedServerUrl = loadTrustedDeviceTestServerUrl({ secrets, env });
   const sessionServerUrl = serverAlias ? canonicalUrl(serverAlias) : trustedServerUrl;
+  if (sessionServerUrl !== trustedServerUrl) throw new Error("active Android session server is not trusted");
   const token = preferences.get("playarr_access_token");
   const server = preferences.get("playarr_base_url");
   const currentServer = preferences.get("playarr_current_server_url");

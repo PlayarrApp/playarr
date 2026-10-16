@@ -14,7 +14,6 @@ scratch_root=${PLAYARR_SCRATCH_ROOT:?authorised scratch root is required}
 scratch_root=$(realpath -e "$scratch_root")
 output_path=$(realpath -m "$O")
 case "$output_path" in "$scratch_root"/*) ;; *) echo "output must be below the authorised scratch directory" >&2; exit 2;; esac
-alias_url=${PARITY_ANDROID_SERVER_ALIAS:?Android app server alias is required}
 [[ -n "${PARITY_ANDROID_FIXTURE_CLOCK:-}" ]] || { echo "shared parity fixture clock is required" >&2; exit 2; }
 [[ "$PARITY_ANDROID_FIXTURE_CLOCK" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || { echo "fixture clock must be a UTC instant with whole seconds" >&2; exit 2; }
 python3 -I -c 'import datetime,sys; datetime.datetime.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ")' "$PARITY_ANDROID_FIXTURE_CLOCK" || { echo "fixture clock is invalid" >&2; exit 2; }
@@ -33,7 +32,7 @@ case "$screen" in
     ;;
 esac
 mkdir -p "$output_path"
-node "$HERE/session-guard.mjs" "$ANDROID_SERIAL" "$alias_url"
+node "$HERE/session-guard.mjs" "$ANDROID_SERIAL"
 "$ADB" -s "$ANDROID_SERIAL" get-state >/dev/null
 size_output=$("$ADB" -s "$ANDROID_SERIAL" shell wm size | tr -d '\r')
 effective_size=$(printf '%s\n' "$size_output" | sed '/^[[:space:]]*$/d' | tail -n 1)
@@ -69,7 +68,7 @@ set -e
 activity_output=$("$ADB" -s "$ANDROID_SERIAL" shell dumpsys activity activities | tr -d '\r')
 top_resumed=$(printf '%s\n' "$activity_output" | awk '/topResumedActivity/ { print; found=1 } END { if (!found) exit 1 }') || { echo "top resumed activity is unavailable" >&2; exit 1; }
 [[ "$top_resumed" == *"$pkg"* ]] || { echo "app left foreground before capture" >&2; exit 1; }
-node "$HERE/session-guard.mjs" "$ANDROID_SERIAL" "$alias_url"
+node "$HERE/session-guard.mjs" "$ANDROID_SERIAL"
 capture_path="$output_path/.capture.unverified.$$.png"
 "$ADB" -s "$ANDROID_SERIAL" exec-out screencap -p >"$capture_path"
 python3 -I -c 'import struct,sys; d=open(sys.argv[1],"rb").read(); assert d[:8]==b"\x89PNG\r\n\x1a\n" and d[-8:-4]==b"IEND" and struct.unpack(">II",d[16:24])==(2560,1600)' "$capture_path"

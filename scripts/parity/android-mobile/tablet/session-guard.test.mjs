@@ -48,13 +48,13 @@ const input = { preferences, allowedUsernames: allowlist, trustedServerUrl: "htt
 test("accepts only one current allowlisted profile matching the stored user id and server", () => {
   assert.equal(validateActiveSession(input), true);
 });
-test("accepts the explicitly supplied app alias while identity is checked against the trusted relay", () => {
+test("rejects an app alias that differs from the trusted relay", () => {
   const aliasInput = {
     ...input,
     preferences: new Map([...preferences].map(([key, value]) => [key, value.replace("https://server.example", "http://app-alias.example:8484")])),
     sessionServerUrl: "http://app-alias.example:8484",
   };
-  assert.equal(validateActiveSession(aliasInput), true);
+  assert.throws(() => validateActiveSession(aliasInput), /server is not trusted/);
   assert.throws(() => validateActiveSession({ ...aliasInput, sessionServerUrl: "http://unexpected.example" }), /server is not trusted/);
 });
 test("rejects an unallowlisted current profile", () => {
@@ -74,8 +74,8 @@ const trustedSecrets = {
 };
 const encodedSession = Buffer.concat([
   stringPreference("playarr_access_token", "opaque-token"),
-  stringPreference("playarr_base_url", "http://app-alias.example:8484"),
-  stringPreference("playarr_current_server_url", "http://app-alias.example:8484"),
+  stringPreference("playarr_base_url", "https://server.example"),
+  stringPreference("playarr_current_server_url", "https://server.example"),
   stringPreference("playarr_user_id", "uid-test"),
 ]);
 const profileResponse = { ok: true, json: async () => profiles };
@@ -86,7 +86,7 @@ test("checks profiles only at the trusted relay and rejects a session changed du
   await assert.rejects(assertConnectedAndroidSession({
     serial: "emulator-test",
     secrets: trustedSecrets,
-    serverAlias: "http://app-alias.example:8484",
+    serverAlias: "https://server.example",
     readSession: () => ++readCount === 1 ? encodedSession : Buffer.concat([encodedSession, stringPreference("playarr_current_server_url", "http://other.example")] ),
     fetchImpl: async (url, options) => {
       requestUrl = url;
@@ -97,16 +97,27 @@ test("checks profiles only at the trusted relay and rejects a session changed du
   assert.equal(requestUrl, "https://server.example/api/v1/users/profiles");
 });
 
-test("rejects a mismatched current server before contacting the relay", async () => {
+test("rejects an app alias before contacting the relay", async () => {
+  let requested = false;
+  const badSession = encodedSession;
+  await assert.rejects(assertConnectedAndroidSession({
+    serial: "emulator-test", secrets: trustedSecrets, serverAlias: "http://app-alias.example:8484",
+    readSession: () => badSession,
+    fetchImpl: async () => { requested = true; return profileResponse; },
+  }), /server is not trusted/);
+  assert.equal(requested, false);
+});
+
+test("rejects a mismatched active server before contacting the relay", async () => {
   let requested = false;
   const badSession = Buffer.concat([
     stringPreference("playarr_access_token", "opaque-token"),
-    stringPreference("playarr_base_url", "http://app-alias.example:8484"),
-    stringPreference("playarr_current_server_url", "http://other.example"),
+    stringPreference("playarr_base_url", "https://server.example"),
+    stringPreference("playarr_current_server_url", "https://other.example"),
     stringPreference("playarr_user_id", "uid-test"),
   ]);
   await assert.rejects(assertConnectedAndroidSession({
-    serial: "emulator-test", secrets: trustedSecrets, serverAlias: "http://app-alias.example:8484",
+    serial: "emulator-test", secrets: trustedSecrets,
     readSession: () => badSession,
     fetchImpl: async () => { requested = true; return profileResponse; },
   }), /untrusted server/);
