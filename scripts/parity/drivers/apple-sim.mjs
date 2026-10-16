@@ -239,7 +239,7 @@ export async function createDriver({ args = [], out } = {}) {
     readState: async () => {
       const current = await assertCurrentUser(); // one read: a second state() could return {} on a transient simctl failure
       if (deterministicFixedNow && (current?.determinism?.clock !== deterministicFixedNow || current?.determinism?.animationsDisabled !== true)) {
-        throw new Error(`Apple app did not confirm the requested deterministic clock and animation settings (reported ${JSON.stringify(current?.determinism ?? null)})`);
+        throw new Error(`Apple app did not confirm the requested deterministic clock and animation settings (reported ${JSON.stringify(current?.determinism ?? null)}; state keys ${Object.keys(current ?? {}).join(",")})`);
       }
       return current;
     },
