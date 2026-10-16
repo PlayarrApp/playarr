@@ -41,6 +41,16 @@ on:
         description: Comma-separated parts (dark, light, downloads; playback is out of parity)
         type: string
         default: dark,light
+      capture_now:
+        description: UTC capture instant for every screen (YYYY-MM-DDTHH:MM:SSZ)
+        type: string
+        required: true
+        default: 2026-10-15T16:43:15Z
+      capture_timezone:
+        description: Time zone used to format the captured header clock
+        type: string
+        required: true
+        default: Asia/Bangkok
 
 permissions:
   contents: read
@@ -97,6 +107,31 @@ jobs:
           ref: ${{ inputs.ref || github.event.repository.default_branch }}
           path: src
           persist-credentials: false
+
+      - name: Validate parity capture instant
+        env:
+          CAPTURE_NOW: ${{ inputs.capture_now }}
+          CAPTURE_TIMEZONE: ${{ inputs.capture_timezone }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import datetime
+          import os
+          import re
+          import sys
+
+          value = os.environ["CAPTURE_NOW"]
+          if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", value):
+              sys.exit("capture_now must be a UTC timestamp in YYYY-MM-DDTHH:MM:SSZ form")
+          try:
+              datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+          except ValueError as error:
+              sys.exit(f"capture_now is not a valid timestamp: {error}")
+          zone = os.environ["CAPTURE_TIMEZONE"]
+          if zone != "Asia/Bangkok":
+              sys.exit("capture_timezone must be Asia/Bangkok for the accepted iPad references")
+          print(f"Using parity capture instant {value} in {zone}")
+          PY
 
       # The iPad wall build needs an iOS 18 simulator (iPadOS 26 does not rotate); the runner image only has 26.
       - name: Cache the iOS 18 simulator runtime
@@ -309,11 +344,32 @@ jobs:
           FOCUS: ${{ inputs.focus }}
           POSTER: ${{ inputs.poster }}
           MOTION: ${{ inputs.motion }}
+          CAPTURE_NOW: ${{ inputs.capture_now }}
+          CAPTURE_TIMEZONE: ${{ inputs.capture_timezone }}
+          PARITY_CAPTURE_NOW: ${{ inputs.capture_now }}
+          PARITY_CAPTURE_TIMEZONE: ${{ inputs.capture_timezone }}
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/capture"; mkdir -p "$out"
-          printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
-            "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$out/build.json"
+          python3 - "$out/build.json" <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          from datetime import datetime, timezone
+
+          with open(sys.argv[1], "w") as result:
+              json.dump({
+                  "branch": os.environ["REF"],
+                  "sha": subprocess.check_output(["git", "-C", os.environ["SRC"], "rev-parse", "HEAD"], text=True).strip(),
+                  "pr": None,
+                  "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+                  "runner": "github-hosted",
+                  "capture_now": os.environ["CAPTURE_NOW"],
+                  "timezone": os.environ["CAPTURE_TIMEZONE"],
+              }, result, separators=(",", ":"))
+              result.write("\n")
+          PY
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
           case $PART in
             downloads) only=downloads; themes=dark ;;

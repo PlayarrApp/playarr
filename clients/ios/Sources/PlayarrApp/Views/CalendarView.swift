@@ -19,7 +19,8 @@ struct CalendarView: View {
         #if DEBUG
         // The parity capture freezes the web clock; the native calendar follows the same instant.
         let frozen = ParityLaunch.frozenNow
-        let model = CalendarViewModel(transport: apiClient, now: { frozen ?? Date() })
+        let zone = ParityLaunch.isActive ? ParityLaunch.captureTimeZone : .current
+        let model = CalendarViewModel(transport: apiClient, zone: zone, now: { frozen ?? Date() })
         if let mode = ParityLaunch.calendarMode { model.mode = mode }
         _viewModel = State(initialValue: model)
         #else

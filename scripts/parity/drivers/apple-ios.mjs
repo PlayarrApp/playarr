@@ -35,6 +35,14 @@ export async function createDriver() {
   const work = process.env.WORK, st = readState(work), udid = st.UDID, bundle = st.BUNDLE;
   if (!udid || !bundle) throw new Error("no simulator in WORK/state.env: run wall.sh up first");
   const e = process.env;
+  const captureNow = e.PARITY_CAPTURE_NOW;
+  const captureTimezone = e.PARITY_CAPTURE_TIMEZONE;
+  if ((captureNow && (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(captureNow)
+      || !Number.isFinite(Date.parse(captureNow))
+      || new Date(captureNow).toISOString().replace(".000Z", "Z") !== captureNow))
+      || (captureTimezone && !/^[A-Za-z_]+(?:\/[A-Za-z_+-]+)+$/.test(captureTimezone))) {
+    throw new Error("PARITY_CAPTURE_NOW must be a valid UTC timestamp and PARITY_CAPTURE_TIMEZONE must be a valid IANA time zone");
+  }
   let theme = "dark", wanted = "/";
   const statePath = () => join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents", "parity-state.json");
   const state = () => { try { return JSON.parse(readFileSync(statePath(), "utf8")); } catch { return {}; } };
@@ -50,6 +58,8 @@ export async function createDriver() {
     if (device === "ipad" && enableLayoutDiagnostics) launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS = "1";
     run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrMuted", "--playarr-parity-server", e.SERVER_URL, "--playarr-parity-user", e.TEST_USERNAME,
       "--playarr-parity-password", e.TEST_PASSWORD, "--playarr-parity-route", route, "--playarr-parity-theme", theme,
+      ...(captureNow ? ["--playarr-parity-now", captureNow] : []),
+      ...(captureTimezone ? ["--playarr-parity-timezone", captureTimezone] : []),
       ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...(process.env.PARITY_FOCUS ? ["--playarr-parity-focus", process.env.PARITY_FOCUS] : []),
       ...(process.env.PARITY_MOTION === "1" ? ["--playarr-parity-motion"] : []), ...(process.env.PARITY_COVERS === "1" ? ["--playarr-parity-covers"] : []), ...(process.env.PARITY_SIZE ? ["--playarr-parity-size", process.env.PARITY_SIZE] : []), ...extra], { env: launchEnv });
     for (let i = 0; i < 60 && !state().signedIn; i += 1) await sleep(1000);
@@ -154,6 +164,7 @@ export async function createDriver() {
         assertDirectPlayback(playback);
       }
       await sleep(id.startsWith("player") ? 30000 : 14000);
+      if (playerFile) assertDirectPlayback(state().playback);
       if (process.env.PARITY_MOTION === "1" && id === "home") { // frame bursts: 5 frames about 150 ms apart after every scripted step
         const dir = `${file}.motion`; run("mkdir", ["-p", dir]);
         let seen = 0;
@@ -167,8 +178,11 @@ export async function createDriver() {
       // A slow first paint can leave the "Opening ..." splash on screen after the fixed wait: take frames 4 s apart until
       // two consecutive frames are byte-identical (at most 8 tries), so the capture is the settled screen, never a transition.
       await captureStableFrame(async () => {
+        if (playerFile) assertDirectPlayback(state().playback);
         run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
-        return readFileSync(raw);
+        const frame = readFileSync(raw);
+        if (playerFile) assertDirectPlayback(state().playback);
+        return frame;
       });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");

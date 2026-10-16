@@ -1,0 +1,1 @@
+- Freeze the iOS wall capture clock and time zone to the accepted iPad reference, record both in capture provenance, and reject player frames if direct playback fails before or during capture.
