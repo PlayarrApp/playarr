@@ -1,1 +1,0 @@
-- Keep Android deterministic driver unit tests independent of child-process startup latency while preserving the production bounded-command path.

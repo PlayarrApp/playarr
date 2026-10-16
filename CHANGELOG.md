@@ -3151,6 +3151,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Keep Android deterministic driver unit tests independent of child-process startup latency while preserving the production bounded-command path.
 - Keep an expected credentialless startup login rejection from failing browser parity readiness after a successful manual sign-in, while preserving credentialed login failures.
 - Record stable-run and expected-reference provenance for D-pad results, guard reference build stamps, and cover non-stable capture and selective publication regressions.
 - DEBUG macOS arrow-key diagnostics now report safe focus transitions, registered-target counts, and numeric selected frames without labels or identifiers.
