@@ -3826,7 +3826,7 @@ internal fun LibraryResults(
             modifier = Modifier.fillMaxSize().then(if (isTelevision) Modifier.playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical) else Modifier),
             contentPadding = screenPadding,
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 23.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 23.32.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
                 val openLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title)
