@@ -1553,7 +1553,8 @@ struct Detail {
 
   private episodeUnseen(row: DetailRow): boolean {
     const file = row.mediaFileId;
-    return !isTvMetrics() && file !== null && watchMarkFor(this.episodeProgress.get(file), this.episodeProgressLoaded).unseen;
+    // TV draws the dot too, from the card's own prop: no restamp (it would rebuild the cards and reset the artwork)
+    return file !== null && watchMarkFor(this.episodeProgress.get(file), this.episodeProgressLoaded).unseen;
   }
 
   /** Give each episode row a stamp that reflects its unseen dot (TV too: web draws it) and, on the phone, its ring, so the cards redraw when the data arrives. */

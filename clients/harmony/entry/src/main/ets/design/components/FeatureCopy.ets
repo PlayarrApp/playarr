@@ -62,6 +62,7 @@ const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
+const SYNOPSIS_FONT_WEIGHT: number = 400;
 const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
 const SYNOPSIS_MAX_WIDTH: number = 324;
@@ -209,11 +210,12 @@ export struct FeatureCopy {
       }
 
       if (this.synopsis.length > 0) {
-        Text(this.synopsis).fontFamily(nunito(COPY_TEXT_FONT_WEIGHT))
+        // web `.tv-detail-synopsis`: --ink-muted, no weight set (body 400)
+        Text(this.synopsis).fontFamily(nunito(SYNOPSIS_FONT_WEIGHT))
           .fontSize(tv(COPY_TEXT_FONT_SIZE))
-          .fontWeight(COPY_TEXT_FONT_WEIGHT)
+          .fontWeight(SYNOPSIS_FONT_WEIGHT)
           .lineHeight(tv(SYNOPSIS_LINE_HEIGHT))
-          .fontColor(this.copyTextColor())
+          .fontColor(toResourceColor(activeColors().inkMuted))
           .constraintSize({ maxWidth: tv(SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })

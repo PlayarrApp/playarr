@@ -476,6 +476,7 @@ class PreviewCardEntry {
   x: number = 0;
   y: number = 0;
   alive: boolean = true;
+  visible: boolean = true;
   constructor(setOn: (on: boolean) => void) {
     this.setOn = setOn;
   }
@@ -501,20 +502,26 @@ export function previewCardMoved(index: number, area: Area): void {
   }
 }
 
+export function previewCardVisible(index: number, visible: boolean): void {
+  if (index >= 0 && index < PREVIEW_CARDS.length) {
+    PREVIEW_CARDS[index].visible = visible;
+  }
+}
+
 /** Focused look on the live card nearest the top-left of the content area (x past the nav rail), off on every other. */
 export function previewFocusFirstCard(): string {
   let best: number = -1;
   // TV (1920 vp wide): content starts right of the nav rail, 500 vp in; the phone (about 360 vp wide) has no rail.
   let maxX: number = 0;
   for (let i = 0; i < PREVIEW_CARDS.length; i++) {
-    maxX = Math.max(maxX, PREVIEW_CARDS[i].alive ? PREVIEW_CARDS[i].x : 0);
+    maxX = Math.max(maxX, PREVIEW_CARDS[i].alive && PREVIEW_CARDS[i].visible ? PREVIEW_CARDS[i].x : 0);
   }
   const minX: number = maxX >= 500 ? 500 : 0;
   const minY: number = maxX >= 500 ? 100 : 60;
   const maxY: number = maxX >= 500 ? 1000 : 3000;
   for (let i = 0; i < PREVIEW_CARDS.length; i++) {
     const card: PreviewCardEntry = PREVIEW_CARDS[i];
-    if (!card.alive || card.x < minX || card.y < minY || card.y > maxY) {
+    if (!card.alive || !card.visible || card.x < minX || card.y < minY || card.y > maxY) {
       continue;
     }
     if (best < 0 || card.y < PREVIEW_CARDS[best].y - 20 || (Math.abs(card.y - PREVIEW_CARDS[best].y) <= 20 && card.x < PREVIEW_CARDS[best].x)) {

@@ -299,6 +299,10 @@ def motion_walk(folder):
     route("library:movie", 15); click(1877, 187); time.sleep(5); burst(folder, "filters-00-open")
     for i in range(1, 4):
         swipe(1700, 800, 1700, 200); burst(folder, f"filters-{i:02d}-up")
+    click(1850, 78); time.sleep(3)
+    longclick(946, 254); time.sleep(5); burst(folder, "actions-00-open")
+    for i in range(1, 4):
+        swipe(1700, 800, 1700, 200); burst(folder, f"actions-{i:02d}-up")
 
 
 def poster_walk(folder):
