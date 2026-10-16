@@ -93,6 +93,10 @@ jobs:
         with:
           name: xbox-wall-package
           path: pkg
+      - name: Match the legend reference time zone
+        shell: pwsh
+        # The frozen web references were captured in ICT; airtimes and the header clock must read the same on the runner.
+        run: tzutil /s "SE Asia Standard Time"
       - name: Sideload the app
         shell: pwsh
         run: scripts/xbox-wall/install.ps1 -Dir pkg
