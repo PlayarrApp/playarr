@@ -5362,8 +5362,9 @@ private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit,
         modifier = modifier.fillMaxWidth().height(68.dp).webFocusRing(focused, radius = 14.dp, offset = 0.dp).onFocusChanged { focused = it.isFocused },
     ) {
         Row(Modifier.padding(start = 18.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(glyph, color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp))
-            Text(label, fontSize = if (tv) 19.2.sp else 16.sp, lineHeight = if (tv) 28.8.sp else 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(glyph, color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp)) // web: 1.22 rem in a 42 px column
+            val cssTablet = LocalTabletDrawerCssPx.current
+            Text(label, fontSize = if (cssTablet) 16.sp else if (tv) 19.2.sp else 16.sp, lineHeight = if (cssTablet) 24.sp else if (tv) 28.8.sp else 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -6139,7 +6140,7 @@ private fun ExperienceVideoDetailContent(
                     autoFocusPlay = series == null,
                     playFocus = playFocus,
                     television = true,
-                    modifier = Modifier.padding(top = if (selectedEpisode != null) 10.3.dp else 37.8.dp),
+                    modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) 6.dp else 0.dp)),
                 )
             }
             if (series != null) {
@@ -6660,7 +6661,7 @@ private fun VideoDetailCopy(
                 )
             }
             androidx.compose.foundation.layout.FlowRow(
-                modifier = Modifier.padding(top = 27.dp),
+                modifier = Modifier.padding(top = 27.dp + (if (LocalStageScale.current != 1f) 6.dp else 0.dp)),
                 horizontalArrangement = Arrangement.spacedBy(13.6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -6668,8 +6669,9 @@ private fun VideoDetailCopy(
                     Text(
                         item,
                         color = WebInkSoft,
-                        fontSize = 10.56.sp,
-                        lineHeight = 15.84.sp,
+                        // Web `.tv-detail-meta`: clamp(7.68, 0.55 vw, 10.88) css px (10.56 at 1920).
+                        fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp,
+                        lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp,
                         fontWeight = if (index == 0) FontWeight(680) else FontWeight.Normal,
                     )
                 }
@@ -6682,8 +6684,9 @@ private fun VideoDetailCopy(
                         if (episode == null) PlayarrString.DetailNoSynopsis else PlayarrString.DetailNoEpisodeSynopsis,
                     ),
                 color = WebInkSoft,
-                fontSize = 12.864.sp,
-                lineHeight = 20.325.sp,
+                // Web `.tv-detail-synopsis`: clamp(9.28, 0.67 vw, 13.44) css px, line height 1.58 (12.864 / 20.325 at 1920).
+                fontSize = webVw(9.28f, 0.67f, 13.44f).value.sp,
+                lineHeight = (webVw(9.28f, 0.67f, 13.44f).value * 1.58f).sp,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = if (episode != null) 20.7.dp else 21.7.dp).widthIn(max = 324.dp),
@@ -7151,7 +7154,7 @@ internal fun SeriesEpisodeBrowser(
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
             ),
-        verticalArrangement = Arrangement.spacedBy(18.dp + 10.4.dp * tabletDetail),
+        verticalArrangement = Arrangement.spacedBy(18.dp + 25.4.dp * tabletDetail),
     ) {
         if (!isTelevision) Text(
             playarrString(PlayarrString.DetailTitleSeasonsAndEpisodes, "title" to work.title),

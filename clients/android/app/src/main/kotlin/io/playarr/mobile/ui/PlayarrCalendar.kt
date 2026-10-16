@@ -157,7 +157,8 @@ private fun ExperienceCalendarScreen(
 ) {
     val state by viewModel.calendar.state.collectAsState()
     LaunchedEffect(state.mode) { parityLog("calendar view=${state.mode.name.lowercase()}") }
-    if (isTelevision) {
+    // The tablet is touch-first: web's Today focus is only drawn in keyboard modality, so no ring is forced at open (television keeps it).
+    if (isTelevision && LocalStageScale.current == 1f) {
         // Web: opening the calendar from the rail puts focus on Today straight away.
         val contentEntry = LocalTvContentEntry.current
         TvDefaultFocusEffect(Unit, takeFirst = true) { runCatching { contentEntry.requester?.requestFocus() } }
@@ -521,6 +522,9 @@ private fun PhoneCalendarPill(label: String, glyph: String? = null, enabled: Boo
     }
 }
 
+/** Web `.calendar-week-scroll .calendar-entry-title` is `white-space: normal`: the tablet week wraps long titles. */
+internal val LocalCalendarWrapTitles = androidx.compose.runtime.compositionLocalOf { false }
+
 @Composable
 private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: ZoneId, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val entry = item.first
@@ -580,12 +584,12 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
         ) {
             CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp).clip(RoundedCornerShape(6.dp)))
             Column(Modifier.weight(1f).padding(start = 14.4.dp)) {
-                Text(item.title, color = WebInk, fontSize = m.entryTitle.sp, lineHeight = m.entryTitleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(item.title, color = WebInk, fontSize = m.entryTitle.sp, lineHeight = m.entryTitleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (LocalCalendarWrapTitles.current) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(2.4.dp))
                 // Web `entrySubtitle` is the episode code and subtitle only: a movie shows no line (phone only; TV keeps the kind fallback).
                 val rowSubtitle = if (m === TvCalendarMetrics) calendarItemSubtitle(item) else (item as? CalendarItem.Single)?.entry?.let { e -> listOfNotNull(e.episodeCode(), e.subtitle?.takeIf(String::isNotBlank)).joinToString(" \u00b7 ") } ?: calendarItemSubtitle(item)
                 if (rowSubtitle.isNotEmpty()) {
-                    Text(rowSubtitle, color = WebInkSoft, fontSize = m.entryTitle.sp, lineHeight = m.entryTitleLine.sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(rowSubtitle, color = WebInkSoft, fontSize = m.entryTitle.sp, lineHeight = m.entryTitleLine.sp, style = WebTextStyle, maxLines = if (LocalCalendarWrapTitles.current) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(2.4.dp))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1008,8 +1012,31 @@ internal fun CalendarWeek(
     onSelect: (CalendarItem) -> Unit,
     modifier: Modifier,
 ) {
+    // A tablet draws web's week at css px (entry cards are the phone's css-px cards, columns clamp(300, 24 vw, 440)), not the 1920 stage.
+    if (isTelevision && LocalStageScale.current != 1f) {
+        val stage = LocalStageScale.current
+        UnstagedForWebCssPx { androidx.compose.runtime.CompositionLocalProvider(LocalCalendarWrapTitles provides true) { CalendarWeekBody(groups, loading, false, today, zone, locale, selectedKey, onSelect, modifier, webColumn = webVw(300f, 24f, 440f), topPad = (53f * stage + 7.7f).dp) } }
+        return
+    }
+    CalendarWeekBody(groups, loading, isTelevision, today, zone, locale, selectedKey, onSelect, modifier, webColumn = null, topPad = null)
+}
+
+@Composable
+private fun CalendarWeekBody(
+    groups: List<CalendarDayGroup>,
+    loading: Boolean,
+    isTelevision: Boolean,
+    today: LocalDate,
+    zone: ZoneId,
+    locale: Locale,
+    selectedKey: String?,
+    onSelect: (CalendarItem) -> Unit,
+    modifier: Modifier,
+    webColumn: androidx.compose.ui.unit.Dp?,
+    topPad: androidx.compose.ui.unit.Dp?,
+) {
     // Web TV week: 438 dp day columns 19 dp apart, the agenda's entry cards and day headings.
-    val columnWidth = if (isTelevision) 440.dp else 320.dp
+    val columnWidth = webColumn ?: if (isTelevision) 440.dp else 320.dp
     val skeletonDays = remember(groups) { if (groups.isEmpty()) 7 else groups.size }
     val dayItems = remember(groups, zone) { groups.map { groupSeriesEpisodes(it.entries, zone) } }
     val counts = remember(dayItems) { dayItems.map { it.size } }
@@ -1040,7 +1067,7 @@ internal fun CalendarWeek(
                             .calendarEdgeFades(scroll.verticalEdges())
                             .verticalScroll(scroll)
                             
-                            .padding(top = if (isTelevision) 53.dp else 7.dp, bottom = 48.dp), // web: columns start at y 174, below the toolbar row
+                            .padding(top = topPad ?: if (isTelevision) 53.dp else 7.dp, bottom = 48.dp), // web: columns start at y 174, below the toolbar row
                         verticalArrangement = Arrangement.spacedBy(if (isTelevision) 6.dp else 0.dp),
                     ) {
                         if (true) {
@@ -1072,7 +1099,7 @@ internal fun CalendarWeek(
                                         .calendarFocusReveal()
                                 if (true) {
                                     // Web: 6 px under the day heading, 14 px between entries (the 6 above plus 8 here).
-                                    Box(Modifier.padding(bottom = if (isTelevision) 8.dp else 13.5.dp)) {
+                                    Box(Modifier.padding(bottom = if (isTelevision) 8.dp else if (webColumn != null) 11.5.dp else 13.5.dp)) { // web tablet week: 0.5 rem list gap plus 3.5 rem-line card, 2 css px tighter than the phone's
                                         PhoneCalendarEntry(item, selected = item.key == selectedKey, zone = zone, onClick = { onSelect(item) }, modifier = rowModifier)
                                     }
                                 } else {

@@ -362,6 +362,9 @@ internal fun playarrTvDrawer(): Boolean =
  * `-32px 0 90px rgba(40,26,24,.24)` shadow, no page scrim; 46 dp gutters, the 9.6 px eyebrow, the 38.4 px title and the
  * round 48 x 50 close button.
  */
+/** True inside a tablet's drawer window: its contents are laid out in web css px (the window already has the device density). */
+internal val LocalTabletDrawerCssPx = androidx.compose.runtime.compositionLocalOf { false }
+
 @Composable
 private fun PlayarrTvDrawer(
     titleContent: (@Composable () -> Unit)?,
@@ -385,10 +388,19 @@ private fun PlayarrTvDrawer(
         ),
     ) {
         (androidx.compose.ui.platform.LocalView.current.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.setDimAmount(0f)
+        val tablet = LocalStageScale.current != 1f
+        androidx.compose.runtime.CompositionLocalProvider(LocalTabletDrawerCssPx provides tablet) {
+        UnstagedForWebCssPx(densityIsReal = true) {
+        // Web `.tv-filter-drawer`: width min(360, 27 vw), padding clamp(38, 5 vu, 62) x clamp(26, 2.5 vw, 46), title clamp(22.4, 2 vw, 38.4), gap clamp(22, 2.8 vu, 34).
+        val drawerWidth = if (tablet) minOf(360.dp, webVw(0f, 27f, 10000f)) else 360.dp
+        val padX = if (tablet) webVw(26f, 2.5f, 46f) else 46.dp
+        val padTop = if (tablet) webVu(38f, 5f, 62f) else 54.dp
+        val titleSize = if (tablet) webVw(22.4f, 2f, 38.4f).value else 38.4f
+        val gap = if (tablet) webVu(22f, 2.8f, 34f) else 30.dp
         Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = dismiss)) {
             val shadow = Color(0x3D281A18)
             Box(
-                Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(360.dp)
+                Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(drawerWidth)
                     .drawBehind {
                         drawRect(
                             androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Transparent, shadow), startX = -122.dp.toPx(), endX = 0f),
@@ -400,7 +412,7 @@ private fun PlayarrTvDrawer(
                     .clickable(interactionSource = null, indication = null, enabled = false) {},
             ) {
                 Column(
-                    Modifier.verticalScroll(rememberScrollState()).padding(start = 46.dp, end = 46.dp, top = 54.dp, bottom = 46.dp),
+                    Modifier.verticalScroll(rememberScrollState()).padding(start = padX, end = padX, top = padTop, bottom = if (tablet) padTop else 46.dp),
                 ) {
                     Row(verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f).padding(end = 12.dp)) {
@@ -408,7 +420,7 @@ private fun PlayarrTvDrawer(
                                 Text(kicker.uppercase(), color = WebInkSoft, fontSize = 9.6.sp, lineHeight = 14.4.sp, fontWeight = FontWeight(720), letterSpacing = 0.672.sp)
                             }
                             androidx.compose.material3.ProvideTextStyle(
-                                androidx.compose.ui.text.TextStyle(color = WebInk, fontSize = 38.4.sp, lineHeight = 57.6.sp, fontWeight = FontWeight(590), letterSpacing = (-2.112).sp),
+                                androidx.compose.ui.text.TextStyle(color = WebInk, fontSize = titleSize.sp, lineHeight = (titleSize * 1.5f).sp, fontWeight = FontWeight(590), letterSpacing = (-0.055f * titleSize).sp),
                             ) { Box(Modifier.padding(top = if (kicker != null) 4.dp else 0.dp)) { titleContent?.invoke() } }
                         }
                         if (dismissible) {
@@ -421,19 +433,21 @@ private fun PlayarrTvDrawer(
                                 color = WebSurfaceSoft,
                                 contentColor = WebInk,
                                 border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder),
-                                modifier = Modifier.size(48.dp, 50.dp).focusRequester(focus).webFocusRing(focused, offset = 2.dp)
+                                modifier = (if (tablet) Modifier.size(webVw(44f, 2.7f, 48f)) else Modifier.size(48.dp, 50.dp)).focusRequester(focus).webFocusRing(focused, offset = 2.dp)
                                     .semantics { contentDescription = closeLabel },
                             ) {
                                 Box(contentAlignment = Alignment.Center) { Text("\u00D7", fontSize = 26.88.sp, fontWeight = FontWeight(720)) }
                             }
                         }
                     }
-                    Column(Modifier.padding(top = 33.dp), verticalArrangement = Arrangement.spacedBy(30.dp)) { content() }
+                    Column(Modifier.padding(top = if (tablet) gap else 33.dp), verticalArrangement = Arrangement.spacedBy(gap)) { content() }
                     if (footer != null) {
                         Row(Modifier.padding(top = 30.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = footer)
                     }
                 }
             }
+        }
+        }
         }
     }
     LaunchedEffect(Unit) { runCatching { (initialFocus ?: focus).requestFocus() } }

@@ -61,19 +61,20 @@ internal fun webLibraryRail(): WebLibraryRail {
 /**
  * Draws [content] at the device's own density instead of the 1920 px stage. Web's player chrome is css px at the real
  * viewport (not a width fraction), so on a tablet it is 1 / stage scale larger than the stage would draw it (1 on television).
+ * [densityIsReal]: a Dialog window already composes at the device's own density, so only the stage scale and configuration reset.
  */
 @Composable
-internal fun UnstagedForWebCssPx(content: @Composable () -> Unit) {
+internal fun UnstagedForWebCssPx(densityIsReal: Boolean = false, content: @Composable () -> Unit) {
     val scale = LocalStageScale.current
     if (scale == 1f) { content(); return }
     val density = androidx.compose.ui.platform.LocalDensity.current
     val config = LocalConfiguration.current
-    val real = android.content.res.Configuration(config).apply {
+    val real = if (densityIsReal) config else android.content.res.Configuration(config).apply {
         screenWidthDp = (config.screenWidthDp * scale).toInt()
         screenHeightDp = (config.screenHeightDp * scale).toInt()
     }
     androidx.compose.runtime.CompositionLocalProvider(
-        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density / scale, density.fontScale),
+        androidx.compose.ui.platform.LocalDensity provides (if (densityIsReal) density else androidx.compose.ui.unit.Density(density.density / scale, density.fontScale)),
         LocalConfiguration provides real,
         LocalStageScale provides 1f,
         content = content,

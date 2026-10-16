@@ -130,6 +130,8 @@ export async function createDriver() {
       ...(mobile ? { isMobile: true, hasTouch: true } : {}),
       ...(session ? { storageState: session } : {}) });
     await ctx.addInitScript((t) => localStorage.setItem("playarr-theme", t), theme);
+    // PLAYARR_WEB_INIT_STORAGE='{"playarr-home-view":"cover"}': extra localStorage keys (poster mode, artwork size) for round-3 reference captures.
+    if (env.PLAYARR_WEB_INIT_STORAGE) await ctx.addInitScript((kv) => { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v); }, JSON.parse(env.PLAYARR_WEB_INIT_STORAGE));
     // Restored sessionStorage (scroll positions, focus memory) changes what a route shows: every document starts with it empty.
     await ctx.addInitScript(() => { try { sessionStorage.clear(); } catch {} });
     // PLAYARR_WEB_NO_DOWNLOADS=1: a device that cannot store downloads (Roku). The web app hides Downloads when neither OPFS nor
