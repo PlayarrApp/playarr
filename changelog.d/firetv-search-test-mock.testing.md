@@ -1,0 +1,1 @@
+- Keep the Fire TV Search screen integration test's parity-control mock aligned with API activity tracking so mocked fetches run normally.

@@ -28,7 +28,11 @@ jest.mock('../platform/focus', () => {
     useDefaultFocus: jest.fn(),
   };
 });
-jest.mock('../debug/parityControl', () => ({reportFocus: jest.fn(), clearFocus: jest.fn()}));
+jest.mock('../debug/parityControl', () => ({
+  ...jest.requireActual('../debug/parityControl'),
+  reportFocus: jest.fn(),
+  clearFocus: jest.fn(),
+}));
 
 // See LibraryScreen.test.tsx's own comment for exactly why this is needed:
 // ApiClientProvider.tsx (a concurrent Foundation-stage file, out of this
