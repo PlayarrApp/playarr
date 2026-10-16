@@ -36,6 +36,9 @@ struct TVRootView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Environment(TVDisplayPreferences.self) private var displayPreferences
     @State private var selectedTab: TVNavTab = .home
+#if os(macOS) && DEBUG
+    @State private var macAutomationIdentityVerified = !TVParityLaunch.requiresMacIdentityGuard
+#endif
     /// Shared focus so the shell can move between nav and stage with arrows.
     @FocusState private var shellFocus: TVShellFocus?
 
@@ -77,9 +80,47 @@ struct TVRootView: View {
     }
 
     var body: some View {
+        Group {
+#if os(macOS) && DEBUG
+            if macAutomationIdentityVerified {
+                parityContent
+            } else {
+                Color.black
+            }
+#else
+            parityContent
+#endif
+        }
+        .preferredColorScheme(TVParityLaunch.theme ?? displayPreferences.colorScheme)
+        .tint(DesignTokens.Color.brandPrimary)
+        .task(id: isSignedIn) {
+#if os(macOS) && DEBUG
+            if TVParityLaunch.requiresMacIdentityGuard {
+                macAutomationIdentityVerified = await environment.verifyMacAutomationIdentity()
+                guard macAutomationIdentityVerified else {
+                    NSLog("PlayarrMac debug: account verification failed; parity render aborted")
+                    return
+                }
+            }
+#endif
+            if isSignedIn { await environment.refreshShellState() }
+        }
+        .onAppear {
+            if let forced = parityForcedTab {
+                selectedTab = forced
+            }
+            if let live = TVParityLaunch.liveTab {
+                selectedTab = live
+            }
+            if let theme = TVParityLaunch.theme {
+                displayPreferences.themePreference = theme == .light ? .light : .dark
+            }
+        }
+    }
+
+    private var parityContent: some View {
         ZStack {
             TVStageBackground()
-
             if let file = TVParityLaunch.playFile {
                 TVPlayerView(mediaFileID: file, title: "Parity playback", apiClient: environment.apiClient)
             } else if TVParityLaunch.livePlayer != nil {
@@ -110,22 +151,6 @@ struct TVRootView: View {
                         signedInShell
                     }
                 }
-            }
-        }
-        .preferredColorScheme(TVParityLaunch.theme ?? displayPreferences.colorScheme)
-        .tint(DesignTokens.Color.brandPrimary)
-        .task(id: isSignedIn) {
-            if isSignedIn { await environment.refreshShellState() }
-        }
-        .onAppear {
-            if let forced = parityForcedTab {
-                selectedTab = forced
-            }
-            if let live = TVParityLaunch.liveTab {
-                selectedTab = live
-            }
-            if let theme = TVParityLaunch.theme {
-                displayPreferences.themePreference = theme == .light ? .light : .dark
             }
         }
     }

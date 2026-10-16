@@ -33,13 +33,29 @@ def call(path, body=None, token=None, what="request"):
         sys.exit(f"{what} failed: HTTP {error.code}")
 
 
-login = call("/api/v1/auth/login", dict(device, username=os.environ["TEST_USERNAME"], password=os.environ["TEST_PASSWORD"]), what="login")
-profiles = call("/api/v1/users/profiles", token=login["access_token"], what="profile list")
-profiles = profiles if isinstance(profiles, list) else profiles.get("profiles", [])
-wanted = next((p for p in profiles if p.get("display_name") == "Device Test"), None)
-if wanted is None:
-    sys.exit("profile 'Device Test' not found on the account")
-print("login: user_id match=%s is_current=%s pin_locked=%s" % (wanted["id"] == login.get("user_id"), wanted.get("is_current"), wanted.get("pin_locked")), file=sys.stderr)
-if wanted["id"] != login.get("user_id"):
-    login = call("/api/v1/auth/login", dict(device, profile_user_id=wanted["id"]), token=login["access_token"], what="profile switch")
-print(login["access_token"], login["refresh_token"])  # the refresh token belongs to the same session: an app that refreshes needs it
+def main():
+    login = call("/api/v1/auth/login", dict(device, username=os.environ["TEST_USERNAME"], password=os.environ["TEST_PASSWORD"]), what="login")
+    profiles = call("/api/v1/users/profiles", token=login["access_token"], what="profile list")
+    profiles = profiles if isinstance(profiles, list) else profiles.get("profiles", [])
+    wanted = next((p for p in profiles if p.get("display_name") == "Device Test"), None)
+    if wanted is None or not wanted.get("id"):
+        sys.exit("profile 'Device Test' not found on the account")
+    if wanted["id"] != login.get("user_id"):
+        login = call("/api/v1/auth/login", dict(device, profile_user_id=wanted["id"]), token=login["access_token"], what="profile switch")
+
+    # `is_current` is supplied by GET /api/v1/users/profiles from the
+    # authenticated streaming user. Re-read it after switching so captures
+    # cannot continue with a token for another profile or an unknown identity.
+    current_profiles = call("/api/v1/users/profiles", token=login.get("access_token"), what="profile verification")
+    current_profiles = current_profiles if isinstance(current_profiles, list) else current_profiles.get("profiles", [])
+    current = [p for p in current_profiles if p.get("is_current") is True]
+    if (len(current) != 1 or current[0].get("id") != wanted["id"]
+            or current[0].get("display_name") != "Device Test"):
+        sys.exit("profile identity verification failed; capture aborted")
+    if not login.get("access_token") or not login.get("refresh_token"):
+        sys.exit("login response incomplete; capture aborted")
+    print(login["access_token"], login["refresh_token"])
+
+
+if __name__ == "__main__":
+    main()

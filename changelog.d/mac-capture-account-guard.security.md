@@ -1,0 +1,1 @@
+- Abort macOS parity captures and automation commands unless the authenticated session resolves to exactly one current Device Test profile.

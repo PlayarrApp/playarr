@@ -8,21 +8,32 @@ import AppKit
 /// (a stage point).
 @MainActor
 enum MacDebugRemote {
-    static func install(window: NSWindow) {
+    static func install(window: NSWindow, environment: TVAppEnvironment) {
         // `-PlayarrMacSnapshot <path.png> [-PlayarrMacSnapshotDelay <seconds>]`: one snapshot once settled.
         let args = ProcessInfo.processInfo.arguments
         if let i = args.firstIndex(of: "-PlayarrMacSnapshot"), args.indices.contains(i + 1) {
             let delay = args.firstIndex(of: "-PlayarrMacSnapshotDelay").flatMap { args.indices.contains($0 + 1) ? Double(args[$0 + 1]) : nil } ?? 10
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                snapshot(window: window, to: URL(fileURLWithPath: args[i + 1]))
+                Task { @MainActor in
+                    guard await environment.verifyMacAutomationIdentity() else {
+                        NSLog("PlayarrMac debug: account verification failed; snapshot aborted")
+                        return
+                    }
+                    snapshot(window: window, to: URL(fileURLWithPath: args[i + 1]))
+                }
             }
         }
         DistributedNotificationCenter.default().addObserver(
             forName: Notification.Name("app.playarr.macos.debug"), object: nil, queue: .main
         ) { note in
             let command = note.object as? String ?? ""
-            NSLog("PlayarrMac debug: command %@", command)
-            MainActor.assumeIsolated { run(command, window: window) }
+            Task { @MainActor in
+                guard await environment.verifyMacAutomationIdentity() else {
+                    NSLog("PlayarrMac debug: account verification failed; command aborted")
+                    return
+                }
+                run(command, window: window)
+            }
         }
     }
 

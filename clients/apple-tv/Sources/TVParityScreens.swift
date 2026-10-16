@@ -35,6 +35,24 @@ enum TVParityLaunch {
     }
 }
 
+#if os(macOS) && DEBUG
+extension TVParityLaunch {
+    /// Any macOS parity render, route or direct playback launch requires the
+    /// server-backed identity gate before content is mounted.
+    static var requiresMacIdentityGuard: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        return ["-PlayarrMacSnapshot", routeArgument, "-PlayarrPlayFile", argument]
+            .contains { args.contains($0) }
+    }
+
+    static func hasVerifiedDeviceTestProfile(_ profiles: [AvailableProfile], currentUserID: String) -> Bool {
+        guard let expectedID = UUID(uuidString: currentUserID) else { return false }
+        let current = profiles.filter(\.isCurrent)
+        return current.count == 1 && current[0].id == expectedID && current[0].displayName == "Device Test"
+    }
+}
+#endif
+
 extension TVParityLaunch {
     static let routeArgument = "-PlayarrParityRoute"
 

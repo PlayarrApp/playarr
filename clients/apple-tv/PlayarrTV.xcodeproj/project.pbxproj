@@ -35,6 +35,8 @@
 		4C0952EDA9A8EA5E6E39A232 /* TVParityScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 432012E333167B82AD013547 /* TVParityScreens.swift */; };
 		4C5A38C778B8E87AF402775B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A3D7E0078DA28D58FDD0E5E7 /* Assets.xcassets */; };
 		4EF9E4F6CCF7AC3E18C40310 /* TVWebParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF95B637D82D177EEF153BD7 /* TVWebParityTests.swift */; };
+		50D3A6B52778C6C3C8200D88 /* MacAutomationIdentityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D3A6B52778C6C3C8200D89 /* MacAutomationIdentityTests.swift */; };
+		50D3A6B52778C6C3C8200D8A /* MacAutomationIdentityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D3A6B52778C6C3C8200D89 /* MacAutomationIdentityTests.swift */; };
 		58E20C867B1C773319CE2385 /* TVCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268D27B3AE00D6970A501DE3 /* TVCalendarView.swift */; };
 		59C915AFAE5114EBB3369BAD /* TVTabPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EFAAD11A5327658B2DE4AA2 /* TVTabPages.swift */; };
 		5F8107D4351619115ED35636 /* TVPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E53D2E91ED2B7BA71E18FA96 /* TVPlayerView.swift */; };
@@ -131,6 +133,7 @@
 		A3D7E0078DA28D58FDD0E5E7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B55D266DA17523B0E68FD342 /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = ../ios; sourceTree = SOURCE_ROOT; };
 		CF95B637D82D177EEF153BD7 /* TVWebParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVWebParityTests.swift; sourceTree = "<group>"; };
+		50D3A6B52778C6C3C8200D89 /* MacAutomationIdentityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacAutomationIdentityTests.swift; sourceTree = "<group>"; };
 		D5A3F02E31E21A4B6C76F061 /* TVAppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVAppEnvironment.swift; sourceTree = "<group>"; };
 		E06F9596C88F40ABC2BD98A7 /* TVHouseholdView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVHouseholdView.swift; sourceTree = "<group>"; };
 		E2C25418B78259C265A7C4C5 /* PlayarrMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PlayarrMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -211,6 +214,7 @@
 				317A9CF9A0C224CE05B5C89B /* TVPlayerProgressTests.swift */,
 				12FAD6061A7EC7A3F76D02CF /* TVServerAddressTests.swift */,
 				CF95B637D82D177EEF153BD7 /* TVWebParityTests.swift */,
+				50D3A6B52778C6C3C8200D89 /* MacAutomationIdentityTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -516,6 +520,7 @@
 				CDA8BCBD5A61F338B6FC6280 /* TVPlayerProgressTests.swift in Sources */,
 				EBA893D5529EEF4D1937BC5B /* TVServerAddressTests.swift in Sources */,
 				94DF4DABB7C318F2565159B4 /* TVWebParityTests.swift in Sources */,
+				50D3A6B52778C6C3C8200D88 /* MacAutomationIdentityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -528,6 +533,7 @@
 				EFCEE48CA0979CED4B5669FD /* TVPlayerProgressTests.swift in Sources */,
 				BDE28F6F95544F39B3758DF4 /* TVServerAddressTests.swift in Sources */,
 				4EF9E4F6CCF7AC3E18C40310 /* TVWebParityTests.swift in Sources */,
+				50D3A6B52778C6C3C8200D8A /* MacAutomationIdentityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

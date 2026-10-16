@@ -545,6 +545,24 @@ final class TVAppEnvironment {
         }
     }
 
+    #if os(macOS) && DEBUG
+    /// Validates the injected parity session against the server before the
+    /// macOS automation surface can render or accept remote commands.
+    func verifyMacAutomationIdentity() async -> Bool {
+        let expectedUserID = currentUserID
+        let expectedServerURL = serverURL
+        let client = apiClient
+        guard UUID(uuidString: expectedUserID) != nil else { return false }
+        do {
+            let profiles = try await client.listProfiles()
+            guard currentUserID == expectedUserID, serverURL == expectedServerURL else { return false }
+            return TVParityLaunch.hasVerifiedDeviceTestProfile(profiles, currentUserID: expectedUserID)
+        } catch {
+            return false
+        }
+    }
+    #endif
+
     private func withTimeout<T: Sendable>(
         seconds: Double,
         operation: @escaping @Sendable () async throws -> T

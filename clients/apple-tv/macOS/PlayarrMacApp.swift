@@ -66,7 +66,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if !invisible { NSApp.activate(ignoringOtherApps: true) }
         self.window = window
         #if DEBUG
-        MacDebugRemote.install(window: window)
+        MacDebugRemote.install(window: window, environment: environment)
         #endif
     }
 
