@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- macOS: the Calendar page opens with the Today button focused, as on the web, and the profiles page names its focused profile for the parity driver.
 - macOS: the last visible row of a library grid fades toward the screen edge as on the web.
 - Home on slow TVs (webOS with Covers): the first row no longer sits 26 px low until a key is pressed; the stack re-centres when posters finish loading.
 - Android TV: Home rails sit on web's row at every artwork size and in Covers mode (the first row lifts by half the card's extra height, as web centres the focused rail).

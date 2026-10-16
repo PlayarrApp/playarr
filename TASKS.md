@@ -112,6 +112,7 @@ Steps only the repository owner can perform.
 | 10460 | macOS round 3: Home screen artwork = Covers on Home, motion and popout capture crops | in_progress | parity-apple | macos-crops-optin | 57.10025 | 2026-10-16 18:00 ICT | PR #1478 merged 2026-10-15. Follow-up: the crops made the hosted suite step hit its 60 min limit before dpad.json (run 38781127369); crops now run only without dpad. PR open: #1507. |
 | 10560 | macOS light parity: backdrop opacity as web, grid shadow clearance, driver settle after Select | done | parity-apple | macos-light-shared | 57.10025 | 2026-10-17 12:00 ICT | PR open: #1518. PR #1518 merged 2026-10-15. |
 | 10597 | macOS library grid: end-side scroll fade as web | done | parity-apple | macos-library-fade | 57.10025 | 2026-10-17 12:00 ICT | PR open: #1532. PR #1532 merged 2026-10-16. |
+| 10609 | macOS focus: Calendar opens on the Today button (web default focus), profiles page reports focus tags | in_review | parity-apple | macos-focus-fix | 57.10025 | 2026-10-17 12:00 ICT | PR open: #1542. |
 
 ## 1. Web follow-ups (2026-10-10)
 
@@ -687,6 +688,8 @@ Steps only the repository owner can perform.
 | 10572 | Harmony phone Start and Play use the ink fill as web | in_review | parity-harmony | harmony-phone-parity-22 | | 2026-10-16 12:00 ICT | Web .tv-detail-play is ink with the page colour as label; Harmony used accent (dark brown-grey in light, 225 grey in dark). The Covers capture now starts with medium because the first Library visit ignores the Cover tap. Open: the first season rail card is clipped at its top edge (ring and unseen dot cut), cause not yet found. PR open: #1539. |
 | 10598 | Android tablet: series-detail hero and season rail positions, week card height | in_review | claude | android-tablet-r4 | | 2026-10-17 18:00 ICT | PR open: #1535. series-detail light 85.9 to 88.0 on a device capture. |
 | 10602 | Android phone library row pitch matches the web ref (251 px) | done | parity-android-phone | android-phone-r4 | | 2026-10-17 18:00 ICT | Round 3 follow-up. PR open: #1543. Row gap 23.5 dp after the caption moved 1 px; measured against the round 2 phone refs. PR #1543 merged 2026-10-16. |
+| 10601 | Android tablet focus: Search Down/Right, Calendar default focus with keyboard-only ring | in_review | claude | android-tablet-r5 | | 2026-10-17 18:00 ICT | PR open: #1537. Settings start-on-Back not achieved. |
+| 10610 | Apple TV round 5: the live Home draws the frosted rail panel; Search, Calendar and Settings web motion steps | in_progress | parity-apple | tv-round5 | | 2026-10-17 12:00 ICT | Web key-driven bursts (capture-web-motion.mjs --keys, deck reset first) against the tvOS crops: Home top and bottom edge fades match, but the live tvOS Home lacked the web's frosted right panel (x 1000 at (28,24,27) against web (36,31,35)); TVRailPanelGradient now sits behind the live Home rails. |
 
 ## 18. Public repository readiness (2026-10-05)
 
