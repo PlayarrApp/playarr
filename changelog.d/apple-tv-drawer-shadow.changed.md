@@ -1,0 +1,1 @@
+- Apple TV action and filter drawers now use the web reference's dark left-edge shadow in both themes.
