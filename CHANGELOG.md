@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Align native iPhone calendar layouts and episode metadata with the accepted web presentation, and require verified identity, loaded routes, focus movement and direct-play controls in parity acceptance runs.
 - Align the first Home rail with the Library grid on initial load and keep page content clear of navigation across supported widths.
 - Android deterministic capture accepts equivalent ISO instant spellings in the app's clock-consumption log.
 - Stable parity runs now pin the web clock, disable animations, use readiness signals, and record one D-pad observation without retrying failures.
