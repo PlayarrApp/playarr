@@ -183,18 +183,9 @@ jobs:
               -foldable false -bn io.playarr.harmony -srmPath "$I/router_map/default/router_map.json" > "$W/previewer.log" 2>&1 &)
             sleep 3; echo started
           }
-          # The Previewer's libhttp crashes now and then (access violation): start over, with a fresh sign-in, up to five times (the image-stall guard exits non-zero too).
-          ok=0
-          for attempt in 1 2 3 4 5; do
-            rm -rf capture
-            launch
-            if python scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log "$THEME"; then ok=1; break; fi
-            echo "attempt $attempt failed: restarting the Previewer"
-            taskkill //F //IM Previewer.exe //T > /dev/null 2>&1 || true
-            taskkill //F //IM python.exe //T > /dev/null 2>&1 || true
-            sleep 5
-          done
-          [ "$ok" = 1 ]
+          # A Previewer crash or capture failure is evidence to diagnose, not an implicit retry.
+          launch
+          python scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log "$THEME"
           if [ "$DEVICE" = tv ]; then
             # the shared suite over the same signed-in Previewer, one part per parallel job
             export HARMONY_CTL=$CTL PREVIEWER_LOG="$W/previewer.log"

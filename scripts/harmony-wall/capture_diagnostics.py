@@ -705,7 +705,7 @@ POSTER_STALL_MIN_BLOCKS = 2
 
 def posters_stalled(name, image_completes, flat_blocks, home_flat=False):
     """True when the Previewer's image pipeline has stalled for this frame: Home's first Recently Added posters are flat, or two or more
-    flat card blocks show on any screen, or Home completed far fewer images than a healthy process. The caller restarts the Previewer."""
+    flat card blocks show on any screen, or Home completed far fewer images than a healthy process. The capture fails and retains diagnostics for investigation."""
     if flat_blocks >= POSTER_STALL_MIN_BLOCKS or (name == "home" and home_flat):
         return True
     return name == "home" and image_completes is not None and image_completes < POSTER_STALL_MIN_COMPLETE

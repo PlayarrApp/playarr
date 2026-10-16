@@ -12,6 +12,7 @@ from capture_diagnostics import (posters_stalled, tv_flat_card_blocks, home_rece
                                  analyze_episode_art_frame, episode_art_events_ready, decoded_art_is_accepted,
                                  series_focus_failure, write_detail_summary, confirm_detail_route_source,
                                  summarize_detail_load_events, phone_flat_card_rows)
+from capture_identity import verify_identity
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
@@ -35,24 +36,43 @@ def get(path, **q):
 
 
 def png() -> Image.Image:
+    verify_capture_identity()
     return Image.open(io.BytesIO(get("/shot.png"))).convert("RGB")
 
 
+def verify_capture_identity():
+    expected = os.environ.get("TEST_USERNAME", "").strip()
+    try:
+        actual = json.loads(get("/state")).get("preview_current_username")
+    except (ValueError, OSError, SystemExit):
+        actual = None
+    try:
+        verify_identity(actual, expected)
+    except ValueError as error:
+        abort(str(error))
+
+
 def key(*names):
+    verify_capture_identity()
     for n in names:
         get("/key/" + n)
         time.sleep(0.35)
 
 
-def click(x, y):
+def click(x, y, verify=True):
+    if verify:
+        verify_capture_identity()
     get("/click", x=x, y=y)
 
 
 def longclick(x, y):
+    verify_capture_identity()
     get("/longclick", x=x, y=y)
 
 
 def route(name, wait=12):
+    if name.startswith("player:"):
+        verify_capture_identity()
     get("/setroute", name=name)
     time.sleep(wait)
 
@@ -68,7 +88,7 @@ class Skip(Exception):
 
 
 class PostersStalled(Exception):
-    """Not caught by snap's retries: waiting does not unstick the Previewer; the workflow restarts it (two retries, then the job fails)."""
+    """Capture stops on a poster stall and preserves diagnostics for investigation."""
 
 
 MISSING = []
@@ -127,17 +147,12 @@ SEEN = {}
 
 
 def snap(name, folder, floor=60000, frame_observer=None, before_frame=None):
-    for attempt in range(3 if device == "tv" else 1):
-        try:
-            snap_checked(name, folder, floor, frame_observer=frame_observer, before_frame=before_frame)
-            return
-        except SystemExit:
-            if device == "phone":
-                raise Skip(name)
-            if attempt == 2 or device != "tv":
-                raise
-            print(f"{name}: retrying in 25 s (the list may still be loading)", flush=True)
-            time.sleep(25)
+    try:
+        snap_checked(name, folder, floor, frame_observer=frame_observer, before_frame=before_frame)
+    except SystemExit:
+        if device == "phone":
+            raise Skip(name)
+        raise
 
 
 def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
@@ -196,6 +211,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
 
 
 def debug(name, image=None):
+    verify_capture_identity()
     d = os.path.join(out, "_debug")
     os.makedirs(d, exist_ok=True)
     (image if image is not None else png()).save(os.path.join(d, name + ".png"))
@@ -211,11 +227,10 @@ else:
 # 1. sign in: point the app at the test server (typed through the bridge, never baked into the build), then the pairing page logs
 # its user code; approve it as the Device Test account (fresh device id each run)
 route("serversetup", 8)
-debug("serversetup")
 FIELD, CONNECT = {"tv": ((960, 549), (960, 627)), "phone": ((540, 1290), (540, 1483))}[device]
-click(*FIELD); time.sleep(1)
+click(*FIELD, verify=False); time.sleep(1)
 get("/type", text=os.environ["SERVER_URL"].strip()); time.sleep(1)
-click(*CONNECT); time.sleep(8)
+click(*CONNECT, verify=False); time.sleep(8)
 code = None
 for _ in range(60):
     found = re.findall(rb"PLAYARR_LINKCODE=([A-Z0-9-]+) END", open(log, "rb").read())
@@ -229,6 +244,7 @@ if subprocess.run([sys.executable, os.path.join(HERE, "approve_link.py"), code])
     abort("link code approval failed")
 subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")])  # best effort: Home's On deck matches the web reference
 time.sleep(20)
+verify_capture_identity()
 debug("after-approve")
 
 # 2. the profile picker: pick Device Test (alien avatar). Position found by looking at the picker, see PROFILE_CLICK.
@@ -237,6 +253,7 @@ if device == "phone":
     route("profiles", 8); debug("phone-profiles")
 click(*PROFILE_CLICK)
 time.sleep(20)
+verify_capture_identity()
 debug("after-profile")
 
 SCREENS_TV = None
@@ -246,6 +263,7 @@ def extra_screens(folder):
     """Screens a click cannot reach in one step: the actions drawer (long press on a card) and the player controls."""
     try:
         route("library:movie", 15)
+        verify_capture_identity()
         get("/hold", x=946, y=254); time.sleep(4); snap("actions", folder)
         key("back"); time.sleep(3)
     except SystemExit:
@@ -312,7 +330,7 @@ def poster_walk(folder):
         route("settings", 8); click(x, y); time.sleep(4)
 
     def covers_loaded():
-        """The first Recently Added cover (top at y 933) is real art, not the flat placeholder: PostersStalled (the workflow restarts) when not."""
+        """The first Recently Added cover (top at y 933) must load; a placeholder raises PostersStalled."""
         img = png().convert("RGB")
         if max(high - low for low, high in img.crop((902, 960, 1050, 1070)).getextrema()) <= 40:
             raise PostersStalled("home-covers: Recently Added covers still on their placeholder")
@@ -397,7 +415,7 @@ if device == "tv":
                 return summarize_detail_load_events(
                     state.get("debug_events", []), sequence_after=cursor, work_id=work_id,
                     generation=generation, remote_input_sent_before_focus_assertion=remote_input_sent)
-            # A backend that is briefly unready is retried (as snap retries a slow list) before the screen is skipped.
+            # Probe briefly for a ready backend, then preserve a failed preflight as a skipped screen.
             for preflight_attempt in range(3):
                 preflight = check_backend(os.environ.get("SERVER_URL", ""))
                 if preflight["ready"] or preflight_attempt == 2:
@@ -758,7 +776,7 @@ else:
         open_filters(name); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*CLOSE_DRAWER); time.sleep(5); settle()
         snap(name, folder, 100000)
 
-    for nm, btn in (("library-covers-medium", MEDIUM_BTN), ("library-covers-small", SMALL_BTN), ("library-covers-large", LARGE_BTN))  # medium first: the first Library visit of a run ignores the Cover tap (small was captured in Screen view twice), the saved view then holds:
+    for nm, btn in (("library-covers-medium", MEDIUM_BTN), ("library-covers-small", SMALL_BTN), ("library-covers-large", LARGE_BTN)):  # medium first: the first Library visit of a run ignores the Cover tap (small was captured in Screen view twice), the saved view then holds
         guarded(nm, lambda nm=nm, btn=btn: library_covers(nm, btn))
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
     guarded("player-controls", lambda: (route("player:b9a68b2c-8382-4c34-a6f0-c4dd58f55093", 20), snap("player-controls", folder, 30000)))

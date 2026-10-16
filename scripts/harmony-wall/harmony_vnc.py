@@ -91,6 +91,20 @@ def valid_numeric_image_key(image_id: str) -> bool:
     return 0 < len(image_id) <= 16 and all("0" <= character <= "9" for character in image_id)
 
 
+def update_preview_identity(state: dict, username: str, sequence: int) -> bool:
+    if (not isinstance(username, str) or len(username) > 128
+            or not isinstance(sequence, int) or isinstance(sequence, bool) or sequence <= 0):
+        return False
+    if sequence <= state.get("preview_identity_sequence", 0):
+        return True
+    state["preview_identity_sequence"] = sequence
+    if username:
+        state["preview_current_username"] = username
+    else:
+        state.pop("preview_current_username", None)
+    return True
+
+
 def _valid_image_scope(body: dict) -> dict | None:
     route = str(body.get("route", ""))
     work_id = str(body.get("work_id", ""))
@@ -1013,6 +1027,8 @@ def main():
                 return self._reply(200 if commands.key_long(name) else 503, b"ok")
             if url.path == "/setroute":
                 ROUTE_BOX["name"] = query.get("name", [""])[0]
+                if ROUTE_BOX["name"] in ("serversetup", "pairing", "Pairing"):
+                    STATE.pop("preview_current_username", None)
                 return self._reply(200, b"ok")
             if url.path == "/route":
                 name, ROUTE_BOX["name"] = ROUTE_BOX["name"], ""
@@ -1054,6 +1070,12 @@ def main():
                     "work": [str(body.get("work_id", ""))],
                     "generation": [str(body.get("generation", "0"))],
                 })
+                return self._reply(200, b"ok")
+            if url.path == "/preview-identity":
+                username = body.get("username")
+                sequence = body.get("sequence")
+                if not update_preview_identity(STATE, username, sequence):
+                    return self._reply(400, b"invalid identity")
                 return self._reply(200, b"ok")
             if url.path == "/row-image":
                 # Compatibility for older local overlays; capture.py gates on the staged on-complete event below.

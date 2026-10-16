@@ -12,6 +12,14 @@ const get = async (path) => {
   return res;
 };
 const state = async () => (await get("/state")).json();
+const verifyTestAccount = async () => {
+  const expected = process.env.TEST_USERNAME?.trim();
+  const actual = (await state()).preview_current_username;
+  if (!expected || typeof actual !== "string" || actual !== expected) {
+    throw new Error("Harmony capture blocked: the app has not confirmed the configured Device Test account");
+  }
+};
+const click = async (x, y) => { await verifyTestAccount(); await get(`/click?x=${x}&y=${y}`); };
 const ROUTE = { "/": "home", "/calendar": "calendar", "/search": "search", "/settings": "settings", "/profiles": "profiles",
   "/movies": "library:movie", "/series": "library:series", "/music": "library:artist" };
 
@@ -22,6 +30,7 @@ export async function createDriver() {
     async captureBuildIdentity() { throw new Error("Harmony stable build identity unsupported: deployed app digest is not exposed by Previewer driver"); },
     async waitReady() { throw new Error("Harmony stable deterministic capture unsupported: Previewer does not expose capture readiness"); },
     async key(name, { long } = {}) {
+      await verifyTestAccount();
       const k = name === "select" ? "ok" : name;
       await get(`${long ? "/keylong/" : "/key/"}${k}`);
       await sleep(450);
@@ -52,9 +61,9 @@ export async function createDriver() {
       if (!(await state()).focused) {
         // Focus requests do not take in the Previewer until a touch has activated focus: click the first card (opens its detail), come back.
         console.log(`  harmony home: no focus, dbg ${JSON.stringify((await state()).dbglog?.slice(-4))}; touch-activating`);
-        await get("/click?x=1044&y=544");
+        await click(1044, 544);
         await sleep(8000);
-        await get("/key/back");
+        await this.key("back");
         await sleep(6000);
       }
       await sleep(1500);
@@ -80,17 +89,19 @@ export async function createDriver() {
       return s.focused;
     },
     async screenshot(file) {
+      await verifyTestAccount();
       const bytes = Buffer.from(await (await get("/shot.png")).arrayBuffer());
       if (bytes.length < 40000) throw new Error("frame too plain: an error or signed-out screen");
       writeFileSync(file, bytes);
     },
     async setTheme(theme) {
       await this.route("/settings");
-      for (const [x, y] of [[394, 207], [theme === "light" ? 1295 : 1645, 285]]) { await get(`/click?x=${x}&y=${y}`); await sleep(3000); }
+      for (const [x, y] of [[394, 207], [theme === "light" ? 1295 : 1645, 285]]) { await click(x, y); await sleep(3000); }
     },
     // Opens the Player route for the case's media file and reads what the Previewer says about AVPlayer: its media stack is a mock, so
     // nothing plays; this reports "error" with the log evidence, never "playing" and never N/A.
     async play(c) {
+      await verifyTestAccount();
       const log = process.env.PREVIEWER_LOG;
       const before = log ? readFileSync(log, "latin1").length : 0;
       await get(`/setroute?name=${encodeURIComponent("player:" + c.file)}`);

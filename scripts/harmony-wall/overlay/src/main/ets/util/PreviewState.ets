@@ -9,6 +9,7 @@ let PREVIEW_ROUTE: string = '';
 let PREVIEW_WORK_ID: string = '';
 let PREVIEW_ROUTE_GENERATION: number = 0;
 let PREVIEW_DETAIL_LOAD_SEQUENCE: number = 0;
+let PREVIEW_ACCOUNT_SEQUENCE: number = 0;
 
 enum PreviewAreaLengthTypeCode {
   Missing = 0,
@@ -106,6 +107,12 @@ export function reportPreviewRoute(route: string, kind: string, workId: string):
   const nextWorkId: string = route === 'Detail' ? workId : '';
   const body: string = JSON.stringify({ route: route, kind: kind, work_id: nextWorkId, generation: PREVIEW_ROUTE_GENERATION });
   previewPost('/preview-state', body);
+}
+
+/** Preview-only account proof from the authenticated profile response. */
+export function reportPreviewCurrentAccount(username: string): void {
+  PREVIEW_ACCOUNT_SEQUENCE += 1;
+  previewPost('/preview-identity', JSON.stringify({ username: username, sequence: PREVIEW_ACCOUNT_SEQUENCE }));
 }
 
 export function currentPreviewRouteGeneration(): number {

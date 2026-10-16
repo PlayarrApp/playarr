@@ -1,6 +1,7 @@
 # Preview-only, run after patch_route.py (never committed): the parity state for the suite driver. Cards and nav tiles report their focus,
 # and the route poll also reports the top route name (and Library kind). Usage: patch_state.py <ets-root> (clients/harmony/entry/src/main/ets copy).
 import re, sys
+ROOT = ''
 
 def edit(rel, fn):
     p = ROOT + '/' + rel
@@ -16,6 +17,49 @@ def apply_once(s, fn):
     if 'PreviewState' in s:
         return s
     return fn(s)
+
+def identity(root):
+    global ROOT
+    ROOT = root
+    source_path = ROOT + '/pages/Profiles.ets'
+    with open(source_path, encoding='utf-8') as source:
+        s = source.read()
+    patched = profile_identity(s)
+    with open(source_path, 'w', encoding='utf-8') as target:
+        target.write(patched)
+    source_path = ROOT + '/auth/SessionManager.ets'
+    with open(source_path, encoding='utf-8') as source:
+        s = source.read()
+    patched = invalidate_preview_identity(s)
+    with open(source_path, 'w', encoding='utf-8') as target:
+        target.write(patched)
+
+def profile_identity(s):
+    if 'reportPreviewCurrentAccount' in s:
+        return s
+    marker = "import { listProfiles, verifyPin, syncCurrentAvatar } from '../data/ProfileRepository';"
+    assert s.count(marker) == 1, 'Profiles repository import not found exactly once'
+    s = s.replace(marker, marker + "\nimport { reportPreviewCurrentAccount } from '../util/PreviewState';", 1)
+    needle = "    this.viewState = ProfilesViewState.Loading;\n    const result = await listProfiles();"
+    assert s.count(needle) == 1, 'Profiles load start not found exactly once'
+    s = s.replace(needle, "    this.viewState = ProfilesViewState.Loading;\n    reportPreviewCurrentAccount('');\n    const result = await listProfiles();", 1)
+    needle = "    if (result.kind === 'ok') {\n      this.profiles = result.value;"
+    assert s.count(needle) == 1, 'Profiles successful response block not found exactly once'
+    report = "    if (result.kind === 'ok') {\n      const currentProfiles = result.value.filter((profile) => profile.is_current === true);\n      if (currentProfiles.length === 1 && typeof currentProfiles[0].username === 'string') { reportPreviewCurrentAccount(currentProfiles[0].username); }\n      this.profiles = result.value;"
+    return s.replace(needle, report, 1)
+
+def invalidate_preview_identity(s):
+    if 'reportPreviewCurrentAccount' in s:
+        return s
+    marker = "import { logError } from '../util/Log';"
+    assert s.count(marker) == 1, 'SessionManager log import not found exactly once'
+    s = s.replace(marker, marker + "\nimport { reportPreviewCurrentAccount } from '../util/PreviewState';", 1)
+    sign_out = "  public async signOut(): Promise<void> {\n"
+    assert s.count(sign_out) == 1, 'SessionManager signOut not found exactly once'
+    s = s.replace(sign_out, sign_out + "    reportPreviewCurrentAccount('');\n", 1)
+    failure = "  private async applyRefreshFailure(): Promise<void> {\n"
+    assert s.count(failure) == 1, 'SessionManager definitive refresh failure not found exactly once'
+    return s.replace(failure, failure + "    reportPreviewCurrentAccount('');\n", 1)
 
 def card(s):
     s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { previewRegisterCard, previewUnregisterCard, previewCardMoved, previewCardVisible, reportCardFocus, previewReport, reportDetailLayoutStageForScope, reportDetailRowImageStageForScope, reportDetailEpisodeCardAreaForMeasurement } from '../../util/PreviewState';", 1)
@@ -759,6 +803,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 2:
         raise SystemExit('usage: patch_state.py <ets-root>')
     ROOT = sys.argv[1]
+    identity(ROOT)
     edit('pages/Home.ets', home)
     edit('design/components/PosterCard.ets', card)
     edit('design/components/NavRail.ets', nav)
