@@ -23,7 +23,7 @@ struct LibraryView: View {
     @Environment(\.playarrGoHome) private var goHome
     @AppStorage(PlayarrArtworkPrefs.sizeKey) private var artworkSize = "medium"
     @State private var showingFilters = false
-    /// Works this profile has any progress on; a grid card for any other work shows the web's unseen dot.
+    /// Works this profile has watched or part-watched (an explicit unseen row does not count, as on web); a grid card for any other work shows the web's unseen dot.
     @State private var progressedWorkIDs: Set<UUID>?
     @State private var filtersOpen = false
     @State private var downloadTarget: Work?
@@ -76,7 +76,7 @@ struct LibraryView: View {
         .task {
             if case .idle = viewModel.loadState { await viewModel.load() }
             if progressedWorkIDs == nil {
-                progressedWorkIDs = Set(((try? await apiClient.listWatchProgress()) ?? []).map(\.workID))
+                progressedWorkIDs = Set(((try? await apiClient.listWatchProgress()) ?? []).filter { $0.state != .unseen }.map(\.workID))
             }
             #if DEBUG
             // Parity "actions": the first card's actions sheet, which a long press opens.
