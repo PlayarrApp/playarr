@@ -5,6 +5,11 @@ import XCTest
 
 /// Locks the pieces of the web parity work that are pure functions.
 final class TVWebParityTests: XCTestCase {
+    private func assertUTC(_ zone: TimeZone, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(zone.secondsFromGMT(for: Date(timeIntervalSince1970: 0)), 0, file: file, line: line)
+        XCTAssertEqual(zone.secondsFromGMT(for: Date(timeIntervalSince1970: 1_791_374_400)), 0, file: file, line: line)
+    }
+
     func testCalendarClockUsesExplicitAutomationInstantWithoutChangingNormalClock() {
         let fixed = ISO8601DateFormatter().date(from: "2026-10-07T12:00:00Z")!
         let wall = ISO8601DateFormatter().date(from: "2026-10-17T03:45:00Z")!
@@ -15,14 +20,14 @@ final class TVWebParityTests: XCTestCase {
             wallNow: wall
         )
         XCTAssertEqual(automated.now, fixed)
-        XCTAssertEqual(automated.zone.identifier, "UTC")
+        assertUTC(automated.zone)
         let automatedLater = TVParityLaunch.clockValue(
             isFrozen: false,
             arguments: ["PlayarrTV", "-PlayarrParityNow", "2026-10-07T12:00:00Z"],
             wallNow: wall.addingTimeInterval(60)
         )
         XCTAssertEqual(automatedLater.now, fixed)
-        XCTAssertEqual(automatedLater.zone.identifier, "UTC")
+        assertUTC(automatedLater.zone)
 
         let ordinaryFirst = TVParityLaunch.clockValue(isFrozen: false, arguments: ["PlayarrTV"], wallNow: wall)
         let laterWall = wall.addingTimeInterval(60)
@@ -42,7 +47,7 @@ final class TVWebParityTests: XCTestCase {
 
         let frozenFallback = TVParityLaunch.clockValue(isFrozen: true, arguments: ["PlayarrTV"], wallNow: wall)
         XCTAssertEqual(frozenFallback.now, fixed)
-        XCTAssertEqual(frozenFallback.zone.identifier, "UTC")
+        assertUTC(frozenFallback.zone)
     }
 
     func testExplicitAutomationClockAcceptsFractionalISO8601() {

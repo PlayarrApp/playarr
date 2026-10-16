@@ -1,0 +1,1 @@
+- Make the Apple parity clock test compare UTC offsets, since Darwin may name the zero-offset zone GMT.
