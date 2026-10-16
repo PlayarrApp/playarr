@@ -29,6 +29,8 @@ struct LibraryView: View {
     @State private var downloadTarget: Work?
     @Environment(\.colorScheme) private var scheme
     @State private var actionsWork: Work?
+    /// Web moves focus into an open drawer, so no grid card keeps its focus ring or lift behind it.
+    private var drawerOpen: Bool { showingFilters || actionsWork != nil }
     @State private var openWork: Work?
     private var isPhoneIdiom: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
@@ -582,7 +584,7 @@ struct LibraryView: View {
                             if viewModel.viewMode == .list {
                                 libraryListRow(work, width: cardWidth)
                             } else {
-                                let focused = work.id == (focusedWork ?? viewModel.works.first?.id)
+                                let focused = (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
                                 PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false, focused: !phone && focused)
                                     .overlay(alignment: .topTrailing) {
                                         if !phone, let seen = progressedWorkIDs, !seen.contains(work.id) {
@@ -612,12 +614,12 @@ struct LibraryView: View {
                             }
                         }
                         .scaleEffect(
-                            !phone && viewModel.viewMode != .list && work.id == (focusedWork ?? viewModel.works.first?.id)
+                            !phone && viewModel.viewMode != .list && (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
                                 ? LibraryFocusMetrics.tabletCardScale : 1,
                             anchor: .center
                         )
                         .offset(
-                            y: !phone && viewModel.viewMode != .list && work.id == (focusedWork ?? viewModel.works.first?.id)
+                            y: !phone && viewModel.viewMode != .list && (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
                                 ? LibraryFocusMetrics.tabletLift : 0
                         )
                         .buttonStyle(.plain)

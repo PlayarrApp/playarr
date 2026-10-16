@@ -713,7 +713,7 @@ private struct AuthenticatedPlayarrShell: View {
     }
 
     private var headerTimeStyle: Date.FormatStyle {
-        var style = Date.FormatStyle().hour(.twoDigits(amPM: .omitted)).minute()
+        var style = Date.FormatStyle().hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)
         #if DEBUG
         if ParityLaunch.isActive {
             style.locale = Locale(identifier: "en_GB")
