@@ -470,7 +470,12 @@ class PreviewPatchContractTests(unittest.TestCase):
         workflow = (HERE.parents[1] / ".github/workflows/harmony-wall.yml").read_text(encoding="utf-8")
         render_step = workflow.split("- name: Start the bridge and the Previewer, sign in and capture", 1)[1].split(
             "- name: Upload the captures", 1)[0]
-        self.assertIn("SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}", render_step)
+        self.assertIn("SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}", render_step)
+        self.assertIn(
+            "PLAYARR_TEST_SERVER_URL: ${{ secrets.PLAYARR_TEST_SERVER_URL || secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}",
+            workflow,
+        )
+        self.assertIn(": \"${PLAYARR_TEST_SERVER_URL:?A Playarr test server URL secret is required}\"", render_step)
         self.assertLess(render_step.index("backend_preflight.py --output backend-preflight.json"),
                         render_step.index("launch() {"))
         debug_artifact = workflow.split("- name: Upload the debug frames and logs", 1)[1]

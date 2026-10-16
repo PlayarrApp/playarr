@@ -721,8 +721,9 @@ else:
     for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
                            ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
                            ("settings", "settings", 40000), ("profiles", "profiles", 40000)):
-        if name == "home":  # other workers share the account: re-seed right before the frame so On deck is only The 5th Wave
-            subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")])
+        if name == "home":  # other workers share the account: re-seed the canonical progress row before the frame
+            if subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")]).returncode != 0:
+                abort("canonical progress seeding failed; refusing non-deterministic screenshots")
         guarded(name, lambda: (route(r, 40 if name == 'home' else 15), focus_first_card() if name in ('home', 'movies', 'series', 'music') else None, snap(name, folder, floor)))
     route("library:movie", 15); settle()
     open_filters("movies"); guarded("filters", lambda: snap("filters", folder, 40000)); click(*CLOSE_DRAWER); time.sleep(3)
