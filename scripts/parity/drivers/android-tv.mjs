@@ -35,7 +35,7 @@ const instantNanos = (value) => {
   return epochSeconds * 1_000_000_000n + nanos;
 };
 
-export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env } = {}) {
+export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env, commandRunner = run } = {}) {
   const env = envOverride, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
   const adbBin = adbOverride ?? (env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb");
   // Injectable clock (tests): the readiness loop's deadline arithmetic then never depends on how long a real process took.
@@ -43,7 +43,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   const sleep = clock.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const execBounded = async (command, args, { timeoutMs = commandTimeoutMs, label = "external command", ...options } = {}) => {
     try {
-      return await run(command, args, { env, ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
+      return await commandRunner(command, args, { env, ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
     } catch (e) {
       if (e.killed && e.signal === "SIGTERM") throw new Error(`${label} timed out after ${timeoutMs}ms`);
       throw e;

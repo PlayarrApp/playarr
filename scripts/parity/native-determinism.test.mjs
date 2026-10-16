@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createDriver } from "./drivers/android-tv.mjs";
+import { runFakeDeterministicAdb } from "./test-drivers/fake-deterministic-adb.mjs";
 
 const scratchRoot = process.env.PLAYARR_PARITY_TEST_OUT;
 if (!scratchRoot) throw new Error("PLAYARR_PARITY_TEST_OUT must point to task-scoped .data scratch space");
@@ -25,6 +26,7 @@ const driverWith = (state, extraEnv = {}, options = {}) => {
     readinessPollMs: 1,
     readinessTimeoutMs: options.readinessTimeoutMs ?? 10_000,
     commandTimeoutMs: 1000,
+    commandRunner: async (_command, args, { env }) => ({ stdout: runFakeDeterministicAdb(args, env), stderr: "" }),
     clock: options.clock ?? { sleep: async () => {}, now: (() => { let time = 0; return () => time++; })() },
     env: { ...process.env, PLAYARR_PARITY_FAKE_ADB_STATE: statePath, ...extraEnv },
   });
