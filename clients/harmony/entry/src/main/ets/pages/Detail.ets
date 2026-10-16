@@ -1680,7 +1680,7 @@ struct Detail {
   }
 
   private playInk(): ResourceColor {
-    return this.playFocused && !isTvMetrics() ? '#ffffff' : toResourceColor(activeColors().onAccent);
+    return this.playFocused && !isTvMetrics() ? '#ffffff' : toResourceColor(isTvMetrics() ? activeColors().onAccent : activeColors().bg);
   }
 
   /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
@@ -1725,7 +1725,7 @@ struct Detail {
     .borderRadius(Radii.pillFull)
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor((enabled ? (this.playFocused && !isTvMetrics() ? PLAY_FOCUS_FILL : toResourceColor(activeColors().accent)) : toResourceColor(activeColors().inkMuted)))
+    .backgroundColor((enabled ? (this.playFocused && !isTvMetrics() ? PLAY_FOCUS_FILL : toResourceColor(isTvMetrics() ? activeColors().accent : activeColors().ink)) : toResourceColor(activeColors().inkMuted)))
     .opacity((enabled ? 1 : 0.6))
     .focusable(enabled)
     .defaultFocus(enabled && !isTvMetrics())
@@ -2377,13 +2377,14 @@ struct Detail {
           .fontSize(11)
           .fontWeight(FontWeight.Bold)
           .maxLines(1)
-          .fontColor(toResourceColor(activeColors().onAccent))
+          .fontColor(toResourceColor(activeColors().bg))
       }
       .width(100)
       .height(44)
       .justifyContent(FlexAlign.Center)
       .borderRadius(22)
-      .backgroundColor(this.primaryMediaFileId !== null ? toResourceColor(activeColors().accent) : toResourceColor(activeColors().inkMuted))
+      // web `.tv-detail-play`: the ink fill with the page colour as label
+      .backgroundColor(this.primaryMediaFileId !== null ? toResourceColor(activeColors().ink) : toResourceColor(activeColors().inkMuted))
       .opacity(this.primaryMediaFileId !== null ? 1 : 0.6)
       .focusable(this.primaryMediaFileId !== null)
       .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))

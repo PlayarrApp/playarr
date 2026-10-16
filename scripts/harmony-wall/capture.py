@@ -758,7 +758,7 @@ else:
         open_filters(name); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*CLOSE_DRAWER); time.sleep(5); settle()
         snap(name, folder, 100000)
 
-    for nm, btn in (("library-covers-small", SMALL_BTN), ("library-covers-medium", MEDIUM_BTN), ("library-covers-large", LARGE_BTN)):
+    for nm, btn in (("library-covers-medium", MEDIUM_BTN), ("library-covers-small", SMALL_BTN), ("library-covers-large", LARGE_BTN))  # medium first: the first Library visit of a run ignores the Cover tap (small was captured in Screen view twice), the saved view then holds:
         guarded(nm, lambda nm=nm, btn=btn: library_covers(nm, btn))
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
     guarded("player-controls", lambda: (route("player:b9a68b2c-8382-4c34-a6f0-c4dd58f55093", 20), snap("player-controls", folder, 30000)))

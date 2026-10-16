@@ -1,0 +1,1 @@
+- HarmonyOS phone: the Start and Play buttons use web's ink fill with the page colour as label.
