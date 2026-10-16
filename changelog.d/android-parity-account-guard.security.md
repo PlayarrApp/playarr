@@ -1,1 +1,0 @@
-- Add an opt-in Android TV parity account guard that validates the signed-in device account before capture, D-pad input or playback actions.
