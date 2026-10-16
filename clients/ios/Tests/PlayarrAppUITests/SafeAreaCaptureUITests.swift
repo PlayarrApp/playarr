@@ -74,7 +74,28 @@ final class SafeAreaCaptureUITests: XCTestCase {
                     XCTAssertTrue(play.waitForExistence(timeout: 10) || pause.waitForExistence(timeout: 1), "The player controls must remain loaded before capture.")
                 }
 
-                let shot = XCTAttachment(screenshot: app.screenshot())
+                // Diagnostic A/B only on the first home route: retain the app screenshot below as the accepted capture path.
+                var diagnosticAppScreenshot: XCUIScreenshot?
+                if route == "home" {
+                    let appWindowSize = window.frame.size
+                    XCTAssertGreaterThan(appWindowSize.width, 0, "The app window width must be positive before capture for \(orientationName) (\(route)).")
+                    XCTAssertGreaterThan(appWindowSize.height, 0, "The app window height must be positive before capture for \(orientationName) (\(route)).")
+
+                    addDiagnosticStartMarker(source: "XCUIScreen.main.screenshot", orientationName: orientationName, route: route)
+                    let screenDiagnosticStart = DispatchTime.now().uptimeNanoseconds
+                    let screenDiagnostic = XCUIScreen.main.screenshot()
+                    let screenDiagnosticDuration = DispatchTime.now().uptimeNanoseconds - screenDiagnosticStart
+                    addDiagnosticCapture(screenDiagnostic, source: "XCUIScreen.main.screenshot", durationNanoseconds: screenDiagnosticDuration, appWindowSize: appWindowSize, orientationName: orientationName, route: route)
+
+                    addDiagnosticStartMarker(source: "app.screenshot", orientationName: orientationName, route: route)
+                    let appDiagnosticStart = DispatchTime.now().uptimeNanoseconds
+                    let appDiagnostic = app.screenshot()
+                    let appDiagnosticDuration = DispatchTime.now().uptimeNanoseconds - appDiagnosticStart
+                    addDiagnosticCapture(appDiagnostic, source: "app.screenshot", durationNanoseconds: appDiagnosticDuration, appWindowSize: appWindowSize, orientationName: orientationName, route: route)
+                    diagnosticAppScreenshot = appDiagnostic
+                }
+
+                let shot = XCTAttachment(screenshot: diagnosticAppScreenshot ?? app.screenshot())
                 shot.name = "\(orientationName)-\(route.replacingOccurrences(of: ":", with: "_"))"
                 shot.lifetime = .keepAlways
                 add(shot)
@@ -94,6 +115,35 @@ final class SafeAreaCaptureUITests: XCTestCase {
                 app.terminate()
             }
         }
+    }
+
+    @MainActor
+    private func addDiagnosticStartMarker(source: String, orientationName: String, route: String) {
+        let marker = XCTAttachment(string: "source=\(source) phase=start")
+        marker.name = "diagnostic-\(orientationName)-\(route.replacingOccurrences(of: ":", with: "_"))-\(source)-start"
+        marker.lifetime = .keepAlways
+        add(marker)
+    }
+
+    @MainActor
+    private func addDiagnosticCapture(_ screenshot: XCUIScreenshot, source: String, durationNanoseconds: UInt64, appWindowSize: CGSize, orientationName: String, route: String) {
+        let size = screenshot.image.size
+
+        let stem = "\(orientationName)-\(route.replacingOccurrences(of: ":", with: "_"))"
+        let frame = "\(Int(size.width))x\(Int(size.height))"
+        let scale = screenshot.image.scale
+        let pixels = "\(Int((size.width * scale).rounded()))x\(Int((size.height * scale).rounded()))"
+        let delta = "\(String(format: "%.1f", size.width - appWindowSize.width))x\(String(format: "%.1f", size.height - appWindowSize.height))"
+        let duration = String(format: "%.1f", Double(durationNanoseconds) / 1_000_000)
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "diagnostic-\(stem)-\(source)-\(frame)-\(duration)ms"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        let details = XCTAttachment(string: "source=\(source) duration_ms=\(duration) image_points=\(frame) scale=\(scale) pixels=\(pixels) app_window_points=\(Int(appWindowSize.width))x\(Int(appWindowSize.height)) delta_from_app_window_points=\(delta)")
+        details.name = "diagnostic-\(stem)-\(source)-metadata"
+        details.lifetime = .keepAlways
+        add(details)
     }
 
     /// The bottom pill keeps max(8, bottom) from the bottom edge and the side inset from the sides; the

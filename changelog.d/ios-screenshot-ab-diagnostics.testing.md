@@ -1,0 +1,1 @@
+- Add a first-Home screenshot A/B diagnostic to compare app-scoped and full-screen capture timing and dimensions when investigating UI-test screenshot transport failures.
