@@ -1,1 +1,0 @@
-- Xbox marks the current navigation item with the TV web client's subtle ink tint and scale.

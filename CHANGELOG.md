@@ -13,6 +13,17 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Xbox marks the current navigation item with the TV web client's subtle ink tint and scale.
+- Keep stale playback-progress resets out of the Xbox screen and D-pad captures, and pause player-controls at the shared two-second reference position.
+- Xbox Home now matches the web rail inset, responsive vertical spacing, and directional return-to-navigation geometry.
+- Xbox library letter navigation now scrolls within the visible rail, follows the focused title and focuses the selected jump destination.
+- Preserve the focused library card across result refreshes and restore it after returning from a title, while leaving focus on navigation controls when the library did not own focus.
+- Keep the original refresh target through intermediate loading and focus notifications until the target card is restored or the user moves focus.
+- Keep the Xbox library's initial card focus claim active until focus settles, while allowing user input to cancel it.
+- Xbox parity capture waits for native seek completion at the requested frame and emits sanitized player and focus readiness diagnostics.
+- Xbox parity traces report safe HTTP, network, and response diagnostics when direct-play fixture preflight fails.
+- Xbox parity captures now select the native theme control from its traced bounds and confirm the saved choice and effective theme before capturing.
+- Report Xbox theme-picker targets in the same fixed design coordinates used by parity pointer input, including scaled windows.
 - Apple wall captures now stop unless the configured device-test account's `Device Test` profile is uniquely identified and confirmed as the active profile before the app launches.
 - Include the authenticated user ID in DEBUG parity state so capture tooling can reject a mismatched signed-in account.
 - Require the Apple simulator driver's app-reported user ID to match the freshly verified device-test login before it sends keys, captures frames, or checks playback.
@@ -702,6 +713,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The Xbox player-controls capture reads its pinned direct-play fixture from a repository Actions secret instead of exposing the media identifier as a workflow input.
+- Let hosted Xbox parity runs capture a validated subset of the Movies, Series and Music screens.
 - Match tvOS light-mode library key art opacity (0.24) to the wide web TV backdrop, reducing the artwork wash behind the preview.
 - Show the library preview's release-to-end year range for ended works, matching the web client's UTC year rules.
 - Align the iPad light-theme library rail, card sizing, grid spacing, and preview title with the web layout.
@@ -3151,6 +3164,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Require an explicit media-file ID for Xbox player-controls parity captures and verify Direct playback negotiation before opening the player and again before creating its source.
+- Xbox parity automation verifies the signed-in test account before sending input or capturing screenshots, serializes shared-account runs, and fails when its watch-progress reset cannot complete.
 - Keep Android deterministic driver unit tests independent of child-process startup latency while preserving the production bounded-command path.
 - Keep an expected credentialless startup login rejection from failing browser parity readiness after a successful manual sign-in, while preserving credentialed login failures.
 - Record stable-run and expected-reference provenance for D-pad results, guard reference build stamps, and cover non-stable capture and selective publication regressions.

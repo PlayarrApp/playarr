@@ -1,1 +1,0 @@
-- The Xbox player-controls capture reads its pinned direct-play fixture from a repository Actions secret instead of exposing the media identifier as a workflow input.
