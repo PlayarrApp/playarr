@@ -113,6 +113,28 @@ import { isTvMetrics, tv, TvGeometry, TouchGeometry } from '../Metrics';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS } from '../Motion';
 import { Spacing } from '../../core/Tokens';
 import { FOCUS_LIFT, effectiveFocusPercent } from './FocusLift';
+import { deviceInfo } from '@kit.BasicServicesKit';
+
+/** Use the API 14 List boundary clip where available, with an API 12 fallback. */
+class FocusedOverflowModifier implements AttributeModifier<ListAttribute> {
+  private allow: boolean;
+
+  constructor(allow: boolean) {
+    this.allow = allow;
+  }
+
+  applyNormalAttribute(instance: ListAttribute): void {
+    if (!this.allow) {
+      return;
+    }
+    if (deviceInfo.sdkApiVersion >= 14) {
+      instance.clipContent(ContentClipMode.BOUNDARY);
+    } else {
+      // API 12 fallback: permit the child decoration to extend into List padding.
+      instance.clip(false);
+    }
+  }
+}
 
 /** Web's `--page-edge-fade-size` on a phone. */
 const RAIL_END_FADE_SIZE: number = 38;
@@ -211,6 +233,11 @@ export struct MediaRail {
   @Prop listHeight: number = 0;
   /** Phone: how far the card row runs on past the page padding at its end (web's rails clip at the screen edge, dimmed by the end fade). */
   @Prop bleedEnd: number = 0;
+  /** Allow scaled focus decoration into the List's padding when the parent layout has reserved clip inset. */
+  @Prop allowFocusedOverflow: boolean = false;
+  /** Optional larger phone clip allowance for focused artwork rings. */
+  @Prop clipInsetStart: number = RAIL_CLIP_INSET_START;
+  @Prop clipInsetTop: number = RAIL_CLIP_INSET_TOP;
 
   /** Optional one-time initial item reveal for a caller-owned focus target. */
   @Prop @Watch('onInitialItemIndexChanged') initialItemIndex: number = -1;
@@ -394,11 +421,12 @@ export struct MediaRail {
       .width(this.bleedEnd > 0 ? `calc(100% + ${this.bleedEnd}vp)` : '100%')
       .overlay(isTvMetrics() ? this.tvEdgeMask() : this.endFade(), isTvMetrics() ? { align: Alignment.TopStart } : { align: Alignment.End })
       .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
-      .height(this.listHeight > 0 ? this.listHeight + RAIL_CLIP_INSET_TOP : '100%')
+      .height(this.listHeight > 0 ? this.listHeight + this.clipInsetTop : '100%')
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
-      .padding({ left: RAIL_CLIP_INSET_START, top: RAIL_CLIP_INSET_TOP, bottom: RAIL_CLIP_INSET_BOTTOM })
-      .margin({ left: -RAIL_CLIP_INSET_START, top: -RAIL_CLIP_INSET_TOP, bottom: -RAIL_CLIP_INSET_BOTTOM })
+      .attributeModifier(new FocusedOverflowModifier(this.allowFocusedOverflow))
+      .padding({ left: this.clipInsetStart, top: this.clipInsetTop, bottom: RAIL_CLIP_INSET_BOTTOM })
+      .margin({ left: -this.clipInsetStart, top: -this.clipInsetTop, bottom: -RAIL_CLIP_INSET_BOTTOM })
       .focusScopeId(this.railId, true, true)
       .id(this.measurementId.length > 0 ? this.measurementId : this.railId + '-list')
       .onFocus(() => {

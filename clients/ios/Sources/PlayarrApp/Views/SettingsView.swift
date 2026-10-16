@@ -91,6 +91,7 @@ struct SettingsView: View {
     @State private var errorMessage: String?
     @State private var busy = false
     @State private var signingOut = false
+    @State private var paritySettingsLoaded = false
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -110,7 +111,11 @@ struct SettingsView: View {
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
         .navigationBarHidden(true)
-        .task { await loadRemoteSettings() }
+        .task {
+            await loadRemoteSettings()
+            paritySettingsLoaded = true
+        }
+        .parityScreenLoad(paritySettingsLoaded ? .ready : .loading)
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
             Task { await saveCustomAvatar(from: item) }

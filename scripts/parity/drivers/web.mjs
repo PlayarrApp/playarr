@@ -174,8 +174,13 @@ export async function clickIfPresent(locator) {
 
 export async function createDriver({ playwright = chromium, secrets } = {}) {
   const env = process.env, web = (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
-  const allowedUsernames = loadAllowedDeviceTestUsernames({ env, client: env.PARITY_CLIENT, ...(secrets ? { secrets } : {}) });
-  const trustedServerUrl = loadTrustedDeviceTestServerUrl({ env, ...(secrets ? { secrets } : {}) });
+  const configuredSecrets = secrets ?? (env.PLAYARR_TEST_SERVER_URL ? {
+    PLAYARR_TEST_SERVER_URL: env.PLAYARR_TEST_SERVER_URL,
+    PLAYARR_DEVICE_TEST_USERNAME: env.PLAYARR_DEVICE_TEST_USERNAME,
+  } : undefined);
+  const guardOptions = { env, ...(configuredSecrets ? { secrets: configuredSecrets } : {}) };
+  const allowedUsernames = loadAllowedDeviceTestUsernames({ ...guardOptions, client: env.PARITY_CLIENT });
+  const trustedServerUrl = loadTrustedDeviceTestServerUrl(guardOptions);
   if (env.PLAYARR_USERNAME) assertAllowedDeviceTestUsername(env.PLAYARR_USERNAME, allowedUsernames);
   const mobile = env.PLAYARR_WEB_MOBILE === "1";
   const positiveInteger = (name, fallback) => {

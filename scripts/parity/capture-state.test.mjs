@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { withCaptureState, captureCanonicalState, withCanonicalState } from "./capture-state.mjs";
+import { withCaptureState, captureCanonicalState, withCanonicalState, resolveCaptureEnvironment, parseAndroidDeviceSession, assertAndroidDeviceAccount } from "./capture-state.mjs";
 import { clientSecretKeys, parityCredentials } from "./dpad-account.mjs";
 
 const FILE_A = "12345678-1234-4234-8234-1234567890ab";
@@ -75,6 +75,40 @@ test("client credentials require the isolated client and never fall back to shar
   assert.deepEqual(parityCredentials({ PARITY_CLIENT: "web-capture-10620" }, creds), { username: "fixture-user", password: "fixture-pass" });
   assert.deepEqual(parityCredentials({ PARITY_ACCOUNT: "dpad" }, { PLAYARR_DEVICE_TEST_DPAD_USERNAME: "legacy-user", PLAYARR_DEVICE_TEST_DPAD_PASSWORD: "legacy-pass" }), { username: "legacy-user", password: "legacy-pass" });
   assert.throws(() => parityCredentials({ PARITY_CLIENT: "web-capture-10620" }, { PLAYARR_DEVICE_TEST_USERNAME: "shared", PLAYARR_DEVICE_TEST_PASSWORD: "shared" }), /missing client account credentials/);
+});
+
+test("Android D-pad credentials require the explicit guarded alias and use only dedicated device-test keys", () => {
+  const env = { PARITY_DEVICE_ACCOUNT_GUARD: "android", PARITY_USE_DEVICE_TEST_DPAD: "1", PLAYARR_TEST_SERVER_URL: serverUrl };
+  const secrets = { PLAYARR_DEVICE_TEST_DPAD_USERNAME: "dpad-user", PLAYARR_DEVICE_TEST_DPAD_PASSWORD: "dpad-pass", PLAYARR_PARITY_WEB_CAPTURE_10620_USERNAME: "fixture-user", PLAYARR_PARITY_WEB_CAPTURE_10620_PASSWORD: "fixture-pass" };
+  const resolved = resolveCaptureEnvironment("web-capture-10620", env, secrets);
+  assert.deepEqual([resolved.PLAYARR_USERNAME, resolved.PLAYARR_PASSWORD], ["dpad-user", "dpad-pass"]);
+  assert.deepEqual([resolved.PARITY_USERNAME_KEY, resolved.PARITY_PASSWORD_KEY], ["PLAYARR_DEVICE_TEST_DPAD_USERNAME", "PLAYARR_DEVICE_TEST_DPAD_PASSWORD"]);
+  assert.throws(() => resolveCaptureEnvironment("web-capture-10620", { ...env, PARITY_DEVICE_ACCOUNT_GUARD: undefined }, secrets), /require the Android device account guard/);
+  assert.throws(() => resolveCaptureEnvironment("web-capture-10620", { PARITY_DEVICE_ACCOUNT_GUARD: "android", PLAYARR_TEST_SERVER_URL: serverUrl }, secrets), /requires the explicit D-pad account alias/);
+  assert.throws(() => resolveCaptureEnvironment("web-capture-10620", env, { PLAYARR_PARITY_WEB_CAPTURE_10620_USERNAME: "fixture-user", PLAYARR_PARITY_WEB_CAPTURE_10620_PASSWORD: "fixture-pass" }), /missing explicitly selected parity account credentials/);
+});
+
+test("Android DataStore session parser uses PreferencesProto wire schema and account guard uses device token", async () => {
+  const varint = (value) => { const bytes = []; while (value > 127) { bytes.push((value & 127) | 128); value >>>= 7; } bytes.push(value); return Buffer.from(bytes); };
+  const field = (number, value) => Buffer.concat([varint((number << 3) | 2), varint(value.length), value]);
+  const stringValue = (text) => field(5, Buffer.from(text));
+  const entry = (key, encodedValue) => Buffer.concat([field(1, Buffer.from(key)), field(2, encodedValue)]);
+  const data = Buffer.concat(["playarr_access_token=device-token", "playarr_current_server_url=https://example.invalid", "playarr_user_id=fixture-id"].map((pair) => {
+    const [key, value] = pair.split("=");
+    return field(1, entry(key, stringValue(value)));
+  })).toString("hex");
+  const session = parseAndroidDeviceSession(data);
+  assert.deepEqual(session, { accessToken: "device-token", serverUrl, userId: "fixture-id" });
+  let request;
+  const fetchImpl = async (url, options) => { request = { url, options }; return { ok: true, async json() { return [{ id: "fixture-id", username: "fixture-user", is_current: true }]; } }; };
+  assert.equal(await assertAndroidDeviceAccount({ session, expectedUsername: "fixture-user", expectedServerUrl: serverUrl, fetchImpl }), true);
+  assert.equal(request.options.headers.authorization, "Bearer device-token");
+  await assert.rejects(assertAndroidDeviceAccount({ session: { ...session, userId: "other-id" }, expectedUsername: "fixture-user", expectedServerUrl: serverUrl, fetchImpl }), /does not match/);
+  await assert.rejects(assertAndroidDeviceAccount({ session, expectedUsername: "fixture-user", expectedServerUrl: "https://other.example.invalid", fetchImpl }), /does not match/);
+  await assert.rejects(assertAndroidDeviceAccount({ session, expectedUsername: "other-user", expectedServerUrl: serverUrl, fetchImpl }), /does not match/);
+  await assert.rejects(assertAndroidDeviceAccount({ session, expectedUsername: "fixture-user", expectedServerUrl: serverUrl, fetchImpl: async () => ({ ok: true, async json() { return []; } }) }), /does not match/);
+  await assert.rejects(assertAndroidDeviceAccount({ session, expectedUsername: "fixture-user", expectedServerUrl: serverUrl, fetchImpl: async () => ({ ok: true, async json() { return [{ id: "fixture-id", username: "fixture-user", is_current: true }, { id: "other-id", username: "other-user", is_current: true }]; } }) }), /does not match/);
+  await assert.rejects(assertAndroidDeviceAccount({ session, expectedUsername: "fixture-user", expectedServerUrl: serverUrl, fetchImpl: async () => { throw new Error("fixture network failure"); } }), /identity check failed/);
 });
 
 test("legacy no-client env command still reports the D-pad key names", async () => {

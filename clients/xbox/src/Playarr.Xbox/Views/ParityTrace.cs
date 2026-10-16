@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Playarr.Core.Models;
+using Playarr.Core.Playback;
+using Playarr.Xbox.Services;
 using Windows.Storage;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Automation;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Input;
@@ -21,6 +24,11 @@ namespace Playarr.Xbox.Views
     {
         private static string _last = string.Empty;
         private static int _seq;
+        private static bool _writing;
+        private static string _checkedAccountKey = string.Empty;
+        private static bool _checkedAccountMatches;
+        private static string _playerFixtureStatus = "idle";
+        private static string _playerFixtureNonce = string.Empty;
 
         public static void StartIfRequested(Frame frame)
         {
@@ -31,18 +39,84 @@ namespace Playarr.Xbox.Views
             }
 
             var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
-            timer.Tick += (s, e) =>
+            timer.Tick += async (s, e) =>
             {
-                PlayRequested(frame, folder.Path);
-                ResizeRequested(folder.Path);
-                PauseRequested(frame, folder.Path);
-                Write(frame, folder.Path);
+                await TickAsync(frame, folder.Path);
             };
             timer.Start();
         }
 
+        private static async System.Threading.Tasks.Task TickAsync(Frame frame, string folder)
+        {
+            if (_writing)
+            {
+                return;
+            }
+
+            _writing = true;
+            try
+            {
+                var (accountProbe, accountMatchesTest) = await CheckTestAccountAsync(folder);
+                if (accountMatchesTest)
+                {
+                    var playFile = System.IO.Path.Combine(folder, "parity.play");
+                    if (System.IO.File.Exists(playFile))
+                    {
+                        (_, accountMatchesTest) = await CheckTestAccountAsync(folder, true);
+                    }
+
+                    if (accountMatchesTest)
+                    {
+                        await PlayRequestedAsync(frame, folder);
+                        ResizeRequested(folder);
+                        await PauseRequestedAsync(frame, folder);
+                    }
+                }
+
+                Write(frame, folder, accountProbe, accountMatchesTest);
+            }
+            catch (Exception)
+            {
+                _last = string.Empty;
+                // Leave any previous response in place. Its nonce cannot acknowledge the next probe.
+            }
+            finally
+            {
+                _writing = false;
+            }
+        }
+
+        private static async System.Threading.Tasks.Task<(string?, bool)> CheckTestAccountAsync(string folder, bool forceRefresh = false)
+        {
+            var expectedUserFile = System.IO.Path.Combine(folder, "parity.expected-user");
+            if (!System.IO.File.Exists(expectedUserFile))
+            {
+                return (null, false);
+            }
+
+            var marker = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(System.IO.File.ReadAllText(expectedUserFile));
+            if (marker == null || !marker.TryGetValue("userId", out var expectedUser) || !marker.TryGetValue("nonce", out var nonce)
+                || !marker.TryGetValue("serverUrl", out var expectedServer) || !Guid.TryParse(expectedUser, out var expectedUserId)
+                || !Uri.TryCreate(expectedServer, UriKind.Absolute, out var expectedServerUrl) || string.IsNullOrWhiteSpace(nonce))
+            {
+                return (null, false);
+            }
+
+            var key = nonce + ":" + expectedUserId.ToString("N") + ":" + expectedServerUrl.AbsoluteUri;
+            if (!forceRefresh && key == _checkedAccountKey)
+            {
+                return (nonce, _checkedAccountMatches);
+            }
+
+            var serverMatches = Uri.Compare(App.Environment.ServerUrl, expectedServerUrl, UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.SafeUnescaped, StringComparison.Ordinal) == 0;
+            var currentProfiles = (await App.Environment.ApiClient.ListProfilesAsync()).Where(profile => profile.IsCurrent).ToList();
+            _checkedAccountMatches = serverMatches && currentProfiles.Count == 1 && currentProfiles[0].Id == expectedUserId;
+            _checkedAccountKey = key;
+            return (nonce, _checkedAccountMatches);
+        }
+
         /// <summary>A <c>parity.pause</c> file pauses the player on its current frame (identical-frame screenshots).</summary>
-        private static void PauseRequested(Frame frame, string folder)
+        private static async System.Threading.Tasks.Task PauseRequestedAsync(Frame frame, string folder)
         {
             var file = System.IO.Path.Combine(folder, "parity.pause");
             try
@@ -51,7 +125,11 @@ namespace Playarr.Xbox.Views
                 {
                     var text = System.IO.File.ReadAllText(file).Trim();
                     System.IO.File.Delete(file);
-                    player.PauseForTest(double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var seconds) ? seconds : (double?)null);
+                    var settled = await player.PauseForTestAsync(double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var seconds) ? seconds : (double?)null);
+                    if (!settled)
+                    {
+                        _playerFixtureStatus = "seek-timeout";
+                    }
                 }
             }
             catch (Exception)
@@ -79,32 +157,76 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        /// <summary>The suite's playback cases pin a media file id: a <c>parity.play</c> file holding one opens the player on it.</summary>
-        private static void PlayRequested(Frame frame, string folder)
+        /// <summary>Resolves the neutral player fixture and verifies Xbox playback negotiation before opening it.</summary>
+        private static async System.Threading.Tasks.Task PlayRequestedAsync(Frame frame, string folder)
         {
             var file = System.IO.Path.Combine(folder, "parity.play");
             try
             {
-                if (System.IO.File.Exists(file) && Guid.TryParse(System.IO.File.ReadAllText(file).Trim(), out var id))
+                if (!System.IO.File.Exists(file))
                 {
-                    System.IO.File.Delete(file);
+                    return;
+                }
+
+                var request = System.IO.File.ReadAllText(file).Trim();
+                System.IO.File.Delete(file);
+                const string fixturePrefix = "fixture:";
+                if (request.StartsWith(fixturePrefix, StringComparison.Ordinal))
+                {
+                    var requestParts = request.Substring(fixturePrefix.Length).Split(':');
+                    if (requestParts.Length != 2 || !Guid.TryParse(requestParts[0], out var requestedMediaFileId) || !Guid.TryParse(requestParts[1], out _))
+                    {
+                        _playerFixtureStatus = "fixture-unavailable";
+                        return;
+                    }
+
+                    _playerFixtureNonce = requestParts[1];
+                    _playerFixtureStatus = "checking";
+                    var profile = XboxPlaybackProfile.ForModel(XboxModelDetector.DetectModel());
+                    var caps = DeviceCapsProvider.Current(profile);
+                    var info = await App.Environment.ApiClient.GetPlaybackInfoAsync(requestedMediaFileId, profile, default, caps);
+                    if (!DirectPlayFixturePolicy.IsDirect(info.Mode))
+                    {
+                        _playerFixtureStatus = "not-direct";
+                        return;
+                    }
+
+                    _playerFixtureStatus = "direct-preflight";
+                    frame.Navigate(typeof(PlayerPage), new PlayerNavigationParameter(
+                        requestedMediaFileId,
+                        requireDirectPlay: true));
+                    return;
+                }
+
+                // The performance suite retains its pinned-file path; parity player screens use the guarded neutral fixture above.
+                if (Guid.TryParse(request, out var id))
+                {
                     frame.Navigate(typeof(PlayerPage), new PlayerNavigationParameter(id));
                 }
             }
+            catch (Playarr.Core.Networking.ApiException error)
+            {
+                _playerFixtureStatus = $"fixture-{error.SafeDiagnosticCode()}";
+            }
             catch (Exception)
             {
+                _playerFixtureStatus = "fixture-unexpected-error";
             }
         }
 
-        private static void Write(Frame frame, string folder)
+        private static void Write(Frame frame, string folder, string? accountProbe, bool accountMatchesTest)
         {
             try
             {
                 var (screen, kind) = Screen(frame.Content);
                 var panel = Drawer.Current?.Title ?? string.Empty;
                 var focus = Describe(FocusManager.GetFocusedElement() as DependencyObject, frame.Content);
+                var focusArea = FocusArea(FocusManager.GetFocusedElement() as DependencyObject);
+                var initialFocusPending = frame.Content is LibraryPage library && library.InitialFocusPending;
                 var play = frame.Content is PlayerPage player ? player.Probe() : ("", 0.0);
-                var json = Newtonsoft.Json.JsonConvert.SerializeObject(new { screen, kind, panel, focus, play = play.Item1, pos = Math.Round(play.Item2, 1), code = (frame.Content as LoginPage)?.PairingCode, position = Position(FocusManager.GetFocusedElement() as DependencyObject, frame.Content) });
+                var playerMode = frame.Content is PlayerPage playerPage ? playerPage.PlaybackMode : string.Empty;
+                var themeTargets = frame.Content is SettingsPage settings ? ThemeTargets(settings) : Array.Empty<object>();
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(new { screen, kind, panel, focus, focusArea, initialFocusPending, play = play.Item1, pos = Math.Round(play.Item2, 1), playerMode, playerFixture = _playerFixtureStatus, playerFixtureNonce = _playerFixtureNonce, code = (frame.Content as LoginPage)?.PairingCode, position = Position(FocusManager.GetFocusedElement() as DependencyObject, frame.Content), themeChoice = Theme.Choice, themeIsLight = Theme.IsLight, themeTargets, accountProbe, accountMatchesTest });
                 if (json == _last)
                 {
                     return;
@@ -116,7 +238,69 @@ namespace Playarr.Xbox.Views
             }
             catch (Exception)
             {
-                // A test hook never disturbs the app.
+                _last = string.Empty;
+                // Leave any previous response in place. Its nonce cannot acknowledge the next probe.
+            }
+        }
+
+        private static object[] ThemeTargets(DependencyObject root)
+        {
+            var targets = new List<object>();
+            if (root is FrameworkElement page)
+            {
+                Visit(root, page, targets);
+            }
+
+            return targets.ToArray();
+        }
+
+        /// <summary>Safe semantic focus location for capture diagnostics; never includes the focused item's label.</summary>
+        private static string FocusArea(DependencyObject? element)
+        {
+            var withinControl = false;
+            for (var node = element; node != null; node = VisualTreeHelper.GetParent(node))
+            {
+                if (node is Button { Tag: string tag } && tag.StartsWith("nav:", StringComparison.Ordinal))
+                {
+                    return "nav";
+                }
+
+                if (node is SelectorItem)
+                {
+                    return "grid";
+                }
+
+                if (node is Control)
+                {
+                    withinControl = true;
+                }
+            }
+
+            return withinControl ? "control" : "none";
+        }
+
+        private static void Visit(DependencyObject node, FrameworkElement page, List<object> targets)
+        {
+            if (node is Button button)
+            {
+                var id = AutomationProperties.GetAutomationId(button);
+                if (id.StartsWith("appearance.theme.", StringComparison.Ordinal)
+                    && int.TryParse(id.Substring("appearance.theme.".Length), out var index)
+                    && index >= 0 && index < 3
+                    && page.ActualWidth > 0 && page.ActualHeight > 0 && button.ActualWidth > 0 && button.ActualHeight > 0)
+                {
+                    // The app's Viewbox maps the fixed design to window pixels. Return the button in that 1920x1080
+                    // design space because the parity pointer contract also uses design pixels at every window size.
+                    var origin = button.TransformToVisual(page).TransformPoint(new Windows.Foundation.Point(0, 0));
+                    var scaleX = 1920 / page.ActualWidth;
+                    var scaleY = 1080 / page.ActualHeight;
+                    targets.Add(new { choice = new[] { Theme.System, Theme.Light, Theme.Dark }[index], x = Math.Round(origin.X * scaleX, 1), y = Math.Round(origin.Y * scaleY, 1), width = Math.Round(button.ActualWidth * scaleX, 1), height = Math.Round(button.ActualHeight * scaleY, 1) });
+                }
+            }
+
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+            {
+                Visit(VisualTreeHelper.GetChild(node, i), page, targets);
             }
         }
 

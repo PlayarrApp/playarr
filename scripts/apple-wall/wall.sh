@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Apple device wall on a GitHub-hosted macOS runner (.github/workflows/apple-wall.yml).
 #   wall.sh <build|up|capture|stream> <tvos|iphone|ipad|macos>
-# Environment: SRC (checkout of the ref under test), TRUSTED (checkout of the default branch, source of every script that sees
-# a secret), WORK (scratch dir), and per command: PLAYARR_TEST_SERVER_URL TEST_USERNAME TEST_PASSWORD (up, capture, stream), OUT and REF
+# Environment: SRC (checkout of the exact app SHA under test), TRUSTED (checkout of the workflow branch, source of every script that sees
+# a secret), WORK (scratch dir), and per command: SERVER_URL TEST_USERNAME TEST_PASSWORD DEVICE_TEST_USERNAME (up, capture, stream), OUT and REF
 # (capture), STREAM_BIND PLAYARR_VNC_PASSWORD DEADLINE DISPATCH_AT (stream). Never prints a secret or a token.
 set -euo pipefail
 cmd=${1:?command}; DEVICE=${2:?device}
@@ -57,8 +57,10 @@ P
 }
 
 token() { # a fresh sign-in for the Device Test profile: sets ACCESS_TOKEN and REFRESH_TOKEN (the pair one login issued), masked in the log
-  local t; t=$(DEVICE_NAME="wall-$DEVICE" python3 "$TRUSTED/scripts/apple-wall/login.py") || return 1
-  read -r ACCESS_TOKEN REFRESH_TOKEN <<<"$t"
+  local t; t=$(DEVICE_NAME="wall-$DEVICE" python3 "$TRUSTED/scripts/apple-wall/login.py" --include-user-id) || return 1
+  read -r ACCESS_TOKEN REFRESH_TOKEN VERIFIED_USER_ID <<<"$t"
+  [[ -n $ACCESS_TOKEN && -n $REFRESH_TOKEN && -n $VERIFIED_USER_ID ]] || return 1
+  printf '%s\n' "$VERIFIED_USER_ID" > "$WORK/verified-user-id"
   echo "::add-mask::$ACCESS_TOKEN" >&2; echo "::add-mask::$REFRESH_TOKEN" >&2
 }
 
@@ -130,8 +132,12 @@ launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route 
     ios)
       xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
       xcrun simctl ui "$UDID" appearance "$theme"
-      xcrun simctl launch "$UDID" "$BUNDLE" -PlayarrMuted --playarr-parity-server "$SERVER_URL" --playarr-parity-user "$TEST_USERNAME" \
-        --playarr-parity-password "$TEST_PASSWORD" --playarr-parity-route "$route" --playarr-parity-theme "$theme" \
+      : "${DEVICE_TEST_USERNAME:?}"
+      SIMCTL_CHILD_PLAYARR_PARITY_SERVER="$SERVER_URL" \
+        SIMCTL_CHILD_PLAYARR_PARITY_USER="$TEST_USERNAME" \
+        SIMCTL_CHILD_PLAYARR_PARITY_PASSWORD="$TEST_PASSWORD" \
+        SIMCTL_CHILD_PLAYARR_PARITY_EXPECTED_USERNAME="$DEVICE_TEST_USERNAME" \
+        xcrun simctl launch "$UDID" "$BUNDLE" -PlayarrMuted --playarr-parity-route "$route" --playarr-parity-theme "$theme" \
         $([[ $DEVICE == ipad ]] && echo --playarr-parity-landscape) >/dev/null ;;
     macos)
       token || return 1 # fresh sign-in per launch (see tvOS above); a failure leaves the running app alone
@@ -166,7 +172,8 @@ build)
           swiftc -O -o "$WORK/notify" "$TRUSTED/scripts/apple-wall/notify.swift" ;;
   esac ;;
 up)
-  : "${TEST_USERNAME:?}" "${TEST_PASSWORD:?}"
+  : "${SERVER_URL:?}" "${TEST_USERNAME:?}" "${TEST_PASSWORD:?}"
+  [[ $KIND != ios ]] || : "${DEVICE_TEST_USERNAME:?}"
   if [[ $KIND == macos ]]; then
     save APP "$(app_path PlayarrMac.app)"; . "$STATE"; [[ -n $APP ]] || { log "no built app"; exit 1; }
     launch dark; sleep 15

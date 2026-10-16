@@ -77,6 +77,7 @@ struct ProfilesView: View {
         .task {
             if case .idle = viewModel.state { await viewModel.load() }
         }
+        .parityScreenLoad(parityLoadState)
         .alert("Enter profile PIN", isPresented: Binding(
             get: { pinProfile != nil },
             set: { if !$0 { pinProfile = nil; pin = "" } }
@@ -97,6 +98,14 @@ struct ProfilesView: View {
             Text("This profile is protected.")
         }
         .navigationBarHidden(true)
+    }
+
+    private var parityLoadState: ParityScreenLoad {
+        switch viewModel.state {
+        case .loaded: .ready
+        case .failed: .failed
+        case .idle, .loading: .loading
+        }
     }
 
     private var content: some View {

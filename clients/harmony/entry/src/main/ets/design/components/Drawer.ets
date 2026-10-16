@@ -12,6 +12,7 @@ import { isTvMetrics, tv } from '../Metrics';
 
 const DRAWER_WIDTH: number = 360;
 const DRAWER_BG_ALPHA: number = 0.94;
+const DRAWER_BACKDROP_BLUR: number = 38;
 const PADDING_H: number = 46;
 const HEADER_TOP: number = 54;
 // Web body starts at y=163: 34 below the 75 high header block.
@@ -111,6 +112,7 @@ export struct Drawer {
       bottom: isTvMetrics() ? 0 : 24 + this.safeBottom,
     })
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, DRAWER_BG_ALPHA))
+    .backdropBlur(DRAWER_BACKDROP_BLUR)
     .shadow({ radius: tv(90), offsetX: -tv(32), offsetY: 0, color: SHADOW_COLOR })
     .position({ x: '100%', y: 0 })
     .markAnchor({ x: '100%', y: 0 })

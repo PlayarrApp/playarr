@@ -58,9 +58,9 @@ methods = """
       this.getUIContext().getFocusController().activate(true, false);
       let result: string = 'ok';
       if (name === 'focus:pcard') {
-        result = previewFocusFirstCard();
+        result = previewFocusFirstCard(isTvMetrics());
         previewReport('dbg=' + encodeURIComponent('pcard-state:' + result));
-        previewReport('title=' + encodeURIComponent('state-focused') + '&sub=');
+        previewReport('focusack=' + encodeURIComponent(result));
         return;
       }
       try {
@@ -89,7 +89,7 @@ methods = """
 """ % port
 s = s.replace("\n@Entry", "\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
 s = s.replace("\n  @Builder\n  previewRoutes(", methods + "\n  @Builder\n  previewRoutes(", 1)
-s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { ROUTES } from '../navigation/Routes';", 1)
+s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
 s = s.replace("  aboutToAppear(): void {\n", "  aboutToAppear(): void {\n    this.startPreviewRoutePoll();\n", 1)
 assert 'this.startPreviewRoutePoll();' in s and 'previewPollOnce' in s
 open(p, 'w').write(s)

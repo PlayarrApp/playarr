@@ -60,6 +60,12 @@ jobs:
           INPUT_DESTINATION: platform=iOS Simulator,name=${{ steps.pick.outputs.name }}
         run: node .github/scripts/apple-test-simulator/main.js
 
+      - name: Resolve the pinned direct-play fixture
+        id: fixture
+        run: |
+          file=$(node -e 'const s=require("./scripts/parity/suite.json"); const f=s.performance?.[0]?.file; if (!/^[0-9a-f-]{36}$/i.test(f ?? "")) process.exit(1); process.stdout.write(f)')
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+
       # Tab and the arrows only move focus between controls when Full Keyboard Access is on; the frames of the first run
       # were identical for every key. Turn it on in the device's accessibility domain and restart the device.
       - name: Enable Full Keyboard Access
@@ -82,6 +88,11 @@ jobs:
           TEST_RUNNER_PLAYARR_UI_TEST_SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_RUNNER_PLAYARR_UI_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_RUNNER_PLAYARR_UI_TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          TEST_RUNNER_PLAYARR_TEST_SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
+          TEST_RUNNER_PLAYARR_DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_RUNNER_PLAYARR_DEVICE_TEST_EXPECTED_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_RUNNER_PLAYARR_DEVICE_TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          TEST_RUNNER_PLAYARR_DEVICE_TEST_PLAY_FILE: ${{ steps.fixture.outputs.file }}
         run: |
           : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
           set -euo pipefail

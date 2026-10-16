@@ -277,8 +277,13 @@ export struct PosterCard {
   }
 
   private effective(): number {
-    // ringOn: the state-driven focused look (lift, shadow, ring, glow) for frames where real focus cannot be had (capture builds, current item)
-    return Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), this.ringOn ? 1 : 0);
+    return effectiveFocusPercent(this.focusPercent, this.activeRailFactor);
+  }
+
+  /** The touch reference retains focused shadow and ring on the selected
+   * card, while suppressing the lift and scale used for actual remote focus. */
+  private visualFocus(): number {
+    return Math.max(this.effective(), this.ringOn ? 1 : 0);
   }
 
   private cardTranslateY(): number {
@@ -309,7 +314,7 @@ export struct PosterCard {
   private shadowAt(layer: number): ShadowOptions {
     const rest = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_REST : HOME_SHADOW_REST;
     const focused = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_FOCUSED : HOME_SHADOW_FOCUSED;
-    const t = this.effective();
+    const t = this.visualFocus();
     // Every lerp result is read into a local first, then referenced by
     // name inside the object literals below -- see `setFocused()`'s
     // comment on why an object-literal value must never start with
@@ -420,15 +425,13 @@ export struct PosterCard {
       .borderRadius(this.resolvedArtworkRadius())
       .scale({ x: this.artworkScale(), y: this.artworkScale() })
       .shadow(this.shadowLayer())
-      .outline({ width: tv(FOCUS_RING_WIDTH), color: isTvMetrics() ? this.focusRingColor(this.effective()) : 'rgba(0, 0, 0, 0)', radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
-      // web's card focus ring and glow (3 vp ring, 20 vp glow at 45%): drawn over the art so the layout never shifts. The phone draws the
-      // ring here as a border; the TV's ring is the outline above (outside the art, as web), so this layer is only its glow.
+      .outline({ width: tv(FOCUS_RING_WIDTH), color: this.focusRingColor(this.visualFocus()), radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
+      // Web's 3 vp outer ring and 20 vp glow (45%): the outline stays outside the art without shifting layout.
       Column()
         .width(this.cardWidth)
         .height(this.cardHeight)
         .borderRadius(this.resolvedArtworkRadius())
-        .border({ width: isTvMetrics() ? 0 : 3, color: this.focusRingColor(1) })
-        .opacity(this.effective())
+        .opacity(this.visualFocus())
         .scale({ x: this.artworkScale(), y: this.artworkScale() })
         .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
         .hitTestBehavior(HitTestMode.None)

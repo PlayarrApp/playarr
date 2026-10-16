@@ -806,21 +806,17 @@ export struct Library {
         touchActions: (): void => {
           this.touchFiltersButton();
         },
+        touchOverlay: (): void => {
+          this.touchAlphabetRailOverlay();
+          this.touchFiltersOverlay();
+        },
+        touchForegroundOverlay: (): void => {
+          this.touchActionsOverlay();
+        },
         touchContent: (): void => {
           this.touchBody();
         },
       })
-      if (this.sort === 'title' && this.items.length > 0) {
-        AlphabetRail({
-          rightInset: this.safeRight,
-          letters: alphabetFor(this.order),
-          activeLetter: this.activeLetter,
-          onJump: (letter: string): void => {
-            this.jumpToLetter(letter);
-          },
-        })
-      }
-      this.touchOverlays()
     }
     .width('100%')
     .height('100%')
@@ -838,7 +834,7 @@ export struct Library {
   }
 
   @Builder
-  private touchOverlays(): void {
+  private touchActionsOverlay(): void {
     if (this.actionsWork !== undefined) {
       TitleActionsDrawer({
         workId: this.actionsWork.id,
@@ -853,7 +849,33 @@ export struct Library {
           this.loadWatchProgress();
         },
       })
-    } else if (this.filtersOpen) {
+    }
+  }
+
+  @Builder
+  private touchAlphabetRailOverlay(): void {
+    if (this.sort === 'title' && this.items.length > 0) {
+      // Keep percentage positioning relative to the full phone viewport. Transparent hit testing
+      // preserves page gestures everywhere outside the rail's own letter targets.
+      Stack() {
+        AlphabetRail({
+          rightInset: this.safeRight,
+          letters: alphabetFor(this.order),
+          activeLetter: this.activeLetter,
+          onJump: (letter: string): void => {
+            this.jumpToLetter(letter);
+          },
+        })
+      }
+      .width('100%')
+      .height('100%')
+      .hitTestBehavior(HitTestMode.Transparent)
+    }
+  }
+
+  @Builder
+  private touchFiltersOverlay(): void {
+    if (this.filtersOpen && this.actionsWork === undefined) {
       Drawer({
         kicker: 'Library controls',
         title: 'Filters',

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
@@ -15,6 +15,13 @@ const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), 
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
 
 test("suite.json is valid and matches the legend screens", () => assert.deepEqual(validateSuite(suite, legend), []));
+test("Home remains captured in both themes and its web rail navigation reference stays pinned", () => {
+  const screens = JSON.parse(readFileSync(new URL("./screens.json", import.meta.url), "utf8"));
+  const expected = JSON.parse(readFileSync(new URL("./expected.web.json", import.meta.url), "utf8"));
+  assert.ok(screens.screens.some((screen) => screen.id === "home"));
+  assert.deepEqual(screens.themes, ["light", "dark"]);
+  assert.deepEqual(expected.dpad["home-left-nav"].position, { rail: "nav", index: 2 });
+});
 test("validator rejects a bad suite", () => {
   const s = structuredClone(suite);
   s.screens[1].keys = ["sideways"];
@@ -51,7 +58,8 @@ test("stable catalog lookup requires explicitly resolved account credentials", a
 test("stable catalog lookup pins available episode files and tolerates episodes without files", async () => {
   const originalFetch = globalThis.fetch;
   const replies = [
-    { access_token: "test-token" },
+    { access_token: "test-token", user_id: "profile-a" },
+    [{ id: "profile-a", username: "device-test", is_current: true }],
     { media_file_id: "film-file", children: {} },
     { children: { Series: [{ episodes: [{ media_file_id: "episode-file" }, {}, { media_file_id: "another-episode-file" }] }] } },
   ];
@@ -61,8 +69,50 @@ test("stable catalog lookup pins available episode files and tolerates episodes 
       PLAYARR_TEST_SERVER_URL: "https://example.com",
       PLAYARR_USERNAME: "isolated-user",
       PLAYARR_PASSWORD: "isolated-password",
+      DEVICE_TEST_USERNAME: "device-test",
     }, { required: true });
     assert.deepEqual(files, ["film-file", "episode-file", "another-episode-file"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("stable isolated catalog lookup keeps working without an iOS username alias", async () => {
+  const originalFetch = globalThis.fetch;
+  const replies = [
+    { access_token: "test-token", user_id: "profile-a" },
+    { media_file_id: "film-file", children: {} },
+    { children: { Series: [{ episodes: [{ media_file_id: "episode-file" }] }] } },
+  ];
+  globalThis.fetch = async () => ({ ok: true, json: async () => replies.shift() });
+  try {
+    const files = await pinnedCatalogFiles(suite, {
+      PLAYARR_TEST_SERVER_URL: "https://example.com",
+      PLAYARR_USERNAME: "isolated-user",
+      PLAYARR_PASSWORD: "isolated-password",
+    }, { required: true });
+    assert.deepEqual(files, ["film-file", "episode-file"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("progress reset verifies the authenticated current Device Test profile before mutation", async () => {
+  const originalFetch = globalThis.fetch;
+  let mutations = 0;
+  globalThis.fetch = async (url) => {
+    if (String(url).endsWith("/api/v1/auth/login")) return { ok: true, json: async () => ({ access_token: "test-token", user_id: "profile-a" }) };
+    if (String(url).endsWith("/api/v1/users/profiles")) return { ok: true, json: async () => [
+      { id: "profile-b", username: "device-test", is_current: true },
+    ] };
+    if (String(url).includes("/progress")) mutations += 1;
+    return { ok: true, json: async () => ({}) };
+  };
+  try {
+    await assert.rejects(resetProgress(["fixture-file"], {
+      PLAYARR_TEST_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "device-test", PLAYARR_PASSWORD: "test-password", DEVICE_TEST_USERNAME: "device-test",
+    }), /expected current Device Test profile/);
+    assert.equal(mutations, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }

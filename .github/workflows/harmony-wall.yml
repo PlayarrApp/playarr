@@ -34,6 +34,10 @@ on:
         description: Skip the player-controls route while retaining the other full-set captures
         type: boolean
         default: false
+      phone_core_only:
+        description: Capture and validate the 15 required phone screens, then skip optional diagnostics
+        type: boolean
+        default: false
       poster:
         description: Round 3 poster mode (Home screen artwork = Covers) frames, TV only
         type: boolean
@@ -64,6 +68,8 @@ jobs:
       WORK: ${{ github.workspace }}/harmony-wall-work
     steps:
       - uses: actions/checkout@v4
+      - name: Check capture script syntax
+        run: python -m py_compile scripts/harmony-wall/capture.py
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -84,7 +90,7 @@ jobs:
         run: bash clients/harmony/scripts/fetch-sdk.sh
       - name: Configure the @ohos registry
         run: |
-          printf 'registry=https://repo.huaweicloud.com/repository/npm/\n@ohos:registry=https://repo.harmonyos.com/npm/\n' >> ~/.npmrc
+          printf 'registry=https://registry.npmjs.org/\n@ohos:registry=https://repo.harmonyos.com/npm/\n' >> ~/.npmrc
           ~/.cache/ohos-sdk/command-line-tools/ohpm/bin/ohpm config set registry https://ohpm.openharmony.cn/ohpm/
       - name: Build the preview bundle
         run: bash scripts/harmony-wall/preview.sh build "$DEVICE"
@@ -117,6 +123,7 @@ jobs:
       DEVICE: ${{ inputs.device || 'tv' }}
       TV_SCREENS: ${{ inputs.tv_screens || 'all' }}
       SKIP_PLAYER: ${{ inputs.skip_player == true && 'true' || 'false' }}
+      PHONE_CORE_ONLY: ${{ inputs.phone_core_only == true && 'true' || 'false' }}
       MOTION: ${{ inputs.motion == true && 'true' || 'false' }}
       POSTER_MODE: ${{ inputs.poster == true && 'true' || 'false' }}
       MESA_VERSION: 26.2.4
@@ -124,6 +131,8 @@ jobs:
       SDK_BUILD: "31" # the public SDK is 6.1.0.<build>; split so the env-data guard does not read it as an IPv4 address
     steps:
       - uses: actions/checkout@v4
+      - name: Check capture script syntax
+        run: python -m py_compile scripts/harmony-wall/capture.py
       - uses: actions/download-artifact@v4
         with:
           name: harmony-bundle-${{ env.DEVICE }}
@@ -146,6 +155,8 @@ jobs:
           curl -fL --retry 3 -o mesa.7z "https://github.com/pal1000/mesa-dist-win/releases/download/$MESA_VERSION/mesa3d-$MESA_VERSION-release-msvc.7z"
           7z x -y -omesa mesa.7z > /dev/null
           cp -R mesa/x64 mesa-x64
+      - name: Correct the Previewer HTTP cleanup lifecycle
+        run: python scripts/harmony-wall/patch_previewer_http.py sdk/pv/previewer/common/bin/module/net/libhttp.dll
       - name: Put Mesa next to the Previewer
         run: cp -R mesa-x64/. sdk/pv/previewer/common/bin/
       - name: Re-root the absolute paths of the Linux build
@@ -161,6 +172,7 @@ jobs:
           SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          HARMONY_PLAYER_FIXTURE_ID: ${{ secrets.HARMONY_PLAYER_FIXTURE_ID }}
           BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
           CHECKS: ${{ inputs.checks }}
@@ -174,6 +186,7 @@ jobs:
           if [ "$THEME" = light ]; then CM=light; else CM=dark; fi
           cp scripts/sim-vnc/sim_vnc.py scripts/harmony-wall/
           python scripts/harmony-wall/backend_preflight.py --output backend-preflight.json
+          python scripts/harmony-wall/fixture_preflight.py --output fixture-preflight.json
           launch() {
             PLAYARR_VNC_PASSWORD=selftest1 python scripts/harmony-wall/harmony_vnc.py --bind 127.0.0.1 --port 5917 --ws $WS --ctl $CTL \
               --debug-port $DBG --cmd-name playarr_cmd --password-env PLAYARR_VNC_PASSWORD > bridge.log 2>&1 &
@@ -187,18 +200,8 @@ jobs:
               -foldable false -bn io.playarr.harmony -srmPath "$I/router_map/default/router_map.json" > "$W/previewer.log" 2>&1 &)
             sleep 3; echo started
           }
-          # The Previewer's libhttp crashes now and then (access violation): start over, with a fresh sign-in, up to five times (the image-stall guard exits non-zero too).
-          ok=0
-          for attempt in 1 2 3 4 5; do
-            rm -rf capture
-            launch
-            if python scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log "$THEME"; then ok=1; break; fi
-            echo "attempt $attempt failed: restarting the Previewer"
-            taskkill //F //IM Previewer.exe //T > /dev/null 2>&1 || true
-            taskkill //F //IM python.exe //T > /dev/null 2>&1 || true
-            sleep 5
-          done
-          [ "$ok" = 1 ]
+          launch
+          python -u scripts/harmony-wall/capture.py "$DEVICE" capture previewer.log "$THEME"
           if [ "$DEVICE" = tv ]; then
             # the shared suite over the same signed-in Previewer, one part per parallel job
             export HARMONY_CTL=$CTL PREVIEWER_LOG="$W/previewer.log"
@@ -231,6 +234,7 @@ jobs:
           name: harmony-debug-${{ env.DEVICE }}-${{ matrix.theme }}
           path: |
             backend-preflight.json
+            fixture-preflight.json
             capture/_debug
             capture/_rejected-*.png
             capture/backend-preflight-*.json

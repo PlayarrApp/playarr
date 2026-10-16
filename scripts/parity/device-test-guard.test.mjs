@@ -26,10 +26,11 @@ test("only exact configured test usernames enter the allowlist", () => {
   assert.equal(assertAllowedDeviceTestUsername("device-test", allow), true);
 });
 
-test("trusted server must come from the canonical test-server environment key", () => {
+test("trusted server comes from PLAYARR_TEST_SERVER_URL and must match any supplied alias", () => {
   assert.equal(loadTrustedDeviceTestServerUrl({ env: { PLAYARR_TEST_SERVER_URL: `${serverUrl}/` } }), serverUrl);
+  assert.throws(() => loadTrustedDeviceTestServerUrl({ env: { PLAYARR_TEST_SERVER_URL: serverUrl, PLAYARR_SERVER_URL: "https://other.example.invalid" } }), /does not match/);
+  assert.throws(() => loadTrustedDeviceTestServerUrl({ env: { PLAYARR_SERVER_URL: serverUrl } }), /PLAYARR_TEST_SERVER_URL is required/);
   assert.throws(() => loadTrustedDeviceTestServerUrl({ env: {} }), /PLAYARR_TEST_SERVER_URL is required/);
-  assert.equal(loadTrustedDeviceTestServerUrl({ env: { PLAYARR_TEST_SERVER_URL: "https://other.example.invalid" } }), "https://other.example.invalid");
 });
 
 test("authenticated identity must be uniquely current, explicitly allowlisted, and on the trusted server", () => {

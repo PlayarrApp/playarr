@@ -4,7 +4,8 @@ import { resolveTestServerUrl } from "./test-server-env.mjs";
 const safeUsernameKeys = ["PLAYARR_DEVICE_TEST_USERNAME", "PLAYARR_DEVICE_TEST_DPAD_USERNAME"];
 
 /** Resolve explicit test-account configuration. PLAYARR_USERNAME is accepted only if independently allowlisted. */
-export function loadAllowedDeviceTestUsernames({ secrets = readSecrets(), env = process.env, client } = {}) {
+export function loadAllowedDeviceTestUsernames({ secrets, env = process.env, client } = {}) {
+  if (!secrets) secrets = optionalSecrets(env);
   const usernames = new Set();
   for (const key of safeUsernameKeys) {
     const username = secrets[key] ?? env[key];
@@ -43,7 +44,19 @@ function canonicalServerUrl(value) {
 }
 
 export function loadTrustedDeviceTestServerUrl({ env = process.env } = {}) {
-  return canonicalServerUrl(resolveTestServerUrl(env));
+  const trusted = canonicalServerUrl(resolveTestServerUrl(env));
+  if (env.PLAYARR_SERVER_URL && canonicalServerUrl(env.PLAYARR_SERVER_URL) !== trusted) {
+    throw new Error("configured server does not match the trusted device-test server");
+  }
+  return trusted;
+}
+
+function optionalSecrets(env) {
+  try { return readSecrets(); }
+  catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+    return env;
+  }
 }
 
 /** Throw before any driver operation unless exactly one authenticated current profile is allowlisted. */

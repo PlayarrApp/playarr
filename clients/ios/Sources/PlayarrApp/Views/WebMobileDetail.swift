@@ -248,7 +248,7 @@ struct WMDetailPage: View {
     }
 
     private func code(_ season: Season, _ episode: Episode) -> String {
-        "S \(String(format: "%02d", season.seasonNumber)) · E \(String(format: "%02d", episode.episodeNumber))"
+        "S\(String(format: "%02d", season.seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))"
     }
 
     private var kicker: String {

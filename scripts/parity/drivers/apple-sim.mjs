@@ -95,6 +95,18 @@ export class MacFocusKeyCollector {
   }
 }
 
+export function assertParityStateIdentity(snapshot, expectedUserID, launchStartedAt, nowSeconds = Date.now() / 1000) {
+  if (typeof expectedUserID !== "string" || !expectedUserID) throw new Error("device-test login identity has not been verified");
+  const current = snapshot?.userID;
+  if (typeof current === "string" && current && current !== expectedUserID) {
+    throw new Error("Apple app signed-in user does not match the verified device-test account");
+  }
+  if (current !== expectedUserID || !Number.isFinite(snapshot?.at) || snapshot.at < launchStartedAt || nowSeconds - snapshot.at >= 20) {
+    throw new Error("Apple app signed-in user identity is not fresh");
+  }
+  return true;
+}
+
 export function serializeMacFocusKeyMarker(record) {
   return `${JSON.stringify({ sequence: record.sequence, direction: record.direction, kind: record.kind, marker: record.marker })}\n`;
 }
@@ -203,8 +215,11 @@ export async function createDriver({ args = [], out } = {}) {
   };
   const frontmost = () => { if (mac || process.env.IDB) return; try { run("osascript", ["-e", 'tell application "Simulator" to activate']); } catch { /* keep going: keys may still land */ } };
   let stickyArgs = []; // launch arguments every launch carries (a crop's Home-artwork setting)
+  let verifiedUserID = null;
+  let launchStartedAt = 0;
   const launch = async (extra = [], wait = 22000) => {
     if (mac) {
+      launchStartedAt = Date.now() / 1000;
       if (macLogHasLaunched) {
         collectMacFocusKeyLog({ final: true });
         macFocusKeyCollector.reset();
@@ -221,6 +236,10 @@ export async function createDriver({ args = [], out } = {}) {
         }
       }
       await sleep(wait + 10000);
+      const identityFile = join(work, "verified-user-id");
+      verifiedUserID = existsSync(identityFile) ? readFileSync(identityFile, "utf8").trim() : "";
+      if (!verifiedUserID) throw new Error("Apple wall launch did not record its verified device-test user ID");
+      await assertCurrentUser();
       // The shared runner normally stays invisible. In the dedicated hosted D-pad mode, read its real initial focus without moving it.
       if (!visibleMacParity) {
         // Wait for the initial focus to settle: the same reading on three polls. Only a window with no focus gets the probe key;
@@ -232,7 +251,7 @@ export async function createDriver({ args = [], out } = {}) {
           steady = now === last ? steady + 1 : 0;
           last = now;
         }
-        if (last === "null") { run(notify, [`key:${KEYCODE.right}`]); await sleep(1000); }
+        if (last === "null") { await assertCurrentUser(); run(notify, [`key:${KEYCODE.right}`]); await sleep(1000); }
       }
       if (process.env.DRIVER_TRACE && !globalThis.__targetsLogged) { // once: where the Mac's focus targets sit (diagnosis)
         globalThis.__targetsLogged = true;
@@ -240,6 +259,7 @@ export async function createDriver({ args = [], out } = {}) {
       }
       collectMacFocusKeyLog({ final: true });
       macLogHasLaunched = true;
+      await assertCurrentUser();
       return;
     }
     try { run("xcrun", ["simctl", "terminate", udid, bundle]); } catch { /* not running */ }
@@ -248,12 +268,16 @@ export async function createDriver({ args = [], out } = {}) {
     const login = join(process.env.TRUSTED ?? "", "scripts/apple-wall/login.py"), tokens = [];
     if (existsSync(login)) {
       const env = { ...process.env, DEVICE_NAME: `wall-${device}` };
-      const [access, refresh] = run("python3", [login], { env }).trim().split(" ");
+      const [access, refresh, userID] = run("python3", [login, "--include-user-id"], { env }).trim().split(" ");
+      verifiedUserID = userID;
+      if (!verifiedUserID) throw new Error("device-test login did not return a verified user ID");
       run("xcrun", ["simctl", "spawn", udid, "defaults", "write", bundle, "com.playarr.playarr.tvos.deviceID", "-string", run("python3", [login, "--device-id"], { env }).trim()]);
       tokens.push("-PlayarrServerURL", testServerUrl, "-PlayarrAccessToken", access, "-PlayarrRefreshToken", refresh);
     }
+    launchStartedAt = Date.now() / 1000;
     run("xcrun", ["simctl", "launch", udid, bundle, ...tokens, "-PlayarrTheme", theme, "-PlayarrMuted", ...(dpadOnly ? ["-PlayarrSelectEntersPage"] : []), ...stickyArgs, ...extra]);
     await sleep(wait); // a launch signs in from the seeded session and loads Home
+    await assertCurrentUser();
     frontmost(); await sleep(500);
   };
   const state = () => {
@@ -263,7 +287,19 @@ export async function createDriver({ args = [], out } = {}) {
       return JSON.parse(readFileSync(join(dir, "Documents", "parity-state.json"), "utf8"));
     } catch { return {}; }
   };
+  const assertCurrentUser = async () => {
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      try { assertParityStateIdentity(state(), verifiedUserID, launchStartedAt); return; }
+      catch (error) {
+        if (error?.message !== "Apple app signed-in user identity is not fresh") throw error;
+      }
+      await sleep(250);
+    }
+    throw new Error("Apple app signed-in user identity is unavailable");
+  };
   const playOnce = async (c, expect) => {
+      await launch([], 15000);
+      await assertCurrentUser();
       const t0 = Date.now(), seen = () => state().playback;
       await launch(["-PlayarrPlayFile", c.file], 1000);
       let start = null, p0 = null, last = {};
@@ -322,10 +358,12 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       await launch(["-PlayarrOpenWork", id], 22000);
     },
     async key(name, { long } = {}) {
+      await assertCurrentUser();
       // KEY_LOCK (a file path): hosts shared with other keyboard injectors take a shlock around each key.
       const lock = process.env.KEY_LOCK;
       if (lock) for (let i = 0; ; i += 1) { try { run("shlock", ["-f", lock, "-p", String(process.pid)]); break; } catch (e) { if (i > 600) throw e; await sleep(100); } }
       try {
+        await assertCurrentUser();
         frontmost();
         if (process.env.IDB && !mac) run(process.env.IDB, ["ui", "key", "--udid", udid, ...(long ? ["--duration", "1.1"] : []), String(HID[name])]);
         else if (mac) run(notify, [`key:${KEYCODE[name]}${long ? ":shift" : ""}`]); // the Mac's long press is Shift+Return
@@ -350,6 +388,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       return s.focused == null ? null : s.position ? { label: s.focused, position: s.position } : s.focused;
     },
     async screenshot(file) {
+      await assertCurrentUser();
       // A library page (and the Filters drawer over it) is captured only once its titles have loaded: an empty library behind the
       // drawer scored 78. Bounded at 40 s; a page that never reports a count (not a library) is not held up.
       if (mac && /^\/(movies|series|music)/.test(state().route ?? "")) {
@@ -357,6 +396,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         if (!(state().items > 0)) console.log("  library still empty after 40 s, capturing anyway");
         await sleep(1500); // artwork for the first screenful
       }
+      await assertCurrentUser();
       if (mac) {
         rmSync(file, { force: true });
         run(notify, [`snapshot:${file}`]);
@@ -368,6 +408,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
     // Cases a and b: launch straight into the player (-PlayarrPlayFile) and read its state from parity-state.json. The
     // caller serialises runs (one device at a time, playback.lock rules); a 503/404 at a pod restart gets one re-run.
     async play(c, expect, attempt = 0) {
+      await assertCurrentUser();
       const r = await playOnce(c, expect);
       // Capacity is shared (two transcode slots per node; the web reference's session may still hold one): wait and re-run, twice at most.
       if (r.state === "error" && /capacity/.test(r.detail ?? "") && attempt < 2) { await sleep(90000); return this.play(c, expect, attempt + 1); }

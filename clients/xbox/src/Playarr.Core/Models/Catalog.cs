@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Playarr.Core.Networking;
@@ -184,6 +185,88 @@ namespace Playarr.Core.Models
 
             return null;
         }
+    }
+
+    /// <summary>Alphabet grouping and jump selection for the library's A-Z rail.</summary>
+    public static class LibraryAlphabet
+    {
+        private const string Ascending = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        /// <summary>Returns the title's first normalized A-Z letter, or # for symbols and empty titles.</summary>
+        public static char LetterFor(Work work)
+        {
+            var title = (string.IsNullOrWhiteSpace(work.SortTitle) ? work.Title : work.SortTitle).Trim();
+            if (title.Length == 0) return '#';
+            var first = title.Normalize(System.Text.NormalizationForm.FormD)
+                .FirstOrDefault(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark);
+            first = char.ToUpperInvariant(first);
+            return first >= 'A' && first <= 'Z' ? first : '#';
+        }
+
+        /// <summary>Finds the first title at or after a letter in the current sort order, or the final title.</summary>
+        public static int FindJumpIndex(IReadOnlyList<Work> works, char letter, bool descending)
+        {
+            if (works.Count == 0) return -1;
+            var alphabet = descending ? new string(Ascending.Reverse().ToArray()) : Ascending;
+            var targetPosition = alphabet.IndexOf(letter);
+            if (targetPosition < 0) return -1;
+            for (var i = 0; i < works.Count; i++)
+            {
+                if (alphabet.IndexOf(LetterFor(works[i])) >= targetPosition) return i;
+            }
+            return works.Count - 1;
+        }
+    }
+
+    /// <summary>Decides whether a library refresh may reclaim focus and which work should receive it.</summary>
+    public static class LibraryFocusRestore
+    {
+        public static Guid? ResolveTarget(IReadOnlyList<Guid> orderedIds, Guid? retainedId, bool gridOwnedFocus, bool userMoved)
+        {
+            if (!gridOwnedFocus || userMoved || orderedIds.Count == 0)
+            {
+                return null;
+            }
+
+            if (retainedId is Guid retained && orderedIds.Contains(retained))
+            {
+                return retained;
+            }
+
+            return orderedIds[0];
+        }
+
+        /// <summary>Leaves an outstanding claim active while its item container is not realised.</summary>
+        public static bool ShouldContinueClaim(bool gridOwnedFocus, bool userMoved) => gridOwnedFocus && !userMoved;
+
+        public static bool IsFocusComplete(Guid? focusedId, Guid targetId, bool userMoved) => !userMoved && focusedId == targetId;
+    }
+
+    /// <summary>Tracks the first library focus claim until it settles or the user cancels it.</summary>
+    public sealed class LibraryInitialFocusState
+    {
+        public bool IsPending { get; private set; }
+        public bool WasCancelledByUser { get; private set; }
+        public bool ShouldStartClaim => IsPending && !WasCancelledByUser;
+
+        public void Begin()
+        {
+            IsPending = true;
+            WasCancelledByUser = false;
+        }
+
+        public void Settle() => IsPending = false;
+
+        public bool CancelForUserInput()
+        {
+            var wasPending = IsPending;
+            IsPending = false;
+            WasCancelledByUser = true;
+            return wasPending;
+        }
+
+        public bool ShouldCaptureRefresh(bool refreshPending, bool resultsOrLoadingChanged, bool gridOwnedFocus) =>
+            !refreshPending && !IsPending && resultsOrLoadingChanged && gridOwnedFocus;
     }
 
     public sealed class CatalogPage

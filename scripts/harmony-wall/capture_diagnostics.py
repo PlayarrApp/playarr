@@ -24,6 +24,12 @@ def confirm_detail_route_source(detail_sources, name, state, work_id):
     return True
 
 
+def preview_focus_confirmed(state):
+    """Accept only the bridge's explicit acknowledgement of a selected live card."""
+    acknowledgement = state.get("focus_ack")
+    return isinstance(acknowledgement, str) and acknowledgement.startswith("ok:")
+
+
 def summarize_detail_load_events(events, *, sequence_after, work_id, generation,
                                 remote_input_sent_before_focus_assertion):
     """Keep only safe Detail-load state and API outcome fields for one Previewer route generation."""
