@@ -1898,7 +1898,7 @@ struct TVLibraryKindView: View {
                     count: cols
                 ),
                 alignment: .leading,
-                spacing: 27
+                spacing: DesignTokens.Shell.libraryCardRowSpacing
             ) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, work in
                     if view == "list" {
@@ -1986,10 +1986,8 @@ struct TVLibraryKindView: View {
         let isSelected = selected?.id == work.id
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
                             parityGridPosition: gridPosition) {
-            // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
-            // `strong { font-size: clamp(0.54rem, 0.6vw, 0.74rem) → ~11.5 @ 1920,
-            // font-weight: 610, letter-spacing: -0.015em }`.
-            VStack(alignment: .leading, spacing: 11.5) {
+            // SPA title: 11.904px font, 1.5 line-height, and 11.52px copy gap.
+            VStack(alignment: .leading, spacing: DesignTokens.Shell.libraryCardTitleGap) {
                 ZStack(alignment: .topTrailing) {
                     Group {
                         if let fixture = TVParityArtwork.cardImage(forTitle: work.title) {
@@ -2035,11 +2033,11 @@ struct TVLibraryKindView: View {
                 if showTitle {
                     // Fixture SPA crops do not include the title line; draw it.
                     Text(work.title)
-                        .font(TVTheme.font(size: 11.9, weight: .semibold))
+                        .font(TVTheme.font(size: 11.904, css: 610))
                         .tracking(-0.18)
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .lineLimit(1)
-                        .frame(width: width, alignment: .leading)
+                        .frame(width: width, height: DesignTokens.Shell.libraryCardTitleLineHeight, alignment: .leading)
                 }
             }
             .frame(width: width, alignment: .leading)

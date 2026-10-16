@@ -1,0 +1,1 @@
+- Apple production library cards reserve the same title line box as the web TV grid at 1920×1080, preventing cumulative row-pitch drift.

@@ -355,6 +355,12 @@ enum DesignTokens {
         static let libraryCardPitchY: CGFloat = 240.4
         /// Title under art.
         static let libraryCardTitleHeight: CGFloat = 28
+        /// Web card-title line box: 11.904px at 1920×1080 with the inherited 1.5 line-height.
+        static let libraryCardTitleLineHeight: CGFloat = 17.856
+        /// Web `--card-copy-gap: 0.72rem` at a 16px root size.
+        static let libraryCardTitleGap: CGFloat = 11.52
+        /// Web `--tv-title-grid-content` row gap at 1080px height.
+        static let libraryCardRowSpacing: CGFloat = 27
         /// `--library-rail-top: clamp(128px, 15vh, 174px)` → 162
         static let libraryRailTop: CGFloat = 162
         /// `--library-rail-bottom: clamp(48px, 6vh, 78px)` → 65

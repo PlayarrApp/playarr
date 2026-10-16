@@ -63,7 +63,14 @@ final class TVWebParityTests: XCTestCase {
         XCTAssertEqual(TVSettingsAppearanceLayout.equalSegmentWidths(count: 0), [])
     }
 
-    func testLibraryRowsUseTheMeasuredWebCardPitch() {
+    func testProductionLibraryRowPitchMatchesWebCardGeometry() {
+        let artHeight = DesignTokens.Shell.libraryCardArtWidth * 9 / 16
+        let pitch = artHeight + DesignTokens.Shell.libraryCardTitleGap
+            + DesignTokens.Shell.libraryCardTitleLineHeight + DesignTokens.Shell.libraryCardRowSpacing
+
+        XCTAssertEqual(artHeight, 184.05, accuracy: 0.001)
+        XCTAssertEqual(DesignTokens.Shell.libraryCardTitleLineHeight, 11.904 * 1.5, accuracy: 0.001)
+        XCTAssertEqual(pitch, 240.426, accuracy: 0.001)
         XCTAssertEqual(DesignTokens.Shell.libraryCardPitchY, 240.4, accuracy: 0.001)
     }
 
