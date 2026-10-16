@@ -68,7 +68,7 @@ enum ParityLaunch {
     static var playFile: String? { value("--playarr-parity-play") }
     /// Player screenshot captures must not start an HLS/transcode session. The player view model
     /// checks this immediately after negotiation and before loading the returned URL into AVPlayer.
-    static var requiresDirectPlayback: Bool { playFile != nil && isPlayerRoute }
+    static var requiresDirectPlayback: Bool { isActive && isPlayerRoute }
     /// Routes `calendar-month`, `calendar-week` and `calendar-agenda` open the calendar in that view.
     static var calendarMode: CalendarViewMode? {
         switch parts.first { case "calendar-month": .month; case "calendar-week": .week; case "calendar-agenda": .agenda; default: nil }

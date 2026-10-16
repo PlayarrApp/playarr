@@ -1,0 +1,1 @@
+- Signed-in iOS parity player routes now stop before loading a stream unless playback is direct, including safe-area captures without a file override.
