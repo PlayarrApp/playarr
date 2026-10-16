@@ -5,7 +5,7 @@ import importlib.util
 
 HERE = Path(__file__).resolve().parent
 sys.path.extend((str(HERE), str(HERE.parent / "sim-vnc")))
-from capture_identity import verify_identity
+from capture_identity import guarded_control, verify_identity
 from harmony_vnc import update_preview_identity
 
 PATCH_SPEC = importlib.util.spec_from_file_location("harmony_patch_state", HERE / "patch_state.py")
@@ -50,6 +50,41 @@ class CaptureIdentityTests(unittest.TestCase):
                                  ("device-test", ""), ("device-test", None)):
             with self.subTest(actual=actual, expected=expected), self.assertRaises(ValueError):
                 verify_identity(actual, expected)
+
+    def test_control_input_verifies_before_send_and_fails_closed(self):
+        calls = []
+
+        def verify():
+            calls.append("verify")
+
+        def send(path, **params):
+            calls.append((path, params))
+            return "sent"
+
+        result = guarded_control(verify, send, "/swipe", x1=1, x2=2)
+        self.assertEqual(result, "sent")
+        self.assertEqual(calls, ["verify", ("/swipe", {"x1": 1, "x2": 2})])
+
+        calls.clear()
+
+        def reject():
+            calls.append("verify")
+            raise ValueError("wrong account")
+
+        with self.assertRaisesRegex(ValueError, "wrong account"):
+            guarded_control(reject, send, "/setroute", name="home")
+        self.assertEqual(calls, ["verify"])
+
+    def test_capture_control_wiring_keeps_only_explicit_bootstrap_exemptions(self):
+        source = (HERE / "capture.py").read_text(encoding="utf-8")
+        self.assertIn("return guarded_control(verify_capture_identity, get, path, **q)", source)
+        self.assertIn('route("serversetup", 8, bootstrap=True)', source)
+        self.assertIn('if name != "serversetup":', source)
+        self.assertIn('control("/setroute", name="focus:pcard")', source)
+        self.assertIn('control("/state", resetfocused="1")', source)
+        self.assertIn('control("/type", text=text)', source)
+        self.assertIn('control("/hold", x=x, y=y)', source)
+        self.assertIn('control("/swipe", x1=x1, y1=y1, x2=x2, y2=y2, **options)', source)
 
 
 if __name__ == "__main__":

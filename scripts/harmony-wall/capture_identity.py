@@ -6,3 +6,9 @@ def verify_identity(actual, expected):
         raise ValueError("TEST_USERNAME is required to verify the signed-in Device Test account")
     if not isinstance(actual, str) or actual != expected.strip():
         raise ValueError("capture blocked: the app has not confirmed the configured Device Test account")
+
+
+def guarded_control(verify, send, path, **params):
+    """Verify the signed-in account immediately before sending a Previewer control input."""
+    verify()
+    return send(path, **params)

@@ -12,7 +12,7 @@ from capture_diagnostics import (posters_stalled, tv_flat_card_blocks, home_rece
                                  analyze_episode_art_frame, episode_art_events_ready, decoded_art_is_accepted,
                                  series_focus_failure, write_detail_summary, confirm_detail_route_source,
                                  summarize_detail_load_events, phone_flat_card_rows)
-from capture_identity import verify_identity
+from capture_identity import guarded_control, verify_identity
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
@@ -52,28 +52,51 @@ def verify_capture_identity():
         abort(str(error))
 
 
+def control(path, **q):
+    return guarded_control(verify_capture_identity, get, path, **q)
+
+
 def key(*names):
-    verify_capture_identity()
     for n in names:
-        get("/key/" + n)
+        control("/key/" + n)
         time.sleep(0.35)
 
 
-def click(x, y, verify=True):
-    if verify:
-        verify_capture_identity()
+def click(x, y):
+    control("/click", x=x, y=y)
+
+
+def bootstrap_click(x, y):
     get("/click", x=x, y=y)
 
 
+def type_text(text):
+    control("/type", text=text)
+
+
+def bootstrap_type_text(text):
+    get("/type", text=text)
+
+
 def longclick(x, y):
-    verify_capture_identity()
-    get("/longclick", x=x, y=y)
+    control("/longclick", x=x, y=y)
 
 
-def route(name, wait=12):
-    if name.startswith("player:"):
-        verify_capture_identity()
-    get("/setroute", name=name)
+def hold(x, y):
+    control("/hold", x=x, y=y)
+
+
+def send_swipe(x1, y1, x2, y2, **options):
+    control("/swipe", x1=x1, y1=y1, x2=x2, y2=y2, **options)
+
+
+def route(name, wait=12, bootstrap=False):
+    if bootstrap:
+        if name != "serversetup":
+            abort("only the pre-auth server setup route may bypass account verification")
+        get("/setroute", name=name)
+    else:
+        control("/setroute", name=name)
     time.sleep(wait)
 
 
@@ -204,7 +227,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
         abort(f"{name} is too plain: an error or signed-out screen")
     img.save(os.path.join(folder, name + ".png"))
     try:
-        get("/state", resetdbg="1")  # the next frame's dump counts only what happens after this one
+        control("/state", resetdbg="1")  # the next frame's dump counts only what happens after this one
     except (OSError, SystemExit):
         pass
     print("captured", name, get("/health").decode().strip()[:80], flush=True)
@@ -226,11 +249,11 @@ else:
 
 # 1. sign in: point the app at the test server (typed through the bridge, never baked into the build), then the pairing page logs
 # its user code; approve it as the Device Test account (fresh device id each run)
-route("serversetup", 8)
+route("serversetup", 8, bootstrap=True)
 FIELD, CONNECT = {"tv": ((960, 549), (960, 627)), "phone": ((540, 1290), (540, 1483))}[device]
-click(*FIELD, verify=False); time.sleep(1)
-get("/type", text=os.environ["SERVER_URL"].strip()); time.sleep(1)
-click(*CONNECT, verify=False); time.sleep(8)
+bootstrap_click(*FIELD); time.sleep(1)
+bootstrap_type_text(os.environ["SERVER_URL"].strip()); time.sleep(1)
+bootstrap_click(*CONNECT); time.sleep(8)
 code = None
 for _ in range(60):
     found = re.findall(rb"PLAYARR_LINKCODE=([A-Z0-9-]+) END", open(log, "rb").read())
@@ -264,7 +287,7 @@ def extra_screens(folder):
     try:
         route("library:movie", 15)
         verify_capture_identity()
-        get("/hold", x=946, y=254); time.sleep(4); snap("actions", folder)
+        hold(946, 254); time.sleep(4); snap("actions", folder)
         key("back"); time.sleep(3)
     except SystemExit:
         print("actions not captured", flush=True)
@@ -281,8 +304,8 @@ def extra_screens(folder):
 def focus_first_card(click_xy=None):
     """Web's reference frames are taken with the first card of the page focused (lifted, with the glow ring). The Previewer never delivers
     a focus event, so the preview patch turns PosterCard's state-driven focused look (ringOn) on for the first card on screen."""
-    get("/state", resetfocused="1")
-    get("/setroute", name="focus:pcard")
+    control("/state", resetfocused="1")
+    control("/setroute", name="focus:pcard")
     for _ in range(10):
         time.sleep(1)
         if json.loads(get("/state")).get("focused"):
@@ -303,7 +326,7 @@ def motion_walk(folder):
     """Round 3 motion: Home scrolled down through the rails and back up, then along a rail, then Filters scrolled, by pointer swipes
     (the Previewer drops keys). Frames to capture/motion/<theme>/."""
     def swipe(x1, y1, x2, y2):
-        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2); time.sleep(0.7)
+        send_swipe(x1, y1, x2, y2); time.sleep(0.7)
 
     route("home", 30); focus_first_card(); burst(folder, "home-00-top")
     for i in range(1, 5):
@@ -707,7 +730,7 @@ else:
     guarded("series-detail", lambda: open_detail("series", "series-detail"))
     # extras beyond the 15: search with results, the period picker (calibration), the three settings panels
     def search_results():
-        route("search", 12); click(540, 276); time.sleep(1); get("/type", text="the"); time.sleep(12); snap("search-results", folder, 60000)
+        route("search", 12); click(540, 276); time.sleep(1); type_text("the"); time.sleep(12); snap("search-results", folder, 60000)
 
     def settings_panel(name, y):
         route("profiles", 8); route("settings", 12); click(540, y); time.sleep(6); snap(name, folder, 40000)
@@ -736,7 +759,7 @@ else:
             debug("motion-%s-%d" % (name, i), png()); time.sleep(gap)
 
     def swipe(x1, y1, x2, y2):
-        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2, steps=12, ms=300)
+        send_swipe(x1, y1, x2, y2, steps=12, ms=300)
 
     def motion_home():
         route("home", 40); burst("home-00-top")

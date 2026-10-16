@@ -19,7 +19,8 @@ const verifyTestAccount = async () => {
     throw new Error("Harmony capture blocked: the app has not confirmed the configured Device Test account");
   }
 };
-const click = async (x, y) => { await verifyTestAccount(); await get(`/click?x=${x}&y=${y}`); };
+const control = async (path) => { await verifyTestAccount(); return get(path); };
+const click = async (x, y) => control(`/click?x=${x}&y=${y}`);
 const ROUTE = { "/": "home", "/calendar": "calendar", "/search": "search", "/settings": "settings", "/profiles": "profiles",
   "/movies": "library:movie", "/series": "library:series", "/music": "library:artist" };
 
@@ -30,9 +31,8 @@ export async function createDriver() {
     async captureBuildIdentity() { throw new Error("Harmony stable build identity unsupported: deployed app digest is not exposed by Previewer driver"); },
     async waitReady() { throw new Error("Harmony stable deterministic capture unsupported: Previewer does not expose capture readiness"); },
     async key(name, { long } = {}) {
-      await verifyTestAccount();
       const k = name === "select" ? "ok" : name;
-      await get(`${long ? "/keylong/" : "/key/"}${k}`);
+      await control(`${long ? "/keylong/" : "/key/"}${k}`);
       await sleep(450);
     },
     // The app reports its route a poll after navigating (and the Previewer is slow), so wait for the route the request should reach.
@@ -42,7 +42,7 @@ export async function createDriver() {
       const name = detail ? `detail:${detail}` : ROUTE[base];
       if (!name) throw new Error(`no preview route for ${path}`);
       const want = detail ? { route: "Detail", work_id: detail } : name.startsWith("library:") ? { route: "Library", lib_kind: name.slice(8) } : null;
-      await get(`/setroute?name=${encodeURIComponent(name)}`);
+      await control(`/setroute?name=${encodeURIComponent(name)}`);
       const t0 = Date.now();
       for (;;) {
         await sleep(2000);
@@ -55,7 +55,7 @@ export async function createDriver() {
     async home() {
       await this.route("/");
       await sleep(4000);
-      await get("/setroute?name=focus:pcard");
+      await control("/setroute?name=focus:pcard");
       const t0 = Date.now();
       while (Date.now() - t0 < 12000 && !(await state()).focused) await sleep(1000);
       if (!(await state()).focused) {
@@ -89,8 +89,7 @@ export async function createDriver() {
       return s.focused;
     },
     async screenshot(file) {
-      await verifyTestAccount();
-      const bytes = Buffer.from(await (await get("/shot.png")).arrayBuffer());
+      const bytes = Buffer.from(await (await control("/shot.png")).arrayBuffer());
       if (bytes.length < 40000) throw new Error("frame too plain: an error or signed-out screen");
       writeFileSync(file, bytes);
     },
@@ -101,10 +100,9 @@ export async function createDriver() {
     // Opens the Player route for the case's media file and reads what the Previewer says about AVPlayer: its media stack is a mock, so
     // nothing plays; this reports "error" with the log evidence, never "playing" and never N/A.
     async play(c) {
-      await verifyTestAccount();
       const log = process.env.PREVIEWER_LOG;
       const before = log ? readFileSync(log, "latin1").length : 0;
-      await get(`/setroute?name=${encodeURIComponent("player:" + c.file)}`);
+      await control(`/setroute?name=${encodeURIComponent("player:" + c.file)}`);
       await sleep(30000);
       const s = await state();
       const lines = log ? readFileSync(log, "latin1").slice(before).split("\n").filter((l) => /Not exist:.*multimedia|load .*multimedia.*failed|avplayer|AVPlayer/.test(l) && !/WsServer|Debugger/.test(l)) : [];
