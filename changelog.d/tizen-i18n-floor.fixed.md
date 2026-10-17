@@ -1,1 +1,0 @@
-- The Samsung TV install page now says Tizen 6.5 and 2022-or-newer TVs, matching the app's real floor (English, Japanese and Thai).
