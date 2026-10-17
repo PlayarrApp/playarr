@@ -3061,7 +3061,7 @@ private fun ExperienceHomeScreen(
                             // Web `.tv-home-rails` padding-block is half the viewport on both ends, so the last rail can reach the same anchor as the first.
                             bottom = if (isTelevision) 540.dp * homeStageVerticalScale() else 98.dp,
                         ),
-                        verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 52.8.dp else webVu(38f, 5f, 64f) - 6.5.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 52.8.dp else webVu(38f, 5f, 64f) + 4.dp),
                     ) {
                         itemsIndexed(current.value, key = { _, rail -> rail.key }) { railIndex, rail ->
                             ExperienceMediaRail(
@@ -3464,7 +3464,7 @@ internal fun ExperienceMediaRail(
             fadeCrossAxisStartInset = if (isTelevision) 0.dp else phoneFocusTopHeadroom,
             fadeCrossAxisEndInset = if (isTelevision) 0.dp else phoneFocusBottomHeadroom,
             modifier = trackModifier,
-            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = tabletTrackEnd(20.dp), top = tvTrackHeadroom, bottom = (12f * cssDp).dp) else PaddingValues(
+            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = tabletTrackEnd(20.dp), top = tvTrackHeadroom - (if (cssDp != 1f) 10.5.dp else 0.dp), bottom = (12f * cssDp).dp) else PaddingValues(
                 start = 16.dp,
                 end = 48.dp,
                 top = 10.dp + phoneFocusTopHeadroom,
