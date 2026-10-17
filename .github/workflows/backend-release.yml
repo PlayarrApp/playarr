@@ -61,7 +61,7 @@ permissions:
 jobs:
   build:
     name: Build binaries and image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 150
     permissions:
       contents: read
@@ -249,7 +249,7 @@ jobs:
     needs: build
     # A workflow_call (release.yml) publishes these assets in its own single release.
     if: ${{ !inputs.dry_run && !inputs.version }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: write
