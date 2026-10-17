@@ -83,6 +83,12 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn("calFiltersOpen()", PAGES)
         self.assertIn("if m.calFiltersOpen = true then return calFiltersOnKey(key)", MAIN)
 
+    def test_search_has_the_web_header_pill_field_and_active_dock_slot(self) -> None:
+        self.assertIn("sub searchChromeInit()", MAIN)
+        self.assertIn('setSearchHeader(formatCountWithCommas(m.searchDisplayItems.Count()) + " " + resultWord)', MAIN)
+        self.assertEqual(MAIN.count('m.top.screenState = "search"\n    renderNavDockFocus()'), 2)
+        self.assertIn('id="searchFieldBg" translation="[153.6,170]" width="596" height="84"', SCENE)
+
     def test_overflowing_collections_are_native_scenegraph_lists(self) -> None:
         self.assertRegex(SCENE, r'<RowList id="libraryList"')
         self.assertRegex(SCENE, r'<RowList id="profilesRow"')

@@ -1,6 +1,8 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.playarrEdgeFades
+import io.playarr.shared.designsystem.page.PlayarrRingShape
+import io.playarr.shared.designsystem.page.playarrFocusRing
 import io.playarr.shared.designsystem.page.PlayarrCardMotions
 import io.playarr.shared.designsystem.page.mediaCardLift
 import io.playarr.shared.designsystem.page.PlayarrPageBody
@@ -3714,15 +3716,16 @@ internal fun ExperienceLandscapeCard(
                 modifier = Modifier.padding(start = 1.9.dp, top = 2.56.dp),
             )
         } else if (webPhone && webSearch) {
+            // Web `.tv-search-result` caption on phones (live dom dump): 8.8 px title at y +11.5, 6.4 px upper-case meta 2 px below.
             Text(
-                displayTitle, color = WebInk, fontSize = 12.16.sp, lineHeight = 18.24.sp, fontWeight = FontWeight(650),
-                style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 1.6.dp, top = 10.9.dp),
+                displayTitle, color = WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
+                letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 1.9.dp, top = 11.5.dp),
             )
             Text(
-                resolvedSubtitle.uppercase(LocalPlayarrLanguage.current.locale), color = WebInkMuted, fontSize = 9.28.sp, lineHeight = 13.92.sp, fontWeight = FontWeight(720),
+                resolvedSubtitle.uppercase(LocalPlayarrLanguage.current.locale), color = WebInkMuted, fontSize = 6.4.sp, lineHeight = 8.3.sp, fontWeight = FontWeight(720),
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 1.6.dp, top = 1.9.dp),
+                modifier = Modifier.padding(start = 1.9.dp, top = 2.dp),
             )
         } else if (webPhone) {
             Text(
@@ -4905,29 +4908,14 @@ private fun PhoneSearchContent(
             Spacer(Modifier.height(76.dp))
             Column(Modifier.padding(horizontal = 16.dp)) {
                 val pillShape = CircleShape
-                // `.tv-search-form:focus-within`: rose border, a 4 px rose ring, a deeper shadow and 1.015x.
+                // Web `.tv-search-form:has(input:focus-visible)`: the page focus ring (3px, offset 2px; 2px, offset 3px on phones) on the pill,
+                // with no rose border, scale or deeper shadow.
                 var fieldFocused by remember { mutableStateOf(false) }
-                val rose = Color(0xFFCF3157)
                 WebShadowedBox(
-                    shadows = listOf(
-                        if (fieldFocused) WebShadow(24.dp, 64.dp, Color(0xFF1F0E14).copy(alpha = 0.18f))
-                        else WebShadow(18.dp, 52.dp, Color(0xFF1F0E14).copy(alpha = 0.12f)),
-                    ),
+                    shadows = listOf(WebShadow(18.dp, 52.dp, Color(0xFF1F0E14).copy(alpha = 0.12f))),
                     shape = pillShape,
                     modifier = Modifier.fillMaxWidth()
-                        .graphicsLayer { if (fieldFocused) { scaleX = 1.015f; scaleY = 1.015f } }
-                        .drawBehind {
-                            if (fieldFocused) {
-                                val ring = 4.dp.toPx()
-                                drawRoundRect(
-                                    rose.copy(alpha = 0.16f),
-                                    topLeft = Offset(-ring / 2f, -ring / 2f),
-                                    size = androidx.compose.ui.geometry.Size(size.width + ring, size.height + ring),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius((size.height + ring) / 2f),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(ring),
-                                )
-                            }
-                        },
+                        .then(if (fieldFocused) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier),
                     innerFill = false,
                     innerWidthFill = true,
                 ) {
@@ -4935,7 +4923,7 @@ private fun PhoneSearchContent(
                     // Web's 50px min-height grows to 60px from the 44px input plus 14px padding and 2px border.
                     Modifier.fillMaxWidth().height(60.dp)
                         .background(WebSurfaceStrong.copy(alpha = 0.88f), pillShape)
-                        .border(1.dp, if (fieldFocused) rose.copy(alpha = 0.72f) else WebSearchBorder, pillShape)
+                        .border(1.dp, WebSearchBorder, pillShape)
                         .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -4989,12 +4977,13 @@ private fun PhoneSearchContent(
                             modifier = Modifier.fillMaxSize(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(24.dp),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 148.7.dp, bottom = 104.dp),
+                            // Web `--card-pad-left` 16 and the 52 dp right gutter give 155 dp cards; the art starts at y 170.
+                            contentPadding = PaddingValues(start = 16.dp, end = 52.dp, top = 16.dp, bottom = 104.dp),
                         ) {
                             items(current.value.works, key = { "work:${it.id}" }) { work ->
                                 ExperienceLandscapeCard(
                                     work, serverUrl, accessToken,
-                                    width = 173.dp,
+                                    width = 155.dp,
                                     // Web search marks no result until one is focused; a touch search types and taps.
                                     selected = false,
                                     progress = progressByWork[work.id],
@@ -5021,7 +5010,7 @@ private fun PhoneSearchContent(
                                         query = query_.trim(),
                                         gamesOnly = false,
                                         navController = navController,
-                                        modifier = Modifier.padding(top = 0.dp).graphicsLayer { translationY = -4.dp.toPx() },
+                                        modifier = Modifier.padding(top = 0.dp).graphicsLayer { translationY = -15.dp.toPx() },
                                         webPhone = true,
                                     )
                                 }
@@ -5983,7 +5972,8 @@ private fun ExperienceDetailScreen(
             androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalPlayarrBackFocusDown provides backFocusDown) {
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Detail,
-                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), onBack = onBack, subtitle = detail.work.title, largeTitle = true, countLine = true),
+                // Web phone detail header: the back pill and the kind title only (live dom dump); the work title is a TV subtitle.
+                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), onBack = onBack, subtitle = detail.work.title.takeIf { isTelevision }, largeTitle = true, countLine = true),
                 body = PlayarrPageBody.Bleed,
             ) {
             Box(Modifier.fillMaxSize()) {
