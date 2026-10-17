@@ -1,0 +1,1 @@
+- Send the debug-mirror identity heartbeat from a Web Worker so a device-test guard can judge the signed-in account while renders block the page.
