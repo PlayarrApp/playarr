@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Sign the app in as the Device Test account: read the pairing code the app shows (parity.json "code"), approve it with this
-job's own device id. Env: XBOX_IO, SERVER_URL, TEST_USERNAME, TEST_PASSWORD. Prints statuses only, never secrets."""
+job's own device id. Env: XBOX_IO, PLAYARR_TEST_SERVER_URL, TEST_USERNAME, TEST_PASSWORD. Prints statuses only, never secrets."""
 import json, os, subprocess, sys, time, urllib.request, uuid
-srv = os.environ['SERVER_URL'].rstrip('/')
+srv = os.environ.get('PLAYARR_TEST_SERVER_URL', '').strip().rstrip('/')
+if not srv: sys.exit('PLAYARR_TEST_SERVER_URL is required')
 def call(method, url, body=None, token=None):
     h = {'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'playarr-xbox-wall'}
     if token: h['Authorization'] = 'Bearer ' + token

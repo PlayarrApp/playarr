@@ -9,7 +9,8 @@ parser.add_argument("user_code")
 parser.add_argument("--identity-control-url")
 args = parser.parse_args()
 
-server = os.environ["SERVER_URL"].strip().rstrip("/")
+server = os.environ.get("PLAYARR_TEST_SERVER_URL", "").strip().rstrip("/")
+if not server: sys.exit("PLAYARR_TEST_SERVER_URL is required")
 
 
 def call(path, body, token=None):

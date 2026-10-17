@@ -5,6 +5,7 @@ import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "playwright-core";
+import { resolveTestServerUrl } from "../test-server-env.mjs";
 
 const KEY = { down: 125 };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -246,6 +247,7 @@ async function signIn(page) {
 }
 
 async function runSmoke(query) {
+  process.env.PLAYARR_SERVER_URL = resolveTestServerUrl(process.env);
   if (process.platform !== "darwin") return { status: "not_executed", stage: "platform" };
   const required = ["WORK", "TRUSTED", "SERVER_URL", "TEST_USERNAME", "TEST_PASSWORD"];
   if (required.some((key) => !process.env[key])) return { status: "not_executed", stage: "configuration" };

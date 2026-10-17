@@ -52,6 +52,7 @@ permissions:
 # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
 env:
   PARITY_STABLE: "0"
+  PLAYARR_TEST_SERVER_URL: ${{ secrets.PLAYARR_TEST_SERVER_URL }}
 
 jobs:
   plan:
@@ -307,7 +308,7 @@ jobs:
       - name: Start the simulator
         timeout-minutes: 15
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
@@ -317,7 +318,7 @@ jobs:
         id: suite
         timeout-minutes: 60
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
@@ -325,7 +326,7 @@ jobs:
           # Accepted iPhone web calendar reference: facts.json captured 2026-10-15T15:42:29.032Z; parser uses whole seconds.
           PARITY_FIXED_NOW: ${{ inputs.fixed_now }}
           # --reset-progress: On deck and Resume start from the state the web references were captured in.
-          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           REF: ${{ inputs.ref }}

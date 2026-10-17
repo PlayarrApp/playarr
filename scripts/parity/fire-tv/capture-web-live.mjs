@@ -3,7 +3,7 @@
 // the device test account, captured in the same run as the device so both show the same live data.
 //
 //   PLAYARR_PARITY_USER=... PLAYARR_PARITY_PASSWORD=... \
-//   node capture-web-live.mjs --base https://server.example:8484 --web-dist <built web client> --out <dir> [--theme light|dark|both] [--screens home,movies] [--dump-dom]
+//   PLAYARR_TEST_SERVER_URL=<server URL> node capture-web-live.mjs [--base <matching URL>] --web-dist <built web client> --out <dir> [--theme light|dark|both] [--screens home,movies] [--dump-dom]
 //
 // The real server does not serve the TV web client, so --web-dist (a `vite build` of clients/tv-web/web) is served from
 // a local port (--port, default 18795) and pointed at the server, the way the hosted web app talks to any server.
@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { existsSync, statSync } from "node:fs";
 import { chromium } from "playwright-core";
+import { resolveTestServerUrl } from "../test-server-env.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = JSON.parse(readFileSync(join(here, "../screens.json"), "utf8"));
@@ -28,11 +29,15 @@ const opt = (n, d) => {
   const i = args.indexOf(`--${n}`);
   return i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : d;
 };
-const base = (opt("base", process.env.PLAYARR_PARITY_SERVER ?? "") ?? "").replace(/\/$/, "");
+const base = resolveTestServerUrl(process.env);
+const requestedBase = (opt("base", "") ?? "").trim().replace(/\/$/, "");
+if (requestedBase && requestedBase !== base) {
+  throw new Error("--base must match PLAYARR_TEST_SERVER_URL");
+}
 const user = process.env.PLAYARR_PARITY_USER;
 const password = process.env.PLAYARR_PARITY_PASSWORD;
-if (!base || !user || !password) {
-  console.error("usage: PLAYARR_PARITY_USER=.. PLAYARR_PARITY_PASSWORD=.. node capture-web-live.mjs --base <server> --out <dir> [--theme light|dark|both] [--screens a,b]");
+if (!user || !password) {
+  console.error("usage: PLAYARR_TEST_SERVER_URL=.. PLAYARR_PARITY_USER=.. PLAYARR_PARITY_PASSWORD=.. node capture-web-live.mjs [--base <matching URL>] --out <dir> [--theme light|dark|both] [--screens a,b]");
   process.exit(2);
 }
 const themeOpt = opt("theme", "both");

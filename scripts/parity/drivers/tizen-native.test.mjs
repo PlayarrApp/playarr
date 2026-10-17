@@ -8,7 +8,7 @@ const trusted = "https://test.example";
 const identity = { username: "device-test", isCurrentCount: 1, serverUrl: trusted };
 const build = { app: "Playarr.Tizen", version: "0.1.0", sha256: "a".repeat(64), animationMode: "none" };
 const accountEnv = { PLAYARR_USERNAME: "device-test", PLAYARR_TEST_SERVER_URL: trusted };
-const secrets = { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: trusted };
+const secrets = { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_TEST_SERVER_URL: trusted };
 
 test("web and Tizen capture clocks follow the suite timezone", () => {
   const suite = JSON.parse(readFileSync(new URL("../screens.json", import.meta.url), "utf8"));

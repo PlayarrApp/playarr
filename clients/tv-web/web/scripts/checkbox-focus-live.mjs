@@ -5,12 +5,13 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { launchChromium } from "./chromium-launch.mjs";
+import { resolveTestServerUrl } from "../../../../scripts/parity/test-server-env.mjs";
 
 const i = process.argv.indexOf("--site");
 const site = i >= 0 ? process.argv[i + 1] : "https://playarr.app";
-const env = Object.fromEntries(readFileSync(join(homedir(), ".secrets"), "utf8").split("\n").filter((l) => /^PLAYARR_DEVICE_TEST_/.test(l)).map((l) => [l.split("=")[0], l.slice(l.indexOf("=") + 1).replace(/^["']|["']$/g, "")]));
-const apiBase = env.PLAYARR_DEVICE_TEST_SERVER_URL.replace(/\/$/, "");
-const res = await fetch(`${apiBase}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: env.PLAYARR_DEVICE_TEST_USERNAME, password: env.PLAYARR_DEVICE_TEST_PASSWORD, device_id: "33333333-3333-4333-8333-333333333333", device_name: "checkbox-focus", client_platform: "web", client_version: "check" }) });
+const secrets = Object.fromEntries(readFileSync(join(homedir(), ".secrets"), "utf8").split("\n").filter((l) => /^PLAYARR_DEVICE_TEST_/.test(l)).map((l) => [l.split("=")[0], l.slice(l.indexOf("=") + 1).replace(/^["']|["']$/g, "")]));
+const apiBase = resolveTestServerUrl(process.env);
+const res = await fetch(`${apiBase}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: process.env.PLAYARR_DEVICE_TEST_USERNAME ?? secrets.PLAYARR_DEVICE_TEST_USERNAME, password: process.env.PLAYARR_DEVICE_TEST_PASSWORD ?? secrets.PLAYARR_DEVICE_TEST_PASSWORD, device_id: "33333333-3333-4333-8333-333333333333", device_name: "checkbox-focus", client_platform: "web", client_version: "check" }) });
 const s = await res.json();
 if (!s.access_token) { console.log(`FAIL  login failed (${res.status})`); process.exit(1); }
 const browser = await launchChromium();

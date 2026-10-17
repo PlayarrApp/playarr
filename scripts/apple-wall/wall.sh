@@ -7,6 +7,11 @@
 set -euo pipefail
 cmd=${1:?command}; DEVICE=${2:?device}
 : "${SRC:?}" "${TRUSTED:?}" "${WORK:?}"
+if [[ $cmd == up || $cmd == capture || $cmd == stream || $cmd == launch ]]; then
+  : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL is required}"
+  SERVER_URL=$PLAYARR_TEST_SERVER_URL
+  export SERVER_URL
+fi
 mkdir -p "$WORK"; STATE="$WORK/state.env"
 log() { echo "wall[$DEVICE]: $*"; }
 

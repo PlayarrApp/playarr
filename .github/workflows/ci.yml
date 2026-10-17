@@ -102,6 +102,12 @@ jobs:
       - name: Require GitHub-hosted runner labels
         run: scripts/ci/check-hosted-runners.sh
 
+      - name: Test test-server host guard
+        run: node scripts/ci/check-test-server-hosts.test.mjs
+
+      - name: Reject hardcoded test-server hosts
+        run: node scripts/ci/check-test-server-hosts.mjs
+
       - name: Require cleartext HTTP to user-entered servers
         run: scripts/ci/check-cleartext-policy.sh
 

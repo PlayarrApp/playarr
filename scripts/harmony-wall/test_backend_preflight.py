@@ -107,7 +107,7 @@ class BackendPreflightTests(unittest.TestCase):
 
     def test_cli_output_never_contains_server_url_or_error_details(self):
         server_url = "https://sensitive-host.example/path"
-        with patch.dict("os.environ", {"SERVER_URL": server_url}), \
+        with patch.dict("os.environ", {"PLAYARR_TEST_SERVER_URL": server_url}), \
                 patch.object(backend_preflight.urllib.request, "urlopen",
                              side_effect=urllib.error.URLError("secret connection detail")), \
                 patch("sys.stdout", new=io.StringIO()) as output:
@@ -122,7 +122,7 @@ class BackendPreflightTests(unittest.TestCase):
         report = io.StringIO()
         open_context = MagicMock()
         open_context.__enter__.return_value = report
-        with patch.dict("os.environ", {"SERVER_URL": "https://private-host.example"}), \
+        with patch.dict("os.environ", {"PLAYARR_TEST_SERVER_URL": "https://private-host.example"}), \
                 patch.object(backend_preflight.urllib.request, "urlopen", return_value=Response(200)), \
                 patch("builtins.open", return_value=open_context) as open_file, \
                 patch("sys.stdout", new=io.StringIO()) as output:

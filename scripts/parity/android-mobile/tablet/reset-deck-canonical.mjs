@@ -4,9 +4,10 @@
 // resume choices are deleted, so no stacked resume plan adds a card. Test leftovers only; reads ~/.secrets, prints no secrets.
 //   node reset-deck-canonical.mjs [--dry]
 import fs from "node:fs";
+import { resolveTestServerUrl } from "../../test-server-env.mjs";
 const dry = process.argv.includes("--dry");
 const sec = {}; for (const l of fs.readFileSync(process.env.HOME + "/.secrets", "utf8").split("\n")) { const i = l.indexOf("="); if (i > 0 && !l.startsWith("#")) sec[l.slice(0, i)] = l.slice(i + 1).replace(/^["']|["']$/g, ""); }
-const SRV = sec.PLAYARR_DEVICE_TEST_SERVER_URL.replace(/\/$/, "");
+const SRV = resolveTestServerUrl(process.env);
 const FILM_FILE = "a2c2cf1c-2059-4289-88fb-c7882a3ed7b7";   // The 5th Wave
 const login = await fetch(SRV + "/api/v1/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-deck", username: sec.PLAYARR_DEVICE_TEST_USERNAME, password: sec.PLAYARR_DEVICE_TEST_PASSWORD }) });
 if (!login.ok) throw new Error("login " + login.status);

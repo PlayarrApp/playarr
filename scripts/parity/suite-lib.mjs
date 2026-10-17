@@ -1,4 +1,5 @@
 // Shared helpers for the parity suite (suite.json): validation, key expansion, route matching.
+import { resolveTestServerUrl } from "./test-server-env.mjs";
 
 const KEY = /^(up|down|left|right|select|back)(:long)?(\*[1-9]\d*)?$/;
 
@@ -86,10 +87,10 @@ export function validateSuite(s, legendScreens) {
 }
 
 // Sets the isolated profile's watch progress of each media file back to 0, so On deck and Resume stay the same on every
-// device. Login tokens stay in memory. env: PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD.
+// device. Login tokens stay in memory. PLAYARR_SERVER_URL is derived from PLAYARR_TEST_SERVER_URL.
 export async function resetProgress(files, env = process.env) {
-  const srv = env.PLAYARR_SERVER_URL?.replace(/\/$/, "");
-  if (!srv || !env.PLAYARR_USERNAME) throw new Error("--reset-progress needs PLAYARR_SERVER_URL, PLAYARR_USERNAME and PLAYARR_PASSWORD");
+  const srv = resolveTestServerUrl(env);
+  if (!env.PLAYARR_USERNAME) throw new Error("--reset-progress needs PLAYARR_TEST_SERVER_URL, PLAYARR_USERNAME and PLAYARR_PASSWORD");
   const token = await loginForProgressReset(srv, env);
   const h = { "content-type": "application/json", authorization: `Bearer ${token}` };
   for (const f of new Set(files)) {
@@ -102,7 +103,7 @@ export async function resetProgress(files, env = process.env) {
 // Files behind the pinned film and series screens (the film's file and every episode of the pinned series), so a reset covers
 // what On deck and the detail screens show, as capture-refs.mjs does for the web references.
 export async function pinnedCatalogFiles(suite, env = process.env, { required = false } = {}) {
-  const srv = env.PLAYARR_SERVER_URL?.replace(/\/$/, "");
+  const srv = env.PLAYARR_TEST_SERVER_URL ? resolveTestServerUrl(env) : "";
   if (!srv || !env.PLAYARR_USERNAME || !env.PLAYARR_PASSWORD) {
     if (required) throw new Error("stable catalog lookup requires resolved isolated account credentials");
     return [];

@@ -2,11 +2,12 @@
 // Calls the fixture server as each fixture user and asserts the household,
 // language, dub and playback behaviour the fixtures exist to provide.
 // Prints the evidence; exits non-zero on any failed expectation.
-// Usage: verify.mjs [server-url]   (default http://127.0.0.1:18484)
+// Usage: PLAYARR_TEST_SERVER_URL=<loopback fixture URL> node verify.mjs [matching-server-url]
 import { login, deviceId, Api } from "./api.mjs";
 import { FIXTURE_PASSWORD, GUARDIAN_PIN, CHILD_PIN, USERS, SERIES, MOVIES } from "./catalog.mjs";
+import { resolveFixtureServerUrl } from "../parity/fixture-server-env.mjs";
 
-const base = process.argv[2] ?? `http://127.0.0.1:${process.env.PLAYARR_FIXTURE_PORT ?? 18484}`;
+const base = resolveFixtureServerUrl(process.env, process.argv[2] ?? "");
 let failures = 0;
 const check = (ok, what) => {
   console.log(`${ok ? "PASS" : "FAIL"}  ${what}`);
@@ -77,7 +78,7 @@ check(pbChildB.status === 403 || pbChildB.status === 404, "child cannot start pl
 section("stream manifest and audio tracks (Test Movie A, H.264, 3 audio + dub)");
 const detA = (await detail(as.admin.api, movieA.id)).json;
 const pb = await as.admin.api.get(`/api/v1/playback/${detA.media_file_id}`);
-console.log("mode:", pb.mode, "url:", pb.url);
+console.log("mode:", pb.mode);
 console.log("audio:", pb.audio_tracks.map((a) => `${a.language}${a.id.startsWith("dubarr") ? "(dub)" : ""}`).join(", "));
 console.log("subtitles:", pb.subtitle_tracks.map((s) => s.language).join(", "));
 check(pb.audio_tracks.some((a) => a.id.startsWith("dubarr-") && a.language === "deu"), "the Dubarr stub dub is offered as an alternate audio track");

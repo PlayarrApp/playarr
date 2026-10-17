@@ -90,7 +90,7 @@ class LoginGuardTests(unittest.TestCase):
 
     def run_login(self, state, *args):
         Handler.state = state
-        env = dict(os.environ, SERVER_URL=f"http://localhost:{self.server.server_port}",
+        env = dict(os.environ, PLAYARR_TEST_SERVER_URL=f"http://localhost:{self.server.server_port}",
                    TEST_USERNAME=EXPECTED_USERNAME, TEST_PASSWORD="test-password",
                    DEVICE_NAME="test")
         return subprocess.run(["python3", str(SCRIPT), *args], env=env, capture_output=True, text=True)

@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // Web reference for poster ("Covers") mode at the tablet viewport (1280x800 at 2x): Home and Movies, each artwork size, both themes.
-//   node cover-refs.mjs <outdir>     (credentials: PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD, or ~/.secrets PLAYARR_DEVICE_TEST_*)
+//   node cover-refs.mjs <outdir>     (server: PLAYARR_TEST_SERVER_URL; credentials: PLAYARR_USERNAME, PLAYARR_PASSWORD, or ~/.secrets PLAYARR_DEVICE_TEST_*)
 import { readFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { resolveTestServerUrl } from "../../test-server-env.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 const out = process.argv[2]; if (!out) throw new Error("usage: cover-refs.mjs <outdir>");
 const sec = {};
 for (const l of readFileSync(process.env.HOME + "/.secrets", "utf8").split("\n")) { const i = l.indexOf("="); if (i > 0 && !l.startsWith("#")) sec[l.slice(0, i)] = l.slice(i + 1).replace(/^["']|["']$/g, ""); }
-process.env.PLAYARR_SERVER_URL ??= sec.PLAYARR_DEVICE_TEST_SERVER_URL;
+process.env.PLAYARR_TEST_SERVER_URL = resolveTestServerUrl(process.env);
+process.env.PLAYARR_SERVER_URL = process.env.PLAYARR_TEST_SERVER_URL;
 process.env.PLAYARR_USERNAME ??= sec.PLAYARR_DEVICE_TEST_USERNAME;
 process.env.PLAYARR_PASSWORD ??= sec.PLAYARR_DEVICE_TEST_PASSWORD;
 Object.assign(process.env, { PLAYARR_WEB_VIEWPORT_WIDTH: "1280", PLAYARR_WEB_VIEWPORT_HEIGHT: "800", PLAYARR_WEB_VIEWPORT_DPR: "2", PARITY_STABLE: "1" });

@@ -466,7 +466,7 @@ class PreviewPatchContractTests(unittest.TestCase):
         capture = (HERE / "capture.py").read_text(encoding="utf-8")
         detail_capture = capture.split("def capture_selected_detail(", 1)[1].split(
             "def capture_selected(", 1)[0]
-        self.assertIn("preflight = check_backend(os.environ.get(\"SERVER_URL\", \"\"))", detail_capture)
+        self.assertIn("preflight = check_backend(os.environ.get(\"PLAYARR_TEST_SERVER_URL\", \"\"))", detail_capture)
         self.assertLess(detail_capture.index("preflight = check_backend"), detail_capture.index("spec = next("))
         self.assertIn('"backend-preflight-" + theme + ".json"', detail_capture)
         self.assertIn("if not preflight[\"ready\"]:", detail_capture)
@@ -476,7 +476,7 @@ class PreviewPatchContractTests(unittest.TestCase):
         workflow = (HERE.parents[1] / ".github/workflows/harmony-wall.yml").read_text(encoding="utf-8")
         render_step = workflow.split("- name: Start the bridge and the Previewer, sign in and capture", 1)[1].split(
             "- name: Upload the captures", 1)[0]
-        self.assertIn("SERVER_URL: ${{ secrets.PLAYARR_HARMONY_TEST_SERVER_URL || secrets.PLAYARR_TEST_SERVER_URL || secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}", render_step)
+        self.assertIn("SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}", render_step)
         self.assertLess(render_step.index("backend_preflight.py --output backend-preflight.json"),
                         render_step.index("fixture_preflight.py --output fixture-preflight.json"))
         self.assertLess(render_step.index("fixture_preflight.py --output fixture-preflight.json"),

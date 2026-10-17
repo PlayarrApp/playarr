@@ -6,6 +6,7 @@ import { installRegionPin, installVisualDate } from "./drivers/web.mjs";
 
 const load = async (device) => {
   process.env.DEVICE = device;
+  process.env.PLAYARR_TEST_SERVER_URL ??= "https://test.example";
   const { createDriver } = await import("./drivers/tizen-webos.mjs");
   return createDriver();
 };

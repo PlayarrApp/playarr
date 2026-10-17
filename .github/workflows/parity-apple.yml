@@ -37,6 +37,7 @@ concurrency:
 
 env:
   PLAYARR_FIXTURE_PORT: "18484"
+  PLAYARR_TEST_SERVER_URL: "${{ secrets.PLAYARR_TEST_SERVER_URL }}"
   CARGO_PROFILE_DEV_DEBUG: "0"
   PLAYARR_FIXTURE_NO_SCOPE: "1"
 
@@ -133,7 +134,7 @@ jobs:
         run: |
           # The committed references in docs/parity/web are what the native screens diff against; this fresh capture
           # is kept in the artifact with the per-element layout dump (dom/<id>.json) for fixing the native layout.
-          node scripts/parity/capture-web.mjs --base "http://127.0.0.1:${PLAYARR_FIXTURE_PORT}" \
+          node scripts/parity/capture-web.mjs --base "$PLAYARR_TEST_SERVER_URL" \
             --out "$RUNNER_TEMP/parity/web" --layouts "$([[ "$PLATFORM" == tvos ]] && echo tv || echo mobile)" --theme "$(echo "${PARITY_THEMES:-dark light}" | tr ' ' ',')" --dump-dom
 
       - name: Capture the web scrolled states
@@ -142,7 +143,7 @@ jobs:
           PARITY_CHROME_CHANNEL: chrome
         run: |
           # Home with the first rail moved right by four cards, at the track offset the web settles on (home-scrolled.json).
-          node scripts/parity/capture-web-scrolled.mjs --base "http://127.0.0.1:${PLAYARR_FIXTURE_PORT}" \
+          node scripts/parity/capture-web-scrolled.mjs --base "$PLAYARR_TEST_SERVER_URL" \
             --out "$RUNNER_TEMP/parity/web-scrolled" --theme both --cards 4
 
 
@@ -224,7 +225,7 @@ jobs:
             for theme in ${PARITY_THEMES:-dark light}; do
               xcrun simctl ui "$udid" appearance "$theme"
               PARITY_THEME="$theme" PARITY_PHASE="$phase" scripts/parity/apple/capture-ios.sh "$udid" "$bundle" "${{ steps.layout.outputs.screens }}" \
-                "http://127.0.0.1:${PLAYARR_FIXTURE_PORT}" "$password" "$RUNNER_TEMP/parity/$theme/native"
+                "$PLAYARR_TEST_SERVER_URL" "$password" "$RUNNER_TEMP/parity/$theme/native"
             done
           done
           # Scrolled state (mandatory): Home with the first rail scrolled so its third card is at the leading edge.
@@ -232,7 +233,7 @@ jobs:
             mkdir -p "$RUNNER_TEMP/parity/scrolled-native/mobile/$theme"
             xcrun simctl ui "$udid" appearance "$theme"
             xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
-            xcrun simctl launch "$udid" "$bundle" --playarr-parity-server "http://127.0.0.1:${PLAYARR_FIXTURE_PORT}" \
+            xcrun simctl launch "$udid" "$bundle" --playarr-parity-server "$PLAYARR_TEST_SERVER_URL" \
               --playarr-parity-user fx-viewer --playarr-parity-password "$password" --playarr-parity-route "home-scrolled:2" \
               --playarr-parity-now "$(node scripts/parity/apple/fixture-clock.mjs)" --playarr-parity-theme "$theme" >/dev/null
             sleep 14
@@ -246,7 +247,7 @@ jobs:
         env:
           PARITY_CHROME_CHANNEL: chrome
         run: |
-          node scripts/parity/capture-web-scrolled.mjs --base "http://127.0.0.1:${PLAYARR_FIXTURE_PORT}" \
+          node scripts/parity/capture-web-scrolled.mjs --base "$PLAYARR_TEST_SERVER_URL" \
             --out "$RUNNER_TEMP/parity/web-scrolled" --theme both --layout mobile --cards 2
 
       - name: Diff the scrolled states (iOS)
@@ -267,7 +268,7 @@ jobs:
         run: |
           # The committed references in docs/parity/web are what the native screens diff against; this fresh capture
           # is kept in the artifact with the per-element layout dump (dom/<id>.json) for fixing the native layout.
-          node scripts/parity/capture-web.mjs --base "http://127.0.0.1:${PLAYARR_FIXTURE_PORT}" \
+          node scripts/parity/capture-web.mjs --base "$PLAYARR_TEST_SERVER_URL" \
             --out "$RUNNER_TEMP/parity/web" --layouts "$([[ "$PLATFORM" == tvos ]] && echo tv || echo mobile)" --theme "$(echo "${PARITY_THEMES:-dark light}" | tr ' ' ',')" --dump-dom
 
       - name: Capture the native screens
@@ -286,10 +287,10 @@ jobs:
                 body: JSON.stringify({ username: "fx-viewer", password: m.FIXTURE_PASSWORD, device_id: "22222222-2222-4222-8222-222222222222",
                   device_name: "parity-tvos", client_platform: "ios", client_version: "parity" }) });
               console.log((await r.json()).access_token);
-            });' "http://127.0.0.1:${PLAYARR_FIXTURE_PORT}")
+            });' "$PLAYARR_TEST_SERVER_URL")
           for theme in ${PARITY_THEMES:-dark light}; do
             PARITY_THEME="$theme" scripts/parity/apple/capture-tvos.sh "$udid" "$bundle" "${{ steps.layout.outputs.screens }}" \
-              "http://127.0.0.1:${PLAYARR_FIXTURE_PORT}" "$token" "$RUNNER_TEMP/parity/$theme/native"
+              "$PLAYARR_TEST_SERVER_URL" "$token" "$RUNNER_TEMP/parity/$theme/native"
           done
           # Scrolled states (mandatory): the same position as the web capture, then the edge-fade check.
           for theme in ${PARITY_THEMES:-dark light}; do
@@ -298,7 +299,7 @@ jobs:
             mkdir -p "$RUNNER_TEMP/parity/scrolled-native/tv/$theme"
             xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
             xcrun simctl launch "$udid" "$bundle" -PlayarrParityNow "$(node scripts/parity/apple/fixture-clock.mjs)" \
-              -PlayarrServerURL "http://127.0.0.1:${PLAYARR_FIXTURE_PORT}" -PlayarrAccessToken "$token" \
+              -PlayarrServerURL "$PLAYARR_TEST_SERVER_URL" -PlayarrAccessToken "$token" \
               -PlayarrParityRoute "home-scrolled:4:$offset" -PlayarrTheme "$theme" >/dev/null
             sleep "${PARITY_SETTLE_SECONDS:-10}"
             xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/parity/scrolled-native/tv/$theme/home-scrolled.png"

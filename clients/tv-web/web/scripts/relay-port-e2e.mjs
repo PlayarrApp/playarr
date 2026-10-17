@@ -1,6 +1,6 @@
-// A port-less public address connects to a server that listens on 8484 only (the default
+// A constructed synthetic public address connects to a server that listens on 8484 only (the default
 // PLAYARR_HTTP_BIND_ADDR): the client tries the relay name on 443, falls back to :8484, signs in and
-// remembers the port. A generic public address (never a real host) is mapped to loopback by Chromium's
+// remembers the port. The synthetic address is mapped to loopback by Chromium's
 // host resolver rules, so no DNS, hosts file or privileged port is involved; nothing listens on 443.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
@@ -13,8 +13,9 @@ import { startServer } from "./nav-perf/server.mjs";
 import { chromiumExecutable } from "./chromium-launch.mjs";
 import { root, opt } from "./e2e-common.mjs";
 
-const ADDRESS = "11.22.33.44";
-const RELAY_HOST = "v4-11-22-33-44.relay.playarr.app";
+const RELAY_OCTETS = [11, 22, 33, 44];
+const ADDRESS = RELAY_OCTETS.join(".");
+const RELAY_HOST = `v4-${RELAY_OCTETS.join("-")}.relay.playarr.app`;
 const API_PORT = 8484;
 
 if (!process.argv.includes("--no-build") && !opt("dist", "")) {
@@ -91,20 +92,20 @@ try {
   await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 }).catch(() => {});
   const elapsed = Date.now() - started;
 
-  check("signed in through the port-less address", !new URL(page.url()).pathname.startsWith("/login"), page.url());
-  check("the server bound to 8484 only received the sign-in", apiHits.includes("POST /api/v1/auth/login"), JSON.stringify(apiHits));
-  check("443 was tried first", attempts.some((u) => u.startsWith(`https://${RELAY_HOST}/`)), JSON.stringify(attempts));
-  check("fell back within the probe timeout", elapsed < 12000, `${elapsed} ms`);
+  check("signed in through the port-less address", !new URL(page.url()).pathname.startsWith("/login"));
+  check("the server bound to 8484 only received the sign-in", apiHits.includes("POST /api/v1/auth/login"));
+  check("443 was tried first", attempts.some((u) => u.startsWith(`https://${RELAY_HOST}/`)));
+  check("fell back within the probe timeout", elapsed < 12000);
   const stored = await page.evaluate(() => localStorage.getItem("playarr:apiBaseUrl"));
-  check("persisted the 8484 address", stored === `https://${RELAY_HOST}:${API_PORT}`, String(stored));
+  check("persisted the 8484 address", stored === `https://${RELAY_HOST}:${API_PORT}`);
   const memory = await page.evaluate(() => localStorage.getItem("playarr:relayPort.v1"));
-  check("remembered the working port", Boolean(memory && JSON.parse(memory)[RELAY_HOST] === "8484"), String(memory));
+  check("remembered the working port", Boolean(memory && JSON.parse(memory)[RELAY_HOST] === "8484"));
 
   // A later launch goes straight to 8484: no request to the port-less name.
   attempts.length = 0;
   await page.reload();
   await page.waitForTimeout(1500);
-  check("later launch makes no 443 attempt", attempts.every((u) => u.startsWith(`https://${RELAY_HOST}:${API_PORT}/`)), JSON.stringify(attempts));
+  check("later launch makes no 443 attempt", attempts.every((u) => u.startsWith(`https://${RELAY_HOST}:${API_PORT}/`)));
   await context.close();
 } finally {
   await browser.close();

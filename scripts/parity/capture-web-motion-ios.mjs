@@ -3,22 +3,22 @@
 // (393x852, touch) scrolls Home down through every rail, back up, then each rail to its last card, with a burst of 5 frames
 // about 150 ms apart after every step: <out>/<theme>/step-NN-i.png.
 //   node capture-web-motion-ios.mjs --out <dir> [--theme dark|light|both]
-// Needs PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD (from
-// ~/.secrets PLAYARR_DEVICE_TEST_* when unset; never printed) and PARITY_CHROMIUM or Playwright's chromium.
+// Needs PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_TEST_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD
+// (credentials may come from ~/.secrets PLAYARR_DEVICE_TEST_* when unset; never printed) and PARITY_CHROMIUM or Playwright's chromium.
 // Run it in a memory scope: systemd-run --user --scope -p MemoryHigh=8G -p MemoryMax=12G -p MemorySwapMax=512M -- node ...
 import { mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
+import { resolveTestServerUrl } from "./test-server-env.mjs";
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : d; };
 const out = opt("out", "motion-out");
 const sec = {};
 try { for (const l of readFileSync(`${homedir()}/.secrets`, "utf8").split("\n")) { const i = l.indexOf("="); if (i > 0 && !l.startsWith("#")) sec[l.slice(0, i)] = l.slice(i + 1).replace(/^["']|["']$/g, ""); } } catch { /* env only */ }
-const env = (k, alt) => process.env[k] ?? sec[alt];
 const web = (process.env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
-const server = env("PLAYARR_SERVER_URL", "PLAYARR_DEVICE_TEST_SERVER_URL"), user = env("PLAYARR_USERNAME", "PLAYARR_DEVICE_TEST_USERNAME"), pass = env("PLAYARR_PASSWORD", "PLAYARR_DEVICE_TEST_PASSWORD");
+const server = resolveTestServerUrl(process.env), user = process.env.PLAYARR_USERNAME ?? sec.PLAYARR_DEVICE_TEST_USERNAME, pass = process.env.PLAYARR_PASSWORD ?? sec.PLAYARR_DEVICE_TEST_PASSWORD;
 const themes = opt("theme", "dark") === "both" ? ["dark", "light"] : [opt("theme", "dark")];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const browser = await chromium.launch({ executablePath: process.env.PARITY_CHROMIUM || undefined });

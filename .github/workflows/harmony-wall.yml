@@ -57,6 +57,7 @@ permissions:
 # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
 env:
   PARITY_STABLE: "0"
+  PLAYARR_TEST_SERVER_URL: ${{ secrets.PLAYARR_TEST_SERVER_URL }}
 
 jobs:
   build:
@@ -170,7 +171,7 @@ jobs:
       - run: python -m pip install --quiet pillow
       - name: Start the bridge and the Previewer, sign in and capture
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_HARMONY_TEST_SERVER_URL || secrets.PLAYARR_TEST_SERVER_URL || secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PLAYARR_TEST_SERVER_URL }}
           TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
           HARMONY_PLAYER_FIXTURE_ID: ${{ secrets.HARMONY_PLAYER_FIXTURE_ID }}
@@ -180,6 +181,7 @@ jobs:
           GALLIUM_DRIVER: llvmpipe
           MESA_GL_VERSION_OVERRIDE: "4.5"
         run: |
+          : "${PLAYARR_TEST_SERVER_URL:?PLAYARR_TEST_SERVER_URL secret is required}"
           W=$(cygpath -m "$GITHUB_WORKSPACE"); I="$W/harmony-wall-work/app/entry/.preview/default/intermediates"
           if [ "$DEVICE" = phone ]; then CTL=40117; WS=40107; DBG=40127; else CTL=40017; WS=40007; DBG=40027; fi
           if [ "$DEVICE" = phone ]; then D=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait); else D=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape); fi

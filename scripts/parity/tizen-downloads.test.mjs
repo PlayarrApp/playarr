@@ -4,7 +4,7 @@ import { createDriver } from "./drivers/tizen-native.mjs";
 
 const trusted = "https://test.example";
 const accountEnv = { PLAYARR_USERNAME: "device-test", PLAYARR_TEST_SERVER_URL: trusted };
-const secrets = { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: trusted };
+const secrets = { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_TEST_SERVER_URL: trusted };
 const media = {
   file: "file-a",
   work: "work-a",

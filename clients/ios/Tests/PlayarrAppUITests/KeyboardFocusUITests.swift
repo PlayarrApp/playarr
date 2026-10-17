@@ -6,7 +6,7 @@ final class KeyboardFocusUITests: XCTestCase {
     private func credentials() throws -> (String, String, String, String, String) {
         let e = ProcessInfo.processInfo.environment
         guard e["PLAYARR_KEYBOARD_FOCUS"] == "1" else { throw XCTSkip("Runs only in the keyboard focus workflow.") }
-        guard let server = e["PLAYARR_DEVICE_TEST_SERVER_URL"], !server.isEmpty,
+        guard let server = e["PLAYARR_TEST_SERVER_URL"], !server.isEmpty,
               let user = e["PLAYARR_DEVICE_TEST_USERNAME"], !user.isEmpty,
               let pass = e["PLAYARR_DEVICE_TEST_PASSWORD"], !pass.isEmpty,
               let expected = e["PLAYARR_DEVICE_TEST_EXPECTED_USERNAME"], !expected.isEmpty else {

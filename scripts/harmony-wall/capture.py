@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Drives the Previewer through the bridge (harmony_vnc.py control port) and writes the parity captures.
-Usage: capture.py <tv|phone> <out-dir> <previewer.log>   Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD (approve_link.py).
+Usage: capture.py <tv|phone> <out-dir> <previewer.log>   Environment: PLAYARR_TEST_SERVER_URL, TEST_USERNAME, TEST_PASSWORD (approve_link.py).
 Signs in fresh (link code logged by the app, approved as the Device Test account), picks the "Device Test" profile, then captures
 dark and light. Aborts, writing nothing more, when a frame is too plain (an error or signed-out screen)."""
 import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
@@ -16,6 +16,9 @@ from capture_diagnostics import (posters_stalled, tv_flat_card_blocks, home_rece
                                  summarize_detail_load_events, phone_flat_card_rows, preview_focus_confirmed)
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
+server_url = os.environ.get("PLAYARR_TEST_SERVER_URL", "").strip()
+if not server_url:
+    raise SystemExit("PLAYARR_TEST_SERVER_URL is required")
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
 TV_SCREENS_RAW = os.environ.get("TV_SCREENS", "all").strip()
 SKIP_PLAYER_REQUESTED = os.environ.get("SKIP_PLAYER", "false").lower() == "true"
@@ -263,7 +266,7 @@ else:
 route("serversetup", 8)
 FIELD, CONNECT = {"tv": ((960, 549), (960, 627)), "phone": ((540, 1290), (540, 1483))}[device]
 click(*FIELD); time.sleep(1)
-get("/type", text=os.environ["SERVER_URL"].strip()); time.sleep(1)
+get("/type", text=server_url); time.sleep(1)
 click(*CONNECT); time.sleep(8)
 code = None
 for _ in range(60):
@@ -474,7 +477,7 @@ if device == "tv":
                     generation=generation, remote_input_sent_before_focus_assertion=remote_input_sent)
             # A backend that is briefly unready is retried (as snap retries a slow list) before the screen is skipped.
             for preflight_attempt in range(3):
-                preflight = check_backend(os.environ.get("SERVER_URL", ""))
+                preflight = check_backend(os.environ.get("PLAYARR_TEST_SERVER_URL", ""))
                 if preflight["ready"] or preflight_attempt == 2:
                     break
                 print(f"{name}: backend not ready ({preflight['failure']}), retrying in 20 s", flush=True)

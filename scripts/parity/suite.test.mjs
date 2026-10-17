@@ -48,12 +48,11 @@ test("stable catalog lookup requires explicitly resolved account credentials", a
   assert.throws(() => resolveCaptureEnvironment("web-capture-10620", {}, {
     PLAYARR_DEVICE_TEST_USERNAME: "shared-user",
     PLAYARR_DEVICE_TEST_PASSWORD: "shared-password",
-    PLAYARR_DEVICE_TEST_SERVER_URL: "https://example.com",
+    PLAYARR_TEST_SERVER_URL: "https://example.com",
   }), /missing client account credentials/);
-  const resolved = resolveCaptureEnvironment("web-capture-10620", {}, {
+  const resolved = resolveCaptureEnvironment("web-capture-10620", { PLAYARR_TEST_SERVER_URL: "https://example.com" }, {
     PLAYARR_PARITY_WEB_CAPTURE_10620_USERNAME: "isolated-user",
     PLAYARR_PARITY_WEB_CAPTURE_10620_PASSWORD: "isolated-password",
-    PLAYARR_DEVICE_TEST_SERVER_URL: "https://example.com",
   });
   assert.equal(resolved.PLAYARR_USERNAME, "isolated-user");
   assert.equal(resolved.PLAYARR_SERVER_URL, "https://example.com");
@@ -70,7 +69,7 @@ test("stable catalog lookup pins available episode files and tolerates episodes 
   globalThis.fetch = async () => ({ ok: true, json: async () => replies.shift() });
   try {
     const files = await pinnedCatalogFiles(suite, {
-      PLAYARR_SERVER_URL: "https://example.com",
+      PLAYARR_TEST_SERVER_URL: "https://example.com",
       PLAYARR_USERNAME: "isolated-user",
       PLAYARR_PASSWORD: "isolated-password",
       DEVICE_TEST_USERNAME: "device-test",
@@ -91,7 +90,7 @@ test("stable isolated catalog lookup keeps working without an iOS username alias
   globalThis.fetch = async () => ({ ok: true, json: async () => replies.shift() });
   try {
     const files = await pinnedCatalogFiles(suite, {
-      PLAYARR_SERVER_URL: "https://example.com",
+      PLAYARR_TEST_SERVER_URL: "https://example.com",
       PLAYARR_USERNAME: "isolated-user",
       PLAYARR_PASSWORD: "isolated-password",
     }, { required: true });
@@ -114,7 +113,7 @@ test("progress reset verifies the authenticated current Device Test profile befo
   };
   try {
     await assert.rejects(resetProgress(["fixture-file"], {
-      PLAYARR_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "device-test", PLAYARR_PASSWORD: "test-password", DEVICE_TEST_USERNAME: "device-test",
+      PLAYARR_TEST_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "device-test", PLAYARR_PASSWORD: "test-password", DEVICE_TEST_USERNAME: "device-test",
     }), /expected current Device Test profile/);
     assert.equal(mutations, 0);
   } finally {
@@ -713,7 +712,7 @@ globalThis.fetch = async () => { writeFileSync(${JSON.stringify(networkMarker)},
   const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
   const env = { ...process.env };
   for (const name of ["PARITY_CLIENT", "PARITY_ACCOUNT", "PLAYARR_PLAYBACK_PHASE_FILE"]) delete env[name];
-  const result = spawnSync(process.execPath, ["--import", preload, runner, "--driver", driver, "--out", out, "--only", "screens", "--screens", "home"], { encoding: "utf8", env: { ...env, HOME: home, PLAYARR_SERVER_URL: "http://localhost", PLAYARR_USERNAME: "fixture-user", PLAYARR_PASSWORD: "fixture-pass" } });
+  const result = spawnSync(process.execPath, ["--import", preload, runner, "--driver", driver, "--out", out, "--only", "screens", "--screens", "home"], { encoding: "utf8", env: { ...env, HOME: home, PLAYARR_TEST_SERVER_URL: "http://localhost", PLAYARR_USERNAME: "fixture-user", PLAYARR_PASSWORD: "fixture-pass" } });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(existsSync(marker), false);
   assert.equal(existsSync(networkMarker), false);
@@ -755,7 +754,7 @@ globalThis.fetch = async (url, options = {}) => {
   writeFileSync(putCount, "0");
   writeFileSync(join(out, "downloads.json"), "preserve-download-results");
   const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
-  const env = { ...process.env, PLAYARR_SERVER_URL: "http://localhost", PLAYARR_USERNAME: "fixture-user", PLAYARR_PASSWORD: "fixture-pass", PARITY_TEST_PUT_COUNT: putCount };
+  const env = { ...process.env, PLAYARR_TEST_SERVER_URL: "http://localhost", PLAYARR_USERNAME: "fixture-user", PLAYARR_PASSWORD: "fixture-pass", PARITY_TEST_PUT_COUNT: putCount };
   for (const name of ["PARITY_CLIENT", "PARITY_ACCOUNT", "PLAYARR_PLAYBACK_PHASE_FILE"]) delete env[name];
   const child = spawn(process.execPath, ["--import", preload, runner, "--driver", driver, "--out", out, "--only", "downloads", "--cases", "offline-play", "--reset-progress"], {
     env,

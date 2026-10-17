@@ -12,6 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { launchChromium } from "./chromium-launch.mjs";
 import { startServer } from "./nav-perf/server.mjs";
+import { resolveTestServerUrl } from "../../../../scripts/parity/test-server-env.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -29,9 +30,9 @@ let s = { access_token: "t", refresh_token: "r", expires_in: 86400, user_id: "00
 let server = null;
 let base = "";
 if (DEVICE_TEST) {
-  const env = Object.fromEntries(readFileSync(join(homedir(), ".secrets"), "utf8").split("\n").filter((l) => /^PLAYARR_DEVICE_TEST_/.test(l)).map((l) => [l.split("=")[0], l.slice(l.indexOf("=") + 1).replace(/^["']|["']$/g, "")]));
-  apiBase = env.PLAYARR_DEVICE_TEST_SERVER_URL.replace(/\/$/, "");
-  const res = await fetch(`${apiBase}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: env.PLAYARR_DEVICE_TEST_USERNAME, password: env.PLAYARR_DEVICE_TEST_PASSWORD, device_id: "33333333-3333-4333-8333-333333333333", device_name: "settings-menu-check", client_platform: "web", client_version: "check" }) });
+  const secrets = Object.fromEntries(readFileSync(join(homedir(), ".secrets"), "utf8").split("\n").filter((l) => /^PLAYARR_DEVICE_TEST_/.test(l)).map((l) => [l.split("=")[0], l.slice(l.indexOf("=") + 1).replace(/^["']|["']$/g, "")]));
+  apiBase = resolveTestServerUrl(process.env);
+  const res = await fetch(`${apiBase}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: process.env.PLAYARR_DEVICE_TEST_USERNAME ?? secrets.PLAYARR_DEVICE_TEST_USERNAME, password: process.env.PLAYARR_DEVICE_TEST_PASSWORD ?? secrets.PLAYARR_DEVICE_TEST_PASSWORD, device_id: "33333333-3333-4333-8333-333333333333", device_name: "settings-menu-check", client_platform: "web", client_version: "check" }) });
   s = await res.json();
   if (!s.access_token) { console.log(`FAIL  device-test login failed (${res.status})`); process.exit(1); }
   base = opt("site", "https://playarr.app");

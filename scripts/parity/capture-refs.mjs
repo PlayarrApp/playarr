@@ -70,7 +70,7 @@ const stateFiles = [...new Set([...suite.performance.map((p) => p.file), ...Obje
 await withCaptureState({ client: process.env.PARITY_CLIENT, files: stateFiles }, async (captureState) => {
 Object.assign(process.env, captureState.env, { PARITY_STABLE: "1" });
 const env = captureState.env;
-const srv = env.PLAYARR_SERVER_URL.replace(/\/$/, "");
+  const srv = resolveTestServerUrl(env);
 const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
   body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-refs", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
 if (!lr.ok) throw new Error(`login ${lr.status}`);

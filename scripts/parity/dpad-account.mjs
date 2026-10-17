@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { homedir } from "node:os";
+import { resolveTestServerUrl } from "./test-server-env.mjs";
 
 const FILE = `${homedir()}/.secrets`;
 const clientSlug = (value) => {
@@ -179,8 +180,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const legacy = !clientArg && ["create", "seed", "env"].includes(cmd);
   const client = legacy ? "dpad" : clientSlug(clientArg);
   const keys = accountKeys(client);
-  const srv = (process.env.PLAYARR_SERVER_URL ?? sec.PLAYARR_DEVICE_TEST_SERVER_URL ?? "").replace(/\/$/, "");
-  if (!srv && cmd !== "env") throw new Error("PLAYARR_SERVER_URL (or PLAYARR_DEVICE_TEST_SERVER_URL in ~/.secrets) is required");
+  const srv = cmd === "env" ? "" : resolveTestServerUrl(process.env);
   if (cmd === "env") console.log(`${keys.username} ${keys.password}`);
   else if (cmd === "clone-prefs") {
     await clonePreferences(srv, client, sec);

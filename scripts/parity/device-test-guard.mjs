@@ -1,4 +1,5 @@
 import { clientSecretKeys, readSecrets } from "./dpad-account.mjs";
+import { resolveTestServerUrl } from "./test-server-env.mjs";
 
 const safeUsernameKeys = ["PLAYARR_DEVICE_TEST_USERNAME", "PLAYARR_DEVICE_TEST_DPAD_USERNAME"];
 
@@ -43,15 +44,12 @@ function canonicalServerUrl(value) {
   return url.toString().replace(/\/$/, "");
 }
 
-export function loadTrustedDeviceTestServerUrl({ secrets, env = process.env } = {}) {
-  if (!secrets) secrets = optionalSecrets(env);
-  const trusted = canonicalServerUrl(secrets.PLAYARR_DEVICE_TEST_SERVER_URL ?? env.PLAYARR_DEVICE_TEST_SERVER_URL);
-  const explicitTestOverride = env.PLAYARR_TEST_SERVER_URL;
-  const override = explicitTestOverride ?? env.PLAYARR_SERVER_URL;
-  if (override && canonicalServerUrl(override) !== trusted) {
+export function loadTrustedDeviceTestServerUrl({ env = process.env } = {}) {
+  const trusted = canonicalServerUrl(resolveTestServerUrl(env));
+  if (env.PLAYARR_SERVER_URL && canonicalServerUrl(env.PLAYARR_SERVER_URL) !== trusted) {
     throw new Error("configured server does not match the trusted device-test server");
   }
-  return canonicalServerUrl(override ?? trusted);
+  return trusted;
 }
 
 function optionalSecrets(env) {
@@ -82,7 +80,7 @@ export function assertAllowedDeviceTestUsername(username, allowedUsernames) {
 export function trustedLoginUsername(env = process.env, allowedUsernames, expectedServerUrl) {
   const username = env.PLAYARR_USERNAME;
   assertAllowedDeviceTestUsername(username, allowedUsernames);
-  if (env.PLAYARR_SERVER_URL && canonicalServerUrl(env.PLAYARR_SERVER_URL) !== expectedServerUrl) throw new Error("login server does not match the trusted device-test server");
+  if (env.PLAYARR_TEST_SERVER_URL && canonicalServerUrl(resolveTestServerUrl(env)) !== expectedServerUrl) throw new Error("login server does not match the trusted device-test server");
   return username;
 }
 

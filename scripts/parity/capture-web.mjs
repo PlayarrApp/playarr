@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Deterministic Playwright captures of the web client: the pixel reference for native parity.
 //
-//   node capture-web.mjs --base http://127.0.0.1:18484 [--layouts tv,mobile] [--theme light|dark|both] [--screens home,search] [--dump-dom]
+//   PLAYARR_TEST_SERVER_URL=<loopback fixture URL> node capture-web.mjs [--base <matching URL>] [--layouts tv,mobile] [--theme light|dark|both] [--screens home,search] [--dump-dom]
 //                        [--out docs/parity/web] [--clock 2026-10-07T12:00:00Z]
 //
 // --base is a fixture server (scripts/fixtures/up.sh) that also serves the built web client
@@ -17,6 +17,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
+import { resolveFixtureServerUrl } from "./fixture-server-env.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = JSON.parse(readFileSync(join(here, "screens.json"), "utf8"));
@@ -25,7 +26,7 @@ const opt = (n, d) => {
   const i = args.indexOf(`--${n}`);
   return i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : d;
 };
-const base = (opt("base", process.env.PLAYARR_FIXTURE_URL ?? "http://127.0.0.1:18484") ?? "").replace(/\/$/, "");
+const base = resolveFixtureServerUrl(process.env, opt("base", ""));
 const layoutIds = opt("layouts", "tv,mobile").split(",");
 const themeOpt = opt("theme", opt("color-scheme", "both"));
 const themeIds = themeOpt === "both" ? spec.themes : themeOpt.split(",");

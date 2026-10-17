@@ -10,6 +10,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, readlinkSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveTestServerUrl } from "../test-server-env.mjs";
 
 const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "suite.json"), "utf8"));
 
@@ -88,6 +89,7 @@ async function resetProgressOnce(files) {
 }
 
 export async function createDriver() {
+  const server = resolveTestServerUrl(process.env);
   const device = process.env.DEVICE;
   if (device !== "iphone" && device !== "ipad") throw new Error(`apple-ios driver: ${device} is not an iPhone or iPad`);
   const work = process.env.WORK, st = readState(work), udid = st.UDID, bundle = st.BUNDLE;
@@ -154,7 +156,7 @@ export async function createDriver() {
   };
   // The server's download options for a file (its quality profiles), to pick a quality other than the current one.
   const optionProfiles = async (file) => {
-    const server = process.env.SERVER_URL.replace(/\/$/, "");
+    const server = resolveTestServerUrl(process.env);
     const post = (path, body, token) => fetch(server + path, { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
     const login = await post("/api/v1/auth/login", { client_platform: "ios", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-options", username: process.env.TEST_USERNAME, password: process.env.TEST_PASSWORD });
     const token = (await login.json()).access_token;
