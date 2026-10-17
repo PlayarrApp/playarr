@@ -468,6 +468,12 @@ enum TVParityState {
     private static var query: [String: String] = [:]
     private static var started = false
     private static var heartbeat: Timer?
+    /// Diagnosis for readiness stalls: the last library-load events, shown in the driver's timeout error.
+    private static var trace: [String] = []
+    static func note(_ event: String) {
+        trace.append("\(contentGeneration):\(event)")
+        if trace.count > 14 { trace.removeFirst() }
+    }
     private static var currentUserID = ""
 
     /// The route in web terms: the base path plus the suite's query items (`view` on the Calendar, `panel=filters`).
@@ -742,6 +748,7 @@ enum TVParityState {
                                     "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any,
                                     "items": items as Any, "contentState": contentState,
                                     "panelContentState": panelContentState as Any,
+                                    "trace": trace,
                                     "determinism": ["clock": TVParityLaunch.fixedNowArgument ?? "", "animationsDisabled": TVParityLaunch.disablesAnimations]]
         // `-PlayarrParityState <path>`: an explicit file (the Mac driver); otherwise the app's Documents folder.
         let args = ProcessInfo.processInfo.arguments

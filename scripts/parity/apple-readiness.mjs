@@ -56,5 +56,5 @@ export async function waitForAppleReadiness({ screen, phase = "capture", readSta
     previous = signature;
     await sleep(Math.min(pollMs, Math.max(0, deadline - now())));
   }
-  throw new Error(`Apple ${screen} ${phase} readiness timed out without loaded route data (last state: ${JSON.stringify({ route: last?.route, contentState: last?.contentState, items: last?.items, panelContentState: last?.panelContentState, focused: last?.focused })})`);
+  throw new Error(`Apple ${screen} ${phase} readiness timed out without loaded route data (last state: ${JSON.stringify({ route: last?.route, contentState: last?.contentState, items: last?.items, panelContentState: last?.panelContentState, focused: last?.focused, trace: last?.trace })})`);
 }

@@ -2343,7 +2343,8 @@ struct TVLibraryKindView: View {
         if parityCaptureActive {
             parityPagination.begin()
             let lease = await TVParityState.waitForContentLoad(expectedBase: parityRouteBase)
-            guard TVParityState.canContinueProductLoad(activeCapture: true, lease: lease), !Task.isCancelled else { return }
+            TVParityState.note("load \(parityRouteBase) lease=\(lease != nil) cancelled=\(Task.isCancelled)")
+            guard TVParityState.canContinueProductLoad(activeCapture: true, lease: lease), !Task.isCancelled else { TVParityState.note("load abort A"); return }
             parityContentLease = lease
         }
         #endif
@@ -2374,7 +2375,8 @@ struct TVLibraryKindView: View {
             // First screenful fast, then the rest of the library in the background (the web pages the whole grid).
             let page = try await api.browseCatalog(kind: workKind, sort: sort, order: order, audioLang: audioLangs, subtitleLang: subtitleLangs, limit: 48, offset: 0)
             #if DEBUG && (os(tvOS) || os(macOS))
-            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { return }
+            TVParityState.note("page \(page.items.count)/\(page.total ?? -1)")
+            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { TVParityState.note("load abort B cancelled=\(Task.isCancelled)"); return }
             #endif
             items = page.items
             total = page.total.map(Int.init)
@@ -2395,6 +2397,7 @@ struct TVLibraryKindView: View {
             #endif
         } catch {
             #if DEBUG && (os(tvOS) || os(macOS))
+            TVParityState.note("load error \(error)")
             guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { return }
             #endif
             loadFailed = true
