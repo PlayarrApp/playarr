@@ -21,7 +21,7 @@ const driverWith = (state, extraEnv = {}, options = {}) => {
     env,
     accountGuard: options.accountGuard,
     execute: async (_command, args, execOptions) => {
-      assert.equal(execOptions.timeout, 1000);
+      assert.equal(execOptions.timeout, 10_000);
       assert.equal(execOptions.killSignal, "SIGTERM");
       assert.equal(execOptions.env, env);
       return handleFakeDeterministicAdbCommand(fakeState, args[0], args.slice(1), env);
