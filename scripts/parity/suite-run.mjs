@@ -44,12 +44,12 @@ const unknownOnly = only.filter((name) => !knownOnly.has(name));
 if (unknownOnly.length) throw new Error(`unknown --only section(s): ${unknownOnly.join(", ")}`);
 const via = opt("via", "keys");
 const reference = args.includes("--reference");
+const repeatProof = args.includes("--repeat-proof") || process.env.PARITY_REPEAT_PROOF === "1";
 // Stable is the default so client captures match the web refs (fixed clock, canonical On deck); PARITY_STABLE=0 is the only opt-out.
-let deterministic = args.includes("--stable") || process.env.PARITY_STABLE !== "0";
+let deterministic = args.includes("--stable") || repeatProof || process.env.PARITY_STABLE !== "0"; // a repeat proof is meaningless unpinned
 // State pinning (clock, canonical deck, catalogue, animations) applies to every driver; strict readiness and build identity
 // only to drivers that declare driver.strictReadiness. Others use their own normal readiness wait.
 let strict = false;
-const repeatProof = args.includes("--repeat-proof") || process.env.PARITY_REPEAT_PROOF === "1";
 if (repeatProof && (!only.includes("screens") || only.some((section) => section !== "screens"))) throw new Error("--repeat-proof supports screens-only runs");
 if (deterministic) process.env.PARITY_SEED_CANONICAL ??= "1";
 if (deterministic && reset) throw new Error("stable capture cannot combine with --reset-progress; seed canonical state before running");
@@ -142,7 +142,7 @@ if (reset) {
   assertNotInterrupted();
 } // before any capture: On deck and Resume start from the same state on every device
 if (deterministic) {
-  deterministic = await pinCapture(driver, { fixedNow, explicit: args.includes("--stable") });
+  deterministic = await pinCapture(driver, { fixedNow, explicit: args.includes("--stable") || repeatProof });
   assertNotInterrupted();
 }
 const readiness = readinessMode(driver, deterministic);
