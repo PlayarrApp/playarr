@@ -31,7 +31,9 @@ html[data-platform="tv-webos"] .calendar-entry-meta .status-pill {
 html[data-platform="tv-webos"] .tv-title-card-copy strong,
 html[data-platform="tv-webos"] .tv-episode-copy strong,
 html[data-platform="tv-webos"] .details-panel .tv-provider,
-html[data-platform="tv-webos"] .details-panel .tv-preview-meta {
+html[data-platform="tv-webos"] .details-panel .tv-preview-meta,
+html[data-platform="tv-webos"] .tv-home-card strong,
+html[data-platform="tv-webos"] .tv-media-track-heading h2 {
   min-block-size: 1.5em;
 }
 
