@@ -255,8 +255,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   };
   const settle = async () => {
     await page.evaluate(() => document.fonts.ready);
-    // Lazy images in the viewport load now; an image from a host outside the app and its server (a hotlinked poster CDN) counts as settled
-    // once it has finished or failed, since its load is not ours to wait for.
+    // Lazy images in the viewport load now; an image from a host outside the app and its server (a hotlinked poster CDN) never blocks,
+    // since its load is not ours to wait for.
     await page.waitForFunction(() => {
       let own = [location.origin];
       try { own.push(new URL(localStorage.getItem("playarr:apiBaseUrl") || location.href).origin); } catch { /* no server yet */ }
@@ -266,8 +266,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       }).every((i) => {
         if (i.loading === "lazy") i.loading = "eager";
         let external = false;
-        try { external = !!i.currentSrc && !own.includes(new URL(i.currentSrc, location.href).origin); } catch { /* data: URL */ }
-        return i.complete && (i.naturalWidth > 0 || external);
+        const src = i.currentSrc || i.getAttribute("src") || "";
+        try { external = /^https?:/.test(src) && !own.includes(new URL(src, location.href).origin); } catch { /* data: URL */ }
+        return external || (i.complete && i.naturalWidth > 0);
       });
     }, null, { timeout: 60000 });
     await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 });
