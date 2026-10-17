@@ -99,6 +99,9 @@ jobs:
       - name: Require cleartext HTTP to user-entered servers
         run: scripts/ci/check-cleartext-policy.sh
 
+      - name: Keep iOS debug-only parity symbols out of Release code
+        run: scripts/ci/check-ios-debug-parity.sh
+
       # Owner rule: public screenshots come from scripts/showcase (open-movie demo library), not the parity fixture.
       - name: Require showcase-made public screenshots
         env:
