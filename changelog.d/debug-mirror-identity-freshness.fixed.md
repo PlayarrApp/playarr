@@ -1,0 +1,1 @@
+- Revalidate the selected debug-mirror profile and credentials after frame rendering, and send frame identity only through an explicit public-field allow-list. This prevents slow captures from being rejected as stale while aborting if the active account changes.
