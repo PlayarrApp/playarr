@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV: Home opens aligned with the Library grid like web (rails start 98 px further left, first rail 240 px higher, 54 px left fade); a focused later rail is held where it was.
 - Harmony preview captures now stop on the first failure, verify the signed-in Device Test account before capture input or screenshots, and refuse to capture when canonical watch-progress seeding fails.
 - HarmonyOS TV Series Detail captures now pass in the Previewer: episode image areas, target visibility and generation scoping reach the capture gate, and focus is waived only where the Previewer cannot deliver it.
 - Load episode watch progress on Harmony TV series details so unseen episode markers can appear.
