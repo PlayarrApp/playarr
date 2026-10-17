@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV: the card behind the title actions drawer no longer keeps its focus ring while the drawer is open.
 - Roku: Left from the first Home rail enters the dock on Home again after Home moved to the Library-aligned top.
 - Fix the Xbox playback-quality test to distinguish the legacy bitrate property from the canonical video bitrate property.
 - Add Tizen readiness, account, build, and deterministic clock checks for future parity captures.

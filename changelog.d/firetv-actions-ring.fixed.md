@@ -1,1 +1,0 @@
-- Fire TV: the card behind the title actions drawer no longer keeps its focus ring while the drawer is open.
