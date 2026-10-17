@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Roku detail action focus now stays on a valid action when switching between film and series layouts.
 - Native Harmony phone drawers blur their backdrop while keeping the bottom navigation visible above them, matching the web layer order.
 - Route generic Harmony build dependencies through the public npm registry while keeping `@ohos` packages on the HarmonyOS registry.
 - Align Harmony phone preview drawer captures with the frozen Web reference by omitting backdrop blur in the copied preview source while keeping product rendering unchanged (17.10623).
