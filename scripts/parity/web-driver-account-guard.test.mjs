@@ -33,6 +33,7 @@ function browserMock({ initialSignedIn = false, ownerOnRequest = false } = {}) {
         return initialSignedIn ? { username: "device-test", isCurrentCount: 1, serverUrl } : (() => { throw new Error("mock signed out"); })();
       }
       state.operations.push(["evaluate", fn.name]);
+      if (/playarr:session/.test(String(fn))) return initialSignedIn; // the driver's stored-session check
       return undefined;
     },
     locator(selector) {
