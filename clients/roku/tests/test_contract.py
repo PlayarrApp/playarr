@@ -62,6 +62,19 @@ class ApiContractTests(unittest.TestCase):
 
 
 class NavigationContractTests(unittest.TestCase):
+    def test_calendar_posters_use_the_entry_provider_poster_and_never_leak_session_headers(self) -> None:
+        self.assertEqual(PAGES.count("art = calendarPosterUrl(entry)"), 2)
+        self.assertNotIn('"/api/v1/artwork/work/" + UrlEncode(entry.work_id)', PAGES)
+        self.assertIn("image.tmdb.org/t/p/w185/", PAGES)
+        self.assertIn("url.Left(m.serverUrl.Len()) = m.serverUrl then agent.SetHeaders", PAGES)
+
+    def test_movies_grid_right_edge_hands_off_to_the_alphabet(self) -> None:
+        grid = (ROOT / "components" / "BrowseGrid.brs").read_text(encoding="utf-8")
+        self.assertIn('<BrowseGrid id="browseGrid"', SCENE)
+        self.assertIn("itemIndex mod columns <> columns - 1 and itemIndex <> itemCount - 1", grid)
+        self.assertIn('m.browseGrid.alphabetHandoffEnabled = kind = "movie"', MAIN)
+        self.assertIn("enterBrowseAlphabet(true)", MAIN)
+
     def test_overflowing_collections_are_native_scenegraph_lists(self) -> None:
         self.assertRegex(SCENE, r'<RowList id="libraryList"')
         self.assertRegex(SCENE, r'<RowList id="profilesRow"')

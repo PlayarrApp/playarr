@@ -130,6 +130,19 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     return poster
 end function
 
+' The provider poster at a tile-sized width, like web's Calendar Poster and sizedPosterUrl: only an exact
+' image.tmdb.org /t/p/original/ path is resized, any other URL is used as is. No entry poster means no art (web draws none).
+function calendarPosterUrl(entry as Object) as String
+    url = entry.poster_url
+    if url = invalid or Type(url) <> "roString" or url = "" then return ""
+    if url.Left(8) <> "https://" and url.Left(7) <> "http://" then return ""
+    for each scheme in ["https://", "http://"]
+        prefix = scheme + "image.tmdb.org/t/p/original/"
+        if url.Left(prefix.Len()) = prefix and url.Len() > prefix.Len() then return scheme + "image.tmdb.org/t/p/w185/" + Mid(url, prefix.Len() + 1)
+    end for
+    return url
+end function
+
 function pgIcon(parent as Object, x as Float, y as Float, size as Integer, file as String, role as String, alpha = -1 as Integer) as Object
     poster = CreateObject("roSGNode", "Poster")
     poster.uri = "pkg:/images/" + file
@@ -153,7 +166,8 @@ function pgArtwork(parent as Object, x as Float, y as Float, w as Float, h as Fl
         agent.SetCertificatesFile("common:/certs/ca-bundle.crt")
         agent.InitClientCertificates()
         g = GetGlobalAA()
-        if g.playarrArtHeaders <> invalid then agent.SetHeaders(g.playarrArtHeaders)
+        ' The session headers go only to the Playarr server, never to a provider image host.
+        if g.playarrArtHeaders <> invalid and m.serverUrl <> "" and url.Left(m.serverUrl.Len()) = m.serverUrl then agent.SetHeaders(g.playarrArtHeaders)
         poster.SetHttpAgent(agent)
         poster.uri = url
     end if
@@ -1719,8 +1733,7 @@ sub renderCalendarAgenda(entries as Object)
         end if
         pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "surfaceStrong")
         if entry.id = m.calendarSelected then pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "ink", 56, true)
-        art = ""
-        if entry.work_id <> invalid then art = m.serverUrl + "/api/v1/artwork/work/" + UrlEncode(entry.work_id) + "/poster"
+        art = calendarPosterUrl(entry)
         pgRound(m.pageBody, 802.4, ay + 19.8, 40, 60, 6, "surfaceSoft")
         pgArtwork(m.pageBody, 802.4, ay + 19.8, 40, 60, art)
         pgLabel(m.pageBody, 856.8, ay + 9, 900, 28, entry.title, 19, 600, "ink")
@@ -1837,8 +1850,7 @@ sub renderCalendarWeek(entries as Object)
                 pgRound(m.pageBody, x, y, 440, 106, 14, role)
                 pgRound(m.pageBody, x + 4, y, 436, 106, 14, "surfaceStrong")
                 pgRound(m.pageBody, x, y, 440, 106, 14, "line", -1, true)
-                art = ""
-                if entry.work_id <> invalid then art = m.serverUrl + "/api/v1/artwork/work/" + UrlEncode(entry.work_id) + "/poster"
+                art = calendarPosterUrl(entry)
                 pgRound(m.pageBody, x + 16, y + 23, 40, 60, 6, "surfaceSoft")
                 pgArtwork(m.pageBody, x + 16, y + 23, 40, 60, art)
                 pgLabel(m.pageBody, x + 70, y + 9, 360, 26, entry.title, 20, 600, "ink", { maxLines: 1 })
