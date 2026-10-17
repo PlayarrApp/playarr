@@ -2066,7 +2066,8 @@ struct TVLibraryKindView: View {
     }
 
     private var parityCaptureActive: Bool {
-        TVParityLaunch.isLive || TVParityLaunch.requestedScreen != nil
+        // The keys-driven Apple driver launches without a route, but pins the clock: its readiness waits need the lease too.
+        TVParityLaunch.isLive || TVParityLaunch.requestedScreen != nil || TVParityLaunch.fixedNowArgument != nil
     }
 
     static func parityRouteBase(workKind: WorkKind?, listsPlaylists: Bool, playlistID: UUID?) -> String {
