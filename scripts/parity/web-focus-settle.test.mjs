@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { assertWebReady, clearSuccessfulBootstrapLoginErrors, clickIfPresent, detailReadyPredicate, installVisualDate, isExpectedCredentiallessBootstrapRejection, stableNativeFocus, watchApiErrors } from "./drivers/web.mjs";
 
 test("motion capture skips the optional manual sign-in click when it is absent", async () => {
@@ -188,4 +189,10 @@ test("detail readiness stays synchronous and waits for source-specific image dec
     if (previousStyle) Object.defineProperty(globalThis, "getComputedStyle", previousStyle);
     else delete globalThis.getComputedStyle;
   }
+});
+
+test("search readiness accepts the search form, which phones show while they hide the prompt", () => {
+  const source = readFileSync(new URL("./drivers/web.mjs", import.meta.url), "utf8");
+  const selector = source.match(/path === "\/search"\) await page\.waitForSelector\("([^"]+)"/)?.[1] ?? "";
+  for (const part of [".tv-search-results-grid", ".tv-search-empty", ".tv-search-prompt", ".tv-search-form"]) assert.ok(selector.includes(part), `${part} missing from ${selector}`);
 });
