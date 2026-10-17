@@ -83,7 +83,9 @@ const film = await first("movie", seed.access_token);
 if (film) film.media_file_id = (await api(`/api/v1/catalog/${film.id}`, seed.access_token)).media_file_id;
 // The player screens use what the Roku Home plays first: the most recently watched part-watched title.
 const recent = (await api("/api/v1/playback/progress", seed.access_token)).filter((r) => r.state === "part_watched").sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0];
-const playerFile = recent?.media_file_id ?? film?.media_file_id;
+// PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID pins the player screens to one fixture that every client driver can open and seek to 2.0 s
+// (parity_pause_at_ms 2000 on Android), so the ref no longer depends on what happens to be on deck.
+const playerFile = process.env.PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID || (recent?.media_file_id ?? film?.media_file_id);
 const series = await first("series", seed.access_token);
 
 const screens = [
@@ -180,6 +182,8 @@ try {
             return (v?.readyState ?? 0) >= 2;
           }, null, { timeout: 90000, polling: 500 }).catch(() => {});
           await page.evaluate(() => { const v = document.querySelector("video"); if (v) { v.pause(); v.currentTime = 2; } });
+          await page.waitForTimeout(1500);
+          await page.evaluate(() => { const v = document.querySelector("video"); if (v && Math.abs(v.currentTime - 2) > 0.5) { v.currentTime = 2; v.pause(); } });
           await page.addStyleTag({ content: "video{visibility:hidden!important}" });
           const vp = page.viewportSize();
           for (let i = 0; i < 4; i += 1) {
