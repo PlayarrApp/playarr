@@ -8,9 +8,9 @@ const read = (p: string): string => readFileSync(p, 'utf8');
 const files = readdirSync(screensDir).filter(f => f.endsWith('.tsx') && !f.endsWith('.test.tsx'));
 
 /** Pages that render the shared `PageHeader`. */
-const MIGRATED = ['LibraryScreen', 'ListPages', 'MusicDetailScreen', 'PlaylistsScreen', 'SearchScreen', 'SettingsScreen', 'WorkDetailScreen'];
+const MIGRATED = ['CalendarScreen', 'LibraryScreen', 'ListPages', 'MusicDetailScreen', 'PlaylistsScreen', 'SearchScreen', 'SettingsScreen', 'WorkDetailScreen'];
 /** Pages still on a hand-placed `BackButton`. This ratchet only shrinks: move a page to MIGRATED when it adopts PageHeader. */
-const UNMIGRATED = ['CalendarScreen'];
+const UNMIGRATED: string[] = [];
 /** Spec section 2, rule 1: no header (Home, player, profile picker, household gate, pre-auth, NotFound) or not a page. */
 const EXEMPT = ['HomeScreen', 'PlayerScreen', 'ProfilesScreen', 'HouseholdBlockedScreen', 'LinkScreen', 'NotFoundScreen', 'PlaceholderScreen', 'PlaybackSettingsDrawer', 'SearchDiscoveryCard'];
 
