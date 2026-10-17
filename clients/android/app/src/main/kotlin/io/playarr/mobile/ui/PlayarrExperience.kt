@@ -3264,6 +3264,10 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
         val palette = PlayarrWebTheme.palette
         val soft = palette.detailsSoft
         val glow = WebTextStyle.copy(shadow = androidx.compose.ui.graphics.Shadow(WebSurface.copy(alpha = 0.9f), blurRadius = 14f * LocalDensity.current.density))
+        // Tablet web at 1280 x 800: the clamp minimums bite, so the eyebrow, meta and overview are larger than at 1920 and sit lower.
+        val tabletHero = library && LocalStageScale.current != 1f
+        val metaFont = webVw(9.92f, 0.68f, 13.76f).value
+        val overviewFont = webVw(10.24f, 0.72f, 14.72f).value
         Column(Modifier.width(455.dp).detailsPanelBand()) {
             Text(
                 if (library) {
@@ -3272,16 +3276,16 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                     playarrString(PlayarrString.HomeKindGenre, "kind" to kind, "genre" to genre).uppercase(language.locale)
                 },
                 color = palette.brandInk,
-                fontSize = 12.288.sp,
+                fontSize = if (library) webVw(9.28f, 0.64f, 13f).value.sp else 12.288.sp,
                 fontWeight = FontWeight(860),
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
                 style = glow,
             )
-            WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp))
+            WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp + (if (tabletHero) 3.7.dp else 0.dp)))
             val runtime = runtimeMs?.let { formatPlayarrVideoRuntime(it, language) }
             if (library) {
-                Row(Modifier.padding(top = 27.dp), horizontalArrangement = Arrangement.spacedBy(12.8.dp)) {
+                Row(Modifier.padding(top = 27.dp + (if (tabletHero) 4.5.dp else 0.dp)), horizontalArrangement = Arrangement.spacedBy(12.8.dp + (if (tabletHero) 6.dp else 0.dp))) {
                     // The release year, never the library added date (ruling 2026-10-08); web adds the runtime last.
                     listOfNotNull(
                         // Series show their run ("2011\u20132017") as web does.
@@ -3289,7 +3293,7 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                         work.genres.take(2).joinToString(" \u00B7 ").ifBlank { kind },
                         runtime,
                     ).forEach {
-                        Text(it, color = soft, fontSize = 13.056.sp, lineHeight = 19.584.sp, fontWeight = FontWeight(600), style = glow)
+                        Text(it, color = soft, fontSize = metaFont.sp, lineHeight = (metaFont * 1.5f).sp, fontWeight = FontWeight(600), style = glow)
                     }
                 }
             } else if (runtime != null) {
@@ -3299,14 +3303,14 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
             Text(
                 work.overview?.takeIf(String::isNotBlank) ?: playarrString(PlayarrString.HomeNoSynopsis),
                 color = soft,
-                fontSize = if (library) 13.824.sp else 12.864.sp,
-                lineHeight = if (library) 21.842.sp else 20.325.sp,
+                fontSize = if (library) overviewFont.sp else 12.864.sp,
+                lineHeight = if (library) (overviewFont * 1.58f).sp else 20.325.sp,
                 fontWeight = FontWeight(600),
                 style = glow,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 // Web `max-width: 42ch` of the overview font: 324 dp on Home, 348 dp in the library.
-                modifier = Modifier.padding(top = 21.7.dp).widthIn(max = if (library) 348.dp else 324.dp),
+                modifier = Modifier.padding(top = 21.7.dp + (if (tabletHero) 2.dp else 0.dp)).widthIn(max = if (library) (if (tabletHero) 387.dp else 348.dp) else 324.dp),
             )
         }
         return
