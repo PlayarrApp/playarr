@@ -1,1 +1,0 @@
-- HarmonyOS TV Series Detail captures now pass in the Previewer: episode image areas, target visibility and generation scoping reach the capture gate, and focus is waived only where the Previewer cannot deliver it.
