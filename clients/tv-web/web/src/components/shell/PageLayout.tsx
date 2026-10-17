@@ -69,7 +69,7 @@ export function PageLayout({ pageId, header, body = "panel", backdrop, state, ch
     return (
       <section className={`page-shell${className ? ` ${className}` : ""}`} aria-label={ariaLabel} data-page-id={pageId} data-page-body="bleed">
         {backdrop?.art !== undefined ? (
-          <div className="tv-key-art" key={backdrop.artKey}>
+          <div className="tv-key-art" data-nav-behind key={backdrop.artKey}>
             {backdrop.art}
           </div>
         ) : null}
@@ -82,7 +82,7 @@ export function PageLayout({ pageId, header, body = "panel", backdrop, state, ch
   return (
     <section className={className} aria-label={ariaLabel} data-page-id={pageId} data-page-body="panel">
       {backdrop?.art !== undefined ? (
-        <div className="tv-key-art" key={backdrop.artKey}>
+        <div className="tv-key-art" data-nav-behind key={backdrop.artKey}>
           {backdrop.art}
         </div>
       ) : null}

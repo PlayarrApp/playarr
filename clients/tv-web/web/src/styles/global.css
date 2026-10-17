@@ -9892,8 +9892,8 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
   width: calc(var(--stage-rail-width) + var(--list-glow-room));
   padding: var(--panel-pad);
   padding-left: 0;
-  /* Clear the shell action column (Filters, Notifications): the same reserve the Library grid keeps (page-layout.css). */
-  padding-right: var(--library-rail-right);
+  /* Clear the shell action column (Filters, Notifications) only: Downloads has no letter rail to reserve room for. */
+  padding-right: calc(var(--directory-controls-edge) + var(--directory-controls-width) + var(--directory-controls-gap));
 }
 
 /* On a phone the Downloads panel and the state panels are the whole page (they keep Home's 62% column on larger

@@ -1,0 +1,1 @@
+- Web: no page content sits under the left nav at any width (a new all-routes e2e guards it), and pages without the library letter rail no longer reserve a gutter for it on phones (Search, Watchlist, Requests, Playlists, Downloads).
