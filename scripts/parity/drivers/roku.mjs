@@ -1004,6 +1004,12 @@ export function createDriver({ out, args = [] } = {}) {
             ? "timeout" : "interrupted";
           throw new Error(`Calendar ${targetView} readiness ${reason}; gates=${JSON.stringify(diagnostics)}`);
         }
+        // Leave the range selector: web captures show no focus ring in the header, so land on the first entry.
+        const beforeEntryFocusSeq = parityState.calendarFocusSeq;
+        await press("down");
+        await waitFor(() => hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeEntryFocusSeq), "Calendar focus on the first entry", 8000);
+        // Down lands under the selector, in the last visible day column, and scrolls the week sideways: walk back to the first column.
+        if (targetView === "week") for (let i = 0; i < 4; i += 1) await press("left");
       }
     } else {
       if (entry.id === "actions") drawerSource = "actions";

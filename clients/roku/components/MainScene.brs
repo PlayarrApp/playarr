@@ -2523,7 +2523,7 @@ end sub
 
 ' Library heading (web .page-header h1: 33.6 px, weight 580, -0.045em tracking).
 sub setBrowseTitle(text as String)
-    m.browseTitle.spec = { text: text, size: 34, weight: 600, tracking: -1.512, role: "ink" }
+    m.browseTitle.spec = PageTitleSpec(text)
 end sub
 
 sub rebuildBrowseContent()
@@ -3105,12 +3105,10 @@ end sub
 sub searchChromeInit()
     holder = m.searchGroup
     m.searchTitle.visible = false
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "surface", 179)
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "line", -1, true)
-    pgIcon(holder, 170, 73, 17, "arrow-left.png", "inkSoft")
+    pgBackButton(holder, 153.6)
     m.searchHeaderTitle = CreateObject("roSGNode", "TrackedText")
     m.searchHeaderTitle.translation = [226.6, 56.2]
-    m.searchHeaderTitle.spec = { text: "Search", size: 34, weight: 600, tracking: -1.512, role: "ink" }
+    m.searchHeaderTitle.spec = PageTitleSpec("Search")
     holder.AppendChild(m.searchHeaderTitle)
     m.searchHeaderDivider = pgRect(holder, 348, 73, 1, 16, "line")
     m.searchHeaderRule = pgRect(holder, 226.6, 112, 1, 1, "line")
@@ -7407,9 +7405,7 @@ end sub
 
 sub detailChromeInit()
     holder = m.top.findNode("detailGroup")
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "surface", 179)
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "line", -1, true)
-    pgIcon(holder, 170, 73, 17, "arrow-left.png", "inkSoft")
+    pgBackButton(holder, 153.6)
     m.detailHeaderTitle = CreateObject("roSGNode", "TrackedText")
     m.detailHeaderTitle.translation = [226.6, 56.2]
     holder.AppendChild(m.detailHeaderTitle)
@@ -7438,7 +7434,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if work.kind = "series" then heading = "Series"
     if work.kind = "site" then heading = "Sites"
     if work.kind = "artist" then heading = "Music"
-    m.detailHeaderTitle.spec = { text: heading, size: 34, weight: 600, tracking: -1.512, role: "ink" }
+    m.detailHeaderTitle.spec = PageTitleSpec(heading)
         layoutHeaderSub(m.detailHeaderTitle.textWidth, m.detailHeaderChip, m.detailHeaderDivider, m.detailHeaderRule, work.title)
     ' Kicker: the first genre, like the library preview.
     kicker = UCase(work.kind)
