@@ -415,7 +415,7 @@ export struct PosterCard {
             .fontColor('#ffffff')
             .textAlign(TextAlign.End)
             .maxLines(1)
-            .shadow({ radius: tv(4), color: 'rgba(0, 0, 0, 0.75)', offsetY: tv(1) })
+            .textShadow({ radius: tv(4), color: 'rgba(0, 0, 0, 0.75)', offsetY: tv(1) })
             .position({ x: this.episodeOverlayX(), y: this.episodeOverlayY() })
         }
       }
