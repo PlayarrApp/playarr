@@ -139,6 +139,10 @@ jobs:
           ENV_DATA_DENYLIST: ${{ secrets.ENV_DATA_DENYLIST }}
         run: scripts/ci/check-env-data.sh
 
+      # Parity helpers exist only in Debug; a stray reference breaks the Release archive.
+      - name: Reject DEBUG-only parity symbols outside #if DEBUG
+        run: scripts/ci/check-debug-only-symbols.sh
+
       - name: Post-merge fold tests
         run: scripts/ci/test-fold-main.sh
 

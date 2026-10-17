@@ -1,0 +1,1 @@
+- The release workflow packages the Roku channel (Pillow is installed for the tests) and the iOS Release archive compiles (parity launch code no longer leaks outside Debug builds).

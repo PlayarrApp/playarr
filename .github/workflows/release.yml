@@ -199,6 +199,7 @@ jobs:
           sed -i -E "s/^major_version=.*/major_version=$major/; s/^minor_version=.*/minor_version=$minor/; s/^build_version=.*/build_version=$(printf '%05d' "$patch")/" manifest
           sed -i -E "s/(clientVersion: )\"[^\"]*\"/\1\"$VERSION\"/" source/Config.brs
           grep -E '^(major|minor|build)_version=' manifest
+          python3 -m pip install --quiet pillow
           make package PACKAGE="build/playarr-roku-$VERSION.zip"
 
       - uses: actions/upload-artifact@v4

@@ -168,10 +168,18 @@ struct HomeView: View {
         return first && index == 0
     }
 
+    private var parityLastFocus: Bool {
+        #if DEBUG
+        return ParityLaunch.focus == "last"
+        #else
+        return false
+        #endif
+    }
+
     private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool, index railIndex: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(rail.title, 16, 610, lh: 24, ls: -0.48).padding(.horizontal, 16)
-            WMFadingRail(scrollTo: scrollTarget(rail, first: first, index: railIndex), scrollAnchor: keyFocus != nil ? .center : (ParityLaunch.focus == "last" || motionRail == railIndex) ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
+            WMFadingRail(scrollTo: scrollTarget(rail, first: first, index: railIndex), scrollAnchor: keyFocus != nil ? .center : (parityLastFocus || motionRail == railIndex) ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(Array(rail.works.enumerated()), id: \.element.id) { index, work in
                         workLink(work) {
