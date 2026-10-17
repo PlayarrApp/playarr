@@ -387,7 +387,7 @@ export struct Stage {
           this.railsSlot()
         }
         .alignItems(HorizontalAlign.Start)
-        .padding({ left: tv(TvGeometry.homeRailsInsetLeft), top: tv(TvGeometry.homeRailsTop + this.railsTopAdjust), bottom: tv(TvGeometry.homeRailsTop) })
+        .padding({ left: tv(TvGeometry.homeRailsInsetLeft), top: tv(TvGeometry.homeRailsTop + this.railsTopAdjust), bottom: tv(TvGeometry.homeRailsBottomPad) })
       }
       .width(tv(TvGeometry.homeRailsWidth))
       .height('100%')
