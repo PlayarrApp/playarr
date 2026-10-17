@@ -1,6 +1,7 @@
 // Roku driver for the shared non-player parity suite. ECP keys drive the real device, the native PARITY console
 // supplies screen/focus state, and plugin_inspect supplies an authenticated screenshot. Never use this driver
-// for playback or Downloads. Run under the shared Roku-input flock and pass explicit --only, --screens and
+// for Downloads. Playback is refused unless the run passes --player and ROKU_ALLOW_PLAYBACK=1, and then only for the player-*
+// D-pad checks. Run under the shared Roku-input flock and pass explicit --only, --screens and
 // --checks allowlists so an accidental suite default cannot enter an unsupported screen.
 // Required environment: ROKU_DEV_TARGET and ROKU_DEV_PASSWORD. Passwords stay in memory and are sent to curl
 // over stdin configuration, never in argv or logs. Evidence belongs under .data, never in the repository.
@@ -19,6 +20,20 @@ const SAFE_CHECKS = new Set([
   "home-right", "home-down", "home-down-right", "home-left-nav", "nav-down",
   "movies-grid-right", "movies-grid-down", "movies-grid-left-nav", "series-grid-down", "long-press-actions", "nav-right-stage", "detail-back",
 ]);
+const PLAYER_CHECKS = new Set([
+  "player-initial-focus", "player-right", "player-right-3", "player-right-end", "player-left-edge", "player-up-seek",
+  "player-up-down", "player-ok-toggle", "player-back", "player-back-back", "player-panel-open", "player-panel-close",
+]);
+const playbackAllowed = (args = [], env = process.env) => args.includes("--player") && env.ROKU_ALLOW_PLAYBACK === "1";
+// Focus labels the player chrome emits for its own controls; anything else while the chrome is up is a panel row.
+const PLAYER_CHROME_LABEL = /^(seek|play|pause|minimise|close|previous episode|next episode|playback health|(audio|subtitles|playlist|quality): )/;
+export function playerPanelOpenFromLabel(label) {
+  return typeof label === "string" && label !== "" && !PLAYER_CHROME_LABEL.test(label);
+}
+export function parseMediaPlayerPositionMs(xml) {
+  const match = /<position>\s*(\d+)\s*ms\s*<\/position>/i.exec(xml);
+  return match ? Number(match[1]) : 0;
+}
 const KEY_NAMES = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Select", back: "Back" };
 const SUITE_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../suite.json");
 const SUITE_SCREENS = JSON.parse(readFileSync(SUITE_FILE, "utf8")).screens;
@@ -256,7 +271,7 @@ export function validateRunArgs(args) {
   if (only.includes("dpad")) {
     const checks = option(args, "checks").split(",").filter(Boolean);
     if (!checks.length) throw new Error("Roku driver requires an explicit non-player --checks allowlist");
-    const unsafe = checks.filter((x) => !SAFE_CHECKS.has(x));
+    const unsafe = checks.filter((x) => !SAFE_CHECKS.has(x) && !(PLAYER_CHECKS.has(x) && playbackAllowed(args)));
     if (unsafe.length) throw new Error(`Roku driver refuses unsupported D-pad check(s): ${unsafe.join(", ")}`);
   }
   return true;
@@ -634,7 +649,7 @@ export function createDriver({ out, args = [] } = {}) {
     }
     const actual = routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind);
     if (actual) lastRoute = actual;
-    if (screen === "playback") throw new Error("Roku parity driver stopped before capturing a player screen");
+    if (screen === "playback" && !playerMode) throw new Error("Roku parity driver stopped before capturing a player screen");
   };
 
   const waitFor = async (predicate, label, timeoutMs = 45000) => {
@@ -834,7 +849,26 @@ export function createDriver({ out, args = [] } = {}) {
     lastRoute = routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind);
   };
 
+  const playerMode = playbackAllowed(process.argv, env);
+  const sendEcpText = async (path) => (await sendEcp(path, "GET")).text();
+  const playheadMs = async () => parseMediaPlayerPositionMs(await sendEcpText("query/media-player"));
+  const waitPlaying = async () => {
+    const deadline = Date.now() + 60000;
+    while (Date.now() < deadline) { if (await playheadMs() > 1000) return; await sleep(500); }
+    throw new Error("Roku player did not start playing within 60 s");
+  };
+  // The first Home card (the on-deck film): open its detail, then Play. Only the player checks get here.
+  const openPlayer = async () => {
+    await press("select");
+    await waitFor(() => screen === "detail", "title detail before Play", 20000);
+    await sleep(2000);
+    await press("select");
+    await waitFor(() => screen === "playback", "player screen", 30000);
+    await waitPlaying();
+  };
+
   const safeRoute = async (path) => {
+    if (path === "/player/:id" && playerMode) { await openPlayer(); lastRoute = "/player/:id"; return; }
     if (path === "/player" || path.startsWith("/player/")) throw new Error("Roku parity driver refuses player routes");
     if (/^\/(movies|series)\/[^/?]+$/.test(path)) { await openDetailRoute(path); return; }
     const entry = exactSuiteScreen(path);
@@ -1111,7 +1145,15 @@ export function createDriver({ out, args = [] } = {}) {
     },
     async download() { throw new Error("Roku parity driver does not support Downloads"); },
     async cleanupDownloads() {},
-    async playerReady() { throw new Error("Roku parity driver refuses player checks"); },
+    // Playing, controls up (any key shows them; Down is inert on the play button), focus on play/pause.
+    async playerReady() {
+      if (!playerMode) throw new Error("Roku parity driver refuses player checks");
+      await waitPlaying();
+      await press("down");
+      await waitFor(() => focus === "pause", "player focus on pause", 10000);
+    },
+    async playhead() { return (await playheadMs()) / 1000; },
+    async panelOpen() { return playerPanelOpenFromLabel(typeof focus === "string" ? focus : focus?.label); },
     async play() { throw new Error("Roku parity driver refuses playback and performance checks"); },
   };
 }

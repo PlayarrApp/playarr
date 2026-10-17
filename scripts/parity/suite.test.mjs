@@ -7,7 +7,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
-import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
+import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs, playerPanelOpenFromLabel, parseMediaPlayerPositionMs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
 import { CAPTURE_REGION, pinCapture, readinessMode } from "./suite-lib.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
@@ -138,6 +138,19 @@ test("Roku suite driver requires explicit non-player screen and D-pad allowlists
     "--only", "dpad", "--checks", "home-right,player-right",
   ]), /refuses unsupported D-pad check/);
   assert.throws(() => validateRokuRunArgs(["--only", "downloads"]), /downloads and performance are unsupported/);
+});
+
+test("Roku player checks need --player and ROKU_ALLOW_PLAYBACK=1; panel and playhead parsing", () => {
+  const args = ["--only", "dpad", "--checks", "player-right,home-right", "--player"];
+  assert.throws(() => validateRokuRunArgs(args), /refuses unsupported D-pad check/);
+  process.env.ROKU_ALLOW_PLAYBACK = "1";
+  try {
+    assert.equal(validateRokuRunArgs(args), true);
+    assert.throws(() => validateRokuRunArgs(args.slice(0, -1)), /refuses unsupported D-pad check/);
+  } finally { delete process.env.ROKU_ALLOW_PLAYBACK; }
+  assert.equal(playerPanelOpenFromLabel("subtitles: off"), false);
+  assert.equal(playerPanelOpenFromLabel("offNo subtitles\u2713"), true);
+  assert.equal(parseMediaPlayerPositionMs("<player><position>4500 ms</position></player>"), 4500);
 });
 
 test("Roku profile launch accepts only a fresh profile screen and its subsequent focus event", () => {
