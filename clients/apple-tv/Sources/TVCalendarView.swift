@@ -552,7 +552,11 @@ struct TVCalendarView: View {
         // Web `max-width: 9ch` on the details title: "Best Medicine" wraps to two lines.
         let titleWidth = min(379.5, 9 * TVTextWrap.measure("0", weight: 560, size: 69.12, kern: 0))
         let lines = max(1, TVTextWrap.lines(title, weight: 560, size: 69.12, kern: -4.98, width: titleWidth, balanced: true).count)
-        let metaY = 291.5 + 62.2 * CGFloat(lines) + 21.6
+        // A wrapped title sits 16 px lower in the web details panel and its meta line 5 px further on (measured on the
+        // 2026-10-07 capture: "Best / Medicine").
+        let wrapLift: CGFloat = lines > 1 ? 16 : 0
+        let titleY = 291.5 + wrapLift
+        let metaY = titleY + 62.2 * CGFloat(lines) + 21.6 + (lines > 1 ? 5 : 0)
         let code = item.entries.count > 1 ? "\(item.entries.count) episodes" : Self.episodeCode(entry)
         let codeLine = [code, item.entries.count > 1 ? nil : (entry.subtitle ?? "TBA")].compactMap { $0 }.joined(separator: " \u{00B7} ")
         let when = Self.timedRelease(entry).map { Self.format($0, "EEEE, d MMMM yyyy 'at' HH:mm") }
@@ -572,7 +576,7 @@ struct TVCalendarView: View {
                 .foregroundStyle(DesignTokens.Stage.brandInk)
                 .placed(x: 153.6, y: 263.2, w: 455, h: 18.4)
             TVHeroTitle(title: title, maxWidth: titleWidth)
-                .placed(x: 153.6, y: 291.5, w: 379.5, h: 62.2 * CGFloat(lines), alignment: .topLeading)
+                .placed(x: 153.6, y: titleY, w: 379.5, h: 62.2 * CGFloat(lines), alignment: .topLeading)
             HStack(spacing: 12.8) {
                 Text(codeLine)
                 Text(when)
@@ -692,6 +696,9 @@ struct TVCalendarView: View {
                 TVAuthedImage(load: {
                     try await environment.apiClient.fetchArtwork(workID: id, kind: .poster)
                 }) { Color.clear }
+            } else if let raw = entry?.posterURL, let url = URL(string: raw) {
+                // Web `Poster` shows the entry's own poster_url: a title not in the catalogue yet (Missing) still has one.
+                TVAuthedImage(load: { try await URLSession.shared.data(from: url).0 }) { Color.clear }
             }
         }
     }
