@@ -1007,3 +1007,19 @@ describe("ensureAccessToken without transparent login", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
+
+describe("refresh that outlives a sign-out", () => {
+  it("does not write the refreshed session back", async () => {
+    const store = new TokenStore();
+    store.set({ accessToken: "old", refreshToken: "r", tokenType: "Bearer", expiresAt: Date.now() - 1000 });
+    const fetchImpl = mockFetch(async () => {
+      store.clear();
+      return jsonResponse(200, { access_token: "new", refresh_token: "r2", expires_in: 3600, token_type: "Bearer" });
+    });
+    const client = new ApiClient({ baseUrl: BASE_URL, fetchImpl });
+    await expect(
+      ensureAccessToken(client, store, IDENTITY, { allowTransparentLogin: false })
+    ).rejects.toMatchObject({ status: 401 });
+    expect(store.get()).toBeUndefined();
+  });
+});

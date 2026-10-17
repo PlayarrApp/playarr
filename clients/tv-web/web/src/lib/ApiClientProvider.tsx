@@ -734,15 +734,20 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
   if (!tokenStoreRef.current) {
     tokenStoreRef.current = new TokenStore();
   }
-  if (!tokenStoreRef.current.get()) {
-    const restoredProfile = selectRestorableProfileSession(
-      initialStoredProfilesRef.current ?? [],
-      apiBaseUrl,
-      readActiveProfileMarker()
-    );
-    if (restoredProfile) {
-      tokenStoreRef.current.set(restoredProfile.session);
-      writeActiveProfileMarker(restoredProfile);
+  // Once per server: a later render with an empty store is a sign-out and must not restore the stale snapshot.
+  const sessionRestoredForRef = useRef<string>();
+  if (sessionRestoredForRef.current !== apiBaseUrl) {
+    sessionRestoredForRef.current = apiBaseUrl;
+    if (!tokenStoreRef.current.get()) {
+      const restoredProfile = selectRestorableProfileSession(
+        initialStoredProfilesRef.current ?? [],
+        apiBaseUrl,
+        readActiveProfileMarker()
+      );
+      if (restoredProfile) {
+        tokenStoreRef.current.set(restoredProfile.session);
+        writeActiveProfileMarker(restoredProfile);
+      }
     }
   }
 

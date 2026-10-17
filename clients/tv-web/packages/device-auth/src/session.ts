@@ -552,6 +552,8 @@ async function refreshExistingSession(
     };
     try {
       const refreshed = await client.refresh(refreshBody);
+      // Signed out while the refresh was in flight: do not write the session back.
+      if (!store.get()) return undefined;
       store.set(toStoredSession(refreshed));
       return refreshed.access_token;
     } catch (err) {
