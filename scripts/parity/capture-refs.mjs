@@ -64,7 +64,9 @@ if (!process.env.PARITY_CLIENT) throw new Error("PARITY_CLIENT is required for i
 if (!process.env.PARITY_LOCK_DIR) throw new Error("PARITY_LOCK_DIR must point to the supplied scratch lock directory");
 const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
 if (!Number.isFinite(Date.parse(fixedNow))) throw new Error("PARITY_FIXED_NOW must be a valid ISO date");
-const stateFiles = [...new Set([...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file)])];
+// The canonical deck item must be inside the captured progress scope, or seeding it fails after the run has started.
+const deckScope = deckFromEnv({ ...process.env, PARITY_SEED_CANONICAL: "1" }, readSecrets()).deckFile;
+const stateFiles = [...new Set([...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file), deckScope])];
 await withCaptureState({ client: process.env.PARITY_CLIENT, files: stateFiles }, async (captureState) => {
 Object.assign(process.env, captureState.env, { PARITY_STABLE: "1" });
 const env = captureState.env;
