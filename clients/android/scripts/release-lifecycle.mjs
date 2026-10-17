@@ -58,3 +58,9 @@ export function isDeclarationBlock(error) {
     !/in review|already (been )?used|version ?code/i.test(message)
   );
 }
+
+// Play's 403 "Version code N has already been used." for the version code this run expects.
+export function isVersionCodeReusable(error, expectedVersionCode) {
+  const match = /^Version code (\d+) has already been used/i.exec(String(error?.apiMessage ?? ''));
+  return error?.status === 403 && match !== null && match[1] === String(expectedVersionCode);
+}
