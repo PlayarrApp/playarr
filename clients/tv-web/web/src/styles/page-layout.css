@@ -387,6 +387,22 @@
     height: 44px;
     flex: 0 0 44px;
   }
+
+  /* Detail pages scroll the whole document on phones: pin the header and fade the content out under it (the shared edge-fade size). */
+  .tv-detail > .tv-detail-heading {
+    position: fixed;
+  }
+  .tv-detail > .tv-detail-heading::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: calc(-1 * var(--page-header-top));
+    right: -116px; /* the heading's own right inset */
+    left: calc(-1 * var(--mobile-page-gutter));
+    height: calc(var(--page-header-top) + 44px + 8px + var(--page-edge-fade-size));
+    background: linear-gradient(var(--surface) calc(100% - var(--page-edge-fade-size)), transparent);
+    pointer-events: none;
+  }
 }
 
 html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .tv-page-back {
