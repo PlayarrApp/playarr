@@ -68,7 +68,8 @@ export async function createDriver() {
   function plan(route, screenId, marker = "ROUTE") {
     const [path, q] = route.split("?");
     const view = new URLSearchParams(q ?? "").get("view");
-    if (screenId === "actions") return [["wait", "wait", "js:pageStack.currentPage.actionsHome()"], 16];
+    // The suite's keys long-press the first card of the Movies library (the web ref's "2 Fast 2 Furious"), not Home's first card, which follows On deck.
+    if (screenId === "actions") return [["wait", "wait", "js:pageStack.currentPage.actionsFirst('movie')"], 16];
     if (path === "/") return [["wait"], 12];
     if (path === "/movies" && q?.includes("panel=filters")) return [["wait", ...section("movies"), "wait", `js:pageStack.push('${PAGES}/FiltersPage.qml')`], 16];
     if (path === "/movies") return [["wait", ...section("movies")], 14];

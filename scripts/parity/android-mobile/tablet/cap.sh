@@ -38,7 +38,10 @@ run() { case $1 in
     python3 -I $HERE/uiexpect.py 'Mark as Watched' || { echo "wrong screen actions (drawer not open)"; return 1; }; kseq down*8; shot $1 ;;
   film-detail) open experience-detail/ca309574-c0f4-4564-bb54-4512eab7e531 20; adb shell input keyevent 59; sleep 4; shot $1 ;;
   series-detail) open experience-detail/7ab4ce97-d59e-43d6-8e03-31d4d29a5c90 20; adb shell input keyevent 59; sleep 4; shot $1 ;;
-  player-controls) open movies; tap ${CARD_X:-190} ${CARD_Y:-330} 6; tap_text "Resume.*|Play" 25; python3 -I $HERE/uiexpect.py 'Pause|Seek|Subtitles|Audio' || { echo "wrong screen player-controls"; return 1; }; shot $1 1 ;;
+  player-controls) open movies; python3 -I $HERE/uiexpect.py '[0-9,]+ titles' || { echo "wrong screen movies grid"; return 1; }; tap ${CARD_X:-1254} ${CARD_Y:-371} 6; tap_text "Resume.*|Play" 25
+    # The harness pauses at 2 s, but the chrome hides 5 s after playback starts: when startup is slow (loaded host) the chrome is gone by the
+    # time the player is paused and never returns. A touch on the surface shows it again without toggling playback.
+    for w in 1 2 3 4; do python3 -I $HERE/uiexpect.py 'Pause|Seek|Subtitles|Audio' && break; [ $w = 2 ] && { adb shell input tap 1280 800; sleep 2; }; [ $w = 4 ] && { echo "wrong screen player-controls"; return 1; }; done; shot $1 1 ;;
   home-last) open home 20; adb shell input keyevent 59; kseq right*2 down; kseq right*80; shot $1 ;;
   home-row2) open home 20; adb shell input keyevent 59; kseq right down*2 right; shot $1 ;;
   movies-last) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select down*40; shot $1 ;;
@@ -48,7 +51,7 @@ run() { case $1 in
   nav-focus) open home 20; adb shell input keyevent 59; kseq left down*2; shot $1 ;;
   settings-list) open settings 20; adb shell input keyevent 59; sleep 2; kseq down*2; shot $1 ;;
   filters-bottom) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select right*12 up select; kseq down*40; shot $1 ;;
-  player-focus) open movies; tap ${CARD_X:-190} ${CARD_Y:-330} 6; tap_text "Resume.*|Play" 25; kseq right*3; shot $1 1 ;;
+  player-focus) open movies; python3 -I $HERE/uiexpect.py '[0-9,]+ titles' || { echo "wrong screen movies grid"; return 1; }; tap ${CARD_X:-1254} ${CARD_Y:-371} 6; tap_text "Resume.*|Play" 25; kseq right*3; shot $1 1 ;;
   *) echo "unknown $1";;
 esac; }
 for s in "$@"; do for attempt in 1 2 3; do run "$s" && break; done; done

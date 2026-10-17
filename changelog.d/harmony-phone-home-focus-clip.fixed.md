@@ -1,1 +1,0 @@
-- Home phone rails now let focused card rings and glow render into the reserved rail inset without shifting card or heading positions.

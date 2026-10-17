@@ -282,7 +282,7 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("this.episodeFocusGate.rollbackRequest()", focus_branch)
         self.assertIn("reportDetailEpisodeCardContainerAreaForScope('Detail', workId, episodeId, this.previewScopeGeneration", transformed)
         self.assertNotIn("reportDetailEpisodeCardContainerAreaForScope('Detail', workId, episodeId, generation", transformed)
-        self.assertIn("reportDetailSeriesTargetCardVisibilityForScope('Detail', workId, generation", focus_branch)
+        self.assertIn("reportDetailSeriesTargetCardVisibilityForScope('Detail', workId, this.previewScopeGeneration", focus_branch)  # the bridge scopes by the preview route generation
         self.assertIn("if (cardMeasurement === undefined || cardMeasurement === null || card === undefined || card === null ||", focus_branch)
         self.assertIn("rail === undefined || rail === null || page === undefined || page === null ||", focus_branch)
         self.assertIn("!Number.isFinite(pageOffset)", focus_branch)
@@ -364,7 +364,7 @@ class PreviewPatchContractTests(unittest.TestCase):
                 self.assertEqual(first_application.count("reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'on-complete')"), 1)
                 self.assertNotIn("previewEpisodeCard", first_application)
                 self.assertIn("reportDetailEpisodeCardAreaForMeasurement(this.getUIContext()", first_application)
-                self.assertIn("this.previewRailId, this.previewOccurrence, this.measurementId", first_application)
+                self.assertIn("this.previewRailId, this.previewOccurrence, this.imageMeasurementId", first_application)
                 self.assertNotIn("area.globalPosition", first_application)
                 self.assertLess(first_application.index("@Prop previewOccurrence"),
                                 first_application.index("@Prop @Watch('previewArtworkUpdated') artwork"))

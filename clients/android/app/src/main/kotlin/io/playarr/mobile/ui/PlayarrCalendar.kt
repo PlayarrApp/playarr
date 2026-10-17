@@ -123,7 +123,7 @@ import java.util.Locale
 private val CALENDAR_LIVE_INTEREST = setOf(io.playarr.shared.data.events.LiveTarget(io.playarr.shared.data.events.LiveArea.Calendar))
 
 /** No state layer: on TV the web focus state is the ring alone, never a background fill. */
-private object CalendarNoFocusFill : androidx.compose.foundation.IndicationNodeFactory {
+internal object CalendarNoFocusFill : androidx.compose.foundation.IndicationNodeFactory {
     override fun create(interactionSource: androidx.compose.foundation.interaction.InteractionSource): androidx.compose.ui.node.DelegatableNode =
         object : androidx.compose.ui.Modifier.Node() {}
     override fun equals(other: Any?): Boolean = other === CalendarNoFocusFill
