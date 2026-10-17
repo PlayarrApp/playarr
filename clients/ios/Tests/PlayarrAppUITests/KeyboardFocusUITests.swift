@@ -192,8 +192,9 @@ func requireParityCaptureReady(_ app: XCUIApplication, expectedUsername: String)
     let identityPredicate = NSPredicate(format: "value ==[c] %@", expectedUsername)
     let identityReady = XCTNSPredicateExpectation(predicate: identityPredicate, object: identity)
     guard XCTWaiter.wait(for: [identityReady], timeout: 120) == .completed else {
+        let reason = (app.descendants(matching: .any)["parity.failure"].value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "none recorded"
         app.terminate()
-        throw NSError(domain: "PlayarrKeyboardFocus", code: 20, userInfo: [NSLocalizedDescriptionKey: "The authenticated account did not match the configured identity."])
+        throw NSError(domain: "PlayarrKeyboardFocus", code: 20, userInfo: [NSLocalizedDescriptionKey: "The authenticated account did not match the configured identity (app failure reason: \(reason))."])
     }
     let screen = app.descendants(matching: .any)["parity.screenContentReady"]
     let screenReady = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "true"), object: screen)
