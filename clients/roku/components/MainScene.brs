@@ -143,6 +143,7 @@ sub init()
     m.searchGroup = m.top.findNode("searchGroup")
     m.searchGrid = m.top.findNode("searchGrid")
     m.searchTitle = m.top.findNode("searchTitle")
+    searchChromeInit()
     m.searchFieldLabel = m.top.findNode("searchFieldLabel")
     ThemeSetRole(m.top.findNode("searchFieldBg"), "surface")
     ThemeSetRole(m.top.findNode("searchFieldRing"), "focusRing")
@@ -970,6 +971,7 @@ sub handleApiFailure(action as String, result as Object)
         showSearchEmptyState(true)
         showOnly("search")
         m.top.screenState = "search"
+        renderNavDockFocus()
         m.searchGrid.SetFocus(true)
         return
     end if
@@ -2533,9 +2535,10 @@ sub rebuildBrowseContent()
     end if
     m.artActiveGeneration = 0
     m.artActiveScope = ""
-    if m.artTelemetryEnabled and (m.browseKind = "movie" or m.browseKind = "series")
+    if m.artTelemetryEnabled and (m.browseKind = "movie" or m.browseKind = "series" or m.browseKind = "artist")
         m.artActiveScope = "movies"
         if m.browseKind = "series" then m.artActiveScope = "series"
+        if m.browseKind = "artist" then m.artActiveScope = "music"
         m.artActiveHasArt = worksHaveCardArt(m.browseItems)
         m.artActiveGeneration = beginArtGeneration(m.artActiveScope)
     end if
@@ -2873,7 +2876,7 @@ sub updateBrowsePreview(work as Object)
     if m.browseKeyArt <> invalid
         uri = heroArtworkUrl(work)
         m.browseKeyArtPendingUri = uri
-        if m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
+        if m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series" or m.artActiveScope = "music") and m.artActiveGeneration > 0
             m.browseArtTelemetryVersion += 1
             m.browseArtTelemetryArmed = false
             previewSlot = m.artActiveScope + "-preview"
@@ -2914,7 +2917,7 @@ sub onBrowseKeyArtTimer()
     m.browseKeyArt.SetHttpAgent(agent)
     m.browseKeyArt.loadWidth = 1038
     m.browseKeyArt.loadHeight = 1191
-    m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
+    m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series" or m.artActiveScope = "music") and m.artActiveGeneration > 0
     m.browseKeyArt.uri = uri
     if m.browseArtTelemetryArmed
         emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "pending", m.browseArtTelemetryVersion)
@@ -3017,7 +3020,7 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
                 item.subtitleOverride = line
             end if
         end if
-        if grid.id = "browseGrid" and m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0 and m.browseView = "screen"
+        if grid.id = "browseGrid" and m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series" or m.artActiveScope = "music") and m.artActiveGeneration > 0 and m.browseView = "screen"
             columns = m.browseGrid.numColumns
             if columns < 1 then columns = 3
             column = artIndex mod columns
@@ -3097,20 +3100,72 @@ end sub
 ' other partial-cache-node concern elsewhere in this client.
 ' ---------------------------------------------------------------------------
 
+' Web /search page header: back circle, title, result count (after a divider or under the title) and the pill field with its
+' magnifier and Clear. Built once; the XML ring and fill (searchFieldBg, searchFieldRing) are the pill itself.
+sub searchChromeInit()
+    holder = m.searchGroup
+    m.searchTitle.visible = false
+    pgRound(holder, 153.6, 56.3, 50, 50, 25, "surface", 179)
+    pgRound(holder, 153.6, 56.3, 50, 50, 25, "line", -1, true)
+    pgIcon(holder, 170, 73, 17, "arrow-left.png", "inkSoft")
+    m.searchHeaderTitle = CreateObject("roSGNode", "TrackedText")
+    m.searchHeaderTitle.translation = [226.6, 56.2]
+    m.searchHeaderTitle.spec = { text: "Search", size: 34, weight: 600, tracking: -1.512, role: "ink" }
+    holder.AppendChild(m.searchHeaderTitle)
+    m.searchHeaderDivider = pgRect(holder, 348, 73, 1, 16, "line")
+    m.searchHeaderRule = pgRect(holder, 226.6, 112, 1, 1, "line")
+    m.searchHeaderCount = CreateObject("roSGNode", "TrackedText")
+    holder.AppendChild(m.searchHeaderCount)
+    pgIcon(holder, 181.6, 199, 22, "nav-search.png", "inkSoft")
+    m.searchClearLabel = CreateObject("roSGNode", "Label")
+    m.searchClearLabel.translation = [655, 201]
+    m.searchClearLabel.width = 70
+    m.searchClearLabel.height = 30
+    m.searchClearLabel.horizAlign = "right"
+    m.searchClearLabel.text = "Clear"
+    m.searchClearLabel.font = PlayarrMakeFont(700, 13)
+    m.searchClearLabel.visible = false
+    ThemeSetRole(m.searchClearLabel, "inkSoft")
+    holder.AppendChild(m.searchClearLabel)
+    setSearchHeader("")
+end sub
+
+sub setSearchHeader(count as String)
+    if m.searchHeaderCount = invalid then return
+    m.searchHeaderCount.visible = count <> ""
+    if count = ""
+        m.searchHeaderDivider.visible = false
+        m.searchHeaderRule.visible = false
+        return
+    end if
+    layoutHeaderSub(m.searchHeaderTitle.textWidth, m.searchHeaderCount, m.searchHeaderDivider, m.searchHeaderRule, count)
+end sub
+
+sub setSearchFieldText(query as String)
+    if m.searchFieldLabel <> invalid
+        if query = ""
+            m.searchFieldLabel.text = "Search your libraries and playlists"
+            m.searchFieldLabel.color = ThemeColor("inkMuted")
+        else
+            m.searchFieldLabel.text = query
+            m.searchFieldLabel.color = ThemeColor("ink")
+        end if
+    end if
+    if m.searchClearLabel <> invalid then m.searchClearLabel.visible = query <> ""
+end sub
+
 ' Web /search empty shell first (Start typing to search). OK opens keyboard.
 sub openSearch()
     m.searchQuery = ""
     m.searchItems = []
     m.searchDisplayItems = []
-    m.searchTitle.text = "Search"
-    if m.searchFieldLabel <> invalid
-        m.searchFieldLabel.text = "Search your libraries and playlists"
-        m.searchFieldLabel.color = ThemeColor("inkMuted")
-    end if
+    setSearchHeader("")
+    setSearchFieldText("")
     showSearchEmptyState(true)
     buildGridContent(m.searchGrid, m.searchDisplayItems, 1.5)
     showOnly("search")
     m.top.screenState = "search"
+    renderNavDockFocus()
     m.top.SetFocus(true)
 end sub
 
@@ -3160,15 +3215,13 @@ end sub
 sub performSearch(query as String)
     m.searchItems = []
     m.searchDisplayItems = []
-    m.searchTitle.text = "Search"
-    if m.searchFieldLabel <> invalid
-        m.searchFieldLabel.text = query
-        m.searchFieldLabel.color = ThemeColor("ink")
-    end if
+    setSearchHeader("SEARCHING")
+    setSearchFieldText(query)
     showSearchEmptyState(false)
     buildGridContent(m.searchGrid, m.searchDisplayItems, 1.5)
     showOnly("search")
     m.top.screenState = "search"
+    renderNavDockFocus()
     m.searchGrid.SetFocus(true)
     config = AppConfig()
     path = "/api/v1/catalog/search?q=" + UrlEncode(query) + "&limit=" + config.catalogPageSize.ToStr()
@@ -3178,7 +3231,7 @@ end sub
 sub acceptSearchResults(data as Object)
     if data = invalid or data.items = invalid
         ' Stay in Search shell (no fullscreen status wall).
-        m.searchTitle.text = "Search"
+        setSearchHeader("")
         showSearchEmptyState(true)
         showOnly("search")
         m.top.screenState = "search"
@@ -3262,9 +3315,11 @@ sub applySearchFilter()
     end if
     buildGridContent(m.searchGrid, m.searchDisplayItems)
     if m.searchDisplayItems.Count() = 0
-        m.searchTitle.text = "Search  •  “" + m.searchQuery + "”  •  no results"
+        setSearchHeader("NO RESULTS")
     else
-        m.searchTitle.text = "Search  •  “" + m.searchQuery + "”  •  " + m.searchDisplayItems.Count().ToStr()
+        resultWord = "RESULTS"
+        if m.searchDisplayItems.Count() = 1 then resultWord = "RESULT"
+        setSearchHeader(formatCountWithCommas(m.searchDisplayItems.Count()) + " " + resultWord)
         updateSearchPreview(m.searchDisplayItems[0])
     end if
 end sub
@@ -6708,7 +6763,7 @@ end sub
 
 function beginArtGeneration(scope as String) as Integer
     if not m.artTelemetryEnabled then return 0
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return 0
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return 0
     m.artGeneration += 1
     m.artActiveGeneration = m.artGeneration
     m.artActiveScope = scope
@@ -6718,7 +6773,7 @@ end function
 
 sub announceArtGeneration(generation as Integer, scope as String, hasArt as Boolean)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return
     hasArtText = "0"
     if hasArt then hasArtText = "1"
     parityEmit("art", "begin|" + generation.ToStr() + "|" + scope + "|" + hasArtText + "|" + m.artExpectedSlots.Count().ToStr())
@@ -6726,13 +6781,13 @@ end sub
 
 sub finishArtGeneration(generation as Integer, scope as String)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return
     parityEmit("art", "finish|" + generation.ToStr() + "|" + scope)
 end sub
 
 sub emitArtSlot(generation as Integer, scope as String, slot as String, hasSource as Boolean, x as Float, y as Float, width as Float, height as Float, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return
     if not artRectVisible(x, y, width, height) then return
     hasSourceText = "0"
     if hasSource then hasSourceText = "1"
@@ -6746,14 +6801,14 @@ end sub
 
 sub emitArtStatus(generation as Integer, scope as String, slot as String, status as String, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "calendar" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return
     if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
     parityEmit("art", "status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr())
 end sub
 
 sub emitArtOptionalEmpty(generation as Integer, scope as String, slot as String, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if (scope <> "movies" and scope <> "series") or slot <> (scope + "-preview") then return
+    if (scope <> "movies" and scope <> "series" and scope <> "music") or slot <> (scope + "-preview") then return
     remaining = []
     for each expectedSlot in m.artExpectedSlots
         if expectedSlot <> slot then remaining.Push(expectedSlot)
@@ -6988,6 +7043,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         openSearchDialog()
         return true
     else if state = "search" and key = "up"
+    else if state = "search" and key = "options" and m.searchQuery <> invalid and m.searchQuery <> ""
+        ' The * key is the remote's Clear: back to the empty shell, like web's Clear button.
+        openSearch()
+        return true
         enterSearchFilters()
         return true
     else if state = "search" and key = "back"

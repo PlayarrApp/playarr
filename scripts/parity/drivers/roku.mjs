@@ -147,7 +147,7 @@ export function createParityState() {
     calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
     calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
     calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(),
+    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, music: 0, calendar: 0 }, artState: createArtReadinessState(),
   };
 }
 
@@ -208,6 +208,7 @@ export function applyParityLine(state, line) {
     state.browse = value.trim();
     if (state.browse === "movie" || state.browse === "movies") state.artMarkers.movies = state.eventSeq;
     if (state.browse === "series") state.artMarkers.series = state.eventSeq;
+    if (state.browse === "artist" || state.browse === "music") state.artMarkers.music = state.eventSeq;
   } else if (kind === "art") {
     const event = parseArtEvent(value, state.eventSeq);
     if (!event || event.type !== "slot" || intersectingSlots([event]).length > 0) reduceArtEvent(state.artState, event);
@@ -675,7 +676,7 @@ export function createDriver({ out, args = [] } = {}) {
     await sleep(4000);
     if (artEnabled) {
       resetArtReadinessState(parityState.artState);
-      parityState.artMarkers = { home: 0, movies: 0, series: 0, calendar: 0 };
+      parityState.artMarkers = { home: 0, movies: 0, series: 0, music: 0, calendar: 0 };
     }
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
@@ -835,6 +836,9 @@ export function createDriver({ out, args = [] } = {}) {
           "fresh Movies grid focus before opening Filters",
           30000,
         );
+        // The grid still loads its first page and artwork after it reports focus; Info pressed early is dropped.
+        if (artEnabled) await waitForArt("movies");
+        await sleep(1500);
         drawerSource = "filters";
         parityState.drawerSource = "filters";
         await traceFilterKey("info", async () => {
@@ -1044,6 +1048,7 @@ export function createDriver({ out, args = [] } = {}) {
       if (artEnabled && screen === "home") { await waitForArt("home"); await sleep(1000); }
       if (artEnabled && screen === "browse" && ["movie", "movies"].includes(browse)) await waitForArt("movies");
       if (artEnabled && screen === "browse" && browse === "series") await waitForArt("series");
+      if (artEnabled && screen === "browse" && ["artist", "music"].includes(browse)) await waitForArt("music");
       if (artEnabled && screen === "page" && page === "calendar" && ["week", "agenda"].includes(parityState.calendarView)) await waitForArt("calendar");
       const { jpeg, generation } = captureFrame();
       mkdirSync(dirname(resolve(file)), { recursive: true });
