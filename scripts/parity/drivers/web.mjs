@@ -378,8 +378,14 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     manualLoginStarted = false;
     manualLoginSucceeded = false;
     drainApiErrors = watchApiErrors(page, apiErrors, { manualLoginStarted: () => manualLoginStarted, manualLoginSucceeded: () => manualLoginSucceeded });
-    await page.goto(web + "/", { waitUntil: "load" });
-    await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"), null, { timeout: 30000 });
+    // /login, not /: the deployed worker serves the marketing site at / to signed-out visitors, and a signed-in session redirects /login to the app.
+    await page.goto(web + "/login", { waitUntil: "load" });
+    try {
+      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"), null, { timeout: 30000 });
+    } catch (e) {
+      if (e?.name !== "TimeoutError") throw e;
+      throw new Error(`${web}/login did not show the Playarr web app (page "${await page.title().catch(() => "?")}" at ${page.url()}); set PLAYARR_WEB_URL to a web app build or build clients/tv-web/web/dist`);
+    }
     if (!(await page.locator(".app-nav-link").count())) {
       assertAllowedDeviceTestUsername(env.PLAYARR_USERNAME, allowedUsernames);
       const loginUsername = trustedLoginUsername(env, allowedUsernames, trustedServerUrl);
