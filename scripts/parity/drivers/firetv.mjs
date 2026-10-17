@@ -14,6 +14,7 @@ import { promisify } from "node:util";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { intoHome as pickProfile } from "./firetv-profile-pick.mjs";
 
 const execFileP = promisify(execFile);
 const VEGA = (process.env.PLAYARR_FIRETV_VEGA ?? "vega").split(" ");
@@ -130,16 +131,7 @@ export async function createDriver({ out } = {}) {
     await sleep(500);
   };
   // The profile picker opens first: Enter chooses the Device Test profile (the first, focused one).
-  const intoHome = async () => {
-    await sleep(9000);
-    await press("Return");
-    for (let i = 0; i < 20; i++) {
-      await sleep(2500);
-      const s = await state(7000).catch(() => null);
-      if (s && s.route && s.route !== "/profiles") return s;
-    }
-    throw new Error("the app did not reach Home after choosing the profile (signed out?)");
-  };
+  const intoHome = () => pickProfile({ state, press: (k) => press(k), sleep });
   const waitSettled = async () => {
     // a library or calendar page fills in after the route changes; wait until two frames agree
     await sleep(6000);
@@ -199,14 +191,18 @@ export async function createDriver({ out } = {}) {
       await press(key);
       await sleep(900);
       if (!arrow) return;
-      // The virtual device drops a key now and then; an arrow that changed nothing is sent once more (at a rail's edge that is
-      // harmless: the focus stays put).
-      await settled(5000);
-      const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
-      if (after === before) {
-        await press(key);
-        await sleep(900);
+      // The virtual device drops a key now and then, and the app answers a state request a moment behind the focus move. Looking once
+      // and re-pressing on "unchanged" sent a second key whenever the answer was merely late (an extra Up or Down on the nav list, which
+      // then ended on the wrong item). Poll for the change instead, and re-press once only when it never came (a dropped key; at a
+      // rail's edge that is harmless: the focus stays put).
+      for (let i = 0; i < 4; i++) {
+        await settled(5000);
+        const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
+        if (after !== before) return;
+        await sleep(1200);
       }
+      await press(key);
+      await sleep(900);
     },
     async route(path) {
       const title = path.match(/^\/(movies|series)\/([0-9a-f-]{36})/);
