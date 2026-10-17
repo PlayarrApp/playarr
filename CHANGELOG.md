@@ -13,6 +13,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Harmony preview captures now stop on the first failure, verify the signed-in Device Test account before capture input or screenshots, and refuse to capture when canonical watch-progress seeding fails.
+- HarmonyOS TV Series Detail captures now pass in the Previewer: episode image areas, target visibility and generation scoping reach the capture gate, and focus is waived only where the Previewer cannot deliver it.
+- Load episode watch progress on Harmony TV series details so unseen episode markers can appear.
+- Roku: Home opens aligned with the Library grid like web (rails start 98 px further left, first rail 240 px higher); a focused later rail is held where it was.
 - Match Android phone Home and library card artwork fallbacks to the web client's poster and backdrop ordering.
 - Match the Android phone language filter's expanded chevron and nested Back behaviour to the web client.
 - Show selected Android phone language filters as removable tokens alongside the Add language control.
@@ -748,6 +752,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Nura player controls follow the web phone player: a flat seek bar, a centred time, and two rows of icon buttons (previous, play or pause, next, mute, audio, subtitles, queue; then quality, health, play on and full screen), with a bordered close button. Previous, next, mute and full screen work; the rest show disabled until the player supports them.
 - Nura page headers draw the web phone's 42 px round and square buttons, the letter rail sits 1 px lower, and a film's title block closes up to the web's spacing.
 - Android TV Filters now use closed language multi-select fields with vertical, D-pad navigable options and web-sized View glyphs; drawer focus styling restores the opener card, and Left from Library Filters returns focus to the selected content item.
 - Match the Nura agenda cards to the web: white card fill, strong hairlines, 4 px availability bar, muted bar for unavailable, and the web's taller row spacing.
