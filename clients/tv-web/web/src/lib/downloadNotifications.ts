@@ -103,25 +103,61 @@ function readOptIn(): boolean {
   }
 }
 
+/** Permission as the UI sees it; "unsupported" means there is no Notification API, which is never shown as blocked. */
+export function readNotificationPermission(): NotificationPermission | "unsupported" {
+  return downloadNotificationsSupported() ? Notification.permission : "unsupported";
+}
+
+/**
+ * Asks the browser once. Browsers usually resolve a blocked site to "denied" without a prompt, so a denied result
+ * means the page must explain how to unblock; a granted result continues through `onGranted`.
+ */
+export async function requestNotificationPermission(onGranted: () => void): Promise<{ permission: NotificationPermission; showHint: boolean }> {
+  const permission = await Notification.requestPermission();
+  if (permission === "granted") onGranted();
+  return { permission, showHint: permission === "denied" };
+}
+
 /** The opt-in: notifications show only once the user has agreed on this device and the browser has granted permission. */
 export function useDownloadNotificationOptIn() {
   const supported = downloadNotificationsSupported();
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
-    supported ? Notification.permission : "unsupported"
-  );
+  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(readNotificationPermission);
   const [optedIn, setOptedIn] = useState(() => (supported ? readOptIn() : false));
+  const [blockedHint, setBlockedHint] = useState(false);
+  // Follows changes made in the browser's site settings while the page is open (where the Permissions API allows).
+  useEffect(() => {
+    if (!supported || !navigator.permissions?.query) return;
+    let status: PermissionStatus | undefined;
+    let cancelled = false;
+    const sync = () => {
+      setPermission(readNotificationPermission());
+      setBlockedHint(false);
+    };
+    navigator.permissions
+      .query({ name: "notifications" })
+      .then((result) => {
+        if (cancelled) return;
+        status = result;
+        result.onchange = sync;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      if (status) status.onchange = null;
+    };
+  }, [supported]);
   const enable = useCallback(async () => {
     if (!supported) return;
-    const result = await Notification.requestPermission();
-    setPermission(result);
-    if (result === "granted") {
+    const { permission: result, showHint } = await requestNotificationPermission(() => {
       try {
         window.localStorage.setItem(DOWNLOAD_NOTIFICATION_OPT_IN_KEY, "on");
       } catch {
         // Storage blocked: the opt-in lasts for this tab only.
       }
       setOptedIn(true);
-    }
+    });
+    setPermission(result);
+    setBlockedHint(showHint);
   }, [supported]);
   const disable = useCallback(() => {
     try {
@@ -131,7 +167,7 @@ export function useDownloadNotificationOptIn() {
     }
     setOptedIn(false);
   }, []);
-  return { supported, permission, enabled: supported && optedIn && permission === "granted", enable, disable };
+  return { supported, permission, blockedHint, enabled: supported && optedIn && permission === "granted", enable, disable };
 }
 
 async function show(content: DownloadNotificationContent, t: TFunc, labelFor: (action: DownloadNotificationAction) => string): Promise<void> {

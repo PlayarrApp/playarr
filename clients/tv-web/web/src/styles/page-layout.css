@@ -668,6 +668,32 @@ body[data-input-mode="remote"] .action-pill {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  /* A longer notice (the notifications unblock hint) wraps instead of clipping. */
+  min-width: 0;
+  max-width: 24rem;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+@media (max-width: 760px) {
+  /* The long unblock hint drops below the header, clear of the action column. */
+  .page-actions-status[data-action-id="notifications-hint"] {
+    position: fixed;
+    top: calc(var(--mobile-top-inset, 14px) + 52px);
+    left: var(--mobile-page-gutter, 16px);
+    right: var(--mobile-page-gutter, 16px);
+    max-width: none;
+    z-index: 5;
+    text-align: center;
+  }
+}
+
+/* A longer label (Notifications blocked) wraps under its icon inside the fixed tile width. */
+.shell-action-column .action-pill span {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
 }
 
 /*

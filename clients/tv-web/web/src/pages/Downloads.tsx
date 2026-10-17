@@ -746,17 +746,20 @@ export function DownloadsPage() {
         title: t("pages.downloads.title"),
         back: { label: t("pages.downloads.backToHome"), to: "/" },
         actions: [
-          ...(notifications.supported && notifications.permission !== "denied"
+          ...(notifications.supported
             ? [
                 {
                   kind: "panel" as const,
                   id: "notifications",
-                  label: t("pages.downloads.notifications"),
-                  icon: "bell" as const,
+                  label: notifications.permission === "denied" ? t("pages.downloads.notificationsBlocked") : t("pages.downloads.notifications"),
+                  icon: notifications.permission === "denied" ? ("bellOff" as const) : ("bell" as const),
                   open: notifications.enabled,
                   onToggle: () => (notifications.enabled ? notifications.disable() : void notifications.enable()),
                 },
               ]
+            : []),
+          ...(notifications.blockedHint
+            ? [{ kind: "status" as const, id: "notifications-hint", label: t("pages.downloads.notificationsBlockedHint") }]
             : []),
           ...(online ? [] : [{ kind: "status" as const, id: "offline", label: t("pages.downloads.offline") }]),
           {
