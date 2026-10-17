@@ -425,8 +425,8 @@ private fun PhoneCalendarAgenda(
                     Spacer(Modifier.height(13.dp))
                 }
                 items(groupSeriesEpisodes(group.entries, zone), key = { "${group.date}-${it.key}" }) { item ->
-                    // The web entry is 510.4 px wide and runs past the viewport edge.
-                    PhoneCalendarEntry(item, selected = false, zone = zone, onClick = { onSelect(item) }, modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true).requiredWidth(510.4.dp))
+                    // Live web (dom dump, 390 wide): the entry is 358 px, inside the 16 px page padding, no longer wider than the viewport.
+                    PhoneCalendarEntry(item, selected = false, zone = zone, onClick = { onSelect(item) }, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(13.5.dp))
                 }
             }

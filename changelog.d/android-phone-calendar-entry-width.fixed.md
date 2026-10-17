@@ -1,0 +1,1 @@
+- Android phone Calendar agenda: entries are 358 dp wide inside the page padding, as on the live web, instead of 510 dp running off the screen.
