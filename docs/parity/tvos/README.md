@@ -2,7 +2,7 @@
 
 Reference: the committed shared web captures `docs/parity/web/tv/{light,dark}/<id>.png` (1920x1080, 1x, fixture seeded
 fresh, the web's bundled Nunito Sans and JetBrains Mono). Candidate: the tvOS app in the Apple TV Simulator at 1080p,
-driven by `.github/workflows/parity-apple.yml` on GitHub-hosted `macos-latest` against a fresh fixture database
+driven locally by `scripts/parity/apple/capture-tvos.sh` on a Mac against a fresh fixture database
 (`scripts/fixtures/up.sh --fresh`, clips of 60 s), signed in as `fx-viewer` (the household screen as `fx-child-locked`),
 clock frozen at 2026-10-07 12:00 UTC. Diff: `scripts/parity/diff.mjs --layout tv --theme both` (pixelmatch threshold
 0.1, target 1% or less per screen and theme). Three tabs the shared list does not have (Downloads, Watchlist, Requests)

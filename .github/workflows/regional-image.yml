@@ -1,5 +1,5 @@
 # Builds the self-contained server image (server binary, Admin web assets,
-# ffmpeg/ffprobe) for every commit on main and pushes it to GitHub Container
+# ffmpeg/ffprobe) for a release (called by release.yml) or a manual run and pushes it to GitHub Container
 # Registry as ghcr.io/<owner>/playarr:<first 8 characters of the SHA>.
 # The package starts private: make it public once (Package settings > Change
 # visibility) so it can be pulled anonymously. Deployment pins are deployment
@@ -7,14 +7,6 @@
 name: Regional image
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
-      - 'clients/tv-web/**'
-      - 'infra/docker/backend.Dockerfile'
-      - '.github/workflows/regional-image.yml'
   workflow_dispatch:
   # Called by release.yml to publish its commit SHA tag.
   workflow_call:
