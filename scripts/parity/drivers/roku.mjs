@@ -147,7 +147,7 @@ export function createParityState() {
     calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
     calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
     calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0 }, artState: createArtReadinessState(),
+    eventSeq: 0, clock: "", artMarkers: { home: 0, movies: 0, series: 0 }, artState: createArtReadinessState(),
   };
 }
 
@@ -203,6 +203,8 @@ export function applyParityLine(state, line) {
       state.calendarDialogClosedSeq = state.eventSeq;
       state.calendarDialogClosedScreenSeq = state.screenSeq;
     }
+  } else if (kind === "clock") {
+    state.clock = value.trim();
   } else if (kind === "browse") {
     state.browse = value.trim();
     if (state.browse === "movie" || state.browse === "movies") state.artMarkers.movies = state.eventSeq;
@@ -500,6 +502,15 @@ export function routeForState(screen, page, browse, drawerSource, calendarView =
   return null;
 }
 
+// What the app shows for a frozen clock: UTC, en-GB, "12:00" and "WED 7 OCTOBER".
+export function pinnedClockText(fixedNow) {
+  const d = new Date(fixedNow);
+  const o = { timeZone: "UTC" };
+  const time = d.toLocaleTimeString("en-GB", { ...o, hour: "2-digit", minute: "2-digit", hour12: false });
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { ...o, weekday: "short", day: "numeric", month: "long" }).formatToParts(d).map((p) => [p.type, p.value]));
+  return `${time} ${parts.weekday} ${parts.day} ${parts.month}`.toUpperCase();
+}
+
 export function createDriver({ out, args = [] } = {}) {
   validateRunArgs(args);
   const env = process.env;
@@ -528,10 +539,11 @@ export function createDriver({ out, args = [] } = {}) {
   let lastRoute = null;
   let debugFailure = false;
   let lastScreenshotGeneration = 0;
+  let pinnedNow = null;
 
   const resetObservedState = () => {
     debugBuffer = "";
-    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "", calendarView: "", calendarFocus: "", calendarFocusRect: null });
+    Object.assign(parityState, { clock: "", screen: "", page: "", browse: "", focus: null, drawerSource: "", calendarView: "", calendarFocus: "", calendarFocusRect: null });
     screen = "";
     page = "";
     browse = "";
@@ -677,7 +689,8 @@ export function createDriver({ out, args = [] } = {}) {
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
     resetObservedState();
-    await sendEcp(`launch/dev${artEnabled ? "?parityArtReady=1" : ""}`);
+    const launchParams = [artEnabled && "parityArtReady=1", pinnedNow && `parityNow=${encodeURIComponent(pinnedNow)}`].filter(Boolean);
+    await sendEcp(`launch/dev${launchParams.length ? `?${launchParams.join("&")}` : ""}`);
     await connectDebug();
     try {
       await waitFor(() => hasFreshProfilesScreen({ screen, screenSeq }, beforeScreenSeq), "fresh signed-in Profiles screen", 40000);
@@ -685,6 +698,11 @@ export function createDriver({ out, args = [] } = {}) {
       if (screen === "pairing") throw new Error("Roku remained on the pairing screen; no fresh signed-in Profiles screen arrived");
       if (screen === "status") throw new Error("Roku remained on the status screen; no fresh signed-in Profiles screen arrived");
       throw new Error(`Roku did not reach a fresh profile picker event after cold launch (screen=${screen || "none"}, newScreenEvents=${screenSeq - beforeScreenSeq}, debugConnected=${!!socket && !socket.destroyed && !debugFailure})`);
+    }
+    if (pinnedNow) {
+      const expected = pinnedClockText(pinnedNow);
+      await waitFor(() => parityState.clock === expected, `the app to show the pinned clock "${expected}"`, 10000)
+        .catch(() => { throw new Error(`Roku did not confirm the pinned clock "${expected}" (shows "${parityState.clock || "nothing"}"; is the channel built with parityNow?)`); });
     }
     await sleep(3000);
     // Resume can retain focus on a bottom-row action. This deterministic path restores the first profile.
@@ -991,7 +1009,13 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   return {
-    async setDeterministicCapture() { throw new Error("Roku stable deterministic capture unsupported: the app has no clock or animation pinning hook"); },
+    // The channel reads the instant from a launch parameter, so every cold launch re-freezes it. It renders UTC and en-GB only
+    // and has no animation setting, so disableAnimations is not applied.
+    async setDeterministicCapture({ fixedNow, timeZone = "UTC", locale = "en-GB" } = {}) {
+      if (!fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error("Roku deterministic capture requires a valid fixedNow instant");
+      if (timeZone !== "UTC" || locale !== "en-GB") throw new Error(`Roku stable capture unsupported for ${timeZone} / ${locale}: a frozen app clock renders UTC and en-GB only`);
+      pinnedNow = new Date(fixedNow).toISOString().replace(/\.\d{3}Z$/, "Z");
+    },
     async captureBuildIdentity() { throw new Error("Roku stable build identity unsupported: deployed package digest is not exposed by this driver"); },
     async waitReady() { throw new Error("Roku stable deterministic capture unsupported: app readiness is not exposed as a capture signal"); },
     supports: { downloads: false, notifications: false, nowPlaying: false, "grouped-downloads": false },

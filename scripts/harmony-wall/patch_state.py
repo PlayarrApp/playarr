@@ -88,7 +88,32 @@ def index(s):
   }
 
 """
-    return s.replace(old, report + old + "    this.previewReportState();\n", 1)
+    # The capture clock: /setclock on the bridge pins an instant, this poll hands it to Clock through AppStorage 'clockPin' and reports it back.
+    port = re.search(r"http://127\.0\.0\.1:(\d+)/route", s).group(1)
+    clock = """  private previewClockReq: http.HttpRequest = http.createHttp();
+  private previewClockBusy: boolean = false;
+
+  private previewClockOnce(): void {
+    if (this.previewClockBusy) {
+      return;
+    }
+    this.previewClockBusy = true;
+    this.previewClockReq.request('http://127.0.0.1:%s/clock', { method: http.RequestMethod.GET, connectTimeout: 5000, readTimeout: 5000 })
+      .then((r: http.HttpResponse): void => {
+        this.previewClockBusy = false;
+        const pin: string = String(r.result);
+        if (AppStorage.get<string>('clockPin') !== pin) {
+          AppStorage.setOrCreate('clockPin', pin);
+          previewReport('clock=' + encodeURIComponent(pin));
+        }
+      })
+      .catch((): void => {
+        this.previewClockBusy = false;
+      });
+  }
+
+""" % port
+    return s.replace(old, report + clock + old + "    this.previewReportState();\n    this.previewClockOnce();\n", 1)
 
 def home(s):
     s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { previewReport } from '../util/PreviewState';", 1)

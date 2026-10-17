@@ -26,6 +26,8 @@ export struct Clock {
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
 
+  // A parity capture pins the instant (ISO text, set by the preview bridge); '' is the real clock. Pinned time shows in UTC.
+  @StorageProp('clockPin') private pin: string = '';
   @State private now: Date = new Date();
   private timer: number = -1;
   private startTimer: number = -1;
@@ -40,6 +42,10 @@ export struct Clock {
     }, MINUTE_MS - (Date.now() % MINUTE_MS));
   }
 
+  private shown(): Date {
+    return this.pin.length > 0 ? new Date(this.pin) : this.now;
+  }
+
   aboutToDisappear(): void {
     clearTimeout(this.startTimer);
     clearInterval(this.timer);
@@ -47,12 +53,12 @@ export struct Clock {
 
   build() {
     Row({ space: tv(TIME_DATE_GAP) }) {
-      Text(clockTime(this.now)).fontFamily(nunito(TIME_FONT_WEIGHT))
+      Text(clockTime(this.shown(), this.pin.length > 0)).fontFamily(nunito(TIME_FONT_WEIGHT))
         .fontSize(tv(TIME_FONT_SIZE))
         .fontWeight(TIME_FONT_WEIGHT)
         .letterSpacing(tv(TIME_LETTER_SPACING))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(clockDate(this.now)).fontFamily(nunito(DATE_FONT_WEIGHT))
+      Text(clockDate(this.shown(), this.pin.length > 0)).fontFamily(nunito(DATE_FONT_WEIGHT))
         .fontSize(tv(DATE_FONT_SIZE))
         .fontWeight(DATE_FONT_WEIGHT)
         .letterSpacing(tv(DATE_LETTER_SPACING))

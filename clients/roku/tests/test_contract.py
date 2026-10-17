@@ -35,6 +35,14 @@ class ApiContractTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIn(fragment, MAIN)
 
+    def test_parity_launch_parameter_freezes_the_clock_in_utc(self) -> None:
+        main = (ROOT / "source" / "main.brs").read_text(encoding="utf-8")
+        self.assertIn("args.parityNow", main)
+        clock = MAIN[MAIN.index("sub updateClock"):][:700]
+        self.assertIn("FromISO8601String(m.global.parityNow)", clock)
+        self.assertLess(clock.index("FromISO8601String"), clock.index("ToLocalTime"))
+        self.assertIn("FromISO8601String(m.global.parityNow)", PAGES[PAGES.index("function calendarToday"):][:300])
+
     def test_home_rails_fetch_recent_catalog_by_kind(self) -> None:
         # Matches the real Home page's own rail set, confirmed live via
         # Playwright against https://playarr.app/ (5 rails: Continue/Start

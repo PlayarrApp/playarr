@@ -15,3 +15,11 @@ test("date is short weekday, day, long month", () => {
   assert.equal(clockDate(new Date(2026, 0, 1, 12, 0)), "Thu 1 January");
   assert.equal(clockDate(new Date(2026, 11, 31, 12, 0)), "Thu 31 December");
 });
+
+test("a pinned instant reads the UTC fields, whatever the device zone", () => {
+  const pinned = new Date("2026-10-07T12:00:00Z");
+  assert.equal(clockTime(pinned, true), "12:00");
+  assert.equal(clockDate(pinned, true), "Wed 7 October");
+  assert.equal(clockTime(new Date("2026-10-07T00:05:00+07:00"), true), "17:05");
+  assert.equal(clockDate(new Date("2026-10-07T00:05:00+07:00"), true), "Tue 6 October");
+});

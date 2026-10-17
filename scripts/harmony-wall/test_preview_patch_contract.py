@@ -29,6 +29,22 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("unseen: this.episodeUnseen(item as DetailRow),", self.patch_state)
         self.assertIn("ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,", self.detail_source)
 
+    def test_index_polls_the_pinned_capture_clock_on_the_route_ports_bridge(self):
+        source = ("  private previewPollOnce(): void {\n"
+                  "this.previewReq.request('http://127.0.0.1:40017/route', {});\n}\n")
+        patched = patch_state.index(source)
+        self.assertIn("http://127.0.0.1:40017/clock", patched)
+        self.assertIn("AppStorage.setOrCreate('clockPin', pin)", patched)
+        self.assertLess(patched.index("this.previewClockOnce();"), patched.index("this.previewReq.request"))
+
+    def test_bridge_accepts_only_utc_iso_instants_for_the_pinned_clock(self):
+        bridge = (HERE / "harmony_vnc.py").read_text(encoding="utf-8")
+        pattern = re.search(r'PINNED_NOW = re\.compile\(r"(.+)"\)', bridge).group(1)
+        self.assertTrue(re.fullmatch(pattern, "2026-10-07T12:00:00Z"))
+        for bad in ("2026-10-07T12:00:00", "2026-10-07 12:00:00Z", "yesterday", "2026-10-07T12:00:00+07:00"):
+            self.assertFalse(re.fullmatch(pattern, bad), bad)
+        self.assertIn('if now and not PINNED_NOW.fullmatch(now):', bridge)
+
     def test_player_surface_placeholder_is_replaced(self):
         source = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/pages/Player.ets").read_text(encoding="utf-8")
         patched = patch_state.player(source)
