@@ -3046,12 +3046,12 @@ private fun ExperienceHomeScreen(
                             top = if (isTelevision) {
                                 val cardWidth = tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = homeView == PlayarrHomeViewPreference.Cover)
                                 val cardHeight = if (homeView == PlayarrHomeViewPreference.Cover) cardWidth * 1.5f else cardWidth * 9f / 16f
-                                (389.9.dp - (cardHeight - 184.05.dp) / 2f) * homeStageVerticalScale()
+                                (389.9.dp - (cardHeight - 184.05.dp) / 2f) * homeStageVerticalScale() - (if (LocalStageScale.current != 1f) 255.dp else 0.dp)
                             } else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
                             // Web `.tv-home-rails` padding-block is half the viewport on both ends, so the last rail can reach the same anchor as the first.
                             bottom = if (isTelevision) 540.dp * homeStageVerticalScale() else 98.dp,
                         ),
-                        verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 52.8.dp else webVu(38f, 5f, 64f) - 1.2.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 52.8.dp else webVu(38f, 5f, 64f) - 6.5.dp),
                     ) {
                         itemsIndexed(current.value, key = { _, rail -> rail.key }) { railIndex, rail ->
                             ExperienceMediaRail(
@@ -3139,8 +3139,8 @@ private fun ExperienceStage(
                 feature()
             }
             Box(
-                // Web rails column: starts at x = 881.6.
-                Modifier.fillMaxHeight().width(1038.4.dp).align(Alignment.CenterEnd).background(
+                // Web rails column: starts at x = 881.6; at 1280 x 800 it starts where the Library rail does (522 css px, 40.8% of the width).
+                Modifier.fillMaxHeight().then(if (LocalStageScale.current != 1f) Modifier.fillMaxWidth(0.5922f) else Modifier.width(1038.4.dp)).align(Alignment.CenterEnd).background(
                     webRailSurfaceBrush(),
                 ),
             ) { rails() }
@@ -3266,7 +3266,8 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
         val soft = palette.detailsSoft
         val glow = WebTextStyle.copy(shadow = androidx.compose.ui.graphics.Shadow(WebSurface.copy(alpha = 0.9f), blurRadius = 14f * LocalDensity.current.density))
         // Tablet web at 1280 x 800: the clamp minimums bite, so the eyebrow, meta and overview are larger than at 1920 and sit lower.
-        val tabletHero = library && LocalStageScale.current != 1f
+        val tabletHero = LocalStageScale.current != 1f
+        val homeOverviewFont = webVw(9.28f, 0.67f, 13.44f).value
         val metaFont = webVw(9.92f, 0.68f, 13.76f).value
         val overviewFont = webVw(10.24f, 0.72f, 14.72f).value
         Column(Modifier.width(455.dp).detailsPanelBand()) {
@@ -3277,7 +3278,7 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                     playarrString(PlayarrString.HomeKindGenre, "kind" to kind, "genre" to genre).uppercase(language.locale)
                 },
                 color = palette.brandInk,
-                fontSize = if (library) webVw(9.28f, 0.64f, 13f).value.sp else 12.288.sp,
+                fontSize = webVw(9.28f, 0.64f, 13f).value.sp,
                 fontWeight = FontWeight(860),
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
@@ -3299,19 +3300,19 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                 }
             } else if (runtime != null) {
                 // Web Home `DetailsPanel` meta: the runtime alone.
-                Text(runtime, color = soft, fontSize = 12.864.sp, lineHeight = 20.325.sp, fontWeight = FontWeight(600), style = glow, modifier = Modifier.padding(top = 21.6.dp))
+                Text(runtime, color = soft, fontSize = homeOverviewFont.sp, lineHeight = (homeOverviewFont * 1.58f).sp, fontWeight = FontWeight(600), style = glow, modifier = Modifier.padding(top = 21.6.dp + (if (tabletHero) 3.dp else 0.dp)))
             }
             Text(
                 work.overview?.takeIf(String::isNotBlank) ?: playarrString(PlayarrString.HomeNoSynopsis),
                 color = soft,
-                fontSize = if (library) overviewFont.sp else 12.864.sp,
-                lineHeight = if (library) (overviewFont * 1.58f).sp else 20.325.sp,
+                fontSize = if (library) overviewFont.sp else homeOverviewFont.sp,
+                lineHeight = if (library) (overviewFont * 1.58f).sp else (homeOverviewFont * 1.58f).sp,
                 fontWeight = FontWeight(600),
                 style = glow,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 // Web `max-width: 42ch` of the overview font: 324 dp on Home, 348 dp in the library.
-                modifier = Modifier.padding(top = 21.7.dp + (if (tabletHero) 2.dp else 0.dp)).widthIn(max = if (library) (if (tabletHero) 387.dp else 348.dp) else 324.dp),
+                modifier = Modifier.padding(top = 21.7.dp + (if (tabletHero) 2.dp else 0.dp)).widthIn(max = if (library) (if (tabletHero) 387.dp else 348.dp) else if (tabletHero) 350.dp else 324.dp),
             )
         }
         return
