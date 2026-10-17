@@ -63,5 +63,4 @@ trap 'adb shell am force-stop $pkg' EXIT
 for s in "$@"; do for attempt in 1 2 3; do run "$s" && break; done; done
 adb shell am force-stop $pkg; sleep 3
 # The deck must be unchanged after the run: nothing but the canonical item may hold progress.
-left=$(node "$HERE/reset-deck-canonical.mjs" --dry | grep -oE 'clear [0-9]+' | grep -oE '[0-9]+')
-[ "${left:-1}" = 0 ] || { echo "deck changed by this run: $left stray progress rows (reset with reset-deck-canonical.mjs)"; exit 3; }
+node "$HERE/reset-deck-canonical.mjs" --dry | bash "$HERE/deck-unchanged.sh" || exit 3
