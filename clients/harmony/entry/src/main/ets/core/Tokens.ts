@@ -252,6 +252,7 @@ export interface TvGeometryTokens {
   homeRailsWidth: number;
   homeRailsInsetLeft: number;
   homeRailsTop: number;
+  homeRailsBottomPad: number;
   homeRailsHeadingGap: number;
   homeRailsListHeight: number;
   homeRailsRowGap: number;
@@ -368,11 +369,13 @@ export const TvGeometry: TvGeometryTokens = {
   homeRailsColumnVerticalPaddingVhPct: 50,
   homeRailsColumnRowGap: 48,
   // Web `.tv-home-rails`: a full-height column from x=730; headings and cards start 152 in (x=882);
-  // the active rail's heading sits at y=402.
+  // Home opens aligned with the Library grid (web `--library-rail-left` / `--library-rail-top`): headings and cards start 53 in
+  // (x=783) and the first heading sits at y=162. A focused later rail is centred (heading about y=402), hence the deep bottom pad.
   homeRailsLeft: 730,
   homeRailsWidth: 1190,
-  homeRailsInsetLeft: 152,
-  homeRailsTop: 405,
+  homeRailsInsetLeft: 53,
+  homeRailsTop: 165,
+  homeRailsBottomPad: 405,
   // Web rail pitch is 366 (heading 26, gap 30, card 213, 97 to the next heading); the list height
   // includes room for the focus lift and caption, so the gap between rails is smaller here.
   homeRailsHeadingGap: 38, // web: heading 49 above the cards (was 41); the caption's 10 vp joined the row

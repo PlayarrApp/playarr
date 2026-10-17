@@ -178,3 +178,4 @@ clients/tv-web/web/dist-*/
 # Local fixture environment (scripts/fixtures)
 /.fixtures/
 scripts/parity/apple/node_modules/
+scripts/parity/node_modules

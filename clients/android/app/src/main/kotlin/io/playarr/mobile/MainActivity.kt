@@ -206,8 +206,21 @@ class MainActivity : ComponentActivity() {
         // `player/<mediaFileId>` plays that file (the suite's pinned ids); it is not a nav route, so it must never reach the NavHost.
         io.playarr.mobile.ui.parityPlay = parityTarget?.removePrefix("player/")?.takeIf { parityTarget.startsWith("player/") }
         io.playarr.mobile.ui.parityRoute = parityTarget?.takeUnless { it.startsWith("player/") }
+        val captureGeneration = intent.getStringExtra("parity_capture_generation")?.takeIf {
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 && it.isNotBlank()
+        }
+        val captureScreen = intent.getStringExtra("parity_capture_screen")?.takeIf {
+            captureGeneration != null && it in setOf(
+                "home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search",
+                "film-detail", "series-detail", "settings", "profiles", "player-controls",
+            )
+        }
+        io.playarr.mobile.ui.PlayarrCaptureReadiness.begin(captureGeneration, captureScreen)
         io.playarr.mobile.ui.parityPauseAtMs = intent.getLongExtra("parity_pause_at_ms", -1L).takeIf {
             it >= 0L && (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        }
+        if (captureScreen != null) {
+            window.decorView.viewTreeObserver.addOnGlobalLayoutListener { io.playarr.mobile.ui.PlayarrCaptureReadiness.layoutPass() }
         }
         setContent {
             val display = rememberPlayarrDisplayPreferences(this)
