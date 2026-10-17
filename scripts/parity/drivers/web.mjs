@@ -317,7 +317,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     await labelled("visible images loaded", () => page.waitForFunction(() => [...document.images].filter((i) => {
       const r = i.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
-    }).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 }));
+    }).every((i) => { if (!i.complete && i.loading === "lazy") i.loading = "eager"; return i.complete && i.naturalWidth > 0; }), null, { timeout: 20000 })); // eager: a lazy image inside the viewport but clipped by a scroller never intersects, so never loads
     await labelled("loading placeholders gone", () => page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 }));
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
@@ -462,7 +462,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
     }
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
-    if (path === "/search") await page.waitForSelector(".tv-search-results-grid, .tv-empty-state, .tv-search-prompt", { timeout: 30000 });
+    if (path === "/search") await page.waitForSelector(".tv-search-results-grid:visible, .tv-empty-state:visible, .tv-search-prompt:visible", { timeout: 30000 }); // :visible, as the phone layout also renders a hidden prompt
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
     if (path.startsWith("/player/")) await page.waitForFunction(() => !!document.querySelector("video, .player-error, .player-loading"), null, { timeout: 30000 });
     await settle();
