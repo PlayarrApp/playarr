@@ -16,6 +16,7 @@ CONTROL=${PLAYARR_CONTROL:-}
 IDENTITY_GUARD=${PLAYARR_CAPTURE_IDENTITY_GUARD:-}
 SSH=${PLAYARR_NURA_SSH:-$H/pmssh.sh}
 CAP=${PLAYARR_NURA_CAP:-$H/cap.sh}
+NUDGE=${PLAYARR_NURA_NUDGE:-$H/nudge.sh}
 HASHER=${PLAYARR_CAPTURE_HASHER:-}
 ACK_ATTEMPTS=${PLAYARR_CAPTURE_ACK_ATTEMPTS:-90}
 STABILITY_ATTEMPTS=${PLAYARR_CAPTURE_STABILITY_ATTEMPTS:-8}
@@ -29,8 +30,8 @@ if [ -z "$IDENTITY_GUARD" ] || [ ! -x "$IDENTITY_GUARD" ]; then
   echo "PLAYARR_CAPTURE_IDENTITY_GUARD must name an executable identity verifier" >&2
   exit 2
 fi
-if [ ! -x "$SSH" ] || [ ! -x "$CAP" ]; then
-  echo "capture SSH and capture helpers must be executable" >&2
+if [ ! -x "$SSH" ] || [ ! -x "$CAP" ] || [ ! -x "$NUDGE" ]; then
+  echo "capture SSH, capture and nudge helpers must be executable" >&2
   exit 2
 fi
 if ! [[ "$ACK_ATTEMPTS" =~ ^[1-9][0-9]*$ && "$STABILITY_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
@@ -91,6 +92,9 @@ for route in "$@"; do
   case $route in
     theme*) continue ;;
   esac
+
+  # Once per route, before the first screenshot: the idle wait above is what stalls the display (see nudge.sh).
+  "$NUDGE" || { echo "display nudge failed for route: $route" >&2; exit 1; }
 
   previous=
   stable=0

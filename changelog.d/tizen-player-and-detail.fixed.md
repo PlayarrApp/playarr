@@ -1,2 +1,0 @@
-- Tizen playback quality now reflects the negotiated source bitrate, subtitle menus show available tracks and the selected track, and Home and series detail pages fade at their scroll edges. Series episode captions remain readable in light mode and synopsis text has room for five lines. Subtitle track selection remains unavailable where the native player cannot select a track.
-- Tizen Calendar Week now keeps all seven day columns reachable with horizontal and per-day vertical focus scrolling, and uses the filters icon for Filters.
