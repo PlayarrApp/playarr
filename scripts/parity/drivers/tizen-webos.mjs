@@ -48,6 +48,7 @@ function pageHook() {
   if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; }
 }
 
+// Selectors below avoid :is(): the Samsung TVs on Tizen 6.5 run Chromium 85, where an unsupported selector makes querySelector throw.
 // Page code (injected into the app): true when `element` is not cut off by a scrolling or clipping ancestor. A lazy image
 // below a column's scroll edge is on screen by its rectangle but never loads and is not visible to the user.
 export function insideAncestorClips(element, win = globalThis) {
@@ -234,7 +235,7 @@ export async function createDriver() {
       '[data-page-id="library"] .tv-title-card',
     ] : path === "/calendar" ? [
       '[data-page-id="calendar"].calendar-page',
-      '[data-page-id="calendar"] :is(.calendar-scroll, .calendar-agenda-content)',
+      '[data-page-id="calendar"] .calendar-scroll, [data-page-id="calendar"] .calendar-agenda-content',
     ] : path.startsWith("/settings") ? [
       '[data-page-id="settings"].settings-page',
       '[data-page-id="settings"] .settings-workspace',
@@ -243,7 +244,7 @@ export async function createDriver() {
       '[data-page-id="music-detail"] .tv-detail-title',
     ] : path === "/playlists" ? [
       '[data-page-id="playlists"].tv-playlists',
-      '[data-page-id="playlists"] :is(.tv-playlist-directory-card, .tv-home-card)',
+      '[data-page-id="playlists"] .tv-playlist-directory-card, [data-page-id="playlists"] .tv-home-card',
     ] : path.startsWith("/movies/") || path.startsWith("/series/") || path.startsWith("/sites/") || path.startsWith("/search/") || path.startsWith("/library/") || path.startsWith("/playlists/") ? [
       '[data-page-id="work-detail"].tv-detail',
       '[data-page-id="work-detail"] .tv-detail-title',
