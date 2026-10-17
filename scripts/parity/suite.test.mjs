@@ -880,3 +880,7 @@ test("a driver that cannot pin runs unpinned on a default run, but --stable stay
   assert.equal(await pinCapture({ async setDeterministicCapture(o) { calls.push(o); } }, { fixedNow: "2026-10-07T12:00:00Z", log }), true);
   assert.deepEqual(calls, [{ fixedNow: "2026-10-07T12:00:00Z", disableAnimations: true, timeZone: "UTC", locale: "en-GB" }]);
 });
+
+test("web-ref capture puts the canonical deck item inside its captured progress scope", () => {
+  assert.match(readFileSync(new URL("./capture-refs.mjs", import.meta.url), "utf8"), /const stateFiles = \[\.\.\.new Set\(\[[^\]]*deckScope\]\)\]/);
+});
