@@ -93,10 +93,10 @@ const measure = ([itemSel, active]) => {
     const textEls = [...el.querySelectorAll("strong, span, h2, h3, p")].filter((t) => t.textContent.trim());
     const textLeft = Math.min(...textEls.map((t) => t.getBoundingClientRect().left), r.left);
     const title = document.querySelector(".page-header h1");
-    // Row lists: the page gutter is the panel's padding from the (unwidened) column edge, which is the right padding too.
+    // Row lists: the page gutter is the panel's padding from the (unwidened) column edge, which equals the top padding (the right padding also reserves the action column).
     const panel = el.closest(".tv-downloads-panel");
     let gutter = null;
-    if (panel) { const pr = panel.getBoundingClientRect(); const room = parseFloat(getComputedStyle(panel).getPropertyValue("--list-glow-room")) || 0; gutter = pr.left + room + parseFloat(getComputedStyle(panel).paddingRight); }
+    if (panel) { const pr = panel.getBoundingClientRect(); const room = parseFloat(getComputedStyle(panel).getPropertyValue("--list-glow-room")) || 0; gutter = pr.left + room + parseFloat(getComputedStyle(panel).paddingTop); }
     out.push({ idx, tag: el.className, itemLeft: r.left, textLeft, clipLeft: Math.max(clip.left, railRight), clipRight: clip.right, itemRight: r.right, itemTop: r.top, itemBottom: r.bottom, clipTop: clip.top, clipBottom: clip.bottom, glowLeft: r.left - L, glow: L, lift: new DOMMatrix(cs.transform === "none" ? undefined : cs.transform).m42, gutter, scrollerClass: sc.className, ring, ringRail });
   }
   return { count: items.length, out };

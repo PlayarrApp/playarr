@@ -215,7 +215,7 @@ struct ProfilesView: View {
             }
 
             Button {
-                if let url = URL(string: "/clients", relativeTo: viewModel.environment.serverBaseURL)?.absoluteURL {
+                if let url = URL(string: "https://playarr.app/clients") {
                     UIApplication.shared.open(url)
                 }
             } label: {
