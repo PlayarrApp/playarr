@@ -764,6 +764,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The marketing site moved to its own repository and Worker (`PlayarrApp/playarr-site`). `playarr.app` now serves it on `/`
+  for signed-out visitors and on the Clients, docs and legal routes through a `SITE` service binding; the web app, the
+  duplicate React legal and Clients pages and `site/` are gone from this repository. The app sets a `playarr_signed_in`
+  routing-hint cookie so signed-in users keep landing in the app. Deploy `playarr-site` before `playarr-web`.
 - Nura library grids space their rows at the web phone's pitch (24.35 css px), so the third and later rows line up with the web's.
 - Let the Apple iOS wall take the pinned capture instant as an input, and print compiler errors when the Apple parity iOS build fails; the iPhone calendar parity captures now use the clock the web references show (Agenda dark 90.75 to 93.90).
 - Nura player controls follow the web phone player: a flat seek bar, a centred time, and two rows of icon buttons (previous, play or pause, next, mute, audio, subtitles, queue; then quality, health, play on and full screen), with a bordered close button. Previous, next, mute and full screen work; the rest show disabled until the player supports them.
