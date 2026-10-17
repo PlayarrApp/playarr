@@ -17,7 +17,7 @@
 #   android   android-ci.yml        signed sideload APK and its update manifest
 #   tv        tv-web-ci.yml         LG webOS IPK, unsigned Samsung Tizen package root
 #   roku      (below)               Roku sideload channel zip
-#   xbox      xbox-ci.yml           unsigned x64 sideload package (.appx)
+#   xbox      xbox-ci.yml           unsigned x64 sideload package (.msix)
 #   harmony   harmony-ci.yml        unsigned HarmonyOS HAP
 #   linux     (below)               Linux phone client binary tarball
 #   macos     (below)               unsigned macOS app zip
@@ -514,8 +514,11 @@ jobs:
           [[ -d "$a/playarr-macos-package" ]] && cp "$a/playarr-macos-package"/* assets/
           [[ -d "$a/playarr-tizen-native-package" ]] && cp "$a/playarr-tizen-native-package"/* assets/
           if [[ -d "$a/playarr-harmony-package" ]]; then
-            hap="$(find "$a/playarr-harmony-package" -name '*.hap' -print -quit)"
-            [[ -n "$hap" ]] && cp "$hap" "assets/playarr-harmony-$VERSION-unsigned.hap"
+            # The artefact holds two HAPs (outputs/default/entry-default-unsigned.hap and app/entry-default.hap);
+            # the release ships the unsigned module HAP, picked by name.
+            hap="$a/playarr-harmony-package/entry-default-unsigned.hap"
+            [[ -f "$hap" ]] || { echo "::error::entry-default-unsigned.hap is missing from the HarmonyOS package"; exit 1; }
+            cp "$hap" "assets/playarr-harmony-$VERSION-unsigned.hap"
           fi
           # Variant-specific names beside the older ones (the downloads Worker and the Android updater read those).
           copy_as() { if [[ -f "assets/$1" ]]; then cp "assets/$1" "assets/$2"; fi; }
@@ -551,7 +554,7 @@ jobs:
             echo "| Samsung Tizen | \`playarr-samsung-tizen-web-$VERSION-unsigned.zip\` (sign with your Samsung certificate profile) |"
             echo "| Samsung Tizen native | \`playarr-samsung-tizen-native-$VERSION.tpk\` (test-signed) |"
             echo "| Roku | \`playarr-roku-$VERSION.zip\` (sideload) |"
-            echo "| Xbox | \`playarr-xbox-$VERSION-x64-unsigned.appx\` (unsigned; sign before sideloading) |"
+            echo "| Xbox | \`playarr-xbox-$VERSION-x64-unsigned.msix\` (unsigned; sign before sideloading) |"
             echo "| HarmonyOS | \`playarr-harmony-$VERSION-unsigned.hap\` |"
             echo "| Linux phone | \`playarr-linux-phone-$VERSION-x86_64.tar.gz\` |"
             echo "| Fire TV (Vega), Sailfish | pending, see \`clients.json\` |"
@@ -693,7 +696,7 @@ jobs:
             echo "| iOS and tvOS | $(mark "$(result apple)") | TestFlight | build $APPLE_BUILD |"
             echo "| webOS and Tizen | $(mark "$(result tv)") | GitHub Release | Tizen is unsigned (no Samsung certificate in CI) |"
             echo "| Roku | $(mark "$(result roku)") | GitHub Release | sideload zip |"
-            echo "| Xbox | $(mark "$(result xbox)") | GitHub Release | unsigned .appx (no signing certificate) |"
+            echo "| Xbox | $(mark "$(result xbox)") | GitHub Release | unsigned .msix (no signing certificate) |"
             echo "| HarmonyOS | $(mark "$(result harmony)") | GitHub Release | unsigned HAP (no AppGallery signing material) |"
             echo "| Samsung Tizen native | $(mark "$(result tizen-native)") | GitHub Release | test-signed tpk (no Samsung certificate in CI) |"
             echo "| Linux phone | $(mark "$(result linux)") | GitHub Release | binary tarball |"

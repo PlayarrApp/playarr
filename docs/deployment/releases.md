@@ -34,7 +34,7 @@ and Sailfish are not built (see Variants below). All Ubuntu jobs use `ubuntu-24.
 | Samsung Tizen native | inline (`tizen-native`) | `playarr-samsung-tizen-native-<version>.tpk`, test-signed with the Tizen SDK certificate (no Samsung signing secret exists) |
 | Web (playarr.app) | `web-ci.yml` | the web client and Worker deployed from the release commit, after the GitHub Release exists; a failed deploy fails the release and the summary reports the version and commit (the post-merge auto-deploy of every `main` merge stays on as well) |
 | Roku | inline | `playarr-roku-<version>.zip` (sideload channel) |
-| Xbox | `xbox-ci.yml` | `playarr-xbox-<version>-x64-unsigned.appx` (no signing certificate yet) |
+| Xbox | `xbox-ci.yml` | `playarr-xbox-<version>-x64-unsigned.msix` (no signing certificate yet) |
 | HarmonyOS | `harmony-ci.yml` | `playarr-harmony-<version>-unsigned.hap` (no AppGallery signing material yet) |
 | Linux phone | inline | `playarr-linux-<version>-x86_64.tar.gz`, also released as `playarr-linux-phone-<version>-x86_64.tar.gz` |
 | macOS | inline | `playarr-macos-<version>-unsigned.zip` (no Developer ID yet) |
@@ -69,7 +69,7 @@ Change a minimum OS in the JSON file only; `node --test scripts/release/` checks
 | Android (Google Play) | store | closed testing |
 | iOS, iPadOS, Apple TV | testflight | TestFlight |
 | macOS 14 | download | `playarr-macos-<version>-unsigned.zip` |
-| Xbox | download | `playarr-xbox-<version>-x64-unsigned.appx` |
+| Xbox | download | `playarr-xbox-<version>-x64-unsigned.msix` |
 | HarmonyOS 5.0 | download | `playarr-harmony-<version>-unsigned.hap` |
 | Linux phone | download | `playarr-linux-phone-<version>-x86_64.tar.gz` |
 | Sailfish OS | pending | the SDK target build is unproven on a hosted runner |
