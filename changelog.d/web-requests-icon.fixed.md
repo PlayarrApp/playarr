@@ -1,0 +1,1 @@
+- Web: Requests now has its own plus-in-circle nav icon instead of sharing the Watchlist bookmark.

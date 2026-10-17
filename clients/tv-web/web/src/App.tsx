@@ -72,6 +72,7 @@ import {
   MoviesIcon,
   PlaylistsIcon,
   WatchlistIcon,
+  RequestsIcon,
   SearchIcon,
   SeriesIcon,
   SitesIcon,
@@ -150,7 +151,7 @@ const NAV_ICONS: Record<string, ComponentType> = {
   "/music": MusicIcon,
   "/playlists": PlaylistsIcon,
   "/watchlist": WatchlistIcon,
-  "/requests": WatchlistIcon,
+  "/requests": RequestsIcon,
   "/calendar": CalendarIcon,
 };
 
