@@ -131,6 +131,10 @@ button.pa-pill.selected { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-overview { font-size: 12.5px; color: @pa_ink_soft; }
 button.pa-action { background: alpha(@pa_surface_strong, 0.7); border: none; border-radius: 999px; min-height: 44px; padding: 0 8px; box-shadow: none; }
 button.pa-action.primary { background: @pa_ink; }
+button.pa-action.primary.focused { background: #a52745; }
+button.pa-action.primary.focused .pa-action-label { color: #ffffff; }
+.pa-pill-glyph { color: @pa_brand_ink; font-size: 17px; }
+.pa-pill-glyph-s { color: @pa_brand_ink; font-size: 8px; }
 button.pa-action:focus-visible { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-action-label { font-size: 11px; font-weight: 700; color: @pa_ink; }
 button.pa-action.primary .pa-action-label { color: @pa_bg; }

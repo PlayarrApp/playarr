@@ -191,7 +191,13 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
         .valign(gtk4::Align::Center)
         .build();
     let tone = if primary { Tone::OnAccent } else { Tone::Brand };
-    row.append(&icons::image(icon, if small { 9 } else { 12 }, tone));
+    // The web draws the download and playback pills' icons as brand text glyphs (written `glyph:<char>`).
+    if let Some(g) = icon.strip_prefix("glyph:") {
+        let class = if small { "pa-pill-glyph-s" } else { "pa-pill-glyph" };
+        row.append(&gtk4::Label::builder().label(g).css_classes([class]).build());
+    } else {
+        row.append(&icons::image(icon, if small { 9 } else { 12 }, tone));
+    }
     let class = if small { "pa-action-label-s" } else { "pa-action-label" };
     // The large pills wrap ("Resume / from 0:23") as the web's do; the small ones fit on one line.
     row.append(
@@ -363,8 +369,10 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             });
         }
     };
-    let row1 = gtk4::Box::builder().spacing(8).build();
-    let download = action_pill("downloads", "Download", 104, false, true);
+    // The web's Play pill sits 5 css px from Playback, 8 from the pills before it.
+    let row1 = gtk4::Box::builder().spacing(if series { 8 } else { 5 }).build();
+    let download = action_pill("glyph:⇩", "Download", 104, false, true);
+    download.set_margin_end(3);
     match l.detail.media_file_id.clone().filter(|_| !series) {
         Some(file) => {
             let (app, work) = (app.clone(), w.clone());
@@ -407,8 +415,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         }
     } else {
         row1.append(&download);
-        let playback = action_pill("list", "Playback", 104, false, false);
-        playback.set_sensitive(false);
+        // Drawn enabled like the web's; a disabled button would dim it.
+        let playback = action_pill("glyph:☷", "Playback", 104, false, false);
         playback.set_tooltip_text(Some("Playback options are not available yet."));
         row1.append(&playback);
         if w.kind == "movie" {
@@ -417,7 +425,16 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                     Some((_, pos, label)) => (format!("Resume from {label}"), *pos),
                     None => ("Play".to_string(), 0),
                 };
-                let b = action_pill("play", &label, 104, true, false);
+                let b = action_pill("play", &label, 110, true, false);
+                // The web focuses a film's Play pill when the page opens, which fills it with the brand red.
+                b.add_css_class("focused");
+                if let Some(img) = b
+                    .child()
+                    .and_then(|r| r.first_child())
+                    .and_then(|i| i.downcast::<gtk4::Image>().ok())
+                {
+                    icons::set_tone(&img, Tone::White);
+                }
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
                 row1.append(&b);
