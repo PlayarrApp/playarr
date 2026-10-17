@@ -3073,8 +3073,8 @@ private fun ExperienceHomeScreen(
                                 isTelevision = isTelevision,
                                 homeView = homeView,
                                 selectedId = selectedId,
-                                // Web phone Home draws no selected card until one is touched; the first card only reads as selected with a D-pad.
-                                active = rail.key == activeRailKey && (isTelevision || savedSelectedId != null),
+                                // Web Home now focuses the first card on load (current published refs), so the phone draws it selected too.
+                                active = rail.key == activeRailKey,
                                 progressByWork = progressByWork,
                                 onSelected = { savedSelectedId = it.id; savedRailKey = rail.key },
                                 onClick = { work, onDeck ->
