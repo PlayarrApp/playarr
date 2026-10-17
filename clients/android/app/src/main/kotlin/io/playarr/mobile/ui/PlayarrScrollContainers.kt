@@ -183,6 +183,10 @@ internal fun Modifier.playarrHorizontalScroll(
     fade: PlayarrFadeKind? = PlayarrFadeKind.Rail,
 ): Modifier = (if (fade != null) playarrScrollFade(state, vertical = false, kind = fade) else this).horizontalScroll(state)
 
+/** Web `--tv-track-left-fade`: `clamp(88px, 8.8vw, 152px)`, the gutter a television rail's viewport extends into. */
+@Composable
+internal fun tvTrackGutter(): Dp = (LocalConfiguration.current.screenWidthDp * 0.088f).coerceIn(88f, 152f).dp
+
 /** Lets this element's box extend [by] to the left of where its parent places it, ending at the same right edge. */
 internal fun Modifier.extendStart(by: Dp): Modifier = layout { measurable, constraints ->
     val extra = by.roundToPx()
