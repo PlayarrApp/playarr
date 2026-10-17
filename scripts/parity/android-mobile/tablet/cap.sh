@@ -26,7 +26,8 @@ run() { case $1 in
   profiles) open home 20; adb shell input keyevent 59; kseq left down*12 select; python3 -I $HERE/uiexpect.py 'Who.s watching' || { echo "wrong screen profiles"; return 1; }; shot $1 ;;
   calendar-month) open "calendar?query=view%3Dmonth%26date%3D2026-10-14" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-month"; return 1; }; shot $1 ;;
   calendar-week) open "calendar?query=view%3Dweek%26date%3D2026-10-14" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-week"; return 1; }; shot $1 ;;
-  calendar-agenda) open "calendar?query=view%3Dagenda%26date%3D2026-10-14" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-agenda"; return 1; }; shot $1 ;;
+  calendar-agenda) # The agenda opens on its anchor day: the dark ref shows 15 October, the light ref 16 October.
+    open "calendar?query=view%3Dagenda%26date%3D2026-10-$([ "$T" = Dark ] && echo 15 || echo 16)" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-agenda"; return 1; }; shot $1 ;;
   filters) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select right*12 up select; python3 -I $HERE/uiexpect.py 'Sort by|Library controls' || { echo "wrong screen filters"; return 1; }; shot $1 ;;
   actions) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select right; adb shell input keyevent --longpress 23; sleep 1.5
     # Key long-press did not open the drawer before; fall back to a 1.5 s touch hold on the card, then insist the drawer is on screen.

@@ -623,15 +623,34 @@ internal fun TvCalendarAgenda(
     actions: CalendarActionsHolder,
     onJump: () -> Unit,
 ) {
-    androidx.compose.runtime.CompositionLocalProvider(LocalCalendarMetrics provides TvCalendarMetrics, LocalCalendarToday provides today) {
+    // Tablet web at 1280 x 800 lays the agenda out in css px with the phone sizes (40 x 60 poster, 14.4 px day heading), not the 1920 stage values.
+    val stage = LocalStageScale.current
+    val tablet = stage != 1f
+    val stagedConfig = androidx.compose.ui.platform.LocalConfiguration.current
+    UnstagedForWebCssPx {
+    androidx.compose.runtime.CompositionLocalProvider(LocalCalendarMetrics provides (if (tablet) PhoneCalendarMetrics else TvCalendarMetrics), LocalCalendarToday provides today) {
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
             // Web: the date range lives in the header group; the details panel takes the library stage (eyebrow at y 259)
             // and the day list starts under the header. Both panes end at the bottom of the screen.
-            val detailsTop = 259.dp
-            val listTop = 168.dp
+            val detailsTop = if (tablet) 294.3.dp else 259.dp
+            val listTop = if (tablet) 135.dp else 168.dp
+            val listStart = if (tablet) 534.dp else 786.dp
+            val listWidth = if (tablet) (maxWidth - listStart - 24.dp) else 1049.dp
+            val dayFont = LocalCalendarMetrics.current
             val detailScroll = rememberScrollState()
+            // The details are the library hero: keep them on the stage (1920 values); only the day list is in css px.
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                *(if (tablet) arrayOf(
+                    androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density * stage, density.fontScale),
+                    androidx.compose.ui.platform.LocalConfiguration provides stagedConfig,
+                    LocalStageScale provides stage,
+                    LocalCalendarMetrics provides TvCalendarMetrics,
+                ) else emptyArray()),
+            ) {
+            val maxHeightStaged = if (tablet) maxHeight / stage else maxHeight
             Column(
-                Modifier.offset(x = playarrPageMetrics(true).start, y = detailsTop).width(600.dp).height((maxHeight - detailsTop).coerceAtLeast(0.dp))
+                Modifier.offset(x = playarrPageMetrics(true).start, y = detailsTop).width(600.dp).height((maxHeightStaged - detailsTop).coerceAtLeast(0.dp))
                     .calendarEdgeFades(detailScroll.verticalEdges())
                     .verticalScroll(detailScroll)
                     .padding(bottom = 48.dp),
@@ -641,6 +660,7 @@ internal fun TvCalendarAgenda(
                     selected != null -> TvCalendarDetails(selected, locale, zone, today, onOpenWork, onPlay, actions)
                     else -> Text(playarrString(PlayarrString.CalendarSelectPrompt), color = WebInkMuted)
                 }
+            }
             }
             val listState = rememberLazyListState()
             // Flat row model: day headings and entries share one lazy list; focus moves between entries only.
@@ -661,7 +681,7 @@ internal fun TvCalendarAgenda(
             val focus = rememberCalendarListFocus(entryKeys, lazyIndex, revealIndex, listState)
             LazyColumn(
                 state = listState,
-                modifier = Modifier.offset(x = 786.dp, y = listTop).width(1049.dp).height((maxHeight - listTop).coerceAtLeast(0.dp))
+                modifier = Modifier.offset(x = listStart, y = listTop).width(listWidth).height((maxHeight - listTop).coerceAtLeast(0.dp))
                     .calendarEdgeFades(listState.verticalEdges()),
                 contentPadding = PaddingValues(top = 4.dp, bottom = 48.dp),
             ) {
@@ -671,9 +691,9 @@ internal fun TvCalendarAgenda(
                     rows.forEachIndexed { index, (day, item) ->
                         if (day != null) {
                             item(key = "day-$day") {
-                                Row(Modifier.padding(top = if (index > 0) 25.dp else 0.dp, bottom = 37.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(Modifier.padding(top = if (index > 0) 25.dp else 0.dp, bottom = if (tablet) 45.dp else 37.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Text(
-                                        phoneCalendarDayHeading(day, locale), color = WebInk, fontSize = 18.7.sp, lineHeight = 28.sp, fontWeight = FontWeight(560),
+                                        phoneCalendarDayHeading(day, locale), color = WebInk, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(560),
                                         style = WebTextStyle, modifier = Modifier.semantics { heading() },
                                     )
                                     if (day == today) CalendarTodayBadge()
@@ -693,6 +713,7 @@ internal fun TvCalendarAgenda(
                 }
             }
         }
+    }
     }
 }
 
@@ -1983,25 +2004,29 @@ private fun TvCalendarDetails(item: CalendarItem, locale: Locale, zone: ZoneId, 
         entry.releaseAt?.let { playarrFullDateTime(it, zone, locale) } ?: "${formatCalendarDay(entry.date, locale)} · $allDay"
     }
     val palette = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette
+    // Tablet web at 1280 x 800: the same clamp minimums as the library hero make the text larger and lower than the 1920 values.
+    val tablet = LocalStageScale.current != 1f
+    val metaFont = webVw(9.92f, 0.68f, 13.76f).value
+    val overviewFont = webVw(10.24f, 0.72f, 14.72f).value
     Column(Modifier.width(455.dp)) {
         Text(
             "$kindLabel · ${calendarReleaseTypeLabel(entry.releaseType)}".uppercase(locale), color = palette.brandInk,
-            fontSize = 12.288.sp, lineHeight = 18.432.sp, fontWeight = FontWeight(860), letterSpacing = 0.983.sp, style = WebTextStyle,
+            fontSize = webVw(9.28f, 0.64f, 13f).value.sp, lineHeight = 18.432.sp, fontWeight = FontWeight(860), letterSpacing = 0.983.sp, style = WebTextStyle,
         )
-        WebHeroTitle(item.title, Modifier.padding(top = 25.9.dp), maxLines = 3)
-        androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 27.dp), horizontalArrangement = Arrangement.spacedBy(12.8.dp)) {
+        WebHeroTitle(item.title, Modifier.padding(top = 25.9.dp + (if (tablet) 3.7.dp else 0.dp)), maxLines = 3)
+        androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 27.dp + (if (tablet) 4.5.dp else 0.dp)), horizontalArrangement = Arrangement.spacedBy(12.8.dp + (if (tablet) 6.dp else 0.dp))) {
             listOf(calendarItemSubtitle(item), whenText).filter(String::isNotBlank).forEach {
-                Text(it, color = palette.detailsSoft, fontSize = 13.056.sp, lineHeight = 19.584.sp, fontWeight = FontWeight(600), style = WebTextStyle)
+                Text(it, color = palette.detailsSoft, fontSize = metaFont.sp, lineHeight = (metaFont * 1.5f).sp, fontWeight = FontWeight(600), style = WebTextStyle)
             }
         }
-        Row(Modifier.padding(top = 17.dp)) { CalendarTonePill(calendarItemTone(item, today, zone)) }
+        Row(Modifier.padding(top = 17.dp + (if (tablet) 4.dp else 0.dp))) { CalendarTonePill(calendarItemTone(item, today, zone)) }
         // Web: a group of episodes has no single synopsis; a lone release shows its own when the source gave one.
         if (item is CalendarItem.Single) {
             entry.overview?.trim()?.takeIf(String::isNotEmpty)?.let {
                 Text(
-                    it, color = palette.detailsSoft, fontSize = 13.824.sp, lineHeight = 21.842.sp, fontWeight = FontWeight(600),
+                    it, color = palette.detailsSoft, fontSize = overviewFont.sp, lineHeight = (overviewFont * 1.58f).sp, fontWeight = FontWeight(600),
                     style = WebTextStyle, maxLines = 5, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 21.7.dp).width(348.dp),
+                    modifier = Modifier.padding(top = 21.7.dp + (if (tablet) 2.dp else 0.dp)).width(if (tablet) 387.dp else 348.dp),
                 )
             }
         }
