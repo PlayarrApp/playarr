@@ -1116,6 +1116,8 @@ def main():
                 return self._reply(200, body)
             if url.path.startswith("/img/"):
                 data = IMAGES.get(url.path[5:])
+                key = "bridge-img-served" if data is not None else "bridge-img-404"  # temporary diagnostic: Home poster stall
+                STATE.setdefault("dbgcount", {})[key] = STATE.get("dbgcount", {}).get(key, 0) + 1
                 if data is None:
                     print(f"[img404] {time.monotonic():.1f} {url.path}", flush=True)
                     return self._reply(404, b"")
@@ -1159,6 +1161,8 @@ def main():
                 if len(raw) != content_length:
                     return self._reply(400, b"truncated image payload")
                 status = record_image_upload(image_id, raw)
+                key = "bridge-imgput-" + status  # temporary diagnostic: Home poster stall
+                STATE.setdefault("dbgcount", {})[key] = STATE.get("dbgcount", {}).get(key, 0) + 1
                 if status == "oversized":
                     return self._reply(413, b"image payload too large")
                 if status != "ok":
