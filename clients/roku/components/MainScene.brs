@@ -252,6 +252,7 @@ sub init()
     m.settingsActionList.ObserveField("itemSelected", "onSettingsActionSelected")
     m.library.ObserveField("rowItemSelected", "onLibraryItemSelected")
     m.library.ObserveField("rowItemFocused", "onLibraryItemFocused")
+    m.top.ObserveField("screenState", "onScreenStateChanged")
     m.browseGrid.ObserveField("itemSelected", "onBrowseItemSelected")
     m.browseGrid.ObserveField("itemFocused", "onBrowseItemFocused")
     m.browseGrid.ObserveField("alphabetHandoffRequest", "onBrowseGridAlphabetHandoff")
@@ -1577,6 +1578,28 @@ sub onDeepLink()
     m.pendingDeepLink = m.top.deepLink
 end sub
 
+' Parity route /movies/<id> or /series/<id> (the web paths): the title's detail page once the current profile is known.
+sub onDeepRoute()
+    m.pendingRoute = m.top.deepRoute
+end sub
+
+sub openDeepRoute()
+    route = m.pendingRoute
+    m.pendingRoute = ""
+    parts = route.Split("/")
+    if parts.Count() <> 3 or parts[0] <> "" or parts[2] = "" then return
+    kind = ""
+    if parts[1] = "movies" then kind = "movie"
+    if parts[1] = "series" then kind = "series"
+    if kind = "" then return
+    name = "Viewer"
+    for each profile in m.profiles
+        if profile.is_current and profile.display_name <> invalid then name = profile.display_name
+    end for
+    enterHome(name)
+    openWorkDetail({ id: parts[2], title: "", kind: kind }, "route")
+end sub
+
 sub playDeepLink()
     id = m.pendingDeepLink
     m.pendingDeepLink = ""
@@ -1594,6 +1617,10 @@ sub showProfiles(data as Dynamic)
     m.profiles = data
     if m.pendingDeepLink <> invalid and m.pendingDeepLink <> "" and data.Count() > 0
         playDeepLink()
+        return
+    end if
+    if m.pendingRoute <> invalid and m.pendingRoute <> "" and data.Count() > 0
+        openDeepRoute()
         return
     end if
     rememberCurrentProfileId(data)
@@ -3814,6 +3841,7 @@ sub openWorkDetail(work as Object, originState as String)
     m.detailOverview.text = ""
     showOnly("detail")
     m.top.screenState = "detail"
+    renderNavDockFocus()
     sendApi("detail", "GET", "/api/v1/catalog/" + UrlEncode(work.id), invalid, true)
 end sub
 
@@ -4916,12 +4944,24 @@ function moveNavDockFocus(delta as Integer) as Boolean
     return true
 end function
 
+' The dock marks the open screen's slot; screens set screenState after showOnly, so re-draw when it changes.
+sub onScreenStateChanged()
+    if m.navLabels <> invalid and m.navLabels.Count() > 0 then renderNavDockFocus()
+end sub
+
 ' Which dock slot matches the current screen (web .app-nav-link.is-active).
 function activeNavDockIndex() as Integer
     state = m.top.screenState
     if state = "search" then return 0
     if state = "home" then return 1
     if state = "playlists" then return 6
+    ' Web lights the library of the open title (Movies for a film, Series for a show, Music for an artist).
+    if state = "detail" and m.selectedWork <> invalid and m.selectedWork.kind <> invalid
+        if m.selectedWork.kind = "series" then return 2
+        if m.selectedWork.kind = "movie" then return 3
+        if m.selectedWork.kind = "site" then return 4
+        if m.selectedWork.kind = "artist" then return 5
+    end if
     if state = "page"
         if m.pageKind = "watchlist" then return 7
         if m.pageKind = "requests" then return 8
@@ -6908,6 +6948,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         if key = "OK" then selectWorkReleased()
         return false
     end if
+    if m.calFiltersOpen = true then return calFiltersOnKey(key)
     if m.drawerOpen = true then return drawerOnKey(key)
     if m.filtersOpen = true then return filtersOnKey(key)
     state = m.top.screenState
@@ -6963,8 +7004,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.top.screenState = "browse"
             m.browseGrid.SetFocus(true)
             idx = m.browseGrid.itemFocused
-    if m.calFiltersOpen = true then return calFiltersOnKey(key)
             if idx <> invalid and idx >= 0 and idx < m.browseItems.Count() then parityEmit("focus", "open " + m.browseItems[idx].title)
+        else if m.detailOrigin = "route"
+            ' Opened by a web route with no history: Back is the library of its kind, as in web.
+            if m.selectedWork.kind = "series" then openBrowse("series", "Series") else openBrowse("movie", "Movies")
         else if m.detailOrigin = "search"
             showOnly("search")
             m.top.screenState = "search"
