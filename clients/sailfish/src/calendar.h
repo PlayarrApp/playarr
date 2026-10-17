@@ -12,7 +12,7 @@ public:
     // The real date, or the date of PLAYARR_PARITY_CLOCK (ISO instant) so parity captures show the fixture's "today".
     static QDate today()
     {
-        const QDateTime pinned = QDateTime::fromString(qEnvironmentVariable("PLAYARR_PARITY_CLOCK"), Qt::ISODate);
+        const QDateTime pinned = QDateTime::fromString(QString::fromLatin1(qgetenv("PLAYARR_PARITY_CLOCK")), Qt::ISODate);
         return pinned.isValid() ? pinned.toLocalTime().date() : QDate::currentDate();
     }
     Q_INVOKABLE QString todayIso() const { return today().toString(Qt::ISODate); }
