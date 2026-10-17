@@ -147,7 +147,7 @@ export function createParityState() {
     calendarContent: null, calendarContentSeq: 0, calendarContentScreenSeq: 0,
     calendarDialogState: "", calendarDialogOpenSeq: 0, calendarDialogOpenScreenSeq: 0,
     calendarDialogClosedSeq: 0, calendarDialogClosedScreenSeq: 0,
-    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0 }, artState: createArtReadinessState(),
+    eventSeq: 0, artMarkers: { home: 0, movies: 0, series: 0, calendar: 0 }, artState: createArtReadinessState(),
   };
 }
 
@@ -177,6 +177,7 @@ export function applyParityLine(state, line) {
     const view = value.trim();
     if (!["month", "week", "agenda"].includes(view)) return false;
     state.calendarView = view;
+    state.artMarkers.calendar = state.eventSeq;
     state.calendarViewSeq += 1;
     state.calendarViewScreenSeq = state.screenSeq;
   } else if (kind === "calendarFocus") {
@@ -561,7 +562,7 @@ export function createDriver({ out, args = [] } = {}) {
     const connection = net.createConnection({ host: target, port: 8085 });
     socket = connection;
     connection.setEncoding("utf8");
-    connection.setTimeout(60000);
+    connection.setTimeout(150000); // longer than the 90 s artwork wait, when the app prints nothing
     connection.on("data", (chunk) => {
       if (socket !== connection) return;
       const split = splitDebugFrames(debugBuffer, chunk);
@@ -660,7 +661,9 @@ export function createDriver({ out, args = [] } = {}) {
       }
       await sleep(250);
     }
-    throw new Error(`Roku art readiness rejected ${scope} capture: ${lastReason}`);
+    const last = [...parityState.artState.generations.values()].filter((g) => g.scope === scope).sort((a, b) => b.generation - a.generation)[0];
+    const detail = last ? ` (generation ${last.generation}: ${last.slots.size} slots, ${last.expectedCount} expected)` : "";
+    throw new Error(`Roku art readiness rejected ${scope} capture: ${lastReason}${detail}`);
   };
 
   const launchProfiles = async () => {
@@ -672,7 +675,7 @@ export function createDriver({ out, args = [] } = {}) {
     await sleep(4000);
     if (artEnabled) {
       resetArtReadinessState(parityState.artState);
-      parityState.artMarkers = { home: 0, movies: 0, series: 0 };
+      parityState.artMarkers = { home: 0, movies: 0, series: 0, calendar: 0 };
     }
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
@@ -909,6 +912,7 @@ export function createDriver({ out, args = [] } = {}) {
         if (!initialFocus) throw new Error(traceFailure("Calendar initial focus has no usable rectangle"));
         if (initialFocus.action === "cell") {
           let reachedBack = false;
+          let reachedToday = false;
           let reachedTopBoundary = false;
           for (let step = 0; step < 32; step += 1) {
             const next = await observeCalendarKey("up", { allowBoundary: true });
@@ -917,13 +921,20 @@ export function createDriver({ out, args = [] } = {}) {
               break;
             }
             if (next.action === "cell") continue;
+            // Up from a Sunday cell reaches Today (a control directly above wins, 17.10200 / #1269); Left twice is the range selector.
+            if (next.action === "calToday") {
+              reachedToday = true;
+              break;
+            }
             if (next.action === "back") {
               reachedBack = true;
               break;
             }
             throw new Error(traceFailure(`Calendar Up reached an unexpected control while finding Back: ${JSON.stringify(next)}`));
           }
-          if (!reachedBack && reachedTopBoundary) {
+          if (reachedToday) {
+            for (let i = 0; i < 2; i += 1) await observeCalendarKey("left");
+          } else if (!reachedBack && reachedTopBoundary) {
             let reachedLeftEdge = false;
             for (let leftStep = 0; leftStep < 32; leftStep += 1) {
               const decision = calendarCellLeftEdgeAction(currentCalendarFocus());
@@ -940,19 +951,20 @@ export function createDriver({ out, args = [] } = {}) {
             if (back.action !== "back") throw new Error(traceFailure(`Calendar top-left Up did not focus Back: ${JSON.stringify(back)}`));
             reachedBack = true;
           }
-          if (!reachedBack) throw new Error(traceFailure(`Calendar did not reach Back within the bounded upward route: ${JSON.stringify(currentCalendarFocus())}`));
+          if (!reachedBack && !reachedToday) throw new Error(traceFailure(`Calendar did not reach Back within the bounded upward route: ${JSON.stringify(currentCalendarFocus())}`));
         } else if (initialFocus.action !== "back") {
           throw new Error(traceFailure(`Calendar route must start from a date cell or Back: ${JSON.stringify(initialFocus)}`));
         }
 
-        for (let step = 0; step < 5; step += 1) {
+        const viaToday = currentCalendarFocus()?.action === "calView";
+        for (let step = 0; step < (viaToday ? 0 : 5); step += 1) {
           const from = currentCalendarFocus();
           const next = await observeCalendarKey("right");
           if (!from || (step === 0 && from.action !== "back") || next.action !== "cell") {
             throw new Error(traceFailure(`Calendar Back-to-range path left the expected cell route at step ${step + 1}: ${JSON.stringify({ from, to: next })}`));
           }
         }
-        const selector = await observeCalendarKey("up");
+        const selector = viaToday ? currentCalendarFocus() : await observeCalendarKey("up");
         if (selector.action !== "calView") {
           throw new Error(traceFailure(`Calendar measured Back + Right x5 + Up path did not focus the range selector: ${JSON.stringify(selector)}`));
         }
@@ -1032,6 +1044,7 @@ export function createDriver({ out, args = [] } = {}) {
       if (artEnabled && screen === "home") { await waitForArt("home"); await sleep(1000); }
       if (artEnabled && screen === "browse" && ["movie", "movies"].includes(browse)) await waitForArt("movies");
       if (artEnabled && screen === "browse" && browse === "series") await waitForArt("series");
+      if (artEnabled && screen === "page" && page === "calendar" && ["week", "agenda"].includes(parityState.calendarView)) await waitForArt("calendar");
       const { jpeg, generation } = captureFrame();
       mkdirSync(dirname(resolve(file)), { recursive: true });
       const png = pngFromJpeg(jpeg);

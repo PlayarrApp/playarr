@@ -45,6 +45,11 @@ sub pagesInit()
     m.pageScrollY = 0
     m.settingsPanel = "appearance"
     m.artworkSizePref = "medium"
+    m.calendarArtPosters = []
+    m.calendarArtPosterIndex = 0
+    m.calendarArtVisibleSlots = {}
+    m.calendarArtHasArt = false
+    m.calendarArtPosterOverflow = false
 end sub
 
 ' ---------------------------------------------------------------------------
@@ -130,19 +135,6 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     return poster
 end function
 
-' The provider poster at a tile-sized width, like web's Calendar Poster and sizedPosterUrl: only an exact
-' image.tmdb.org /t/p/original/ path is resized, any other URL is used as is. No entry poster means no art (web draws none).
-function calendarPosterUrl(entry as Object) as String
-    url = entry.poster_url
-    if url = invalid or Type(url) <> "roString" or url = "" then return ""
-    if url.Left(8) <> "https://" and url.Left(7) <> "http://" then return ""
-    for each scheme in ["https://", "http://"]
-        prefix = scheme + "image.tmdb.org/t/p/original/"
-        if url.Left(prefix.Len()) = prefix and url.Len() > prefix.Len() then return scheme + "image.tmdb.org/t/p/w185/" + Mid(url, prefix.Len() + 1)
-    end for
-    return url
-end function
-
 function pgIcon(parent as Object, x as Float, y as Float, size as Integer, file as String, role as String, alpha = -1 as Integer) as Object
     poster = CreateObject("roSGNode", "Poster")
     poster.uri = "pkg:/images/" + file
@@ -155,19 +147,157 @@ function pgIcon(parent as Object, x as Float, y as Float, size as Integer, file 
     return poster
 end function
 
+function calendarSizedPosterUrl(url as String) as String
+    ' Match the web calendar's sizedPosterUrl default: only the exact TMDB
+    ' original path is changed, while other providers and URL suffixes stay intact.
+    for each scheme in ["https://", "http://"]
+        prefix = scheme + "image.tmdb.org/t/p/original/"
+        if url.Left(prefix.Len()) = prefix
+            tail = Mid(url, prefix.Len() + 1)
+            pathEnd = tail.Len()
+            queryAt = Instr(1, tail, "?")
+            hashAt = Instr(1, tail, "#")
+            if queryAt > 0 and queryAt - 1 < pathEnd then pathEnd = queryAt - 1
+            if hashAt > 0 and hashAt - 1 < pathEnd then pathEnd = hashAt - 1
+            if pathEnd > 0 then return scheme + "image.tmdb.org/t/p/w185/" + tail
+        end if
+    end for
+    return url
+end function
+
+function calendarArtworkUrl(entry as Object) as String
+    if entry = invalid then return ""
+    if entry.poster_url <> invalid and entry.poster_url <> ""
+        posterUrl = entry.poster_url
+        if posterUrl.Left(7) = "http://" or posterUrl.Left(8) = "https://"
+            return calendarSizedPosterUrl(posterUrl)
+        end if
+    end if
+    if entry.work_id <> invalid and entry.work_id <> "" and m.serverUrl <> ""
+        return m.serverUrl + "/api/v1/artwork/work/" + UrlEncode(entry.work_id) + "/poster"
+    end if
+    return ""
+end function
+
+sub trackCalendarArtworkPoster(poster as Object, url as String)
+    if poster = invalid or m.artTelemetryEnabled <> true then return
+    if m.pageKind <> "calendar" or (m.calendarView <> "week" and m.calendarView <> "agenda") then return
+    if m.calendarArtPosters.Count() >= 256
+        m.calendarArtPosterOverflow = true
+        return
+    end if
+    slot = "calendar-r0-c" + m.calendarArtPosterIndex.ToStr()
+    m.calendarArtPosterIndex += 1
+    poster.AddField("calendarArtSlot", "string", false)
+    poster.calendarArtSlot = slot
+    poster.AddField("calendarArtGeneration", "integer", false)
+    poster.calendarArtGeneration = 0
+    poster.AddField("calendarArtVersion", "integer", false)
+    poster.calendarArtVersion = 0
+    poster.AddField("calendarArtHasSource", "boolean", false)
+    poster.calendarArtHasSource = url <> ""
+    poster.ObserveField("loadStatus", "onCalendarArtworkLoadStatus")
+    m.calendarArtPosters.Push({ poster: poster, slot: slot })
+end sub
+
+function calendarEntriesHaveArtwork(entries as Object) as Boolean
+    if entries = invalid then return false
+    for each entry in entries
+        if calendarArtworkUrl(entry) <> "" then return true
+    end for
+    return false
+end function
+
+sub calendarEmitArtManifest()
+    if m.artTelemetryEnabled <> true or m.pageKind <> "calendar" or m.pageStatus <> "ready" then return
+    if m.calendarView <> "week" and m.calendarView <> "agenda" then return
+
+    generation = beginArtGeneration("calendar")
+    m.artActiveGeneration = generation
+    m.artActiveScope = "calendar"
+    m.artActiveHasArt = m.calendarArtHasArt
+    m.calendarArtVisibleSlots = {}
+    visible = []
+    overflow = m.calendarArtPosterOverflow or m.calendarArtPosters.Count() > 256
+    bodyX = 0.0
+    bodyY = 0.0
+    if m.pageBody.translation <> invalid
+        bodyX = m.pageBody.translation[0]
+        bodyY = m.pageBody.translation[1]
+    end if
+    if not overflow
+        for each record in m.calendarArtPosters
+            poster = record.poster
+            x = poster.translation[0] + bodyX
+            y = poster.translation[1] + bodyY
+            if artRectVisible(x, y, poster.width, poster.height)
+                visible.Push({ poster: poster, slot: record.slot, x: x, y: y, width: poster.width, height: poster.height })
+                if visible.Count() > 64
+                    overflow = true
+                    exit for
+                end if
+            end if
+        end for
+    end if
+
+    if overflow
+        ' More visible slots than the bounded manifest can prove: announce an
+        ' unmatched expected slot so the opt-in gate fails closed.
+        m.artExpectedSlots.Push("calendar-overflow")
+        announceArtGeneration(generation, "calendar", m.artActiveHasArt)
+        finishArtGeneration(generation, "calendar")
+        return
+    end if
+
+    for each slot in visible
+        poster = slot.poster
+        poster.calendarArtGeneration = generation
+        m.calendarArtVisibleSlots[slot.slot] = true
+        emitArtSlot(generation, "calendar", slot.slot, poster.calendarArtHasSource, slot.x, slot.y, slot.width, slot.height, 0)
+        emitCalendarArtworkStatus(poster)
+    end for
+    announceArtGeneration(generation, "calendar", m.artActiveHasArt)
+    finishArtGeneration(generation, "calendar")
+end sub
+
+sub emitCalendarArtworkStatus(poster as Object)
+    if poster = invalid then return
+    if poster.calendarArtHasSource <> true
+        emitArtStatus(poster.calendarArtGeneration, "calendar", poster.calendarArtSlot, "empty", poster.calendarArtVersion)
+        return
+    end if
+    status = "pending"
+    if poster.loadStatus = "ready"
+        status = "ready"
+    else if poster.loadStatus = "failed"
+        status = "failed"
+    end if
+    emitArtStatus(poster.calendarArtGeneration, "calendar", poster.calendarArtSlot, status, poster.calendarArtVersion)
+end sub
+
+sub onCalendarArtworkLoadStatus(event as Object)
+    poster = event.GetRoSGNode()
+    if poster = invalid or poster.calendarArtGeneration < 1 then return
+    if poster.calendarArtGeneration <> m.artActiveGeneration or m.artActiveScope <> "calendar" then return
+    if m.calendarArtVisibleSlots[poster.calendarArtSlot] <> true then return
+    emitCalendarArtworkStatus(poster)
+end sub
+
 function pgArtwork(parent as Object, x as Float, y as Float, w as Float, h as Float, url as String) as Object
     poster = CreateObject("roSGNode", "Poster")
     poster.translation = [x, y]
     poster.width = w
     poster.height = h
     poster.loadDisplayMode = "scaleToZoom"
+    trackCalendarArtworkPoster(poster, url)
     if url <> ""
         agent = CreateObject("roHttpAgent")
         agent.SetCertificatesFile("common:/certs/ca-bundle.crt")
         agent.InitClientCertificates()
+        headers = {}
         g = GetGlobalAA()
-        ' The session headers go only to the Playarr server, never to a provider image host.
-        if g.playarrArtHeaders <> invalid and m.serverUrl <> "" and url.Left(m.serverUrl.Len()) = m.serverUrl then agent.SetHeaders(g.playarrArtHeaders)
+        if g.playarrArtHeaders <> invalid then headers = artworkHeaders(url, g.playarrArtHeaders)
+        if headers.Count() > 0 then agent.SetHeaders(headers)
         poster.SetHttpAgent(agent)
         poster.uri = url
     end if
@@ -337,6 +467,7 @@ sub pageFocusRender()
     end if
     m.pageRing.visible = not m.navDockMode
     pageOnFocus(item)
+    if m.artTelemetryEnabled = true and m.pageKind = "calendar" then calendarEmitArtManifest()
 end sub
 
 sub pageOnFocus(item as Object)
@@ -1615,6 +1746,12 @@ end sub
 sub renderCalendarBody()
     calendarEnsureRange()
     pageBegin("Calendar", 0)
+    if m.artTelemetryEnabled = true
+        m.calendarArtPosters = []
+        m.calendarArtPosterIndex = 0
+        m.calendarArtVisibleSlots = {}
+        m.calendarArtPosterOverflow = false
+    end if
     ' Controls on the right of the header row (web: the range switcher, Previous, Today, Next).
     pgRound(m.pageHead, 1793, 56.2, 50, 50, 25, "surface")
     pgRound(m.pageHead, 1793, 56.2, 50, 50, 25, "line", -1, true)
@@ -1642,6 +1779,8 @@ sub renderCalendarBody()
         pgLabel(m.pageBody, 153.6, 240, 1200, 30, m.pageError, 14, 400, "danger")
         return
     end if
+    m.calendarArtHasArt = false
+    if m.artTelemetryEnabled = true then m.calendarArtHasArt = calendarEntriesHaveArtwork(entries)
     if m.calendarView = "month"
         renderCalendarMonth(entries)
     else if m.calendarView = "week"
@@ -1733,7 +1872,7 @@ sub renderCalendarAgenda(entries as Object)
         end if
         pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "surfaceStrong")
         if entry.id = m.calendarSelected then pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "ink", 56, true)
-        art = calendarPosterUrl(entry)
+        art = calendarArtworkUrl(entry)
         pgRound(m.pageBody, 802.4, ay + 19.8, 40, 60, 6, "surfaceSoft")
         pgArtwork(m.pageBody, 802.4, ay + 19.8, 40, 60, art)
         pgLabel(m.pageBody, 856.8, ay + 9, 900, 28, entry.title, 19, 600, "ink")
@@ -1850,7 +1989,7 @@ sub renderCalendarWeek(entries as Object)
                 pgRound(m.pageBody, x, y, 440, 106, 14, role)
                 pgRound(m.pageBody, x + 4, y, 436, 106, 14, "surfaceStrong")
                 pgRound(m.pageBody, x, y, 440, 106, 14, "line", -1, true)
-                art = calendarPosterUrl(entry)
+                art = calendarArtworkUrl(entry)
                 pgRound(m.pageBody, x + 16, y + 23, 40, 60, 6, "surfaceSoft")
                 pgArtwork(m.pageBody, x + 16, y + 23, 40, 60, art)
                 pgLabel(m.pageBody, x + 70, y + 9, 360, 26, entry.title, 20, 600, "ink", { maxLines: 1 })
