@@ -18,7 +18,7 @@ routes paths as follows (`run_worker_first` in `clients/tv-web/web/wrangler.json
 |---|---|
 | `/` for a visitor without the `playarr_signed_in=1` cookie | `playarr-site` (via `SITE`) |
 | `/` with the `playarr_signed_in=1` cookie | the app (static assets) |
-| `/docs`, `/docs/*`, `/legal`, `/legal/*`, `/features`, `/faq`, `/apps`, `/integrations`, `/clients`, `/clients/*`, `/_site/*`, `/robots.txt`, `/sitemap-*` | `playarr-site` (via `SITE`) |
+| `/docs`, `/docs/*`, `/legal`, `/legal/*`, `/features`, `/features/*`, `/faq`, `/faq/*`, `/apps`, `/apps/*`, `/integrations`, `/integrations/*`, `/clients`, `/clients/*`, `/_site/*`, `/robots.txt`, `/sitemap-*` | `playarr-site` (via `SITE`) |
 | `/download`, `/install` | 301 redirect to `/clients` |
 | `/api/*`, `/cast/*`, `/downloads/*`, `/storybook/*` | `playarr-web` Worker code |
 | everything else (`/library`, `/login` and so on) | the app (single-page fallback) |
