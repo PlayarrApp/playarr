@@ -1,10 +1,11 @@
 import { createSign } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
+import { appendFile, readdir, readFile } from 'node:fs/promises';
 
 import {
   findInReviewVersionCodes,
   findReleaseLifecycle,
   formatReleaseLifecycleEvidence,
+  isDeclarationBlock,
   waitForReleaseLifecycle,
 } from './release-lifecycle.mjs';
 
@@ -102,7 +103,10 @@ async function request(url, options = {}) {
   }
   if (!response.ok) {
     const message = body?.error?.message ?? body?.message ?? 'request failed';
-    throw new Error(`${options.method ?? 'GET'} ${url} failed (${response.status}): ${message}`);
+    throw Object.assign(
+      new Error(`${options.method ?? 'GET'} ${url} failed (${response.status}): ${message}`),
+      { status: response.status, apiMessage: message },
+    );
   }
   return body;
 }
@@ -266,10 +270,54 @@ try {
     });
     console.log(`Published Google Play listing screenshots for ${listingLocales.join(', ')}`);
   } else {
-    await request(
-      `${apiRoot}/edits/${editId}:commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW`,
-      { method: 'POST' },
-    );
+    try {
+      await request(
+        `${apiRoot}/edits/${editId}:commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW`,
+        { method: 'POST' },
+      );
+    } catch (error) {
+      if (!isDeclarationBlock(error)) throw error;
+      // Play refuses to send the release for review until a Console declaration is made (foreground
+      // service types, data safety, content rating). Keep the upload: commit it as a draft on the same
+      // track in a fresh edit, which Play accepts without review, and report what the owner must declare.
+      await request(`${apiRoot}/edits/${editId}`, { method: 'DELETE' }).catch(() => {});
+      const draftEdit = await request(`${apiRoot}/edits`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
+      try {
+        const draftBundle = await request(
+          `https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${packageName}/edits/${draftEdit.id}/bundles?uploadType=media`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/octet-stream' },
+            body: await readFile(bundlePath),
+          },
+        );
+        await request(`${apiRoot}/edits/${draftEdit.id}/tracks/${encodeURIComponent(releaseTrack)}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            track: releaseTrack,
+            releases: [
+              { name: `Playarr ${versionName}`, versionCodes: [String(draftBundle.versionCode)], status: 'draft' },
+            ],
+          }),
+        });
+        // No changesNotSentForReview: Play answers 400 for it on apps that send changes automatically.
+        await request(`${apiRoot}/edits/${draftEdit.id}:commit`, { method: 'POST' });
+      } catch (draftError) {
+        await request(`${apiRoot}/edits/${draftEdit.id}`, { method: 'DELETE' }).catch(() => {});
+        throw draftError;
+      }
+      const note = `Play: draft created on ${releaseTrack}, needs Console declaration: ${error.apiMessage}`;
+      console.log(`::warning::${note}`);
+      if (process.env.GITHUB_STEP_SUMMARY) {
+        await appendFile(process.env.GITHUB_STEP_SUMMARY, `- ${note}\n`);
+      }
+      process.exit(0);
+    }
     console.log(
       `Published Playarr ${versionName} to Google Play ${releaseTrack} with assets for ${listingLocales.join(', ')}`,
     );
