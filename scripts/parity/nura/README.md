@@ -1,8 +1,8 @@
 # Nura (postmarketOS) parity capture scripts
 
 Helpers for capturing the native Linux phone client (`clients/linux-mobile`) on the postmarketOS qemu VM
-(`pmbootstrap` qemu-amd64, ssh on 127.0.0.1:2231, display over VNC). Run from this directory; the VM key lives in
-`run/pmkey`, and each script resolves paths from its own location.
+(`pmbootstrap` qemu-amd64, ssh on 127.0.0.1:2231, display over VNC). Run from this directory; each script resolves paths from its own location.
+The VM key is read from `$PLAYARR_NURA_KEY` (default `run/pmkey` next to the scripts); see Local files.
 
 | Script | Use |
 |---|---|
@@ -37,3 +37,12 @@ with `PLAYARR_NURA_SSH`, `PLAYARR_NURA_CAP`, and
 `PLAYARR_CAPTURE_HASHER`; the retry and stability settings are configurable
 through `PLAYARR_CAPTURE_ACK_ATTEMPTS`, `PLAYARR_CAPTURE_STABILITY_ATTEMPTS`,
 and `PLAYARR_CAPTURE_STABILITY_DELAY`.
+
+## Local files (not committed)
+
+`run/` and `vnc.sh` hold secrets and host addresses, so they stay out of git (`run/` is ignored here).
+
+- `run/pmkey`: the VM login key. Create it once with `ssh-keygen -t ed25519 -N '' -f run/pmkey` and append `run/pmkey.pub` to
+  `~/.ssh/authorized_keys` of user `user` inside the VM (for example via `pmbootstrap chroot` on the image, or a password login
+  once). Alternatively point `PLAYARR_NURA_KEY` at an existing private key. `pmssh.sh` fails with a clear message when the key is missing.
+- `vnc.sh`: see above.
