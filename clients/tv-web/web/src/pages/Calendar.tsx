@@ -1280,6 +1280,7 @@ export function CalendarPage() {
         ariaLabel={t("pages.calendar.title")}
         backdrop={agendaArt ?? { artKey: "calendar-agenda" }}
         header={pageHeader}
+        overlay={drawers}
       >
         {loading ? (
           <DetailsSkeleton />
@@ -1316,7 +1317,6 @@ export function CalendarPage() {
           )}
         </ListPanel>
         {isPhoneWidth ? null : periodPicker}
-        {drawers}
         {selectedItem && isPhoneWidth && urlState.selected ? (
           <DetailSheet closeLabel={t("pages.calendar.sheetClose")} onClose={clearSelectionCb}>
             <ItemDetails
@@ -1342,6 +1342,7 @@ export function CalendarPage() {
       className={`calendar-page calendar-view-${view}`}
       ariaLabel={t("pages.calendar.title")}
       header={pageHeader}
+      overlay={drawers}
     >
       <div className="calendar-header">
         {periodPicker}
@@ -1359,8 +1360,6 @@ export function CalendarPage() {
       >
         {body}
       </div>
-
-      {drawers}
 
       {selectedItem ? (
         <DetailSheet closeLabel={t("pages.calendar.sheetClose")} onClose={clearSelectionCb}>

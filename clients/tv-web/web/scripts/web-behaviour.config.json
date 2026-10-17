@@ -49,7 +49,9 @@
     "avatar-focus-circle-e2e",
     "checkbox-focus-e2e",
     "settings-language-select-e2e",
-    "settings-server-group-e2e"
+    "settings-server-group-e2e",
+    "panels-stable-e2e",
+    "panels-scroll-lock-e2e"
   ],
   "args": {
     "tablet-layout": [
@@ -109,6 +111,8 @@
     "relay-port-e2e": 6,
     "card-size-e2e": 120,
     "filters-panel-e2e": 90,
+    "panels-stable-e2e": 240,
+    "panels-scroll-lock-e2e": 120,
     "artwork-size-setting-e2e": 120,
     "download-flow-e2e": 120,
     "downloads-offline-e2e": 30,
