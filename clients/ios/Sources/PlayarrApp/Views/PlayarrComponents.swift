@@ -265,9 +265,23 @@ struct PlayarrMediaCard: View {
     var showsSubtitle = true
     /// Library focus expands the art while the owning card applies its own lift and scale.
     var focused = false
+    /// The web grid derives title metrics from its viewport width.
+    var screenGridViewportWidth: CGFloat? = nil
+
+    private var matchesWebScreenGrid: Bool { screenGridViewportWidth != nil }
+    private var screenGridTitleSize: CGFloat {
+        guard let screenGridViewportWidth else { return 9.6 }
+        return min(max(8.8, screenGridViewportWidth * 0.0062), 12.48)
+    }
+    private var screenGridTitleLineHeight: CGFloat {
+        matchesWebScreenGrid ? screenGridTitleSize * 1.5 : 15
+    }
+    private var screenGridTitleTracking: CGFloat {
+        matchesWebScreenGrid ? -0.015 * screenGridTitleSize : -0.1
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: matchesWebScreenGrid ? 0 : 7) {
             PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .frame(width: width)
@@ -301,7 +315,15 @@ struct PlayarrMediaCard: View {
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 10 : 8.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.muted)
             } else {
-                WMText(work.title, 9.6, 600, lh: 15, ls: -0.1).padding(.top, 1)
+                WMText(
+                    work.title,
+                    screenGridTitleSize,
+                    matchesWebScreenGrid ? 610 : 600,
+                    lh: screenGridTitleLineHeight,
+                    ls: screenGridTitleTracking
+                )
+                    .padding(.top, matchesWebScreenGrid ? 11.52 : 1)
+                    .padding(.horizontal, matchesWebScreenGrid ? 1.92 : 0)
             }
         }
         .frame(width: width, alignment: .leading)

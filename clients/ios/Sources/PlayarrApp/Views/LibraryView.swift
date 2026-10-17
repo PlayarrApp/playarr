@@ -585,7 +585,14 @@ struct LibraryView: View {
                                 libraryListRow(work, width: cardWidth)
                             } else {
                                 let focused = (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
-                                PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false, focused: !phone && focused)
+                                PlayarrMediaCard(
+                                    work: work,
+                                    apiClient: apiClient,
+                                    width: cardWidth,
+                                    showsSubtitle: false,
+                                    focused: !phone && focused,
+                                    screenGridViewportWidth: matchesWebScreenGrid ? viewportWidth : nil
+                                )
                                     .overlay(alignment: .topTrailing) {
                                         if !phone, let seen = progressedWorkIDs, !seen.contains(work.id) {
                                             WMUnseenDot().padding(.top, 7).padding(.trailing, 7)
