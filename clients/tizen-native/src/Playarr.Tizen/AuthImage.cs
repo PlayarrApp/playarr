@@ -1,30 +1,52 @@
 using System.Security.Cryptography;
 using System.Text;
 using Playarr.Core.Networking;
+using Playarr.Tizen.Logic;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
 
 namespace Playarr.Tizen;
 
 /// <summary>Downloads images that need the bearer token (media frame thumbnails) into the app cache and returns the file path.</summary>
-internal sealed class AuthImage(IPlayarrApiClient api)
+internal sealed class AuthImage(IPlayarrApiClient api, CaptureWork work)
 {
     /// <summary>Adds the image at <paramref name="path"/> to <paramref name="parent"/> when it has downloaded.</summary>
     public void Apply(View parent, string? path, float w, float h, float radius = 0)
     {
         if (path is null) return;
-        Interlocked.Increment(ref _pending);
-        _ = Task.Run(async () =>
+        Track(async () =>
         {
             var file = await GetAsync(path).ConfigureAwait(false);
-            if (file is null) { Interlocked.Decrement(ref _pending); return; }
-            SynchronizationContextHolder.Post(() => { try { var img = Ui.Remote(file, w, h); if (radius > 0) img.CornerRadius = radius; parent.Add(img); img.LowerToBottom(); /* overlays (progress, focus ring) stay above a poster that loads later */ } catch (ObjectDisposedException) { /* page already gone */ } finally { Interlocked.Decrement(ref _pending); } });
+            if (file is null) return;
+            await OnUiAsync(() => { var img = Ui.Remote(file, w, h); if (radius > 0) img.CornerRadius = radius; parent.Add(img); img.LowerToBottom(); /* overlays (progress, focus ring) stay above a poster that loads later */ });
         });
     }
 
-    private int _pending;
+    /// <summary>Tracks a page-owned image operation through its final UI attachment, not just the HTTP request.</summary>
+    public void Track(Func<Task> operation)
+    {
+        _ = RunTrackedAsync(operation);
+    }
+
+    public static Task OnUiAsync(Action action)
+    {
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        SynchronizationContextHolder.Post(() =>
+        {
+            try { action(); done.SetResult(); }
+            catch (Exception e) { done.SetException(e); }
+        });
+        return done.Task;
+    }
+
+    private async Task RunTrackedAsync(Func<Task> operation)
+    {
+        try { await work.RunAsync(operation).ConfigureAwait(false); }
+        catch (Exception) { Dbg.Log("CAPTURE tracked visual work failed"); }
+    }
+
     /// <summary>Images still downloading or about to be added; the parity driver waits for 0 before it captures.</summary>
-    public int Pending => Volatile.Read(ref _pending);
+    public int Pending => work.Pending;
 
     private static readonly HttpClient Http = new();
     private readonly string _dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";

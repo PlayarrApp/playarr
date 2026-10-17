@@ -5,12 +5,30 @@
  */
 const PARITY_CLOCK: string | undefined = process.env.PLAYARR_PARITY_CLOCK;
 
+// A parity control channel build can also freeze the clock at run time (`cmd=clock&now=<iso>`), so one bundle serves pinned
+// and live captures. It wins over the build-time value and is lost when the app restarts.
+let runtimeClock: string | null = null;
+const clockListeners = new Set<() => void>();
+
+export function setParityClock(iso: string | null): void {
+  if (iso !== null && Number.isNaN(Date.parse(iso))) throw new Error(`invalid parity clock ${iso}`);
+  runtimeClock = iso;
+  clockListeners.forEach((listener) => listener());
+}
+
+/** Called when the parity clock is set, so a clock already on screen redraws at once. Returns the unsubscribe function. */
+export function onParityClockChange(listener: () => void): () => void {
+  clockListeners.add(listener);
+  return () => clockListeners.delete(listener);
+}
+
 export function isClockFrozen(): boolean {
-  return Boolean(PARITY_CLOCK);
+  return Boolean(runtimeClock ?? PARITY_CLOCK);
 }
 
 export function appNow(): Date {
-  return PARITY_CLOCK ? new Date(PARITY_CLOCK) : new Date();
+  const frozen = runtimeClock ?? PARITY_CLOCK;
+  return frozen ? new Date(frozen) : new Date();
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;

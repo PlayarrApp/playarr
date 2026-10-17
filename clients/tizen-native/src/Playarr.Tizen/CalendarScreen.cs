@@ -13,6 +13,8 @@ namespace Playarr.Tizen;
 internal sealed class CalendarScreen : IPage
 {
     private const float GridX = 153.6f, HeadY = 174f, CellW = 237.6f, CellH = 151.3f, RowsY = 204.8f;
+    private const float WeekClipX = 153.6f, WeekClipY = 160f, WeekClipW = 1660f, WeekClipH = 880f;
+    private const float WeekColumnW = 440f, WeekColumnClipPad = 5f, WeekColumnWClip = 450f, WeekColumnPitch = 460f;
 
     private readonly AppEnv _env;
     private readonly PlayarrTheme _t;
@@ -21,7 +23,7 @@ internal sealed class CalendarScreen : IPage
     private readonly View _body = new();
     private readonly View _scroller = new();
     private readonly FocusSet _focus = new();
-    private readonly DateTime _today = DateTime.Now.Date;
+    private readonly DateTime _today;
     private DateTime _anchor;
     private TextLabel? _period;
     private FiltersDrawer? _drawer;
@@ -31,6 +33,11 @@ internal sealed class CalendarScreen : IPage
     private IList<CalendarEntry> _entries = new List<CalendarEntry>();
     private float _scrollY;
     private readonly View _panel = new();
+    private View? _weekTrack;
+    private readonly View?[] _weekContents = new View?[7];
+    private readonly float[] _weekContentHeights = new float[7];
+    private float _weekXScroll;
+    private readonly float[] _weekYScroll = new float[7];
 
     public bool IsReady => _loaded;
     public View Root => _root;
@@ -40,7 +47,7 @@ internal sealed class CalendarScreen : IPage
 
     public CalendarScreen(AppEnv env, CalendarView view)
     {
-        _env = env; _t = env.Theme; _view = view;
+        _env = env; _t = env.Theme; _view = view; _today = env.ClockNow().Date;
         _anchor = view == CalendarView.Month ? new DateTime(_today.Year, _today.Month, 1) : view == CalendarView.Week ? CalendarRules.StartOfWeek(_today) : _today;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
@@ -83,7 +90,7 @@ internal sealed class CalendarScreen : IPage
     private void BuildTiles()
     {
         Tile(151.2f, 62, 72, "Calendar link", "calendar", () => Toast("Calendar links are not available in this app yet."));
-        Tile(236.1f, 62, 72, "Filters", "library", OpenDrawer);
+        Tile(236.1f, 62, 72, "Filters", "filters", OpenDrawer);
         // web: Down from the period navigation lands on Filters, not on Calendar link
         _focus.Overrides[(2, RemoteKey.Down)] = 5;
         _focus.Overrides[(5, RemoteKey.Up)] = 2;
@@ -212,18 +219,75 @@ internal sealed class CalendarScreen : IPage
     private void RenderWeek(DateTime start)
     {
         var byDay = Visible.GroupBy(CalendarRules.LocalDay).ToDictionary(g => g.Key, g => g.OrderBy(Order).ToList());
-        var clip = new View { PositionX = 153.6f, Size = new Size(1700, 1080), ClippingMode = ClippingModeType.ClipChildren };
+        _weekXScroll = 0;
+        Array.Clear(_weekYScroll, 0, _weekYScroll.Length);
+        _weekTrack = new View { PositionX = WeekColumnClipPad, Size = new Size(WeekClipW, WeekClipH) };
+        var clip = new View
+        {
+            PositionX = WeekClipX - WeekColumnClipPad, PositionY = WeekClipY,
+            Size = new Size(WeekClipW + WeekColumnClipPad, WeekClipH), ClippingMode = ClippingModeType.ClipChildren,
+        };
+        clip.Add(_weekTrack);
         _body.Add(clip);
         for (var i = 0; i < 7; i++)
         {
-            var day = start.AddDays(i); var x = i * 460f;
+            var day = start.AddDays(i); var x = i * WeekColumnPitch;
+            var column = new View
+            {
+                PositionX = x - WeekColumnClipPad, Size = new Size(WeekColumnWClip, WeekClipH),
+                ClippingMode = ClippingModeType.ClipChildren,
+            };
+            var content = new View();
+            column.Add(content);
+            _weekTrack.Add(column);
+            _weekContents[i] = content;
             var head = day.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"));
-            clip.Add(Ui.Text(head, x, 174, 18.4f, 640, day == _today ? _t.Accent : _t.Ink, 440, 27.6f));
-            if (day == _today) { var holder = new View { PositionX = x, PositionY = 174 - 8.2f }; clip.Add(holder); TodayTag(holder, Ui.TextWidth(head, 18.4f, 640, 0) + 12, 11 + 0.2f); }
-            var y = 208f;
+            content.PositionX = WeekColumnClipPad;
+            content.Add(Ui.Text(head, 0, 14, 18.4f, 640, day == _today ? _t.Accent : _t.Ink, WeekColumnW, 27.6f));
+            if (day == _today)
+            {
+                var holder = new View { PositionX = 0, PositionY = 5.8f };
+                content.Add(holder);
+                TodayTag(holder, Ui.TextWidth(head, 18.4f, 640, 0) + 12, 11.2f);
+            }
+            var headingRing = Ring.Make(WeekColumnW, 34, 0, new Rgba(1, 1, 1));
+            headingRing.PositionY = 3;
+            headingRing.Show(false);
+            content.Add(headingRing);
+            var dayIndex = i;
+            _focus.Items.Add(new Focusable
+            {
+                Rect = () => WeekRect(dayIndex, 8, WeekColumnW, 34),
+                Label = "day " + day.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB")).ToLowerInvariant(),
+                Style = focused => headingRing.Show(focused),
+                Focused = () => RevealWeekItem(dayIndex, 8, WeekColumnW, 34),
+            });
+            var y = 48f;
             foreach (var e in byDay.TryGetValue(day, out var l) ? l : new List<CalendarEntry>())
-                y += EntryCard(clip, e, x, y, 440, 153.6f + x) + 13.6f;
+            {
+                var cardY = y;
+                var cardHeight = 0f;
+                cardHeight = EntryCard(content, e, 0, cardY, WeekColumnW, WeekClipX + x,
+                    () => WeekRect(dayIndex, cardY, WeekColumnW, cardHeight),
+                    () => RevealWeekItem(dayIndex, cardY, WeekColumnW, cardHeight));
+                y += cardHeight + 13.6f;
+            }
+            _weekContentHeights[i] = Math.Max(WeekClipH, y);
         }
+    }
+
+    private Box WeekRect(int dayIndex, float y, float width, float height) =>
+        new(WeekClipX + dayIndex * WeekColumnPitch - _weekXScroll, WeekClipY + y - _weekYScroll[dayIndex], width, height);
+
+    private void RevealWeekItem(int dayIndex, float y, float width, float height)
+    {
+        _weekXScroll = CalendarScroll.EnsureVisible(_weekXScroll, WeekClipW,
+            7 * WeekColumnPitch - (WeekColumnPitch - WeekColumnW) + WeekColumnClipPad, dayIndex * WeekColumnPitch,
+            width, 20);
+        _weekTrack!.PositionX = WeekColumnClipPad - _weekXScroll;
+        _weekYScroll[dayIndex] = CalendarScroll.EnsureVisible(_weekYScroll[dayIndex], WeekClipH,
+            _weekContentHeights[dayIndex], y, height, 16);
+        _weekContents[dayIndex]!.PositionY = -_weekYScroll[dayIndex];
     }
 
     /// <summary>web .calendar-today-tag: the day heading's colour as a 1 px outline, no fill, small upper-case text.</summary>
@@ -255,7 +319,7 @@ internal sealed class CalendarScreen : IPage
     }
 
     /// <summary>One entry card (web .media-card-solid in the calendar); returns its height.</summary>
-    private float EntryCard(View parent, CalendarEntry e, float x, float y, float w, float screenX)
+    private float EntryCard(View parent, CalendarEntry e, float x, float y, float w, float screenX, Func<Box>? focusRect = null, Action? onFocused = null)
     {
         var members = e.Members is { Count: > 1 } ? e.Members : null;
         var sub = members is not null
@@ -269,7 +333,7 @@ internal sealed class CalendarScreen : IPage
         card.Add(surface);
         var poster = Ui.Box(16, 23.5f + (h - 106.9f) / 2, 40, 60, _t.SurfaceSoft, 6);
         poster.ClippingMode = ClippingModeType.ClipChildren;
-        if (e.PosterUrl is { Length: > 0 } pu) _ = LoadPoster(poster, pu);
+        if (e.PosterUrl is { Length: > 0 } pu) LoadPoster(poster, pu);
         card.Add(poster);
         card.Add(Ui.Text(e.Title, 70.4f, 9, 19.2f, 640, _t.Ink, textW, 28.8f));
         if (sub.Length > 0) card.Add(Ui.Text(sub, 70.4f, 40.2f, 19.2f, 400, _t.InkSoft, textW, 28.8f, multiline: sub.Length * 9.6f > textW, maxLines: 2));
@@ -289,8 +353,8 @@ internal sealed class CalendarScreen : IPage
         var ty = y;
         _focus.Items.Add(new Focusable
         {
-            Rect = () => new Box(screenX, ty - _scrollY, w, h), Label = e.Title.ToLowerInvariant(), Style = f => ring.Show(f),
-            Focused = () => { if (_view == CalendarView.Agenda) ShowEntry(e); },
+            Rect = focusRect ?? (() => new Box(screenX, ty - _scrollY, w, h)), Label = e.Title.ToLowerInvariant(), Style = f => ring.Show(f),
+            Focused = onFocused ?? (() => { if (_view == CalendarView.Agenda) ShowEntry(e); }),
             Select = () => { if (e.WorkId is { } wid) _env.Navigate(HomeScreen.DetailRoute(new WorkCard(wid, e.MediaKind == "movie" ? WorkKind.Movie : WorkKind.Series, e.Title, "", "", "", null, null, null, 0, false))); },
         });
         return h;
@@ -330,12 +394,29 @@ internal sealed class CalendarScreen : IPage
         Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Host == "image.tmdb.org" && u.AbsolutePath.StartsWith("/t/p/original/")
             ? new UriBuilder(u) { Path = $"/t/p/w{width}/" + u.AbsolutePath["/t/p/original/".Length..] }.Uri.ToString() : url;
 
-    private async Task LoadPoster(View poster, string url)
+    private void LoadPoster(View poster, string url)
     {
         if (url.StartsWith('/')) { _env.Images.Apply(poster, url, 40, 60); return; }
         var sized = SizedPosterUrl(url);
-        SynchronizationContextHolder.Post(() => poster.Add(new ImageView(sized) { Size = new Size(40, 60) }));
-        await Task.CompletedTask;
+        _env.Images.Track(async () =>
+        {
+            var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            ImageView? image = null;
+            await AuthImage.OnUiAsync(() =>
+            {
+                image = new ImageView(sized) { Size = new Size(40, 60) };
+                image.ResourceReady += (_, _) => ready.TrySetResult();
+                poster.Add(image);
+                if (image.IsResourceReady() || image.LoadingStatus == ImageView.LoadingStatusType.Failed) ready.TrySetResult();
+            });
+            try { await ready.Task.WaitAsync(TimeSpan.FromSeconds(15)).ConfigureAwait(false); }
+            catch (TimeoutException)
+            {
+                // A failed external image must not mutate a later screenshot after readiness settles.
+                await AuthImage.OnUiAsync(() => { if (image is not null) { poster.Remove(image); image.Dispose(); } });
+                Dbg.Log("CAL external poster timed out");
+            }
+        });
     }
 
     private void Toast(string text)

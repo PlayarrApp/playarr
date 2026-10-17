@@ -89,6 +89,7 @@ sub init()
     m.homeHeroPendingWorkId = ""
     m.pendingHomeHeroRequest = invalid
     m.homeHeroRuntimeById = {}
+    m.homeStage.contentBase = [783.36, 182.9]
     m.homeContent = m.homeStage.contentTarget
     m.artTelemetryEnabled = false
     if m.global.parityArtEnabled = true then m.artTelemetryEnabled = true
@@ -3780,8 +3781,9 @@ function createHomeRail(contentTarget as Object) as Object
     ' Card dimensions rebuilt against the real live .tv-home-card (16:9
     ' landscape thumbnail, 220x124 art + 220x165 total card, 24px gap) --
     ' see PosterCard.xml's header comment for the full measurement notes.
-    ' The viewport starts 96 px left of the track so scrolled cards continue into the gutter, where the scroll fade covers them.
-    row.itemSize = [1134, 320]
+    ' The viewport starts 96 px left of the track so scrolled cards continue into the gutter, where the scroll fade covers them; it
+    ' runs to the screen edge now that Home's rails start at the Library grid's left edge (1232 px).
+    row.itemSize = [1232, 320]
     ' Home reserves 8 px horizontally and 15 px vertically for the focused
     ' card's lifted/scaled outer ring. The extra item height contains the
     ' full shadow canvas below the art, so its blur fades before the RowList
@@ -4253,7 +4255,7 @@ sub finishHomeLoad()
     ' The hero art is the slowest download (a 4 MB stage image): request it before the cards so it is first in the queue.
     updateHeroFromWork(candidates[0].works[0])
     ' Reset scroll before deriving current screen-space art slots.
-    m.homeContent.translation = [881.6, homeContentTop()]
+    m.homeContent.translation = [783.36, homeContentTop()]
     m.visibleRails = []
     y = 0
     if m.homeCover = true then y = -51
@@ -4269,11 +4271,11 @@ sub finishHomeLoad()
         if railIndex = 0 then isActiveRail = true
         if m.homeCover = true
             rail.row.rowItemSize = [[207, 423]]
-            rail.row.itemSize = [1134, 423]
+            rail.row.itemSize = [1232, 423]
             rail.row.rowHeights = [423]
         else
             rail.row.rowItemSize = [[343, 320]]
-            rail.row.itemSize = [1134, 320]
+            rail.row.itemSize = [1232, 320]
             rail.row.rowHeights = [320]
         end if
         buildRailContent(rail.row, rail.works, isActiveRail, 1.4864, m.artActiveGeneration, "home", railIndex)
@@ -4567,9 +4569,10 @@ sub scrollHomeToFocusedRail()
     ' NOT [0,0] -- overwriting it outright rather than preserving that base
     ' would yank all of Home's rail content to the screen's top-left corner.
     ' Web Home scrolls so the focused rail sits where the first rail sits (rails are 318.4 px apart).
-    scrollOffset = 0
-    if m.homeFocusIndex > 0 then scrollOffset = m.homeFocusIndex * homeRailPitch()
-    m.homeContent.translation = [881.6, homeContentTop() - scrollOffset]
+    ' The first rail opens at the Library's first-row top; a later rail is held where the pre-aligned Home put the first (web centres it).
+    top = homeContentTop()
+    if m.homeFocusIndex > 0 then top = homeCentredTop() - m.homeFocusIndex * homeRailPitch()
+    m.homeContent.translation = [783.36, top]
 end sub
 
 ' ---------------------------------------------------------------------------
@@ -4782,7 +4785,9 @@ sub enterNavDock()
         if idx < 0 or idx >= m.visibleRails.Count() then idx = 0
         rect = m.visibleRails[idx].row.sceneBoundingRect()
         ' The card art's centre (108 px under the rail's top), not the rail's, picks the nav item, as web's geometric move does.
-        m.navDockIndex = navDockIndexNearestY(rect.y + 108)
+        ' The first rail now opens at the Library-aligned top, level with Series; web enters on Home there, because its dock holds a
+        ' Downloads slot above Search that Roku does not draw. Probe one dock step higher to land on the same item.
+        m.navDockIndex = navDockIndexNearestY(rect.y + 108 - 73.6)
     end if
     renderNavDockFocus()
     m.top.SetFocus(true)
@@ -7509,7 +7514,13 @@ function homeRailPitch() as Integer
     return 366
 end function
 
-' The panel stays at web's 422.9; covers rails start 51 px higher inside it (see finishHomeLoad).
+' Home opens aligned with the Library grid: the panel starts at web --card-pad-left (53.76) from the 62 vw rail and the first rail at
+' --library-rail-top (162), i.e. 240 px above where it used to centre. Covers rails start 51 px higher inside it (see finishHomeLoad).
 function homeContentTop() as Float
+    return 182.9
+end function
+
+' Where a focused later rail is held (web centres it): the panel's former top.
+function homeCentredTop() as Float
     return 422.9
 end function

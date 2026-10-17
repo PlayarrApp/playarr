@@ -28,6 +28,9 @@ internal sealed class PlayerScreen : IPage
     private readonly View _controls = new();
     private readonly View _progress;
     private readonly TextLabel _now, _total;
+    private readonly TextLabel _qualityBadge, _qualityLabel;
+    private readonly View _qualityRing;
+    private float _qualityButtonX = 1532, _qualityButtonWidth = 180;
     private readonly ImageView _playIcon;
     private FocusSet _focus = new();
     private readonly global::Tizen.NUI.Timer _tick, _hide;
@@ -86,15 +89,17 @@ internal sealed class PlayerScreen : IPage
         AddIcon("volume", 1318.3f, 980, "audio", dim: false);
         AddIcon("captions", 1395.9f, 980, "subtitles", dim: false, select: OpenSubtitles);
         AddIcon("queue", 1473.5f, 980, "playlist", dim: false);
-        _controls.Add(Ui.Text("HD", 1543.5f, 984.5f, 7.68f, 800, white, 28, 11.52f, spacing: 0.3f));
-        _controls.Add(Ui.Text("Original", 1580.3f, 982.1f, 10.56f, 700, white, 100, 15.84f, spacing: 0.1f));
-        var qring = Ring.Make(176, 36, 18, new Rgba(1, 1, 1), themed: false); qring.PositionX = 1532; qring.PositionY = 968; qring.Show(false); _controls.Add(qring);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(1536, 972, 168, 36), Label = "quality", Select = () => { }, Style = f => qring.Show(f) });
+        _qualityBadge = Ui.Text("HD", 1543.5f, 984.5f, 7.68f, 800, white, 28, 11.52f, spacing: 0.3f);
+        _qualityLabel = Ui.Text("Original", 1580.3f, 982.1f, 10.56f, 700, white, 138, 15.84f, spacing: 0.1f);
+        _controls.Add(_qualityBadge);
+        _controls.Add(_qualityLabel);
+        _qualityRing = Ring.Make(180, 36, 18, new Rgba(1, 1, 1), themed: false); _qualityRing.PositionX = _qualityButtonX; _qualityRing.PositionY = 968; _qualityRing.Show(false); _controls.Add(_qualityRing);
+        _focus.Items.Add(new Focusable { Rect = () => new Box(_qualityButtonX, 972, _qualityButtonWidth, 36), Label = "quality", Select = () => { }, Style = f => _qualityRing.Show(f) });
         AddIcon("info", 1730.4f, 980, "info", dim: false);
         AddIcon("cast", 1808, 980, "play on another device", dim: false);
 
         _tick = new global::Tizen.NUI.Timer(500); _tick.Tick += (_, _) => { OnTick(); return !_stopped; };
-        _hide = new global::Tizen.NUI.Timer(5000); _hide.Tick += (_, _) => { if (_player?.State == PlayerState.Playing) SetControls(false); return false; };
+        _hide = new global::Tizen.NUI.Timer(5000); _hide.Tick += (_, _) => { if (_panel is null && _player?.State == PlayerState.Playing) SetControls(false); return false; };
         _focus.Set(_focus.Items.FindIndex(i => i.Label == "pause")); // play button
         _ = StartAsync();
     }
@@ -159,6 +164,7 @@ internal sealed class PlayerScreen : IPage
         try
         {
             _info = info;
+            UpdateQualityLabel(info);
             _total.Text = DetailModel.Clock(info.DurationMs);
             _player = new Player();
             if (info.SessionId is { } sid) _player.Cookie = PlaybackClient.SessionCookie(sid);
@@ -302,20 +308,78 @@ internal sealed class PlayerScreen : IPage
     {
         if (_panel is not null) return;
         _outer = _focus;
-        var panel = Ui.Box(1500, 560, 340, 330, new Rgba(0.047f, 0.039f, 0.043f, 0.92f), 16);
+        _hide.Stop();
+        var tracks = _info?.SubtitleTracks ?? Array.Empty<PlaybackTrackOption>();
+        const float top = 560;
+        var panel = Ui.Box(1500, top, 340, 330, new Rgba(0.047f, 0.039f, 0.043f, 0.92f), 16);
         panel.BorderlineWidth = 1; panel.BorderlineColor = new Color(1, 1, 1, 0.2f);
         panel.Add(Ui.Text("Subtitles", 24, 20, 14, 700, new Rgba(1, 1, 1), 292, 22));
-        var row = Ui.Box(16, 64, 308, 56, new Rgba(1, 1, 1, 0.1f), 12);
-        row.Add(Ui.Text("Off", 16, 8, 12.5f, 700, new Rgba(1, 1, 1), 200, 20));
-        row.Add(Ui.Text("No subtitles", 16, 29, 10, 400, new Rgba(0.8f, 0.76f, 0.78f), 200, 16));
-        row.Add(Ui.Text("\u2713", 272, 16, 14, 700, new Rgba(1, 1, 1), 24, 22));
-        var ring = Ring.Make(308, 56, 12, new Rgba(1, 1, 1), themed: false); row.Add(ring);
-        panel.Add(row);
-        _controls.Add(panel); _panel = panel;
+        panel.Add(Ui.Text(tracks.Count == 0 ? "No subtitle tracks" : "Track selection is unavailable on this device", 16, 42, 9, 400, new Rgba(0.8f, 0.76f, 0.78f), 308, 16));
+        var selected = _info?.SelectedSubtitleTrackId;
+        const float viewportTop = 64, viewportHeight = 250, rowHeight = 56;
+        var viewport = new View { PositionX = 11, PositionY = viewportTop, Size = new Size(318, viewportHeight), ClippingMode = ClippingModeType.ClipChildren };
+        var content = new View { Size = new Size(318, (tracks.Count + 1) * rowHeight + 10) };
+        viewport.Add(content);
+        panel.Add(viewport);
+
         var set = new FocusSet();
-        set.Items.Add(new Focusable { Rect = () => new Box(1516, 624, 308, 56), Label = "offno subtitles\u2713", Select = CloseSubtitles, Style = f => ring.Show(f) });
-        set.Set(0);
+        var scroll = 0f;
+        var initialFocus = 0;
+        AddSubtitleRow(content, set, 0, "Off", selected is null, top, viewportTop, viewportHeight, rowHeight, () => scroll, value => { scroll = value; content.PositionY = -scroll; });
+        for (var i = 0; i < tracks.Count; i++)
+        {
+            var track = tracks[i];
+            var label = string.IsNullOrWhiteSpace(track.Label) ? track.Language ?? "Subtitle" : track.Label!;
+            var isSelected = selected == track.Id;
+            if (isSelected) initialFocus = i + 1;
+            AddSubtitleRow(content, set, i + 1, label, isSelected, top, viewportTop, viewportHeight, rowHeight, () => scroll, value => { scroll = value; content.PositionY = -scroll; });
+        }
+        _controls.Add(panel); _panel = panel;
         _focus = set;
+        set.Set(initialFocus);
+    }
+
+    private static void AddSubtitleRow(View content, FocusSet focus, int index, string label, bool selected, float panelTop, float viewportTop, float viewportHeight, float rowHeight, Func<float> getScroll, Action<float> setScroll)
+    {
+        var y = 5 + index * rowHeight;
+        var row = Ui.Box(5, y, 308, rowHeight, new Rgba(1, 1, 1, selected ? 0.1f : 0.035f), 12);
+        row.Add(Ui.Text(label, 16, 17, 12.5f, 700, new Rgba(1, 1, 1), 242, 20));
+        if (selected) row.Add(Ui.Text("\u2713", 272, 16, 14, 700, new Rgba(1, 1, 1), 24, 22));
+        var ring = Ring.Make(308, rowHeight, 12, new Rgba(1, 1, 1), themed: false);
+        ring.Show(false);
+        row.Add(ring);
+        content.Add(row);
+        focus.Items.Add(new Focusable
+        {
+            Rect = () => new Box(1516, panelTop + viewportTop + y - getScroll(), 308, rowHeight),
+            Label = label,
+            Select = () => { },
+            Style = focused => ring.Show(focused),
+            Focused = () =>
+            {
+                var scroll = getScroll();
+                if (y - 5 < scroll) scroll = y - 5;
+                else if (y + rowHeight + 5 > scroll + viewportHeight) scroll = y + rowHeight + 5 - viewportHeight;
+                setScroll(Math.Clamp(scroll, 0, Math.Max(0, focus.Items.Count * rowHeight + 10 - viewportHeight)));
+            },
+        });
+    }
+
+    private void UpdateQualityLabel(PlaybackInfoResponse info)
+    {
+        var quality = info.QualityOptions.FirstOrDefault(option => option.Id == info.SelectedQualityId) ?? info.QualityOptions.FirstOrDefault();
+        var display = PlaybackPresentation.Quality(quality?.Id, quality?.Label, quality?.Height, quality?.BitrateBps);
+        var measuredWidth = Ui.TextWidth(display.Label, 10.56f, 700, 0.1f) + 2;
+        var shift = Math.Max(0, measuredWidth - 138);
+        _qualityButtonX = 1532 - shift;
+        _qualityButtonWidth = 180 + shift;
+        _qualityRing.PositionX = _qualityButtonX;
+        _qualityRing.Size = new Size(_qualityButtonWidth + 10, 46);
+        _qualityBadge.PositionX = 1543.5f - shift;
+        _qualityLabel.PositionX = 1580.3f - shift;
+        _qualityLabel.Size = new Size(Math.Max(138, measuredWidth), _qualityLabel.Size.Height);
+        _qualityLabel.Text = display.Label;
+        _qualityBadge.Text = display.Badge;
     }
 
     private void CloseSubtitles()
@@ -362,7 +426,13 @@ internal sealed class PlayerScreen : IPage
     public bool OnKey(RemoteKey key)
     {
         if (_error) { if (key is RemoteKey.Select or RemoteKey.Back) CloseSelf(); return true; }
-        if (_panel is not null && key == RemoteKey.Back) { CloseSubtitles(); _hide.Restart(); return true; }
+        if (_panel is not null)
+        {
+            if (key == RemoteKey.Back) { CloseSubtitles(); _hide.Restart(); return true; }
+            if (key == RemoteKey.Select) { _focus.Item?.Select?.Invoke(); return true; }
+            if (key is RemoteKey.Up or RemoteKey.Down) _focus.Move(key);
+            return true;
+        }
         switch (key)
         {
             case RemoteKey.Back: Stop(); return false;

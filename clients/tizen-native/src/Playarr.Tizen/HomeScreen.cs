@@ -8,7 +8,7 @@ namespace Playarr.Tizen;
 /// <summary>Web Home: key art, the details panel for the focused title, and the rails (measured from web at 1920x1080).</summary>
 internal sealed class HomeScreen : IPage
 {
-    private const float RailX = 881.6f, FocusedHeadingY = 402f, StackedExtra = 5f, ClipX = 729.6f;
+    private const float RailX = 783.4f, FocusedHeadingY = 402f, FirstHeadingY = 162f, StackedExtra = 5f, ClipX = 729.6f;
 
     private readonly AppEnv _env;
     private readonly PlayarrTheme _t;
@@ -54,6 +54,8 @@ internal sealed class HomeScreen : IPage
         _stack.PositionX = -ClipX;
         clip.Add(_stack);
         _root.Add(clip);
+        _root.Add(Ui.EdgeFade(ClipX, TizenClient.DesignHeight, TizenClient.DesignWidth - ClipX, _t.Surface, atTop: false));
+        _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, _t.Surface, atLeft: false));
         _ = LoadAsync();
     }
 
@@ -155,7 +157,7 @@ internal sealed class HomeScreen : IPage
     };
 
     /// <summary>Screen centre of the focused card (for the nav's geometric entry).</summary>
-    public float FocusCentreY => FocusedHeadingY + _layout.HomeHeadingShift + 61.8f + _layout.ArtHeight / 2;
+    public float FocusCentreY => Math.Min(FocusedHeadingY, FirstHeadingY + (_rails.Count > 0 ? _rails[_rail].Y : 0)) + _layout.HomeHeadingShift + 61.8f + _layout.ArtHeight / 2;
 
     private void Focus(int rail, int card)
     {
@@ -167,7 +169,8 @@ internal sealed class HomeScreen : IPage
         if (right - rv.Scroll > visible) rv.Scroll = right - visible;
         if (card * Pitch < rv.Scroll) rv.Scroll = card * Pitch;
         rv.Row.PositionX = -rv.Scroll;
-        _stack.PositionY = FocusedHeadingY + _layout.HomeHeadingShift - rv.Y;
+        // web: the first rail opens at the Library's first-row top and cannot centre above scrollTop 0, so its heading never sits below FirstHeadingY
+        _stack.PositionY = Math.Min(FocusedHeadingY + _layout.HomeHeadingShift - rv.Y, FirstHeadingY + _layout.HomeHeadingShift);
         rv.Cards[card].SetFocused(true);
         var model = rv.Model.Cards[card];
         _panel.Show(model, metaLead: null);

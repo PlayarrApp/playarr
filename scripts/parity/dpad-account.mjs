@@ -15,11 +15,13 @@ const clientSlug = (value) => {
   return slug;
 };
 
-export function readSecrets(file = FILE) {
+export function readSecrets(file = FILE, relevantKeys) {
   const out = {};
+  const wanted = relevantKeys ? new Set(relevantKeys) : null;
   for (const line of fs.readFileSync(file, "utf8").split("\n")) {
     const i = line.indexOf("=");
-    if (i > 0 && !line.startsWith("#")) out[line.slice(0, i)] = line.slice(i + 1).replace(/^['"]|['"]$/g, "");
+    const key = i > 0 && !line.startsWith("#") ? line.slice(0, i) : null;
+    if (key && (!wanted || wanted.has(key))) out[key] = line.slice(i + 1).replace(/^['"]|['"]$/g, "");
   }
   return out;
 }

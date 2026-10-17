@@ -9,9 +9,11 @@
  *   cmd=play&file=<media file id>  start playback of a media file
  *   cmd=stop                       stop playback and close the player
  *   cmd=theme&name=dark|light      set the in-app theme preference
+ *   cmd=clock&now=<ISO instant>    freeze the app clock (shown in UTC, en-GB, like the web refs); `now` empty releases it
  */
 import {Linking} from 'react-native';
 import {FocusManager} from '@amazon-devices/react-native-kepler';
+import {appNow, isClockFrozen, setParityClock} from '../shell/clock';
 
 export const PARITY_CONTROL = process.env.PLAYARR_PARITY_CONTROL === '1';
 
@@ -123,6 +125,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
         case 'play': hooks.play(command.file ?? ''); break;
         case 'stop': hooks.stop(); break;
         case 'theme': hooks.setTheme(command.name === 'light' ? 'light' : 'dark'); break;
+        case 'clock': setParityClock(command.now ? command.now : null); break;
         default: break;
       }
     } catch (error) {
@@ -136,7 +139,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
       if (command.cmd === 'state' && focus?.eventTag !== undefined && focus.eventTag !== nativeFocusTag) {
         focus = nativeFocusTag === undefined ? null : focusReportsByEventTag.get(nativeFocusTag)?.focus ?? null;
       }
-      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus, player: hooks.player(), theme: hooks.theme()};
+      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus, player: hooks.player(), theme: hooks.theme(), clock: isClockFrozen() ? appNow().toISOString() : null};
       console.log('PARITY ' + JSON.stringify(command.cmd === 'state' ? {...state, nativeFocusTag} : state));
     }, command.cmd === 'state' ? 0 : 1500);
   };
