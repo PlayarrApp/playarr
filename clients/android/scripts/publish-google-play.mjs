@@ -6,6 +6,7 @@ import {
   findReleaseLifecycle,
   formatReleaseLifecycleEvidence,
   isDeclarationBlock,
+  isVersionCodeReusable,
   waitForReleaseLifecycle,
 } from './release-lifecycle.mjs';
 
@@ -111,6 +112,25 @@ async function request(url, options = {}) {
   return body;
 }
 
+// Play keeps an uploaded bundle in its library (after a draft, or on another track) and refuses the same
+// versionCode again. When that code is the one expected, skip the upload and assign it to the release.
+async function uploadBundle(id) {
+  try {
+    return await request(
+      `https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${packageName}/edits/${id}/bundles?uploadType=media`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream' },
+        body: await readFile(bundlePath),
+      },
+    );
+  } catch (error) {
+    if (!isVersionCodeReusable(error, versionCode)) throw error;
+    console.log(`Version code ${versionCode} is already in the Play library; assigning it without uploading`);
+    return { versionCode };
+  }
+}
+
 const apiRoot = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}`;
 if (!listingImagesOnly) {
   const currentLifecycle = await request(
@@ -172,14 +192,7 @@ try {
         return { language: locale, text };
       }),
     );
-    const bundle = await request(
-      `https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${packageName}/edits/${editId}/bundles?uploadType=media`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/octet-stream' },
-        body: await readFile(bundlePath),
-      },
-    );
+    const bundle = await uploadBundle(editId);
     console.log(`Uploaded AAB versionCode=${bundle.versionCode}`);
     if (String(bundle.versionCode) !== String(versionCode)) {
       throw new Error(`Uploaded AAB versionCode=${bundle.versionCode}; expected ${versionCode}`);
@@ -287,14 +300,7 @@ try {
         body: '{}',
       });
       try {
-        const draftBundle = await request(
-          `https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${packageName}/edits/${draftEdit.id}/bundles?uploadType=media`,
-          {
-            method: 'POST',
-            headers: { 'content-type': 'application/octet-stream' },
-            body: await readFile(bundlePath),
-          },
-        );
+        const draftBundle = await uploadBundle(draftEdit.id);
         await request(`${apiRoot}/edits/${draftEdit.id}/tracks/${encodeURIComponent(releaseTrack)}`, {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },

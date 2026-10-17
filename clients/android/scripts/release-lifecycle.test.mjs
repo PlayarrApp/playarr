@@ -6,6 +6,7 @@ import {
   findInReviewVersionCodes,
   formatReleaseLifecycleEvidence,
   isDeclarationBlock,
+  isVersionCodeReusable,
   waitForReleaseLifecycle,
 } from './release-lifecycle.mjs';
 
@@ -106,4 +107,14 @@ test('treats a declaration refusal as a draft fallback but not a review or versi
   assert.equal(isDeclarationBlock({ status: 403, apiMessage: 'Version code 12 has already been used.' }), false);
   assert.equal(isDeclarationBlock({ status: 500, apiMessage: 'oops' }), false);
   assert.equal(isDeclarationBlock(new Error('network')), false);
+});
+
+test('reuses an already uploaded bundle only for the expected version code', () => {
+  const used = { status: 403, apiMessage: 'Version code 30003252 has already been used.' };
+  assert.equal(isVersionCodeReusable(used, '30003252'), true);
+  assert.equal(isVersionCodeReusable(used, 30003252), true);
+  assert.equal(isVersionCodeReusable(used, '30003253'), false);
+  assert.equal(isVersionCodeReusable({ ...used, status: 400 }, '30003252'), false);
+  assert.equal(isVersionCodeReusable({ status: 403, apiMessage: 'Other' }, '30003252'), false);
+  assert.equal(isVersionCodeReusable(new Error('x'), '1'), false);
 });
