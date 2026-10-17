@@ -4420,14 +4420,18 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
 }
 
 .tv-alphabet button.is-active {
-  outline: 0;
+  /* The standard focus ring (:focus-visible) still shows on the active letter: ring outside, filled circle inside. */
   color: var(--bg);
   transform: none;
 }
 
 .tv-alphabet button.is-active::before {
   width: clamp(18px, calc(1.35 * var(--vw)), 24px);
-  background: color-mix(in srgb, var(--ink) 78%, transparent);
+  background: var(--ink);
+  /* Active ring: a --brand ring with a --bg gap, drawn as box-shadow so nothing reflows (>= 3:1 on both themes). */
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--brand);
 }
 
 .tv-alphabet button:hover {
