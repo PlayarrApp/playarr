@@ -172,7 +172,7 @@ export function SettingsInvitePage() {
     if (pushBlocked) {
       // Ask once; a browser that still answers denied needs the unblock hint, a granted answer continues below.
       const { permission, showHint } = await requestNotificationPermission(() => undefined);
-      notifications.setPermission(permission);
+      notifications.refresh();
       notifications.setBlockedHint(showHint);
       if (permission !== "granted") return;
     }
@@ -184,7 +184,8 @@ export function SettingsInvitePage() {
       showToast(t("settings.invite.toastPushEnabled"));
     } catch (error) {
       setPushState("error");
-      setPushError(error instanceof Error ? error.message : String(error));
+      // A denied prompt now reads as blocked; show that instead of the error text.
+      setPushError(notifications.refresh() === "denied" ? null : error instanceof Error ? error.message : String(error));
     }
   }
 

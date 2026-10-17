@@ -36,3 +36,17 @@ describe("requestNotificationPermission", () => {
     expect(onGranted).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("after a prompt", () => {
+  it("reads as blocked at once when the user denies from the default state", async () => {
+    stubNotification("default");
+    const notification = Notification as unknown as { permission: NotificationPermission; requestPermission: () => Promise<NotificationPermission> };
+    notification.requestPermission = vi.fn(async () => {
+      notification.permission = "denied"; // the browser updates the live value when the prompt is denied
+      return "denied" as const;
+    });
+    expect(readNotificationPermission()).toBe("default");
+    await requestNotificationPermission(() => undefined);
+    expect(readNotificationPermission()).toBe("denied");
+  });
+});
