@@ -1,0 +1,1 @@
+- The hosted iOS parity workflow passes its pinned clock to the app as text, so iPhone captures confirm the fixed clock.
