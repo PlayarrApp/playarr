@@ -11,7 +11,7 @@ class PlayarrHomeRailsLayoutTest {
     }
 
     @Test
-    fun `a tablet keeps the centred anchor`() {
-        assertEquals(389.9.dp, homeFirstRailTop(false, 389.9.dp, 162.dp))
+    fun `a tablet keeps its anchor of the centred top less 255 dp`() {
+        assertEquals(134.9.dp.value, homeFirstRailTop(false, 389.9.dp, 162.dp).value, 0.001f)
     }
 }
