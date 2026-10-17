@@ -650,7 +650,7 @@ struct CalendarView: View {
                 HStack(alignment: .top, spacing: 20) {
                     ForEach(viewModel.dayGroups) { group in
                         VStack(alignment: .leading, spacing: 6.4) {
-                            Text(dayHeading(group.day, today: viewModel.today))
+                            Text(CalendarDays.displayDate(group.day).map { Self.groupFormatter.string(from: $0) } ?? group.day)
                                 .font(.custom("Avenir Next", fixedSize: 14.4).weight(.semibold))
                                 .foregroundStyle(group.day == viewModel.today ? PlayarrStyle.pink : PlayarrStyle.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1063,8 +1063,17 @@ private struct CalendarItemRow: View {
 
 func calendarTimeLabel(_ entry: CalendarEntry) -> String? {
     guard let at = entry.releaseAt else { return nil }
-    return at.formatted(date: .omitted, time: .shortened)
+    return calendarTimeFormatter.string(from: at)
 }
+
+/// 24-hour "HH:mm" in UTC, as the web shows release times.
+private let calendarTimeFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_GB")
+    formatter.timeZone = TimeZone(identifier: "UTC")
+    formatter.dateFormat = "HH:mm"
+    return formatter
+}()
 
 struct CalendarStateBadge: View {
     let state: CalendarLibraryState
