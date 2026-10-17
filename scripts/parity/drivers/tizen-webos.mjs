@@ -37,6 +37,22 @@ function pageHook() {
   if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; }
 }
 
+// Page code (injected into the app): true when `element` is not cut off by a scrolling or clipping ancestor. A lazy image
+// below a column's scroll edge is on screen by its rectangle but never loads and is not visible to the user.
+export function insideAncestorClips(element, win = globalThis) {
+  let rect = element.getBoundingClientRect();
+  for (let node = element.parentElement; node && node !== win.document?.documentElement; node = node.parentElement) {
+    const style = win.getComputedStyle(node);
+    if (style.overflowX === "visible" && style.overflowY === "visible") continue;
+    const clip = node.getBoundingClientRect();
+    const left = Math.max(rect.left, clip.left), right = Math.min(rect.right, clip.right);
+    const top = Math.max(rect.top, clip.top), bottom = Math.min(rect.bottom, clip.bottom);
+    if (right <= left || bottom <= top) return false;
+    rect = { left, right, top, bottom };
+  }
+  return true;
+}
+
 export async function createDriver() {
   const device = process.env.DEVICE;
   if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos required");
@@ -161,7 +177,9 @@ export async function createDriver() {
     if ((await ev("window.__parityPinned === true")) !== true) throw new Error("tizen page did not take the pinned clock");
   }
   async function guard() {
-    const identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+    const check = () => ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+    // The app rotates its access token while the check is in flight (slower on a real TV): re-validate once against the new session.
+    const identity = await check().catch((error) => { if (/session changed during identity check/.test(error.message)) return check(); throw error; });
     return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   }
   // Reload at a hash route and wait until the app is up again (a reload drops the debug channel for a few seconds).
@@ -253,9 +271,10 @@ export async function createDriver() {
           return animation.playState === "running" && Number.isFinite(endTime);
         });
         if (${device === "webos"} && activeAnimations.length) return null;
+        const insideAncestorClips = ${insideAncestorClips.toString()};
         const visible = [...document.images].filter((img) => {
           const r = img.getBoundingClientRect(), s = getComputedStyle(img);
-          return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth &&
+          return insideAncestorClips(img) && r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth &&
             s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0 && !!(img.currentSrc || img.getAttribute("src") || img.getAttribute("srcset"));
         });
         if (${requireVisibleImage} && !visible.length) return null;
@@ -311,7 +330,12 @@ export async function createDriver() {
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
       await guard();
     },
-    async stop() { closeCdp(); },
+    async stop() {
+      closeCdp();
+      // The TV's inspector proxy never completes the WebSocket close handshake, so its sockets keep node alive after the run;
+      // the unref'd timer does not delay a normal exit and ends the process once everything else is done.
+      if (process.env.WEBOS_REAL === "1") setTimeout(() => process.exit(process.exitCode ?? 0), 2000).unref();
+    },
     async setTheme(t) {
       await guard();
       await ev(`(localStorage.setItem("playarr-theme", ${JSON.stringify(t)}), true)`);
@@ -368,9 +392,11 @@ export async function createDriver() {
         if (k === "select") {
           // Chromium needs the character event to run native button activation. rawKeyDown alone
           // focuses controls but does not click action buttons in the webOS simulator.
-          await cdp("Input.dispatchKeyEvent", { type: "keyDown", ...c });
+          // Real TV: a separate char event lands after the route change the keydown caused and activates the new page's focus (Enter on the nav profile entry bounced Profiles back to Home), so send one keyDown that carries the text.
+          const real = process.env.WEBOS_REAL === "1";
+          await cdp("Input.dispatchKeyEvent", { type: "keyDown", ...c, ...(real ? { text: "\r", unmodifiedText: "\r" } : {}) });
           try {
-            await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
+            if (!real) await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
             if (long) { await sleep(900); await guard(); }
           } finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         } else {
@@ -379,6 +405,8 @@ export async function createDriver() {
           finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         }
       }
+      // Real TV: the app applies a directional key on the next animation frame and a busy main thread can delay it by seconds; two frames flush the queue.
+      if (process.env.WEBOS_REAL === "1") await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
       await sleep(device === "webos" ? 1000 : 350);
       await guard();
     },
@@ -400,6 +428,16 @@ export async function createDriver() {
     },
     async screenshot(file) {
       await guard();
+      if (process.env.WEBOS_REAL === "1") {
+        // Real TV: no X display. The inspector's Page.captureScreenshot shows the app only (no system menus, keyboard or video plane).
+        if (await ev(BAD)) throw new Error("signed out or error page");
+        await settleVisibleImages();
+        await guard();
+        const shot = await cdp("Page.captureScreenshot", { format: "png", fromSurface: true });
+        writeFileSync(file, Buffer.from(shot.result.data, "base64"));
+        await guard();
+        return;
+      }
       if (device === "webos" && (await keyboardVisible())) {
         const searchInput = await ev(`(() => { const e = document.activeElement; return location.hash === "#/search" && e?.matches('input[type="search"]') && e.value === ""; })()`);
         if (!searchInput) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
