@@ -349,11 +349,37 @@ private fun PhoneCalendarHeader(state: CalendarUiState, locale: Locale, holder: 
         Modifier.fillMaxWidth().height(44.dp).offset(y = if (state.mode == CalendarViewMode.Agenda) (-19).dp else 0.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically,
     ) {
-        PhoneCalendarToolbarPill(title, onJump, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-        PhoneCalendarRound(Modifier, "\u2190", playarrString(PlayarrString.CalendarPrevious), holder::previous)
-        PhoneCalendarToolbarPill(playarrString(PlayarrString.CalendarToday), holder::goToToday)
-        PhoneCalendarRound(Modifier, "\u2192", playarrString(PlayarrString.CalendarNext), holder::next)
+        // Web focuses Today when the calendar opens, so its ring is drawn from the start until a toolbar control is used.
+        var todayRing by remember { mutableStateOf(phoneCalendarTodayRingOnOpen()) }
+        PhoneCalendarToolbarPill(title, { todayRing = false; onJump() }, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        PhoneCalendarRound(Modifier, "\u2190", playarrString(PlayarrString.CalendarPrevious)) { todayRing = false; holder.previous() }
+        val ringColour = WebFocusRing
+        PhoneCalendarToolbarPill(
+            playarrString(PlayarrString.CalendarToday),
+            { todayRing = false; holder.goToToday() },
+            Modifier.drawBehind {
+                if (todayRing) {
+                    val stroke = 2.dp.toPx()
+                    val ring = phoneTodayRing(size.width, size.height, stroke, 3.dp.toPx())
+                    drawRoundRect(
+                        ringColour, androidx.compose.ui.geometry.Offset(ring.left, ring.top), androidx.compose.ui.geometry.Size(ring.width, ring.height),
+                        androidx.compose.ui.geometry.CornerRadius(ring.height / 2f), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke),
+                    )
+                }
+            },
+        )
+        PhoneCalendarRound(Modifier, "\u2192", playarrString(PlayarrString.CalendarNext)) { todayRing = false; holder.next() }
     }
+}
+
+internal fun phoneCalendarTodayRingOnOpen(): Boolean = true
+
+internal data class PhoneTodayRing(val left: Float, val top: Float, val width: Float, val height: Float)
+
+/** The stroke path of web's `outline: 2px; outline-offset: 3px` around a pill: grown by the offset plus half the stroke on every side. */
+internal fun phoneTodayRing(width: Float, height: Float, stroke: Float, offset: Float): PhoneTodayRing {
+    val grow = offset + stroke / 2f
+    return PhoneTodayRing(-grow, -grow, width + 2 * grow, height + 2 * grow)
 }
 
 @Composable
