@@ -732,6 +732,7 @@ Steps only the repository owner can perform.
 | 10657 | Pin clock, zone and locale on Fire TV and webOS captures | in_review | claude | pin-remaining-drivers | 17.10651 | 2026-10-18 12:00 ICT | Fire TV: new cmd=clock control command, re-sent after each launch. webOS: CDP timezone, locale and fixed Date. Tizen: page script in localStorage run by netlog.js. Roku, Harmony still unpinned (other worker). Stacked on #1594. PR open: #1602. |
 | 10659 | Roku capture: ensure Thumbnails artwork before capture | in_progress | parity-roku | roku-capture-prefs | | 2026-10-17 14:00 ICT | Capture script reads and sets the Home artwork preference |
 | 10675 | Android tablet Home aligns with the Library rails | done | claude | android-tablet-home2 | | 2026-10-18 18:00 ICT | Rails column at the Library rail start, first rail at the top, hero clamp sizes. Dark home 79.70 to 92.00 against the new ref; lint and unit tests pass; recapture on the pinned refs follows. PR open: #1619 PR #1619 merged 2026-10-17. |
+| 10669 | Hisense VIDAA parity: identity heartbeat and full-suite capture | in_progress | claude-vidaa | vidaa-heartbeat | | 2026-10-17 20:00 ICT | Debug-mirror identity heartbeat from a worker so the device-test account guard stays fresh while renders block the page; token-rotation handover, capture-setting isolation and the full light/dark run follow. |
 
 ## 18. Public repository readiness (2026-10-05)
 
