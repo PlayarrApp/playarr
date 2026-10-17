@@ -1916,9 +1916,7 @@ struct TVLibraryKindView: View {
             .padding(.leading, padL + 12)
             .padding(.trailing, padR)
         }
-        // Never narrower than its own content: a grid mounted while the window was still smaller (the Mac gates its content
-        // on the account check) otherwise keeps a horizontal scroll offset and sits 2 to 3 px left of the web x.
-        .frame(width: max(gridWidth + 12, padL + 12 + padR + CGFloat(cols) * cardW + CGFloat(cols - 1) * gap))
+        .frame(width: gridWidth + 12)
         // Web: the first title is focused when the page opens and whenever focus enters the grid from outside
         // (the nav, the header); `.userInitiated` applies it on every entry, not only the first.
         .focusSection()
