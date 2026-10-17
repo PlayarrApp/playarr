@@ -28,6 +28,8 @@
     "smoke:layout": "node scripts/layout-parity.mjs",
     "smoke:calendar-layout": "node scripts/calendar-layout.mjs",
     "smoke:calendar-nav": "node scripts/calendar-nav.mjs",
+    "smoke:panels-stable": "node scripts/panels-stable-e2e.mjs",
+    "smoke:panels-scroll-lock": "node scripts/panels-scroll-lock-e2e.mjs",
     "smoke:music-controls": "node scripts/music-controls-e2e.mjs",
     "smoke:skeleton-size": "node scripts/skeleton-size-e2e.mjs",
     "smoke:tablet-layout": "node scripts/tablet-layout.mjs",
