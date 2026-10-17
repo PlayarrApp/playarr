@@ -54,6 +54,10 @@ on:
 permissions:
   contents: read
 
+# Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
+env:
+  PARITY_STABLE: "0"
+
 jobs:
   build:
     name: Build the preview bundle (${{ inputs.device || 'tv' }})

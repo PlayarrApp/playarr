@@ -27,3 +27,11 @@ test("no deck id means no seeding, but PARITY_SEED_CANONICAL=1 without one is an
   assert.throws(() => deckFromEnv({ PARITY_SEED_CANONICAL: "1" }), /required/);
   assert.deepEqual(deckFromEnv({ PARITY_DECK_MEDIA_FILE_ID: DECK }), { deckFile: DECK, positionMs: 15098, durationMs: 6742000 });
 });
+
+test("deck ID falls back to the device-test secret, env wins, and a stable run without either is an error", () => {
+  const secrets = { PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID: DECK };
+  assert.equal(deckFromEnv({}, secrets).deckFile, DECK);
+  assert.equal(deckFromEnv({ PARITY_DECK_MEDIA_FILE_ID: OTHER }, secrets).deckFile, OTHER);
+  assert.throws(() => deckFromEnv({ PARITY_SEED_CANONICAL: "1" }, {}), /required/);
+  assert.equal(deckFromEnv({ PARITY_SEED_CANONICAL: "1" }, secrets).positionMs, 15098);
+});

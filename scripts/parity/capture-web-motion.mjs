@@ -3,6 +3,7 @@
 //   node capture-web-motion.mjs --out <dir> [--theme dark|light|both] [--profile phone|tv] [--keys]
 // Requires an isolated PARITY_CLIENT, PARITY_LOCK_DIR, and a valid PARITY_FIXED_NOW or FIXTURE_CLOCK.
 import { applyCanonicalDeck } from "./canonical-deck.mjs";
+import { readSecrets } from "./dpad-account.mjs";
 import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -40,7 +41,7 @@ const waitReady = async (page, screen, phase) => {
 
 await withCaptureState({ client: process.env.PARITY_CLIENT, files: [] }, async (captureState) => {
   Object.assign(process.env, captureState.env);
-  await applyCanonicalDeck(captureState);
+  await applyCanonicalDeck(captureState, process.env, readSecrets());
   const snapshot = await captureState.snapshotNow();
   const browser = await chromium.launch(process.env.PARITY_CHROME ? { executablePath: process.env.PARITY_CHROME } : {});
   captureState.registerInterruptCleanup(() => browser.close());
