@@ -143,7 +143,7 @@
                 </Button>
                 <TextBlock x:Name="TimeText" Margin="3,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="32" Margin="0,0,80,70" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+            <StackPanel Orientation="Horizontal" Spacing="33" Margin="0,0,80,70" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <Button x:Name="VolumeButton" Width="44" Height="44" Padding="0" CornerRadius="22" Background="Transparent" BorderThickness="0"
                     FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                     AutomationProperties.Name="Volume" Click="VolumeButton_Click" >
@@ -159,11 +159,11 @@
                     AutomationProperties.Name="Queue" Click="QueueButton_Click" >
                     <FontIcon Glyph="&#xE8FD;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" />
                 </Button>
-                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="22,0,22,0">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="9,0,22,0">
                     <Border BorderBrush="#99FFFFFF" BorderThickness="1" CornerRadius="3" Padding="3,0,3,0" VerticalAlignment="Center">
                         <TextBlock Text="HD" FontSize="8" FontWeight="Bold" Foreground="White" />
                     </Border>
-                    <TextBlock x:Name="QualityText" FontSize="9.5" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
+                    <TextBlock x:Name="QualityText" FontSize="10.5" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
                 </StackPanel>
                 <Button x:Name="InfoButton" Width="44" Height="44" Padding="0" CornerRadius="22" Background="Transparent" BorderThickness="0"
                     FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
