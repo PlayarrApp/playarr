@@ -754,6 +754,7 @@ export function DownloadsPage() {
                   label: notifications.permission === "denied" ? t("pages.downloads.notificationsBlocked") : t("pages.downloads.notifications"),
                   icon: notifications.permission === "denied" ? ("bellOff" as const) : ("bell" as const),
                   open: notifications.enabled,
+                  buttonProps: notifications.permission === "denied" ? { "data-notifications-blocked": true } : undefined,
                   onToggle: () => (notifications.enabled ? notifications.disable() : void notifications.enable()),
                 },
               ]
