@@ -1,0 +1,1 @@
+- A Nura parity capture build (`PLAYARR_PARITY_CLOCK`) shows the calendar's today as the fixed date the web references use.

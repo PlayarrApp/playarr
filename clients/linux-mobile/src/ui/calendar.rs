@@ -99,7 +99,12 @@ pub fn day_label(dt: Date) -> String {
     )
 }
 
+/// Today, or the day a parity capture build pins with `PLAYARR_PARITY_CLOCK` (an ISO date such as 2026-10-07, the
+/// date the web references are captured on).
 fn today() -> Date {
+    if let Some(d) = std::env::var("PLAYARR_PARITY_CLOCK").ok().and_then(|v| parse(&v)) {
+        return d;
+    }
     let n = gtk4::glib::DateTime::now_local().expect("local time");
     Date {
         y: n.year(),
@@ -772,6 +777,15 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parity_clock_pins_today() {
+        // shortcut: sets a process-wide variable, so no other test here may read today(); move to a parameter if one does.
+        std::env::set_var("PLAYARR_PARITY_CLOCK", "2026-10-07T04:00:00Z");
+        let t = today();
+        std::env::remove_var("PLAYARR_PARITY_CLOCK");
+        assert_eq!((t.y, t.m, t.d), (2026, 10, 7));
+    }
 
     #[test]
     fn chip_states() {
