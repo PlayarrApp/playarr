@@ -1,1 +1,0 @@
-- Android phone library language filters now show a bounded, vertically scrollable checkbox list, matching the Web phone layout.

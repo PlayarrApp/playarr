@@ -13,6 +13,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Match Android phone Home and library card artwork fallbacks to the web client's poster and backdrop ordering.
+- Match the Android phone language filter's expanded chevron and nested Back behaviour to the web client.
+- Android phone library language filters now show a bounded, vertically scrollable checkbox list, matching the Web phone layout.
 - Roku: the left dock packs its first group like the Roku web reference, so Search sits where web's Downloads slot would be and every dock item moves up one step.
 - Revalidate the selected debug-mirror profile and credentials after frame rendering, and send frame identity only through an explicit public-field allow-list. This prevents slow captures from being rejected as stale while aborting if the active account changes.
 - Let the debug-mirror build pin its clock with a `mirrorNow` launch parameter, so TV captures show the same day and time as their web reference; frame timestamps keep using the real clock.
