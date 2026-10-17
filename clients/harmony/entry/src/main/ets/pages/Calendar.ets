@@ -197,14 +197,20 @@ function toneColor(tone: EntryPillTone): RgbaColor {
   return tone === 'missing' ? activeColors().danger : activeColors().inkSoft;
 }
 
+/** The preview bridge can pin the capture clock (AppStorage 'clockPin', an ISO instant); '' is the real clock. */
+function pinnedNow(): Date {
+  const pin: string | undefined = AppStorage.get<string>('clockPin');
+  return pin !== undefined && pin.length > 0 ? new Date(pin) : new Date();
+}
+
 @Component
 export struct ReleaseCalendar {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
 
-  @State private today: string = localDayOf(new Date());
-  @State private anchor: string = localDayOf(new Date());
+  @State private today: string = localDayOf(pinnedNow());
+  @State private anchor: string = localDayOf(pinnedNow());
   @State private touchMonthViewportHeight: number = 0;
   @State private view: CalendarView = 'agenda';
   @State private filtersOpen: boolean = false;

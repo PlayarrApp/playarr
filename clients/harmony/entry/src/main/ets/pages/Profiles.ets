@@ -120,7 +120,7 @@ const PHONE_CHOICES_LEFT: number = 25;
 const PHONE_HEADING_LEFT: number = 32.5;
 const PHONE_HEADING_SIZE: number = 38.4;
 const PHONE_KICKER_TOP: number = 68;
-const PHONE_CHOICES_TOP: number = 54;
+const PHONE_CHOICES_TOP: number = 64.3;
 const PHONE_SELECT_HEIGHT: number = 48;
 const PHONE_SELECT_RADIUS: number = 2;
 const PHONE_SELECT_WIDTH: number = 112.5;
@@ -337,7 +337,7 @@ struct Profiles {
   @Builder
   private footerPill(label: string, x: number, y: number, onTap: () => void, phone: boolean = false): void {
     Text(label).fontFamily(nunito(700))
-      .fontSize(tv(TV_ACTION_TEXT))
+      .fontSize(phone ? tv(TV_ACTION_TEXT) * 0.73 : tv(TV_ACTION_TEXT))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .height(tv(TV_ACTION_HEIGHT))
@@ -361,7 +361,7 @@ struct Profiles {
         .colorFilter(tintFilter(tint))
       if (label.length > 0) {
         Text(label).fontFamily(nunito(700))
-          .fontSize(tv(TV_ACTION_TEXT))
+          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : tv(TV_ACTION_TEXT) * 0.7)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -398,7 +398,7 @@ struct Profiles {
           .fontColor(toResourceColor(activeColors().inkSoft))
           .position({ x: tv(FOOTER_LEFT), y: tv(FOOTER_TOP - 28) })
       }
-      this.footerPill('Clients ↗', FOOTER_RIGHT_LEFT, FOOTER_TOP, (): void => {
+      this.footerPill(isTvMetrics() ? 'Clients ↗' : 'Clients →', FOOTER_RIGHT_LEFT, FOOTER_TOP, (): void => {
         openInBrowser(getContext(this), CLIENTS_URL);
       }, !isTvMetrics())
       // Web's top-right theme control (the language select needs the Language setting, which is not built here).
@@ -431,9 +431,9 @@ struct Profiles {
         .zIndex(2)
       Column() {
       Text('Profiles').fontFamily(nunito(900))
-        .fontSize(tv(10.368))
+        .fontSize(isTvMetrics() ? tv(10.368) : tv(10.368) * 0.705)
         .fontWeight(FontWeight.Bolder)
-        .letterSpacing(tv(1.348))
+        .letterSpacing(isTvMetrics() ? tv(1.348) : tv(1.348) * 0.705)
         .textCase(TextCase.UpperCase)
         .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : BRAND_INK_LIGHT))
         .height(tv(16))
@@ -459,11 +459,14 @@ struct Profiles {
                 this.selectProfile(profile);
               },
             })
+              // web phone: the current profile's avatar is lifted and enlarged (measured 1.13x, 8.6 vp up on the pinned reference)
+              .scale(profile.is_current && !isTvMetrics() ? { x: 1.13, y: 1.13 } : { x: 1, y: 1 })
+              .translate({ y: profile.is_current && !isTvMetrics() ? -8.6 : 0 })
             Text(profile.display_name).fontFamily(nunito(700))
               .fontSize(this.pick(17.28, 12))
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
-              .margin({ top: this.pick(6, 14) })
+              .margin({ top: this.pick(6, 10.8) })
             Text(this.statusLabel(profile)).fontFamily(nunito(700))
               .fontSize(this.pick(9.408, 7.3))
               .fontWeight(FontWeight.Bold)
@@ -517,7 +520,7 @@ struct Profiles {
             .fontSize(this.pick(17.28, 12))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
-            .margin({ top: this.pick(9, 14) })
+            .margin({ top: this.pick(9, 10.8) })
           Text($r('app.string.profiles_add_another_profile')).fontFamily(nunito(700))
             .fontSize(this.pick(9.408, 7.3))
             .fontWeight(FontWeight.Bold)

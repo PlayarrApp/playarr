@@ -295,6 +295,18 @@ except ValueError as error:
 IDENTITY_VERIFIED = True
 print("signed-in account verified", flush=True)
 
+# Pin the capture clock to the web references' fixture instant (UTC): the bridge holds it, the patched app applies it and reports it back.
+if device == "phone":
+    PINNED_NOW = "2026-10-07T12:00:00Z"
+    get("/setclock", now=PINNED_NOW)
+    for _ in range(30):
+        if json.loads(get("/state")).get("clock") == PINNED_NOW:
+            break
+        time.sleep(1)
+    else:
+        abort("the app did not confirm the pinned capture clock")
+    print("capture clock pinned", PINNED_NOW, flush=True)
+
 # Seed only after the app identity is verified. This keeps a stale pairing from touching shared-account progress.
 subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")])  # best effort: Home's On deck matches the web reference
 time.sleep(20)
