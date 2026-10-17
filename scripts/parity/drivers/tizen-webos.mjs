@@ -7,6 +7,7 @@ import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { installRegionPin, installVisualDate } from "./web.mjs";
 import { assertDeviceTestIdentity, fetchCurrentIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -36,12 +37,30 @@ function pageHook() {
   if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; }
 }
 
+// Page code (injected into the app): true when `element` is not cut off by a scrolling or clipping ancestor. A lazy image
+// below a column's scroll edge is on screen by its rectangle but never loads and is not visible to the user.
+export function insideAncestorClips(element, win = globalThis) {
+  let rect = element.getBoundingClientRect();
+  for (let node = element.parentElement; node && node !== win.document?.documentElement; node = node.parentElement) {
+    const style = win.getComputedStyle(node);
+    if (style.overflowX === "visible" && style.overflowY === "visible") continue;
+    const clip = node.getBoundingClientRect();
+    const left = Math.max(rect.left, clip.left), right = Math.min(rect.right, clip.right);
+    const top = Math.max(rect.top, clip.top), bottom = Math.min(rect.bottom, clip.bottom);
+    if (right <= left || bottom <= top) return false;
+    rect = { left, right, top, bottom };
+  }
+  return true;
+}
+
 export async function createDriver() {
   const device = process.env.DEVICE;
   if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos required");
   const display = device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
   const cdpPort = process.env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
+  let tizenPinScript = null; // base64 of the page script that pins Date, zone and locale: stored for netlog.js to run before the app renders
+  let pin = null; // { fixedNow, timeZone, locale } from setDeterministicCapture, re-applied on every CDP connection
   let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme;
   const allowedUsernames = loadAllowedDeviceTestUsernames({ env: process.env, client: process.env.PARITY_CLIENT });
   const trustedServerUrl = loadTrustedDeviceTestServerUrl();
@@ -74,6 +93,14 @@ export async function createDriver() {
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
     await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
+    if (pin) {
+      // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
+      await cdp("Emulation.setTimezoneOverride", { timezoneId: pin.timeZone });
+      await cdp("Emulation.setLocaleOverride", { locale: pin.locale });
+      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)})`;
+      await cdp("Page.addScriptToEvaluateOnNewDocument", { source: install });
+      await cdp("Runtime.evaluate", { expression: install });
+    }
   }
   async function keyboardVisible() {
     const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
@@ -143,8 +170,16 @@ export async function createDriver() {
     if (r?.exceptionDetails) throw new Error(r.exceptionDetails.text);
     return r?.result?.value;
   }
+  // Store the pin for the next page start and apply it to this page too; a no-op when the page already runs it.
+  async function applyTizenPin() {
+    if (!tizenPinScript) return;
+    await ev(`(localStorage.setItem("__parityPin", atob("${tizenPinScript}")), window.__parityPinned || (0, eval)(atob("${tizenPinScript}")), true)`);
+    if ((await ev("window.__parityPinned === true")) !== true) throw new Error("tizen page did not take the pinned clock");
+  }
   async function guard() {
-    const identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+    const check = () => ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+    // The app rotates its access token while the check is in flight (slower on a real TV): re-validate once against the new session.
+    const identity = await check().catch((error) => { if (/session changed during identity check/.test(error.message)) return check(); throw error; });
     return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   }
   // Reload at a hash route and wait until the app is up again (a reload drops the debug channel for a few seconds).
@@ -155,7 +190,7 @@ export async function createDriver() {
       for (let a = 0; a < 4; a += 1) {
         writeFileSync(`${NETLOG}/cmd.txt`, `hash:${route}`);
         await sleep(8000);
-        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) { await guard(); return; }
+        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) { await applyTizenPin(); await guard(); return; }
       }
       throw new Error(`tizen did not reach ${route}`);
     }
@@ -236,9 +271,10 @@ export async function createDriver() {
           return animation.playState === "running" && Number.isFinite(endTime);
         });
         if (${device === "webos"} && activeAnimations.length) return null;
+        const insideAncestorClips = ${insideAncestorClips.toString()};
         const visible = [...document.images].filter((img) => {
           const r = img.getBoundingClientRect(), s = getComputedStyle(img);
-          return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth &&
+          return insideAncestorClips(img) && r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth &&
             s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0 && !!(img.currentSrc || img.getAttribute("src") || img.getAttribute("srcset"));
         });
         if (${requireVisibleImage} && !visible.length) return null;
@@ -265,7 +301,19 @@ export async function createDriver() {
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
   return {
-    async setDeterministicCapture() { throw new Error(`${device} stable deterministic capture unsupported: this packaged Chromium client has no app-owned clock and animation contract`); },
+    // webOS is driven over CDP, so the clock, zone and locale are pinned from the inspector; Tizen's driver has no CDP channel (netlog eval only).
+    async setDeterministicCapture({ fixedNow, timeZone = "UTC", locale = "en-GB" } = {}) {
+      if (!fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error(`${device} deterministic capture requires a valid fixedNow instant`);
+      if (device === "tizen") {
+        // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
+        if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
+        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});window.__parityPinned = true;`;
+        tizenPinScript = Buffer.from(source).toString("base64");
+        return;
+      }
+      pin = { fixedNow, timeZone, locale };
+      if (ws && ws.readyState === 1) { closeCdp(); await cdpConnect(); }
+    },
     async captureBuildIdentity() { throw new Error(`${device} stable build identity unsupported: deployed package digest is not exposed by this driver`); },
     async waitReady() { throw new Error(`${device} stable deterministic capture unsupported: readiness is not exposed through the native app contract`); },
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
@@ -277,11 +325,17 @@ export async function createDriver() {
       } else {
         await guard();
         execFileSync("xset", ["-display", display, "r", "off"], { stdio: "ignore" });
+        await applyTizenPin();
       }
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
       await guard();
     },
-    async stop() { closeCdp(); },
+    async stop() {
+      closeCdp();
+      // The TV's inspector proxy never completes the WebSocket close handshake, so its sockets keep node alive after the run;
+      // the unref'd timer does not delay a normal exit and ends the process once everything else is done.
+      if (process.env.WEBOS_REAL === "1") setTimeout(() => process.exit(process.exitCode ?? 0), 2000).unref();
+    },
     async setTheme(t) {
       await guard();
       await ev(`(localStorage.setItem("playarr-theme", ${JSON.stringify(t)}), true)`);
@@ -338,9 +392,11 @@ export async function createDriver() {
         if (k === "select") {
           // Chromium needs the character event to run native button activation. rawKeyDown alone
           // focuses controls but does not click action buttons in the webOS simulator.
-          await cdp("Input.dispatchKeyEvent", { type: "keyDown", ...c });
+          // Real TV: a separate char event lands after the route change the keydown caused and activates the new page's focus (Enter on the nav profile entry bounced Profiles back to Home), so send one keyDown that carries the text.
+          const real = process.env.WEBOS_REAL === "1";
+          await cdp("Input.dispatchKeyEvent", { type: "keyDown", ...c, ...(real ? { text: "\r", unmodifiedText: "\r" } : {}) });
           try {
-            await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
+            if (!real) await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
             if (long) { await sleep(900); await guard(); }
           } finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         } else {
@@ -349,6 +405,8 @@ export async function createDriver() {
           finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         }
       }
+      // Real TV: the app applies a directional key on the next animation frame and a busy main thread can delay it by seconds; two frames flush the queue.
+      if (process.env.WEBOS_REAL === "1") await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
       await sleep(device === "webos" ? 1000 : 350);
       await guard();
     },
@@ -370,6 +428,16 @@ export async function createDriver() {
     },
     async screenshot(file) {
       await guard();
+      if (process.env.WEBOS_REAL === "1") {
+        // Real TV: no X display. The inspector's Page.captureScreenshot shows the app only (no system menus, keyboard or video plane).
+        if (await ev(BAD)) throw new Error("signed out or error page");
+        await settleVisibleImages();
+        await guard();
+        const shot = await cdp("Page.captureScreenshot", { format: "png", fromSurface: true });
+        writeFileSync(file, Buffer.from(shot.result.data, "base64"));
+        await guard();
+        return;
+      }
       if (device === "webos" && (await keyboardVisible())) {
         const searchInput = await ev(`(() => { const e = document.activeElement; return location.hash === "#/search" && e?.matches('input[type="search"]') && e.value === ""; })()`);
         if (!searchInput) throw new Error("webOS system keyboard is visible; refusing an obscured capture");

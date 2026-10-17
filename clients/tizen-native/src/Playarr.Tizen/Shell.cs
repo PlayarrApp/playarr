@@ -32,9 +32,10 @@ internal sealed class Shell : View
     private readonly Dictionary<string, object> _saved = new();
     private readonly View _chrome = new() { Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
     private TextLabel? _clockTime, _clockDate;
+    public void SetCaptureClock(DateTime? now) { _env.ClockNow = () => now ?? DateTime.Now; UpdateClock(); }
     private void UpdateClock()
     {
-        var now = DateTime.Now;
+        var now = _env.ClockNow();
         if (_clockTime is not null) _clockTime.Text = now.ToString("HH:mm");
         if (_clockDate is not null) _clockDate.Text = now.ToString("ddd d MMMM", System.Globalization.CultureInfo.GetCultureInfo("en-GB")).ToUpperInvariant();
     }

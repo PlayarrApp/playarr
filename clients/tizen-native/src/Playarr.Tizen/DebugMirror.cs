@@ -1,14 +1,15 @@
 #if PLAYARR_DEBUG
 using System.Net;
 using System.Text;
+using System.Security.Cryptography;
 using Newtonsoft.Json;
 using Playarr.Tizen.Logic;
 
 namespace Playarr.Tizen;
 
 /// <summary>
-/// Debug-only control surface for the parity driver (compiled only with -p:PlayarrDebug=true, never in CI or release builds):
-/// GET /state, POST /key?name=, /route?path=, /theme?name=. Reached through `sdb forward`.
+/// Debug-only control surface for the parity driver (compiled only with -p:PlayarrDebug=true, excluded from production builds):
+/// GET /state, /identity, /build; POST /key?name=, /route?path=, /theme?name=, /capture-clock?now=, /capture-signout. Reached through `sdb forward`.
 /// </summary>
 internal sealed class DebugMirror
 {
@@ -76,6 +77,62 @@ internal sealed class DebugMirror
         {
             var path = ctx.Request.Url!.AbsolutePath; var q = ctx.Request.QueryString;
             if (path.StartsWith("/dl/")) { await HandleDownload(ctx, path, q); return; }
+            if (path == "/identity")
+            {
+                var env = _env();
+                var serverBefore = env.Store.ServerUrl();
+                var sessionBefore = await env.Store.GetSessionAsync().ConfigureAwait(false);
+                if (sessionBefore is null || string.IsNullOrWhiteSpace(serverBefore)) throw new InvalidOperationException("signed-in session identity is missing");
+                var apiServer = env.Api.ResolveUrl("/")?.GetLeftPart(UriPartial.Path).TrimEnd('/');
+                if (string.IsNullOrWhiteSpace(apiServer) || !Uri.TryCreate(serverBefore, UriKind.Absolute, out var configured) ||
+                    !string.Equals(configured.GetLeftPart(UriPartial.Path).TrimEnd('/'), apiServer, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("configured server does not match the active API target");
+                var profiles = await env.Api.ListProfilesAsync().ConfigureAwait(false);
+                var current = profiles.Where(profile => profile.IsCurrent).ToList();
+                var serverAfter = env.Store.ServerUrl();
+                var sessionAfter = await env.Store.GetSessionAsync().ConfigureAwait(false);
+                var subjectBefore = Playarr.Core.Networking.JwtClaims.Subject(sessionBefore.AccessToken.ExposeSecret());
+                var subjectAfter = sessionAfter is null ? null : Playarr.Core.Networking.JwtClaims.Subject(sessionAfter.AccessToken.ExposeSecret());
+                if (current.Count != 1 || serverBefore != serverAfter || sessionAfter is null ||
+                    subjectBefore is null || subjectAfter is null || subjectBefore != subjectAfter)
+                    throw new InvalidOperationException("signed-in profile identity changed during verification");
+                await WriteJson(ctx, new { username = current[0].Username, isCurrentCount = current.Count, serverUrl = apiServer });
+                return;
+            }
+            if (path == "/build")
+            {
+                var assembly = typeof(Program).Assembly;
+                var location = assembly.Location;
+                if (string.IsNullOrWhiteSpace(location) || !File.Exists(location)) throw new InvalidOperationException("application assembly identity is unavailable");
+                await using var stream = File.OpenRead(location);
+                var digest = Convert.ToHexString(await SHA256.HashDataAsync(stream)).ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(AppEnv.Version)) throw new InvalidOperationException("application version identity is unavailable");
+                await WriteJson(ctx, new { app = assembly.GetName().Name, version = AppEnv.Version, sha256 = digest, animationMode = "none" });
+                return;
+            }
+            if (path == "/capture-signout")
+            {
+                if (ctx.Request.HttpMethod != "POST")
+                {
+                    ctx.Response.StatusCode = 405;
+                    await WriteJson(ctx, new { error = "method not allowed" });
+                    return;
+                }
+                var signOutDone = new TaskCompletionSource<object>();
+                SynchronizationContextHolder.Post(() =>
+                {
+                    try
+                    {
+                        var env = _env();
+                        env.Store.RotateDeviceId();
+                        env.SignOut();
+                        signOutDone.SetResult(new { ok = true });
+                    }
+                    catch (Exception e) { signOutDone.SetException(e); }
+                });
+                await WriteJson(ctx, await signOutDone.Task);
+                return;
+            }
             var done = new TaskCompletionSource<object>();
             SynchronizationContextHolder.Post(() =>
             {
@@ -91,9 +148,14 @@ internal sealed class DebugMirror
                         case "/text": if (_shell().Page is SearchScreen ss) ss.SetQuery(q["value"] ?? ""); break;
                         case "/route": _shell().NavigateDeepLink(q["path"] ?? "/"); break;
                         case "/theme": _env().SetTheme(q["name"] ?? "dark"); break;
+                        case "/capture-clock":
+                            if (!DateTime.TryParse(q["now"], System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var fixedNow))
+                                throw new InvalidOperationException("fixed capture clock is invalid");
+                            _shell().SetCaptureClock(fixedNow);
+                            break;
                     }
                     var st = (_shell().Page as PlayerScreen)?.Status ?? (false, 0L);
-                    done.SetResult(new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().Images.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name });
+                    done.SetResult(new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().VisualWork.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name, animationMode = "none" });
                 }
                 catch (Exception e) { done.SetException(e); }
             });
@@ -109,6 +171,14 @@ internal sealed class DebugMirror
             await ctx.Response.OutputStream.WriteAsync(bytes);
         }
         finally { ctx.Response.Close(); }
+    }
+
+    private static async Task WriteJson(HttpListenerContext ctx, object result)
+    {
+        var bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(result));
+        ctx.Response.ContentType = "application/json";
+        await ctx.Response.OutputStream.WriteAsync(bytes);
+        ctx.Response.Close();
     }
 }
 #endif
