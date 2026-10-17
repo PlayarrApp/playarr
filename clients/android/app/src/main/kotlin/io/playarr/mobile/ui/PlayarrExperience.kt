@@ -3029,9 +3029,21 @@ private fun ExperienceHomeScreen(
                     // of the content padding) instead of nudging by whatever bring-into-view
                     // needs. animateScrollToItem is cancelled and restarted by the next
                     // focused rail, so a held key coalesces to the latest target.
+                    // Web opens Home with the first rail at the Library grid's first-row top (--library-rail-top) and cannot centre it
+                    // higher; later rails still centre on the viewport, so they sit this far below the first rail's anchor.
+                    val homeTvStage = LocalStageScale.current == 1f
+                    val homeCardWidth = tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = homeView == PlayarrHomeViewPreference.Cover)
+                    val homeCardHeight = if (homeView == PlayarrHomeViewPreference.Cover) homeCardWidth * 1.5f else homeCardWidth * 9f / 16f
+                    // Web centres the focused rail on the viewport, so a taller card (portrait posters, small thumbnails) lifts the row by half
+                    // the extra height: measured on web at all three sizes in both modes, 389.9 dp at the 327.2 x 184 dp medium thumbnail.
+                    val homeCentredTop = (389.9.dp - (homeCardHeight - 184.05.dp) / 2f) * homeStageVerticalScale()
+                    // The rail heading is drawn 12.1 dp below the list's content top (see the heading offset in ExperienceMediaRail), so the list
+                    // starts that much above web's --library-rail-top for the heading box to open on it.
+                    val homeFirstTop = homeFirstRailTop(homeTvStage, homeCentredTop, webVu(128f, 15f, 174f))
+                    val homeLiftPx = if (homeTvStage) with(LocalDensity.current) { (homeCentredTop - homeFirstTop).toPx().toInt() } else 0
                     LaunchedEffect(focusedRailKey) {
                         val index = current.value.indexOfFirst { it.key == focusedRailKey }
-                        if (isTelevision && index >= 0) railsState.animateScrollToItem(index)
+                        if (isTelevision && index >= 0) railsState.animateScrollToItem(index, if (index == 0) 0 else -homeLiftPx)
                     }
                     Box(Modifier.fillMaxSize()) {
                     // Phone: a focused rail scrolls clear of the bottom nav (98 dp of list padding) instead of settling under it.
@@ -3041,25 +3053,20 @@ private fun ExperienceHomeScreen(
                         androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides (if (isTelevision) androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current else homeSpec),
                     ) {
                     // Television: the list reaches left over the rail gutter so each rail's viewport can (see ExperienceMediaRail).
-                    val railGutter = if (isTelevision) tvTrackGutter() else 0.dp
+                    // Web `--tv-track-left-fade` is now the Library grid's own left padding (--card-pad-left, 53.8 px at 1920): the cards
+                    // start that far inside the panel, and nothing fades inside the aligned edge.
+                    val railGutter = if (!isTelevision) 0.dp else if (homeTvStage) webVw(28f, 2.8f, 54f) else tvTrackGutter()
                     LazyColumn(
                         state = railsState,
                         // Web `.tv-home-rails` is a `[data-tv-scroll-container]`: the same vertical edge fade as every scroller (0.3 floor, eased).
-                        modifier = if (isTelevision) Modifier.fillMaxSize().extendStart(railGutter)
+                        modifier = if (isTelevision) Modifier.fillMaxSize().then(if (homeTvStage) Modifier else Modifier.extendStart(railGutter))
                             .playarrEdgeFades(railsState.canScrollBackward, railsState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical,
                                 // The page behind the rails (measured: 26 luma in dark); the library panel colour is lighter.
                                 panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) })
                         else Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
                             start = railGutter,
-                            // Web: the first rail heading at y 402 and rail headings 365.9 dp apart with the poster-size cards.
-                            // Web centres the focused rail on the viewport, so a taller card (portrait posters, small thumbnails) lifts the row by half
-                            // the extra height: measured on web at all three sizes in both modes, 389.9 dp at the 327.2 x 184 dp medium thumbnail.
-                            top = if (isTelevision) {
-                                val cardWidth = tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = homeView == PlayarrHomeViewPreference.Cover)
-                                val cardHeight = if (homeView == PlayarrHomeViewPreference.Cover) cardWidth * 1.5f else cardWidth * 9f / 16f
-                                (389.9.dp - (cardHeight - 184.05.dp) / 2f) * homeStageVerticalScale() - (if (LocalStageScale.current != 1f) 255.dp else 0.dp)
-                            } else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
+                            top = if (isTelevision) homeFirstTop else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
                             // Web `.tv-home-rails` padding-block is half the viewport on both ends, so the last rail can reach the same anchor as the first.
                             bottom = if (isTelevision) 540.dp * homeStageVerticalScale() else 98.dp,
                         ),
@@ -3117,6 +3124,13 @@ private fun ExperienceHomeScreen(
     }
 }
 
+/**
+ * Top of the Home rails list. Television opens the first rail at web's `--library-rail-top`, less the 12.1 dp the heading is
+ * drawn below the list top; a tablet keeps its own anchor, the centred one less 255 dp.
+ */
+internal fun homeFirstRailTop(tvStage: Boolean, centredTop: Dp, libraryRailTop: Dp): Dp =
+    if (tvStage) libraryRailTop - 12.1.dp else centredTop - 255.dp
+
 @Composable
 private fun ExperienceStage(
     selected: Work,
@@ -3151,8 +3165,9 @@ private fun ExperienceStage(
                 feature()
             }
             Box(
-                // Web rails column: starts at x = 881.6; at 1280 x 800 it starts where the Library rail does (522 css px, 40.8% of the width).
-                Modifier.fillMaxHeight().then(if (LocalStageScale.current != 1f) Modifier.fillMaxWidth(0.5922f) else Modifier.width(1038.4.dp)).align(Alignment.CenterEnd).background(
+                // Television: web `.tv-home-rails` starts where the Library grid panel starts (--card-rail-vw, 62%).
+                // At 1280 x 800 it starts where the Library rail does (522 css px, 40.8% of the width).
+                Modifier.fillMaxHeight().then(if (LocalStageScale.current != 1f) Modifier.fillMaxWidth(0.5922f) else Modifier.fillMaxWidth(0.62f)).align(Alignment.CenterEnd).background(
                     webRailSurfaceBrush(),
                 ),
             ) { rails() }
@@ -3419,7 +3434,7 @@ internal fun ExperienceMediaRail(
         // Web `.tv-media-track`: the rail's scroll viewport reaches left into a gutter (`--tv-track-left-fade`, 88 to 152 px on
         // television, the 16 dp page gutter on a phone) ahead of the content start line. A card at rest sits on that line;
         // scrolled-past cards fade away over the gutter only.
-        val trackGutter = if (isTelevision) tvTrackGutter() else 16.dp
+        val trackGutter = if (!isTelevision) 16.dp else if (LocalStageScale.current == 1f) webVw(28f, 2.8f, 54f) else tvTrackGutter()
         // Web `.tv-media-track-scroll` reserves 18px of normal spacing plus 24px for focused-card shadow above its
         // viewport. Move the extra 36px from the outer spacing into LazyRow content padding, keeping the resting card
         // origin fixed while giving the focus lift, scale and shadow the same unclipped headroom.
