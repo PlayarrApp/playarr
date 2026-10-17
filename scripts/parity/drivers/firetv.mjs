@@ -59,6 +59,7 @@ async function settled(maxMs = 8000) {
 
 export async function createDriver({ out } = {}) {
   let seq = 0;
+  let pinnedClock = null;
   const answers = new Map();
 
   // The vega CLI prints a command's output only when it ends, so a log cannot be streamed: read what the app has logged since
@@ -121,6 +122,13 @@ export async function createDriver({ out } = {}) {
     await sleep(2000);
     await vega("device", "launch-app", "-d", DEVICE, "--appName", APP);
   };
+  // The app forgets a run-time clock when it restarts, so every launch re-freezes it and waits for the app to confirm.
+  const pinClock = async () => {
+    if (!pinnedClock) return;
+    const answer = await command({ cmd: "clock", now: pinnedClock }, 2000);
+    if (!answer || Date.parse(answer.clock) !== Date.parse(pinnedClock)) throw new Error("the app did not confirm the pinned clock (is it built from a revision with cmd=clock?)");
+    await sleep(500);
+  };
   // The profile picker opens first: Enter chooses the Device Test profile (the first, focused one).
   const intoHome = async () => {
     await sleep(9000);
@@ -138,7 +146,13 @@ export async function createDriver({ out } = {}) {
   };
 
   return {
-    async setDeterministicCapture() { throw new Error("Fire TV stable deterministic capture unsupported: the app has no clock or animation pinning hook"); },
+    // The app clock is frozen over the control channel (cmd=clock) once the app is up: it formats a frozen clock in UTC, en-GB,
+    // so only that region can be pinned. The Vega app has no animation setting, so disableAnimations is not applied.
+    async setDeterministicCapture({ fixedNow, timeZone = "UTC", locale = "en-GB" } = {}) {
+      if (!fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error("Fire TV deterministic capture requires a valid fixedNow instant");
+      if (timeZone !== "UTC" || locale !== "en-GB") throw new Error(`Fire TV stable capture unsupported for ${timeZone} / ${locale}: a frozen app clock renders UTC and en-GB only`);
+      pinnedClock = fixedNow;
+    },
     async captureBuildIdentity() { throw new Error("Fire TV stable build identity unsupported: installed app digest is not exposed by this driver"); },
     async waitReady() { throw new Error("Fire TV stable deterministic capture unsupported: readiness is not exposed by the app"); },
     supports: { nowPlaying: false },
@@ -147,6 +161,7 @@ export async function createDriver({ out } = {}) {
     async start() {
       await launch();
       await intoHome();
+      await pinClock();
     },
     async stop() {
     },
@@ -160,6 +175,7 @@ export async function createDriver({ out } = {}) {
       // (reaching it through the nav leaves focus on the nav item).
       await launch();
       await intoHome();
+      await pinClock(); // a relaunch drops the run-time clock
       // Home draws its rails after the data arrives; a key before a card holds focus is spent on claiming focus, not moving it.
       for (let i = 0; i < 15; i++) {
         const s = await state(8000).catch(() => null);
