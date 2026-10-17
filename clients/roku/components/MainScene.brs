@@ -4707,20 +4707,17 @@ sub layoutNavDock()
         for i = range[0] to range[1]
             if m.navEnabled <> invalid and m.navEnabled[i] then n = n + 1
         end for
-        ' Web's first group also holds Downloads, which Roku cannot offer: keep its slot empty so every other item sits where the
-        ' web dock puts it.
-        if g = 0 then n = n + 1
         if n > 0
             if visibleGroups > 0 then totalH = totalH + groupGap
             totalH = totalH + groupPad + n * itemStep
             visibleGroups = visibleGroups + 1
         end if
     end for
-    ' Web's first group starts at y 120 whatever the other groups hold.
+    ' Web's first group starts at y 120 whatever the other groups hold. Roku has no Downloads, so Search sits first in it
+    ' (the Roku web reference hides Downloads and packs the group the same way).
     y = 120
     for g = 0 to groupRanges.Count() - 1
         range = groupRanges[g]
-        if g = 0 then y = y + itemStep
         groupStartY = y
         visibleCount = 0
         itemY = y + 6.1

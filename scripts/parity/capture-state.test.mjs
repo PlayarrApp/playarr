@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { hostname } from "node:os";
 import { mkdtemp, mkdir, writeFile, readFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { spawn } from "node:child_process";
@@ -169,7 +170,17 @@ test("a stale same-host lock owner PID is reclaimed", async () => {
   const key = createHash("sha256").update(`${serverUrl}\nfixture-user`).digest("hex").slice(0, 24);
   const staleDir = join(lockDir, key);
   await mkdir(staleDir);
-  await writeFile(join(staleDir, "owner.json"), JSON.stringify({ pid: 99_999_999, host: process.env.HOSTNAME ?? "unknown" }));
+  await writeFile(join(staleDir, "owner.json"), JSON.stringify({ pid: 99_999_999, host: hostname() }));
+  mockApi();
+  await withCaptureState({ ...context(lockDir), env: { ...context(lockDir).env, PARITY_LOCK_TIMEOUT_MS: "50" } }, async () => {});
+});
+
+test("a stale legacy unknown-host lock owner PID is reclaimed", async () => {
+  const lockDir = await scratch();
+  const key = createHash("sha256").update(`${serverUrl}\nfixture-user`).digest("hex").slice(0, 24);
+  const staleDir = join(lockDir, key);
+  await mkdir(staleDir);
+  await writeFile(join(staleDir, "owner.json"), JSON.stringify({ pid: 99_999_999, host: "unknown" }));
   mockApi();
   await withCaptureState({ ...context(lockDir), env: { ...context(lockDir).env, PARITY_LOCK_TIMEOUT_MS: "50" } }, async () => {});
 });
@@ -179,7 +190,7 @@ test("a stale lock with a snapshot is retained for recovery", async () => {
   const key = createHash("sha256").update(`${serverUrl}\nfixture-user`).digest("hex").slice(0, 24);
   const staleDir = join(lockDir, key);
   await mkdir(staleDir);
-  await writeFile(join(staleDir, "owner.json"), JSON.stringify({ pid: 99_999_999, host: process.env.HOSTNAME ?? "unknown" }));
+  await writeFile(join(staleDir, "owner.json"), JSON.stringify({ pid: 99_999_999, host: hostname() }));
   await writeFile(join(staleDir, "snapshot.json"), JSON.stringify({ files: {}, preferences: {} }));
   mockApi();
   await assert.rejects(withCaptureState({ ...context(lockDir), env: { ...context(lockDir).env, PARITY_LOCK_TIMEOUT_MS: "50" } }, async () => {}), /has a recovery snapshot/);
@@ -190,7 +201,7 @@ test("concurrent callers reclaim a stale lock without stealing the new owner", a
   const lockDir = await scratch();
   const key = createHash("sha256").update(`${serverUrl}\nfixture-user`).digest("hex").slice(0, 24);
   const staleDir = join(lockDir, key);
-  const owner = { pid: 99_999_999, host: process.env.HOSTNAME ?? "unknown" };
+  const owner = { pid: 99_999_999, host: hostname() };
   await mkdir(staleDir);
   await writeFile(join(staleDir, "owner.json"), JSON.stringify(owner));
   mockApi();

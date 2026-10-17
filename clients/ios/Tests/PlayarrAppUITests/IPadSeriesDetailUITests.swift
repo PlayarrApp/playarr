@@ -61,7 +61,7 @@ final class IPadSeriesDetailUITests: XCTestCase {
             shot.lifetime = .keepAlways
             add(shot)
         }
-        func render(_ name: String) {
+        func render(_ name: String) throws {
             let app = XCUIApplication()
             app.launchEnvironment = [
                 "PLAYARR_PARITY_SERVER": server, "PLAYARR_PARITY_USER": username, "PLAYARR_PARITY_PASSWORD": password,
@@ -79,12 +79,12 @@ final class IPadSeriesDetailUITests: XCTestCase {
 
         defer { Task { try? await resetAll() } }
         try await resetAll()
-        render("ipad-series-fresh")
+        try render("ipad-series-fresh")
 
         // Last playable episode as the resume target.
         for e in playable.dropLast() { try await setProgress(e, completed: true, positionMs: 1_800_000) }
         try await setProgress(try XCTUnwrap(playable.last), completed: false, positionMs: 600_000)
-        render("ipad-series-last-episode")
+        try render("ipad-series-last-episode")
 
         // A mid-season target: season 2 episode 5.
         try await resetAll()
@@ -94,6 +94,6 @@ final class IPadSeriesDetailUITests: XCTestCase {
             try await setProgress(e, completed: true, positionMs: 1_800_000)
         }
         try await setProgress(mid, completed: false, positionMs: 600_000)
-        render("ipad-series-mid-season")
+        try render("ipad-series-mid-season")
     }
 }
