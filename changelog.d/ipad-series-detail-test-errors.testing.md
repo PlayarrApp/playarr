@@ -1,0 +1,1 @@
+- Propagate capture-readiness errors from the iPad series-detail UI test helper so the UI-test target compiles and fails closed when readiness checks fail.
