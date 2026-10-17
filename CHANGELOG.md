@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- HarmonyOS TV Home opens aligned with the Library grid like web: rails and cards start 53 vp inside the rail column and the first heading sits at the Library first-row top; a focused later rail still centres.
 - The Nura capture helper clicks the display's left margin before each screenshot, so a sheet or drawer that opened after a long idle wait is no longer missed.
 - Fire TV: the card behind the title actions drawer no longer keeps its focus ring while the drawer is open.
 - Roku: Left from the first Home rail enters the dock on Home again after Home moved to the Library-aligned top.

@@ -741,6 +741,7 @@ Steps only the repository owner can perform.
 | 10682 | Fire TV actions: no focus ring on the card behind the drawer | in_progress | parity-firetv | firetv-actions-ring | | 2026-10-17 17:00 ICT | Library and Home hide the card ring while the title actions drawer is open |
 | 10677 | Nura capture helper: stop the idle display from missing opened sheets | in_review | claude | nura-parity-14-capture | | 2026-10-17 20:00 ICT | Cause: after tens of idle seconds the VM display shows the pre-sheet frame until a click reaches the app (GTK had drawn the panel, frame counter advancing). Fix: nudge.sh clicks once per route before the first screenshot. PR open: #1625. |
 | 10679 | iOS parity capture readiness no longer depends on event order | in_review | parity-ios | parity-ready-race-10679 | | 2026-10-17 12:00 ICT | Screen-ready flag derives from identity and load state; the onAppear reset that could drop an early ready is removed. PR open: #1623 |
+| 10678 | HarmonyOS TV Home: poster artwork stall after a Detail visit, then Home against the Library-aligned web ref | in_review | harmony-crash | harmony-home-10678 | | 2026-10-17 20:00 ICT | PR open: #1621. TV Home aligned with the Library grid (Home dark 77.93 to 95.62, light 74.02 to 94.90 against the fixed-clock refs, run 39007572791). The Previewer poster stall in multi-screen runs is still open: one Home instance, 266 artwork results, then no image completes. |
 
 ## 18. Public repository readiness (2026-10-05)
 
