@@ -74,6 +74,15 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn('m.browseGrid.alphabetHandoffEnabled = kind = "movie"', MAIN)
         self.assertIn("enterBrowseAlphabet(true)", MAIN)
 
+    def test_calendar_filters_are_a_drawer_with_view_type_status_and_monitored(self) -> None:
+        filters = (ROOT / "components" / "Filters.brs").read_text(encoding="utf-8")
+        self.assertIn("sub calFiltersOpen()", filters)
+        for label in ('"Month"', '"TV"', '"Aired"', '"Monitored only"', '"Clear filters"'):
+            self.assertIn(label, filters)
+        self.assertIn("calendarApplyFilters(m.pageData.entries)", PAGES)
+        self.assertIn("calFiltersOpen()", PAGES)
+        self.assertIn("if m.calFiltersOpen = true then return calFiltersOnKey(key)", MAIN)
+
     def test_search_has_the_web_header_pill_field_and_active_dock_slot(self) -> None:
         self.assertIn("sub searchChromeInit()", MAIN)
         self.assertIn('setSearchHeader(formatCountWithCommas(m.searchDisplayItems.Count()) + " " + resultWord)', MAIN)

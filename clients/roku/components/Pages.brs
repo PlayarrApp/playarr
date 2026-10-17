@@ -42,6 +42,10 @@ sub pagesInit()
     m.calendarView = "month"
     m.calendarViewDialogPendingClose = false
     m.calendarKinds = []
+    m.calFilterTypes = {}
+    m.calFilterStatuses = {}
+    m.calFilterMonitored = false
+    m.calFiltersOpen = false
     m.pageScrollY = 0
     m.settingsPanel = "appearance"
     m.artworkSizePref = "medium"
@@ -1770,7 +1774,7 @@ sub renderCalendarBody()
     pgTile(m.pageHead, shellActionX(), shellActionY(1), "Filters", "tile-filters.png", "calFilters")
 
     entries = []
-    if m.pageData <> invalid and m.pageData.entries <> invalid then entries = m.pageData.entries
+    if m.pageData <> invalid and m.pageData.entries <> invalid then entries = calendarApplyFilters(m.pageData.entries)
     if m.pageStatus = "loading" and entries.Count() = 0
         pgLabel(m.pageBody, 786, 240, 600, 30, "Loading the release calendar…", 14, 400, "inkMuted")
         return
@@ -2069,7 +2073,7 @@ sub calendarAction(item as Object)
     else if a = "calLink"
         sendApi("calendarFeed", "POST", "/api/v1/calendar/feed", {}, true)
     else if a = "calFilters"
-        openCalendarFilters()
+        calFiltersOpen()
     end if
     if a = "calPrev" or a = "calNext" or a = "calToday" or a = "cell" then pageFocusRender()
 end sub
@@ -2098,22 +2102,7 @@ sub onCalendarViewButton(event as Object)
     end if
 end sub
 
-sub openCalendarFilters()
-    dialog = CreateObject("roSGNode", "Dialog")
-    dialog.title = "Filters"
-    dialog.message = ["Choose the release types to show."]
-    dialog.buttons = ["All", "Episodes", "Movies", "Albums"]
-    dialog.ObserveField("buttonSelected", "onCalendarFilterButton")
-    m.top.dialog = dialog
-end sub
 
-sub onCalendarFilterButton(event as Object)
-    index = event.GetData()
-    if m.top.dialog <> invalid then m.top.dialog.close = true
-    kinds = [[], ["episode"], ["movie"], ["album"]]
-    if index >= 0 and index < kinds.Count() then m.calendarKinds = kinds[index]
-    loadCalendar()
-end sub
 
 sub acceptCalendarFeed(data as Dynamic)
     dialog = CreateObject("roSGNode", "Dialog")

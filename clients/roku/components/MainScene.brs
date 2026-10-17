@@ -6965,6 +6965,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.top.screenState = "browse"
             m.browseGrid.SetFocus(true)
             idx = m.browseGrid.itemFocused
+    if m.calFiltersOpen = true then return calFiltersOnKey(key)
             if idx <> invalid and idx >= 0 and idx < m.browseItems.Count() then parityEmit("focus", "open " + m.browseItems[idx].title)
         else if m.detailOrigin = "search"
             showOnly("search")
