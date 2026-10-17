@@ -92,7 +92,7 @@ export async function fetchCurrentIdentity({ expectedServerUrl } = {}) {
     return url.toString().replace(/\/$/, "");
   };
   // The app rotates its refresh token while a loaded host is slow: if only the session text moved (same server), check again with the new
-  // session, twice at most. A different server, or a session that keeps moving, still fails.
+  // session, five times at most. A different server, or a session that keeps moving, still fails.
   for (let round = 0; ; round += 1) {
     let sessionText, session, token, base;
     try {
@@ -137,7 +137,7 @@ export async function fetchCurrentIdentity({ expectedServerUrl } = {}) {
       throw new Error("device-test account identity unavailable");
     }
     if (moved) {
-      if (round < 2) continue;
+      if (round < 5) { await new Promise((resolve) => setTimeout(resolve, 500)); continue; }
       throw new Error("device-test account session changed during identity check");
     }
     if (!Array.isArray(profiles)) throw new Error("device-test account identity response invalid");
