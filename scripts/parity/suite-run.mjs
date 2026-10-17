@@ -46,7 +46,7 @@ const via = opt("via", "keys");
 const reference = args.includes("--reference");
 const repeatProof = args.includes("--repeat-proof") || process.env.PARITY_REPEAT_PROOF === "1";
 // Stable is the default so client captures match the web refs (fixed clock, canonical On deck); PARITY_STABLE=0 is the only opt-out.
-let deterministic = args.includes("--stable") || repeatProof || process.env.PARITY_STABLE !== "0"; // a repeat proof is meaningless unpinned
+let deterministic = args.includes("--stable") || process.env.PARITY_STABLE !== "0";
 // State pinning (clock, canonical deck, catalogue, animations) applies to every driver; strict readiness and build identity
 // only to drivers that declare driver.strictReadiness. Others use their own normal readiness wait.
 let strict = false;
@@ -141,13 +141,15 @@ if (reset) {
   await resetProgress([...pinned(), ...catalogFiles]);
   assertNotInterrupted();
 } // before any capture: On deck and Resume start from the same state on every device
-if (deterministic) {
-  deterministic = await pinCapture(driver, { fixedNow, explicit: args.includes("--stable") || repeatProof });
+let pinned = false;
+if (deterministic || repeatProof) { // a repeat proof pins the clock without the isolated-account stable machinery
+  pinned = await pinCapture(driver, { fixedNow, explicit: args.includes("--stable") || repeatProof });
+  if (deterministic) deterministic = pinned;
   assertNotInterrupted();
 }
-const readiness = readinessMode(driver, deterministic);
+const readiness = readinessMode(driver, pinned);
 strict = readiness === "strict";
-console.log(`capture state pinned=${deterministic} readiness=${readiness}`);
+console.log(`capture state pinned=${pinned} readiness=${readiness}`);
 const buildBeforeCapture = strict ? await driver.captureBuildIdentity() : null;
 assertNotInterrupted();
 await driver.start?.({ theme: themes[0] });
@@ -157,7 +159,7 @@ const referenceBuildBeforeCapture = reference && !deterministic ? await driver.c
 if (only.includes("screens")) {
   const selectedScreens = suite.screens.filter((x) => !wantScreens.length || wantScreens.includes(x.id));
   const selectiveCapture = selectedScreens.length !== suite.screens.length || themes.length !== suite.themes.length || themes.some((theme, index) => theme !== suite.themes[index]);
-  if (strict) assertCaptureManifestTargetAvailable(selectiveCapture, existsSync(join(out, "captures.json")));
+  if (strict && deterministic) assertCaptureManifestTargetAvailable(selectiveCapture, existsSync(join(out, "captures.json")));
   const captureRows = [];
   for (const theme of themes) {
     assertNotInterrupted();
@@ -187,7 +189,7 @@ if (only.includes("screens")) {
       catch (e) { if (signalReceived) throw e; summary.failed.push(`${theme}/${s.id}`); console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); }
     }
   }
-  if (strict && summary.failed.length === 0) {
+  if (strict && deterministic && summary.failed.length === 0) {
     if (!captureSnapshot?.hash) throw new Error("stable screen manifest requires an isolated state snapshot");
     const buildAfterScreens = await driver.captureBuildIdentity?.();
     if (!buildBeforeCapture || !sameCaptureBuildIdentity(buildBeforeCapture, buildAfterScreens)) throw new Error("stable screen manifest requires an unchanged verified build identity");
@@ -308,9 +310,9 @@ if (only.includes("dpad")) {
   const selectedIds = suite.dpad.filter((x) => !wantChecks.length || wantChecks.includes(x.id)).map((x) => x.id);
   const buildAfter = strict ? await driver.captureBuildIdentity?.() : null;
   assertNotInterrupted();
-  if (strict && !sameCaptureBuildIdentity(buildBeforeCapture, buildAfter)) throw new Error(`deployed build changed during capture: ${JSON.stringify(buildBeforeCapture) ?? "unknown"} to ${JSON.stringify(buildAfter) ?? "unknown"}`);
+  if (strict && deterministic && !sameCaptureBuildIdentity(buildBeforeCapture, buildAfter)) throw new Error(`deployed build changed during capture: ${JSON.stringify(buildBeforeCapture) ?? "unknown"} to ${JSON.stringify(buildAfter) ?? "unknown"}`);
   const build = buildAfter;
-  if (strict && (!build || !captureSnapshot?.hash)) throw new Error("stable capture requires build identity and isolated state snapshot");
+  if (strict && deterministic && (!build || !captureSnapshot?.hash)) throw new Error("stable capture requires build identity and isolated state snapshot");
   const provenance = {
     suite: suite.version,
     build: build ? buildShaFromIdentity(build) : "unverified-build",
