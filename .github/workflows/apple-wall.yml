@@ -66,6 +66,8 @@ permissions:
   contents: read
 
 env:
+  # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
+  PARITY_STABLE: "0"
   LEAD_MINUTES: "25" # the successor starts this long before the end of a run
   PLAYARR_TEST_SERVER_URL: ${{ secrets.PLAYARR_TEST_SERVER_URL }}
 

@@ -15,10 +15,11 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { expandKeys } from "./suite-lib.mjs";
+import { CAPTURE_REGION, expandKeys } from "./suite-lib.mjs";
 import { assertBuildIdentityStable, selectedLiveScreens, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
 import { withCaptureState } from "./capture-state.mjs";
 import { deckFromEnv, seedCanonicalDeck } from "./canonical-deck.mjs";
+import { readSecrets } from "./dpad-account.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { PNG } from "pngjs";
 import { verifyDir } from "./verify-refs.mjs";
@@ -63,7 +64,9 @@ if (!process.env.PARITY_CLIENT) throw new Error("PARITY_CLIENT is required for i
 if (!process.env.PARITY_LOCK_DIR) throw new Error("PARITY_LOCK_DIR must point to the supplied scratch lock directory");
 const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
 if (!Number.isFinite(Date.parse(fixedNow))) throw new Error("PARITY_FIXED_NOW must be a valid ISO date");
-const stateFiles = [...new Set([...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file)])];
+// The canonical deck item must be inside the captured progress scope, or seeding it fails after the run has started.
+const deckScope = deckFromEnv({ ...process.env, PARITY_SEED_CANONICAL: "1" }, readSecrets()).deckFile;
+const stateFiles = [...new Set([...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file), deckScope])];
 await withCaptureState({ client: process.env.PARITY_CLIENT, files: stateFiles }, async (captureState) => {
 Object.assign(process.env, captureState.env, { PARITY_STABLE: "1" });
 const env = captureState.env;
@@ -81,8 +84,8 @@ const series = await (await fetch(`${srv}/api/v1/catalog/${seriesId}`, { headers
 const episodeFiles = (series.children?.Series ?? []).flatMap((s) => s.episodes ?? []).map((e) => e.media_file_id).filter(Boolean);
 if (!episodeFiles.length || !film.media_file_id) throw new Error("pinned detail media files are missing from the catalogue");
 const pinned = [...stateFiles, film.media_file_id, ...episodeFiles];
-const deck = deckFromEnv();
-if (deck) await seedCanonicalDeck(captureState, deck);
+const deck = deckFromEnv({ ...process.env, PARITY_SEED_CANONICAL: "1" }, readSecrets());
+await seedCanonicalDeck(captureState, deck);
 if (!args.includes("--no-reset")) {
   for (const file of new Set(pinned)) if (file !== deck?.deckFile) await captureState.writeProgress(file, { position_ms: 0, duration_ms: captureState.snapshot.files[file]?.duration_ms ?? 0, completed: false });
   await captureState.clearResumeChoices();
@@ -107,7 +110,7 @@ for (const name of groups) {
   const captureRows = [];
   try {
     if (!driver.setDeterministicCapture || !driver.waitReady || !driver.captureBuildIdentity) throw new Error("web driver lacks deterministic capture, readiness, or build identity controls");
-    await driver.setDeterministicCapture({ fixedNow, disableAnimations: true });
+    await driver.setDeterministicCapture({ fixedNow, disableAnimations: true, ...CAPTURE_REGION });
     const driverBuild = await driver.captureBuildIdentity();
     if (driverBuild !== `${webBuild.sha}@${webBuild.builtAt}`) throw new Error(`web driver build identity ${driverBuild} does not match build-info identity ${webBuild.sha}@${webBuild.builtAt}`);
     await driver.start();
