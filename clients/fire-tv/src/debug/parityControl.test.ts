@@ -111,4 +111,51 @@ describe('parityControl', () => {
       else process.env.PLAYARR_PARITY_CONTROL = previousFlag;
     }
   });
+
+  it('freezes and releases the app clock on cmd=clock and reports it with the state', async () => {
+    const previousFlag = process.env.PLAYARR_PARITY_CONTROL;
+    process.env.PLAYARR_PARITY_CONTROL = '1';
+    let receiveUrl: ((event: {url: string}) => void) | undefined;
+    jest.useFakeTimers();
+    jest.doMock('react-native', () => ({
+      Linking: {
+        getInitialURL: () => Promise.resolve(null),
+        addEventListener: (_type: string, listener: (event: {url: string}) => void) => {
+          receiveUrl = listener;
+          return {remove: jest.fn()};
+        },
+      },
+    }));
+    const log = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    try {
+      let control!: typeof import('./parityControl');
+      jest.isolateModules(() => { control = require('./parityControl') as typeof import('./parityControl'); });
+      const cleanup = control.installParityControl({
+        location: () => '/', route: () => undefined, open: () => undefined, play: () => undefined,
+        stop: () => undefined, setTheme: () => undefined,
+        player: () => ({state: 'idle', positionSeconds: 0, durationSeconds: 0}), theme: () => 'dark',
+      });
+      await Promise.resolve();
+      const clockOf = (): string | null => JSON.parse(String(log.mock.calls.at(-1)?.[0]).replace(/^PARITY /, '')).clock;
+
+      receiveUrl!({url: 'pkg://com.streamarr.firetv.main?cmd=state'});
+      jest.advanceTimersByTime(0);
+      expect(clockOf()).toBeNull();
+
+      receiveUrl!({url: 'pkg://com.streamarr.firetv.main?cmd=clock&now=2026-10-07T12%3A00%3A00Z'});
+      jest.advanceTimersByTime(1500);
+      expect(clockOf()).toBe('2026-10-07T12:00:00.000Z');
+
+      receiveUrl!({url: 'pkg://com.streamarr.firetv.main?cmd=clock&now='});
+      jest.advanceTimersByTime(1500);
+      expect(clockOf()).toBeNull();
+      cleanup();
+    } finally {
+      log.mockRestore();
+      jest.dontMock('react-native');
+      jest.useRealTimers();
+      if (previousFlag === undefined) delete process.env.PLAYARR_PARITY_CONTROL;
+      else process.env.PLAYARR_PARITY_CONTROL = previousFlag;
+    }
+  });
 });

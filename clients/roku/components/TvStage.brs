@@ -33,6 +33,14 @@ sub init()
     resetForEntrance()
 end sub
 
+' The entrance interpolator's keys follow the content base, so the animation ends where revealStage() puts the panel.
+sub onContentBaseChange()
+    base = m.top.contentBase
+    start = [base[0] + 60, base[1]]
+    m.top.findNode("contentTranslateInterp").keyValue = [start, start, base]
+    m.contentPanel.translation = start
+end sub
+
 sub onStageThemeChanged()
     m.top.findNode("homeRailFrostLight").visible = m.global.themeMode = "light"
     m.top.findNode("homeRailFrostDark").visible = m.global.themeMode <> "light"
@@ -47,7 +55,7 @@ sub resetForEntrance()
     m.titlePanel.opacity = 0
     m.titlePanel.translation = [119.6, 259.2]
     m.contentPanel.opacity = 0
-    m.contentPanel.translation = [941.6, 422.9]
+    m.contentPanel.translation = [m.top.contentBase[0] + 60, m.top.contentBase[1]]
 end sub
 
 ' Force every stage layer fully visible at its settled translation.
@@ -61,7 +69,7 @@ sub revealStage()
     m.titlePanel.opacity = 1
     m.titlePanel.translation = [153.6, 259.2]
     m.contentPanel.opacity = 1
-    m.contentPanel.translation = [881.6, 422.9]
+    m.contentPanel.translation = m.top.contentBase
 end sub
 
 sub onKeyArtUriChange()

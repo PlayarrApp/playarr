@@ -8,6 +8,7 @@ import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { installRegionPin, installVisualDate } from "./web.mjs";
 import { assertDeviceTestIdentity, fetchCurrentIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -43,6 +44,7 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
   const display = device === "tizen" ? env.TIZEN_DISPLAY ?? ":25" : env.WEBOS_DISPLAY ?? ":26";
   const cdpPort = env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
+  let tizenPinScript = null; // base64 of the page script that pins Date, zone and locale: stored for netlog.js to run before the app renders
   let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme, deterministicScriptId, deterministicCapture, hooksInstalledCurrent = false;
   const deterministicOwner = randomUUID();
   const allowedUsernames = loadAllowedDeviceTestUsernames({ env, client: device === "tizen" ? env.PARITY_CLIENT : undefined, ...(secrets ? { secrets } : {}) });
@@ -186,6 +188,12 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
     if (r?.exceptionDetails) throw new Error(r.exceptionDetails.text);
     return r?.result?.value;
   }
+  // Store the pin for the next page start and apply it to this page too; a no-op when the page already runs it.
+  async function applyTizenPin() {
+    if (!tizenPinScript) return;
+    await ev(`(localStorage.setItem("__parityPin", atob("${tizenPinScript}")), window.__parityPinned || (0, eval)(atob("${tizenPinScript}")), true)`);
+    if ((await ev("window.__parityPinned === true")) !== true) throw new Error("tizen page did not take the pinned clock");
+  }
   // The identity request crosses the network to the test server and can time out under load, and the app rotates its
   // token every 15 minutes. Only those two transient failures are retried (bounded); anything else still fails at once.
   async function guard() {
@@ -209,7 +217,7 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
       for (let a = 0; a < 4; a += 1) {
         writeFileSync(`${NETLOG}/cmd.txt`, `hash:${route}`);
         await sleep(8000);
-        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) { await guard(); return; }
+        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) { await applyTizenPin(); await guard(); return; }
       }
       throw new Error(`tizen did not reach ${route}`);
     }
@@ -396,8 +404,15 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
   }
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
-  async function setDeterministicCapture({ fixedNow, disableAnimations } = {}) {
-    if (device !== "webos") throw new Error("Tizen stable deterministic capture is unsupported");
+  async function setDeterministicCapture({ fixedNow, disableAnimations, timeZone = "UTC", locale = "en-GB" } = {}) {
+    if (device === "tizen") {
+      // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
+      if (!fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error("tizen deterministic capture requires a valid fixedNow instant");
+      if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
+      const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});window.__parityPinned = true;`;
+      tizenPinScript = Buffer.from(source).toString("base64");
+      return;
+    }
     if (typeof fixedNow !== "string" || !fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error("deterministic capture requires a valid fixedNow date string");
     if (disableAnimations !== true) throw new Error("deterministic capture requires animation suppression");
     await guard();
@@ -516,6 +531,7 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
       } else {
         await guard();
         execFileSync("xset", ["-display", display, "r", "off"], { stdio: "ignore" });
+        await applyTizenPin();
       }
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
       await guard();

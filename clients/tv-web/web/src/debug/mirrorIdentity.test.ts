@@ -4,6 +4,7 @@ import {
   MIRROR_PROFILE_SESSIONS_KEY,
   mirrorFramePayload,
   readMirrorIdentity,
+  readSelectedSession,
   revalidateMirrorIdentity,
   reportMirrorIdentityStatus,
   type MirrorIdentityDependencies,
@@ -189,5 +190,17 @@ describe("debug mirror identity guard", () => {
     expect(result.status).toBe("identity_unavailable");
     expect(result.serverMatched).toBe(true);
     expect(f.requests).toHaveLength(2);
+  });
+});
+
+describe("readSelectedSession", () => {
+  it("returns the selected server, user and authorisation, and follows a token rotation", () => {
+    const values = new Map([[MIRROR_ACTIVE_PROFILE_KEY, marker], [MIRROR_PROFILE_SESSIONS_KEY, session("old-token")]]);
+    const storage = { getItem: (key: string) => values.get(key) ?? null };
+    expect(readSelectedSession(storage)).toEqual({ userId: "user-a", serverUrl: "https://server.example", auth: "Bearer old-token" });
+    values.set(MIRROR_PROFILE_SESSIONS_KEY, session("new-token"));
+    expect(readSelectedSession(storage)?.auth).toBe("Bearer new-token");
+    values.delete(MIRROR_ACTIVE_PROFILE_KEY);
+    expect(readSelectedSession(storage)).toBeNull();
   });
 });

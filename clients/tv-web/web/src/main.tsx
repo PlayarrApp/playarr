@@ -45,6 +45,9 @@ if (__PLAYARR_DEBUG_MIRROR__) {
   try {
     const launchToken = new URLSearchParams(window.location.search).get("mirrorToken");
     if (launchToken) window.sessionStorage.setItem("playarr.debugMirrorToken", launchToken);
+    const flags: Record<string, string> = {};
+    new URLSearchParams(window.location.search).forEach((value, key) => { if (key.startsWith("mirror") && key !== "mirrorToken") flags[key] = value; });
+    window.sessionStorage.setItem("playarr.debugMirrorFlags", JSON.stringify(flags));
     const probeParam = new URLSearchParams(window.location.search).get("mirrorProbe");
     if (probeParam) window.sessionStorage.setItem("playarr.debugMirrorProbe", probeParam);
     if (new URLSearchParams(window.location.search).get("mirrorPointer") === "1") window.sessionStorage.setItem("playarr.debugMirrorPointer", "1");

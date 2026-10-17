@@ -286,9 +286,9 @@ test("webOS reconnect fails closed with sanitised CDP identity evaluation errors
   });
 });
 
-test("Tizen keeps deterministic capture unsupported without opening CDP", async () => {
+test("Tizen pins only the clock, and keeps build identity and readiness unsupported without opening CDP", async () => {
   const { driver, calls } = await makeDriver({ device: "tizen" });
-  await assert.rejects(driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true }), /Tizen stable deterministic capture is unsupported/);
+  await driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
   await assert.rejects(driver.captureBuildIdentity(), /Tizen stable build identity is unsupported/);
   await assert.rejects(driver.waitReady({ screen: "home", phase: "route" }), /Tizen stable readiness is unsupported/);
   assert.equal(calls.length, 0);
