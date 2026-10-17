@@ -74,6 +74,8 @@ PlayarrPage {
                     pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"))
                 }
                 onPressAndHold: remorse.execute(qsTr("Removing profile"), function () { Api.removeProfile(modelData.userId) })
+                // Dark ring colour as WorkCard (web captures measure 197,138,151); light keeps the brand ink.
+                readonly property color ringColor: Tokens.dark ? Qt.rgba(197 / 255, 138 / 255, 151 / 255, 1) : Tokens.brandInk
                 // Web: the signed-in profile holds the default focus, so its card carries the focused shadow stack (as WorkCard).
                 RectangularGlow {
                     visible: modelData.active
@@ -87,13 +89,19 @@ PlayarrPage {
                     glowRadius: 10 * Tokens.u; spread: 0.1; cornerRadius: width / 2 + glowRadius
                     color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.2)
                 }
+                RectangularGlow {   // the ring's own glow as WorkCard: 0 0 20px 4px at 45 %; dark only, light scored lower with it
+                    visible: modelData.active && Tokens.dark
+                    x: av.x; y: av.y; width: av.width; height: av.width
+                    glowRadius: 10 * Tokens.u; spread: 0.25; cornerRadius: width / 2 + glowRadius
+                    color: Qt.rgba(ringColor.r, ringColor.g, ringColor.b, 0.45)
+                }
                 Avatar {
                     id: av
                     y: 4 * Tokens.u; anchors.horizontalCenter: parent.horizontalCenter
                     width: 168.6 * Tokens.u
                     source: modelData.avatar
                     // The active ring sits outside the plate, as on web.
-                    Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: Tokens.dark ? Qt.rgba(0.81, 0.19, 0.34, 0.4) : Tokens.brandInk }   // alpha in the colour: item opacity drew a pink square behind the plate
+                    Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: ringColor }   // alpha in the colour: item opacity drew a pink square behind the plate
                 }
                 Label { anchors { top: av.bottom; topMargin: 5.8 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink
