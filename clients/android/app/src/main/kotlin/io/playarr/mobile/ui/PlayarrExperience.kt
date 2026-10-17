@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -4189,8 +4190,8 @@ private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetE
         triggerFocus.requestFocus()
     }
     val chevronRotation by animateFloatAsState(if (open) 180f else 0f, tween(180), label = "language filter chevron")
-    val any = playarrString(PlayarrString.LibraryAnyLanguage)
-    val summary = entries.filter { it.code in selected }.joinToString(", ") { languageDisplayName(it.code, locale, it.name) }.ifEmpty { any }
+    val entriesByCode = entries.associateBy(LanguageFacetEntry::code)
+    val chosen = selected.mapNotNull(entriesByCode::get)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LibraryFilterLabel(title)
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -4198,13 +4199,48 @@ private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetE
                 Modifier.fillMaxWidth().background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
                     .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(6.4.dp),
             ) {
-                Row(
-                    Modifier.fillMaxWidth().height(44.dp).focusRequester(triggerFocus).clip(RoundedCornerShape(10.dp))
-                        .clickable { open = !open }.padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
+                FlowRow(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.4.dp),
                 ) {
-                    Text(summary, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    Text("\u2304", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), modifier = Modifier.graphicsLayer { rotationZ = chevronRotation })
+                    chosen.forEach { entry ->
+                        val name = languageDisplayName(entry.code, locale, entry.name)
+                        val removalDescription = playarrString(PlayarrString.LibraryRemoveLanguage, "name" to name)
+                        Row(
+                            Modifier.defaultMinSize(minWidth = 44.dp).clip(RoundedCornerShape(10.dp)).background(WebInk)
+                                .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(10.dp))
+                                .clickable(role = Role.Button) {
+                                    onToggle(entry.code)
+                                    triggerFocus.requestFocus()
+                                }
+                                .semantics { contentDescription = removalDescription }
+                                .heightIn(min = 44.dp).padding(horizontal = 12.dp, vertical = 4.8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.2.dp),
+                        ) {
+                            Text(name, color = WebBackground, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("×", color = WebBackground, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680))
+                        }
+                    }
+                    Row(
+                        Modifier.defaultMinSize(minWidth = 128.dp).weight(1f).focusRequester(triggerFocus).clip(RoundedCornerShape(10.dp))
+                            .clickable(role = Role.Button) { open = !open }.heightIn(min = 44.dp).padding(horizontal = 12.dp, vertical = 4.8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.2.dp),
+                    ) {
+                        Text(
+                            if (chosen.isEmpty()) playarrString(PlayarrString.LibraryAnyLanguage) else playarrString(PlayarrString.LibraryAddLanguage),
+                            color = WebInk,
+                            fontSize = 8.96.sp,
+                            lineHeight = 13.44.sp,
+                            fontWeight = FontWeight(680),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text("\u2304", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), modifier = Modifier.graphicsLayer { rotationZ = chevronRotation })
+                    }
                 }
             }
             if (open) {
