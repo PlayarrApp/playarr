@@ -1,1 +1,0 @@
-- Xbox parity capture waits for native seek completion at the requested frame and emits sanitized player and focus readiness diagnostics.

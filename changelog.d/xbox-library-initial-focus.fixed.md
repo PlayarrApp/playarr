@@ -1,1 +1,0 @@
-- Keep the Xbox library's initial card focus claim active until focus settles, while allowing user input to cancel it.

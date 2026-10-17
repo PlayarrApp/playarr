@@ -1,1 +1,0 @@
-- Xbox parity automation verifies the signed-in test account before sending input or capturing screenshots, serializes shared-account runs, and fails when its watch-progress reset cannot complete.

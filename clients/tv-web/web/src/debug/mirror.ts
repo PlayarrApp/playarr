@@ -6,7 +6,19 @@
 import { focusInfo, selectorFor, visibleText } from "./mirrorSnapshot";
 import { mirrorCaptureGeometry } from "./mirrorCaptureGeometry";
 import { withCollapsingTrackHeights } from "./mirrorTrackHeights";
+import { inlineArtwork } from "./mirrorArtwork";
 import { localeTagFor } from "../lib/i18n/languages";
+import {
+  mirrorFramePayload,
+  realNow,
+  MIRROR_ACTIVE_PROFILE_KEY,
+  MIRROR_PROFILE_SESSIONS_KEY,
+  readMirrorIdentity,
+  readSelectedSession,
+  reportMirrorIdentityStatus,
+  revalidateMirrorIdentity,
+  type MirrorIdentity,
+} from "./mirrorIdentity";
 
 // The production-bundle guard and test look for this string, so it must survive minification.
 const MIRROR_SENTINEL = "PLAYARR_DEBUG_MIRROR_SENTINEL";
@@ -46,6 +58,22 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   });
 }
 
+function fetchWithTimeout(url: string, init: RequestInit, ms: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), ms);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => window.clearTimeout(timer));
+}
+
+// Launch flags (?mirrorPointer=1, ?mirrorGeo=1, ?mirrorNoArt=1 ...) kept in sessionStorage because the router may rewrite the query.
+function mirrorFlag(name: string): boolean {
+  if (new URLSearchParams(window.location.search).get(name) === "1") return true;
+  try {
+    return (JSON.parse(window.sessionStorage.getItem("playarr.debugMirrorFlags") ?? "{}") as Record<string, string>)[name] === "1";
+  } catch {
+    return false;
+  }
+}
+
 // Path plus the page's own query (a calendar view, say), without the launch parameters or the token.
 function routeWithQuery(): string {
   const q = new URLSearchParams(window.location.search);
@@ -60,7 +88,7 @@ const keyLog: string[] = [];
 let lastKeyAt = 0;
 for (const type of ["keydown", "keyup"] as const) {
   window.addEventListener(type, (e) => {
-    const now = Date.now();
+    const now = realNow();
     keyLog.push(`${type} ${e.key}/${e.keyCode}${e.repeat ? " rep" : ""} +${lastKeyAt ? now - lastKeyAt : 0}`);
     lastKeyAt = now;
     if (keyLog.length > 12) keyLog.shift();
@@ -122,9 +150,23 @@ function layoutEnv(): Record<string, unknown> {
   };
 }
 
+// ?mirrorProbe=<selector>%2C<selector>: report computed font size, box and text width of the first match, to compare the TV with the web.
+function probeFontSizes(): unknown[] {
+  const raw = new URLSearchParams(window.location.search).get("mirrorProbe") ?? window.sessionStorage.getItem("playarr.debugMirrorProbe");
+  if (!raw) return [];
+  return raw.split(",").slice(0, 8).map((selector) => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return { selector, found: false };
+    const r = el.getBoundingClientRect();
+    const cs = window.getComputedStyle(el);
+    return { selector, fontSize: cs.fontSize, fontFamily: cs.fontFamily.slice(0, 40), letterSpacing: cs.letterSpacing, w: r.width, h: r.height };
+  });
+}
+
 export function startDebugMirror(): void {
-  const token = readToken();
-  if (!token) return;
+  const maybeToken = readToken();
+  if (!maybeToken) return;
+  const token: string = maybeToken; // a declared type survives hoisted function declarations, narrowing does not
   const endpoint = `${window.location.origin}/__mirror/frame`;
   const errors: string[] = [];
   window.addEventListener("error", (e) => {
@@ -137,6 +179,7 @@ export function startDebugMirror(): void {
   });
 
   let fontCss: string | null = null;
+  const artworkCache = new Map<string, string | null>();
   for (const level of ["error", "warn"] as const) {
     const original = console[level].bind(console);
     console[level] = (...args: unknown[]) => {
@@ -150,116 +193,227 @@ export function startDebugMirror(): void {
   let timer = 0;
   let seq = 0;
 
+  // Identity heartbeat from a Web Worker, so rendering (which blocks this thread for seconds) cannot starve it. The page re-verifies the
+  // identity every 2 s and hands the worker the result; the worker asks the server who is current every 2 s and reports that to the
+  // receiver, or reports the failed status. The guard judges the signed-in account by the newest heartbeat.
+  const heartbeatWorker = new Worker(URL.createObjectURL(new Blob([`
+    let cfg = null;
+    let previous = null; // the credentials before the last rotation, tried when the server has not accepted the new ones yet
+    onmessage = (e) => {
+      const m = e.data;
+      if (m.type === "creds") {
+        if (cfg && cfg.auth && cfg.auth !== m.auth) previous = { auth: cfg.auth, userId: cfg.userId };
+        cfg = { ...(cfg || {}), status: "ok", auth: m.auth, userId: m.userId, serverUrl: m.serverUrl, profiles: m.profiles, beatUrl: m.beatUrl };
+      } else {
+        cfg = { ...(cfg || {}), status: m.status, beatUrl: m.beatUrl, serverUrl: m.serverUrl ?? (cfg && cfg.serverUrl) ?? null };
+      }
+    };
+    const ask = async (c, auth) => {
+      const list = await (await fetch(c.profiles, { headers: { Authorization: auth } })).json();
+      return Array.isArray(list) ? list.filter((p) => p && p.is_current === true) : [];
+    };
+    setInterval(async () => {
+      const c = cfg;
+      if (!c) return;
+      const base = { serverUrl: c.serverUrl, isCurrentCount: 0, username: null, checkedAt: Date.now(), sessionChanged: c.status === "session_changed" };
+      let body = { ...base, status: c.status };
+      if (c.status === "ok" && c.auth) {
+        try {
+          let current = await ask(c, c.auth).catch(() => []);
+          let userId = c.userId;
+          if (current.length !== 1 && previous) { current = await ask(c, previous.auth).catch(() => []); userId = previous.userId; }
+          body = current.length === 1 && current[0].id === userId && typeof current[0].username === "string"
+            ? { ...base, checkedAt: Date.now(), status: "ok", isCurrentCount: 1, username: current[0].username }
+            : { ...base, status: "identity_unavailable" };
+        } catch { return; }
+      }
+      try { await fetch(c.beatUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); } catch {}
+    }, 2000);
+  `], { type: "text/javascript" })));
+  const beatUrl = `${window.location.origin}/__mirror/heartbeat?t=${encodeURIComponent(token)}`;
+  // Hand the worker the selected credentials the moment the app writes them (a token rotation), not on a timer.
+  const syncCredentials = (): void => {
+    const session = readSelectedSession(window.localStorage);
+    if (session) heartbeatWorker.postMessage({ type: "creds", ...session, profiles: `${session.serverUrl}/api/v1/users/profiles`, beatUrl });
+  };
+  const nativeSetItem = Storage.prototype.setItem;
+  Storage.prototype.setItem = function (this: Storage, key: string, value: string): void {
+    nativeSetItem.call(this, key, value);
+    if (this === window.localStorage && (key === MIRROR_PROFILE_SESSIONS_KEY || key === MIRROR_ACTIVE_PROFILE_KEY)) syncCredentials();
+  };
+  syncCredentials();
+  let verifying = false;
+  window.setInterval(() => {
+    if (verifying) return;
+    verifying = true;
+    void readMirrorIdentity(token)
+      .then((identity) => {
+        // A request that timed out while rendering blocked this thread is not an identity change: keep the last good hand-over. The worker
+        // still asks the server itself every 2 s, and the guard still compares the server and user the heartbeat reports.
+        if (identity.status === "trusted_server_unavailable") return;
+        if (identity.status === "ok") syncCredentials();
+        else heartbeatWorker.postMessage({ type: "status", status: identity.status, serverUrl: identity.serverUrl, beatUrl });
+      })
+      .catch(() => undefined)
+      .finally(() => { verifying = false; });
+  }, 2000);
+
   async function snapshot(reason: string): Promise<void> {
     if (busy) {
       pending = true;
       return;
     }
     busy = true;
-    const started = Date.now();
-    let image: string | null = null;
-    let captureError: string | null = null;
     try {
-      const { toJpeg, toPng, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
-      // The TV stage scale (tvStageScale.ts) zooms <html> on most platforms, which html-to-image does
-      // not see. VIDAA instead transforms <body>; clear only that transform on the cloned body so the
-      // logical stage is rendered once at the requested output density.
-      const zoom = parseFloat(document.documentElement.style.getPropertyValue("--stage-zoom")) || 1;
-      const hasStageBodyTransform = Boolean(document.body.style.transform && zoom !== 1);
-      const geometry = mirrorCaptureGeometry(
-        // With the stage transform window.innerWidth/Height are already stage pixels (tvStageScale.ts); the geometry wants the real viewport.
-        hasStageBodyTransform ? window.innerWidth * zoom : window.innerWidth,
-        hasStageBodyTransform ? window.innerHeight * zoom : window.innerHeight,
-        zoom, TARGET_WIDTH, hasStageBodyTransform);
-      const stageW = geometry.width;
-      const stageH = geometry.height;
-      const bg = window.getComputedStyle(document.body).backgroundColor || "#000";
-      // The browser itself renders the SVG foreignObject, so modern CSS (color-mix and so on) is drawn faithfully.
-      if (fontCss === null) {
-        // Embedding fonts on every frame is what made renders crawl on the TV: do it once.
+      const started = realNow();
+      let image: string | null = null;
+      let captureError: string | null = null;
+      let initialIdentity: MirrorIdentity | null = null;
+      let restoreArtwork: () => void = () => undefined;
+      let restoreRing: () => void = () => undefined;
+      // ?mirrorPointer=1: the web references show no :focus-visible outline on buttons (their sign-in used pointer clicks).
+      // Media cards keep their remote marker, as in the references. Computed styles are inlined in the render, so clear it on the element itself.
+      const hideFocusRing = mirrorFlag("mirrorPointer");
+      try {
+        initialIdentity = await readMirrorIdentity(token);
+        if (initialIdentity.status !== "ok") throw new Error("mirror identity verification failed");
+        const { toJpeg, toPng, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
+        // The TV stage scale (tvStageScale.ts) zooms <html> on most platforms, which html-to-image does
+        // not see. VIDAA instead transforms <body>; clear only that transform on the cloned body so the
+        // logical stage is rendered once at the requested output density.
+        const zoom = parseFloat(document.documentElement.style.getPropertyValue("--stage-zoom")) || 1;
+        const hasStageBodyTransform = Boolean(document.body.style.transform && zoom !== 1);
+        const geometry = mirrorCaptureGeometry(
+          // With the stage transform window.innerWidth/Height are already stage pixels (tvStageScale.ts); the geometry wants the real viewport.
+          hasStageBodyTransform ? window.innerWidth * zoom : window.innerWidth,
+          hasStageBodyTransform ? window.innerHeight * zoom : window.innerHeight,
+          zoom, TARGET_WIDTH, hasStageBodyTransform);
+        const stageW = geometry.width;
+        const stageH = geometry.height;
+        const bg = window.getComputedStyle(document.body).backgroundColor || "#000";
+        // The browser itself renders the SVG foreignObject, so modern CSS (color-mix and so on) is drawn faithfully.
+        if (fontCss === null) {
+          // Embedding fonts on every frame is what made renders crawl on the TV: do it once.
+          try {
+            fontCss = await withTimeout(getFontEmbedCSS(document.body), 20000, "font embed");
+          } catch (err) {
+            fontCss = "";
+            errors.push("font embed: " + String((err as Error).message).slice(0, 120));
+          }
+        }
+        const ringEl = document.activeElement;
+        if (hideFocusRing && ringEl instanceof HTMLElement && ringEl !== document.body && !ringEl.closest(".media-card")) {
+          const previousOutline = ringEl.style.outline;
+          ringEl.style.outline = "none";
+          restoreRing = () => { ringEl.style.outline = previousOutline; };
+        }
+        const visibleImages = Array.from(document.body.querySelectorAll<HTMLImageElement>("img")).filter((img) => {
+          const r = img.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && r.left < stageW && r.top < stageH && r.right > 0 && r.bottom > 0;
+        });
+        if (!mirrorFlag("mirrorNoArt")) restoreArtwork = await withTimeout(inlineArtwork(visibleImages, window.location.origin, token, artworkCache), 20000, "artwork inline");
+        await Promise.all(visibleImages.map((img) => img.decode().catch(() => undefined)));
+        // html-to-image clones without scroll offsets, so a rail the page has scrolled (Home, the library grid) would be drawn
+        // unscrolled. Tag every scrolled container and let the embedded CSS translate its children by the offset.
+        const scrolled = Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((e) => e.scrollTop > 0 || e.scrollLeft > 0);
+        let scrollCss = "";
+        scrolled.forEach((e, i) => {
+          e.setAttribute("data-mirror-scroll", String(i));
+          scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
+        });
+        image = await withTimeout(
+          withCollapsingTrackHeights(() => (usePng ? toPng : toJpeg)(document.body, {
+            // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
+            // native scrollbars the TV does not show: hide them in the rendered copy.
+            // ?mirrorGeo=1 turns hinting off (geometricPrecision). Measured on the TV: it scored 0.02 to 0.2 lower than the default on settings, month and agenda.
+            fontEmbedCSS: `${fontCss}\n${mirrorFlag("mirrorGeo") ? "*{text-rendering:geometricPrecision!important}\n" : ""}*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
+            // Cross-origin media (posters, video) would stall or taint the render: leave it out.
+            filter: (node) => {
+              // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far
+              // less time to render, and nothing visible moves because earlier siblings stay put.
+              if (node instanceof HTMLElement && node !== document.body) {
+                const r = node.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0 && (r.left >= stageW || r.top >= stageH)) return false;
+              }
+              if (node instanceof HTMLVideoElement) return false;
+              if (node instanceof HTMLImageElement && node.src && !node.src.startsWith("data:")) {
+                try {
+                  return new URL(node.src, window.location.href).origin === window.location.origin;
+                } catch {
+                  return false;
+                }
+              }
+              return true;
+            },
+            pixelRatio: geometry.pixelRatio,
+            ...(geometry.cloneStyle ? { style: geometry.cloneStyle } : {}),
+            quality: 0.92,
+            width: stageW,
+            height: stageH,
+            backgroundColor: bg,
+            cacheBust: false,
+            imagePlaceholder: "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
+          })),
+          60000,
+          "html-to-image render",
+        ).finally(() => scrolled.forEach((e) => e.removeAttribute("data-mirror-scroll")));
+      } catch (err) {
+        captureError = String((err && (err as Error).message) || err).slice(0, 300);
+      } finally {
+        restoreArtwork();
+        restoreRing();
+      }
+      const body: Record<string, unknown> = {
+        sentinel: MIRROR_SENTINEL,
+        seq: ++seq,
+        reason,
+        at: realNow(),
+        captureMs: realNow() - started,
+        viewport: { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio || 1 },
+        screen: { w: window.screen.width, h: window.screen.height },
+        env: layoutEnv(),
+        route: routeWithQuery(),
+        focus: focusInfo(),
+        text: visibleText(),
+        userAgent: navigator.userAgent,
+        errors,
+        captureError,
+        probe: probeFontSizes(),
+        image,
+      };
+      let currentIdentity = initialIdentity;
+      if (initialIdentity?.status === "ok") {
         try {
-          fontCss = await withTimeout(getFontEmbedCSS(document.body), 20000, "font embed");
-        } catch (err) {
-          fontCss = "";
-          errors.push("font embed: " + String((err as Error).message).slice(0, 120));
+          currentIdentity = revalidateMirrorIdentity(initialIdentity, await readMirrorIdentity(token));
+        } catch {
+          currentIdentity = null;
         }
       }
-      // html-to-image clones without scroll offsets, so a rail the page has scrolled (Home, the library grid) would be drawn
-      // unscrolled. Tag every scrolled container and let the embedded CSS translate its children by the offset.
-      const scrolled = Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((e) => e.scrollTop > 0 || e.scrollLeft > 0);
-      let scrollCss = "";
-      scrolled.forEach((e, i) => {
-        e.setAttribute("data-mirror-scroll", String(i));
-        scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
-      });
-      image = await withTimeout(
-        withCollapsingTrackHeights(() => (usePng ? toPng : toJpeg)(document.body, {
-          // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
-          // native scrollbars the TV does not show: hide them in the rendered copy.
-          fontEmbedCSS: `${fontCss}\n*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
-          // Cross-origin media (posters, video) would stall or taint the render: leave it out.
-          filter: (node) => {
-            // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far
-            // less time to render, and nothing visible moves because earlier siblings stay put.
-            if (node instanceof HTMLElement && node !== document.body) {
-              const r = node.getBoundingClientRect();
-              if (r.width > 0 && r.height > 0 && (r.left >= stageW || r.top >= stageH)) return false;
-            }
-            if (node instanceof HTMLVideoElement) return false;
-            if (node instanceof HTMLImageElement && node.src && !node.src.startsWith("data:")) {
-              try {
-                return new URL(node.src, window.location.href).origin === window.location.origin;
-              } catch {
-                return false;
-              }
-            }
-            return true;
-          },
-          pixelRatio: geometry.pixelRatio,
-          ...(geometry.cloneStyle ? { style: geometry.cloneStyle } : {}),
-          quality: 0.92,
-          width: stageW,
-          height: stageH,
-          backgroundColor: bg,
-          cacheBust: false,
-          imagePlaceholder: "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
-        })),
-        60000,
-        "html-to-image render",
-      ).finally(() => scrolled.forEach((e) => e.removeAttribute("data-mirror-scroll")));
-    } catch (err) {
-      captureError = String((err && (err as Error).message) || err).slice(0, 300);
-    }
-    const body = {
-      sentinel: MIRROR_SENTINEL,
-      seq: ++seq,
-      reason,
-      at: Date.now(),
-      captureMs: Date.now() - started,
-      viewport: { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio || 1 },
-      screen: { w: window.screen.width, h: window.screen.height },
-      env: layoutEnv(),
-      route: routeWithQuery(),
-      focus: focusInfo(),
-      text: visibleText(),
-      userAgent: navigator.userAgent,
-      errors,
-      captureError,
-      image,
-    };
-    try {
-      await fetch(`${endpoint}?t=${encodeURIComponent(token as string)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      if (!currentIdentity || currentIdentity.status !== "ok") {
+        if (currentIdentity) {
+          await reportMirrorIdentityStatus(currentIdentity, token).catch(() => undefined);
+        }
+      } else {
+        // Keep this allow-list explicit. The internal selected profile and credentials never enter a frame.
+        const payload = mirrorFramePayload(body, currentIdentity);
+        try {
+          await fetchWithTimeout(`${endpoint}?t=${encodeURIComponent(token)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }, 5000);
+        } catch {
+          // receiver unreachable: try again on the next tick
+        }
+      }
     } catch {
-      // receiver unreachable: try again on the next tick
-    }
-    busy = false;
-    if (pending) {
-      pending = false;
-      void snapshot("queued");
+      // Keep the mirror loop alive after unexpected capture or diagnostic failures.
+    } finally {
+      busy = false;
+      if (pending) {
+        pending = false;
+        void snapshot("queued");
+      }
     }
   }
 

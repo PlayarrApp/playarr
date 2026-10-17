@@ -1,1 +1,0 @@
-- Report Xbox theme-picker targets in the same fixed design coordinates used by parity pointer input, including scaled windows.

@@ -1,1 +1,0 @@
-- Xbox parity traces report safe HTTP, network, and response diagnostics when direct-play fixture preflight fails.

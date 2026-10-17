@@ -1,0 +1,1 @@
+- Add opt-in stable native capture readiness checks for Android TV Movies, Series and Music; other routes retain their existing screenshot path and fail closed when stable capture readiness is requested.

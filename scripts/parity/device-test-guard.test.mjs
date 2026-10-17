@@ -28,10 +28,19 @@ test("only exact configured test usernames enter the allowlist", () => {
 
 test("trusted server must come from the device-test server key and match any supplied server", () => {
   assert.equal(loadTrustedDeviceTestServerUrl({ secrets: { PLAYARR_DEVICE_TEST_SERVER_URL: `${serverUrl}/` }, env: {} }), serverUrl);
+  assert.equal(loadTrustedDeviceTestServerUrl({ secrets: { PLAYARR_DEVICE_TEST_SERVER_URL: `${serverUrl}/` }, env: { PLAYARR_TEST_SERVER_URL: serverUrl } }), serverUrl);
   assert.equal(loadTrustedDeviceTestServerUrl({ secrets: {}, env: { PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl } }), serverUrl);
   assert.throws(() => loadTrustedDeviceTestServerUrl({ secrets: { PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl }, env: { PLAYARR_SERVER_URL: "https://other.example.invalid" } }), /does not match/);
   assert.throws(() => loadTrustedDeviceTestServerUrl({ secrets: {}, env: { PLAYARR_SERVER_URL: serverUrl } }), /not configured/);
   assert.throws(() => loadTrustedDeviceTestServerUrl({ secrets: {}, env: {} }), /not configured/);
+});
+
+test("explicit test server override is trusted only when the authenticated identity matches it", () => {
+  const target = loadTrustedDeviceTestServerUrl({ secrets: { PLAYARR_DEVICE_TEST_SERVER_URL: "https://eu3.example.invalid" }, env: { PLAYARR_TEST_SERVER_URL: "https://eu3.example.invalid" } });
+  assert.equal(target, "https://eu3.example.invalid");
+  assert.throws(() => loadTrustedDeviceTestServerUrl({ secrets: { PLAYARR_DEVICE_TEST_SERVER_URL: "https://eu4.example.invalid" }, env: { PLAYARR_TEST_SERVER_URL: "https://eu3.example.invalid" } }), /does not match/);
+  assert.equal(assertDeviceTestIdentity({ identity: { username: "device-test", isCurrentCount: 1, serverUrl: target }, allowedUsernames: new Set(["device-test"]), expectedServerUrl: target }), true);
+  assert.throws(() => assertDeviceTestIdentity({ identity: { username: "device-test", isCurrentCount: 1, serverUrl: "https://eu4.example.invalid" }, allowedUsernames: new Set(["device-test"]), expectedServerUrl: target }), /guard rejected/);
 });
 
 test("authenticated identity must be uniquely current, explicitly allowlisted, and on the trusted server", () => {
@@ -109,10 +118,28 @@ test("browser-evaluated identity helper is self-contained after serialisation", 
   assert.equal(JSON.stringify(await serialised({ expectedServerUrl: serverUrl })), JSON.stringify({ username: "device-test", isCurrentCount: 1, serverUrl }));
 });
 
-test("a session rotated mid-check is re-validated once, a repeated failure still throws", async () => {
-  const identity = { username: "device-test", isCurrentCount: 1, serverUrl };
-  const flaky = (failures) => { let n = 0; return { evaluate: async () => { if (n++ < failures) throw new Error("device-test account session changed during identity check"); return identity; } }; };
-  const args = { allowedUsernames: new Set(["device-test"]), expectedServerUrl: serverUrl };
-  await assertDeviceTestPage({ page: flaky(1), ...args });
-  await assert.rejects(assertDeviceTestPage({ page: flaky(2), ...args }), /session changed/);
+test("page guard retries transport failures but never account rejections", async () => {
+  const ok = { username: "device-test", isCurrentCount: 1, serverUrl: "https://relay.example" };
+  const args = { allowedUsernames: new Set(["device-test"]), expectedServerUrl: "https://relay.example" };
+  let calls = 0;
+  const flaky = { evaluate: async () => { if (++calls < 3) throw new Error("device-test account identity request failed (TypeError: Failed to fetch)"); return ok; } };
+  await assertDeviceTestPage({ page: flaky, ...args });
+  assert.equal(calls, 3);
+  calls = 0;
+  const denied = { evaluate: async () => { calls++; throw new Error("device-test account identity request failed (HTTP 401)"); } };
+  await assert.rejects(assertDeviceTestPage({ page: denied, ...args }), /HTTP 401/);
+  assert.equal(calls, 1);
+});
+
+test("identity helper accepts the relay's fallback port but not another host", async () => {
+  const trustedUrl = "https://relay.example";
+  const run = async (base) => {
+    const storage = new Map([["playarr:session", JSON.stringify({ accessToken: "t" })], ["playarr:apiBaseUrl", base]]);
+    globalThis.localStorage = { getItem: (k) => storage.get(k) ?? null };
+    globalThis.fetch = async () => ({ ok: true, async json() { return [{ username: "device-test", is_current: true }]; } });
+    return fetchCurrentIdentity({ expectedServerUrl: trustedUrl });
+  };
+  assert.equal((await run("https://relay.example:8484")).serverUrl, trustedUrl);
+  await assert.rejects(run("https://other.example"), /not trusted/);
+  await assert.rejects(run("http://relay.example"), /not trusted/);
 });

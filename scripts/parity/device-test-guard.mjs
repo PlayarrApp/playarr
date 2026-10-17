@@ -4,6 +4,7 @@ const safeUsernameKeys = ["PLAYARR_DEVICE_TEST_USERNAME", "PLAYARR_DEVICE_TEST_D
 
 /** Resolve explicit test-account configuration. PLAYARR_USERNAME is accepted only if independently allowlisted. */
 export function loadAllowedDeviceTestUsernames({ secrets, env = process.env, client } = {}) {
+  const clientKey = client ? clientSecretKeys(client).username : null;
   if (!secrets) secrets = optionalSecrets(env);
   const usernames = new Set();
   for (const key of safeUsernameKeys) {
@@ -11,7 +12,7 @@ export function loadAllowedDeviceTestUsernames({ secrets, env = process.env, cli
     if (typeof username === "string" && username.trim()) usernames.add(username.trim());
   }
   if (client) {
-    const key = clientSecretKeys(client).username;
+    const key = clientKey;
     const username = secrets[key] ?? env[key];
     if (typeof username === "string" && username.trim()) usernames.add(username.trim());
   }
@@ -45,10 +46,12 @@ function canonicalServerUrl(value) {
 export function loadTrustedDeviceTestServerUrl({ secrets, env = process.env } = {}) {
   if (!secrets) secrets = optionalSecrets(env);
   const trusted = canonicalServerUrl(secrets.PLAYARR_DEVICE_TEST_SERVER_URL ?? env.PLAYARR_DEVICE_TEST_SERVER_URL);
-  if (env.PLAYARR_SERVER_URL && canonicalServerUrl(env.PLAYARR_SERVER_URL) !== trusted) {
+  const explicitTestOverride = env.PLAYARR_TEST_SERVER_URL;
+  const override = explicitTestOverride ?? env.PLAYARR_SERVER_URL;
+  if (override && canonicalServerUrl(override) !== trusted) {
     throw new Error("configured server does not match the trusted device-test server");
   }
-  return trusted;
+  return canonicalServerUrl(override ?? trusted);
 }
 
 function optionalSecrets(env) {
@@ -102,21 +105,27 @@ export async function fetchCurrentIdentity({ expectedServerUrl } = {}) {
   let serverUrl;
   try { serverUrl = canonical(base); }
   catch { throw new Error("device-test account identity server is invalid"); }
-  if (expectedServerUrl && serverUrl !== canonical(expectedServerUrl)) throw new Error("device-test account identity server is not trusted");
+  if (expectedServerUrl) {
+    // The web app falls back from the relay name on 443 to 8484 when its probe fails (a host network flap does that): same host and scheme, another port, is still the trusted server.
+    const trusted = canonical(expectedServerUrl), got = new URL(serverUrl), want = new URL(trusted);
+    if (got.protocol !== want.protocol || got.hostname !== want.hostname) throw new Error("device-test account identity server is not trusted");
+    serverUrl = trusted;
+  }
   let response, profiles;
   let timeout;
   try {
     const controller = new AbortController();
-    timeout = setTimeout(() => controller.abort(), 5000);
+    timeout = setTimeout(() => controller.abort(), 15000);
     response = await fetch(`${base.replace(/\/$/, "")}/api/v1/users/profiles`, {
       headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal,
     });
-    if (!response.ok) throw new Error();
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     profiles = await response.json();
-  } catch { throw new Error("device-test account identity request failed"); }
+  } catch (error) { throw new Error(`device-test account identity request failed${/^HTTP \d{3}$/.test(error?.message) ? ` (${error.message})` : ` (${error?.name ?? "error"}: ${String(error?.message ?? "").slice(0, 80)})`}`); }
   finally { clearTimeout(timeout); }
   try {
-    if (localStorage.getItem("playarr:session") !== sessionText || localStorage.getItem("playarr:apiBaseUrl") !== base) {
+    // Token rotation rewrites the session text; the answering token still belongs to the account, so only a cleared session or a changed server is a change.
+    if (!localStorage.getItem("playarr:session") || localStorage.getItem("playarr:apiBaseUrl") !== base) {
       throw new Error("device-test account session changed during identity check");
     }
   } catch (error) {
@@ -132,13 +141,11 @@ export async function fetchCurrentIdentity({ expectedServerUrl } = {}) {
 }
 
 export async function assertDeviceTestPage({ page, allowedUsernames, expectedServerUrl }) {
-  // The player rotates its access token while a check runs; that surfaces as a changed session or a refused request. The retry
-  // re-reads the session and re-validates the whole identity, so a different account still fails.
-  const read = () => page.evaluate(fetchCurrentIdentity, { expectedServerUrl });
-  const identity = await read().catch(async (error) => {
-    if (!/session changed|identity request failed/.test(String(error?.message))) throw error;
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    return read();
-  });
+  // Chrome aborts in-flight fetches with ERR_NETWORK_CHANGED when the host network flaps; the check is read-only, so retry transport failures only.
+  let identity;
+  for (let attempt = 1; ; attempt++) {
+    try { identity = await page.evaluate(fetchCurrentIdentity, { expectedServerUrl }); break; }
+    catch (error) { if (attempt >= 3 || !/identity request failed \((?:TypeError|AbortError)/.test(String(error?.message))) throw error; }
+  }
   return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl });
 }

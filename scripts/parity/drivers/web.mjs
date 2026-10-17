@@ -168,6 +168,28 @@ export function installVisualDate(fixedNow, target = globalThis) {
   target.Date = VisualDate;
 }
 
+// Make a page that cannot take a CDP timezone override (Tizen) render in UTC and the given locale: Date's local getters read UTC and
+// Intl and the toLocale*String methods default to that zone and locale. Self-contained (no comments, no outer references) because
+// it is serialised into the page. shortcut: UTC only, a named zone would need its offset table.
+export function installRegionPin(timeZone, locale, target = globalThis) {
+  if (timeZone !== "UTC") throw new Error("installRegionPin supports UTC only");
+  if (target.__parityRegionPinned) return;
+  target.__parityRegionPinned = true;
+  const P = target.Date.prototype;
+  ["Hours", "Minutes", "Seconds", "Milliseconds", "Day", "Date", "Month", "FullYear"].forEach((name) => { P["get" + name] = P["getUTC" + name]; });
+  P.getTimezoneOffset = () => 0;
+  const NativeDTF = target.Intl.DateTimeFormat;
+  const withDefaults = (locales, options) => [locales === undefined ? locale : locales, Object.assign({ timeZone }, options)];
+  function DateTimeFormat(locales, options) { return new NativeDTF(...withDefaults(locales, options)); }
+  DateTimeFormat.prototype = NativeDTF.prototype;
+  DateTimeFormat.supportedLocalesOf = NativeDTF.supportedLocalesOf.bind(NativeDTF);
+  target.Intl.DateTimeFormat = DateTimeFormat;
+  ["toLocaleString", "toLocaleDateString", "toLocaleTimeString"].forEach((name) => {
+    const native = P[name];
+    P[name] = function (locales, options) { return native.call(this, ...withDefaults(locales, options)); };
+  });
+}
+
 export async function clickIfPresent(locator) {
   if (await locator.count()) await locator.click();
 }
@@ -198,8 +220,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     height: positiveInteger("PLAYARR_WEB_VIEWPORT_HEIGHT", mobile ? 844 : 1080),
   };
   const deviceScaleFactor = positiveNumber("PLAYARR_WEB_VIEWPORT_DPR", mobile ? 3 : 1);
-  let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = null, disableAnimations = false;
+  let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = null, disableAnimations = false, pinnedZone = null, pinnedLocale = null;
   let manualLoginStarted = false, manualLoginSucceeded = false; // session: this run's own storage state, in memory
+  let networkFlaps = 0; // requests Chrome aborted because the host's network interfaces changed
   const apiErrors = []; // failing /api/ responses of the current page, named in the error-page failure
   let drainApiErrors = async () => {};
   const ownedDownloads = new Map(); // media files started by this run, keyed to their media metadata
@@ -253,13 +276,14 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       throw new Error(`Timed out after ${detailReadyTimeoutMs}ms waiting for ${kind} detail readiness: ${missing.join(", ")}`);
     }
   };
+  const labelled = async (what, wait) => { try { return await wait(); } catch (e) { if (e?.name === "TimeoutError") { const bad = await page.evaluate(() => [...document.images].filter((i) => i.getBoundingClientRect().width > 0 && !(i.complete && i.naturalWidth > 0)).map((i) => { try { return `${i.complete ? "broken" : "loading"} ${i.loading} ${new URL(i.currentSrc || i.src).pathname.slice(0, 50)}`; } catch { return "?"; } }).slice(0, 4)).catch(() => []); throw new Error(`readiness timeout: ${what}${bad.length ? ` (${bad.join(", ")})` : ""}`); } throw e; } };
   const settle = async () => {
     await page.evaluate(() => document.fonts.ready);
-    await page.waitForFunction(() => [...document.images].filter((i) => {
+    await labelled("visible images loaded", () => page.waitForFunction(() => [...document.images].filter((i) => {
       const r = i.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
-    }).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 });
-    await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 });
+    }).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 }));
+    await labelled("loading placeholders gone", () => page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 }));
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -269,7 +293,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // Refresh tokens rotate: carry this run's live session into the next context (theme switch), or it comes up signed out.
     if (ctx && keep) session = await ctx.storageState();
     cdp = undefined; await ctx?.close();
-    ctx = await browser.newContext({ viewport, deviceScaleFactor, userAgent: env.PLAYARR_WEB_USER_AGENT ?? (mobile ? MOBILE_UA : UA), colorScheme: theme, locale: "en-GB", timezoneId: "Asia/Bangkok",
+    ctx = await browser.newContext({ viewport, deviceScaleFactor, userAgent: env.PLAYARR_WEB_USER_AGENT ?? (mobile ? MOBILE_UA : UA), colorScheme: theme, locale: pinnedLocale ?? "en-GB", timezoneId: pinnedZone ?? "Asia/Bangkok",
       ...(mobile ? { isMobile: true, hasTouch: true } : {}),
       ...(session ? { storageState: session } : {}) });
     await ctx.addInitScript((t) => localStorage.setItem("playarr-theme", t), theme);
@@ -314,6 +338,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; }
     });
     page = await ctx.newPage();
+    page.on?.("requestfailed", (r) => { if (r.failure()?.errorText === "net::ERR_NETWORK_CHANGED") networkFlaps += 1; });
     apiErrors.length = 0;
     manualLoginStarted = false;
     manualLoginSucceeded = false;
@@ -325,22 +350,31 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       const loginUsername = trustedLoginUsername(env, allowedUsernames, trustedServerUrl);
       const loginPassword = env.PLAYARR_PASSWORD;
       if (!loginPassword) throw new Error("signed out and PLAYARR_USERNAME/PLAYARR_PASSWORD not set");
-      await page.goto(web + "/login", { waitUntil: "load" });
-      const manual = page.getByText(/sign in manually|manual/i).first();
-      if (await manual.count()) await manual.click();
-      await page.fill('input[name="server-url"]', trustedServerUrl);
-      await page.fill('input[name="username"]', loginUsername);
-      await page.fill('input[name="password"]', loginPassword);
-      manualLoginStarted = true;
-      await page.locator("button[type=submit]").click();
-      await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30000 });
-      await page.waitForSelector(".app-nav-link", { timeout: 30000 });
+      for (let attempt = 1; ; attempt++) {
+        try {
+          await page.goto(web + "/login", { waitUntil: "load" });
+          const manual = page.getByText(/sign in manually|manual/i).first();
+          if (await manual.count()) await manual.click();
+          await page.fill('input[name="server-url"]', trustedServerUrl);
+          await page.fill('input[name="username"]', loginUsername);
+          await page.fill('input[name="password"]', loginPassword);
+          manualLoginStarted = true;
+          await page.locator("button[type=submit]").click();
+          await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30000 });
+          await page.waitForSelector(".app-nav-link", { timeout: 30000 });
+          break;
+        } catch (e) {
+          if (!networkFlaps || attempt >= 3) throw e;
+          console.log(`RETAKE login: ${networkFlaps} request(s) aborted by net::ERR_NETWORK_CHANGED (host interface change), attempt ${attempt}`); networkFlaps = 0; manualLoginStarted = false;
+        }
+      }
       manualLoginSucceeded = true;
       clearSuccessfulBootstrapLoginErrors(apiErrors);
     }
     await assertDeviceTestPage({ page, allowedUsernames, expectedServerUrl: trustedServerUrl });
   };
-  const guard = () => assertDeviceTestPage({ page, allowedUsernames, expectedServerUrl: trustedServerUrl });
+  // No page yet means no authenticated session to check (build identity runs before start()).
+  const guard = () => (page ? assertDeviceTestPage({ page, allowedUsernames, expectedServerUrl: trustedServerUrl }) : undefined);
   // "Frames advance": the video has data, then its playhead moves by advanceSeconds.
   const frames = async (expect) => {
     await guard();
@@ -378,14 +412,16 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     await drainApiErrors();
     assertWebReady(page.url(), apiErrors);
     const path = new URL(page.url()).pathname;
-    if (!path.startsWith("/player/")) await page.waitForSelector(".app-nav-link", { timeout: 30000 });
+    // /profiles sits outside the nav shell, so it has no nav links to wait for.
+    if (path === "/profiles") await page.waitForSelector(".profile-choice", { timeout: 30000 });
+    else if (!path.startsWith("/player/")) await page.waitForSelector(".app-nav-link", { timeout: 30000 });
     if (screen === "home") await page.waitForSelector(".tv-home-card", { timeout: 30000 });
     if (["movies", "series", "calendar", "search"].includes(screen)) await page.waitForSelector("main", { timeout: 30000 });
     if (["/movies", "/series", "/music"].includes(path)) {
       await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
     }
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
-    if (path === "/search") await page.waitForSelector(".tv-search-results-grid, .tv-search-empty", { timeout: 30000 });
+    if (path === "/search") await page.waitForSelector(".tv-search-results-grid, .tv-empty-state, .tv-search-prompt", { timeout: 30000 });
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
     if (path.startsWith("/player/")) await page.waitForFunction(() => !!document.querySelector("video, .player-error, .player-loading"), null, { timeout: 30000 });
     await settle();
@@ -601,14 +637,16 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     return { ...info, pausedOk, ok: !!info.title && info.state === "playing" && pausedOk };
   };
   return {
+    strictReadiness: true,
     supports: { downloads: true, notifications: true, nowPlaying: true, "grouped-downloads": true },
-    async setDeterministicCapture({ fixedNow: value, disableAnimations: disable = false } = {}) {
+    async setDeterministicCapture({ fixedNow: value, disableAnimations: disable = false, timeZone, locale } = {}) {
       if (!value || !Number.isFinite(Date.parse(value))) throw new Error("deterministic capture requires a valid fixedNow date string");
       if (disable !== true) throw new Error("deterministic capture requires animation suppression");
-      fixedNow = value; disableAnimations = true;
+      fixedNow = value; disableAnimations = true; pinnedZone = timeZone ?? null; pinnedLocale = locale ?? null; // read by the next open(): set before start()
       if (ctx) { await guard(); await ctx.addInitScript(installVisualDate, value); await guard(); }
       if (page) { await guard(); await page.evaluate(installVisualDate, value); await guard(); }
     },
+    takeNetworkFlaps() { const n = networkFlaps; networkFlaps = 0; return n; },
     async captureBuildIdentity() {
       await guard();
       const response = await fetch(`${web}/build-info.json`, { cache: "no-store" });
@@ -667,7 +705,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await guard();
       await waitReady({ screen: new URL(page.url()).pathname.split("/")[1] || "home", phase: "capture" });
       // Every card on screen shows its poster: a card-art without a loaded img is a placeholder (fallback title on grey). Fatal in a stable capture.
-      await page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 });
+      await labelled("every card shows its poster", () => page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 }));
       // Loading placeholders (skeletons, spinners) must be gone: a half-loaded screen is not a capture.
       await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader"), null, { timeout: 20000 });
       if (new URL(page.url()).pathname.startsWith("/login") || (await page.getByText("API request failed").count())) throw new Error(`signed out or error page (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"})`);

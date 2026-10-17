@@ -61,6 +61,25 @@ namespace Playarr.Core.Models
         [JsonProperty("height")] public int? Height { get; set; }
 
         [JsonProperty("video_bitrate_bps")] public long? BitrateBps { get; set; }
+<<<<<<< HEAD
+=======
+
+        private long? _legacyBitrate;
+
+        [JsonProperty("bitrate_bps", NullValueHandling = NullValueHandling.Ignore)]
+        private long? LegacyBitrate
+        {
+            get => null;
+            set => _legacyBitrate = value;
+        }
+
+        [OnDeserialized]
+        private void RestoreLegacyBitrate(StreamingContext context)
+        {
+            if (BitrateBps is null)
+                BitrateBps = _legacyBitrate;
+        }
+>>>>>>> origin/main
     }
 
     /// <summary>

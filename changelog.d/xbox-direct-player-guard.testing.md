@@ -1,1 +1,0 @@
-- Require an explicit media-file ID for Xbox player-controls parity captures and verify Direct playback negotiation before opening the player and again before creating its source.

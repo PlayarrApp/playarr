@@ -24,7 +24,6 @@ internal sealed class SeriesDetailScreen : IPage
     private readonly View _copy = new();
     private readonly KeyArt _keyArt;
     private readonly FocusSet _focus = new();
-    private readonly AuthImage _images;
     private readonly List<Rail> _rails = new();
     private readonly List<(int Rail, int Col, EpisodeDetail Ep, SeasonDetail Season)> _episodes = new();
     private readonly Dictionary<int, (int, int, EpisodeDetail, SeasonDetail)> _episodeByFocus = new();
@@ -32,8 +31,9 @@ internal sealed class SeriesDetailScreen : IPage
     private IReadOnlyDictionary<Guid, WatchProgress> _progress = new Dictionary<Guid, WatchProgress>();
     private int _activeRail, _seasonCount;
     private int _leadFocus;
+    private bool _captureReady;
 
-    public bool IsReady => _focus.Items.Count > 0;
+    public bool IsReady => _focus.Items.Count > 0 && _captureReady;
     public View Root => _root;
     public string Route => $"/series/{_id}";
     public string? FocusedLabel => _dl?.FocusedLabel ?? (_focus.Item is { } fi && _pillItems.IndexOf(fi) is var pi and >= 0 ? _slots[pi].Label : _focus.Item?.Label);
@@ -41,13 +41,15 @@ internal sealed class SeriesDetailScreen : IPage
 
     public SeriesDetailScreen(AppEnv env, Guid id)
     {
-        _env = env; _t = env.Theme; _id = id; _images = new AuthImage(env.Api);
+        _env = env; _t = env.Theme; _id = id;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
         _keyArt = new KeyArt(env, armed: true); // web paints the key art as soon as focus lands on the first episode
         _root.Add(_keyArt.Root);
         _root.Add(Ui.PanelWash(_t)); // web: the right rail panel frosts the key art (the page top is not a surface fade)
         _root.Add(_content);
+        _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, _t.Surface, atLeft: false));
+        _root.Add(Ui.EdgeFade(ClipX, TizenClient.DesignHeight, TizenClient.DesignWidth - ClipX, _t.Surface, atTop: false));
         _ = LoadAsync();
     }
 
@@ -90,7 +92,7 @@ internal sealed class SeriesDetailScreen : IPage
         var seasons = detail.Children.Seasons.Where(s => s.Episodes.Count > 0).OrderBy(s => s.Season.SeasonNumber).ToList();
         for (var si = 0; si < seasons.Count; si++) BuildRail(si, seasons[si], file: (f) => { });
         _seasonCount = seasons.Count;
-        _ = LoadCastAsync(detail);
+        LoadCastAsync(detail);
         if (lead is { } l) SetLead(l.Item1, l.Item2);
         if (_focus.Items.Count > 0)
         {
@@ -117,7 +119,7 @@ internal sealed class SeriesDetailScreen : IPage
             art.ClippingMode = ClippingModeType.ClipChildren;
             // web: the episode's own still when the catalog has one, else the media-file frame (cover crop); a 135deg black wash and the number sit on top
             var still = ep.Episode.Images.Any(i => i.Kind == ImageKind.Thumb) ? $"/api/v1/artwork/episode/{_detail!.Work.Id:D}/{ep.Episode.Id:D}/thumb?w=540" : null;
-            if (still is not null || ep.MediaFileId is not null) _ = SetThumbAsync(art, still, ep.MediaFileId);
+            if (still is not null || ep.MediaFileId is not null) SetThumbAsync(art, still, ep.MediaFileId);
             art.Add(Ui.Gradient(0, 0, 268, 150.8f, false, (0, new Rgba(0, 0, 0, 0.05f)), (1, new Rgba(0, 0, 0, 0.48f))));
             art.Add(Ui.Text(ep.Episode.EpisodeNumber.ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
             var unseen = ep.MediaFileId is { } mf && (!_progress.TryGetValue(mf, out var pr) || pr.State == WatchState.Unwatched);
@@ -148,23 +150,39 @@ internal sealed class SeriesDetailScreen : IPage
                 Rect = () => new Box(x - rail.Scroll, FocusedHeadingY - (_activeRail - railIdx) * RailPitch + 80.7f, 268, 150.8f),
                 Label = $"play {code}".ToLowerInvariant(),
                 Select = () => PlayEpisode(epc),
-                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Show(f); if (f) ring.RaiseToTop(); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.Ink); },
+                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Show(f); if (f) ring.RaiseToTop(); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(_t.Ink); },
                 Focused = () => OnEpisodeFocused(railIdx, col, epc, seasonc),
             });
         }
     }
 
-    private async Task LoadCastAsync(WorkDetail d)
+    private void LoadCastAsync(WorkDetail d)
     {
-        try
+        _env.Images.Track(async () =>
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, _env.Api.ResolveUrl($"/api/v1/catalog/{d.Work.Id:D}/credits"));
-            foreach (var h in await _env.Api.GetPlaybackRequestHeadersAsync()) req.Headers.TryAddWithoutValidation(h.Key, h.Value);
-            using var res = await new HttpClient().SendAsync(req);
-            if (!res.IsSuccessStatusCode) return;
-            var cast = Credits.ParseCast(await res.Content.ReadAsStringAsync());
-            if (cast.Count == 0) return;
-            SynchronizationContextHolder.Post(() =>
+            string? content = null;
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Get, _env.Api.ResolveUrl($"/api/v1/catalog/{d.Work.Id:D}/credits"));
+                foreach (var h in await _env.Api.GetPlaybackRequestHeadersAsync().ConfigureAwait(false)) req.Headers.TryAddWithoutValidation(h.Key, h.Value);
+                using var res = await new HttpClient().SendAsync(req).ConfigureAwait(false);
+                if (res.IsSuccessStatusCode) content = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            }
+            catch (Exception e) { Dbg.Log("SDETAIL cast request failed: " + e.Message); }
+
+            if (content is null)
+            {
+                await AuthImage.OnUiAsync(() => _captureReady = true);
+                return;
+            }
+
+            var cast = Credits.ParseCast(content);
+            if (cast.Count == 0)
+            {
+                await AuthImage.OnUiAsync(() => _captureReady = true);
+                return;
+            }
+            await AuthImage.OnUiAsync(() =>
             {
                 var rail = _seasonCount;
                 new PeopleRail(_env, _stack, cast, rail * RailPitch + CastGap, _focus, () => _stack.PositionY, _ =>
@@ -172,9 +190,9 @@ internal sealed class SeriesDetailScreen : IPage
                     _activeRail = rail;
                     _stack.PositionY = FocusedHeadingY - rail * RailPitch - CastGap;
                 });
+                _captureReady = true;
             });
-        }
-        catch (Exception e) { Dbg.Log("CAST failed: " + e.Message); }
+        });
     }
 
     private void OnEpisodeFocused(int rail, int col, EpisodeDetail ep, SeasonDetail season)
@@ -205,8 +223,8 @@ internal sealed class SeriesDetailScreen : IPage
         if (ep.Episode.AirDate is { Length: > 0 } air && DateTime.TryParse(air, out var d)) meta.Add("Aired  " + d.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         meta.AddRange(w.Genres.Take(3));
         _copy.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 73f, 10.56f, 400, _t.InkMuted, 700, 15.84f));
-        Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 110.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 3);
-        var yb = bas + 183.4f;
+        var synopsisLines = Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 110.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
+        var yb = bas + 110.5f + Math.Max(1, synopsisLines) * 20.325f + 12f;
         var hasProgress = ep.MediaFileId is { } f && _progress.TryGetValue(f, out var pr) && pr.State == WatchState.InProgress;
         _leadEp = ep;
         EnsurePillSlots();
@@ -283,12 +301,15 @@ internal sealed class SeriesDetailScreen : IPage
         timer.Start();
     }
 
-    private async Task SetThumbAsync(View art, string? stillPath, Guid? file)
+    private void SetThumbAsync(View art, string? stillPath, Guid? file)
     {
-        var path = stillPath is null ? null : await _images.GetAsync(stillPath);
-        if (path is null && file is { } f) path = await _images.GetAsync($"/api/v1/media/{f:D}/thumbnail");
-        if (path is null) return;
-        SynchronizationContextHolder.Post(() => { var img = Ui.Remote(path, 268, 150.8f); art.Add(img); img.LowerToBottom(); });
+        _env.Images.Track(async () =>
+        {
+            var path = stillPath is null ? null : await _env.Images.GetAsync(stillPath).ConfigureAwait(false);
+            if (path is null && file is { } f) path = await _env.Images.GetAsync($"/api/v1/media/{f:D}/thumbnail").ConfigureAwait(false);
+            if (path is null) return;
+            await AuthImage.OnUiAsync(() => { var img = Ui.Remote(path, 268, 150.8f); art.Add(img); img.LowerToBottom(); });
+        });
     }
 
     private void PlayEpisode(EpisodeDetail ep)

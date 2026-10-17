@@ -54,6 +54,9 @@
       reassigned by callers.
     -->
     <field id="contentTarget" type="node" />
+    <!-- Where the content panel settles; the entrance slides in from 60 px to its right. Detail stages keep the default, Home sets
+         the Library-aligned origin (web card-pad-left from the rail start, first rail at library-rail-top). -->
+    <field id="contentBase" type="vector2d" value="[881.6,422.9]" onChange="onContentBaseChange" />
     <!-- Runs the staggered fade+translate entrance. Call after populating
          stageTitle/stageKicker/stageMeta and contentTarget's children.
          Named playEntrance (not "show") to rule out any collision with a

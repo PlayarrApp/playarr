@@ -554,6 +554,13 @@ jobs:
       - name: dotnet test (Playarr.Tizen.Logic.Tests)
         run: dotnet test tests/Playarr.Tizen.Logic.Tests/Playarr.Tizen.Logic.Tests.csproj
 
+      - name: Build debug hooks (compile validation only)
+        run: dotnet build src/Playarr.Tizen/Playarr.Tizen.csproj -c Debug -p:PlayarrDebug=true
+
+      - name: Test Tizen parity driver hooks
+        working-directory: ${{ github.workspace }}
+        run: node --test scripts/parity/drivers/tizen-native.test.mjs scripts/parity/device-test-guard.test.mjs
+
       - name: Build the test-signed tpk
         run: dotnet build src/Playarr.Tizen/Playarr.Tizen.csproj -c Release
 

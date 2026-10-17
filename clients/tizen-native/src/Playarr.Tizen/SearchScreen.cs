@@ -420,7 +420,7 @@ internal sealed class SearchScreen : IPage
             _extras = next; _results.Add(next.Root); UpdateFades();
         }
         Place(OtherSources.Note(_env, top(), "Checking other sources\u2026", false));
-        _ = Task.Run(async () =>
+        _env.Images.Track(async () =>
         {
             string? failed = null; IReadOnlyList<DiscoveryTitle> titles = Array.Empty<DiscoveryTitle>();
             try
@@ -429,7 +429,7 @@ internal sealed class SearchScreen : IPage
                 titles = DiscoverySearch.ExtraTitles(response.Titles);
             }
             catch (Exception e) { Dbg.Log("SEARCH extras failed: " + e.Message); failed = "Other sources are unavailable right now."; }
-            SynchronizationContextHolder.Post(() =>
+            await AuthImage.OnUiAsync(() =>
             {
                 if (gen != _extrasGen || _removed) return;
                 Place(failed is not null ? OtherSources.Note(_env, top(), failed, false)
