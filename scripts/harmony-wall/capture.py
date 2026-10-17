@@ -194,13 +194,24 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
     assert_preview_telemetry_clean()
     try:  # diagnostics: what the app reported at the moment of the frame (poster placeholders, network, image events)
         st = json.loads(get("/state"))
-        print(f"[settle] {name} theme={THEME} img_pending={st.get('img_pending')} net_idle={st.get('net_idle')} dbg={ {k: v for k, v in (st.get('dbgcount') or {}).items() if not k[:4] in ('skel', 'img+', 'done', 'fail')} }", flush=True)
+        print(f"[settle] {name} theme={THEME} img_pending={st.get('img_pending')} net_idle={st.get('net_idle')} dbg={ {k: v for k, v in (st.get('dbgcount') or {}).items() if not k[:4] in ('skel', 'img+', 'done', 'fail', 'moun', 'prop')} }", flush=True)
         skel = {}
         for k, v in (st.get('dbgcount') or {}).items():  # titles whose placeholder appeared more often than it went away
             if k.startswith('skel'):
                 skel[k[5:]] = skel.get(k[5:], 0) + (v if k[4] == '+' else -v)
         dbgc = st.get('dbgcount') or {}
+        dbgc_all = dbgc
         shown = {k[4:] for k in dbgc if k.startswith('img+')}  # artwork reached the card but the image has not completed
+        stuck = [t for t, n in skel.items() if n > 0]  # temporary diagnostic: for the cards still on a placeholder, mount / artwork-prop counts
+        def tally(prefix):
+            out = {}
+            for k, v in dbgc_all.items():
+                if k.startswith(prefix) and ":" in k:
+                    title = k.split(":", 1)[1]
+                    if any(title.startswith(t[:25]) or t.startswith(title[:25]) for t in stuck):
+                        out.setdefault(title[:25], {})[k[len(prefix)]] = v
+            return out
+        print("[settle] stuck cards: mount(0=no art,1=art)", tally("mount"), "artwork prop", tally("prop"), flush=True)
         print(f"[settle] image set, not complete: {sorted(shown - {k[5:] for k in dbgc if k.startswith('done+')})} failed: {sorted(k[5:] for k in dbgc if k.startswith('fail+'))}", flush=True)
         print(f"[settle] still on placeholder: {sorted(t for t, n in skel.items() if n > 0)}", flush=True)
     except (ValueError, OSError, SystemExit):

@@ -22,7 +22,7 @@ def card(s):
     s = s.replace("  @Prop artwork: image.PixelMap | undefined = undefined;", "  @Prop previewRoute: string = '';\n  @Prop previewWorkId: string = '';\n  @Prop previewRowId: string = '';\n  @Prop previewGeneration: number = 0;\n  @Prop previewRailId: string = '';\n  @Prop previewOccurrence: number = -1;\n  @Prop @Watch('previewArtworkUpdated') artwork: image.PixelMap | undefined = undefined;", 1)
     life = "  private longPressFired: boolean = false;\n"
     assert s.count(life) == 1
-    s = s.replace(life, life + "  @State previewRingOn: boolean = false;\n  private previewCardEntry: number = -1;\n  aboutToAppear(): void {\n    this.previewCardEntry = previewRegisterCard((on: boolean): void => { this.previewRingOn = on; });\n  }\n  aboutToDisappear(): void {\n    previewUnregisterCard(this.previewCardEntry);\n  }\n", 1)
+    s = s.replace(life, life + "  @State previewRingOn: boolean = false;\n  private previewCardEntry: number = -1;\n  aboutToAppear(): void {\n    this.previewCardEntry = previewRegisterCard((on: boolean): void => { this.previewRingOn = on; });\n    previewReport('dbg=' + encodeURIComponent('mount' + (this.artwork === undefined ? '0' : '1') + ':' + this.title));\n  }\n  aboutToDisappear(): void {\n    previewUnregisterCard(this.previewCardEntry);\n  }\n", 1)
     focus = "return effectiveFocusPercent(this.focusPercent, this.activeRailFactor);"
     assert s.count(focus) == 1
     s = s.replace(focus, "return Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), isTvMetrics() && this.previewRingOn ? 1 : 0);", 1)
@@ -58,6 +58,7 @@ def card(s):
     report = """  private previewArtworkUpdated(): void {
     const stage = this.artwork === undefined ? 'poster-artwork-prop-undefined' : 'poster-artwork-prop-present';
     reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, stage);
+    previewReport('dbg=' + encodeURIComponent('prop' + (this.artwork === undefined ? '0' : '1') + ':' + this.title));  // temporary diagnostic: lost-update hunt
   }
 
 """
