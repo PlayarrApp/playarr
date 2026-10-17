@@ -709,17 +709,17 @@ export function ProfilesPage(
         </div>
       ) : null}
 
-      <Link
+      <a
         id="profiles-clients"
         className="profile-clients-link"
-        to="/clients"
+        href="https://playarr.app/clients"
         data-navigation-focus-key="profiles:clients"
         data-tv-edge-target-up="#profile-add"
         data-tv-edge-target-left={isAndroidTv ? "#profiles-check-updates" : undefined}
       >
         {t("pages.clients.navClients")}
         <span aria-hidden="true">→</span>
-      </Link>
+      </a>
 
       {loadState.status === "loading" ? (
         <div className="profiles-status" role="status" aria-label={t("pages.profiles.loading")}>

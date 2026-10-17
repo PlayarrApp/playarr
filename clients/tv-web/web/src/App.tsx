@@ -56,14 +56,6 @@ import {
 import { householdBlockFromStatus } from "./lib/householdState";
 import { MusicDetailPage } from "./pages/MusicDetail";
 import { NotFoundPage } from "./pages/NotFound";
-import { ClientsPage } from "./pages/Clients";
-import {
-  AcceptableUsePage,
-  AccountDeletionPage,
-  LicencesPage,
-  PrivacyPolicyPage,
-  TermsPage,
-} from "./pages/Legal";
 import { LayoutHarnessPage } from "./pages/LayoutHarness";
 import { NavPerfHarnessPage } from "./pages/NavPerfHarness";
 import { UpdateToast } from "./components/UpdateToast";
@@ -669,14 +661,6 @@ export function App() {
       <Route path="/link" element={<DeviceLinkPage />} />
       <Route path="/profiles" element={<ProfilesPage />} />
       <Route path="/household" element={<HouseholdPage />} />
-      <Route path="/clients/:clientId?" element={<ClientsPage />} />
-      <Route path="/download" element={<Navigate to="/clients" replace />} />
-      <Route path="/install" element={<Navigate to="/clients" replace />} />
-      <Route path="/legal/privacy" element={<PrivacyPolicyPage />} />
-      <Route path="/legal/terms" element={<TermsPage />} />
-      <Route path="/legal/acceptable-use" element={<AcceptableUsePage />} />
-      <Route path="/legal/licences" element={<LicencesPage />} />
-      <Route path="/legal/account-deletion" element={<AccountDeletionPage />} />
       {/* Dense focus grid for 4K / limited-CPU nav measurement (dev only). */}
       {import.meta.env.DEV ? (
         <Route path="/__nav-perf" element={<NavPerfHarnessPage />} />

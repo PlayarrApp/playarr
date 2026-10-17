@@ -1478,7 +1478,6 @@ export function parentRoute(pathname: string, requestedBackTo?: string): string 
     requestedBackTo === "/music" ||
     requestedBackTo === "/profiles" ||
     requestedBackTo === "/settings" ||
-    requestedBackTo === "/clients" ||
     (typeof requestedBackTo === "string" &&
       /^\/playlists(?:\?playlist=[^&]+(?:&.*)?)?$/.test(requestedBackTo)) ||
     (typeof requestedBackTo === "string" && /^\/search(?:\?.*)?$/.test(requestedBackTo))
@@ -1492,7 +1491,6 @@ export function parentRoute(pathname: string, requestedBackTo?: string): string 
   if (/^\/music\/[^/]+$/.test(pathname)) return "/music";
   if (/^\/playlists\/[^/]+$/.test(pathname)) return "/playlists";
   if (/^\/settings\/[^/]+$/.test(pathname)) return "/settings";
-  if (/^\/clients\/[^/]+$/.test(pathname)) return "/clients";
   if (
     pathname === "/search" ||
     pathname === "/series" ||
@@ -1500,8 +1498,7 @@ export function parentRoute(pathname: string, requestedBackTo?: string): string 
     pathname === "/sites" ||
     pathname === "/music" ||
     pathname === "/profiles" ||
-    pathname === "/settings" ||
-    pathname === "/clients"
+    pathname === "/settings"
   ) {
     return "/";
   }

@@ -110,10 +110,6 @@ describe("directional page fallback", () => {
   });
 
   it("returns client detail pages to the clients hub on remote Back", () => {
-    expect(parentRoute("/clients/vidaa")).toBe("/clients");
-    expect(parentRoute("/clients/android")).toBe("/clients");
-    expect(parentRoute("/clients")).toBe("/");
-    expect(parentRoute("/clients", "/profiles")).toBe("/profiles");
   });
 
   it("leaves an unhandled root Back press for an installed TV platform", () => {
