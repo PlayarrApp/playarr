@@ -1,0 +1,1 @@
+- Fire TV: the title actions drawer opens with Play focused, as on web, so the close button keeps its light resting colour.
