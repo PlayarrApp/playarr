@@ -37,7 +37,7 @@ is not built: its SDK needs Docker. All Ubuntu jobs use `ubuntu-24.04`, not `ubu
 | HarmonyOS | `harmony-ci.yml` | `playarr-harmony-<version>-unsigned.hap` (no AppGallery signing material yet) |
 | Linux phone | inline | `playarr-linux-<version>-x86_64.tar.gz` |
 | macOS | inline | `playarr-macos-<version>-unsigned.zip` (no Developer ID yet) |
-| Stores | inline (`stores`) | Roku, Samsung, LG, Huawei AppGallery, Microsoft Partner Center, Amazon Appstore: one job each, reading `<STORE>_CREDENTIAL` from its `release-<store>` environment. No secret means "store pending: no account yet (board 59.x)" and the job succeeds; a secret with no upload wired fails loudly. Skipped in a dry run |
+| Stores | inline (`stores`) | Roku, Samsung, LG, Huawei AppGallery, Microsoft Partner Center, Amazon Appstore: one job each that logs "store pending: no account yet (board 59.x)" and succeeds. When a store is wired, add its `release-<store>` environment, credential secret and upload step together. Skipped in a dry run |
 | GitHub Release | inline | release `v<version>` with every package above, a combined `SHA256SUMS` and `playarr-<version>-CHANGELOG.md` |
 | Google Play | `android-play-internal.yml` | closed-testing (alpha) track, after the release exists |
 | TestFlight | `ios-release.yml` | iOS and tvOS builds, after the release exists; then each build is added to the external TestFlight groups (below) |

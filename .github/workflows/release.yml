@@ -33,8 +33,7 @@
 #   web       web-ci.yml                  playarr.app (Cloudflare Worker) from the release commit;
 #                                         a failed deploy fails the release, the summary reports the version
 #   stores    (below)                     Roku, Samsung, LG, Huawei AppGallery, Microsoft Partner Center,
-#                                         Amazon Appstore: a store whose credential secret is absent logs
-#                                         "store pending" and the job still succeeds
+#                                         Amazon Appstore: no accounts yet, each logs "store pending" and succeeds
 #
 # The server and Android APK are required (playarr.app/downloads serves them from the release); any
 # other platform that fails is left out of the release and reported in the summary. `dry_run` builds
@@ -153,12 +152,13 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: 0
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.99.0
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend -> target
+          shared-key: backend-check
           save-if: false
           cache-directories: ~/.cache/ort.pyke.io
           prefix-key: v1-rust
@@ -183,12 +183,13 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.99.0
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: clients/linux-mobile
+          shared-key: linux-mobile-check
           save-if: false
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
@@ -356,21 +357,19 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: clients/linux-mobile
-          save-if: false
+      - uses: dtolnay/rust-toolchain@1.99.0
       - name: Build and package
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
-          # Stamp the release version; only the crate's own Cargo.lock entry changes, every dependency stays locked.
+          # Stamp the release version into the manifest and the crate's own lock entry (no network, deps stay locked).
           sed -i -E "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
-          cargo build --release
+          sed -i -E "/^name = \"playarr-linux-mobile\"/{n;s/^version = \".*\"/version = \"$VERSION\"/}" Cargo.lock
+          cargo build --release --locked
           mkdir -p "$RUNNER_TEMP/linux"
-          tar -czf "$RUNNER_TEMP/linux/playarr-linux-$VERSION-x86_64.tar.gz" -C target/release playarr-mobile -C ../../data .
+          tar --sort=name --mtime="@$(git log -1 --format=%ct)" --owner=0 --group=0 --numeric-owner \
+            -cf - -C target/release playarr-mobile -C ../../data . | gzip -n > "$RUNNER_TEMP/linux/playarr-linux-$VERSION-x86_64.tar.gz"
       - uses: actions/upload-artifact@v4
         with:
           name: playarr-linux-package
@@ -395,6 +394,13 @@ jobs:
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" | tail -n 3
           app="$(find "$RUNNER_TEMP/dd/Build/Products" -maxdepth 2 -name PlayarrMac.app | head -n 1)"
           [[ -n "$app" ]] || { echo '::error::no Release PlayarrMac.app'; exit 1; }
+          bad=0
+          while IFS= read -r f; do
+            for arg in -PlayarrAccessToken -PlayarrRefreshToken; do
+              if strings -a "$f" | grep -q -- "$arg"; then echo "::error::found $arg in ${f#"$app"/}"; bad=1; fi
+            done
+          done < <(find "$app" -type f \( -perm -u+x -o -name '*.dylib' \))
+          (( bad == 0 ))
           mkdir -p "$RUNNER_TEMP/macos"
           ditto -c -k --keepParent "$app" "$RUNNER_TEMP/macos/playarr-macos-$VERSION-unsigned.zip"
       - uses: actions/upload-artifact@v4
@@ -523,43 +529,35 @@ jobs:
       dry_run: ${{ needs.prepare.outputs.dry_run == 'true' }}
 
   # ---------------------------------------------------------------------------
-  # Stage 3 (continued): stores without an upload implementation. Each reads its credential from its own
-  # release-<store> environment (main only). No credential means the store has no account yet: the job
-  # logs "store pending" and succeeds. A credential present with no upload wired fails loudly, so a
-  # secret added early cannot be mistaken for a published release. Skipped in a dry run.
+  # Stage 3 (continued): stores with no account yet. Each logs "store pending" and succeeds. When a store
+  # is wired, add its release-<store> environment, its credential secret and its upload step together.
+  # Skipped in a dry run.
   # ---------------------------------------------------------------------------
   stores:
     name: Store ${{ matrix.name }}
     needs: [prepare, release]
     if: always() && needs.release.result == 'success' && needs.prepare.outputs.dry_run != 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    environment: release-${{ matrix.store }}
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: Roku Channel Store, store: roku, secret: ROKU_STORE_CREDENTIAL }
-          - { name: Samsung Seller Office, store: samsung, secret: SAMSUNG_STORE_CREDENTIAL }
-          - { name: LG Seller Lounge, store: lg, secret: LG_STORE_CREDENTIAL }
-          - { name: Huawei AppGallery, store: huawei, secret: HUAWEI_APPGALLERY_CREDENTIAL }
-          - { name: Microsoft Partner Center, store: microsoft, secret: MICROSOFT_PARTNER_CENTER_CREDENTIAL }
-          - { name: Amazon Appstore, store: amazon, secret: AMAZON_APPSTORE_CREDENTIAL }
-    env:
-      STORE_CREDENTIAL: ${{ secrets[matrix.secret] }}
-      STORE_NAME: ${{ matrix.name }}
+          - { name: Roku Channel Store, board: 59.10065 }
+          - { name: Samsung Seller Office, board: 59.10066 }
+          - { name: LG Seller Lounge, board: 59.10067 }
+          - { name: Huawei AppGallery, board: 59.10070 }
+          - { name: Microsoft Partner Center, board: 59.10069 }
+          - { name: Amazon Appstore, board: 59.10061 }
     steps:
-      - name: Upload or report pending
+      - name: Report pending
+        env:
+          STORE_NAME: ${{ matrix.name }}
+          BOARD: ${{ matrix.board }}
         run: |
-          set -euo pipefail
-          if [[ -z "$STORE_CREDENTIAL" ]]; then
-            msg="$STORE_NAME: store pending: no account yet (board 59.x)"
-            echo "$msg"
-            echo "- $msg" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          echo "::error::$STORE_NAME credential is configured but no upload is implemented for it yet"
-          exit 1
+          msg="$STORE_NAME: store pending: no account yet (board $BOARD)"
+          echo "$msg"
+          echo "- $msg" >> "$GITHUB_STEP_SUMMARY"
 
   web:
     name: Deploy playarr.app
