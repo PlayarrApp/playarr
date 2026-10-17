@@ -739,6 +739,8 @@ Steps only the repository owner can perform.
 | 10684 | Roku D-pad: Left from Home enters the dock on Home | in_progress | parity-roku | roku-dpad-home-nav | | 2026-10-17 17:00 ICT | Dock entry probe follows the Library-aligned Home |
 | 10683 | Nura card grid row pitch matches the web phone | done | claude | nura-parity-14-grid | | 2026-10-17 22:00 ICT | Same-day Nura capture, dark/light: music 91.57 to 94.13 / 91.75 to 93.97, series 92.70 to 94.76 / 92.01 to 94.29, movies 92.76 to 94.29 / 93.40 to 95.19; PR open: #1627. PR #1627 merged 2026-10-17. |
 | 10682 | Fire TV actions: no focus ring on the card behind the drawer | in_progress | parity-firetv | firetv-actions-ring | | 2026-10-17 17:00 ICT | Library and Home hide the card ring while the title actions drawer is open |
+| 10677 | Nura capture helper: stop the idle display from missing opened sheets | in_review | claude | nura-parity-14-capture | | 2026-10-17 20:00 ICT | Cause: after tens of idle seconds the VM display shows the pre-sheet frame until a click reaches the app (GTK had drawn the panel, frame counter advancing). Fix: nudge.sh clicks once per route before the first screenshot. PR open: #1625. |
+| 10679 | iOS parity capture readiness no longer depends on event order | in_review | parity-ios | parity-ready-race-10679 | | 2026-10-17 12:00 ICT | Screen-ready flag derives from identity and load state; the onAppear reset that could drop an early ready is removed. PR open: #1623 |
 
 ## 18. Public repository readiness (2026-10-05)
 

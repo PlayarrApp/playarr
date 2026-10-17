@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The Nura capture helper clicks the display's left margin before each screenshot, so a sheet or drawer that opened after a long idle wait is no longer missed.
 - Fire TV: the card behind the title actions drawer no longer keeps its focus ring while the drawer is open.
 - Roku: Left from the first Home rail enters the dock on Home again after Home moved to the Library-aligned top.
 - Fix the Xbox playback-quality test to distinguish the legacy bitrate property from the canonical video bitrate property.
