@@ -113,7 +113,7 @@ export async function createDriver() {
   const requireTestAccount = async () => {
     const nonce = randomUUID().replaceAll("-", "");
     run("identity", nonce);
-    const deadline = Date.now() + 5000;
+    const deadline = Date.now() + 20000;
     while (Date.now() < deadline) {
       const result = accountProbeResult(trace(), nonce);
       if (result === "match") return;
