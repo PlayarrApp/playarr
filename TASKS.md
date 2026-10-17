@@ -723,6 +723,7 @@ Steps only the repository owner can perform.
 | 10666 | Nura (linux-mobile) header buttons and film title spacing match the web phone | in_review | claude | nura-parity-14-layout | | 2026-10-17 18:00 ICT | Same-day Nura capture: film-detail dark 91.16 to 92.40, light 92.14 to 93.36; settings, movies, search and calendar gain 0.02 to 0.2; PR open: #1610. |
 | 10662 | Fire TV actions: Play holds focus so the close button stays light | in_progress | parity-firetv | firetv-actions-close | | 2026-10-17 14:00 ICT | Title actions drawer no longer lets the close button take focus |
 | 10668 | Android phone Filters audio language selected-language tokens versus accepted Web | in_review | claude | phone-10642-language-tokens | | 2026-10-17 18:00 ICT | PR open: #1592. Adds selected-language tokens, the matching trigger and the localised removal label from Web, on top of the merged list crop (row 10642). Captured on a phone emulator against the current web refs: Filters 98.58 dark and 98.48 light unchanged; the opened Audio language list was checked by hand. Unit tests and lint pass locally. |
+| 10664 | Android tablet library hero: eyebrow, meta and overview follow web | in_review | claude | android-tablet-library-hero | | 2026-10-18 18:00 ICT | Tablet stage only, after 10653. Movies, series, music, filters and actions all gain 0.03 to 0.42 on the tablet emulator; lint and unit tests pass. PR open: #1614 |
 
 ## 18. Public repository readiness (2026-10-05)
 
