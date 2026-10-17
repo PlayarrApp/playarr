@@ -133,6 +133,7 @@ jobs:
           PART: ${{ matrix.part }}
           SCREENS_INPUT: ${{ inputs.screens || 'home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,film-detail,series-detail,settings,filters,profiles,player-controls,actions' }}
           PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID: ${{ secrets.PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID }}
+          HOME_DECK_ID: ${{ secrets.PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID }}
           XBOX_DEBUG_DIR: ${{ github.workspace }}/out/debug
         working-directory: scripts/parity
         run: |
@@ -141,6 +142,8 @@ jobs:
           case "$PART" in
             screens-*)
               T=${PART#screens-}
+              # Canonical On deck (as the web refs); a player capture in an earlier job leaves its own progress behind.
+              node ../xbox-wall/seed-deck.mjs "$HOME_DECK_ID" "$PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID" b9a68b2c-8382-4c34-a6f0-c4dd58f55093 c9a9f905-3037-4bd7-9c73-2250e8aa347d
               SCREENS=$(node -e 'const requested = process.env.SCREENS_INPUT.split(","); const allowed = new Set(["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"]); if (!requested.length || requested.some((id) => !allowed.has(id)) || new Set(requested).size !== requested.length) { console.error("screens must be a unique comma-separated subset of home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,film-detail,series-detail,settings,filters,profiles,player-controls,actions"); process.exit(1); } process.stdout.write(requested.join(","));')
               if [[ ",$SCREENS," == *",home,"* ]]; then
                 node suite-run.mjs --driver ./drivers/web.mjs --reference --only screens --screens home --themes "$T" --via route --out "$OUT/web-home" --expected "$OUT/web-home/expected.json"
