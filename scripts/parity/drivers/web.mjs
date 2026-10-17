@@ -1,9 +1,14 @@
 // Reference driver: the web TV client in Playwright (Chromium, 1920x1080, TV user agent). Contract: docs/parity/SUITE.md.
-//   PLAYARR_WEB_URL (default https://playarr.app), PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD,
+//   Web app: PLAYARR_WEB_URL (an already hosted build), else the built tv-web dist (PLAYARR_WEB_DIST, default clients/tv-web/web/dist) served
+//   from a local static server, else https://playarr.app. The device-test server serves only the API and admin, never the web app.
+//   PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD,
 //   PARITY_CHROME (browser path, default Playwright's), PLAYARR_WEB_MOBILE=1, PLAYARR_WEB_NO_DOWNLOADS=1 (hide Downloads like a device without storage), PLAYARR_WEB_USER_AGENT, and
 //   PLAYARR_WEB_VIEWPORT_WIDTH/HEIGHT/DPR (TV defaults 1920/1080/1; mobile defaults 390/844/3). Sessions are never shared: every run signs in fresh (new
 //   browser profile, so a new device id); login tokens stay in that browser context and are never written to disk.
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { dirname, extname, join, normalize, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { assertAllowedDeviceTestUsername, assertDeviceTestPage, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl, trustedLoginUsername } from "../device-test-guard.mjs";
 
@@ -190,12 +195,42 @@ export function installRegionPin(timeZone, locale, target = globalThis) {
   });
 }
 
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2", ".woff": "font/woff", ".wasm": "application/wasm", ".ico": "image/x-icon", ".txt": "text/plain" };
+
+// Serves a built web app (vite dist) on 127.0.0.1 with the SPA fallback to index.html. /build-info.json is a deploy artefact the dist lacks:
+// answered from the build itself (pinned sha or "local", index.html mtime) so the build-identity checks stay stable for the run.
+export async function serveWebDist(dist, env = process.env) {
+  const root = resolve(dist), index = join(root, "index.html");
+  if (!existsSync(index)) throw new Error(`web dist has no index.html: ${root}`);
+  const server = createServer((req, res) => {
+    const { pathname } = new URL(req.url, "http://localhost");
+    let path; try { path = decodeURIComponent(pathname); } catch { res.writeHead(400).end(); return; }
+    if (path === "/build-info.json" && !existsSync(join(root, "build-info.json"))) {
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      res.end(JSON.stringify({ sha: env.PARITY_EXPECTED_BUILD_SHA || env.GITHUB_SHA || "local", builtAt: statSync(index).mtime.toISOString() }));
+      return;
+    }
+    let file = normalize(join(root, path));
+    if (file !== root && !file.startsWith(root + sep)) { res.writeHead(403).end(); return; }
+    if (!existsSync(file) || statSync(file).isDirectory()) file = extname(path) ? null : index;
+    if (!file) { res.writeHead(404).end(); return; }
+    res.writeHead(200, { "content-type": MIME[extname(file)] ?? "application/octet-stream", "cache-control": "no-store" });
+    res.end(readFileSync(file));
+  });
+  await new Promise((done, fail) => { server.once("error", fail); server.listen(0, "127.0.0.1", done); });
+  server.unref();
+  return { url: `http://127.0.0.1:${server.address().port}`, close: () => new Promise((done) => server.close(done)) };
+}
+
 export async function clickIfPresent(locator) {
   if (await locator.count()) await locator.click();
 }
 
 export async function createDriver({ playwright = chromium, secrets } = {}) {
-  const env = process.env, web = (env.PLAYARR_WEB_URL ?? "https://playarr.app").replace(/\/$/, "");
+  const env = process.env;
+  const distDir = env.PLAYARR_WEB_DIST ?? join(dirname(fileURLToPath(import.meta.url)), "../../../clients/tv-web/web/dist");
+  const localWeb = !env.PLAYARR_WEB_URL && (env.PLAYARR_WEB_DIST || existsSync(join(distDir, "index.html"))) ? await serveWebDist(distDir, env) : null;
+  const web = (env.PLAYARR_WEB_URL ?? localWeb?.url ?? "https://playarr.app").replace(/\/$/, "");
   const configuredSecrets = secrets ?? (env.PLAYARR_DEVICE_TEST_SERVER_URL ? {
     PLAYARR_DEVICE_TEST_SERVER_URL: env.PLAYARR_DEVICE_TEST_SERVER_URL,
     PLAYARR_DEVICE_TEST_USERNAME: env.PLAYARR_DEVICE_TEST_USERNAME,
@@ -659,7 +694,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     },
     waitReady,
     async start() { browser = await playwright.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}); await open(); await guard(); },
-    async stop() { await browser?.close(); },
+    async stop() { await browser?.close(); await localWeb?.close(); },
     async setTheme(t) { await guard(); if (t !== theme) { theme = t; await open(); } },
     // TV Home proves first-card focus and the Left/Right nav round trip. Mobile Home waits for populated content and settles without TV focus keys.
     async home() {
