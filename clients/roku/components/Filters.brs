@@ -345,3 +345,178 @@ sub filtersRefetch()
     m.browseTotal = invalid
     loadBrowseCatalog(false)
 end sub
+
+' ---------------------------------------------------------------------------
+' Release Calendar filters drawer (web FiltersDrawer in Calendar.tsx): View (Month, Week, Agenda), Type, Status (multi-select,
+' values OR-ed within a section and AND-ed across sections), Monitored only and Clear filters. State on m: calFilterTypes,
+' calFilterStatuses ({name: true}) and calFilterMonitored. Focus rows: 0 View, 1-2 Type, 3-4 Status, 5 Monitored, 6 Clear.
+
+function calFilterTypeNames() as Object
+    return ["tv", "movie", "music", "book"]
+end function
+
+function calFilterStatusNames() as Object
+    return ["aired", "upcoming", "downloaded", "missing"]
+end function
+
+function calFilterActive() as Boolean
+    return m.calFilterTypes.Count() > 0 or m.calFilterStatuses.Count() > 0 or m.calFilterMonitored = true
+end function
+
+' Web applyCalendarFilters: aired is a release day up to today, downloaded has a file, missing is aired without one.
+function calendarApplyFilters(entries as Object) as Object
+    if not calFilterActive() then return entries
+    kindForType = { tv: "episode", movie: "movie", music: "album", book: "book" }
+    today = calendarTodayString()
+    out = []
+    for each entry in entries
+        keep = true
+        if m.calFilterTypes.Count() > 0
+            keep = false
+            for each t in m.calFilterTypes
+                if kindForType[t] = entry.media_kind then keep = true
+            end for
+        end if
+        if keep and m.calFilterStatuses.Count() > 0
+            aired = calendarEntryLocalDay(entry) <= today
+            keep = false
+            if m.calFilterStatuses.aired = true and aired then keep = true
+            if m.calFilterStatuses.upcoming = true and not aired then keep = true
+            if m.calFilterStatuses.downloaded = true and entry.has_file = true then keep = true
+            if m.calFilterStatuses.missing = true and aired and entry.has_file <> true then keep = true
+        end if
+        if keep and m.calFilterMonitored = true and entry.monitored <> true then keep = false
+        if keep then out.Push(entry)
+    end for
+    return out
+end function
+
+sub calFiltersOpen()
+    if m.filtersGroup = invalid
+        m.filtersGroup = CreateObject("roSGNode", "Group")
+        m.filtersGroup.visible = false
+        m.top.AppendChild(m.filtersGroup)
+    end if
+    m.calFiltersOpen = true
+    m.global.cardFocusOff = true
+    m.filtersRow = 0
+    m.filtersCol = 0
+    if m.calendarView = "week" then m.filtersCol = 1
+    if m.calendarView = "agenda" then m.filtersCol = 2
+    calFiltersRender()
+    m.filtersGroup.visible = true
+    m.top.SetFocus(true)
+    parityEmit("screen", "drawer")
+    calFiltersEmitFocus()
+end sub
+
+sub calFiltersClose()
+    m.filtersGroup.visible = false
+    m.calFiltersOpen = false
+    m.global.cardFocusOff = false
+    parityEmit("screen", "page")
+    m.top.SetFocus(true)
+    pageFocusRender()
+end sub
+
+sub calFiltersRender()
+    g = m.filtersGroup
+    g.removeChildrenIndex(g.getChildCount(), 0)
+    pgRect(g, 1560, 0, 360, 1080, "panel")
+    pgLabel(g, 1606, 56, 190, 16, "CALENDAR", 11, 700, "inkMuted")
+    pgLabel(g, 1606, 82, 200, 56, "Filters", 36, 600, "ink")
+    pgRound(g, 1826, 54, 48, 48, 24, "surface", 179)
+    pgRound(g, 1826, 54, 48, 48, 24, "line", -1, true)
+    pgIcon(g, 1838, 66, 24, "player-close.png", "ink")
+    m.filtersFocus = []
+    pgLabel(g, 1606, 162, 250, 16, "VIEW", 10, 700, "inkMuted")
+    views = ["month", "week", "agenda"]
+    names = ["Month", "Week", "Agenda"]
+    for i = 0 to 2
+        filtersTile(g, 1606 + 92 * i, 190, 84, 56, names[i], m.calendarView = views[i], 0, i, "")
+    end for
+    pgLabel(g, 1606, 275, 250, 16, "TYPE", 10, 700, "inkMuted")
+    typeLabels = ["TV", "Movies", "Music", "Books"]
+    types = calFilterTypeNames()
+    for i = 0 to 3
+        filtersTile(g, 1605 + 139 * (i mod 2), 302 + 66 * Int(i / 2), 130, 56, typeLabels[i], m.calFilterTypes[types[i]] = true, 1 + Int(i / 2), i mod 2, "")
+    end for
+    pgLabel(g, 1606, 440, 250, 16, "STATUS", 10, 700, "inkMuted")
+    statusLabels = ["Aired", "Upcoming", "Downloaded", "Missing"]
+    statuses = calFilterStatusNames()
+    for i = 0 to 3
+        filtersTile(g, 1605 + 139 * (i mod 2), 467 + 66 * Int(i / 2), 130, 56, statusLabels[i], m.calFilterStatuses[statuses[i]] = true, 3 + Int(i / 2), i mod 2, "")
+    end for
+    pgLabel(g, 1606, 605, 250, 16, "MONITORED", 10, 700, "inkMuted")
+    filtersTile(g, 1606, 632, 268, 56, "Monitored only", m.calFilterMonitored = true, 5, 0, "")
+    if calFilterActive() then filtersTile(g, 1606, 716, 268, 48, "Clear filters", false, 6, 0, "")
+    filtersRenderRing()
+end sub
+
+function calFiltersRowSize(row as Integer) as Integer
+    if row = 0 then return 3
+    if row >= 1 and row <= 4 then return 2
+    return 1
+end function
+
+function calFiltersRowCount() as Integer
+    if calFilterActive() then return 7
+    return 6
+end function
+
+sub calFiltersEmitFocus()
+    labels = [["Month", "Week", "Agenda"], ["TV", "Movies"], ["Music", "Books"], ["Aired", "Upcoming"], ["Downloaded", "Missing"], ["Monitored only"], ["Clear filters"]]
+    parityEmit("focus", labels[m.filtersRow][m.filtersCol])
+end sub
+
+function calFiltersOnKey(key as String) as Boolean
+    if key = "back"
+        calFiltersClose()
+        return true
+    else if key = "up" and m.filtersRow > 0
+        m.filtersRow = m.filtersRow - 1
+    else if key = "down" and m.filtersRow < calFiltersRowCount() - 1
+        m.filtersRow = m.filtersRow + 1
+    else if key = "left" and m.filtersCol > 0
+        m.filtersCol = m.filtersCol - 1
+    else if key = "right" and m.filtersCol < calFiltersRowSize(m.filtersRow) - 1
+        m.filtersCol = m.filtersCol + 1
+    else if key = "OK"
+        calFiltersChoose()
+        return true
+    end if
+    if m.filtersCol >= calFiltersRowSize(m.filtersRow) then m.filtersCol = calFiltersRowSize(m.filtersRow) - 1
+    calFiltersRender()
+    calFiltersEmitFocus()
+    return true
+end function
+
+sub calFiltersChoose()
+    row = m.filtersRow
+    if row = 0
+        views = ["month", "week", "agenda"]
+        if m.calendarView <> views[m.filtersCol]
+            m.calendarView = views[m.filtersCol]
+            parityEmit("calendarView", m.calendarView)
+            loadCalendar()
+        end if
+    else if row = 1 or row = 2
+        calFiltersToggle(m.calFilterTypes, calFilterTypeNames()[(row - 1) * 2 + m.filtersCol])
+    else if row = 3 or row = 4
+        calFiltersToggle(m.calFilterStatuses, calFilterStatusNames()[(row - 3) * 2 + m.filtersCol])
+    else if row = 5
+        m.calFilterMonitored = not m.calFilterMonitored
+    else if row = 6
+        m.calFilterTypes = {}
+        m.calFilterStatuses = {}
+        m.calFilterMonitored = false
+        m.filtersRow = 5
+    end if
+    renderCalendar()
+    calFiltersRender()
+    calFiltersEmitFocus()
+end sub
+
+sub calFiltersToggle(set as Object, name as String)
+    if set[name] = true then set.Delete(name) else set[name] = true
+end sub
