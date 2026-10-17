@@ -1240,7 +1240,7 @@ export const en = {
   "pages.clients.tizenPage.installKicker": "Samsung Developer Mode",
   "pages.clients.tizenPage.installTitle": "Install Playarr on your Samsung TV",
   "pages.clients.tizenPage.installDescription":
-    "Use a 2023-or-newer Samsung television running Tizen 7.0 or newer, and keep it on the same local network as the computer. You need Tizen Studio with the Samsung TV extensions, a valid certificate profile and either a compatible signed WGT above or one you sign from source.",
+    "Use a 2022-or-newer Samsung television running Tizen 6.5 or newer, and keep it on the same local network as the computer. You need Tizen Studio with the Samsung TV extensions, a valid certificate profile and either a compatible signed WGT above or one you sign from source.",
   "pages.clients.tizenPage.step1Title": "Install the TV SDK and create a certificate",
   "pages.clients.tizenPage.step1Description":
     "Install Tizen Studio, then add the Samsung TV Extension, Samsung Certificate Extension and Web CLI in Package Manager. Create and activate a Samsung certificate profile; Tizen will not install an unsigned widget.",
