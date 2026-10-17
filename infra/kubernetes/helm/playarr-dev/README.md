@@ -170,8 +170,8 @@ The chart sets `PLAYARR_WEB_ASSETS_DIR=/app/web`, overriding the legacy
 ### Publishing an image
 
 The workflow `.github/workflows/regional-image.yml` builds and pushes
-`playarr:<first 8 characters of the commit SHA>` on every push to
-`main` that touches the backend, the Admin UI or the Dockerfile, and fails if
+`playarr:<first 8 characters of the commit SHA>` for a release or a manual
+run, and fails if
 `ffprobe` or `playarr-server --version` does not run inside the image. It
 pushes to the registry named by the repository variable `REGIONAL_IMAGE_REGISTRY`
 (the job is skipped when it is unset). To build
@@ -190,8 +190,7 @@ docker push $REGISTRY/playarr:$SHA
 Image pins are deployment values, so a rollout is a change in the GitOps
 repository, never in this chart:
 
-1. Wait for the `regional-image` workflow to publish the image of the `main`
-   commit you want (or build and push it by hand as above).
+1. Wait for the `regional-image` workflow to publish the image of the commit you want (a release or manual run) (or build and push it by hand as above).
 2. Set `regionalImage` to that tag in the deployment values and merge; every
    instance rolls to it, so verify each one in turn. Never move a pin to an
    older image.

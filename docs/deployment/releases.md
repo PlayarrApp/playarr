@@ -21,6 +21,10 @@ applied by the multi-arch server publisher; the regional publisher uses immutabl
 
 ## What it does
 
+Three stages: (1) fast tests (backend, Linux phone, Fire TV, tv-web; the other clients test inside their
+build jobs), (2) signed builds of every client plus the GitHub Release, (3) store uploads. Fire TV (Vega)
+is not built: its SDK needs Docker. All Ubuntu jobs use `ubuntu-24.04`, not `ubuntu-latest`.
+
 | Job | Workflow | Output |
 |---|---|---|
 | Server | `backend-release.yml` | `playarr-server-<version>-linux-{amd64,arm64}.tar.gz` (+ `.sha256`), `playarr-server-<version>-SHA256SUMS`, `latest.json`; image `ghcr.io/<owner>/playarr:<version>` and `:latest` |
@@ -31,6 +35,9 @@ applied by the multi-arch server publisher; the regional publisher uses immutabl
 | Roku | inline | `playarr-roku-<version>.zip` (sideload channel) |
 | Xbox | `xbox-ci.yml` | `playarr-xbox-<version>-x64-unsigned.appx` (no signing certificate yet) |
 | HarmonyOS | `harmony-ci.yml` | `playarr-harmony-<version>-unsigned.hap` (no AppGallery signing material yet) |
+| Linux phone | inline | `playarr-linux-<version>-x86_64.tar.gz` |
+| macOS | inline | `playarr-macos-<version>-unsigned.zip` (no Developer ID yet) |
+| Stores | inline (`stores`) | Roku, Samsung, LG, Huawei AppGallery, Microsoft Partner Center, Amazon Appstore: one job each that logs "store pending: no account yet (board 59.x)" and succeeds. When a store is wired, add its `release-<store>` environment, credential secret and upload step together. Skipped in a dry run |
 | GitHub Release | inline | release `v<version>` with every package above, a combined `SHA256SUMS` and `playarr-<version>-CHANGELOG.md` |
 | Google Play | `android-play-internal.yml` | closed-testing (alpha) track, after the release exists |
 | TestFlight | `ios-release.yml` | iOS and tvOS builds, after the release exists; then each build is added to the external TestFlight groups (below) |

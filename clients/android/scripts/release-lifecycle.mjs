@@ -48,3 +48,19 @@ export function formatReleaseLifecycleEvidence(track, versionCode, lifecycleStat
   }
   return `${prefix}, lifecycle=${lifecycleState}; this does not prove tester availability`;
 }
+
+// A commit refused for a missing Console declaration (foreground service, data safety, content rating):
+// the upload is fine, only sending it for review is blocked. Not a review conflict or a version clash.
+export function isDeclarationBlock(error) {
+  const message = String(error?.apiMessage ?? '');
+  return (
+    (error?.status === 403 || error?.status === 400) &&
+    !/in review|already (been )?used|version ?code/i.test(message)
+  );
+}
+
+// Play's 403 "Version code N has already been used." for the version code this run expects.
+export function isVersionCodeReusable(error, expectedVersionCode) {
+  const match = /^Version code (\d+) has already been used/i.exec(String(error?.apiMessage ?? ''));
+  return error?.status === 403 && match !== null && match[1] === String(expectedVersionCode);
+}

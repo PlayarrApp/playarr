@@ -1,5 +1,5 @@
 # Board auto-sync: when a PR is merged, flip the TASKS.md rows that name it (scripts/board-sync.mjs).
-# The flip is a tasks.d/ fragment, folded onto main at once by scripts/fold-main.sh (the train's identity,
+# The flip is a tasks.d/ fragment, folded onto main at once by scripts/fold-main.sh (the fold identity,
 # deploy key when present). It used to open a `board-sync/pr-<n>` PR, but Actions may not create pull
 # requests in this repository ("GitHub Actions is not permitted to create or approve pull requests"),
 # which failed the run for #437. main is unprotected, so the push is allowed.

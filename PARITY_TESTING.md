@@ -91,9 +91,7 @@ Legend: ✅ the vendor supports it. ❌ the vendor does not offer it (none found
 | What | Command or path | Runs on |
 | --- | --- | --- |
 | Web unit tests | `pnpm --filter @playarr-tv/web run test` (from `clients/tv-web`) | CI, local |
-| Web behaviour e2e | `node scripts/web-behaviour.mjs --dist dist --shard 1/3` (from `clients/tv-web/web`, after `pnpm exec vite build`) | CI, local |
-| Web layout parity | `node scripts/layout-parity.mjs --out <dir>` (same directory) | CI, local |
-| Storybook smoke | `pnpm run build:storybook && node scripts/storybook-smoke.mjs` (same directory) | CI, local |
+| Browser, parity, capture and device runs | see `docs/testing/local-device-tests.md` (never in CI) | local |
 | Web parity references | `node scripts/parity/capture-web.mjs` (see `docs/parity/README.md`) | local |
 | Diff native against web | `node scripts/parity/diff.mjs --ref docs/parity/web --cand <dir> --layout tv --theme dark` | local |
 | Fixture server | `scripts/fixtures/up.sh --fresh` (`down.sh` to stop) | local |
@@ -101,8 +99,6 @@ Legend: ✅ the vendor supports it. ❌ the vendor does not offer it (none found
 | Android TV parity | `scripts/parity/android-tv/capture.sh <out> <light\|dark>` | workstation emulator or real TV |
 | Android phone parity | `scripts/parity/android-mobile/capture.sh` | local emulator |
 | Fire TV | `npm test -- --ci` in `clients/fire-tv`; `scripts/parity/fire-tv/capture.sh` | CI; real device |
-| iOS and tvOS tests | Actions > Apple Simulator tests; iOS tests on pull requests | `macos-latest` |
-| Apple parity | Actions > Apple parity > Run workflow | `macos-latest` |
 | tvOS live simulator | the MacBook launchd agent `app.playarr.sim-live`, reached over ssh (no repository workflow) | MacBook |
 | Simulator VNC | `scripts/sim-vnc/sim_vnc.py`; tests `python3 scripts/sim-vnc/test_sim_vnc.py` | MacBook, runner |
 | Roku | `make deploy` in `clients/roku`; `scripts/parity/roku/capture.mjs` | real device |

@@ -33,7 +33,8 @@ export type PageAction =
       icon: ActionIcon;
       open: boolean;
       onToggle: () => void;
-      controls: string;
+      /** Omit for a pressed toggle that opens nothing (Downloads notifications). */
+      controls?: string;
       buttonRef?: Ref<HTMLButtonElement>;
       buttonProps?: DataAttributes;
     }

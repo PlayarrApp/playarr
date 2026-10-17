@@ -195,7 +195,7 @@ Commit native captures and the `summary.md` under `docs/parity/<client>/`; keep 
 
 ## One tool for every client
 
-The Apple workflow (`.github/workflows/parity-apple.yml`) uses these shared tools only: `capture-web.mjs --dump-dom` for
+The Apple capture scripts (`scripts/parity/apple/`) uses these shared tools only: `capture-web.mjs --dump-dom` for
 the layout dump and `diff.mjs --chrome-only` against `docs/parity/web`. `scripts/parity/apple/screens.tv.json` now only
 maps shared screen ids to the tvOS app's native routes (`capture-tvos.sh` reads `id`, `native` and `user`). Screens the
 native client does not have yet (for example the settings section panels on tvOS) show as `missing-candidate` rows.
