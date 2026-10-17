@@ -9844,6 +9844,8 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
   width: calc(var(--stage-rail-width) + var(--list-glow-room));
   padding: var(--panel-pad);
   padding-left: 0;
+  /* Clear the shell action column (Filters, Notifications): the same reserve the Library grid keeps (page-layout.css). */
+  padding-right: var(--library-rail-right);
 }
 
 /* On a phone the Downloads panel and the state panels are the whole page (they keep Home's 62% column on larger
@@ -11226,26 +11228,6 @@ body[data-input-mode="remote"] .circle-focus-host[data-remote-active] .circle-fo
 .tv-download-row-actions button:disabled:hover {
   background: var(--surface-soft);
   color: var(--ink);
-}
-
-.tv-downloads-notify {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0 0 0.75rem;
-  color: var(--ink-muted);
-  font-size: clamp(0.55rem, calc(0.6 * var(--vw)), 0.75rem);
-}
-
-.tv-downloads-notify button {
-  height: clamp(34px, calc(2.8 * var(--vw)), 44px);
-  padding: 0 0.9rem;
-  border-radius: 999px;
-  background: var(--surface-soft);
-  color: var(--ink);
-  font-size: inherit;
-  cursor: pointer;
 }
 
 .tv-download-row-actions {
