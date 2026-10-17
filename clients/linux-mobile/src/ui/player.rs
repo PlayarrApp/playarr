@@ -84,6 +84,8 @@ struct Player {
     duration_ms: Cell<i64>,
     last_report: Cell<Instant>,
     closed: Cell<bool>,
+    /// Parity capture pin (`PLAYARR_PARITY_PAUSED`): paused at 0:00, and no progress goes to the server.
+    pinned: bool,
     mpris: crate::mpris::Mpris,
 }
 
@@ -98,6 +100,9 @@ impl Player {
     }
 
     fn report(&self, finished: bool) {
+        if self.pinned {
+            return;
+        }
         let (pos, dur) = (self.position_ms(), self.duration_ms.get());
         if dur <= 0 || pos <= 0 {
             return;
@@ -220,6 +225,9 @@ fn start_pipeline(
     pipeline.set_property("uri", &local);
 
     let direct = info.mode == "direct";
+    // A parity capture build holds the player paused at 0:00, the frame the web reference shows, so the clock and picture
+    // do not move between screenshots and a capture leaves no watch progress behind.
+    let pinned = std::env::var("PLAYARR_PARITY_PAUSED").is_ok();
     let player = Rc::new(Player {
         pipeline: pipeline.clone(),
         client,
@@ -228,6 +236,7 @@ fn start_pipeline(
         duration_ms: Cell::new(info.duration_ms),
         last_report: Cell::new(Instant::now()),
         closed: Cell::new(false),
+        pinned,
         mpris: app.mpris.clone(),
     });
 
@@ -240,7 +249,7 @@ fn start_pipeline(
     root.set_child(Some(&picture));
 
     // Controls as the web's phone player: scrubber, time, then two rows of icon buttons.
-    let toggle = ctl("p-pause", true);
+    let toggle = ctl(if pinned { "p-play" } else { "p-pause" }, true);
     let skip_back = ctl("p-prev", false);
     let skip_fwd = ctl("p-next", false);
     let mute = ctl("p-volume", false);
@@ -342,7 +351,7 @@ fn start_pipeline(
     picture.add_controller(tap);
 
     let pin_controls = std::env::var("PLAYARR_KEEP_CONTROLS").is_ok();
-    let playing = Rc::new(Cell::new(true));
+    let playing = Rc::new(Cell::new(!pinned));
     {
         let (player, playing, toggle2) = (player.clone(), playing.clone(), toggle.clone());
         let shown_until = shown_until.clone();
@@ -443,7 +452,11 @@ fn start_pipeline(
         });
     }
 
-    let _ = pipeline.set_state(gst::State::Playing);
+    let _ = pipeline.set_state(if pinned {
+        gst::State::Paused
+    } else {
+        gst::State::Playing
+    });
     let need_start_seek = Cell::new(direct && req.start_ms > 0);
     let start_ms = req.start_ms;
     let bus = pipeline.bus().ok_or("no bus")?;
@@ -491,7 +504,7 @@ fn start_pipeline(
             need_start_seek.set(false);
             let _ = player.pipeline.seek_simple(gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT, gst::ClockTime::from_mseconds(start_ms as u64));
         }
-        let pos = player.position_ms();
+        let pos = if player.pinned { 0 } else { player.position_ms() };
         pos_label.set_label(&super::detail::fmt_clock(pos));
         dur_label.set_label(&super::detail::fmt_clock(dur));
         if dur > 0 {

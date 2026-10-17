@@ -1,0 +1,1 @@
+- A Nura parity capture build (`PLAYARR_PARITY_PAUSED`) holds the player paused at 0:00 and sends no watch progress, so the player-controls capture is the same every run.

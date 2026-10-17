@@ -7,7 +7,7 @@ Helpers for capturing the native Linux phone client (`clients/linux-mobile`) on 
 | Script | Use |
 |---|---|
 | `pmsync.sh <playarr dir>` | Copy `clients/linux-mobile` and the shared avatars to the VM, then build there with `cargo build --release`. |
-| `pmrun.sh` | (Re)start the app on the VM. Honours `PLAYARR_ROUTE`, `PLAYARR_CONTROL`, `PLAYARR_KEEP_CONTROLS`. |
+| `pmrun.sh` | (Re)start the app on the VM. Honours `PLAYARR_ROUTE`, `PLAYARR_CONTROL`, `PLAYARR_KEEP_CONTROLS`, and `PLAYARR_PARITY_PAUSED` (hold the player paused at 0:00 for the player-controls capture). |
 | `pmcap3.sh <outdir> <route>...` | Verify the signed-in device identity, send routes to an already-running app through its control file, and capture each screen only after it stabilises. Routes: see `PLAYARR_ROUTE` in the README, plus `rail-end:<n>` (focus the last card of Home rail n) and `theme:dark\|light`. |
 | `cap2all.sh <dark\|light> <outdir>` | Capture all 14 screens for one theme. |
 | `pmcapture.sh <outdir> <dark\|light>` | Tap-driven run that also reaches `player-controls`. |
