@@ -117,6 +117,7 @@ async function waitReady(screen, phase) {
 }
 async function reach(screen) {
   assertNotInterrupted();
+  await driver.setCaptureTarget?.(screen.id);
   await driver.home();
   assertNotInterrupted();
   // A pinned `open` path is always used (every device shows the same title); otherwise keys, or the route as a fallback.

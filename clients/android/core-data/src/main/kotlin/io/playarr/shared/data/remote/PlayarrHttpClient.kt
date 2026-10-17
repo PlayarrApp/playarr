@@ -113,6 +113,7 @@ object PlayarrHttpClient {
         refreshAccessToken,
         enableHttpLogging,
         readTimeoutSeconds = EVENTS_READ_TIMEOUT_SECONDS,
+        trackActivity = false,
     ).create(LiveEventsApi::class.java)
 
     private fun buildRetrofit(
@@ -123,6 +124,7 @@ object PlayarrHttpClient {
         refreshAccessToken: (rejectedAccessToken: String?) -> String? = { null },
         enableHttpLogging: Boolean = false,
         readTimeoutSeconds: Long = API_READ_TIMEOUT_SECONDS,
+        trackActivity: Boolean = true,
     ): Retrofit {
         val okHttpClient = OkHttpClient.Builder()
             // OkHttp's 10 s defaults are too tight for a cold TLS connection over a
@@ -131,6 +133,7 @@ object PlayarrHttpClient {
             // node). A timeout here surfaces as "Can't reach the Playarr Server".
             .connectTimeout(API_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(readTimeoutSeconds, TimeUnit.SECONDS)
+            .apply { if (trackActivity) addInterceptor(PlayarrApiActivity.interceptor) }
             .addInterceptor(dynamicBaseUrlInterceptor(baseUrlProvider))
             .addInterceptor(platformHeaderInterceptor(clientPlatform, clientVersion))
             .addInterceptor { chain ->
