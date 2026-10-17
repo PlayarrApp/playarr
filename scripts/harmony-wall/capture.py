@@ -12,7 +12,7 @@ from screen_selection import (TV_SCREEN_IDS, parse_tv_screens, player_is_skipped
 from capture_diagnostics import (posters_stalled, tv_flat_card_blocks, home_recent_flat, save_rejected_frame, summarize_detail_events,
                                  summarize_detail_layout_events, summarize_detail_image_payload_events,
                                  analyze_episode_art_frame, episode_art_events_ready, decoded_art_is_accepted,
-                                 series_focus_failure, write_detail_summary, confirm_detail_route_source,
+                                 series_focus_failure, previewer_focus_unavailable, write_detail_summary, confirm_detail_route_source,
                                  summarize_detail_load_events, phone_flat_card_rows, preview_focus_confirmed)
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -556,7 +556,7 @@ if device == "tv":
                                          detail_load=detail_load_summary(current, cursor, work_id, generation))
                     raise Skip(failure)
 
-                deadline = time.time() + 12
+                deadline = time.time() + 40  # the bridge decodes uploads one by one: 24 episode images take ~20 s on a CI runner
                 while time.time() < deadline:
                     current = route_state()
                     if (current.get("route") != "Detail" or current.get("work_id") != work_id
@@ -599,6 +599,8 @@ if device == "tv":
                     # inspect_episode_art raises on failure, so reaching here means the last frame passed.
                     completion_seen = True
 
+            if name == "series-detail":  # which guard of the target-visibility report stopped it (preview-only counters)
+                print("series-detail guard", {k: v for k, v in (route_state().get("dbgcount") or {}).items() if k.startswith(("tgt-", "len-"))}, flush=True)
             try:
                 snap(name, folder, 100000,
                      frame_observer=inspect_episode_art if name == "series-detail" else None,
@@ -637,6 +639,9 @@ if device == "tv":
                     current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
                     generation=generation)
                 focus_failure = series_focus_failure(layout, episode_art_result.get("metrics"))
+                if focus_failure in ("focus-request-not-accepted", "focus-not-target") and previewer_focus_unavailable(layout):
+                    print("series-detail: the Previewer has no focus controller (requestFocus threw); focus is not asserted here", flush=True)
+                    focus_failure = None
                 accepted = decoded_art[theme] and focus_failure is None
                 failure = focus_failure if focus_failure is not None else (
                     None if decoded_art[theme] else "episode-art-not-accepted")

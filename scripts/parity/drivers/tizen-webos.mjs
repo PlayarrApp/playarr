@@ -7,6 +7,7 @@ import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { installRegionPin, installVisualDate } from "./web.mjs";
 import { assertDeviceTestIdentity, fetchCurrentIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -42,6 +43,8 @@ export async function createDriver() {
   const display = device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
   const cdpPort = process.env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
+  let tizenPinScript = null; // base64 of the page script that pins Date, zone and locale: stored for netlog.js to run before the app renders
+  let pin = null; // { fixedNow, timeZone, locale } from setDeterministicCapture, re-applied on every CDP connection
   let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme;
   const allowedUsernames = loadAllowedDeviceTestUsernames({ env: process.env, client: process.env.PARITY_CLIENT });
   const trustedServerUrl = loadTrustedDeviceTestServerUrl();
@@ -74,6 +77,14 @@ export async function createDriver() {
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
     await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
+    if (pin) {
+      // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
+      await cdp("Emulation.setTimezoneOverride", { timezoneId: pin.timeZone });
+      await cdp("Emulation.setLocaleOverride", { locale: pin.locale });
+      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)})`;
+      await cdp("Page.addScriptToEvaluateOnNewDocument", { source: install });
+      await cdp("Runtime.evaluate", { expression: install });
+    }
   }
   async function keyboardVisible() {
     const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
@@ -143,6 +154,12 @@ export async function createDriver() {
     if (r?.exceptionDetails) throw new Error(r.exceptionDetails.text);
     return r?.result?.value;
   }
+  // Store the pin for the next page start and apply it to this page too; a no-op when the page already runs it.
+  async function applyTizenPin() {
+    if (!tizenPinScript) return;
+    await ev(`(localStorage.setItem("__parityPin", atob("${tizenPinScript}")), window.__parityPinned || (0, eval)(atob("${tizenPinScript}")), true)`);
+    if ((await ev("window.__parityPinned === true")) !== true) throw new Error("tizen page did not take the pinned clock");
+  }
   async function guard() {
     const identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
     return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
@@ -155,7 +172,7 @@ export async function createDriver() {
       for (let a = 0; a < 4; a += 1) {
         writeFileSync(`${NETLOG}/cmd.txt`, `hash:${route}`);
         await sleep(8000);
-        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) { await guard(); return; }
+        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) { await applyTizenPin(); await guard(); return; }
       }
       throw new Error(`tizen did not reach ${route}`);
     }
@@ -265,7 +282,19 @@ export async function createDriver() {
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
   return {
-    async setDeterministicCapture() { throw new Error(`${device} stable deterministic capture unsupported: this packaged Chromium client has no app-owned clock and animation contract`); },
+    // webOS is driven over CDP, so the clock, zone and locale are pinned from the inspector; Tizen's driver has no CDP channel (netlog eval only).
+    async setDeterministicCapture({ fixedNow, timeZone = "UTC", locale = "en-GB" } = {}) {
+      if (!fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error(`${device} deterministic capture requires a valid fixedNow instant`);
+      if (device === "tizen") {
+        // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
+        if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
+        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});window.__parityPinned = true;`;
+        tizenPinScript = Buffer.from(source).toString("base64");
+        return;
+      }
+      pin = { fixedNow, timeZone, locale };
+      if (ws && ws.readyState === 1) { closeCdp(); await cdpConnect(); }
+    },
     async captureBuildIdentity() { throw new Error(`${device} stable build identity unsupported: deployed package digest is not exposed by this driver`); },
     async waitReady() { throw new Error(`${device} stable deterministic capture unsupported: readiness is not exposed through the native app contract`); },
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
@@ -277,6 +306,7 @@ export async function createDriver() {
       } else {
         await guard();
         execFileSync("xset", ["-display", display, "r", "off"], { stdio: "ignore" });
+        await applyTizenPin();
       }
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
       await guard();

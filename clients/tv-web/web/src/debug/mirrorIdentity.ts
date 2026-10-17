@@ -169,6 +169,17 @@ function selectProfile(markerRaw: string | null, sessionsRaw: string | null): Se
   }
 }
 
+/** The selected profile's server, user and Authorization value, read synchronously from storage (no network); null when unavailable. */
+export function readSelectedSession(storage: Pick<Storage, "getItem">): { userId: string; serverUrl: string; auth: string } | null {
+  try {
+    const selected = selectProfile(storage.getItem(MIRROR_ACTIVE_PROFILE_KEY), storage.getItem(MIRROR_PROFILE_SESSIONS_KEY));
+    const serverUrl = selected && canonicalServerUrl(selected.apiBaseUrl);
+    return selected && serverUrl ? { userId: selected.userId, serverUrl, auth: `${selected.tokenType} ${selected.accessToken}` } : null;
+  } catch {
+    return null;
+  }
+}
+
 export function sameMirrorIdentity(left: MirrorIdentity, right: MirrorIdentity): boolean {
   return Boolean(
     left.status === "ok" && right.status === "ok" &&
