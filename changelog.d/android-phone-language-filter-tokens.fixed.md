@@ -1,1 +1,0 @@
-- Show selected Android phone language filters as removable tokens alongside the Add language control.
