@@ -2039,10 +2039,6 @@ struct TVLibraryKindView: View {
                 #if DEBUG
                 .task { await attachAndReportParityItems() }
                 .onChange(of: items.count) { _, _ in reportParityItems() }
-                .onDisappear {
-                    if let parityContentLease { TVParityState.releaseContent(parityContentLease) }
-                    parityContentLease = nil
-                }
                 #endif
         }
         #else
@@ -2050,10 +2046,6 @@ struct TVLibraryKindView: View {
             #if DEBUG && (os(tvOS) || os(macOS))
             .task { await attachAndReportParityItems() }
             .onChange(of: items.count) { _, _ in reportParityItems() }
-            .onDisappear {
-                if let parityContentLease { TVParityState.releaseContent(parityContentLease) }
-                parityContentLease = nil
-            }
             #endif
         #endif
     }

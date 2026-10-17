@@ -165,7 +165,7 @@ if (only.includes("screens")) {
         await driver.screenshot(path, { screen: s.id });
         assertNotInterrupted();
         const bytes = readFileSync(path);
-        if (repeatProof) {
+        if (repeatProof && !reference) { // native proof only: the web reference is pinned by clock and readiness
           const digest = createHash("sha256").update(bytes).digest("hex");
           await driver.screenshot(path, { screen: s.id });
           const repeated = createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -218,7 +218,7 @@ if (deterministic && stableScreenManifest && summary.failed.length === 0) {
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, "captures.json"), `${JSON.stringify(captures, null, 2)}\n`, { flag: "wx" });
 }
-if (repeatProof && summary.failed.length === 0) {
+if (repeatProof && !reference && summary.failed.length === 0) {
   const buildAfter = await driver.captureBuildIdentity?.();
   if (!sameCaptureBuildIdentity(buildBeforeCapture, buildAfter)) throw new Error("installed app build identity changed during repeat-proof capture");
   console.log(`repeat-proof passed ${frameDigests.size} screen frames on one installed build`);
