@@ -11,6 +11,7 @@ struct Tokens {
     ink_soft: &'static str,
     ink_muted: &'static str,
     line: &'static str,
+    line_strong: &'static str,
     brand: &'static str,
     brand_ink: &'static str,
     /// The web's `--card-glow-color`: strong brand in light, brand ink in dark.
@@ -31,6 +32,7 @@ const DARK: Tokens = Tokens {
     ink_soft: "#cdc1c6",
     ink_muted: "#c2b5bb",
     line: "rgba(223, 220, 221, 0.11)",
+    line_strong: "rgba(223, 220, 221, 0.23)",
     brand: "#cf3157",
     brand_ink: "#eaa6b6",
     focus_glow: "#eaa6b6",
@@ -49,6 +51,7 @@ const LIGHT: Tokens = Tokens {
     ink_soft: "#443a40",
     ink_muted: "#4d4248",
     line: "rgba(56, 38, 33, 0.14)",
+    line_strong: "rgba(56, 38, 33, 0.28)",
     brand: "#cf3157",
     brand_ink: "#821e36",
     focus_glow: "#a52745",
@@ -62,9 +65,9 @@ pub fn css(dark: bool) -> String {
     let t = if dark { &DARK } else { &LIGHT };
     let defs = format!(
         "@define-color pa_bg {}; @define-color pa_surface {}; @define-color pa_surface_strong {}; @define-color pa_soft {};\n\
-         @define-color pa_ink {}; @define-color pa_ink_soft {}; @define-color pa_muted {}; @define-color pa_line {};\n\
+         @define-color pa_ink {}; @define-color pa_ink_soft {}; @define-color pa_muted {}; @define-color pa_line {}; @define-color pa_line_strong {};\n\
          @define-color pa_brand {}; @define-color pa_brand_ink {}; @define-color pa_focus_glow {}; @define-color pa_on_accent {}; @define-color pa_accent {}; @define-color pa_shadow {}; @define-color pa_wash {}; @define-color pa_ring {};\n",
-        t.bg, t.surface, t.surface_strong, t.surface_soft, t.ink, t.ink_soft, t.ink_muted, t.line, t.brand, t.brand_ink,
+        t.bg, t.surface, t.surface_strong, t.surface_soft, t.ink, t.ink_soft, t.ink_muted, t.line, t.line_strong, t.brand, t.brand_ink,
         t.focus_glow, t.on_accent, t.accent, t.shadow, t.wash,
         // The web's dark focus ring is pure white (page-layout.css); light keeps the ink.
         if dark { "#ffffff" } else { t.ink }

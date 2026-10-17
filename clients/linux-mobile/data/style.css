@@ -188,10 +188,16 @@ button.pa-pill, .pa-pill { background: @pa_surface; font-size: 11.52px; font-wei
 .pa-entry-meta { font-size: 12.8px; color: @pa_muted; }
 .pa-chip-status { font-size: 10.24px; font-weight: 750; padding: 0 12px; min-height: 19px; }
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding: 16px; border-radius: 12px; min-height: 93px; }
-/* Agenda rows as the web phone: a surface row with a hairline above and below, a 3 px availability bar on the left, no fill or radius */
-button.pa-entry, button.pa-entry:hover { background: @pa_surface; border-radius: 12px; border-width: 1px 0 1px 3px; border-style: solid; border-color: @pa_line; padding: 9px 13px; min-height: 0; }
+/* Agenda rows as the web phone: a strong-surface card with the web's strong hairline above and below (its right edge runs off the page), a 4 px availability bar on the left; unavailable is the muted ink */
+button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; border-radius: 12px; border-width: 1px 0 1px 4px; border-style: solid; border-color: @pa_line_strong; padding: 9px 13px; min-height: 0; }
 button.pa-entry.have { border-left-color: #8ac5a5; }
-button.pa-entry.missing { border-left-color: @pa_brand_ink; }
+button.pa-entry.missing { border-left-color: @pa_muted; }
+button.pa-entry:not(.week) { padding-bottom: 10px; }
+button.pa-entry:not(.week) .pa-entry-sub { margin-top: 2px; }
+button.pa-entry:not(.week) .pa-entry-metarow { margin-top: 1px; }
+/* Week cards keep their earlier look until measured against the web week */
+button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface; border-color: @pa_line; }
+button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }
 .pa-today-chip { font-size: 10.24px; letter-spacing: 1px; font-weight: 700; padding: 0 10px; min-height: 0; }
 .pa-thumb { border-radius: 6px; }
 

@@ -1,0 +1,1 @@
+- Match the Nura agenda cards to the web: white card fill, strong hairlines, 4 px availability bar, muted bar for unavailable, and the web's taller row spacing.
