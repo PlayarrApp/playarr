@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Roku: the player draws the web Minimise pill and a bordered round close button; Up from the seek bar reaches them. Minimise ends playback, as Roku cannot keep a mini player behind the browse pages.
 - Match Android phone Home and library card artwork fallbacks to the web client's poster and backdrop ordering.
 - Match the Android phone language filter's expanded chevron and nested Back behaviour to the web client.
 - Android phone library language filters now show a bounded, vertically scrollable checkbox list, matching the Web phone layout.
