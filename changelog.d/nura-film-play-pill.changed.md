@@ -1,0 +1,1 @@
+- Nura film detail draws the Play pill in the brand red the web shows (its focused state), with the web's glyph icons on Download and Playback and its pill spacing.
