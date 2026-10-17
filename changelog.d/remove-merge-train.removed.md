@@ -1,1 +1,0 @@
-- Removed the merge train workflow and scripts, plus the cron schedules in CI, Apple wall and untracked-branches. PRs target `integration/parity`, which the coordinator batches into `main` with a merge commit once `ci-required` is green.
