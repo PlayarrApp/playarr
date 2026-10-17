@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { syncSignedInHint } from "./signedInHint";
 import {
   ApiClient,
   type AccessTokenRequest,
@@ -162,7 +163,10 @@ function readStoredProfileSessions(fallbackApiBaseUrl: string): StoredProfileSes
       LEGACY_SAVED_PROFILE_SESSIONS_STORAGE_KEYS.map((key) =>
         window.localStorage.getItem(key)
       ).find((value) => value !== null);
-    if (!raw) return [];
+    if (!raw) {
+      syncSignedInHint(false);
+      return [];
+    }
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     const profiles = parsed.flatMap((value): StoredProfileSession[] => {
@@ -200,6 +204,8 @@ function readStoredProfileSessions(fallbackApiBaseUrl: string): StoredProfileSes
         window.localStorage.removeItem(key);
       }
     }
+    // Boot and cross-tab reads re-assert the hint so existing users skip the marketing page.
+    syncSignedInHint(profiles.length > 0);
     return profiles;
   } catch {
     return [];
@@ -207,6 +213,7 @@ function readStoredProfileSessions(fallbackApiBaseUrl: string): StoredProfileSes
 }
 
 function writeStoredProfileSessions(profiles: StoredProfileSession[]): void {
+  syncSignedInHint(profiles.length > 0);
   try {
     window.localStorage.setItem(SAVED_PROFILE_SESSIONS_STORAGE_KEY, JSON.stringify(profiles));
   } catch {
