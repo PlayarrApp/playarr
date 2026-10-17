@@ -696,6 +696,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await guard();
       // The app applies directional keys once per animation frame: let two frames pass before anything reads focus.
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      // A key walk (left, down*12, up*9, select) must not outrun the focus move behind the previous key on a loaded runner:
+      // a missed move sent Enter to a Home card in the search capture. Wait for focus to hold still before the next key.
+      if (k !== "select") await stableFocus().catch((error) => { if (error?.name !== "TimeoutError") throw error; });
     },
     async location() { await guard(); const u = new URL(page.url()); await guard(); return u.pathname + u.search; },
     // { label, position } of the focused item, or null when the page body has focus (a check then fails).
