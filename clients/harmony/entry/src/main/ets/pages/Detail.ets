@@ -210,8 +210,6 @@ const PHONE_DETAIL_RAIL_CLIP_START: number = 16;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
 // Season to season is 237 on web; the phone capture measured 14.3 vp short with 21, so the gap is 35.3.
 const PHONE_SEASON_ROW_GAP: number = 37.6;
-// Web: 57 vp from the action row to the first season heading (the hero ends there); the page spacing gave 21.
-const PHONE_SEASONS_TOP_GAP: number = 36;
 /** Web `--brand-strong`, the phone Play button's focused fill. */
 const PLAY_FOCUS_FILL: string = '#a52745';
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
@@ -2126,7 +2124,7 @@ struct Detail {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .margin({ top: isTvMetrics() ? 0 : PHONE_SEASONS_TOP_GAP })
+    .margin({ top: 0 })
   }
 
   @Builder
@@ -2321,7 +2319,7 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(4) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
           .fontSize(10.24)
@@ -2424,10 +2422,10 @@ struct Detail {
     Row({ space: 8 }) {
       this.touchActionButton('Download', (): void => {
         this.touchActionsOpen = true;
-      }, 8)
+      }, 8, '\u21E9')
       this.touchActionButton('Playback', (): void => {
         this.touchActionsOpen = true;
-      }, 11)
+      }, 11, '\u2637')
       this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
     }
     Row({ space: 8 }) {
@@ -2438,7 +2436,7 @@ struct Detail {
         this.touchActionsOpen = true;
       }, 8, '+')
     }
-    .margin({ top: 12 })
+    .margin({ top: 11 })
   }
 
   /** Phone (web phone detail): the backdrop fading into the page at the top, Back over it, then the pink kind line, the title, the
@@ -2497,7 +2495,7 @@ struct Detail {
               .fontSize(11.52)
               .fontColor(toResourceColor(activeColors().inkSoft))
               .lineHeight(16.7)
-              .margin({ top: this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 15 : 10 })
+              .margin({ top: 12 })
               .maxLines(3)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
             Column() {
@@ -2505,13 +2503,26 @@ struct Detail {
             }
             .width('100%')
             .alignItems(HorizontalAlign.Start)
-            .margin({ top: 14 })
+            .margin({ top: 12 })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
 
           // the TV page's rails, Chapters and Cast column, one copy: its sizes are web CSS px, which are vp here
-          this.tvRightColumn()
+          Column() {
+            this.tvRightColumn()
+          }
+          .width('100%')
+          .alignItems(HorizontalAlign.Start)
+          // web phone: the rails sit on a glass panel that fades in from the left edge, bleeding to both sides
+          .padding({ top: 36, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
+          .margin({ left: -atLeast(16, this.safeLeft), right: -atLeast(16, this.safeRight) })
+          .linearGradient({
+            direction: GradientDirection.Right,
+            colors: resolvedThemeMode() === 'dark' ?
+              [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
+              [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
+          })
         }
         .padding({
           top: TOUCH_TEXT_TOP,
