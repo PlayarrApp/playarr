@@ -996,3 +996,14 @@ describe("session persistence under races and outages", () => {
     expect(calls).toBe(afterFirst);
   });
 });
+
+describe("ensureAccessToken without transparent login", () => {
+  it("rejects with 401 and sends no request when nothing is stored", async () => {
+    const fetchImpl = mockFetch(async () => jsonResponse(200, {}));
+    const client = new ApiClient({ baseUrl: BASE_URL, fetchImpl });
+    await expect(
+      ensureAccessToken(client, new TokenStore(), IDENTITY, { allowTransparentLogin: false })
+    ).rejects.toMatchObject({ status: 401 });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});

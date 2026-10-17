@@ -344,6 +344,26 @@ export function ProfilesPage(
     );
   }, [profiles, selectedId]);
 
+  // No active account: exactly one saved account is picked for the viewer, none means sign-in.
+  // Two or more stay on this page, listed, until the viewer chooses.
+  const autoPickedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (currentUserId || awaitingDirectory) return;
+    if (savedProfiles.length === 0) {
+      if (autoPickedRef.current !== "login") {
+        autoPickedRef.current = "login";
+        continueToLogin(null, loginFrom);
+      }
+      return;
+    }
+    const [only] = savedProfiles.length === 1 ? profiles : [];
+    if (only && autoPickedRef.current !== only.id) {
+      autoPickedRef.current = only.id;
+      void completeProfileAction(only, "select");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId, savedProfiles.length, profiles]);
+
   useEffect(() => {
     if (!pinProfile) return;
     const frame = window.requestAnimationFrame(() => pinInputRef.current?.focus());

@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   ApiClient,
+  ApiError,
   type AccessTokenRequest,
   type ApiClientConfig,
   type LoginRequest,
@@ -932,6 +933,11 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
       getAccessToken: async (request) => {
         try {
           const activeProfile = activeProfileRef.current;
+          // Nobody is signed in: answer locally. Reaching `ensureAccessToken` would register a
+          // shared in-flight rejection that a later, real sign-in would pick up.
+          if (!activeProfile && !tokenStore.get()) {
+            throw new ApiError(401, "Unauthorized", { error: "unauthorized" });
+          }
           const token = await ensureAccessToken(
             instance,
             tokenStore,
@@ -941,6 +947,10 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
             },
             {
               ...request,
+              // Sign-in is always the viewer's choice: a credential-less login would pick an
+              // account for them, or answer 400 under full-account auth. With no session
+              // stored, nothing is sent at all.
+              allowTransparentLogin: false,
               // §7.2: a refresh failure against `apiBaseUrl` retries the
               // same refresh token across the rest of the remembered
               // group before falling through to a full login. A no-op
@@ -994,7 +1004,18 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
           // a restarting server (5xx/429/408) or a hung request says nothing
           // about the session: keep the stored credentials, stay on the
           // page and let the next request retry.
-          if (!isTransientAuthFailure(err)) setAuthFailed(true);
+          if (!isTransientAuthFailure(err)) {
+            setAuthFailed(true);
+            // The active session is refused: drop only it (the saved entry stays, so
+            // picking that profile re-tries its own token or asks for its credentials).
+            if (activeProfileRef.current) {
+              tokenStore.clear();
+              clearActiveProfileMarker();
+              activeProfileRef.current = undefined;
+              setCurrentUserId(undefined);
+              setCurrentUserName(undefined);
+            }
+          }
           throw err;
         }
       },
@@ -1401,6 +1422,8 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
           {
             serverGroup: readKnownServers(),
             clientForUrl: buildClientForServerGroupUrl,
+            // A refused saved token asks for that profile's credentials; no blank login.
+            allowTransparentLogin: false,
             // Always go to the server on a switch so a PIN-locked profile
             // is checked against its unlock lease, not a cached token.
             forceRefresh: true,

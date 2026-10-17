@@ -105,7 +105,6 @@ import {
   IS_VIDAA,
   IS_TV,
   PLAYARR_CLIENT_PLATFORM,
-  shouldStartTvLink,
 } from "./lib/clientPlatform";
 import { formatShellClockDate } from "./lib/shellClockDate";
 import { ShellActionColumnProvider } from "./components/shell/ShellActionColumn";
@@ -407,11 +406,13 @@ function AppShell() {
     }
   }, [currentUserId, playerSession]);
 
-  if (shouldStartTvLink(IS_TV, currentUserId, savedProfiles.length)) {
-    return <Navigate to="/login/qr" replace state={{ from: location }} />;
+  // Nobody signed in and nothing saved: sign-in is the first paint, never the shell.
+  if (currentUserId === undefined && savedProfiles.length === 0) {
+    return <Navigate to={IS_TV ? "/login/qr" : "/login"} replace state={{ from: location }} />;
   }
 
-  if (authFailed) {
+  // No active session but saved accounts: the picker is the first paint, never the shell.
+  if (authFailed || (currentUserId === undefined && savedProfiles.length > 0)) {
     return (
       <ProfilesPage
         loginFrom={`${location.pathname}${location.search}${location.hash}`}
