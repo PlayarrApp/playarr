@@ -141,15 +141,15 @@ if (reset) {
   await resetProgress([...pinned(), ...catalogFiles]);
   assertNotInterrupted();
 } // before any capture: On deck and Resume start from the same state on every device
-let pinned = false;
+let clockPinned = false;
 if (deterministic || repeatProof) { // a repeat proof pins the clock without the isolated-account stable machinery
-  pinned = await pinCapture(driver, { fixedNow, explicit: args.includes("--stable") || repeatProof });
-  if (deterministic) deterministic = pinned;
+  clockPinned = await pinCapture(driver, { fixedNow, explicit: args.includes("--stable") || repeatProof });
+  if (deterministic) deterministic = clockPinned;
   assertNotInterrupted();
 }
-const readiness = readinessMode(driver, pinned);
+const readiness = readinessMode(driver, clockPinned);
 strict = readiness === "strict";
-console.log(`capture state pinned=${pinned} readiness=${readiness}`);
+console.log(`capture state pinned=${clockPinned} readiness=${readiness}`);
 const buildBeforeCapture = strict ? await driver.captureBuildIdentity() : null;
 assertNotInterrupted();
 await driver.start?.({ theme: themes[0] });
