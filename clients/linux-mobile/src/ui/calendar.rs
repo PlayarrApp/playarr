@@ -233,15 +233,20 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         sub.push(t.to_string());
     }
     if !sub.is_empty() {
-        col.append(
-            &gtk4::Label::builder()
-                .label(sub.join(" · "))
-                .css_classes(["pa-entry-sub"])
-                .xalign(0.0)
-                .ellipsize(gtk4::pango::EllipsizeMode::End)
-                .max_width_chars(1)
-                .build(),
-        );
+        let line = gtk4::Label::builder()
+            .label(sub.join(" · "))
+            .css_classes(["pa-entry-sub"])
+            .xalign(0.0)
+            .max_width_chars(1)
+            .build();
+        // The web week card wraps the episode line; the agenda row keeps one line.
+        if week {
+            line.set_wrap(true);
+            line.set_wrap_mode(gtk4::pango::WrapMode::WordChar);
+        } else {
+            line.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        }
+        col.append(&line);
     }
     let meta = gtk4::Box::builder()
         .spacing(12)
