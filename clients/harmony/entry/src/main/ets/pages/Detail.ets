@@ -205,11 +205,11 @@ const HERO_TOUCH_HEIGHT: number = 340;
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
 const PHONE_SEASON_LIST_HEIGHT: number = 165;
-const PHONE_SEASON_HEADER_CARD_GAP: number = 19;
+const PHONE_SEASON_HEADER_CARD_GAP: number = 16.6;
 const PHONE_DETAIL_RAIL_CLIP_START: number = 16;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
 // Season to season is 237 on web; the phone capture measured 14.3 vp short with 21, so the gap is 35.3.
-const PHONE_SEASON_ROW_GAP: number = 37.6;
+const PHONE_SEASON_ROW_GAP: number = 35.5;
 /** Web `--brand-strong`, the phone Play button's focused fill. */
 const PLAY_FOCUS_FILL: string = '#a52745';
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
@@ -1995,7 +1995,7 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 7 : tv(4) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 11 : tv(4) }) {
       Text(heading).fontFamily(nunito(400))
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
@@ -2322,12 +2322,13 @@ struct Detail {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
           .fontSize(10.24)
+          .lineHeight(this.detail !== null && this.detail.work.kind === 'series' ? 20 : 0)
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
           .fontColor(toResourceColor(index === 0 ? activeColors().ink : activeColors().inkSoft))
       }, (chip: string, index: number): string => index.toString() + chip)
     }
     .width('100%')
-    .margin({ top: 12 })
+    .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 0 : 12 })
   }
 
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
