@@ -6259,7 +6259,7 @@ private fun ExperienceVideoDetailContent(
                     autoFocusPlay = series == null,
                     playFocus = playFocus,
                     television = true,
-                    modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) 9.dp else 0.dp)),
+                    modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) 6.dp else 0.dp)),
                 )
             }
             if (series != null) {
@@ -6808,7 +6808,8 @@ private fun VideoDetailCopy(
                 lineHeight = (webVw(9.28f, 0.67f, 13.44f).value * 1.58f).sp,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = if (episode != null) 20.7.dp else 21.7.dp).widthIn(max = 324.dp),
+                // Tablet web measured at 1280 x 800: the synopsis is 3 dp lower and 347 dp wide (the actions row below keeps its place).
+                modifier = Modifier.padding(top = (if (episode != null) 20.7.dp else 21.7.dp) + (if (LocalStageScale.current != 1f) 3.dp else 0.dp)).widthIn(max = if (LocalStageScale.current != 1f) 347.dp else 324.dp),
             )
         }
         return
@@ -7268,7 +7269,7 @@ internal fun SeriesEpisodeBrowser(
         modifier = modifier
             .then(
                 if (isTelevision) {
-                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp, top = 357.dp + 22.5.dp * tabletDetail)
+                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp + 22.5.dp * tabletDetail)
                 } else {
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
@@ -7318,9 +7319,9 @@ internal fun SeriesEpisodeBrowser(
             LazyRow(
                 state = if (isTelevision) tvRails.rowState(seasonIndex) else androidx.compose.foundation.lazy.rememberLazyListState(),
                 // The viewport reaches 40 dp left of the heading line so a focused first tile's ring, corner and glow are not clipped (web's track left gutter).
-                modifier = if (isTelevision) Modifier.padding(top = 18.3.dp + 5.6.dp * tabletDetail).extendStart(40.dp) else Modifier,
-                horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp else 12.dp),
-                contentPadding = if (isTelevision) PaddingValues(start = 44.dp, top = 18.dp, end = tabletTrackEnd(24.dp), bottom = 24.dp * tabletDetail) else PaddingValues(vertical = 6.dp),
+                modifier = if (isTelevision) Modifier.padding(top = 18.3.dp + 13.85.dp * tabletDetail).extendStart(40.dp) else Modifier,
+                horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp - 1.dp * tabletDetail else 12.dp),
+                contentPadding = if (isTelevision) PaddingValues(start = 44.dp - 3.dp * tabletDetail, top = 18.dp, end = tabletTrackEnd(24.dp), bottom = 24.dp * tabletDetail) else PaddingValues(vertical = 6.dp),
             ) {
                 itemsIndexed(season.episodes, key = { _, it -> it.episode.id }) { episodeIndex, episode ->
                     EpisodeDetailCard(
@@ -7343,7 +7344,8 @@ internal fun SeriesEpisodeBrowser(
             }
         }
         if (isTelevision) {
-            LazyColumn(Modifier.weight(1f), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
+            // Tablet: the taller card block (art 8.25 dp lower, 270 dp card, 36.7 dp copy row) takes 17.25 dp from the gap, so the season headings stay where web puts them.
+            LazyColumn(Modifier.weight(1f), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(bottom = 80.dp)) {
                 items(seasons, key = { it.season.id }) { content(it) }
                 if (credits.cast.isNotEmpty()) {
                     item { DetailCreditsRail(credits.cast) }
@@ -7414,19 +7416,26 @@ private fun WebEpisodeDetailCard(
     val available = episode.mediaFileId != null
     val lift = focused || selected
     val artScale = rememberPlayarrFocusScale(focused = lift, focusedScale = 1.025f, label = "episodeArtFocus")
+    // Measured against web at 1280 x 800 (css px = dp * stage scale): 180 css card, 7 css lift, 11.52 css copy gap, no focus wash.
+    val stage = LocalStageScale.current
+    val tablet = stage != 1f
+    val copyFont = webVw(8.64f, 0.6f, 11.84f).value
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.foundation.LocalIndication provides (if (tablet) CalendarNoFocusFill else androidx.compose.foundation.LocalIndication.current),
+    ) {
     Box(
         modifier
-            .width(268.dp)
+            .width(if (tablet) 270.dp else 268.dp)
             .onFocusChanged { state -> focused = state.isFocused; if (state.isFocused) onSelect() }
             .clickable(enabled = available, onClick = onPlay),
     ) {
-    Column(Modifier.fillMaxWidth().mediaCardLift(lift)) {
+    Column(Modifier.fillMaxWidth().mediaCardLift(lift, PlayarrCardMotions.Card.copy(lift = (7f / stage).dp))) {
         // `.tv-episode-art` box-shadow: a resting pair, and the larger pair while the episode is selected.
         WebShadowedBox(
             shadows = if (lift) webCardFocusShadows else webCardRestShadows,
             shape = RoundedCornerShape(13.44.dp),
             focusGlow = focused,
-            modifier = Modifier.fillMaxWidth().height(150.8.dp).scale(artScale),
+            modifier = Modifier.fillMaxWidth().height(if (tablet) 151.9.dp else 150.8.dp).scale(artScale),
             innerModifier = Modifier.background(WebSurfaceSoft),
         ) {
             WebEpisodeArt {
@@ -7473,18 +7482,20 @@ private fun WebEpisodeDetailCard(
         }
         val code = "S${seasonNumber.toString().padStart(2, '0')} \u00B7 E${episode.episode.episodeNumber.toString().padStart(2, '0')}"
         val title = episode.episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episode.episodeNumber)
-        Row(Modifier.fillMaxWidth().height(28.8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(code, color = WebInkMuted, fontSize = 8.832.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.width(46.6.dp))
+        // Web `.tv-episode-copy`: 0.72rem (11.52 css px) above one 1.5 line; the 46.6 dp code column grows with its font and the 0.55rem gap.
+        Row(Modifier.fillMaxWidth().height((11.52f / stage + copyFont * 1.5f).dp).padding(top = (11.52f / stage - (if (tablet) 6f else 0f)).dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(code, color = WebInkMuted, fontSize = webVw(6.8f, 0.46f, 8.832f).value.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.width(if (tablet) 58.5.dp else 46.6.dp))
             Text(
                 title,
                 color = if (available) WebInk else WebInkMuted,
-                fontSize = 11.52.sp,
+                fontSize = copyFont.sp,
                 fontWeight = FontWeight(610),
                 letterSpacing = (-0.173).sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
     }
     }
 }
