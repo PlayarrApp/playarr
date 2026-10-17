@@ -57,4 +57,10 @@ run() { case $1 in
   player-focus) open movies; python3 -I $HERE/uiexpect.py '[0-9,]+ titles' || { echo "wrong screen movies grid"; return 1; }; tap ${CARD_X:-1254} ${CARD_Y:-371} 6; tap_text "Resume.*|Play" 25; kseq right*3; shot $1 1 ;;
   *) echo "unknown $1";;
 esac; }
+# A player capture leaves the app playing, and playback keeps writing watch progress to the shared account (a stray On deck card on every client).
+trap 'adb shell am force-stop $pkg' EXIT
 for s in "$@"; do for attempt in 1 2 3; do run "$s" && break; done; done
+adb shell am force-stop $pkg; sleep 3
+# The deck must be unchanged after the run: nothing but the canonical item may hold progress.
+left=$(node "$HERE/reset-deck-canonical.mjs" --dry | grep -oE 'clear [0-9]+' | grep -oE '[0-9]+')
+[ "${left:-1}" = 0 ] || { echo "deck changed by this run: $left stray progress rows (reset with reset-deck-canonical.mjs)"; exit 3; }
