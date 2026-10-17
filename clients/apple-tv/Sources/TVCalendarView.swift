@@ -11,6 +11,7 @@ struct TVCalendarView: View {
     @FocusState private var focusedEntry: String?
 
     private enum Panel { case link, filters }
+    private static let todayFocus = "calendar-today"
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -21,6 +22,10 @@ struct TVCalendarView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea()
+        #if !os(macOS)
+        // Web `data-tv-focus-default`: RIGHT from the nav rail lands on Today (row 28.961).
+        .defaultFocus($focusedEntry, Self.todayFocus)
+        #endif
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: viewModel?.mode) { _, mode in TVParityState.setCalendarView(mode?.rawValue) }
         .onChange(of: panel) { _, p in TVParityState.setPanel(p == .filters ? "filters" : nil) }
@@ -167,6 +172,8 @@ struct TVCalendarView: View {
         // Web `data-tv-focus-default`: the Today button takes the page's first focus.
         .macPreferredFocus(label == "Today")
         .environment(\.macDownTo, label == "Today" ? "calendar-filters" : nil)
+        #else
+        .focused($focusedEntry, equals: label == "Today" ? Self.todayFocus : "calendar-control-\(label)")
         #endif
         .placed(x: x, y: 56.2, w: width, h: 50)
     }
