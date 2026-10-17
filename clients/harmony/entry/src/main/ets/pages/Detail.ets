@@ -2124,7 +2124,7 @@ struct Detail {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .margin({ top: 0 })
+    .margin({ top: isTvMetrics() ? 0 : 36 })
   }
 
   @Builder
@@ -2509,27 +2509,31 @@ struct Detail {
           .alignItems(HorizontalAlign.Start)
 
           // the TV page's rails, Chapters and Cast column, one copy: its sizes are web CSS px, which are vp here
-          // web phone: the rails sit on a glass panel that fades in from the left edge, bleeding to both sides.
-          // The panel is a sibling layer behind the rails, not their parent: a gradient parent left the episode art unpainted.
-          Stack({ alignContent: Alignment.TopStart }) {
-            Column()
+          // web phone: the rails of a film sit on a glass panel that fades in from the left edge, bleeding to both sides.
+          // Series keep the unpanelled rails: a panel layer behind the season rails left the dark episode art unpainted in the Previewer.
+          if (this.detail !== null && this.detail.work.kind === 'series') {
+            this.tvRightColumn()
+          } else {
+            Stack({ alignContent: Alignment.TopStart }) {
+              Column()
+                .width('100%')
+                .height('100%')
+                .linearGradient({
+                  direction: GradientDirection.Right,
+                  colors: resolvedThemeMode() === 'dark' ?
+                    [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
+                    [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
+                })
+              Column() {
+                this.tvRightColumn()
+              }
               .width('100%')
-              .height('100%')
-              .linearGradient({
-                direction: GradientDirection.Right,
-                colors: resolvedThemeMode() === 'dark' ?
-                  [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
-                  [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
-              })
-            Column() {
-              this.tvRightColumn()
+              .alignItems(HorizontalAlign.Start)
+              .padding({ top: 36, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
             }
-            .width('100%')
-            .alignItems(HorizontalAlign.Start)
-            .padding({ top: 36, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
+            .width(`calc(100% + ${atLeast(16, this.safeLeft) + atLeast(16, this.safeRight)}vp)`)
+            .margin({ left: -atLeast(16, this.safeLeft) })
           }
-          .width(`calc(100% + ${atLeast(16, this.safeLeft) + atLeast(16, this.safeRight)}vp)`)
-          .margin({ left: -atLeast(16, this.safeLeft) })
         }
         .padding({
           top: TOUCH_TEXT_TOP,
