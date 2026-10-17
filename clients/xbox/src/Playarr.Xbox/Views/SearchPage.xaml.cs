@@ -29,6 +29,7 @@ namespace Playarr.Xbox.Views
         public SearchPage()
         {
             InitializeComponent();
+            Ui.PageHeader(Root, "Search", null, () => App.Navigation.GoBack());
             ResultsGrid.ItemContainerStyle = CatalogTileFactory.GridCardContainerStyle;
             CardFocus.Attach(ResultsGrid);
             CardActions.Attach(ResultsGrid, id => _viewModel.Results.FirstOrDefault(w => w.Id == id));
@@ -87,7 +88,6 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private void BackButton_Click(object sender, RoutedEventArgs e) => App.Navigation.GoBack();
 
         // Web searches as you type.
         private void QueryBox_TextChanged(object sender, TextChangedEventArgs e)
