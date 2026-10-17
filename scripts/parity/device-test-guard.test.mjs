@@ -108,3 +108,22 @@ test("browser-evaluated identity helper is self-contained after serialisation", 
   const serialised = vm.runInContext(`(${fetchCurrentIdentity.toString()})`, context);
   assert.equal(JSON.stringify(await serialised({ expectedServerUrl: serverUrl })), JSON.stringify({ username: "device-test", isCurrentCount: 1, serverUrl }));
 });
+
+test("current identity fetch retries a network blip but not an HTTP error", async (t) => {
+  const originalStorage = globalThis.localStorage;
+  const originalFetch = globalThis.fetch;
+  globalThis.localStorage = { getItem: (key) => ({ "playarr:session": JSON.stringify({ accessToken: "mock-token" }), "playarr:apiBaseUrl": serverUrl })[key] ?? null };
+  t.after(() => { globalThis.localStorage = originalStorage; globalThis.fetch = originalFetch; });
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (calls < 3) throw new TypeError("Failed to fetch");
+    return { ok: true, async json() { return [{ username: "device-test", id: "x", is_current: true }]; } };
+  };
+  await fetchCurrentIdentity();
+  assert.equal(calls, 3);
+  calls = 0;
+  globalThis.fetch = async () => { calls += 1; return { ok: false, status: 401 }; };
+  await assert.rejects(fetchCurrentIdentity(), /identity request failed \(HTTP 401\)/);
+  assert.equal(calls, 1);
+});

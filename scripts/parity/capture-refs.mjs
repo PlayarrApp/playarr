@@ -111,9 +111,9 @@ for (const name of groups) {
   try {
     if (!driver.setDeterministicCapture || !driver.waitReady || !driver.captureBuildIdentity) throw new Error("web driver lacks deterministic capture, readiness, or build identity controls");
     await driver.setDeterministicCapture({ fixedNow, disableAnimations: true, ...CAPTURE_REGION });
+    await driver.start(); // the account guard inside captureBuildIdentity needs the signed-in page
     const driverBuild = await driver.captureBuildIdentity();
     if (driverBuild !== `${webBuild.sha}@${webBuild.builtAt}`) throw new Error(`web driver build identity ${driverBuild} does not match build-info identity ${webBuild.sha}@${webBuild.builtAt}`);
-    await driver.start();
     for (const theme of ["dark", "light"]) {
       await driver.setTheme(theme);
       mkdirSync(join(work, name, theme), { recursive: true });

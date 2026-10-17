@@ -103,18 +103,28 @@ export async function fetchCurrentIdentity({ expectedServerUrl } = {}) {
   try { serverUrl = canonical(base); }
   catch { throw new Error("device-test account identity server is invalid"); }
   if (expectedServerUrl && serverUrl !== canonical(expectedServerUrl)) throw new Error("device-test account identity server is not trusted");
-  let response, profiles;
-  let timeout;
-  try {
-    const controller = new AbortController();
-    timeout = setTimeout(() => controller.abort(), 5000);
-    response = await fetch(`${base.replace(/\/$/, "")}/api/v1/users/profiles`, {
-      headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal,
-    });
-    if (!response.ok) throw new Error();
-    profiles = await response.json();
-  } catch { throw new Error("device-test account identity request failed"); }
-  finally { clearTimeout(timeout); }
+  let response, profiles, failure;
+  // A network blip (a fetch cut off while the page navigates, a loaded host) gets two more tries; an HTTP error or bad body does not.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let timeout;
+    response = undefined;
+    try {
+      const controller = new AbortController();
+      timeout = setTimeout(() => controller.abort(), 15000);
+      response = await fetch(`${base.replace(/\/$/, "")}/api/v1/users/profiles`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal,
+      });
+      if (!response.ok) throw new Error();
+      profiles = await response.json();
+      failure = undefined;
+      break;
+    } catch (error) {
+      failure = error;
+      if (response) break;
+      await new Promise((resolve) => setTimeout(resolve, 700));
+    } finally { clearTimeout(timeout); }
+  }
+  if (failure) throw new Error(`device-test account identity request failed (${response ? `HTTP ${response.status}` : String(failure?.name ?? "no response")})`);
   try {
     if (localStorage.getItem("playarr:session") !== sessionText || localStorage.getItem("playarr:apiBaseUrl") !== base) {
       throw new Error("device-test account session changed during identity check");
