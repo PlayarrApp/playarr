@@ -585,6 +585,7 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
       await guard();
     },
     async key(k, { long } = {}) {
+      let navFrom = null;
       await guard();
       // The simulator opens the player slower than web: a key sent while the title is still loading toggles or opens the wrong thing.
       if (device === "webos") {
@@ -603,6 +604,8 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
         } else xkey(k, false);
       }
       else {
+        // Enter on a nav tile is a route change: remember where we were so the wait below can prove it happened.
+        navFrom = k === "select" ? await ev('document.activeElement?.closest(".app-nav-link") ? location.hash : null').catch(() => null) : null;
         const c = { key: KEYNAME[k], code: KEYNAME[k], windowsVirtualKeyCode: KEYCODE[k], nativeVirtualKeyCode: KEYCODE[k] };
         if (k === "select") {
           // Chromium needs the character event to run native button activation. rawKeyDown alone
@@ -618,7 +621,11 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
           finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         }
       }
+      if (navFrom && !(await until(`location.hash !== ${JSON.stringify(navFrom)}`, 10000))) throw new Error("Enter on a nav tile did not change the route");
       await sleep(device === "webos" ? 1000 : 350);
+      // The app applies directional moves in the next animation frame; a slow simulator frame leaves them queued, and the
+      // next key (above all Enter) then acts on focus that has not moved yet. Wait for two frames, not a longer sleep.
+      if (device === "webos") await ev("new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))");
       await guard();
     },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
