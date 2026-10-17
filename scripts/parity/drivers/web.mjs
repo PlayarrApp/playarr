@@ -399,7 +399,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
     }
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
-    if (path === "/search") await page.waitForSelector(".tv-search-results-grid, .tv-search-empty, .tv-search-prompt", { timeout: 30000 });
+    if (path === "/search") await page.waitForSelector(".tv-search-results-grid, .tv-search-empty, .tv-search-prompt, .tv-search-form", { timeout: 30000 });
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
     if (path.startsWith("/player/")) await page.waitForFunction(() => !!document.querySelector("video, .player-error, .player-loading"), null, { timeout: 30000 });
     await settle();
