@@ -47,6 +47,13 @@ if (__PLAYARR_DEBUG_MIRROR__) {
   } catch {
     // sessionStorage unavailable: the mirror falls back to the URL
   }
+  // ?mirrorTheme=dark|light stores the explicit theme before the first render, so the parity driver can switch theme with a reload.
+  try {
+    const themeParam = new URLSearchParams(window.location.search).get("mirrorTheme");
+    if (themeParam === "dark" || themeParam === "light") window.localStorage.setItem("playarr-theme", themeParam);
+  } catch {
+    // localStorage unavailable: the stored theme stays
+  }
   // ?mirrorNow=<ISO date-time> freezes Date so a capture shows the same day and time as its web reference.
   // shortcut: frozen time never advances, so timers keyed on it stall; fine for the short capture sessions this debug build serves.
   try {
