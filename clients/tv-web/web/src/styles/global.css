@@ -9832,6 +9832,12 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
   transform: scale(1.06);
 }
 
+/* The pink icon (--brand-ink) has no contrast on the ink fill: it takes the on-fill colour (--bg, 7:1 or more) while the fill shows. */
+.tv-detail-playback-settings:is(:hover, :focus-visible, [aria-expanded="true"]) > span:first-child,
+.tv-detail-download:is(:hover, :focus-visible, [aria-expanded="true"]) > span:first-child {
+  color: inherit;
+}
+
 .download-quality-drawer-field {
   display: grid;
   gap: 0.4rem;
