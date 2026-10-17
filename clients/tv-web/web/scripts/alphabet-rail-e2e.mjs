@@ -275,12 +275,20 @@ for (const [w, h, touch] of ONLY === "phone" ? [] : [[390, 844, true], [1280, 72
       check(`${tag}: no layout shift when focus moves in the rail`, (await page.evaluate(railBoxes)) === boxes0);
     }
     if (OUT) await page.screenshot({ path: join(OUT, `alphabet-active-${w}-${theme}.png`) });
-    // Only Right enters the grid, on the first card of the active section.
+    // Only the key pointing toward the grid enters it (side from layout: rail rect vs grid rect); the away key does nothing.
     const wanted = await page.evaluate(activeLetter);
-    await page.keyboard.press("ArrowRight");
+    if (touch) { await context.close(); continue; }
+    const railLeft = await page.evaluate(() => document.querySelector(".tv-alphabet").getBoundingClientRect().left < document.querySelector(".tv-title-grid").getBoundingClientRect().left);
+    const [toward, away] = railLeft ? ["ArrowRight", "ArrowLeft"] : ["ArrowLeft", "ArrowRight"];
+    await page.evaluate((L) => [...document.querySelectorAll(".tv-alphabet button")].find((b) => b.textContent === L)?.focus(), wanted);
+    await page.keyboard.press(away);
+    await page.waitForTimeout(800);
+    const stayed = await page.evaluate(() => { const a = document.activeElement; return a?.closest(".tv-alphabet") ? a.textContent : (a?.className ?? ""); });
+    check(`${tag}: ${away} (away from the grid, rail ${railLeft ? "left" : "right"} of it) keeps focus on the letter`, stayed === wanted, `${wanted} -> ${stayed}`);
+    await page.keyboard.press(toward);
     await page.waitForTimeout(800);
     const entered = await page.evaluate(() => { const a = document.activeElement; const g = document.querySelector(".tv-title-grid"); const L = a?.dataset?.libraryLetter; const firstIdx = Math.min(...[...g.querySelectorAll("[data-library-index]")].filter((c) => c.dataset.libraryLetter === L).map((c) => Number(c.dataset.libraryIndex))); return { card: !!a?.closest(".tv-title-card, [data-library-index]"), letter: L, idx: Number(a?.dataset?.libraryIndex), firstIdx }; });
-    check(`${tag}: Right from the rail focuses the first card of the active section`, entered.card && entered.letter === wanted && entered.idx === entered.firstIdx, `${wanted} ${JSON.stringify(entered)}`);
+    check(`${tag}: ${toward} (toward the grid) focuses the first card of the active section`, entered.card && entered.letter === wanted && entered.idx === entered.firstIdx, `${wanted} ${JSON.stringify(entered)}`);
     await context.close();
   }
 }

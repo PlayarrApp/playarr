@@ -1,0 +1,1 @@
+- Web: on the Library alphabet rail only the key pointing toward the grid (Left when the rail is right of the grid, Right when it is left of it) enters the grid; the key pointing away does nothing, so Right on the TV rail no longer wraps back into the grid. The side comes from the rail and grid rects.
