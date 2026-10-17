@@ -9,6 +9,9 @@ out=$1; theme=$2; shift 2
 here=$(cd "$(dirname "$0")" && pwd)
 case $theme in light) pref=Light ;; dark) pref=Dark ;; *) echo "theme must be light or dark" >&2; exit 2 ;; esac
 mkdir -p "$out"
+"$here/emu-recycle.sh" "${PARITY_EMU_UNIT:-}" "${ANDROID_SERIAL:-emulator-5562}"
+# Web refs are captured in UTC; pin the emulator zone so calendar times match.
+adb shell service call alarm 3 s16 UTC >/dev/null
 for screen in "$@"; do
   [ -n "${PLAYARR_FIXTURE_DB:-}" ] && sqlite3 "$PLAYARR_FIXTURE_DB" "delete from watch_progress"
   adb shell am force-stop io.playarr.mobile

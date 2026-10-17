@@ -4,6 +4,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 S_STATE=/dev/null
 set -a; eval "$(grep -E "^PLAYARR_DEVICE_TEST_(USERNAME|PASSWORD|SERVER_URL)=" ~/.secrets)"; set +a
 export PATH=$HOME/Android/Sdk/platform-tools:$PATH ANDROID_SERIAL=emulator-5568
+"$HERE/../emu-recycle.sh" "${PARITY_EMU_UNIT:-}" emulator-5568
 O=$1; T=$2; shift 2; pkg=io.playarr.mobile; mkdir -p "$O"
 adb shell am force-stop $pkg
 # Web refs format dates as en-GB ("THU 15 OCTOBER"); the app follows the device region, so pin it for captures.
