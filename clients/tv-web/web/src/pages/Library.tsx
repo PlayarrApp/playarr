@@ -152,10 +152,15 @@ function AlphabetRail({
       className="tv-alphabet"
       aria-label={label}
       onKeyDown={(event) => {
-        // Only Right leaves the rail for the grid; a jump never moves focus (owner 2026-10-18).
-        if (event.key !== "ArrowRight" || event.defaultPrevented) return;
+        // Only the key pointing toward the grid enters it; the key pointing away does nothing (no wrap). The side comes
+        // from layout (rail rect vs grid rect), not the platform. A jump never moves focus (owner 2026-10-18).
+        if ((event.key !== "ArrowRight" && event.key !== "ArrowLeft") || event.defaultPrevented) return;
+        const grid = document.querySelector<HTMLElement>(".tv-title-grid");
+        const rail = ref.current;
+        if (!grid || !rail) return;
+        const railLeftOfGrid = rail.getBoundingClientRect().left < grid.getBoundingClientRect().left;
         event.preventDefault();
-        onEnterGrid();
+        if ((event.key === "ArrowRight") === railLeftOfGrid) onEnterGrid();
       }}
       onPointerMove={scrub}
       onPointerUp={() => { scrubbed.current = null; }}
