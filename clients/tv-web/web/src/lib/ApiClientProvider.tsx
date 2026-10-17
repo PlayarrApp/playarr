@@ -263,6 +263,14 @@ function readActiveProfileMarker(): ActiveProfileMarker | undefined {
   }
 }
 
+/** The user a stored token belongs to: its own claim, else the active-profile marker for this server (opaque tokens). */
+function sessionUserId(accessToken: string, apiBaseUrl: string): string | undefined {
+  const claimed = decodeAccessTokenUserId(accessToken);
+  if (claimed) return claimed;
+  const marker = readActiveProfileMarker();
+  return marker?.apiBaseUrl === apiBaseUrl ? marker.userId : undefined;
+}
+
 function writeActiveProfileMarker(profile: ActiveProfileMarker): void {
   window.localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, JSON.stringify(profile));
 }
@@ -795,7 +803,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
   // below every time a protected request actually (re)acquires a token.
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(() => {
     const existing = tokenStoreRef.current?.get();
-    return existing ? decodeAccessTokenUserId(existing.accessToken) : undefined;
+    return existing ? sessionUserId(existing.accessToken, apiBaseUrl) : undefined;
   });
   const [currentUserName, setCurrentUserName] = useState<string | undefined>(
     readStoredCurrentUserName
@@ -832,7 +840,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
   });
   const initialActiveSession = tokenStoreRef.current.get();
   const initialActiveUserId = initialActiveSession
-    ? decodeAccessTokenUserId(initialActiveSession.accessToken)
+    ? sessionUserId(initialActiveSession.accessToken, apiBaseUrl)
     : undefined;
   const initialStoredProfile = initialActiveUserId
     ? storedProfileSessions.find(
@@ -999,7 +1007,8 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
             applyApiBaseUrl(publicIpv4RelayUrl(healedUrl));
           }
           setAuthFailed(false);
-          setCurrentUserId(userId);
+          // An opaque token carries no user id: keep the signed-in user rather than read it as signed out.
+          if (userId) setCurrentUserId(userId);
           return token;
         } catch (err) {
           // Transparent login had nothing left to fall back on (no stored
