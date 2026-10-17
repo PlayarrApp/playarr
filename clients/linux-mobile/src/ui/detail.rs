@@ -270,7 +270,9 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                 .build(),
         );
     }
-    gap(&body, 10);
+    // A film's title block sits 6 and 7 px (css) closer than the episode view's, as the web phone's.
+    let film = focus_ep.is_none();
+    gap(&body, if film { 5 } else { 10 });
     body.append(
         &gtk4::Label::builder()
             .label(&w.title)
@@ -279,7 +281,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             .xalign(0.0)
             .build(),
     );
-    gap(&body, 11);
+    gap(&body, if film { 4 } else { 11 });
     if let Some((_, e)) = &focus_ep {
         body.append(
             &gtk4::Label::builder()

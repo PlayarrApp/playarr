@@ -370,6 +370,15 @@ private struct LibraryLanguageAPIClient: PlayarrAPIClient {
         return CatalogPage(items: [], total: 0)
     }
     func searchCatalog(query: String, limit: Int?) async throws -> [Work] { [] }
+    func fetchWork(id: UUID) async throws -> WorkDetail { throw APIError.notFound(nil) }
+    func playbackInfo(
+        mediaFileID: UUID,
+        containers: [String],
+        videoCodecs: [String],
+        audioCodecs: [String],
+        maxBitrateBps: Int64?,
+        profile: String?
+    ) async throws -> PlaybackInfoResponse { throw APIError.notFound(nil) }
     func requestData(method: String, path: String, query: [URLQueryItem], body: Data?, expectedStatuses: Set<Int>) async throws -> Data {
         Data(#"{"audio":[{"code":"en","name":"English","count":1}],"subtitle":[]}"#.utf8)
     }

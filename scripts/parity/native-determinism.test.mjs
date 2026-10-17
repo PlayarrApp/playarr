@@ -158,3 +158,18 @@ test("Android restores a pre-disabled animation scale to the normal scale", asyn
   await driver.stop();
   assert.equal(readState().window_animation_scale, "1");
 });
+
+test("Android pins the time zone and app locale with the clock and restores both", async () => {
+  const { driver, readState } = driverWith(initialState());
+  await driver.setDeterministicCapture({ fixedNow: "2026-10-07T12:00:00Z", disableAnimations: true, timeZone: "UTC", locale: "en-GB" });
+  assert.deepEqual([readState().timezone, readState().locales], ["UTC", "en-GB"]);
+  await driver.stop();
+  assert.deepEqual([readState().timezone, readState().locales], ["Asia/Bangkok", ""]);
+});
+
+test("Android leaves the time zone and locale alone when none is requested", async () => {
+  const { driver, readState } = driverWith(initialState());
+  await driver.setDeterministicCapture({ fixedNow: "2026-10-07T12:00:00Z", disableAnimations: true });
+  assert.deepEqual([readState().timezone, readState().locales], ["Asia/Bangkok", ""]);
+  await driver.stop();
+});

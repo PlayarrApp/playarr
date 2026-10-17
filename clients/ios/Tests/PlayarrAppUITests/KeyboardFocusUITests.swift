@@ -18,7 +18,7 @@ final class KeyboardFocusUITests: XCTestCase {
         return (server, user, pass, expected, file)
     }
 
-    private func launch(_ route: String, _ c: (String, String, String, String, String), arguments: [String] = []) throws -> XCUIApplication {
+    @MainActor private func launch(_ route: String, _ c: (String, String, String, String, String), arguments: [String] = []) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = arguments + ["--playarr-parity-now", "2026-10-14T12:00:00Z"]
         app.launchEnvironment = ["PLAYARR_PARITY_SERVER": c.0, "PLAYARR_PARITY_USER": c.1, "PLAYARR_PARITY_PASSWORD": c.2, "PLAYARR_PARITY_EXPECTED_USERNAME": c.3, "PLAYARR_PARITY_PLAY_FILE": c.4, "PLAYARR_PARITY_DISABLE_ANIMATIONS": "1", "PLAYARR_PARITY_ROUTE": route]
@@ -39,14 +39,14 @@ final class KeyboardFocusUITests: XCTestCase {
         return app
     }
 
-    private func shot(_ app: XCUIApplication, _ name: String, expected: String) throws {
+    @MainActor private func shot(_ app: XCUIApplication, _ name: String, expected: String) throws {
         try requireParityCaptureReady(app, expectedUsername: expected)
         let a = XCTAttachment(screenshot: app.screenshot())
         a.name = name; a.lifetime = .keepAlways
         add(a)
     }
 
-    private func requireIdentity(_ app: XCUIApplication, expected: String) throws {
+    @MainActor private func requireIdentity(_ app: XCUIApplication, expected: String) throws {
         let profile = app.descendants(matching: .any)["parity.identityVerified"]
         guard profile.exists,
               (profile.value as? String)?.caseInsensitiveCompare(expected) == .orderedSame else {
@@ -55,7 +55,7 @@ final class KeyboardFocusUITests: XCTestCase {
         }
     }
 
-    private func focusedSignature(_ app: XCUIApplication) -> String? {
+    @MainActor private func focusedSignature(_ app: XCUIApplication) -> String? {
         let focused = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
         guard focused.exists else { return nil }
         return "\(focused.identifier)|\(focused.label)|\(focused.frame.origin.x),\(focused.frame.origin.y)"
