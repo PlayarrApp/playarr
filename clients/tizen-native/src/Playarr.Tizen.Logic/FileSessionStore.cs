@@ -54,6 +54,14 @@ public sealed class FileSessionStore(string directory) : ITokenStore
         return id;
     }
 
+    public Guid RotateDeviceId()
+    {
+        Directory.CreateDirectory(directory);
+        var id = Guid.NewGuid();
+        File.WriteAllText(_device, id.ToString());
+        return id;
+    }
+
     private string ThemeFile => Path.Combine(directory, "theme.txt");
     /// <summary>"dark" (default) or "light"; the app's own setting, like web's playarr-theme.</summary>
     public string Theme() => File.Exists(ThemeFile) ? File.ReadAllText(ThemeFile).Trim() : "dark";

@@ -1,0 +1,4 @@
+- Fix the Xbox playback-quality test to distinguish the legacy bitrate property from the canonical video bitrate property.
+- Add Tizen readiness, account, build, and deterministic clock checks for future parity captures.
+- Add a debug-only sign-out hook that rotates the Tizen test device identity without clearing app data.
+- Apply the suite-declared timezone consistently to web and Tizen deterministic captures.

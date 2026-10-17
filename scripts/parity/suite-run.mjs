@@ -164,6 +164,8 @@ if (only.includes("screens")) {
     mkdirSync(join(out, theme), { recursive: true });
     for (const s of selectedScreens) {
       assertNotInterrupted();
+      for (let attempt = 1; ; attempt++) {
+      driver.takeNetworkFlaps?.();
       try {
         await reach(s);
         await waitReady(s.id, "capture");
@@ -172,9 +174,22 @@ if (only.includes("screens")) {
         assertNotInterrupted();
         captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, bytes: readFileSync(path), capturedAt: new Date().toISOString() });
         summary.screens += 1;
+        const flaps = driver.takeNetworkFlaps?.() ?? 0;
+        if (flaps && attempt < 3) { // a flap mid-capture can leave images missing: retake
+          captureRows.pop(); summary.screens -= 1;
+          console.log(`RETAKE ${theme} ${s.id}: ${flaps} request(s) aborted by net::ERR_NETWORK_CHANGED (host interface change), attempt ${attempt}`);
+          continue;
+        }
         console.log(`ok ${theme} ${s.id}`);
       }
-      catch (e) { if (signalReceived) throw e; summary.failed.push(`${theme}/${s.id}`); console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); }
+      catch (e) {
+        if (signalReceived) throw e;
+        const flaps = driver.takeNetworkFlaps?.() ?? 0;
+        if (flaps && attempt < 3) { console.log(`RETAKE ${theme} ${s.id}: ${flaps} request(s) aborted by net::ERR_NETWORK_CHANGED (host interface change), attempt ${attempt}`); continue; }
+        summary.failed.push(`${theme}/${s.id}`); console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`);
+      }
+      break;
+      }
     }
   }
   if (strict && summary.failed.length === 0) {
