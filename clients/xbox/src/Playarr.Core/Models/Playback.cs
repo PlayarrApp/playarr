@@ -60,7 +60,7 @@ namespace Playarr.Core.Models
 
         [JsonProperty("height")] public int? Height { get; set; }
 
-        [JsonProperty("bitrate_bps")] public long? BitrateBps { get; set; }
+        [JsonProperty("video_bitrate_bps")] public long? BitrateBps { get; set; }
     }
 
     /// <summary>
