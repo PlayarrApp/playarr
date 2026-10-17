@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Text;
 using Newtonsoft.Json;
 using Playarr.Core.Models;
 using Playarr.Core.Networking;
@@ -70,6 +71,20 @@ public static class PlaylistDirectoryModel
 {
     public const int CreateActionIndex = 0;
     public const int FiltersActionIndex = 1;
+
+    /// <summary>Adds invisible display-only wrap opportunities after hyphens in empty-cover labels.</summary>
+    public static string EmptyCoverDisplayName(string playlistName)
+    {
+        var displayName = new StringBuilder(playlistName.Length);
+        for (var index = 0; index < playlistName.Length; index++)
+        {
+            var character = playlistName[index];
+            displayName.Append(character);
+            if (character == '-' && (index + 1 >= playlistName.Length || playlistName[index + 1] != '\u200B'))
+                displayName.Append('\u200B');
+        }
+        return displayName.ToString();
+    }
 
     /// <summary>Returns the paired vertical neighbour in the directory action column, leaving other moves geometric.</summary>
     public static int? ActionColumnNeighbor(int actionIndex, bool moveDown) => (actionIndex, moveDown) switch

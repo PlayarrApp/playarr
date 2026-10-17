@@ -147,8 +147,9 @@ internal sealed class MediaCard
             const float nameFontSize = 10.88f; // web: 0.68rem at the 16px root size
             const float nameRasterScale = 4;
             const float nameLineHeight = 1.5f; // inherited web body line-height
-            var emptyLabel = new TextLabel(playlistName)
+            var emptyLabel = new TextLabel(PlaylistDirectoryModel.EmptyCoverDisplayName(playlistName))
             {
+                AccessibilityName = playlistName,
                 PositionX = 16,
                 PositionY = 16,
                 Size = new Size((Width - 32) * nameRasterScale, (Height - 32) * nameRasterScale),
