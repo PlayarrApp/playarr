@@ -402,8 +402,9 @@ Steps only the repository owner can perform.
 | 10716 | Enable push-webhook mirror sync for the PlayarrApp org | done | playarr-c5 | | 15.10715 | | Verified 2026-10-17: a push triggered a webhook-driven mirror sync. |
 | 10712 | Fix release dry-run failures: Roku Pillow and iOS Release parity guards | done | claude | fix/release-dry-run | | 2026-10-17 20:00 ICT | Fixes the release dry-run failures (Roku Pillow, iOS Release archive) Merged #73 (5704740b); dry run 39032034198 green on main. |
 | 10717 | Route the marketing paths on the public domain to the separate site Worker | done | playarr-c5 | | | | Merged #53 (94f7d62a); deployed 2026-10-17; playarr.app marketing paths served by the site Worker, /features/ redirects to /features. |
-| 10718 | Run the release from main (v0.3.0 dry run, then the real release) | in_progress | playarr-c5 | | 15.10712 | 2026-10-17 22:30 ICT | Dry run green; real 0.3.0 release run 39034764311 in progress. |
+| 10718 | Run the release from main (v0.3.0 dry run, then the real release) | in_progress | playarr-c5 | | 15.10712 | 2026-10-17 22:30 ICT | 0.3.0 released on GitHub; Play upload blocked on the FGS declaration row |
 | 10723 | Release pipeline: fast tests, then signed automated builds for every client, then push to each store (stores without an account skipped as pending) | in_progress | playarr-c5 | | 15.10718 | 2026-10-18 12:00 ICT | Owner decision 2026-10-17. |
+| 10724 | Google Play: declare foreground service permissions | blocked_on_owner | Thomas | | | | Release 0.3.0 run 39034764311 published the GitHub Release (18 assets), but the Play upload failed with 403 `You must let us know whether your app uses any Foreground Service permissions.` Owner: Play Console > app.playarr.mobile > Policy > App content > Foreground service permissions: declare dataSync (PlayarrDownloadService, offline downloads) and mediaPlayback (PlayarrPlaybackService, background audio/video playback), then re-run the failed job: `gh run rerun 39034764311 -R PlayarrApp/playarr --failed`. |
 
 ## 16. Cleartext HTTP to user-entered servers (2026-10-07)
 
