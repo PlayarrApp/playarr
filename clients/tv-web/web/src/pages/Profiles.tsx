@@ -111,6 +111,7 @@ export function ProfilesPage(
   const [apiBaseUrl] = useApiBaseUrl();
   const {
     currentUserId,
+    hasSession,
     currentUserName,
     savedProfiles,
     isProfileSaved,
@@ -263,13 +264,17 @@ export function ProfilesPage(
     });
   }, [navigate, navigationLayer]);
 
+  // True while the automatic pick runs: a sign-in redirect from it replaces this entry (no back-key trap).
+  const autoPickingRef = useRef(false);
   const continueToLogin = useCallback(
     (
       profile: ViewerProfile | null,
       destination: string,
-      destinationState?: unknown
+      destinationState?: unknown,
+      replace = false
     ) => {
       navigate(IS_TV ? "/login/qr" : "/login", {
+        replace: replace || autoPickingRef.current,
         state: {
           from: destination,
           fromState: destinationState,
@@ -343,6 +348,31 @@ export function ProfilesPage(
         ADD_PROFILE_ID
     );
   }, [profiles, selectedId]);
+
+  // No active account: exactly one saved account is picked for the viewer, none means sign-in.
+  // Two or more stay on this page, listed, until the viewer chooses.
+  const autoPickedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (currentUserId || hasSession || awaitingDirectory) return;
+    // Sent back from the sign-in page (its "back to profiles"): the viewer chose to be here.
+    if (!loginFromOverride && locationState?.loginFrom !== undefined) return;
+    if (savedProfiles.length === 0) {
+      if (autoPickedRef.current !== "login") {
+        autoPickedRef.current = "login";
+        continueToLogin(null, loginFrom, undefined, true);
+      }
+      return;
+    }
+    const [only] = savedProfiles.length === 1 ? profiles : [];
+    if (only && autoPickedRef.current !== only.id) {
+      autoPickedRef.current = only.id;
+      autoPickingRef.current = true;
+      void completeProfileAction(only, "select").finally(() => {
+        autoPickingRef.current = false;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId, hasSession, savedProfiles.length, profiles]);
 
   useEffect(() => {
     if (!pinProfile) return;
