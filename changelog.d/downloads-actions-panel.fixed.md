@@ -1,1 +1,0 @@
-- Web: the Downloads notifications toggle moves into the page action column and the Downloads panel keeps clear of the action bar, so nothing overlaps.
