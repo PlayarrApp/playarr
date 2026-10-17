@@ -1,0 +1,1 @@
+- CI: pull requests into `integration/parity` run light CI; the macOS iOS workflows, Windows package, Harmony HAP, server image and Storybook jobs run only for `main`.

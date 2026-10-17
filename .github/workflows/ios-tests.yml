@@ -6,6 +6,7 @@ name: iOS tests
 # Each job runs only for its own paths. The tvOS leg and manual runs stay in simulator-tests.yml.
 on:
   pull_request:
+    branches: [main]
     paths:
       - clients/ios/**
       - clients/apple-tv/**

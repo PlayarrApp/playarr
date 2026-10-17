@@ -127,6 +127,17 @@ just dev-down        # tear it down
   genuinely needs to land alongside the client(s) that consume it — the
   monorepo exists specifically so that kind of atomic, cross-component PR is
   possible, but it should be the exception, not the default.
+- **PR base: `integration/parity`.** Open parity and client PRs against
+  `integration/parity`, not `main`. They get light CI (lint, typecheck, unit
+  tests and the affected web behaviour and layout jobs); `ci-required` still
+  gates the merge and passes skipped heavy jobs. Squash-merge them there. Heavy
+  jobs (macOS iOS/tvOS captures, Windows package, Harmony HAP, server image,
+  Storybook, device walls) run only for PRs into `main`, pushes to `main` and
+  manual runs. One batch PR, `integration/parity` into `main`, runs the full
+  suite and is merged with a merge commit (never squash, so the branch keeps
+  its history and needs no re-create). Keep `integration/parity` current by
+  merging `main` into it. PRs that touch only `.github/workflows` stay on
+  `main`, and `integration/parity` must never be deleted or force-pushed.
 - **Title format:** `<component>: <imperative summary>`, e.g.
   `backend(playarr-transcode): fix HLS segment numbering on resume` or
   `clients/ios: fix FairPlay license renewal race`. Use `infra`, `docs`, or

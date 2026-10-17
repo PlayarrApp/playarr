@@ -6,6 +6,7 @@ name: iOS safe-area capture
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - clients/ios/**
       - .github/workflows/ios-safe-area.yml

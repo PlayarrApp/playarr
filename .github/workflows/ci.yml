@@ -24,6 +24,11 @@
 #   skipped -> pass while failure/cancelled -> fail. That makes it the only
 #   job that is guaranteed to always report a final pass/fail for any PR,
 #   regardless of which paths changed, so it's the only one safe to require.
+#
+# LIGHT PRS: a PR whose base is `integration/parity` (the parity batch branch, see CONTRIBUTING.md) runs lint,
+# typecheck, unit tests and the affected web behaviour/layout jobs only. The Windows package, Harmony HAP, server
+# image and Storybook jobs run for PRs into `main`, pushes to `main` and manual runs. A job skipped by that `if:` is
+# a skip to `ci-required`, which passes it. The macOS ios-* workflows use `branches: [main]` on their PR trigger.
 # ======================================================================
 
 name: CI
@@ -580,7 +585,7 @@ jobs:
   xbox-uwp-package:
     name: Xbox UWP package (Windows)
     needs: changes
-    if: needs.changes.outputs.xbox == 'true'
+    if: (needs.changes.outputs.xbox == 'true') && !(github.event_name == 'pull_request' && github.base_ref == 'integration/parity')
     runs-on: windows-2022
     timeout-minutes: 40
     permissions:
@@ -659,7 +664,7 @@ jobs:
   harmony-hap:
     name: HarmonyOS HAP compile (OpenHarmony SDK)
     needs: changes
-    if: needs.changes.outputs.harmony == 'true'
+    if: (needs.changes.outputs.harmony == 'true') && !(github.event_name == 'pull_request' && github.base_ref == 'integration/parity')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -1002,7 +1007,7 @@ jobs:
   server-image-web:
     name: Server image web stage
     needs: changes
-    if: needs.changes.outputs.server-image == 'true'
+    if: (needs.changes.outputs.server-image == 'true') && !(github.event_name == 'pull_request' && github.base_ref == 'integration/parity')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -1103,7 +1108,7 @@ jobs:
   web-storybook:
     name: web storybook
     needs: changes
-    if: needs.changes.outputs.tv-web == 'true'
+    if: (needs.changes.outputs.tv-web == 'true') && !(github.event_name == 'pull_request' && github.base_ref == 'integration/parity')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:

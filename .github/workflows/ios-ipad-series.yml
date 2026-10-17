@@ -5,6 +5,7 @@ name: iOS iPad series detail capture
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - clients/ios/**
       - .github/workflows/ios-ipad-series.yml
