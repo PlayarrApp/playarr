@@ -1,1 +1,0 @@
-- Fire TV: Home opens aligned with the Library grid like web (rails start 98 px further left, first rail 240 px higher, 54 px left fade); a focused later rail is held where it was.
