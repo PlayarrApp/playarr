@@ -141,5 +141,12 @@ PlayarrPage {
             onClicked: remorse.execute(qsTr("Signing out"), function () { Api.signOut() })
         }
     }
+    // The web profiles page pins a Clients link 22 px from the bottom right corner.
+    PillButton {
+        anchors { right: parent.right; rightMargin: 22 * Tokens.u; bottom: parent.bottom; bottomMargin: 22 * Tokens.u }
+        labelFamily: Tokens.family610; fontSize: 7.3 * Tokens.u; implicitWidth: 75.5 * Tokens.u; implicitHeight: 43.7 * Tokens.u; lift: true
+        text: qsTr("Clients") + "  \u2192"
+        onClicked: Qt.openUrlExternally("https://playarr.app/clients")
+    }
     RemorsePopup { id: remorse }
 }
