@@ -3,6 +3,7 @@
   <interface>
     <field id="screenState" type="string" value="starting" />
     <field id="deepLink" type="string" value="" onChange="onDeepLink" alwaysNotify="true" />
+    <field id="deepRoute" type="string" value="" onChange="onDeepRoute" alwaysNotify="true" />
   </interface>
   <children>
     <!-- Playarr dark bg #151315 warm charcoal (not cool navy 070B14). -->

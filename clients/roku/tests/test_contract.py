@@ -81,7 +81,10 @@ class NavigationContractTests(unittest.TestCase):
             self.assertIn(label, filters)
         self.assertIn("calendarApplyFilters(m.pageData.entries)", PAGES)
         self.assertIn("calFiltersOpen()", PAGES)
-        self.assertIn("if m.calFiltersOpen = true then return calFiltersOnKey(key)", MAIN)
+        # Routed first in onKeyEvent, before the other drawers (a stray copy once sat inside the detail Back handler).
+        body = MAIN[MAIN.index("function onKeyEvent(key as String, press as Boolean) as Boolean"):]
+        self.assertLess(body.index("calFiltersOnKey(key)"), body.index("if m.drawerOpen = true then return drawerOnKey(key)"))
+        self.assertEqual(MAIN.count("calFiltersOnKey(key)"), 1)
 
     def test_search_has_the_web_header_pill_field_and_active_dock_slot(self) -> None:
         self.assertIn("sub searchChromeInit()", MAIN)

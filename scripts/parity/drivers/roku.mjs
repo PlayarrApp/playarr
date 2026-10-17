@@ -13,11 +13,11 @@ import { artReadiness, createArtReadinessState, intersectingSlots, parseArtEvent
 
 const SAFE_SCREENS = new Set([
   "home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda",
-  "search", "settings", "filters", "profiles", "actions",
+  "search", "settings", "filters", "profiles", "actions", "film-detail", "series-detail",
 ]);
 const SAFE_CHECKS = new Set([
   "home-right", "home-down", "home-down-right", "home-left-nav", "nav-down",
-  "movies-grid-right", "movies-grid-down", "movies-grid-left-nav", "series-grid-down", "long-press-actions",
+  "movies-grid-right", "movies-grid-down", "movies-grid-left-nav", "series-grid-down", "long-press-actions", "nav-right-stage", "detail-back",
 ]);
 const KEY_NAMES = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Select", back: "Back" };
 const SUITE_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../suite.json");
@@ -166,6 +166,8 @@ export function applyParityLine(state, line) {
     if (state.screen === "home" || state.screen === "profiles") state.drawerSource = "";
     if (state.screen === "drawer" && !state.drawerSource) state.drawerSource = "actions";
     if (state.screen === "home") state.artMarkers.home = state.eventSeq;
+  } else if (kind === "detail") {
+    state.detailKind = value.trim();
   } else if (kind === "page") {
     state.page = value.trim();
     if (state.page !== "calendar") {
@@ -466,13 +468,13 @@ function parseKeySequence(keys = []) {
   return out;
 }
 
-export function routeForState(screen, page, browse, drawerSource, calendarView = "") {
+export function routeForState(screen, page, browse, drawerSource, calendarView = "", detailKind = "") {
   if (screen === "home") return "/";
   if (screen === "profiles") return "/profiles";
   if (screen === "search") return "/search";
   if (screen === "settings") return "/settings";
   if (screen === "playback") return "/player/unsupported";
-  if (screen === "detail") return "/movies/unsupported";
+  if (screen === "detail") return detailKind === "series" ? "/series/unsupported" : "/movies/unsupported";
   if (screen === "browse") {
     const kind = browse || "";
     if (kind === "movie" || kind === "movies") return "/movies";
@@ -533,7 +535,7 @@ export function createDriver({ out, args = [] } = {}) {
 
   const resetObservedState = () => {
     debugBuffer = "";
-    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "", calendarView: "", calendarFocus: "", calendarFocusRect: null });
+    Object.assign(parityState, { screen: "", page: "", browse: "", focus: null, drawerSource: "", detailKind: "", calendarView: "", calendarFocus: "", calendarFocusRect: null });
     screen = "";
     page = "";
     browse = "";
@@ -630,7 +632,7 @@ export function createDriver({ out, args = [] } = {}) {
       drawerSource = "actions";
       parityState.drawerSource = drawerSource;
     }
-    const actual = routeForState(screen, page, browse, drawerSource, parityState.calendarView);
+    const actual = routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind);
     if (actual) lastRoute = actual;
     if (screen === "playback") throw new Error("Roku parity driver stopped before capturing a player screen");
   };
@@ -814,9 +816,27 @@ export function createDriver({ out, args = [] } = {}) {
     return SUITE_SCREENS.find((item) => item.route === path || item.match === path);
   };
 
+  // Title detail by its web path: the channel opens it itself (launch arg route=, honoured only with parityArtReady=1), so no key
+  // walk through a library whose order can change. Never plays anything.
+  const openDetailRoute = async (path) => {
+    if (!artEnabled) throw new Error("Roku detail routes need ROKU_ART_READINESS=1 (the channel honours route= only in parity mode)");
+    await closeDebug();
+    resetObservedState();
+    await sendEcp("keypress/Home").catch(() => {});
+    await sleep(4000);
+    resetArtReadinessState(parityState.artState);
+    resetObservedState();
+    await sendEcp(`launch/dev?parityArtReady=1&route=${encodeURIComponent(path)}`);
+    await connectDebug();
+    await waitFor(() => screen === "detail" && !!parityState.detailKind, `detail screen for ${path}`, 60000);
+    await waitFor(() => focus !== null && focusScreenSeq === screenSeq, "detail focus", 40000);
+    await sleep(20000); // hero art, chapter stills and cast photos arrive after the page reports focus
+    lastRoute = routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind);
+  };
+
   const safeRoute = async (path) => {
     if (path === "/player" || path.startsWith("/player/")) throw new Error("Roku parity driver refuses player routes");
-    if (/^\/(movies|series)\/[^/?]+/.test(path)) throw new Error("Roku cannot deep-link safely to a non-player work detail; use a separately reviewed UI route");
+    if (/^\/(movies|series)\/[^/?]+$/.test(path)) { await openDetailRoute(path); return; }
     const entry = exactSuiteScreen(path);
     if (!entry || !SAFE_SCREENS.has(entry.id) || entry.open) throw new Error(`Roku suite route is unsupported: ${path}`);
     await toHome();
@@ -1019,7 +1039,7 @@ export function createDriver({ out, args = [] } = {}) {
     // A browse grid reports its route before the first page and artwork are in; a key pressed then is dropped, so a following
     // D-pad check starts one card short (movies-grid-right opened 5th wave instead of 6 underground).
     if (screen === "browse") await waitForBrowseGrid();
-    const actual = routeForState(screen, page, browse, drawerSource, parityState.calendarView);
+    const actual = routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind);
     const expectedRoute = entry.id === "calendar-agenda" ? "/calendar" : (entry.match ?? entry.route);
     if (actual !== expectedRoute) throw new Error(`Roku route ended on ${actual}; expected ${expectedRoute}`);
     lastRoute = actual;
@@ -1055,7 +1075,7 @@ export function createDriver({ out, args = [] } = {}) {
     async location() {
       assertDebug();
       if (screen === "playback") return "/player/unsupported";
-      const current = routeForState(screen, page, browse, drawerSource, parityState.calendarView);
+      const current = routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind);
       if (current) lastRoute = current;
       return lastRoute;
     },
@@ -1085,7 +1105,7 @@ export function createDriver({ out, args = [] } = {}) {
         screen,
         page,
         browse,
-        route: routeForState(screen, page, browse, drawerSource, parityState.calendarView),
+        route: routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind),
         focus,
       }, null, 2));
     },
