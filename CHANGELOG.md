@@ -13,6 +13,13 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Roku: Left from the first Home rail enters the dock on Home again after Home moved to the Library-aligned top.
+- Fix the Xbox playback-quality test to distinguish the legacy bitrate property from the canonical video bitrate property.
+- Add Tizen readiness, account, build, and deterministic clock checks for future parity captures.
+- Add a debug-only sign-out hook that rotates the Tizen test device identity without clearing app data.
+- Apply the suite-declared timezone consistently to web and Tizen deterministic captures.
+- Tizen playback quality now reflects the negotiated source bitrate, subtitle menus show available tracks and the selected track, and Home and series detail pages fade at their scroll edges. Series episode captions remain readable in light mode and synopsis text has room for five lines. Subtitle track selection remains unavailable where the native player cannot select a track.
+- Tizen Calendar Week now keeps all seven day columns reachable with horizontal and per-day vertical focus scrolling, and uses the filters icon for Filters.
 - Send the debug-mirror identity heartbeat from a Web Worker so a device-test guard can judge the signed-in account while renders block the page.
 - Fire TV: Home opens aligned with the Library grid like web (rails start 98 px further left, first rail 240 px higher, 54 px left fade); a focused later rail is held where it was.
 - Harmony preview captures now stop on the first failure, verify the signed-in Device Test account before capture input or screenshots, and refuse to capture when canonical watch-progress seeding fails.
@@ -754,6 +761,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Let the Apple iOS wall take the pinned capture instant as an input, and print compiler errors when the Apple parity iOS build fails; the iPhone calendar parity captures now use the clock the web references show (Agenda dark 90.75 to 93.90).
 - Nura player controls follow the web phone player: a flat seek bar, a centred time, and two rows of icon buttons (previous, play or pause, next, mute, audio, subtitles, queue; then quality, health, play on and full screen), with a bordered close button. Previous, next, mute and full screen work; the rest show disabled until the player supports them.
 - Nura page headers draw the web phone's 42 px round and square buttons, the letter rail sits 1 px lower, and a film's title block closes up to the web's spacing.
 - Android TV Filters now use closed language multi-select fields with vertical, D-pad navigable options and web-sized View glyphs; drawer focus styling restores the opener card, and Left from Library Filters returns focus to the selected content item.
@@ -3210,6 +3218,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Add opt-in stable native capture readiness checks for Android TV Movies, Series and Music; other routes retain their existing screenshot path and fail closed when stable capture readiness is requested.
 - Harmony capture runs now validate the signed-in device-test profile and pinned detail and progress fixtures before starting the Previewer.
 - Allow an explicit Harmony phone core diagnostic capture to skip player-controls and record the omission, while the default core capture still requires all 15 screens.
 - Add selector regression coverage for partial viewport intersections, dead or invisible cards, offscreen positions and invalid geometry in the HarmonyOS preview focus route.

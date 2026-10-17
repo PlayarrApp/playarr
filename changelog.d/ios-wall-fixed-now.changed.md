@@ -1,1 +1,0 @@
-- Let the Apple iOS wall take the pinned capture instant as an input, and print compiler errors when the Apple parity iOS build fails; the iPhone calendar parity captures now use the clock the web references show (Agenda dark 90.75 to 93.90).
