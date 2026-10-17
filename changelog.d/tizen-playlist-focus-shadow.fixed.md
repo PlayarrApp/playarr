@@ -1,0 +1,1 @@
+- Improve the light-theme playlist cover focus shadow while keeping the dark-theme shadow baseline unchanged.
