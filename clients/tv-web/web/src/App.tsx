@@ -208,6 +208,7 @@ function AppShell() {
     authFailed,
     connectedServers,
     currentUserId,
+    hasSession,
     currentUserName,
     savedProfiles,
   } = useAuth();
@@ -399,12 +400,12 @@ function AppShell() {
   }, [currentUserId, playerSession]);
 
   // Nobody signed in and nothing saved: sign-in is the first paint, never the shell.
-  if (currentUserId === undefined && savedProfiles.length === 0) {
+  if (!hasSession && savedProfiles.length === 0) {
     return <Navigate to={IS_TV ? "/login/qr" : "/login"} replace state={{ from: location }} />;
   }
 
   // No active session but saved accounts: the picker is the first paint, never the shell.
-  if (authFailed || (currentUserId === undefined && savedProfiles.length > 0)) {
+  if (authFailed || (!hasSession && savedProfiles.length > 0)) {
     return (
       <ProfilesPage
         loginFrom={`${location.pathname}${location.search}${location.hash}`}

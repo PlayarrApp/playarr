@@ -263,14 +263,6 @@ function readActiveProfileMarker(): ActiveProfileMarker | undefined {
   }
 }
 
-/** The user a stored token belongs to: its own claim, else the active-profile marker for this server (opaque tokens). */
-function sessionUserId(accessToken: string, apiBaseUrl: string): string | undefined {
-  const claimed = decodeAccessTokenUserId(accessToken);
-  if (claimed) return claimed;
-  const marker = readActiveProfileMarker();
-  return marker?.apiBaseUrl === apiBaseUrl ? marker.userId : undefined;
-}
-
 function writeActiveProfileMarker(profile: ActiveProfileMarker): void {
   window.localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, JSON.stringify(profile));
 }
@@ -525,6 +517,8 @@ interface ApiClientContextValue {
    * guard, never a security boundary.
    */
   currentUserId: string | undefined;
+  /** A session is stored. True for an opaque token too, which carries no user id to decode. */
+  hasSession: boolean;
   /**
    * Best display name available for the signed-in viewer. Full-account
    * logins persist their username because access tokens only carry a user
@@ -803,7 +797,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
   // below every time a protected request actually (re)acquires a token.
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(() => {
     const existing = tokenStoreRef.current?.get();
-    return existing ? sessionUserId(existing.accessToken, apiBaseUrl) : undefined;
+    return existing ? decodeAccessTokenUserId(existing.accessToken) : undefined;
   });
   const [currentUserName, setCurrentUserName] = useState<string | undefined>(
     readStoredCurrentUserName
@@ -840,7 +834,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
   });
   const initialActiveSession = tokenStoreRef.current.get();
   const initialActiveUserId = initialActiveSession
-    ? sessionUserId(initialActiveSession.accessToken, apiBaseUrl)
+    ? decodeAccessTokenUserId(initialActiveSession.accessToken)
     : undefined;
   const initialStoredProfile = initialActiveUserId
     ? storedProfileSessions.find(
@@ -1007,8 +1001,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
             applyApiBaseUrl(publicIpv4RelayUrl(healedUrl));
           }
           setAuthFailed(false);
-          // An opaque token carries no user id: keep the signed-in user rather than read it as signed out.
-          if (userId) setCurrentUserId(userId);
+          setCurrentUserId(userId);
           return token;
         } catch (err) {
           // Transparent login had nothing left to fall back on (no stored
@@ -1597,6 +1590,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
         apiBaseUrl,
         setApiBaseUrl,
         currentUserId,
+        hasSession: tokenStoreRef.current?.get() !== undefined,
         currentUserName,
         savedProfiles: storedProfileSessions
           .filter((profile) => profile.apiBaseUrl === apiBaseUrl)
@@ -1683,6 +1677,7 @@ export function useCurrentUserId(): string | undefined {
 export function useAuth(): {
   authFailed: boolean;
   currentUserId: string | undefined;
+  hasSession: boolean;
   currentUserName: string | undefined;
   savedProfiles: SavedProfile[];
   connectedServers: ConnectedServer[];
@@ -1703,6 +1698,7 @@ export function useAuth(): {
   const {
     authFailed,
     currentUserId,
+    hasSession,
     currentUserName,
     savedProfiles,
     connectedServers,
@@ -1720,6 +1716,7 @@ export function useAuth(): {
   return {
     authFailed,
     currentUserId,
+    hasSession,
     currentUserName,
     savedProfiles,
     connectedServers,

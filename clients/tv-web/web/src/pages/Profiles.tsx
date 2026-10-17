@@ -111,6 +111,7 @@ export function ProfilesPage(
   const [apiBaseUrl] = useApiBaseUrl();
   const {
     currentUserId,
+    hasSession,
     currentUserName,
     savedProfiles,
     isProfileSaved,
@@ -348,7 +349,7 @@ export function ProfilesPage(
   // Two or more stay on this page, listed, until the viewer chooses.
   const autoPickedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (currentUserId || awaitingDirectory) return;
+    if (currentUserId || hasSession || awaitingDirectory) return;
     if (savedProfiles.length === 0) {
       if (autoPickedRef.current !== "login") {
         autoPickedRef.current = "login";
@@ -362,7 +363,7 @@ export function ProfilesPage(
       void completeProfileAction(only, "select");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId, savedProfiles.length, profiles]);
+  }, [currentUserId, hasSession, savedProfiles.length, profiles]);
 
   useEffect(() => {
     if (!pinProfile) return;
