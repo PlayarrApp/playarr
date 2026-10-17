@@ -57,15 +57,18 @@ button.pa-episode:disabled { opacity: 0.5; }
 
 /* Player */
 .pa-player { background: #000000; }
-.pa-player-scrim { background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0)); padding: 24px 16px 18px 16px; }
-.pa-player-top { background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0)); padding: 14px 12px 28px 12px; }
-.pa-player button.pa-round { background: rgba(255, 255, 255, 0.16); color: #ffffff; border-radius: 999px; min-width: 48px; min-height: 48px; padding: 0; border: none; box-shadow: none; }
-.pa-player button.pa-round.big { min-width: 76px; min-height: 76px; }
+.pa-player-scrim { background: linear-gradient(to top, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0)); padding: 24px 12px 14px 12px; }
+.pa-player-top { background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0)); padding: 14px 16px 28px 16px; }
+.pa-player button.pa-round { background: rgba(12, 10, 11, 0.58); color: #ffffff; border-radius: 999px; min-width: 44px; min-height: 44px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.28); box-shadow: none; }
+.pa-player button.pa-ctl { background: transparent; color: #ffffff; border-radius: 999px; min-width: 44px; min-height: 44px; padding: 0; border: none; box-shadow: none; }
+.pa-player button.pa-ctl.primary { background: rgba(255, 255, 255, 0.14); }
+.pa-player button.pa-ctl:disabled { opacity: 0.28; }
+.pa-player button.pa-quality { padding: 0 10px; font-size: 10.5px; font-weight: 700; }
 .pa-player label { color: #ffffff; }
-.pa-player scale trough { background: rgba(255, 255, 255, 0.28); min-height: 4px; border-radius: 2px; }
-.pa-player scale highlight { background: @pa_brand; border-radius: 2px; }
-.pa-player scale slider { background: #ffffff; min-width: 16px; min-height: 16px; border-radius: 999px; }
-.pa-player-time { font-size: 13px; color: #ffffff; }
+.pa-player scale trough { background: rgba(255, 255, 255, 0.2); min-height: 6px; border-radius: 0; }
+.pa-player scale highlight { background: @pa_brand; border-radius: 0; }
+.pa-player scale slider { opacity: 0; min-width: 0; min-height: 0; margin: 0; padding: 0; }
+.pa-player-time { font-size: 10px; color: #ffffff; }
 headerbar.pa-header { background: @pa_bg; color: @pa_ink; box-shadow: none; border: none; }
 headerbar.pa-header button { color: @pa_ink; }
 
@@ -89,7 +92,7 @@ button.pa-entry, button.pa-entry:hover { background: @pa_surface; padding: 8px 1
 /* Web page header (mobile): round back button, 21.6px title, tinted subtitle, square action button */
 .pa-h1 { font-size: 21.6px; font-weight: 580; color: @pa_ink; }
 .pa-subtitle { font-size: 10.56px; font-weight: 820; color: @pa_brand_ink; letter-spacing: 1px; }
-button.pa-hbtn { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; box-shadow: none; padding: 0; min-width: 44px; min-height: 44px; }
+button.pa-hbtn { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; box-shadow: none; padding: 0; min-width: 42px; min-height: 42px; }
 button.pa-hbtn.round { border-radius: 999px; }
 button.pa-hbtn.square { border-radius: 14px; }
 
@@ -188,10 +191,16 @@ button.pa-pill, .pa-pill { background: @pa_surface; font-size: 11.52px; font-wei
 .pa-entry-meta { font-size: 12.8px; color: @pa_muted; }
 .pa-chip-status { font-size: 10.24px; font-weight: 750; padding: 0 12px; min-height: 19px; }
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding: 16px; border-radius: 12px; min-height: 93px; }
-/* Agenda rows as the web phone: a surface row with a hairline above and below, a 3 px availability bar on the left, no fill or radius */
-button.pa-entry, button.pa-entry:hover { background: @pa_surface; border-radius: 12px; border-width: 1px 0 1px 3px; border-style: solid; border-color: @pa_line; padding: 9px 13px; min-height: 0; }
+/* Agenda rows as the web phone: a strong-surface card with the web's strong hairline above and below (its right edge runs off the page), a 4 px availability bar on the left; unavailable is the muted ink */
+button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; border-radius: 12px; border-width: 1px 0 1px 4px; border-style: solid; border-color: @pa_line_strong; padding: 9px 13px; min-height: 0; }
 button.pa-entry.have { border-left-color: #8ac5a5; }
-button.pa-entry.missing { border-left-color: @pa_brand_ink; }
+button.pa-entry.missing { border-left-color: @pa_muted; }
+button.pa-entry:not(.week) { padding-bottom: 10px; }
+button.pa-entry:not(.week) .pa-entry-sub { margin-top: 2px; }
+button.pa-entry:not(.week) .pa-entry-metarow { margin-top: 1px; }
+/* Week cards keep their earlier look until measured against the web week */
+button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface; border-color: @pa_line; }
+button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }
 .pa-today-chip { font-size: 10.24px; letter-spacing: 1px; font-weight: 700; padding: 0 10px; min-height: 0; }
 .pa-thumb { border-radius: 6px; }
 

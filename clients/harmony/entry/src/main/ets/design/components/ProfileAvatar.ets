@@ -128,6 +128,13 @@ export struct ProfileAvatar {
   /** Circle diameter in vp. See `DEFAULT_AVATAR_DIAMETER` above. */
   @Prop diameter: number = DEFAULT_AVATAR_DIAMETER;
 
+  /** Optional ring width override for compact callers whose reference has no
+   * reserved focus-ring inset (the phone navigation avatar is 21px edge to edge). */
+  @Prop ringWidth: number = RING_WIDTH;
+
+  /** Web's compact navigation avatar uses 86% artwork rather than the picker recipe's 84%. */
+  @Prop illustrationRatio: number = ILLUSTRATION_SLOT_RATIO;
+
   /** Called when the avatar is activated (D-pad OK / Enter / tap). Plain
    * (non-reactive) callback field, same pattern as `AsyncState.ets`'s
    * `retry` / `PosterCard.ets`'s `onSelect`. */
@@ -212,8 +219,8 @@ export struct ProfileAvatar {
           .width('100%')
           .height('100%')
       }
-      .width((this.diameter * ILLUSTRATION_SLOT_RATIO))
-      .height((this.diameter * ILLUSTRATION_SLOT_RATIO))
+      .width((this.diameter * this.illustrationRatio))
+      .height((this.diameter * this.illustrationRatio))
     }
     .width(this.diameter)
     .height(this.diameter)
@@ -222,7 +229,7 @@ export struct ProfileAvatar {
     // A circle clip: the rounded-rect clip left the drawing's sides flat in the Previewer.
     .clipShape(new CircleShape({ width: this.diameter, height: this.diameter }))
     .border({
-      width: RING_WIDTH,
+      width: this.ringWidth,
       color: toResourceColorWithAlpha(this.ringColour(), this.ringOpacity()),
       radius: this.diameter / 2,
     })

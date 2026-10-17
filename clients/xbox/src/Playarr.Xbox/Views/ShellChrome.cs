@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Playarr.Core.Localization;
 using Playarr.Core.Models;
+using Playarr.Core.Navigation;
 using Windows.UI;
 using Windows.UI.Text;
 using Windows.UI.Xaml;
@@ -93,20 +94,24 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
-            double CentreY(FrameworkElement el) => el.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point(0, el.ActualHeight / 2)).Y;
-            // A card's container also holds its title and caption (and the focus room); the web reads the art's level.
-            var y = CentreY(source is Windows.UI.Xaml.Controls.Primitives.SelectorItem { ContentTemplateRoot: Panel card }
-                && card.Children.OfType<Grid>().FirstOrDefault() is { } art ? art : source);
-            Button? best = null;
+            FocusRect Rect(FrameworkElement el)
+            {
+                var origin = el.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point(0, 0));
+                return new FocusRect(origin.X, origin.Y, el.ActualWidth, el.ActualHeight);
+            }
+
+            var candidates = new System.Collections.Generic.List<Button>();
             foreach (var (button, page, _) in _items)
             {
-                if (page != typeof(object) && (best == null || Math.Abs(CentreY(button) - y) < Math.Abs(CentreY(best) - y)))
+                if (page != typeof(object))
                 {
-                    best = button;
+                    candidates.Add(button);
                 }
             }
 
-            if (best != null && best.Focus(FocusState.Keyboard))
+            var sourceRect = Rect(source);
+            var targetIndex = DirectionalFocus.Best(sourceRect, candidates.Select(Rect).ToArray(), left: true);
+            if (targetIndex >= 0 && candidates[targetIndex].Focus(FocusState.Keyboard))
             {
                 e.Handled = true;
             }
@@ -287,7 +292,7 @@ namespace Playarr.Xbox.Views
             var current = _current.Contains(button);
             button.Background = focused
                 ? new SolidColorBrush(Color.FromArgb(36, ink.R, ink.G, ink.B))
-                : current ? (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] : new SolidColorBrush(Colors.Transparent);
+                : current ? new SolidColorBrush(Color.FromArgb(23, ink.R, ink.G, ink.B)) : new SolidColorBrush(Colors.Transparent);
             var scale = (ScaleTransform)button.RenderTransform;
             scale.ScaleX = scale.ScaleY = focused ? 1.1 : current ? 1.05 : 1;
         }

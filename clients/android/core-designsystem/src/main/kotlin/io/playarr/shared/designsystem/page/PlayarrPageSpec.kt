@@ -56,7 +56,13 @@ sealed interface PlayarrPageAction {
     data class Link(val id: String, val label: String, val icon: PlayarrActionIcon, val onClick: () -> Unit) : PlayarrPageAction
 
     /** The Filters pill. At most one, always last. */
-    data class Filters(val label: String, val open: Boolean, val activeCount: Int, val onToggle: () -> Unit) : PlayarrPageAction
+    data class Filters(
+        val label: String,
+        val open: Boolean,
+        val activeCount: Int,
+        val onLeft: (() -> Unit)? = null,
+        val onToggle: () -> Unit,
+    ) : PlayarrPageAction
 
     /** A non-interactive badge (Downloads offline). */
     data class Status(val id: String, val label: String) : PlayarrPageAction
