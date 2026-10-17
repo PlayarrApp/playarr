@@ -9,6 +9,7 @@ function config(username = "device-test") {
   for (const key of Object.keys(process.env)) if (key.startsWith("PLAYARR_") || key === "PARITY_CLIENT") delete process.env[key];
   Object.assign(process.env, {
     PLAYARR_DEVICE_TEST_SERVER_URL: serverUrl,
+    PLAYARR_DEVICE_TEST_USERNAME: username,
     PLAYARR_WEB_URL: "https://playarr.example.invalid",
     PLAYARR_USERNAME: username,
     PLAYARR_PASSWORD: "mock-password",
@@ -113,5 +114,15 @@ test("download error diagnostics do not capture after an account switch", async 
   mocks.state.ownerAfterIdentityRead = mocks.state.identityReads + 2;
   await assert.rejects(driver.download({ id: "case", action: "unknown", media: { title: "Sample", file: "sample" } }, { withinSeconds: 1 }), /guard rejected/);
   assert.equal(mocks.state.operations.some(([kind]) => kind === "screenshot"), false);
+  await driver.stop();
+});
+
+test("hosted device-test environment configures the web guard without a local secrets file", async (t) => {
+  t.after(() => { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv); });
+  config();
+  const mocks = browserMock();
+  const driver = await createDriver({ playwright: mocks.playwright });
+  await assert.rejects(driver.start(), /signed out/);
+  assert.equal(mocks.state.operations.some(([kind]) => kind === "click" || kind === "keyPress"), false);
   await driver.stop();
 });

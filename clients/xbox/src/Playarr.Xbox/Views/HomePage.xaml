@@ -16,7 +16,7 @@
         each rail ListView's items are added with Items.Add(...) in Render(),
         never an ItemTemplate/{Binding}.
     -->
-    <!-- Web TV Home: rails start at the web's x (881 px) under the shell clock; one row per server rail. -->
+    <!-- Home tracks use the web's responsive top and bottom scroll padding. -->
     <Grid x:Name="Root">
         <!-- Web Home hero: the focused title's detail column, shared with the library pages. -->
         <local:FocusDetail x:Name="Detail" />
@@ -26,7 +26,7 @@
             IsActive="False"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
-            Margin="881,415,0,0"
+            Margin="730,415,0,0"
             Width="40"
             Height="40" />
 
@@ -36,7 +36,7 @@
             Visibility="Collapsed"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
-            Margin="881,415,0,0">
+            Margin="730,415,0,0">
             <TextBlock x:Name="ErrorText" Style="{StaticResource PlayarrRailTitle}" />
             <Button x:Name="RetryButton" Content="Try again" Click="RetryButton_Click" />
         </StackPanel>
@@ -45,7 +45,7 @@
             x:Name="RailsScroll"
             VerticalScrollBarVisibility="Hidden"
             HorizontalScrollMode="Disabled">
-            <StackPanel x:Name="RailsPanel" Margin="881,403,0,540" Spacing="40" />
+            <StackPanel x:Name="RailsPanel" Margin="730,128,0,540" Spacing="40" />
         </ScrollViewer>
     </Grid>
 </Page>

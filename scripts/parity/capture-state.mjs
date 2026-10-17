@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, rm, rmdir, writeFile, readFile, unlink, rename } from "node:fs/promises";
+import { hostname } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { join } from "node:path";
@@ -136,7 +137,7 @@ async function acquireLock(client, env) {
   while (true) {
     try {
       await mkdir(dir, { mode: 0o700 });
-      try { await writeFile(join(dir, "owner.json"), JSON.stringify({ client, pid: process.pid, host: process.env.HOSTNAME ?? "unknown", acquired_at: new Date().toISOString() }), { mode: 0o600, flag: "wx" }); }
+      try { await writeFile(join(dir, "owner.json"), JSON.stringify({ client, pid: process.pid, host: hostname(), acquired_at: new Date().toISOString() }), { mode: 0o600, flag: "wx" }); }
       catch (error) { await rmdir(dir).catch(() => {}); throw error; }
       return async () => { await rm(join(dir, "owner.json"), { force: true }); await rmdir(dir); };
     } catch (error) {
@@ -146,7 +147,7 @@ async function acquireLock(client, env) {
         const ownerPath = join(dir, "owner.json");
         const ownerBytes = await readFile(ownerPath);
         const owner = JSON.parse(ownerBytes.toString("utf8"));
-        if (owner.host === (process.env.HOSTNAME ?? "unknown") && Number.isInteger(owner.pid) && owner.pid > 1) {
+        if ((owner.host === hostname() || owner.host === "unknown") && Number.isInteger(owner.pid) && owner.pid > 1) {
           try { process.kill(owner.pid, 0); }
           catch (probeError) {
             if (probeError.code === "ESRCH") {

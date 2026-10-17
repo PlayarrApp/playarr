@@ -22,7 +22,7 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .margin_top(16)
         .margin_start(16)
         .margin_end(16)
-        .margin_bottom(3)
+        .margin_bottom(5)
         .build();
     let back = gtk4::Button::builder()
         .css_classes(["pa-hbtn", "round"])

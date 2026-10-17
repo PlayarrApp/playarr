@@ -54,7 +54,19 @@
         </Button>
 
         <!-- Web A-Z jump rail at the right edge. -->
-        <StackPanel x:Name="LetterRail" Width="40" Margin="0,280,21,0" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="0" />
+        <ScrollViewer
+            x:Name="LetterRailScrollViewer"
+            Width="40"
+            Margin="0,270,21,65"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Stretch"
+            VerticalScrollBarVisibility="Hidden"
+            HorizontalScrollBarVisibility="Disabled"
+            Padding="0">
+            <Border x:Name="LetterRailContent" Padding="0,8,0,48">
+                <StackPanel x:Name="LetterRail" Spacing="0" />
+            </Border>
+        </ScrollViewer>
 
         <Button
             x:Name="BackButton"

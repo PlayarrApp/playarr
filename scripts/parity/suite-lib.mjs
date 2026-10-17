@@ -152,3 +152,24 @@ export async function pinnedCatalogFiles(suite, env = process.env, { required = 
   }
   return [film.media_file_id, ...episodeFiles].filter(Boolean);
 }
+
+/** Strict readiness (verified build identity, capture-phase waits) only for pinned runs on drivers that declare it; others use their normal wait. */
+export function readinessMode(driver, pinned) {
+  return pinned && driver?.strictReadiness === true ? "strict" : "standard";
+}
+
+/** Time zone and locale pinned with the clock, equal to screens.json determinism: web refs and every client render the pinned instant the same way. */
+export const CAPTURE_REGION = Object.freeze({ timeZone: "UTC", locale: "en-GB" });
+
+/** Pin the driver's clock, zone, locale and animations. A driver that cannot pin runs unpinned on a default run (logged); explicit --stable keeps it fatal. Returns whether the run is pinned. */
+export async function pinCapture(driver, { fixedNow, explicit = false, log = console.log }) {
+  try {
+    if (!driver.setDeterministicCapture) throw new Error("stable capture unsupported: driver lacks setDeterministicCapture");
+    await driver.setDeterministicCapture({ fixedNow, disableAnimations: true, ...CAPTURE_REGION });
+    return true;
+  } catch (error) {
+    if (explicit || !/unsupported/i.test(error.message)) throw error;
+    log(`clock pin skipped: ${error.message.split("\n")[0]}`);
+    return false;
+  }
+}

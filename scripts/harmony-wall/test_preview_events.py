@@ -18,6 +18,11 @@ from capture_diagnostics import (analyze_episode_art_frame, decoded_art_is_accep
 
 
 class PreviewEventTests(unittest.TestCase):
+    def assert_no_image_identifier_in_string_fields(self, event, image_id):
+        for field, value in event.items():
+            if isinstance(value, str):
+                self.assertNotIn(image_id, value, f"image key leaked through {field}")
+
     def setUp(self):
         self.state = dict(harmony_vnc.STATE)
         self.sequence = harmony_vnc.DEBUG_SEQUENCE
@@ -50,28 +55,50 @@ class PreviewEventTests(unittest.TestCase):
         Image.new("RGBA", (3, 2), (1, 2, 3, 128)).save(data, "PNG")
         harmony_vnc.record_image_upload("734", data.getvalue())
         self.assertIn("734", harmony_vnc.IMAGE_METRICS)
-        accepted = harmony_vnc.append_detail_image_payload_scope({
-            "route": "Detail", "work_id": "work-private", "parent_work_id": "work-private",
-            "row_id": "row-private", "generation": 9, "image_id": "734",
-        })
+        with patch("harmony_vnc.time.monotonic", return_value=1234.734):
+            accepted = harmony_vnc.append_detail_image_payload_scope({
+                "route": "Detail", "work_id": "work-private", "parent_work_id": "work-private",
+                "row_id": "row-private", "generation": 9, "image_id": "734",
+            })
         self.assertTrue(accepted)
         event = harmony_vnc.STATE["debug_events"][-1]
         self.assertEqual(event["category"], "detail-image-payload-metrics")
         self.assertEqual(event["mean_alpha"], 128)
+        self.assertEqual(event["timestamp"], 1234.734)
         self.assertNotIn("image_id", event)
-        self.assertNotIn("734", json.dumps(event))
+        self.assertIn('"timestamp": 1234.734', json.dumps(event))
         summary = summarize_detail_image_payload_events(
             harmony_vnc.STATE["debug_events"], sequence_after=0,
             work_id="work-private", generation=9)
         encoded = json.dumps(summary)
         self.assertEqual(summary["payload_count"], 1)
         self.assertEqual(summary["mean_alpha"]["mean"], 128)
+        self.assertNotIn("image_id", summary)
         self.assertNotIn("work-private", encoded)
         self.assertNotIn("row-private", encoded)
-        self.assertNotIn("734", encoded)
         self.assertNotIn("/img/", encoded)
         self.assertEqual(harmony_vnc.IMAGE_SCOPES, {})
         self.assertEqual(harmony_vnc.IMAGE_METRICS, {})
+
+    def test_preview_focus_acknowledgement_requires_a_selected_live_card(self):
+        harmony_vnc.apply_state({"focusack": ["none"]})
+        self.assertEqual(harmony_vnc.STATE["focus_ack"], "none")
+        self.assertFalse(harmony_vnc.STATE["focus_ack"].startswith("ok:"))
+
+        harmony_vnc.apply_state({"focusack": ["ok:42,96"]})
+        self.assertEqual(harmony_vnc.STATE["focus_ack"], "ok:42,96")
+        harmony_vnc.apply_state({"title": ["sample-card"], "sub": [""]})
+        self.assertEqual(harmony_vnc.STATE["focused"], "sample-card")
+        self.assertTrue(harmony_vnc.STATE["focus_ack"].startswith("ok:"))
+
+        harmony_vnc.apply_state({"focusack": ["none"]})
+        self.assertEqual(harmony_vnc.STATE["focus_ack"], "none")
+        harmony_vnc.apply_state({"resetfocused": ["1"]})
+        self.assertIsNone(harmony_vnc.STATE["focus_ack"])
+
+        route_source = (HERE / "patch_route.py").read_text(encoding="utf-8")
+        self.assertIn("previewReport('focusack=' + encodeURIComponent(result));", route_source)
+        self.assertNotIn("previewReport('title=' + encodeURIComponent('state-focused')", route_source)
 
     def test_detail_load_success_failure_and_new_sequence_are_scoped(self):
         harmony_vnc.apply_state({"route": ["Detail"], "kind": [""], "work": ["private-work"], "generation": ["9"]})
@@ -126,7 +153,8 @@ class PreviewEventTests(unittest.TestCase):
         event = harmony_vnc.STATE["debug_events"][-1]
         self.assertEqual(event["category"], "detail-image-payload-metrics")
         self.assertEqual(event["mean_red"], 8)
-        self.assertNotIn("738", json.dumps(event))
+        self.assert_no_image_identifier_in_string_fields(event, "738")
+        self.assertNotIn("image_id", event)
         self.assertEqual(harmony_vnc.IMAGE_SCOPES, {})
         self.assertEqual(harmony_vnc.IMAGE_METRICS, {})
 
@@ -136,15 +164,17 @@ class PreviewEventTests(unittest.TestCase):
         })
         harmony_vnc.record_image_upload("735", b"private malformed payload content")
         self.assertNotIn("735", harmony_vnc.IMAGES)
-        self.assertTrue(harmony_vnc.append_detail_image_payload_scope({
-            "route": "Detail", "work_id": "work-private", "parent_work_id": "work-private",
-            "row_id": "row-private", "generation": 9, "image_id": "735",
-        }))
+        with patch.object(harmony_vnc.time, "monotonic", return_value=1234.735):
+            self.assertTrue(harmony_vnc.append_detail_image_payload_scope({
+                "route": "Detail", "work_id": "work-private", "parent_work_id": "work-private",
+                "row_id": "row-private", "generation": 9, "image_id": "735",
+            }))
         event = harmony_vnc.STATE["debug_events"][-1]
         self.assertEqual(event["category"], "detail-image-payload-decode-error")
         self.assertEqual(set(event), {"sequence", "category", "timestamp", "route", "work_id",
                                       "generation", "parent_work_id", "row_id"})
-        self.assertNotIn("735", json.dumps(event))
+        self.assertEqual(event["timestamp"], 1234.735)
+        self.assert_no_image_identifier_in_string_fields(event, "735")
         self.assertNotIn("malformed payload content", json.dumps(event))
         summary = summarize_detail_image_payload_events(
             harmony_vnc.STATE["debug_events"], sequence_after=0,
@@ -164,6 +194,7 @@ class PreviewEventTests(unittest.TestCase):
         }))
         event = harmony_vnc.STATE["debug_events"][-1]
         self.assertEqual(event["category"], "detail-image-payload-oversized")
+        self.assert_no_image_identifier_in_string_fields(event, "998")
         self.assertNotIn("image_id", event)
         summary = summarize_detail_image_payload_events(
             harmony_vnc.STATE["debug_events"], sequence_after=0,
@@ -596,18 +627,19 @@ class PreviewEventTests(unittest.TestCase):
         self.assertIn("this.measuredSeriesAreaRects.set(measurementId, rect);\n    this.measuredSeriesCardAreas.set(measurementId, {\n      workId: workId,", transformed)
         self.assertIn("capturedAtMs: Date.now(),\n    });\n    this.previewCardAreaRouteGenerations.set(measurementId, this.previewScopeGeneration);\n    reportDetailEpisodeCardContainerAreaForScope", transformed)
         self.assertNotIn("const cardRect = this.componentRect(measurementId)", transformed)
-        image_area_hook = transformed_poster.split("Image(this.artwork)", 1)[1].split(".onComplete", 1)[0]
+        image_area_hook = transformed_poster.split("Image(this.artwork)", 1)[1].split("this.onArtworkAreaChanged(); })", 1)[0]  # the app's own Image.onAreaChange carries the report: a second one would replace it
         self.assertIn("reportDetailEpisodeCardAreaForMeasurement(this.getUIContext()", image_area_hook)
-        self.assertIn("this.previewRailId, this.previewOccurrence, this.measurementId", image_area_hook)
+        self.assertIn("this.previewRailId, this.previewOccurrence, this.imageMeasurementId", image_area_hook)
         self.assertNotIn("area.globalPosition", image_area_hook)
         preview_state = (HERE / "overlay/src/main/ets/util/PreviewState.ets").read_text(encoding="utf-8")
-        self.assertIn("seriesDetailMeasurementId('card', workId, generation", preview_state)
+        self.assertIn("seriesDetailMeasurementId('image', workId,", preview_state)
         self.assertIn("episodeFocusRectForComponent(uiContext, componentId)", preview_state)
         area_reporter = preview_state.split("export function reportDetailEpisodeCardAreaForMeasurement(", 1)[1].split(
             "export function reportDetailRowImageComplete(", 1)[0]
-        self.assertIn("componentId !== seriesDetailMeasurementId('card', workId, generation", area_reporter)
+        self.assertIn("componentId !== seriesDetailMeasurementId('image', workId,\n      measuredGeneration, railId, rowId, occurrence)", area_reporter)  # Detail's focus generation, read from the ID
         self.assertIn("const rect = episodeFocusRectForComponent(uiContext, componentId);", area_reporter)
-        self.assertIn("if (rect === null)", area_reporter)
+        self.assertIn("if (rect !== null)", area_reporter)
+        self.assertIn("areaLengthNumber(area.globalPosition.x)", area_reporter)  # the Previewer has no lookup by ID
         self.assertIn("rect.left, rect.top, rect.width, rect.height", area_reporter)
         self.assertIn("rect.left, rect.top, rect.width, rect.height, uiContext.vp2px(1)", area_reporter)
         scoped_art_reporter = preview_state.split("export function reportDetailEpisodeCardAreaForScope(", 1)[1].split(
@@ -861,14 +893,17 @@ class PreviewEventTests(unittest.TestCase):
                 snapshots.append(harmony_vnc.snapshot_state()["debug_events"][-1])
             return event
 
-        with patch.object(harmony_vnc, "append_debug_event", side_effect=append_then_snapshot):
+        with patch.object(harmony_vnc.time, "monotonic", return_value=1234.998), \
+                patch.object(harmony_vnc, "append_debug_event", side_effect=append_then_snapshot):
             harmony_vnc.record_image_upload("998", payload.getvalue())
 
         self.assertEqual(len(snapshots), 1)
         event = snapshots[0]
         self.assertEqual(event["category"], "detail-image-payload-metrics")
         self.assertEqual(event["mean_red"], 6)
-        self.assertNotIn("998", json.dumps(event))
+        self.assertEqual(event["timestamp"], 1234.998)
+        self.assert_no_image_identifier_in_string_fields(event, "998")
+        self.assertNotIn("image_id", event)
 
     def test_container_area_receiver_rejection_has_bounded_reason_and_no_ids_in_summary(self):
         harmony_vnc.apply_state({

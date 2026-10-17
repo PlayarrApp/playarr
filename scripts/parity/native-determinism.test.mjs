@@ -1,36 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { createDriver } from "./drivers/android-tv.mjs";
+import { handleFakeDeterministicAdbCommand, initialFakeAdbState } from "./test-drivers/fake-deterministic-adb.mjs";
 
 const scratchRoot = process.env.PLAYARR_PARITY_TEST_OUT;
 if (!scratchRoot) throw new Error("PLAYARR_PARITY_TEST_OUT must point to task-scoped .data scratch space");
 mkdirSync(scratchRoot, { recursive: true });
 const scratch = mkdtempSync(join(scratchRoot, "native-determinism-"));
-let stateSequence = 0;
-const adbPath = new URL("./test-drivers/fake-deterministic-adb.mjs", import.meta.url).pathname;
-const initialState = () => ({
-  window_animation_scale: "1.0",
-  transition_animation_scale: "0.75",
-  animator_duration_scale: "1.25",
-  launches: [],
-  logs: [],
-});
 const driverWith = (state, extraEnv = {}, options = {}) => {
-  const statePath = join(scratch, `adb-state-${++stateSequence}.json`);
-  writeFileSync(statePath, JSON.stringify(state));
+  const fakeState = { ...initialFakeAdbState(), ...state };
+  const env = { ...process.env, ...extraEnv };
   const driver = createDriver({
-    adbBin: adbPath,
     readinessPollMs: 1,
     readinessTimeoutMs: options.readinessTimeoutMs ?? 10_000,
     commandTimeoutMs: 1000,
     clock: options.clock ?? { sleep: async () => {}, now: (() => { let time = 0; return () => time++; })() },
-    env: { ...process.env, PLAYARR_PARITY_FAKE_ADB_STATE: statePath, ...extraEnv },
+    env,
     accountGuard: options.accountGuard,
+    execute: async (_command, args, execOptions) => {
+      assert.equal(execOptions.timeout, 1000);
+      assert.equal(execOptions.killSignal, "SIGTERM");
+      assert.equal(execOptions.env, env);
+      return handleFakeDeterministicAdbCommand(fakeState, args[0], args.slice(1), env);
+    },
   });
-  return { driver, readState: () => JSON.parse(readFileSync(statePath, "utf8")) };
+  return { driver, readState: () => structuredClone(fakeState) };
 };
+
+const initialState = () => ({ ...initialFakeAdbState(), transition_animation_scale: "0.75", animator_duration_scale: "1.25" });
 
 test("Android account mismatch blocks device mutations and capture", async () => {
   let guardCalls = 0;
@@ -113,6 +112,24 @@ test("Android deterministic capture rejects requests without animation disabling
   await assert.rejects(driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z" }), /disableAnimations: true/);
 });
 
+test("Android deterministic capture preserves bounded command timeout errors", async () => {
+  const env = {};
+  const driver = createDriver({
+    env,
+    commandTimeoutMs: 37,
+    execute: async (_command, _args, options) => {
+      assert.equal(options.timeout, 37);
+      assert.equal(options.killSignal, "SIGTERM");
+      assert.equal(options.env, env);
+      const error = new Error("process was terminated");
+      error.killed = true;
+      error.signal = "SIGTERM";
+      throw error;
+    },
+  });
+  await assert.rejects(driver.start(), /adb shell dumpsys timed out after 37ms/);
+});
+
 test("Android reports installed APK path and digest as build identity", async () => {
   const { driver } = driverWith(initialState());
   assert.deepEqual(await driver.captureBuildIdentity(), {
@@ -139,4 +156,19 @@ test("Android restores a pre-disabled animation scale to the normal scale", asyn
   await driver.setDeterministicCapture({ fixedNow: "2026-10-05T12:00:00Z", disableAnimations: true });
   await driver.stop();
   assert.equal(readState().window_animation_scale, "1");
+});
+
+test("Android pins the time zone and app locale with the clock and restores both", async () => {
+  const { driver, readState } = driverWith(initialState());
+  await driver.setDeterministicCapture({ fixedNow: "2026-10-07T12:00:00Z", disableAnimations: true, timeZone: "UTC", locale: "en-GB" });
+  assert.deepEqual([readState().timezone, readState().locales], ["UTC", "en-GB"]);
+  await driver.stop();
+  assert.deepEqual([readState().timezone, readState().locales], ["Asia/Bangkok", ""]);
+});
+
+test("Android leaves the time zone and locale alone when none is requested", async () => {
+  const { driver, readState } = driverWith(initialState());
+  await driver.setDeterministicCapture({ fixedNow: "2026-10-07T12:00:00Z", disableAnimations: true });
+  assert.deepEqual([readState().timezone, readState().locales], ["Asia/Bangkok", ""]);
+  await driver.stop();
 });
