@@ -492,6 +492,8 @@ export function ProfilesPage(
 
   function handleProfileLogout(profile: ViewerProfile) {
     logoutProfile(profile.id);
+    // Full navigation: the playarr.app Worker serves the marketing site at "/" once the hint is gone.
+    if (!IS_TV) window.location.assign("/");
   }
 
   function checkForUpdates() {

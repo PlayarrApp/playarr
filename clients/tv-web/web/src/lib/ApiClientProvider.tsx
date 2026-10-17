@@ -155,7 +155,7 @@ function isStoredSession(value: unknown): value is StoredSession {
   );
 }
 
-function readStoredProfileSessions(fallbackApiBaseUrl: string): StoredProfileSession[] {
+export function readStoredProfileSessions(fallbackApiBaseUrl: string): StoredProfileSession[] {
   try {
     const currentRaw = window.localStorage.getItem(SAVED_PROFILE_SESSIONS_STORAGE_KEY);
     const raw =
@@ -204,16 +204,14 @@ function readStoredProfileSessions(fallbackApiBaseUrl: string): StoredProfileSes
         window.localStorage.removeItem(key);
       }
     }
-    // Boot and cross-tab reads re-assert the hint so existing users skip the marketing page.
-    syncSignedInHint(profiles.length > 0);
+    // Saved profiles are not a sign-in: only an active session sets the hint.
     return profiles;
   } catch {
     return [];
   }
 }
 
-function writeStoredProfileSessions(profiles: StoredProfileSession[]): void {
-  syncSignedInHint(profiles.length > 0);
+export function writeStoredProfileSessions(profiles: StoredProfileSession[]): void {
   try {
     window.localStorage.setItem(SAVED_PROFILE_SESSIONS_STORAGE_KEY, JSON.stringify(profiles));
   } catch {
@@ -238,6 +236,20 @@ function freshStoredProfileSessions(
     return fallback;
   }
   return readStoredProfileSessions(fallbackApiBaseUrl);
+}
+
+/** Explicit sign-out: drop matching saved profiles (may be none); `wasActive` also clears the routing hint. */
+export function signOutStoredProfiles(
+  remove: ((profile: StoredProfileSession) => boolean) | undefined,
+  wasActive: boolean,
+  fallback: StoredProfileSession[],
+  fallbackApiBaseUrl: string
+): StoredProfileSession[] {
+  if (wasActive) syncSignedInHint(false);
+  if (!remove) return fallback;
+  const next = freshStoredProfileSessions(fallback, fallbackApiBaseUrl).filter((p) => !remove(p));
+  writeStoredProfileSessions(next);
+  return next;
 }
 
 function readActiveProfileMarker(): ActiveProfileMarker | undefined {
@@ -1001,7 +1013,10 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
           // a restarting server (5xx/429/408) or a hung request says nothing
           // about the session: keep the stored credentials, stay on the
           // page and let the next request retry.
-          if (!isTransientAuthFailure(err)) setAuthFailed(true);
+          if (!isTransientAuthFailure(err)) {
+            setAuthFailed(true);
+            syncSignedInHint(false);
+          }
           throw err;
         }
       },
@@ -1181,6 +1196,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
           deviceId: profileDeviceId,
         };
         writeActiveProfileMarker(activeProfileRef.current);
+        syncSignedInHint(true);
         persistProfileSession(
           targetApiBaseUrl,
           profileKey,
@@ -1323,6 +1339,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
         deviceId,
       };
       writeActiveProfileMarker(activeProfileRef.current);
+      syncSignedInHint(true);
       persistProfileSession(
         targetApiBaseUrl,
         profileKey,
@@ -1435,6 +1452,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
         setCurrentUserName(target.name);
         setAuthFailed(false);
         writeActiveProfileMarker(activeProfileRef.current);
+        syncSignedInHint(true);
         // §7.1/§7.2: switch over to whichever address the retry actually
         // succeeded against -- see the primary client's `getAccessToken`
         // for the identical, more fully-commented check.
@@ -1506,16 +1524,14 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
     tokenStoreRef.current?.clear();
     clearSignedInDeviceState();
     activeProfileRef.current = undefined;
-    if (activeProfile) {
-      setStoredProfileSessions((stale) => {
-        const existing = freshStoredProfileSessions(stale, activeProfile.apiBaseUrl);
-        const next = existing.filter(
-          (profile) => profile.profileKey !== activeProfile.profileKey
-        );
-        writeStoredProfileSessions(next);
-        return next;
-      });
-    }
+    // Cleared even without an active profile (expired session): the hint tracks sign-in, not saved profiles.
+    const next = signOutStoredProfiles(
+      activeProfile && ((profile) => profile.profileKey === activeProfile.profileKey),
+      true,
+      [],
+      activeProfile?.apiBaseUrl ?? ""
+    );
+    if (activeProfile) setStoredProfileSessions(next);
     setAuthFailed(false);
     setCurrentUserId(undefined);
     setCurrentUserName(undefined);
@@ -1536,14 +1552,15 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
         setCurrentUserName(undefined);
       }
 
-      setStoredProfileSessions((stale) => {
-        const existing = freshStoredProfileSessions(stale, apiBaseUrl);
-        const next = existing.filter(
-          (profile) => profile.apiBaseUrl !== apiBaseUrl || profile.userId !== userId
-        );
-        writeStoredProfileSessions(next);
-        return next;
-      });
+      // Written now, not in a state updater: the caller navigates away right after.
+      setStoredProfileSessions(
+        signOutStoredProfiles(
+          (profile) => profile.apiBaseUrl === apiBaseUrl && profile.userId === userId,
+          isActiveProfile,
+          [],
+          apiBaseUrl
+        )
+      );
     },
     [apiBaseUrl]
   );
