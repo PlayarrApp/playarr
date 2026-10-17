@@ -1,0 +1,1 @@
+- Apple TV: the Search Filters tile uses the shared action column width, and a source guard keeps header tiles and Back on the shared components.
