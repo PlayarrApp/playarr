@@ -1,0 +1,1 @@
+- Roku: Left from the first Home rail enters the dock on Home again after Home moved to the Library-aligned top.
