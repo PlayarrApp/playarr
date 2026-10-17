@@ -716,7 +716,7 @@ Steps only the repository owner can perform.
 | 10678 | HarmonyOS TV Home: poster artwork stall after a Detail visit, then Home against the Library-aligned web ref | blocked | harmony-crash | harmony-home-10678 | | | PR open: #1621. TV Home aligned with the Library grid (Home dark 77.93 to 95.62, light 74.02 to 94.90 against the fixed-clock refs, run 39007572791). The Previewer poster stall in multi-screen runs is still open: one Home instance, 266 artwork results, then no image completes. Blocked by: owner (Thomas): paused 2026-10-17 pending deployment fix. |
 | 10706 | Web TV: sign-out and boot land on the profile picker with no blind login | in_progress | playarr-c5 | | | 2026-10-17 21:00 ICT | Owner resumed 2026-10-17. PR open: [#56](https://github.com/PlayarrApp/playarr/pull/56). Also covers the 400 responses after sign-out. |
 | 10719 | Web TV: Search input no longer slides in from under the left nav | in_progress | playarr-c5 | | | 2026-10-17 21:00 ICT | Owner resumed 2026-10-17. PR open: [#51](https://github.com/PlayarrApp/playarr/pull/51). |
-| 10720 | Web TV: close button on the mini player | in_progress | playarr-c5 | | | 2026-10-17 21:00 ICT | Owner resumed 2026-10-17. PR open: [#50](https://github.com/PlayarrApp/playarr/pull/50). |
+| 10720 | Web TV: close button on the mini player | done | playarr-c5 | | | 2026-10-17 21:00 ICT | Owner resumed 2026-10-17. PR open: [#50](https://github.com/PlayarrApp/playarr/pull/50). PR #50 merged 2026-10-17. |
 | 10721 | Web: Downloads action panel and overlap fix | in_progress | playarr-c5 | | | 2026-10-17 21:00 ICT | Owner resumed 2026-10-17. PR link to be added when the PR is open. |
 
 ## 19. Android player fixes (2026-10-07)
