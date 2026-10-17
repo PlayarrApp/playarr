@@ -117,8 +117,8 @@ test("browser-evaluated identity helper is self-contained after serialisation", 
 });
 
 test("page guard retries transport failures but never account rejections", async () => {
-  const ok = { username: "device-test", isCurrentCount: 1, serverUrl: "https://relay.example" };
-  const args = { allowedUsernames: new Set(["device-test"]), expectedServerUrl: "https://relay.example" };
+  const ok = { username: "device-test", isCurrentCount: 1, serverUrl: "https://test.example" };
+  const args = { allowedUsernames: new Set(["device-test"]), expectedServerUrl: "https://test.example" };
   let calls = 0;
   const flaky = { evaluate: async () => { if (++calls < 3) throw new Error("device-test account identity request failed (TypeError: Failed to fetch)"); return ok; } };
   await assertDeviceTestPage({ page: flaky, ...args });
@@ -130,14 +130,14 @@ test("page guard retries transport failures but never account rejections", async
 });
 
 test("identity helper accepts the relay's fallback port but not another host", async () => {
-  const trustedUrl = "https://relay.example";
+  const trustedUrl = "https://test.example";
   const run = async (base) => {
     const storage = new Map([["playarr:session", JSON.stringify({ accessToken: "t" })], ["playarr:apiBaseUrl", base]]);
     globalThis.localStorage = { getItem: (k) => storage.get(k) ?? null };
     globalThis.fetch = async () => ({ ok: true, async json() { return [{ username: "device-test", is_current: true }]; } });
     return fetchCurrentIdentity({ expectedServerUrl: trustedUrl });
   };
-  assert.equal((await run("https://relay.example:8484")).serverUrl, trustedUrl);
+  assert.equal((await run("https://test.example:8484")).serverUrl, trustedUrl);
   await assert.rejects(run("https://other.example"), /not trusted/);
-  await assert.rejects(run("http://relay.example"), /not trusted/);
+  await assert.rejects(run("http://test.example"), /not trusted/);
 });
