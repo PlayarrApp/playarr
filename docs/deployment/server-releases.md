@@ -36,9 +36,8 @@ release. A server-only release still works with a `backend-v*` tag:
    URLs: the unversioned aliases resolve the newest stable `v*` or `backend-v*` release that carries
    the asset and redirect to it, versioned paths redirect to `v<version>` (or `backend-v<version>`),
    and `latest.json` is proxied same-origin. The Android APK is served the same way from `v*` and
-   `android-v*` releases. The Clients hub page `/clients/server` shows the
-   buttons and reads the manifest for the version and checksums. Bump `SERVER_FALLBACK_VERSION` in
-   `Clients.tsx` when convenient; it is only the pre-load fallback.
+   `android-v*` releases. The Clients hub page `/clients/server` (part of the
+   [marketing site](https://github.com/PlayarrApp/playarr-site)) shows the buttons and reads the manifest for the version and checksums.
 
 Re-run a failed release with **Run workflow** on the tag (the workflow refuses non-tag refs).
 
