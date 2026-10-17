@@ -884,3 +884,11 @@ test("a driver that cannot pin runs unpinned on a default run, but --stable stay
 test("web-ref capture puts the canonical deck item inside its captured progress scope", () => {
   assert.match(readFileSync(new URL("./capture-refs.mjs", import.meta.url), "utf8"), /const stateFiles = \[\.\.\.new Set\(\[[^\]]*deckScope\]\)\]/);
 });
+
+test("the runner starts the driver before it reads the build identity (the web driver's identity guard needs the page)", () => {
+  const source = readFileSync(new URL("./suite-run.mjs", import.meta.url), "utf8");
+  const start = source.indexOf("await driver.start?.(");
+  const identity = source.indexOf("await driver.captureBuildIdentity()");
+  assert.ok(start > 0 && identity > 0);
+  assert.ok(start < identity, "driver.start must run before captureBuildIdentity");
+});
