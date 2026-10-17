@@ -8,11 +8,12 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { assertCalendarPanelClosed, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { assertCalendarPanelClosed, pinCapture, readinessMode, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { mergeSelectedResults } from "./selective-results.mjs";
 import { resolveCaptureEnvironment, withCaptureState } from "./capture-state.mjs";
 import { applyCanonicalDeck } from "./canonical-deck.mjs";
+import { readSecrets } from "./dpad-account.mjs";
 import { assertCaptureManifestTargetAvailable, buildShaFromIdentity, createCaptureManifest, sameCaptureBuildIdentity } from "./capture-manifest.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -43,7 +44,12 @@ const unknownOnly = only.filter((name) => !knownOnly.has(name));
 if (unknownOnly.length) throw new Error(`unknown --only section(s): ${unknownOnly.join(", ")}`);
 const via = opt("via", "keys");
 const reference = args.includes("--reference");
-const deterministic = args.includes("--stable") || process.env.PARITY_STABLE === "1";
+// Stable is the default so client captures match the web refs (fixed clock, canonical On deck); PARITY_STABLE=0 is the only opt-out.
+let deterministic = args.includes("--stable") || process.env.PARITY_STABLE !== "0";
+// State pinning (clock, canonical deck, catalogue, animations) applies to every driver; strict readiness and build identity
+// only to drivers that declare driver.strictReadiness. Others use their own normal readiness wait.
+let strict = false;
+if (deterministic) process.env.PARITY_SEED_CANONICAL ??= "1";
 if (deterministic && reset) throw new Error("stable capture cannot combine with --reset-progress; seed canonical state before running");
 const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
 const regressionReason = process.env.PARITY_REGRESSION_REASON;
@@ -105,7 +111,7 @@ async function press(keys) {
 }
 async function waitReady(screen, phase) {
   assertNotInterrupted();
-  if (!deterministic) return;
+  if (!strict) return;
   if (driver.waitReady) { await driver.waitReady({ screen, phase }); assertNotInterrupted(); return; }
   throw new Error(`stable capture unsupported: driver lacks waitReady(${phase})`);
 }
@@ -133,11 +139,13 @@ if (reset) {
   assertNotInterrupted();
 } // before any capture: On deck and Resume start from the same state on every device
 if (deterministic) {
-  if (!driver.setDeterministicCapture) throw new Error("stable capture unsupported: driver lacks setDeterministicCapture");
-  await driver.setDeterministicCapture({ fixedNow, disableAnimations: true });
+  deterministic = await pinCapture(driver, { fixedNow, explicit: args.includes("--stable") });
   assertNotInterrupted();
 }
-const buildBeforeCapture = deterministic ? await driver.captureBuildIdentity() : null;
+const readiness = readinessMode(driver, deterministic);
+strict = readiness === "strict";
+console.log(`capture state pinned=${deterministic} readiness=${readiness}`);
+const buildBeforeCapture = strict ? await driver.captureBuildIdentity() : null;
 assertNotInterrupted();
 await driver.start?.({ theme: themes[0] });
 assertNotInterrupted();
@@ -146,7 +154,7 @@ const referenceBuildBeforeCapture = reference && !deterministic ? await driver.c
 if (only.includes("screens")) {
   const selectedScreens = suite.screens.filter((x) => !wantScreens.length || wantScreens.includes(x.id));
   const selectiveCapture = selectedScreens.length !== suite.screens.length || themes.length !== suite.themes.length || themes.some((theme, index) => theme !== suite.themes[index]);
-  if (deterministic) assertCaptureManifestTargetAvailable(selectiveCapture, existsSync(join(out, "captures.json")));
+  if (strict) assertCaptureManifestTargetAvailable(selectiveCapture, existsSync(join(out, "captures.json")));
   const captureRows = [];
   for (const theme of themes) {
     assertNotInterrupted();
@@ -169,13 +177,17 @@ if (only.includes("screens")) {
       catch (e) { if (signalReceived) throw e; summary.failed.push(`${theme}/${s.id}`); console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); }
     }
   }
-  if (deterministic && summary.failed.length === 0) {
+  if (strict && summary.failed.length === 0) {
     if (!captureSnapshot?.hash) throw new Error("stable screen manifest requires an isolated state snapshot");
     const buildAfterScreens = await driver.captureBuildIdentity?.();
     if (!buildBeforeCapture || !sameCaptureBuildIdentity(buildBeforeCapture, buildAfterScreens)) throw new Error("stable screen manifest requires an unchanged verified build identity");
-    const captures = createCaptureManifest({ suite: suite.version, buildIdentity: buildAfterScreens, clock: fixedNow, state: captureSnapshot.hash, captures: captureRows });
+    const captures = createCaptureManifest({ suite: suite.version, buildIdentity: buildAfterScreens, clock: fixedNow, state: captureSnapshot.hash, readiness, captures: captureRows });
     mkdirSync(out, { recursive: true });
     writeFileSync(join(out, "captures.json"), `${JSON.stringify(captures, null, 2)}\n`, { flag: "wx" });
+  }
+  if (deterministic && !strict && summary.failed.length === 0) { // no verified build identity here, so the readiness mode is logged on its own
+    mkdirSync(out, { recursive: true });
+    writeFileSync(join(out, "readiness.json"), `${JSON.stringify({ suite: suite.version, clock: fixedNow, state: captureSnapshot?.hash ?? "unisolated", readiness, captures: captureRows.map(({ id, theme, path }) => ({ id, theme, path })) }, null, 2)}\n`, { flag: "wx" });
   }
   if (reference && referenceBuildBeforeCapture && summary.failed.length === 0) {
     const referenceBuildAfterCapture = await driver.captureBuildIdentity?.();
@@ -199,7 +211,7 @@ if (only.includes("screens") && !only.includes("dpad") && driver.endCrops) {
         await driver.setLaunchArgs?.(c.launchArgs ?? []); // e.g. Home artwork = Covers
         await reach(suite.screens.find((x) => x.id === c.from));
         await press(c.keys);
-        if (deterministic) await waitReady(c.id, "capture");
+        if (strict) await waitReady(c.id, "capture");
         else await sleep(c.settle ?? 1200); // legacy captures can preserve intentional motion sampling
         await driver.screenshot(join(out, theme, "crops", `${c.id}.png`));
         console.log(`ok ${theme} crop ${c.id}`);
@@ -232,7 +244,7 @@ if (only.includes("dpad")) {
         await reach(from);
         // The player needs a known state before the first key: playing, controls up, focus on play/pause (driver.playerReady), else a fixed wait.
         if (d.wait) {
-          if (driver.playerReady) await driver.playerReady(); else if (deterministic) throw new Error("stable capture unsupported: driver lacks playerReady"); else await sleep(d.wait);
+          if (driver.playerReady) await driver.playerReady(); else if (strict) throw new Error("stable capture unsupported: driver lacks playerReady"); else await sleep(d.wait);
           assertNotInterrupted();
           // Every driver: the playhead must be past 1 s before the first key (a slow player eats keys and shows the wrong state).
           if (driver.playhead) { const t0 = Date.now(); while (Date.now() - t0 < 45000) { assertNotInterrupted(); const head = await driver.playhead(); assertNotInterrupted(); if (head > 1) break; await sleep(500); } if (!((await driver.playhead()) > 1)) throw new Error("player did not start playing within 45 s"); assertNotInterrupted(); }
@@ -273,17 +285,19 @@ if (only.includes("dpad")) {
   mkdirSync(out, { recursive: true });
   const dpadFile = join(out, "dpad.json");
   const selectedIds = suite.dpad.filter((x) => !wantChecks.length || wantChecks.includes(x.id)).map((x) => x.id);
-  const buildAfter = deterministic ? await driver.captureBuildIdentity?.() : null;
+  const buildAfter = strict ? await driver.captureBuildIdentity?.() : null;
   assertNotInterrupted();
-  if (deterministic && !sameCaptureBuildIdentity(buildBeforeCapture, buildAfter)) throw new Error(`deployed build changed during capture: ${JSON.stringify(buildBeforeCapture) ?? "unknown"} to ${JSON.stringify(buildAfter) ?? "unknown"}`);
+  if (strict && !sameCaptureBuildIdentity(buildBeforeCapture, buildAfter)) throw new Error(`deployed build changed during capture: ${JSON.stringify(buildBeforeCapture) ?? "unknown"} to ${JSON.stringify(buildAfter) ?? "unknown"}`);
   const build = buildAfter;
-  if (deterministic && (!build || !captureSnapshot?.hash)) throw new Error("stable capture requires build identity and isolated state snapshot");
+  if (strict && (!build || !captureSnapshot?.hash)) throw new Error("stable capture requires build identity and isolated state snapshot");
   const provenance = {
     suite: suite.version,
     build: build ? buildShaFromIdentity(build) : "unverified-build",
     clock: deterministic ? fixedNow : "unpinned",
     state: captureSnapshot?.hash ?? "unisolated",
-    stable: deterministic,
+    stable: strict,
+    pinned: deterministic,
+    readiness,
     referenceSha256: expectedReferenceSha256,
   };
   const previous = existsSync(dpadFile) ? JSON.parse(readFileSync(dpadFile, "utf8")) : null;
@@ -383,7 +397,7 @@ if (process.env.PARITY_CLIENT) {
     const { env } = context;
     Object.assign(process.env, env);
     let snapshot = context.snapshot;
-    const seeded = await applyCanonicalDeck(context);
+    const seeded = await applyCanonicalDeck(context, process.env, readSecrets());
     if (seeded) snapshot = seeded;
     else {
       await context.clearResumeChoices();

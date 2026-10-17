@@ -89,7 +89,7 @@ button.pa-entry, button.pa-entry:hover { background: @pa_surface; padding: 8px 1
 /* Web page header (mobile): round back button, 21.6px title, tinted subtitle, square action button */
 .pa-h1 { font-size: 21.6px; font-weight: 580; color: @pa_ink; }
 .pa-subtitle { font-size: 10.56px; font-weight: 820; color: @pa_brand_ink; letter-spacing: 1px; }
-button.pa-hbtn { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; box-shadow: none; padding: 0; min-width: 44px; min-height: 44px; }
+button.pa-hbtn { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; box-shadow: none; padding: 0; min-width: 42px; min-height: 42px; }
 button.pa-hbtn.round { border-radius: 999px; }
 button.pa-hbtn.square { border-radius: 14px; }
 

@@ -7,6 +7,8 @@ export const initialFakeAdbState = () => ({
   window_animation_scale: "1.0",
   transition_animation_scale: "1.0",
   animator_duration_scale: "1.0",
+  timezone: "Asia/Bangkok",
+  locales: "",
   launches: [],
   logs: [],
 });
@@ -23,6 +25,16 @@ export function handleFakeDeterministicAdbCommand(state, group, args, env = {}) 
     stdout = state[args[3]] ?? "null";
   } else if (group === "shell" && args[0] === "settings" && args[1] === "put") {
     if (env.PLAYARR_PARITY_FAKE_ADB_FAIL_PUT !== args[3]) state[args[3]] = args[4];
+    mutated = true;
+  } else if (group === "shell" && args[0] === "getprop" && args[1] === "persist.sys.timezone") {
+    stdout = state.timezone;
+  } else if (group === "shell" && args[0] === "cmd" && args[1] === "alarm" && args[2] === "set-timezone") {
+    state.timezone = args[3];
+    mutated = true;
+  } else if (group === "shell" && args[0] === "cmd" && args[1] === "locale" && args[2] === "get-app-locales") {
+    stdout = `Locales for ${args[3]} for user 0 are [${state.locales}]`;
+  } else if (group === "shell" && args[0] === "cmd" && args[1] === "locale" && args[2] === "set-app-locales") {
+    state.locales = args[5];
     mutated = true;
   } else if (group === "shell" && args[0] === "dumpsys" && args[1] === "input") {
     stdout = "TouchMode: 0";

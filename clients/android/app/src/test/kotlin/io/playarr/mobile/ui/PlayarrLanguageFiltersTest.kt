@@ -92,6 +92,25 @@ class PlayarrLanguageFiltersTest {
     }
 
     @Test
+    fun `phone language choices use a bounded vertical checkbox list`() {
+        val base = if (File("src/main").isDirectory) File(".") else File("clients/android/app")
+        val source = File(base, "src/main/kotlin/io/playarr/mobile/ui/PlayarrExperience.kt").readText()
+        val phoneList = source.substringAfter("private fun PhoneLanguageMultiSelect(").substringBefore("private fun <T> LibraryFilterChoices(")
+        assertTrue("language options must scroll vertically within the Web viewport-relative list height", phoneList.contains("webMultiSelectMaxHeight(") && phoneList.contains("verticalScroll(rememberScrollState())"))
+        assertTrue("language rows must retain the Web 44 px target height", phoneList.contains("heightIn(min = 44.dp)"))
+        assertTrue("language rows must expose checkbox semantics for assistive technology", phoneList.contains("toggleable(value = active, role = Role.Checkbox)"))
+        assertTrue("the options panel must share a group with the closed field at the Web 8 px gap", phoneList.contains("Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp))"))
+        assertTrue("phone language options must not overflow horizontally", !phoneList.contains("LazyRow"))
+    }
+
+    @Test
+    fun `language list height follows the Web viewport cap`() {
+        assertEquals(204f, webMultiSelectMaxHeight(600f, 1f).value, 0.01f)
+        assertEquals(260f, webMultiSelectMaxHeight(1000f, 1f).value, 0.01f)
+        assertEquals(204f, webMultiSelectMaxHeight(300f, 0.5f).value, 0.01f)
+    }
+
+    @Test
     fun `TV library Filters sends Left to its selected content item and consumes empty edges`() {
         val base = if (File("src/main").isDirectory) File(".") else File("clients/android/app")
         val experience = File(base, "src/main/kotlin/io/playarr/mobile/ui/PlayarrExperience.kt").readText()

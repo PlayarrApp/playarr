@@ -224,7 +224,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     height: positiveInteger("PLAYARR_WEB_VIEWPORT_HEIGHT", mobile ? 844 : 1080),
   };
   const deviceScaleFactor = positiveNumber("PLAYARR_WEB_VIEWPORT_DPR", mobile ? 3 : 1);
-  let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = initialFixedNow, disableAnimations = false;
+  let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = initialFixedNow, disableAnimations = false, pinnedZone = null, pinnedLocale = null;
   let manualLoginStarted = false, manualLoginSucceeded = false; // session: this run's own storage state, in memory
   const apiErrors = []; // failing /api/ responses of the current page, named in the error-page failure
   let drainApiErrors = async () => {};
@@ -306,7 +306,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // Refresh tokens rotate: carry this run's live session into the next context (theme switch), or it comes up signed out.
     if (ctx && keep) session = await ctx.storageState();
     cdp = undefined; await ctx?.close();
-    ctx = await browser.newContext({ viewport, deviceScaleFactor, userAgent: env.PLAYARR_WEB_USER_AGENT ?? (mobile ? MOBILE_UA : UA), colorScheme: theme, locale: "en-GB", timezoneId,
+    ctx = await browser.newContext({ viewport, deviceScaleFactor, userAgent: env.PLAYARR_WEB_USER_AGENT ?? (mobile ? MOBILE_UA : UA), colorScheme: theme, locale: pinnedLocale ?? "en-GB", timezoneId: pinnedZone ?? timezoneId,
       ...(mobile ? { isMobile: true, hasTouch: true } : {}),
       ...(session ? { storageState: session } : {}) });
     await ctx.addInitScript((t) => localStorage.setItem("playarr-theme", t), theme);
@@ -644,11 +644,12 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     return { ...info, pausedOk, ok: !!info.title && info.state === "playing" && pausedOk };
   };
   return {
+    strictReadiness: true,
     supports: { downloads: true, notifications: true, nowPlaying: true, "grouped-downloads": true },
-    async setDeterministicCapture({ fixedNow: value, disableAnimations: disable = false } = {}) {
+    async setDeterministicCapture({ fixedNow: value, disableAnimations: disable = false, timeZone, locale } = {}) {
       if (!value || !Number.isFinite(Date.parse(value))) throw new Error("deterministic capture requires a valid fixedNow date string");
       if (disable !== true) throw new Error("deterministic capture requires animation suppression");
-      fixedNow = value; disableAnimations = true;
+      fixedNow = value; disableAnimations = true; pinnedZone = timeZone ?? null; pinnedLocale = locale ?? null; // read by the next open(): set before start()
       if (ctx) { await guard(); await ctx.addInitScript(installVisualDate, value); await guard(); }
       if (page) { await guard(); await page.evaluate(installVisualDate, value); await guard(); }
     },

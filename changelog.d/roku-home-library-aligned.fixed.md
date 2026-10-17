@@ -1,0 +1,1 @@
+- Roku: Home opens aligned with the Library grid like web (rails start 98 px further left, first rail 240 px higher); a focused later rail is held where it was.

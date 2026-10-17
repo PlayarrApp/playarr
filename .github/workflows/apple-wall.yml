@@ -66,6 +66,8 @@ permissions:
   contents: read
 
 env:
+  # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
+  PARITY_STABLE: "0"
   LEAD_MINUTES: "25" # the successor starts this long before the end of a run
   PARITY_FIXED_NOW: "2026-10-07T12:00:00Z"
 

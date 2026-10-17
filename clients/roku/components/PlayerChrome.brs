@@ -62,7 +62,9 @@ sub playerChromeBuild()
     m.pcTimeEnd = pgLabel(g, 339.1, 981.8, 0, 16, "0:00", 11, 400, "playerInk")
 
     ' Quality pill (.player-quality-button): HD glyph and the current quality.
-    pgRound(g, 1527.9, 959.8, 173.3, 60.5, 30, "playerButton")
+    ' Transparent at rest like web; the fill shows with focus (web hover and expanded).
+    m.pcQualityBg = pgRound(g, 1527.9, 959.8, 173.3, 60.5, 30, "playerButton")
+    m.pcQualityBg.visible = false
     m.pcQualityGlyph = pgLabel(g, 1543.5, 979.2, 30, 22, "HD", 8, 800, "playerInk", { horizAlign: "center", vertAlign: "center" })
     m.pcQualityText = pgLabel(g, 1583.2, 981.4, 120, 18, "Original", 11, 800, "playerInk")
 
@@ -72,9 +74,15 @@ sub playerChromeBuild()
     m.pcQueueIcon = pgIcon(g, 1472.3, 980, 20, "player-playlist.png", "playerInk")
     m.pcInfoIcon = pgIcon(g, 1736.8, 980, 20, "player-health.png", "playerInk")
 
-    ' Close (top right).
-    pgRound(g, 1814, 37.8, 48, 48, 24, "playerPill")
-    pgIcon(g, 1828, 51.8, 20, "player-close.png", "playerInk")
+    ' Minimise and close (top right, .player-minimise and .player-close: 48 px high, 1 px border at 28% white). Roku cannot keep a
+    ' mini player running behind the browse pages, so Minimise ends playback and returns to the title, as Back does.
+    pcFullRound(g, 1678, 37.8, 124, 48, "playerPill", 209, false)
+    pcFullRound(g, 1678, 37.8, 124, 48, "playerInk", 71, true)
+    pgIcon(g, 1702, 51.8, 20, "player-minimise.png", "playerInk")
+    pgLabel(g, 1730, 53.8, 66, 16, "Minimise", 11, 800, "playerInk")
+    pcFullRound(g, 1814, 37.8, 48, 48, "playerPill", -1, false)
+    pcFullRound(g, 1814, 37.8, 48, 48, "playerInk", 71, true)
+    pgIcon(g, 1829, 52.8, 18, "player-close.png", "playerInk")
 
     m.pcMenu = CreateObject("roSGNode", "Group")
     m.pcMenu.visible = false
@@ -88,6 +96,21 @@ sub playerChromeBuild()
     m.pcRing.blendColor = ThemeColor("playerInk")
     g.AppendChild(m.pcRing)
 end sub
+
+' A fully rounded 48 px pill: pgRound drops to the 12 px corner under 49 px, which would square the top-right buttons off.
+function pcFullRound(parent as Object, x as Float, y as Float, w as Float, h as Float, role as String, alpha as Integer, outline as Boolean) as Object
+    poster = CreateObject("roSGNode", "Poster")
+    name = "round"
+    if outline then name = "round-outline"
+    poster.uri = "pkg:/images/" + name + "-r25.9.png"
+    poster.translation = [x, y]
+    poster.width = w
+    poster.height = h
+    poster.blendColor = ThemeColor(role, alpha)
+    ThemeSetRole(poster, role, alpha)
+    parent.AppendChild(poster)
+    return poster
+end function
 
 ' Called from updatePlayerProgress with the playback state.
 sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Float)
@@ -127,12 +150,18 @@ function playerChromeItems() as Object
     return items
 end function
 
+' The top-right pair, reached with Up from the seek stop (web order: minimise, then close).
+function playerChromeTopItems() as Object
+    return [{ id: "minimise", x: 1678, y: 37.8, w: 124, h: 48 }, { id: "close", x: 1814, y: 37.8, w: 48, h: 48 }]
+end function
+
 ' Ring on the focused control (web .player-btn:focus: the page focus ring); the seek stop enlarges the thumb instead.
 sub playerChromeFocusDraw(fraction as Float)
     playerParityEmit(playerFocusLabel())
     ring = m.pcFocusRing
     big = m.pcFocus = "seek"
     ring.visible = false
+    m.pcQualityBg.visible = m.pcFocus = "quality"
     m.pcThumb.width = 15
     m.pcThumb.height = 15
     m.pcThumb.translation = [70 + 1780 * fraction - 7.5, 931.5]
@@ -146,7 +175,11 @@ sub playerChromeFocusDraw(fraction as Float)
         ring.visible = not m.pcMenuOpen
         return
     end if
-    for each item in playerChromeItems()
+    items = playerChromeItems()
+    for each top in playerChromeTopItems()
+        items.Push(top)
+    end for
+    for each item in items
         if item.id = m.pcFocus
             ring.translation = [item.x - 4, item.y - 4]
             ring.width = item.w + 8
@@ -177,7 +210,13 @@ function playerChromeKey(key as String) as Boolean
         if key = "left" then seekPlayback(-10)
         if key = "right" then seekPlayback(10)
         if key = "down" then m.pcFocus = "play"
+        if key = "up" then m.pcFocus = "minimise"
         if key = "OK" then togglePlayPause()
+    else if m.pcFocus = "minimise" or m.pcFocus = "close"
+        if key = "left" then m.pcFocus = "minimise"
+        if key = "right" then m.pcFocus = "close"
+        if key = "down" then m.pcFocus = "seek"
+        if key = "OK" then finishPlayback("user_stopped")
     else if key = "up"
         m.pcFocus = "seek"
     else if key = "left" or key = "right"
@@ -583,6 +622,8 @@ function playerFocusLabel() as String
         if m.video.state = "paused" then return "play"
         return "pause"
     end if
+    if id = "minimise" then return "minimise"
+    if id = "close" then return "close"
     if id = "prev" then return "previous episode"
     if id = "next" then return "next episode"
     if id = "audio"
