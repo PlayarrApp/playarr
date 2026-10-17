@@ -50,7 +50,7 @@ Do not keep a list of forbidden titles in the repository: such a list would itse
   soon as its relevant validation passes.
 - Never add a `Co-authored-by:` trailer (for example "Co-authored-by: Claude ...") to any commit,
   squash message or PR merge body. Commits are authored by Thomas McFarlane alone. CI
-  (`scripts/ci/check-no-coauthor.sh`) fails a PR that contains one; the merge train strips them.
+  (`scripts/ci/check-no-coauthor.sh`) fails a PR that contains one.
 - Keep commits small and atomic: one intent per commit, with its directly related tests,
   documentation, generated contracts, and migration files.
 - Use Conventional Commits in the form `type(scope): imperative summary`. Prefer `feat`, `fix`,
@@ -79,74 +79,20 @@ Do not keep a list of forbidden titles in the repository: such a list would itse
 
 This repository is public: every workflow job runs on a GitHub-hosted runner (`ubuntu-latest`,
 `windows-latest` or `macos-latest`). Never add a self-hosted runner, a runner group or a
-`runs-on` expression. `scripts/ci/check-hosted-runners.sh` enforces this in CI and in the merge
-train.
+`runs-on` expression. `scripts/ci/check-hosted-runners.sh` enforces this in CI.
 
-## Merging: the merge train
+## Merging
 
-Pull requests are landed by the merge train (`.github/workflows/merge-train.yml`,
-`scripts/merge-train.sh`), not by hand. It replaces GitHub's merge queue, which repositories
-on a personal account do not get.
-
-- **Agents: when your PR is finished and its local checks pass, add the label `ready` and stop.**
-  Do not wait for CI to merge it and do not merge it manually (never `--admin`). Move on to
-  other work or report.
-- **Batch landing (key mode).** The train stacks up to six `ready` PRs whose own CI is already green on a scratch
-  branch `train/batch` (one folded squash commit per PR on current main), runs CI once on the stack, then moves each
-  PR branch to its commit and fast-forwards main, so ten PRs cost about one CI run instead of ten. A PR whose own CI
-  is still running is skipped until a later batch (it never holds the queue). A red batch is halved until the single
-  culprit is blocked; the others stay `ready`. A head, label or main that moved while the stack was tested discards
-  the stack. Every PR still passes the landing guard (against the stack it lands on), and a conflict confined to
-  CHANGELOG.md/TASKS.md is resolved to main's version because PRs only add fragments. Token mode and the dispatch
-  input `pr` use the single-PR path below. `BATCH_MAX` (default 6) sets the stack size; 1 disables batching.
-- The single-PR path handles one PR at a time, oldest `ready` label first: it merges the latest `main`
-  into your branch only when main's new commits touch your files (CHANGELOG.md, TASKS.md,
-  `changelog.d/` and `tasks.d/` excluded) or conflict; otherwise it keeps your tested head, so a
-  running CI is never cancelled by an unrelated landing. It waits for `ci-required` on that exact
-  head SHA, then squash-merges. Its commits are authored by Thomas McFarlane and carry a
-  `Merge-Train: yes` trailer, which `scripts/ci/check-fragments.sh` exempts.
-- Whenever the train rewrites a head anyway (folding fragments, squashing several commits) it
-  merges the current `main` in first, so what lands is always current main plus the PR's diff.
-  Before landing, a guard refuses any result that changes files outside the PR's diff, restores a
-  file to its state before one of main's last 50 commits, or drops TASKS/CHANGELOG lines those
-  commits added; after an API merge the train checks main's new tree is exactly main + the PR and
-  stops if not. A deliberate revert of a recent change is therefore landed by hand (merge rule v2).
-- A blocked or requeued PR is never left holding the train's folded TASKS/CHANGELOG content. Before
-  the train rewrites a head (merge main, fold, squash) it records the original head in
-  `refs/train/pf/<pr>/<new head>`. On any block it force-pushes that original head back (with lease), so
-  the branch keeps its fragments, the same SHA and CI result, and your next merge of `main` cannot
-  conflict in TASKS.md or CHANGELOG.md. If `main` moves after the fold (while CI runs, or before
-  landing) the train does the same restore and folds again on the new main instead of landing a stale
-  fold. The refs are deleted on landing. If you ever find a folded commit on a branch (a
-  `chore(train): fold fragments` commit or a squash with a `Merge-Train: yes` trailer) with no `ready`
-  label, reset to the pre-fold head named by `git ls-remote origin 'refs/train/pf/<pr>/*'`.
-- On a conflict, a red `ci-required`, a timeout or any other failure it removes `ready`, adds
-  `blocked` and writes the reason to the run's job summary and logs. The train posts no PR comment at
-  all (not on success, block or failure). The agent that owns a PR watches for the `blocked` label on it
-  (`gh pr view <n> --json labels`), reads the reason in the Merge train run summary
-  (`gh run list --workflow merge-train.yml`, `gh run view <id>`), fixes it, pushes, removes `blocked` and
-  adds `ready` again itself. The owner should never need to intervene. A landed-tree mismatch stops the
-  train and fails the run loudly (summary and non-zero exit).
-- Do not push to a branch that carries `ready` unless you are withdrawing it (remove the label first).
-- Merge manually (merge rule v2: rebase, green `ci-required` on the pushed SHA, plain squash) only
-  while the train is down, which means the `Merge train` workflow is failing or disabled.
-- Dry run: Actions > Merge train > Run workflow (default `dry_run: true`, optional `pr`) merges main
-  locally and reports what it would do without pushing, labelling or merging.
-- Owner one-off for the best behaviour: create a new write deploy key for this repository and store
-  its private half as the secret `TRAIN_DEPLOY_KEY` (deploy keys do not carry over from another
-  repository). With it, the train's pushes and landings trigger CI
-  and the deploy workflows natively. Without it the train still works using `GITHUB_TOKEN`, starting
-  CI via `workflow_dispatch` and dispatching post-merge workflows itself; it cannot push a merge that
-  brings in `.github/workflows` changes (it blocks with an explanation) and it does not start the
-  Android Play upload (needs a version input).
+PRs target `integration/parity`; the coordinator batches `integration/parity` into `main` with a merge commit
+once `ci-required` is green. Agents do not merge, and there is no `ready` label.
 
 ## Changelog
 
 - **Do not edit `CHANGELOG.md` in a PR** (it is a merge-conflict hotspot; CI rejects such PRs).
   Add one fragment file per change under `changelog.d/`, named `<slug>.<category>.md`
   (categories: added, changed, fixed, removed, security, deprecated, documentation, performance,
-  testing), containing one or more `- ...` bullets. The merge train folds fragments into
-  `## [Unreleased]` and deletes them as the PR lands. See `changelog.d/README.md`.
+  testing), containing one or more `- ...` bullets. The `Fold board` workflow folds fragments into
+  `## [Unreleased]` and deletes them after they land on `main`. See `changelog.d/README.md`.
 - Include user-visible behaviour, fixes, security changes, operational changes, tests,
   documentation, generated contracts, and developer workflow changes.
 - A change whose only purpose is to maintain the changelog or task board does not need to describe itself.
@@ -159,7 +105,7 @@ on a personal account do not get.
   edit it directly in a PR** (CI rejects that). Add or update rows with fragment files
   `tasks.d/<row-number>.md` (a `section:` line, the bare epic name or `N. Name`, plus the complete eight-column row; an existing row
   number replaces that row in place and keeps its epic; `section:` must name a current epic heading
-  (old names are aliased, an unknown one fails `--check`); `section-new: <name>` creates an epic on purpose, numbered highest + 1). The merge train folds them into `TASKS.md` when the PR lands.
+  (old names are aliased, an unknown one fails `--check`); `section-new: <name>` creates an epic on purpose, numbered highest + 1). The `Fold board` workflow folds them into `TASKS.md` after they land on `main`.
   Use only the row number the coordinator gives you; never pick or reuse one. `--check` fails when a fragment's title
   differs materially from the existing row with that number (a different task reusing it); `retitle: true` allows a deliberate rename.
   See `tasks.d/README.md`. Validate fragments and the board format with
@@ -172,9 +118,8 @@ on a personal account do not get.
   missing ETA and warns on a past one: revise it as soon as it slips. Work nobody is doing is `todo`
   (Owner empty), `blocked`, `blocked_on_owner` or `parked`, never a stale `in_progress`. The board mod computes
   the epic ETA itself; do not add ETA lines under headings.
-- A PR merged directly (`gh pr merge --squash`) skips the train, so the `Fold board` workflow
-  (`fold-board.yml`, `scripts/fold-main.sh`) folds any pending fragments on every push to `main`, committing
-  as the train's identity (`Merge-Train: yes`) with the deploy key. Fragments never sit unfolded for long.
+- The `Fold board` workflow (`fold-board.yml`, `scripts/fold-main.sh`) folds any pending fragments on every
+  push to `main`, committing with a `Merge-Train: yes` trailer (exempt in `check-fragments.sh`) and the deploy key. Fragments never sit unfolded for long.
 - When a PR merges, the `Board sync` workflow (`scripts/board-sync.mjs`) folds fragments straight onto `main`
   (Actions may not open PRs here) that flip rows naming it from `in_review` (or `in_progress` with "PR open" in Notes)
   to `done` with "PR #n merged <date>" appended to Notes, or to `in_progress` while other listed PRs

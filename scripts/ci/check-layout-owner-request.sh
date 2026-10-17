@@ -16,9 +16,9 @@
 # Android page package and its goldens.
 #
 # Env: BASE_REF (default main); EVENT_NAME (default GITHUB_EVENT_NAME). The PR body comes from, in order, PR_BODY,
-# the pull_request event payload (GITHUB_EVENT_PATH), or `gh pr list --head $GITHUB_REF_NAME` (merge-train runs are
-# workflow_dispatch runs on the PR branch). CHANGED_FILES (newline separated) replaces the git diff, for the tests.
-# Runs only for pull requests and train dispatches; pushes to main, nightly runs and main dispatches are skipped.
+# the pull_request event payload (GITHUB_EVENT_PATH), or `gh pr list --head $GITHUB_REF_NAME` (workflow_dispatch runs on a
+# PR branch). CHANGED_FILES (newline separated) replaces the git diff, for the tests.
+# Runs only for pull requests and dispatches on branches; pushes to main, nightly runs and main dispatches are skipped.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -31,9 +31,6 @@ case "$event" in
   pull_request | pull_request_target) ;;
   workflow_dispatch)
     if [ "${GITHUB_REF_NAME:-}" = main ]; then echo "Layout owner-request gate: main dispatch, skipped"; exit 0; fi
-    # The merge train's batch stack (scripts/merge-train-batch.sh) holds several PRs, none of which owns the
-    # branch. Each member passed this gate on its own head before it was stacked (a precondition of batching).
-    if [ "${GITHUB_REF_NAME:-}" = train/batch ]; then echo "Layout owner-request gate: train batch, each member passed on its own head"; exit 0; fi
     ;;
   *) echo "Layout owner-request gate: $event, skipped"; exit 0 ;;
 esac
