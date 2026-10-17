@@ -306,12 +306,12 @@ struct PlayarrMediaCard: View {
                     }
                 }
 
-            if showsSubtitle {
+            if showsSubtitle && !matchesWebScreenGrid {
                 Text(work.title)
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 12.5 : 11).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.ink)
                     .lineLimit(1)
-                Text(work.kindYearLabel)
+                Text(work.singularKindYearLabel)
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 10 : 8.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.muted)
             } else {
@@ -324,6 +324,14 @@ struct PlayarrMediaCard: View {
                 )
                     .padding(.top, matchesWebScreenGrid ? 11.52 : 1)
                     .padding(.horizontal, matchesWebScreenGrid ? 1.92 : 0)
+                // Web tv-home-card: the detail line hangs below the card (1.3em tall, 0.16rem gap, no layout height).
+                if showsSubtitle, matchesWebScreenGrid {
+                    let metaSize = min(max(6.88, (screenGridViewportWidth ?? 0) * 0.0046), 8.96)
+                    WMText(work.singularKindYearLabel, metaSize, 700, color: PlayarrStyle.muted, lh: metaSize * 1.3, ls: 0)
+                        .padding(.top, 2.56)
+                        .padding(.horizontal, 1.92)
+                        .padding(.bottom, -(metaSize * 1.3 + 2.56))
+                }
             }
         }
         .frame(width: width, alignment: .leading)
