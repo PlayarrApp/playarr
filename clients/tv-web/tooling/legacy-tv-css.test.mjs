@@ -100,3 +100,33 @@ test("pinFontWeights repeats author weights with one more id and restores inheri
   assert.match(css, /\.c:not\(#_\):not\(#__\), \.d:not\(#_\):not\(#__\)\s*{\s*font-weight: 500 !important/);
   assert.equal(pinFontWeights(".a { color: red; }"), ".a { color: red; }");
 });
+
+test("chromium85 expands :is() and :where() and reads :focus-visible as :focus", () => {
+  const css = addLegacyTvCssFallbacks(
+    "html:is([data-a], [data-b]) .x:where(.p, .q) { color: red; } .btn:focus-visible { outline: 0; } .keep { color: blue; }",
+    undefined,
+    { chromium85: true }
+  );
+  assert.match(css, /html\[data-a\] \.x\.p,\s*html\[data-a\] \.x\.q,\s*html\[data-b\] \.x\.p,\s*html\[data-b\] \.x\.q/);
+  assert.match(css, /\.btn:focus \{/);
+  assert.doesNotMatch(css, /:is\(|:where\(|focus-visible/);
+  assert.match(css, /\.keep \{ color: blue; \}/);
+});
+
+test("chromium85 expands logical padding and margin shorthands and gives overflow: clip a fallback", () => {
+  const css = addLegacyTvCssFallbacks(".a { padding-inline: 4px 8px; margin-block: 2px; overflow: clip; }", undefined, { chromium85: true });
+  assert.match(css, /padding-left: 4px;\s*padding-right: 8px;\s*padding-inline: 4px 8px/);
+  assert.match(css, /margin-top: 2px;\s*margin-bottom: 2px;\s*margin-block: 2px/);
+  assert.match(css, /overflow: hidden;\s*overflow: clip/);
+});
+
+test("without chromium85 the selectors stay as written", () => {
+  const css = addLegacyTvCssFallbacks("a:is(.x, .y):focus-visible { color: red; }");
+  assert.match(css, /a:is\(\.x, \.y\):focus-visible/);
+});
+
+test("chromium85 reads :focus-visible as :focus inside the :has() fallback definitions", () => {
+  const css = addLegacyTvCssFallbacks(".form:has(input:focus-visible) { color: red; }", undefined, { chromium85: true });
+  assert.doesNotMatch(css, /focus-visible/);
+  assert.match(css, /input:focus/);
+});
