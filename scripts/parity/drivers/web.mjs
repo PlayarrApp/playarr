@@ -320,7 +320,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     drainApiErrors = watchApiErrors(page, apiErrors, { manualLoginStarted: () => manualLoginStarted, manualLoginSucceeded: () => manualLoginSucceeded });
     await page.goto(web + "/", { waitUntil: "load" });
     await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"), null, { timeout: 30000 });
-    if (!(await page.locator(".app-nav-link").count())) {
+    // Signed in means a stored session: the phone layout draws its nav for a moment before the signed-out redirect, so the nav alone proves nothing.
+    if (!(await page.evaluate(() => !!localStorage.getItem("playarr:session")))) {
       assertAllowedDeviceTestUsername(env.PLAYARR_USERNAME, allowedUsernames);
       const loginUsername = trustedLoginUsername(env, allowedUsernames, trustedServerUrl);
       const loginPassword = env.PLAYARR_PASSWORD;
