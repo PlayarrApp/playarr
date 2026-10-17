@@ -2051,8 +2051,9 @@ struct TVLibraryKindView: View {
     }
 
     #if DEBUG && (os(tvOS) || os(macOS))
-    private func reportParityItems() {
-        guard let parityContentLease, TVParityState.isCurrent(parityContentLease) else { return }
+    // A restarted load must report through its own lease: the view's @State can still hold an earlier run's.
+    private func reportParityItems(lease: TVParityReadinessLease? = nil) {
+        guard let parityContentLease = lease ?? parityContentLease, TVParityState.isCurrent(parityContentLease) else { return }
         let terminal = !didLoad ? "loading" : loadFailed ? "failed" : items.isEmpty ? "empty" : "loaded"
         TVParityState.setContent(items.count, state: parityPagination.contentState(afterFirstPage: terminal), lease: parityContentLease)
     }
@@ -2340,12 +2341,16 @@ struct TVLibraryKindView: View {
     private func loadItems() async {
         loadFailed = false
         #if DEBUG && (os(tvOS) || os(macOS))
+        var loadLease: TVParityReadinessLease?
+        #endif
+        #if DEBUG && (os(tvOS) || os(macOS))
         if parityCaptureActive {
             parityPagination.begin()
             let lease = await TVParityState.waitForContentLoad(expectedBase: parityRouteBase)
             TVParityState.note("load \(parityRouteBase) lease=\(lease != nil) cancelled=\(Task.isCancelled)")
             guard TVParityState.canContinueProductLoad(activeCapture: true, lease: lease), !Task.isCancelled else { TVParityState.note("load abort A"); return }
             parityContentLease = lease
+            loadLease = lease
         }
         #endif
         // Offline parity: deterministic fixture catalogue (SPA-matching titles).
@@ -2355,7 +2360,7 @@ struct TVLibraryKindView: View {
             didLoad = true
             #if DEBUG && (os(tvOS) || os(macOS))
             parityPagination.finish()
-            reportParityItems()
+            reportParityItems(lease: loadLease)
             #endif
             return
         }
@@ -2363,11 +2368,11 @@ struct TVLibraryKindView: View {
         if listsPlaylists || playlistID != nil {
             await loadPlaylists(api)
             #if DEBUG && (os(tvOS) || os(macOS))
-            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { return }
+            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: loadLease), !Task.isCancelled else { return }
             #endif
             #if DEBUG && (os(tvOS) || os(macOS))
             parityPagination.finish()
-            reportParityItems()
+            reportParityItems(lease: loadLease)
             #endif
             return
         }
@@ -2376,7 +2381,7 @@ struct TVLibraryKindView: View {
             let page = try await api.browseCatalog(kind: workKind, sort: sort, order: order, audioLang: audioLangs, subtitleLang: subtitleLangs, limit: 48, offset: 0)
             #if DEBUG && (os(tvOS) || os(macOS))
             TVParityState.note("page \(page.items.count)/\(page.total ?? -1)")
-            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { TVParityState.note("load abort B cancelled=\(Task.isCancelled)"); return }
+            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: loadLease), !Task.isCancelled else { TVParityState.note("load abort B cancelled=\(Task.isCancelled)"); return }
             #endif
             items = page.items
             total = page.total.map(Int.init)
@@ -2385,7 +2390,7 @@ struct TVLibraryKindView: View {
             while workKind != nil, !page.items.isEmpty, items.count < (total ?? Int.max) {
                 let next = try await api.browseCatalog(kind: workKind, sort: sort, order: order, audioLang: audioLangs, subtitleLang: subtitleLangs, limit: 500, offset: items.count)
                 #if DEBUG && (os(tvOS) || os(macOS))
-                guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { return }
+                guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: loadLease), !Task.isCancelled else { return }
                 #endif
                 if next.items.isEmpty { break }
                 items = Self.ordered(items + next.items, sort: sort, order: order)
@@ -2393,18 +2398,18 @@ struct TVLibraryKindView: View {
             didLoad = true
             #if DEBUG && (os(tvOS) || os(macOS))
             parityPagination.finish()
-            reportParityItems()
+            reportParityItems(lease: loadLease)
             #endif
         } catch {
             #if DEBUG && (os(tvOS) || os(macOS))
             TVParityState.note("load error \(error)")
-            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: parityContentLease), !Task.isCancelled else { return }
+            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: loadLease), !Task.isCancelled else { return }
             #endif
             loadFailed = true
             didLoad = true // keep what loaded; never show fixture titles to a real user
             #if DEBUG && (os(tvOS) || os(macOS))
             parityPagination.finish()
-            reportParityItems()
+            reportParityItems(lease: loadLease)
             #endif
         }
     }
