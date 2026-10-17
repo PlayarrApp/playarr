@@ -258,7 +258,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     await page.waitForFunction(() => [...document.images].filter((i) => {
       const r = i.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
-    }).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 });
+    }).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 60000 });
     await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 });
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
