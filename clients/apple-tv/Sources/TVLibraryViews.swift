@@ -2338,7 +2338,7 @@ struct TVLibraryKindView: View {
     }
 
     @MainActor
-    private func loadItems() async {
+    private func loadItems(retriedCancelledRequest: Bool = false) async {
         loadFailed = false
         #if DEBUG && (os(tvOS) || os(macOS))
         var loadLease: TVParityReadinessLease?
@@ -2403,6 +2403,12 @@ struct TVLibraryKindView: View {
         } catch {
             #if DEBUG && (os(tvOS) || os(macOS))
             TVParityState.note("load error \(error)")
+            // A restarted load shares its request with the cancelled earlier run, so the live one can fail with URLError.cancelled
+            // although its own task was never cancelled: load again under a fresh lease.
+            if parityCaptureActive, !retriedCancelledRequest, !Task.isCancelled, "\(error)".contains("Code=-999") {
+                await loadItems(retriedCancelledRequest: true)
+                return
+            }
             guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: loadLease), !Task.isCancelled else { return }
             #endif
             loadFailed = true
