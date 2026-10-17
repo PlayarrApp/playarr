@@ -743,6 +743,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Nura page headers draw the web phone's 42 px round and square buttons, the letter rail sits 1 px lower, and a film's title block closes up to the web's spacing.
 - Android TV Filters now use closed language multi-select fields with vertical, D-pad navigable options and web-sized View glyphs; drawer focus styling restores the opener card, and Left from Library Filters returns focus to the selected content item.
 - Match the Nura agenda cards to the web: white card fill, strong hairlines, 4 px availability bar, muted bar for unavailable, and the web's taller row spacing.
 - Add an opt-in Harmony phone core capture that validates all 15 required screens before skipping optional diagnostics.
