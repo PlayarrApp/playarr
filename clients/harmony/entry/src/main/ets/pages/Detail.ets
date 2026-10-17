@@ -205,11 +205,11 @@ const HERO_TOUCH_HEIGHT: number = 340;
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
 const PHONE_SEASON_LIST_HEIGHT: number = 165;
-const PHONE_SEASON_HEADER_CARD_GAP: number = 19;
+const PHONE_SEASON_HEADER_CARD_GAP: number = 21.15;
 const PHONE_DETAIL_RAIL_CLIP_START: number = 16;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
 // Season to season is 237 on web; the phone capture measured 14.3 vp short with 21, so the gap is 35.3.
-const PHONE_SEASON_ROW_GAP: number = 37.6;
+const PHONE_SEASON_ROW_GAP: number = 35.65;
 /** Web `--brand-strong`, the phone Play button's focused fill. */
 const PLAY_FOCUS_FILL: string = '#a52745';
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
@@ -278,6 +278,7 @@ class DetailArtworkStore {
 
   beginGeneration(): number {
     this.generation += 1;
+    console.error('ART beginGeneration gen=' + this.generation.toString() + ' cleared=' + this.pixelMaps.size.toString() + ' t=' + Date.now().toString());
     this.pixelMaps.clear();
     this.revision += 1;
     return this.generation;
@@ -289,8 +290,10 @@ class DetailArtworkStore {
 
   setArtwork(generation: number, rowId: string, pixelMap: image.PixelMap): void {
     if (!this.isCurrentGeneration(generation)) {
+      console.error('ART setArtwork STALE gen=' + generation.toString() + ' current=' + this.generation.toString() + ' row=' + rowId);
       return;
     }
+    console.error('ART setArtwork gen=' + generation.toString() + ' row=' + rowId + ' size=' + this.pixelMaps.size.toString() + ' t=' + Date.now().toString());
     this.pixelMaps.set(rowId, pixelMap);
     this.revision += 1;
   }
@@ -960,9 +963,18 @@ struct Detail {
           });
           for (const source of sources) {
             if (source === 'episode-still') {
-              const still = await fetchEpisodeArtwork(detail.work.id, item.id, 'thumb', 540);
+              let still = await fetchEpisodeArtwork(detail.work.id, item.id, 'thumb', 540);
+              // A stalled or failed still request used to leave the card on its skeleton for good: retry twice before moving on.
+              for (let attempt = 1; attempt <= 2 && still.kind !== 'ok' && this.artworkStore.isCurrentGeneration(generation); attempt++) {
+                console.error('ART still retry row=' + item.id + ' attempt=' + attempt.toString() + ' kind=' + still.kind);
+                still = await fetchEpisodeArtwork(detail.work.id, item.id, 'thumb', 540);
+              }
               if (!this.artworkStore.isCurrentGeneration(generation)) {
+                console.error('ART still ABORT stale row=' + item.id);
                 return;
+              }
+              if (still.kind !== 'ok') {
+                console.error('ART still FAILED row=' + item.id + ' kind=' + still.kind);
               }
               if (still.kind === 'ok') {
                 this.artworkStore.setArtwork(generation, item.id, still.value);
@@ -2123,7 +2135,7 @@ struct Detail {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .margin({ top: isTvMetrics() ? 0 : 36 })
+    .margin({ top: isTvMetrics() ? 0 : 36.8 })
   }
 
   @Builder
@@ -2502,7 +2514,7 @@ struct Detail {
             }
             .width('100%')
             .alignItems(HorizontalAlign.Start)
-            .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 14 : 12 })
+            .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 12.5 : 12 })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
