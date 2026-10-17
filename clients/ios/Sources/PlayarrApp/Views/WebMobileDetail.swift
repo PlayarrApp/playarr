@@ -397,6 +397,8 @@ struct WMDetailPage: View {
                     .font(WM.font(11.52))
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
+                    // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
+                    .lineSpacing(1.57)
                     .frame(width: 347, alignment: .topLeading)
                     .padding(.top, isSeries ? 10.6 : 12.04)
             }
