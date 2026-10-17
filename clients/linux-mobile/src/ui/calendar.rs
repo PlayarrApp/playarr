@@ -131,14 +131,20 @@ struct Cal {
     entries: RefCell<Vec<CalendarEntry>>,
 }
 
-/// "15:00" in local time for an ISO timestamp, or "All day".
-fn time_label(release_at: Option<&str>) -> String {
+/// The release instant, or None for an all-day release: the server stores date-only releases as midnight UTC, which is a
+/// date, not a moment, so it must neither shift to another day nor show a time (as the web `releaseInstant`).
+fn release_instant(release_at: Option<&str>) -> Option<gtk4::glib::DateTime> {
     release_at
         .and_then(|t| gtk4::glib::DateTime::from_iso8601(t, None).ok())
+        .filter(|d| d.to_unix() % 86_400 != 0)
+}
+
+/// "15:00" in local time for an ISO timestamp, or "All day".
+fn time_label(release_at: Option<&str>) -> String {
+    release_instant(release_at)
         .and_then(|d| d.to_local().ok())
         .and_then(|d| d.format("%H:%M").ok())
         .map(|s| s.to_string())
-        .filter(|s| s != "00:00")
         .unwrap_or_else(|| "All day".into())
 }
 
@@ -368,9 +374,27 @@ impl Cal {
     fn by_day(&self) -> BTreeMap<Date, Vec<CalendarEntry>> {
         let mut m: BTreeMap<Date, Vec<CalendarEntry>> = BTreeMap::new();
         for e in self.entries.borrow().iter() {
-            if let Some(d) = parse(&e.date) {
+            // Timed releases belong to their local day, all-day ones to the entry date (as the web groupByLocalDay).
+            let day = release_instant(e.release_at.as_deref())
+                .and_then(|d| d.to_local().ok())
+                .map(|d| Date {
+                    y: d.year(),
+                    m: d.month() as u32,
+                    d: d.day_of_month() as u32,
+                })
+                .or_else(|| parse(&e.date));
+            if let Some(d) = day {
                 m.entry(d).or_default().push(e.clone());
             }
+        }
+        // All-day entries first, then by time and title.
+        for list in m.values_mut() {
+            list.sort_by_cached_key(|e| {
+                (
+                    release_instant(e.release_at.as_deref()).map_or(i64::MIN, |d| d.to_unix()),
+                    e.title.to_lowercase(),
+                )
+            });
         }
         m
     }
@@ -794,6 +818,14 @@ mod tests {
         assert_eq!(status_chip(&e, t).0, "Missing");
         e.has_file = true;
         assert_eq!(status_chip(&e, t).0, "Available");
+    }
+
+    #[test]
+    fn midnight_utc_is_all_day() {
+        assert!(release_instant(Some("2026-10-07T00:00:00Z")).is_none());
+        assert!(release_instant(Some("2026-10-07T01:00:00Z")).is_some());
+        assert_eq!(time_label(Some("2026-10-07T00:00:00Z")), "All day");
+        assert_eq!(time_label(None), "All day");
     }
 
     #[test]
