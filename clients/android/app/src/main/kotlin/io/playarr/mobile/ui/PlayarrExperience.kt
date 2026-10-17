@@ -5983,7 +5983,8 @@ private fun ExperienceDetailScreen(
             androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalPlayarrBackFocusDown provides backFocusDown) {
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Detail,
-                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), onBack = onBack, subtitle = detail.work.title, largeTitle = true, countLine = true),
+                // Web phone detail header: the back pill and the kind title only (live dom dump); the work title is a TV subtitle.
+                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), onBack = onBack, subtitle = detail.work.title.takeIf { isTelevision }, largeTitle = true, countLine = true),
                 body = PlayarrPageBody.Bleed,
             ) {
             Box(Modifier.fillMaxSize()) {
