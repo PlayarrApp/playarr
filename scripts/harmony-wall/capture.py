@@ -194,7 +194,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
     assert_preview_telemetry_clean()
     try:  # diagnostics: what the app reported at the moment of the frame (poster placeholders, network, image events)
         st = json.loads(get("/state"))
-        print(f"[settle] {name} theme={THEME} img_pending={st.get('img_pending')} net_idle={st.get('net_idle')} dbg={ {k: v for k, v in (st.get('dbgcount') or {}).items() if not (k[:4] in ('skel', 'img+', 'done', 'fail', 'moun', 'prop') or k.startswith(('hs:', 'ri:')))} }", flush=True)
+        print(f"[settle] {name} theme={THEME} img_pending={st.get('img_pending')} net_idle={st.get('net_idle')} dbg={ {k: v for k, v in (st.get('dbgcount') or {}).items() if not (k[:4] in ('skel', 'img+', 'done', 'fail', 'moun', 'prop') or k.startswith(('hs:', 'ri:', 'H-')))} }", flush=True)
         skel = {}
         for k, v in (st.get('dbgcount') or {}).items():  # titles whose placeholder appeared more often than it went away
             if k.startswith('skel'):
@@ -211,7 +211,8 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
                     if any(title.startswith(t[:25]) or t.startswith(title[:25]) for t in stuck):
                         out.setdefault(title[:25], {})[k[len(prefix)]] = v
             return out
-        hs = sorted(int(k[3:]) for k in dbgc_all if k.startswith("hs:") and k[3:].isdigit())  # temporary: stamped items per rail patch (max)
+        print("[settle] Home lifecycle", {k: v for k, v in dbgc_all.items() if k.startswith("H-")}, flush=True)
+        hs = sorted(int(k.rsplit(":", 1)[1]) for k in dbgc_all if k.startswith("hs:") and k.rsplit(":", 1)[1].isdigit())
         ri = {}
         for k in dbgc_all:
             if k.startswith("ri:"):

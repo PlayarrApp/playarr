@@ -102,8 +102,13 @@ def home(s):
     s = s.replace(old, "    previewReport('dbg=' + encodeURIComponent('home-card-artwork-' + result.kind));\n" + old, 1)
     after = "      setItems(patchCardArtwork(getItems(), workId, result.value));\n"
     assert s.count(after) == 1
+    # temporary diagnostic (lost-update hunt): instance lifecycle of Home
+    appear = "  aboutToAppear(): void {\n    this.load();\n"
+    assert s.count(appear) == 1
+    s = s.replace(appear, "  private previewInstance: number = Math.floor(Math.random() * 1000);\n  aboutToDisappear(): void {\n    previewReport('dbg=' + encodeURIComponent('H-gone:' + this.previewInstance.toString()));\n  }\n\n  aboutToAppear(): void {\n    previewReport('dbg=' + encodeURIComponent('H-appear:' + this.previewInstance.toString()));\n    this.load();\n", 1)
+    s = s.replace("    this.startArtworkLoading();\n  }", "    previewReport('dbg=' + encodeURIComponent('H-load-done:' + this.previewInstance.toString()));\n    this.startArtworkLoading();\n  }", 1)
     # temporary diagnostic (lost-update hunt): how many items of the patched array carry art, per patch
-    return s.replace(after, after + "      previewReport('dbg=' + encodeURIComponent('hs:' + getItems().filter((item: HomeCardItem): boolean => item.stamp === 'art').length.toString()));\n", 1)
+    return s.replace(after, after + "      previewReport('dbg=' + encodeURIComponent('hs:' + this.previewInstance.toString() + ':' + getItems().filter((item: HomeCardItem): boolean => item.stamp === 'art').length.toString()));\n", 1)
 
 def profiles(s):
     s = "import { previewReport } from '../util/PreviewState';\n" + s
