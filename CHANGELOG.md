@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The release collects the Xbox package under its real `.msix` name and picks the HarmonyOS HAP by name, failing the release if the HAP is missing, so `clients.json` no longer lists Xbox as pending.
 - The Samsung TV install page now says Tizen 6.5 and 2022-or-newer TVs, matching the app's real floor (English, Japanese and Thai).
 - Web: the Downloads notifications toggle moves into the page action column and the Downloads panel keeps clear of the action bar, so nothing overlaps.
 - HarmonyOS TV Home opens aligned with the Library grid like web: rails and cards start 53 vp inside the rail column and the first heading sits at the Library first-row top; a focused later rail still centres.

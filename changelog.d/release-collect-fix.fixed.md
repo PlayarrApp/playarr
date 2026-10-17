@@ -1,1 +1,0 @@
-- The release collects the Xbox package under its real `.msix` name and picks the HarmonyOS HAP by name, failing the release if the HAP is missing, so `clients.json` no longer lists Xbox as pending.
