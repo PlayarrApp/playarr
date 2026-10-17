@@ -2,6 +2,7 @@ import QtQuick 2.6
 import Sailfish.Silica 1.0
 import QtGraphicalEffects 1.0
 import "../components"
+import "../components/NavIcons.js" as NavIcons
 
 // "Who's watching?": the profiles signed in on this device, add-another, settings and sign out.
 PlayarrPage {
@@ -40,9 +41,9 @@ PlayarrPage {
             Row {
                 anchors.centerIn: parent
                 spacing: 9 * Tokens.u
-                Label { anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? "\u2600" : "\u25CC"; color: Tokens.inkSoft; font.pixelSize: 11 * Tokens.u }
+                Image { anchors.verticalCenter: parent.verticalCenter; width: 14 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url(index === 0 ? "sun" : "globe", Tokens.inkSoft) }
                 Label { anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto"); color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 11.5 * Tokens.u }
-                Label { anchors.verticalCenter: parent.verticalCenter; text: "\u2304"; color: Tokens.inkSoft; font.pixelSize: 11 * Tokens.u }
+                Image { anchors.verticalCenter: parent.verticalCenter; width: 11 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("chevron", Tokens.inkSoft) }
             }
         }
     }
@@ -131,15 +132,22 @@ PlayarrPage {
             width: 43.7 * Tokens.u; height: width
             onClicked: page.openSettings()
             Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.dark ? "#1a181a" : "#fdfcfc"; border.width: 1; border.color: Tokens.lineStrong }
-            Label { anchors.centerIn: parent; text: "\u2699"; color: Tokens.brandPink; font.pixelSize: 20 * Tokens.u }
+            Image { anchors.centerIn: parent; width: 16 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("settings", Tokens.brandPink) }
         }
         PillButton {
-            icon: "\u21E5"; iconSize: 12 * Tokens.u; labelFamily: Tokens.family610
+            iconImage: NavIcons.url("logout", Tokens.ink); iconSize: 14 * Tokens.u; labelFamily: Tokens.family610
             text: qsTr("Sign out")
             fontSize: 8.8 * Tokens.u
             implicitHeight: 43.7 * Tokens.u
             onClicked: remorse.execute(qsTr("Signing out"), function () { Api.signOut() })
         }
+    }
+    // The web profiles page pins a Clients link 22 px from the bottom right corner.
+    PillButton {
+        anchors { right: parent.right; rightMargin: 22 * Tokens.u; bottom: parent.bottom; bottomMargin: 22 * Tokens.u }
+        labelFamily: Tokens.family610; fontSize: 7.3 * Tokens.u; implicitWidth: 75.5 * Tokens.u; implicitHeight: 43.7 * Tokens.u; lift: true
+        text: qsTr("Clients") + "  \u2192"
+        onClicked: Qt.openUrlExternally("https://playarr.app/clients")
     }
     RemorsePopup { id: remorse }
 }

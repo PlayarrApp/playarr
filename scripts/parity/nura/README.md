@@ -46,3 +46,16 @@ and `PLAYARR_CAPTURE_STABILITY_DELAY`.
   `~/.ssh/authorized_keys` of user `user` inside the VM (for example via `pmbootstrap chroot` on the image, or a password login
   once). Alternatively point `PLAYARR_NURA_KEY` at an existing private key. `pmssh.sh` fails with a clear message when the key is missing.
 - `vnc.sh`: see above.
+
+## Scoring and canonical state
+
+- `score.mjs <dir> <dark|light>` scores the `<route>.png` captures in `<dir>` against the published web refs
+  (`PARITY_ROOT=<parity scratch root>`, refs under `<root>/postmarketos/web`). It needs `npm ci` in `scripts/parity`.
+  Captures are cropped from the 720x1440 frame to the 720x1346 ref window; the player compares its control regions only.
+- `reset-deck.mjs -- <command...>` seeds the canonical On deck item (one resume item, all other progress cleared),
+  runs the command, then restores the account's progress. Supply locally: `PARITY_LOCK_DIR` (scratch lock directory),
+  `PARITY_CLIENT=nura`, `PLAYARR_PARITY_NURA_USERNAME` / `PLAYARR_PARITY_NURA_PASSWORD` (the device-test account) and
+  `PARITY_DECK_MEDIA_FILE_ID`. Run the Home capture inside it, for example
+  `node reset-deck.mjs -- ./pmcap3.sh out theme:dark home`.
+- `pmrun.sh` starts the app with `PLAYARR_PARITY_CLOCK` (default: the suite fixture clock, `screens.json`), which pins
+  the calendar's "today" and the timezone to UTC so the calendar matches the refs.

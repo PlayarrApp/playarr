@@ -274,5 +274,16 @@ dropdown.pa-dropdown.pa-filter > button { min-height: 54px; border-radius: 12px;
 .pa-cal-controls .pa-pill { min-height: 41px; }
 .pa-cal-controls .pa-pill.selected { padding: 0 22px; }
 .pa-cal-controls .pa-pill.round { min-width: 42px; }
+.pa-edge-fade-v { background: linear-gradient(180deg, alpha(@pa_bg, 0) 0%, alpha(@pa_bg, 0.11) 25%, alpha(@pa_bg, 0.35) 50%, alpha(@pa_bg, 0.59) 75%, alpha(@pa_bg, 0.7) 100%); }
 /* Week columns: rounded white cards with a curved availability bar, as the web. */
 button.pa-entry.week, button.pa-entry.week:hover { border-width: 1px 1px 1px 3px; border-radius: 14px; }
+
+/* Profiles page backdrop and Clients link as the web .profiles-page / .profile-clients-link */
+.pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), linear-gradient(145deg, @pa_surface, @pa_bg 72%); }
+button.pa-clients-link { min-height: 42px; box-shadow: 0 14px 38px rgba(31, 14, 20, 0.09); }
+.pa-profile-actions button.pa-pill { box-shadow: 0 14px 38px rgba(31, 14, 20, 0.09); }
+/* Week cards: the web's 1.5 line height (GTK scales the font's natural line height, so 1.09) and its availability bar colours (green have, muted missing) */
+button.pa-entry.week .pa-entry-title, button.pa-entry.week .pa-entry-sub, button.pa-entry.week .pa-entry-meta { line-height: 1.09; }
+button.pa-entry.week.have, button.pa-entry.week.have:hover { border-left-color: #8ac5a5; }
+button.pa-entry.week.missing, button.pa-entry.week.missing:hover { border-left-color: @pa_muted; }
+button.pa-entry.week .pa-chip-status { margin-top: 2px; }

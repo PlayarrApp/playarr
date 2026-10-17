@@ -34,7 +34,7 @@ import {useTheme} from '../theme/ThemeProvider';
 import {ActionTile} from '../tv/ActionTile';
 import {EmptyState} from '../tv/EmptyState';
 import {FocusRing} from '../tv/FocusRing';
-import {BackButton} from '../tv/PageHeader';
+import {PageHeader} from '../tv/PageHeader';
 import {Box, T, u} from '../tv/kit';
 import {Stage} from '../tv/Stage';
 import {DetailSheet, FiltersPanel, LinkPanel, PeriodPicker} from './calendar/CalendarPanels';
@@ -124,12 +124,7 @@ export function CalendarScreen(): React.ReactElement {
 
   return (
     <Stage>
-      <BackButton onPress={() => navigation.navigate(ROUTES.home)} />
-      <Box x={226.6} y={56.2} w={600}>
-        <T size={33.6} weight={580} ls={-1.512} lh={50.4} dy={1} color={colour.ink} lines={1}>
-          {t('pages.calendar.title')}
-        </T>
-      </Box>
+      <PageHeader title={t('pages.calendar.title')} onBack={() => navigation.navigate(ROUTES.home)} />
 
       <RoundNav x={1629.3} glyph={'←'} label={t('pages.calendar.previous')} onPress={() => setAnchor(shiftAnchor(view, anchor, -1))} />
       <TodayPill label={t('pages.calendar.today')} settled={state.status === 'ready'} onPress={() => setAnchor(anchorForView(view, today))} />
