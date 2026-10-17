@@ -895,7 +895,7 @@ struct Detail {
     this.loadSimilar(detail.work, artworkGeneration);
     this.loadCredits(detail.work.id);
     this.loadWatchlistState(detail.work);
-    if (detail.work.kind === 'series' && !isTvMetrics()) {
+    if (detail.work.kind === 'series') {
       this.loadEpisodeProgress();
     }
     if (this.primaryMediaFileId !== null && detail.work.kind === 'movie') {
@@ -1564,8 +1564,7 @@ struct Detail {
 
   /** Give each episode row a stamp that reflects its unseen dot (TV too: web draws it) and, on the phone, its ring, so the cards redraw when the data arrives. */
   private restampEpisodes(): void {
-    // TV: restamping rebuilds the cards and the capture's per-row artwork acceptance then times out (run 38795686584), so TV dots wait for a
-    // way to draw them without a rebuild.
+    // TV: restamping rebuilds cards and times out per-row artwork acceptance (run 38795686584); unseen changes flow through @State-backed props instead.
     if (isTvMetrics() || this.detail === null || this.detail.work.kind !== 'series') {
       return;
     }

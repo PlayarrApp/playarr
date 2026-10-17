@@ -20,15 +20,16 @@ export async function seedCanonicalDeck({ snapshot, snapshotNow, writeProgress, 
   return { snapshot: await snapshotNow(), clearedResumeChoiceWorks };
 }
 
-/** Deck settings from the environment, or null when PARITY_DECK_MEDIA_FILE_ID is unset (no canonical deck requested). */
-export function deckFromEnv(env = process.env) {
-  if (env.PARITY_SEED_CANONICAL === "1" && !env.PARITY_DECK_MEDIA_FILE_ID) throw new Error("PARITY_DECK_MEDIA_FILE_ID is required to seed canonical capture state");
-  if (!env.PARITY_DECK_MEDIA_FILE_ID) return null;
-  return { deckFile: env.PARITY_DECK_MEDIA_FILE_ID, positionMs: Number(env.PARITY_DECK_POSITION_MS ?? 15098), durationMs: Number(env.PARITY_DECK_DURATION_MS ?? 6742000) };
+/** Deck settings from the environment, or the local device-test secrets. Null when no deck ID exists (no canonical deck requested). */
+export function deckFromEnv(env = process.env, secrets = {}) {
+  const deckFile = env.PARITY_DECK_MEDIA_FILE_ID || secrets.PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID;
+  if (env.PARITY_SEED_CANONICAL === "1" && !deckFile) throw new Error("PARITY_DECK_MEDIA_FILE_ID is required to seed canonical capture state");
+  if (!deckFile) return null;
+  return { deckFile, positionMs: Number(env.PARITY_DECK_POSITION_MS ?? 15098), durationMs: Number(env.PARITY_DECK_DURATION_MS ?? 6742000) };
 }
 
 /** Reset progress to the canonical deck when requested. Returns the new snapshot, or null when nothing was requested. */
-export async function applyCanonicalDeck(context, env = process.env) {
-  const deck = deckFromEnv(env);
+export async function applyCanonicalDeck(context, env = process.env, secrets = {}) {
+  const deck = deckFromEnv(env, secrets);
   return deck ? (await seedCanonicalDeck(context, deck)).snapshot : null;
 }

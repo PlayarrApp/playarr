@@ -12,7 +12,7 @@ import {mix} from '../theme/color';
 import {textRun} from '../theme/fonts';
 import {sw} from '../theme/scale';
 import {useTheme} from '../theme/ThemeProvider';
-import {appNow, formatClockDate, formatClockTime} from './clock';
+import {appNow, formatClockDate, formatClockTime, onParityClockChange} from './clock';
 import {Icon, type IconName} from './icons';
 import {PlayarrLogo} from './Logo';
 
@@ -242,7 +242,11 @@ export function ShellClock({right}: {right: number}): React.ReactElement {
   const [now, setNow] = useState(appNow);
   useEffect(() => {
     const timer = setInterval(() => setNow(appNow()), 15000);
-    return () => clearInterval(timer);
+    const unsubscribe = onParityClockChange(() => setNow(appNow()));
+    return () => {
+      clearInterval(timer);
+      unsubscribe();
+    };
   }, []);
   return (
     <View style={{position: 'absolute', top: sw(60.2), right: sw(1920 - right), height: sw(42), flexDirection: 'row', alignItems: 'center'}}>

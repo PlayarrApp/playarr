@@ -19,7 +19,7 @@ function decodePixelMapFromBytes(bytes: ArrayBuffer): Promise<image.PixelMap> {
   const base: string = 'http://127.0.0.1:%s';
   const id: string = PREVIEW_IMG_SEQ.toString();
   const req = http.createHttp();
-  return req.request(base + '/imgput?id=' + id, { method: http.RequestMethod.POST, extraData: bytes, connectTimeout: 5000, readTimeout: 5000 })
+  return req.request(base + '/imgput?id=' + id, { method: http.RequestMethod.POST, extraData: bytes, connectTimeout: 60000, readTimeout: 60000 })
     .then((): image.PixelMap => {
       req.destroy();
       return (base + '/img/' + id) as Object as image.PixelMap;

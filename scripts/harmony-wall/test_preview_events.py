@@ -627,18 +627,19 @@ class PreviewEventTests(unittest.TestCase):
         self.assertIn("this.measuredSeriesAreaRects.set(measurementId, rect);\n    this.measuredSeriesCardAreas.set(measurementId, {\n      workId: workId,", transformed)
         self.assertIn("capturedAtMs: Date.now(),\n    });\n    this.previewCardAreaRouteGenerations.set(measurementId, this.previewScopeGeneration);\n    reportDetailEpisodeCardContainerAreaForScope", transformed)
         self.assertNotIn("const cardRect = this.componentRect(measurementId)", transformed)
-        image_area_hook = transformed_poster.split("Image(this.artwork)", 1)[1].split(".onComplete", 1)[0]
+        image_area_hook = transformed_poster.split("Image(this.artwork)", 1)[1].split("this.onArtworkAreaChanged(); })", 1)[0]  # the app's own Image.onAreaChange carries the report: a second one would replace it
         self.assertIn("reportDetailEpisodeCardAreaForMeasurement(this.getUIContext()", image_area_hook)
-        self.assertIn("this.previewRailId, this.previewOccurrence, this.measurementId", image_area_hook)
+        self.assertIn("this.previewRailId, this.previewOccurrence, this.imageMeasurementId", image_area_hook)
         self.assertNotIn("area.globalPosition", image_area_hook)
         preview_state = (HERE / "overlay/src/main/ets/util/PreviewState.ets").read_text(encoding="utf-8")
-        self.assertIn("seriesDetailMeasurementId('card', workId, generation", preview_state)
+        self.assertIn("seriesDetailMeasurementId('image', workId,", preview_state)
         self.assertIn("episodeFocusRectForComponent(uiContext, componentId)", preview_state)
         area_reporter = preview_state.split("export function reportDetailEpisodeCardAreaForMeasurement(", 1)[1].split(
             "export function reportDetailRowImageComplete(", 1)[0]
-        self.assertIn("componentId !== seriesDetailMeasurementId('card', workId, generation", area_reporter)
+        self.assertIn("componentId !== seriesDetailMeasurementId('image', workId,\n      measuredGeneration, railId, rowId, occurrence)", area_reporter)  # Detail's focus generation, read from the ID
         self.assertIn("const rect = episodeFocusRectForComponent(uiContext, componentId);", area_reporter)
-        self.assertIn("if (rect === null)", area_reporter)
+        self.assertIn("if (rect !== null)", area_reporter)
+        self.assertIn("areaLengthNumber(area.globalPosition.x)", area_reporter)  # the Previewer has no lookup by ID
         self.assertIn("rect.left, rect.top, rect.width, rect.height", area_reporter)
         self.assertIn("rect.left, rect.top, rect.width, rect.height, uiContext.vp2px(1)", area_reporter)
         scoped_art_reporter = preview_state.split("export function reportDetailEpisodeCardAreaForScope(", 1)[1].split(

@@ -498,6 +498,8 @@ internal enum class PlayarrString(
     LibrarySubtitleLanguage("Subtitle language", "ภาษาคำบรรยาย", "字幕の言語"),
     LibraryClearLanguages("Clear language filters", "ล้างตัวกรองภาษา", "言語フィルターを解除"),
     LibraryAnyLanguage("Any language", "ทุกภาษา", "すべての言語"),
+    LibraryAddLanguage("Add language", "เพิ่มภาษา", "言語を追加"),
+    LibraryRemoveLanguage("Remove {{name}}", "ลบ {{name}}", "{{name}}を削除"),
     LibraryNoLanguages("No languages indexed yet", "ยังไม่มีข้อมูลภาษา", "言語はまだインデックスされていません"),
     LibraryNoMatches("No titles match these filters", "ไม่มีรายการที่ตรงกับตัวกรองเหล่านี้", "条件に一致する作品はありません"),
     LibraryView("View", "มุมมอง", "表示"),

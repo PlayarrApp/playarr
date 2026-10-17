@@ -32,11 +32,15 @@ def card(s):
     image_ctor = re.compile(r"(?m)^(?P<indent>[ \t]*)Image\(this\.artwork\)\n")
     assert len(list(image_ctor.finditer(s))) == 1
     image_hooks = """            .onAppear(() => { previewReport('dbg=' + encodeURIComponent('img+' + this.title)); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'poster-render-artwork-present'); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'image-source'); })
-            .onAreaChange((_old: Area, area: Area) => { reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, Number(area.width) > 0 && Number(area.height) > 0 ? 'image-area-positive' : 'image-area-zero'); if (this.previewRoute === 'Detail' && this.previewWorkId.length > 0 && this.previewRowId.length > 0 && this.previewRailId.length > 0 && this.previewOccurrence >= 0) { reportDetailEpisodeCardAreaForMeasurement(this.getUIContext(), this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, this.previewRailId, this.previewOccurrence, this.measurementId); } })
             .onComplete(() => { previewReport('dbg=' + encodeURIComponent('poster-image-complete')); previewReport('dbg=' + encodeURIComponent('done+' + this.title)); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'on-complete'); })
             .onError(() => { previewReport('dbg=' + encodeURIComponent('poster-image-error')); previewReport('dbg=' + encodeURIComponent('fail+' + this.title)); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'on-error'); })
 """
     s = image_ctor.sub(lambda match: match.group(0) + image_hooks, s, count=1)
+    # The app already has its own Image.onAreaChange (a second one would replace it, or be replaced by it): run the preview report inside it.
+    own_area = "            .onAreaChange((_oldArea: Area, _area: Area) => { this.onArtworkAreaChanged(); })\n"
+    assert s.count(own_area) == 1, 'PosterCard Image.onAreaChange not found exactly once'
+    area_report = "reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, Number(area.width) > 0 && Number(area.height) > 0 ? 'image-area-positive' : 'image-area-zero'); if (this.previewRoute === 'Detail' && this.previewWorkId.length > 0 && this.previewRowId.length > 0 && this.previewRailId.length > 0 && this.previewOccurrence >= 0) { reportDetailEpisodeCardAreaForMeasurement(this.getUIContext(), this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, this.previewRailId, this.previewOccurrence, this.imageMeasurementId, area); }"
+    s = s.replace(own_area, "            .onAreaChange((_oldArea: Area, area: Area) => { " + area_report + " this.onArtworkAreaChanged(); })\n", 1)
     old = "      this.setFocused(true);\n      this.onFocused();\n"
     assert old in s
     s = s.replace(old, old + "      reportCardFocus(this.title, this.subtitle);\n", 1)
@@ -105,6 +109,43 @@ def profiles(s):
 
 def detail(s):
     s = s.replace("import { PosterCard } from '../design/components/PosterCard';", "import { PosterCard } from '../design/components/PosterCard';\nimport { setPreviewRouteContext, currentPreviewRouteGeneration, reportDetailLayoutStageForScope, reportDetailAreaGeometryForScope, captureDetailRowImageContext, reportDetailRowImageStage, reportDetailImagePayloadScope, reportDetailEpisodeTargetForScope, reportDetailEpisodeCardContainerAreaForScope, reportDetailSeriesTargetCardVisibilityForScope, reportDetailSeriesTargetAreaSampleForScope, reportDetailPreviewGenerationScope, beginPreviewDetailLoad, reportPreviewDetailLoad } from '../util/PreviewState';", 1)
+    # The Previewer may report Area lengths as strings ("12vp"): read them, and count the type when one is neither.
+    len_before = """function detailAreaLengthToVp(value: Length | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+  return value;
+}"""
+    assert s.count(len_before) <= 1
+    len_after = """function detailAreaLengthToVp(value: Length | undefined): number | null {
+  if (typeof value === 'string') {
+    const parsed: number = Number(value.endsWith('vp') ? value.slice(0, value.length - 2) : value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    previewReport('dbg=' + encodeURIComponent('len-' + typeof value));
+    return null;
+  }
+  return value;
+}"""
+    s = s.replace(len_before, len_after, 1)
+    # The Previewer reports the page Scroll's Area once, at 0 x 0, and never again, so the page rectangle never becomes measurable
+    # there: use the Scroll's declared position and size (the same constants its position/width/height use).
+    page_before = """    const rect = detailFocusRectForArea(area);
+    if (rect === null) {
+      this.measuredSeriesAreaRects.set(pageId, null);
+      return;
+    }
+    this.measuredSeriesAreaRects.set(pageId, rect);
+    this.tryInitialEpisodeFocus(null, null, workId, generation);"""
+    page_after = """    const measured = detailFocusRectForArea(area);
+    const rect: EpisodeFocusRect = measured !== null ? measured : {
+      left: tv(RIGHT_COLUMN_X), top: tv(SERIES_COLUMN_TOP), width: tv(RIGHT_COLUMN_WIDTH), height: tv(SERIES_COLUMN_HEIGHT),
+    };
+    this.measuredSeriesAreaRects.set(pageId, rect);
+    this.tryInitialEpisodeFocus(null, null, workId, generation);"""
+    assert s.count(page_before) <= 1
+    s = s.replace(page_before, page_after, 1)
     api_await = "    const detailResult = await getWorkDetail(workId);"
     assert s.count(api_await) == 1
     s = s.replace(api_await, """    const detailResult = await getWorkDetail(workId);
@@ -168,7 +209,7 @@ def detail(s):
     assert s.count(other_focus_method) == 1
     s = s.replace(other_focus_method, other_focus_method.replace(
         "    this.seriesFocusedRowIsTarget = false;\n",
-        "    this.seriesFocusedRowIsTarget = false;\n    reportDetailLayoutStageForScope('Detail', this.workId, generation, 'series-focused-row-is-target', 0, -1, -1);\n"), 1)
+        "    this.seriesFocusedRowIsTarget = false;\n    reportDetailLayoutStageForScope('Detail', this.workId, this.previewScopeGeneration, 'series-focused-row-is-target', 0, -1, -1);\n"), 1)
     resume_plan_assignment = "    this.resumePlan = result.value;\n"
     assert s.count(resume_plan_assignment) == 1
     s = s.replace(resume_plan_assignment, resume_plan_assignment + """    this.reportPreviewStoredTargetSeasonArea();
@@ -242,15 +283,15 @@ def detail(s):
     assert s.count(focus_request) == 1
     s = s.replace(focus_request, """    if (decision === 'request' && this.episodeFocusGate.beginRequest()) {
       this.previewSeriesFocusRequestCount += 1;
-      reportDetailLayoutStageForScope('Detail', this.workId, generation,
+      reportDetailLayoutStageForScope('Detail', this.workId, this.previewScopeGeneration,
         'series-focus-request-count', this.previewSeriesFocusRequestCount, -1, -1);
       const issued = issueEpisodeFocusRequest((): void => {
         this.getUIContext().getFocusController().requestFocus(seriesEpisodeFocusId(episodeId));
       });
-      reportDetailLayoutStageForScope('Detail', this.workId, generation,
+      reportDetailLayoutStageForScope('Detail', this.workId, this.previewScopeGeneration,
         'series-focus-request-issued', issued ? 1 : 0, -1, -1);
       if (!issued) {
-        reportDetailLayoutStageForScope('Detail', this.workId, generation,
+        reportDetailLayoutStageForScope('Detail', this.workId, this.previewScopeGeneration,
           'series-focus-request-result', 0, -1, -1);
         this.episodeFocusGate.rollbackRequest();
       }
@@ -291,7 +332,12 @@ def detail(s):
     );
     const visible = hasPositiveEpisodeVisibleArea(card, rail, page);"""
     assert s.count(current_geometry_guard) == 1
-    area_sample_report = """    if (cardMeasurement !== undefined) {
+    area_sample_report = """    previewReport('dbg=' + encodeURIComponent('tgt-guard-' + (cardMeasurement === undefined || cardMeasurement === null ? 'm0' : 'm1') +
+      (card === undefined || card === null ? 'c0' : 'c1') + (rail === undefined || rail === null ? 'r0' : 'r1') +
+      (page === undefined || page === null ? 'p0' : 'p1') + (Number.isFinite(pageOffset) ? 'o1' : 'o0') +
+      (cardMeasurement !== undefined && cardMeasurement !== null && seriesEpisodeAreaSampleMatchesTarget(cardMeasurement,
+        workId, generation, targetRailId, episodeId, occurrence, pageOffset, currentRailOffset) ? 's1' : 's0')));
+    if (cardMeasurement !== undefined) {
       const previewAreaRouteGeneration = this.previewCardAreaRouteGenerations.get(measurementId);
       const previewAreaScopeMatches = previewAreaRouteGeneration !== undefined &&
         reportDetailPreviewGenerationScope(workId, previewAreaRouteGeneration, currentPreviewRouteGeneration());
@@ -316,7 +362,7 @@ def detail(s):
     const intersectionTop = Math.max(card.top, rail.top, page.top);
     const intersectionRight = Math.min(card.left + card.width, rail.left + rail.width, page.left + page.width);
     const intersectionBottom = Math.min(card.top + card.height, rail.top + rail.height, page.top + page.height);
-    reportDetailSeriesTargetCardVisibilityForScope('Detail', workId, generation, visible ? 1 : 0,
+    reportDetailSeriesTargetCardVisibilityForScope('Detail', workId, this.previewScopeGeneration, visible ? 1 : 0,
       Math.max(0, intersectionRight - intersectionLeft), Math.max(0, intersectionBottom - intersectionTop),
       pageOffset, currentRailOffset, 1);""", 1)
     readiness_methods = """  private reportPreviewSeriesPrerequisite(stage: string, value: number): void {
@@ -345,7 +391,7 @@ def detail(s):
     assert s.count(cancel_focus) == 1
     s = s.replace(cancel_focus, cancel_focus.replace(
         "    this.seriesFocusedRowIsTarget = false;\n",
-        "    this.seriesFocusedRowIsTarget = false;\n    this.reportPreviewSeriesPrerequisite('focus-suppressed', 1);\n    reportDetailLayoutStageForScope('Detail', this.workId, this.seriesFocusGeneration, 'series-focused-row-is-target', 0, -1, -1);\n"), 1)
+        "    this.seriesFocusedRowIsTarget = false;\n    this.reportPreviewSeriesPrerequisite('focus-suppressed', 1);\n    reportDetailLayoutStageForScope('Detail', this.workId, this.previewScopeGeneration, 'series-focused-row-is-target', 0, -1, -1);\n"), 1)
     mount_method = """  private seriesEpisodeCardAppeared(railId: string, episodeId: string, occurrence: number): void {
     if (this.mountedSeriesEpisodeIds.indexOf(episodeId) < 0) {
       this.mountedSeriesEpisodeIds.push(episodeId);
@@ -441,7 +487,7 @@ def detail(s):
     assert s.count(focused_method) == 1
     s = s.replace(focused_method, focused_method.replace(
         "    this.episodeFocusGate.recordCurrentFocus(episodeId, targetEpisodeId);\n",
-        "    this.episodeFocusGate.recordCurrentFocus(episodeId, targetEpisodeId);\n    const focusValue = this.seriesFocusedRowIsTarget ? 1 : 0;\n    reportDetailLayoutStageForScope('Detail', this.workId, this.seriesFocusGeneration, 'series-focused-row-is-target', focusValue, -1, -1);\n    if (focusValue === 1) {\n      reportDetailLayoutStageForScope('Detail', this.workId, this.seriesFocusGeneration, 'series-focus-request-result', 1, -1, -1);\n    }\n"), 1)
+        "    this.episodeFocusGate.recordCurrentFocus(episodeId, targetEpisodeId);\n    const focusValue = this.seriesFocusedRowIsTarget ? 1 : 0;\n    reportDetailLayoutStageForScope('Detail', this.workId, this.previewScopeGeneration, 'series-focused-row-is-target', focusValue, -1, -1);\n    if (focusValue === 1) {\n      reportDetailLayoutStageForScope('Detail', this.workId, this.previewScopeGeneration, 'series-focus-request-result', 1, -1, -1);\n    }\n"), 1)
     card_variant = "      variant: this.variant,\n"
     assert card_variant in s
     s = s.replace(card_variant, card_variant + "      previewRoute: this.previewRoute,\n      previewWorkId: this.previewWorkId,\n      previewRowId: this.previewRowId,\n      previewGeneration: this.previewGeneration,\n", 1)
