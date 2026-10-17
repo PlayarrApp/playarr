@@ -2054,6 +2054,16 @@ struct TVLibraryKindView: View {
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle())
+        #if DEBUG && os(macOS)
+        .background(GeometryReader { geo in
+            Color.clear.onAppear {
+                guard gridPosition?.itemIndex == 0 else { return }
+                let frame = geo.frame(in: tvScreenSpace)
+                TVParityState.setGridFrame(minX: Double(frame.minX), width: Double(frame.width),
+                                           windowWidth: Double(NSApp.keyWindow?.contentView?.bounds.width ?? 0))
+            }
+        })
+        #endif
         #if os(macOS)
         .environment(\.macFocusBindingBridge, macFocusBridge(for: work))
         #else

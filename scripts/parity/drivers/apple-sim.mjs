@@ -412,6 +412,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         for (let i = 0; i < 120 && (state().imagesPending ?? 0) > 0; i += 1) await sleep(250);
         if ((state().imagesPending ?? 0) > 0) console.log("  images still loading after 30 s, capturing anyway");
       }
+      if (mac && state().grid && Object.keys(state().grid).length) console.log("  library first card (screen space):", JSON.stringify(state().grid));
       if (mac) {
         rmSync(file, { force: true });
         run(notify, [`snapshot:${file}`]);
