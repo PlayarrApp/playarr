@@ -3,8 +3,9 @@
 // webOS: Chrome DevTools Protocol (keys and eval). Tizen: X key events to the emulator window plus the debug build's
 // netlog.js eval channel (a debug build with scripts/parity/tizen-webos/netlog.js; the host side is logserver.py <dir>/log.txt). Both then drive the same page functions.
 import { execFileSync } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, rmSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { installRegionPin, installVisualDate } from "./web.mjs";
@@ -53,35 +54,38 @@ export function insideAncestorClips(element, win = globalThis) {
   return true;
 }
 
-export async function createDriver() {
-  const device = process.env.DEVICE;
+export async function createDriver({ env = process.env, secrets, fetchImpl = fetch, WebSocketImpl = WebSocket, sleepImpl = sleep, now = () => Date.now(), readFile = readFileSync } = {}) {
+  const device = env.DEVICE;
   if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos required");
-  const display = device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
-  const cdpPort = process.env.WEBOS_CDP ?? "9226";
+  const display = device === "tizen" ? env.TIZEN_DISPLAY ?? ":25" : env.WEBOS_DISPLAY ?? ":26";
+  const cdpPort = env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
   let tizenPinScript = null; // base64 of the page script that pins Date, zone and locale: stored for netlog.js to run before the app renders
-  let pin = null; // { fixedNow, timeZone, locale } from setDeterministicCapture, re-applied on every CDP connection
-  let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme;
-  const allowedUsernames = loadAllowedDeviceTestUsernames({ env: process.env, client: process.env.PARITY_CLIENT });
-  const trustedServerUrl = loadTrustedDeviceTestServerUrl();
+  let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme, deterministicScriptId, deterministicCapture, hooksInstalledCurrent = false;
+  const deterministicOwner = randomUUID();
+  const allowedUsernames = loadAllowedDeviceTestUsernames({ env, client: device === "tizen" ? env.PARITY_CLIENT : undefined, ...(secrets ? { secrets } : {}) });
+  const trustedServerUrl = loadTrustedDeviceTestServerUrl({ env, ...(secrets ? { secrets } : {}) });
 
   function closeCdp(socket = ws) {
     if (!socket) return;
     if (socket === ws) {
       ws = undefined;
+      deterministicScriptId = undefined;
+      hooksInstalledCurrent = false;
       for (const request of pending.values()) {
         clearTimeout(request.timer);
         request.reject(new Error("CDP socket closed"));
       }
       pending.clear();
     }
-    if (socket.readyState < WebSocket.CLOSING) socket.close();
+    if (socket.readyState < WebSocketImpl.CLOSING) socket.close();
   }
   async function cdpConnect() {
-    const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
-    const t = list.find((x) => new RegExp(process.env.WEBOS_MATCH ?? "webos-stage").test(x.url));
+    if (ws?.readyState === 1) return;
+    const list = await (await fetchImpl(`http://localhost:${cdpPort}/json/list`)).json();
+    const t = list.find((x) => new RegExp(env.WEBOS_MATCH ?? "webos-stage").test(x.url));
     if (!t) throw new Error("webOS app page not found (launcher showing?)");
-    const socket = new WebSocket(t.webSocketDebuggerUrl);
+    const socket = new WebSocketImpl(t.webSocketDebuggerUrl);
     const requests = new Map();
     ws = socket;
     pending = requests;
@@ -91,22 +95,25 @@ export async function createDriver() {
     };
     await new Promise((r, j) => { socket.onopen = r; socket.onerror = j; });
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
-    await cdp("Page.enable");
-    await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
-    if (pin) {
-      // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
-      await cdp("Emulation.setTimezoneOverride", { timezoneId: pin.timeZone });
-      await cdp("Emulation.setLocaleOverride", { locale: pin.locale });
-      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)})`;
-      await cdp("Page.addScriptToEvaluateOnNewDocument", { source: install });
-      await cdp("Runtime.evaluate", { expression: install });
+    assertCdp(await cdp("Page.enable"), "Page.enable");
+    assertCdp(await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` }), "Page.addScriptToEvaluateOnNewDocument");
+    if (deterministicCapture) {
+      const identityResponse = await cdp("Runtime.evaluate", {
+        expression: `(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`,
+        awaitPromise: true,
+        returnByValue: true,
+      });
+      assertIdentityCdp(identityResponse);
+      const identity = identityResponse.result?.result?.value;
+      assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
+      await installDeterministicHooks();
     }
   }
   async function keyboardVisible() {
-    const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
+    const list = await (await fetchImpl(`http://localhost:${cdpPort}/json/list`)).json();
     const target = list.find((item) => /#\/keyboard\//.test(item.url));
     if (!target) throw new Error("webOS system keyboard visibility is unavailable");
-    const socket = new WebSocket(target.webSocketDebuggerUrl);
+    const socket = new WebSocketImpl(target.webSocketDebuggerUrl);
     try {
       await new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error("keyboard CDP connection timed out")), 5000);
@@ -154,6 +161,33 @@ export async function createDriver() {
     try { ws.send(JSON.stringify({ id: i, method, params })); }
     catch (error) { clearTimeout(timer); pending.delete(i); reject(error); }
   });
+  const IDENTITY_ERRORS = [
+    ["device-test account identity request failed", "identity-request-failed"],
+    ["device-test account identity unavailable", "identity-session-unavailable"],
+    ["device-test account identity server is invalid", "identity-server-invalid"],
+    ["device-test account identity server is not trusted", "identity-server-untrusted"],
+    ["device-test account identity response invalid", "identity-response-invalid"],
+    ["device-test account identity is missing or ambiguous", "identity-profile-ambiguous"],
+    ["device-test account session changed during identity check", "identity-session-changed"],
+  ];
+  // Only a fixed category is surfaced: the page exception text can carry account or server details.
+  function exceptionCategory(details) {
+    const diagnostic = [details.text, details.exception?.description].filter((value) => typeof value === "string").join("\n");
+    const category = IDENTITY_ERRORS.find(([message]) => diagnostic.includes(message))?.[1];
+    return category ? ` (${category})` : "";
+  }
+  function assertCdp(response, method) {
+    if (response?.error) throw new Error(`CDP ${method} failed`);
+    const details = response?.result?.exceptionDetails;
+    if (details) throw new Error(`CDP ${method} raised a page exception${exceptionCategory(details)}`);
+    return response;
+  }
+  function assertIdentityCdp(response) {
+    if (response?.error) throw new Error("CDP Runtime.evaluate device-test identity failed");
+    const details = response?.result?.exceptionDetails;
+    if (!details) return response;
+    throw new Error(`CDP Runtime.evaluate device-test identity raised a page exception${exceptionCategory(details)}`);
+  }
   async function ev(expr) {
     if (device === "tizen") {
       const id = `d${Date.now()}${evalSeq++}`;
@@ -166,7 +200,7 @@ export async function createDriver() {
       return undefined;
     }
     if (!ws || ws.readyState !== 1) await cdpConnect();
-    const r = (await cdp("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true })).result;
+    const r = assertCdp(await cdp("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }), "Runtime.evaluate").result;
     if (r?.exceptionDetails) throw new Error(r.exceptionDetails.text);
     return r?.result?.value;
   }
@@ -176,10 +210,19 @@ export async function createDriver() {
     await ev(`(localStorage.setItem("__parityPin", atob("${tizenPinScript}")), window.__parityPinned || (0, eval)(atob("${tizenPinScript}")), true)`);
     if ((await ev("window.__parityPinned === true")) !== true) throw new Error("tizen page did not take the pinned clock");
   }
+  // The identity request crosses the network to the test server and can time out under load, and the app rotates its
+  // token every 15 minutes. Only those two transient failures are retried (six attempts, growing pause); anything else still fails at once.
   async function guard() {
-    const check = () => ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
-    // The app rotates its access token while the check is in flight (slower on a real TV): re-validate once against the new session.
-    const identity = await check().catch((error) => { if (/session changed during identity check/.test(error.message)) return check(); throw error; });
+    let identity;
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+        break;
+      } catch (error) {
+        if (attempt >= 6 || !/identity-(request-failed|session-changed)/.test(error.message)) throw error;
+        await sleepImpl(2000 * attempt);
+      }
+    }
     return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   }
   // Reload at a hash route and wait until the app is up again (a reload drops the debug channel for a few seconds).
@@ -196,16 +239,94 @@ export async function createDriver() {
     }
     // The app restores focus and scroll from sessionStorage on reload; a fresh web page load has none.
     await ev(`(sessionStorage.clear(), history.scrollRestoration = "manual", history.replaceState(null, "", "#" + ${JSON.stringify(route)}), setTimeout(() => location.reload(), 50), true)`).catch(() => {});
-    await sleep(2500);
+    await sleepImpl(2500);
+    hooksInstalledCurrent = false;
     closeCdp();
     await cdpConnect();
     loadedTheme = theme;
     await guard();
   }
   async function until(expr, ms = 90000) {
-    const t0 = Date.now();
-    while (Date.now() - t0 < ms) { if (await ev(expr).catch(() => false)) return true; await sleep(1000); }
+    const t0 = now();
+    while (now() - t0 < ms) { if (await ev(expr).catch(() => false)) return true; await sleepImpl(1000); }
     return false;
+  }
+  function installVisualDate(fixedNow, owner) {
+    if (window.__parityCaptureState?.owner !== owner) {
+      window.__parityCaptureState = { owner, nativeDate: window.Date, nativeAnimate: Element.prototype.animate };
+    }
+    const NativeDate = window.Date;
+    const pinnedMs = new NativeDate(fixedNow).valueOf();
+    function VisualDate(...args) {
+      if (!new.target) return NativeDate();
+      return Reflect.construct(NativeDate, args.length ? args : [pinnedMs], new.target);
+    }
+    VisualDate.prototype = NativeDate.prototype;
+    Object.setPrototypeOf(VisualDate, NativeDate);
+    Object.defineProperty(VisualDate, "name", { value: "Date" });
+    Object.defineProperty(VisualDate, "now", { value: () => NativeDate.now() });
+    window.Date = VisualDate;
+  }
+  function installMotionSuppression(owner) {
+    const state = window.__parityCaptureState;
+    if (!state || state.owner !== owner) throw new Error("deterministic capture ownership was lost");
+    state.observer?.disconnect();
+    if (state.finish) {
+      document.removeEventListener("animationstart", state.finish, true);
+      document.removeEventListener("transitionrun", state.finish, true);
+    }
+    state.style?.remove();
+    const css = "*,*::before,*::after{animation:none!important;scroll-behavior:auto!important;transition:none!important;caret-color:transparent!important}";
+    const install = () => {
+      if (!document.head || state.style?.isConnected) return;
+      const style = document.createElement("style");
+      style.id = `parity-motion-off-${owner}`;
+      style.textContent = css;
+      document.head.append(style);
+      state.style = style;
+    };
+    install();
+    state.observer = new MutationObserver(install);
+    state.observer.observe(document, { childList: true, subtree: true });
+    const finish = (element) => {
+      for (const animation of element?.getAnimations?.() ?? []) { try { animation.finish(); } catch { animation.cancel(); } }
+    };
+    const animate = state.nativeAnimate;
+    Element.prototype.animate = function (...args) {
+      const animation = animate.apply(this, args);
+      try { animation.finish(); } catch { animation.cancel(); }
+      return animation;
+    };
+    state.finish = (event) => finish(event.target);
+    document.addEventListener("animationstart", state.finish, true);
+    document.addEventListener("transitionrun", state.finish, true);
+  }
+  function restoreDeterministicCapture(owner) {
+    const state = window.__parityCaptureState;
+    if (!state || state.owner !== owner) return;
+    window.Date = state.nativeDate;
+    Element.prototype.animate = state.nativeAnimate;
+    state.observer?.disconnect();
+    if (state.finish) {
+      document.removeEventListener("animationstart", state.finish, true);
+      document.removeEventListener("transitionrun", state.finish, true);
+    }
+    state.style?.remove();
+    delete window.__parityCaptureState;
+  }
+  async function installDeterministicHooks() {
+    const restoreSource = `(${restoreDeterministicCapture.toString()})(${JSON.stringify(deterministicOwner)})`;
+    const source = `(${installVisualDate.toString()})(${JSON.stringify(deterministicCapture.fixedNow)},${JSON.stringify(deterministicOwner)})`;
+    const motionSource = `(${installMotionSuppression.toString()})(${JSON.stringify(deterministicOwner)})`;
+    if (deterministicScriptId) {
+      assertCdp(await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: deterministicScriptId }), "Page.removeScriptToEvaluateOnNewDocument");
+      deterministicScriptId = undefined;
+    }
+    const installed = assertCdp(await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `${restoreSource};${source};${motionSource}` }), "Page.addScriptToEvaluateOnNewDocument");
+    if (installed.error || !installed.result?.identifier) throw new Error("webOS deterministic capture hook could not be registered");
+    deterministicScriptId = installed.result.identifier;
+    assertCdp(await cdp("Runtime.evaluate", { expression: `${restoreSource};${source};${motionSource}` }), "Runtime.evaluate deterministic hook");
+    hooksInstalledCurrent = true;
   }
   const routeReady = async (route) => {
     const path = route.split("?")[0].replace(/\/$/, "") || "/";
@@ -292,7 +413,7 @@ export async function createDriver() {
       if (state && state === previous) stable += 1;
       else stable = 0;
       previous = state ?? "";
-      await sleep(750);
+      await sleepImpl(750);
       await guard();
     }
     if (stable < 3) throw new Error("visible images did not settle before capture");
@@ -300,27 +421,129 @@ export async function createDriver() {
   }
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
-  return {
-    // webOS is driven over CDP, so the clock, zone and locale are pinned from the inspector; Tizen's driver has no CDP channel (netlog eval only).
-    async setDeterministicCapture({ fixedNow, timeZone = "UTC", locale = "en-GB" } = {}) {
-      if (!fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error(`${device} deterministic capture requires a valid fixedNow instant`);
-      if (device === "tizen") {
-        // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
-        if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
-        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});window.__parityPinned = true;`;
-        tizenPinScript = Buffer.from(source).toString("base64");
-        return;
+  async function setDeterministicCapture({ fixedNow, disableAnimations, timeZone = "UTC", locale = "en-GB" } = {}) {
+    if (device === "tizen") {
+      // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
+      if (!fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error("tizen deterministic capture requires a valid fixedNow instant");
+      if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
+      const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});window.__parityPinned = true;`;
+      tizenPinScript = Buffer.from(source).toString("base64");
+      return;
+    }
+    if (typeof fixedNow !== "string" || !fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error("deterministic capture requires a valid fixedNow date string");
+    if (disableAnimations !== true) throw new Error("deterministic capture requires animation suppression");
+    await guard();
+    deterministicCapture = { fixedNow, fixedMs: Date.parse(fixedNow) };
+    await installDeterministicHooks();
+    await guard();
+  }
+  async function captureBuildIdentity() {
+    if (device !== "webos") throw new Error("Tizen stable build identity is unsupported");
+    await guard();
+    const manifestPath = env.PARITY_WEBOS_BUILD_MANIFEST;
+    const stageRoot = env.PARITY_WEBOS_STAGE_ROOT;
+    if (!manifestPath || !stageRoot || !isAbsolute(manifestPath) || !isAbsolute(stageRoot)) {
+      throw new Error("webOS stable build identity requires absolute PARITY_WEBOS_BUILD_MANIFEST and PARITY_WEBOS_STAGE_ROOT paths");
+    }
+    let manifest;
+    try { manifest = JSON.parse(readFile(manifestPath, "utf8")); }
+    catch { throw new Error("webOS stage build manifest is unavailable or invalid"); }
+    const entry = manifest?.runtimeEntry;
+    if (manifest?.schema !== 1 || !/^[0-9a-f]{40}$/i.test(manifest.sourceCommit ?? "") ||
+        !/^[0-9a-f]{64}$/i.test(manifest.packageTreeSha256 ?? "") ||
+        typeof entry?.name !== "string" || !/^assets\/[A-Za-z0-9._-]+\.js$/.test(entry.name) ||
+        !/^[0-9a-f]{64}$/i.test(entry.sha256 ?? "") || entry.observedLoadedInDevice !== true) {
+      throw new Error("webOS stage build manifest lacks a verified runtime entry");
+    }
+    if (env.PARITY_EXPECTED_BUILD_SHA && manifest.sourceCommit.toLowerCase() !== env.PARITY_EXPECTED_BUILD_SHA.toLowerCase()) {
+      throw new Error(`staged webOS build ${manifest.sourceCommit} does not match pinned build ${env.PARITY_EXPECTED_BUILD_SHA}`);
+    }
+    const loaded = await ev(`(() => {
+      const expected = ${JSON.stringify(entry.name)};
+      const resources = performance.getEntriesByType("resource");
+      const resource = resources.find((candidate) => { try { return new URL(candidate.name, location.href).pathname.endsWith("/" + expected); } catch { return false; } });
+      return resource ? { url: new URL(resource.name, location.href).href } : null;
+    })()`);
+    await guard();
+    if (!loaded?.url) throw new Error("webOS runtime entry is not present in Chromium resource timing");
+    const frameTree = await cdp("Page.getFrameTree");
+    const frameId = frameTree?.result?.frameTree?.frame?.id;
+    if (!frameId) throw new Error("webOS Chromium main frame is unavailable for build identity");
+    const resource = await cdp("Page.getResourceContent", { frameId, url: loaded.url });
+    if (resource.error) throw new Error("webOS loaded runtime content is unavailable from Chromium");
+    const loadedContent = resource?.result?.content;
+    if (typeof loadedContent !== "string") throw new Error("webOS loaded runtime content is unavailable from Chromium");
+    const loadedBytes = resource.result.base64Encoded ? Buffer.from(loadedContent, "base64") : Buffer.from(loadedContent, "utf8");
+    const runtimeSha256 = createHash("sha256").update(loadedBytes).digest("hex");
+    let stagedBytes;
+    try { stagedBytes = readFile(join(stageRoot, entry.name)); }
+    catch { throw new Error("webOS staged runtime entry is unavailable"); }
+    const stagedSha256 = createHash("sha256").update(stagedBytes).digest("hex");
+    if (runtimeSha256 !== entry.sha256.toLowerCase() || stagedSha256 !== entry.sha256.toLowerCase()) {
+      throw new Error("webOS loaded and staged runtime entry hashes do not match its build manifest");
+    }
+    await guard();
+    return { package: "webos-chromium", sha256: runtimeSha256 };
+  }
+  async function waitReady({ screen, phase = "capture" } = {}) {
+    if (device !== "webos") throw new Error("Tizen stable readiness is unsupported");
+    if (typeof screen !== "string" || !screen || !["route", "capture", "focus"].includes(phase)) throw new Error("webOS readiness requires a screen and a supported phase");
+    await guard();
+    const currentRoute = await ev('location.hash.replace(/^#/, "") || "/"');
+    await guard();
+    const fontsReady = await ev(`(() => {
+      if (!document.fonts) return Promise.resolve(false);
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => resolve(false), 5000);
+        document.fonts.ready.then(() => {
+          clearTimeout(timeout);
+          resolve(document.fonts.status === "loaded");
+        }, (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+      });
+    })()`);
+    await guard();
+    if (fontsReady !== true) throw new Error("webOS document fonts did not become ready");
+    await routeReady(currentRoute);
+    const fontsStillReady = await ev('document.fonts?.status === "loaded"');
+    await guard();
+    if (fontsStillReady !== true) throw new Error("webOS document fonts changed while waiting for route readiness");
+    if (deterministicCapture) {
+      const clock = await ev("({ visualNow: new Date().valueOf(), wallNow: Date.now() })");
+      await guard();
+      if (clock?.visualNow !== deterministicCapture.fixedMs || !Number.isFinite(clock.wallNow)) {
+        throw new Error("webOS deterministic visual clock was not consumed by the current document");
       }
-      pin = { fixedNow, timeZone, locale };
-      if (ws && ws.readyState === 1) { closeCdp(); await cdpConnect(); }
-    },
-    async captureBuildIdentity() { throw new Error(`${device} stable build identity unsupported: deployed package digest is not exposed by this driver`); },
-    async waitReady() { throw new Error(`${device} stable deterministic capture unsupported: readiness is not exposed through the native app contract`); },
+    }
+    if (phase === "focus") {
+      let previous = "", stable = 0;
+      for (let i = 0; i < 12 && stable < 2; i += 1) {
+        await guard();
+        const focused = await ev(`(() => { const element = document.activeElement; if (!element || element === document.body) return ""; const rect = element.getBoundingClientRect(); return JSON.stringify([element.tagName, element.getAttribute("aria-label") || element.textContent.trim().slice(0, 80), Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)]); })()`);
+        await guard();
+        stable = focused && focused === previous ? stable + 1 : 0;
+        previous = focused || "";
+        if (stable < 2) await sleepImpl(250);
+      }
+      if (stable < 2) throw new Error(`focus did not become stable for ${screen}`);
+    }
+    await guard();
+    const finalRoute = await ev('location.hash.replace(/^#/, "") || "/"');
+    await guard();
+    if (finalRoute !== currentRoute) throw new Error("webOS route changed while waiting for readiness");
+  }
+
+  return {
+    setDeterministicCapture,
+    captureBuildIdentity,
+    waitReady,
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
     supports: device === "webos" ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
     async start() {
       if (device === "webos") {
-        await cdpConnect();
+        if (ws?.readyState !== 1) await cdpConnect();
         await guard();
       } else {
         await guard();
@@ -331,10 +554,28 @@ export async function createDriver() {
       await guard();
     },
     async stop() {
-      closeCdp();
-      // The TV's inspector proxy never completes the WebSocket close handshake, so its sockets keep node alive after the run;
-      // the unref'd timer does not delay a normal exit and ends the process once everything else is done.
-      if (process.env.WEBOS_REAL === "1") setTimeout(() => process.exit(process.exitCode ?? 0), 2000).unref();
+      try {
+        if (device === "webos" && ws?.readyState === 1 && deterministicCapture) {
+          try {
+            if (deterministicScriptId) {
+              assertCdp(await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: deterministicScriptId }), "Page.removeScriptToEvaluateOnNewDocument");
+              deterministicScriptId = undefined;
+            }
+          } finally {
+            try {
+              if (hooksInstalledCurrent) assertCdp(await cdp("Runtime.evaluate", { expression: `(${restoreDeterministicCapture.toString()})(${JSON.stringify(deterministicOwner)})` }), "Runtime.evaluate deterministic restore");
+            } finally {
+              hooksInstalledCurrent = false;
+              deterministicCapture = undefined;
+            }
+          }
+        }
+      } finally {
+        closeCdp();
+        // The TV's inspector proxy never completes the WebSocket close handshake, so its sockets keep node alive after the run;
+        // the unref'd timer does not delay a normal exit and ends the process once everything else is done.
+        if (process.env.WEBOS_REAL === "1") setTimeout(() => process.exit(process.exitCode ?? 0), 2000).unref();
+      }
     },
     async setTheme(t) {
       await guard();
@@ -357,7 +598,17 @@ export async function createDriver() {
         still = now && now === last ? still + 1 : 0; last = now; await sleep(1500);
       }
       console.log(`  home first card: ${last.split("|")[0]}`);
-      await sleep(3500); // the key handler attaches a moment after the first focus
+      // The app keeps fetching for several seconds after the first card holds focus, and a Left sent meanwhile is dropped
+      // (the nav move never lands). Wait until the page's resource count holds still, not for a fixed time.
+      let quiet = 0, seen = null;
+      for (let i = 0; i < 40 && quiet < 3; i += 1) {
+        await sleepImpl(1000);
+        const count = await ev('performance.getEntriesByType("resource").length');
+        quiet = count === seen ? quiet + 1 : 0; seen = count;
+      }
+      if (quiet < 3) throw new Error("home never stopped loading resources");
+      // Rails reorder while they fill, which leaves focus on whichever card moved: start every key script from the first card.
+      if (!(await ev('(() => { const card = document.querySelector(".tv-home-card"); if (!card) return false; card.focus({ preventScroll: true }); return document.activeElement === card; })()'))) throw new Error("home first card did not take focus");
       await guard();
       await routeReady("/");
       await guard();
@@ -370,6 +621,7 @@ export async function createDriver() {
       await guard();
     },
     async key(k, { long } = {}) {
+      let navFrom = null;
       await guard();
       // The simulator opens the player slower than web: a key sent while the title is still loading toggles or opens the wrong thing.
       if (device === "webos") {
@@ -388,6 +640,8 @@ export async function createDriver() {
         } else xkey(k, false);
       }
       else {
+        // Enter on a nav tile is a route change: remember where we were so the wait below can prove it happened.
+        navFrom = k === "select" ? await ev('document.activeElement?.closest(".app-nav-link") ? location.hash : null').catch(() => null) : null;
         const c = { key: KEYNAME[k], code: KEYNAME[k], windowsVirtualKeyCode: KEYCODE[k], nativeVirtualKeyCode: KEYCODE[k] };
         if (k === "select") {
           // Chromium needs the character event to run native button activation. rawKeyDown alone
@@ -405,9 +659,11 @@ export async function createDriver() {
           finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         }
       }
-      // Real TV: the app applies a directional key on the next animation frame and a busy main thread can delay it by seconds; two frames flush the queue.
-      if (process.env.WEBOS_REAL === "1") await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
+      if (navFrom && !(await until(`location.hash !== ${JSON.stringify(navFrom)}`, 10000))) throw new Error("Enter on a nav tile did not change the route");
       await sleep(device === "webos" ? 1000 : 350);
+      // The app applies directional moves in the next animation frame; a slow simulator frame leaves them queued, and the
+      // next key (above all Enter) then acts on focus that has not moved yet. Wait for two frames, not a longer sleep.
+      if (device === "webos") await ev("new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))");
       await guard();
     },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).

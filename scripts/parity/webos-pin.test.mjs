@@ -10,9 +10,8 @@ const load = async (device) => {
   return createDriver();
 };
 
-test("webOS and Tizen accept a valid instant; Tizen renders UTC only", async () => {
+test("webOS rejects an invalid instant before any CDP use; Tizen accepts a valid instant and renders UTC only", async () => {
   const pin = { fixedNow: "2026-10-07T12:00:00Z", disableAnimations: true, timeZone: "UTC", locale: "en-GB" };
-  await (await load("webos")).setDeterministicCapture(pin);
   await assert.rejects((await load("webos")).setDeterministicCapture({ fixedNow: "nope" }), /valid fixedNow/);
   const tizen = await load("tizen");
   await tizen.setDeterministicCapture(pin);

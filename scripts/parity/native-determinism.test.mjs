@@ -15,12 +15,13 @@ const driverWith = (state, extraEnv = {}, options = {}) => {
   const driver = createDriver({
     readinessPollMs: 1,
     readinessTimeoutMs: options.readinessTimeoutMs ?? 10_000,
-    commandTimeoutMs: 1000,
+    // The fake ADB starts a Node subprocess; parallel test workers can delay cold startup beyond one second.
+    commandTimeoutMs: 10_000,
     clock: options.clock ?? { sleep: async () => {}, now: (() => { let time = 0; return () => time++; })() },
     env,
     accountGuard: options.accountGuard,
     execute: async (_command, args, execOptions) => {
-      assert.equal(execOptions.timeout, 1000);
+      assert.equal(execOptions.timeout, 10_000);
       assert.equal(execOptions.killSignal, "SIGTERM");
       assert.equal(execOptions.env, env);
       return handleFakeDeterministicAdbCommand(fakeState, args[0], args.slice(1), env);

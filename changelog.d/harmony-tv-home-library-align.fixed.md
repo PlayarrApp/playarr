@@ -1,0 +1,1 @@
+- HarmonyOS TV Home opens aligned with the Library grid like web: rails and cards start 53 vp inside the rail column and the first heading sits at the Library first-row top; a focused later rail still centres.
