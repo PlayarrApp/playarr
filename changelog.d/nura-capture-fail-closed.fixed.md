@@ -1,1 +1,0 @@
-- Make Nura parity capture fail closed on missing identity verification, stopped apps, route timeouts, capture or hash errors, and unstable frames.

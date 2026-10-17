@@ -1,1 +1,0 @@
-- Require the Nura parity capture identity guard to validate the isolated app process and signed-in device-test profile before route requests and screenshots, and invalidate stale capture success markers before configuration checks.

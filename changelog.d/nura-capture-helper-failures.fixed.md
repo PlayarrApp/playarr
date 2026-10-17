@@ -1,1 +1,0 @@
-- Make Nura captures fail when VNC fails, preserve full-size output, and require an explicit destination for scaled captures.

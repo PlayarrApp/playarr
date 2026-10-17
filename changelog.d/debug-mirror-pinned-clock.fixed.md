@@ -1,1 +1,0 @@
-- Let the debug-mirror build pin its clock with a `mirrorNow` launch parameter, so TV captures show the same day and time as their web reference; frame timestamps keep using the real clock.

@@ -1,1 +1,0 @@
-- Android TV Filters now use closed language multi-select fields with vertical, D-pad navigable options and web-sized View glyphs; drawer focus styling restores the opener card, and Left from Library Filters returns focus to the selected content item.

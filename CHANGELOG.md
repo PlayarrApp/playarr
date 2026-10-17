@@ -13,6 +13,11 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Revalidate the selected debug-mirror profile and credentials after frame rendering, and send frame identity only through an explicit public-field allow-list. This prevents slow captures from being rejected as stale while aborting if the active account changes.
+- Let the debug-mirror build pin its clock with a `mirrorNow` launch parameter, so TV captures show the same day and time as their web reference; frame timestamps keep using the real clock.
+- Make Nura parity capture fail closed on missing identity verification, stopped apps, route timeouts, capture or hash errors, and unstable frames.
+- Require the Nura parity capture identity guard to validate the isolated app process and signed-in device-test profile before route requests and screenshots, and invalidate stale capture success markers before configuration checks.
+- Make Nura captures fail when VNC fails, preserve full-size output, and require an explicit destination for scaled captures.
 - Roku detail action focus now stays on a valid action when switching between film and series layouts.
 - Native Harmony phone drawers blur their backdrop while keeping the bottom navigation visible above them, matching the web layer order.
 - Route generic Harmony build dependencies through the public npm registry while keeping `@ohos` packages on the HarmonyOS registry.
@@ -733,6 +738,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Android TV Filters now use closed language multi-select fields with vertical, D-pad navigable options and web-sized View glyphs; drawer focus styling restores the opener card, and Left from Library Filters returns focus to the selected content item.
+- Match the Nura agenda cards to the web: white card fill, strong hairlines, 4 px availability bar, muted bar for unavailable, and the web's taller row spacing.
 - Add an opt-in Harmony phone core capture that validates all 15 required screens before skipping optional diagnostics.
 - The Xbox player-controls capture reads its pinned direct-play fixture from a repository Actions secret instead of exposing the media identifier as a workflow input.
 - Let hosted Xbox parity runs capture a validated subset of the Movies, Series and Music screens.
