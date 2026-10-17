@@ -195,7 +195,7 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
     if ((await ev("window.__parityPinned === true")) !== true) throw new Error("tizen page did not take the pinned clock");
   }
   // The identity request crosses the network to the test server and can time out under load, and the app rotates its
-  // token every 15 minutes. Only those two transient failures are retried (bounded); anything else still fails at once.
+  // token every 15 minutes. Only those two transient failures are retried (six attempts, growing pause); anything else still fails at once.
   async function guard() {
     let identity;
     for (let attempt = 1; ; attempt += 1) {
@@ -203,8 +203,8 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
         identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
         break;
       } catch (error) {
-        if (attempt >= 3 || !/identity-(request-failed|session-changed)/.test(error.message)) throw error;
-        await sleepImpl(2000);
+        if (attempt >= 6 || !/identity-(request-failed|session-changed)/.test(error.message)) throw error;
+        await sleepImpl(2000 * attempt);
       }
     }
     return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
