@@ -168,6 +168,7 @@ internal sealed class Shell : View
         if (!push && _saved.Remove(route, out var restore)) page.RestoreState(restore);
         Add(page.Root);
         if (page is SearchScreen searchPage) searchPage.OnAdded();
+        if (page is PlaylistsScreen playlistsPage) playlistsPage.OnAdded();
         if (_theme.Name == "light" && !page.HideChrome && !page.Fullscreen)
         {
             // web light: the page colour fades from #fbfaf9 to #efeeef between x 640 and 1120 (measured); text and cards sit above it
