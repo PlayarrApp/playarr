@@ -6294,7 +6294,7 @@ private fun ExperienceVideoDetailContent(
                     autoFocusPlay = series == null,
                     playFocus = playFocus,
                     television = true,
-                    modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) 6.dp else 0.dp)),
+                    modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) (if (selectedEpisode != null) 6.dp else 9.dp) else 0.dp)),
                 )
             }
             if (series != null) {
@@ -6843,8 +6843,8 @@ private fun VideoDetailCopy(
                 lineHeight = (webVw(9.28f, 0.67f, 13.44f).value * 1.58f).sp,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
-                // Tablet web measured at 1280 x 800: the synopsis is 3 dp lower and 347 dp wide (the actions row below keeps its place).
-                modifier = Modifier.padding(top = (if (episode != null) 20.7.dp else 21.7.dp) + (if (LocalStageScale.current != 1f) 3.dp else 0.dp)).widthIn(max = if (LocalStageScale.current != 1f) 347.dp else 324.dp),
+                // Tablet web measured at 1280 x 800 for series episodes: the synopsis is 3 dp lower and 347 dp wide (the actions row below keeps its place).
+                modifier = Modifier.padding(top = (if (episode != null) 20.7.dp else 21.7.dp) + (if (LocalStageScale.current != 1f && episode != null) 3.dp else 0.dp)).widthIn(max = if (LocalStageScale.current != 1f && episode != null) 347.dp else 324.dp),
             )
         }
         return
