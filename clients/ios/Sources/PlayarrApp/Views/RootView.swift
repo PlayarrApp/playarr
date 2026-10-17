@@ -149,9 +149,7 @@ struct RootView: View {
             ParityLaunch.applyLandscape()
             if ParityLaunch.isActive, let server = ParityLaunch.server, let user = ParityLaunch.user {
                 ParityLaunch.configureDeterministicCapture()
-                if let frozenNow = ParityLaunch.frozenNow {
-                    ParityLaunch.record("frozenNow", ISO8601DateFormatter().string(from: frozenNow))
-                }
+                ParityLaunch.recordFrozenNow()
                 do {
                     try await environment.signIn(serverURL: server, username: user, password: ParityLaunch.password ?? "")
                     guard let expected = ParityLaunch.expectedUsername,
@@ -455,6 +453,7 @@ private struct AuthenticatedPlayarrShell: View {
         .onPreferenceChange(ParityScreenReadinessKey.self) { parityScreen = $0 }
         .onChange(of: parityReadiness, initial: true) { _, readiness in
             guard ParityLaunch.isActive, readiness.identityVerified else { return }
+            ParityLaunch.recordFrozenNow()
             ParityLaunch.record("screenContentReady", readiness.contentReady)
             if readiness.failed { ParityLaunch.record("failure", "requested-screen-load-failed") }
         }

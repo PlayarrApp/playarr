@@ -115,7 +115,16 @@ enum ParityLaunch {
     /// `--playarr-parity-now <ISO 8601>`: the instant the web reference was captured at.
     static var frozenNow: Date? {
         guard let raw = value("--playarr-parity-now") else { return nil }
-        return ISO8601DateFormatter().date(from: raw)
+        let plain = ISO8601DateFormatter()
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return plain.date(from: raw) ?? fractional.date(from: raw)
+    }
+    /// Writes the pinned clock into the state file. Called when the screen reports ready as well as at launch, so the
+    /// driver never sees a ready screen without it (the launch-time write alone raced the state reset).
+    @MainActor static func recordFrozenNow() {
+        guard let frozenNow else { return }
+        record("frozenNow", ISO8601DateFormatter().string(from: frozenNow))
     }
     static var isActive: Bool { server != nil && user != nil }
     static var deterministicCapture: Bool { environmentValue("PLAYARR_PARITY_DISABLE_ANIMATIONS") == "1" }

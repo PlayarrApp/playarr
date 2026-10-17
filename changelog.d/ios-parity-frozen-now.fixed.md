@@ -1,0 +1,1 @@
+- iOS parity captures always report the pinned clock in the app state once the screen is ready.
