@@ -147,7 +147,7 @@ final class WMDetailModel {
 
 // MARK: - Page
 
-private enum WMFormat {
+enum WMFormat {
     static func clock(_ ms: Int64) -> String {
         let total = Int(ms / 1000)
         let hours = total / 3600, minutes = (total % 3600) / 60, seconds = total % 60
