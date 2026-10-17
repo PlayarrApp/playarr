@@ -35,6 +35,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -53,6 +54,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.navigationBars
@@ -3527,6 +3529,8 @@ internal fun ExperienceLandscapeCard(
     webTvStyle: Boolean = false,
     /** With [webTvStyle]: the library grid card (`.tv-title-card`: lift 6.6, art scale 1.04, title only) instead of the home card. */
     webTvLibrary: Boolean = false,
+    /** Keep the card's focus target for restoration, but hide its focus treatment under the Actions drawer. */
+    suppressFocusVisuals: Boolean = false,
     /** Accessibility label of the whole card (web aria-label); null keeps the merged texts. */
     contentLabel: String? = null,
 ) {
@@ -3546,8 +3550,9 @@ internal fun ExperienceLandscapeCard(
     val scale = if (webPhone) 1f else animatedScale
     // Web remote mode (`body[data-input-mode="remote"]`, which is always the case on a TV): no lift, no scale and no
     // selected state; the focused card's art gets a 3 px ring and a deeper shadow, and nothing else changes.
-    val liftActive = focused
-    val artScale by animateFloatAsState(if (focused && (webTvStyle || webPhoneRemoteFocus)) 1.025f else 1f, tween(240), label = "homeArtScale")
+    val visualFocus = focused && !suppressFocusVisuals
+    val liftActive = visualFocus
+    val artScale by animateFloatAsState(if (visualFocus && (webTvStyle || webPhoneRemoteFocus)) 1.025f else 1f, tween(240), label = "homeArtScale")
     val cardRadius = if (webTvStyle) 12.48.dp else 10.dp
     val stackNear = WebInk.copy(alpha = 0.26f)
     val stackFar = WebInk.copy(alpha = 0.14f)
@@ -3587,15 +3592,15 @@ internal fun ExperienceLandscapeCard(
     }
     Column(Modifier.fillMaxWidth().then(
         when {
-            webTvStyle -> Modifier.mediaCardLift(focused, if (webTvLibrary) PlayarrCardMotions.Library else PlayarrCardMotions.Home)
-            webPhoneRemoteFocus -> Modifier.mediaCardLift(focused, webPhoneMotion)
+            webTvStyle -> Modifier.mediaCardLift(liftActive, if (webTvLibrary) PlayarrCardMotions.Library else PlayarrCardMotions.Home)
+            webPhoneRemoteFocus -> Modifier.mediaCardLift(liftActive, webPhoneMotion)
             else -> Modifier
         },
     )) {
         WebShadowedBox(
-            shadows = if (webPhone) webCardShadows(selected || focused, webHome, webSearch) else if (webTvStyle) (if (focused) (if (webTvLibrary) webCardFocusShadows else webRemoteFocusShadows) else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
+            shadows = if (webPhone) webCardShadows(selected || visualFocus, webHome, webSearch) else if (webTvStyle) (if (visualFocus) (if (webTvLibrary) webCardFocusShadows else webRemoteFocusShadows) else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),
-            focusGlow = (webPhone && (selected || focused)) || (webTvStyle && focused),
+            focusGlow = (webPhone && (selected || visualFocus)) || (webTvStyle && visualFocus),
             // Web `--card-glow-color`: brand-strong in light, brand-ink in dark (the palette's card glow), on TV as on the phone.
             focusGlowColor = if (webPhone || webTvStyle) PlayarrWebTheme.palette.phoneCardGlow else null,
             modifier = Modifier.fillMaxWidth()
@@ -3804,6 +3809,8 @@ internal fun LibraryResults(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
     /** Phone: the letter rail's width, which the grid leaves clear (web `.tv-alphabet`, 52 px since #924). */
     railWidth: Dp = 16.dp,
+    /** Hide a focused card's styling behind its TV Actions drawer while preserving focus for dismissal. */
+    suppressFocusedCardVisuals: Boolean = false,
 ) {
     val fixedColumns = playarrLibraryGridColumns(viewMode, artworkSize, isTelevision)
     if (grid != null) {
@@ -3854,6 +3861,7 @@ internal fun LibraryResults(
                     webPhone = !isTelevision,
                     webTvStyle = isTelevision,
                     webTvLibrary = isTelevision,
+                    suppressFocusVisuals = suppressFocusedCardVisuals,
                 )
             }
         }
@@ -3886,7 +3894,7 @@ internal fun LibraryResults(
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
-                LibraryCoverCard(work, serverUrl, accessToken, landscapeWidth * 0.72f, work.id == selectedId, onSelected, onOpen, onContext, showUnwatched = progressLoaded && shouldShowPlayarrUnwatchedDot(progressByWork[work.id], true), fillWidth = fixedColumns != null || !isTelevision, modifier = if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
+                LibraryCoverCard(work, serverUrl, accessToken, landscapeWidth * 0.72f, work.id == selectedId, onSelected, onOpen, onContext, showUnwatched = progressLoaded && shouldShowPlayarrUnwatchedDot(progressByWork[work.id], true), fillWidth = fixedColumns != null || !isTelevision, suppressFocusVisuals = suppressFocusedCardVisuals, modifier = if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
             }
         }
         LibraryViewMode.CoverFlow -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -3901,7 +3909,7 @@ internal fun LibraryResults(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 items(works, key = Work::id) { work ->
-                    LibraryCoverCard(work, serverUrl, accessToken, landscapeWidth * 0.84f, work.id == selectedId, onSelected, onOpen, onContext, showUnwatched = progressLoaded && shouldShowPlayarrUnwatchedDot(progressByWork[work.id], true))
+                    LibraryCoverCard(work, serverUrl, accessToken, landscapeWidth * 0.84f, work.id == selectedId, onSelected, onOpen, onContext, showUnwatched = progressLoaded && shouldShowPlayarrUnwatchedDot(progressByWork[work.id], true), suppressFocusVisuals = suppressFocusedCardVisuals)
                 }
             }
         }
@@ -3920,21 +3928,23 @@ private fun LibraryCoverCard(
     onContext: (Work) -> Unit,
     showUnwatched: Boolean = false,
     fillWidth: Boolean = false,
+    suppressFocusVisuals: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
+    val visualFocus = focused && !suppressFocusVisuals
     Box(
         modifier.then(if (fillWidth) Modifier.fillMaxWidth() else Modifier.width(width))
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onSelected(work) }
             .combinedClickable(onClick = { onSelected(work); onOpen(work) }, onLongClick = { onContext(work) }),
     ) {
     // Focused media card: soft shadow plus a draw-only lift on the content inside the focus target, no ring.
-    Column(Modifier.fillMaxWidth().mediaCardLift(focused, PlayarrCardMotions.Library)) {
+    Column(Modifier.fillMaxWidth().mediaCardLift(visualFocus, PlayarrCardMotions.Library)) {
         Box {
             WebShadowedBox(
-                shadows = if (focused) webCardFocusShadows else webCardRestShadows,
+                shadows = if (visualFocus) webCardFocusShadows else webCardRestShadows,
                 shape = RoundedCornerShape(12.dp),
-                focusGlow = focused,
+                focusGlow = visualFocus,
                 modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f),
             ) {
                 AuthenticatedArtwork(
@@ -4059,8 +4069,6 @@ private fun LibraryLanguageChoices(
     selected: Set<String>,
     onToggle: (String) -> Unit,
 ) {
-    val language = LocalPlayarrLanguage.current
-    // A selected language whose count dropped to zero must stay visible so it can be unticked.
     val entries = facets + selected.filter { code -> facets.none { it.code == code } }
         .map { LanguageFacetEntry(code = it, count = -1) }
     val tv = playarrTvDrawer()
@@ -4068,25 +4076,106 @@ private fun LibraryLanguageChoices(
         PhoneLanguageMultiSelect(title, entries, selected, onToggle)
         return
     }
-    Column(verticalArrangement = Arrangement.spacedBy(if (tv) 13.dp else 6.dp)) {
-        if (tv) PlayarrTvDrawerHeading(title) else Text(title.uppercase(language.locale), color = WebInkMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-        if (entries.isEmpty()) {
-            if (tv) Text(playarrString(PlayarrString.LibraryNoLanguages), color = WebInk, fontSize = 19.2.sp, lineHeight = 28.8.sp)
-            else Text(playarrString(PlayarrString.LibraryNoLanguages), color = WebInkMuted, fontSize = 12.sp)
-        } else {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(entries, key = { it.code }) { entry ->
-                    val name = languageDisplayName(entry.code, language.locale, entry.name)
-                    val active = entry.code in selected
-                    val label = if (entry.count >= 0) "$name · ${entry.count}" else name
-                    PlayarrChoice(label, active) { onToggle(entry.code) }
+    TvLanguageMultiSelect(title, libraryLanguageEntries(facets, selected), selected, onToggle)
+}
+
+internal fun libraryLanguageEntries(facets: List<LanguageFacetEntry>, selected: Set<String>): List<LanguageFacetEntry> =
+    (facets + selected.filter { code -> facets.none { it.code == code } }
+        .map { LanguageFacetEntry(code = it, count = -1) })
+        .sortedWith(compareByDescending<LanguageFacetEntry> { it.code in selected }.thenByDescending { it.count }.thenBy { it.code })
+
+/** Web TV `.ui-multiselect`: a closed field which expands to a vertical, D-pad navigable option list. */
+@Composable
+private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntry>, selected: Set<String>, onToggle: (String) -> Unit) {
+    val locale = LocalPlayarrLanguage.current.locale
+    val triggerFocus = remember { FocusRequester() }
+    var open by remember { mutableStateOf(false) }
+    var focusedLanguageCode by remember { mutableStateOf<String?>(null) }
+    val any = playarrString(PlayarrString.LibraryAnyLanguage)
+    val orderedEntries = entries
+    val optionFocus = remember(orderedEntries.map { it.code }) {
+        orderedEntries.associate { it.code to FocusRequester() }
+    }
+    val triggerInteractions = remember { MutableInteractionSource() }
+    val triggerFocused by triggerInteractions.collectIsFocusedAsState()
+    val summary = orderedEntries.filter { it.code in selected }
+        .joinToString(", ") { languageDisplayName(it.code, locale, it.name) }
+        .ifEmpty { any }
+
+    LaunchedEffect(open, focusedLanguageCode, orderedEntries) {
+        if (open) {
+            val code = focusedLanguageCode ?: orderedEntries.firstOrNull()?.code
+            val requester = code?.let(optionFocus::get)
+            if (requester != null) {
+                withFrameNanos { }
+                runCatching { requester.requestFocus() }
+            }
+        }
+    }
+    BackHandler(enabled = open) {
+        open = false
+        focusedLanguageCode = null
+        runCatching { triggerFocus.requestFocus() }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        PlayarrTvDrawerHeading(title)
+        Column(
+            Modifier.fillMaxWidth().background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
+                .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(6.4.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(10.dp))
+                    .focusRequester(triggerFocus).clickable(interactionSource = triggerInteractions, indication = null) {
+                        if (!open) focusedLanguageCode = orderedEntries.firstOrNull()?.code
+                        open = !open
+                    }.webFocusRing(triggerFocused, radius = 10.dp, offset = 2.dp).padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
+            ) {
+                Text(summary, color = WebInk, fontSize = 11.84.sp, lineHeight = 17.76.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(if (open) "⌃" else "⌄", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680))
+            }
+            if (open) {
+                Spacer(Modifier.height(6.dp))
+                if (orderedEntries.isEmpty()) {
+                    Text(playarrString(PlayarrString.LibraryNoLanguages), color = WebInkMuted, fontSize = 10.56.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        items(orderedEntries, key = { it.code }) { entry ->
+                            val name = languageDisplayName(entry.code, locale, entry.name)
+                            val label = if (entry.count >= 0) "$name · ${entry.count}" else name
+                            val active = entry.code in selected
+                            var focused by remember(entry.code) { mutableStateOf(false) }
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                                    .focusRequester(optionFocus.getValue(entry.code))
+                                    .onFocusChanged {
+                                        focused = it.isFocused
+                                        if (it.isFocused) focusedLanguageCode = entry.code
+                                    }
+                                    .webFocusRing(focused, radius = 8.dp, offset = 2.dp)
+                                    .clickable {
+                                        focusedLanguageCode = entry.code
+                                        onToggle(entry.code)
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Text(if (active) "☑" else "□", color = if (active) WebAccent else WebInkMuted, fontSize = 13.sp)
+                                Text(label, color = WebInk, fontSize = 10.56.sp, lineHeight = 15.84.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-/** Web `.ui-multiselect`: a 59 px field whose trigger reads "Any language" or the picked names; it opens the options as chips. */
+/** Web phone `.ui-multiselect`: a 59 px field whose trigger reads "Any language" or the picked names; it opens the options as chips. */
 @Composable
 private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetEntry>, selected: Set<String>, onToggle: (String) -> Unit) {
     val locale = LocalPlayarrLanguage.current.locale
@@ -4135,7 +4224,7 @@ private fun <T> LibraryFilterChoices(
         Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
             PlayarrTvDrawerHeading(title)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                values.forEach { value -> PlayarrChoice(label(value), value == selected, Modifier.weight(1f)) { onSelected(value) } }
+                values.forEach { value -> PlayarrChoice(label(value), value == selected, Modifier.weight(1f), icon = icon?.let { draw -> { colour -> draw(value, colour) } }) { onSelected(value) } }
             }
         }
         return
@@ -4157,16 +4246,17 @@ private fun LibraryFilterLabel(title: String) {
     Text(title.uppercase(LocalPlayarrLanguage.current.locale), color = WebInkMuted, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.4928.sp)
 }
 
-/** Web `.tv-view-icon`: three 1 px-radius bars (list), wide blocks (screen) or tall blocks (cover), 2 px apart. */
+/** Web `.tv-view-icon`: outlined TV list bars, 20 x 3 screen blocks, and the existing tall cover blocks. */
 @Composable
 private fun LibraryViewIcon(mode: LibraryViewMode, colour: Color) {
+    val tv = playarrTvDrawer()
     val (count, w, h) = when (mode) {
-        LibraryViewMode.List -> Triple(3, 20f, 2f)
-        LibraryViewMode.Screen -> Triple(3, 5.5f, 3.9f)
+        LibraryViewMode.List -> Triple(3, 20f, if (tv) 3f else 2f)
+        LibraryViewMode.Screen -> if (tv) Triple(3, 5.33f, 13f) else Triple(3, 5.5f, 3.9f)
         else -> Triple(3, 4f, 13f)
     }
     val list = mode == LibraryViewMode.List
-    val bar = Modifier.size(w.dp, h.dp).let { if (list) it.background(colour, RoundedCornerShape(1.dp)) else it.border(1.dp, colour, RoundedCornerShape(1.dp)) }
+    val bar = Modifier.size(w.dp, h.dp).let { if (list && !tv) it.background(colour, RoundedCornerShape(1.dp)) else it.border(1.dp, colour, RoundedCornerShape(1.dp)) }
     if (list) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
     else Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
 }
@@ -4282,6 +4372,16 @@ private fun ExperienceLibraryScreen(
                     active = filtersOpen,
                     badge = languageSelection.audio.size + languageSelection.subtitle.size,
                     onClick = { filtersOpen = true },
+                    onLeft = if (isTelevision) {
+                        {
+                            if (filteredWorks.isNotEmpty()) {
+                                val selectedIndex = filteredWorks.indexOfFirst { it.id == selectedId }.coerceAtLeast(0)
+                                libraryScope.launch { tvGrid.focus(0, selectedIndex) }
+                            }
+                        }
+                    } else {
+                        null
+                    },
                 )),
                 body = PlayarrPageBody.Bleed,
             ) {
@@ -4345,6 +4445,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         grid = if (isTelevision) tvGrid else null,
                         gridState = gridState,
                         railWidth = if (sortMode == "title") 52.dp else 16.dp,
+                        suppressFocusedCardVisuals = isTelevision && contextWork != null,
                     )
                     if (isTelevision) {
                         // Web default focus: the selected card, else the first.
