@@ -33,6 +33,14 @@ on:
   push:
     branches:
       - main
+    # Board-only pushes (the post-merge fold commit) start no CI: they would otherwise replace the pending run of the real
+    # merge commit in the single main concurrency group, so that commit would never be tested or deployed. A push that
+    # also touches any other file still runs.
+    paths-ignore:
+      - 'TASKS.md'
+      - 'CHANGELOG.md'
+      - 'tasks.d/**'
+      - 'changelog.d/**'
   # Manual runs; a dispatch on main runs everything.
   workflow_dispatch:
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fails a pull request that edits CHANGELOG.md or TASKS.md directly. Those two files are conflict
 # hotspots, so PRs add fragment files (changelog.d/, tasks.d/) and the Fold board workflow folds them in
-# (commit subject "chore(train): fold fragments"). Also validates fragment syntax when node exists.
+# (commit subject "chore(board): fold fragments"). Also validates fragment syntax when node exists.
 #
 # Env: BASE_REF (default main). Looks only at the PR's own non-merge commits.
 set -euo pipefail
@@ -15,9 +15,9 @@ for c in $(git rev-list --no-merges "origin/$base..$head"); do
   # titles) that must rewrite existing CHANGELOG.md/TASKS.md text, which fragments cannot express.
   # "chore(board-format):" is reserved for a repository-wide migration of TASKS.md to the canonical
   # epic-table format (one ## heading per epic, eight columns), which rewrites every row.
-  case "$(git log -1 --format=%s "$c")" in "chore(train): fold fragments"*|"chore(scrub):"*|"chore(board-format):"*) continue ;; esac
-  # Key mode: a fold commit carries a Merge-Train trailer.
-  git log -1 --format=%B "$c" | grep -qx 'Merge-Train: yes' && continue
+  case "$(git log -1 --format=%s "$c")" in "chore(board): fold fragments"*|"chore(train): fold fragments"*|"chore(scrub):"*|"chore(board-format):"*) continue ;; esac
+  # Key mode: a fold commit carries a Board-Fold trailer (Merge-Train: older history).
+  git log -1 --format=%B "$c" | grep -qxE 'Board-Fold: yes|Merge-Train: yes' && continue
   if git diff-tree --no-commit-id --name-only -r "$c" | grep -qxE 'CHANGELOG\.md|TASKS\.md'; then
     bad="$bad$(git log -1 --format='%h %s' "$c")"$'\n'
   fi

@@ -31,7 +31,7 @@ new_clone v1; cd "$tmp/v1"
 grep -q '^| 1 | One | done |' TASKS.md && grep -q '^| 2 | Two | todo |' TASKS.md && ok "rows folded onto main" || bad "rows folded onto main"
 grep -q 'Added a thing' CHANGELOG.md && ok "changelog folded" || bad "changelog folded"
 [ "$(ls tasks.d changelog.d | grep -c '\.md$')" = 2 ] && ok "only READMEs left" || bad "only READMEs left"
-[ "$(git log -1 --format=%an)" = "Thomas McFarlane" ] && git log -1 --format=%B | grep -qx 'Merge-Train: yes' && ok "train identity and trailer" || bad "train identity and trailer"
+[ "$(git log -1 --format=%an)" = "Thomas McFarlane" ] && git log -1 --format=%B | grep -qx 'Board-Fold: yes' && ok "board identity and trailer" || bad "board identity and trailer"
 
 # 2. Nothing pending: no new commit.
 before=$(git rev-parse HEAD)
