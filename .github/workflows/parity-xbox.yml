@@ -100,6 +100,16 @@ jobs:
       - name: Sideload the app
         shell: pwsh
         run: scripts/xbox-wall/install.ps1 -Dir pkg
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+      # The server no longer hosts the web app: the web reference loads this build (served locally by drivers/web.mjs) against the server API.
+      - name: Build the web client
+        working-directory: clients/tv-web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @playarr-tv/web... run build
       - name: Install the suite tooling
         working-directory: scripts/parity
         run: npm ci --silent && npx playwright-core install chromium
