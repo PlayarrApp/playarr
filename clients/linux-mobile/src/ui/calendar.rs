@@ -228,7 +228,10 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
                 .build(),
         );
     }
-    let meta = gtk4::Box::builder().spacing(12).build();
+    let meta = gtk4::Box::builder()
+        .spacing(12)
+        .css_classes(["pa-entry-metarow"])
+        .build();
     for t in [
         time_label(e.release_at.as_deref()),
         release_label(&e.release_type).to_string(),

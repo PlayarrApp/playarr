@@ -26,6 +26,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +58,8 @@ fun PlayarrActionPill(
     active: Boolean = false,
     count: Int = 0,
     focusRequester: FocusRequester? = null,
+    suppressFocusRingWhenActive: Boolean = false,
+    onLeft: (() -> Unit)? = null,
 ) {
     val tv = LocalPlayarrFormFactor.current == PlayarrFormFactor.Tv
     val metrics = PlayarrPageTokens.current()
@@ -74,7 +81,21 @@ fun PlayarrActionPill(
             modifier = Modifier
                 .then(if (tv) Modifier.widthIn(min = metrics.pillWidth).height(metrics.pillHeight) else Modifier.size(metrics.pillWidth, metrics.pillHeight))
                 .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-                .then(if (focused) Modifier.playarrFocusRing(PlayarrRingShape.Rounded(metrics.pillRadius)) else Modifier)
+                .then(
+                    if (tv && onLeft != null) {
+                        Modifier.onPreviewKeyEvent { event ->
+                            if (event.key == Key.DirectionLeft && event.type == KeyEventType.KeyDown) {
+                                onLeft()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    } else {
+                        Modifier
+                    },
+                )
+                .then(if (focused && !(tv && active && suppressFocusRingWhenActive)) Modifier.playarrFocusRing(PlayarrRingShape.Rounded(metrics.pillRadius)) else Modifier)
                 .semantics { contentDescription = label },
             shape = tile,
             // Focus draws the ring only; the open state (panel shown) keeps the ink fill.
