@@ -107,10 +107,11 @@ tizen install -n <generated-name>.wgt -t <target-name> -- apps/tv-tizen/dist
 
 ## Compatibility and release boundaries
 
-- The developer-package baseline is Tizen 7.0+ (2023 Samsung TVs). The bundle
-  targets ES2018 and the build's CSS baseline is Chromium 94. Older
-  models are not claimed until tested and certified on representative
-  hardware.
+- The developer-package baseline is Tizen 6.5+. It installs and runs sign-in,
+  Home and D-pad navigation on a 2022 QN700B (Tizen 6.5, Chromium 85). The
+  bundle targets ES2018 and the build's CSS baseline is Chromium 94, so that
+  TV's Chromium 85 is not certified for layout; older models are not claimed
+  until tested and certified on representative hardware.
 - Local unit, type, and package-preparation tests cannot exercise Samsung's
   proprietary Product APIs. Playback, DRM, remote keys, suspend/resume,
   screen-saver behavior, memory pressure, and subtitles still need real-TV

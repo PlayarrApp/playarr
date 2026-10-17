@@ -1,0 +1,1 @@
+- The Tizen web package now declares `required_version="6.5"` (was 7.0), so it installs on 2022 Samsung TVs such as the QN700B; the package-preparation floor test follows.
