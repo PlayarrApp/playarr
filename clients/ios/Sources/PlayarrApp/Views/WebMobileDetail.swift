@@ -350,9 +350,9 @@ struct WMDetailPage: View {
 
     private var header: some View {
         ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: onBack)
+            PlayarrBackButton(action: onBack)
                 .accessibilityIdentifier("detail-back")
-                .offset(x: 16, y: WM.topInset + 2)
+                .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             // The web hides the header subtitle on phones (#1299), so only the page title shows here.
             WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972)
             .offset(x: 68, y: WM.topInset + 2)
