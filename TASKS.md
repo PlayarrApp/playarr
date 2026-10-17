@@ -426,6 +426,7 @@ Steps only the repository owner can perform.
 | 10713 | Move the repository to the PlayarrApp organisation | done | thomas | | | | 2026-10-17: new public repository with rewritten history, 72 PRs reopened, secrets and environments copied, first image built, deploys running from the new image. The old repository is archived. Follow-ups: 15.10715. |
 | 10714 | Remove all hardcoded values | parked | thomas | | | | Owner priority after the migration (2026-10-17). No hardcoded URLs, hosts, IPs or address ranges (including the relay private-range list), IDs, accounts, paths or repo names anywhere. Values come from a library, an authoritative source or configuration. Parked until the repository move follow-ups (15.10715) are done. |
 | 10715 | Follow-ups from the repository move | todo | | | 15.10713 | | Opened 2026-10-17. Reopened PRs show the migration account as author. Cross-references in PR bodies use the old PR numbers. Reopened PRs have no CI yet. Local tooling and the repository mirror still point at the old repository. |
+| 10716 | Enable push-webhook mirror sync for the PlayarrApp org | blocked_on_owner | Thomas | | 15.10715 | | Owner action: open the devwatcher setup page for the PlayarrApp install and press Enable App. Then agents verify a manual repo-mirror Job fires on push. Follow-up of 15.10715. |
 
 ## 16. Cleartext HTTP to user-entered servers (2026-10-07)
 
