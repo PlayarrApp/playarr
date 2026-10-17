@@ -378,7 +378,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     await drainApiErrors();
     assertWebReady(page.url(), apiErrors);
     const path = new URL(page.url()).pathname;
-    if (!path.startsWith("/player/")) await page.waitForSelector(".app-nav-link", { timeout: 30000 });
+    // The profile picker is outside the app shell: it has no nav.
+    if (path === "/profiles") await page.waitForSelector(".profiles-page .profile-avatar-button", { timeout: 30000 });
+    else if (!path.startsWith("/player/")) await page.waitForSelector(".app-nav-link", { timeout: 30000 });
     if (screen === "home") await page.waitForSelector(".tv-home-card", { timeout: 30000 });
     if (["movies", "series", "calendar", "search"].includes(screen)) await page.waitForSelector("main", { timeout: 30000 });
     if (["/movies", "/series", "/music"].includes(path)) {

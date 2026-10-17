@@ -91,54 +91,62 @@ export async function fetchCurrentIdentity({ expectedServerUrl } = {}) {
     if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error("invalid server");
     return url.toString().replace(/\/$/, "");
   };
-  let sessionText, session, token, base;
-  try {
-    sessionText = localStorage.getItem("playarr:session");
-    session = JSON.parse(sessionText || "null");
-    token = session?.accessToken;
-    base = localStorage.getItem("playarr:apiBaseUrl");
-  } catch { throw new Error("device-test account identity unavailable"); }
-  if (typeof token !== "string" || !token || typeof base !== "string" || !base) throw new Error("device-test account identity unavailable");
-  let serverUrl;
-  try { serverUrl = canonical(base); }
-  catch { throw new Error("device-test account identity server is invalid"); }
-  if (expectedServerUrl && serverUrl !== canonical(expectedServerUrl)) throw new Error("device-test account identity server is not trusted");
-  let response, profiles, failure;
-  // A network blip (a fetch cut off while the page navigates, a loaded host) gets two more tries; an HTTP error or bad body does not.
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    let timeout;
-    response = undefined;
+  // The app rotates its refresh token while a loaded host is slow: if only the session text moved (same server), check again with the new
+  // session, twice at most. A different server, or a session that keeps moving, still fails.
+  for (let round = 0; ; round += 1) {
+    let sessionText, session, token, base;
     try {
-      const controller = new AbortController();
-      timeout = setTimeout(() => controller.abort(), 15000);
-      response = await fetch(`${base.replace(/\/$/, "")}/api/v1/users/profiles`, {
-        headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal,
-      });
-      if (!response.ok) throw new Error();
-      profiles = await response.json();
-      failure = undefined;
-      break;
+      sessionText = localStorage.getItem("playarr:session");
+      session = JSON.parse(sessionText || "null");
+      token = session?.accessToken;
+      base = localStorage.getItem("playarr:apiBaseUrl");
+    } catch { throw new Error("device-test account identity unavailable"); }
+    if (typeof token !== "string" || !token || typeof base !== "string" || !base) throw new Error("device-test account identity unavailable");
+    let serverUrl;
+    try { serverUrl = canonical(base); }
+    catch { throw new Error("device-test account identity server is invalid"); }
+    if (expectedServerUrl && serverUrl !== canonical(expectedServerUrl)) throw new Error("device-test account identity server is not trusted");
+    let response, profiles, failure;
+    // A network blip (a fetch cut off while the page navigates, a loaded host) gets two more tries; an HTTP error or bad body does not.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      let timeout;
+      response = undefined;
+      try {
+        const controller = new AbortController();
+        timeout = setTimeout(() => controller.abort(), 15000);
+        response = await fetch(`${base.replace(/\/$/, "")}/api/v1/users/profiles`, {
+          headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal,
+        });
+        if (!response.ok) throw new Error();
+        profiles = await response.json();
+        failure = undefined;
+        break;
+      } catch (error) {
+        failure = error;
+        if (response) break;
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      } finally { clearTimeout(timeout); }
+    }
+    if (failure) throw new Error(`device-test account identity request failed (${response ? `HTTP ${response.status}` : String(failure?.name ?? "no response")})`);
+    let moved = false;
+    try {
+      if (localStorage.getItem("playarr:apiBaseUrl") !== base) throw new Error("device-test account session changed during identity check");
+      moved = localStorage.getItem("playarr:session") !== sessionText;
     } catch (error) {
-      failure = error;
-      if (response) break;
-      await new Promise((resolve) => setTimeout(resolve, 700));
-    } finally { clearTimeout(timeout); }
-  }
-  if (failure) throw new Error(`device-test account identity request failed (${response ? `HTTP ${response.status}` : String(failure?.name ?? "no response")})`);
-  try {
-    if (localStorage.getItem("playarr:session") !== sessionText || localStorage.getItem("playarr:apiBaseUrl") !== base) {
+      if (error?.message === "device-test account session changed during identity check") throw error;
+      throw new Error("device-test account identity unavailable");
+    }
+    if (moved) {
+      if (round < 2) continue;
       throw new Error("device-test account session changed during identity check");
     }
-  } catch (error) {
-    if (error?.message === "device-test account session changed during identity check") throw error;
-    throw new Error("device-test account identity unavailable");
+    if (!Array.isArray(profiles)) throw new Error("device-test account identity response invalid");
+    const current = profiles.filter((profile) => profile?.is_current === true);
+    if (current.length !== 1 || typeof current[0]?.username !== "string" || !current[0].username) {
+      throw new Error("device-test account identity is missing or ambiguous");
+    }
+    return { username: current[0].username, isCurrentCount: current.length, serverUrl };
   }
-  if (!Array.isArray(profiles)) throw new Error("device-test account identity response invalid");
-  const current = profiles.filter((profile) => profile?.is_current === true);
-  if (current.length !== 1 || typeof current[0]?.username !== "string" || !current[0].username) {
-    throw new Error("device-test account identity is missing or ambiguous");
-  }
-  return { username: current[0].username, isCurrentCount: current.length, serverUrl };
 }
 
 export async function assertDeviceTestPage({ page, allowedUsernames, expectedServerUrl }) {

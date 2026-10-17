@@ -127,3 +127,20 @@ test("current identity fetch retries a network blip but not an HTTP error", asyn
   await assert.rejects(fetchCurrentIdentity(), /identity request failed \(HTTP 401\)/);
   assert.equal(calls, 1);
 });
+
+test("current identity fetch re-checks when only the session text rotates, and fails if it keeps moving or the server changes", async (t) => {
+  const originalStorage = globalThis.localStorage;
+  const originalFetch = globalThis.fetch;
+  const storage = new Map([["playarr:session", JSON.stringify({ accessToken: "t0" })], ["playarr:apiBaseUrl", serverUrl]]);
+  globalThis.localStorage = { getItem: (key) => storage.get(key) ?? null };
+  t.after(() => { globalThis.localStorage = originalStorage; globalThis.fetch = originalFetch; });
+  const profiles = { ok: true, async json() { return [{ username: "device-test", is_current: true }]; } };
+  let calls = 0;
+  globalThis.fetch = async () => { calls += 1; if (calls === 1) storage.set("playarr:session", JSON.stringify({ accessToken: "t1" })); return profiles; };
+  assert.equal((await fetchCurrentIdentity()).username, "device-test");
+  assert.equal(calls, 2);
+  globalThis.fetch = async () => { storage.set("playarr:session", JSON.stringify({ accessToken: `t${Math.random()}` })); return profiles; };
+  await assert.rejects(fetchCurrentIdentity(), /session changed during identity check/);
+  globalThis.fetch = async () => { storage.set("playarr:apiBaseUrl", "https://other.example.invalid"); return profiles; };
+  await assert.rejects(fetchCurrentIdentity(), /session changed during identity check/);
+});
