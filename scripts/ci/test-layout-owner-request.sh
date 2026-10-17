@@ -38,7 +38,6 @@ run "android pure logic file" 0 "clients/android/core-designsystem/src/main/kotl
 run "golden without trailer" 1 "clients/android/core-designsystem/src/test/snapshots/header_tv_light.png" "x"
 run "push to main is skipped" 0 "$CSS" "x" push main
 run "main dispatch is skipped" 0 "$CSS" "x" workflow_dispatch main
-run "train dispatch checks the body" 1 "$CSS" "x" workflow_dispatch feature
-run "train dispatch with trailer" 0 "$CSS" "$TRAILER" workflow_dispatch feature
-run "train batch dispatch is skipped (members passed on their own heads)" 0 "$CSS" "x" workflow_dispatch train/batch
+run "branch dispatch checks the body" 1 "$CSS" "x" workflow_dispatch feature
+run "branch dispatch with trailer" 0 "$CSS" "$TRAILER" workflow_dispatch feature
 exit $fail

@@ -61,7 +61,7 @@ const BASELINE: Record<Rule, Record<string, number>> = {
   frame: {},
   /** None allowed. */
   pill: {},
-  /** TvStageChrome (the exempt Profiles and Clients pages). */
+  /** TvStageChrome (the exempt Profiles page). */
   chromeClass: {
     "components/tv/TvStage.tsx": 2,
   },
@@ -80,7 +80,6 @@ const BASELINE: Record<Rule, Record<string, number>> = {
     "components/tv/ListPanel.tsx": 1,
     "components/tv/TvStage.tsx": 2,
     "pages/Calendar.tsx": 4,
-    "pages/Clients.tsx": 2,
     "pages/NavPerfHarness.tsx": 1,
     "pages/Playlists.tsx": 1,
     "pages/Profiles.tsx": 1,

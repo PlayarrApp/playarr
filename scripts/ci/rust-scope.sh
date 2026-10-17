@@ -6,8 +6,7 @@
 #   openapi=true|false                                    (OpenAPI contract diff needed)
 #
 # Everything that every crate depends on (workspace manifest, lockfile, toolchain, deny config,
-# the CI workflow and this script) selects `full`, as does any event that is not a pull request
-# (pushes to main and the nightly schedule always run the full suite).
+# the CI workflow and this script) selects `full`, as does an unknown event. A push to main is scoped against the previous main tip (BEFORE_SHA).
 #
 # Inputs: CHANGED_FILES (newline list, for tests) or EVENT_NAME/BASE_REF to diff against origin.
 set -euo pipefail
@@ -17,17 +16,25 @@ full() { echo "rust_scope=full"; echo "openapi=true"; exit 0; }
 
 if [ -z "${CHANGED_FILES:-}" ]; then
   case "${EVENT_NAME:-}" in
-    pull_request | workflow_dispatch) ;;
+    pull_request | workflow_dispatch | push) ;;
     *) full ;;
   esac
   # A manual/train dispatch on main (post-merge validation) is a full run.
   [ "${EVENT_NAME:-}" = workflow_dispatch ] && [ "${GITHUB_REF_NAME:-}" = main ] && full
-  base="${BASE_REF:-main}"
-  git fetch -q --no-tags origin "$base" 2>/dev/null || full
-  # Pull requests check out a merge ref (second parent is the PR head); a dispatch checks out the
-  # branch head itself, which may be a train merge commit, so never take ^2 there.
-  if [ "${EVENT_NAME:-}" = pull_request ]; then head=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD); else head=$(git rev-parse HEAD); fi
-  CHANGED_FILES=$(git diff --name-only "origin/$base...$head") || full
+  if [ "${EVENT_NAME:-}" = push ]; then
+    # Push to main: diff against the previous tip (BEFORE_SHA); unknown history means a full run.
+    before="${BEFORE_SHA:-}"
+    case "$before" in "" | 0000000000000000000000000000000000000000) full ;; esac
+    git cat-file -e "$before^{commit}" 2>/dev/null || full
+    CHANGED_FILES=$(git diff --name-only "$before" HEAD) || full
+  else
+    base="${BASE_REF:-main}"
+    git fetch -q --no-tags origin "$base" 2>/dev/null || full
+    # Pull requests check out a merge ref (second parent is the PR head); a dispatch checks out the
+    # branch head itself, which may be a train merge commit, so never take ^2 there.
+    if [ "${EVENT_NAME:-}" = pull_request ]; then head=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD); else head=$(git rev-parse HEAD); fi
+    CHANGED_FILES=$(git diff --name-only "origin/$base...$head") || full
+  fi
 fi
 
 # Direct (workspace-internal) dependencies of every package: "<pkg> <dep>" per line.

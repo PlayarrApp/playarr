@@ -14,7 +14,7 @@ otherwise.
 ## Scope
 
 In scope: Playarr Server (`backend/`), the Playarr clients (`clients/`), the marketing site
-(`site/`) and the deployment templates in `infra/`.
+(<https://github.com/PlayarrApp/playarr-site>) and the deployment templates in `infra/`.
 
 Out of scope: vulnerabilities in third-party software (Sonarr, Radarr, Tdarr and so on), and
 deployments run by someone else. Report those to their operators.

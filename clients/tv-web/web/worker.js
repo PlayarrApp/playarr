@@ -59,132 +59,12 @@ const LINK_CLIENT_PLATFORMS = new Set([
   "xbox",
 ]);
 
-// Short, share-friendly copy for each /clients/:id page -- distinct from the
-// longer on-page install descriptions, which assume you're already reading
-// the page rather than deciding whether to click through to it. Kept here
-// rather than imported from the React app: this worker has no i18n/React
-// runtime, and social crawlers don't execute JS to pick up a client-side
-// document.title change anyway, so this is deliberately English-only static
-// copy rather than plumbing translation keys across two different runtimes.
-const CLIENTS_SOCIAL_COPY = new Map([
-  ["vidaa", {
-    name: "Hisense VIDAA",
-    description: "Install the Playarr launcher on compatible Hisense VIDAA smart TVs.",
-  }],
-  ["android", {
-    name: "Android",
-    description: "Watch Playarr on Android phones, tablets and Android TV.",
-  }],
-  ["apple", {
-    name: "Apple",
-    description: "A native Playarr app for iPhone, iPad and Apple TV is coming soon.",
-  }],
-  ["webos", {
-    name: "LG webOS",
-    description: "The complete Playarr TV experience on LG smart TVs.",
-  }],
-  ["tizen", {
-    name: "Samsung Tizen",
-    description: "The complete Playarr TV experience on Samsung smart TVs.",
-  }],
-  ["roku", {
-    name: "Roku",
-    description: "Sideload the Playarr channel on Roku televisions.",
-  }],
-  ["chromecast", {
-    name: "Chromecast",
-    description: "Casting Playarr to Chromecast built-in devices is coming soon.",
-  }],
-  ["xbox", {
-    name: "Xbox",
-    description: "A native Playarr client for Xbox Series X|S and Xbox One is coming soon.",
-  }],
-  ["harmony", {
-    name: "HarmonyOS",
-    description: "A native Playarr client for HarmonyOS is coming soon.",
-  }],
-  ["playstation", {
-    name: "PlayStation",
-    description: "A Playarr client for PlayStation consoles is being scoped.",
-  }],
-  ["firetv", {
-    name: "Fire TV",
-    description: "A native Playarr client for Amazon Fire TV is coming soon.",
-  }],
-]);
+// Marketing routes owned by the playarr-site Worker (service binding SITE). Keep in step with run_worker_first in wrangler.jsonc.
+const SITE_PATH_PATTERN =
+  /^\/(?:(?:docs|legal|features|faq|apps|integrations|clients)(?:\/.*)?|_site\/.*|robots\.txt|sitemap-[^/]+\.xml)$/;
 
-const LEGAL_SOCIAL_COPY = new Map([
-  ["/legal/privacy", {
-    title: "Privacy policy",
-    description: "How the Playarr Android app, web app, self-hosted server and public linking service handle data.",
-  }],
-  ["/legal/terms", {
-    title: "Terms of use",
-    description: "The conditions that apply when you use Playarr software and the public playarr.app service.",
-  }],
-  ["/legal/acceptable-use", {
-    title: "Acceptable use",
-    description: "The rules for using Playarr software and its public linking service.",
-  }],
-  ["/legal/licences", {
-    title: "Licences and attribution",
-    description: "Open-source licensing, required notices and third-party attribution for Playarr.",
-  }],
-  ["/legal/account-deletion", {
-    title: "Account deletion",
-    description: "How to request deletion of a Playarr account and its associated data.",
-  }],
-]);
-
-function escapeHtml(value) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/**
- * Rewrites <title> and the description/og/twitter <meta> tags in the shared
- * SPA shell to a specific client's copy, so sharing a /clients/:id link
- * shows that platform's name in the preview instead of the generic default
- * every route would otherwise fall back to -- a crawler never runs the
- * client-side JS that would set document.title for that route.
- *
- * Plain string substitution rather than HTMLRewriter: this worker has no
- * other dependency on the Workers-runtime-specific HTML parser, and a
- * regex swap of a handful of exact, self-authored tags in a template this
- * file also owns is simple to get right and, unlike HTMLRewriter, runs
- * anywhere -- including this project's plain-Node vitest suite, with no
- * Workers runtime polyfill needed just to test it.
- */
-function renderPageMeta(html, titleText, descriptionText, canonicalPath, url) {
-  const title = escapeHtml(titleText);
-  const description = escapeHtml(descriptionText);
-  const canonicalUrl = escapeHtml(new URL(canonicalPath, url).toString());
-
-  return html
-    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
-    .replace(
-      /(<meta\s+name="description"\s+content=")[^"]*(")/,
-      `$1${description}$2`
-    )
-    .replace(/(<meta\s+property="og:title"\s+content=")[^"]*(")/, `$1${title}$2`)
-    .replace(
-      /(<meta\s+property="og:description"\s+content=")[^"]*(")/,
-      `$1${description}$2`
-    )
-    .replace(/(<meta\s+property="og:url"\s+content=")[^"]*(")/, `$1${canonicalUrl}$2`)
-    .replace(/(<meta\s+name="twitter:title"\s+content=")[^"]*(")/, `$1${title}$2`)
-    .replace(
-      /(<meta\s+name="twitter:description"\s+content=")[^"]*(")/,
-      `$1${description}$2`
-    );
-}
-
-function renderClientMeta(html, clientId, copy, url) {
-  const title = `Playarr for ${copy.name}`;
-  return renderPageMeta(html, title, copy.description, `/clients/${clientId}`, url);
+function isSitePath(pathname) {
+  return SITE_PATH_PATTERN.test(pathname);
 }
 
 /**
@@ -212,50 +92,6 @@ async function storybookResponse(url, env, request) {
   if (isHtml || url.pathname.endsWith("/index.json")) headers.set("Cache-Control", "no-cache");
   else if (url.pathname.startsWith("/storybook/assets/")) headers.set("Cache-Control", "public, max-age=31536000, immutable");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-}
-
-/** The bare /clients index redirects to this client's own page client-side (see ClientsPage in Clients.tsx) -- a crawler never runs that redirect, so this is what it should see instead. */
-const CLIENTS_INDEX_REDIRECT_TARGET = "vidaa";
-
-async function clientPageResponse(clientId, url, env, request) {
-  // Deliberately NOT env.ASSETS.fetch(new Request(new URL("/index.html", url), ...)):
-  // an explicit, literal "/index.html" request is auto-redirected (307, to
-  // "/") by Cloudflare's static-asset serving -- the same normalisation
-  // that turns a request for "/cast/index.html" into a 307 to "/cast/". A
-  // request for a path that *doesn't* correspond to a real file (which
-  // "/clients", "/clients/roku", or "/clients/roku/" never do) instead
-  // takes the SPA fallback and gets the real index.html content directly,
-  // with no redirect -- so fetch the actual incoming path/method here, not
-  // a hardcoded filename.
-  const response = await env.ASSETS.fetch(new Request(url, { method: request.method }));
-  const copy = CLIENTS_SOCIAL_COPY.get(clientId);
-  if (!copy) return response;
-  const html = await response.text();
-  const headers = new Headers(response.headers);
-  // The rewritten body below is neither the original length nor encoding.
-  headers.delete("Content-Length");
-  headers.delete("Content-Encoding");
-  return new Response(renderClientMeta(html, clientId, copy, url), {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
-
-async function legalPageResponse(pathname, copy, url, env, request) {
-  const response = await env.ASSETS.fetch(new Request(url, { method: request.method }));
-  const html = await response.text();
-  const headers = new Headers(response.headers);
-  headers.delete("Content-Length");
-  headers.delete("Content-Encoding");
-  return new Response(
-    renderPageMeta(html, `${copy.title} · Playarr`, copy.description, pathname, url),
-    {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    }
-  );
 }
 
 function json(body, init = {}) {
@@ -716,22 +552,24 @@ export default {
     if (url.pathname === "/storybook" || url.pathname.startsWith("/storybook/")) {
       return storybookResponse(url, env, request);
     }
-    if (url.pathname === "/clients") {
-      return clientPageResponse(CLIENTS_INDEX_REDIRECT_TARGET, url, env, request);
+    if (url.pathname === "/download" || url.pathname === "/install") {
+      return new Response(null, { status: 301, headers: { Location: "/clients" } });
     }
-    if (url.pathname.startsWith("/clients/")) {
-      // Strip a trailing slash ("/clients/roku/" -> "roku", not "roku/") so
-      // it still matches a real id -- react-router itself already tolerates
-      // the slash (confirmed via matchPath), so this only affects which
-      // meta tags a crawler sees, not what a real visitor's browser renders.
-      const clientId = url.pathname.slice("/clients/".length).replace(/\/+$/, "");
-      return clientPageResponse(clientId, url, env, request);
+    if (url.pathname === "/") {
+      // The marketing site is for signed-out visitors only. The cookie is a routing hint set by the app, never a credential.
+      const signedIn = /(?:^|;\s*)playarr_signed_in=1(?:;|$)/.test(request.headers.get("Cookie") ?? "");
+      const upstream = env.SITE && !signedIn ? env.SITE : env.ASSETS;
+      const response = await upstream.fetch(request);
+      const headers = new Headers(response.headers);
+      headers.append("Vary", "Cookie");
+      headers.set("Cache-Control", "no-cache");
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
     }
-    const legalPath = url.pathname.replace(/\/+$/, "") || "/";
-    const legalCopy = LEGAL_SOCIAL_COPY.get(legalPath);
-    if (legalCopy) {
-      return legalPageResponse(legalPath, legalCopy, url, env, request);
-    }
+    if (env.SITE && isSitePath(url.pathname)) return env.SITE.fetch(request);
     if (url.pathname === "/cast") {
       return new Response(null, {
         status: 301,

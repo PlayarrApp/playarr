@@ -144,6 +144,7 @@ const metadata = {
   bindings: [
     { name: "RELAY_ZONE_ID", type: "plain_text", text: relayZoneId },
     { name: "ASSETS", type: "assets" },
+    { name: "SITE", type: "service", service: "playarr-site" },
     {
       name: "LINK_SESSIONS",
       type: "durable_object_namespace",
@@ -158,15 +159,32 @@ const metadata = {
         : {}),
       not_found_handling: "single-page-application",
       run_worker_first: [
+        "/",
         "/api/*",
+        "/apps",
+        "/apps/*",
         "/cast",
         "/cast/*",
         "/clients",
         "/clients/*",
+        "/docs",
+        "/docs/*",
+        "/download",
         "/downloads/*",
+        "/faq",
+        "/faq/*",
+        "/features",
+        "/features/*",
+        "/install",
+        "/integrations",
+        "/integrations/*",
+        "/legal",
         "/legal/*",
+        "/robots.txt",
+        "/sitemap-*",
         "/storybook",
         "/storybook/*",
+        "/_site/*",
       ],
     },
   },
@@ -208,7 +226,7 @@ async function verifyPublicLegalPage() {
       const isPublicPolicy =
         response.status === 200 &&
         !response.headers.has("Location") &&
-        body.includes("<title>Privacy policy · Playarr</title>");
+        /<title>[^<]*Privacy[^<]*<\/title>/i.test(body);
       if (isPublicPolicy) return;
       lastResult = `HTTP ${response.status}, title=${body.match(/<title>([^<]*)<\/title>/)?.[1] ?? "missing"}`;
     } catch (error) {

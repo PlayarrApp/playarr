@@ -6,7 +6,7 @@ bind a retained local PersistentVolume to the instance's existing data path.
 
 The chart never creates Secrets. Supply `existingSecret` out of band with the
 existing instance's database and authentication settings. Environment-specific
-host paths and node names belong in the deployment repository, not here.
+host paths and node names belong in your own private deployment configuration, not here.
 
 For an in-place adoption:
 

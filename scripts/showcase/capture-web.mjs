@@ -1,7 +1,7 @@
-// Captures the public web screenshots (README, site) from a running showcase (up.sh) and a served web client.
+// Captures the public web screenshots (README) from a running showcase (up.sh) and a served web client.
 //
 //   node scripts/showcase/capture-web.mjs --web http://127.0.0.1:18813 --admin http://127.0.0.1:18810 \
-//        --password-file <path> [--only readme,site]
+//        --password-file <path> [--only readme]
 //
 // Serve the built web client first: (cd clients/tv-web/web && pnpm exec vite preview --host 127.0.0.1 --port 18813 --strictPort).
 // Needs Chromium: PLAYARR_CHROMIUM=/path/to/chrome, else the Playwright-managed browser is used.
@@ -20,9 +20,8 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, all) => (
 const WEB = args.web ?? "http://127.0.0.1:18813";
 const SERVER = args.admin ?? "http://127.0.0.1:18810";
 const password = fs.readFileSync(args["password-file"], "utf8").trim();
-const only = (args.only ?? "readme,site").split(",");
+const only = (args.only ?? "readme").split(",");
 const README = path.join(root, "docs/assets/readme/screenshots");
-const SITE = path.join(root, "site/src/assets/screenshots");
 
 async function api(method, p, body, token) {
   const res = await fetch(`${SERVER}/api/v1${p}`, { method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body && JSON.stringify(body) });
@@ -79,24 +78,5 @@ if (only.includes("readme")) {
   await ctx.close();
 }
 
-if (only.includes("site")) {
-  const p = await session(1920, 1080);
-  await shoot(p, "/movies", path.join(SITE, "playarr-movies-library.png"));
-  await shoot(p, `/series/${id("Caminandes")}`, path.join(SITE, "playarr-series-detail.png"));
-  await shoot(p, `/movies/${id("Tears of Steel")}`, path.join(SITE, "playarr-movie-detail.png"));
-  await p.context().close();
-  const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, colorScheme: "dark" });
-  const a = await ctx.newPage();
-  await a.goto(`${SERVER}/login`, { waitUntil: "load" });
-  await a.locator("input").nth(0).fill("demo");
-  await a.locator("input[type=password]").fill(password);
-  await a.locator("button[type=submit]").click();
-  await a.waitForTimeout(3500);
-  await a.goto(`${SERVER}/`, { waitUntil: "load" });
-  await a.waitForTimeout(3500);
-  await a.screenshot({ path: path.join(SITE, "playarr-server-admin.png") });
-  console.log("wrote site/src/assets/screenshots/playarr-server-admin.png");
-  await ctx.close();
-}
 await browser.close();
 writeManifest(root);
