@@ -333,8 +333,8 @@ export async function createDriver() {
     async stop() {
       closeCdp();
       // The TV's inspector proxy never completes the WebSocket close handshake, so its sockets keep node alive after the run;
-      // the unref'd timer does not delay a normal exit and ends the process once everything else is done.
-      if (process.env.WEBOS_REAL === "1") setTimeout(() => process.exit(process.exitCode ?? 0), 2000).unref();
+      // the unref'd timer ends the process once everything else is done. It waits 90 s so the capture-state restore (account progress) finishes first.
+      if (process.env.WEBOS_REAL === "1") setTimeout(() => process.exit(process.exitCode ?? 0), 90000).unref();
     },
     async setTheme(t) {
       await guard();
