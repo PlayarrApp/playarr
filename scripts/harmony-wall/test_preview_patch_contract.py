@@ -107,7 +107,13 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("rail-list-height-default-fill", self.patch_rail)
         self.assertNotIn("@Prop onPreview", card_transform + self.patch_rail)
         self.assertNotRegex(card_transform + self.patch_rail, r"@Prop\s+\w+\s*:\s*\([^\n]*=>")
-
+    def test_phone_focus_selection_uses_profile_and_rejects_offscreen_rail_cards(self):
+        route_source = (HERE / "patch_route.py").read_text(encoding="utf-8")
+        self.assertIn("import { isTvMetrics } from '../design/Metrics';", route_source)
+        self.assertIn("previewFocusFirstCard(isTvMetrics())", route_source)
+        self.assertIn("export function previewFocusFirstCard(tvMode: boolean)", self.preview_state)
+        self.assertIn("selectPreviewCard(PREVIEW_CARDS, tvMode)", self.preview_state)
+        self.assertNotIn("maxX >= 500", self.preview_state)
 
     def test_observed_artwork_store_is_rendered_by_concrete_poster_child(self):
         self.assertIn("@Observed\nclass DetailArtworkStore", self.detail_source)
@@ -260,7 +266,7 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("this.episodeFocusGate.rollbackRequest()", focus_branch)
         self.assertIn("reportDetailEpisodeCardContainerAreaForScope('Detail', workId, episodeId, this.previewScopeGeneration", transformed)
         self.assertNotIn("reportDetailEpisodeCardContainerAreaForScope('Detail', workId, episodeId, generation", transformed)
-        self.assertIn("reportDetailSeriesTargetCardVisibilityForScope('Detail', workId, generation", focus_branch)
+        self.assertIn("reportDetailSeriesTargetCardVisibilityForScope('Detail', workId, this.previewScopeGeneration", focus_branch)  # the bridge scopes by the preview route generation
         self.assertIn("if (cardMeasurement === undefined || cardMeasurement === null || card === undefined || card === null ||", focus_branch)
         self.assertIn("rail === undefined || rail === null || page === undefined || page === null ||", focus_branch)
         self.assertIn("!Number.isFinite(pageOffset)", focus_branch)
@@ -342,7 +348,7 @@ class PreviewPatchContractTests(unittest.TestCase):
                 self.assertEqual(first_application.count("reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'on-complete')"), 1)
                 self.assertNotIn("previewEpisodeCard", first_application)
                 self.assertIn("reportDetailEpisodeCardAreaForMeasurement(this.getUIContext()", first_application)
-                self.assertIn("this.previewRailId, this.previewOccurrence, this.measurementId", first_application)
+                self.assertIn("this.previewRailId, this.previewOccurrence, this.imageMeasurementId", first_application)
                 self.assertNotIn("area.globalPosition", first_application)
                 self.assertLess(first_application.index("@Prop previewOccurrence"),
                                 first_application.index("@Prop @Watch('previewArtworkUpdated') artwork"))
@@ -470,11 +476,14 @@ class PreviewPatchContractTests(unittest.TestCase):
         workflow = (HERE.parents[1] / ".github/workflows/harmony-wall.yml").read_text(encoding="utf-8")
         render_step = workflow.split("- name: Start the bridge and the Previewer, sign in and capture", 1)[1].split(
             "- name: Upload the captures", 1)[0]
-        self.assertIn("SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}", render_step)
+        self.assertIn("SERVER_URL: ${{ secrets.PLAYARR_HARMONY_TEST_SERVER_URL || secrets.PLAYARR_TEST_SERVER_URL || secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}", render_step)
         self.assertLess(render_step.index("backend_preflight.py --output backend-preflight.json"),
+                        render_step.index("fixture_preflight.py --output fixture-preflight.json"))
+        self.assertLess(render_step.index("fixture_preflight.py --output fixture-preflight.json"),
                         render_step.index("launch() {"))
         debug_artifact = workflow.split("- name: Upload the debug frames and logs", 1)[1]
         self.assertIn("backend-preflight.json", debug_artifact)
+        self.assertIn("fixture-preflight.json", debug_artifact)
         self.assertIn("capture/backend-preflight-*.json", debug_artifact)
 
     def test_detail_route_confirmation_is_recorded_before_visual_acceptance_gate(self):
@@ -497,6 +506,9 @@ class PreviewFocusLookTests(unittest.TestCase):
         poster = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/design/components/PosterCard.ets").read_text(encoding="utf-8")
         patched = patch_state.card(poster)
         self.assertIn("previewRegisterCard", patched)
-        self.assertIn("(this.ringOn || this.previewRingOn) ? 1 : 0", patched)
+        self.assertIn("return Math.max(this.effective(), this.ringOn ? 1 : 0, !isTvMetrics() && this.previewRingOn ? 1 : 0);", patched)
+        self.assertIn("private effective(): number {\n    return Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), isTvMetrics() && this.previewRingOn ? 1 : 0);", patched)
+        self.assertIn(".opacity(this.visualFocus())", patched)
+        self.assertNotIn(".border({ width: isTvMetrics() ? 0 : 3", patched)
         self.assertIn("previewCardMoved(this.previewCardEntry, area);", patched)
         self.assertNotIn("previewRingOn", poster)  # production source is untouched

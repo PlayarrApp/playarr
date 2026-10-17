@@ -54,6 +54,44 @@ pub fn markup(name: &str) -> &'static str {
         "check" => r#"<path d="m5 12.5 4.5 4.5L19 7.5"/>"#,
         "close" => r#"<path d="M6 6l12 12M18 6 6 18"/>"#,
         "list" => r#"<path d="M5 7h14M5 12h14M5 17h14"/>"#,
+        // The web player's control icons (components/player/PlayerIcons.tsx and the play-on button).
+        "p-play" => r#"<path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/>"#,
+        "p-pause" => {
+            r#"<g fill="currentColor" stroke="none"><rect x="6" y="4.5" width="4.5" height="15" rx="1"/><rect x="13.5" y="4.5" width="4.5" height="15" rx="1"/></g>"#
+        }
+        "p-prev" => {
+            r#"<g fill="currentColor" stroke="none"><rect x="4.5" y="5" width="2.4" height="14" rx="1"/><path d="M19.5 5.5v13L8.2 12z"/></g>"#
+        }
+        "p-next" => {
+            r#"<g fill="currentColor" stroke="none"><rect x="17.1" y="5" width="2.4" height="14" rx="1"/><path d="M4.5 5.5v13L15.8 12z"/></g>"#
+        }
+        "p-volume" => {
+            r#"<path d="M4 9.5v5h4l5 4V5.5l-5 4z" fill="currentColor" stroke="none"/><path d="M17 8.5a5 5 0 0 1 0 7"/><path d="M19.7 6a9 9 0 0 1 0 12"/>"#
+        }
+        "p-muted" => {
+            r#"<path d="M4 9.5v5h4l5 4V5.5l-5 4z" fill="currentColor" stroke="none"/><path d="M16 10.5 21 15.5"/><path d="M21 10.5 16 15.5"/>"#
+        }
+        "p-audio" => {
+            r#"<path d="M5 9.5v5h4l4.5 3.5V6L9 9.5z" fill="currentColor" stroke="none"/><path d="M16.5 9a4.5 4.5 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/>"#
+        }
+        "p-subtitles" => {
+            r#"<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M6.5 12h4M13.5 12h4M6.5 15.5h7M15.5 15.5h2"/>"#
+        }
+        "p-queue" => {
+            r#"<path d="M4 6.5h10M4 11.5h10M4 16.5h7"/><path d="m16 14 4 2.5-4 2.5z" fill="currentColor" stroke="none"/>"#
+        }
+        "p-info" => {
+            r#"<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none"/>"#
+        }
+        "p-devices" => {
+            r#"<rect x="2.5" y="5" width="13" height="9" rx="1.2"/><path d="M6 18h6M9 14v4"/><rect x="17" y="9" width="5" height="10" rx="1.2"/>"#
+        }
+        "p-fullscreen" => {
+            r#"<path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9"/><path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9"/><path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15"/><path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>"#
+        }
+        "p-fullscreen-exit" => {
+            r#"<path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4"/><path d="M15 4v3.5A1.5 1.5 0 0 0 16.5 9H20"/><path d="M20 15h-3.5a1.5 1.5 0 0 0-1.5 1.5V20"/><path d="M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20"/>"#
+        }
         _ => r#"<circle cx="12" cy="12" r="8"/>"#,
     }
 }
@@ -179,6 +217,19 @@ mod tests {
             "calendar",
             "filters",
             "back",
+            "p-play",
+            "p-pause",
+            "p-prev",
+            "p-next",
+            "p-volume",
+            "p-muted",
+            "p-audio",
+            "p-subtitles",
+            "p-queue",
+            "p-info",
+            "p-devices",
+            "p-fullscreen",
+            "p-fullscreen-exit",
         ] {
             assert!(super::markup(n).contains('<'), "{n}");
         }

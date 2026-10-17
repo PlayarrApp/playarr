@@ -109,6 +109,8 @@ const PHONE_PILL_SIZE: number = 11.2;
 const PHONE_PILL_HEIGHT: number = 22.5;
 const PHONE_DAY_HEADING_SIZE: number = 14.4;
 const PHONE_ENTRY_GAP: number = 15;
+const PHONE_ENTRY_TEXT_GAP: number = 3;
+const PHONE_AGENDA_CARD_MIN_WIDTH: number = 390;
 const PHONE_CONTROL_FONT: number = 11.2;
 const ENTRY_META_GAP: number = 12;
 // Web `.status-pill`: 13.44/750, tone at 14% over the surface with a 60% tone border.
@@ -147,14 +149,17 @@ const WEEK_HEADING_GAP: number = 6;
 const MONTH_HEAD_HEIGHT: number = 31;
 const MONTH_WEEKDAY_SIZE: number = 12;
 const MONTH_LINE_HEIGHT: number = 25;
+const TOUCH_MONTH_LINE_HEIGHT: number = 22;
 const MONTH_LINE_SIZE: number = 12.48;
 const MONTH_DOT_SIZE: number = 9;
 const MONTH_FOOT_HEIGHT: number = 44;
+/** Conservative phone cell inset: 2vp top padding plus a 2vp border on each edge. */
+const TOUCH_MONTH_CELL_VERTICAL_INSET: number = 6;
 const MONTH_CELL_PADDING: number = 5;
 const MONTH_DAY_SIZE: number = 12.8;
 
-/** Phone month cell height: two event lines and the day footer. */
-const TOUCH_MONTH_CELL_HEIGHT: number = 112;
+/** Web phone month track minimum width, shared by the weekday header and every week row. */
+const TOUCH_MONTH_GRID_MIN_WIDTH: number = 720;
 
 // Web drawer: 30 px between filter sections; choice tiles 56 px, 12 px radius, 10.56 px labels, 268 wide.
 const FILTER_SECTION_GAP: number = 30;
@@ -200,6 +205,7 @@ export struct ReleaseCalendar {
 
   @State private today: string = localDayOf(new Date());
   @State private anchor: string = localDayOf(new Date());
+  @State private touchMonthViewportHeight: number = 0;
   @State private view: CalendarView = 'agenda';
   @State private filtersOpen: boolean = false;
   @State private linkOpen: boolean = false;
@@ -345,7 +351,7 @@ export struct ReleaseCalendar {
   }
 
   @Builder
-  private entryCard(item: CalendarItem, width: number): void {
+  private entryCard(item: CalendarItem, width: number, phoneMinWidth: number = 0, phoneTextGap: number = 0): void {
     Row({ space: tv(POSTER_GAP) }) {
       Image(item.entries[0].poster_url !== undefined && item.entries[0].poster_url !== null ? item.entries[0].poster_url : '')
         .width(tv(POSTER_WIDTH))
@@ -353,7 +359,7 @@ export struct ReleaseCalendar {
         .borderRadius(tv(POSTER_RADIUS))
         .objectFit(ImageFit.Cover)
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-      Column() {
+      Column({ space: isTvMetrics() ? 0 : phoneTextGap }) {
         Text(item.title).fontFamily(nunito(500))
           .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
@@ -381,6 +387,7 @@ export struct ReleaseCalendar {
       .layoutWeight(1)
     }
     .width(isTvMetrics() ? tv(width) : '100%')
+    .constraintSize({ minWidth: isTvMetrics() ? 0 : phoneMinWidth })
     .height(isTvMetrics() ? tv(ENTRY_HEIGHT) : (itemSubtitle(item).length > 0 ? PHONE_ENTRY_HEIGHT : PHONE_ENTRY_HEIGHT_NO_SUBTITLE))
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
@@ -402,6 +409,17 @@ export struct ReleaseCalendar {
       this.select(item);
       this.openEntry(item.entries[0]);
     })
+  }
+
+  @Builder
+  private phoneAgendaCard(item: CalendarItem): void {
+    Scroll() {
+      this.entryCard(item, 0, PHONE_AGENDA_CARD_MIN_WIDTH, PHONE_ENTRY_TEXT_GAP)
+    }
+    .scrollable(ScrollDirection.Horizontal)
+    .scrollBar(BarState.Off)
+    .edgeEffect(EdgeEffect.None)
+    .width('100%')
   }
 
   @Builder
@@ -527,7 +545,7 @@ export struct ReleaseCalendar {
               .textOverflow({ overflow: TextOverflow.Ellipsis })
               .layoutWeight(1)
           }
-          .height(tv(MONTH_LINE_HEIGHT))
+          .height(isTvMetrics() ? tv(MONTH_LINE_HEIGHT) : TOUCH_MONTH_LINE_HEIGHT)
           .width('100%')
           .padding({ left: isTvMetrics() ? tv(6) : 2 })
         }, (item: CalendarItem): string => item.key)
@@ -550,7 +568,7 @@ export struct ReleaseCalendar {
       .padding({ left: tv(6) })
     }
     .layoutWeight(1)
-    .height(tv(cellHeight))
+    .height(isTvMetrics() ? tv(cellHeight) : '100%')
     .padding({ left: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, right: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, top: tv(2) })
     .backgroundColor(cell.inMonth ? Color.Transparent : toResourceColorWithAlpha(activeColors().surfaceSoft, 0.4))
     .border({
@@ -560,7 +578,12 @@ export struct ReleaseCalendar {
   }
 
   private monthLinesFor(cellHeight: number): number {
-    return Math.max(1, Math.floor((cellHeight - MONTH_FOOT_HEIGHT - 2) / MONTH_LINE_HEIGHT));
+    if (isTvMetrics()) {
+      return Math.max(1, Math.floor((cellHeight - MONTH_FOOT_HEIGHT - 2) / MONTH_LINE_HEIGHT));
+    }
+    // Match Web's content-room calculation, excluding phone padding and a conservative max border.
+    const phoneRoom: number = cellHeight - TOUCH_MONTH_CELL_VERTICAL_INSET;
+    return Math.max(0, Math.floor((phoneRoom - MONTH_FOOT_HEIGHT - 2) / TOUCH_MONTH_LINE_HEIGHT));
   }
 
   @Builder
@@ -919,7 +942,7 @@ export struct ReleaseCalendar {
     }
     .width('100%')
     .justifyContent(FlexAlign.Center)
-    .padding({ bottom: 12 })
+    .padding({ top: this.view === 'month' ? 14 : 0, bottom: 12 })
   }
 
   @Builder
@@ -960,7 +983,7 @@ export struct ReleaseCalendar {
             Column({ space: PHONE_ENTRY_GAP }) {
               this.dayHeader(group.day)
               ForEach(groupSeriesEpisodes(group.entries), (item: CalendarItem) => {
-                this.entryCard(item, 0)
+                this.phoneAgendaCard(item)
               }, (item: CalendarItem): string => item.key)
             }
             .alignItems(HorizontalAlign.Start)
@@ -970,7 +993,7 @@ export struct ReleaseCalendar {
       .width('100%')
       .layoutWeight(1)
       .padding({ left: 16, right: 16, bottom: 16 })
-      .margin({ top: -5 })
+      .margin({ top: -12 })
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
     }
@@ -1035,20 +1058,38 @@ export struct ReleaseCalendar {
         ForEach(buildMonthGrid(this.anchor, this.groups, this.today), (week: CalendarCell[]) => {
           Row() {
             ForEach(week, (cell: CalendarCell) => {
-              this.monthCell(cell, TOUCH_MONTH_CELL_HEIGHT)
+              this.monthCell(cell, this.touchMonthCellHeight())
             }, (cell: CalendarCell): string => cellKey(cell))
           }
           .width('100%')
+          .layoutWeight(1)
         }, (week: CalendarCell[]): string => week.map((cell: CalendarCell): string => cellKey(cell)).join('|'))
       }
       .width('100%')
-      .padding({ left: 8, right: 8, bottom: 16 })
+      .height('100%')
+      .constraintSize({ minWidth: tv(TOUCH_MONTH_GRID_MIN_WIDTH) })
     }
+    .scrollable(ScrollDirection.Horizontal)
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
     .align(Alignment.TopStart)
     .width('100%')
     .layoutWeight(1)
+    .padding({ left: 16, right: 16 })
+    .onAreaChange((_oldArea: Area, area: Area) => {
+      const height: number = Number.parseFloat(String(area.height));
+      if (height > 0 && Math.abs(height - this.touchMonthViewportHeight) > 0.5) {
+        this.touchMonthViewportHeight = height;
+      }
+    })
+  }
+
+  private touchMonthCellHeight(): number {
+    const weekCount: number = buildMonthGrid(this.anchor, this.groups, this.today).length;
+    if (weekCount <= 0 || this.touchMonthViewportHeight <= 0) {
+      return 0;
+    }
+    return Math.max(0, (this.touchMonthViewportHeight - MONTH_HEAD_HEIGHT) / weekCount);
   }
 
   @Builder
@@ -1139,6 +1180,9 @@ export struct ReleaseCalendar {
         touchActions: (): void => {
           this.touchActionButtons();
         },
+        touchOverlay: (): void => {
+          this.touchOverlays();
+        },
         selectedId: CALENDAR_NAV_ID,
         content: (): void => {
           this.pageContent();
@@ -1147,9 +1191,6 @@ export struct ReleaseCalendar {
           this.pageControls();
         },
       })
-      if (!isTvMetrics()) {
-        this.touchOverlays()
-      }
       }
       .width('100%')
       .height('100%')

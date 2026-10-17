@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """Approve a device code (RFC 8628 user_code shown by the app) as the Device Test account.
 Environment: SERVER_URL, TEST_USERNAME, TEST_PASSWORD. Usage: approve_link.py <user_code>. Prints statuses only, never a value."""
-import json, os, sys, urllib.error, urllib.request
+import argparse, hashlib, json, os, sys, urllib.error, urllib.request
+from capture_identity import authorize_after_identity_setup
+
+parser = argparse.ArgumentParser()
+parser.add_argument("user_code")
+parser.add_argument("--identity-control-url")
+args = parser.parse_args()
 
 server = os.environ["SERVER_URL"].strip().rstrip("/")
 
@@ -27,6 +33,18 @@ print("login", status)
 if status != 200:
     sys.exit(1)
 token = json.loads(out)["access_token"]
-status, _ = call("/api/v1/oauth/device/authorize", {"user_code": sys.argv[1]}, token)
+user_id = json.loads(out).get("user_id")
+if not isinstance(user_id, str) or not user_id:
+    print("identity digest unavailable")
+    sys.exit(1)
+identity_digest = hashlib.sha256(user_id.encode()).hexdigest()
+try:
+    status, _ = authorize_after_identity_setup(args.user_code, token, identity_digest,
+                                               args.identity_control_url, call)
+except (OSError, ValueError):
+    print("identity control unavailable")
+    sys.exit(1)
 print("authorize", status)
+if status in (200, 204):
+    print("IDENTITY_SHA256=" + identity_digest)
 sys.exit(0 if status in (200, 204) else 1)

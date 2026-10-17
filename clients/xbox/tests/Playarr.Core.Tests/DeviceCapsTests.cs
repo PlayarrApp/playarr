@@ -64,5 +64,17 @@ namespace Playarr.Core.Tests
             Assert.False(error.IsRetryable);
             Assert.True(ApiException.ForStatus(System.Net.HttpStatusCode.ServiceUnavailable, null).IsRetryable);
         }
+
+        [Fact]
+        public void SafeDiagnosticCodeOmitsServerErrorDetails()
+        {
+            var error = ApiException.ForStatus((System.Net.HttpStatusCode)404,
+                new ApiErrorBody { Error = "media_missing", Message = "private fixture details" });
+
+            Assert.Equal("http-404", error.SafeDiagnosticCode());
+            Assert.DoesNotContain("private", error.SafeDiagnosticCode());
+            Assert.Equal("transport", new ApiException(ApiErrorKind.Transport, "private URL").SafeDiagnosticCode());
+            Assert.Equal("invalid-payload", new ApiException(ApiErrorKind.Decoding, "private payload").SafeDiagnosticCode());
+        }
     }
 }
