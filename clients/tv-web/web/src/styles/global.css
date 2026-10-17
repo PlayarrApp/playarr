@@ -6359,9 +6359,9 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   white-space: nowrap;
 }
 
+/* No own entry animation (see .tv-home-feature): the route transition fades the page body once. */
 .tv-detail-copy {
   z-index: 12;
-  animation: tv-copy-in 520ms 80ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 /* The nav rail (z 90) would crop the focus ring of the first action on the left: lift the column above it while one of its controls has keyboard focus. */

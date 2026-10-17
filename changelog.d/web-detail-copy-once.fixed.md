@@ -1,0 +1,1 @@
+- Web: the film and series detail copy no longer shows, hides and animates in again on navigation; it fades in once with the page.
