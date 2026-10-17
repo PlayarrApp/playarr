@@ -2509,20 +2509,27 @@ struct Detail {
           .alignItems(HorizontalAlign.Start)
 
           // the TV page's rails, Chapters and Cast column, one copy: its sizes are web CSS px, which are vp here
-          Column() {
-            this.tvRightColumn()
+          // web phone: the rails sit on a glass panel that fades in from the left edge, bleeding to both sides.
+          // The panel is a sibling layer behind the rails, not their parent: a gradient parent left the episode art unpainted.
+          Stack({ alignContent: Alignment.TopStart }) {
+            Column()
+              .width('100%')
+              .height('100%')
+              .linearGradient({
+                direction: GradientDirection.Right,
+                colors: resolvedThemeMode() === 'dark' ?
+                  [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
+                  [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
+              })
+            Column() {
+              this.tvRightColumn()
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+            .padding({ top: 36, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
           }
-          .width('100%')
-          .alignItems(HorizontalAlign.Start)
-          // web phone: the rails sit on a glass panel that fades in from the left edge, bleeding to both sides
-          .padding({ top: 36, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
-          .margin({ left: -atLeast(16, this.safeLeft), right: -atLeast(16, this.safeRight) })
-          .linearGradient({
-            direction: GradientDirection.Right,
-            colors: resolvedThemeMode() === 'dark' ?
-              [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
-              [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
-          })
+          .width(`calc(100% + ${atLeast(16, this.safeLeft) + atLeast(16, this.safeRight)}vp)`)
+          .margin({ left: -atLeast(16, this.safeLeft) })
         }
         .padding({
           top: TOUCH_TEXT_TOP,
