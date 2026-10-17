@@ -1,0 +1,2 @@
+- Web: the Home and library hero copy no longer shows, hides and animates in again on navigation; it now fades in once with the page.
+- Web: navigating to another page now starts every scroll container at the top on the first frame, and library pages no longer carry the alphabet letter across routes.

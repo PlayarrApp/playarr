@@ -5216,7 +5216,6 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
 
 .tv-library-preview {
   z-index: 7;
-  animation: tv-preview-expand 520ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .tv-home-feature h2,
@@ -5696,9 +5695,10 @@ body[data-input-mode="remote"] .tv-search-result[data-remote-active] .tv-search-
   color: var(--ink);
 }
 
+/* No own entry animation on the hero copy (home feature, library preview): the route transition (page-layout.css) fades
+   the whole body once. A second keyframe here restarted when the route token expired: visible, hidden, animate in. */
 .tv-home-feature {
   z-index: 8;
-  animation: tv-copy-in 520ms 80ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .tv-playlists .tv-media-track-heading {
@@ -9729,8 +9729,7 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .tv-key-art {
   animation: android-tv-stage-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .home-feature-art,
-html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .tv-library-preview {
+html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .home-feature-art {
   animation: android-tv-rise-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
