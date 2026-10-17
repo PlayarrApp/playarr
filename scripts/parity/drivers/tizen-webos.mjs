@@ -562,7 +562,17 @@ export async function createDriver({ env = process.env, secrets, fetchImpl = fet
         still = now && now === last ? still + 1 : 0; last = now; await sleep(1500);
       }
       console.log(`  home first card: ${last.split("|")[0]}`);
-      await sleep(3500); // the key handler attaches a moment after the first focus
+      // The app keeps fetching for several seconds after the first card holds focus, and a Left sent meanwhile is dropped
+      // (the nav move never lands). Wait until the page's resource count holds still, not for a fixed time.
+      let quiet = 0, seen = null;
+      for (let i = 0; i < 40 && quiet < 3; i += 1) {
+        await sleepImpl(1000);
+        const count = await ev('performance.getEntriesByType("resource").length');
+        quiet = count === seen ? quiet + 1 : 0; seen = count;
+      }
+      if (quiet < 3) throw new Error("home never stopped loading resources");
+      // Rails reorder while they fill, which leaves focus on whichever card moved: start every key script from the first card.
+      if (!(await ev('(() => { const card = document.querySelector(".tv-home-card"); if (!card) return false; card.focus({ preventScroll: true }); return document.activeElement === card; })()'))) throw new Error("home first card did not take focus");
       await guard();
       await routeReady("/");
       await guard();
