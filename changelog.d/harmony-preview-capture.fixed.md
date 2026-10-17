@@ -1,0 +1,1 @@
+- Harmony preview captures now stop on the first failure, verify the signed-in Device Test account before capture input or screenshots, and refuse to capture when canonical watch-progress seeding fails.
