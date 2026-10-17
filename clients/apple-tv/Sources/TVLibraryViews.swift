@@ -2381,7 +2381,7 @@ struct TVLibraryKindView: View {
             let page = try await api.browseCatalog(kind: workKind, sort: sort, order: order, audioLang: audioLangs, subtitleLang: subtitleLangs, limit: 48, offset: 0)
             #if DEBUG && (os(tvOS) || os(macOS))
             TVParityState.note("page \(page.items.count)/\(page.total ?? -1)")
-            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: loadLease), !Task.isCancelled else { TVParityState.note("load abort B cancelled=\(Task.isCancelled)"); return }
+            guard TVParityState.canContinueProductLoad(activeCapture: parityCaptureActive, lease: loadLease), !Task.isCancelled else { TVParityState.note("load abort B cancelled=\(Task.isCancelled) \(TVParityState.leaseDescription(loadLease))"); return }
             #endif
             items = page.items
             total = page.total.map(Int.init)

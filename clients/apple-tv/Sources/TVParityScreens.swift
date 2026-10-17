@@ -470,6 +470,9 @@ enum TVParityState {
     private static var heartbeat: Timer?
     /// Diagnosis for readiness stalls: the last library-load events, shown in the driver's timeout error.
     private static var trace: [String] = []
+    static func leaseDescription(_ lease: TVParityReadinessLease?) -> String {
+        "lease=\(lease.map { "\($0.generation)@\($0.routeKey)" } ?? "nil") held=\(contentLease.map { "\($0.generation)@\($0.routeKey)" } ?? "nil") key=\(contentRouteKey)"
+    }
     static func note(_ event: String) {
         trace.append("\(contentGeneration):\(event)")
         if trace.count > 14 { trace.removeFirst() }
