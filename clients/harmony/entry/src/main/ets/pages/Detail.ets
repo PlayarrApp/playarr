@@ -1830,7 +1830,7 @@ struct Detail {
     .borderRadius(tv(PILL_HEIGHT / 2))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(primary ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().ink, this.isSeriesPage() ? 0 : PILL_FILL_ALPHA))
+    .backgroundColor(primary ? toResourceColor(activeColors().ink) : this.isSeriesPage() ? (resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7)) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
     .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
@@ -2099,6 +2099,7 @@ struct Detail {
               itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle) : PHONE_EPISODE_RAIL_GAP,
               clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
+              bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
               items: rail.items,
               listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : PHONE_SEASON_LIST_HEIGHT,
               initialItemIndex: this.initialEpisodeIndex(rail),
@@ -2353,13 +2354,13 @@ struct Detail {
   @Builder
   private touchSeriesAction(label: string, onTap: () => void): void {
     Row({ space: 4 }) {
-      Text('+').fontFamily(nunito(500))
+      Text('+').fontFamily(nunito(700))
         .fontSize(8)
-        .fontColor(toResourceColor(BRAND_PINK_SOFT))
-      Text(label).fontFamily(nunito(500))
+        .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
+      Text(label).fontFamily(nunito(700))
         .fontSize(8)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(toResourceColor(activeColors().inkSoft))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
     .layoutWeight(1)
