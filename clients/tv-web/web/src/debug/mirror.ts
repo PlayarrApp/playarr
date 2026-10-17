@@ -251,7 +251,9 @@ export function startDebugMirror(): void {
         // A request that timed out while rendering blocked this thread is not an identity change: keep the last good hand-over. The worker
         // still asks the server itself every 2 s, and the guard still compares the server and user the heartbeat reports.
         if (identity.status === "trusted_server_unavailable") return;
-        if (identity.status === "ok") syncCredentials();
+        // A token rotation briefly reads as "session_changed"; the worker's own server query is the authority, so hand over the new
+        // credentials. Only a missing or unreadable selected profile (signed out) is reported as a failure.
+        if (identity.status === "ok" || (identity.status === "session_changed" && readSelectedSession(window.localStorage))) syncCredentials();
         else heartbeatWorker.postMessage({ type: "status", status: identity.status, serverUrl: identity.serverUrl, beatUrl });
       })
       .catch(() => undefined)
