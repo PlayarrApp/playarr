@@ -21,9 +21,18 @@
 #   harmony   harmony-ci.yml        unsigned HarmonyOS HAP
 #   linux     (below)               Linux phone client binary tarball
 #   macos     (below)               unsigned macOS app zip
+#   tizen-native (below)            Samsung Tizen native tpk (test-signed)
 #
-# Not built here: Fire TV (Vega) needs Amazon's Docker-based SDK image, which release runners do not
-# use; its typecheck and jest run in stage 1. Signed macOS needs a Developer ID that does not exist yet.
+# Not built here: Fire TV (Vega) needs Amazon's Docker-based SDK image and an Amazon developer account,
+# which release runners do not use; its typecheck and jest run in stage 1. Sailfish needs the 3 GB SDK
+# target in a bubblewrap namespace, unproven on a hosted runner. Both are listed as "pending" in
+# clients.json. VIDAA is a hosted web app (no package). Signed macOS needs a Developer ID that does not
+# exist yet.
+#
+# Every release also carries clients.json (scripts/release/variants.json filled with the version and the
+# asset names; a dry run keeps it as a workflow artefact). Each variant has a playarr-<variant>-<version>
+# asset name; the older names stay beside the new ones because the downloads Worker and the Android
+# updater read them.
 #
 # then creates ONE GitHub Release `v<version>` with every artefact, a combined SHA256SUMS and notes
 # a short summary body with the full changelog attached, and only then publishes to the stores:
@@ -133,8 +142,8 @@ jobs:
             echo "play_code=$(( (major * 10000 + minor * 100 + patch) * 100000 + count ))"
           } | tee -a "$GITHUB_OUTPUT"
 
-      - name: Test the release notes generator
-        run: node --test scripts/release-notes.test.mjs
+      - name: Test the release notes and clients.json generators
+        run: node --test scripts/release-notes.test.mjs scripts/release/build-clients-json.test.mjs
 
   # ---------------------------------------------------------------------------
   # Stage 1: fast tests. ci.yml has no workflow_call, so the minimal commands are repeated here.
@@ -409,9 +418,62 @@ jobs:
           path: ${{ runner.temp }}/macos/*
           if-no-files-found: error
 
+  tizen-native:
+    name: Samsung Tizen native
+    needs: [prepare, tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: clients/tizen-native
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          # Same pin as ci.yml (8.0.426 fails to create .NET's NuGet-Migrations mutex on the runners).
+          dotnet-version: '8.0.425'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-tizen-${{ runner.os }}-${{ hashFiles('clients/tizen-native/**/*.csproj') }}
+          restore-keys: nuget-tizen-${{ runner.os }}-
+
+      - name: Install the Samsung Tizen workload (pinned)
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/Samsung/Tizen.NET/6ab8cb41e7ccab90a3ba838e7f6d6b38a9c4ec08/workload/scripts/workload-install.sh -o "$RUNNER_TEMP/wi.sh"
+          echo "b6a8bbd3aefbcca452e05abce8272c82362c83da2cfaca2470cbb7fd07ac5158  $RUNNER_TEMP/wi.sh" | sha256sum -c -
+          dotnet --version
+          for attempt in 1 2 3; do
+            sudo bash "$RUNNER_TEMP/wi.sh" -v 10.0.126 -t 8.0.400 --dotnet-install-dir "$(dirname "$(readlink -f "$(command -v dotnet)")")" && break
+            [ "$attempt" = 3 ] && exit 1
+            echo "workload install failed (attempt $attempt), retrying"; sleep $((attempt * 15))
+          done
+
+      # No Samsung signing secrets exist in any environment, so this is the SDK's test-signed tpk.
+      - name: Build the tpk
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          sed -i -E "/<manifest /s/ version=\"[0-9.]+\"/ version=\"$VERSION\"/" src/Playarr.Tizen/tizen-manifest.xml
+          grep -o '<manifest [^>]*' src/Playarr.Tizen/tizen-manifest.xml
+          dotnet build src/Playarr.Tizen/Playarr.Tizen.csproj -c Release
+          mkdir -p "$RUNNER_TEMP/tizen-native"
+          tpk="$(find src/Playarr.Tizen/bin/Release -name '*.tpk' -print -quit)"
+          [[ -n "$tpk" ]] || { echo '::error::no tpk built'; exit 1; }
+          cp "$tpk" "$RUNNER_TEMP/tizen-native/playarr-samsung-tizen-native-$VERSION.tpk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playarr-tizen-native-package
+          path: ${{ runner.temp }}/tizen-native/*
+          if-no-files-found: error
+
   release:
     name: GitHub Release
-    needs: [prepare, server, regional, android, tv, roku, xbox, harmony, linux, macos]
+    needs: [prepare, server, regional, android, tv, roku, xbox, harmony, linux, macos, tizen-native]
     # The server and the Android APK are required; other platforms are optional.
     if: >-
       always() && needs.prepare.result == 'success' &&
@@ -450,10 +512,18 @@ jobs:
           [[ -d "$a/playarr-xbox-package" ]] && cp "$a/playarr-xbox-package"/* assets/
           [[ -d "$a/playarr-linux-package" ]] && cp "$a/playarr-linux-package"/* assets/
           [[ -d "$a/playarr-macos-package" ]] && cp "$a/playarr-macos-package"/* assets/
+          [[ -d "$a/playarr-tizen-native-package" ]] && cp "$a/playarr-tizen-native-package"/* assets/
           if [[ -d "$a/playarr-harmony-package" ]]; then
             hap="$(find "$a/playarr-harmony-package" -name '*.hap' -print -quit)"
             [[ -n "$hap" ]] && cp "$hap" "assets/playarr-harmony-$VERSION-unsigned.hap"
           fi
+          # Variant-specific names beside the older ones (the downloads Worker and the Android updater read those).
+          copy_as() { if [[ -f "assets/$1" ]]; then cp "assets/$1" "assets/$2"; fi; }
+          copy_as "playarr-tizen-$VERSION-unsigned.zip" "playarr-samsung-tizen-web-$VERSION-unsigned.zip"
+          copy_as "playarr-webos-$VERSION.ipk" "playarr-lg-webos-$VERSION.ipk"
+          copy_as playarr-android.apk "playarr-android-$VERSION.apk"
+          copy_as "playarr-linux-$VERSION-x86_64.tar.gz" "playarr-linux-phone-$VERSION-x86_64.tar.gz"
+          node scripts/release/build-clients-json.mjs "$VERSION" assets "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           (cd assets && sha256sum -c "playarr-server-$VERSION-SHA256SUMS")
           (cd assets && sha256sum -- * > "$RUNNER_TEMP/SHA256SUMS" && mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS)
           ls -l assets
@@ -475,14 +545,17 @@ jobs:
             echo "|---|---|"
             echo "| Playarr Server | \`ghcr.io/$owner/playarr:$VERSION\` (\`${SERVER_DIGEST}\`), Linux tarballs below, https://playarr.app/clients/server |"
             echo "| Regional server image | \`ghcr.io/$owner/playarr:${GITHUB_SHA:0:8}\` |"
-            echo "| Android | \`playarr-android.apk\` (sideload), Google Play closed testing |"
+            echo "| Android | \`playarr-android-$VERSION.apk\` and \`playarr-android.apk\` (sideload), Google Play closed testing |"
             echo "| iOS and tvOS | TestFlight |"
-            echo "| LG webOS | \`playarr-webos-$VERSION.ipk\` |"
-            echo "| Samsung Tizen | \`playarr-tizen-$VERSION-unsigned.zip\` (sign with your Samsung certificate profile) |"
+            echo "| LG webOS | \`playarr-lg-webos-$VERSION.ipk\` |"
+            echo "| Samsung Tizen | \`playarr-samsung-tizen-web-$VERSION-unsigned.zip\` (sign with your Samsung certificate profile) |"
+            echo "| Samsung Tizen native | \`playarr-samsung-tizen-native-$VERSION.tpk\` (test-signed) |"
             echo "| Roku | \`playarr-roku-$VERSION.zip\` (sideload) |"
             echo "| Xbox | \`playarr-xbox-$VERSION-x64-unsigned.appx\` (unsigned; sign before sideloading) |"
             echo "| HarmonyOS | \`playarr-harmony-$VERSION-unsigned.hap\` |"
-            echo "| Linux phone | \`playarr-linux-$VERSION-x86_64.tar.gz\` |"
+            echo "| Linux phone | \`playarr-linux-phone-$VERSION-x86_64.tar.gz\` |"
+            echo "| Fire TV (Vega), Sailfish | pending, see \`clients.json\` |"
+            echo "| VIDAA | hosted Web App |"
             echo "| macOS | \`playarr-macos-$VERSION-unsigned.zip\` (unsigned) |"
             echo
             echo "A platform whose package is missing below did not build for this release; see the run summary."
@@ -494,6 +567,14 @@ jobs:
           node scripts/release-notes.mjs --summary "$VERSION" $PREVIOUS_TAG >> "$RUNNER_TEMP/notes.md"
           printf '\nThe full changelog for this release is attached as `playarr-%s-CHANGELOG.md`.\n' "$VERSION" >> "$RUNNER_TEMP/notes.md"
           wc -c "$RUNNER_TEMP/notes.md"
+
+      - name: Keep clients.json (dry run)
+        if: needs.prepare.outputs.dry_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clients-json
+          path: assets/clients.json
+          if-no-files-found: error
 
       - name: Create the GitHub Release
         id: publish
@@ -574,7 +655,7 @@ jobs:
 
   summary:
     name: Summary
-    needs: [prepare, tests, server, regional, android, tv, roku, xbox, harmony, linux, macos, release, play, apple, web, stores]
+    needs: [prepare, tests, server, regional, android, tv, roku, xbox, harmony, linux, macos, tizen-native, release, play, apple, web, stores]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -614,6 +695,7 @@ jobs:
             echo "| Roku | $(mark "$(result roku)") | GitHub Release | sideload zip |"
             echo "| Xbox | $(mark "$(result xbox)") | GitHub Release | unsigned .appx (no signing certificate) |"
             echo "| HarmonyOS | $(mark "$(result harmony)") | GitHub Release | unsigned HAP (no AppGallery signing material) |"
+            echo "| Samsung Tizen native | $(mark "$(result tizen-native)") | GitHub Release | test-signed tpk (no Samsung certificate in CI) |"
             echo "| Linux phone | $(mark "$(result linux)") | GitHub Release | binary tarball |"
             echo "| macOS | $(mark "$(result macos)") | GitHub Release | unsigned app zip (no Developer ID) |"
             echo "| Roku, Samsung, LG, Huawei, Microsoft, Amazon stores | $(mark "$(result stores)") | see the store job summaries | a store without an account logs \"store pending\"; skipped in a dry run |"
