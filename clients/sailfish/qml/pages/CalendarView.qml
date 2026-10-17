@@ -56,10 +56,22 @@ Item {
         var t = new Date(e.release_at).getTime()
         return isNaN(t) || t % 86400000 === 0 ? "" : Qt.formatTime(new Date(t), "hh:mm")
     }
+    // Web's entry pill tone: have it, not out yet, out and wanted but absent, or nothing to report (not tracked).
+    function toneOf(e) {
+        if (e.has_file) return "available"
+        if (e.date > Calendar.todayIso()) return "upcoming"
+        return e.monitored === false ? "neutral" : "missing"
+    }
+    // A grouped card reports its worst member: missing, then upcoming, then neutral, then available.
+    function tone(e) {
+        var tones = (e.members || [e]).map(toneOf)
+        var order = ["missing", "upcoming", "neutral"]
+        for (var i = 0; i < order.length; ++i) if (tones.indexOf(order[i]) >= 0) return order[i]
+        return "available"
+    }
     function pill(e) {
-        if (e.has_file) return qsTr("Available")
-        if (e.date > Calendar.todayIso()) return qsTr("Upcoming")
-        return e.monitored === false ? qsTr("Not tracked") : qsTr("Missing")
+        var t = tone(e)
+        return t === "available" ? qsTr("Available") : t === "upcoming" ? qsTr("Upcoming") : t === "neutral" ? qsTr("Not tracked") : qsTr("Missing")
     }
     onPageChanged: load()
     Component.onCompleted: load()
@@ -216,7 +228,7 @@ Item {
                                 Label {
                                     width: parent.width
                                     visible: text !== ""
-                                    text: [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
+                                    text: modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
                                     elide: Text.ElideRight; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 16.2 * Tokens.u
                                 }
                                 Row {
@@ -226,7 +238,7 @@ Item {
                                     Label { text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
                                     Rectangle {
                                         width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
-                                        color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : Qt.rgba(0.81, 0.19, 0.34, Tokens.dark ? 0.16 : 0.15); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : Tokens.brandPink
+                                        color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : Qt.rgba(0.81, 0.19, 0.34, Tokens.dark ? 0.16 : 0.15); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : Tokens.brandPink
                                         Label { id: badge; anchors.centerIn: parent; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10.5 * Tokens.u }
                                     }
                                 }
@@ -241,9 +253,11 @@ Item {
         visible: root.mode === "week"
         anchors { top: nav.bottom; topMargin: 3 * Tokens.u; left: parent.left; right: parent.right; rightMargin: Tokens.pad; bottom: parent.bottom; bottomMargin: 116 * Tokens.u }   // web clips the day columns at the page padding and above the bar
         contentWidth: weekRow.width + Tokens.pad
-        contentHeight: height
+        contentHeight: height + 1   // never scrolls vertically; the extra pixel keeps the end fade over the clipped day columns, as on web
         flickableDirection: Flickable.HorizontalFlick
         clip: true
+        EdgeFade { target: weekFlick; startSize: 0 }
+        EdgeFade { target: weekFlick; horizontal: true }
         Row {
             id: weekRow
             x: Tokens.pad
