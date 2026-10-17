@@ -1290,7 +1290,7 @@ struct TVSearchView: View {
         }
 
         // Web: Filters is the shell action column tile, as on the libraries.
-        TVHeaderPill(label: "Filters", symbol: "slider.horizontal.3", width: 62)
+        TVHeaderPill(label: "Filters", symbol: "slider.horizontal.3", width: TVShellActionColumn.width)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             .padding(.trailing, TVShellActionColumn.edge)
             .padding(.top, TVShellActionColumn.top)
