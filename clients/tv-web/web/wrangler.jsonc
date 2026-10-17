@@ -9,17 +9,31 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": [
+      "/",
       "/api/*",
+      "/apps",
       "/cast",
       "/cast/*",
       "/clients",
       "/clients/*",
+      "/docs",
+      "/docs/*",
+      "/download",
       "/downloads/*",
+      "/faq",
+      "/features",
+      "/install",
+      "/integrations",
+      "/legal",
       "/legal/*",
+      "/robots.txt",
+      "/sitemap-*",
       "/storybook",
-      "/storybook/*"
+      "/storybook/*",
+      "/_site/*"
     ]
   },
+  "services": [{ "binding": "SITE", "service": "playarr-site" }],
   "durable_objects": {
     "bindings": [
       {
