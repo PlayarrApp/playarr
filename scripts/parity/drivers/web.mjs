@@ -255,10 +255,21 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   };
   const settle = async () => {
     await page.evaluate(() => document.fonts.ready);
-    await page.waitForFunction(() => [...document.images].filter((i) => {
-      const r = i.getBoundingClientRect();
-      return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
-    }).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 60000 });
+    // Lazy images in the viewport load now; an image from a host outside the app and its server (a hotlinked poster CDN) counts as settled
+    // once it has finished or failed, since its load is not ours to wait for.
+    await page.waitForFunction(() => {
+      let own = [location.origin];
+      try { own.push(new URL(localStorage.getItem("playarr:apiBaseUrl") || location.href).origin); } catch { /* no server yet */ }
+      return [...document.images].filter((i) => {
+        const r = i.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+      }).every((i) => {
+        if (i.loading === "lazy") i.loading = "eager";
+        let external = false;
+        try { external = !!i.currentSrc && !own.includes(new URL(i.currentSrc, location.href).origin); } catch { /* data: URL */ }
+        return i.complete && (i.naturalWidth > 0 || external);
+      });
+    }, null, { timeout: 60000 });
     await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 });
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
