@@ -356,11 +356,19 @@ struct CalendarView: View {
         }
     }
 
+    /// The action row as the server computed it (`CalendarAction`); a server without computed actions keeps the earlier
+    /// `hasFile` rule.
     private func phoneActions(item: CalendarItem, entry: CalendarEntry) -> some View {
-        HStack(spacing: 9) {
+        let serverActions = !entry.actions.isEmpty
+        let play = entry.action(.play) ?? entry.action(.resume)
+        let showPlay = serverActions ? play?.enabled == true : entry.hasFile
+        let showOpen = serverActions ? entry.action(.open)?.enabled == true : true
+        let watchlist = entry.action(.watchlist)
+        let showWatchlist = serverActions ? watchlist?.enabled == true : true
+        let removing = watchlist?.active == true
+        return HStack(spacing: 9) {
             if let mediaWork = entry.workID {
-                // The server offers Play only for an entry with a file (unaired episodes show Open series alone).
-                if entry.hasFile {
+                if showPlay {
                     NavigationLink {
                         WorkDetailView(
                             viewModel: WorkDetailViewModel(apiClient: apiClient, workID: mediaWork),
@@ -368,35 +376,40 @@ struct CalendarView: View {
                             downloadRepository: downloadRepository
                         )
                     } label: {
-                        WMText("Play", 11.52, 720, color: PlayarrStyle.onAccent, lh: 17)
-                            .frame(width: 66, height: 44)
+                        let resume = play?.kind == .resume
+                        WMText(resume ? "Resume" : "Play", 11.52, 720, color: PlayarrStyle.onAccent, lh: 17)
+                            .frame(width: resume ? 88 : 66, height: 44)
                             .background(PlayarrStyle.accent, in: Capsule())
                     }
                     .buttonStyle(.plain)
                 }
-                NavigationLink {
-                    WorkDetailView(
-                        viewModel: WorkDetailViewModel(apiClient: apiClient, workID: mediaWork),
-                        apiClient: apiClient,
-                        downloadRepository: downloadRepository
-                    )
-                } label: {
-                    let primary = !entry.hasFile
-                    WMText(entry.mediaKind == "episode" ? "Open series" : "Open", 11.52, 720,
-                           color: primary ? PlayarrStyle.onAccent : WM.inkSoft, lh: 17)
-                        .frame(width: entry.mediaKind == "episode" ? 106 : 70, height: 44)
-                        .background(primary ? PlayarrStyle.accent : WM.page, in: Capsule())
-                        .overlay(Capsule().stroke(primary ? Color.clear : WM.line.opacity(0.2), lineWidth: 1))
+                if showOpen {
+                    NavigationLink {
+                        WorkDetailView(
+                            viewModel: WorkDetailViewModel(apiClient: apiClient, workID: mediaWork),
+                            apiClient: apiClient,
+                            downloadRepository: downloadRepository
+                        )
+                    } label: {
+                        let primary = !showPlay
+                        WMText(entry.mediaKind == "episode" ? "Open series" : "Open", 11.52, 720,
+                               color: primary ? PlayarrStyle.onAccent : WM.inkSoft, lh: 17)
+                            .frame(width: entry.mediaKind == "episode" ? 106 : 70, height: 44)
+                            .background(primary ? PlayarrStyle.accent : WM.page, in: Capsule())
+                            .overlay(Capsule().stroke(primary ? Color.clear : WM.line.opacity(0.2), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
-            HStack(spacing: 10) {
-                WMText("+", 11.52, 720, color: WM.inkSoft, lh: 17).fixedSize()
-                WMText("Add to watchlist", 11.52, 900, color: WM.inkSoft, lh: 17).fixedSize()
+            if showWatchlist {
+                HStack(spacing: 10) {
+                    WMText(removing ? "\u{2212}" : "+", 11.52, 720, color: WM.inkSoft, lh: 17).fixedSize()
+                    WMText(removing ? "Remove from watchlist" : "Add to watchlist", 11.52, 900, color: WM.inkSoft, lh: 17).fixedSize()
+                }
+                .frame(width: removing ? 182 : 152, height: 44)
+                .background(WM.page, in: Capsule())
+                .overlay(Capsule().stroke(WM.line.opacity(0.2), lineWidth: 1))
             }
-            .frame(width: 152, height: 44)
-            .background(WM.page, in: Capsule())
-            .overlay(Capsule().stroke(WM.line.opacity(0.2), lineWidth: 1))
         }
     }
 
