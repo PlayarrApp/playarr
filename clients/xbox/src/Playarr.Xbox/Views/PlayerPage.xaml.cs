@@ -204,7 +204,8 @@ namespace Playarr.Xbox.Views
                 parameter.Title,
                 parameter.WorkId,
                 parameter.UpNext.Count > 0 ? parameter.UpNext[0] : null,
-                parameter.PreferLocal);
+                parameter.PreferLocal,
+                parameter.RequireDirectPlay);
 
             PlayerElement.SetMediaPlayer(_viewModel.Player);
             Window.Current.VisibilityChanged += Window_VisibilityChanged;
@@ -304,6 +305,8 @@ namespace Playarr.Xbox.Views
             base.OnNavigatedFrom(e);
         }
 
+        internal string PlaybackMode => _viewModel?.PlaybackInfo?.Mode.ToString().ToLowerInvariant() ?? string.Empty;
+
         private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e) => RunOnUi(Render);
 
         /// <summary>
@@ -313,20 +316,46 @@ namespace Playarr.Xbox.Views
         /// handler.
         /// </summary>
         /// <summary>Parity capture: pause on the current frame and show the controls, so a screenshot matches the web's.</summary>
-        internal async void PauseForTest(double? seekSeconds = null)
+        internal async System.Threading.Tasks.Task<bool> PauseForTestAsync(double? seekSeconds = null)
         {
+            _viewModel?.Player.Pause();
             if (_viewModel != null && seekSeconds is { } at)
             {
                 var offset = TimeSpan.FromMilliseconds(_viewModel.PlaybackInfo?.SourceOffsetMs ?? 0);
-                _viewModel.Player.PlaybackSession.Position = TimeSpan.FromSeconds(at) - offset;
-                await System.Threading.Tasks.Task.Delay(3000);
+                var target = TimeSpan.FromSeconds(at) - offset;
+                if (target < TimeSpan.Zero)
+                {
+                    target = TimeSpan.Zero;
+                }
+
+                var session = _viewModel.Player.PlaybackSession;
+                var seekCompleted = new System.Threading.Tasks.TaskCompletionSource<bool>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+                Windows.Foundation.TypedEventHandler<Windows.Media.Playback.MediaPlaybackSession, object> seekHandler = (_, __) => seekCompleted.TrySetResult(true);
+                session.SeekCompleted += seekHandler;
+                var settled = false;
+                try
+                {
+                    session.Position = target;
+                    var timeout = System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(8));
+                    settled = await System.Threading.Tasks.Task.WhenAny(seekCompleted.Task, timeout) == seekCompleted.Task
+                        && Math.Abs((session.Position - target).TotalSeconds) <= 0.25;
+                }
+                finally
+                {
+                    session.SeekCompleted -= seekHandler;
+                }
+
+                _viewModel.Player.Pause();
+                ShowChrome();
+                return settled;
             }
 
             _viewModel?.Player.Pause();
             ShowChrome();
+            return true;
         }
 
-        /// <summary>Playback state and position for the parity trace: "error", "playing" or "loading".</summary>
+        /// <summary>Playback state and position for the parity trace: "error", "playing", "paused" or "loading".</summary>
         internal (string State, double Seconds) Probe()
         {
             if (_viewModel is null)
@@ -340,7 +369,14 @@ namespace Playarr.Xbox.Views
             }
 
             var session = _viewModel.Player.PlaybackSession;
-            return (session.PlaybackState == Windows.Media.Playback.MediaPlaybackState.Playing ? "playing" : "loading", session.Position.TotalSeconds);
+            var state = session.PlaybackState switch
+            {
+                Windows.Media.Playback.MediaPlaybackState.Playing => "playing",
+                Windows.Media.Playback.MediaPlaybackState.Paused => "paused",
+                _ => "loading",
+            };
+            var offset = TimeSpan.FromMilliseconds(_viewModel.PlaybackInfo?.SourceOffsetMs ?? 0);
+            return (state, (session.Position + offset).TotalSeconds);
         }
 
         private void Render()

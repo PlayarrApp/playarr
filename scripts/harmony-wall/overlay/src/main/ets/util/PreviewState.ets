@@ -3,12 +3,49 @@ import { http } from '@kit.NetworkKit';
 import type { UIContext } from '@kit.ArkUI';
 import { episodeFocusRectForComponent } from '../design/ComponentMeasurement';
 import { seriesDetailMeasurementId } from '../core/SeriesEpisodePresentation';
+import { PreviewTelemetryQueue } from './PreviewTelemetryQueue';
+import type { PreviewTelemetryEvent } from './PreviewTelemetryQueue';
+import { selectPreviewCard } from './PreviewCardSelector';
+import type { PreviewCardGeometry } from './PreviewCardSelector';
 
 const PREVIEW_PORT: number = 40017;
+const PREVIEW_TELEMETRY_BATCH_SIZE: number = 64;
+const PREVIEW_TELEMETRY_QUEUE_LIMIT: number = 65536;
+const PREVIEW_TELEMETRY_FLUSH_MS: number = 250;
+const PREVIEW_BASE_URL: string = 'http://localhost:' + PREVIEW_PORT.toString();
 let PREVIEW_ROUTE: string = '';
 let PREVIEW_WORK_ID: string = '';
 let PREVIEW_ROUTE_GENERATION: number = 0;
 let PREVIEW_DETAIL_LOAD_SEQUENCE: number = 0;
+let PREVIEW_HTTP_REQUEST_SEQUENCE: number = 0;
+const PREVIEW_HTTP_REQUESTS: Map<number, http.HttpRequest> = new Map();
+const PREVIEW_TELEMETRY_QUEUE: PreviewTelemetryQueue = new PreviewTelemetryQueue(
+  (batch: Array<PreviewTelemetryEvent>, batchId: number): Promise<number> => {
+    const req = http.createHttp();
+    retainPreviewHttpRequest(req);
+    return req.request(PREVIEW_BASE_URL + '/preview-batch',
+      { method: http.RequestMethod.POST, extraData: JSON.stringify({ batch_id: batchId, events: batch }), connectTimeout: 800, readTimeout: 800 })
+      .then((response): number => response.responseCode);
+  },
+  (reason: string, pending: number): void => {
+    console.error('PLAYARR_PREVIEW_TELEMETRY_FAILED: ' + reason + '; pending=' + pending.toString());
+  },
+  (callback: () => void, delayMs: number): number => setTimeout(callback, delayMs),
+  (timer: number): void => clearTimeout(timer),
+  PREVIEW_TELEMETRY_BATCH_SIZE,
+  PREVIEW_TELEMETRY_QUEUE_LIMIT,
+  PREVIEW_TELEMETRY_FLUSH_MS,
+);
+
+// The Previewer's native read thread can still be unwinding after its JS promise settles. Keep the handle strongly reachable until the
+// preview process exits instead of relying on an omitted destroy() call to prevent premature finalisation.
+export function retainPreviewHttpRequest(request: http.HttpRequest): void {
+  if (PREVIEW_HTTP_REQUESTS.size >= 8192) {
+    throw new Error('preview HTTP request lifetime limit exceeded');
+  }
+  PREVIEW_HTTP_REQUEST_SEQUENCE += 1;
+  PREVIEW_HTTP_REQUESTS.set(PREVIEW_HTTP_REQUEST_SEQUENCE, request);
+}
 
 enum PreviewAreaLengthTypeCode {
   Missing = 0,
@@ -77,19 +114,11 @@ export class DetailRowImageContext {
 }
 
 export function previewReport(query: string): void {
-  const req = http.createHttp();
-  req.request('http://127.0.0.1:' + PREVIEW_PORT.toString() + '/state?' + query,
-    { method: http.RequestMethod.GET, connectTimeout: 800, readTimeout: 800 })
-    .then((): void => { req.destroy(); })
-    .catch((): void => { req.destroy(); });
+  PREVIEW_TELEMETRY_QUEUE.enqueue({ method: 'GET', path: '/state?' + query, body: '' });
 }
 
 function previewPost(path: string, body: string): void {
-  const req = http.createHttp();
-  req.request('http://127.0.0.1:' + PREVIEW_PORT.toString() + path,
-    { method: http.RequestMethod.POST, extraData: body, connectTimeout: 800, readTimeout: 800 })
-    .then((): void => { req.destroy(); })
-    .catch((): void => { req.destroy(); });
+  PREVIEW_TELEMETRY_QUEUE.enqueue({ method: 'POST', path: path, body: body });
 }
 
 export function setPreviewRouteContext(route: string, kind: string, workId: string): void {
@@ -386,18 +415,34 @@ export function reportDetailEpisodeCardAreaForScope(route: string, workId: strin
 }
 
 export function reportDetailEpisodeCardAreaForMeasurement(uiContext: UIContext, route: string, workId: string,
-  rowId: string, generation: number, railId: string, occurrence: number, componentId: string): void {
-  if (route !== 'Detail' || workId.length === 0 || rowId.length === 0 ||
-      componentId !== seriesDetailMeasurementId('card', workId, generation,
-        railId, rowId, occurrence)) {
+  rowId: string, generation: number, railId: string, occurrence: number, componentId: string, area: Area): void {
+  if (route !== 'Detail' || workId.length === 0 || rowId.length === 0) {
+    return;
+  }
+  // The Image's component ID carries Detail's focus generation, which is not the preview route generation: read it from the ID, then
+  // require the whole ID to be exactly this card's.
+  const prefix: string = 'detail-measure-Detail-' + encodeURIComponent(workId) + '-';
+  const measuredGeneration: number = componentId.startsWith(prefix) ?
+    Number(componentId.substring(prefix.length).split('-')[0]) : NaN;
+  if (!Number.isInteger(measuredGeneration) || componentId !== seriesDetailMeasurementId('image', workId,
+      measuredGeneration, railId, rowId, occurrence)) {
     return;
   }
   const rect = episodeFocusRectForComponent(uiContext, componentId);
-  if (rect === null) {
+  if (rect !== null) {
+    reportDetailEpisodeCardAreaForScope(route, workId, rowId, generation,
+      rect.left, rect.top, rect.width, rect.height, uiContext.vp2px(1));
     return;
   }
-  reportDetailEpisodeCardAreaForScope(route, workId, rowId, generation,
-    rect.left, rect.top, rect.width, rect.height, uiContext.vp2px(1));
+  // The Previewer has no component lookup by ID: the Image's own Area is already in vp and relative to the window.
+  const x = areaLengthNumber(area.globalPosition.x);
+  const y = areaLengthNumber(area.globalPosition.y);
+  const width = areaLengthNumber(area.width);
+  const height = areaLengthNumber(area.height);
+  if (x === null || y === null || width === null || height === null) {
+    return;
+  }
+  reportDetailEpisodeCardAreaForScope(route, workId, rowId, generation, x, y, width, height, uiContext.vp2px(1));
 }
 
 export function reportDetailRowImageComplete(context: DetailRowImageContext): void {
@@ -469,12 +514,15 @@ export function reportNavFocus(label: string): void {
   previewReport('nav=' + encodeURIComponent(label));
 }
 
-// Capture-only focused look: the Previewer never delivers a focus event, so the parity route `focus:<id>` turns the state-driven focused
-// look (PosterCard.ringOn: lift, shadow, ring, glow) on for the first card on screen (top row, then leftmost). Production focus is untouched.
-class PreviewCardEntry {
+// Capture-only focused appearance: the Previewer never delivers a focus event, so the parity route `focus:<id>` supplies the selected look.
+// Touch captures add shadow and outer ring without lift or scale; TV captures retain the remote lift. Production focus is untouched.
+class PreviewCardEntry implements PreviewCardGeometry {
   setOn: (on: boolean) => void;
   x: number = 0;
   y: number = 0;
+  width: number = 0;
+  height: number = 0;
+  measured: boolean = false;
   alive: boolean = true;
   visible: boolean = true;
   constructor(setOn: (on: boolean) => void) {
@@ -499,6 +547,12 @@ export function previewCardMoved(index: number, area: Area): void {
   if (index >= 0 && index < PREVIEW_CARDS.length) {
     PREVIEW_CARDS[index].x = Number(area.globalPosition.x);
     PREVIEW_CARDS[index].y = Number(area.globalPosition.y);
+    PREVIEW_CARDS[index].width = Number(area.width);
+    PREVIEW_CARDS[index].height = Number(area.height);
+    PREVIEW_CARDS[index].measured = Number.isFinite(PREVIEW_CARDS[index].x) &&
+      Number.isFinite(PREVIEW_CARDS[index].y) && Number.isFinite(PREVIEW_CARDS[index].width) &&
+      Number.isFinite(PREVIEW_CARDS[index].height) && PREVIEW_CARDS[index].width > 0 &&
+      PREVIEW_CARDS[index].height > 0;
   }
 }
 
@@ -508,26 +562,10 @@ export function previewCardVisible(index: number, visible: boolean): void {
   }
 }
 
-/** Focused look on the live card nearest the top-left of the content area (x past the nav rail), off on every other. */
-export function previewFocusFirstCard(): string {
-  let best: number = -1;
-  // TV (1920 vp wide): content starts right of the nav rail, 500 vp in; the phone (about 360 vp wide) has no rail.
-  let maxX: number = 0;
-  for (let i = 0; i < PREVIEW_CARDS.length; i++) {
-    maxX = Math.max(maxX, PREVIEW_CARDS[i].alive && PREVIEW_CARDS[i].visible ? PREVIEW_CARDS[i].x : 0);
-  }
-  const minX: number = maxX >= 500 ? 500 : 0;
-  const minY: number = maxX >= 500 ? 100 : 60;
-  const maxY: number = maxX >= 500 ? 1000 : 3000;
-  for (let i = 0; i < PREVIEW_CARDS.length; i++) {
-    const card: PreviewCardEntry = PREVIEW_CARDS[i];
-    if (!card.alive || !card.visible || card.x < minX || card.y < minY || card.y > maxY) {
-      continue;
-    }
-    if (best < 0 || card.y < PREVIEW_CARDS[best].y - 20 || (Math.abs(card.y - PREVIEW_CARDS[best].y) <= 20 && card.x < PREVIEW_CARDS[best].x)) {
-      best = i;
-    }
-  }
+/** Focused look on the live card intersecting the viewport nearest the top-left of content, off on every other. */
+export function previewFocusFirstCard(tvMode: boolean): string {
+  // Use the resolved device profile, never child positions: offscreen descendants in a phone rail can extend past x=500.
+  const best: number = selectPreviewCard(PREVIEW_CARDS, tvMode);
   for (let i = 0; i < PREVIEW_CARDS.length; i++) {
     if (PREVIEW_CARDS[i].alive) {
       PREVIEW_CARDS[i].setOn(i === best);

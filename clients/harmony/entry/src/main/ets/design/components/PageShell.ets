@@ -10,7 +10,7 @@ import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry } from '../Metrics';
-import { TouchNavBar } from './TouchNavBar';
+import { TouchNavBar, TouchNavBarSpacer, touchNavBarBox } from './TouchNavBar';
 import { NavRail } from './NavRail';
 import type { NavRailItem } from './NavRail';
 import { PlayarrLogo } from './PlayarrLogo';
@@ -55,6 +55,10 @@ export struct PageShell {
   @Prop touch: boolean = false;
   @BuilderParam touchContent: () => void = this.emptyContent;
   @BuilderParam touchActions: () => void = this.emptyContent;
+  /** Phone-only drawer/menu layer, painted below the foreground bottom navigation. */
+  @BuilderParam touchOverlay: () => void = this.emptyContent;
+  /** Phone-only title actions, painted above the bottom navigation bar. */
+  @BuilderParam touchForegroundOverlay: () => void = this.emptyContent;
   /** The page's extra header controls (Calendar's range, previous, Today and next), above the content. */
   @BuilderParam controls: () => void = this.emptyContent;
 
@@ -253,7 +257,7 @@ export struct PageShell {
       }
       .layoutWeight(1)
       .width('100%')
-      TouchNavBar({ selectedId: this.selectedId })
+      TouchNavBarSpacer()
     }
     .width('100%')
     .height('100%')
@@ -270,6 +274,13 @@ export struct PageShell {
           this.chrome()
         }
       }, (theme: string): string => theme)
+      if (this.touch && !isTvMetrics()) {
+        this.touchOverlay()
+        TouchNavBar({ selectedId: this.selectedId })
+          .position({ x: 0, y: '100%' })
+          .markAnchor({ x: 0, y: touchNavBarBox(this.safeBottom) })
+        this.touchForegroundOverlay()
+      }
     }
     .width('100%')
     .height('100%')

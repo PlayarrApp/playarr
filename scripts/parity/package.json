@@ -7,7 +7,7 @@
     "capture:web": "node capture-web.mjs",
     "diff": "node diff.mjs",
     "suite": "node suite-run.mjs",
-    "test:suite": "PLAYARR_PARITY_TEST_OUT=${PLAYARR_PARITY_TEST_OUT:?set to task-scoped scratch directory} node --test *.test.mjs apple/*.test.mjs roku/*.test.mjs",
+    "test:suite": "PLAYARR_PARITY_TEST_OUT=${PLAYARR_PARITY_TEST_OUT:?set to task-scoped scratch directory} node --test *.test.mjs apple/*.test.mjs roku/*.test.mjs xbox/*.test.mjs",
     "refs": "node capture-refs.mjs"
   },
   "dependencies": {

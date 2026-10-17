@@ -513,7 +513,7 @@ export struct SearchScreen {
   }
 
   @Builder
-  private touchOverlays(): void {
+  private touchActionsOverlay(): void {
     if (this.actionsWork !== undefined) {
       TitleActionsDrawer({
         workId: this.actionsWork.id,
@@ -528,7 +528,12 @@ export struct SearchScreen {
           this.loadWatchProgress();
         },
       })
-    } else if (this.filtersOpen) {
+    }
+  }
+
+  @Builder
+  private touchFiltersOverlay(): void {
+    if (this.filtersOpen && this.actionsWork === undefined) {
       Drawer({
         kicker: 'Search controls',
         title: 'Filters',
@@ -554,15 +559,18 @@ export struct SearchScreen {
         touchActions: (): void => {
           this.touchFiltersButton();
         },
+        touchOverlay: (): void => {
+          this.touchFiltersOverlay();
+        },
+        touchForegroundOverlay: (): void => {
+          this.touchActionsOverlay();
+        },
         selectedId: SEARCH_NAV_ID,
         kicker: this.previewWork() !== undefined ? resultCountLabel(this.shownResults().length) : '',
         content: (): void => {
           this.pageContent();
         },
       })
-      if (!isTvMetrics()) {
-        this.touchOverlays()
-      }
       }
       .width('100%')
       .height('100%')

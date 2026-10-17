@@ -28,6 +28,34 @@ fn queue_step(file: &str, step: i64) -> Option<(String, String)> {
     })
 }
 
+/// A 44 px icon button of the web's phone player; `primary` gives it the soft disc.
+fn ctl(icon: &str, primary: bool) -> gtk4::Button {
+    let b = gtk4::Button::builder().css_classes(["pa-ctl"]).build();
+    if primary {
+        b.add_css_class("primary");
+    }
+    set_icon(&b, icon);
+    b
+}
+
+fn set_icon(b: &gtk4::Button, icon: &str) {
+    b.set_child(Some(&crate::icons::image(icon, 20, crate::icons::Tone::White)));
+}
+
+/// Leaves the page for the queue entry `step` away from `file`, if there is one.
+fn go_step(app: &Rc<App>, file: &str, step: i64, art_work_id: Option<String>) {
+    if let Some((file, title)) = queue_step(file, step) {
+        app.nav.pop();
+        app.play(PlayRequest {
+            media_file_id: file,
+            start_ms: 0,
+            title,
+            art_work_id,
+            local_file: None,
+        });
+    }
+}
+
 pub struct PlayRequest {
     pub media_file_id: String,
     pub start_ms: i64,
@@ -105,7 +133,7 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
         .css_classes(["pa-round"])
         .halign(gtk4::Align::End)
         .build();
-    back.set_child(Some(&crate::icons::image("close", 20, crate::icons::Tone::White)));
+    back.set_child(Some(&crate::icons::image("close", 22, crate::icons::Tone::White)));
     let top = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
         .spacing(10)
@@ -211,19 +239,19 @@ fn start_pipeline(
         .build();
     root.set_child(Some(&picture));
 
-    // Controls as the web's phone player: scrubber, time, then skip back, play/pause and skip forward.
-    let toggle = gtk4::Button::builder()
-        .icon_name("media-playback-pause-symbolic")
-        .css_classes(["pa-round", "big"])
-        .build();
-    let skip_back = gtk4::Button::builder()
-        .icon_name("media-seek-backward-symbolic")
-        .css_classes(["pa-round"])
-        .build();
-    let skip_fwd = gtk4::Button::builder()
-        .icon_name("media-seek-forward-symbolic")
-        .css_classes(["pa-round"])
-        .build();
+    // Controls as the web's phone player: scrubber, time, then two rows of icon buttons.
+    let toggle = ctl("p-pause", true);
+    let skip_back = ctl("p-prev", false);
+    let skip_fwd = ctl("p-next", false);
+    let mute = ctl("p-volume", false);
+    let fullscreen = ctl("p-fullscreen", false);
+    // shortcut: audio and subtitle track, queue, quality, health and play-on buttons are shown disabled (the web
+    // disables them too without data); wire each when the native player gains that feature.
+    let idle = |icon: &str| {
+        let b = ctl(icon, false);
+        b.set_sensitive(false);
+        b
+    };
     let scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.001);
     scale.set_hexpand(true);
     let pos_label = gtk4::Label::builder()
@@ -243,31 +271,56 @@ fn start_pipeline(
             .build(),
     );
     times.append(&dur_label);
-    let buttons = gtk4::Box::builder().spacing(18).halign(gtk4::Align::Center).build();
-    buttons.append(&skip_back);
-    buttons.append(&toggle);
-    buttons.append(&skip_fwd);
+    let row = || gtk4::Box::builder().spacing(1).halign(gtk4::Align::Center).build();
+    let (row1, row2) = (row(), row());
+    for b in [&skip_back, &toggle, &skip_fwd, &mute] {
+        row1.append(b);
+    }
+    for icon in ["p-audio", "p-subtitles", "p-queue"] {
+        row1.append(&idle(icon));
+    }
+    let quality = gtk4::Button::builder()
+        .css_classes(["pa-ctl", "pa-quality"])
+        .label(if direct { "Original" } else { "Transcoded" })
+        .sensitive(false)
+        .build();
+    row2.append(&quality);
+    row2.append(&idle("p-info"));
+    row2.append(&idle("p-devices"));
+    row2.append(&fullscreen);
     let bottom = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .spacing(10)
+        .spacing(4)
         .valign(gtk4::Align::End)
         .css_classes(["pa-player-scrim"])
         .build();
     bottom.append(&scale);
     bottom.append(&times);
-    bottom.append(&buttons);
+    bottom.append(&row1);
+    bottom.append(&row2);
     root.add_overlay(&bottom);
-    for (b, delta) in [(&skip_back, -10_000i64), (&skip_fwd, 10_000)] {
-        let player = player.clone();
-        b.connect_clicked(move |_| {
-            let target = (player.position_ms() + delta - player.offset_ms).max(0);
-            let _ = player.pipeline.seek_simple(
-                gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT,
-                gst::ClockTime::from_mseconds(target as u64),
-            );
+    skip_back.set_sensitive(queue_step(&req.media_file_id, -1).is_some());
+    skip_fwd.set_sensitive(queue_step(&req.media_file_id, 1).is_some());
+    {
+        let (pipeline, mute2) = (pipeline.clone(), mute.clone());
+        mute.connect_clicked(move |_| {
+            let muted = !pipeline.property::<bool>("mute");
+            pipeline.set_property("mute", muted);
+            set_icon(&mute2, if muted { "p-muted" } else { "p-volume" });
         });
     }
-
+    {
+        let (app, fullscreen2) = (app.clone(), fullscreen.clone());
+        fullscreen.connect_clicked(move |_| {
+            let on = !app.window.is_fullscreen();
+            app.window.set_fullscreened(on);
+            set_icon(&fullscreen2, if on { "p-fullscreen-exit" } else { "p-fullscreen" });
+        });
+    }
+    for (b, step) in [(&skip_back, -1i64), (&skip_fwd, 1)] {
+        let (app, file, art) = (app.clone(), req.media_file_id.clone(), req.art_work_id.clone());
+        b.connect_clicked(move |_| go_step(&app, &file, step, art.clone()));
+    }
     // Tap the picture to show or hide the controls.
     let controls: Vec<gtk4::Widget> = vec![bottom.clone().upcast(), top.clone().upcast()];
     let shown_until = Rc::new(Cell::new(Instant::now() + Duration::from_secs(4)));
@@ -301,11 +354,7 @@ fn start_pipeline(
             } else {
                 gst::State::Paused
             });
-            toggle2.set_icon_name(if now_playing {
-                "media-playback-pause-symbolic"
-            } else {
-                "media-playback-start-symbolic"
-            });
+            set_icon(&toggle2, if now_playing { "p-pause" } else { "p-play" });
             player.mpris.set_status(if now_playing { "Playing" } else { "Paused" });
             if !now_playing {
                 player.report(false);
@@ -329,17 +378,7 @@ fn start_pipeline(
                         app.nav.pop();
                     }
                     Cmd::Next | Cmd::Previous => {
-                        let step = if c == Cmd::Next { 1 } else { -1 };
-                        if let Some((file, title)) = queue_step(&player.file, step) {
-                            app.nav.pop();
-                            app.play(PlayRequest {
-                                media_file_id: file,
-                                start_ms: 0,
-                                title,
-                                art_work_id: art_id.clone(),
-                                local_file: None,
-                            });
-                        }
+                        go_step(&app, &player.file, if c == Cmd::Next { 1 } else { -1 }, art_id.clone())
                     }
                     Cmd::Seek(us) => {
                         let target = (player.position_ms() + us / 1000 - player.offset_ms).max(0);
@@ -430,7 +469,7 @@ fn start_pipeline(
                     let _ = player.pipeline.set_state(gst::State::Paused);
                     playing.set(false);
                     player.mpris.set_status("Paused");
-                    toggle.set_icon_name("media-playback-start-symbolic");
+                    set_icon(&toggle, "p-play");
                 }
                 V::Buffering(b) => {
                     // Hold playback while the buffer refills, resume when it is full.

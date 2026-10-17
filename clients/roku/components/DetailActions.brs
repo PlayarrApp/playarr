@@ -32,6 +32,8 @@ end function
 sub buildTiles()
     m.tilesGroup.removeChildrenIndex(m.tilesGroup.getChildCount(), 0)
     m.specs = tileSpecs()
+    ' Keep the current selection when possible, but a layout may remove that action.
+    if specFor(m.focusIdx) = invalid then m.focusIdx = 0
     m.rings = {}
     for each t in m.specs
         fill = CreateObject("roSGNode", "Poster")
@@ -127,6 +129,7 @@ end function
 ' Nearest tile in a direction (by centre), so Down from Play lands under it and Left/Right stay in the row.
 function neighbour(dir as String) as Integer
     cur = specFor(m.focusIdx)
+    if cur = invalid then return -1
     best = -1
     bestScore = 1.0e9
     for each t in m.specs

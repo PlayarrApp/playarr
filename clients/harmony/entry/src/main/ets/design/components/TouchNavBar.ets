@@ -27,6 +27,21 @@ const TILE_RADIUS: number = 14;
 const ICON_SIZE: number = 21;
 const AVATAR_SIZE: number = 21;
 
+/** Full phone nav footprint, including its top gap and bottom safe area. */
+export function touchNavBarBox(safeBottom: number): number {
+  return BAR_HEIGHT + 4 + atLeast(BAR_BOTTOM, safeBottom);
+}
+
+/** Reserves the nav bar's original Column footprint while the visible bar is painted above phone overlays. */
+@Component
+export struct TouchNavBarSpacer {
+  @StorageProp('safeBottom') private safeBottom: number = 0;
+
+  build() {
+    Blank().width('100%').height(touchNavBarBox(this.safeBottom))
+  }
+}
+
 @Component
 export struct TouchNavBar {
   /** The current page's nav id (home, a kind, calendar, search ...); empty selects none. */
@@ -51,9 +66,8 @@ export struct TouchNavBar {
     const home: NavRailItem[] = library.slice(0, 1);
     const kindItems: NavRailItem[] = library.slice(1);
     const secondary: NavRailItem[] = buildSecondaryNavItems();
-    // Web order: Downloads, Search, Home, the library kinds, then Calendar and the rest.
-    this.items = buildPrimaryNavItems().concat(home, kindItems, secondary.filter((i: NavRailItem): boolean => i.id === 'calendar'),
-      secondary.filter((i: NavRailItem): boolean => i.id !== 'calendar'));
+    // Web order: Downloads, Search, Home, library kinds, Playlists, Watchlist, Requests, then Calendar.
+    this.items = buildPrimaryNavItems().concat(home, kindItems, secondary);
   }
 
   @Builder
@@ -82,7 +96,12 @@ export struct TouchNavBar {
       Scroll() {
         Row({ space: 2 }) {
           Column() {
-            ProfileAvatar({ presetId: resolveAvatarPreset(this.profileId), diameter: AVATAR_SIZE })
+            ProfileAvatar({
+              presetId: resolveAvatarPreset(this.profileId),
+              diameter: AVATAR_SIZE,
+              ringWidth: 0,
+              illustrationRatio: 0.86,
+            })
               .focusable(false)
           }
           .width(TILE_WIDTH)
@@ -111,7 +130,6 @@ export struct TouchNavBar {
     .alignItems(VerticalAlign.Center)
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.88))
     .borderRadius(BAR_RADIUS)
-    .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
     .shadow({ radius: 20, color: 'rgba(31, 14, 20, 0.2)', offsetY: 14 })
     .margin({ left: atLeast(BAR_SIDE, this.safeLeft), right: atLeast(BAR_SIDE, this.safeRight), bottom: atLeast(BAR_BOTTOM, this.safeBottom), top: 4 })
   }
