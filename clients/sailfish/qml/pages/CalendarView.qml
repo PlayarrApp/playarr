@@ -58,7 +58,7 @@ Item {
     }
     function pill(e) {
         if (e.has_file) return qsTr("Available")
-        if (e.date > Qt.formatDate(new Date(), "yyyy-MM-dd")) return qsTr("Upcoming")
+        if (e.date > Calendar.todayIso()) return qsTr("Upcoming")
         return e.monitored === false ? qsTr("Not tracked") : qsTr("Missing")
     }
     onPageChanged: load()
@@ -107,7 +107,7 @@ Item {
         clip: true
         readonly property real cellW: 102.8 * Tokens.u
         readonly property real cellH: 83.7 * Tokens.u
-        readonly property string todayIso: Qt.formatDate(new Date(), "yyyy-MM-dd")
+        readonly property string todayIso: Calendar.todayIso()
         contentWidth: 7 * cellW
         contentHeight: 34 * Tokens.u + root.weekRows.length * cellH + 120 * Tokens.u
         flickableDirection: Flickable.AutoFlickDirection
@@ -179,7 +179,7 @@ Item {
                         font.pixelSize: 14.8 * Tokens.u
                     }
                     Rectangle {
-                        visible: day.date === Qt.formatDate(new Date(), "yyyy-MM-dd")
+                        visible: day.date === Calendar.todayIso()
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"

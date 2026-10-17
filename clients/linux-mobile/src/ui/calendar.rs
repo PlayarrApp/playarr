@@ -99,8 +99,17 @@ pub fn day_label(dt: Date) -> String {
     )
 }
 
+/// The real local time, or PLAYARR_PARITY_CLOCK (RFC 3339) so parity captures show the fixture's "today".
+fn now() -> gtk4::glib::DateTime {
+    std::env::var("PLAYARR_PARITY_CLOCK")
+        .ok()
+        .and_then(|v| gtk4::glib::DateTime::from_iso8601(&v, None).ok())
+        .and_then(|d| d.to_local().ok())
+        .unwrap_or_else(|| gtk4::glib::DateTime::now_local().expect("local time"))
+}
+
 fn today() -> Date {
-    let n = gtk4::glib::DateTime::now_local().expect("local time");
+    let n = now();
     Date {
         y: n.year(),
         m: n.month() as u32,
