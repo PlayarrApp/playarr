@@ -327,6 +327,9 @@ test("external links open in the TV browser instead of replacing Playarr", () =>
   assert.equal(externalLinkUrl(anchor("https://example.com/docs")), "https://example.com/docs");
   assert.equal(externalLinkUrl(anchor("file:///opt/usr/apps/index.html#/movies")), undefined);
   assert.equal(externalLinkUrl({ closest: () => null }), undefined);
+  // The hosted debug page is http: its in-app hash links must stay in the app, other origins still leave it.
+  assert.equal(externalLinkUrl(anchor("http://192.168.1.220:18744/#/movies"), "http://192.168.1.220:18744"), undefined);
+  assert.equal(externalLinkUrl(anchor("https://example.com/docs"), "http://192.168.1.220:18744"), "https://example.com/docs");
 
   const launched = [];
   const tizenObject = {
