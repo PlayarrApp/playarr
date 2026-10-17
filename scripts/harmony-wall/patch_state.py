@@ -107,6 +107,9 @@ def home(s):
     assert s.count(appear) == 1
     s = s.replace(appear, "  private previewInstance: number = Math.floor(Math.random() * 1000);\n  aboutToDisappear(): void {\n    previewReport('dbg=' + encodeURIComponent('H-gone:' + this.previewInstance.toString()));\n  }\n\n  aboutToAppear(): void {\n    previewReport('dbg=' + encodeURIComponent('H-appear:' + this.previewInstance.toString()));\n    this.load();\n", 1)
     s = s.replace("    this.startArtworkLoading();\n  }", "    previewReport('dbg=' + encodeURIComponent('H-load-done:' + this.previewInstance.toString()));\n    this.startArtworkLoading();\n  }", 1)
+    builder = "  private tvRailsSlot(): void {\n"
+    assert s.count(builder) == 1
+    s = s.replace(builder, builder + "    previewReport('dbg=' + encodeURIComponent('H-rails-build:' + this.previewInstance.toString() + (this.loading ? ':loading' : ':ready')));\n", 1)
     # temporary diagnostic (lost-update hunt): how many items of the patched array carry art, per patch
     return s.replace(after, after + "      previewReport('dbg=' + encodeURIComponent('hs:' + this.previewInstance.toString() + ':' + getItems().filter((item: HomeCardItem): boolean => item.stamp === 'art').length.toString()));\n", 1)
 
