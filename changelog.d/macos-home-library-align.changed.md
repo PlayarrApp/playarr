@@ -1,0 +1,1 @@
+- macOS Home opens aligned with the Library grid: rails from x 783.4 and the first rail heading at y 162, a focused later rail held at the centred line.

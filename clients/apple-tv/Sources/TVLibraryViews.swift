@@ -187,9 +187,12 @@ struct TVHomeView: View {
                     withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: .top) }
                 }
             }
-            // The first rail heading sits at y 402; rails above the focused one slide up past it, as on the web.
+            // Web: Home opens aligned with the Library grid (first rail heading at the Library's first-row top, y 162, rails from
+            // x 783.4); once focus reaches a later rail it is held at the old centred line (y 402), rails above slide up past it.
             .padding(.top, 402 - origin.y)
-            .padding(.leading, 881.6 - origin.x - Self.cardBleed)
+            .offset(y: (focusedCard?.rail ?? "r0") == "r0" ? -(402 - 162) : 0)
+            .animation(.smooth(duration: 0.26), value: (focusedCard?.rail ?? "r0") == "r0")
+            .padding(.leading, 783.4 - origin.x - Self.cardBleed)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
