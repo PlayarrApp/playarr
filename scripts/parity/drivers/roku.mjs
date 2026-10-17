@@ -805,7 +805,11 @@ export function createDriver({ out, args = [] } = {}) {
     return { jpeg, generation };
   };
 
+  // Several suite screens share a route (actions and movies are both /movies): the runner names the one it wants.
+  let captureTarget = "";
   const exactSuiteScreen = (path) => {
+    const wanted = SUITE_SCREENS.find((item) => item.id === captureTarget && (item.route === path || item.match === path));
+    if (wanted) return wanted;
     return SUITE_SCREENS.find((item) => item.route === path || item.match === path);
   };
 
@@ -1003,6 +1007,7 @@ export function createDriver({ out, args = [] } = {}) {
       for (const item of parseKeySequence(entry.keys)) {
         const wasBrowse = screen === "browse";
         await press(item.key, { long: item.long });
+        if (env.ROKU_TRACE_KEYS) console.error(`key ${item.key}${item.long ? ":long" : ""} -> screen=${screen} browse=${browse} focus=${JSON.stringify(focus)}`);
         // Keys sent while the grid still loads are dropped (the actions route lost its Right and long press and captured the bare grid).
         if (!wasBrowse && screen === "browse") await waitForBrowseGrid();
       }
@@ -1041,6 +1046,7 @@ export function createDriver({ out, args = [] } = {}) {
     },
     async home() { await toHome(); },
     async key(name, { long = false } = {}) { await press(name, { long }); },
+    async setCaptureTarget(id) { captureTarget = id; },
     async route(path) { await safeRoute(path); },
     async location() {
       assertDebug();
