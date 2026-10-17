@@ -92,6 +92,10 @@ class NavigationContractTests(unittest.TestCase):
         self.assertEqual(MAIN.count('m.top.screenState = "search"\n    renderNavDockFocus()'), 2)
         self.assertIn('id="searchFieldBg" translation="[153.6,170]" width="596" height="84"', SCENE)
 
+    def test_detail_lights_the_dock_slot_of_its_library(self) -> None:
+        self.assertIn('if state = "detail" and m.selectedWork <> invalid and m.selectedWork.kind <> invalid', MAIN)
+        self.assertIn('m.top.ObserveField("screenState", "onScreenStateChanged")', MAIN)
+
     def test_overflowing_collections_are_native_scenegraph_lists(self) -> None:
         self.assertRegex(SCENE, r'<RowList id="libraryList"')
         self.assertRegex(SCENE, r'<RowList id="profilesRow"')

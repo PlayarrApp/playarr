@@ -252,6 +252,7 @@ sub init()
     m.settingsActionList.ObserveField("itemSelected", "onSettingsActionSelected")
     m.library.ObserveField("rowItemSelected", "onLibraryItemSelected")
     m.library.ObserveField("rowItemFocused", "onLibraryItemFocused")
+    m.top.ObserveField("screenState", "onScreenStateChanged")
     m.browseGrid.ObserveField("itemSelected", "onBrowseItemSelected")
     m.browseGrid.ObserveField("itemFocused", "onBrowseItemFocused")
     m.browseGrid.ObserveField("alphabetHandoffRequest", "onBrowseGridAlphabetHandoff")
@@ -3842,6 +3843,7 @@ sub openWorkDetail(work as Object, originState as String)
     m.detailOverview.text = ""
     showOnly("detail")
     m.top.screenState = "detail"
+    renderNavDockFocus()
     sendApi("detail", "GET", "/api/v1/catalog/" + UrlEncode(work.id), invalid, true)
 end sub
 
@@ -4944,12 +4946,24 @@ function moveNavDockFocus(delta as Integer) as Boolean
     return true
 end function
 
+' The dock marks the open screen's slot; screens set screenState after showOnly, so re-draw when it changes.
+sub onScreenStateChanged()
+    if m.navLabels <> invalid and m.navLabels.Count() > 0 then renderNavDockFocus()
+end sub
+
 ' Which dock slot matches the current screen (web .app-nav-link.is-active).
 function activeNavDockIndex() as Integer
     state = m.top.screenState
     if state = "search" then return 0
     if state = "home" then return 1
     if state = "playlists" then return 6
+    ' Web lights the library of the open title (Movies for a film, Series for a show, Music for an artist).
+    if state = "detail" and m.selectedWork <> invalid and m.selectedWork.kind <> invalid
+        if m.selectedWork.kind = "series" then return 2
+        if m.selectedWork.kind = "movie" then return 3
+        if m.selectedWork.kind = "site" then return 4
+        if m.selectedWork.kind = "artist" then return 5
+    end if
     if state = "page"
         if m.pageKind = "watchlist" then return 7
         if m.pageKind = "requests" then return 8
