@@ -25,6 +25,7 @@ import {
   getOrCreateDeviceId,
   toStoredSession,
   TokenStore,
+  TransientAuthError,
   type DeviceTokenSuccess,
   type StoredSession,
 } from "@playarr-tv/device-auth";
@@ -735,12 +736,14 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
     tokenStoreRef.current = new TokenStore();
   }
   // Once per server: a later render with an empty store is a sign-out and must not restore the stale snapshot.
+  // Primary-client token requests still running: a profile switch waits for them (see `activateStoredProfile`).
+  const pendingTokenRequestsRef = useRef(new Set<Promise<unknown>>());
   const sessionRestoredForRef = useRef<string>();
   if (sessionRestoredForRef.current !== apiBaseUrl) {
     sessionRestoredForRef.current = apiBaseUrl;
     if (!tokenStoreRef.current.get()) {
       const restoredProfile = selectRestorableProfileSession(
-        initialStoredProfilesRef.current ?? [],
+        readStoredProfileSessions(apiBaseUrl),
         apiBaseUrl,
         readActiveProfileMarker()
       );
@@ -944,9 +947,17 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
       baseUrl: apiBaseUrl,
       fetchImpl: browserFetch,
       defaultHeaders: PLAYARR_PLATFORM_HEADERS,
-      getAccessToken: async (request) => {
+      getAccessToken: (request) => {
+        const pending = acquireToken(request);
+        const done = () => void pendingTokenRequestsRef.current.delete(pending);
+        pendingTokenRequestsRef.current.add(pending);
+        pending.then(done, done);
+        return pending;
+      },
+    });
+    async function acquireToken(request?: AccessTokenRequest): Promise<string | undefined> {
+        const activeProfile = activeProfileRef.current;
         try {
-          const activeProfile = activeProfileRef.current;
           // Nobody is signed in: answer locally. Reaching `ensureAccessToken` would register a
           // shared in-flight rejection that a later, real sign-in would pick up.
           if (!activeProfile && !tokenStore.get()) {
@@ -974,6 +985,11 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
               clientForUrl: buildClientForServerGroupUrl,
             }
           );
+          // The viewer signed out or switched profile while this ran: the token is not theirs to
+          // persist or announce. Transient, so the caller retries under the new session.
+          if (activeProfileRef.current !== activeProfile || tokenStore.get()?.accessToken !== token) {
+            throw new TransientAuthError("the session changed while the token was being obtained");
+          }
           const userId = decodeAccessTokenUserId(token);
           const activeSession = tokenStore.get();
           if (
@@ -1022,7 +1038,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
             setAuthFailed(true);
             // The active session is refused: drop only it (the saved entry stays, so
             // picking that profile re-tries its own token or asks for its credentials).
-            if (activeProfileRef.current) {
+            if (activeProfile && activeProfileRef.current === activeProfile) {
               tokenStore.clear();
               clearActiveProfileMarker();
               activeProfileRef.current = undefined;
@@ -1032,8 +1048,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
           }
           throw err;
         }
-      },
-    });
+    }
     return instance;
   }, [apiBaseUrl, applyApiBaseUrl, persistProfileSession]);
 
@@ -1090,7 +1105,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
             ensureAccessToken(instance, store, {
               ...PLAYARR_LOGIN_IDENTITY,
               deviceId: profile.deviceId,
-            }, request),
+            }, { ...request, allowTransparentLogin: false }),
         });
         return {
           url: profile.apiBaseUrl,
@@ -1405,6 +1420,9 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
       }
       const userId = target.userId;
       const tokenStore = tokenStoreRef.current as TokenStore;
+      // A token request still running for the profile being left may rotate or drop its session:
+      // let it settle first, so what is read below (and restored on failure) is what is stored.
+      await Promise.allSettled([...pendingTokenRequestsRef.current]);
       const previousSession = tokenStore.get();
       const previousProfile = activeProfileRef.current;
       // Switching away locks the profile being left (TASKS 115): if it has a

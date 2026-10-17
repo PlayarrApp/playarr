@@ -22,23 +22,23 @@ const jwtFor = (userId) => {
 };
 
 /** A fresh browser context seeded once with `accounts` (ids), `active` (id or none) and the refresh behaviour. */
-async function newPage({ accounts, active, revoked = [] }) {
+async function newPage({ accounts, active, revoked = [], expireActive = false, revokeDelayMs = 0 }) {
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const calls = { login: 0, refresh: 0 };
-  await context.addInitScript(({ base, accounts, active, names, tokens }) => {
+  await context.addInitScript(({ base, accounts, active, names, tokens, expireActive }) => {
     try {
       if (localStorage.getItem("fixture-seeded")) return;
       localStorage.setItem("fixture-seeded", "1");
       localStorage.setItem("playarr:apiBaseUrl", base);
       const entry = (id) => ({ profileKey: `k-${id}`, apiBaseUrl: base, userId: id, name: names[id], deviceId: "d",
-        session: { accessToken: tokens[id], refreshToken: `r-${id}`, tokenType: "Bearer", expiresAt: Date.now() + 86_400_000 } });
+        session: { accessToken: tokens[id], refreshToken: `r-${id}`, tokenType: "Bearer", expiresAt: id === active && expireActive ? Date.now() - 1000 : Date.now() + 86_400_000 } });
       localStorage.setItem("playarr.profileSessions.v4", JSON.stringify(accounts.map(entry)));
       if (active) {
         localStorage.setItem("playarr.activeProfile.v1", JSON.stringify({ profileKey: `k-${active}`, apiBaseUrl: base, userId: active }));
         localStorage.setItem("playarr:session", JSON.stringify(entry(active).session));
       }
     } catch {}
-  }, { base, accounts, active, names: NAMES, tokens: Object.fromEntries(Object.values(ID).map((id) => [id, jwtFor(id)])) });
+  }, { base, accounts, active, names: NAMES, tokens: Object.fromEntries(Object.values(ID).map((id) => [id, jwtFor(id)])), expireActive });
   await context.route("**/api/v1/auth/login", async (route) => {
     calls.login += 1;
     await route.fulfill({ status: 400, json: { error: "bad_request", message: "credentials required for full-account login" } });
@@ -46,6 +46,7 @@ async function newPage({ accounts, active, revoked = [] }) {
   await context.route("**/api/v1/auth/refresh", async (route) => {
     calls.refresh += 1;
     const id = String(route.request().postDataJSON().refresh_token).slice(2);
+    if (revoked.includes(id)) await new Promise((r) => setTimeout(r, revokeDelayMs));
     if (revoked.includes(id)) return route.fulfill({ status: 401, json: { error: "unauthorized", message: "refresh token is invalid or expired" } });
     await route.fulfill({ json: { access_token: jwtFor(id), refresh_token: `r-${id}`, expires_in: 86400, token_type: "Bearer", user_id: id } });
   });
@@ -162,6 +163,20 @@ check("zero sessions: shell and picker never paint", !emptyFrames.includes("shel
 await ctx.page.waitForURL((u) => u.pathname.startsWith("/login"), { timeout: 15000 });
 await ctx.page.waitForTimeout(10000);
 check("zero sessions: zero login or refresh calls over 10 s", ctx.calls.login === 0 && ctx.calls.refresh === 0, JSON.stringify(ctx.calls));
+await ctx.context.close();
+
+// 8. A slow refresh of the active account is refused while the viewer switches to B: B's session survives.
+ctx = await newPage({ accounts: [ID.a, ID.b], active: ID.a, revoked: [ID.a], expireActive: true, revokeDelayMs: 2500 });
+await ctx.page.goto(`${base}/profiles`);
+await ctx.page.waitForSelector(`#profile-${ID.b}`);
+await ctx.page.locator(`#profile-${ID.b}`).click();
+await ctx.page.waitForTimeout(5000);
+const after = await ctx.page.evaluate(() => ({
+  marker: JSON.parse(localStorage.getItem("playarr.activeProfile.v1") ?? "{}").userId,
+  token: (() => { try { return JSON.parse(JSON.parse(localStorage.getItem("playarr:session") ?? "{}") ? localStorage.getItem("playarr:session") : "{}").refreshToken; } catch { return null; } })(),
+}));
+check("switch during a refused refresh: the new profile's session survives", after.marker === ID.b && after.token === `r-${ID.b}`, JSON.stringify(after));
+check("switch during a refused refresh: no blind login", ctx.calls.login === 0, JSON.stringify(ctx.calls));
 await ctx.context.close();
 
 await finish();

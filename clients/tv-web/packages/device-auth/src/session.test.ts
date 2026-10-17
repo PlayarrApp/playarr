@@ -1009,17 +1009,56 @@ describe("ensureAccessToken without transparent login", () => {
 });
 
 describe("refresh that outlives a sign-out", () => {
-  it("does not write the refreshed session back", async () => {
+  const other = { accessToken: "Y", refreshToken: "rY", tokenType: "Bearer", expiresAt: Date.now() + 3_600_000 };
+  const old = { accessToken: "old", refreshToken: "r", tokenType: "Bearer", expiresAt: Date.now() - 1000 };
+  const refreshed = { access_token: "new", refresh_token: "r2", expires_in: 3600, token_type: "Bearer" };
+
+  it("does not write back over a later session (primary)", async () => {
     const store = new TokenStore();
-    store.set({ accessToken: "old", refreshToken: "r", tokenType: "Bearer", expiresAt: Date.now() - 1000 });
+    store.set(old);
     const fetchImpl = mockFetch(async () => {
       store.clear();
-      return jsonResponse(200, { access_token: "new", refresh_token: "r2", expires_in: 3600, token_type: "Bearer" });
+      store.set(other);
+      return jsonResponse(200, refreshed);
     });
     const client = new ApiClient({ baseUrl: BASE_URL, fetchImpl });
     await expect(
       ensureAccessToken(client, store, IDENTITY, { allowTransparentLogin: false })
     ).rejects.toMatchObject({ status: 401 });
-    expect(store.get()).toBeUndefined();
+    expect(store.get()?.accessToken).toBe("Y");
+  });
+
+  it("does not write back over a later session (server group)", async () => {
+    const issuer = "11111111-1111-4111-8111-111111111111";
+    const claims = btoa(JSON.stringify({ sub: "00000000-0000-0000-0000-000000000009", iss: issuer })).replace(/=+$/, "");
+    const store = new TokenStore();
+    store.set({ ...old, accessToken: `h.${claims}.s` });
+    const primary = new ApiClient({
+      baseUrl: BASE_URL,
+      fetchImpl: mockFetch(async () => {
+        throw new TypeError("net");
+      }),
+    });
+    const sibling = new ApiClient({
+      baseUrl: "http://b:1",
+      fetchImpl: mockFetch(async () => {
+        store.clear();
+        store.set(other);
+        return jsonResponse(200, refreshed);
+      }),
+    });
+    await expect(
+      ensureAccessToken(primary, store, IDENTITY, {
+        allowTransparentLogin: false,
+        serverGroup: {
+          servers: [
+            { url: "http://b:1", peerNodeId: issuer },
+            { url: BASE_URL, peerNodeId: issuer },
+          ],
+        } as never,
+        clientForUrl: () => sibling,
+      })
+    ).rejects.toBeDefined();
+    expect(store.get()?.accessToken).toBe("Y");
   });
 });

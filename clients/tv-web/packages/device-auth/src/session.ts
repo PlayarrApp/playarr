@@ -502,6 +502,14 @@ function buildLoginBody(identity: EnsureAccessTokenIdentity): LoginRequest {
 }
 
 /**
+ * False once the session a refresh started from is gone or replaced (signed out, or another
+ * profile signed in) while the request was in flight: its result must not overwrite the store.
+ */
+function storeStillHolds(store: TokenStore, started: StoredSession): boolean {
+  return store.get()?.refreshToken === started.refreshToken;
+}
+
+/**
  * Redeems the stored refresh token. Resolves to the new access token;
  * resolves to `undefined` only when the server definitively refused the
  * refresh token (the caller may then try a credential-less login); throws a
@@ -552,8 +560,7 @@ async function refreshExistingSession(
     };
     try {
       const refreshed = await client.refresh(refreshBody);
-      // Signed out while the refresh was in flight: do not write the session back.
-      if (!store.get()) return undefined;
+      if (!storeStillHolds(store, latest)) return undefined;
       store.set(toStoredSession(refreshed));
       return refreshed.access_token;
     } catch (err) {
@@ -574,6 +581,7 @@ async function refreshExistingSession(
             options.clientForUrl
           );
           if (refreshed) {
+            if (!storeStillHolds(store, latest)) return undefined;
             store.set(toStoredSession(refreshed));
             return refreshed.access_token;
           }
