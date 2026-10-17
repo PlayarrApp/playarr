@@ -33,6 +33,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -176,6 +177,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -3635,7 +3637,7 @@ internal fun ExperienceLandscapeCard(
                 kinds = if (homeView == PlayarrHomeViewPreference.Cover) {
                     listOf(ImageKind.Poster, ImageKind.Backdrop)
                 } else {
-                    listOf(ImageKind.Backdrop, ImageKind.Thumb, ImageKind.Poster)
+                    listOf(ImageKind.Backdrop, ImageKind.Poster)
                 },
                 serverUrl = serverUrl,
                 accessToken = accessToken,
@@ -4176,33 +4178,66 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
     }
 }
 
-/** Web phone `.ui-multiselect`: a 59 px field whose trigger reads "Any language" or the picked names; it opens the options as chips. */
+/** Web phone `.ui-multiselect`: a 59 px field whose trigger reads "Any language" or the picked names; it opens the inline checkbox list. */
 @Composable
 private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetEntry>, selected: Set<String>, onToggle: (String) -> Unit) {
     val locale = LocalPlayarrLanguage.current.locale
     var open by remember { mutableStateOf(false) }
+    val triggerFocus = remember { FocusRequester() }
+    BackHandler(enabled = open) {
+        open = false
+        triggerFocus.requestFocus()
+    }
+    val chevronRotation by animateFloatAsState(if (open) 180f else 0f, tween(180), label = "language filter chevron")
     val any = playarrString(PlayarrString.LibraryAnyLanguage)
     val summary = entries.filter { it.code in selected }.joinToString(", ") { languageDisplayName(it.code, locale, it.name) }.ifEmpty { any }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LibraryFilterLabel(title)
-        Column(
-            Modifier.fillMaxWidth().background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
-                .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(6.4.dp),
-        ) {
-            Row(
-                Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(10.dp))
-                    .clickable { open = !open }.padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                Modifier.fillMaxWidth().background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
+                    .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(6.4.dp),
             ) {
-                Text(summary, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text("\u2304", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680))
+                Row(
+                    Modifier.fillMaxWidth().height(44.dp).focusRequester(triggerFocus).clip(RoundedCornerShape(10.dp))
+                        .clickable { open = !open }.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
+                ) {
+                    Text(summary, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text("\u2304", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), modifier = Modifier.graphicsLayer { rotationZ = chevronRotation })
+                }
             }
             if (open) {
-                Spacer(Modifier.height(6.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(entries, key = { it.code }) { entry ->
-                        val name = languageDisplayName(entry.code, locale, entry.name)
-                        PlayarrChoice(if (entry.count >= 0) "$name · ${entry.count}" else name, entry.code in selected) { onToggle(entry.code) }
+                if (entries.isEmpty()) {
+                    Text(playarrString(PlayarrString.LibraryNoLanguages), Modifier.padding(horizontal = 8.dp, vertical = 6.dp), color = WebInkMuted, fontSize = 8.96.sp)
+                } else {
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(max = webMultiSelectMaxHeight(androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * LocalStageScale.current, LocalStageScale.current)).clip(RoundedCornerShape(12.dp))
+                            .background(WebSurfaceStrong).border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp))
+                            .verticalScroll(rememberScrollState()).padding(4.8.dp),
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
+                    ) {
+                        entries.forEach { entry ->
+                            val name = languageDisplayName(entry.code, locale, entry.name)
+                            val active = entry.code in selected
+                            Row(
+                                Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp))
+                                    .toggleable(value = active, role = Role.Checkbox) { onToggle(entry.code) }
+                                    .padding(horizontal = 9.6.dp, vertical = 6.4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(11.2.dp),
+                            ) {
+                                Box(
+                                    Modifier.size(22.dp).border(2.dp, WebInk, RoundedCornerShape(5.dp))
+                                        .background(if (active) WebInk else Color.Transparent, RoundedCornerShape(5.dp)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (active) Text("✓", color = WebBackground, fontSize = 9.sp, lineHeight = 12.sp)
+                                }
+                                Text(name, Modifier.weight(1f), color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(if (active) 720 else 400), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                if (entry.count >= 0) Text(entry.count.toString(), color = WebInkMuted, fontSize = 8.96.sp, lineHeight = 13.44.sp)
+                            }
+                        }
                     }
                 }
             }

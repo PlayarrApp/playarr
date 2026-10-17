@@ -20,6 +20,10 @@ internal fun webVu(minCss: Float, percent: Float, maxCss: Float): Dp {
     return ((percent * viewportHeightCss / 100f).coerceIn(minCss, maxCss) / scale).dp
 }
 
+/** Web MultiSelect list cap: `min(260px, 34vh)`, converted back to stage dp. */
+internal fun webMultiSelectMaxHeight(viewportHeightCss: Float, stageScale: Float): Dp =
+    (minOf(260f, viewportHeightCss * 0.34f) / stageScale).dp
+
 /** Top of the hero copy beside a library or detail page: web's 24 vu, which is 259 dp at 1080 and 192 css px at 800. */
 @Composable
 internal fun tvHeroTop(): Dp = if (LocalStageScale.current == 1f) 259.dp else webVu(0f, 24f, Float.MAX_VALUE)
