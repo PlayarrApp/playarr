@@ -211,6 +211,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
                     if any(title.startswith(t[:25]) or t.startswith(title[:25]) for t in stuck):
                         out.setdefault(title[:25], {})[k[len(prefix)]] = v
             return out
+        print("[settle] counts: img+ (Image appeared)", sum(1 for k in dbgc_all if k.startswith("img+")), "skel+ keys", sum(1 for k in dbgc_all if k.startswith("skel+")), "skel- keys", sum(1 for k in dbgc_all if k.startswith("skel-")), "mount keys", sum(1 for k in dbgc_all if k.startswith("mount")), "prop keys", sum(1 for k in dbgc_all if k.startswith("prop")), flush=True)
         print("[settle] bridge", {k: v for k, v in dbgc_all.items() if k.startswith("bridge-")}, flush=True)
         print("[settle] Home lifecycle", {k: v for k, v in dbgc_all.items() if k.startswith("H-")}, flush=True)
         hs = sorted(int(k.rsplit(":", 1)[1]) for k in dbgc_all if k.startswith("hs:") and k.rsplit(":", 1)[1].isdigit())
