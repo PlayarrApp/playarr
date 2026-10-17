@@ -9,7 +9,7 @@ import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatc
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
-import { readinessMode } from "./suite-lib.mjs";
+import { CAPTURE_REGION, readinessMode } from "./suite-lib.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
 // Fixture drivers here are not stable-capable; stable is the suite default, so these tests opt out.
 process.env.PARITY_STABLE ??= "0";
@@ -856,4 +856,11 @@ test("strict readiness applies only to pinned runs on drivers that declare it", 
   assert.equal(readinessMode(undefined, true), "standard");
   assert.equal(createAndroidTvDriver({ env: {}, accountGuard: async () => {} }).strictReadiness, undefined);
   for (const file of ["web", "apple-ios"]) assert.match(readFileSync(new URL(`./drivers/${file}.mjs`, import.meta.url), "utf8"), /strictReadiness: true/);
+});
+
+test("web refs and clients pin the same zone and locale, matching screens.json determinism", () => {
+  const spec = JSON.parse(readFileSync(new URL("./screens.json", import.meta.url), "utf8")).determinism;
+  assert.deepEqual({ ...CAPTURE_REGION }, { timeZone: spec.timezone, locale: spec.locale });
+  assert.match(readFileSync(new URL("./capture-refs.mjs", import.meta.url), "utf8"), /setDeterministicCapture\(\{ fixedNow, disableAnimations: true, \.\.\.CAPTURE_REGION \}\)/);
+  assert.match(readFileSync(new URL("./suite-run.mjs", import.meta.url), "utf8"), /setDeterministicCapture\(\{ fixedNow, disableAnimations: true, \.\.\.CAPTURE_REGION \}\)/);
 });

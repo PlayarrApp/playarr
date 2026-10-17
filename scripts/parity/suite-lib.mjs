@@ -140,3 +140,6 @@ export async function pinnedCatalogFiles(suite, env = process.env, { required = 
 export function readinessMode(driver, pinned) {
   return pinned && driver?.strictReadiness === true ? "strict" : "standard";
 }
+
+/** Time zone and locale pinned with the clock, equal to screens.json determinism: web refs and every client render the pinned instant the same way. */
+export const CAPTURE_REGION = Object.freeze({ timeZone: "UTC", locale: "en-GB" });

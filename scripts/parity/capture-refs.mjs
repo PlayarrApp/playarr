@@ -15,7 +15,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { expandKeys } from "./suite-lib.mjs";
+import { CAPTURE_REGION, expandKeys } from "./suite-lib.mjs";
 import { assertBuildIdentityStable, selectedLiveScreens, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
 import { withCaptureState } from "./capture-state.mjs";
 import { deckFromEnv, seedCanonicalDeck } from "./canonical-deck.mjs";
@@ -108,7 +108,7 @@ for (const name of groups) {
   const captureRows = [];
   try {
     if (!driver.setDeterministicCapture || !driver.waitReady || !driver.captureBuildIdentity) throw new Error("web driver lacks deterministic capture, readiness, or build identity controls");
-    await driver.setDeterministicCapture({ fixedNow, disableAnimations: true });
+    await driver.setDeterministicCapture({ fixedNow, disableAnimations: true, ...CAPTURE_REGION });
     const driverBuild = await driver.captureBuildIdentity();
     if (driverBuild !== `${webBuild.sha}@${webBuild.builtAt}`) throw new Error(`web driver build identity ${driverBuild} does not match build-info identity ${webBuild.sha}@${webBuild.builtAt}`);
     await driver.start();
