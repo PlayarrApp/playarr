@@ -1,0 +1,1 @@
+- Roku: the player draws the web Minimise pill and a bordered round close button; Up from the seek bar reaches them. Minimise ends playback, as Roku cannot keep a mini player behind the browse pages.
