@@ -219,7 +219,7 @@ struct CalendarView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
 
-            WMHeaderCircleButton(width: 44, height: 44, glyph: "\u{2190}", action: goHome)
+            PlayarrBackButton(action: goHome)
                 .offset(x: 16, y: top)
             WMText("Calendar", 17.6, 580, lh: 26.4, ls: -0.792)
                 .frame(height: 44)

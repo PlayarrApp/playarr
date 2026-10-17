@@ -245,8 +245,8 @@ struct LibraryView: View {
             .keepInsideSafeArea()
 
             ZStack(alignment: .topLeading) {
-                WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: goHome)
-                    .offset(x: 16, y: WM.topInset + 2)
+                PlayarrBackButton(action: goHome)
+                    .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
                 WMText("Search", 21.6, 580, lh: 32.4, ls: -0.972)
                     .offset(x: 68, y: WM.topInset + 5)
             }
@@ -673,7 +673,7 @@ struct LibraryView: View {
     private func tabletHeader(proxy: GeometryProxy) -> some View {
         let scale = proxy.size.width / 1366
         return ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 43, height: 43, glyph: "←", action: goHome).offset(x: 122 * scale, y: 55 * scale)
+            PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
             WMTitleWithDetail(
                 detail: viewModel.total.map { "\($0.formatted(.number.grouping(.automatic))) \(viewModel.selectedKind == .artist ? "artists" : "titles")" },
                 maxWidth: max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 182 * scale - 4), size: 9.92, gap: 15
@@ -683,17 +683,7 @@ struct LibraryView: View {
             .offset(x: 182 * scale, y: 57 * scale)
             HStack {
                 Spacer()
-                Button { showingFilters = true } label: {
-                    VStack(spacing: 7) {
-                        Image(systemName: "slider.horizontal.3").font(.system(size: 15, weight: .semibold))
-                        Text("Filters").font(WM.font(8, 700))
-                    }
-                    .foregroundStyle(WM.inkSoft)
-                    .frame(width: 45, height: 70)
-                    .background(WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
-                }
-                .buttonStyle(.plain)
+                PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3") { showingFilters = true }
             }
             .padding(.trailing, 16 * scale).offset(y: 83 * scale)
         }
