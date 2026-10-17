@@ -3,7 +3,7 @@
     "id": "samsung-tizen-web",
     "family": "samsung",
     "name": "Samsung Tizen (web app)",
-    "min_os": "Tizen 7.0",
+    "min_os": "Tizen 6.5",
     "route": "download",
     "asset": "playarr-samsung-tizen-web-{version}-unsigned.zip",
     "store_url": null,
