@@ -71,8 +71,7 @@ Do not keep a list of forbidden titles in the repository: such a list would itse
 - Kubernetes manifests and Helm charts here are generic templates with neutral defaults
   (`infra/kubernetes/helm/playarr-dev` renders nothing on its own; its README lists the values).
   Deployment of the server (values, image pins, rollouts) is out of scope of this repository.
-- The `regional-image` workflow publishes `ghcr.io/<owner>/playarr:<sha8>` for each
-  `main` commit. Consumers pin an image tag in their own deployment configuration; never move a
+- The `regional-image` workflow (release and manual runs only) publishes `ghcr.io/<owner>/playarr:<sha8>`. Consumers pin an image tag in their own deployment configuration; never move a
   pin to an older image.
 
 ## Runners

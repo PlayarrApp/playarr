@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Runs every web Playwright smoke and behaviour script that needs only the built bundle and the deterministic mock API
 // (scripts/nav-perf/server.mjs), against one shared build. This is the PR gate for the web styles and behaviour
-// (CI job `web behaviour`, four shards); the full native-parity regression is separate and manual (workflow_dispatch).
+// (run locally; it is not a CI job); the full native-parity regression is separate and manual.
 //
 //   node scripts/web-behaviour.mjs [--dist dir] [--only name] [--shard i/n] [--list]
 //
