@@ -672,6 +672,9 @@ body[data-input-mode="remote"] .action-pill {
   min-width: 0;
   max-width: 24rem;
   white-space: normal;
+}
+
+.page-actions-status[data-action-id="notifications-hint"] {
   line-height: 1.3;
 }
 
@@ -689,7 +692,7 @@ body[data-input-mode="remote"] .action-pill {
 }
 
 /* A longer label (Notifications blocked) wraps under its icon inside the fixed tile width. */
-.shell-action-column .action-pill span {
+.shell-action-column .action-pill[data-notifications-blocked] span {
   max-width: 100%;
   white-space: normal;
   text-align: center;

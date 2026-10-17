@@ -118,13 +118,11 @@ export async function requestNotificationPermission(onGranted: () => void): Prom
   return { permission, showHint: permission === "denied" };
 }
 
-/** The opt-in: notifications show only once the user has agreed on this device and the browser has granted permission. */
-export function useDownloadNotificationOptIn() {
+/** The live permission, following changes made in the browser's site settings while the page is open (where the Permissions API allows). */
+export function useNotificationPermission() {
   const supported = downloadNotificationsSupported();
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(readNotificationPermission);
-  const [optedIn, setOptedIn] = useState(() => (supported ? readOptIn() : false));
   const [blockedHint, setBlockedHint] = useState(false);
-  // Follows changes made in the browser's site settings while the page is open (where the Permissions API allows).
   useEffect(() => {
     if (!supported || !navigator.permissions?.query) return;
     let status: PermissionStatus | undefined;
@@ -146,9 +144,22 @@ export function useDownloadNotificationOptIn() {
       if (status) status.onchange = null;
     };
   }, [supported]);
+  /** Re-reads the live permission, for after any `requestPermission` call (a denied prompt must show as blocked at once). */
+  const refresh = useCallback(() => {
+    const live = readNotificationPermission();
+    setPermission(live);
+    return live;
+  }, []);
+  return { supported, permission, setPermission, refresh, blockedHint, setBlockedHint };
+}
+
+/** The opt-in: notifications show only once the user has agreed on this device and the browser has granted permission. */
+export function useDownloadNotificationOptIn() {
+  const { supported, permission, refresh, setBlockedHint, blockedHint } = useNotificationPermission();
+  const [optedIn, setOptedIn] = useState(() => (supported ? readOptIn() : false));
   const enable = useCallback(async () => {
     if (!supported) return;
-    const { permission: result, showHint } = await requestNotificationPermission(() => {
+    const { showHint } = await requestNotificationPermission(() => {
       try {
         window.localStorage.setItem(DOWNLOAD_NOTIFICATION_OPT_IN_KEY, "on");
       } catch {
@@ -156,9 +167,9 @@ export function useDownloadNotificationOptIn() {
       }
       setOptedIn(true);
     });
-    setPermission(result);
+    refresh();
     setBlockedHint(showHint);
-  }, [supported]);
+  }, [supported, refresh, setBlockedHint]);
   const disable = useCallback(() => {
     try {
       window.localStorage.removeItem(DOWNLOAD_NOTIFICATION_OPT_IN_KEY);
