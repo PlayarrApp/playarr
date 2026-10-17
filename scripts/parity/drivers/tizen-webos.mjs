@@ -426,6 +426,18 @@ export async function createDriver() {
           finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         }
       }
+      // Hosted debug page only: a router link's click does not navigate there (it does in the packaged app), so run the link's own handler.
+      if (TIZEN_MIRROR && k === "select" && !long) {
+        await sleep(600);
+        await ev(`(() => {
+          const a = document.activeElement;
+          if (!(a instanceof HTMLAnchorElement) || !a.getAttribute("href")?.startsWith("#/") || a.getAttribute("href") === location.hash) return false;
+          const props = a[Object.keys(a).find((key) => key.startsWith("__reactProps"))];
+          if (!props?.onClick) return false;
+          props.onClick({ button: 0, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, currentTarget: a, target: a, defaultPrevented: false, preventDefault() {}, stopPropagation() {}, persist() {} });
+          return true;
+        })()`);
+      }
       // Real TV: the app applies a directional key on the next animation frame and a busy main thread can delay it by seconds; two frames flush the queue.
       if (REAL_TV) await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
       await sleep(device === "webos" ? 1000 : 350);
@@ -456,6 +468,11 @@ export async function createDriver() {
         await guard();
         if (TIZEN_MIRROR) {
           const q = (name) => `${mirrorLocal()}/__mirror/${name}?t=${encodeURIComponent(mirrorToken())}`;
+          // A focused text field opens the TV's keyboard, which shrinks the page to the strip above it (Search: 1920x568): blur it first.
+          if (Number(await ev("innerHeight")) < 1000) {
+            await ev("(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)");
+            if (!(await until("innerHeight >= 1070", 15000))) throw new Error("the TV keyboard did not close before capture");
+          }
           await ev("window.__mirrorPause = false");
           const since = Date.now() / 1000;
           let frame;

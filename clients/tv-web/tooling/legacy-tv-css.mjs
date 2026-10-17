@@ -300,6 +300,12 @@ function addChromium85Fallbacks(root) {
         declaration.cloneBefore({ prop: sides[0], value: values[0] });
         declaration.cloneBefore({ prop: sides[1], value: values[1] ?? values[0] });
       }
+    } else if (declaration.prop === "aspect-ratio") {
+      // The runtime half is legacy-aspect-ratio.mjs; a rule that sets its own height ignores the ratio, so it needs no help.
+      const rule = declaration.parent;
+      const sized = rule?.nodes?.some((node) => node.type === "decl" && /^(?:height|min-height|block-size)$/i.test(node.prop));
+      const inKeyframes = rule?.parent?.type === "atrule" && /keyframes$/i.test(rule.parent.name);
+      if (rule?.type === "rule" && !sized && !inKeyframes) declaration.cloneAfter({ prop: "--lc-ar", value: declaration.value });
     } else if (declaration.prop === "overflow" && /^clip$/i.test(declaration.value.trim())) {
       declaration.cloneBefore({ value: "hidden" });
     }
