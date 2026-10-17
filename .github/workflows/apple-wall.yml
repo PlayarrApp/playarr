@@ -7,11 +7,11 @@ name: Apple wall
 # NOTE: a long-running stream on hosted runners pushes GitHub's terms (Actions are meant for building and testing); the repo owner
 # has decided to use it. Never self-hosted. See docs/parity/DEVICES.md (Hosted Apple wall) for the set-up and the switch-over.
 #
-# Safety (public repository): only workflow_dispatch and schedule, both on the default branch; no pull_request trigger, so forks
+# Safety (public repository): only workflow_dispatch, on the default branch; no pull_request trigger, so forks
 # never get a secret. Scripts that see a secret come from the default branch checkout (`trusted/`); the ref under test (`src/`)
 # is only built, and every secret is passed to the one step that needs it.
 
-run-name: Apple wall [${{ inputs.devices || 'scheduled' }}]
+run-name: Apple wall [${{ inputs.devices }}]
 
 on:
   workflow_dispatch:
@@ -56,11 +56,6 @@ on:
         description: Minutes this run lasts, at most 345 (default - 345 minus a per-device offset, so handovers do not coincide)
         type: string
         default: ""
-  # Watchdog: only acts when the repository variable APPLE_WALL_SCHEDULE is "true" (set by the switch-over); starts a streaming
-  # run for every device that has none running.
-  schedule:
-    - cron: "17,47 * * * *" # watchdog for streaming runs (APPLE_WALL_SCHEDULE)
-    - cron: "5 */3 * * *" # test-only captures, no stream (APPLE_WALL_TESTS)
 
 permissions:
   contents: read
@@ -97,9 +92,6 @@ jobs:
           ONLY_THEME: ${{ inputs.theme }}
           APP_REF: ${{ inputs.ref }}
           REF_NAME: ${{ github.ref_name }}
-          ENABLED: ${{ vars.APPLE_WALL_SCHEDULE }}
-          TESTS: ${{ vars.APPLE_WALL_TESTS }}
-          CRON: ${{ github.event.schedule }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
@@ -111,26 +103,6 @@ jobs:
             python3 -c 'import os,sys,unicodedata; q=os.environ.get("SEARCH_QUERY", ""); sys.exit(0 if q.strip() and len(q) <= 80 and not any(unicodedata.category(c) == "Cc" for c in q) else 1)' || {
               echo '::error::search_query must be a non-empty single-line query of at most 80 characters'; exit 1;
             }
-          fi
-          if [[ $EVENT == schedule && $CRON == "5 */3 * * *" ]]; then
-            # test-only: capture all four devices, never stream, and only while APPLE_WALL_TESTS is "true"
-            if [[ $TESTS != true ]]; then echo 'any=false' >> "$GITHUB_OUTPUT"; echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"; exit 0; fi
-            echo "any=true" >> "$GITHUB_OUTPUT"
-            echo 'matrix={"include":[{"device":"tvos","vnc":"TVOS","length":1,"themes":"dark","slug":"dark"},{"device":"tvos","vnc":"TVOS","length":1,"themes":"light","slug":"light"},{"device":"iphone","vnc":"IPHONE","length":1,"themes":"dark","slug":"dark"},{"device":"iphone","vnc":"IPHONE","length":1,"themes":"light","slug":"light"},{"device":"ipad","vnc":"IPAD","length":1,"themes":"dark","slug":"dark"},{"device":"ipad","vnc":"IPAD","length":1,"themes":"light","slug":"light"},{"device":"macos","vnc":"MACOS","length":1,"themes":"dark","slug":"dark"},{"device":"macos","vnc":"MACOS","length":1,"themes":"light","slug":"light"}]}' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [[ $EVENT == schedule ]]; then
-            if [[ $ENABLED == true ]]; then
-              live=$(gh run list -R "$GITHUB_REPOSITORY" -w apple-wall.yml -L 100 --json status,displayTitle \
-                -q '.[] | select(.status != "completed") | .displayTitle')
-              for d in tvos iphone ipad macos; do
-                if grep -Eq "\[([a-z,]*,)?$d(,[a-z,]*)?\]" <<<"$live"; then continue; fi
-                gh workflow run apple-wall.yml -R "$GITHUB_REPOSITORY" --ref "$DEFAULT_BRANCH" \
-                  -f devices="$d" -f stream=true -f chain=true -f length="$((345 - off[$d]))"
-                echo "watchdog started $d"
-              done
-            fi
-            echo 'any=false' >> "$GITHUB_OUTPUT"; echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"; exit 0
           fi
           [[ -z $ONLY_THEME || $ONLY_THEME == dark || $ONLY_THEME == light ]] || { echo '::error::theme must be dark or light'; exit 1; }
           items=()
@@ -572,7 +544,7 @@ jobs:
           PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] }}
           GH_TOKEN: ${{ github.token }}
           LENGTH: ${{ matrix.length }}
-          CHAIN: ${{ github.event_name == 'schedule' || inputs.chain }}
+          CHAIN: ${{ inputs.chain }}
           REF_INPUT: ${{ inputs.ref }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |

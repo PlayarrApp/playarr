@@ -40,12 +40,10 @@ on tvOS and macOS, Calendar, Settings, Profiles); with the driver, `dpad.json` a
 - A hosted job stops after 6 hours. A streaming run lasts at most 345 minutes and dispatches its successor 25 minutes
   before it ends (`GITHUB_TOKEN` dispatch is allowed), so the new node is up before the old one leaves. At most one device
   hands over at a time (the offsets keep them apart) to stay under the macOS concurrency limit of the plan.
-- Watchdog: the schedule starts a streaming run for each device that has none, but only when the repository variable
-  `APPLE_WALL_SCHEDULE` is `true`.
 
 ## Safety
 
-- Triggers are `workflow_dispatch` and `schedule` only, never `pull_request`, so forks never receive secrets.
+- Triggers are `workflow_dispatch` only, never `pull_request`, so forks never receive secrets.
 - Scripts that see a secret run from a checkout of the default branch (`trusted/`); the ref under test is only built.
   Secrets are set on the steps that need them, never echoed (tokens are masked).
 - Actions are pinned to commit SHAs.

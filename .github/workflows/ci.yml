@@ -33,21 +33,15 @@ on:
   push:
     branches:
       - main
-  # Started by the merge train (scripts/merge-train.sh) for branches it pushed
-  # with GITHUB_TOKEN, whose pushes trigger no workflows. Also usable by hand.
+  # Manual runs; a dispatch on main runs everything.
   workflow_dispatch:
-  # Nightly full run of everything (no affected-only selection) to catch drift
-  # that a narrowed PR run could miss.
-  schedule:
-    - cron: '17 2 * * *'
 
 concurrency:
   # PRs share one group per PR number and are cancelled by newer pushes. Pushes to main share ONE group, with
   # cancel-in-progress off: GitHub then lets a running main run finish and keeps only the NEWEST pending one, so the
   # latest main is always tested and deployed. Per-SHA groups (the earlier setup) let every merge queue its own full
-  # run: on 11 Oct 2026 the queue held 30+ stale main runs (about 60 cancelled by hand), starving PR runs and the merge
-  # train. A skipped intermediate commit is covered by the next run, which tests a tree containing it. Scheduled and
-  # manual runs keep their own per-SHA group so a push never supersedes them.
+  # run: on 11 Oct 2026 the queue held 30+ stale main runs (about 60 cancelled by hand), starving PR runs. A skipped intermediate commit is covered by the next run, which tests a tree
+  # containing it. Manual runs keep their own per-SHA group so a push never supersedes them.
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref == 'refs/heads/main' && 'main') || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -105,6 +99,9 @@ jobs:
       - name: Require cleartext HTTP to user-entered servers
         run: scripts/ci/check-cleartext-policy.sh
 
+      - name: Keep iOS debug-only parity symbols out of Release code
+        run: scripts/ci/check-ios-debug-parity.sh
+
       # Owner rule: public screenshots come from scripts/showcase (open-movie demo library), not the parity fixture.
       - name: Require showcase-made public screenshots
         env:
@@ -122,8 +119,8 @@ jobs:
         run: scripts/ci/check-no-coauthor.sh
 
       # Owner rule (docs/design/page-layout.md, section 7.4): the look of the shared page layout changes only on an
-      # explicit owner request that names the reference, recorded as a Layout-Change line in the PR body. Train runs
-      # (workflow_dispatch on the PR branch) read the body through the API.
+      # explicit owner request that names the reference, recorded as a Layout-Change line in the PR body. Branch
+      # dispatches read the body through the API.
       - name: Require an owner request for shared layout look changes
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -145,8 +142,6 @@ jobs:
           ENV_DATA_DENYLIST: ${{ secrets.ENV_DATA_DENYLIST }}
         run: scripts/ci/check-env-data.sh
 
-      - name: Merge train logic tests
-        run: scripts/ci/test-merge-train.sh
       - name: Post-merge fold tests
         run: scripts/ci/test-fold-main.sh
 
@@ -159,11 +154,11 @@ jobs:
       - name: Profile avatar presets match the web reference
         run: node clients/shared/profile-avatars/render.mjs --check
 
-      # Nightly and post-merge dispatches on main validate everything.
+      # Dispatches on main validate everything.
       - name: Full run?
         id: all
         run: |
-          if [ "$GITHUB_EVENT_NAME" = schedule ] || { [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$GITHUB_REF_NAME" = main ]; }; then
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$GITHUB_REF_NAME" = main ]; then
             echo full=true >> "$GITHUB_OUTPUT"
           fi
 
@@ -175,7 +170,7 @@ jobs:
         run: scripts/ci/rust-scope.sh | tee -a "$GITHUB_OUTPUT"
 
       # Affected-only Android selection with the same diff logic as the Rust scope (so dispatched
-      # train runs select correctly too). Full `build` on main, nightly and main dispatches.
+      # branch runs select correctly too). Full `build` on main, nightly and main dispatches.
       - name: Select affected Android work
         id: android
         env:
@@ -1208,25 +1203,3 @@ jobs:
           fi
 
           echo "All required jobs passed or were skipped (not applicable to this change)."
-
-  # ---------------------------------------------------------------------
-  # Resume the merge train the moment the batch CI finishes. The train's workflow_run trigger on this
-  # workflow was observed to drop the completion of a long-running dispatched run (a green batch sat
-  # for 6 minutes), so the batch's own CI run starts the train explicitly. The schedule and the
-  # workflow_run trigger stay as fallbacks. Only the train's scratch branch; a dispatch with
-  # GITHUB_TOKEN is allowed to start workflows.
-  # ---------------------------------------------------------------------
-  kick-train:
-    name: Resume merge train
-    needs: ci-required
-    if: always() && github.event_name == 'workflow_dispatch' && github.ref_name == 'train/batch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Dispatch the merge train
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run merge-train.yml --repo "$GITHUB_REPOSITORY" --ref main -f dry_run=false

@@ -1451,6 +1451,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- Removed the merge train workflow and scripts, plus the cron schedules in CI, Apple wall and untracked-branches. PRs target `integration/parity`, which the coordinator batches into `main` with a merge commit once `ci-required` is green.
 - Removed the tvOS live simulator workflow and its keepalive script: the live Apple TV simulator runs only on the MacBook over ssh (owner decision), and this public repository never runs a self-hosted or long-lived Apple runner job.
 - Web calendar: the unused `CALENDAR_KINDS` and `filterByKinds` helpers are gone; the calendar test now checks rendered markup and the effective scroll rules instead of stale CSS text.
 - Web calendar: the unused `CALENDAR_KINDS` and `filterByKinds` helpers are gone; the calendar test now checks rendered markup and the effective scroll rules instead of stale CSS text.

@@ -1,7 +1,7 @@
 # TASKS fragments
 
 Do not edit `TASKS.md` in a PR. Add `tasks.d/<row-number>.md` per row you create or update.
-`TASKS.md` stays the live board: the merge train folds each fragment into it when your PR lands.
+`TASKS.md` stays the live board: the Fold board workflow folds each fragment into it after it lands on main.
 
 ```
 section: Epic name (or "N. Epic name") of the "## N. Epic name" heading the row belongs to
