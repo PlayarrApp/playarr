@@ -1,0 +1,1 @@
+- Web: on phones the series, film and music detail header (Back and title) stays fixed at the top while the content scrolls, fading out beneath it.

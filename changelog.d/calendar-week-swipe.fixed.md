@@ -1,0 +1,1 @@
+- Web: the Calendar week view on phones now swipes left and right between day columns (columns no longer block the horizontal swipe) and opens on today's column.

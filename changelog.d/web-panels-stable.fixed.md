@@ -1,0 +1,1 @@
+- Web: filter and view panels stay mounted when an option changes (Calendar no longer remounts its panel when switching to or from Agenda), and the page behind an open panel no longer scrolls.
