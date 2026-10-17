@@ -1955,7 +1955,13 @@ struct TVLibraryKindView: View {
         // against the movies reference showed a band of mismatch along the foot of the last visible row.
         .macEdgeFade(axis: .vertical, endFloor: 0.3)
         #endif
+        #if os(macOS)
+        // Placed from the leading edge, not the trailing one: the cards then sit at the web x (783.4) whatever width the window reports.
+        .padding(.leading, 783.4 - padL - 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        #else
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+        #endif
         #if os(macOS)
         // Back from a detail: web restores the card that opened it. Same transaction as the pop, before the settle step.
         // Only the Mac wraps the grid in a ScrollViewReader: tvOS keeps the exact view tree its focus parity was verified on.
