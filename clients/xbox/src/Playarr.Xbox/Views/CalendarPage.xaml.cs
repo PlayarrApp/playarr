@@ -106,32 +106,7 @@ namespace Playarr.Xbox.Views
             linkButton.Click += (s, e) => CalendarLinkPanel.Open(_root);
             _root.Children.Add(linkButton);
 
-            var filtersButton = new Button
-            {
-                Width = 58,
-                Height = 70,
-                Margin = new Thickness(0, 237, 14, 0),
-                Padding = new Thickness(0),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
-                CornerRadius = new CornerRadius(12),
-                Background = Ui.Res("PlayarrSurface"),
-                BorderBrush = Ui.Res("PlayarrLine"),
-                BorderThickness = new Thickness(1),
-                Content = new StackPanel
-                {
-                    Spacing = 8,
-                    Children =
-                    {
-                        new FontIcon { Glyph = "\uE71C", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 15 },
-                        new TextBlock { Text = "Filters", FontSize = 9, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center },
-                    },
-                },
-                FocusVisualPrimaryBrush = Theme.FocusRing,
-                FocusVisualPrimaryThickness = new Thickness(3),
-                FocusVisualSecondaryThickness = new Thickness(0),
-            };
-            filtersButton.Click += (s, e) => OpenFilters();
+            var filtersButton = Ui.ActionTile(Ui.FiltersIcon(), "Filters", 237, OpenFilters);
             _root.Children.Add(filtersButton);
         }
 
