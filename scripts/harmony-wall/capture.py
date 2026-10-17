@@ -213,7 +213,8 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
             return out
         print("[settle] counts: img+ (Image appeared)", sum(1 for k in dbgc_all if k.startswith("img+")), "skel+ keys", sum(1 for k in dbgc_all if k.startswith("skel+")), "skel- keys", sum(1 for k in dbgc_all if k.startswith("skel-")), "mount keys", sum(1 for k in dbgc_all if k.startswith("mount")), "prop keys", sum(1 for k in dbgc_all if k.startswith("prop")), flush=True)
         print("[settle] bridge", {k: v for k, v in dbgc_all.items() if k.startswith("bridge-")}, flush=True)
-        print("[settle] Home lifecycle", {k: v for k, v in dbgc_all.items() if k.startswith("H-")}, flush=True)
+        print("[settle] ForEach key evaluations", sorted(k for k in dbgc_all if k.startswith("H-key"))[:40], flush=True)
+        print("[settle] Home lifecycle", {k: v for k, v in dbgc_all.items() if k.startswith("H-") and not k.startswith("H-key")}, flush=True)
         hs = sorted(int(k.rsplit(":", 1)[1]) for k in dbgc_all if k.startswith("hs:") and k.rsplit(":", 1)[1].isdigit())
         ri = {}
         for k in dbgc_all:
