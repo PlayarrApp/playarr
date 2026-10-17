@@ -1,1 +1,0 @@
-- Web: the Settings approval-notifications button also shows "Notifications blocked" when the browser blocks notifications, asks again on click and explains how to unblock.

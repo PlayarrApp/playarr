@@ -13,6 +13,15 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Web: the Calendar week view on phones now swipes left and right between day columns (columns no longer block the horizontal swipe) and opens on today's column.
+- Web: on phones the series, film and music detail header (Back and title) stays fixed at the top while the content scrolls, fading out beneath it.
+- Web: the Download, Watchlist, Playlist and Playback buttons on film and series pages now switch their icon to the label colour while focused or hovered, so the icon stays visible on the filled button.
+- Web: the Library alphabet rail now draws a ring around the active letter that follows the grid, keeps the standard focus ring on a focused letter (also when it is the active one), and a letter jump leaves focus on the letter (only Right enters the grid, on the first card of the section).
+- Web: the Home and library hero copy no longer shows, hides and animates in again on navigation; it now fades in once with the page.
+- Web: navigating to another page now starts every scroll container at the top on the first frame, and library pages no longer carry the alphabet letter across routes.
+- Web: filter and view panels stay mounted when an option changes (Calendar no longer remounts its panel when switching to or from Agenda), and the page behind an open panel no longer scrolls.
+- Web: on the Library alphabet rail only the key pointing toward the grid (Left when the rail is right of the grid, Right when it is left of it) enters the grid; the key pointing away does nothing, so Right on the TV rail no longer wraps back into the grid. The side comes from the rail and grid rects.
+- Web: Requests now has its own plus-in-circle nav icon instead of sharing the Watchlist bookmark.
 - The hosted iOS parity workflow passes its pinned clock to the app as text, so iPhone captures confirm the fixed clock.
 - A release dry run no longer fails in the web deploy job's post-job cache save when the deploy steps are skipped.
 - The release collects the Xbox package under its real `.msix` name and picks the HarmonyOS HAP by name, failing the release if the HAP is missing, so `clients.json` no longer lists Xbox as pending.
@@ -544,6 +553,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Web: the Settings approval-notifications button also shows "Notifications blocked" when the browser blocks notifications, asks again on click and explains how to unblock.
+- Web: when browser notifications are blocked, the Downloads notifications button shows a blocked bell; clicking it asks again and, if the browser still refuses, explains how to unblock in the address bar.
 - Releases now build the Samsung Tizen native tpk, name every package after its client variant (for example `playarr-lg-webos-<version>.ipk`, `playarr-android-<version>.apk`) and attach a `clients.json` that lists every variant with its minimum OS and download route. Older asset names stay beside the new ones.
 - On iPad, Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) settings. Covers draws Home rails as portrait posters at the Library cover card width, and the size changes the Library column count and the Home card width.
 - macOS: Settings > Appearance > Home screen artwork now takes effect; Covers shows portrait 2:3 posters on the Home rails at the web cover width.

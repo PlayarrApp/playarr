@@ -1,1 +1,0 @@
-- Web: the Download, Watchlist, Playlist and Playback buttons on film and series pages now switch their icon to the label colour while focused or hovered, so the icon stays visible on the filled button.

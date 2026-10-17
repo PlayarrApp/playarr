@@ -1,1 +1,0 @@
-- Web: when browser notifications are blocked, the Downloads notifications button shows a blocked bell; clicking it asks again and, if the browser still refuses, explains how to unblock in the address bar.
