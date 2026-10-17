@@ -139,14 +139,14 @@ test("Apple wall workflow builds suite arguments without empty-array nounset exp
   assert.match(workflow, /node suite-run\.mjs "\$\{suite_args\[@\]\}"/);
   assert.doesNotMatch(workflow, /\$\{(?:#)?(?:preflight|home_preflight|reset)\[@\]\}/);
   assert.match(workflow, /if \[\[ "\$reset_progress" == true && "\$DEVICE" != ipad \]\]; then suite_args\+=\(--reset-progress\); fi/);
-  assert.match(workflow, /suite_args\+=\(--preflight-home-fixture\)/);
+  assert.doesNotMatch(workflow, /--preflight-home-fixture/); // stable runs seed the canonical deck themselves
   assert.match(workflow, /run_suite "\$out" "\$only" "\$SCREENS" true/);
   assert.match(workflow, /run_suite "\$out\/motion" screens home false/);
 });
 
-test("wall suite preflights default iPad screens without resetting shared progress", () => {
+test("wall suite leaves the iPad Home seeding to the stable run", () => {
   const result = invokeWallRunSuite({ device: "ipad" });
-  assert.ok(result.args.includes("--preflight-home-fixture"));
+  assert.ok(!result.args.includes("--preflight-home-fixture"));
   assert.ok(!result.args.includes("--reset-progress"));
   assert.ok(!result.args.includes("--screens"));
 });

@@ -92,11 +92,15 @@ internal sealed class MediaCard
         var drop = card.StackOptions > 1 ? StackDrop : 0;
         Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 700, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
-        if (showSub) Box.Add(Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f));
+        _titleY = Title.PositionY; _subY = H + 31.9f + drop;
+        if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
     }
 
-    private View? _stackNear, _stackFar, _shadow2;
+    private View? _stackNear, _stackFar, _shadow2, _sub;
+    private float _titleY, _subY;
+    /// <summary>Web Home: the focused card's caption rises 8 px with the card (the art's own lift is part of that).</summary>
+    public float FocusCaptionLift { get; init; }
     private readonly float _restBlur;
 
     /// <summary>
@@ -134,6 +138,7 @@ internal sealed class MediaCard
         Box.PositionY = _boxY + (focused ? _boxLift : 0);
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
         Art.PositionY = _artDy + (focused ? _lift : 0);
+        if (FocusCaptionLift != 0) { var d = focused ? FocusCaptionLift : 0; Title.PositionY = _titleY + d; if (_sub is not null) _sub.PositionY = _subY + d; }
         Art.BoxShadow = _searchPlaylistFocusGlow is not null
             ? focused
                 ? new Shadow(52, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.28f), new Vector2(0, 22), new Vector2(0, 0))
@@ -240,8 +245,8 @@ internal sealed class MediaCard
     public static MediaCard Home(AppEnv env, WorkCard card, float x, float y, CardLayout? layout = null)
     {
         var l = layout ?? CardLayout.From("thumbnail", "medium");
-        return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: true, titleInset: 0, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight);
+        return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: true, titleInset: 1.9f, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22,
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { FocusCaptionLift = -8f };
     }
 
     /// <summary>Web cover view: the poster is the art (poster first, backdrop as the fallback); an On deck episode keeps its frame.</summary>
@@ -374,11 +379,11 @@ internal sealed class KeyArt
         foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
         if (artworkPath is null) return;
         var wanted = artworkPath;
-        _ = Task.Run(async () =>
+        _env.Images.Track(async () =>
         {
             var file = await _env.Images.GetAsync(wanted).ConfigureAwait(false);
             if (file is null) return;
-            SynchronizationContextHolder.Post(() =>
+            await AuthImage.OnUiAsync(() =>
             {
                 if (_path != wanted) return; // focus moved on
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
@@ -412,7 +417,7 @@ internal sealed class DetailsPanel
         _showing = card.WorkId;
         Render(card, kickerOverride, metaLead, RuntimeCache.TryGetValue(card.WorkId, out var rt) ? rt : null);
         if (!RuntimeCache.ContainsKey(card.WorkId))
-            _ = FetchRuntimeAsync(card, kickerOverride, metaLead);
+            _env.Images.Track(() => FetchRuntimeAsync(card, kickerOverride, metaLead));
     }
 
     public void ShowPlaylistPreview(SearchPlaylistPreview preview)
@@ -428,12 +433,17 @@ internal sealed class DetailsPanel
         try
         {
             await Task.Delay(140); // as web: focus must rest before the page-level selection follows it
-            if (_showing != card.WorkId) return;
+            var stillShowing = false;
+            await AuthImage.OnUiAsync(() => stillShowing = _showing == card.WorkId);
+            if (!stillShowing) return;
             var detail = await _env.Api.GetWorkAsync(card.WorkId);
-            RuntimeCache[card.WorkId] = detail.RuntimeMs;
-            SynchronizationContextHolder.Post(() => { if (_showing == card.WorkId) Render(card, kicker, lead, detail.RuntimeMs); });
+            await AuthImage.OnUiAsync(() =>
+            {
+                RuntimeCache[card.WorkId] = detail.RuntimeMs;
+                if (_showing == card.WorkId) Render(card, kicker, lead, detail.RuntimeMs);
+            });
         }
-        catch (Exception) { RuntimeCache[card.WorkId] = null; }
+        catch (Exception) { await AuthImage.OnUiAsync(() => RuntimeCache[card.WorkId] = null); }
     }
 
     private void Render(WorkCard card, string? kicker, string? lead, long? runtimeMs, int titleMaxLines = 5)
@@ -449,7 +459,7 @@ internal sealed class DetailsPanel
         if (meta.Length > 0) Root.Add(Ui.Text(meta, 153.6f, metaY, metaSize, 600, Soft(t), 455, _library ? 19.584f : 18, spacing: 0));
         var oy = metaY + (_library ? 41.2f : 40.9f);
         var ovLine = _library ? 21.842f : 20.325f; var ovSize = _library ? 13.824f : 12.864f;
-        var ovLines = Ui.Paragraph(Root, card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 336, ovLine, 0, 5); // web clamps the preview overview at 5 lines on every page
+        var ovLines = Ui.Paragraph(Root, card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 322, ovLine, 0, 5); // web clamps the preview overview at 5 lines on every page
         var top = ky; var bottom = oy + ovLines * ovLine;
         var scrim = Ui.PanelScrim(t, 153.6f, top, 455, bottom - top);
         Root.Add(scrim); scrim.LowerToBottom();

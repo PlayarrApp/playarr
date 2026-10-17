@@ -9,7 +9,10 @@ adb shell am force-stop $pkg
 # Web refs format dates as en-GB ("THU 15 OCTOBER"); the app follows the device region, so pin it for captures.
 adb shell cmd locale set-app-locales $pkg --locales en-GB >/dev/null 2>&1
 adb shell "run-as $pkg sh -c 'mkdir -p shared_prefs; echo \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\" ?><map><string name=\\\"theme\\\">$T</string></map>\" > shared_prefs/playarr_display.xml'"
-open() { adb shell am force-stop $pkg; adb shell am start -n $pkg/.MainActivity --ez parity_no_insets true --es parity_route "$1" --el parity_pause_at_ms 2000 >/dev/null; sleep "${2:-20}"; adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { adb shell am start -n $pkg/.MainActivity --ez parity_no_insets true --es parity_route "$1" >/dev/null; sleep 20; }; }
+# A tap (player, card and actions flows) leaves the emulator in touch mode, where the app's default focus is not requested and a modifier key
+# (shift) does not leave it. A D-pad key does, but only when the app window receives it, so start the app, press one, then relaunch on the route;
+# without it the Play pill and focus rings capture unfocused.
+open() { adb shell am start -n $pkg/.MainActivity >/dev/null; sleep 6; adb shell input keyevent 20; sleep 1; adb shell am force-stop $pkg; adb shell am start -n $pkg/.MainActivity --ez parity_no_insets true --es parity_route "$1" --el parity_pause_at_ms 2000 >/dev/null; sleep "${2:-20}"; adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { adb shell am start -n $pkg/.MainActivity --ez parity_no_insets true --es parity_route "$1" >/dev/null; sleep 20; }; }
 tap_text() { python3 -I $HERE/uitap.py "$1" "${3:-tap}"; sleep "${2:-1.5}"; }
 tap() { adb shell input tap "$1" "$2"; sleep "${3:-1.5}"; }
 shot() { sleep "${2:-2}"; for i in 1 2 3; do adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { echo "not foreground"; sleep 4; continue; }; adb exec-out screencap -p > "$O/$1.png"; if [ "$(stat -c%s "$O/$1.png")" -gt 20000 ] && python3 -I -c "import sys;d=open(sys.argv[1],'rb').read();assert d[:8]==b'\\x89PNG\\r\\n\\x1a\\n' and d[-8:-4]==b'IEND'" "$O/$1.png" 2>/dev/null; then

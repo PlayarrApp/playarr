@@ -21,6 +21,10 @@ on:
         description: Exact 40-character app commit SHA to build
         type: string
         required: true
+      fixed_now:
+        description: Pinned capture instant, matching the clock the web references were captured at (whole seconds, UTC)
+        type: string
+        default: 2026-10-15T15:42:29Z
       screens:
         description: Comma-separated screen ids (default - all 15; leave out player-controls while no playback may run)
         type: string
@@ -367,7 +371,7 @@ jobs:
           PLAYARR_DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PARITY_CAPTURE_DETERMINISTIC: "1"
           # Accepted iPhone web calendar reference: facts.json captured 2026-10-15T15:42:29.032Z; parser uses whole seconds.
-          PARITY_FIXED_NOW: 2026-10-15T15:42:29Z
+          PARITY_FIXED_NOW: ${{ inputs.fixed_now }}
           PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_TEST_SERVER_URL || secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
           PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
           PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
@@ -396,9 +400,6 @@ jobs:
             local suite_out="$1" suite_only="$2" suite_screens="$3" reset_progress="$4"
             local -a suite_args=(--driver ./drivers/apple-ios.mjs --out "$suite_out" --via route --only "$suite_only" --themes "$themes" --expected "$RUNNER_TEMP/expected.json")
             if [[ "$reset_progress" == true && "$DEVICE" != ipad ]]; then suite_args+=(--reset-progress); fi
-            if [[ "$DEVICE" == ipad && "$suite_only" == screens && ( -z "$suite_screens" || ",$suite_screens," == *,home,* ) ]]; then
-              suite_args+=(--preflight-home-fixture)
-            fi
             if [[ -n "$suite_screens" ]]; then suite_args+=(--screens "$suite_screens"); fi
             node suite-run.mjs "${suite_args[@]}"
           }

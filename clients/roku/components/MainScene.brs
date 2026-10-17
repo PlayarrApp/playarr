@@ -4785,7 +4785,9 @@ sub enterNavDock()
         if idx < 0 or idx >= m.visibleRails.Count() then idx = 0
         rect = m.visibleRails[idx].row.sceneBoundingRect()
         ' The card art's centre (108 px under the rail's top), not the rail's, picks the nav item, as web's geometric move does.
-        m.navDockIndex = navDockIndexNearestY(rect.y + 108)
+        ' The first rail now opens at the Library-aligned top, level with Series; web enters on Home there, because its dock holds a
+        ' Downloads slot above Search that Roku does not draw. Probe one dock step higher to land on the same item.
+        m.navDockIndex = navDockIndexNearestY(rect.y + 108 - 73.6)
     end if
     renderNavDockFocus()
     m.top.SetFocus(true)

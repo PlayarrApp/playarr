@@ -19,15 +19,15 @@ internal sealed class DetailScreen : IPage
     private readonly View _content = new();
     private readonly View _chapterRow = new();
     private readonly FocusSet _focus = new();
-    private readonly AuthImage _images;
     private WorkDetail? _detail;
     private WatchProgress? _progress;
     private float _chapterScroll;
     private View? _stack;
     private float _stackY;
     private Guid? _file;
+    private bool _captureReady;
 
-    public bool IsReady => _focus.Items.Count > 0;
+    public bool IsReady => _focus.Items.Count > 0 && _captureReady;
     public View Root => _root;
     public string Route => $"/movies/{_id}";
     public string? FocusedLabel => _dl?.FocusedLabel ?? _focus.Item?.Label;
@@ -35,7 +35,7 @@ internal sealed class DetailScreen : IPage
 
     public DetailScreen(AppEnv env, Guid id)
     {
-        _env = env; _t = env.Theme; _id = id; _images = new AuthImage(env.Api);
+        _env = env; _t = env.Theme; _id = id;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
         _keyArt = new KeyArt(env, armed: true);
@@ -64,7 +64,7 @@ internal sealed class DetailScreen : IPage
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
         BuildHeader(w);
         BuildCopy(w, detail);
-        _ = LoadChaptersThenCastAsync(detail);
+        _env.Images.Track(() => LoadChaptersThenCastAsync(detail));
         if (_focus.Items.Count > 0) _focus.Set(PlayIndex);
     }
 
@@ -149,9 +149,14 @@ internal sealed class DetailScreen : IPage
         }
         catch (Exception e) { Dbg.Log("CHAPTERS failed: " + e.Message); }
         var done = new TaskCompletionSource();
-        SynchronizationContextHolder.Post(() => { try { BuildChapters(d, real is { Count: > 0 } ? real : DetailModel.GeneratedChapters(d.RuntimeMs ?? 0), generated: real is not { Count: > 0 }); } finally { done.SetResult(); } });
+        SynchronizationContextHolder.Post(() =>
+        {
+            try { BuildChapters(d, real is { Count: > 0 } ? real : DetailModel.GeneratedChapters(d.RuntimeMs ?? 0), generated: real is not { Count: > 0 }); done.SetResult(); }
+            catch (Exception e) { done.SetException(e); }
+        });
         await done.Task;
         await LoadCastAsync(d);
+        await AuthImage.OnUiAsync(() => _captureReady = true);
     }
 
     private void BuildChapters(WorkDetail d, IReadOnlyList<Chapter> chapters, bool generated)
@@ -171,7 +176,7 @@ internal sealed class DetailScreen : IPage
             var box = new View { PositionX = x, Size = new Size(268, 200) };
             var art = Ui.Box(0, 0, 268, 150.8f, _t.SurfaceSoft, 13.44f);
             art.ClippingMode = ClippingModeType.ClipChildren;
-            _ = SetThumbAsync(art, file, c.StartMs);
+            SetThumbAsync(art, file, c.StartMs);
             art.Add(Ui.Gradient(0, 0, 268, 150.8f, false, (0, new Rgba(0, 0, 0, 0.05f)), (1, new Rgba(0, 0, 0, 0.48f))));
             art.Add(Ui.Text((c.Index + 1).ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
             var (ring, glow) = Widgets.RailRing(_t, 268, 150.8f, 13.44f); art.Add(ring);
@@ -195,24 +200,30 @@ internal sealed class DetailScreen : IPage
 
     private async Task LoadCastAsync(WorkDetail d)
     {
+        string? content = null;
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, _env.Api.ResolveUrl($"/api/v1/catalog/{d.Work.Id:D}/credits"));
             foreach (var h in await _env.Api.GetPlaybackRequestHeadersAsync()) req.Headers.TryAddWithoutValidation(h.Key, h.Value);
             using var res = await new HttpClient().SendAsync(req);
-            if (!res.IsSuccessStatusCode) return;
-            var cast = Credits.ParseCast(await res.Content.ReadAsStringAsync());
-            if (cast.Count == 0 || _stack is null) return;
-            SynchronizationContextHolder.Post(() => new PeopleRail(_env, _stack, cast, 891f, _focus, () => _stackY, r => SetStackY(-(r.HeadingY - 540f))));
+            if (res.IsSuccessStatusCode) content = await res.Content.ReadAsStringAsync();
         }
         catch (Exception e) { Dbg.Log("CAST failed: " + e.Message); }
+
+        if (content is null) return;
+        var cast = Credits.ParseCast(content);
+        if (cast.Count == 0 || _stack is null) return;
+        await AuthImage.OnUiAsync(() => new PeopleRail(_env, _stack, cast, 891f, _focus, () => _stackY, r => SetStackY(-(r.HeadingY - 540f))));
     }
 
-    private async Task SetThumbAsync(View art, Guid file, long positionMs)
+    private void SetThumbAsync(View art, Guid file, long positionMs)
     {
-        var path = await _images.GetAsync($"/api/v1/media/{file:D}/thumbnail?position_ms={positionMs}");
-        if (path is null) return;
-        SynchronizationContextHolder.Post(() => { var img = Ui.Remote(path, 268, 150.8f); art.Add(img); img.LowerToBottom(); });
+        _env.Images.Track(async () =>
+        {
+            var path = await _env.Images.GetAsync($"/api/v1/media/{file:D}/thumbnail?position_ms={positionMs}").ConfigureAwait(false);
+            if (path is null) return;
+            await AuthImage.OnUiAsync(() => { var img = Ui.Remote(path, 268, 150.8f); art.Add(img); img.LowerToBottom(); });
+        });
     }
 
     private void ScrollChapters(int index)

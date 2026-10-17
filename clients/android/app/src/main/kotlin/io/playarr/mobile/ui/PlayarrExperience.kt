@@ -658,6 +658,8 @@ internal class PlayarrExperienceViewModel @Inject constructor(
 
     private val _libraries = MutableStateFlow<Map<WorkKind, ExperienceLoad<List<Work>>>>(emptyMap())
     val libraries: StateFlow<Map<WorkKind, ExperienceLoad<List<Work>>>> = _libraries.asStateFlow()
+    private val _libraryLoadsComplete = MutableStateFlow<Map<WorkKind, Boolean>>(emptyMap())
+    val libraryLoadsComplete: StateFlow<Map<WorkKind, Boolean>> = _libraryLoadsComplete.asStateFlow()
     private val _libraryTotals = MutableStateFlow<Map<WorkKind, Long>>(emptyMap())
     /** The server's catalogue `total` per library, known from the first page. */
     val libraryTotals: StateFlow<Map<WorkKind, Long>> = _libraryTotals.asStateFlow()
@@ -982,6 +984,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
         if (_libraries.value[kind] !is ExperienceLoad.Ready) return loadLibrary(kind)
         libraryJobs.remove(kind)?.cancel()
         libraryJobs[kind] = viewModelScope.launch {
+            _libraryLoadsComplete.value = _libraryLoadsComplete.value + (kind to false)
             libraryStamps.getOrPut(kind) { LiveFetchStamp() }.begin()
             var offset = 0L
             var loaded = emptyList<Work>()
@@ -999,6 +1002,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
                 if (result.value.size < LIBRARY_PAGE_SIZE) break
             }
             _libraries.value = _libraries.value + (kind to ExperienceLoad.Ready(loaded))
+            _libraryLoadsComplete.value = _libraryLoadsComplete.value + (kind to true)
         }
     }
 
@@ -1008,11 +1012,13 @@ internal class PlayarrExperienceViewModel @Inject constructor(
         libraryStamps.getOrPut(kind) { LiveFetchStamp() }.begin()
         libraryJobs[kind] = viewModelScope.launch {
             _libraries.value = _libraries.value + (kind to ExperienceLoad.Loading)
+            _libraryLoadsComplete.value = _libraryLoadsComplete.value + (kind to false)
             // Page through the whole catalogue as Playarr Web does (200 per
             // request): the first page is shown immediately and later pages
             // are appended while the viewer browses.
             var offset = 0L
             var loaded = emptyList<Work>()
+            var complete = false
             while (true) {
                 val result = browseLibrary.page(
                     kind = kind,
@@ -1028,7 +1034,10 @@ internal class PlayarrExperienceViewModel @Inject constructor(
                         loaded = mergeLibraryPage(loaded, page)
                         _libraries.value = _libraries.value + (kind to ExperienceLoad.Ready(loaded))
                         offset += page.size
-                        if (page.size < LIBRARY_PAGE_SIZE) break
+                        if (page.size < LIBRARY_PAGE_SIZE) {
+                            complete = true
+                            break
+                        }
                     }
                     is PlayarrResult.Failure -> {
                         // A cancelled load (profile reload) is not an error; the replacement load reports its own result.
@@ -1045,6 +1054,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
                     }
                 }
             }
+            _libraryLoadsComplete.value = _libraryLoadsComplete.value + (kind to complete)
         }
     }
 
@@ -3046,12 +3056,12 @@ private fun ExperienceHomeScreen(
                             top = if (isTelevision) {
                                 val cardWidth = tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = homeView == PlayarrHomeViewPreference.Cover)
                                 val cardHeight = if (homeView == PlayarrHomeViewPreference.Cover) cardWidth * 1.5f else cardWidth * 9f / 16f
-                                (389.9.dp - (cardHeight - 184.05.dp) / 2f) * homeStageVerticalScale()
+                                (389.9.dp - (cardHeight - 184.05.dp) / 2f) * homeStageVerticalScale() - (if (LocalStageScale.current != 1f) 255.dp else 0.dp)
                             } else 78.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(),
                             // Web `.tv-home-rails` padding-block is half the viewport on both ends, so the last rail can reach the same anchor as the first.
                             bottom = if (isTelevision) 540.dp * homeStageVerticalScale() else 98.dp,
                         ),
-                        verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 52.8.dp else webVu(38f, 5f, 64f) - 1.2.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 52.8.dp else webVu(38f, 5f, 64f) - 6.5.dp),
                     ) {
                         itemsIndexed(current.value, key = { _, rail -> rail.key }) { railIndex, rail ->
                             ExperienceMediaRail(
@@ -3139,8 +3149,8 @@ private fun ExperienceStage(
                 feature()
             }
             Box(
-                // Web rails column: starts at x = 881.6.
-                Modifier.fillMaxHeight().width(1038.4.dp).align(Alignment.CenterEnd).background(
+                // Web rails column: starts at x = 881.6; at 1280 x 800 it starts where the Library rail does (522 css px, 40.8% of the width).
+                Modifier.fillMaxHeight().then(if (LocalStageScale.current != 1f) Modifier.fillMaxWidth(0.5922f) else Modifier.width(1038.4.dp)).align(Alignment.CenterEnd).background(
                     webRailSurfaceBrush(),
                 ),
             ) { rails() }
@@ -3266,7 +3276,8 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
         val soft = palette.detailsSoft
         val glow = WebTextStyle.copy(shadow = androidx.compose.ui.graphics.Shadow(WebSurface.copy(alpha = 0.9f), blurRadius = 14f * LocalDensity.current.density))
         // Tablet web at 1280 x 800: the clamp minimums bite, so the eyebrow, meta and overview are larger than at 1920 and sit lower.
-        val tabletHero = library && LocalStageScale.current != 1f
+        val tabletHero = LocalStageScale.current != 1f
+        val homeOverviewFont = webVw(9.28f, 0.67f, 13.44f).value
         val metaFont = webVw(9.92f, 0.68f, 13.76f).value
         val overviewFont = webVw(10.24f, 0.72f, 14.72f).value
         Column(Modifier.width(455.dp).detailsPanelBand()) {
@@ -3277,7 +3288,7 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                     playarrString(PlayarrString.HomeKindGenre, "kind" to kind, "genre" to genre).uppercase(language.locale)
                 },
                 color = palette.brandInk,
-                fontSize = if (library) webVw(9.28f, 0.64f, 13f).value.sp else 12.288.sp,
+                fontSize = webVw(9.28f, 0.64f, 13f).value.sp,
                 fontWeight = FontWeight(860),
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
@@ -3299,19 +3310,19 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                 }
             } else if (runtime != null) {
                 // Web Home `DetailsPanel` meta: the runtime alone.
-                Text(runtime, color = soft, fontSize = 12.864.sp, lineHeight = 20.325.sp, fontWeight = FontWeight(600), style = glow, modifier = Modifier.padding(top = 21.6.dp))
+                Text(runtime, color = soft, fontSize = homeOverviewFont.sp, lineHeight = (homeOverviewFont * 1.58f).sp, fontWeight = FontWeight(600), style = glow, modifier = Modifier.padding(top = 21.6.dp + (if (tabletHero) 3.dp else 0.dp)))
             }
             Text(
                 work.overview?.takeIf(String::isNotBlank) ?: playarrString(PlayarrString.HomeNoSynopsis),
                 color = soft,
-                fontSize = if (library) overviewFont.sp else 12.864.sp,
-                lineHeight = if (library) (overviewFont * 1.58f).sp else 20.325.sp,
+                fontSize = if (library) overviewFont.sp else homeOverviewFont.sp,
+                lineHeight = if (library) (overviewFont * 1.58f).sp else (homeOverviewFont * 1.58f).sp,
                 fontWeight = FontWeight(600),
                 style = glow,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 // Web `max-width: 42ch` of the overview font: 324 dp on Home, 348 dp in the library.
-                modifier = Modifier.padding(top = 21.7.dp + (if (tabletHero) 2.dp else 0.dp)).widthIn(max = if (library) (if (tabletHero) 387.dp else 348.dp) else 324.dp),
+                modifier = Modifier.padding(top = 21.7.dp + (if (tabletHero) 2.dp else 0.dp)).widthIn(max = if (library) (if (tabletHero) 387.dp else 348.dp) else if (tabletHero) 350.dp else 324.dp),
             )
         }
         return
@@ -4005,6 +4016,7 @@ private fun LibraryFiltersDialog(
         LibraryViewMode.entries.filter { it != LibraryViewMode.CoverFlow }
     }
     PlayarrFiltersSheet(
+        captureSurface = "filters",
         title = playarrString(PlayarrString.LibraryFilters),
         kicker = playarrString(PlayarrString.LibraryControls),
         closeLabel = playarrString(PlayarrString.LibraryCloseFilters),
@@ -4360,6 +4372,12 @@ private fun ExperienceLibraryScreen(
         savedState[LibraryUrlState.ORDER] = if (next.descending) "desc" else "asc"
     }
     val states by viewModel.libraries.collectAsState()
+    val captureToken = parityCaptureGenerationToken()
+    val libraryLoadsComplete by if (captureToken != null) {
+        viewModel.libraryLoadsComplete.collectAsState()
+    } else {
+        remember { mutableStateOf<Map<WorkKind, Boolean>>(emptyMap()) }
+    }
     val languageSelections by viewModel.languageSelections.collectAsState()
     val languageMatches by viewModel.languageMatches.collectAsState()
     val languageFacets by viewModel.languageFacets.collectAsState()
@@ -4373,6 +4391,25 @@ private fun ExperienceLibraryScreen(
     val collection = kind.playarrCollectionNoun()
     val libraryTotal = viewModel.libraryTotals.collectAsState().value[kind]
     LaunchedEffect(kind) { viewModel.loadLibrary(kind) }
+    val captureScreen = when (kind) {
+        WorkKind.Movie -> "movies"
+        WorkKind.Series -> "series"
+        WorkKind.Artist -> "music"
+        else -> null
+    }
+    LaunchedEffect(captureScreen, states[kind], libraryLoadsComplete[kind]) {
+        if (captureToken == null) return@LaunchedEffect
+        if (captureScreen == null) return@LaunchedEffect
+        if (libraryLoadsComplete[kind] != true) {
+            PlayarrCaptureReadiness.dataLoading(captureToken, captureScreen)
+            return@LaunchedEffect
+        }
+        val ready = states[kind] as? ExperienceLoad.Ready ?: run {
+            PlayarrCaptureReadiness.dataLoading(captureToken, captureScreen)
+            return@LaunchedEffect
+        }
+        PlayarrCaptureReadiness.dataReady(captureToken, captureScreen, ready.value.size)
+    }
     LaunchedEffect(Unit) { viewModel.ensureProgressLoaded() }
     LiveRefreshEffect(
         viewModel.liveBus,
@@ -4403,7 +4440,7 @@ private fun ExperienceLibraryScreen(
                             playarrString(PlayarrString.LibraryEmptyDescription, "collection" to collection),
                         ),
                     ),
-                ) {}
+                ) { Box(Modifier.fillMaxSize().parityCaptureLayout(captureToken, captureScreen)) }
                 return
             }
             // Saved, so coming back from a title restores the card that last had focus.
@@ -4417,7 +4454,9 @@ private fun ExperienceLibraryScreen(
             tvGrid.onLeftEdge = { false } // geometric, as web (see Home)
             tvGrid.onRightEdge = { runCatching { letterFocus.requestFocus() }.getOrDefault(false) }
             var filtersOpen by remember { mutableStateOf(false) }
-            LaunchedEffect(filtersOpen) { parityLog("panel=${if (filtersOpen) "filters" else ""}") }
+            LaunchedEffect(filtersOpen, contextWork) {
+                parityLog("panel=${if (filtersOpen) "filters" else ""}")
+            }
             val viewMode = library.view
             // Web: one artwork size for every poster and thumbnail, set in Settings > Appearance (not per library).
             val artworkSize = LocalPlayarrDisplayPreferences.current.artworkSize
@@ -4461,7 +4500,7 @@ private fun ExperienceLibraryScreen(
                 )),
                 body = PlayarrPageBody.Bleed,
             ) {
-            Box(modifier = Modifier.fillMaxSize().background(WebSurface)) {
+            Box(modifier = Modifier.fillMaxSize().background(WebSurface).parityCaptureLayout(captureToken, captureScreen)) {
         HeroBackdropStack {
                 if (!isTelevision) {
                     PhoneKeyArt(selected, serverUrl, accessToken, Modifier.fillMaxSize())
@@ -5466,6 +5505,7 @@ private fun MediaContextDialog(
     run {
         // Web `MediaContextMenu` drawer (the phone drawer uses the same rows): "Title actions", the title, then 68 dp rows with a crimson glyph.
         PlayarrFiltersSheet(
+            captureSurface = "actions",
             title = work.title,
             kicker = playarrString(PlayarrString.ContextTitleActions),
             closeLabel = playarrString(PlayarrString.CommonClose),
@@ -10166,6 +10206,7 @@ internal fun AuthenticatedArtwork(
     artWidth: Int? = null,
 ) {
     val context = LocalContext.current
+    val captureToken = parityCaptureGenerationToken()
     val serverAccess = rememberPlayarrWorkServerAccess(work.id, serverUrl, accessToken)
     // Per kind: the server artwork endpoint (cached, authenticated), then the provider URL; a
     // failed load moves on to the next candidate instead of leaving the hero/tile empty.
@@ -10178,10 +10219,12 @@ internal fun AuthenticatedArtwork(
     var failed by remember(candidates) { mutableStateOf(0) }
     // Web asks the artwork endpoint for a fixed width per kind (hero backdrops 1920) and scales that image itself.
     val resolved = candidates.getOrNull(failed)?.let { playarrWebArtworkUrl(it, heroStyle) }
+    val captureKey = remember(captureToken, work.id, kinds, artWidth, serverAccess?.serverUrl, resolved) { if (captureToken == null) "" else java.util.UUID.randomUUID().toString() }
     // Near-black art (e.g. a dark film still) is sampled once from the decoded bitmap and lifted.
     var exposureGain by remember(resolved) { mutableStateOf(1f) }
     if (serverAccess == null || resolved == null) {
-        Box(modifier.background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
+        if (serverAccess != null && resolved == null && captureToken != null) androidx.compose.runtime.SideEffect { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) }
+        Box(modifier.parityCaptureArtwork(captureToken, captureKey).background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
             Text(work.title, color = WebInkMuted, fontSize = placeholderSize, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(12.dp))
         }
         return
@@ -10210,9 +10253,13 @@ internal fun AuthenticatedArtwork(
         contentDescription = work.title,
         contentScale = contentScale,
         filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
-        onError = { failed += 1 },
-        onSuccess = if (heroStyle && HERO_ART_LIFT_NEAR_BLACK) {
-            { state ->
+        onError = {
+            if (failed + 1 >= candidates.size) PlayarrCaptureReadiness.imageFinished(captureToken, captureKey, failed = true)
+            failed += 1
+        },
+        onSuccess = { state ->
+            PlayarrCaptureReadiness.imageFinished(captureToken, captureKey)
+            if (heroStyle && HERO_ART_LIFT_NEAR_BLACK) {
                 val gain = runCatching {
                     val bitmap = state.result.image.toBitmap(HERO_LUMA_SAMPLE_SIZE, HERO_LUMA_SAMPLE_SIZE)
                     val pixels = IntArray(HERO_LUMA_SAMPLE_SIZE * HERO_LUMA_SAMPLE_SIZE)
@@ -10224,8 +10271,8 @@ internal fun AuthenticatedArtwork(
                 val next = if (gain > 1f) playarrDimArtFallbackIndex(candidateGroups.map { it.size }, failed) else null
                 if (next != null) failed = next else exposureGain = gain
             }
-        } else null,
-        modifier = modifier,
+        },
+        modifier = modifier.parityCaptureArtwork(captureToken, captureKey),
         alignment = artAlignment,
         colorFilter = if (heroStyle) heroArtFilter(webIsDark, exposureGain) else null,
         alpha = if (heroStyle) (artAlpha ?: heroArtOpacity(webIsDark)) else 1f,
@@ -10246,9 +10293,11 @@ internal fun AuthenticatedMediaThumbnail(
     fallbackLabel: String? = null,
 ) {
     val context = LocalContext.current
+    val captureToken = parityCaptureGenerationToken()
     val serverAccess = rememberPlayarrMediaServerAccess(mediaFileId, serverUrl, accessToken)
+    val captureKey = remember(captureToken, mediaFileId, serverAccess?.serverUrl, positionMs, artworkUrl) { if (captureToken == null) "" else java.util.UUID.randomUUID().toString() }
     if (serverAccess == null) {
-        Box(modifier.background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
+        Box(modifier.parityCaptureArtwork(captureToken, captureKey).background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
             fallbackLabel?.let { ThumbnailFallbackLabel(it) }
         }
         return
@@ -10277,7 +10326,9 @@ internal fun AuthenticatedMediaThumbnail(
             model = request,
             contentDescription = contentDescription,
             contentScale = ContentScale.Crop,
-            modifier = modifier,
+            onSuccess = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+            onError = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey, failed = true) },
+            modifier = modifier.parityCaptureArtwork(captureToken, captureKey),
         )
     } else {
         Box(modifier.background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
@@ -10286,7 +10337,9 @@ internal fun AuthenticatedMediaThumbnail(
                 model = request,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                onSuccess = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+                onError = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+                modifier = Modifier.fillMaxSize().parityCaptureArtwork(captureToken, captureKey),
             )
         }
     }

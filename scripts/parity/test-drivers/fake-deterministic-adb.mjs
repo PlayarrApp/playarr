@@ -20,7 +20,16 @@ export function handleFakeDeterministicAdbCommand(state, group, args, env = {}) 
     state.logs = [];
     mutated = true;
   } else if (group === "logcat" && args[0] === "-d") {
-    stdout = state.logs.join("\n");
+    if (state.captureGeneration) {
+      const sequence = (env.PLAYARR_PARITY_FAKE_CAPTURE_SEQUENCE ?? "ready").split(",");
+      const index = state.captureReadCount ?? 0;
+      state.captureObservation = sequence[Math.min(index, sequence.length - 1)];
+      state.captureReadCount = index + 1;
+      mutated = true;
+      const pending = state.captureObservation === "pending" ? 1 : 0;
+      const marker = `I PlayarrParity: capture_state generation=${state.captureGeneration} screen=${state.captureScreen} data=ready data_count=1 layout=ready surface=${env.PLAYARR_PARITY_FAKE_CAPTURE_SURFACE ?? "content"} art_seen=1 art_pending=${pending} art_failed=0`;
+      stdout = [...state.logs, marker].join("\n");
+    } else stdout = state.logs.join("\n");
   } else if (group === "shell" && args[0] === "settings" && args[1] === "get") {
     stdout = state[args[3]] ?? "null";
   } else if (group === "shell" && args[0] === "settings" && args[1] === "put") {
@@ -37,21 +46,39 @@ export function handleFakeDeterministicAdbCommand(state, group, args, env = {}) 
     state.locales = args[5];
     mutated = true;
   } else if (group === "shell" && args[0] === "dumpsys" && args[1] === "input") {
-    stdout = "TouchMode: 0";
+    stdout = `TouchModePerDisplay:\n  Display: 0 TouchMode: ${state.touchMode === 1 ? 1 : 0}`;
+  } else if (group === "shell" && args[0] === "input" && args[1] === "keyevent") {
+    state.keys ??= [];
+    state.keys.push(args.at(-1));
+    if (state.appForeground) state.touchMode = 0;
+    mutated = true;
+  } else if (group === "shell" && args[0] === "wm" && args[1] === "size") {
+    stdout = "Physical size: 1920x1080\nOverride size: 1280x720";
   } else if (group === "shell" && args[0] === "pm" && args[1] === "path") {
     stdout = `package:${env.PLAYARR_PARITY_FAKE_APK_PATH ?? "/data/app/io.playarr.mobile/base.apk"}`;
   } else if (group === "shell" && args[0] === "sha256sum") {
     stdout = `${"a".repeat(64)}  ${args[1]}`;
   } else if (group === "shell" && args[0] === "am" && args[1] === "start") {
+    state.appForeground = true;
     state.launches.push(args);
     mutated = true;
     const clockIndex = args.indexOf("parity_clock");
     if (clockIndex >= 0) state.logs.push(`I PlayarrParity: clock_consumed=${env.PLAYARR_PARITY_FAKE_CLOCK_LOG ?? args[clockIndex + 1]}`);
     const routeIndex = args.indexOf("parity_route");
     if (routeIndex >= 0) state.logs.push(`I PlayarrParity: route=${args[routeIndex + 1]} section=`);
+    const generationIndex = args.indexOf("parity_capture_generation");
+    const screenIndex = args.indexOf("parity_capture_screen");
+    if (generationIndex >= 0 && screenIndex >= 0) {
+      state.captureGeneration = args[generationIndex + 1];
+      state.captureScreen = args[screenIndex + 1];
+      state.captureReadCount = 0;
+    }
+  } else if (group === "shell" && args[0] === "uiautomator") {
+    // The driver reads the accessibility tree from the following exec-out cat call.
   } else if (group === "exec-out" && args[0] === "cat") {
-    const x = env.PLAYARR_PARITY_FAKE_ADB_NAV_FOCUS === "1" ? 20 : 200;
-    stdout = `<hierarchy><node text="Library" focused="true" focusable="true" bounds="[${x},0][${x + 100},100]"/></hierarchy>`;
+    const x = env.PLAYARR_PARITY_FAKE_DRAWER_FOCUS === "1" ? 900 : env.PLAYARR_PARITY_FAKE_ADB_NAV_FOCUS === "1" ? 20 : 200;
+    const label = state.captureObservation === "focus" ? "Changed" : "Library";
+    stdout = `<hierarchy><node text="${label}" focused="true" focusable="true" bounds="[${x},0][${x + 100},100]"/></hierarchy>`;
   }
   return { stdout, stderr: "", mutated };
 }

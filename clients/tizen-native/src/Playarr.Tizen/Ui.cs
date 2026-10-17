@@ -195,6 +195,15 @@ internal static class Ui
         return Gradient(x, atTop ? y : y - size, w, size, false, stops);
     }
 
+    public static View HorizontalEdgeFade(float x, float y, float h, Rgba surface, bool atLeft)
+    {
+        const float size = 59.4f, floor = 0.3f;
+        float A(float k) => 1 - (floor + (1 - floor) * k);
+        var edge = new[] { (0f, A(0)), (0.25f, A(0.156f)), (0.5f, A(0.5f)), (0.75f, A(0.844f)), (1f, A(1)) };
+        var stops = (atLeft ? edge : edge.Reverse().Select(e => (1 - e.Item1, e.Item2))).Select(e => (e.Item1, new Rgba(surface.R, surface.G, surface.B, e.Item2))).ToArray();
+        return Gradient(atLeft ? x : x - size, y, size, h, true, stops);
+    }
+
     /// <summary>
     /// Web .tv-library-grid-panel / .tv-rail-surface: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
     /// that fades in from nothing at the left edge to full at the right.
