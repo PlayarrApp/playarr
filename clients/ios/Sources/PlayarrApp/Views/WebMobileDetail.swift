@@ -396,6 +396,7 @@ struct WMDetailPage: View {
                 Text(synopsis)
                     .font(WM.font(11.52))
                     .foregroundStyle(WM.detailMuted)
+                    .lineSpacing(1.23) // web pitch 28 vs 26 here: 17.28 * (28 - 26) / 28 pt
                     .lineLimit(3)
                     .frame(width: 347, alignment: .topLeading)
                     .padding(.top, isSeries ? 10.6 : 12.04)
