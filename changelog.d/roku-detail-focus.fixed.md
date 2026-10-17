@@ -1,0 +1,1 @@
+- Roku detail action focus now stays on a valid action when switching between film and series layouts.
