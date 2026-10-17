@@ -1,0 +1,182 @@
+[
+  {
+    "id": "samsung-tizen-web",
+    "family": "samsung",
+    "name": "Samsung Tizen (web app)",
+    "min_os": "Tizen 6.5",
+    "route": "download",
+    "asset": "playarr-samsung-tizen-web-{version}-unsigned.zip",
+    "store_url": null,
+    "note": "Unsigned package root; sign it with your Samsung certificate profile (tizen package -t wgt)."
+  },
+  {
+    "id": "samsung-tizen-native",
+    "family": "samsung",
+    "name": "Samsung Tizen (native)",
+    "min_os": "Tizen 10",
+    "route": "download",
+    "asset": "playarr-samsung-tizen-native-{version}.tpk",
+    "store_url": null,
+    "note": "Test-signed with the Tizen SDK default certificate; re-sign with your Samsung certificate profile to install on a retail TV."
+  },
+  {
+    "id": "lg-webos",
+    "family": "lg",
+    "name": "LG webOS",
+    "min_os": "webOS 23",
+    "route": "download",
+    "asset": "playarr-lg-webos-{version}.ipk",
+    "store_url": null,
+    "note": "Sideload with ares-install or Developer Mode."
+  },
+  {
+    "id": "vidaa",
+    "family": "vidaa",
+    "name": "Hisense VIDAA",
+    "min_os": null,
+    "route": "hosted",
+    "asset": null,
+    "store_url": null,
+    "note": "No package: open the hosted Web App in the TV browser (docs/clients/vidaa.md)."
+  },
+  {
+    "id": "roku",
+    "family": "roku",
+    "name": "Roku",
+    "min_os": null,
+    "route": "download",
+    "asset": "playarr-roku-{version}.zip",
+    "store_url": null,
+    "note": "Sideload channel zip (Roku developer mode). Roku Channel Store submission pending."
+  },
+  {
+    "id": "fire-tv-vega",
+    "family": "amazon",
+    "name": "Fire TV (Vega OS)",
+    "min_os": "Vega OS 1.2",
+    "route": "pending",
+    "asset": null,
+    "store_url": null,
+    "note": "Not built by the release: the Vega SDK installs only from an Amazon developer account inside a Docker image (clients/fire-tv/scripts/Dockerfile.vega-sdk). Typecheck and jest run in stage 1."
+  },
+  {
+    "id": "fire-os-android-tv",
+    "family": "android",
+    "name": "Fire OS / Android TV (APK)",
+    "min_os": "Android 8.0 (Fire OS 7 or later)",
+    "route": "download",
+    "asset": "playarr-android-{version}.apk",
+    "store_url": null,
+    "note": "The same universal APK as the phone and tablet build; sideload it."
+  },
+  {
+    "id": "android-apk",
+    "family": "android",
+    "name": "Android phone and tablet (APK)",
+    "min_os": "Android 8.0",
+    "route": "download",
+    "asset": "playarr-android-{version}.apk",
+    "store_url": null,
+    "note": "Signed sideload APK; updates itself from the update manifest."
+  },
+  {
+    "id": "android-play",
+    "family": "android",
+    "name": "Android (Google Play)",
+    "min_os": "Android 8.0",
+    "route": "store",
+    "asset": null,
+    "store_url": "https://play.google.com/store/apps/details?id=app.playarr.mobile",
+    "note": "Closed testing track; join the test group first."
+  },
+  {
+    "id": "ios",
+    "family": "apple",
+    "name": "iOS",
+    "min_os": "iOS 17.0",
+    "route": "testflight",
+    "asset": null,
+    "store_url": null,
+    "note": "TestFlight beta."
+  },
+  {
+    "id": "ipados",
+    "family": "apple",
+    "name": "iPadOS",
+    "min_os": "iPadOS 17.0",
+    "route": "testflight",
+    "asset": null,
+    "store_url": null,
+    "note": "TestFlight beta (the iOS build runs on iPad)."
+  },
+  {
+    "id": "tvos",
+    "family": "apple",
+    "name": "Apple TV (tvOS)",
+    "min_os": "tvOS 17.0",
+    "route": "testflight",
+    "asset": null,
+    "store_url": null,
+    "note": "TestFlight beta."
+  },
+  {
+    "id": "macos",
+    "family": "apple",
+    "name": "macOS",
+    "min_os": "macOS 14",
+    "route": "download",
+    "asset": "playarr-macos-{version}-unsigned.zip",
+    "store_url": null,
+    "note": "Unsigned (no Developer ID yet): allow it in System Settings, Privacy and Security."
+  },
+  {
+    "id": "xbox",
+    "family": "microsoft",
+    "name": "Xbox",
+    "min_os": "Windows 10.0.17763",
+    "route": "download",
+    "asset": "playarr-xbox-{version}-x64-unsigned.appx",
+    "store_url": null,
+    "note": "Unsigned sideload package; sign it before installing in Xbox Dev Mode."
+  },
+  {
+    "id": "harmonyos",
+    "family": "huawei",
+    "name": "HarmonyOS",
+    "min_os": "HarmonyOS 5.0",
+    "route": "download",
+    "asset": "playarr-harmony-{version}-unsigned.hap",
+    "store_url": null,
+    "note": "Unsigned HAP; sign it with your own AppGallery material."
+  },
+  {
+    "id": "linux-phone",
+    "family": "linux",
+    "name": "Linux phone",
+    "min_os": null,
+    "route": "download",
+    "asset": "playarr-linux-phone-{version}-x86_64.tar.gz",
+    "store_url": null,
+    "note": "GTK 4 and libadwaita binary with GStreamer (gtk4paintablesink); x86_64 only."
+  },
+  {
+    "id": "sailfish",
+    "family": "sailfish",
+    "name": "Sailfish OS",
+    "min_os": null,
+    "route": "pending",
+    "asset": null,
+    "store_url": null,
+    "note": "Not built by the release yet: the RPM needs the roughly 3 GB Sailfish SDK target, built in an unprivileged bubblewrap namespace (clients/sailfish/scripts/sdk-build.sh), unproven on a hosted runner; device RPMs (armv7hl, aarch64) also need qemu-user."
+  },
+  {
+    "id": "web",
+    "family": "web",
+    "name": "Web",
+    "min_os": null,
+    "route": "web",
+    "asset": null,
+    "store_url": "https://playarr.app",
+    "note": "Runs in any current browser."
+  }
+]

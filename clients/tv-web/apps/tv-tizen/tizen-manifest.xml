@@ -14,7 +14,7 @@
 
   <tizen:application id="StrmarrTV1.Playarr"
                       package="StrmarrTV1"
-                      required_version="7.0"/>
+                      required_version="6.5"/>
 
   <tizen:profile name="tv"/>
 
