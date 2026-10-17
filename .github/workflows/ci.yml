@@ -900,6 +900,11 @@ jobs:
         working-directory: clients/tv-web/web
         run: node scripts/search-contain-e2e.mjs
 
+      - name: Search input enters once, in place, never under the nav (TV and desktop, both themes)
+        if: matrix.shard == 'drawer'
+        working-directory: clients/tv-web/web
+        run: node scripts/search-input-entry-e2e.mjs
+
       - name: Keyboard e2e (BACK keys, focus start and restore)
         if: startsWith(matrix.shard, 'nav-')
         working-directory: clients/tv-web/web
