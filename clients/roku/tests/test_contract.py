@@ -62,6 +62,13 @@ class ApiContractTests(unittest.TestCase):
 
 
 class NavigationContractTests(unittest.TestCase):
+    def test_movies_grid_right_edge_hands_off_to_the_alphabet(self) -> None:
+        grid = (ROOT / "components" / "BrowseGrid.brs").read_text(encoding="utf-8")
+        self.assertIn('<BrowseGrid id="browseGrid"', SCENE)
+        self.assertIn("itemIndex mod columns <> columns - 1 and itemIndex <> itemCount - 1", grid)
+        self.assertIn('m.browseGrid.alphabetHandoffEnabled = kind = "movie"', MAIN)
+        self.assertIn("enterBrowseAlphabet(true)", MAIN)
+
     def test_overflowing_collections_are_native_scenegraph_lists(self) -> None:
         self.assertRegex(SCENE, r'<RowList id="libraryList"')
         self.assertRegex(SCENE, r'<RowList id="profilesRow"')
