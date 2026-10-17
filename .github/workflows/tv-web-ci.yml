@@ -19,7 +19,7 @@ permissions:
 jobs:
   build:
     name: Build package-ready webOS and Tizen apps
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: clients/tv-web
