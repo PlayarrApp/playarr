@@ -36,7 +36,7 @@ describe("Login QR option", () => {
     );
 
     expect(appSource).toContain(
-      '<Navigate to="/login/qr" replace state={{ from: location }} />'
+      '<Navigate to={IS_TV ? "/login/qr" : "/login"} replace state={{ from: location }} />'
     );
     expect(profilesSource).toContain(
       'navigate(IS_TV ? "/login/qr" : "/login"'

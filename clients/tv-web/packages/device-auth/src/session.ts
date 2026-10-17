@@ -49,6 +49,7 @@ import type {
   RefreshRequest,
   RefreshResponse,
 } from "@playarr-tv/api-client";
+import { ApiError } from "@playarr-tv/api-client";
 import { getOrCreateDeviceId } from "./deviceId";
 import { decodeAccessTokenDeviceId, decodeAccessTokenIssuer } from "./jwt";
 import type { StoredSession, TokenStore } from "./tokenStore";
@@ -92,6 +93,12 @@ export interface KnownServerGroupLike {
 export interface EnsureAccessTokenOptions {
   /** Refresh even when the stored access token has not reached its renewal window. */
   forceRefresh?: boolean;
+  /**
+   * False when the viewer has signed-in accounts or has just signed out: a credential-less
+   * login would pick an account for them (or answer 400 under full-account auth), so a missing
+   * or refused session rejects with a 401 instead. Defaults to true.
+   */
+  allowTransparentLogin?: boolean;
   /**
    * With `forceRefresh`: the access token the server just rejected. When the
    * store already holds a different, still-usable one (another caller or tab
@@ -442,6 +449,10 @@ export async function ensureAccessToken(
           if (!(err instanceof TransientAuthError)) throw err;
           transient = err;
         }
+      }
+
+      if (options.allowTransparentLogin === false) {
+        throw transient ?? new ApiError(401, "Unauthorized", { error: "unauthorized" });
       }
 
       const cooldown = loginCooldowns.get(store);
