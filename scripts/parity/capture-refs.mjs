@@ -16,7 +16,7 @@ import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { expandKeys } from "./suite-lib.mjs";
-import { assertBuildIdentityStable, captureKey, missingCaptures, runScreenWithRetry, selectedLiveScreens, selectTargets, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
+import { assertBuildIdentityStable, captureKey, isGuardRejection, missingCaptures, runScreenWithRetry, selectedLiveScreens, selectTargets, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
 import { withCaptureState } from "./capture-state.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { PNG } from "pngjs";
@@ -153,6 +153,10 @@ for (const name of groups) {
     }
     const finalDriverBuild = await driver.captureBuildIdentity();
     assertBuildIdentityStable(driverBuild, finalDriverBuild, `${name} web driver`);
+  } catch (e) {
+    // A slow relay can also break a driver call between screens: the group's remaining screens go to failed.json. Never swallow a guard rejection or a build change.
+    if (isGuardRejection(e) || /build identity/.test(String(e.message))) throw e;
+    console.log(`SKIPPED rest of group ${name}: ${String(e.message).split("\n")[0]}`);
   } finally {
     await driver.stop();
   }
