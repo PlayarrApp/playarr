@@ -1,1 +1,0 @@
-- Roku: the left dock packs its first group like the Roku web reference, so Search sits where web's Downloads slot would be and every dock item moves up one step.

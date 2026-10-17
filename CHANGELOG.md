@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Roku: the left dock packs its first group like the Roku web reference, so Search sits where web's Downloads slot would be and every dock item moves up one step.
 - Revalidate the selected debug-mirror profile and credentials after frame rendering, and send frame identity only through an explicit public-field allow-list. This prevents slow captures from being rejected as stale while aborting if the active account changes.
 - Let the debug-mirror build pin its clock with a `mirrorNow` launch parameter, so TV captures show the same day and time as their web reference; frame timestamps keep using the real clock.
 - Make Nura parity capture fail closed on missing identity verification, stopped apps, route timeouts, capture or hash errors, and unstable frames.
