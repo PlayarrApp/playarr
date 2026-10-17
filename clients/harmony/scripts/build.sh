@@ -52,15 +52,14 @@ if ! command -v hvigorw >/dev/null 2>&1; then
 fi
 
 # hvigor refuses to start without a user-level npmrc ("No npmrc file is matched in
-# the current user folder") and resolves its own plugins (@ohos/hvigor,
-# @ohos/hvigor-ohos-plugin) from the `@ohos` scope, which the public npm registry and the
-# generic Huawei Cloud mirror do not serve; only the HarmonyOS registry does. Write the
-# file when it is missing or lacks the scope; a developer's own settings are kept.
+# the current user folder"). Its scoped plugins resolve from the HarmonyOS registry;
+# generic packages such as pnpm resolve from the public npm registry. Write the file
+# when it is missing or lacks the scope; a developer's own settings are kept.
 NPMRC="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
 if ! grep -qs '^@ohos:registry=' "$NPMRC"; then
     echo "==> npm: configuring the @ohos registry in $NPMRC" >&2
     {
-        grep -qs '^registry=' "$NPMRC" || echo 'registry=https://repo.huaweicloud.com/repository/npm/'
+        grep -qs '^registry=' "$NPMRC" || echo 'registry=https://registry.npmjs.org/'
         echo '@ohos:registry=https://repo.harmonyos.com/npm/'
     } >>"$NPMRC"
 fi

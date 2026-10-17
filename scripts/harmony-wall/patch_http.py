@@ -1,10 +1,11 @@
 # Preview-only (never committed). Usage: patch_http.py <HttpTransport.ets> <other .ets files with destroy() calls>...
-# 1. The Previewer's libhttp crashes (access violation in HttpExec::ReadResponse, the whole app freezes) some of the time when a request
-#    object is destroyed while its read thread is still winding down. Leaking the single-use request objects for the length of a capture
-#    run is harmless.
+# 1. Previewer's libhttp can crash in HttpExec::ReadResponse while its curl read thread is winding down. Keep each single-use request
+#    strongly reachable for the full preview process lifetime and do not destroy it during capture. Dropping the last JS reference can
+#    finalise the native handle before that thread has finished, even when explicit destroy() is omitted.
 # 2. Home fires one artwork fetch per card (about a hundred at once); through the Previewer's network stack the burst times out or fails
 #    and the cards stay blank. HttpTransport's sendHttpRequest is gated to a few requests in flight.
 import sys
+import re
 GATE = """
 // Artwork and thumbnails (many, large) go through a gate of a few in flight; every other API call bypasses it, so a page's data
 // is never queued behind a hundred posters. The bridge is told when the app goes idle (nothing pending), and the capture waits for it.
@@ -71,7 +72,14 @@ async function sendHttpRequestGated(url: string, options: HttpRequestOptions): P
 """
 for i, p in enumerate(sys.argv[1:]):
     s = open(p).read()
-    s = s.replace("client.destroy();", "/* request left alive (libhttp crash) */").replace("req.destroy();", "/* request left alive (libhttp crash) */")
+    if i < 2:
+        s = "import { retainPreviewHttpRequest } from '../util/PreviewState';\n" + s
+    for variable in ("client", "req"):
+        create = f"const {variable} = http.createHttp();"
+        pattern = re.compile(rf"(?m)^( *){re.escape(create)}(?!\n\1  retainPreviewHttpRequest\({variable}\);)$")
+        s = pattern.sub(lambda match: f"{match.group(1)}{create}\n{match.group(1)}  retainPreviewHttpRequest({variable});", s)
+    s = s.replace("client.destroy();", "/* retained until preview process exit (libhttp read-thread lifetime) */")
+    s = s.replace("req.destroy();", "/* retained until preview process exit (libhttp read-thread lifetime) */")
     if i == 0 and "PREVIEW_HTTP_ACTIVE" not in s:
         old = "export async function sendHttpRequest(url: string, options: HttpRequestOptions): Promise<HttpTransportResponse> {"
         assert old in s

@@ -188,4 +188,75 @@ if (result.error) {
   process.exit(1);
 }
 
-process.exit(result.status === null ? 1 : result.status);
+if (result.status !== 0) {
+  process.exit(result.status === null ? 1 : result.status);
+}
+
+// The Harmony preview harness imports this pure TypeScript queue in ArkTS.
+// Transpile the production source with the pinned compiler so Node 20 can run
+// its sender stress test without relying on Node 22 type stripping.
+const repoRoot = path.resolve(projectRoot, "../..");
+const telemetrySource = path.join(
+  repoRoot,
+  "scripts",
+  "harmony-wall",
+  "overlay",
+  "src",
+  "main",
+  "ets",
+  "util",
+  "PreviewTelemetryQueue.ts"
+);
+const selectorSource = path.join(
+  repoRoot,
+  "scripts",
+  "harmony-wall",
+  "overlay",
+  "src",
+  "main",
+  "ets",
+  "util",
+  "PreviewCardSelector.ts"
+);
+const telemetryOutput = path.join(outDir, "PreviewTelemetryQueue.cjs");
+const telemetryTest = path.join(repoRoot, "scripts", "harmony-wall", "test_preview_telemetry_sender.mjs");
+const selectorOutput = path.join(outDir, "PreviewCardSelector.cjs");
+const selectorTest = path.join(repoRoot, "scripts", "harmony-wall", "test_preview_card_selector.mjs");
+const telemetry = ts.transpileModule(fs.readFileSync(telemetrySource, "utf8"), {
+  compilerOptions: {
+    target: ts.ScriptTarget.ES2021,
+    module: ts.ModuleKind.CommonJS,
+    strict: true,
+  },
+  fileName: telemetrySource,
+});
+fs.writeFileSync(telemetryOutput, telemetry.outputText);
+const selector = ts.transpileModule(fs.readFileSync(selectorSource, "utf8"), {
+  compilerOptions: {
+    target: ts.ScriptTarget.ES2021,
+    module: ts.ModuleKind.CommonJS,
+    strict: true,
+  },
+  fileName: selectorSource,
+});
+fs.writeFileSync(selectorOutput, selector.outputText);
+const telemetryResult = spawnSync(process.execPath, [telemetryTest, telemetryOutput], {
+  stdio: "inherit",
+});
+if (telemetryResult.error) {
+  console.error(`run-core-tests: failed to spawn preview telemetry tests: ${telemetryResult.error.message}`);
+  process.exit(1);
+}
+if (telemetryResult.status !== 0) {
+  process.exit(telemetryResult.status === null ? 1 : telemetryResult.status);
+}
+
+const selectorResult = spawnSync(process.execPath, [selectorTest, selectorOutput], {
+  stdio: "inherit",
+});
+if (selectorResult.error) {
+  console.error(`run-core-tests: failed to spawn preview card selector tests: ${selectorResult.error.message}`);
+  process.exit(1);
+}
+
+process.exit(selectorResult.status === null ? 1 : selectorResult.status);

@@ -9,7 +9,7 @@ from capture_diagnostics import (MAX_IMAGE_PAYLOAD_BYTES, analyze_episode_art_fr
                                  save_rejected_frame, summarize_detail_events,
                                  summarize_detail_image_payload_events, summarize_detail_layout_events,
                                  series_focus_failure, write_detail_summary, confirm_detail_route_source,
-                                 summarize_detail_load_events, phone_flat_card_rows,
+                                 summarize_detail_load_events, phone_flat_card_rows, preview_focus_confirmed,
                                  home_recent_flat, posters_stalled, tv_flat_card_blocks)
 from PIL import Image, ImageDraw
 
@@ -35,6 +35,106 @@ class PhonePlaceholderTests(unittest.TestCase):
 
 
 class CaptureDiagnosticsTests(unittest.TestCase):
+    def test_preview_telemetry_fatal_marker_remains_latched_across_screens(self):
+        import ast
+        import tempfile
+        from pathlib import Path
+
+        source = Path(__file__).with_name("capture.py").read_text(encoding="utf-8")
+        module = ast.parse(source, filename="capture.py")
+        function = next(node for node in module.body
+                        if isinstance(node, ast.FunctionDef) and node.name == "assert_preview_telemetry_clean")
+        guarded = next(node for node in module.body
+                       if isinstance(node, ast.FunctionDef) and node.name == "guarded")
+        with tempfile.TemporaryDirectory() as scratch:
+            preview_log = Path(scratch) / "previewer.log"
+            preview_log.write_bytes(b"PLAYARR_PREVIEW_TELEMETRY_FAILED: delivery exhausted")
+            namespace = {
+                "PREVIEW_TELEMETRY_LOG_OFFSET": 0,
+                "PREVIEW_TELEMETRY_LOG_TAIL": b"",
+                "PREVIEW_TELEMETRY_FATAL": False,
+                "log": str(preview_log),
+                "open": open,
+                "os": os,
+                "SystemExit": SystemExit,
+            }
+            exec(compile(ast.Module(body=[function], type_ignores=[]), "capture.py", "exec"), namespace)
+            with self.assertRaisesRegex(SystemExit, "telemetry transport failed"):
+                namespace["assert_preview_telemetry_clean"]()
+            namespace.update({"MISSING": [], "Skip": Exception, "print": lambda *args, **kwargs: None})
+            exec(compile(ast.Module(body=[guarded], type_ignores=[]), "capture.py", "exec"), namespace)
+            with self.assertRaisesRegex(SystemExit, "telemetry transport failed"):
+                namespace["guarded"]("sample", namespace["assert_preview_telemetry_clean"])
+            self.assertEqual(namespace["MISSING"], [])
+            preview_log.write_bytes(b"")
+            with self.assertRaisesRegex(SystemExit, "telemetry transport failed"):
+                namespace["assert_preview_telemetry_clean"]()
+
+    def test_missing_preview_telemetry_log_remains_fatal_across_screens(self):
+        import ast
+        from pathlib import Path
+
+        source = Path(__file__).with_name("capture.py").read_text(encoding="utf-8")
+        module = ast.parse(source, filename="capture.py")
+        function = next(node for node in module.body
+                        if isinstance(node, ast.FunctionDef) and node.name == "assert_preview_telemetry_clean")
+        guarded = next(node for node in module.body
+                       if isinstance(node, ast.FunctionDef) and node.name == "guarded")
+        namespace = {
+            "PREVIEW_TELEMETRY_LOG_OFFSET": 0,
+            "PREVIEW_TELEMETRY_LOG_TAIL": b"",
+            "PREVIEW_TELEMETRY_FATAL": False,
+            "log": "missing-preview-log",
+            "open": MagicMock(side_effect=OSError("missing")),
+            "os": os,
+            "SystemExit": SystemExit,
+        }
+        exec(compile(ast.Module(body=[function], type_ignores=[]), "capture.py", "exec"), namespace)
+        with self.assertRaisesRegex(SystemExit, "could not verify preview telemetry log"):
+            namespace["assert_preview_telemetry_clean"]()
+        self.assertTrue(namespace["PREVIEW_TELEMETRY_FATAL"])
+        namespace.update({"MISSING": [], "Skip": Exception, "print": lambda *args, **kwargs: None})
+        exec(compile(ast.Module(body=[guarded], type_ignores=[]), "capture.py", "exec"), namespace)
+        with self.assertRaisesRegex(SystemExit, "preview telemetry transport failed"):
+            namespace["guarded"]("sample", namespace["assert_preview_telemetry_clean"])
+        self.assertEqual(namespace["MISSING"], [])
+
+    def test_preview_focus_ack_requires_live_card_and_capture_aborts_without_it(self):
+        import ast
+        import json as json_module
+        from pathlib import Path
+        from unittest.mock import Mock
+
+        self.assertFalse(preview_focus_confirmed({"focus_ack": None}))
+        self.assertFalse(preview_focus_confirmed({"focus_ack": "none"}))
+        self.assertTrue(preview_focus_confirmed({"focus_ack": "ok:42,96"}))
+
+        source = Path(__file__).with_name("capture.py").read_text(encoding="utf-8")
+        module = ast.parse(source, filename="capture.py")
+        function = next(node for node in module.body
+                        if isinstance(node, ast.FunctionDef) and node.name == "focus_first_card")
+        namespace = {
+            "get": Mock(return_value=b"ok"),
+            "json": json_module,
+            "time": Mock(sleep=Mock()),
+            "preview_focus_confirmed": preview_focus_confirmed,
+            "assert_preview_telemetry_clean": Mock(),
+            "SystemExit": SystemExit,
+            "print": Mock(),
+        }
+        exec(compile(ast.Module(body=[function], type_ignores=[]), "capture.py", "exec"), namespace)
+        namespace["get"].side_effect = [b"ok", b"ok", b'{"focus_ack":"ok:42,96"}']
+        self.assertIsNone(namespace["focus_first_card"]())
+
+        namespace["get"].side_effect = [b"ok", b"ok"] + [b'{"focus_ack":null}'] * 10
+        with self.assertRaisesRegex(SystemExit, "no live card acknowledged focus"):
+            namespace["focus_first_card"]()
+
+        namespace["assert_preview_telemetry_clean"].side_effect = SystemExit("preview telemetry transport failed")
+        namespace["get"].side_effect = None
+        with self.assertRaisesRegex(SystemExit, "preview telemetry transport failed"):
+            namespace["focus_first_card"]()
+
     def test_detail_load_summary_is_redacted_scoped_and_reports_input_before_focus(self):
         events = [
             {"sequence": 4, "category": "detail-load-load-start", "route": "Detail",

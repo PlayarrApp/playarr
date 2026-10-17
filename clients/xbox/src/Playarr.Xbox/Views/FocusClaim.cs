@@ -22,22 +22,45 @@ namespace Playarr.Xbox.Views
         public static Guid? Recall(string page) => Last.TryGetValue(page, out var id) ? id : (Guid?)null;
 
         private static DispatcherTimer? _active;
+        private static DependencyObject? _activeScope;
+        private static Action? _activeOnStopped;
 
         public static void Start(DependencyObject scope, Func<Control?> target)
+            => Start(scope, target, () => false, null);
+
+        public static void Start(DependencyObject scope, Func<Control?> target, Func<bool> shouldCancel)
+            => Start(scope, target, shouldCancel, null);
+
+        public static void Start(DependencyObject scope, Func<Control?> target, Func<bool> shouldCancel, Func<bool>? isComplete)
+            => Start(scope, target, shouldCancel, isComplete, null);
+
+        public static void Start(DependencyObject scope, Func<Control?> target, Func<bool> shouldCancel, Func<bool>? isComplete, Action? onStopped)
         {
-            _active?.Stop();
+            if (_active is { } previous)
+            {
+                Stop(previous);
+            }
+
             var tries = 0;
             var stable = 0;
             var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
             _active = timer;
+            _activeScope = scope;
+            _activeOnStopped = onStopped;
             timer.Tick += (s, e) =>
             {
+                if (shouldCancel())
+                {
+                    Stop(timer);
+                    return;
+                }
+
                 var focused = FocusManager.GetFocusedElement() as DependencyObject;
-                if (focused != null && IsInside(scope, focused))
+                if (focused != null && IsInside(scope, focused) && (isComplete == null || isComplete()))
                 {
                     if (++stable >= 4)
                     {
-                        timer.Stop();
+                        Stop(timer);
                     }
 
                     return;
@@ -46,13 +69,34 @@ namespace Playarr.Xbox.Views
                 stable = 0;
                 if (++tries > 60)
                 {
-                    timer.Stop();
+                    Stop(timer);
                     return;
                 }
 
                 target()?.Focus(FocusState.Keyboard);
             };
             timer.Start();
+        }
+
+        public static void Cancel(DependencyObject scope)
+        {
+            if (ReferenceEquals(_activeScope, scope) && _active is { } timer)
+            {
+                Stop(timer);
+            }
+        }
+
+        private static void Stop(DispatcherTimer timer)
+        {
+            timer.Stop();
+            if (ReferenceEquals(_active, timer))
+            {
+                var onStopped = _activeOnStopped;
+                _active = null;
+                _activeScope = null;
+                _activeOnStopped = null;
+                onStopped?.Invoke();
+            }
         }
 
         private static bool IsInside(DependencyObject ancestor, DependencyObject node)

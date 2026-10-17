@@ -38,7 +38,8 @@ namespace Playarr.Xbox.Views
             // The rails' scroller would swallow Up/Down to scroll; D-pad Up/Down must move focus to the card above or below.
             RailsScroll.PreviewKeyDown += RailsScroll_PreviewKeyDown;
             // The rails scroller fades toward its top and bottom where more follows (the detail text on the left does not scroll).
-            EdgeFade.AttachVertical(Root, RailsScroll, 833);
+            EdgeFade.AttachVertical(Root, RailsScroll, 730);
+            RailsScroll.SizeChanged += (s, e) => UpdateRailPadding();
         }
 
         private void RailsScroll_PreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
@@ -132,8 +133,8 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>
-        /// Web Home keeps the focused rail at the middle of the screen: the rails track pads half a viewport top and bottom
-        /// and each vertical move scrolls the focused card to that line (about 52 % down), so the rail above and below show.
+        /// Web Home centres the complete track in the scroll stack. The first track naturally remains at scroll offset zero
+        /// because its top padding is less than half a viewport.
         /// </summary>
         private void CentreRail(FrameworkElement item)
         {
@@ -142,12 +143,35 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
-            var top = item.TransformToVisual(RailsScroll).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
-            var delta = top + 92 - RailsScroll.ActualHeight * 0.52;
+            FrameworkElement? track = item;
+            while (track != null && !ReferenceEquals(track.Parent, RailsPanel))
+            {
+                track = Windows.UI.Xaml.Media.VisualTreeHelper.GetParent(track) as FrameworkElement;
+            }
+
+            if (track == null)
+            {
+                return;
+            }
+
+            var top = track.TransformToVisual(RailsScroll).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
+            var delta = top + track.ActualHeight / 2 - RailsScroll.ActualHeight / 2;
             if (System.Math.Abs(delta) > 2)
             {
-                RailsScroll.ChangeView(null, System.Math.Max(0, RailsScroll.VerticalOffset + delta), null, false);
+                RailsScroll.ChangeView(null, System.Math.Max(0, System.Math.Min(RailsScroll.ScrollableHeight, RailsScroll.VerticalOffset + delta)), null, false);
             }
+        }
+
+        private void UpdateRailPadding()
+        {
+            var viewport = RailsScroll.ActualHeight;
+            if (viewport <= 0)
+            {
+                return;
+            }
+
+            var top = System.Math.Max(128, System.Math.Min(174, viewport * 0.15));
+            RailsPanel.Margin = new Thickness(730, top, 0, viewport / 2);
         }
 
         private Control? RestoreOrFirst(ListView firstList)
@@ -220,7 +244,7 @@ namespace Playarr.Xbox.Views
                 list.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, cover: Appearance.HomeCover));
             }
 
-            var section = new StackPanel { Spacing = 38 };
+            var section = new StackPanel { Spacing = 38, Margin = new Thickness(54, 0, 0, 0) };
             section.Children.Add(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
             section.Children.Add(list);
             return section;

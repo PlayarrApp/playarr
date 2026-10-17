@@ -96,11 +96,11 @@ const screens = {
   music: async () => { await toHome(); await press("Left", 0.8); await presses(Array(12).fill("Down"), 0.35); await presses(Array(5).fill("Up"), 0.6); await press("Select", 12); },
   // Title actions: long-press Select on the first library card (web: the context menu of the same card).
   actions: async () => { await toHome(); await dock(3, 14); await ecp("keydown/Select"); await sleep(1.2); await ecp("keyup/Select"); await sleep(3); },
-  // The calendar opens on the month view; the range switcher (header, left of Previous) chooses Month, Week or Agenda. The month grid's Up
-  // from the Sunday cell of the first week reaches Today, then Left twice the range switcher.
+  // The calendar opens on the month view; the range switcher (header, left of Previous) chooses Month, Week or Agenda. The calendar opens focused on today's cell, so six Ups
+  // (the grid has at most six rows) reach the range switcher whichever week today falls in.
   "calendar-month": async () => { await toHome(); await dock(7, 16); },
-  "calendar-week": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Right", "Right", "Right", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
-  "calendar-agenda": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Right", "Right", "Right", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
+  "calendar-week": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Up", "Up", "Up", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
+  "calendar-agenda": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Up", "Up", "Up", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
   // Library: the Info (*) key enters the alphabet strip, Up from its first letter reaches Filters, Select opens the panel.
   filters: async () => { await toHome(); await dock(3, 14); await presses(["Info", "Up"], 1); await press("Select", 3); },
   watchlist: async () => { await toHome(); await dock(5, 6); },

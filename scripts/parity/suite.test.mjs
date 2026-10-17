@@ -15,6 +15,13 @@ const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), 
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
 
 test("suite.json is valid and matches the legend screens", () => assert.deepEqual(validateSuite(suite, legend), []));
+test("Home remains captured in both themes and its web rail navigation reference stays pinned", () => {
+  const screens = JSON.parse(readFileSync(new URL("./screens.json", import.meta.url), "utf8"));
+  const expected = JSON.parse(readFileSync(new URL("./expected.web.json", import.meta.url), "utf8"));
+  assert.ok(screens.screens.some((screen) => screen.id === "home"));
+  assert.deepEqual(screens.themes, ["light", "dark"]);
+  assert.deepEqual(expected.dpad["home-left-nav"].position, { rail: "nav", index: 2 });
+});
 test("validator rejects a bad suite", () => {
   const s = structuredClone(suite);
   s.screens[1].keys = ["sideways"];

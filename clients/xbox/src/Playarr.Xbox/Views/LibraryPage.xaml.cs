@@ -30,11 +30,22 @@ namespace Playarr.Xbox.Views
     {
         private readonly LibraryViewModel _viewModel;
         private bool _focusFirst;
+        private readonly LibraryInitialFocusState _initialFocus = new LibraryInitialFocusState();
         private Guid? _restoreId;
+        private Guid? _lastFocusedWorkId;
+        private Guid? _refreshFocusId;
+        private bool _refreshFocusPending;
+        private bool _refreshFocusClaimStarted;
+        private bool _refreshFocusCancelled;
+        private bool _refreshUserInput;
         private IReadOnlyList<Work>? _renderedWorks;
+        private char _activeLetter = '#';
+        private char? _renderedActiveLetter;
+        private bool? _renderedReverse;
 
         /// <summary>The kind this page lists; read by the parity trace.</summary>
         internal WorkKind? Kind => _viewModel.SelectedKind;
+        internal bool InitialFocusPending => _initialFocus.IsPending;
         private readonly Dictionary<Guid, Work> _worksById = new Dictionary<Guid, Work>();
 
         public LibraryPage()
@@ -46,6 +57,8 @@ namespace Playarr.Xbox.Views
             CardFocus.Attach(WorksGridView);
             EdgeFade.AttachVertical(Root, WorksGridView);
             CardActions.Attach(WorksGridView, id => _worksById.TryGetValue(id, out var work) ? work : null);
+            Root.GotFocus += Root_GotFocus;
+            Root.SizeChanged += (s, e) => UpdateLetterRailViewport(e.NewSize.Height);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -58,7 +71,14 @@ namespace Playarr.Xbox.Views
             }
 
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            Window.Current.CoreWindow.KeyDown -= CoreWindow_KeyDown;
+            Window.Current.CoreWindow.KeyDown += CoreWindow_KeyDown;
+            Window.Current.CoreWindow.PointerPressed -= CoreWindow_PointerPressed;
+            Window.Current.CoreWindow.PointerPressed += CoreWindow_PointerPressed;
+            Window.Current.Content.GotFocus -= WindowContent_GotFocus;
+            Window.Current.Content.GotFocus += WindowContent_GotFocus;
             _focusFirst = true;
+            _initialFocus.Begin();
             // Back from a title lands on the card that was focused, as the web does.
             _restoreId = e.NavigationMode == NavigationMode.Back ? FocusClaim.Recall(MemoryKey()) : null;
             Render();
@@ -67,6 +87,10 @@ namespace Playarr.Xbox.Views
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            Window.Current.CoreWindow.KeyDown -= CoreWindow_KeyDown;
+            Window.Current.CoreWindow.PointerPressed -= CoreWindow_PointerPressed;
+            Window.Current.Content.GotFocus -= WindowContent_GotFocus;
+            CancelRefreshFocusRestore();
             base.OnNavigatedFrom(e);
         }
 
@@ -81,10 +105,22 @@ namespace Playarr.Xbox.Views
         private void Render()
         {
             var isLoading = _viewModel.IsLoadingKinds || _viewModel.IsLoadingWorks;
+            var hasError = !string.IsNullOrEmpty(_viewModel.ErrorMessage);
+            var resultsChanged = !ReferenceEquals(_renderedWorks, _viewModel.Works);
+            if (_initialFocus.ShouldCaptureRefresh(_refreshFocusPending, resultsChanged || isLoading || hasError, IsFocusWithin(WorksGridView)))
+            {
+                _refreshFocusPending = true;
+                _refreshFocusCancelled = false;
+                _refreshUserInput = false;
+                _refreshFocusClaimStarted = false;
+                _refreshFocusId = FocusedWorkId() ?? _lastFocusedWorkId;
+                _focusFirst = false;
+                FocusClaim.Cancel(WorksGridView);
+            }
+
             LoadingRing.IsActive = isLoading;
             LoadingRing.Visibility = isLoading ? Visibility.Visible : Visibility.Collapsed;
 
-            var hasError = !string.IsNullOrEmpty(_viewModel.ErrorMessage);
             ErrorPanel.Visibility = hasError ? Visibility.Visible : Visibility.Collapsed;
             ErrorText.Text = _viewModel.ErrorMessage ?? string.Empty;
 
@@ -98,7 +134,7 @@ namespace Playarr.Xbox.Views
             Ui.LayoutHeader(HeaderTitles, TitleText, CountText);
 
             // Rebuild only for a new result: a rebuild drops focus back to the nav rail.
-            if (!ReferenceEquals(_renderedWorks, _viewModel.Works))
+            if (resultsChanged)
             {
                 _renderedWorks = _viewModel.Works;
                 WorksGridView.Items.Clear();
@@ -109,13 +145,51 @@ namespace Playarr.Xbox.Views
                     WorksGridView.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, caption: false, cover: Appearance.LibraryCover));
                 }
 
-                ShowFocused(_viewModel.Works.Count > 0 ? _viewModel.Works[0] : null);
+                var preview = _viewModel.Works.FirstOrDefault(work => _refreshFocusPending && work.Id == _refreshFocusId)
+                    ?? _viewModel.Works.FirstOrDefault();
+                ShowFocused(preview);
+                _activeLetter = preview != null ? LibraryAlphabet.LetterFor(preview) : '#';
             }
 
-            if (_focusFirst && !isLoading && !hasError && _viewModel.Works.Count > 0)
+            if (_refreshFocusPending && !_refreshFocusClaimStarted && !isLoading && !hasError && _viewModel.Works.Count > 0)
+            {
+                if (_refreshUserInput)
+                {
+                    CancelRefreshFocusRestore();
+                }
+                else
+                {
+                    var orderedIds = _viewModel.Works.Select(work => work.Id).ToList();
+                    var targetId = LibraryFocusRestore.ResolveTarget(orderedIds, _refreshFocusId, gridOwnedFocus: true, userMoved: false);
+                    if (targetId is Guid id)
+                    {
+                        _refreshFocusId = id;
+                        if (LibraryFocusRestore.IsFocusComplete(FocusedWorkId(), id, _refreshUserInput))
+                        {
+                            CompleteRefreshFocusRestore();
+                        }
+                        else
+                        {
+                            _refreshFocusClaimStarted = true;
+                            CardFocus.FocusWhenReady(WorksGridView, () => RefreshFocusTarget(id),
+                                () => !LibraryFocusRestore.ShouldContinueClaim(_refreshFocusPending, _refreshUserInput || _refreshFocusCancelled),
+                                () => LibraryFocusRestore.IsFocusComplete(FocusedWorkId(), id, _refreshUserInput));
+                        }
+                    }
+                    else
+                    {
+                        CancelRefreshFocusRestore();
+                    }
+                }
+            }
+
+            if (_focusFirst && !_refreshFocusPending && !isLoading && !hasError && _viewModel.Works.Count > 0)
             {
                 _focusFirst = false;
-                CardFocus.FocusWhenReady(WorksGridView, RestoreOrFirst);
+                if (_initialFocus.ShouldStartClaim)
+                {
+                    CardFocus.FocusWhenReady(WorksGridView, RestoreOrFirst, () => _initialFocus.Settle());
+                }
             }
 
             RenderLetterRail();
@@ -145,67 +219,229 @@ namespace Playarr.Xbox.Views
             return WorksGridView.ContainerFromIndex(0) as Control;
         }
 
+        private Control? RefreshFocusTarget(Guid id)
+        {
+            foreach (var item in WorksGridView.Items)
+            {
+                if (item is FrameworkElement { Tag: Guid tag } && tag == id)
+                {
+                    WorksGridView.ScrollIntoView(item);
+                    return WorksGridView.ContainerFromItem(item) as Control;
+                }
+            }
+
+            return null;
+        }
+
+        private Guid? FocusedWorkId()
+        {
+            for (var current = Windows.UI.Xaml.Input.FocusManager.GetFocusedElement() as DependencyObject;
+                current != null && !ReferenceEquals(current, WorksGridView);
+                current = Windows.UI.Xaml.Media.VisualTreeHelper.GetParent(current))
+            {
+                if (current is GridViewItem { Content: FrameworkElement { Tag: Guid id } })
+                {
+                    return id;
+                }
+            }
+
+            return null;
+        }
+
+        private void CompleteRefreshFocusRestore()
+        {
+            _refreshFocusPending = false;
+            _refreshFocusClaimStarted = false;
+            _refreshFocusId = null;
+            FocusClaim.Cancel(WorksGridView);
+        }
+
+        private void CancelRefreshFocusRestore()
+        {
+            _refreshFocusCancelled = true;
+            _refreshFocusPending = false;
+            _refreshFocusClaimStarted = false;
+            FocusClaim.Cancel(WorksGridView);
+        }
+
+        private void Root_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (_refreshFocusPending && _refreshFocusClaimStarted && !IsFocusWithin(WorksGridView))
+            {
+                CancelRefreshFocusRestore();
+            }
+        }
+
+        private void WindowContent_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (_refreshFocusPending && _refreshFocusClaimStarted && !IsFocusWithin(WorksGridView))
+            {
+                CancelRefreshFocusRestore();
+            }
+        }
+
+        private void CoreWindow_KeyDown(Windows.UI.Core.CoreWindow sender, Windows.UI.Core.KeyEventArgs e)
+        {
+            if (_initialFocus.IsPending && IsDirectionalKey(e.VirtualKey))
+            {
+                if (_initialFocus.CancelForUserInput()) FocusClaim.Cancel(WorksGridView);
+            }
+
+            if (_refreshFocusPending && IsDirectionalKey(e.VirtualKey))
+            {
+                _refreshUserInput = true;
+                CancelRefreshFocusRestore();
+            }
+        }
+
+        private void CoreWindow_PointerPressed(Windows.UI.Core.CoreWindow sender, Windows.UI.Core.PointerEventArgs e)
+        {
+            if (_initialFocus.IsPending)
+            {
+                if (_initialFocus.CancelForUserInput()) FocusClaim.Cancel(WorksGridView);
+            }
+
+            if (!_refreshFocusPending) return;
+
+            _refreshUserInput = true;
+            CancelRefreshFocusRestore();
+        }
+
+        private static bool IsDirectionalKey(Windows.System.VirtualKey key) => key is
+            Windows.System.VirtualKey.Up or Windows.System.VirtualKey.Down or
+            Windows.System.VirtualKey.Left or Windows.System.VirtualKey.Right or
+            Windows.System.VirtualKey.GamepadDPadUp or Windows.System.VirtualKey.GamepadDPadDown or
+            Windows.System.VirtualKey.GamepadDPadLeft or Windows.System.VirtualKey.GamepadDPadRight or
+            Windows.System.VirtualKey.GamepadLeftThumbstickUp or Windows.System.VirtualKey.GamepadLeftThumbstickDown or
+            Windows.System.VirtualKey.GamepadLeftThumbstickLeft or Windows.System.VirtualKey.GamepadLeftThumbstickRight;
+
         private void WorksGridView_GotFocus(object sender, RoutedEventArgs e)
         {
-            if (e.OriginalSource is GridViewItem { Content: FrameworkElement { Tag: Guid id } }
-                && _worksById.TryGetValue(id, out var work))
+            var id = FocusedWorkId();
+            if (id is Guid workId && _worksById.TryGetValue(workId, out var work))
             {
-                FocusClaim.Remember(MemoryKey(), id);
+                _lastFocusedWorkId = workId;
+                if (_refreshFocusPending && LibraryFocusRestore.IsFocusComplete(workId, _refreshFocusId ?? Guid.Empty, _refreshUserInput))
+                {
+                    CompleteRefreshFocusRestore();
+                }
+                else if (_refreshFocusPending && _refreshUserInput)
+                {
+                    CancelRefreshFocusRestore();
+                }
+
+                FocusClaim.Remember(MemoryKey(), workId);
                 ShowFocused(work);
+                _activeLetter = LibraryAlphabet.LetterFor(work);
+                UpdateLetterRail();
             }
         }
 
         private void ShowFocused(Work? work) => Detail.Show(work);
 
-        /// <summary>Web A-Z rail: "#" then A-Z; a letter jumps to the first title starting with it.</summary>
+        /// <summary>Web A-Z rail with a bounded viewport and sort-aware letter jumps.</summary>
         private void RenderLetterRail()
         {
-            LetterRail.Children.Clear();
-            foreach (var letter in "#ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            if (LetterRail.Children.Count == 0 || _renderedReverse != _viewModel.Reversed)
             {
-                var button = new Button
+                LetterRail.Children.Clear();
+                var alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                if (_viewModel.Reversed) alphabet = new string(alphabet.Reverse().ToArray());
+                foreach (var letter in alphabet)
                 {
-                    // The web marks the active letter ("#" until the viewer jumps) with a filled circle.
-                    Content = letter == '#'
-                        ? new Border
-                        {
-                            Width = 24,
-                            Height = 24,
-                            CornerRadius = new CornerRadius(12),
-                            Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInk"],
-                            Child = new TextBlock { Text = "#", FontSize = 10, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceStrong"] },
-                        }
-                        : (object)new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"] },
-                    Width = 40,
-                    Height = 44,
-                    Padding = new Thickness(0),
-                    CornerRadius = new CornerRadius(20),
-                    HorizontalContentAlignment = HorizontalAlignment.Center,
-                    Background = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent),
-                    BorderThickness = new Thickness(0),
-                    Tag = letter,
-                };
-                button.Click += LetterButton_Click;
-                LetterRail.Children.Add(button);
+                    var button = new Button
+                    {
+                        Content = LetterContent(letter, letter == _activeLetter),
+                        Width = 40,
+                        Height = 44,
+                        Padding = new Thickness(0),
+                        CornerRadius = new CornerRadius(20),
+                        HorizontalContentAlignment = HorizontalAlignment.Center,
+                        Background = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent),
+                        BorderThickness = new Thickness(0),
+                        Tag = letter,
+                    };
+                    button.Click += LetterButton_Click;
+                    LetterRail.Children.Add(button);
+                }
+                _renderedActiveLetter = _activeLetter;
+                _renderedReverse = _viewModel.Reversed;
             }
+            UpdateLetterRail();
+            UpdateLetterRailViewport(Root.ActualHeight);
+        }
+
+        private void UpdateLetterRailViewport(double height)
+        {
+            var top = Math.Max(214, Math.Min(height * 0.25, 286));
+            var bottomPadding = Math.Max(48, Math.Min(height * 0.06, 78));
+            LetterRailScrollViewer.Margin = new Thickness(0, top, 21, 0);
+            LetterRailContent.Padding = new Thickness(0, 8, 0, bottomPadding);
+        }
+
+        private object LetterContent(char letter, bool active)
+        {
+            var ink = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInk"];
+            var soft = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"];
+            var surface = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceStrong"];
+            return active
+                ? new Border
+                {
+                    Width = 24,
+                    Height = 24,
+                    CornerRadius = new CornerRadius(12),
+                    Background = ink,
+                    Child = new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = surface },
+                }
+                : new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = soft };
+        }
+
+        private void UpdateLetterRail()
+        {
+            var previous = _renderedActiveLetter;
+            Button? activeButton = null;
+            foreach (var child in LetterRail.Children)
+            {
+                if (child is Button button && button.Tag is char letter)
+                {
+                    if (previous == null || letter == previous || letter == _activeLetter)
+                    {
+                        button.Content = LetterContent(letter, letter == _activeLetter);
+                    }
+                    if (letter == _activeLetter) activeButton = button;
+                }
+            }
+            _renderedActiveLetter = _activeLetter;
+
+            if (activeButton != null && !IsFocusWithin(LetterRailScrollViewer))
+            {
+                var point = activeButton.TransformToVisual(LetterRail).TransformPoint(new Windows.Foundation.Point(0, 0));
+                var offset = point.Y + activeButton.ActualHeight / 2 - LetterRailScrollViewer.ViewportHeight / 2;
+                LetterRailScrollViewer.ScrollToVerticalOffset(Math.Max(0, offset));
+            }
+        }
+
+        private static bool IsFocusWithin(DependencyObject ancestor)
+        {
+            for (var current = Windows.UI.Xaml.Input.FocusManager.GetFocusedElement() as DependencyObject; current != null; current = Windows.UI.Xaml.Media.VisualTreeHelper.GetParent(current))
+            {
+                if (ReferenceEquals(current, ancestor)) return true;
+            }
+            return false;
         }
 
         private void LetterButton_Click(object sender, RoutedEventArgs e)
         {
+            CancelRefreshFocusRestore();
             var letter = (char)((Button)sender).Tag;
-            foreach (var item in WorksGridView.Items)
+            var works = _viewModel.Works.ToList();
+            var targetIndex = LibraryAlphabet.FindJumpIndex(works, letter, _viewModel.Reversed);
+            if (targetIndex >= 0)
             {
-                if (item is FrameworkElement { Tag: Guid id } && _worksById.TryGetValue(id, out var work))
-                {
-                    var title = string.IsNullOrEmpty(work.SortTitle) ? work.Title : work.SortTitle;
-                    var first = title.Length > 0 ? char.ToUpperInvariant(title[0]) : '#';
-                    if (letter == '#' ? !char.IsLetter(first) : first == letter)
-                    {
-                        WorksGridView.ScrollIntoView(item, ScrollIntoViewAlignment.Leading);
-                        ShowFocused(work);
-                        return;
-                    }
-                }
+                WorksGridView.ScrollIntoView(WorksGridView.Items[targetIndex], ScrollIntoViewAlignment.Leading);
+                ShowFocused(works[targetIndex]);
+                var capturedIndex = targetIndex;
+                CardFocus.FocusWhenReady(WorksGridView, () => WorksGridView.ContainerFromIndex(capturedIndex) as Control);
             }
         }
 

@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import http.server
 import json
 import math
 import os
+import re
 import socket
 import struct
 import sys
@@ -24,7 +26,18 @@ import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sim_vnc  # noqa: E402  (copied next to this file from scripts/sim-vnc)
+from capture_identity import match_profile_identity
 from capture_diagnostics import MAX_IMAGE_PAYLOAD_BYTES, image_payload_metrics  # noqa: E402
+
+MAX_PREVIEW_TELEMETRY_BATCH_SIZE = 64
+MAX_PREVIEW_TELEMETRY_BATCH_BYTES = 1 * 1024 * 1024
+PREVIEW_TELEMETRY_BATCH_LOCK = threading.Lock()
+PREVIEW_TELEMETRY_BATCH_LAST_ID = 0
+PREVIEW_TELEMETRY_BATCH_DIGESTS = {}
+PREVIEW_TELEMETRY_POST_PATHS = {
+    "/preview-state", "/row-image", "/row-image-stage", "/image-metrics-scope", "/layout-stage",
+    "/detail-load", "/episode-target", "/episode-card-area", "/episode-card-container-area",
+}
 
 # OpenHarmony KeyCode values (range the Previewer accepts: 2000-2119)
 OH_KEYS = {"up": 2012, "down": 2013, "left": 2014, "right": 2015, "ok": 2054, "center": 2016, "space": 2050, "esc": 2070, "tab": 2049, "enter": 2054, "pagedown": 2020}
@@ -43,7 +56,8 @@ IMAGE_DIAGNOSTICS_LIMIT = 256
 # A series-detail capture emits well over 300 events; keep enough that the target and route events are never evicted.
 DEBUG_EVENT_LIMIT = 3000
 DEBUG_EVENTS_LOCK = threading.Lock()
-STATE = {"route": "", "kind": "", "focused": None, "lib_kind": ""}
+STATE = {"route": "", "kind": "", "focused": None, "focus_ack": None, "lib_kind": ""}
+EXPECTED_IDENTITY_SHA256 = ""
 DEBUG_SEQUENCE = 0
 DETAIL_IMAGE_STAGES = {
     "source", "fetch-start", "fetch-ok", "fetch-error", "bridge-source-ready",
@@ -596,6 +610,12 @@ def _container_area_rejection_code(body: dict) -> int:
 
 
 def apply_state(q):
+    global EXPECTED_IDENTITY_SHA256
+    if "clear_identity" in q:
+        STATE.pop("auth_verified", None)
+        STATE.pop("auth_current", None)
+        expected = q.get("expected_digest", [""])[0]
+        EXPECTED_IDENTITY_SHA256 = expected if re.fullmatch(r"[0-9a-f]{64}", expected) else ""
     if "route" in q:
         route = q["route"][0]
         work_id = q.get("work", [""])[0] if route == "Detail" else ""
@@ -618,6 +638,7 @@ def apply_state(q):
             STATE["lib_kind"] = STATE["kind"]
     if "resetfocused" in q:
         STATE["focused"] = None
+        STATE["focus_ack"] = None
     if "resetdbg" in q:
         STATE["dbgcount"] = {}
     if "img" in q:
@@ -630,6 +651,12 @@ def apply_state(q):
         # The preview HTTP gate reports idle when no API call or artwork request is pending; the capture waits for it.
         STATE["net_idle"] = q["net"][0] == "idle"
         print(f"[net] {time.monotonic():.1f} {q['net'][0]}", flush=True)
+    if "auth" in q:
+        # Compare the transient app profile ID with the approver digest, then discard it.
+        matched, current = match_profile_identity(
+            q["auth"][0], EXPECTED_IDENTITY_SHA256, q.get("auth_current", ["0"])[0] == "1")
+        STATE["auth_verified"] = matched
+        STATE["auth_current"] = current
     if "dbg" in q:
         if q["dbg"][0].startswith("http:"):
             print(f"[http] {time.monotonic():.1f} {q['dbg'][0][:140]}", flush=True)
@@ -641,10 +668,102 @@ def apply_state(q):
         append_debug_event(q["dbg"][0].split(":", 1)[0][:64])
     if "nav" in q:
         STATE["focused"] = q["nav"][0]
+    if "focusack" in q:
+        # Keep helper acknowledgement separate from labels that title/nav events can update.
+        STATE["focus_ack"] = q["focusack"][0]
     if "title" in q:
         title, sub = q["title"][0], q.get("sub", [""])[0]
         # web's accessible names: Home cards read "<title><subtitle>", grid cards "open <title>"
         STATE["focused"] = title + sub if STATE["route"] in ("Home", "") else "open " + title
+
+
+def validate_preview_telemetry_batch(events):
+    """Return a fully validated batch, or None without applying any event."""
+    if not isinstance(events, list) or not events or len(events) > MAX_PREVIEW_TELEMETRY_BATCH_SIZE:
+        return None
+    validated = []
+    for event in events:
+        if not isinstance(event, dict) or set(event) != {"method", "path", "body"}:
+            return None
+        method = event.get("method")
+        path = event.get("path")
+        body = event.get("body")
+        if not isinstance(method, str) or not isinstance(path, str):
+            return None
+        if method == "GET":
+            parsed = urllib.parse.urlparse(path)
+            if (not path.startswith("/state?") or parsed.scheme or parsed.netloc or parsed.fragment or
+                    parsed.path != "/state" or not parsed.query or body != ""):
+                return None
+            validated.append((method, urllib.parse.parse_qs(parsed.query), None))
+            continue
+        if method != "POST" or path not in PREVIEW_TELEMETRY_POST_PATHS or not isinstance(body, str):
+            return None
+        try:
+            parsed_body = json.loads(body or "{}")
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(parsed_body, dict):
+            return None
+        validated.append((method, path, parsed_body))
+    return validated
+
+
+def dispatch_preview_telemetry_event(method, path_or_query, body):
+    """Apply one prevalidated overlay telemetry event."""
+    if method == "GET":
+        apply_state(path_or_query)
+        return True
+    path = path_or_query
+    if path == "/preview-state":
+        apply_state({"route": [str(body.get("route", ""))], "kind": [str(body.get("kind", ""))],
+                     "work": [str(body.get("work_id", ""))], "generation": [str(body.get("generation", "0"))]})
+        return True
+    elif path == "/row-image":
+        return append_row_image_event(body)
+    elif path == "/row-image-stage":
+        return append_detail_image_stage(body)
+    elif path == "/image-metrics-scope":
+        return append_detail_image_payload_scope(body)
+    elif path == "/layout-stage":
+        return append_detail_layout_stage(body)
+    elif path == "/detail-load":
+        return append_detail_load_event(body)
+    elif path == "/episode-target":
+        return append_detail_episode_target(body)
+    elif path == "/episode-card-area":
+        return append_detail_episode_card_area(body)
+    elif path == "/episode-card-container-area":
+        return append_detail_episode_card_container_area(body)
+    return False
+
+
+def dispatch_preview_telemetry_batch(batch_id, events, request_digest):
+    """Apply each ordered batch once and acknowledge retries with the same body digest."""
+    global PREVIEW_TELEMETRY_BATCH_LAST_ID
+    if (not isinstance(batch_id, int) or isinstance(batch_id, bool) or batch_id < 1 or
+            not isinstance(request_digest, str) or len(request_digest) != 64):
+        return False
+    validated = validate_preview_telemetry_batch(events)
+    if validated is None:
+        return False
+    with PREVIEW_TELEMETRY_BATCH_LOCK:
+        previous_digest = PREVIEW_TELEMETRY_BATCH_DIGESTS.get(batch_id)
+        if previous_digest is not None:
+            return previous_digest == request_digest
+        if batch_id != PREVIEW_TELEMETRY_BATCH_LAST_ID + 1:
+            return False
+        try:
+            for method, path_or_query, body in validated:
+                # Existing endpoints acknowledge stale route scopes while intentionally dropping them.
+                dispatch_preview_telemetry_event(method, path_or_query, body)
+        except Exception:
+            return False
+        PREVIEW_TELEMETRY_BATCH_LAST_ID = batch_id
+        PREVIEW_TELEMETRY_BATCH_DIGESTS[batch_id] = request_digest
+        while len(PREVIEW_TELEMETRY_BATCH_DIGESTS) > 64:
+            del PREVIEW_TELEMETRY_BATCH_DIGESTS[min(PREVIEW_TELEMETRY_BATCH_DIGESTS)]
+        return True
 
 
 def log(message: str) -> None:
@@ -1045,7 +1164,26 @@ def main():
                 if status != "ok":
                     return self._reply(415, b"unsupported image payload")
                 return self._reply(200, b"ok")
-            raw = self.rfile.read(int(self.headers.get("content-length", "0")))
+            try:
+                content_length = int(self.headers.get("content-length", "0"))
+            except ValueError:
+                return self._reply(400, b"invalid request length")
+            if content_length < 0 or (url.path == "/preview-batch" and
+                                      content_length > MAX_PREVIEW_TELEMETRY_BATCH_BYTES):
+                return self._reply(413, b"request too large")
+            raw = self.rfile.read(content_length)
+            if url.path == "/preview-batch":
+                if len(raw) != content_length:
+                    return self._reply(400, b"truncated telemetry batch")
+                try:
+                    payload = json.loads(raw or b"{}")
+                except (TypeError, ValueError):
+                    return self._reply(400, b"invalid telemetry batch")
+                if (not isinstance(payload, dict) or set(payload) != {"batch_id", "events"} or
+                        not dispatch_preview_telemetry_batch(payload.get("batch_id"), payload.get("events"),
+                                                             hashlib.sha256(raw).hexdigest())):
+                    return self._reply(400, b"telemetry batch rejected")
+                return self._reply(200, b"ok")
             body = json.loads(raw or b"{}")
             if url.path == "/preview-state":
                 apply_state({

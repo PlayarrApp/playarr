@@ -12,6 +12,7 @@ using Playarr.Core.Networking;
 using Playarr.Core.Playback;
 using Playarr.Xbox;
 using Playarr.Xbox.Services;
+using Playarr.Xbox.Views;
 
 namespace Playarr.Xbox.ViewModels
 {
@@ -84,6 +85,7 @@ namespace Playarr.Xbox.ViewModels
         private string? _selectedAudioTrackId;
         private string? _selectedSubtitleTrackId;
         private readonly bool _preferLocal;
+        private readonly bool _requireDirectPlay;
 
         /// <summary>
         /// Plays the finished download of this file from local storage: chosen from the Downloads page, or used when the
@@ -113,9 +115,11 @@ namespace Playarr.Xbox.ViewModels
             string? title,
             Guid? workId = null,
             PlaybackQueueItem? next = null,
-            bool preferLocal = false)
+            bool preferLocal = false,
+            bool requireDirectPlay = false)
         {
             _preferLocal = preferLocal;
+            _requireDirectPlay = requireDirectPlay;
             _workId = workId;
             EndOfPlayback = new EndOfPlaybackMachine(next);
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -517,6 +521,13 @@ namespace Playarr.Xbox.ViewModels
                 var model = XboxModelDetector.DetectModel();
                 var profile = XboxPlaybackProfile.ForModel(model);
 
+                if (_requireDirectPlay && _preferLocal)
+                {
+                    LoadState = PlayerLoadState.Failed;
+                    ErrorMessage = "The parity player fixture must use server-negotiated direct play.";
+                    return;
+                }
+
                 if (_preferLocal && await TryPlayLocalAsync().ConfigureAwait(false))
                 {
                     return;
@@ -541,6 +552,14 @@ namespace Playarr.Xbox.ViewModels
                 var info = await _environment.ApiClient
                     .GetPlaybackInfoAsync(_mediaFileId, profile, default, Services.DeviceCapsProvider.Current(profile))
                     .ConfigureAwait(false);
+
+                if (_requireDirectPlay && !DirectPlayFixturePolicy.IsDirect(info.Mode))
+                {
+                    PlaybackInfo = info;
+                    LoadState = PlayerLoadState.Failed;
+                    ErrorMessage = "The parity player fixture did not negotiate direct play.";
+                    return;
+                }
 
                 PlaybackInfo = info;
 
@@ -569,7 +588,10 @@ namespace Playarr.Xbox.ViewModels
             catch (ApiException apiError)
             {
                 // The server could not be reached but the title is downloaded: it plays from local storage.
-                if (apiError.Kind == ApiErrorKind.Transport && await TryPlayLocalAsync().ConfigureAwait(false))
+                if (DirectPlayFixturePolicy.CanFallbackToLocal(
+                        _requireDirectPlay,
+                        apiError.Kind == ApiErrorKind.Transport) &&
+                    await TryPlayLocalAsync().ConfigureAwait(false))
                 {
                     return;
                 }
