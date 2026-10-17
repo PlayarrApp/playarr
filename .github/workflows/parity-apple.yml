@@ -1,0 +1,586 @@
+name: "Parity captures: Apple"
+
+# The Apple devices of the device wall on GitHub-hosted macOS runners (replaces the owner's MacBook while it is away):
+# builds the apps, runs the parity captures, uploads them as artifacts, and (stream=true) streams the simulators over VNC on a
+# tagged, ephemeral tailnet node. Hosted jobs stop after 6 h, so a streaming run starts its successor before it ends.
+#
+# NOTE: a long-running stream on hosted runners pushes GitHub's terms (Actions are meant for building and testing); the repo owner
+# has decided to use it. Never self-hosted. See docs/parity/DEVICES.md (Hosted Apple wall) for the set-up and the switch-over.
+#
+# Safety (public repository): only workflow_dispatch, on the default branch; no pull_request trigger, so forks
+# never get a secret. Scripts that see a secret come from the default branch checkout (`trusted/`); the ref under test (`src/`)
+# is only built, and every secret is passed to the one step that needs it.
+
+run-name: Parity captures Apple [${{ inputs.devices }}]
+
+on:
+  workflow_dispatch:
+    inputs:
+      devices:
+        description: Comma-separated devices (tvos, iphone, ipad, macos)
+        type: string
+        default: tvos,iphone,ipad,macos
+      ref:
+        description: Branch, tag or SHA of the apps to build (default - the default branch)
+        type: string
+        default: ""
+      capture:
+        description: Run the parity captures and upload them
+        type: boolean
+        default: true
+      stream:
+        description: Join the tailnet and stream the simulators over VNC until the run ends
+        type: boolean
+        default: false
+      suite_args:
+        description: Extra suite-run arguments for the Apple driver step (test runs; default - screens and D-pad checks)
+        type: string
+        default: ""
+      theme:
+        description: Capture only this theme (dark or light; default - both, a job each)
+        type: string
+        default: ""
+      search_smoke:
+        description: Run the isolated interactive macOS Search-results focus smoke
+        type: boolean
+        default: false
+      search_query:
+        description: Query for the isolated Search smoke; kept out of workflow logs
+        type: string
+        default: the
+      chain:
+        description: While streaming, start the next run before this one ends
+        type: boolean
+        default: true
+      length:
+        description: Minutes this run lasts, at most 345 (default - 345 minus a per-device offset, so handovers do not coincide)
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
+  PARITY_STABLE: "0"
+  LEAD_MINUTES: "25" # the successor starts this long before the end of a run
+
+# D-pad-only runs use the dedicated device-test-dpad account (its On deck does not drift); the secrets fall back to the shared account when unset.
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    outputs:
+      any: ${{ steps.plan.outputs.any }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          DEVICES: ${{ inputs.devices }}
+          LENGTH: ${{ inputs.length }}
+          STREAM: ${{ inputs.stream }}
+          CAPTURE: ${{ inputs.capture }}
+          CHAIN: ${{ inputs.chain }}
+          SEARCH_SMOKE: ${{ inputs.search_smoke }}
+          SEARCH_QUERY: ${{ inputs.search_query }}
+          SUITE_ARGS: ${{ inputs.suite_args }}
+          ONLY_THEME: ${{ inputs.theme }}
+          APP_REF: ${{ inputs.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          declare -A off=([tvos]=0 [iphone]=30 [ipad]=60 [macos]=90) vnc=([tvos]=TVOS [iphone]=IPHONE [ipad]=IPAD [macos]=MACOS)
+          if [[ $SEARCH_SMOKE == true ]]; then
+            [[ $EVENT == workflow_dispatch && $REF_NAME == "$DEFAULT_BRANCH" && ( -z $APP_REF || $APP_REF == "$DEFAULT_BRANCH" ) && $DEVICES == macos && $CAPTURE == false && $STREAM != true && $CHAIN != true && -z $SUITE_ARGS ]] || {
+              echo '::error::search_smoke requires default-branch workflow and app refs, devices=macos, capture=false, stream=false, chain=false and empty suite_args'; exit 1;
+            }
+            python3 -c 'import os,sys,unicodedata; q=os.environ.get("SEARCH_QUERY", ""); sys.exit(0 if q.strip() and len(q) <= 80 and not any(unicodedata.category(c) == "Cc" for c in q) else 1)' || {
+              echo '::error::search_query must be a non-empty single-line query of at most 80 characters'; exit 1;
+            }
+          fi
+          [[ -z $ONLY_THEME || $ONLY_THEME == dark || $ONLY_THEME == light ]] || { echo '::error::theme must be dark or light'; exit 1; }
+          items=()
+          if [[ $SEARCH_SMOKE == true ]]; then
+            items+=('{"device":"macos","vnc":"MACOS","length":1,"themes":"dark","slug":"search-smoke"}')
+          else
+          for d in ${DEVICES//,/ }; do
+            [[ -n ${off[$d]:-} ]] || { echo "::error::unknown device $d"; exit 1; }
+            len=${LENGTH:-$((345 - off[$d]))}
+            [[ $len =~ ^[0-9]+$ && $len -ge 1 && $len -le 345 ]] || { echo "::error::length must be 1 to 345 minutes"; exit 1; }
+            if [[ $STREAM == true ]]; then # a stream shows one app: both themes in one job
+              items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len,\"themes\":\"dark light\",\"slug\":\"all\"}")
+            else # capture-only: a job per theme, in parallel
+              for t in ${ONLY_THEME:-dark light}; do items+=("{\"device\":\"$d\",\"vnc\":\"${vnc[$d]}\",\"length\":$len,\"themes\":\"$t\",\"slug\":\"$t\"}"); done
+            fi
+          done
+          fi
+          echo "any=true" >> "$GITHUB_OUTPUT"
+          echo "matrix={\"include\":[$(IFS=,; echo "${items[*]}")]}" >> "$GITHUB_OUTPUT"
+
+  wall:
+    name: ${{ matrix.device }} ${{ matrix.slug }}
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: macos-26
+    timeout-minutes: 355
+    permissions:
+      actions: write # dispatch of the successor run
+      contents: read
+    env:
+      DEVICE: ${{ matrix.device }}
+      THEMES: ${{ matrix.themes }}
+      TRUSTED: ${{ github.workspace }}/trusted
+      SRC: ${{ github.workspace }}/src
+      HAVE_TS: ${{ secrets.TS_OAUTH_SECRET != '' && secrets.TS_OAUTH_CLIENT_ID != '' }}
+    steps:
+      - name: Note the start time
+        run: |
+          echo "START=$(date +%s)" >> "$GITHUB_ENV"
+          echo "WORK=$RUNNER_TEMP/wall" >> "$GITHUB_ENV"
+
+      - name: Check out the default branch (scripts that see secrets)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+
+      # Validate once, before the app launch. Both suite runners consume the same
+      # constrained JSON selection, and wall.sh up sees the derived visibility flag.
+      - name: Validate suite selection
+        id: suite_selection
+        env:
+          SUITE_ARGS: ${{ inputs.suite_args }}
+          SUITE_JSON: ${{ github.workspace }}/trusted/scripts/parity/suite.json
+          DEVICE: ${{ matrix.device }}
+          CAPTURE_ENABLED: ${{ inputs.capture }}
+          STREAM_ENABLED: ${{ inputs.stream }}
+          CHAIN_ENABLED: ${{ inputs.chain }}
+          SEARCH_SMOKE_ENABLED: ${{ inputs.search_smoke }}
+        run: |
+          set -euo pipefail
+          [[ "$SUITE_ARGS" != *$'\n'* && "$SUITE_ARGS" != *$'\r'* ]] || { echo '::error::suite_args must be a single line'; exit 1; }
+          python_args=("$SUITE_JSON")
+          if [[ "$SUITE_ARGS" =~ [^[:space:]] ]]; then
+            requested=()
+            read -r -a requested <<< "$SUITE_ARGS"
+            python_args+=("${requested[@]}")
+          fi
+          selection_json="$(python3 - "${python_args[@]}" <<'PY_SUITE_ARGS'
+          import json
+          import os
+          import re
+          import sys
+
+          suite_path, *args = sys.argv[1:]
+          search_smoke = os.environ.get("SEARCH_SMOKE_ENABLED") == "true"
+          if search_smoke and (
+              os.environ.get("DEVICE") != "macos"
+              or os.environ.get("CAPTURE_ENABLED") != "false"
+              or os.environ.get("STREAM_ENABLED") == "true"
+              or os.environ.get("CHAIN_ENABLED") == "true"
+          ):
+              raise SystemExit("search smoke requires a capture-free, non-streaming macOS run")
+          with open(suite_path, encoding="utf-8") as handle:
+              suite = json.load(handle)
+
+          values = {
+              "--only": {"screens", "dpad", "downloads", "performance"},
+              "--checks": {item["id"] for group in ("dpad", "performance") for item in suite.get(group, [])},
+              "--screens": {item["id"] for item in suite.get("screens", [])},
+              "--cases": {item["id"] for item in suite.get("downloads", [])},
+          }
+          switches = {"--skip-player", "--player"}
+          seen = set()
+          index = 0
+          while index < len(args):
+              flag = args[index]
+              if flag not in set(values) | switches:
+                  raise SystemExit("unsupported suite flag")
+              if flag in seen:
+                  raise SystemExit("duplicate suite flag")
+              seen.add(flag)
+              if flag in switches:
+                  index += 1
+                  continue
+              if index + 1 >= len(args) or args[index + 1].startswith("--"):
+                  raise SystemExit("suite flag requires a value")
+              selected = args[index + 1].split(",")
+              allowed = values[flag]
+              if any(not re.fullmatch(r"[a-z0-9-]+", item) for item in selected):
+                  raise SystemExit("invalid suite selection value")
+              if len(set(selected)) != len(selected) or any(item not in allowed for item in selected):
+                  raise SystemExit("unsupported suite selection value")
+              index += 2
+
+          if "--skip-player" in seen and "--player" in seen:
+              raise SystemExit("--player and --skip-player cannot be combined")
+          selected_only = set(args[args.index("--only") + 1].split(",")) if "--only" in seen else {"screens", "dpad"}
+          if "--screens" in seen and "screens" not in selected_only:
+              raise SystemExit("--screens requires screens in --only")
+          if "--cases" in seen and "downloads" not in selected_only:
+              raise SystemExit("--cases requires downloads in --only")
+          if "--player" in seen and "dpad" not in selected_only:
+              raise SystemExit("--player requires dpad in --only")
+          selected_checks = set()
+          if "--checks" in seen:
+              selected_checks = set(args[args.index("--checks") + 1].split(","))
+              dpad_ids = {item["id"] for item in suite.get("dpad", [])}
+              performance_ids = {item["id"] for item in suite.get("performance", [])}
+              required_only = ({"dpad"} if selected_checks & dpad_ids else set()) | ({"performance"} if selected_checks & performance_ids else set())
+              if not required_only <= selected_only:
+                  raise SystemExit("--checks are outside the selected --only suites")
+          if "--only" not in seen:
+              args.extend(("--only", "screens,dpad"))
+
+          non_player_dpad = {item["id"] for item in suite.get("dpad", []) if not item["id"].startswith("player-")}
+          has_non_player_check = bool(selected_checks & non_player_dpad) if "--checks" in seen else bool(non_player_dpad)
+          visibility = (
+              os.environ.get("DEVICE") == "macos"
+              and (
+                  search_smoke
+                  or (
+                      os.environ.get("CAPTURE_ENABLED") == "false"
+                      and os.environ.get("STREAM_ENABLED") != "true"
+                      and os.environ.get("CHAIN_ENABLED") != "true"
+                      and selected_only == {"dpad"}
+                      and "--skip-player" in seen
+                      and "--player" not in seen
+                      and has_non_player_check
+                      and (not selected_checks or selected_checks <= non_player_dpad)
+                  )
+              )
+          )
+          print(json.dumps({"args": args, "macParityVisible": visibility}, separators=(",", ":")))
+          PY_SUITE_ARGS
+          )"
+          printf 'selection=%s\n' "$selection_json" >> "$GITHUB_OUTPUT"
+          mac_parity_visible="$(python3 -c 'import json,sys; print("true" if json.loads(sys.argv[1])["macParityVisible"] else "false")' "$selection_json")"
+          printf 'MAC_PARITY_VISIBLE=%s\n' "$mac_parity_visible" >> "$GITHUB_ENV"
+
+      - name: Check out the ref under test
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.event.repository.default_branch }}
+          path: src
+          persist-credentials: false
+
+      - name: Check out default-branch smoke scripts
+        if: inputs.search_smoke && env.DEVICE == 'macos'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: smoke-tools
+          persist-credentials: false
+
+      - name: Record the toolchain
+        run: |
+          set -euo pipefail
+          xcode_path="$(xcode-select -p)"
+          echo "Selected Xcode path: $xcode_path"
+          xcodebuild -version | awk '/^Xcode / { print "Selected Xcode version: " $2 }'
+          if runtime_json="$(xcrun simctl list runtimes -j 2>/dev/null)" && printf '%s\n' "$runtime_json" | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["runtimes"]
+          for family in ("iOS", "tvOS"):
+              selected = [runtime for runtime in runtimes if runtime.get("name", "").startswith(family + " ")]
+              available = sum(runtime.get("isAvailable") is True for runtime in selected)
+              print(f"{family} runtimes: total={len(selected)} available={available} unavailable={len(selected) - available}")
+          ios18 = [runtime for runtime in runtimes if runtime.get("name", "").startswith("iOS 18.")]
+          available18 = sum(runtime.get("isAvailable") is True for runtime in ios18)
+          status = "available" if available18 else "unavailable" if ios18 else "missing"
+          print(f"iOS 18 runtime status={status} total={len(ios18)} available={available18} unavailable={len(ios18) - available18}")
+          ' 2>/dev/null; then
+            :
+          else
+            echo "simctl/runtime status=unavailable"
+          fi
+
+      # The iPad wall build needs an iOS 18 simulator (iPadOS 26 does not rotate); the runner image only has 26.
+      - name: Cache the iOS 18 simulator runtime
+        if: matrix.device == 'ipad'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ios18
+          key: ios-sim-runtime-18.5-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install the iOS 18 simulator runtime
+        if: matrix.device == 'ipad'
+        timeout-minutes: 40
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/ios18"; mkdir -p "$dir"
+          xcode_path="$(xcode-select -p)"
+          sudo xcode-select --switch "$xcode_path" >/dev/null 2>&1 || { echo "::error::Could not select the current Xcode path"; exit 1; }
+          echo "Selected Xcode path: $(xcode-select -p)"
+          xcodebuild -version | awk '/^Xcode / { print "Selected Xcode version: " $2 }'
+          xcodebuild -runFirstLaunch >/dev/null 2>&1 || { echo "::error::Xcode first-launch setup failed"; exit 1; }
+          shopt -s nullglob
+          packages=("$dir"/*.dmg "$dir"/*.exportedBundle)
+          if (( ${#packages[@]} == 0 )); then
+            xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir" >/dev/null 2>&1 || { echo "::error::iOS 18.5 runtime download failed"; exit 1; }
+            packages=("$dir"/*.dmg "$dir"/*.exportedBundle)
+          fi
+          if (( ${#packages[@]} != 1 )); then echo "::error::Expected one cached iOS 18.5 runtime package"; exit 1; fi
+          xcodebuild -importPlatform "${packages[0]}" >/dev/null 2>&1 || { echo "::error::iOS 18.5 runtime import failed"; exit 1; }
+          available18=0
+          for attempt in {1..30}; do
+            if counts="$(xcrun simctl list runtimes -j 2>/dev/null | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["runtimes"]
+          ios18 = [runtime for runtime in runtimes if runtime.get("name", "").startswith("iOS 18.")]
+          available = sum(runtime.get("isAvailable") is True for runtime in ios18)
+          print(len(ios18), available, len(ios18) - available)
+          ' 2>/dev/null)"; then
+              read -r total available18 unavailable <<< "$counts"
+              if (( available18 > 0 )); then status=available; else status=missing; fi
+            else
+              total=0; available18=0; unavailable=0; status=unavailable
+            fi
+            echo "iOS 18 availability poll attempt=$attempt/30 status=$status total=$total available=$available18 unavailable=$unavailable"
+            if (( available18 > 0 )); then break; fi
+            sleep 2
+          done
+          (( available18 > 0 )) || { echo "::error::No available iOS 18 runtime after bounded import poll"; exit 1; }
+
+      # Compiled output is cached per device: later runs only rebuild what changed.
+      - name: Cache the build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/wall/dd
+          key: apple-wall-dd-${{ matrix.device }}-${{ hashFiles('src/clients/apple-tv/**/*.swift', 'src/clients/ios/**/*.swift', 'src/clients/*/project.yml') }}
+          restore-keys: apple-wall-dd-${{ matrix.device }}-
+
+      - name: Build the app
+        timeout-minutes: 60
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" build "$DEVICE"
+
+      - name: Start the simulator, sign in and launch
+        timeout-minutes: 15
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          DEVICE_TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
+
+      - name: Interactive Search-results focus smoke
+        if: inputs.search_smoke && env.DEVICE == 'macos'
+        timeout-minutes: 15
+        env:
+          TRUSTED: ${{ github.workspace }}/smoke-tools
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          PLAYARR_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          SEARCH_QUERY: ${{ inputs.search_query }}
+          PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+        run: |
+          set -euo pipefail
+          cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          node apple/search-results-smoke.mjs --query "$SEARCH_QUERY"
+
+      - name: Parity captures
+        id: capture
+        if: github.event_name != 'workflow_dispatch' || inputs.capture
+        continue-on-error: true # a rejected capture must not stop the stream
+        timeout-minutes: 30
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          DEVICE_TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          OUT: ${{ runner.temp }}/capture
+          REF: ${{ inputs.ref || github.event.repository.default_branch }}
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" capture "$DEVICE"
+
+      # The server no longer hosts the web app: the web reference loads this build (served locally by drivers/web.mjs) against the server API.
+      - name: Set up Node for the web build
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up pnpm for the web build
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Build the web client
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
+        working-directory: trusted/clients/tv-web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @playarr-tv/web... run build
+
+      # Fresh web reference in the same minute (real sign-in through the UI, dark and light), for the pixel diff and the D-pad
+      # expectations. Written to $RUNNER_TEMP/web, where the suite looks for expected.json.
+      - name: Web reference (fresh sign-in)
+        id: webref
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
+        continue-on-error: true
+        timeout-minutes: 25
+        env:
+          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_DEVICE_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_DEVICE_TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          PLAYARR_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          PLAYARR_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+          SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
+        run: |
+          set -euo pipefail
+          cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          WALL_SUITE_ARGS=()
+          while IFS= read -r arg; do WALL_SUITE_ARGS+=("$arg"); done < <(python3 -c 'import json,sys; print(chr(10).join(json.loads(sys.argv[1])["args"]))' "$SUITE_SELECTION")
+          (( ${#WALL_SUITE_ARGS[@]} > 0 )) || { echo '::error::validated suite selection is empty'; exit 1; }
+          node suite-run.mjs --driver ./drivers/web.mjs --reference --out "$RUNNER_TEMP/web" "${WALL_SUITE_ARGS[@]}"
+
+      # The shared suite (scripts/parity, docs/parity/SUITE.md) through the Apple driver: the 15 screens in both themes (written
+      # over the interim captures above), the D-pad checks against the web reference, playback (not yet).
+      - name: Parity suite (Apple driver)
+        id: suite
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
+        continue-on-error: true
+        timeout-minutes: 60
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          DRIVER_TRACE: "1"
+          SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
+        run: |
+          set -euo pipefail
+          cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          WALL_SUITE_ARGS=()
+          while IFS= read -r arg; do WALL_SUITE_ARGS+=("$arg"); done < <(python3 -c 'import json,sys; print(chr(10).join(json.loads(sys.argv[1])["args"]))' "$SUITE_SELECTION")
+          (( ${#WALL_SUITE_ARGS[@]} > 0 )) || { echo '::error::validated suite selection is empty'; exit 1; }
+          node suite-run.mjs --driver ./drivers/apple-sim.mjs --out "$RUNNER_TEMP/capture" --via keys "${WALL_SUITE_ARGS[@]}"
+
+      - name: Upload the web reference
+        if: steps.webref.outcome != 'skipped'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apple-wall-webref-${{ matrix.device }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/web
+          if-no-files-found: ignore
+
+      - name: Upload the rejected frames (diagnosis only; the puller ignores this name)
+        if: always() && steps.capture.outcome == 'failure'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wallfail-${{ matrix.device }}-${{ matrix.slug }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/wall/failed
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Upload the captures
+        if: steps.capture.outcome == 'success' || steps.suite.outcome == 'success' || steps.suite.outcome == 'failure'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apple-wall-${{ matrix.device }}-${{ matrix.slug }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/capture
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: VNC server self-test (loopback, no tailnet)
+        if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.stream || inputs.search_smoke)) }}
+        timeout-minutes: 5
+        env:
+          STREAM_BIND: 127.0.0.1
+          PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] || 'selftest1' }}
+        run: |
+          export DEADLINE=$(( $(date +%s) + 90 ))
+          bash "$TRUSTED/scripts/apple-wall/wall.sh" stream "$DEVICE" &
+          pid=$!
+          case $DEVICE in
+            tvos) port=5905 ;;
+            iphone) port=5912 ;;
+            ipad) port=5914 ;;
+            macos) port=5916 ;;
+          esac
+          sleep 50
+          curl -fsS "http://127.0.0.1:$port/" | tee "$RUNNER_TEMP/vnc-health.txt"
+          grep -Eq 'frames=[1-9]|device ' "$RUNNER_TEMP/vnc-health.txt"
+          wait $pid
+
+      - name: Join the tailnet (ephemeral, tagged node)
+        id: ts
+        if: github.event_name == 'workflow_dispatch' && inputs.stream && env.HAVE_TS == 'true'
+        continue-on-error: true
+        # Pinned to v4.1.3: the v4.2.0 SHA (d1b6cd20) archive returns 404 on codeload, which fails every job at setup.
+        uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          hostname: ci-wall-${{ matrix.device }}-${{ github.run_id }}
+          args: --accept-dns=false
+          use-cache: "true"
+
+      # Streams showed "A server with the specified hostname could not be found" after the join: look at the resolver.
+      # tailscaled leaves MagicDNS as the system resolver even with --accept-dns=false, and it cannot resolve
+      # the public server name, so the simulators lose their server. Put the runner's own resolvers back, then check.
+      - name: Repair DNS after the join
+        if: steps.ts.outcome == 'success'
+        continue-on-error: true
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+        run: |
+          host=$(python3 -c 'import os, urllib.parse as u; print(u.urlparse(os.environ["SERVER_URL"]).hostname)')
+          check() { dscacheutil -q host -a name "$host" | grep -q ip_address; }
+          if check; then echo "system resolver: ok"; exit 0; fi
+          echo "system resolver: FAIL, repairing"
+          sudo tailscale set --accept-dns=false || true
+          sudo killall -HUP mDNSResponder || true; sleep 2
+          if ! check; then
+            # every network service back to its DHCP resolvers (no hard-coded addresses)
+            networksetup -listallnetworkservices | tail -n +2 | grep -v '^\*' | while read -r svc; do sudo networksetup -setdnsservers "$svc" Empty || true; done
+            sudo dscacheutil -flushcache || true; sudo killall -HUP mDNSResponder || true; sleep 3
+          fi
+          if check; then echo "system resolver: ok after repair"; else echo "system resolver: STILL FAIL"; fi
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$SERVER_URL/" || true); echo "server reachable by curl: HTTP $code"
+          scutil --dns | grep -E 'resolver #|nameserver\[' | head -12
+
+      - name: Stream over VNC until the end of the run
+        if: steps.ts.outcome == 'success'
+        timeout-minutes: 350
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] }}
+          GH_TOKEN: ${{ github.token }}
+          LENGTH: ${{ matrix.length }}
+          CHAIN: ${{ inputs.chain }}
+          REF_INPUT: ${{ inputs.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          export STREAM_BIND; STREAM_BIND=$(tailscale ip -4 | head -1)
+          export DEADLINE=$(( START + LENGTH * 60 ))
+          if [[ $CHAIN == true ]]; then
+            export DISPATCH_AT=$(( DEADLINE - LEAD_MINUTES * 60 ))
+            export CHAIN_CMD="gh workflow run parity-apple.yml -R $GITHUB_REPOSITORY --ref $DEFAULT_BRANCH -f devices=$DEVICE -f stream=true -f capture=false -f chain=true -f length=345 ${REF_INPUT:+-f ref=\"\$REF_INPUT\"}"
+          fi
+          bash "$TRUSTED/scripts/apple-wall/wall.sh" stream "$DEVICE"
+
+      - name: Delete the simulator
+        if: always()
+        run: |
+          [[ -f $WORK/state.env ]] && . "$WORK/state.env" || true
+          [[ -z ${UDID:-} ]] || xcrun simctl delete "$UDID" || true
+          pkill -x PlayarrMac || true

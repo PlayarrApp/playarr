@@ -1108,7 +1108,7 @@ export const th: Translations = {
   "pages.clients.tizenPage.installKicker": "โหมดนักพัฒนา Samsung",
   "pages.clients.tizenPage.installTitle": "ติดตั้ง Playarr บนทีวี Samsung",
   "pages.clients.tizenPage.installDescription":
-    "ใช้ทีวี Samsung รุ่นปี 2023 หรือใหม่กว่าที่ทำงานบน Tizen 7.0 ขึ้นไป และให้อยู่ในเครือข่ายภายในเดียวกับคอมพิวเตอร์ คุณต้องมี Tizen Studio พร้อมส่วนขยาย Samsung TV, โปรไฟล์ใบรับรองที่ถูกต้อง และ WGT ที่ลงลายเซ็นและรองรับจากด้านบนหรือที่ลงลายเซ็นจากซอร์สเอง",
+    "ใช้ทีวี Samsung รุ่นปี 2022 หรือใหม่กว่าที่ทำงานบน Tizen 6.5 ขึ้นไป และให้อยู่ในเครือข่ายภายในเดียวกับคอมพิวเตอร์ คุณต้องมี Tizen Studio พร้อมส่วนขยาย Samsung TV, โปรไฟล์ใบรับรองที่ถูกต้อง และ WGT ที่ลงลายเซ็นและรองรับจากด้านบนหรือที่ลงลายเซ็นจากซอร์สเอง",
   "pages.clients.tizenPage.step1Title": "ติดตั้ง TV SDK และสร้างใบรับรอง",
   "pages.clients.tizenPage.step1Description":
     "ติดตั้ง Tizen Studio แล้วเพิ่ม Samsung TV Extension, Samsung Certificate Extension และ Web CLI จาก Package Manager สร้างและเปิดใช้โปรไฟล์ใบรับรอง Samsung เพราะ Tizen จะไม่ติดตั้งวิดเจ็ตที่ไม่ได้ลงลายเซ็น",

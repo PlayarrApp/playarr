@@ -12,7 +12,7 @@ const packageJson = JSON.parse(readFileSync(new URL("./package.json", import.met
 
 // Tizen packages a directory of static assets into a .wgt and serves them
 // from the device's local filesystem -- relative asset paths (`base: "./"`)
-// are required. The supported Tizen 7 floor uses Chromium 94, so JavaScript
+// are required. The supported Tizen 6.5 floor uses Chromium 85, so JavaScript
 // and CSS output must remain within that engine's syntax/capability baseline.
 export default defineConfig({
   base: "./",
@@ -27,6 +27,6 @@ export default defineConfig({
   build: {
     outDir: "dist",
     target: "es2018",
-    cssTarget: "chrome94",
+    cssTarget: "chrome85",
   },
 });

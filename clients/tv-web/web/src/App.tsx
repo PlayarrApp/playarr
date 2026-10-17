@@ -680,13 +680,13 @@ export function App() {
         <Route path="/search/:workId" element={<WorkDetailPage />} />
         <Route path="/library" element={<Navigate to="/series" replace />} />
         <Route path="/library/:workId" element={<WorkDetailPage />} />
-        <Route path="/series" element={<LibraryPage kind="series" />} />
+        <Route path="/series" element={<LibraryPage key="series" kind="series" />} />
         <Route path="/series/:workId" element={<WorkDetailPage />} />
-        <Route path="/movies" element={<LibraryPage kind="movie" />} />
+        <Route path="/movies" element={<LibraryPage key="movies" kind="movie" />} />
         <Route path="/movies/:workId" element={<WorkDetailPage />} />
-        <Route path="/sites" element={<LibraryPage kind="site" />} />
+        <Route path="/sites" element={<LibraryPage key="sites" kind="site" />} />
         <Route path="/sites/:workId" element={<WorkDetailPage />} />
-        <Route path="/music" element={<LibraryPage kind="artist" />} />
+        <Route path="/music" element={<LibraryPage key="music" kind="artist" />} />
         <Route path="/music/:workId" element={<MusicDetailPage />} />
         <Route path="/watchlist" element={<WatchlistPage />} />
         <Route path="/requests" element={<RequestsPage />} />

@@ -13,6 +13,11 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The hosted iOS parity workflow passes its pinned clock to the app as text, so iPhone captures confirm the fixed clock.
+- A release dry run no longer fails in the web deploy job's post-job cache save when the deploy steps are skipped.
+- The release collects the Xbox package under its real `.msix` name and picks the HarmonyOS HAP by name, failing the release if the HAP is missing, so `clients.json` no longer lists Xbox as pending.
+- The Samsung TV install page now says Tizen 6.5 and 2022-or-newer TVs, matching the app's real floor (English, Japanese and Thai).
+- Web: the Downloads notifications toggle moves into the page action column and the Downloads panel keeps clear of the action bar, so nothing overlaps.
 - HarmonyOS TV Home opens aligned with the Library grid like web: rails and cards start 53 vp inside the rail column and the first heading sits at the Library first-row top; a focused later rail still centres.
 - The Nura capture helper clicks the display's left margin before each screenshot, so a sheet or drawer that opened after a long idle wait is no longer missed.
 - Fire TV: the card behind the title actions drawer no longer keeps its focus ring while the drawer is open.
@@ -539,6 +544,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Releases now build the Samsung Tizen native tpk, name every package after its client variant (for example `playarr-lg-webos-<version>.ipk`, `playarr-android-<version>.apk`) and attach a `clients.json` that lists every variant with its minimum OS and download route. Older asset names stay beside the new ones.
 - On iPad, Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) settings. Covers draws Home rails as portrait posters at the Library cover card width, and the size changes the Library column count and the Home card width.
 - macOS: Settings > Appearance > Home screen artwork now takes effect; Covers shows portrait 2:3 posters on the Home rails at the web cover width.
 - Xbox: the library Filters drawer has a View choice, Screen or Cover, and Cover shows portrait posters as the web.

@@ -1104,7 +1104,7 @@ export const ja: Translations = {
   "pages.clients.tizenPage.installKicker": "Samsung Developer Mode",
   "pages.clients.tizenPage.installTitle": "SamsungテレビにPlayarrをインストール",
   "pages.clients.tizenPage.installDescription":
-    "Tizen 7.0以降を搭載した2023年以降のSamsungテレビを使用し、パソコンと同じローカルネットワークに接続してください。Samsung TV拡張を含むTizen Studio、有効な証明書プロファイル、および上の互換性のある署名済みWGTかソースから署名したWGTが必要です。",
+    "Tizen 6.5以降を搭載した2022年以降のSamsungテレビを使用し、パソコンと同じローカルネットワークに接続してください。Samsung TV拡張を含むTizen Studio、有効な証明書プロファイル、および上の互換性のある署名済みWGTかソースから署名したWGTが必要です。",
   "pages.clients.tizenPage.step1Title": "TV SDKを導入して証明書を作成する",
   "pages.clients.tizenPage.step1Description":
     "Tizen Studioをインストールし、Package ManagerでSamsung TV Extension、Samsung Certificate Extension、Web CLIを追加します。Samsung証明書プロファイルを作成して有効化してください。Tizenは未署名のウィジェットをインストールできません。",
