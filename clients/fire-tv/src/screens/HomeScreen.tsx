@@ -22,7 +22,7 @@ import {focusNode, getFocusedTag, useDefaultFocus, useRemoteKey} from '../platfo
 import {loadOnDeck, type OnDeckEntry} from '../lib/onDeck';
 import {runtimeLabel} from '../lib/runtimeLabel';
 import {blend} from '../theme/color';
-import {EdgeFade, TRACK_GUTTER} from '../tv/EdgeFade';
+import {EdgeFade} from '../tv/EdgeFade';
 import {MediaFocus} from '../tv/mediaFocus';
 import {BalancedT, Box, T, u} from '../tv/kit';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
@@ -45,7 +45,10 @@ interface HomeRail {
  */
 export interface HomeLayout {
   railPitch: number;
+  /** Where Home opens: the first heading sits at the Library grid's first-row top (web `--library-rail-top`). */
   firstHeadingY: number;
+  /** Where a later rail's heading is held once focus reaches it (web centres the rail; the first rail cannot centre above the top). */
+  centredHeadingY: number;
   cardPitch: number;
   cardW: number;
   artH: number;
@@ -57,6 +60,10 @@ export interface HomeLayout {
 const COLUMNS: Record<'thumbnail' | 'cover', Record<ArtworkSize, number>> = {thumbnail: {small: 4, medium: 3, large: 2}, cover: {small: 6, medium: 5, large: 4}};
 const GRID_GAP = {thumbnail: 25.92, cover: 19.2};
 const RAIL_PAD = 156.96;
+/** Web `--library-rail-top`: clamp(128px, 15 * viewport-unit, 174px) = 162 px at 1920 x 1080. */
+const LIBRARY_RAIL_TOP = 162;
+/** Web `--card-pad-left` (`--library-rail-left`): the Library grid's left padding, which Home's rails now start at and fade over. */
+const RAIL_GUTTER = 53.76;
 const HOME_CARD_GAP = 24.96;
 const COPY_H = 43.15;
 export function homeLayout(view: 'thumbnail' | 'cover', size: ArtworkSize): HomeLayout {
@@ -65,16 +72,16 @@ export function homeLayout(view: 'thumbnail' | 'cover', size: ArtworkSize): Home
   const artH = view === 'cover' ? cardW * 1.5 : (cardW * 9) / 16;
   const cardH = artH + COPY_H;
   // The stack keeps its centre: a taller card moves the first heading up by half the extra height.
-  return {railPitch: cardH + 138.7, firstHeadingY: 402 - (cardH - 227.2) / 2, cardPitch: cardW + HOME_CARD_GAP, cardW, artH, cardH, cover: view === 'cover'};
+  return {railPitch: cardH + 138.7, firstHeadingY: LIBRARY_RAIL_TOP, centredHeadingY: 402 - (cardH - 227.2) / 2, cardPitch: cardW + HOME_CARD_GAP, cardW, artH, cardH, cover: view === 'cover'};
 }
 /**
- * The web snaps each card to a whole pixel from its fractional position (x = 881.6 + n * pitch); the device's row layout
+ * The web snaps each card to a whole pixel from its fractional position (x = 783.36 + n * pitch); the device's row layout
  * rounds every card's width and margin separately and drifts by a pixel per card, so cards are placed one by one instead.
  */
 function cardLeft(index: number, pitch: number): number {
   return Math.round(RAIL_X + index * pitch) - RAIL_X;
 }
-const RAIL_X = 881.6;
+const RAIL_X = 729.6 + RAIL_GUTTER;
 
 function mergeRecent(...groups: Work[][]): Work[] {
   return groups.flat().sort((a, b) => new Date(b.added_at).getTime() - new Date(a.added_at).getTime());
@@ -219,8 +226,8 @@ export function HomeScreen(): React.ReactElement {
     return scrollXs[rail];
   };
   useEffect(() => {
-    Animated.timing(railY, {toValue: -focus.rail * layout.railPitch, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
-  }, [focus.rail, railY, layout.railPitch]);
+    Animated.timing(railY, {toValue: focus.rail === 0 ? 0 : layout.centredHeadingY - layout.firstHeadingY - focus.rail * layout.railPitch, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+  }, [focus.rail, railY, layout.railPitch, layout.centredHeadingY, layout.firstHeadingY]);
   const scrollTargets = useRef<number[]>([]);
   const [scrolled, setScrolled] = useState<number[]>([]);
   // Stable, so the memoised cards and rails do not re-render on every focus move.
@@ -456,7 +463,7 @@ const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.Re
           );
         })}
       </Animated.View>
-      <EdgeFade kind="gutter" tint side="left" active={scrolled > 0} x={0} y={headingY + 26.5} w={1190.4} h={layout.artH + fadeExtra + 47} size={TRACK_GUTTER} />
+      <EdgeFade kind="gutter" tint side="left" active={scrolled > 0} x={0} y={headingY + 26.5} w={1190.4} h={layout.artH + fadeExtra + 47} size={RAIL_GUTTER} />
       <EdgeFade
         kind="mask"
         side="right"
