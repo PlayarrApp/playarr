@@ -135,3 +135,8 @@ export async function pinnedCatalogFiles(suite, env = process.env, { required = 
   }
   return [film.media_file_id, ...episodeFiles].filter(Boolean);
 }
+
+/** Strict readiness (verified build identity, capture-phase waits) only for pinned runs on drivers that declare it; others use their normal wait. */
+export function readinessMode(driver, pinned) {
+  return pinned && driver?.strictReadiness === true ? "strict" : "standard";
+}

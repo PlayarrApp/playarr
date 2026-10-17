@@ -199,6 +199,7 @@ export async function createDriver() {
       throw new Error(`iOS parity ${phase} readiness timed out for ${screen}`);
     },
     async playerReady() { await this.waitReady({ screen: "player-controls", phase: "capture" }); },
+    strictReadiness: true,
     supports: { downloads: true, "grouped-downloads": true }, // no notifications: the app posts none
     async cleanupDownloads() { for (const file of touched) { try { cmd("cancel", { file }); await sleep(1500); } catch { /* app gone */ } } },
     async download(c, expect) {

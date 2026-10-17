@@ -303,7 +303,8 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
     },
     async screenshot(file) {
       await guardDeviceAccount();
-      if (parityClock) await this.waitReady({ phase: "capture" });
+      // Capture-phase strict readiness is unsupported here; the route wait is the normal readiness check.
+      if (parityClock) await this.waitReady({ phase: "route" });
       const xml = await tree();
       if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml.replace(/<node [^>]*package="(?!io\.playarr)[^>]*>/g, ""))) throw new Error("signed out or error screen");
       const png = env.PARITY_XDISPLAY

@@ -16,7 +16,7 @@ test("capture manifest records selected screen/theme hashes with the web SHA", (
   assert.deepEqual(manifest, {
     suite: 4,
     checked_at: checkedAt,
-    provenance: { suite: 4, build: sha, clock: builtAt, state: "state-hash" },
+    provenance: { suite: 4, build: sha, clock: builtAt, state: "state-hash", readiness: "strict" },
     captures: [{ id: "home", theme: "dark", path: "dark/home.png", sha256: createHash("sha256").update(bytes).digest("hex"), build: sha, checked_at: checkedAt }],
   });
 });
@@ -57,7 +57,7 @@ test("producer manifest is accepted by the receipt-gated selective merge contrac
   const previous = {
     suite: 4,
     checked_at: checkedAt,
-    provenance: { suite: 4, build: sha, clock: builtAt, state: "state-hash" },
+    provenance: { suite: 4, build: sha, clock: builtAt, state: "state-hash", readiness: "strict" },
     captures: [
       { id: "home", theme: "dark", path: "dark/home.png", sha256: createHash("sha256").update(oldBytes).digest("hex"), build: sha, checked_at: checkedAt },
       { id: "library", theme: "dark", path: "dark/library.png", sha256: createHash("sha256").update(untouchedBytes).digest("hex"), build: sha, checked_at: checkedAt },

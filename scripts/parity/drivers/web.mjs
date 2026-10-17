@@ -601,6 +601,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     return { ...info, pausedOk, ok: !!info.title && info.state === "playing" && pausedOk };
   };
   return {
+    strictReadiness: true,
     supports: { downloads: true, notifications: true, nowPlaying: true, "grouped-downloads": true },
     async setDeterministicCapture({ fixedNow: value, disableAnimations: disable = false } = {}) {
       if (!value || !Number.isFinite(Date.parse(value))) throw new Error("deterministic capture requires a valid fixedNow date string");

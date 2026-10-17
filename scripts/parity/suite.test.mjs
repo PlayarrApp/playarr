@@ -9,6 +9,7 @@ import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatc
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
+import { readinessMode } from "./suite-lib.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
 // Fixture drivers here are not stable-capable; stable is the suite default, so these tests opt out.
 process.env.PARITY_STABLE ??= "0";
@@ -846,4 +847,13 @@ test("stable capture is the default and PARITY_STABLE=0 is the only opt-out", ()
   assert.notEqual(stableRun.status, 0);
   assert.match(stableRun.stderr, /stable capture requires isolated account state|stable catalog lookup/);
   assert.doesNotMatch(run("0").stderr, /stable (capture|catalog)/);
+});
+
+test("strict readiness applies only to pinned runs on drivers that declare it", async () => {
+  assert.equal(readinessMode({ strictReadiness: true }, true), "strict");
+  assert.equal(readinessMode({ strictReadiness: true }, false), "standard");
+  assert.equal(readinessMode({}, true), "standard");
+  assert.equal(readinessMode(undefined, true), "standard");
+  assert.equal(createAndroidTvDriver({ env: {}, accountGuard: async () => {} }).strictReadiness, undefined);
+  for (const file of ["web", "apple-ios"]) assert.match(readFileSync(new URL(`./drivers/${file}.mjs`, import.meta.url), "utf8"), /strictReadiness: true/);
 });
