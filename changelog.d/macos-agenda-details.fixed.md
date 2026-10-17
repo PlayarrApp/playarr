@@ -1,0 +1,1 @@
+macOS Calendar agenda shows All day for date-only releases, wraps the details title at 9ch and shows the entry overview; captures wait for authenticated images; the library grid no longer keeps a horizontal offset.
