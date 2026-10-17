@@ -4420,14 +4420,18 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
 }
 
 .tv-alphabet button.is-active {
-  outline: 0;
+  /* The standard focus ring (:focus-visible) still shows on the active letter: ring outside, filled circle inside. */
   color: var(--bg);
   transform: none;
 }
 
 .tv-alphabet button.is-active::before {
   width: clamp(18px, calc(1.35 * var(--vw)), 24px);
-  background: color-mix(in srgb, var(--ink) 78%, transparent);
+  background: var(--ink);
+  /* Active ring: a --brand ring with a --bg gap, drawn as box-shadow so nothing reflows (>= 3:1 on both themes). */
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--brand);
 }
 
 .tv-alphabet button:hover {
@@ -9829,6 +9833,12 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
   background: color-mix(in srgb, var(--ink) 88%, transparent);
   color: var(--bg);
   transform: scale(1.06);
+}
+
+/* The pink icon (--brand-ink) has no contrast on the ink fill: it takes the on-fill colour (--bg, 7:1 or more) while the fill shows. */
+.tv-detail-playback-settings:is(:hover, :focus-visible, [aria-expanded="true"]) > span:first-child,
+.tv-detail-download:is(:hover, :focus-visible, [aria-expanded="true"]) > span:first-child {
+  color: inherit;
 }
 
 .download-quality-drawer-field {
