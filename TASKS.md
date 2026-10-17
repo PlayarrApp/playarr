@@ -207,7 +207,7 @@ Steps only the repository owner can perform.
 | 10706 | Web TV: sign-out and boot land on the profile picker with no blind login | in_progress | playarr-c5 | | | 2026-10-17 23:30 ICT | Owner resumed 2026-10-17. PR open: [#56](https://github.com/PlayarrApp/playarr/pull/56). Also covers the 400 responses after sign-out. Moved to integration/web (separate from integration/parity, owner 2026-10-17). |
 | 10721 | Web: Downloads action panel and overlap fix | in_progress | playarr-c5 | | | 2026-10-17 23:30 ICT | Owner resumed 2026-10-17. PR open: [#77](https://github.com/PlayarrApp/playarr/pull/77). Moved to integration/web (separate from integration/parity, owner 2026-10-17). |
 | 10137 | Web DiscoveryExtras provider message exposes internal task suffix | blocked | client-web | | | | Remove the trailing backend task-number suffix from Games provider reasons shown by web Search while preserving the meaningful unavailable message. Blocked by: owner (Thomas): paused 2026-10-17 pending deployment fix. |
-| 10730 | Web: signing out always shows the marketing site at / (signed-in hint tracks an active session) | done | playarr-c5 | web/signed-in-hint | | 2026-10-18 13:00 ICT | PR open: #96. Merged #96 to main 2026-10-17; live check pending |
+| 10730 | Web: signing out always shows the marketing site at / (signed-in hint tracks an active session) | done | playarr-c5 | web/signed-in-hint | | 2026-10-18 13:00 ICT | PR open: #96. Merged #96 to main 2026-10-17; Live check passed 2026-10-17: owner signed in and out on playarr.app, `/` shows the marketing site. |
 
 ## 2. Server performance and security (2026-10-03)
 
