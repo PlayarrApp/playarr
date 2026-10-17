@@ -14,6 +14,17 @@ const here = dirname(fileURLToPath(import.meta.url));
 const NETLOG = process.env.PARITY_NETLOG ?? join(tmpdir(), "playarr-netlog");
 const XCLICK = join(here, "..", "tizen-webos", "xclick.py");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Real TVs are driven over the inspector: webOS (WEBOS_REAL=1, ares inspector forward) and Samsung Tizen (TIZEN_REAL=1, the debug port of `sdb shell 0 debug <app id>`).
+const TIZEN_REAL = process.env.TIZEN_REAL === "1";
+const REAL_TV = process.env.WEBOS_REAL === "1" || TIZEN_REAL;
+const CDP_HOST = process.env.CDP_HOST ?? "127.0.0.1";
+// Samsung TVs cannot return pixels over the inspector (Page.captureScreenshot never answers), so TIZEN_MIRROR=<receiver base as the TV reaches it>
+// runs the debug-mirror build of the Tizen app (apps/tv-tizen/vite.config.debug-mirror.ts) from the local receiver: the driver navigates the TV's
+// app page there over the inspector and takes screenshots from the frames the page posts (token: PLAYARR_VIDAA_MIRROR_TOKEN, never logged).
+const TIZEN_MIRROR = TIZEN_REAL ? process.env.TIZEN_MIRROR?.replace(/\/$/, "") : undefined;
+const mirrorToken = () => process.env.PLAYARR_VIDAA_MIRROR_TOKEN ?? "";
+const mirrorLocal = () => (process.env.TIZEN_MIRROR_LOCAL ?? TIZEN_MIRROR ?? "").replace(/\/$/, "");
+const mirrorEntry = (route = "/") => `${TIZEN_MIRROR}/?mirrorPng=1&mirrorPointer=1&mirrorWidth=1920&mirrorToken=${encodeURIComponent(mirrorToken())}#${route}`;
 const KEYCODE = { up: 38, down: 40, left: 37, right: 39, select: 13, back: 27 };
 const KEYNAME = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", select: "Enter", back: "Escape" };
 const XKEY = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
@@ -37,6 +48,7 @@ function pageHook() {
   if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; }
 }
 
+// Selectors below avoid :is(): the Samsung TVs on Tizen 6.5 run Chromium 85, where an unsupported selector makes querySelector throw.
 // Page code (injected into the app): true when `element` is not cut off by a scrolling or clipping ancestor. A lazy image
 // below a column's scroll edge is on screen by its rectangle but never loads and is not visible to the user.
 export function insideAncestorClips(element, win = globalThis) {
@@ -54,7 +66,8 @@ export function insideAncestorClips(element, win = globalThis) {
 }
 
 export async function createDriver() {
-  const device = process.env.DEVICE;
+  // TIZEN_REAL=1 runs the Samsung TV through the webOS CDP path, so DEVICE=webos is forced for it.
+  const device = TIZEN_REAL ? "webos" : process.env.DEVICE;
   if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos required");
   const display = device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
   const cdpPort = process.env.WEBOS_CDP ?? "9226";
@@ -78,7 +91,7 @@ export async function createDriver() {
     if (socket.readyState < WebSocket.CLOSING) socket.close();
   }
   async function cdpConnect() {
-    const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
+    const list = await (await fetch(`http://${CDP_HOST}:${cdpPort}/json/list`)).json();
     const t = list.find((x) => new RegExp(process.env.WEBOS_MATCH ?? "webos-stage").test(x.url));
     if (!t) throw new Error("webOS app page not found (launcher showing?)");
     const socket = new WebSocket(t.webSocketDebuggerUrl);
@@ -93,6 +106,7 @@ export async function createDriver() {
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
     await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
+    if (TIZEN_MIRROR) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__mirrorPause = true;" });
     if (pin) {
       // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
       await cdp("Emulation.setTimezoneOverride", { timezoneId: pin.timeZone });
@@ -103,7 +117,8 @@ export async function createDriver() {
     }
   }
   async function keyboardVisible() {
-    const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
+    if (TIZEN_REAL) return false; // the Samsung TV shows no system keyboard target on the inspector
+    const list = await (await fetch(`http://${CDP_HOST}:${cdpPort}/json/list`)).json();
     const target = list.find((item) => /#\/keyboard\//.test(item.url));
     if (!target) throw new Error("webOS system keyboard visibility is unavailable");
     const socket = new WebSocket(target.webSocketDebuggerUrl);
@@ -220,7 +235,7 @@ export async function createDriver() {
       '[data-page-id="library"] .tv-title-card',
     ] : path === "/calendar" ? [
       '[data-page-id="calendar"].calendar-page',
-      '[data-page-id="calendar"] :is(.calendar-scroll, .calendar-agenda-content)',
+      '[data-page-id="calendar"] .calendar-scroll, [data-page-id="calendar"] .calendar-agenda-content',
     ] : path.startsWith("/settings") ? [
       '[data-page-id="settings"].settings-page',
       '[data-page-id="settings"] .settings-workspace',
@@ -229,7 +244,7 @@ export async function createDriver() {
       '[data-page-id="music-detail"] .tv-detail-title',
     ] : path === "/playlists" ? [
       '[data-page-id="playlists"].tv-playlists',
-      '[data-page-id="playlists"] :is(.tv-playlist-directory-card, .tv-home-card)',
+      '[data-page-id="playlists"] .tv-playlist-directory-card, [data-page-id="playlists"] .tv-home-card',
     ] : path.startsWith("/movies/") || path.startsWith("/series/") || path.startsWith("/sites/") || path.startsWith("/search/") || path.startsWith("/library/") || path.startsWith("/playlists/") ? [
       '[data-page-id="work-detail"].tv-detail',
       '[data-page-id="work-detail"] .tv-detail-title',
@@ -321,6 +336,12 @@ export async function createDriver() {
     async start() {
       if (device === "webos") {
         await cdpConnect();
+        if (TIZEN_MIRROR) {
+          await cdp("Page.navigate", { url: mirrorEntry("/") });
+          await sleep(6000);
+          closeCdp();
+          await cdpConnect();
+        }
         await guard();
       } else {
         await guard();
@@ -334,7 +355,7 @@ export async function createDriver() {
       closeCdp();
       // The TV's inspector proxy never completes the WebSocket close handshake, so its sockets keep node alive after the run;
       // the unref'd timer does not delay a normal exit and ends the process once everything else is done.
-      if (process.env.WEBOS_REAL === "1") setTimeout(() => process.exit(process.exitCode ?? 0), 2000).unref();
+      if (REAL_TV) setTimeout(() => process.exit(process.exitCode ?? 0), 2000).unref();
     },
     async setTheme(t) {
       await guard();
@@ -393,7 +414,7 @@ export async function createDriver() {
           // Chromium needs the character event to run native button activation. rawKeyDown alone
           // focuses controls but does not click action buttons in the webOS simulator.
           // Real TV: a separate char event lands after the route change the keydown caused and activates the new page's focus (Enter on the nav profile entry bounced Profiles back to Home), so send one keyDown that carries the text.
-          const real = process.env.WEBOS_REAL === "1";
+          const real = REAL_TV;
           await cdp("Input.dispatchKeyEvent", { type: "keyDown", ...c, ...(real ? { text: "\r", unmodifiedText: "\r" } : {}) });
           try {
             if (!real) await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
@@ -406,7 +427,7 @@ export async function createDriver() {
         }
       }
       // Real TV: the app applies a directional key on the next animation frame and a busy main thread can delay it by seconds; two frames flush the queue.
-      if (process.env.WEBOS_REAL === "1") await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
+      if (REAL_TV) await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
       await sleep(device === "webos" ? 1000 : 350);
       await guard();
     },
@@ -428,13 +449,28 @@ export async function createDriver() {
     },
     async screenshot(file) {
       await guard();
-      if (process.env.WEBOS_REAL === "1") {
+      if (REAL_TV) {
         // Real TV: no X display. The inspector's Page.captureScreenshot shows the app only (no system menus, keyboard or video plane).
         if (await ev(BAD)) throw new Error("signed out or error page");
         await settleVisibleImages();
         await guard();
-        const shot = await cdp("Page.captureScreenshot", { format: "png", fromSurface: true });
-        writeFileSync(file, Buffer.from(shot.result.data, "base64"));
+        if (TIZEN_MIRROR) {
+          const q = (name) => `${mirrorLocal()}/__mirror/${name}?t=${encodeURIComponent(mirrorToken())}`;
+          await ev("window.__mirrorPause = false");
+          const since = Date.now() / 1000;
+          let frame;
+          for (let i = 0; i < 90 && !frame; i += 1) {
+            await sleep(1500);
+            const candidate = await (await fetch(q("latest.json"))).json().catch(() => null);
+            if (candidate?.hasImage && !candidate.captureError && Number(candidate.receivedAt) > since && String(candidate.route).includes(await ev("location.hash"))) frame = candidate;
+          }
+          if (!frame) throw new Error("no fresh mirror frame from the TV page");
+          writeFileSync(file, Buffer.from(await (await fetch(q("latest.jpg"))).arrayBuffer()));
+          await ev("window.__mirrorPause = true");
+        } else {
+          const shot = await cdp("Page.captureScreenshot", { format: "png", fromSurface: true });
+          writeFileSync(file, Buffer.from(shot.result.data, "base64"));
+        }
         await guard();
         return;
       }

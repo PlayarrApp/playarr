@@ -1094,7 +1094,12 @@ private fun CalendarWeekBody(
                             CalendarDayHeading(group.date, today, locale, isTelevision)
                         }
                         if (group.entries.isEmpty()) {
-                            Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = 12.sp)
+                            if (isTelevision) {
+                                Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = 12.sp)
+                            } else {
+                                // Web `.calendar-day-empty`: 16 px / 24 px muted.
+                                Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = 16.sp, lineHeight = 24.sp, style = WebTextStyle)
+                            }
                         } else {
                             dayItems[column].forEachIndexed { row, item ->
                                 val rowModifier = Modifier

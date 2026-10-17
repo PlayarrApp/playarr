@@ -703,22 +703,14 @@ struct WMLibraryHeader: View {
     var body: some View {
         let top = WM.topInset + 2
         ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 43, height: 43, glyph: "←", action: onBack)
-                .offset(x: 17, y: top)
+            PlayarrBackButton(action: onBack)
+                .offset(x: PlayarrPageTokens.gutter, y: top)
             WMText(title, 22, 520, lh: 33, ls: -1)
                 .offset(x: 71, y: top + 5)
             // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
                 Spacer()
-                Button(action: onFilters) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(WM.inkSoft)
-                        .frame(width: 44, height: 44)
-                        .background(WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
-                }
-                .buttonStyle(.plain)
+                PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", iconOnly: true, action: onFilters)
             }
             .padding(.trailing, 16)
             .offset(y: top - 2)

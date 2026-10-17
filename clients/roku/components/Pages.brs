@@ -42,6 +42,10 @@ sub pagesInit()
     m.calendarView = "month"
     m.calendarViewDialogPendingClose = false
     m.calendarKinds = []
+    m.calFilterTypes = {}
+    m.calFilterStatuses = {}
+    m.calFilterMonitored = false
+    m.calFiltersOpen = false
     m.pageScrollY = 0
     m.settingsPanel = "appearance"
     m.artworkSizePref = "medium"
@@ -345,11 +349,28 @@ end function
 
 ' Header action tile (web .tv-filter-launcher, the 30 September reference): 62 x 72, radius 14, a 1px line, an icon over a
 ' tiny label. Used for every header action (Calendar link, Filters).
-sub pgTile(parent as Object, x as Float, y as Float, label as String, icon as String, action as String, data = invalid as Dynamic)
+' Shared page header pieces (web PageHeader): the round Back button, the title spec and the right-hand action tile. Every page
+' (Pages, Library, Detail, Search) draws these here and nowhere else; clients/roku/tests/test_page_anatomy.py enforces it.
+sub pgBackButton(parent as Object, x as Float)
+    pgRound(parent, x, 56.3, 50, 50, 25, "surface", 179)
+    pgRound(parent, x, 56.3, 50, 50, 25, "line", -1, true)
+    pgIcon(parent, x + 16.4, 73, 17, "arrow-left.png", "inkSoft")
+end sub
+
+function PageTitleSpec(text as String) as Object
+    return { text: text, size: 34, weight: 600, tracking: -1.512, role: "ink" }
+end function
+
+' The action tile's visuals only (Library draws its own focus ring); pgTile adds the focus target.
+sub pgShellTile(parent as Object, x as Float, y as Float, label as String, icon as String)
     pgRound(parent, x, y, 62, 72, 14, "surfaceStrong", 199)
     pgRound(parent, x, y, 62, 72, 14, "line", -1, true)
     pgIcon(parent, x + 20, y + 15, 22, icon, "inkMuted")
     pgLabel(parent, x, y + 44, 62, 14, label, 8, 800, "inkMuted", { horizAlign: "center" })
+end sub
+
+sub pgTile(parent as Object, x as Float, y as Float, label as String, icon as String, action as String, data = invalid as Dynamic)
+    pgShellTile(parent, x, y, label, icon)
     pgFocusable(x, y, 62, 72, 14, action, data)
 end sub
 
@@ -376,9 +397,7 @@ sub pageBegin(title as String, panelX as Float)
     if m.clientsStageChrome <> invalid then m.clientsStageChrome.visible = clientsPage
     backX = 153.6
     if clientsPage then backX = 0
-    pgRound(m.pageHead, backX, 56.3, 50, 50, 25, "surface", 179)
-    pgRound(m.pageHead, backX, 56.3, 50, 50, 25, "line", -1, true)
-    pgIcon(m.pageHead, backX + 16.4, 73, 17, "arrow-left.png", "inkSoft")
+    pgBackButton(m.pageHead, backX)
     pgFocusable(backX, 56.3, 50, 50, 25, "back")
     if clientsPage
         pgFocusable(1552, 50, 144, 48, 24, "clientsTheme")
@@ -1770,7 +1789,7 @@ sub renderCalendarBody()
     pgTile(m.pageHead, shellActionX(), shellActionY(1), "Filters", "tile-filters.png", "calFilters")
 
     entries = []
-    if m.pageData <> invalid and m.pageData.entries <> invalid then entries = m.pageData.entries
+    if m.pageData <> invalid and m.pageData.entries <> invalid then entries = calendarApplyFilters(m.pageData.entries)
     if m.pageStatus = "loading" and entries.Count() = 0
         pgLabel(m.pageBody, 786, 240, 600, 30, "Loading the release calendar…", 14, 400, "inkMuted")
         return
@@ -1785,6 +1804,7 @@ sub renderCalendarBody()
         renderCalendarMonth(entries)
     else if m.calendarView = "week"
         renderCalendarWeek(entries)
+        calendarWeekClip()
     else
         renderCalendarAgenda(entries)
     end if
@@ -1956,6 +1976,19 @@ sub renderCalendarMonth(entries as Object)
 end sub
 
 ' Week view (web calendar week): one column per day, a card per release with the availability colour on its left edge.
+' Web's week list is a scroll area that ends at y 937 with a fade (the page bottom margin); content below it is clipped, not drawn.
+sub calendarWeekClip()
+    pgRect(m.pageHead, 140, 937, 1780, 143, "surface")
+    fade = CreateObject("roSGNode", "Poster")
+    fade.uri = "pkg:/images/edge-fade-b.png"
+    fade.translation = [140, 881]
+    fade.width = 1780
+    fade.height = 56
+    fade.blendColor = ThemeColor("surface")
+    ThemeSetRole(fade, "surface")
+    m.pageHead.AppendChild(fade)
+end sub
+
 sub renderCalendarWeek(entries as Object)
     r = calendarViewRange()
     byDay = {}
@@ -2069,7 +2102,7 @@ sub calendarAction(item as Object)
     else if a = "calLink"
         sendApi("calendarFeed", "POST", "/api/v1/calendar/feed", {}, true)
     else if a = "calFilters"
-        openCalendarFilters()
+        calFiltersOpen()
     end if
     if a = "calPrev" or a = "calNext" or a = "calToday" or a = "cell" then pageFocusRender()
 end sub
@@ -2098,22 +2131,7 @@ sub onCalendarViewButton(event as Object)
     end if
 end sub
 
-sub openCalendarFilters()
-    dialog = CreateObject("roSGNode", "Dialog")
-    dialog.title = "Filters"
-    dialog.message = ["Choose the release types to show."]
-    dialog.buttons = ["All", "Episodes", "Movies", "Albums"]
-    dialog.ObserveField("buttonSelected", "onCalendarFilterButton")
-    m.top.dialog = dialog
-end sub
 
-sub onCalendarFilterButton(event as Object)
-    index = event.GetData()
-    if m.top.dialog <> invalid then m.top.dialog.close = true
-    kinds = [[], ["episode"], ["movie"], ["album"]]
-    if index >= 0 and index < kinds.Count() then m.calendarKinds = kinds[index]
-    loadCalendar()
-end sub
 
 sub acceptCalendarFeed(data as Dynamic)
     dialog = CreateObject("roSGNode", "Dialog")
@@ -2294,17 +2312,12 @@ end sub
 ' Library header chrome (web .tv-library-heading): round back button, a divider before the title count, and the Filters pill.
 sub browseChromeInit()
     holder = m.top.findNode("browseGroup")
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "surface", 179)
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "line", -1, true)
-    pgIcon(holder, 170, 73, 17, "arrow-left.png", "inkSoft")
+    pgBackButton(holder, 153.6)
     m.browseDivider = pgRect(holder, 348, 73, 1, 16, "line")
     m.browseRule = pgRect(holder, 226.6, 112, 1, 1, "line")
     tx = shellActionX()
     ty = shellActionY(0)
-    pgRound(holder, tx, ty, 62, 72, 14, "surfaceStrong", 199)
-    pgRound(holder, tx, ty, 62, 72, 14, "line", -1, true)
-    pgIcon(holder, tx + 20, ty + 15, 22, "tile-filters.png", "inkMuted")
-    pgLabel(holder, tx, ty + 44, 62, 14, "Filters", 8, 800, "inkMuted", { horizAlign: "center" })
+    pgShellTile(holder, tx, ty, "Filters", "tile-filters.png")
     m.browseFiltersRing = CreateObject("roSGNode", "Poster")
     m.browseFiltersRing.uri = "pkg:/images/round-ring-r12.9.png"
     m.browseFiltersRing.translation = [tx - 3, ty - 3]
