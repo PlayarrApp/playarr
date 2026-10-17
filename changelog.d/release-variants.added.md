@@ -1,1 +1,0 @@
-- Releases now build the Samsung Tizen native tpk, name every package after its client variant (for example `playarr-lg-webos-<version>.ipk`, `playarr-android-<version>.apk`) and attach a `clients.json` that lists every variant with its minimum OS and download route. Older asset names stay beside the new ones.
