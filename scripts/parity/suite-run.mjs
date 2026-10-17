@@ -8,7 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { CAPTURE_REGION, readinessMode, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { pinCapture, readinessMode, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { mergeSelectedResults } from "./selective-results.mjs";
 import { resolveCaptureEnvironment, withCaptureState } from "./capture-state.mjs";
@@ -139,15 +139,7 @@ if (reset) {
   assertNotInterrupted();
 } // before any capture: On deck and Resume start from the same state on every device
 if (deterministic) {
-  try {
-    if (!driver.setDeterministicCapture) throw new Error("stable capture unsupported: driver lacks setDeterministicCapture");
-    await driver.setDeterministicCapture({ fixedNow, disableAnimations: true, ...CAPTURE_REGION });
-  } catch (error) {
-    // A driver that cannot pin the clock (Roku, Harmony, Fire TV, Tizen, Apple sim) still runs by default, unpinned and recorded as such; --stable keeps it fatal.
-    if (args.includes("--stable") || !/unsupported/i.test(error.message)) throw error;
-    console.log(`clock pin skipped: ${error.message.split("\n")[0]}`);
-    deterministic = false;
-  }
+  deterministic = await pinCapture(driver, { fixedNow, explicit: args.includes("--stable") });
   assertNotInterrupted();
 }
 const readiness = readinessMode(driver, deterministic);

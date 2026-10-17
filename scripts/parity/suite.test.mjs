@@ -9,7 +9,7 @@ import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatc
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
-import { CAPTURE_REGION, readinessMode } from "./suite-lib.mjs";
+import { CAPTURE_REGION, pinCapture, readinessMode } from "./suite-lib.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
 // Fixture drivers here are not stable-capable; stable is the suite default, so these tests opt out.
 process.env.PARITY_STABLE ??= "0";
@@ -862,5 +862,21 @@ test("web refs and clients pin the same zone and locale, matching screens.json d
   const spec = JSON.parse(readFileSync(new URL("./screens.json", import.meta.url), "utf8")).determinism;
   assert.deepEqual({ ...CAPTURE_REGION }, { timeZone: spec.timezone, locale: spec.locale });
   assert.match(readFileSync(new URL("./capture-refs.mjs", import.meta.url), "utf8"), /setDeterministicCapture\(\{ fixedNow, disableAnimations: true, \.\.\.CAPTURE_REGION \}\)/);
-  assert.match(readFileSync(new URL("./suite-run.mjs", import.meta.url), "utf8"), /setDeterministicCapture\(\{ fixedNow, disableAnimations: true, \.\.\.CAPTURE_REGION \}\)/);
+  assert.match(readFileSync(new URL("./suite-run.mjs", import.meta.url), "utf8"), /pinCapture\(driver, \{ fixedNow/);
+  assert.match(readFileSync(new URL("./suite-lib.mjs", import.meta.url), "utf8"), /setDeterministicCapture\(\{ fixedNow, disableAnimations: true, \.\.\.CAPTURE_REGION \}\)/);
+});
+
+test("a driver that cannot pin runs unpinned on a default run, but --stable stays fatal", async () => {
+  const lines = [], log = (line) => lines.push(line);
+  const unsupported = { async setDeterministicCapture() { throw new Error("Roku stable deterministic capture unsupported: no clock"); } };
+  assert.equal(await pinCapture(unsupported, { fixedNow: "2026-10-07T12:00:00Z", log }), false);
+  assert.match(lines.join("\n"), /clock pin skipped: Roku stable/);
+  await assert.rejects(pinCapture(unsupported, { fixedNow: "2026-10-07T12:00:00Z", explicit: true, log }), /unsupported/);
+  await assert.rejects(pinCapture({}, { fixedNow: "x", explicit: true, log }), /lacks setDeterministicCapture/);
+  assert.equal(await pinCapture({}, { fixedNow: "x", log }), false);
+  const broken = { async setDeterministicCapture() { throw new Error("adb device offline"); } };
+  await assert.rejects(pinCapture(broken, { fixedNow: "x", log }), /offline/);
+  const calls = [];
+  assert.equal(await pinCapture({ async setDeterministicCapture(o) { calls.push(o); } }, { fixedNow: "2026-10-07T12:00:00Z", log }), true);
+  assert.deepEqual(calls, [{ fixedNow: "2026-10-07T12:00:00Z", disableAnimations: true, timeZone: "UTC", locale: "en-GB" }]);
 });
