@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { hostname } from "node:os";
-import { mkdtemp, mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -395,4 +395,15 @@ test("restore runs after callback failure and account lock serialises concurrent
 test("lock directory must be explicit", async () => {
   mockApi();
   await assert.rejects(withCaptureState({ ...context(undefined), env: { PLAYARR_SERVER_URL: serverUrl } }, async () => {}), /PARITY_LOCK_DIR is required/);
+});
+
+test("a lock directory removed during the run does not fail a restored capture", async () => {
+  const lockDir = await scratch();
+  const api = mockApi([{ media_file_id: FILE_A, position_ms: 700, duration_ms: 2000, state: "part_watched" }]);
+  const key = createHash("sha256").update(`${serverUrl}\nfixture-user`).digest("hex").slice(0, 24);
+  await withCaptureState(context(lockDir), async ({ writeProgress }) => {
+    await writeProgress(FILE_A, { position_ms: 1_200, duration_ms: 2000, completed: false });
+    await rm(join(lockDir, key), { recursive: true, force: true });
+  });
+  assert.equal(api.rows.get(FILE_A).position_ms, 700);
 });
