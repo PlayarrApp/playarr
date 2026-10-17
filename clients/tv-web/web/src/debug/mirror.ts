@@ -259,6 +259,8 @@ export function startDebugMirror(): void {
   }, 2000);
 
   async function snapshot(reason: string): Promise<void> {
+    // A parity driver on a slow TV pauses the capture loop while it sends keys (window.__mirrorPause), so key handling is not starved.
+    if ((window as unknown as { __mirrorPause?: boolean }).__mirrorPause) return;
     if (busy) {
       pending = true;
       return;

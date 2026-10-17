@@ -85,8 +85,8 @@ struct DownloadsView: View {
                 description: "Download a title from its detail page to watch it without a connection."
             )
             .offset(x: 37, y: 80)
-            WMHeaderCircleButton(width: 44, height: 40, glyph: "\u{2190}", action: goHome)
-                .offset(x: 15, y: WM.topInset + 1)
+            PlayarrBackButton(action: goHome)
+                .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             WMText("Downloads", 21.6, 580, lh: 32, ls: -0.972).offset(x: 68, y: WM.topInset + 5)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
