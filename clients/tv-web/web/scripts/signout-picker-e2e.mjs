@@ -2,9 +2,9 @@
 // Sign-out and boot land on the profile picker, and no credential-less login or refresh runs until a profile is chosen.
 //   node scripts/signout-picker-e2e.mjs [--dist dir] [--no-build]
 // Fixtures only. The mock answers login with 400 (full-account) and refresh with 401 for a revoked token.
-//  1. Three accounts, A active. Sign out A: picker lists B and C, selects none, zero login/refresh calls.
+//  1. Three accounts, A active. Sign out A: ends at / (full load), picker lists B and C, selects none, zero login/refresh calls.
 //  2. Reload with no active marker: frame 1 is the picker (never the app shell), zero login/refresh calls.
-//  3. Pick B (valid token): signs in to the app. Sign out B: C is the only account left and is signed in at once.
+//  3. Pick B (valid token): signs in to the app. Sign out B: ends at / (full load); the app reloads and the only account left (C) is signed in.
 //  4. Sign out C: nothing left, the sign-in page shows.
 //  5. Stale boot: saved accounts but a revoked token. The picker paints on frame 1 with zero auth calls; picking the
 //     revoked account asks for its credentials instead of showing "API request failed".
@@ -72,7 +72,8 @@ await ctx.page.waitForSelector("#profile-sign-out");
 await ctx.page.locator("#profile-sign-out").click();
 await ctx.page.waitForTimeout(800);
 let shown = await tiles(ctx.page);
-check("sign-out with 3: stays on the picker", new URL(ctx.page.url()).pathname === "/profiles", ctx.page.url());
+// Web sign-out is a full load of "/" (the marketing site in production); this fixture serves the app there, so the picker shows.
+check("sign-out with 3: ends at / with a full load", new URL(ctx.page.url()).pathname === "/", ctx.page.url());
 check("sign-out with 3: lists the other 2", shown.length === 2 && shown.some((t) => t.includes("Ben")) && shown.some((t) => t.includes("Cat")), shown.join("|"));
 check("sign-out with 3: no account is auto-selected", !shown.some((t) => t.includes("Ann")), shown.join("|"));
 check("sign-out with 3: zero login or refresh calls", ctx.calls.login === 0 && ctx.calls.refresh === 0, JSON.stringify(ctx.calls));
@@ -101,8 +102,10 @@ await ctx.page.goto(`${base}/profiles`);
 await ctx.page.waitForSelector("#profile-sign-out");
 await ctx.page.locator("#profile-sign-out").click();
 await ctx.page.waitForFunction(() => document.querySelector(".app-shell") && !document.querySelector(".profile-choice"), null, { timeout: 15000 });
-const remaining = await ctx.page.evaluate(() => JSON.parse(localStorage.getItem("playarr.activeProfile.v1") ?? "{}").userId);
-check("sign-out with 2: the remaining account is selected", remaining === ID.c && ctx.calls.login === 0, `${remaining} ${JSON.stringify(ctx.calls)}`);
+// The reload restores the only account left from storage; that boot read writes no active marker, so read the session itself.
+const remaining = await ctx.page.evaluate(() => JSON.parse(atob(JSON.parse(localStorage.getItem("playarr:session") ?? "{}").accessToken?.split(".")[1] ?? "e30=")).sub);
+// After the full load of "/" (marketing site in production, the app in this fixture) the boot picks the only remaining account.
+check("sign-out with 2: ends at / and the remaining account is selected", new URL(ctx.page.url()).pathname === "/" && remaining === ID.c && ctx.calls.login === 0, `${ctx.page.url()} ${remaining} ${JSON.stringify(ctx.calls)}`);
 
 // 4. Sign out C: nothing left.
 await ctx.page.goto(`${base}/profiles`);
