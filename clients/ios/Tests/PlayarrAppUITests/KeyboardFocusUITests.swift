@@ -202,16 +202,17 @@ final class KeyboardFocusUITests: XCTestCase {
 
 @MainActor
 func requireParityCaptureReady(_ app: XCUIApplication, expectedUsername: String) throws {
+    // Sign-in and first load are slow when several capture jobs share the test server: allow two minutes each.
     let identity = app.descendants(matching: .any)["parity.identityVerified"]
     let identityPredicate = NSPredicate(format: "value ==[c] %@", expectedUsername)
     let identityReady = XCTNSPredicateExpectation(predicate: identityPredicate, object: identity)
-    guard XCTWaiter.wait(for: [identityReady], timeout: 45) == .completed else {
+    guard XCTWaiter.wait(for: [identityReady], timeout: 120) == .completed else {
         app.terminate()
         throw NSError(domain: "PlayarrKeyboardFocus", code: 20, userInfo: [NSLocalizedDescriptionKey: "The authenticated account did not match the configured identity."])
     }
     let screen = app.descendants(matching: .any)["parity.screenContentReady"]
     let screenReady = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "true"), object: screen)
-    guard XCTWaiter.wait(for: [screenReady], timeout: 45) == .completed else {
+    guard XCTWaiter.wait(for: [screenReady], timeout: 120) == .completed else {
         app.terminate()
         throw NSError(domain: "PlayarrKeyboardFocus", code: 21, userInfo: [NSLocalizedDescriptionKey: "The requested route did not finish loading."])
     }

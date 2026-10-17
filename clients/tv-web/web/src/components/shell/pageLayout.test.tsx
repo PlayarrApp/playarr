@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -33,6 +34,25 @@ describe("PageActions", () => {
 
   it("allows at most one Filters", () => {
     expect(() => orderPageActions([filters, filters])).toThrow(/at most one Filters/);
+  });
+});
+
+describe("Downloads notifications entry", () => {
+  const notifications: PageAction = { kind: "panel", id: "notifications", label: "Notifications", icon: "bell", open: true, onToggle: noop };
+
+  it("renders as a pressed bell tile in the action stack, with no drawer to expand", () => {
+    const alone = render(<PageActions actions={[notifications]} />);
+    expect(alone).toContain('data-action-icon="bell"');
+    expect(alone).toContain('aria-pressed="true"');
+    expect(alone).not.toContain("aria-expanded");
+    const both = render(<PageActions actions={[filters, notifications]} />);
+    expect(both.indexOf("Notifications")).toBeLessThan(both.indexOf("data-filters-button"));
+  });
+
+  it("is declared in the Downloads header actions, not as a button inside the content panel", () => {
+    const source = readFileSync(new URL("../../pages/Downloads.tsx", import.meta.url), "utf8");
+    expect(source).toMatch(/id: "notifications"[\s\S]*?icon: "bell"/);
+    expect(source).not.toContain("tv-downloads-notify");
   });
 });
 

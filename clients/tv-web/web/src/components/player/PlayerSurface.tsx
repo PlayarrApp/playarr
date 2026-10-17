@@ -46,6 +46,7 @@ import {
 import { Button } from "../ui";
 import { Drawer } from "../shell";
 import { isBackKey } from "../../lib/backKey";
+import { closeMiniPlayer, rememberFocusBeforeMiniPlayer } from "../../lib/miniPlayerClose";
 import { stageClientX } from "../../lib/tvStageScale";
 
 const SEEK_STEP_SECONDS = 10;
@@ -182,6 +183,23 @@ export function PlayerCloseButton({
           onNavigateToControls();
         }
       }}
+      aria-label={t("components.player.surface.closeButtonAriaLabel")}
+    >
+      <CloseIcon />
+    </button>
+  );
+}
+
+/** Close for the mini player: same stop path as the full player's close, then focus returns to the page. */
+export function MiniPlayerCloseButton({ onStop }: { onStop: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <button
+      type="button"
+      className="mini-player-close"
+      data-navigation-focus-key="shell:mini-player-close"
+      onClick={() => closeMiniPlayer(onStop, document, (run) => window.setTimeout(run, 0))}
+      onFocus={(event) => rememberFocusBeforeMiniPlayer(event.relatedTarget as HTMLElement | null)}
       aria-label={t("components.player.surface.closeButtonAriaLabel")}
     >
       <CloseIcon />
@@ -1272,8 +1290,10 @@ export function PlayerSurface({
             className="mini-player-hit-target"
             data-navigation-focus-key="shell:mini-player"
             onClick={onMaximise}
+            onFocus={(event) => rememberFocusBeforeMiniPlayer(event.relatedTarget as HTMLElement | null)}
             aria-label={t("components.player.surface.maximiseAriaLabel", { title })}
           />
+          <MiniPlayerCloseButton onStop={onStop} />
           <div className="mini-player-details" aria-hidden="true">
             <span className="mini-player-title">{title}</span>
             <span className="mini-player-time">
