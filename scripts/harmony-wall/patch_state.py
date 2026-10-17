@@ -99,7 +99,11 @@ def home(s):
     s = s.replace("import { image } from '@kit.ImageKit';", "import { image } from '@kit.ImageKit';\nimport { previewReport } from '../util/PreviewState';", 1)
     old = "    if (result.kind === 'ok') {\n      setItems(patchCardArtwork(getItems(), workId, result.value));"
     assert old in s
-    return s.replace(old, "    previewReport('dbg=' + encodeURIComponent('home-card-artwork-' + result.kind));\n" + old, 1)
+    s = s.replace(old, "    previewReport('dbg=' + encodeURIComponent('home-card-artwork-' + result.kind));\n" + old, 1)
+    after = "      setItems(patchCardArtwork(getItems(), workId, result.value));\n"
+    assert s.count(after) == 1
+    # temporary diagnostic (lost-update hunt): how many items of the patched array carry art, per patch
+    return s.replace(after, after + "      previewReport('dbg=' + encodeURIComponent('hs:' + getItems().filter((item: HomeCardItem): boolean => item.stamp === 'art').length.toString()));\n", 1)
 
 def profiles(s):
     s = "import { previewReport } from '../util/PreviewState';\n" + s

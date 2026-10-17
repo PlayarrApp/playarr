@@ -9,7 +9,7 @@ def transform(s):
         return s
     assert "item.stamp" in s, "MediaRail's ForEach key no longer carries the item stamp: re-check this patch"
     insert_at = s.index("import ")
-    s = s[:insert_at] + "import { reportDetailLayoutStageForScope } from '../../util/PreviewState';\n" + s[insert_at:]
+    s = s[:insert_at] + "import { reportDetailLayoutStageForScope, previewReport } from '../../util/PreviewState';\n" + s[insert_at:]
     component = "@Component\nexport struct MediaRail {"
     assert component in s
     plain = "  items: MediaRailItem[] = [];\n"
@@ -26,6 +26,7 @@ def transform(s):
     build = "  build() {\n"
     assert build in s
     watch = """  private previewItemsUpdated(): void {
+    previewReport('dbg=' + encodeURIComponent('ri:' + this.railId + ':' + this.items.filter((item: MediaRailItem): boolean => item.stamp === 'art').length.toString()));  // temporary diagnostic: lost-update hunt
     if (this.previewRoute !== 'Detail' || this.previewWorkId.length === 0) {
       return;
     }

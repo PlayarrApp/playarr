@@ -194,7 +194,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
     assert_preview_telemetry_clean()
     try:  # diagnostics: what the app reported at the moment of the frame (poster placeholders, network, image events)
         st = json.loads(get("/state"))
-        print(f"[settle] {name} theme={THEME} img_pending={st.get('img_pending')} net_idle={st.get('net_idle')} dbg={ {k: v for k, v in (st.get('dbgcount') or {}).items() if not k[:4] in ('skel', 'img+', 'done', 'fail', 'moun', 'prop')} }", flush=True)
+        print(f"[settle] {name} theme={THEME} img_pending={st.get('img_pending')} net_idle={st.get('net_idle')} dbg={ {k: v for k, v in (st.get('dbgcount') or {}).items() if not (k[:4] in ('skel', 'img+', 'done', 'fail', 'moun', 'prop') or k.startswith(('hs:', 'ri:')))} }", flush=True)
         skel = {}
         for k, v in (st.get('dbgcount') or {}).items():  # titles whose placeholder appeared more often than it went away
             if k.startswith('skel'):
@@ -211,6 +211,13 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
                     if any(title.startswith(t[:25]) or t.startswith(title[:25]) for t in stuck):
                         out.setdefault(title[:25], {})[k[len(prefix)]] = v
             return out
+        hs = sorted(int(k[3:]) for k in dbgc_all if k.startswith("hs:") and k[3:].isdigit())  # temporary: stamped items per rail patch (max)
+        ri = {}
+        for k in dbgc_all:
+            if k.startswith("ri:"):
+                rail, n = k[3:].rsplit(":", 1)
+                ri[rail] = max(ri.get(rail, 0), int(n))
+        print("[settle] home patched max", hs[-1:] , "rails (max stamped seen by MediaRail)", ri, flush=True)
         print("[settle] stuck cards: mount(0=no art,1=art)", tally("mount"), "artwork prop", tally("prop"), flush=True)
         print(f"[settle] image set, not complete: {sorted(shown - {k[5:] for k in dbgc if k.startswith('done+')})} failed: {sorted(k[5:] for k in dbgc if k.startswith('fail+'))}", flush=True)
         print(f"[settle] still on placeholder: {sorted(t for t, n in skel.items() if n > 0)}", flush=True)
