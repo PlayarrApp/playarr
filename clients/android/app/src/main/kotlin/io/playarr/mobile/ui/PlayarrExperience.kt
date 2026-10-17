@@ -3060,7 +3060,8 @@ private fun ExperienceHomeScreen(
                                 isTelevision = isTelevision,
                                 homeView = homeView,
                                 selectedId = selectedId,
-                                active = rail.key == activeRailKey,
+                                // Web phone Home draws no selected card until one is touched; the first card only reads as selected with a D-pad.
+                                active = rail.key == activeRailKey && (isTelevision || savedSelectedId != null),
                                 progressByWork = progressByWork,
                                 onSelected = { savedSelectedId = it.id; savedRailKey = rail.key },
                                 onClick = { work, onDeck ->
@@ -10388,11 +10389,11 @@ private fun PlayarrNotFoundArtwork(modifier: Modifier = Modifier) {
     }
 }
 
-/** "Movie · 2019" under card titles; just the kind when no release year is known (artists, authors). */
+/** "Movie · 2019" or "Series · 2011 to 2019 range" under card titles (web `labelWithYear`); just the kind when no release year is known. */
 @Composable
 private fun Work.playarrKindYearLabel(): String {
     val kindLabel = kind.playarrSingularLabel()
-    return playarrKindYear(releaseDate)?.let { "$kindLabel · $it" } ?: kindLabel
+    return playarrYearRange(releaseDate, endDate)?.let { "$kindLabel · $it" } ?: kindLabel
 }
 
 internal fun playarrYearRange(releaseDate: java.time.Instant?, endDate: java.time.Instant?): String? {
