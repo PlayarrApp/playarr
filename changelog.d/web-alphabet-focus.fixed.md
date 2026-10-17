@@ -1,0 +1,1 @@
+- Web: the Library alphabet rail now draws a ring around the active letter that follows the grid, keeps the standard focus ring on a focused letter (also when it is the active one), and a letter jump leaves focus on the letter (only Right enters the grid, on the first card of the section).
