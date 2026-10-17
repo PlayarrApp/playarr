@@ -1,0 +1,1 @@
+- The Nura capture helper clicks the display's left margin before each screenshot, so a sheet or drawer that opened after a long idle wait is no longer missed.

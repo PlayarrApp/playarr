@@ -302,6 +302,7 @@ export function HomeScreen(): React.ReactElement {
               railIndex={railIndex}
               active={railIndex === focus.rail}
               focusedItem={railIndex === focus.rail ? focus.item : -1}
+              ringHidden={actionsWork !== null}
               scrolled={scrolled[railIndex] ?? 0}
               scrollX={scrollXFor(railIndex)}
               onDeckByWork={onDeckByWork}
@@ -395,6 +396,8 @@ interface HomeRailRowProps {
   active: boolean;
   /** The focused card's index when this is the active rail, otherwise -1. */
   focusedItem: number;
+  /** The title actions drawer is open: web drops the card's focus ring behind it. */
+  ringHidden: boolean;
   scrolled: number;
   scrollX: Animated.Value;
   onDeckByWork: Map<string, OnDeckEntry>;
@@ -411,7 +414,7 @@ interface HomeRailRowProps {
 
 /** One rail: heading, windowed cards and edge fades. Memoised so a focus move re-renders only the two rails involved. */
 const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.ReactElement {
-  const {rail, railIndex, active, focusedItem, scrolled, scrollX, onDeckByWork, progressByWork, progressReady, baseUrl, token, cardRef, onFocusItem, onOpen, onActions, layout} = props;
+  const {rail, railIndex, active, focusedItem, ringHidden, scrolled, scrollX, onDeckByWork, progressByWork, progressReady, baseUrl, token, cardRef, onFocusItem, onOpen, onActions, layout} = props;
   const {t} = useLanguage();
   const {colour} = useTheme();
   const headingY = layout.firstHeadingY + railIndex * layout.railPitch;
@@ -453,7 +456,7 @@ const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.Re
               railIndex={railIndex}
               baseUrl={baseUrl}
               token={token}
-              selected={selected}
+              selected={selected && !ringHidden}
               onFocusItem={onFocusItem}
               onOpen={onOpen}
               onActions={onActions}

@@ -8,12 +8,13 @@ Helpers for capturing the native Linux phone client (`clients/linux-mobile`) on 
 |---|---|
 | `pmsync.sh <playarr dir>` | Copy `clients/linux-mobile` and the shared avatars to the VM, then build there with `cargo build --release`. |
 | `pmrun.sh` | (Re)start the app on the VM. Honours `PLAYARR_ROUTE`, `PLAYARR_CONTROL`, `PLAYARR_KEEP_CONTROLS`. |
+| `nudge.sh` | Click the display's left margin and wait. `pmcap3.sh` runs it once per route before the first screenshot: after the app has sat idle for tens of seconds the VM display keeps showing the frame from before a sheet or drawer opened until an input event reaches the app (a click does it; a pointer move or key press does not). |
 | `pmcap3.sh <outdir> <route>...` | Verify the signed-in device identity, send routes to an already-running app through its control file, and capture each screen only after it stabilises. Routes: see `PLAYARR_ROUTE` in the README, plus `rail-end:<n>` (focus the last card of Home rail n) and `theme:dark\|light`. |
 | `cap2all.sh <dark\|light> <outdir>` | Capture all 14 screens for one theme. |
 | `pmcapture.sh <outdir> <dark\|light>` | Tap-driven run that also reaches `player-controls`. |
 | `pmtap.sh`, `pmfocus.sh` | Tap the display; bring the app forward if Phosh shows the overview. |
 
-`cap.sh` and `pmcap3.sh` call `vnc.sh <vm> capture|move|click ...`, a thin wrapper around vncdotool for the VM's VNC
+`cap.sh`, `nudge.sh` and `pmcap3.sh` call `vnc.sh <vm> capture|move|click ...`, a thin wrapper around vncdotool for the VM's VNC
 display. It holds the VNC address and password for your host, so it is not committed: provide your own next to
 these scripts. Captures are 720x1440; crop to y 64..1410 (720x1346) before scoring against the web refs.
 Run `reset-deck-canonical.mjs` (parity scratch) right before the Home capture so On deck is the canonical state.

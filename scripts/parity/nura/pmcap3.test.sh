@@ -33,6 +33,13 @@ set -euo pipefail
 printf 'mock image\n' > "$2"
 MOCK
 
+cat > "$BIN/nudge" <<'MOCK'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'nudge\n' >> "$NUDGE_LOG"
+[ "${NUDGE_MODE:-ok}" = ok ]
+MOCK
+
 cat > "$BIN/hasher" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -59,7 +66,7 @@ cat > "$BIN/sleep" <<'MOCK'
 #!/usr/bin/env bash
 exit 0
 MOCK
-chmod +x "$BIN/ssh" "$BIN/cap" "$BIN/hasher" "$BIN/identity" "$BIN/sleep"
+chmod +x "$BIN/ssh" "$BIN/cap" "$BIN/nudge" "$BIN/hasher" "$BIN/identity" "$BIN/sleep"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 expect_error() {
@@ -73,16 +80,17 @@ run_case() {
   mkdir -p "$out"
   : > "$TEST_ROOT/ssh.log"
   : > "$TEST_ROOT/identity.log"
+  : > "$TEST_ROOT/nudge.log"
   : > "$TEST_ROOT/hash-counter"
   env PATH="$BIN:$PATH" \
     PLAYARR_CONTROL="$TEST_ROOT/remote-route" \
     PLAYARR_CAPTURE_IDENTITY_GUARD="$BIN/identity" \
-    PLAYARR_NURA_SSH="$BIN/ssh" PLAYARR_NURA_CAP="$BIN/cap" \
+    PLAYARR_NURA_SSH="$BIN/ssh" PLAYARR_NURA_CAP="$BIN/cap" PLAYARR_NURA_NUDGE="$BIN/nudge" \
     PLAYARR_CAPTURE_HASHER="$BIN/hasher" \
     PLAYARR_CAPTURE_ACK_ATTEMPTS="${PLAYARR_CAPTURE_ACK_ATTEMPTS:-2}" \
     PLAYARR_CAPTURE_STABILITY_ATTEMPTS="${PLAYARR_CAPTURE_STABILITY_ATTEMPTS:-3}" \
     PLAYARR_CAPTURE_STABILITY_DELAY="${PLAYARR_CAPTURE_STABILITY_DELAY:-0}" \
-    SSH_LOG="$TEST_ROOT/ssh.log" IDENTITY_LOG="$TEST_ROOT/identity.log" \
+    SSH_LOG="$TEST_ROOT/ssh.log" NUDGE_LOG="$TEST_ROOT/nudge.log" IDENTITY_LOG="$TEST_ROOT/identity.log" \
     HASH_COUNTER="$TEST_ROOT/hash-counter" "$@" "$SCRIPT" "$out" "$route"
 }
 
@@ -149,7 +157,14 @@ fi
 [ ! -e "$TEST_ROOT/out/unstable/DONE" ] || fail "unstable capture left DONE"
 expect_error "$TEST_ROOT/unstable.log" 'capture did not stabilise'
 
+if NUDGE_MODE=fail run_case nudge-failure > "$TEST_ROOT/nudge-failure.log" 2>&1; then
+  fail "display nudge failure was accepted"
+fi
+[ ! -e "$TEST_ROOT/out/nudge-failure/DONE" ] || fail "nudge failure left DONE"
+expect_error "$TEST_ROOT/nudge-failure.log" 'display nudge failed'
+
 run_case stable > "$TEST_ROOT/stable.log" 2>&1 || fail "stable capture failed"
+[ "$(wc -l < "$TEST_ROOT/nudge.log")" -eq 1 ] || fail "display was not nudged exactly once for the route"
 [ -s "$TEST_ROOT/out/stable/DONE" ] || fail "stable capture did not write DONE"
 [ "$(wc -l < "$TEST_ROOT/identity.log")" -eq 3 ] || fail "identity verifier did not run before route and both screenshots"
 if run_case theme-only theme:dark > "$TEST_ROOT/theme-only.log" 2>&1; then

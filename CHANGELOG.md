@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fire TV: the card behind the title actions drawer no longer keeps its focus ring while the drawer is open.
 - Roku: Left from the first Home rail enters the dock on Home again after Home moved to the Library-aligned top.
 - Fix the Xbox playback-quality test to distinguish the legacy bitrate property from the canonical video bitrate property.
 - Add Tizen readiness, account, build, and deterministic clock checks for future parity captures.
@@ -761,6 +762,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Nura library grids space their rows at the web phone's pitch (24.35 css px), so the third and later rows line up with the web's.
 - Let the Apple iOS wall take the pinned capture instant as an input, and print compiler errors when the Apple parity iOS build fails; the iPhone calendar parity captures now use the clock the web references show (Agenda dark 90.75 to 93.90).
 - Nura player controls follow the web phone player: a flat seek bar, a centred time, and two rows of icon buttons (previous, play or pause, next, mute, audio, subtitles, queue; then quality, health, play on and full screen), with a bordered close button. Previous, next, mute and full screen work; the rest show disabled until the player supports them.
 - Nura page headers draw the web phone's 42 px round and square buttons, the letter rail sits 1 px lower, and a film's title block closes up to the web's spacing.

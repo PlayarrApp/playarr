@@ -14,6 +14,16 @@ enum ParityScreenLoad: String {
     case failed
 }
 
+/// The capture-ready flag derives from both inputs (verified identity and the screen's load state), so whichever
+/// arrives last sets it; an input seen early is never dropped.
+struct ParityReadiness: Equatable {
+    var identityVerified = false
+    var screen: ParityScreenLoad?
+
+    var contentReady: Bool { identityVerified && screen == .ready }
+    var failed: Bool { identityVerified && screen == .failed }
+}
+
 struct ParityScreenReadinessKey: PreferenceKey {
     static let defaultValue: ParityScreenLoad? = nil
     static func reduce(value: inout ParityScreenLoad?, nextValue: () -> ParityScreenLoad?) {
@@ -95,7 +105,7 @@ struct RootView: View {
                 if ParityLaunch.isActive && !parityIdentityVerified {
                     PlayarrLoadingView(title: "Verifying device-test account…")
                 } else {
-                    AuthenticatedPlayarrShell(environment: environment)
+                    AuthenticatedPlayarrShell(environment: environment, parityIdentityVerified: parityIdentityVerified)
                         .id("\(environment.serverBaseURL.absoluteString)-\(environment.currentUserName ?? "viewer")")
                 }
                 #else
@@ -351,11 +361,16 @@ private struct AuthenticatedPlayarrShell: View {
     private let castCoordinator = CastSessionCoordinator.shared
     #if DEBUG
     @State private var demoDetailViewModel: WorkDetailViewModel
-    @State private var screenContentReady = false
+    @State private var parityScreen: ParityScreenLoad?
+    private let parityIdentityVerified: Bool
+    private var parityReadiness: ParityReadiness { ParityReadiness(identityVerified: parityIdentityVerified, screen: parityScreen) }
     #endif
 
-    init(environment: AppEnvironment) {
+    init(environment: AppEnvironment, parityIdentityVerified: Bool = false) {
         self.environment = environment
+        #if DEBUG
+        self.parityIdentityVerified = parityIdentityVerified
+        #endif
         _homeViewModel = State(initialValue: HomeViewModel(apiClient: environment.apiClient))
         _household = State(initialValue: HouseholdViewModel(apiClient: environment.apiClient))
         #if DEBUG
@@ -409,11 +424,6 @@ private struct AuthenticatedPlayarrShell: View {
         }
         .background(PlayarrStyle.background.ignoresSafeArea())
         .environment(visibleDetailRoutes)
-        .onAppear {
-            #if DEBUG
-            screenContentReady = false
-            #endif
-        }
         #if DEBUG
         .overlay(alignment: .topLeading) {
             if ParityLaunch.isActive {
@@ -425,7 +435,7 @@ private struct AuthenticatedPlayarrShell: View {
                         .foregroundStyle(.clear)
                     Text("Requested route ready")
                         .accessibilityIdentifier("parity.screenContentReady")
-                        .accessibilityValue(screenContentReady ? "true" : "false")
+                        .accessibilityValue(parityReadiness.contentReady ? "true" : "false")
                         .font(.system(size: 1))
                         .foregroundStyle(.clear)
                 }
@@ -454,20 +464,11 @@ private struct AuthenticatedPlayarrShell: View {
             availableKinds = Set((try? await environment.apiClient.listCatalogKinds()) ?? [])
         }
         #if DEBUG
-        .onPreferenceChange(ParityScreenReadinessKey.self) { state in
-            guard ParityLaunch.isActive, ParityLaunch.identityVerified else { return }
-            switch state {
-            case .ready:
-                screenContentReady = true
-                ParityLaunch.record("screenContentReady", true)
-            case .failed:
-                screenContentReady = false
-                ParityLaunch.record("screenContentReady", false)
-                ParityLaunch.record("failure", "requested-screen-load-failed")
-            case .loading, .none:
-                screenContentReady = false
-                ParityLaunch.record("screenContentReady", false)
-            }
+        .onPreferenceChange(ParityScreenReadinessKey.self) { parityScreen = $0 }
+        .onChange(of: parityReadiness, initial: true) { _, readiness in
+            guard ParityLaunch.isActive, readiness.identityVerified else { return }
+            ParityLaunch.record("screenContentReady", readiness.contentReady)
+            if readiness.failed { ParityLaunch.record("failure", "requested-screen-load-failed") }
         }
         #endif
         .onPreferenceChange(PlayarrChromeHiddenKey.self) { chromeHidden = $0 }
