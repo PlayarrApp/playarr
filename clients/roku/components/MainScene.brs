@@ -415,7 +415,13 @@ end sub
 ' object already gives tv-web for free.
 sub updateClock()
     dt = CreateObject("roDateTime")
-    dt.ToLocalTime()
+    ' A parity capture freezes the instant and shows it in UTC (en-GB), so it matches the web refs on any device.
+    pinned = m.global.parityNow <> invalid and m.global.parityNow <> ""
+    if pinned
+        dt.FromISO8601String(m.global.parityNow)
+    else
+        dt.ToLocalTime()
+    end if
     hourStr = dt.GetHours().ToStr()
     if dt.GetHours() < 10 then hourStr = "0" + hourStr
     minuteStr = dt.GetMinutes().ToStr()
@@ -433,6 +439,7 @@ sub updateClock()
     monthIndex = dt.GetMonth()
     if monthIndex >= 1 and monthIndex <= 12 then month = monthNames[monthIndex - 1]
     m.clockDate.text = weekday + " " + dt.GetDayOfMonth().ToStr() + " " + month
+    if pinned then parityEmit("clock", m.clockTime.text + " " + m.clockDate.text)
     ' Household state is re-checked every 30 s while a profile is signed in (web HouseholdGate).
     m.householdTicks = m.householdTicks + 1
     if m.householdTicks >= 30

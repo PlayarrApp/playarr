@@ -1395,7 +1395,11 @@ end function
 
 function calendarToday() as Object
     dt = CreateObject("roDateTime")
-    dt.ToLocalTime()
+    if m.global.parityNow <> invalid and m.global.parityNow <> ""
+        dt.FromISO8601String(m.global.parityNow)
+    else
+        dt.ToLocalTime()
+    end if
     return dt
 end function
 

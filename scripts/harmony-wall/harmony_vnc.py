@@ -47,6 +47,9 @@ KEYSYM = {0xFF52: "up", 0xFF54: "down", 0xFF51: "left", 0xFF53: "right", 0xFF0D:
 
 # Preview-only route mailbox: the capture scripts set a route name, the patched Index polls and consumes it.
 ROUTE_BOX = {"name": ""}
+# Preview-only pinned capture clock (ISO instant, "" = the real clock): /setclock sets it and the patched Index polls /clock.
+CLOCK_BOX = {"now": ""}
+PINNED_NOW = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 # Parity state the patched app reports (route, library kind, last focused item); GET /state returns it with the derived label.
 IMAGES: dict = {}  # id -> bytes, posted by the patched app (the Previewer cannot decode images itself)
 IMAGE_METRICS: dict[str, dict] = {}  # ephemeral /img key -> numeric diagnostics, never written to artifacts
@@ -666,6 +669,8 @@ def apply_state(q):
         STATE.setdefault("dbglog", []).append(q["dbg"][0])
         del STATE["dbglog"][:-300]
         append_debug_event(q["dbg"][0].split(":", 1)[0][:64])
+    if "clock" in q:
+        STATE["clock"] = q["clock"][0]  # the pinned instant the app has applied
     if "nav" in q:
         STATE["focused"] = q["nav"][0]
     if "focusack" in q:
@@ -1133,6 +1138,14 @@ def main():
             if url.path == "/setroute":
                 ROUTE_BOX["name"] = query.get("name", [""])[0]
                 return self._reply(200, b"ok")
+            if url.path == "/setclock":
+                now = query.get("now", [""])[0]
+                if now and not PINNED_NOW.fullmatch(now):
+                    return self._reply(400, b"now must be an ISO instant ending in Z, or empty")
+                CLOCK_BOX["now"] = now
+                return self._reply(200, b"ok")
+            if url.path == "/clock":
+                return self._reply(200, CLOCK_BOX["now"].encode())
             if url.path == "/route":
                 name, ROUTE_BOX["name"] = ROUTE_BOX["name"], ""
                 return self._reply(200, name.encode())

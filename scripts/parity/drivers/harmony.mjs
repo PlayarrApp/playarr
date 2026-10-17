@@ -18,7 +18,17 @@ const ROUTE = { "/": "home", "/calendar": "calendar", "/search": "search", "/set
 export async function createDriver() {
   let evidence = ""; // the media-module failure is logged once, when the Player page first loads
   const driver = {
-    async setDeterministicCapture() { throw new Error("Harmony stable deterministic capture unsupported: Previewer patch has no clock or animation pinning hook"); },
+    // The bridge holds the instant (/setclock) and the patched app polls it, shows it in UTC and reports it back; the Previewer has no
+    // animation setting, so disableAnimations is not applied and only UTC / en-GB can be pinned.
+    async setDeterministicCapture({ fixedNow, timeZone = "UTC", locale = "en-GB" } = {}) {
+      if (!fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error("Harmony deterministic capture requires a valid fixedNow instant");
+      if (timeZone !== "UTC" || locale !== "en-GB") throw new Error(`Harmony stable capture unsupported for ${timeZone} / ${locale}: a pinned app clock renders UTC and en-GB only`);
+      const now = new Date(fixedNow).toISOString().replace(/\.\d{3}Z$/, "Z");
+      await get(`/setclock?now=${encodeURIComponent(now)}`);
+      for (let t0 = Date.now(); (await state()).clock !== now; await sleep(1000)) {
+        if (Date.now() - t0 > 30000) throw new Error("the Harmony app did not confirm the pinned clock (is the Previewer app patched with patch_state.py?)");
+      }
+    },
     async captureBuildIdentity() { throw new Error("Harmony stable build identity unsupported: deployed app digest is not exposed by Previewer driver"); },
     async waitReady() { throw new Error("Harmony stable deterministic capture unsupported: Previewer does not expose capture readiness"); },
     async key(name, { long } = {}) {
