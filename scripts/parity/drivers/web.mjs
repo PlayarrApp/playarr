@@ -168,6 +168,28 @@ export function installVisualDate(fixedNow, target = globalThis) {
   target.Date = VisualDate;
 }
 
+// Make a page that cannot take a CDP timezone override (Tizen) render in UTC and the given locale: Date's local getters read UTC and
+// Intl and the toLocale*String methods default to that zone and locale. Self-contained (no comments, no outer references) because
+// it is serialised into the page. shortcut: UTC only, a named zone would need its offset table.
+export function installRegionPin(timeZone, locale, target = globalThis) {
+  if (timeZone !== "UTC") throw new Error("installRegionPin supports UTC only");
+  if (target.__parityRegionPinned) return;
+  target.__parityRegionPinned = true;
+  const P = target.Date.prototype;
+  ["Hours", "Minutes", "Seconds", "Milliseconds", "Day", "Date", "Month", "FullYear"].forEach((name) => { P["get" + name] = P["getUTC" + name]; });
+  P.getTimezoneOffset = () => 0;
+  const NativeDTF = target.Intl.DateTimeFormat;
+  const withDefaults = (locales, options) => [locales === undefined ? locale : locales, Object.assign({ timeZone }, options)];
+  function DateTimeFormat(locales, options) { return new NativeDTF(...withDefaults(locales, options)); }
+  DateTimeFormat.prototype = NativeDTF.prototype;
+  DateTimeFormat.supportedLocalesOf = NativeDTF.supportedLocalesOf.bind(NativeDTF);
+  target.Intl.DateTimeFormat = DateTimeFormat;
+  ["toLocaleString", "toLocaleDateString", "toLocaleTimeString"].forEach((name) => {
+    const native = P[name];
+    P[name] = function (locales, options) { return native.call(this, ...withDefaults(locales, options)); };
+  });
+}
+
 export async function clickIfPresent(locator) {
   if (await locator.count()) await locator.click();
 }

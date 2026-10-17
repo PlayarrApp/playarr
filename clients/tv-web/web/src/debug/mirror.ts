@@ -11,7 +11,10 @@ import { localeTagFor } from "../lib/i18n/languages";
 import {
   mirrorFramePayload,
   realNow,
+  MIRROR_ACTIVE_PROFILE_KEY,
+  MIRROR_PROFILE_SESSIONS_KEY,
   readMirrorIdentity,
+  readSelectedSession,
   reportMirrorIdentityStatus,
   revalidateMirrorIdentity,
   type MirrorIdentity,
@@ -59,6 +62,16 @@ function fetchWithTimeout(url: string, init: RequestInit, ms: number): Promise<R
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), ms);
   return fetch(url, { ...init, signal: controller.signal }).finally(() => window.clearTimeout(timer));
+}
+
+// Launch flags (?mirrorPointer=1, ?mirrorGeo=1, ?mirrorNoArt=1 ...) kept in sessionStorage because the router may rewrite the query.
+function mirrorFlag(name: string): boolean {
+  if (new URLSearchParams(window.location.search).get(name) === "1") return true;
+  try {
+    return (JSON.parse(window.sessionStorage.getItem("playarr.debugMirrorFlags") ?? "{}") as Record<string, string>)[name] === "1";
+  } catch {
+    return false;
+  }
 }
 
 // Path plus the page's own query (a calendar view, say), without the launch parameters or the token.
@@ -180,6 +193,71 @@ export function startDebugMirror(): void {
   let timer = 0;
   let seq = 0;
 
+  // Identity heartbeat from a Web Worker, so rendering (which blocks this thread for seconds) cannot starve it. The page re-verifies the
+  // identity every 2 s and hands the worker the result; the worker asks the server who is current every 2 s and reports that to the
+  // receiver, or reports the failed status. The guard judges the signed-in account by the newest heartbeat.
+  const heartbeatWorker = new Worker(URL.createObjectURL(new Blob([`
+    let cfg = null;
+    let previous = null; // the credentials before the last rotation, tried when the server has not accepted the new ones yet
+    onmessage = (e) => {
+      const m = e.data;
+      if (m.type === "creds") {
+        if (cfg && cfg.auth && cfg.auth !== m.auth) previous = { auth: cfg.auth, userId: cfg.userId };
+        cfg = { ...(cfg || {}), status: "ok", auth: m.auth, userId: m.userId, serverUrl: m.serverUrl, profiles: m.profiles, beatUrl: m.beatUrl };
+      } else {
+        cfg = { ...(cfg || {}), status: m.status, beatUrl: m.beatUrl, serverUrl: m.serverUrl ?? (cfg && cfg.serverUrl) ?? null };
+      }
+    };
+    const ask = async (c, auth) => {
+      const list = await (await fetch(c.profiles, { headers: { Authorization: auth } })).json();
+      return Array.isArray(list) ? list.filter((p) => p && p.is_current === true) : [];
+    };
+    setInterval(async () => {
+      const c = cfg;
+      if (!c) return;
+      const base = { serverUrl: c.serverUrl, isCurrentCount: 0, username: null, checkedAt: Date.now(), sessionChanged: c.status === "session_changed" };
+      let body = { ...base, status: c.status };
+      if (c.status === "ok" && c.auth) {
+        try {
+          let current = await ask(c, c.auth).catch(() => []);
+          let userId = c.userId;
+          if (current.length !== 1 && previous) { current = await ask(c, previous.auth).catch(() => []); userId = previous.userId; }
+          body = current.length === 1 && current[0].id === userId && typeof current[0].username === "string"
+            ? { ...base, checkedAt: Date.now(), status: "ok", isCurrentCount: 1, username: current[0].username }
+            : { ...base, status: "identity_unavailable" };
+        } catch { return; }
+      }
+      try { await fetch(c.beatUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); } catch {}
+    }, 2000);
+  `], { type: "text/javascript" })));
+  const beatUrl = `${window.location.origin}/__mirror/heartbeat?t=${encodeURIComponent(token)}`;
+  // Hand the worker the selected credentials the moment the app writes them (a token rotation), not on a timer.
+  const syncCredentials = (): void => {
+    const session = readSelectedSession(window.localStorage);
+    if (session) heartbeatWorker.postMessage({ type: "creds", ...session, profiles: `${session.serverUrl}/api/v1/users/profiles`, beatUrl });
+  };
+  const nativeSetItem = Storage.prototype.setItem;
+  Storage.prototype.setItem = function (this: Storage, key: string, value: string): void {
+    nativeSetItem.call(this, key, value);
+    if (this === window.localStorage && (key === MIRROR_PROFILE_SESSIONS_KEY || key === MIRROR_ACTIVE_PROFILE_KEY)) syncCredentials();
+  };
+  syncCredentials();
+  let verifying = false;
+  window.setInterval(() => {
+    if (verifying) return;
+    verifying = true;
+    void readMirrorIdentity(token)
+      .then((identity) => {
+        // A request that timed out while rendering blocked this thread is not an identity change: keep the last good hand-over. The worker
+        // still asks the server itself every 2 s, and the guard still compares the server and user the heartbeat reports.
+        if (identity.status === "trusted_server_unavailable") return;
+        if (identity.status === "ok") syncCredentials();
+        else heartbeatWorker.postMessage({ type: "status", status: identity.status, serverUrl: identity.serverUrl, beatUrl });
+      })
+      .catch(() => undefined)
+      .finally(() => { verifying = false; });
+  }, 2000);
+
   async function snapshot(reason: string): Promise<void> {
     if (busy) {
       pending = true;
@@ -195,8 +273,7 @@ export function startDebugMirror(): void {
       let restoreRing: () => void = () => undefined;
       // ?mirrorPointer=1: the web references show no :focus-visible outline on buttons (their sign-in used pointer clicks).
       // Media cards keep their remote marker, as in the references. Computed styles are inlined in the render, so clear it on the element itself.
-      const hideFocusRing = new URLSearchParams(window.location.search).get("mirrorPointer") === "1" ||
-        window.sessionStorage.getItem("playarr.debugMirrorPointer") === "1";
+      const hideFocusRing = mirrorFlag("mirrorPointer");
       try {
         initialIdentity = await readMirrorIdentity(token);
         if (initialIdentity.status !== "ok") throw new Error("mirror identity verification failed");
@@ -234,7 +311,7 @@ export function startDebugMirror(): void {
           const r = img.getBoundingClientRect();
           return r.width > 0 && r.height > 0 && r.left < stageW && r.top < stageH && r.right > 0 && r.bottom > 0;
         });
-        restoreArtwork = await withTimeout(inlineArtwork(visibleImages, window.location.origin, token, artworkCache), 20000, "artwork inline");
+        if (!mirrorFlag("mirrorNoArt")) restoreArtwork = await withTimeout(inlineArtwork(visibleImages, window.location.origin, token, artworkCache), 20000, "artwork inline");
         await Promise.all(visibleImages.map((img) => img.decode().catch(() => undefined)));
         // html-to-image clones without scroll offsets, so a rail the page has scrolled (Home, the library grid) would be drawn
         // unscrolled. Tag every scrolled container and let the embedded CSS translate its children by the offset.
@@ -248,8 +325,8 @@ export function startDebugMirror(): void {
           withCollapsingTrackHeights(() => (usePng ? toPng : toJpeg)(document.body, {
             // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
             // native scrollbars the TV does not show: hide them in the rendered copy.
-            // geometricPrecision: no glyph hinting, so small zoomed text keeps the web's advances instead of snapping to whole pixels.
-            fontEmbedCSS: `${fontCss}\n*{text-rendering:geometricPrecision!important}\n*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
+            // ?mirrorGeo=1 turns hinting off (geometricPrecision). Measured on the TV: it scored 0.02 to 0.2 lower than the default on settings, month and agenda.
+            fontEmbedCSS: `${fontCss}\n${mirrorFlag("mirrorGeo") ? "*{text-rendering:geometricPrecision!important}\n" : ""}*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
             // Cross-origin media (posters, video) would stall or taint the render: leave it out.
             filter: (node) => {
               // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far

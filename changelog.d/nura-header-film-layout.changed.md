@@ -1,1 +1,0 @@
-- Nura page headers draw the web phone's 42 px round and square buttons, the letter rail sits 1 px lower, and a film's title block closes up to the web's spacing.
