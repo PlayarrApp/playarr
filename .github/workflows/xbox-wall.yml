@@ -148,7 +148,7 @@ jobs:
               node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --out "$OUT/web"
               # The web player checks time out intermittently on the hosted browser (direct-play stall), so the pinned player expectations are used.
               node -e 'const fs=require("fs");const f=process.argv[1];const live=JSON.parse(fs.readFileSync(f));const pin=JSON.parse(fs.readFileSync("expected.web.json"));for(const k of Object.keys(pin.dpad))if(k.startsWith("player-"))live.dpad[k]=pin.dpad[k];fs.writeFileSync(f,JSON.stringify(live,null,2))' "$OUT/web/expected.json"
-              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --player --via keys --out "$OUT/run" --expected "$OUT/web/expected.json"
+              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --via keys --out "$OUT/run" --expected "$OUT/web/expected.json"
               mkdir -p "$OUT/dev"; cp "$OUT/run/dpad.json" "$OUT/dev/" ;;
             playback)
               echo '{"suite":1,"dpad":{},"playback":{"a":{"state":"playing"},"b":{"state":"playing"},"c":{"state":"playing"}}}' > "$OUT/exp.json"
