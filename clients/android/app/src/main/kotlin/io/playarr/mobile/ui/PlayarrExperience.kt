@@ -2270,7 +2270,7 @@ private fun TelevisionNavigationContent(
                 softWrap = false,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 5.6.dp).width(77.5.dp).wrapContentWidth(unbounded = true).clearAndSetSemantics { },
+                modifier = Modifier.padding(top = if (web == null) 2.6.dp else 5.6.dp).width(77.5.dp).wrapContentWidth(unbounded = true).clearAndSetSemantics { },
             )
         }
     }
@@ -2368,7 +2368,7 @@ private fun TvNavTile(
                         ),
                     ),
                 ),
-                modifier = Modifier.padding(top = web?.labelGap ?: 4.8.dp, start = 4.dp, end = 4.dp),
+                modifier = Modifier.padding(top = web?.labelGap ?: 2.3.dp, start = 4.dp, end = 4.dp),
             )
         }
     }
