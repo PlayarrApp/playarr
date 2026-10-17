@@ -13,6 +13,11 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Match Android phone Home and library card artwork fallbacks to the web client's poster and backdrop ordering.
+- Match the Android phone language filter's expanded chevron and nested Back behaviour to the web client.
+- Show selected Android phone language filters as removable tokens alongside the Add language control.
+- Android phone library language filters now show a bounded, vertically scrollable checkbox list, matching the Web phone layout.
+- Fire TV: the title actions drawer opens with Play focused, as on web, so the close button keeps its light resting colour.
 - Roku: the player draws the web Minimise pill and a bordered round close button; Up from the seek bar reaches them. Minimise ends playback, as Roku cannot keep a mini player behind the browse pages.
 - Match Android phone Home and library card artwork fallbacks to the web client's poster and backdrop ordering.
 - Match the Android phone language filter's expanded chevron and nested Back behaviour to the web client.
@@ -743,6 +748,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Nura page headers draw the web phone's 42 px round and square buttons, the letter rail sits 1 px lower, and a film's title block closes up to the web's spacing.
 - Android TV Filters now use closed language multi-select fields with vertical, D-pad navigable options and web-sized View glyphs; drawer focus styling restores the opener card, and Left from Library Filters returns focus to the selected content item.
 - Match the Nura agenda cards to the web: white card fill, strong hairlines, 4 px availability bar, muted bar for unavailable, and the web's taller row spacing.
 - Add an opt-in Harmony phone core capture that validates all 15 required screens before skipping optional diagnostics.

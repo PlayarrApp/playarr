@@ -83,6 +83,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   let theme = "dark";
   let parityClock = null;
   let savedAnimationScales = null;
+  let savedRegion = null; // { timeZone, locales } as found, restored in stop()
   const animationScaleKeys = ["window_animation_scale", "transition_animation_scale", "animator_duration_scale"];
 
   const parityLines = async () => (await adb("logcat", "-d", "-s", "PlayarrParity:I")).split("\n").map((l) => l.replace(/^.*PlayarrParity: /, "")).filter(Boolean);
@@ -175,7 +176,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   };
   return {
     supports: { nowPlaying: true },
-    async setDeterministicCapture({ fixedNow, disableAnimations } = {}) {
+    async setDeterministicCapture({ fixedNow, disableAnimations, timeZone, locale } = {}) {
       await guardDeviceAccount();
       if (typeof fixedNow !== "string" || !Number.isFinite(Date.parse(fixedNow)) || instantNanos(fixedNow) === null) throw new Error("Android deterministic capture requires a valid fixedNow ISO date");
       if (disableAnimations !== true) throw new Error("Android deterministic capture requires disableAnimations: true");
@@ -188,6 +189,15 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         scales[key] = Number(value) === 0 ? "1" : value;
       }
       savedAnimationScales ??= scales;
+      if (timeZone || locale) {
+        // Pin the zone and the app locale with the clock so the pinned instant renders the same time string and date format as the web refs.
+        savedRegion ??= { timeZone: (await shell("getprop", "persist.sys.timezone")).trim(), locales: ((await shell("cmd", "locale", "get-app-locales", pkg)).match(/\[(.*)\]/)?.[1] ?? "").trim() };
+        if (timeZone) {
+          await shell("cmd", "alarm", "set-timezone", timeZone);
+          if ((await shell("getprop", "persist.sys.timezone")).trim() !== timeZone) throw new Error(`Android could not set time zone ${timeZone}`);
+        }
+        if (locale) await shell("cmd", "locale", "set-app-locales", pkg, "--locales", locale);
+      }
       for (const key of animationScaleKeys) {
         await shell("settings", "put", "global", key, "0");
         if ((await shell("settings", "get", "global", key)).trim() !== "0") throw new Error(`Android could not disable system animation scale ${key}`);
@@ -303,7 +313,8 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
     },
     async screenshot(file) {
       await guardDeviceAccount();
-      if (parityClock) await this.waitReady({ phase: "capture" });
+      // Capture-phase strict readiness is unsupported here; the route wait is the normal readiness check.
+      if (parityClock) await this.waitReady({ phase: "route" });
       const xml = await tree();
       if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml.replace(/<node [^>]*package="(?!io\.playarr)[^>]*>/g, ""))) throw new Error("signed out or error screen");
       const png = env.PARITY_XDISPLAY
@@ -335,6 +346,13 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       return r;
     },
     async stop() {
+      if (savedRegion) {
+        const region = savedRegion; savedRegion = null;
+        try {
+          if (region.timeZone) await shell("cmd", "alarm", "set-timezone", region.timeZone);
+          await shell("cmd", "locale", "set-app-locales", pkg, "--locales", region.locales);
+        } catch (error) { throw new Error(`Android failed to restore time zone and locale: ${String(error?.message ?? error).split("\n")[0]}`); }
+      }
       if (savedAnimationScales) {
         const failures = [];
         for (const key of animationScaleKeys) {
