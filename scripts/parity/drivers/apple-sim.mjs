@@ -406,6 +406,12 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         await sleep(1500); // artwork for the first screenful
       }
       await assertCurrentUser();
+      // Authenticated posters and stills (Calendar rows) load after the route: capture only once none is pending (bounded, 30 s).
+      if (mac) {
+        await sleep(500);
+        for (let i = 0; i < 120 && (state().imagesPending ?? 0) > 0; i += 1) await sleep(250);
+        if ((state().imagesPending ?? 0) > 0) console.log("  images still loading after 30 s, capturing anyway");
+      }
       if (mac) {
         rmSync(file, { force: true });
         run(notify, [`snapshot:${file}`]);

@@ -291,7 +291,7 @@ struct TVCalendarView: View {
                     .lineLimit(1)
                     .frame(height: 28.8)
                 HStack(spacing: 12) {
-                    Text(entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day")
+                    Text(entry.flatMap(Self.timedRelease).map { Self.format($0, "HH:mm") } ?? "All day")
                     Text(entry.map { Self.releaseLabel($0) } ?? "")
                     Text(entry.map { Self.kindLabel($0) } ?? "")
                     TVStatusPill(tone: Self.tone(of: item, today: today))
@@ -549,20 +549,29 @@ struct TVCalendarView: View {
     /// and the server's actions.
     private func agendaDetail(_ entry: CalendarEntry, item: CalendarItem, today: String) -> some View {
         let title = Self.title(of: item)
-        let lines = max(1, TVTextWrap.lines(title, weight: 560, size: 69.12, kern: -4.98, width: 379.5).count)
+        // Web `max-width: 9ch` on the details title: "Best Medicine" wraps to two lines.
+        let titleWidth = min(379.5, 9 * TVTextWrap.measure("0", weight: 560, size: 69.12, kern: 0))
+        let lines = max(1, TVTextWrap.lines(title, weight: 560, size: 69.12, kern: -4.98, width: titleWidth, balanced: true).count)
         let metaY = 291.5 + 62.2 * CGFloat(lines) + 21.6
         let code = item.entries.count > 1 ? "\(item.entries.count) episodes" : Self.episodeCode(entry)
         let codeLine = [code, item.entries.count > 1 ? nil : (entry.subtitle ?? "TBA")].compactMap { $0 }.joined(separator: " \u{00B7} ")
-        let when = entry.releaseAt.map { Self.format($0, "EEEE, d MMMM yyyy 'at' HH:mm") }
-            ?? CalendarDays.displayDate(entry.date).map { Self.format($0, "EEEE, d MMMM yyyy") } ?? entry.date
+        let when = Self.timedRelease(entry).map { Self.format($0, "EEEE, d MMMM yyyy 'at' HH:mm") }
+            ?? (CalendarDays.displayDate(entry.date).map { Self.format($0, "EEEE d MMMM") } ?? entry.date) + " \u{00B7} All day"
         let soft = DesignTokens.Color.textPrimary.opacity(0.86)
+        // Web `.tv-preview-overview`: a lone entry's own synopsis, 42ch wide, five lines at most, 1.58 line height.
+        let overview = item.entries.count > 1 ? nil : entry.overview?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        let overviewWidth = 42 * TVTextWrap.measure("0", weight: 600, size: 13.824, kern: 0)
+        let overviewLines = overview.map { min(5, TVTextWrap.lines($0, weight: 600, size: 13.824, kern: 0, width: overviewWidth).count) } ?? 0
+        let overviewHeight = CGFloat(overviewLines) * 21.84
+        let pillBottom = metaY + 36.9 + 26.6
+        let overviewY = pillBottom + (overview == nil ? 0 : 21.6)
         return ZStack(alignment: .topLeading) {
             Text("\(Self.kindLabel(entry)) \u{00B7} \(Self.releaseLabel(entry))".uppercased())
                 .font(TVTheme.font(size: 12.288, css: 860))
                 .tracking(0.98)
                 .foregroundStyle(DesignTokens.Stage.brandInk)
                 .placed(x: 153.6, y: 263.2, w: 455, h: 18.4)
-            TVHeroTitle(title: title)
+            TVHeroTitle(title: title, maxWidth: titleWidth)
                 .placed(x: 153.6, y: 291.5, w: 379.5, h: 62.2 * CGFloat(lines), alignment: .topLeading)
             HStack(spacing: 12.8) {
                 Text(codeLine)
@@ -573,7 +582,16 @@ struct TVCalendarView: View {
             .placed(x: 153.6, y: metaY, h: 19.6)
             TVStatusPill(tone: Self.tone(of: item, today: today))
                 .placed(x: 153.6, y: metaY + 36.9, h: 26.6)
-            actionButtons(entry, y: metaY + 36.9 + 26.6 + 23.7)
+            if let overview, overviewHeight > 0 {
+                Text(overview)
+                    .font(TVTheme.font(size: 13.824, css: 600))
+                    .lineSpacing(3)
+                    .lineLimit(5)
+                    .foregroundStyle(soft)
+                    .frame(width: overviewWidth, height: overviewHeight, alignment: .topLeading)
+                    .placed(x: 153.6, y: overviewY, w: overviewWidth, h: overviewHeight, alignment: .topLeading)
+            }
+            actionButtons(entry, y: overviewY + overviewHeight + 23.7)
         }
     }
 
@@ -645,6 +663,12 @@ struct TVCalendarView: View {
             .placed(x: x, y: y, w: width, h: 58)
     }
 
+    /// Web `releaseInstant`: a release at exactly UTC midnight is a date, not a time, so it reads "All day".
+    private static func timedRelease(_ entry: CalendarEntry) -> Date? {
+        guard let at = entry.releaseAt else { return nil }
+        return Int64((at.timeIntervalSince1970 * 1000).rounded()) % 86_400_000 == 0 ? nil : at
+    }
+
     private static func title(of item: CalendarItem) -> String {
         switch item {
         case .single(let entry): return entry.title
@@ -685,4 +709,8 @@ struct TVCalendarView: View {
         #endif
         .placed(x: TVShellActionColumn.x, y: TVShellActionColumn.y(slot: slot), w: TVShellActionColumn.width, h: TVHeaderPill.height)
     }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

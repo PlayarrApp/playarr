@@ -41,6 +41,8 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
     public let releaseType: String
     public let title: String
     public let subtitle: String?
+    /// The source's synopsis for a lone episode or movie, when it gave one.
+    public let overview: String?
     public let seasonNumber: Int?
     public let episodeNumber: Int?
     /// UTC day of the release (`YYYY-MM-DD`).
@@ -63,6 +65,7 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
         releaseType: String = "air",
         title: String,
         subtitle: String? = nil,
+        overview: String? = nil,
         seasonNumber: Int? = nil,
         episodeNumber: Int? = nil,
         date: String,
@@ -81,6 +84,7 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
         self.releaseType = releaseType
         self.title = title
         self.subtitle = subtitle
+        self.overview = overview
         self.seasonNumber = seasonNumber
         self.episodeNumber = episodeNumber
         self.date = date
@@ -102,6 +106,7 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
         releaseType = try c.decode(String.self, forKey: .releaseType)
         title = try c.decode(String.self, forKey: .title)
         subtitle = try c.decodeIfPresent(String.self, forKey: .subtitle)
+        overview = try c.decodeIfPresent(String.self, forKey: .overview)
         seasonNumber = try c.decodeIfPresent(Int.self, forKey: .seasonNumber)
         episodeNumber = try c.decodeIfPresent(Int.self, forKey: .episodeNumber)
         date = try c.decode(String.self, forKey: .date)
@@ -124,6 +129,7 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
         case releaseType = "release_type"
         case title
         case subtitle
+        case overview
         case seasonNumber = "season_number"
         case episodeNumber = "episode_number"
         case date

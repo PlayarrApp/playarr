@@ -195,6 +195,10 @@ struct TVAuthedImage<Placeholder: View>: View {
             }
         }
         .task {
+            #if DEBUG && (os(tvOS) || os(macOS))
+            TVParityState.imageLoad(started: true)
+            defer { TVParityState.imageLoad(started: false) }
+            #endif
             if let data = try? await load(), let decoded = UIImage(data: data) {
                 image = decoded
             }
@@ -441,12 +445,14 @@ struct TVStageWash: View {
 struct TVHeroTitle: View {
     var title: String
     var cssWeight: CGFloat = 560
+    /// Where the lines break; the Calendar details title is `max-width: 9ch`, narrower than the Library's box.
+    var maxWidth: CGFloat = 379.5
 
     var body: some View {
         #if os(macOS)
-        let lines = TVTextWrap.lines(title, weight: cssWeight, size: 69.12, kern: -4.98, width: 379.5, balanced: true)
+        let lines = TVTextWrap.lines(title, weight: cssWeight, size: 69.12, kern: -4.98, width: maxWidth, balanced: true)
         #else
-        let lines = TVTextWrap.lines(title, weight: cssWeight, size: 69.12, kern: -4.98, width: 379.5)
+        let lines = TVTextWrap.lines(title, weight: cssWeight, size: 69.12, kern: -4.98, width: maxWidth)
         #endif
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
