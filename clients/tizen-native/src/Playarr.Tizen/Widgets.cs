@@ -445,6 +445,7 @@ internal sealed class KeyArt
     private readonly PlayarrTheme _t;
     private string? _path, _shown;
     private bool _armed;
+    private readonly bool _playlistDirectoryParity;
 
     /// <summary>
     /// As web: the key art of a library, search or detail page only appears once focus has moved (the page's first preview is
@@ -452,7 +453,7 @@ internal sealed class KeyArt
     /// </summary>
     public void Arm() { if (_armed) return; _armed = true; var p = _path; _path = null; Set(p); }
 
-    public KeyArt(AppEnv env, bool armed = false) { _armed = armed; _env = env; _t = env.Theme; Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight); }
+    public KeyArt(AppEnv env, bool armed = false, bool playlistDirectoryParity = false) { _armed = armed; _env = env; _t = env.Theme; _playlistDirectoryParity = playlistDirectoryParity; Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight); }
 
     /// <summary>Shows the server artwork at <paramref name="artworkPath"/> (a /api/v1/artwork/... path) as key art.</summary>
     public void Set(string? artworkPath)
@@ -472,13 +473,24 @@ internal sealed class KeyArt
                 if (_path != wanted) return; // focus moved on
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
                 var dark = _t.Name == "dark";
-                var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f);
-                img.Opacity = dark ? 0.07f : 0.035f; // web (measured at 1920x1080): the art is only a ghost in both themes
+                var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f,
+                    dark ? 0.82f : _playlistDirectoryParity ? 0.88f : 1f, dark ? 0.6f : 1.1f,
+                    linearRightEdgeAlpha: _playlistDirectoryParity);
+                img.Opacity = _playlistDirectoryParity ? (dark ? 0.72f : 0.24f) : dark ? 0.07f : 0.035f;
                 Root.Add(img);
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
-                Root.Add(Ui.Gradient(-20 + 1038.3f * 0.72f, 0, 1038.3f * 0.28f, 1080, true, (0, clear), (1, s)));
+                // Non-playlist KeyArt callers retain their existing surface-gradient mask approximation.
+                if (!_playlistDirectoryParity)
+                    Root.Add(Ui.Gradient(-20 + 1038.3f * 0.72f, 0, 1038.3f * 0.28f, 1080, true, (0, clear), (1, s)));
                 Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, s), (0.22f, clear), (1, clear)));
-                Root.Add(Ui.Gradient(0, 0, 1920, 1080, false, (0, s), (0.18f, clear), (0.82f, clear), (1, s)));
+                Root.Add(Ui.Gradient(0, 0, 1920, 1080, false, (0, s), (_playlistDirectoryParity ? 0.22f : 0.18f, clear), (0.82f, clear), (1, s)));
+                if (_playlistDirectoryParity)
+                {
+                    Root.Add(Ui.Gradient(0, 0, 1920, 1080, true,
+                        (0, new Rgba(s.R, s.G, s.B, 0.94f)), (0.36f, new Rgba(s.R, s.G, s.B, 0.90f)), (0.52f, clear), (1, clear)));
+                    Root.Add(Ui.Gradient(0, 0, 1920, 1080, true,
+                        (0, clear), (0.66f, clear), (1, new Rgba(s.R, s.G, s.B, 0.50f))));
+                }
             });
         });
     }
