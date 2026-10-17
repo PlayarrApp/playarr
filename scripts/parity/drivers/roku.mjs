@@ -996,6 +996,13 @@ export function createDriver({ out, args = [] } = {}) {
       parityState.drawerSource = drawerSource;
       for (const item of parseKeySequence(entry.keys)) await press(item.key, { long: item.long });
     }
+    // A browse grid reports its route before the first page and artwork are in; a key pressed then is dropped, so a following
+    // D-pad check starts one card short (movies-grid-right opened 5th wave instead of 6 underground).
+    if (screen === "browse") {
+      const scope = ["movie", "movies"].includes(browse) ? "movies" : browse === "series" ? "series" : null;
+      if (artEnabled && scope) await waitForArt(scope);
+      await sleep(1500);
+    }
     const actual = routeForState(screen, page, browse, drawerSource, parityState.calendarView);
     const expectedRoute = entry.id === "calendar-agenda" ? "/calendar" : (entry.match ?? entry.route);
     if (actual !== expectedRoute) throw new Error(`Roku route ended on ${actual}; expected ${expectedRoute}`);
