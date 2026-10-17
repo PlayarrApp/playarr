@@ -1021,6 +1021,11 @@ internal fun CalendarWeek(
     CalendarWeekBody(groups, loading, isTelevision, today, zone, locale, selectedKey, onSelect, modifier, webColumn = null, topPad = null)
 }
 
+// Phone week at 390 css px (1.8436 device px per dp), measured against the web ref: heading text 4 device px lower and the first
+// card 6 device px lower than web with the old 7 dp top padding and 38 dp heading row.
+internal const val PHONE_WEEK_TOP_PAD_DP = 4.8
+internal const val PHONE_WEEK_HEADING_ROW_DP = 34.8
+
 @Composable
 private fun CalendarWeekBody(
     groups: List<CalendarDayGroup>,
@@ -1074,11 +1079,11 @@ private fun CalendarWeekBody(
                             .calendarEdgeFades(scroll.verticalEdges())
                             .verticalScroll(scroll)
                             
-                            .padding(top = topPad ?: if (isTelevision) 53.dp else 7.dp, bottom = 48.dp), // web: columns start at y 174, below the toolbar row
+                            .padding(top = topPad ?: if (isTelevision) 53.dp else PHONE_WEEK_TOP_PAD_DP.dp, bottom = 48.dp), // web: columns start at y 174, below the toolbar row
                         verticalArrangement = Arrangement.spacedBy(if (isTelevision) 6.dp else 0.dp),
                     ) {
                         if (true) {
-                            Row(Modifier.height(if (isTelevision) 28.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(Modifier.height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
                                     phoneCalendarDayHeading(group.date, locale), color = WebInk, fontSize = if (isTelevision) 18.7.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision) 560 else 640),
                                     style = WebTextStyle, modifier = Modifier.semantics { heading() },
