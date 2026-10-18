@@ -515,7 +515,7 @@ export function createDriver({ out, args = [] } = {}) {
   const ecp = `http://${target}:8060`;
   const keyDelay = Math.max(300, Number(env.ROKU_PARITY_KEY_DELAY_MS ?? 850));
   const selectDelay = Math.max(1000, Number(env.ROKU_PARITY_SELECT_DELAY_MS ?? 2600));
-  const artEnabled = env.ROKU_ART_READINESS === "1";
+  const artEnabled = env.ROKU_ART_READINESS !== "0";
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const parityState = createParityState();
   let socket;
