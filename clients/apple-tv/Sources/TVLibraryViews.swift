@@ -1565,6 +1565,8 @@ struct TVLibraryKindView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @Environment(\.requestNavFocus) private var requestNavFocus
     @State private var items: [Work] = []
+    /// Web `LibraryPreview` runtime: filled from the focused work's detail, absent until it arrives.
+    @State private var previewRuntime: (id: UUID, text: String?)?
     /// Title counts of the listed playlists (the preview's "5 titles").
     @State private var playlistCounts: [UUID: Int] = [:]
     /// Web library Filters drawer: sort (`title` / `date_added`) and order (`asc` / `desc`).
@@ -1841,6 +1843,10 @@ struct TVLibraryKindView: View {
             // SPA `.tv-preview-meta`: year then genres with soft separator.
             previewMeta(work)
                 .padding(.top, 26)
+                .task(id: work.id) {
+                    let detail = try? await environment.apiClient.fetchWork(id: work.id)
+                    previewRuntime = (work.id, TVWebFormat.runtime(ms: detail?.runtimeMs))
+                }
             if let overview = work.overview, !overview.isEmpty {
                 Text(overview)
                     // Web `.details-panel .tv-preview-overview`: 0.72vw (13.8 px) at weight 600, line-height 1.58 (21.8 px pitch),
@@ -1865,6 +1871,10 @@ struct TVLibraryKindView: View {
             if !genreLine.isEmpty {
                 // Web: the gap belongs to the year; a title without one starts flush left (music).
                 Text((yearString(for: work).isEmpty ? "" : "  ") + genreLine)
+                    .foregroundStyle(DesignTokens.Color.textDisabled)
+            }
+            if let runtime = previewRuntime, runtime.id == work.id, let text = runtime.text {
+                Text("  " + text)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
             }
         }
@@ -2155,7 +2165,7 @@ struct TVLibraryKindView: View {
         Button { filtersOpen = true } label: {
             TVHeaderPill(label: "Filters", symbol: "slider.horizontal.3", width: TVShellActionColumn.width)
         }
-        .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
+        .buttonStyle(TVRingButtonStyle(cornerRadius: 14, hidesRing: parityMode && !filtersOpen))
         .focusEffectDisabled()
     }
 

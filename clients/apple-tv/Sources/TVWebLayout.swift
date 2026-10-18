@@ -472,14 +472,17 @@ struct TVHeroTitle: View {
 /// Web control focus (`--page-focus-ring`): a 3 px ring 2 px outside the control, never a fill. Buttons, pills, tiles.
 struct TVRingButtonStyle: ButtonStyle {
     var cornerRadius: CGFloat = 14
+    /// A frozen parity capture never owns the focus (the web reference shows no ring there), so the ring stays hidden.
+    var hidesRing = false
 
     func makeBody(configuration: Configuration) -> some View {
-        Ring(label: configuration.label, cornerRadius: cornerRadius)
+        Ring(label: configuration.label, cornerRadius: cornerRadius, hidden: hidesRing)
     }
 
     private struct Ring<Label: View>: View {
         let label: Label
         let cornerRadius: CGFloat
+        let hidden: Bool
         @Environment(\.isFocused) private var isFocused
         #if os(macOS)
         private let ringOut: CGFloat = 3.5
@@ -493,7 +496,7 @@ struct TVRingButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: cornerRadius + ringOut, style: .continuous)
                     .stroke(DesignTokens.Stage.focusRing, lineWidth: 3)
                     .padding(-ringOut)
-                    .opacity(isFocused ? 1 : 0)
+                    .opacity(isFocused && !hidden ? 1 : 0)
             )
         }
     }

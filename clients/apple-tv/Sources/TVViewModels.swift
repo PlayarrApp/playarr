@@ -248,7 +248,10 @@ final class TVWorkDetailViewModel {
             let loaded = try await apiClient.fetchWork(id: workID)
             detail = loaded
             state = .loaded
-            similar = (try? await apiClient.fetchSimilarWorks(id: workID, limit: 12)) ?? []
+            let embedded = ((try? await apiClient.fetchSimilarWorks(id: workID, limit: 12)) ?? [])
+                .filter { $0.id != workID && ($0.kind == .movie || $0.kind == .series) }
+            // Web `WorkDetail` fallback: no similar results (no embeddings, or none stored) lists library titles ranked by genre.
+            similar = embedded.isEmpty ? await genreFallback(for: loaded.work) : embedded
             cast = (try? await apiClient.fetchWorkCredits(id: workID).cast) ?? []
             if loaded.work.kind == .series {
                 availabilityLag = (try? await apiClient.fetchAvailabilityLag(id: workID)) ?? nil
@@ -259,6 +262,35 @@ final class TVWorkDetailViewModel {
         } catch {
             state = .failed(error.localizedDescription)
         }
+    }
+
+    /// Web `loadGenreFallback` and `relatedWorkScore`: up to three genres (else the kind, newest first), movies and series only,
+    /// ranked by shared genres, same kind and release-year proximity, then sort title; 20 at most.
+    private func genreFallback(for target: Work) async -> [Work] {
+        var candidates: [UUID: Work] = [:]
+        let genres = Array(target.genres.prefix(3))
+        for genre in genres {
+            for item in ((try? await apiClient.browseCatalog(kind: nil, genre: genre, tag: nil, sort: nil, limit: 100, offset: nil))?.items ?? []) {
+                candidates[item.id] = item
+            }
+        }
+        if genres.isEmpty {
+            for item in ((try? await apiClient.browseCatalog(kind: target.kind, genre: nil, tag: nil, sort: "date_added", limit: 100, offset: nil))?.items ?? []) {
+                candidates[item.id] = item
+            }
+        }
+        let own = Set(target.genres.map { $0.trimmingCharacters(in: .whitespaces).lowercased() })
+        func year(_ work: Work) -> Double? { work.releaseDate.flatMap { Double($0.prefix(4)) } }
+        func score(_ work: Work) -> Double {
+            let shared = work.genres.filter { own.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) }.count
+            let proximity = year(target).flatMap { t in year(work).map { max(0, 5 - abs(t - $0) / 5) } } ?? 0
+            return Double(shared) * 100 + (work.kind == target.kind ? 10 : 0) + proximity
+        }
+        return candidates.values
+            .filter { $0.id != target.id && ($0.kind == .movie || $0.kind == .series) }
+            .sorted { score($0) != score($1) ? score($0) > score($1) : $0.sortTitle.localizedCompare($1.sortTitle) == .orderedAscending }
+            .prefix(20)
+            .map { $0 }
     }
 }
 
