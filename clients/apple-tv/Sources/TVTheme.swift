@@ -1159,7 +1159,7 @@ struct TVNavPanelShadow: ViewModifier {
             RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
                 .fill(DesignTokens.Stage.bg)
                 .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.1), radius: 42,
-                        y: TVParityLaunch.shadowY(14))
+                        y: 14)
         )
         #else
         content

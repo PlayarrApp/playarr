@@ -274,7 +274,7 @@ struct TVWorkDetailView: View {
                 : primary ? DesignTokens.Color.brandPrimary : DesignTokens.Color.backgroundInputDisabled.opacity(0.72)
         )
         // Web detail pills: no border, `box-shadow: 0 14px 38px rgba(56, 38, 33, .12)`.
-        .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.12), radius: 19, y: TVParityLaunch.shadowY(14))
+        .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.12), radius: 19, y: 14)
     }
 
     private func actionPill(
@@ -540,8 +540,8 @@ struct TVWorkDetailView: View {
         }
         .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: 13.44, style: .continuous))
-        .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(heavy ? 0.3 : 0.14), radius: heavy ? 24 : 10, y: TVParityLaunch.shadowY(heavy ? 24 : 10))
-        .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(heavy ? 0.2 : 0.1), radius: heavy ? 10 : 4, y: TVParityLaunch.shadowY(heavy ? 10 : 3))
+        .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(heavy ? 0.3 : 0.14), radius: heavy ? 24 : 10, y: heavy ? 24 : 10)
+        .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(heavy ? 0.2 : 0.1), radius: heavy ? 10 : 4, y: heavy ? 10 : 3)
     }
 
     // MARK: Right rail: series

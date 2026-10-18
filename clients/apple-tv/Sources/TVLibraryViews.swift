@@ -881,12 +881,12 @@ struct TVHomeCard: View {
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focusedLook ? 0.32 : 0.16),
                         radius: focusedLook ? 26 : 10,
-                        y: TVParityLaunch.shadowY(focusedLook ? 26 : 10)
+                        y: focusedLook ? 26 : 10
                     )
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focusedLook ? 0.22 : 0.10),
                         radius: focusedLook ? 11 : 4,
-                        y: TVParityLaunch.shadowY(focusedLook ? 11 : 3)
+                        y: focusedLook ? 11 : 3
                     )
                     // The art grows to 1.025 when focused.
                     .scaleEffect(focusedLook ? 1.025 : 1)
@@ -1004,8 +1004,8 @@ struct TVWebHomeCard: View {
             .background(
                 RoundedRectangle(cornerRadius: 12.48, style: .continuous)
                     .fill(DesignTokens.Stage.surfaceSoft)
-                    .shadow(color: Self.shadow.opacity(focused ? 0.32 : 0.16), radius: focused ? 26 : 11, y: TVParityLaunch.shadowY(focused ? 26 : 10))
-                    .shadow(color: Self.shadow.opacity(focused ? 0.22 : 0.10), radius: focused ? 11 : 4.5, y: TVParityLaunch.shadowY(focused ? 11 : 3))
+                    .shadow(color: Self.shadow.opacity(focused ? 0.32 : 0.16), radius: focused ? 26 : 11, y: focused ? 26 : 10)
+                    .shadow(color: Self.shadow.opacity(focused ? 0.22 : 0.10), radius: focused ? 11 : 4.5, y: focused ? 11 : 3)
             )
             .modifier(TVCardFocusGlow(focused: focused, cornerRadius: 12.48))
             .scaleEffect(focused ? 1.025 : 1)
@@ -1481,7 +1481,7 @@ struct TVSearchView: View {
                     // Focused search shadow: 0 22px 52px rgba(31, 14, 20, 0.28); the rest shadow is the card default.
                     .shadow(
                         color: Color(red: 31 / 255, green: 14 / 255, blue: 20 / 255).opacity(focused ? 0.28 : 0),
-                        radius: 26, y: TVParityLaunch.shadowY(22)
+                        radius: 26, y: 22
                     )
                 Circle()
                     .fill(DesignTokens.Color.brandPrimary)
@@ -2054,13 +2054,13 @@ struct TVLibraryKindView: View {
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)
                             .opacity(isSelected ? 0.3 : 0.14),
                         radius: isSelected ? 48 : 20,
-                        y: TVParityLaunch.shadowY(isSelected ? 24 : 10)
+                        y: isSelected ? 24 : 10
                     )
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)
                             .opacity(isSelected ? 0.2 : 0.1),
                         radius: isSelected ? 20 : 8,
-                        y: TVParityLaunch.shadowY(isSelected ? 10 : 3)
+                        y: isSelected ? 10 : 3
                     )
                     // SPA fixture crops already include the pink unwatched disc; real art gets one from the viewer's watch state.
                     if showsUnwatchedDisc(work), !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {

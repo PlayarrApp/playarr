@@ -89,7 +89,7 @@ enum MacDebugRemote {
 
     /// Renders the window's content layer tree at 1920x1080.
     private static func snapshot(window: NSWindow, to url: URL) {
-        guard let view = window.contentView, let layer = view.layer, view.bounds.width > 0 else {
+        guard let view = window.contentView, view.bounds.width > 0 else {
             NSLog("PlayarrMac debug: snapshot skipped, window content %@", NSStringFromRect(window.contentView?.bounds ?? .zero))
             return
         }
@@ -97,15 +97,16 @@ enum MacDebugRemote {
         guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
-        // The stage sits at the top left, scaled to fit (MacTVStage); render just the stage at 1920x1080.
+        // The stage sits at the top left, scaled to fit (MacTVStage); render just the stage at 1920x1080. AppKit draws the view
+        // itself (`cacheDisplay`), so layer flips and shadow offsets come out as in a live window. `CALayer.render(in:)` into a
+        // hand-flipped context mirrored every SwiftUI shadow offset in y.
         let scale = 1 / min(view.bounds.width / 1920, view.bounds.height / 1080)
-        if layer.isGeometryFlipped || view.isFlipped {
-            ctx.translateBy(x: 0, y: CGFloat(height))
-            ctx.scaleBy(x: scale, y: -scale)
-        } else {
-            ctx.scaleBy(x: scale, y: scale)
-        }
-        layer.render(in: ctx)
+        guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        guard let shot = rep.cgImage else { return }
+        let drawn = CGSize(width: view.bounds.width * scale, height: view.bounds.height * scale)
+        ctx.interpolationQuality = .high
+        ctx.draw(shot, in: CGRect(x: 0, y: CGFloat(height) - drawn.height, width: drawn.width, height: drawn.height))
         guard let image = ctx.makeImage(),
               let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { return }
         try? data.write(to: url)
