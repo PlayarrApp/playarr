@@ -119,7 +119,7 @@ button.pa-pill.selected { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-chip-status { font-size: 9.5px; font-weight: 700; border-radius: 999px; padding: 1px 9px; border: 1px solid @pa_line; }
 .pa-chip-status.ok { color: @pa_ink; border-color: alpha(#8ac5a5, 0.55); background: alpha(#8ac5a5, 0.18); }
 .pa-chip-status.soon { color: @pa_ink; border-color: @pa_brand; background: alpha(@pa_brand, 0.22); }
-.pa-chip-status.agenda { padding: 3px 10px 0; }
+.pa-chip-status.agenda { padding: 1px 10px; }
 .pa-chip-status.gone { color: @pa_ink_soft; border-color: @pa_brand_ink; background: alpha(@pa_brand_ink, 0.18); }
 .pa-dot.have { background: #8ac5a5; }
 .pa-dot.missing { background: @pa_brand_ink; }
@@ -156,7 +156,7 @@ button.pa-row.focus { outline: 2px solid @pa_ring; outline-offset: 3px; }
 
 /* Profiles */
 .pa-mark { background: @pa_brand; border-radius: 999px; min-width: 38px; min-height: 38px; padding: 10px; }
-.pa-add-circle { background: radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 27%), linear-gradient(145deg, mix(@pa_surface_strong, @pa_brand, 0.16), #a82655); border: 1px solid alpha(@pa_ink, 0.2); border-radius: 999px; }
+.pa-add-circle { background: radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 27%), linear-gradient(145deg, mix(@pa_surface_strong, @pa_brand, 0.16), #a82655); border: 1px dashed alpha(@pa_ink, 0.12); border-radius: 999px; }
 .pa-avatar.current { border-radius: 999px; box-shadow: 0 0 0 3px alpha(@pa_brand_ink, 0.9), 0 0 24px alpha(@pa_brand, 0.5); }
 .pa-tiny { font-size: 8px; letter-spacing: 1px; font-weight: 700; color: @pa_muted; }
 dropdown.pa-dropdown > button { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 8px; min-height: 44px; box-shadow: none; color: @pa_ink; }

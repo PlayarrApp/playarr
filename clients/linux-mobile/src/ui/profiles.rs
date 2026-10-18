@@ -385,6 +385,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .build();
     circle.set_size_request(144, 144);
     let plus = icons::image("add", 28, Tone::Ink);
+    plus.set_opacity(0.7);
     // No vexpand: it would stretch the whole row and push Sign out to the page bottom.
     plus.set_hexpand(true);
     plus.set_valign(gtk4::Align::Center);
@@ -394,13 +395,15 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         &gtk4::Label::builder()
             .label("Sign in")
             .css_classes(["pa-profile-name"])
+            .margin_top(1)
+            .opacity(0.8)
             .build(),
     );
     col.append(
         &gtk4::Label::builder()
             .label("ADD ANOTHER PROFILE")
             .css_classes(["pa-tiny"])
-            .margin_top(3)
+            .margin_top(2)
             .build(),
     );
     let b = gtk4::Button::builder()
