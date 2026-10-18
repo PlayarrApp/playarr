@@ -7799,9 +7799,10 @@ internal fun MovieDetailBrowser(
         // Web `.tv-media-track` stack: no panel, sections start at y = 540 and repeat every 314.3 dp.
         Column(
             // Web's track stack starts at half the viewport height; a tablet's rails are 28 css px further apart than the 1080 gap gives.
-            modifier.verticalScroll(rememberScrollState()).padding(top = 540.dp * homeStageVerticalScale(), bottom = 120.dp),
+            modifier.run { val trackScroll = rememberScrollState(); this.playarrEdgeFades(trackScroll.canScrollBackward, trackScroll.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical).verticalScroll(trackScroll) }
+                .padding(top = 540.dp * homeStageVerticalScale(), bottom = 120.dp),
             // Web `--tv-track-gap-section` (8.4 vu) above Cast and Similar titles, every track here.
-            verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) 96.dp else webVu(62f, 8.4f, 108f)),
+            verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) 96.dp else webVu(62f, 8.4f, 108f) - 1.dp),
         ) {
             if (chapters.isNotEmpty()) {
                 WebMediaTrack(
