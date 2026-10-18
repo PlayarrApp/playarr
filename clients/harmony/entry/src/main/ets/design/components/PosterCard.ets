@@ -351,11 +351,11 @@ export struct PosterCard {
   }
 
   private episodeOverlayX(): number {
-    return this.cardWidth - (isTvMetrics() ? tv(36) : 23);
+    return this.cardWidth - (isTvMetrics() ? tv(36) : 26.7);
   }
 
   private episodeOverlayY(): number {
-    return this.cardHeight - (isTvMetrics() ? tv(33) : 21);
+    return this.cardHeight - (isTvMetrics() ? tv(33) : 26.3);
   }
 
   build() {
@@ -450,7 +450,7 @@ export struct PosterCard {
             .letterSpacing(this.episodeCopySpacerLetterSpacing())
           Span(this.title)
             .fontSize(this.titleFontSize)
-            .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+            .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT) // phone: web's episode title is not bold
             .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
             .letterSpacing(tv(this.titleFontSize * -0.015))
         }
@@ -458,7 +458,7 @@ export struct PosterCard {
         .width(this.cardWidth)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 4) })
+        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.7) })
       } else {
         Text(this.title).fontFamily(nunito(this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT))
           .width(this.cardWidth)
