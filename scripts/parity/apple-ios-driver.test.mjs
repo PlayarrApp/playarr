@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { assertCaptureState, assertResetProfile, assertScreenshotFile } from "./drivers/apple-ios.mjs";
 
@@ -49,4 +49,9 @@ test("iOS screenshot guard accepts only existing frames at least 20 KB", () => {
   assert.doesNotThrow(() => assertScreenshotFile(good));
   assert.throws(() => assertScreenshotFile(small), /empty frame/);
   assert.throws(() => assertScreenshotFile(join(scratch, "missing.png")), /empty frame/);
+});
+
+test("iOS capture checks the app still reports the screen ready before and after each frame", () => {
+  const source = readFileSync(new URL("./drivers/apple-ios.mjs", import.meta.url), "utf8");
+  assert.match(source, /await stillReady\(\);\s*run\("xcrun", \["simctl", "io", udid, "screenshot"[^\n]*\n\s*await stillReady\(\);/);
 });
