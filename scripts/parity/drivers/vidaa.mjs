@@ -72,7 +72,9 @@ export async function createDriver({
   const guardFrame = (frame) => assertDeviceTestIdentity({ identity: frame.identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   const latest = async () => json(url("latest.json"));
 
-  // Waits for a frame produced after `since` whose state is unchanged across two polls, so a key's effect has landed.
+  // Waits for a frame produced after `since` whose state is unchanged across two distinct frames, so a key's effect has landed. A frame's
+// image is rendered at the start of its (seconds-long) capture while route, focus and text are read at the end, so one frame can pair a
+// stale image with new metadata; polling that same frame twice must not count as settled. The next frame renders after the key.
   async function settled(since) {
     const end = now() + settleTimeoutMs / 1000;
     let previous = null;
@@ -80,8 +82,10 @@ export async function createDriver({
       const frame = await latest();
       if (usableFrame(frame, since)) {
         guardFrame(frame);
-        if (sameState(previous, frame)) return frame;
-        previous = frame;
+        if (previous && frame.receivedAt !== previous.receivedAt) {
+          if (sameState(previous, frame)) return frame;
+          previous = frame;
+        } else if (!previous) previous = frame;
       }
       await delay(1200);
     }

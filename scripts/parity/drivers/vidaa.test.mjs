@@ -28,7 +28,8 @@ function harness(frames) {
   let i = 0;
   const driver = createDriver({
     secrets, env: {}, runCli: (a) => { cli.push(a); return ""; },
-    getJson: async () => frames[Math.min(i++, frames.length - 1)],
+    // the last frame repeats as a fresh frame each poll (receivedAt advances), as a running page posts them
+    getJson: async () => { const n = i++; const f = frames[Math.min(n, frames.length - 1)]; return n < frames.length ? f : { ...f, receivedAt: f.receivedAt + n }; },
     getBuffer: async () => Buffer.from("png"),
     delay: async () => { t += 1; }, now: () => t,
   });
@@ -55,4 +56,20 @@ test("an empty page is never captured and an unknown key is refused", async () =
   const d = await driver;
   await assert.rejects(d.home(), /no text/);
   await assert.rejects(d.key("play"), /cannot send/);
+});
+
+test("one frame polled twice is not settled: its image can predate the key", async () => {
+  let t = 100;
+  const same = frame();
+  const d = await createDriver({
+    secrets, env: {}, runCli: () => "", getJson: async () => same, getBuffer: async () => Buffer.from("png"),
+    delay: async () => { t += 1; }, now: () => t, settleTimeoutMs: 5000,
+  });
+  await assert.rejects(d.location(), /no settled frame/);
+});
+
+test("a stale-image frame is skipped: settles only on two distinct matching frames", async () => {
+  const { driver } = harness([frame({ route: "/movies", receivedAt: 1000 }), frame({ route: "/movies", receivedAt: 1010 })]);
+  const d = await driver;
+  assert.equal(await d.location(), "/movies");
 });
