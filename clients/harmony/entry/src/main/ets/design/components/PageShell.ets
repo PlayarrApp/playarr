@@ -234,7 +234,7 @@ export struct PageShell {
       Row({ space: 12 }) {
         if (this.showHeader) {
           Text('←').fontFamily(nunito(400))
-            .fontSize(16)
+            .fontSize(10) // web's arrow glyph is 8 vp wide; the fallback font draws 0.92 em
             .fontWeight(FontWeight.Normal)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .textAlign(TextAlign.Center)
@@ -242,7 +242,7 @@ export struct PageShell {
             .height(43)
             .borderRadius(22)
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
             .onClick(() => {
               popRoute(getNavStack());
             })
