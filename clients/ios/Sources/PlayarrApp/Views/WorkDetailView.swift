@@ -501,8 +501,6 @@ struct WorkDetailView: View {
             weight: 560,
             fixedAxes: DesignFont.nunitoAxes
         )?.lineHeight ?? titleFont * 1.36
-        // CSS line-height .9: match its pitch and drop the last line's extra leading, as the series copy does.
-        let titleLineHeightCorrection = titleFont * 0.9 - titleNativeLineHeight
         let metaFont = DesignFont.font(7.68 * tabletScale, 400)
         let runtime = detail.runtimeMs.map { Self.runtimeLabel($0) }
         let year = work.releaseDate.flatMap { Int($0.prefix(4)) }.map(String.init)
@@ -514,14 +512,10 @@ struct WorkDetailView: View {
                 .tracking(0.08 * 8.75 * tabletScale)
                 .foregroundStyle(PlayarrStyle.brandInk)
                 .padding(.bottom, 26 * tabletScale)
-            Text(work.title)
-                .font(DesignFont.font(titleFont, 560))
-                .tracking(-0.072 * titleFont)
-                .lineSpacing(titleLineHeightCorrection)
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(2)
-                .frame(maxWidth: 190 * tabletScale * 1.3, alignment: .leading)
-                .padding(.bottom, titleLineHeightCorrection)
+            TabletTitleLabel(
+                text: work.title, fontSize: titleFont, nativeLineHeight: titleNativeLineHeight,
+                lineHeight: titleFont * 0.9, width: 190 * tabletScale * 1.3
+            )
             HStack(spacing: 13.6 * tabletScale) {
                 ForEach(Array(meta.enumerated()), id: \.offset) { _, item in
                     Text(item).fixedSize(horizontal: true, vertical: false)
@@ -796,12 +790,10 @@ struct WorkDetailView: View {
                     TabletDetailFrameDiagnostic(element: "kicker", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
                 }
                 .padding(.bottom, kickerToTitleGap)
-            Text(detail.work.title)
-                .font(DesignFont.font(titleFont, 560))
-                .tracking(-0.072 * titleFont)
-                .lineSpacing(titleLineHeightCorrection)
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(2)
+            TabletTitleLabel(
+                text: detail.work.title, fontSize: titleFont, nativeLineHeight: titleNativeLineHeight,
+                lineHeight: titleWebLineHeight, width: nil
+            )
                 .overlay {
                     TabletTitleLayoutDiagnostic(
                         stage: "natural",
@@ -811,8 +803,6 @@ struct WorkDetailView: View {
                         colorScheme: scheme
                     )
                 }
-                // CSS uses line-height: .9. Match its line pitch and remove the final native line's extra leading.
-                .padding(.bottom, titleLineHeightCorrection)
                 .overlay {
                     TabletTitleLayoutDiagnostic(
                         stage: "adjusted",
@@ -1721,5 +1711,53 @@ private struct TabletDetailFrameDiagnostic: View {
         lastMeasurement = signature
         Self.logger.info("PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC element=\(element, privacy: .public) x=\(Double(frame.minX), format: .fixed(precision: 2), privacy: .public) y=\(Double(frame.minY), format: .fixed(precision: 2), privacy: .public) width=\(Double(frame.width), format: .fixed(precision: 2), privacy: .public) height=\(Double(frame.height), format: .fixed(precision: 2), privacy: .public) theme=\(colorScheme == .dark ? "dark" : "light", privacy: .public)")
         #endif
+    }
+}
+
+
+/// Title with the web's CSS line box (`line-height: .9`). SwiftUI's negative `lineSpacing` does not tighten the
+/// rendered line pitch, so UIKit draws it: fixed line height, glyphs centred in the line like CSS half-leading.
+private struct TabletTitleLabel: UIViewRepresentable {
+    let text: String
+    let fontSize: CGFloat
+    let nativeLineHeight: CGFloat
+    let lineHeight: CGFloat
+    let width: CGFloat?
+
+    func makeUIView(context: Context) -> UILabel {
+        let label = UILabel()
+        label.numberOfLines = 2
+        label.lineBreakMode = .byTruncatingTail
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return label
+    }
+
+    func updateUIView(_ label: UILabel, context: Context) {
+        let font = DesignFont.uiFont(
+            family: "Nunito Sans",
+            postScriptName: DesignFont.nunitoPostScriptName,
+            size: fontSize,
+            weight: 560,
+            fixedAxes: DesignFont.nunitoAxes
+        ) ?? UIFont(name: "AvenirNext-Medium", size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
+        let style = NSMutableParagraphStyle()
+        style.minimumLineHeight = lineHeight
+        style.maximumLineHeight = lineHeight
+        style.lineBreakMode = .byTruncatingTail
+        label.attributedText = NSAttributedString(string: text, attributes: [
+            .font: font,
+            .kern: -0.072 * fontSize,
+            .paragraphStyle: style,
+            .baselineOffset: (lineHeight - nativeLineHeight) / 2,
+            .foregroundColor: UIColor(PlayarrStyle.ink),
+        ])
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UILabel, context: Context) -> CGSize? {
+        let available = width ?? proposal.width ?? 358
+        uiView.preferredMaxLayoutWidth = available
+        let fit = uiView.sizeThatFits(CGSize(width: available, height: .greatestFiniteMagnitude))
+        return CGSize(width: min(available, fit.width), height: fit.height)
     }
 }
