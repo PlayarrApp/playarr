@@ -12,7 +12,7 @@ While another run holds the vidaa-busy lock the client is closed (same MQTT clie
 sessions would kick each other) and Playarr is not relaunched. Otherwise Playarr is kept in the foreground
 (launch at most once per LAUNCH_EVERY seconds).
 
-Env: VIDAA_DIR (dir holding vidaa.py), VIDAA_HOST, KEEPALIVE_LOG, KEEPALIVE_INTERVAL, VIDAA_BUSY_LOCK.
+Env: PLAYARR_DATA_DIR (required), VIDAA_DIR (dir holding vidaa.py), VIDAA_HOST, KEEPALIVE_LOG, KEEPALIVE_INTERVAL, VIDAA_BUSY_LOCK.
 """
 import fcntl
 import os
@@ -21,7 +21,7 @@ import sys
 import time
 from pathlib import Path
 
-DATA = Path("/home/Storage/Projects/repositories/.data/PlayarrApp/playarr")
+DATA = Path(os.environ["PLAYARR_DATA_DIR"])  # the .data/PlayarrApp/playarr folder (set by the unit)
 VIDAA_DIR = os.environ.get("VIDAA_DIR", str(Path(__file__).resolve().parent))  # vidaa.py sits next to this file
 LOG = Path(os.environ.get("KEEPALIVE_LOG", DATA / "scratch/20261017-parity-vidaa/keepalive.log"))
 LOCK = os.environ.get("VIDAA_BUSY_LOCK", "/run/user/1000/vidaa-busy.lock")

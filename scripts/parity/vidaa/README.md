@@ -10,7 +10,7 @@ Log: `.data/PlayarrApp/playarr/scratch/20261017-parity-vidaa/keepalive.log`.
 
 1. Copy `keepalive.py` and `vidaa.py` together to `.data/PlayarrApp/playarr/scripts/vidaa/` (the unit runs that copy; keepalive imports the `vidaa.py` beside it). Re-copy both after any change here.
 2. `systemctl --user disable --now playarr-vidaa-watchdog.timer`
-3. `cp playarr-vidaa-keepalive.service ~/.config/systemd/user/ && systemctl --user daemon-reload`
+3. Fill the placeholders: `sed -e "s#@DATA@#<path to .data/PlayarrApp/playarr>#g" -e "s#@VIDAA_HOST@#<TV address>#" playarr-vidaa-keepalive.service > ~/.config/systemd/user/playarr-vidaa-keepalive.service && systemctl --user daemon-reload`
 4. `systemctl --user enable --now playarr-vidaa-keepalive.service`
 
 Test: `python3 -m unittest test_keepalive` in this directory.

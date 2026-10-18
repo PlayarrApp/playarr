@@ -4,10 +4,11 @@ After=network-online.target
 
 [Service]
 Type=simple
-Environment=VIDAA_HOST=192.168.1.118
+Environment=VIDAA_HOST=@VIDAA_HOST@
 Environment=VIDAA_MIRROR_PORT=18742
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/home/Storage/Projects/repositories/.data/PlayarrApp/playarr/scratch/20261008-vidaa-remote/venv/bin/python /home/Storage/Projects/repositories/.data/PlayarrApp/playarr/scripts/vidaa/keepalive.py
+Environment=PLAYARR_DATA_DIR=@DATA@
+ExecStart=@DATA@/scratch/20261008-vidaa-remote/venv/bin/python @DATA@/scripts/vidaa/keepalive.py
 Restart=always
 RestartSec=10
 

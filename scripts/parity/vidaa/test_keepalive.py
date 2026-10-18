@@ -1,4 +1,7 @@
+import os
 import unittest
+
+os.environ.setdefault("PLAYARR_DATA_DIR", ".")
 import keepalive
 
 
