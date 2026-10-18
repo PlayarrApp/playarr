@@ -61,6 +61,7 @@ Item {
             cursorVisible: editing && activeFocus
             onActiveFocusChanged: if (!activeFocus) editing = false
             Keys.onReturnPressed: { if (!editing) { editing = true; Qt.inputMethod.show() } else event.accepted = false }
+            Keys.onEscapePressed: { if (editing) { editing = false; Qt.inputMethod.hide() } else event.accepted = false }
             Keys.onEnterPressed: { if (!editing) { editing = true; Qt.inputMethod.show() } else event.accepted = false }
             MouseArea { anchors.fill: parent; enabled: !input.editing; onClicked: { input.editing = true; input.forceActiveFocus(); Qt.inputMethod.show() } }
             EnterKey.iconSource: "image://theme/icon-m-enter-close"
