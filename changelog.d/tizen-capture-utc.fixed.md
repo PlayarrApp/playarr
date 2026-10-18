@@ -1,0 +1,1 @@
+- Tizen native parity captures show calendar release times in UTC, the zone the suite pins (the clock already did), instead of the emulator's local zone.
