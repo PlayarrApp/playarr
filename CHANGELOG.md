@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Judge a long OK press from the key events' timestamps as well as the hold timer, so a hold on a busy TV (Tizen 6.5) still opens the title and playlist actions instead of being read as a short press.
 - Web: hero, detail and library-preview artwork starts at the nav clearance, so artwork with a baked-in title never renders under the left nav (the nav-overlap e2e no longer exempts it).
 - Installed apps (the hosted VIDAA app, Xbox, Android) never show the marketing site: playarr.app now serves the app at `/` for any `?platform=` marker, app user agent or app cookie, sign-out goes to the login route in installed apps, the PWA starts at `/?platform=web`, and the shell precache no longer stores the marketing page.
 - Web: browser Back restores a library scroll position even when the list mounts after the route (and again after Forward then Back).
