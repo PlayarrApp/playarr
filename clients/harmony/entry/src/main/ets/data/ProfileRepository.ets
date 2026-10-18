@@ -63,22 +63,6 @@ export function listProfiles(): Promise<ApiResult<AvailableProfileResponse[]>> {
   return getPlayarrClient().getJson<AvailableProfileResponse[]>(profilesUrl());
 }
 
-/** Publishes the signed-in profile for the nav rail's identity tile (web shows it on every page, not only after the picker). */
-export async function syncCurrentProfile(): Promise<void> {
-  if (AppStorage.get<string>('currentProfileName') !== undefined && AppStorage.get<string>('currentProfileName') !== '') {
-    return;
-  }
-  const result = await listProfiles();
-  if (result.kind === 'ok') {
-    for (const profile of result.value) {
-      if (profile.is_current) {
-        AppStorage.setOrCreate<string>('currentProfileId', profile.id);
-        AppStorage.setOrCreate<string>('currentProfileName', profile.display_name);
-      }
-    }
-  }
-}
-
 /**
  * `POST /api/v1/users/profiles/{id}/verify-pin` (brief 4.7). Only unlocks
  * the target profile for this call; it is not itself a profile switch --

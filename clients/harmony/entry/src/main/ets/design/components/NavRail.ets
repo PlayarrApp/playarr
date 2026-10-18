@@ -75,7 +75,7 @@ import type { RgbaColor } from '../../core/Tokens';
 import { FOCUS_LIFT } from './FocusLift';
 import { ProfileAvatar } from './ProfileAvatar';
 import { resolveAvatarPreset } from '../../core/AvatarPreset';
-import { syncCurrentAvatar, syncCurrentProfile } from '../../data/ProfileRepository';
+import { syncCurrentAvatar } from '../../data/ProfileRepository';
 import { clientVersion } from '../../core/AppConfig';
 
 /** The id the rail reports when the profile tile is activated. */
@@ -230,7 +230,6 @@ export struct NavRail {
 
   aboutToAppear(): void {
     syncCurrentAvatar();
-    syncCurrentProfile();
   }
   /** The signed-in profile, set by the profile picker when it loads (web's foot-of-rail identity tile). */
   @StorageProp('currentProfileName') private profileName: string = '';
