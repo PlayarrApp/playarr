@@ -1,5 +1,6 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import QtGraphicalEffects 1.0
 import "../components"
 import "../components/Library.js" as Library
 import "../components/NavIcons.js" as NavIcons
@@ -57,6 +58,19 @@ Item {
     }
     // Web's client-side order: natural title order (digits compare as numbers) or date added.
     function orderWorks(list) { return Library.order(list, Api.setting("lib.sort", "title"), Api.setting("lib.order", "asc")) }
+    // Web dark library pages sit on a faint key-art wash that measures as a flat tint (about 39,34,39) from x=180 px to the
+    // right edge, easing from the plain page colour on the left (web captures, music/series/movies, y 5 to 1200).
+    LinearGradient {
+        visible: Tokens.dark
+        anchors.fill: parent; start: Qt.point(0, 0); end: Qt.point(width, 0)
+        gradient: Gradient {
+            GradientStop { position: 0; color: "#1b181b" }
+            GradientStop { position: 0.03; color: "#1f1c1f" }
+            GradientStop { position: 0.23; color: "#262126" }
+            GradientStop { position: 0.4; color: "#272227" }
+            GradientStop { position: 1; color: "#272227" }
+        }
+    }
     MouseArea {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter }
