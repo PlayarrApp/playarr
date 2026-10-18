@@ -16,7 +16,7 @@ const DRAWER_BACKDROP_BLUR: number = 38;
 const PADDING_H: number = 46;
 const HEADER_TOP: number = 54;
 // Web body starts at y=163: 34 below the 75 high header block.
-const BODY_GAP: number = 42;
+const BODY_GAP: number = 31;
 const KICKER_SIZE: number = 9.6;
 const KICKER_LETTER_SPACING: number = 0.672;
 const TITLE_SIZE: number = 38.4;
@@ -41,6 +41,8 @@ const SHADOW_COLOR: string = 'rgba(40, 26, 24, 0.24)';
 export struct Drawer {
   @Prop kicker: string = '';
   @Prop title: string = '';
+  /** TV: draw the focused close button's ring (web opens most drawers with the close button focused). */
+  @Prop closeRing: boolean = true;
   onClose: () => void = () => {};
 
   @Builder
@@ -59,7 +61,7 @@ export struct Drawer {
   build() {
     Column() {
       Row() {
-        Column({ space: isTvMetrics() ? tv(12) : TOUCH_KICKER_GAP }) {
+        Column({ space: isTvMetrics() ? tv(6.5) : TOUCH_KICKER_GAP }) {
           Text(this.kicker).fontFamily(nunito(700))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
             .fontWeight(FontWeight.Bold)
@@ -70,6 +72,7 @@ export struct Drawer {
             .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
             .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
+            .lineHeight(isTvMetrics() ? tv(57) : 0) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
         }
         .alignItems(HorizontalAlign.Start)
@@ -90,7 +93,7 @@ export struct Drawer {
             .onClick(() => {
               this.onClose();
             })
-          if (isTvMetrics()) {
+          if (isTvMetrics() && this.closeRing) {
             // web opens the drawer with its close button focused (ring 5 px out, 3 px wide); the Previewer reports no focus
             Column()
               .width(tv(CLOSE_SIZE + 10))
