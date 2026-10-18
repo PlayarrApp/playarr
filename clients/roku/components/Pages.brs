@@ -1980,30 +1980,39 @@ sub renderCalendarAgenda(entries as Object)
         e.sortKey = JsonString(e.date) + key
     end for
     entries.SortBy("sortKey")
-    ay = 240.0
+    ' Web's list panel: a pinned 44 px day heading at y 162 (with the TODAY tag), then 32 px, then 106 px cards on a 120.6 px pitch.
+    ay = 162.0
     lastDay = ""
+    today = calendarTodayString()
     for each entry in entries
         edt = calendarEntryDate(entry)
         day = entry.date
         if day <> lastDay
-            pgLabel(m.pageBody, 786.4, ay, 900, 28, calendarDayHeading(edt, false), 18, 600, "ink")
-            ay = ay + 34
+            ' Days sit 2rem apart (web .calendar-days gap), the cards 14.6 px.
+            if lastDay <> "" then ay = ay + 17.4
+            headLabel = pgLabel(m.pageBody, 783.4, ay, 0, 44, calendarDayHeading(edt, false), 18, 600, "ink", { vertAlign: "center" })
+            if day = today
+                hx = 783.4 + headLabel.boundingRect().width + 10
+                pgRound(m.pageBody, hx, ay + 11, 61, 22, 11, "lineStrong", -1, true)
+                pgLabel(m.pageBody, hx, ay + 11, 61, 22, "TODAY", 11, 700, "ink", { horizAlign: "center", vertAlign: "center" })
+            end if
+            ay = ay + 76
             lastDay = day
         end if
         role = "inkMuted"
         if calendarItemAvailable(entry) then role = "success"
-        pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, role)
-        pgRound(m.pageBody, 790.4, ay, 1044.8, 99.6, 14, "surfaceStrong")
-        pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "line", -1, true)
-        if entry.id = m.calendarSelected then pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "ink", 56, true)
+        pgRound(m.pageBody, 783.4, ay, 1034, 106, 14, role)
+        pgRound(m.pageBody, 787.4, ay, 1030, 106, 14, "surfaceStrong")
+        pgRound(m.pageBody, 783.4, ay, 1034, 106, 14, "line", -1, true)
+        if entry.id = m.calendarSelected then pgRound(m.pageBody, 783.4, ay, 1034, 106, 14, "ink", 56, true)
         art = calendarArtworkUrl(entry)
-        pgRound(m.pageBody, 802.4, ay + 19.8, 40, 60, 6, "surfaceSoft")
-        pgArtwork(m.pageBody, 802.4, ay + 19.8, 40, 60, art)
-        pgLabel(m.pageBody, 856.8, ay + 9, 900, 28, entry.title, 19, 600, "ink")
-        pgLabel(m.pageBody, 856.8, ay + 40, 900, 28, calendarEntrySubtitle(entry), 19, 400, "inkSoft")
-        calendarMetaRow(m.pageBody, 856.8, ay + 71, entry, 13)
-        pgFocusable(786.4, ay, 1048.8, 99.6, 14, "entry", entry.id, true)
-        ay = ay + 114
+        pgRound(m.pageBody, 799.4, ay + 23, 40, 60, 6, "surfaceSoft")
+        pgArtwork(m.pageBody, 799.4, ay + 23, 40, 60, art)
+        pgLabel(m.pageBody, 853.4, ay + 9, 900, 26, entry.title, 20, 600, "ink", { maxLines: 1 })
+        pgLabel(m.pageBody, 853.4, ay + 40, 900, 26, calendarEntrySubtitle(entry), 20, 400, "inkSoft", { maxLines: 1 })
+        calendarMetaRow(m.pageBody, 853.4, ay + 70, entry, 13)
+        pgFocusable(783.4, ay, 1034, 106, 14, "entry", entry.id, true)
+        ay = ay + 120.6
     end for
 end sub
 
