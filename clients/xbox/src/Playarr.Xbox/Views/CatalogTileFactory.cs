@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Windows.UI;
 using Windows.UI.Text;
 using Windows.UI.Xaml;
@@ -130,6 +131,68 @@ namespace Playarr.Xbox.Views
 
                 return _gridCardContainerStyle;
             }
+        }
+
+        private static Style? _listCardContainerStyle;
+
+        /// <summary>Library List view container: the web's 0.45 rem (7 px) row gap.</summary>
+        public static Style ListCardContainerStyle
+        {
+            get
+            {
+                if (_listCardContainerStyle == null)
+                {
+                    var style = new Style(typeof(GridViewItem));
+                    foreach (var setter in CardContainerStyle.Setters)
+                    {
+                        if (setter is Setter { Property: var property } plain && property != FrameworkElement.MarginProperty)
+                        {
+                            style.Setters.Add(new Setter(property, plain.Value));
+                        }
+                    }
+
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, 7)));
+                    _listCardContainerStyle = style;
+                }
+
+                return _listCardContainerStyle;
+            }
+        }
+
+        /// <summary>
+        /// Web Library List row (<c>.is-list .tv-title-card</c>): a 173 x 97 thumbnail, then the title and a
+        /// "Genre · Genre • year" line, 31 px apart on a 9 px padded row.
+        /// </summary>
+        public static FrameworkElement CreateListRow(Work work, double width)
+        {
+            var art = new Grid
+            {
+                Width = 173,
+                Height = 97,
+                CornerRadius = new CornerRadius(8),
+                Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
+            };
+            var image = new Image { Stretch = Stretch.UniformToFill };
+            art.Children.Add(image);
+            Artwork.Load(image, work, 173, new[] { ImageKind.Thumb, ImageKind.Backdrop });
+            var meta = string.Join(" \u00b7 ", work.Genres.Take(2));
+            if (meta.Length == 0)
+            {
+                meta = WorkLabels.KindLabel(work.Kind);
+            }
+
+            if (WorkLabels.YearRange(work) is { } years)
+            {
+                meta += "  \u2022  " + years;
+            }
+
+            var copy = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Spacing = 4 };
+            copy.Children.Add(new TextBlock { Text = work.Title, FontSize = 11.5, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = width - 173 - 31 - 18 });
+            copy.Children.Add(new TextBlock { Text = meta, FontSize = 9.5, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"] });
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 31, Padding = new Thickness(9), Width = width, Tag = work.Id };
+            row.Children.Add(art);
+            row.Children.Add(copy);
+            return row;
         }
 
         private static Style? _coverGridCardContainerStyle;
