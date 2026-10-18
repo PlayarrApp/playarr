@@ -1,1 +1,0 @@
-- Preserve text-field typing while handling remote navigation, and allow long playlist names in the native Tizen Create drawer.

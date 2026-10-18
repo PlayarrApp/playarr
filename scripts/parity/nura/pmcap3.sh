@@ -52,6 +52,11 @@ hash_image() {
   fi
 }
 
+# A capture can catch the VM display with a 64px tile of uninitialised (green) pixels that stays until the next repaint;
+# such a frame is never accepted. Exit 0 when the frame is clean.
+GREEN_CHECK=${PLAYARR_CAPTURE_GREEN_CHECK:-python3 -I $H/nogreen.py}
+frame_clean() { $GREEN_CHECK "$1"; }
+
 quote_remote() {
   local value=$1
   value=${value//\'/\'\\\'\'}
@@ -111,9 +116,15 @@ for route in "$@"; do
       echo "image hashing returned an empty digest for route: $route" >&2
       exit 1
     fi
-    if [ "$current" = "$previous" ]; then
+    if [ "$current" = "$previous" ] && frame_clean "$image"; then
       stable=1
       break
+    fi
+    if ! frame_clean "$image"; then
+      echo "green artefact in capture for route: $route (attempt $attempt), repainting" >&2
+      previous=
+      "$NUDGE" || true
+      continue
     fi
     previous=$current
     if [ "$attempt" -lt "$STABILITY_ATTEMPTS" ]; then sleep "$STABILITY_DELAY"; fi

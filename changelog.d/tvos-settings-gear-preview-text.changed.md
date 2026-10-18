@@ -1,1 +1,0 @@
-- Apple TV: Down from the profile avatar lands on the Settings gear.

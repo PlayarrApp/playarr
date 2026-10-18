@@ -1,1 +1,0 @@
-- Sailfish: the detail hero picture starts below the header row, as on the web.
