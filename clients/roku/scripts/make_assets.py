@@ -452,6 +452,7 @@ def main() -> None:
     nine_patch("round-outline-r82", 82, 1.2)
     nine_patch("round-ring-r12", 12, 3)
     nine_patch("round-ring-r25", 25, 3)
+    nine_patch("round-ring-r16", 16, 2)  # Library alphabet strip: the active letter's brand ring
     nine_patch("round-r32", 32)
     nine_patch("round-ring-r32", 32, 3)
     card_glow()

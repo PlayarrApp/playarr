@@ -705,8 +705,8 @@ export function createDriver({ out, args = [] } = {}) {
       await sleep(650);
     }
     await waitFor(() => focusSeq > beforeFocusSeq && focusSeq > focusFloorAtScreen && focusScreenSeq === screenSeq, "fresh profile focus", 5000);
-    if (!hasFreshScreenFocus({ screen, screenSeq, focus, focusSeq, focusScreenSeq }, "profiles", "Device Test", beforeScreenSeq, beforeFocusSeq)) {
-      throw new Error("Roku did not report fresh Device Test profile focus; refusing to select another profile");
+    if (!hasFreshScreenFocus({ screen, screenSeq, focus, focusSeq, focusScreenSeq }, "profiles", process.env.ROKU_PROFILE_NAME ?? "Device Test", beforeScreenSeq, beforeFocusSeq)) {
+      throw new Error(`Roku did not report fresh ${process.env.ROKU_PROFILE_NAME ?? "Device Test"} profile focus; refusing to select another profile`);
     }
   };
 
