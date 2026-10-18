@@ -148,10 +148,10 @@ Item {
                 width: 26 * Tokens.u; height: 19 * Tokens.u
                 onClicked: root.jumpTo(modelData)
                 Item {   // web focus ring on the first letter: crimson ring, page-coloured gap, clipped 1u above the rail
-                    visible: modelData === "#" && root.activeLetter === modelData
-                    x: -4 * Tokens.u; y: -1 * Tokens.u; width: parent.width + 8 * Tokens.u; height: parent.height + 7 * Tokens.u; clip: true
-                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + 1 * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
-                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + 1 * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
+                    visible: root.activeLetter === modelData
+                    x: -4 * Tokens.u; y: (index === 0 ? -1 : -8) * Tokens.u; width: parent.width + 8 * Tokens.u; height: parent.height + 14 * Tokens.u; clip: true
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? 1 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? 1 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
                 }
                 Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.dark ? "#d4d1d4" : Qt.rgba(0.22, 0.15, 0.13, 0.78) }   // web: ink at 78%
