@@ -336,15 +336,17 @@ def configured_player_route():
 def focus_first_card(click_xy=None):
     """Web's reference frames are taken with the first card of the page focused (lifted, with the glow ring). The Previewer never delivers
     a focus event, so the preview patch turns PosterCard's state-driven focused look (ringOn) on for the first card on screen."""
-    get("/state", resetfocused="1")
-    get("/setroute", name="focus:pcard")
-    assert_preview_telemetry_clean()
-    for _ in range(10):
-        time.sleep(1)
+    for _attempt in range(2):  # a second request: the first can land before the page behind a route-opened detail has built its cards
+        get("/state", resetfocused="1")
+        get("/setroute", name="focus:pcard")
         assert_preview_telemetry_clean()
-        if preview_focus_confirmed(json.loads(get("/state"))):
-            time.sleep(2)
-            return
+        for _ in range(10):
+            time.sleep(1)
+            assert_preview_telemetry_clean()
+            if preview_focus_confirmed(json.loads(get("/state"))):
+                time.sleep(2)
+                return
+        time.sleep(5)
     raise SystemExit("focus_first_card: no live card acknowledged focus")
 
 
@@ -418,7 +420,7 @@ def open_detail(kind, xy, wait):
 def leave_detail():
     """A detail opened through the route mailbox has no list page under it: leave through Home, as the pinned-detail path does."""
     if os.environ.get("PARITY_STATIC_SERVER") == "1":
-        route("home", 8)
+        route("home", 15)
     else:
         key("back"); time.sleep(3); key("back"); time.sleep(4)
 
