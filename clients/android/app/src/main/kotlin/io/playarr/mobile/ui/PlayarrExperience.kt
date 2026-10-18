@@ -4675,7 +4675,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                     val alphaCss = if (alphaTablet) 1f / LocalStageScale.current else 1f
                     Column(
                         modifier = Modifier.align(Alignment.TopEnd)
-                            .padding(top = if (alphaTablet) 222.dp * alphaCss else 278.dp, end = if (alphaTablet) 14.5.dp * alphaCss else 18.5.dp, bottom = 64.8.dp)
+                            .padding(top = if (alphaTablet) 222.dp * alphaCss else 278.dp, end = if (alphaTablet) 14.5.dp * alphaCss else 18.5.dp)
                             .width(44.dp * alphaCss).fillMaxHeight()
                             .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -4706,6 +4706,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             }
                             }
                         }
+                        // Web keeps the 64.8 px bottom padding inside the scrolling column, so letters run to the screen edge.
+                        Spacer(Modifier.height(64.8.dp))
                     }
                 }
             }
