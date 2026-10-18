@@ -728,7 +728,7 @@ else:
                     # check can see art that is still above the fold while the cards the frame will show are grey (light, 2026-10-15).
                     while clean < 2 and time.time() < art_end:
                         time.sleep(5)
-                        clean = clean + 1 if phone_flat_card_rows(png()) == 0 else 0
+                        clean = clean + 1 if phone_flat_card_rows(png(), top_px=700) == 0 else 0
                         if clean == 0 and time.time() >= next_reopen:
                             route("home", 6); route("detail:" + work_id, 8)
                             next_reopen = time.time() + 30
