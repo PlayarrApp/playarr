@@ -175,7 +175,7 @@ const TOUCH_CARD_GAP: number = 12;
 const TOUCH_ROW_GAP: number = 26.4;
 const TOUCH_GRID_TOP: number = 12;
 /** Web phone card caption (the poster card's title size at 360 vp). */
-const TOUCH_LIBRARY_TITLE_SIZE: number = 8.5;
+const TOUCH_LIBRARY_TITLE_SIZE: number = 8;
 /** The TV card caption size (`PosterCard`'s own default), passed through unchanged. */
 const TV_LIBRARY_TITLE_SIZE: number = 11.904;
 

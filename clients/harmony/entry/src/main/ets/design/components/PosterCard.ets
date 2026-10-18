@@ -481,7 +481,7 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
           .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
-          .fontColor(toResourceColor(activeColors().ink))
+          .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
@@ -496,7 +496,7 @@ export struct PosterCard {
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .padding(this.softCaption ? { top: 2, left: 2.3 } : { left: tv(TV_CAPTION_INSET) })
+          .padding({ left: this.softCaption ? 2.3 : tv(TV_CAPTION_INSET) })
       }
     }
     .width(this.cardWidth)
