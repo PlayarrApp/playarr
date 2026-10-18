@@ -38,7 +38,7 @@ if [[ ! -f "$WEB/index.html" ]]; then
 fi
 
 # 3. Pristine DB, artwork and clip. Rebuilt when the seed, the migrations or the binary change.
-STAMP="$( (git rev-parse HEAD:backend/migrations; sha1sum scripts/parity/static/build-db.mjs scripts/parity/static/catalogue.mjs scripts/parity/parity.env scripts/parity/screens.json; stat -c %Y "$BIN") | sha1sum | cut -c1-16)"
+STAMP="$( (git rev-parse HEAD:backend/migrations; sha1sum scripts/parity/static/build-db.mjs scripts/parity/static/catalogue.mjs scripts/parity/parity.env scripts/parity/screens.json; stat -c %Y "$BIN"; echo "${PARITY_ART_BASE:-}") | sha1sum | cut -c1-16)"
 if [[ ! -f "$HOME_DIR/pristine.db" || "$(cat "$HOME_DIR/pristine.stamp" 2>/dev/null)" != "$STAMP" ]]; then
   echo "static-server: building the pristine DB" >&2
   scoped node scripts/parity/static/build-db.mjs --server-bin "$BIN" --home "$HOME_DIR" >&2

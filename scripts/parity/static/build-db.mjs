@@ -21,7 +21,9 @@ if (!home || !serverBin) throw new Error("usage: build-db.mjs --server-bin <play
 const cfg = loadParityConfig();
 const password = process.env.PLAYARR_PARITY_STATIC_PASSWORD ?? readSecrets()["PLAYARR_PARITY_STATIC_PASSWORD"];
 if (!password) throw new Error("PLAYARR_PARITY_STATIC_PASSWORD is missing from ~/.secrets");
-const artBase = `http://127.0.0.1:${cfg.PARITY_ART_PORT}/art`;
+// Image URLs stored in the DB. Clients that fetch images[].url directly (the Apple apps) need one they can reach: the hosted
+// instance sets PARITY_ART_BASE to the public tunnel path (https://<host>/art); the default is the loopback artwork server.
+const artBase = process.env.PARITY_ART_BASE ?? `http://127.0.0.1:${cfg.PARITY_ART_PORT}/art`;
 const artDir = join(home, "art"), mediaDir = join(home, "media"), clip = join(mediaDir, "clip.mkv");
 const CLIP_SECONDS = 60, FONT = join(here, "../../fixtures/fonts/NunitoSans-Bold-art.ttf");
 mkdirSync(artDir, { recursive: true }); mkdirSync(mediaDir, { recursive: true });
