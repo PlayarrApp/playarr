@@ -681,6 +681,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   };
   return {
     strictReadiness: true,
+    endCrops: true, cropIds: ["filters-list", "filters-language"], // paired refs for the Xbox Filters List view and language flyout
     supports: { downloads: true, notifications: true, nowPlaying: true, "grouped-downloads": true },
     async setDeterministicCapture({ fixedNow: value, disableAnimations: disable = false, timeZone, locale } = {}) {
       if (!value || !Number.isFinite(Date.parse(value))) throw new Error("deterministic capture requires a valid fixedNow date string");

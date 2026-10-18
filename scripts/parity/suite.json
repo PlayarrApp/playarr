@@ -191,6 +191,8 @@
     { "id": "home-up-again", "from": "home", "keys": ["down", "down", "down", "up", "up"] },
     { "id": "home-right-end", "from": "home", "keys": ["right*14"] },
     { "id": "filters-bottom", "from": "filters", "keys": ["down*14"] },
+    { "id": "filters-list", "from": "filters", "keys": ["left", "select"] },
+    { "id": "filters-language", "from": "filters", "keys": ["down*3", "select"] },
     { "id": "home-covers", "from": "home", "keys": [], "launchArgs": ["-com.playarr.playarr.tvos.homeCovers", "YES"] },
     { "id": "home-covers-down1", "from": "home", "keys": ["down"], "launchArgs": ["-com.playarr.playarr.tvos.homeCovers", "YES"] },
     { "id": "home-covers-right-end", "from": "home", "keys": ["right*14"], "launchArgs": ["-com.playarr.playarr.tvos.homeCovers", "YES"] }
