@@ -2016,6 +2016,9 @@ async fn boot_api(
         // Calendar: refresh every source's data in the background so the calendar
         // API answers from the cache and never waits on an *arr instance.
         tokio::spawn(playarr_api::calendar_cache::run_refresher(state.clone()));
+    } else {
+        // Static mode never refreshes, but the seeded chunks are the whole calendar: load them once.
+        state.calendar_cache.load().await;
     }
 
     // Read the catalogue into memory now, so the first Home or Library request
