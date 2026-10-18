@@ -857,6 +857,7 @@ export struct ReleaseCalendar {
         [`${entrySubtitle(this.selected)}    ${entryWhenLabel(this.selected)}`] : [],
       synopsis: '',
       scrollRails: false,
+      railFrost: true,
       railsSlot: (): void => {
         this.agenda();
       },
@@ -1290,6 +1291,7 @@ export struct ReleaseCalendar {
     NavDestination() {
       Stack() {
       PageShell({
+        railFrostWidthPct: this.view === 'agenda' ? -1 : 0,
         title: t('pages.calendar.title', 'Calendar'),
         touch: true,
         touchContent: (): void => {
