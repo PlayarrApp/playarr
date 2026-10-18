@@ -35,6 +35,7 @@ sub buildTiles()
     ' Keep the current selection when possible, but a layout may remove that action.
     if specFor(m.focusIdx) = invalid then m.focusIdx = 0
     m.rings = {}
+    m.parts = {}
     for each t in m.specs
         fill = CreateObject("roSGNode", "Poster")
         fill.uri = "pkg:/images/round-r32.9.png"
@@ -53,6 +54,8 @@ sub buildTiles()
         end if
         m.tilesGroup.AppendChild(fill)
         x = t.x
+        ic = invalid
+        plus = invalid
         if t.icon <> ""
             ic = CreateObject("roSGNode", "Poster")
             ic.uri = "pkg:/images/" + t.icon
@@ -76,16 +79,21 @@ sub buildTiles()
         end if
         label = CreateObject("roSGNode", "Label")
         label.text = t.text
-        label.font = PlayarrMakeFont(700, 11)
+        label.font = PlayarrMakeFont(700, 12)
         roleName = "ink"
         if t.primary then roleName = "playerInk"
         if t.ink = true then roleName = "bg"
         label.color = ThemeColor(roleName)
         ThemeSetRole(label, roleName)
-        if t.icon <> ""
-            label.translation = [t.x + 56, t.y + t.h / 2 - 9]
+        ' Web centres the glyph and label in the pill: the glyph sits 18 px (icon) or 17 px (plus) before the label.
+        lead = 17
+        if t.icon <> "" then lead = 18
+        startX = t.x + (t.w - (lead + label.boundingRect().width)) / 2
+        label.translation = [startX + lead, t.y + t.h / 2 - 9]
+        if ic <> invalid
+            ic.translation = [startX, t.y + t.h / 2 - 8]
         else
-            label.translation = [t.x + 37, t.y + t.h / 2 - 9]
+            plus.translation = [startX, t.y + t.h / 2 - 11]
         end if
         m.tilesGroup.AppendChild(label)
         ring = CreateObject("roSGNode", "Poster")
@@ -98,6 +106,7 @@ sub buildTiles()
         ring.visible = false
         m.tilesGroup.AppendChild(ring)
         m.rings[t.id.ToStr()] = ring
+        m.parts[t.id.ToStr()] = { fill: fill, icon: ic, label: label }
     end for
     applyFocus()
 end sub
@@ -116,6 +125,28 @@ sub applyFocus()
     on = m.top.isInFocusChain()
     for each key in m.rings
         m.rings[key].visible = on and key = m.focusIdx.ToStr()
+    end for
+    ' Web .tv-detail-play:focus-visible: the ink pill turns brand-strong with white text.
+    for each key in m.parts
+        t = specFor(key.toInt())
+        if t <> invalid and t.ink = true
+            hot = on and key = m.focusIdx.ToStr()
+            fillRole = "ink"
+            textRole = "bg"
+            if hot
+                fillRole = "brandStrong"
+                textRole = "playerInk"
+            end if
+            part = m.parts[key]
+            part.fill.blendColor = ThemeColor(fillRole)
+            ThemeSetRole(part.fill, fillRole)
+            part.label.color = ThemeColor(textRole)
+            ThemeSetRole(part.label, textRole)
+            if part.icon <> invalid
+                part.icon.blendColor = ThemeColor(textRole)
+                ThemeSetRole(part.icon, textRole)
+            end if
+        end if
     end for
 end sub
 

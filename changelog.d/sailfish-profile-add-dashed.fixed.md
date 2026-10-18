@@ -1,0 +1,1 @@
+- Sailfish: the add-profile circle has the web's dashed border (profiles dark 90.35 to 90.38, light 89.62 to 89.66).

@@ -32,6 +32,7 @@ import { PLAYLISTS_NAV_ID } from '../navigation/NavItems';
 import { ROUTES } from '../navigation/Routes';
 import type { DetailRouteParams, PlayerRouteParams } from '../navigation/Routes';
 import { getNavStack, pushRoute } from '../navigation/NavStack';
+import { t } from '../core/Language';
 
 // Rows start where Search's results do: (826, 173), 1042 wide (the shared list look: Watchlist, Requests).
 const LIST_LEFT: number = 826;
@@ -305,13 +306,13 @@ export struct PlaylistsScreen {
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .layoutWeight(1)
-      this.pill('Open', (): void => {
+      this.pill(t('pages.calendar.open', 'Open'), (): void => {
         this.openTitle(item.workId);
       })
-      this.pill('Up', (): void => {
+      this.pill(t('remote.pad.up', 'Up'), (): void => {
         this.moveItem(index, -1);
       })
-      this.pill('Down', (): void => {
+      this.pill(t('remote.pad.down', 'Down'), (): void => {
         this.moveItem(index, 1);
       })
       this.pill('Remove', (): void => {
@@ -334,11 +335,11 @@ export struct PlaylistsScreen {
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width(tv(268))
-        this.pill('Delete playlist', (): void => {
+        this.pill(t('components.playlistContextMenu.confirmDelete', 'Delete playlist'), (): void => {
           this.removeOpened();
         })
       } else {
-        TextInput({ text: this.nameDraft, placeholder: 'Playlist name' })
+        TextInput({ text: this.nameDraft, placeholder: t('pages.playlists.namePlaceholder', 'Playlist name') })
           .fontSize(tv(15.36))
           .fontColor(toResourceColor(activeColors().ink))
           .placeholderColor(toResourceColor(activeColors().inkMuted))
@@ -349,11 +350,11 @@ export struct PlaylistsScreen {
           .onChange((value: string) => {
             this.nameDraft = value;
           })
-        this.pill('Save', (): void => {
+        this.pill(t('pages.downloads.save', 'Save'), (): void => {
           this.saveName();
         })
       }
-      this.pill('Cancel', (): void => {
+      this.pill(t('pages.downloads.cancel', 'Cancel'), (): void => {
         this.drawer = '';
       })
       if (this.notice.length > 0) {
@@ -393,7 +394,7 @@ export struct PlaylistsScreen {
       AsyncState({
         kind: AsyncStateKind.Error,
         message: "Couldn't load your playlists",
-        retryLabel: 'Try again',
+        retryLabel: t('components.states.retry', 'Try again'),
         retry: (): void => {
           this.load();
         },
@@ -405,7 +406,7 @@ export struct PlaylistsScreen {
     } else if (this.openId.length > 0 && this.itemsPhase === 'error') {
       this.message("Couldn't load this playlist", 'Go back to all playlists and try again.')
     } else if (this.openId.length === 0 && this.shownPlaylists().length === 0) {
-      this.message('No playlists yet', 'Playlists you create or that your server shares show up here.')
+      this.message(t('pages.playlists.noPlaylistsYetTitle', 'No playlists yet'), 'Playlists you create or that your server shares show up here.')
     } else {
       List({ space: tv(ROW_GAP) }) {
         ListItem() {
@@ -418,12 +419,12 @@ export struct PlaylistsScreen {
               this.pill('Play all', (): void => {
                 this.playAll();
               })
-              this.pill('Rename', (): void => {
+              this.pill(t('remote.pairings.rename', 'Rename'), (): void => {
                 this.nameDraft = this.openedPlaylist() !== undefined ? (this.openedPlaylist() as PlaylistResponse).name : '';
                 this.notice = '';
                 this.drawer = 'rename';
               })
-              this.pill('Delete', (): void => {
+              this.pill(t('components.playlistContextMenu.delete', 'Delete'), (): void => {
                 this.notice = '';
                 this.drawer = 'delete';
               })
@@ -444,7 +445,7 @@ export struct PlaylistsScreen {
         }
         ForEach(this.shownPlaylists(), (playlist: PlaylistResponse) => {
           ListItem() {
-            this.rowShell(playlist.name, playlistCaption(playlist), 'Open', (): void => {
+            this.rowShell(playlist.name, playlistCaption(playlist), t('pages.calendar.open', 'Open'), (): void => {
               this.open(playlist.id);
             })
           }
@@ -472,8 +473,8 @@ export struct PlaylistsScreen {
     }
     if (this.drawer.length > 0) {
       Drawer({
-        kicker: 'Playlists',
-        title: this.drawer === 'create' ? 'New playlist' : (this.drawer === 'rename' ? 'Rename playlist' : 'Delete playlist'),
+        kicker: t('pages.playlists.title', 'Playlists'),
+        title: this.drawer === 'create' ? 'New playlist' : (this.drawer === 'rename' ? 'Rename playlist' : t('components.playlistContextMenu.confirmDelete', 'Delete playlist')),
         onClose: (): void => {
           this.drawer = '';
         },
@@ -487,7 +488,7 @@ export struct PlaylistsScreen {
   build() {
     NavDestination() {
       PageShell({
-        title: this.openedPlaylist() !== undefined ? (this.openedPlaylist() as PlaylistResponse).name : 'Playlists',
+        title: this.openedPlaylist() !== undefined ? (this.openedPlaylist() as PlaylistResponse).name : t('pages.playlists.title', 'Playlists'),
         selectedId: PLAYLISTS_NAV_ID,
         kicker: this.openedPlaylist() !== undefined ? playlistCaption(this.openedPlaylist() as PlaylistResponse) : '',
         content: (): void => {

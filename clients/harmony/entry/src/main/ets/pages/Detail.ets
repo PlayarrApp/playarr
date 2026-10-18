@@ -100,6 +100,7 @@
  * reject outright.
  */
 
+import { t, tf } from '../core/Language';
 import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
@@ -240,6 +241,7 @@ const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 537;
 const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
 const SERIES_COLUMN_TOP: number = 361;
+const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 719;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
@@ -421,16 +423,16 @@ interface DetailSeasonRowArea {
 
 function kindLabel(kind: WorkKind): string {
   if (kind === 'movie') {
-    return 'Movie';
+    return t('pages.home.workKind.movie', 'Movie');
   }
   if (kind === 'series') {
-    return 'Series';
+    return t('pages.home.workKind.series', 'Series');
   }
   if (kind === 'site') {
     return 'Site';
   }
   if (kind === 'artist') {
-    return 'Artist';
+    return t('pages.home.workKind.artist', 'Artist');
   }
   return 'Author';
 }
@@ -497,14 +499,14 @@ function episodeMediaFileId(detail: EpisodeDetail): string | null {
 
 function buildEpisodeRow(detail: EpisodeDetail, seasonNumber: number): DetailRow {
   const episode = detail.episode;
-  let title = 'Episode ' + String(episode.episode_number);
+  let title = tf('pages.workDetail.episodeNumber', 'Episode {{number}}', { number: String(episode.episode_number) });
   if (episode.title !== undefined && episode.title !== null && episode.title.length > 0) {
     title = episode.title;
   }
   const row: DetailRow = {
     id: episode.id,
     title: title,
-    subtitle: 'Episode ' + String(episode.episode_number),
+    subtitle: tf('pages.workDetail.episodeNumber', 'Episode {{number}}', { number: String(episode.episode_number) }),
     episodeCaption: seriesEpisodeCaption(seasonNumber, episode.episode_number),
     episodeNumberOverlay: seriesEpisodeOverlayNumber(episode.episode_number),
     mediaFileId: episodeMediaFileId(detail),
@@ -518,7 +520,7 @@ function seasonHeading(season: Season): string {
   if (season.title !== undefined && season.title !== null && season.title.length > 0) {
     return season.title;
   }
-  return 'Season ' + String(season.season_number);
+  return tf('pages.workDetail.seasonNumber', 'Season {{number}}', { number: String(season.season_number) });
 }
 
 function buildSeasonRail(detail: SeasonDetail): DetailRail {
@@ -690,7 +692,7 @@ function buildSimilarRail(works: Work[]): DetailRail {
     };
     items.push(row);
   }
-  const rail: DetailRail = { id: 'similar', heading: 'Similar Titles', items: items };
+  const rail: DetailRail = { id: 'similar', heading: t('pages.workDetail.similarTitlesHeading', 'Similar Titles'), items: items };
   return rail;
 }
 
@@ -710,7 +712,7 @@ function chapterTimeLabel(ms: number): string {
 /** One chapter card (web Chapters rail): "Chapter 01" (or the chapter's own title) under the card, its start time as the caption. */
 function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
   const number = chapter.index < 9 ? '0' + (chapter.index + 1).toString() : (chapter.index + 1).toString();
-  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : 'Chapter ' + number;
+  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : tf('pages.workDetail.chapterNumber', 'Chapter {{number}}', { number: String(number) });
   const row: DetailRow = {
     id: 'chapter-' + chapter.index.toString(),
     title: title,
@@ -1064,7 +1066,7 @@ struct Detail {
     for (const chapter of result.value) {
       rows.push(chapterRow(chapter, mediaFileId));
     }
-    this.chaptersRail = { id: 'chapters', heading: 'Chapters', items: rows };
+    this.chaptersRail = { id: 'chapters', heading: t('pages.workDetail.chaptersHeading', 'Chapters'), items: rows };
     for (const chapter of result.value) {
       const thumb = await fetchMediaThumbnail(mediaFileId, chapter.start_ms);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
@@ -1793,7 +1795,7 @@ struct Detail {
   private shellTitle(): string {
     const kind = this.detail !== null ? this.detail.work.kind : 'movie';
     if (kind === 'series') {
-      return 'Series';
+      return t('pages.home.workKind.series', 'Series');
     }
     if (kind === 'artist') {
       return 'Music';
@@ -1809,6 +1811,16 @@ struct Detail {
   /** Web's series detail draws its secondary actions as flat text beside the filled Start pill (movie detail keeps the translucent capsules). */
   private isSeriesPage(): boolean {
     return this.detail !== null && this.detail.work.kind === 'series';
+  }
+
+  /** Web's series pills carry a soft drop shadow (light theme; the dark pills are flat). */
+  private pillShadow(primary: boolean): ShadowOptions {
+    if (!this.isSeriesPage() || resolvedThemeMode() === 'dark') {
+      return { radius: 0, color: Color.Transparent };
+    }
+    return primary
+      ? { radius: tv(22), offsetY: tv(10), color: 'rgba(56, 38, 33, 0.28)' }
+      : { radius: tv(22), offsetY: tv(8), color: 'rgba(56, 38, 33, 0.08)' };
   }
 
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
@@ -1831,6 +1843,7 @@ struct Detail {
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
     .backgroundColor(primary ? toResourceColor(activeColors().ink) : this.isSeriesPage() ? (resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7)) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
+    .shadow(this.pillShadow(primary))
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
     .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
@@ -1854,19 +1867,19 @@ struct Detail {
   private tvSeriesActions(): void {
     Row({ space: tv(PILL_GAP) }) {
       if (this.resumePlan !== null && this.resumePlan.target !== undefined && this.resumePlan.target !== null) {
-        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
         if (this.resumePlan.action !== 'start') {
-          this.actionPill('Ask again', '\u21BA', false, true, (): void => {
+          this.actionPill(t('pages.workDetail.resumeAskAgain', 'Ask again'), '\u21BA', false, true, (): void => {
             void this.askAgain();
           })
         }
       }
-      this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+      this.actionPill(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), this.listed === true ? '\u2713' : '+', false, true, (): void => {
         void this.toggleWatchlist();
       })
-      this.actionPill('Add to Playlist', '+', false, true, (): void => {
+      this.actionPill(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), '+', false, true, (): void => {
         this.actionsOpen = true;
       })
     }
@@ -1884,23 +1897,23 @@ struct Detail {
   private tvTitleActions(): void {
     Column({ space: tv(PILL_ROW_GAP) }) {
       Row({ space: tv(PILL_GAP) }) {
-        this.actionPill('Download', '\u21E9', false, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(t('components.mediaContextMenu.download', 'Download'), '\u21E9', false, this.primaryMediaFileId !== null, (): void => {
           this.actionsOpen = true;
         })
         if (this.primaryMediaFileId !== null && this.detail !== null && this.detail.work.kind === 'movie') {
-          this.actionPill('Playback', '\u2630', false, true, (): void => {
+          this.actionPill(t('pages.workDetail.playbackButtonLabel', 'Playback'), '\u2630', false, true, (): void => {
             this.optionsOpen = true;
           })
         }
-        this.actionPill(this.primaryLabel(), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(this.primaryLabel(), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
       }
       Row({ space: tv(PILL_GAP) }) {
-        this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+        this.actionPill(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), this.listed === true ? '\u2713' : '+', false, true, (): void => {
           void this.toggleWatchlist();
         })
-        this.actionPill('Add to Playlist', '+', false, true, (): void => {
+        this.actionPill(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), '+', false, true, (): void => {
           this.actionsOpen = true;
         })
       }
@@ -1935,13 +1948,13 @@ struct Detail {
   /** The primary pill's label: Resume from m:ss for a part-watched movie, else Play (Unavailable while nothing is playable). */
   private primaryLabel(): string {
     if (this.primaryMediaFileId === null) {
-      return 'Unavailable';
+      return t('pages.workDetail.unavailable', 'Unavailable');
     }
     if (this.resumePlan !== null) {
       return resumeButtonLabel(this.resumePlan);
     }
     if (this.resumeMs > 0) {
-      return 'Resume from ' + chapterTimeLabel(this.resumeMs);
+      return tf('pages.workDetail.resumeFrom', 'Resume from {{position}}', { position: chapterTimeLabel(this.resumeMs) });
     }
     return 'Play';
   }
@@ -2032,7 +2045,7 @@ struct Detail {
       }
       if (this.chaptersRail !== null) {
         Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
-          this.railHeading('Chapters', this.chaptersRail.items.length.toString() + ' chapters')
+          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
           MediaRail({
             railId: 'chapters',
             headingGap: 0,
@@ -2096,9 +2109,10 @@ struct Detail {
               measurementId: this.seriesMeasurementId('rail', this.workId, this.seriesFocusGeneration, rail.id),
               heading: '',
               headingGap: 0,
-              itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle) : PHONE_EPISODE_RAIL_GAP,
+              itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle + 2) : PHONE_EPISODE_RAIL_GAP, // +2: web pitch 294 vs 292
               clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
+              allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
               bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
               items: rail.items,
               listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : PHONE_SEASON_LIST_HEIGHT,
@@ -2166,14 +2180,19 @@ struct Detail {
 
       if (this.detail !== null && this.detail.work.kind === 'series') {
         Scroll(this.seriesStackScroller) {
-          this.tvRightColumn()
+          Column() {
+            this.tvRightColumn()
+          }
+          .width('100%')
+          .padding({ left: tv(SERIES_COLUMN_BLEED) })
         }
         .id(this.seriesMeasurementId('page', this.workId, this.seriesFocusGeneration, ''))
         .align(Alignment.Top)
-        .width(tv(RIGHT_COLUMN_WIDTH))
+        .width(tv(RIGHT_COLUMN_WIDTH + SERIES_COLUMN_BLEED))
         .height(tv(SERIES_COLUMN_HEIGHT))
         .scrollBar(BarState.Off)
-        .position({ x: tv(RIGHT_COLUMN_X), y: tv(SERIES_COLUMN_TOP) })
+        // The scroll box starts BLEED left of the column so the first card's focus ring (and lift) is not cut at the box edge.
+        .position({ x: tv(RIGHT_COLUMN_X - SERIES_COLUMN_BLEED), y: tv(SERIES_COLUMN_TOP) })
         .onAreaChange(this.seriesPageAreaReporter(this.workId, this.seriesFocusGeneration))
         .onScroll(this.seriesPageScrollReporter(this.workId, this.seriesFocusGeneration))
       } else {
@@ -2398,10 +2417,10 @@ struct Detail {
       .onClick(() => {
         this.playPrimary();
       })
-      this.touchSeriesAction(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
+      this.touchSeriesAction(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();
       })
-      this.touchSeriesAction('Add to Playlist', (): void => {
+      this.touchSeriesAction(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), (): void => {
         this.touchActionsOpen = true;
       })
     }
@@ -2420,19 +2439,19 @@ struct Detail {
   @Builder
   private touchMovieActionRows(): void {
     Row({ space: 8 }) {
-      this.touchActionButton('Download', (): void => {
+      this.touchActionButton(t('components.mediaContextMenu.download', 'Download'), (): void => {
         this.touchActionsOpen = true;
       }, 8, '\u21E9')
-      this.touchActionButton('Playback', (): void => {
+      this.touchActionButton(t('pages.workDetail.playbackButtonLabel', 'Playback'), (): void => {
         this.touchActionsOpen = true;
       }, 11, '\u2637')
       this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
     }
     Row({ space: 8 }) {
-      this.touchActionButton(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
+      this.touchActionButton(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();
       }, 8, this.listed === true ? '\u2713' : '+')
-      this.touchActionButton('Add to Playlist', (): void => {
+      this.touchActionButton(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), (): void => {
         this.touchActionsOpen = true;
       }, 8, '+')
     }
@@ -2558,7 +2577,7 @@ struct Detail {
           .onClick(() => {
             popRoute(getNavStack());
           })
-        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? 'Series' : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
+        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
           .fontSize(22)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))

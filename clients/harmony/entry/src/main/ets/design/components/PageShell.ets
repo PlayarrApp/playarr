@@ -24,7 +24,7 @@ import { getNavStack, popRoute } from '../../navigation/NavStack';
 
 // Web back button and title (the shared header look).
 const HEADER_SIZE: number = 50;
-const BACK_GLYPH_SIZE: number = 17.28;
+const BACK_GLYPH_SIZE: number = 14.5; // web's arrow glyph is smaller than 1.08rem looks in Nunito
 const TITLE_SIZE: number = 33.6;
 const TITLE_LETTER_SPACING: number = -1.512;
 const HEADER_GAP: number = 23;

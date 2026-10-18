@@ -7460,7 +7460,7 @@ internal fun SeriesEpisodeBrowser(
                 // The viewport reaches 40 dp left of the heading line so a focused first tile's ring, corner and glow are not clipped (web's track left gutter).
                 modifier = if (isTelevision) Modifier.padding(top = 18.3.dp + 13.85.dp * tabletDetail).extendStart(40.dp) else Modifier,
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp - 1.dp * tabletDetail else 12.dp),
-                contentPadding = if (isTelevision) PaddingValues(start = 44.dp - 3.dp * tabletDetail, top = 18.dp, end = tabletTrackEnd(24.dp), bottom = 24.dp * tabletDetail) else PaddingValues(vertical = 6.dp),
+                contentPadding = if (isTelevision) PaddingValues(start = 40.dp - 3.dp * tabletDetail, top = 18.dp, end = tabletTrackEnd(24.dp), bottom = 24.dp * tabletDetail) else PaddingValues(vertical = 6.dp),
             ) {
                 itemsIndexed(season.episodes, key = { _, it -> it.episode.id }) { episodeIndex, episode ->
                     EpisodeDetailCard(
@@ -7764,7 +7764,7 @@ internal fun MovieDetailBrowser(
                     }
                 }
             }
-            if (credits.cast.isNotEmpty()) DetailCreditsRail(credits.cast)
+            if (credits.cast.isNotEmpty()) DetailCreditsRail(credits.cast, television = true)
             if (similarWorks.isNotEmpty()) {
                 WebMediaTrack(
                     title = playarrString(PlayarrString.DetailSimilarTitles),
@@ -7884,7 +7884,7 @@ private fun WebMediaTrack(
             state = state ?: androidx.compose.foundation.lazy.rememberLazyListState(),
             // Measured against web at 1280 x 800: 10 css px more under the heading; the viewport reaches left so a focused first tile is not clipped.
             modifier = Modifier.padding(top = 17.2.dp + 15.dp * tabletTrack).extendStart(40.dp),
-            contentPadding = PaddingValues(start = 44.dp, top = 18.dp, end = tabletTrackEnd(24.dp)),
+            contentPadding = PaddingValues(start = 40.dp, top = 18.dp, end = tabletTrackEnd(24.dp)),
             horizontalArrangement = Arrangement.spacedBy(25.dp),
             content = cards,
         )
@@ -7941,48 +7941,62 @@ private fun WebEpisodeCard(
 }
 
 @Composable
-private fun DetailCreditsRail(credits: List<CreditResponse>) {
+private fun DetailCreditsRail(credits: List<CreditResponse>, television: Boolean = false) {
+    if (television) {
+        // Web `.tv-cast-track`: 152 dp cards 25 dp apart under the track heading, 103 dp headshots, 36 dp further below the chapters track.
+        Box(Modifier.padding(top = 36.dp)) {
+            WebMediaTrack(playarrString(PlayarrString.DetailCast), playarrString(PlayarrString.DetailCastCount, "count" to credits.size)) {
+                items(credits, key = CreditResponse::id) { credit -> DetailCreditCard(credit, 152.dp, 103.dp) }
+            }
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(playarrString(PlayarrString.DetailCast), color = WebInk, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
             items(credits, key = CreditResponse::id) { credit ->
-                Column(Modifier.width(104.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        Modifier
-                            .size(78.dp)
-                            .clip(CircleShape)
-                            .background(WebSurfaceSoft),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            credit.person.name.firstOrNull()?.uppercase() ?: "?",
-                            color = WebInkMuted,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        credit.person.headshotUrl?.let { url ->
-                            AsyncImage(
-                                model = url,
-                                contentDescription = credit.person.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                    Text(
-                        credit.person.name,
-                        color = WebInk,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 7.dp),
-                    )
-                    credit.character?.let {
-                        Text(it, color = WebInkMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
+                DetailCreditCard(credit, 104.dp, 78.dp)
             }
+        }
+    }
+}
+
+@Composable
+private fun DetailCreditCard(credit: CreditResponse, width: androidx.compose.ui.unit.Dp, avatar: androidx.compose.ui.unit.Dp) {
+    Column(Modifier.width(width), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier
+                .size(avatar)
+                .clip(CircleShape)
+                .background(WebSurfaceSoft),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                credit.person.name.firstOrNull()?.uppercase() ?: "?",
+                color = WebInkMuted,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            credit.person.headshotUrl?.let { url ->
+                AsyncImage(
+                    model = url,
+                    contentDescription = credit.person.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        Text(
+            credit.person.name,
+            color = WebInk,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 7.dp),
+        )
+        credit.character?.let {
+            Text(it, color = WebInkMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

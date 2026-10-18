@@ -26,6 +26,7 @@ internal sealed class PlaylistCreateDrawer : IDisposable
     private readonly List<PlaylistTreeEntry> _parents = new();
     private string _mediaType = "video";
     private int _parentIndex = -1;
+    private readonly List<ImageView> _mediaIcons = new();
     private bool _submitting;
     private bool _disposed;
 
@@ -52,41 +53,42 @@ internal sealed class PlaylistCreateDrawer : IDisposable
         panel.BorderlineColor = Ui.C(theme.Line);
         Root.Add(panel);
         Root.Add(Ui.Text("PERSONAL PLAYLIST", 1606, 54, 9.6f, 800, theme.InkMuted, 250, 14.4f, upper: true, spacing: 0.67f));
-        Root.Add(Ui.Text("Create playlist", 1606, 71.6f, 31.2f, 600, theme.Ink, 268, 46.8f, spacing: -1.6f));
+        Ui.Paragraph(Root, "Create playlist", 1606, 71.6f, 38.4f, 600, theme.Ink, 200, 57.6f, spacing: -2.1f);
 
         var closeView = Ui.Box(1826, 54, 48, 50, theme.SurfaceSoft, 25);
-        closeView.Add(Ui.Icon("close", 17, 18, 14, theme.Ink));
+        closeView.Add(Ui.Icon("close", 14, 15, 20, theme.Ink));
         var closeRing = Ring.Make(48, 50, 25, new Rgba(1, 1, 1));
         closeRing.Show(false);
         closeView.Add(closeRing);
         Root.Add(closeView);
         _focus.Items.Add(new Focusable { Rect = () => new Box(1826, 54, 48, 50), Label = "close", Style = focused => closeRing.Show(focused), Select = _close });
 
-        Root.Add(Ui.Text("NAME", 1606, 143, 9.6f, 800, theme.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f));
-        var nameBox = Ui.Box(1606, 168, 268, 58, new Rgba(theme.SurfaceSoft.R, theme.SurfaceSoft.G, theme.SurfaceSoft.B, 0.68f), 12);
+        Root.Add(Ui.Text("NAME", 1606, 221, 9.6f, 800, theme.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f));
+        var nameBox = Ui.Box(1606, 248, 268, 62, new Rgba(theme.SurfaceSoft.R, theme.SurfaceSoft.G, theme.SurfaceSoft.B, 0.68f), 12);
         nameBox.BorderlineWidth = 1;
         nameBox.BorderlineColor = Ui.LineA(theme, 0.74f);
         _name = new TextField
         {
-            PositionX = 16,
-            PositionY = 9,
-            Size = new Size(236, 40),
+            PositionX = 23,
+            PositionY = 11,
+            Size = new Size(222, 40),
             Focusable = true,
-            PixelSize = 13,
+            PixelSize = 15,
             TextColor = Ui.C(theme.Ink),
             PlaceholderText = "Playlist name",
             PlaceholderTextColor = Ui.C(theme.InkMuted),
             FontFamily = Ui.Font,
             EnableCursorBlink = true,
         };
+        _name.TextChanged += (_, _) => UpdateCreateEnabled();
         nameBox.Add(_name);
-        var nameRing = Ring.Make(268, 58, 12, new Rgba(1, 1, 1));
+        var nameRing = Ring.Make(268, 62, 12, new Rgba(1, 1, 1));
         nameRing.Show(false);
         nameBox.Add(nameRing);
         Root.Add(nameBox);
         _focus.Items.Add(new Focusable
         {
-            Rect = () => new Box(1606, 168, 268, 58),
+            Rect = () => new Box(1606, 248, 268, 62),
             Label = "playlist name",
             Style = focused =>
             {
@@ -100,70 +102,63 @@ internal sealed class PlaylistCreateDrawer : IDisposable
             Select = FocusName,
         });
 
-        Root.Add(Ui.Text("MEDIA TYPE", 1606, 249, 9.6f, 800, theme.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f));
-        (_video, _videoLabel) = MediaTypeOption(theme, "Video", 1606);
-        (_audio, _audioLabel) = MediaTypeOption(theme, "Audio", 1744);
+        Root.Add(Ui.Text("PLAYLIST TYPE", 1606, 323, 9.6f, 800, theme.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f));
+        (_video, _videoLabel) = MediaTypeOption(theme, "Video", "movies", 1606);
+        (_audio, _audioLabel) = MediaTypeOption(theme, "Audio", "music", 1745);
         Root.Add(_video);
         Root.Add(_audio);
         AddMediaFocus(_video, _videoLabel, 1606, "video");
-        AddMediaFocus(_audio, _audioLabel, 1744, "audio");
+        AddMediaFocus(_audio, _audioLabel, 1745, "audio");
 
-        Root.Add(Ui.Text("PARENT PLAYLIST", 1606, 341, 9.6f, 800, theme.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f));
-        var parentBox = Ui.Box(1606, 366, 268, 58, new Rgba(theme.SurfaceSoft.R, theme.SurfaceSoft.G, theme.SurfaceSoft.B, 0.68f), 12);
+        Root.Add(Ui.Text("PARENT PLAYLIST", 1606, 437, 9.6f, 800, theme.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f));
+        var parentBox = Ui.Box(1606, 464, 268, 62, new Rgba(theme.SurfaceSoft.R, theme.SurfaceSoft.G, theme.SurfaceSoft.B, 0.68f), 12);
         parentBox.BorderlineWidth = 1;
         parentBox.BorderlineColor = Ui.LineA(theme, 0.74f);
-        _parentValue = Ui.Text("None - top level", 16, 19, 11.84f, 700, theme.Ink, 220, 17.76f);
+        parentBox.Add(Ui.Icon("playlists", 21, 23, 16, theme.InkMuted));
+        _parentValue = Ui.Text("None - top level", 45, 22.5f, 11.84f, 700, theme.Ink, 190, 17.76f);
         parentBox.Add(_parentValue);
-        parentBox.Add(Ui.Text("‹  ›", 220, 19, 11.84f, 700, theme.InkMuted, 36, 17.76f, HorizontalAlignment.Center));
-        var parentRing = Ring.Make(268, 58, 12, new Rgba(1, 1, 1));
+        parentBox.Add(Ui.Icon("chevron-down", 237, 25, 12, theme.InkMuted));
+        var parentRing = Ring.Make(268, 62, 12, new Rgba(1, 1, 1));
         parentRing.Show(false);
         parentBox.Add(parentRing);
         Root.Add(parentBox);
         _focus.Items.Add(new Focusable
         {
-            Rect = () => new Box(1606, 366, 268, 58),
+            Rect = () => new Box(1606, 464, 268, 62),
             Label = "parent playlist",
             Style = focused => parentRing.Show(focused),
             Select = NextParent,
         });
-        Root.Add(Ui.Text("Select to change the parent playlist.", 1606, 432, 10.5f, 400, theme.InkMuted, 268, 15));
 
-        _error = Ui.Text("", 1606, 467, 11, 500, theme.Danger, 268, 34, multiline: true, maxLines: 2);
+        _error = Ui.Text("", 1606, 536, 11, 500, theme.Danger, 268, 34, multiline: true, maxLines: 2);
         _error.Show(false);
         Root.Add(_error);
-        (_create, _createLabel) = FormButton(theme, "Create", true, 1606, 516, 268, 56);
+        (_create, _createLabel) = FormButton(theme, "Create", true, 1606, 545, 268, 58);
         Root.Add(_create);
         var createRing = (View)_create.Children.Last();
         _focus.Items.Add(new Focusable
         {
-            Rect = () => new Box(1606, 516, 268, 56),
+            Rect = () => new Box(1606, 545, 268, 58),
             Label = "create playlist",
             Style = focused => createRing.Show(focused),
             Select = Submit,
         });
-        var cancel = FormButton(theme, "Cancel", false, 1606, 584, 268, 56).Box;
-        Root.Add(cancel);
-        var cancelRing = (View)cancel.Children.Last();
-        _focus.Items.Add(new Focusable
-        {
-            Rect = () => new Box(1606, 584, 268, 56),
-            Label = "cancel create playlist",
-            Style = focused => cancelRing.Show(focused),
-            Select = _close,
-        });
-
         SetMediaType("video");
-        _focus.Set(1);
+        _focus.Set(0); // web opens with the close button focused; Select on the name field starts typing
+        UpdateCreateEnabled();
     }
 
-    private (View Box, TextLabel Label) MediaTypeOption(PlayarrTheme theme, string label, float x)
+    private (View Box, TextLabel Label) MediaTypeOption(PlayarrTheme theme, string label, string icon, float x)
     {
-        var box = Ui.Box(x, 274, 130, 54, theme.SurfaceSoft, 12);
+        var box = Ui.Box(x, 350, 129, 74, theme.SurfaceSoft, 12);
         box.BorderlineWidth = 1;
         box.BorderlineColor = Ui.LineA(theme, 0.74f);
-        var text = Ui.Text(label, 0, 17, 12, 700, theme.InkMuted, 130, 18, HorizontalAlignment.Center);
+        var glyph = Ui.Icon(icon, 31, 25, 24, theme.InkMuted);
+        box.Add(glyph);
+        _mediaIcons.Add(glyph);
+        var text = Ui.Text(label, 67, 28, 12.8f, 700, theme.InkMuted, 56, 18);
         box.Add(text);
-        var ring = Ring.Make(130, 54, 12, new Rgba(1, 1, 1));
+        var ring = Ring.Make(129, 74, 12, new Rgba(1, 1, 1));
         ring.Show(false);
         box.Add(ring);
         return (box, text);
@@ -174,7 +169,7 @@ internal sealed class PlaylistCreateDrawer : IDisposable
         var ring = (View)box.Children.Last();
         _focus.Items.Add(new Focusable
         {
-            Rect = () => new Box(x, 274, 130, 54),
+            Rect = () => new Box(x, 350, 129, 74),
             Label = mediaType,
             Style = focused => ring.Show(focused),
             Select = () => SetMediaType(mediaType),
@@ -203,11 +198,18 @@ internal sealed class PlaylistCreateDrawer : IDisposable
         _videoLabel.TextColor = Ui.C(videoSelected ? theme.OnAccent : theme.InkMuted);
         _audio.BackgroundColor = Ui.C(videoSelected ? theme.SurfaceSoft : theme.Ink);
         _audioLabel.TextColor = Ui.C(videoSelected ? theme.InkMuted : theme.OnAccent);
+        _video.BorderlineColor = videoSelected ? Ui.C(theme.Brand) : Ui.LineA(theme, 0.74f);
+        _audio.BorderlineColor = videoSelected ? Ui.LineA(theme, 0.74f) : Ui.C(theme.Brand);
+        _mediaIcons[0].Color = Ui.C(videoSelected ? theme.OnAccent : theme.InkMuted);
+        _mediaIcons[1].Color = Ui.C(videoSelected ? theme.InkMuted : theme.OnAccent);
         _parents.Clear();
         _parents.AddRange(PlaylistDirectoryModel.EligibleParents(_entries, mediaType, _excludedPlaylistId));
         _parentIndex = -1;
         UpdateParentLabel();
     }
+
+    /// <summary>Web: the Create button is dimmed while the name is empty.</summary>
+    private void UpdateCreateEnabled() => _create.Opacity = _name.Text.Trim().Length == 0 ? 0.45f : 1f;
 
     private void NextParent()
     {

@@ -165,7 +165,8 @@ enum WMFormat {
 
     static func date(_ iso: String?) -> String? {
         guard let iso, let day = Self.parser.date(from: String(iso.prefix(10))) else { return nil }
-        return Self.display.string(from: day)
+        // Chrome's en-GB spells September "Sept"; Foundation's ICU data says "Sep".
+        return Self.display.string(from: day).replacingOccurrences(of: " Sep ", with: " Sept ")
     }
 
     static func yearRange(releaseDate: String?, endDate: String?) -> String? {
@@ -340,7 +341,7 @@ struct WMDetailPage: View {
     /// The hero art at `width` (the 390 pt web canvas, or the full screen for the strip behind the top inset).
     private func artBackdrop(width: CGFloat) -> some View {
         WMKeyArt(
-            work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5,
+            work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5, artScale: 1.01,
             lightOpacity: 0.41, webMask: true,
             fadeStops: [(0, 0), (120, 0), (160, 0.25), (200, 0.47), (240, isSeries ? 0.83 : 0.9), (270, 1)]
         )
@@ -650,7 +651,6 @@ struct WMDetailPage: View {
                 }
             }
             .shadow(color: focused ? WM.cardGlowColor.opacity(0.45) : .clear, radius: focused ? 20 : 0)
-            .scaleEffect(focused ? 1.025 : 1, anchor: .top)
             .overlay(alignment: .topTrailing) { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
             HStack(spacing: 9) {
                 WMText(code(season, episode.episode), 9.92, 700, color: focused ? WM.ink : WM.detailMuted, lh: 14.88).fixedSize()
