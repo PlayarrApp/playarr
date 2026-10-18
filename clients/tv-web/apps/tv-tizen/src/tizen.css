@@ -105,3 +105,8 @@ html[data-platform="tv-tizen"]
   border-color: #fff;
   background: #5b46e8;
 }
+
+/* Chromium 85 has no aspect-ratio, and the runtime fallback cannot size a pseudo-element: the alphabet letter circle collapsed to a flat pill. Same size as its width in global.css. */
+html[data-platform="tv-tizen"] .tv-alphabet button::before {
+  height: clamp(18px, calc(1.35 * var(--vw)), 24px);
+}

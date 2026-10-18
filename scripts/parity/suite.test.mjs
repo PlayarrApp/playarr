@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { assertCanonicalHomeProgress, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { assertCanonicalHomeProgress, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, routeStateLabel, validateSuite } from "./suite-lib.mjs";
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
@@ -42,6 +42,27 @@ test("routeMatches", () => {
   assert.ok(!routeMatches("/calendar?view=week", "/calendar?view=month"));
 });
 
+test("route state observations preserve Home as a non-empty state", () => {
+  assert.equal(routeStateLabel("/"), "home");
+  assert.equal(routeStateLabel("/?tab=home"), "home");
+  assert.equal(routeStateLabel("/movies/sample-id?panel=filters"), "movies/:id");
+  assert.throws(() => routeStateLabel(null), /no valid route/);
+  assert.throws(() => routeStateLabel(""), /no valid route/);
+});
+
+test("player-back-back observes Home after two back actions", async () => {
+  const check = suite.dpad.find(({ id }) => id === "player-back-back");
+  assert.deepEqual(check.keys, ["back", "back"]);
+  const driver = {
+    currentRoute: "/player/sample-id",
+    async key() { this.currentRoute = this.currentRoute === "/player/sample-id" ? "/movies/sample-id" : "/"; },
+    async location() { return this.currentRoute; },
+  };
+  for (const key of check.keys) await driver.key(key);
+  assert.equal(await driver.location(), "/");
+  assert.equal(routeStateLabel(await driver.location()), "home");
+});
+
 test("stable catalog lookup requires explicitly resolved account credentials", async () => {
   assert.deepEqual(await pinnedCatalogFiles(suite, {}), []);
   await assert.rejects(pinnedCatalogFiles(suite, {}, { required: true }), /resolved isolated account credentials/);
@@ -57,6 +78,13 @@ test("stable catalog lookup requires explicitly resolved account credentials", a
   });
   assert.equal(resolved.PLAYARR_USERNAME, "isolated-user");
   assert.equal(resolved.PLAYARR_SERVER_URL, "https://example.com");
+  const overridden = resolveCaptureEnvironment("web-capture-10620", {}, {
+    PLAYARR_PARITY_WEB_CAPTURE_10620_USERNAME: "isolated-user",
+    PLAYARR_PARITY_WEB_CAPTURE_10620_PASSWORD: "isolated-password",
+    PLAYARR_TEST_SERVER_URL: "https://override.example.com",
+    PLAYARR_DEVICE_TEST_SERVER_URL: "https://fallback.example.com",
+  });
+  assert.equal(overridden.PLAYARR_SERVER_URL, "https://override.example.com");
 });
 
 test("stable catalog lookup pins available episode files and tolerates episodes without files", async () => {
@@ -747,6 +775,106 @@ test("player toggle reference records exact web state and rejects an unchanged p
     const skippedResult = JSON.parse(readFileSync(join(out, "dpad.json"), "utf8"));
     assert.equal(skippedResult.results.find((x) => x.id === "player-ok-toggle").pass, null);
     assert.equal(existsSync(routed), false);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("reference fail-fast takes one D-pad observation and aborts without replacing expected.json", () => {
+  const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
+  if (testRoot) mkdirSync(testRoot, { recursive: true });
+  const out = mkdtempSync(join(testRoot || tmpdir(), "playarr-parity-fail-fast-"));
+  const driver = join(out, "driver.mjs");
+  const trace = join(out, "trace.log");
+  const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
+  const expectedContents = JSON.stringify({ suite: 1, dpad: {}, performance: {} });
+  const mismatchedExpected = JSON.stringify({ suite: 1, dpad: { "home-right": { label: "Other item", position: { rail: 0, index: 1 } } }, performance: {} });
+  writeFileSync(join(out, "expected.json"), expectedContents);
+  writeFileSync(driver, `
+    import { appendFileSync } from "node:fs";
+    const trace = (entry) => appendFileSync(process.env.PARITY_TEST_TRACE, entry + "\\n");
+    export async function createDriver() {
+      return {
+        async start() {}, async setTheme() {}, async home() {}, async location() { return "/"; },
+        async focused() {
+          trace("focus");
+          return { label: "Home item", position: process.env.PARITY_TEST_MODE === "wrong-start" ? { rail: 8, index: 8 } : { rail: 0, index: 0 } };
+        },
+        async key() { trace("key"); if (process.env.PARITY_TEST_MODE === "key-error") throw new Error("key failed; bearer=secret-fixture-label"); },
+        async stop() { trace("stop"); },
+      };
+    }
+  `);
+  const run = (mode, scoring = false) => spawnSync(process.execPath, [runner, "--driver", driver, "--out", out, "--only", "dpad", "--checks", "home-right,home-down", ...(scoring ? ["--expected", join(out, "expected.json")] : ["--reference"]), "--fail-fast"], {
+    encoding: "utf8",
+    env: { ...process.env, PARITY_TEST_TRACE: trace, PARITY_TEST_MODE: mode },
+  });
+  try {
+    for (const [mode, expectedTrace, scoring] of [
+      ["wrong-start", ["focus", "stop"], false],
+      ["key-error", ["focus", "key", "stop"], false],
+      ["normal", ["focus", "key", "focus", "stop"], true],
+    ]) {
+      writeFileSync(trace, "");
+      const contents = scoring ? mismatchedExpected : expectedContents;
+      writeFileSync(join(out, "expected.json"), contents);
+      const result = run(mode, scoring);
+      assert.notEqual(result.status, 0, result.stdout);
+      assert.deepEqual(readFileSync(trace, "utf8").trim().split("\n"), expectedTrace);
+      assert.equal(readFileSync(join(out, "expected.json"), "utf8"), contents);
+      assert.ok(existsSync(join(out, "failure.json")), result.stderr || result.stdout);
+      const report = JSON.parse(readFileSync(join(out, "failure.json"), "utf8"));
+      assert.deepEqual(Object.keys(report).sort(), ["category", "id", "route", "stage", "suite"]);
+      assert.equal(report.stage, "dpad");
+      assert.equal(report.id, "home-right");
+      assert.equal(report.route, "home");
+      assert.equal(report.category, mode === "wrong-start" ? "focus-start-mismatch" : "check-failed");
+      assert.doesNotMatch(JSON.stringify(report), /secret-fixture-label|bearer|key failed/i);
+    }
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("fail-fast performance and download failures report their case and clean up downloads", () => {
+  const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
+  if (testRoot) mkdirSync(testRoot, { recursive: true });
+  const out = mkdtempSync(join(testRoot || tmpdir(), "playarr-parity-case-fail-fast-"));
+  const driver = join(out, "driver.mjs");
+  const trace = join(out, "trace.log");
+  const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
+  writeFileSync(driver, `
+    import { appendFileSync } from "node:fs";
+    const trace = (entry) => appendFileSync(process.env.PARITY_TEST_TRACE, entry + "\\n");
+    export async function createDriver() {
+      return {
+        supports: { downloads: true },
+        async play(check) { trace("play:" + check.id); return { state: "stopped", advancedSeconds: 0, startSeconds: 0 }; },
+        async download(check) { trace("download:" + check.id); return { state: "error" }; },
+        async cleanupDownloads() { trace("cleanupDownloads"); },
+        async stop() { trace("stop"); },
+      };
+    }
+  `);
+  const run = (only) => spawnSync(process.execPath, [runner, "--driver", driver, "--out", out, "--only", only, "--reference", "--fail-fast"], {
+    encoding: "utf8",
+    env: { ...process.env, PARITY_TEST_TRACE: trace },
+  });
+  try {
+    for (const [only, expectedTrace, stage, id] of [
+      ["performance", ["play:a", "stop"], "performance", "a"],
+      ["downloads", ["download:movie-download", "cleanupDownloads", "stop"], "downloads", "movie-download"],
+    ]) {
+      writeFileSync(trace, "");
+      const result = run(only);
+      assert.notEqual(result.status, 0, result.stdout);
+      assert.deepEqual(readFileSync(trace, "utf8").trim().split("\n"), expectedTrace);
+      assert.ok(existsSync(join(out, "failure.json")), result.stderr || result.stdout);
+      const report = JSON.parse(readFileSync(join(out, "failure.json"), "utf8"));
+      assert.equal(report.stage, stage);
+      assert.equal(report.id, id);
+      assert.equal(report.category, "check-failed");
+    }
   } finally {
     rmSync(out, { recursive: true, force: true });
   }

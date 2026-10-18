@@ -85,6 +85,7 @@ SilicaFlickable {
         })
     }
     property int deckGen: 0
+    onRailsChanged: if (pageStack.currentPage && pageStack.currentPage.navigation && !pageStack.currentPage.navigation.moved) pageStack.currentPage.navigation.focusFirst(true)
 
     Component.onCompleted: load()
 
@@ -102,6 +103,7 @@ SilicaFlickable {
         Repeater {
             model: root.rails
             Rail {
+                parityRail: index
                 title: modelData.title
                 items: modelData.items
                 showUnwatched: !modelData.onDeck

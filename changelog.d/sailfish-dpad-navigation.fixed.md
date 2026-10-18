@@ -1,0 +1,2 @@
+- Sailfish parity keys now reach Qt through the VNC driver, with focus and route readback from the owned app process; directional navigation uses actual Qt focus and scrolls clipped rails and grids.
+- Sailfish acceptance runs can fail on the first route or D-pad error instead of retrying an intermittent failure to green.

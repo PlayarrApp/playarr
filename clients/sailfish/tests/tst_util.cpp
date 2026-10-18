@@ -103,6 +103,16 @@ int main()
                                                                         << en("2026-10-15", "2026-10-15T00:00:00Z", "B"));
     CHECK(allDay.at(0).toMap().value("entries").toList().at(0).toMap().value("title").toString(), QString("B")); // midnight sorts as all day, then by title
     CHECK(allDay.at(0).toMap().value("entries").toList().at(1).toMap().value("title").toString(), QString("C"));
+    auto epi = [](int season, int ep, const char *work) {
+        QVariantMap m; m["date"] = "2026-10-15"; m["release_at"] = ""; m["title"] = "Show"; m["media_kind"] = "episode"; m["work_id"] = work;
+        m["season_number"] = season; m["episode_number"] = ep; m["has_file"] = ep == 1; return QVariant(m); };
+    const QVariantList grouped = CalendarLogic::groupByDate(QVariantList() << epi(1, 1, "w") << epi(1, 2, "w") << epi(1, 4, "w") << epi(1, 1, "x"));
+    const QVariantList ge = grouped.at(0).toMap().value("entries").toList();
+    CHECK(ge.size(), 2); // w's three episodes collapse into one card, x stays alone
+    CHECK(ge.at(0).toMap().value("group_count").toInt(), 3);
+    CHECK(ge.at(0).toMap().value("group_codes").toString(), QString("S01E01\u2013E02, E04"));
+    CHECK(ge.at(0).toMap().value("has_file").toBool(), false); // one member missing its file
+    CHECK(ge.at(1).toMap().contains("group_count"), false);
     const QDate t(2026, 10, 11); // a Sunday
     QVariantMap w0 = CalendarLogic::rangeFor("week", 0, t, QLocale::c());
     CHECK(w0.value("start").toString(), QString("2026-10-05"));

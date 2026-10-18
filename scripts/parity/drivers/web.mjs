@@ -12,11 +12,13 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { assertAllowedDeviceTestUsername, assertDeviceTestPage, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl, trustedLoginUsername } from "../device-test-guard.mjs";
 
-// True when no card-art in view (and none cut by the viewport edge) lacks a loaded poster img.
+// True when no card-art in view (and none cut by the viewport edge) lacks a loaded poster img. A card-art with no img at all and a text
+// fallback (an empty playlist's name) is final: it will never load a poster, so waiting for one timed out every Playlists capture.
 const PLACEHOLDER_CARDS_GONE = () => ![...document.querySelectorAll("[class*=card-art]:not([class*=skeleton])")].some((e) => {
   const r = e.getBoundingClientRect();
   return r.width > 0 && r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0 &&
-    ![...e.querySelectorAll("img")].some((i) => i.complete && i.naturalWidth > 0);
+    ![...e.querySelectorAll("img")].some((i) => i.complete && i.naturalWidth > 0) &&
+    !(!e.querySelector("img") && (e.textContent ?? "").trim().length > 0);
 });
 
 const KEYS = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", select: "Enter", back: "Escape" };

@@ -7,6 +7,11 @@ import QtGraphicalEffects 1.0
 MouseArea {
     id: root
     property var work
+    property bool navigationFocusable: true
+    property bool navigationInitialFocus: false
+    property int parityRail: -1
+    property int parityIndex: -1
+    property bool navigationActive: false
     property real cardWidth: Tokens.px(189) - Tokens.px(16)
     property bool poster: false
     property bool compact: false        // library grids: title only
@@ -17,6 +22,8 @@ MouseArea {
     signal held(var work)
     width: cardWidth
     height: art.height + caption.height + (compact ? 12 : 8) * Tokens.u
+    function navigationActivate() { opened(work) }
+    function navigationLongPress() { held(work) }
     onClicked: opened(work)
     onPressAndHold: held(work)
 
@@ -61,25 +68,25 @@ MouseArea {
     // ring's own glow, 0 0 20px 4px at 45 %. The ring colour is what the web captures measure (141,37,60 light, 197,138,151 dark).
     readonly property color ringColor: Tokens.dark ? Qt.rgba(197 / 255, 138 / 255, 151 / 255, 1) : Qt.rgba(141 / 255, 37 / 255, 60 / 255, 1)
     RectangularGlow {
-        visible: root.ring
+        visible: root.navigationActive ? root.activeFocus : root.ring
         z: -1; y: 24 * Tokens.u; width: art.width; height: art.height
         glowRadius: 24 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
         color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.3)
     }
     RectangularGlow {
-        visible: root.ring
+        visible: root.navigationActive ? root.activeFocus : root.ring
         z: -1; y: 10 * Tokens.u; width: art.width; height: art.height
         glowRadius: 10 * Tokens.u; spread: 0.1; cornerRadius: Tokens.radius + glowRadius
         color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.2)
     }
     RectangularGlow {
-        visible: root.ring
+        visible: root.navigationActive ? root.activeFocus : root.ring
         z: -1; width: art.width; height: art.height
         glowRadius: 10 * Tokens.u; spread: 0.25; cornerRadius: Tokens.radius + glowRadius
         color: Qt.rgba(root.ringColor.r, root.ringColor.g, root.ringColor.b, 0.45)
     }
     Rectangle {
-        visible: root.ring
+        visible: root.navigationActive ? root.activeFocus : root.ring
         anchors { fill: art; margins: -3 * Tokens.u }
         radius: Tokens.radius + 3 * Tokens.u; color: "transparent"
         border.width: 3 * Tokens.u; border.color: root.ringColor

@@ -12,6 +12,7 @@ import {
   mirrorFramePayload,
   realNow,
   MIRROR_ACTIVE_PROFILE_KEY,
+  LIVE_SESSION_KEY,
   MIRROR_PROFILE_SESSIONS_KEY,
   readMirrorIdentity,
   readSelectedSession,
@@ -208,9 +209,11 @@ export function startDebugMirror(): void {
         cfg = { ...(cfg || {}), status: m.status, beatUrl: m.beatUrl, serverUrl: m.serverUrl ?? (cfg && cfg.serverUrl) ?? null };
       }
     };
+    let verified = null; // the last ok verdict and the credentials it was for
     const ask = async (c, auth) => {
-      const list = await (await fetch(c.profiles, { headers: { Authorization: auth } })).json();
-      return Array.isArray(list) ? list.filter((p) => p && p.is_current === true) : [];
+      const res = await fetch(c.profiles, { headers: { Authorization: auth } });
+      const list = await res.json();
+      return { expired: res.status === 401, current: Array.isArray(list) ? list.filter((p) => p && p.is_current === true) : [] };
     };
     setInterval(async () => {
       const c = cfg;
@@ -219,9 +222,13 @@ export function startDebugMirror(): void {
       let body = { ...base, status: c.status };
       if (c.status === "ok" && c.auth) {
         try {
-          let current = await ask(c, c.auth).catch(() => []);
+          let r = await ask(c, c.auth).catch(() => ({ expired: false, current: [] }));
           let userId = c.userId;
-          if (current.length !== 1 && previous) { current = await ask(c, previous.auth).catch(() => []); userId = previous.userId; }
+          if (r.current.length !== 1 && previous) { r = await ask(c, previous.auth).catch(() => ({ expired: false, current: [] })); userId = previous.userId; }
+          let current = r.current;
+          // An idle app does not refresh its expired access token; the account behind the same token is still the one verified earlier.
+          if (r.expired && verified && verified.auth === c.auth && verified.userId === c.userId) { current = [{ id: c.userId, username: verified.username }]; userId = c.userId; }
+          else if (current.length === 1 && userId === c.userId && current[0].id === userId && typeof current[0].username === "string") verified = { auth: c.auth, userId, username: current[0].username };
           body = current.length === 1 && current[0].id === userId && typeof current[0].username === "string"
             ? { ...base, checkedAt: Date.now(), status: "ok", isCurrentCount: 1, username: current[0].username }
             : { ...base, status: "identity_unavailable" };
@@ -239,7 +246,7 @@ export function startDebugMirror(): void {
   const nativeSetItem = Storage.prototype.setItem;
   Storage.prototype.setItem = function (this: Storage, key: string, value: string): void {
     nativeSetItem.call(this, key, value);
-    if (this === window.localStorage && (key === MIRROR_PROFILE_SESSIONS_KEY || key === MIRROR_ACTIVE_PROFILE_KEY)) syncCredentials();
+    if (this === window.localStorage && (key === MIRROR_PROFILE_SESSIONS_KEY || key === MIRROR_ACTIVE_PROFILE_KEY || key === LIVE_SESSION_KEY)) syncCredentials();
   };
   syncCredentials();
   let verifying = false;

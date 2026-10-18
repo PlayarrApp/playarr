@@ -77,6 +77,7 @@ jobs:
       linux-mobile: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.linux-mobile == 'true' }}
       tv-web: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.tv-web == 'true' }}
       firetv: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.firetv == 'true' }}
+      parity-tools: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.parity-tools == 'true' }}
       tv_web_filters: ${{ steps.tvweb.outputs.tv_web_filters }}
     steps:
       - uses: actions/checkout@v4
@@ -221,6 +222,11 @@ jobs:
               - 'clients/tv-web/web/src/lib/i18n/**'
               - 'clients/tv-web/web/src/styles/global.css'
               - 'docs/parity/fonts/**'
+              - '.github/workflows/ci.yml'
+            # Parity tool tests read the parity workflows and screens.json beside the tools themselves.
+            parity-tools:
+              - 'scripts/parity/**'
+              - '.github/workflows/parity-*.yml'
               - '.github/workflows/ci.yml'
 
   # ---------------------------------------------------------------------
@@ -916,6 +922,41 @@ jobs:
         run: pnpm run build:storybook
 
   # ---------------------------------------------------------------------
+  # Parity tool tests (scripts/parity): node:test unit tests with mocked browsers and drivers, no device or browser needed.
+  # ---------------------------------------------------------------------
+  parity-tools-check:
+    name: Parity tool tests
+    needs: changes
+    if: needs.changes.outputs.parity-tools == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: scripts/parity
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: scripts/parity/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg  # the Roku pixel-sampling test shells out to ffmpeg
+          npm ci --no-audit --no-fund
+
+      - name: Test (test:suite plus driver and Sailfish tests)
+        run: |
+          export PLAYARR_PARITY_TEST_OUT="$RUNNER_TEMP/parity-test-out"
+          mkdir -p "$PLAYARR_PARITY_TEST_OUT"
+          npm run test:suite
+          node --test drivers/*.test.mjs sailfish/*.test.mjs
+
+  # ---------------------------------------------------------------------
   # Terminal aggregator -- see the file header comment for why this is the
   # only job that should be a required status check.
   # ---------------------------------------------------------------------
@@ -934,6 +975,7 @@ jobs:
       - linux-mobile-check
       - tv-web-check
       - firetv-check
+      - parity-tools-check
       - web-storybook
       - openapi-contract-check
     if: always()
@@ -947,7 +989,7 @@ jobs:
           echo "$NEEDS_JSON" | jq .
 
           fail=0
-          for job in changes backend-check android-check android-apk xbox-check tizen-native-check xbox-uwp-package harmony-check harmony-hap linux-mobile-check tv-web-check firetv-check web-storybook openapi-contract-check; do
+          for job in changes backend-check android-check android-apk xbox-check tizen-native-check xbox-uwp-package harmony-check harmony-hap linux-mobile-check tv-web-check firetv-check parity-tools-check web-storybook openapi-contract-check; do
             result=$(echo "$NEEDS_JSON" | jq -r --arg j "$job" '.[$j].result // "missing"')
             echo "Job '$job' result: $result"
             case "$result" in
