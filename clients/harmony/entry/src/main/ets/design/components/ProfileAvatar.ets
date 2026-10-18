@@ -198,6 +198,9 @@ export struct ProfileAvatar {
             [toResourceColor({ r: (this.preset().gradientEnd).r, g: (this.preset().gradientEnd).g, b: (this.preset().gradientEnd).b, a: 1 }), 1],
           ],
         })
+        // Phone: web's glow around the current profile's ring (the opaque base is what ArkUI casts a shadow from)
+        .borderRadius(this.diameter / 2)
+        .shadow(this.ringOn ? { radius: 34, color: toResourceColorWithAlpha(this.ringColour(), 0.45), offsetY: 0 } : { radius: 0, color: Color.Transparent })
 
       // Overlay: radial-gradient(circle at 34% 26%, white@0.28, transparent 27%).
       Column()
