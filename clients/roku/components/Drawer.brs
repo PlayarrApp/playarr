@@ -19,8 +19,8 @@ sub drawerOpen(kicker as String, title as String, items as Object, returnTo as S
     pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
     pgLabel(g, 1606, 56, 190, 16, UCase(kicker), 11, 700, "inkMuted")
     pgLabel(g, 1606, 75, 214, 120, title, 36, 600, "ink", { wrap: true, maxLines: 2, lineSpacing: -8 })
-    pgRound(g, 1826, 54, 48, 48, 24, "surface", 179)
-    pgRound(g, 1826, 54, 48, 48, 24, "line", -1, true)
+    pgRound(g, 1825.5, 53.5, 49, 49, 25, "surface", 179)
+    pgRound(g, 1825.5, 53.5, 49, 49, 25, "line", -1, true)
     pgIcon(g, 1838, 66, 24, "player-close.png", "ink")
     m.drawerRings = []
     for i = 0 to items.Count() - 1
