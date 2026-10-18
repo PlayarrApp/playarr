@@ -415,6 +415,12 @@ def open_detail(kind, xy, wait):
         click(*xy); time.sleep(wait)
 
 
+def leave_detail():
+    """A detail opened through the route mailbox has no list page under it: the next route() call is the way out."""
+    if os.environ.get("PARITY_STATIC_SERVER") != "1":
+        key("back"); time.sleep(3); key("back"); time.sleep(4)
+
+
 def walk(folder, suffix):
     """The route-based screen walk (captures as <id><suffix>.png). Clicks only inside pages."""
     n = lambda s: s + suffix
@@ -426,9 +432,9 @@ def walk(folder, suffix):
                           for k in ("home-card-artwork-ok", "poster-image-complete", "poster-image-error")}, flush=True)
     route("library:movie", 15); focus_first_card((946, 254)); snap(n("movies"), folder, 150000)
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
-    open_detail("movies", (946, 254), 12); snap(n("film-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
+    open_detail("movies", (946, 254), 12); snap(n("film-detail"), folder); leave_detail()
     route("library:series", 15); focus_first_card((946, 254)); snap(n("series"), folder, 150000)
-    open_detail("series", (946, 254), 12); focus_first_card(); snap(n("series-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
+    open_detail("series", (946, 254), 12); focus_first_card(); snap(n("series-detail"), folder); leave_detail()
     route("library:artist", 15); focus_first_card((946, 254)); snap(n("music"), folder, 150000)
     route("calendar", 18); snap(n("calendar-agenda"), folder)
     click(1877, 272); time.sleep(4); click(1740, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-week"), folder)
