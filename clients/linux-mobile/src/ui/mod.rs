@@ -263,7 +263,11 @@ impl App {
         let close_primary = close_primary && !filters;
         let panel = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
-            .css_classes(if filters { vec!["pa-panel", "filters"] } else { vec!["pa-panel"] })
+            .css_classes(if filters {
+                vec!["pa-panel", "filters"]
+            } else {
+                vec!["pa-panel"]
+            })
             .build();
         let head = gtk4::Box::builder()
             .spacing(10)

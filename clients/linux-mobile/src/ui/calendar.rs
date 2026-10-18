@@ -538,7 +538,8 @@ impl Cal {
                     for _ in 0..today_col.unwrap_or(0) {
                         col = col.and_then(|c| c.next_sibling());
                     }
-                    view.hadjustment().set_value(col.map_or(0.0, |c| f64::from(c.allocation().x())));
+                    view.hadjustment()
+                        .set_value(col.map_or(0.0, |c| f64::from(c.allocation().x())));
                 });
             }
             View::Month => self.render_month(&days),

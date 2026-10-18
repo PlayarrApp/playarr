@@ -415,7 +415,11 @@ impl Lib {
             let mut out = Vec::new();
             for (i, n) in names.iter().enumerate() {
                 let t = gtk4::ToggleButton::builder()
-                    .css_classes(if glyphs { vec!["pa-seg-tile", "view"] } else { vec!["pa-seg-tile"] })
+                    .css_classes(if glyphs {
+                        vec!["pa-seg-tile", "view"]
+                    } else {
+                        vec!["pa-seg-tile"]
+                    })
                     .active(i == active)
                     .build();
                 if glyphs {
@@ -727,10 +731,19 @@ const VIEW_GLYPHS: [(i32, i32); 3] = [(20, 10), (21, 5), (17, 13)];
 fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
     let (w, h) = VIEW_GLYPHS[i];
     let weak = tile.downgrade();
-    let area = gtk4::DrawingArea::builder().content_width(w).content_height(h).halign(gtk4::Align::Center).build();
+    let area = gtk4::DrawingArea::builder()
+        .content_width(w)
+        .content_height(h)
+        .halign(gtk4::Align::Center)
+        .build();
     area.set_draw_func(move |_, cr, w, h| {
         let on = weak.upgrade().is_some_and(|t| t.is_active());
-        let c = gtk4::gdk::RGBA::parse(crate::icons::color(if on { crate::icons::Tone::OnAccent } else { crate::icons::Tone::Ink })).unwrap();
+        let c = gtk4::gdk::RGBA::parse(crate::icons::color(if on {
+            crate::icons::Tone::OnAccent
+        } else {
+            crate::icons::Tone::Ink
+        }))
+        .unwrap();
         cr.set_source_rgba(c.red().into(), c.green().into(), c.blue().into(), 1.0);
         let (w, h) = (f64::from(w), f64::from(h));
         match i {
@@ -753,7 +766,13 @@ fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
                     cr.arc(x2 - r, 0.8 + r, r, -std::f64::consts::FRAC_PI_2, 0.0);
                     cr.arc(x2 - r, y2 - r, r, 0.0, std::f64::consts::FRAC_PI_2);
                     cr.arc(x + r, y2 - r, r, std::f64::consts::FRAC_PI_2, std::f64::consts::PI);
-                    cr.arc(x + r, 0.8 + r, r, std::f64::consts::PI, 3.0 * std::f64::consts::FRAC_PI_2);
+                    cr.arc(
+                        x + r,
+                        0.8 + r,
+                        r,
+                        std::f64::consts::PI,
+                        3.0 * std::f64::consts::FRAC_PI_2,
+                    );
                     cr.close_path();
                 }
             }
@@ -764,7 +783,11 @@ fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
         let area = area.clone();
         move |_| area.queue_draw()
     });
-    let col = gtk4::Box::builder().orientation(gtk4::Orientation::Vertical).spacing(8).valign(gtk4::Align::Center).build();
+    let col = gtk4::Box::builder()
+        .orientation(gtk4::Orientation::Vertical)
+        .spacing(8)
+        .valign(gtk4::Align::Center)
+        .build();
     col.append(&area);
     col.append(&gtk4::Label::new(Some(name)));
     tile.set_child(Some(&col));
