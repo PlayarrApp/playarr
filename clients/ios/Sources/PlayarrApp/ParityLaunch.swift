@@ -84,6 +84,20 @@ enum ParityLaunch {
         state[key] = value
         if let data = try? JSONSerialization.data(withJSONObject: state) { try? data.write(to: url, options: .atomic) }
     }
+    /// Parity-only trace of the Home load and readiness transitions: kept in the state file ("trace") and the system log.
+    @MainActor static func trace(_ message: String) {
+        guard isActive else { return }
+        let url = acceptanceStateURL
+        var state = (try? JSONSerialization.jsonObject(with: Data(contentsOf: url))) as? [String: Any] ?? [:]
+        var lines = state["trace"] as? [String] ?? []
+        lines.append(String(format: "%.2f %@", Date().timeIntervalSince(traceStart), message))
+        state["trace"] = lines
+        if let data = try? JSONSerialization.data(withJSONObject: state) { try? data.write(to: url, options: .atomic) }
+        NSLog("PLAYARR_PARITY_TRACE %@", message)
+        traceLines = lines
+    }
+    @MainActor static var traceLines: [String] = []
+    private static let traceStart = Date()
     @MainActor static func recordedBool(_ key: String) -> Bool? {
         let url = acceptanceStateURL
         return ((try? JSONSerialization.jsonObject(with: Data(contentsOf: url))) as? [String: Any])?[key] as? Bool

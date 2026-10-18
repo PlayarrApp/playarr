@@ -69,6 +69,10 @@ struct HomeView: View {
             if case .idle = viewModel.loadState { await viewModel.load() }
         }
         .parityScreenLoad(parityLoadState)
+        #if DEBUG
+        .onAppear { ParityLaunch.trace("HomeView appear, loadState \(viewModel.loadState)") }
+        .onDisappear { ParityLaunch.trace("HomeView disappear, loadState \(viewModel.loadState)") }
+        #endif
     }
 
     private var parityLoadState: ParityScreenLoad {

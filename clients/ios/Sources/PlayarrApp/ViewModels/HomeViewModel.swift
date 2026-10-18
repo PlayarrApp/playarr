@@ -38,7 +38,13 @@ public final class HomeViewModel {
         }
     }
 
-    public private(set) var loadState: LoadState = .idle
+    public private(set) var loadState: LoadState = .idle {
+        didSet {
+            #if DEBUG
+            ParityLaunch.trace("home vm \(ObjectIdentifier(self).hashValue % 10000) loadState \(oldValue) -> \(loadState)")
+            #endif
+        }
+    }
     public private(set) var recentlyAdded: [Work] = []
     public private(set) var continueWatching: [ProgressItem] = []
     public private(set) var rails: [Rail] = []

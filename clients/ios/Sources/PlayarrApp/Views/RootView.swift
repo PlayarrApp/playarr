@@ -370,6 +370,7 @@ private struct AuthenticatedPlayarrShell: View {
         self.environment = environment
         #if DEBUG
         self.parityIdentityVerified = parityIdentityVerified
+        ParityLaunch.trace("shell init identityVerified=\(parityIdentityVerified)")
         #endif
         _homeViewModel = State(initialValue: HomeViewModel(apiClient: environment.apiClient))
         _household = State(initialValue: HouseholdViewModel(apiClient: environment.apiClient))
@@ -425,6 +426,12 @@ private struct AuthenticatedPlayarrShell: View {
         .background(PlayarrStyle.background.ignoresSafeArea())
         .environment(visibleDetailRoutes)
         #if DEBUG
+        .overlay(alignment: .bottomLeading) { // TEMPORARY (diagnostic run): the trace in the captured frame
+            TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+                Text(ParityLaunch.traceLines.suffix(14).joined(separator: "\n"))
+                    .font(.system(size: 7, design: .monospaced)).foregroundStyle(.red).allowsHitTesting(false)
+            }
+        }
         .overlay(alignment: .topLeading) {
             if ParityLaunch.isActive {
                 VStack {
@@ -472,6 +479,7 @@ private struct AuthenticatedPlayarrShell: View {
         .onPreferenceChange(ParityScreenReadinessKey.self) { parityScreen = $0 }
         .onChange(of: parityReadiness, initial: true) { _, readiness in
             guard ParityLaunch.isActive, readiness.identityVerified else { return }
+            ParityLaunch.trace("screenContentReady \(readiness.contentReady) (screen \(String(describing: readiness.screen)))")
             ParityLaunch.record("screenContentReady", readiness.contentReady)
             if readiness.failed { ParityLaunch.record("failure", "requested-screen-load-failed") }
         }
