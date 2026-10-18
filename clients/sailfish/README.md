@@ -60,6 +60,7 @@ matching Target plus `qemu-user` for the target's own tools; build those where t
 Silica render) and writes screenshots: `python3 tests/fake_server.py <port>`, seed a profile in the app's settings
 file for that server, then run `playarr-smoke` with `QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software` and
 `SMOKE_STEPS='wait|grab:out.png'`. Real rendering is checked on the Sailfish emulator.
+`tests/smoke/dpad-search.sh` is the D-pad check on that harness (Search focus order, Return/Escape editing); it builds the smoke itself when no binary is given and needs `qmake-qt5`.
 
 ## Storage
 

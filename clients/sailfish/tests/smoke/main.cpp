@@ -26,6 +26,26 @@ struct PageStatus : QObject { Q_OBJECT public: enum Status { Inactive, Activatin
 struct Orientation : QObject { Q_OBJECT public: enum O { Portrait = 1, All = 15 }; Q_ENUMS(O) };
 struct BusyIndicatorSize : QObject { Q_OBJECT public: enum S { Small, Medium, Large }; Q_ENUMS(S) };
 
+// Stand-in for Silica's EnterKey attached type (the on-screen keyboard's enter key); only the properties the QML sets.
+class EnterKeyAttached : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QString iconSource MEMBER m_icon)
+signals:
+    void clicked();
+public:
+    using QObject::QObject;
+private:
+    QString m_icon;
+};
+struct EnterKeyType : QObject
+{
+    Q_OBJECT
+public:
+    static EnterKeyAttached *qmlAttachedProperties(QObject *parent) { return new EnterKeyAttached(parent); }
+};
+QML_DECLARE_TYPEINFO(EnterKeyType, QML_HAS_ATTACHED_PROPERTIES)
+
 // Stand-in for QtMultimedia's MediaPlayer (enums and the properties PlayerPage uses).
 class MockPlayer : public QObject
 {
@@ -61,6 +81,7 @@ int main(int argc, char *argv[])
     qmlRegisterUncreatableType<Orientation>("Sailfish.Silica", 1, 0, "Orientation", "enum");
     qmlRegisterUncreatableType<BusyIndicatorSize>("Sailfish.Silica", 1, 0, "BusyIndicatorSize", "enum");
     qmlRegisterType<MockPlayer>("QtMultimedia", 5, 6, "MediaPlayer");
+    qmlRegisterType<EnterKeyType>("Sailfish.Silica", 1, 0, "EnterKey");
     Api api;
     Playback playback;
     Calendar calendar;
