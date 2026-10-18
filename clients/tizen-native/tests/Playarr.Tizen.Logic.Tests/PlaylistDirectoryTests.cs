@@ -68,6 +68,76 @@ public sealed class PlaylistDirectoryTests
     }
 
     [Fact]
+    public void DetailTracksPutRootFirstThenAllDescendantsInNaturalSiblingOrder()
+    {
+        var root = Entry("Root", null);
+        var ten = Entry("Mix 10", root.Playlist.Id);
+        var two = Entry("Mix 2", root.Playlist.Id);
+        var nested = Entry("Nested", two.Playlist.Id);
+
+        var tracks = PlaylistDirectoryModel.DetailTracks(new[] { ten, nested, root, two }, root.Playlist.Id);
+
+        Assert.Equal(new[] { "Root", "Mix 2", "Nested", "Mix 10" }, tracks.Select(entry => entry.Playlist.Name));
+    }
+
+    [Fact]
+    public void DetailTracksStopOnCyclesAndReturnEmptyForMissingRoot()
+    {
+        var first = Entry("First", null);
+        var second = Entry("Second", first.Playlist.Id);
+        first = first with { ParentPlaylistId = second.Playlist.Id };
+
+        Assert.Empty(PlaylistDirectoryModel.DetailTracks(new[] { first, second }, Guid.NewGuid()));
+        Assert.Equal(new[] { "First", "Second" }, PlaylistDirectoryModel.DetailTracks(new[] { first, second }, first.Playlist.Id).Select(entry => entry.Playlist.Name));
+    }
+
+    [Fact]
+    public void SavedFocusedWorkRestoresByTrackAndWorkAfterTheRailOrderChanges()
+    {
+        var saved = new PlaylistItemFocus(Guid.NewGuid(), Guid.NewGuid());
+        var current = new[]
+        {
+            new PlaylistItemFocus(Guid.NewGuid(), Guid.NewGuid()),
+            saved,
+            new PlaylistItemFocus(Guid.NewGuid(), Guid.NewGuid()),
+        };
+
+        Assert.Equal(1, PlaylistDirectoryModel.ResolveFocusIndex(current, saved, 0));
+        Assert.Equal(2, PlaylistDirectoryModel.ResolveFocusIndex(current, new PlaylistItemFocus(Guid.NewGuid(), Guid.NewGuid()), 2));
+        Assert.Equal(-1, PlaylistDirectoryModel.ResolveFocusIndex(Array.Empty<PlaylistItemFocus>(), saved, 0));
+    }
+
+    [Fact]
+    public void EligibleParentsExcludeSystemOtherMediaSelfAndDescendants()
+    {
+        var root = Entry("Root", null, "video");
+        var current = Entry("Current", root.Playlist.Id, "video");
+        var descendant = Entry("Descendant", current.Playlist.Id, "video");
+        var sibling = Entry("Sibling", root.Playlist.Id, "video");
+        var system = Entry("System", null, "video", isSystem: true);
+        var audio = Entry("Audio", null, "audio");
+
+        var choices = PlaylistDirectoryModel.EligibleParents(new[] { root, current, descendant, sibling, system, audio }, current.Playlist.Id, "video");
+
+        Assert.Equal(new[] { "Root", "Sibling" }, choices.Select(entry => entry.Playlist.Name));
+    }
+
+    [Fact]
+    public void EligibleParentsStopAtCyclesAndMatchCreateMediaType()
+    {
+        var first = Entry("First", null, "video");
+        var second = Entry("Second", first.Playlist.Id, "video");
+        first = first with { ParentPlaylistId = second.Playlist.Id };
+        var otherVideo = Entry("Other video", null, "video");
+        var audio = Entry("Audio", null, "audio");
+        var systemVideo = Entry("System video", null, "video", isSystem: true);
+        var entries = new[] { first, second, otherVideo, audio, systemVideo };
+
+        Assert.Equal(new[] { "Other video" }, PlaylistDirectoryModel.EligibleParents(entries, first.Playlist.Id, "video").Select(entry => entry.Playlist.Name));
+        Assert.Equal(new[] { "Audio" }, PlaylistDirectoryModel.EligibleParents(entries, null, "audio").Select(entry => entry.Playlist.Name));
+    }
+
+    [Fact]
     public void MissingParentMakesPlaylistARootAndRouteTarget()
     {
         var orphan = Entry("Orphan", Guid.NewGuid());
@@ -144,8 +214,8 @@ public sealed class PlaylistDirectoryTests
         Assert.Empty(PlaylistCoverSelection.Select(new[] { root, child }, root.Playlist.Id, works));
     }
 
-    private static PlaylistTreeEntry Entry(string name, Guid? parent) =>
-        new(new PlaylistInfo { Id = Guid.NewGuid(), Name = name }, parent);
+    private static PlaylistTreeEntry Entry(string name, Guid? parent, string mediaType = "video", bool isSystem = false) =>
+        new(new PlaylistInfo { Id = Guid.NewGuid(), Name = name, MediaType = mediaType, IsSystem = isSystem }, parent);
 
     private static Work CoverWork(ImageKind kind)
     {

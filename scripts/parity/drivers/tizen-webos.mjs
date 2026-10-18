@@ -117,7 +117,8 @@ export async function createDriver() {
       // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
       await cdp("Emulation.setTimezoneOverride", { timezoneId: pin.timeZone });
       await cdp("Emulation.setLocaleOverride", { locale: pin.locale });
-      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)})`;
+      // A real TV's inspector does not always honour the zone override (the Samsung QN700B showed ICT, 19:00, on some screens): pin the zone in the page too.
+      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)});(${installRegionPin})(${JSON.stringify(pin.timeZone)}, ${JSON.stringify(pin.locale)})`;
       await cdp("Page.addScriptToEvaluateOnNewDocument", { source: install });
       await cdp("Runtime.evaluate", { expression: install });
     }
@@ -431,18 +432,6 @@ export async function createDriver() {
           try { if (long) { await sleep(900); await guard(); } }
           finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         }
-      }
-      // Hosted debug page only: a router link's click does not navigate there (it does in the packaged app), so run the link's own handler.
-      if (TIZEN_MIRROR && k === "select" && !long) {
-        await sleep(600);
-        await ev(`(() => {
-          const a = document.activeElement;
-          if (!(a instanceof HTMLAnchorElement) || !a.getAttribute("href")?.startsWith("#/") || a.getAttribute("href") === location.hash) return false;
-          const props = a[Object.keys(a).find((key) => key.startsWith("__reactProps"))];
-          if (!props?.onClick) return false;
-          props.onClick({ button: 0, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, currentTarget: a, target: a, defaultPrevented: false, preventDefault() {}, stopPropagation() {}, persist() {} });
-          return true;
-        })()`);
       }
       // Real TV: the app applies a directional key on the next animation frame and a busy main thread can delay it by seconds; two frames flush the queue.
       if (REAL_TV) await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
