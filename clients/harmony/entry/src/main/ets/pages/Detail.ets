@@ -2591,7 +2591,7 @@ struct Detail {
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
               .fontColor(brandInk())
-              .margin({ bottom: 10 })
+              .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
               .fontSize(36)
               .fontWeight(FontWeight.Medium)
