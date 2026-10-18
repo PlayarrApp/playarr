@@ -13,6 +13,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Web: browser Back restores a library scroll position even when the list mounts after the route (and again after Forward then Back).
+- Web: the film and series detail copy no longer shows, hides and animates in again on navigation; it fades in once with the page.
+- Web: no page content sits under the left nav at any width (a new all-routes e2e guards it), and pages without the library letter rail no longer reserve a gutter for it on phones (Search, Watchlist, Requests, Playlists, Downloads).
 - Web: the Calendar week view on phones now swipes left and right between day columns (columns no longer block the horizontal swipe) and opens on today's column.
 - Web: on phones the series, film and music detail header (Back and title) stays fixed at the top while the content scrolls, fading out beneath it.
 - Web: the Download, Watchlist, Playlist and Playback buttons on film and series pages now switch their icon to the label colour while focused or hovered, so the icon stays visible on the filled button.
