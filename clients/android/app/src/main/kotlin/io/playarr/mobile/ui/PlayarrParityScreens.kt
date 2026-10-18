@@ -4703,6 +4703,10 @@ private fun Throwable.playarrServerConnectionMessage(): PlayarrMessage = when (t
         ?: PlayarrMessage.Localized(PlayarrString.ErrorCouldNotConnectServer)
 }
 
+/** Web rows are 88 css px at a fractional device scale and pile up unrounded; Compose rounds every row, so spread the remainder (162, 162, 163 px at 1.84375). */
+internal fun phoneSettingsRowHeightPx(index: Int, density: Float): Float =
+    (Math.round((index + 1) * 88f * density) - Math.round(index * 88f * density)).toFloat()
+
 /** Web mobile `.settings-options-list`: numbered rows 88 px tall, the first one drawn selected. */
 @Composable
 private fun PhoneSettingsIndex(onOpen: (SettingsSection) -> Unit) {
@@ -4714,7 +4718,7 @@ private fun PhoneSettingsIndex(onOpen: (SettingsSection) -> Unit) {
             itemsIndexed(phoneSettingsIndex, key = { _, row -> row.first.name }) { index, (candidate, description) ->
                 val active = index == 0
                 Row(
-                    Modifier.fillMaxWidth().height(88.dp)
+                    Modifier.fillMaxWidth().height(with(androidx.compose.ui.platform.LocalDensity.current) { phoneSettingsRowHeightPx(index, density).toDp() })
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
                         .clickable { onOpen(candidate) }
                         .padding(horizontal = 12.dp, vertical = 16.dp),

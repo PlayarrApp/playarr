@@ -115,7 +115,7 @@ public class DetailModelTests
         Assert.Equal(8, chapters.Count);
         Assert.Equal(15 * 60_000L, chapters[1].StartMs);
         Assert.Equal(108 * 60_000L, chapters[^1].EndMs);
-        Assert.Equal("Chapter 01", chapters[0].Title);
+        Assert.Equal("Chapter 1", chapters[0].Title);
     }
 
     [Fact]

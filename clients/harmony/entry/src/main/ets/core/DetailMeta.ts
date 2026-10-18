@@ -2,6 +2,7 @@
 
 import type { WorkDetail, EpisodeDetail, SeasonDetail, WorkChildrenSeries } from './Types/WorkDetail';
 import type { ResumePlan } from './Types/ResumePlan';
+import type { MediaChapter } from './Types/Media';
 
 /** A series' seasons, [] for any other kind (`children` is the bare string "Movie" or a single-key object). */
 function seasonsOf(detail: WorkDetail): SeasonDetail[] {
@@ -67,21 +68,6 @@ export function hasSeriesResumeTarget(detail: WorkDetail, plan: ResumePlan | nul
   return detail.work.kind === 'series' && planEpisode(detail, plan) !== undefined;
 }
 
-/** The last year a series has an episode air, to write "2011–2017"; '' when none is known. */
-function lastAiredYear(detail: WorkDetail): string {
-  const seasons: SeasonDetail[] = seasonsOf(detail);
-  let latest = '';
-  for (const season of seasons) {
-    for (const item of season.episodes) {
-      const air = item.episode.air_date;
-      if (air !== undefined && air !== null && air.length >= 4 && air.substring(0, 4) > latest) {
-        latest = air.substring(0, 4);
-      }
-    }
-  }
-  return latest;
-}
-
 /** The chips, in web's order. A film: Movie, runtime, year, "Released d Mon yyyy", genres. A series with a plan target: "Season n", "S01 · E01", runtime, "2011–2017", "Aired d Mon yyyy", genres. */
 export function metaChips(detail: WorkDetail, plan: ResumePlan | null): string[] {
   const work = detail.work;
@@ -99,9 +85,10 @@ export function metaChips(detail: WorkDetail, plan: ResumePlan | null): string[]
         chips.push(runtime);
       }
     }
-    const last = lastAiredYear(detail);
+    // web `yearRangeLabel`: the range runs to the work's end_date, not the last aired episode
+    const last = work.end_date !== undefined && work.end_date !== null && work.end_date.length >= 4 ? work.end_date.substring(0, 4) : '';
     if (year.length > 0) {
-      chips.push(last.length > 0 && last !== year ? year + '–' + last : year);
+      chips.push(last.length > 0 && last > year ? year + '–' + last : year);
     }
     if (target !== undefined) {
       const aired = formatDayMonthYear(target.episode.air_date);
@@ -149,4 +136,25 @@ export function planSynopsis(detail: WorkDetail, plan: ResumePlan | null): strin
     }
   }
   return detail.work.overview !== null ? detail.work.overview : '';
+}
+
+/** Web `generatedMovieChapters`: a movie whose file has no chapters still shows evenly spaced ones (5 to 30 min apart, about ten), so a 60 s clip has one. */
+export function generatedChapters(runtimeMs: number): MediaChapter[] {
+  if (runtimeMs <= 0) {
+    return [];
+  }
+  const target = runtimeMs / 10;
+  let interval = 30 * 60000;
+  for (const minutes of [5, 10, 15, 20, 30]) {
+    if (minutes * 60000 >= target) {
+      interval = minutes * 60000;
+      break;
+    }
+  }
+  const count = Math.max(1, Math.ceil(runtimeMs / interval));
+  const chapters: MediaChapter[] = [];
+  for (let index = 0; index < count; index++) {
+    chapters.push({ index: index, title: null, start_ms: index * interval, end_ms: Math.min(runtimeMs, (index + 1) * interval) });
+  }
+  return chapters;
 }

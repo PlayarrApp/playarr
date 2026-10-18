@@ -41,7 +41,7 @@ const SEARCH_INPUT_FOCUS_ID = 'search input';
 const SEARCH_FILTERS_FOCUS_ID = 'search filters';
 
 const COLUMNS = 3;
-const GRID_X = 825.6;
+const GRID_X = 777.4;
 const GRID_Y = 172.8;
 // The web's bigger search cards: 327.2 x 184 art, 353.1 px apart across and 251.2 px down.
 const COL_PITCH = 353.1;

@@ -1,7 +1,7 @@
 # Android phone parity (web mobile layout)
 
 Reference: the committed web references `docs/parity/web/mobile/{light,dark}` (390x844 CSS viewport, DPR 3, 1170x2532 device
-pixels, signed in as `fx-viewer`, the web's own fonts). Candidate: the Android phone client (`sideload` debug build) on a
+pixels, signed in as the static parity server's `parity` account, the web's own fonts). Candidate: the Android phone client (`sideload` debug build) on a
 headless emulator configured as 1170x2532 at 480 dpi, so 390x844 dp equals the web CSS viewport, against a FRESH fixture
 database (`scripts/fixtures/up.sh --fresh` in an empty `PLAYARR_FIXTURE_DIR`, seeded on the day of the frozen clock: re-seeding an
 old database keeps the wrong rail order). Screen ids and tolerance come from `scripts/parity/screens.json`; the diff is
@@ -85,7 +85,7 @@ is a platform difference. Everything else is compared as captured.
    the clock to the capture clock (`2026-10-07T12:00:00Z`), the conditions `capture-web.mjs` freezes for the web.
 2. Bring up the fixture environment (`scripts/fixtures/up.sh`) and install the `sideload` debug build. `adb reverse` the
    stub port so artwork URLs that point at the host's loopback resolve (or start the fixture with a public host the
-   emulator can reach). Sign in as `fx-viewer`.
+   emulator can reach). Sign in as `parity` on the static parity server (`PARITY_SERVER_URL`).
 3. `scripts/parity/android-mobile/capture.sh <raw-dir> light <screen-id>...` and again with `dark`. The script sets the
    app's own theme preference and launches the debug extras; set `PLAYARR_FIXTURE_DB` to the fixture's SQLite file so watch
    progress is cleared between screens, as in the references. The player screens need the fixture started with

@@ -274,12 +274,13 @@ if (only.includes("screens") && !only.includes("dpad") && driver.endCrops) {
     assertNotInterrupted();
     await driver.setTheme(theme);
     mkdirSync(join(out, theme, "crops"), { recursive: true });
-    for (const c of suite.crops ?? []) {
+    for (const c of (suite.crops ?? []).filter((x) => !driver.cropIds || driver.cropIds.includes(x.id))) { // cropIds: a driver may take only some crops
       assertNotInterrupted();
       try {
         await driver.setLaunchArgs?.(c.launchArgs ?? []); // e.g. Home artwork = Covers
         await reach(suite.screens.find((x) => x.id === c.from));
-        await press(c.keys);
+        await press(driver.cropKeys?.[c.id] ?? c.keys); // a driver whose focus starts elsewhere supplies its own keys
+        await driver.afterCropKeys?.(c.id);
         if (strict) await waitReady(c.id, "capture");
         else await sleep(c.settle ?? 1200); // legacy captures can preserve intentional motion sampling
         await driver.screenshot(join(out, theme, "crops", `${c.id}.png`));

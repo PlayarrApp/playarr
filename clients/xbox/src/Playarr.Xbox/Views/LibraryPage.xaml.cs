@@ -457,7 +457,8 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private static string LanguageName(string? code) => string.IsNullOrEmpty(code) ? "Any language" : code!;
+        private static string LanguageNames(string? codes) =>
+            string.IsNullOrEmpty(codes) ? "Any language" : string.Join(", ", codes!.Split(',').Select(c => Drawer.LanguageLabel(c)));
 
         private void OpenFilters()
         {
@@ -480,16 +481,16 @@ namespace Playarr.Xbox.Views
                 _viewModel.SelectOrder(i == 1);
                 Drawer.TryCloseCurrent();
             }));
-            body.Children.Add(Drawer.Dropdown("Audio language", LanguageName(_viewModel.AudioLang), async () => (await _viewModel.LoadLanguagesAsync()).Audio, code =>
+            body.Children.Add(Drawer.Dropdown("Audio language", LanguageNames(_viewModel.AudioLang), async () => (await _viewModel.LoadLanguagesAsync()).Audio, code =>
             {
-                _viewModel.SelectLanguage(true, code);
+                _viewModel.ToggleLanguage(true, code);
                 Drawer.TryCloseCurrent();
-            }));
-            body.Children.Add(Drawer.Dropdown("Subtitle language", LanguageName(_viewModel.SubtitleLang), async () => (await _viewModel.LoadLanguagesAsync()).Subtitle, code =>
+            }, _viewModel.LanguageCodes(true)));
+            body.Children.Add(Drawer.Dropdown("Subtitle language", LanguageNames(_viewModel.SubtitleLang), async () => (await _viewModel.LoadLanguagesAsync()).Subtitle, code =>
             {
-                _viewModel.SelectLanguage(false, code);
+                _viewModel.ToggleLanguage(false, code);
                 Drawer.TryCloseCurrent();
-            }));
+            }, _viewModel.LanguageCodes(false)));
             Drawer.Open((Panel)Content, "Library controls", "Filters", body);
         }
 

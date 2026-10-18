@@ -1,6 +1,6 @@
 {
   "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. liveScreens: screens the driver cannot reach (the player), taken with roku/capture-web-live.mjs at the same viewport and dpr. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces. noDownloads: Downloads hidden in the web client (device cannot store downloads; Roku). liveScreens player-controls are taken with the video hidden on every non-phone group; phone groups keep the capture-web hideVideo convention.",
-  "date": "20261014",
+  "date": "20261018-static",
   "groups": {
     "tv": {
       "viewport": [
@@ -24,7 +24,7 @@
         "vidaa",
         "xbox"
       ],
-      "actionsTitle": "The 5th Wave",
+      "actionsTitle": "Amber Cathedral 18",
       "liveScreens": [
         "player-controls"
       ]
@@ -43,7 +43,7 @@
       "dirs": [
         "roku"
       ],
-      "actionsTitle": "The 5th Wave",
+      "actionsTitle": "Amber Cathedral 18",
       "noDownloads": true,
       "liveScreens": [
         "player-controls"
@@ -63,7 +63,7 @@
       "dirs": [
         "ios-tablet"
       ],
-      "actionsTitle": "The 5th Wave",
+      "actionsTitle": "Amber Cathedral 18",
       "liveScreens": [
         "player-controls"
       ]
@@ -85,7 +85,7 @@
       "liveScreens": [
         "player-controls"
       ],
-      "actionsTitle": "The 5th Wave"
+      "actionsTitle": "Amber Cathedral 18"
     },
     "iphone": {
       "viewport": [
@@ -184,9 +184,9 @@
     "actions"
   ],
   "titles": {
-    "film-detail": "2 Fast 2 Furious",
-    "series-detail": "2 Broke Girls",
-    "actions": "2 Fast 2 Furious"
+    "film-detail": "Silent Meridian 1",
+    "series-detail": "Golden Cathedral 1",
+    "actions": "7 Distant Harbour 30"
   },
   "dialogScreens": [
     "filters",

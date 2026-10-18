@@ -6,12 +6,20 @@
     270deg surface 50 % over 34 % (653 px).
 -->
 <component name="StageScrims" extends="Group">
+  <interface>
+    <!-- Web .tv-rail-panel: the frosted right-hand panel (Library, Detail); Home draws its own in TvStage. -->
+    <field id="frost" type="boolean" value="false" onChange="onFrostChange" />
+  </interface>
   <children>
     <Poster id="rampKeyLeft" translation="[0,0]" width="422" height="1080" uri="pkg:/images/ramp-l.png" loadDisplayMode="scaleToFill" />
     <Poster id="rampKeyBottom" translation="[0,842]" width="1920" height="238" uri="pkg:/images/ramp-b.png" loadDisplayMode="scaleToFill" />
     <Poster id="rampKeyTop" translation="[0,0]" width="1920" height="194" uri="pkg:/images/ramp-t.png" loadDisplayMode="scaleToFill" />
     <Poster id="rampWashLeft" translation="[0,0]" width="595" height="1080" uri="pkg:/images/ramp-l.png" opacity="0.94" loadDisplayMode="scaleToFill" />
     <Poster id="rampWashRight" translation="[1267,0]" width="653" height="1080" uri="pkg:/images/ramp-r.png" opacity="0.5" loadDisplayMode="scaleToFill" />
+    <Group id="frostLayer" visible="false">
+      <Poster id="frostLight" translation="[729.6,0]" width="1190.4" height="1080" uri="pkg:/images/home-rail-frost-light.png" loadDisplayMode="scaleToFill" visible="false" />
+      <Poster id="frostDark" translation="[729.6,0]" width="1190.4" height="1080" uri="pkg:/images/home-rail-frost-dark.png" loadDisplayMode="scaleToFill" visible="true" />
+    </Group>
   </children>
   <script type="text/brightscript" uri="pkg:/source/Theme.brs" />
   <script type="text/brightscript" uri="pkg:/components/StageScrims.brs" />

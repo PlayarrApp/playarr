@@ -89,6 +89,9 @@ import { WatchProgress } from '../core/Types/Playback.ts';
  */
 const MAX_SIMILAR_FALLBACK_GENRE_QUERIES: number = 3;
 
+/** Candidates fetched per genre query by the similar-titles fallback (web: 100). */
+const SIMILAR_FALLBACK_PAGE_LIMIT: number = 100;
+
 /**
  * Up to this many `part_watched` rows are hydrated for the Home screen's
  * continue-watching rail (brief 4.8: "hydrating up to 10 part_watched
@@ -354,7 +357,7 @@ async function getSimilarByGenreFallback(target: Work, limit: number): Promise<A
   const pages: CatalogPage[] = [];
 
   for (const genre of genresToQuery) {
-    const query: BrowseQuery = { genre: genre, limit: limit };
+    const query: BrowseQuery = { genre: genre, limit: SIMILAR_FALLBACK_PAGE_LIMIT };  // web asks for 100 per genre, then ranks and cuts to `limit`
     const pageResult = await getCatalog(query);
     if (pageResult.kind === 'ok') {
       pages.push(pageResult.value);
@@ -387,10 +390,11 @@ export async function getSimilarWorks(target: Work, limit?: number): Promise<Api
   const path = catalogSimilarUrl(target.id) + queryStringFromParts(parts);
 
   const result = await getPlayarrClient().getJson<Work[]>(path);
-  if (result.kind === 'ok') {
+  if (result.kind === 'ok' && result.value.length > 0) {
     return result;
   }
-  if (result.kind === 'http_failure' && result.status === 404) {
+  // web: an empty list (no embeddings, as on the static parity server) fills from the library by genre, like a 404
+  if (result.kind === 'ok' || (result.kind === 'http_failure' && result.status === 404)) {
     return getSimilarByGenreFallback(target, effectiveLimit);
   }
   return result;
