@@ -2426,10 +2426,10 @@ struct Detail {
           .fontSize(size)
           .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
       }
-      Text(label).fontFamily(nunito(500))
+      Text(label).fontFamily(nunito(700))
         .fontSize(size)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(toResourceColor(activeColors().inkSoft))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
       .height(44)
