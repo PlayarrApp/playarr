@@ -47,6 +47,15 @@ if (__PLAYARR_DEBUG_MIRROR__) {
   } catch {
     // sessionStorage unavailable: the mirror falls back to the URL
   }
+  // ?mirrorResetSession=1 drops the stored sign-in before the first render, so a stale session shows a fresh device-link code on the next load.
+  try {
+    if (new URLSearchParams(window.location.search).get("mirrorResetSession") === "1") {
+      window.localStorage.removeItem("playarr.profileSessions.v4");
+      window.localStorage.removeItem("playarr.activeProfile.v1");
+    }
+  } catch {
+    // localStorage unavailable: nothing to reset
+  }
   // ?mirrorTheme=dark|light stores the explicit theme before the first render, so the parity driver can switch theme with a reload.
   try {
     const themeParam = new URLSearchParams(window.location.search).get("mirrorTheme");
