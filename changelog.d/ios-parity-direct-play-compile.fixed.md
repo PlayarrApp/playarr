@@ -1,0 +1,1 @@
+- Pass the protocol's default bitrate and profile arguments explicitly in the iOS parity direct-play check so the hosted build compiles without changing its direct-play validation.

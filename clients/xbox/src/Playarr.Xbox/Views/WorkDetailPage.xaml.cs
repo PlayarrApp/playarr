@@ -40,6 +40,7 @@ namespace Playarr.Xbox.Views
     {
         private WorkDetailViewModel _viewModel = null!;
         private Work? _backdropWork;
+        private readonly Ui.PageHeaderParts _header;
 
         /// <summary>The title's kind once loaded; read by the parity trace.</summary>
         internal WorkKind? Kind => _viewModel?.Work?.Kind;
@@ -47,6 +48,7 @@ namespace Playarr.Xbox.Views
         public WorkDetailPage()
         {
             InitializeComponent();
+            _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
             BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
@@ -92,16 +94,16 @@ namespace Playarr.Xbox.Views
             var work = _viewModel.Work;
             // A short number stays with the next word, so "2 Fast 2 Furious" wraps as the web draws it: "2 Fast" / "2 Furious".
             TitleText.Text = System.Text.RegularExpressions.Regex.Replace(_viewModel.Title, @"(?<=^|\s)(\d{1,2}) (?=\S)", "$1\u00a0");
-            LibraryText.Text = work?.Kind switch
+            _header.Title.Text = work?.Kind switch
             {
                 WorkKind.Movie => "Movies",
                 WorkKind.Series => "Series",
                 WorkKind.Artist => "Music",
                 _ => string.Empty,
             };
-            SubtitleText.Text = _viewModel.Title;
+            _header.Subtitle.Text = _viewModel.Title;
             // The web header: the title beside the subtitle after a divider (not pink), as every other page.
-            Ui.LayoutHeader(HeaderTitles, LibraryText, SubtitleText);
+            Ui.LayoutHeader(_header.Titles, _header.Title, _header.Subtitle);
             EyebrowText.Text = work != null && work.Genres.Count > 0 ? work.Genres[0].ToUpperInvariant() : string.Empty;
             // Web meta row: kind, year, then genres, spaced (runtime and release date need fields this client lacks).
             var meta = new System.Collections.Generic.List<string>();
@@ -1010,7 +1012,6 @@ namespace Playarr.Xbox.Views
                 ? $"Season {season.Season.SeasonNumber}"
                 : season.Season.Title!;
 
-        private void BackButton_Click(object sender, RoutedEventArgs e) => App.Navigation.GoBack();
 
         private void PlayButton_Click(object sender, RoutedEventArgs e)
         {

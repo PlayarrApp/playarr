@@ -1,0 +1,1 @@
+- Show the selected Harmony TV library title's hero artwork in the native stage, keeping the previous image visible while the next image loads.

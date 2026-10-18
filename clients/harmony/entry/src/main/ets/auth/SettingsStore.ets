@@ -50,6 +50,7 @@ const DEVICE_ID_KEY: string = 'device_id';
 const SELECTED_PROFILE_ID_KEY: string = 'selected_profile_id';
 const SELECTED_PROFILE_NAME_KEY: string = 'selected_profile_name';
 const THEME_OVERRIDE_KEY: string = 'theme_override';
+const LANGUAGE_PREFERENCE_KEY: string = 'language_preference';
 const PLAYER_QUALITY_KEY: string = 'player_default_quality';
 const PLAYER_SUBTITLE_MODE_KEY: string = 'player_default_subtitle_mode';
 const PLAYER_SUBTITLE_LANGUAGE_KEY: string = 'player_default_subtitle_language';
@@ -248,6 +249,15 @@ export async function getThemeOverride(): Promise<ThemeOverride> {
 /** Sets the manual theme override; `design/Theme.ets` treats this as winning over the system signal in both directions. */
 export async function setThemeOverride(themeOverride: ThemeOverride): Promise<void> {
   await putString(THEME_OVERRIDE_KEY, themeOverride);
+}
+
+/** Settings > Language: 'system' (follow the device) or one fixed language; the caller normalises with `core/Language.ts`. */
+export async function getLanguagePreference(): Promise<string> {
+  return getString(LANGUAGE_PREFERENCE_KEY, 'system');
+}
+
+export async function setLanguagePreference(value: string): Promise<void> {
+  await putString(LANGUAGE_PREFERENCE_KEY, value);
 }
 
 /** Settings > Player defaults, saved on this device (web keeps them in local storage). Raw strings: the caller
