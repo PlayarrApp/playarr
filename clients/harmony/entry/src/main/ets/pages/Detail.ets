@@ -796,6 +796,8 @@ struct Detail {
   @State private similarRail: DetailRail | null = null;
   @State private primaryMediaFileId: string | null = null;
   @State private chaptersRail: DetailRail | null = null;
+  /** Web: generated chapters (the server listed none) are counted as "scene markers". */
+  private chaptersGenerated: boolean = false;
   /** A series' resume plan (null for a film, or until the server answers): its target is what the primary button plays. */
   @State private resumePlan: ResumePlan | null = null;
   @State private episodeFocusSuppressed: boolean = false;
@@ -1074,6 +1076,7 @@ struct Detail {
     if (chapters.length === 0) {
       return;
     }
+    this.chaptersGenerated = !(result.kind === 'ok' && result.value.length > 0);
     const rows: DetailRow[] = [];
     for (const chapter of chapters) {
       rows.push(chapterRow(chapter, mediaFileId));
@@ -2076,7 +2079,7 @@ struct Detail {
       }
       if (this.chaptersRail !== null) {
         Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
-          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
+          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), this.chaptersGenerated ? tf('pages.workDetail.sceneMarkersCount', '{{count}} scene markers', { count: this.chaptersRail.items.length.toString() }) : tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
           MediaRail({
             railId: 'chapters',
             headingGap: 0,
