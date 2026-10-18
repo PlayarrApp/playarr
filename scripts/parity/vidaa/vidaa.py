@@ -181,6 +181,7 @@ class Tv:
         self.c.on_subscribe = self._on_subscribe
         self._state_mid = None
         self.subacks = {}
+        self.opened = 0.0
 
     def _on_connect(self, c, u, f, rc):
         self.rc = rc
@@ -222,6 +223,7 @@ class Tv:
             self.c.loop_stop()
             sys.exit(f"MQTT connect failed (rc={self.rc})")
         time.sleep(0.7)  # let retained messages arrive
+        self.opened = time.time()
         return self
 
     def close(self):
@@ -246,14 +248,16 @@ class Tv:
         return None
 
     def state(self, timeout=4):
-        """Latest state JSON (retained broadcast or direct reply)."""
+        """Latest state JSON. The retained broadcast counts only right after connecting; later a reply must be newer
+        than this query, or a wedged TV would keep looking healthy on a long-lived session."""
         since = time.time()
+        floor = 0.0 if since - self.opened < 5 else since
         self.pub("ui_service", "gettvstate", "")
         self.wait("ui_service/data/state", 1.5, since)
         time.sleep(0.3)
         with self.lock:
             cands = [(ts, p) for t, p, r, ts in self.msgs
-                     if t.endswith("ui_service/state") or t.endswith("ui_service/data/state")]
+                     if ts >= floor and (t.endswith("ui_service/state") or t.endswith("ui_service/data/state"))]
         if not cands:
             return None
         try:
