@@ -26,7 +26,7 @@ async function call(method, path) {
 export async function createDriver({ request = call, delay = sleep, env = process.env, secrets, setupForward, captureScreenshot, pixelSignature } = {}) {
   let state = {};
   let forwarded = false;
-  const allowedUsernames = loadAllowedDeviceTestUsernames({ env, ...(secrets ? { secrets } : {}) });
+  const allowedUsernames = loadAllowedDeviceTestUsernames({ env, client: env.PARITY_CLIENT, ...(secrets ? { secrets } : {}) });
   const trustedServerUrl = loadTrustedDeviceTestServerUrl({ env, ...(secrets ? { secrets } : {}) });
   const ensureForwarded = () => {
     if (forwarded) return;
