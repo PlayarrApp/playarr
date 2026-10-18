@@ -207,7 +207,8 @@ const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
 const PHONE_SEASON_LIST_HEIGHT: number = 165;
 const PHONE_SEASON_HEADER_CARD_GAP: number = 21.18;
-const PHONE_DETAIL_RAIL_CLIP_START: number = 16;
+// 24 > the card's 20 vp ring glow, so the glow is not cut at the rail's left edge
+const PHONE_DETAIL_RAIL_CLIP_START: number = 24;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
 // Web phone detail header (#175): the 44 vp Back button 16 vp from the top, an 8 vp gap, then the 28 vp edge fade of the pinned scrim.
 const PHONE_BACK_SIZE: number = 44;
@@ -2360,7 +2361,7 @@ struct Detail {
 
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
-  private touchActionButton(label: string, onTap: () => void, size: number = 8, glyph: string = ''): void {
+  private touchActionButton(label: string, onTap: () => void, size: number = 8, glyph: string = '', share: boolean = false): void {
     Text(glyph.length > 0 ? glyph + '  ' + label : label).fontFamily(nunito(500))
       .fontSize(size)
       .fontWeight(FontWeight.Medium)
@@ -2369,6 +2370,7 @@ struct Detail {
       .textAlign(TextAlign.Center)
       .padding({ left: 16, right: 16 })
       .borderRadius(22)
+      .layoutWeight(share ? 1 : 0)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       .border({ width: 1, color: Color.Transparent })
       .onClick(() => {
@@ -2449,12 +2451,14 @@ struct Detail {
     Row({ space: 8 }) {
       this.touchActionButton(t('components.mediaContextMenu.download', 'Download'), (): void => {
         this.touchActionsOpen = true;
-      }, 8, '\u21E9')
+      }, 8, '\u21E9', true)
       this.touchActionButton(t('pages.workDetail.playbackButtonLabel', 'Playback'), (): void => {
         this.touchActionsOpen = true;
-      }, 11, '\u2637')
+      }, 11, '\u2637', true)
       this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
     }
+    // web phone film: the three pills share the row width (104 / 104 / 110 vp)
+    .width('100%')
     Row({ space: 8 }) {
       this.touchActionButton(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();
