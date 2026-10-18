@@ -117,7 +117,8 @@ export async function createDriver() {
       // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
       await cdp("Emulation.setTimezoneOverride", { timezoneId: pin.timeZone });
       await cdp("Emulation.setLocaleOverride", { locale: pin.locale });
-      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)})`;
+      // A real TV's inspector does not always honour the zone override (the Samsung QN700B showed ICT, 19:00, on some screens): pin the zone in the page too.
+      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)});(${installRegionPin})(${JSON.stringify(pin.timeZone)}, ${JSON.stringify(pin.locale)})`;
       await cdp("Page.addScriptToEvaluateOnNewDocument", { source: install });
       await cdp("Runtime.evaluate", { expression: install });
     }
