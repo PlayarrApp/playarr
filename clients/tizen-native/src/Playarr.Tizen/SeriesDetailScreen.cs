@@ -76,7 +76,7 @@ internal sealed class SeriesDetailScreen : IPage
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _content.Add(back);
         _content.Add(Ui.Text("Series", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
-        new PageSubtitle(_env, _content, "Series").Set(w.Title);
+        new PageSubtitle(_env, _content, "Series").Set(w.Title, wrapIfClockBlocks: true);
         _content.Add(_copy);
 
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
@@ -170,26 +170,30 @@ internal sealed class SeriesDetailScreen : IPage
             }
             catch (Exception e) { Dbg.Log("SDETAIL cast request failed: " + e.Message); }
 
-            if (content is null)
+            var cast = content is null ? [] : Credits.ParseCast(content);
+            var slot = _seasonCount; // web: the cast rail, else Similar Titles, takes the slot after the last season; Similar follows the cast
+            if (cast.Count > 0)
             {
-                await AuthImage.OnUiAsync(() => _captureReady = true);
-                return;
-            }
-
-            var cast = Credits.ParseCast(content);
-            if (cast.Count == 0)
-            {
-                await AuthImage.OnUiAsync(() => _captureReady = true);
-                return;
-            }
-            await AuthImage.OnUiAsync(() =>
-            {
-                var rail = _seasonCount;
-                new PeopleRail(_env, _stack, cast, rail * RailPitch + CastGap, _focus, () => _stack.PositionY, _ =>
+                var rail = slot;
+                await AuthImage.OnUiAsync(() => new PeopleRail(_env, _stack, cast, rail * RailPitch + CastGap, _focus, () => _stack.PositionY, _ =>
                 {
                     _activeRail = rail;
                     _stack.PositionY = FocusedHeadingY - rail * RailPitch - CastGap;
-                });
+                }));
+                slot++;
+            }
+            var similar = await SimilarRail.LoadAsync(_env, d.Work).ConfigureAwait(false);
+            await AuthImage.OnUiAsync(() =>
+            {
+                if (similar.Count > 0)
+                {
+                    var rail = slot;
+                    new SimilarRail(_env, _stack, similar, rail * RailPitch + CastGap, _focus, () => _stack.PositionY, _ =>
+                    {
+                        _activeRail = rail;
+                        _stack.PositionY = FocusedHeadingY - rail * RailPitch - CastGap;
+                    });
+                }
                 _captureReady = true;
             });
         });

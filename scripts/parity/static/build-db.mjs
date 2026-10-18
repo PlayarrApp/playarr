@@ -86,13 +86,13 @@ const one = (sql, ...p) => db.prepare(sql).get(...p);
 const run = (sql, ...p) => db.prepare(sql).run(...p);
 const peerId = one("select peer_id from node_identity").peer_id;
 const boots = one("select password_hash from users where username = 'parity-bootstrap'");
-const radarr = uid("source:radarr"), sonarr = uid("source:sonarr");
+const radarr = uid("source:radarr"), sonarr = uid("source:sonarr"), lidarr = uid("source:lidarr");
 const j = JSON.stringify;
 const iso = (offsetMs) => new Date(Date.parse(CLOCK) + offsetMs).toISOString();
 
 db.exec("begin");
 for (const t of ["users", "policies"]) run(`delete from ${t} where ${t === "users" ? "username = 'parity-bootstrap'" : "name = 'Bootstrap Admin'"}`);
-for (const [id, kind, name] of [[radarr, "radarr", "Movies"], [sonarr, "sonarr", "Series"]])
+for (const [id, kind, name] of [[radarr, "radarr", "Movies"], [sonarr, "sonarr", "Series"], [lidarr, "lidarr", "Music"]]) // a lidarr instance is what makes /catalog/kinds list artists, so the Music nav item shows
   run("insert into source_instances (id, kind, name, base_url, api_key_encrypted, priority, enabled_for_requests, best_effort, updated_at, origin_peer_id, folder_mappings) values (?,?,?,?,?,?,?,?,?,?,?)",
     id, kind, name, "http://127.0.0.1:9", "unused", 10, 0, 0, FROZEN_AT, peerId, "{}");
 
@@ -102,7 +102,7 @@ for (const p of PROFILES) {
   const username = `${accountName}${p.suffix}`, id = uid(`user:${p.key}`), policy = uid(`policy:${p.key}`);
   userIds[p.key] = id;
   run("insert into policies (id, name, library_allow, can_transcode, can_download, can_delete, can_share_public, device_allow, is_admin, can_stream, updated_at, origin_peer_id, group_library_allow, household, can_request) values (?,?,?,1,1,0,0,'[]',0,1,?,?,'[]',?,0)",
-    policy, `${username}'s policy`, j([sonarr, radarr]), FROZEN_AT, peerId, j({ unrated: "block", timezone: null, daily_budget_minutes: null, channel_allow: null, game_allow: null, app_allow: null, guardian_user_ids: [], approval_required: [], offline_ttl_hours: null }));
+    policy, `${username}'s policy`, j([sonarr, radarr, lidarr]), FROZEN_AT, peerId, j({ unrated: "block", timezone: null, daily_budget_minutes: null, channel_allow: null, game_allow: null, app_allow: null, guardian_user_ids: [], approval_required: [], offline_ttl_hours: null }));
   run("insert into users (id, username, display_name, password_hash, policy_id, created_at, disabled, preferred_audio_language, updated_at, origin_peer_id) values (?,?,?,?,?,?,0,'en',?,?)",
     id, username, p.display, boots.password_hash, policy, FROZEN_AT, FROZEN_AT, peerId);
   run("insert into user_profile_avatars (user_id, preference, updated_at) values (?,?,?)", id, j({ kind: "preset", value: p.avatar }), FROZEN_AT);
@@ -137,10 +137,14 @@ for (const s of SERIES) {
   }
 }
 for (const a of ARTISTS) {
-  insertWork({ ...a, genres: ["Pop"] }, "artist", [], "unknown", null);
+  insertWork({ ...a, genres: ["Pop"] }, "artist", [], "available", null);
   for (const al of a.albums) {
-    run("insert into albums (id, artist_work_id, title, album_type, release_date, monitored, availability) values (?,?,?,?,?,1,'unknown')", al.id, a.workId, al.title, "Album", al.releaseDate);
-    al.tracks.forEach((t, i) => run("insert into tracks (id, album_id, disc_number, track_number, title, duration_seconds, availability) values (?,?,1,?,?,?,'unknown')", t.id, al.id, i + 1, t.title, t.seconds));
+    run("insert into albums (id, artist_work_id, title, album_type, release_date, monitored, availability) values (?,?,?,?,?,1,'available')", al.id, a.workId, al.title, "studio", al.releaseDate);
+    // A track file per track: the Music library lists only artists with a playable file.
+    al.tracks.forEach((t, i) => {
+      run("insert into tracks (id, album_id, disc_number, track_number, title, duration_seconds, availability) values (?,?,1,?,?,?,'available')", t.id, al.id, i + 1, t.title, t.seconds);
+      insertFile(uid(`file:${t.id}`), a.workId, `track:${t.id}`, lidarr, ++fileNo);
+    });
   }
 }
 
@@ -173,7 +177,7 @@ CALENDAR.forEach((c, n) => {
   const bucket = `${instance}|${c.date.slice(0, 7)}`;
   chunks.set(bucket, [...(chunks.get(bucket) ?? []), { entry, dedup_key: key, work_ref: isMovie ? ["tmdb", String(t.tmdbId)] : ["tvdb", String(t.tvdbId)] }]);
 });
-for (const instance of [radarr, sonarr]) {
+for (const instance of [radarr, sonarr, lidarr]) {
   for (const month of ["2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"])
     run("insert into calendar_source_chunks (instance_id, month, fetched_at, entries_json) values (?,?,?,?)", instance, month, FROZEN_AT, j(chunks.get(`${instance}|${month}`) ?? []));
   run("insert into calendar_source_health (instance_id, last_success_at, last_attempt_at, consecutive_failures) values (?,?,?,0)", instance, FROZEN_AT, FROZEN_AT);
