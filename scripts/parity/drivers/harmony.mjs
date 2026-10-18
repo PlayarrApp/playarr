@@ -68,7 +68,12 @@ export async function createDriver() {
         await sleep(8000);
         await get("/key/back");
         await sleep(6000);
-        if ((await state()).route !== "Home") { await get("/setroute?name=home"); await sleep(8000); await get("/setroute?name=focus:pcard"); await sleep(3000); }
+        if ((await state()).route !== "Home") { await get("/setroute?name=home"); await sleep(8000); }
+        // The click only labels the card ("click:"); ask again for real focus now that touch has activated it.
+        await get("/state?resetfocused=1");
+        await get("/setroute?name=focus:pcard");
+        const t1 = Date.now();
+        while (Date.now() - t1 < 12000 && !(await state()).focused) await sleep(1000);
       }
       await sleep(1500);
       await dbgShot("home-ready");
