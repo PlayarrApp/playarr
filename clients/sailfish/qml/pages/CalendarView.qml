@@ -323,7 +323,7 @@ Item {
                             property int parityIndex: index
                             function navigationActivate() { root.openEntry(modelData) }
                             x: dayCol.wk ? 0 : Tokens.pad
-                            width: dayCol.cw - (dayCol.wk ? 0 : Tokens.pad - 40 * Tokens.u)   // the web agenda card runs past the right edge
+                            width: dayCol.cw - (dayCol.wk ? 0 : 2 * Tokens.pad)   // static-seed refs: the agenda card ends at the page padding
                             height: Math.max(75.7 * Tokens.u, info.height + 18 * Tokens.u) + (dayCol.wk ? 1 : 2)   // refs: week cards run one pixel taller, agenda cards two   // web: the 60 px poster plus the padding is the floor
                             onClicked: navigationActivate()
                             // Left border: we have it (playable, green) or not, never which library; the card sits over it so it curves with the corners.
@@ -337,7 +337,7 @@ Item {
                                 work: null
                                 emptyColor: Tokens.surfaceSoft
                                 // Match the web's 40 by 60 sized poster with a true rounded crop.
-                                override: modelData.poster_url ? String(modelData.poster_url).replace(/^(https:\/\/image\.tmdb\.org\/t\/p\/)original\//, "$1w185/")
+                                override: modelData.poster_url && !/^https?:\/\/(127\.0\.0\.1|localhost)[:\/]/.test(modelData.poster_url) ? String(modelData.poster_url).replace(/^(https:\/\/image\.tmdb\.org\/t\/p\/)original\//, "$1w185/")
                                          : modelData.work_id ? Api.artworkOf(modelData.work_id, "poster") : ""
                             }
                             Column {
@@ -382,8 +382,8 @@ Item {
         contentHeight: height + 1   // never scrolls vertically; the extra pixel keeps the end fade over the clipped day columns, as on web
         flickableDirection: Flickable.HorizontalFlick
         clip: true
-        EdgeFade { target: weekFlick; startSize: 0 }
-        EdgeFade { target: weekFlick; horizontal: true }
+        EdgeFade { visible: root.mode === "week"; target: weekFlick; startSize: 0 }
+        EdgeFade { visible: root.mode === "week"; target: weekFlick; horizontal: true }
         Row {
             id: weekRow
             x: Tokens.pad
@@ -395,7 +395,7 @@ Item {
             }
         }
     }
-    EdgeFade { target: weekFlick; horizontal: true }
+    EdgeFade { visible: root.mode === "week"; target: weekFlick; horizontal: true }
     // Web dark agenda: a faint ghost-art wash. Measured on the refs: a flat tint (39,34,39) over the first ~600 px that fades out by ~720,
     // plus a brighter left edge (about +15 at x=0) easing out over ~70 px down to ~340 px.
     Rectangle {
@@ -432,7 +432,7 @@ Item {
                 Loader { sourceComponent: dayComp; onLoaded: { item.day = modelData; item.cw = Qt.binding(function () { return col.width }) } }
             }
         }
-        EdgeFade { target: flick }
+        EdgeFade { visible: root.mode === "agenda"; target: flick }
         VerticalScrollDecorator {}
     }
     BusyIndicator { anchors.centerIn: parent; size: BusyIndicatorSize.Large; running: root.busy }
