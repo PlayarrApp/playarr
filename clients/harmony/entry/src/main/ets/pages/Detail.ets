@@ -206,9 +206,14 @@ const HERO_TOUCH_HEIGHT: number = 340;
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
 const PHONE_SEASON_LIST_HEIGHT: number = 165;
-const PHONE_SEASON_HEADER_CARD_GAP: number = 21.15;
+const PHONE_SEASON_HEADER_CARD_GAP: number = 21.18;
 const PHONE_DETAIL_RAIL_CLIP_START: number = 16;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
+// Web phone detail header (#175): the 44 vp Back button 16 vp from the top, an 8 vp gap, then the 28 vp edge fade of the pinned scrim.
+const PHONE_BACK_SIZE: number = 44;
+const PHONE_HEADER_TOP: number = 16;
+const PHONE_HEADER_GAP: number = 8;
+const PHONE_HEADER_FADE: number = 28;
 // Season to season is 237 on web; the phone capture measured 14.3 vp short with 21, so the gap is 35.3.
 const PHONE_SEASON_ROW_GAP: number = 35.65;
 /** Web `--brand-strong`, the phone Play button's focused fill. */
@@ -1630,6 +1635,8 @@ struct Detail {
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
       focusId: seriesEpisodeFocusId((item as DetailRow).id),
+      titleFontSize: isTvMetrics() ? 11.904 : 12.4, // web phone's episode caption is a little larger than the TV's
+      subtitleFontSize: isTvMetrics() ? 8.832 : 9.5,
       ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,
       unseen: this.episodeUnseen(item as DetailRow),
       cardWidth: this.seriesCardWidth(),
@@ -2008,12 +2015,12 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 7 : tv(4) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(4) }) {
       Text(heading).fontFamily(nunito(400))
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
       Text(count).fontFamily(nunito(400))
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 11 : tv(11))
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(11))
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
@@ -2114,6 +2121,7 @@ struct Detail {
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
               allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
               bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
+              overflowItems: !isTvMetrics(),
               items: rail.items,
               listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : PHONE_SEASON_LIST_HEIGHT,
               initialItemIndex: this.initialEpisodeIndex(rail),
@@ -2563,27 +2571,6 @@ struct Detail {
         .width('100%')
         .alignItems(HorizontalAlign.Start)
 
-      Row({ space: 12 }) {
-        Text('←').fontFamily(nunito(700))
-          .fontSize(17)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(activeColors().inkSoft))
-          .textAlign(TextAlign.Center)
-          .width(40)
-          .height(40)
-          .borderRadius(20)
-          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-          .onClick(() => {
-            popRoute(getNavStack());
-          })
-        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
-          .fontSize(22)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(toResourceColor(activeColors().ink))
-      }
-      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(17.5, this.safeTop) })
-      .alignItems(VerticalAlign.Center)
        }
        .width('100%')
       }
@@ -2594,6 +2581,41 @@ struct Detail {
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
       .onAppear(() => { this.settleTouchEpisode(0); })
+
+      // web (#175): on phones the Back row stays pinned and the content fades out under it (solid to the row, then the edge fade)
+      Column()
+        .width('100%')
+        .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)
+        .linearGradient({
+          direction: GradientDirection.Bottom,
+          colors: [
+            [toResourceColor(activeColors().bg), 0.0],
+            [toResourceColor(activeColors().bg), (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP) / (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)],
+            [toResourceColorWithAlpha(activeColors().bg, 0), 1.0],
+          ],
+        })
+        .hitTestBehavior(HitTestMode.None)
+      Row({ space: 10 }) {
+        Text('←').fontFamily(nunito(700))
+          .fontSize(11)
+          .fontWeight(FontWeight.Normal)
+          .fontColor(toResourceColor(activeColors().inkSoft))
+          .textAlign(TextAlign.Center)
+          .width(PHONE_BACK_SIZE)
+          .height(PHONE_BACK_SIZE)
+          .borderRadius(PHONE_BACK_SIZE / 2)
+          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+          .onClick(() => {
+            popRoute(getNavStack());
+          })
+        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
+          .fontSize(22)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(toResourceColor(activeColors().ink))
+      }
+      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
+      .alignItems(VerticalAlign.Center)
 
       // Keep the floating nav above page overlays and below title actions.
       TouchNavBar({ selectedId: this.detail !== null ? this.detail.work.kind : '' })
