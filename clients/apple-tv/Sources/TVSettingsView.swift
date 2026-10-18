@@ -19,7 +19,20 @@ struct TVSettingsView: View {
         ("08", "Request latency", "Per-route HTTP request latency for admins.", 299.7),
         ("09", "Phone remote", "Control this device from your phone, or control another device.", 449.8),
         ("10", "Your data", "Export your watch progress, playlists and preferences, or import them from another Playarr Server.", 702.8),
+        ("11", "Customise Home", "Choose which rails Home shows and in what order.", 400),
     ]
+
+    /// macOS matches the static web refs (Parity worker B); tvOS keeps its own measured values.
+    private func mac<T>(_ macOS: T, _ other: T) -> T {
+        #if os(macOS)
+        macOS
+        #else
+        other
+        #endif
+    }
+
+    /// Web lists Request latency (08) for admins only; the device profile is not one. tvOS keeps the row.
+    private var visibleSections: [Int] { sections.indices.filter { mac($0 != 7, $0 != 10) } }
 
     var body: some View {
         @Bindable var environment = environment
@@ -32,17 +45,18 @@ struct TVSettingsView: View {
             // Web: the selected section is the page subtitle (shared small style), nothing else under the title.
             TVPageHeader(title: "Preferences", detail: sections[selectedSection].title, backFocused: true)
 
-            // `.settings-option` rows: x 153.6, y 162, 480.4 x 91.9, pitch 91.9.
-            ForEach(Array(sections.enumerated()), id: \.offset) { index, section in
+            // `.settings-option` rows: x 153.6, y 162, 470 (tvOS 480.4) x 91.9, pitch 91.9.
+            ForEach(Array(visibleSections.enumerated()), id: \.element) { row, index in
+                let section = sections[index]
                 let selected = selectedSection == index
-                let top = 162 + CGFloat(index) * 91.9
+                let top = 162 + CGFloat(row) * 91.9
                 Button {
                     selectedSection = index
                 } label: {
                     ZStack(alignment: .topLeading) {
                         Rectangle()
                             .fill(selected ? DesignTokens.Color.backgroundRaised : Color.clear)
-                            .frame(width: 480.4, height: 91.9)
+                            .frame(width: mac(470, 480.4), height: 91.9)
                         Text(section.number)
                             .font(TVTheme.font(size: 9.92, weight: .bold))
                             .foregroundStyle(DesignTokens.Color.textDisabled)
@@ -56,9 +70,9 @@ struct TVSettingsView: View {
                         Text("\u{2192}")
                             .font(TVTheme.font(size: 20.8, weight: .regular))
                             .foregroundStyle(selected ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
-                            .placed(x: selected ? 432.6 : 427.6, y: 30.3, w: 20.8, h: 31.2)
+                            .placed(x: selected ? mac(422.6, 432.6) : mac(417.6, 427.6), y: 30.3, w: 20.8, h: 31.2)
                     }
-                    .frame(width: 480.4, height: 91.9, alignment: .topLeading)
+                    .frame(width: mac(470, 480.4), height: 91.9, alignment: .topLeading)
                     .modifier(TVNavItemFocusFill(fill: DesignTokens.Color.backgroundRaised, cornerRadius: 0))
                 }
                 // Web settings menu: the focused row gets the selected fill and opens its panel; no system platter.
@@ -66,7 +80,7 @@ struct TVSettingsView: View {
                 .focused($focusedSection, equals: index)
                 .disabled(TVParityLaunch.frozen) // not .focusable: on a Button it adds a second, inert focus target
                 .focusEffectDisabled()
-                .pinned(x: 153.6, y: top, w: 480.4, h: 91.9)
+                .pinned(x: 153.6, y: top, w: mac(470, 480.4), h: 91.9)
             }
 
             Color.clear.frame(width: 0, height: 0)
@@ -84,7 +98,7 @@ struct TVSettingsView: View {
                     sectionDetail
                 }
             }
-            .frame(width: 995, alignment: .topLeading)
+            .frame(width: mac(1042, 995), alignment: .topLeading)
             .pinned(x: 773.8, y: selectedSection == 0 ? 0 : 210, w: 995, alignment: .topLeading)
             .focusSection()
         }
@@ -107,46 +121,46 @@ struct TVSettingsView: View {
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .placed(x: 0, y: 210, w: 995, h: 39.6)
-                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [80.4, 67.6, 68.1], y: 265.8) { index in
+                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), y: mac(266, 265.8)) { index in
                     displayPreferences.themePreference = [.system, .light, .dark][index]
                 }
                 Rectangle()
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
-                    .frame(width: 995, height: 1)
-                    .offset(y: 346)
+                    .frame(width: mac(1042, 995), height: 1)
+                    .offset(y: mac(352, 346))
                 Text("Home screen artwork")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: 377.3, w: 995, h: 39.6)
+                    .placed(x: 0, y: mac(382.2, 377.3), w: 995, h: 39.6)
                 Text("Show portrait covers instead of wide media thumbnails on the home screen.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .placed(x: 0, y: 422.5, w: 995, h: 20.3)
-                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: [110.5, 78], y: 459) { index in
+                    .placed(x: 0, y: mac(428, 422.5), w: 995, h: 20.3)
+                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, y: mac(465, 459)) { index in
                     displayPreferences.homeCovers = index == 1
                 }
                 Rectangle()
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
-                    .frame(width: 995, height: 1)
-                    .offset(y: 539.5)
+                    .frame(width: mac(1042, 995), height: 1)
+                    .offset(y: mac(551, 539.5))
                 // Web Appearance > Artwork size: one size for all artwork (Home, Library, Search and more).
                 Text("Artwork size")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: 570.8, w: 995, h: 39.6)
+                    .placed(x: 0, y: mac(582, 570.8), w: 995, h: 39.6)
                 Text("Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .placed(x: 0, y: 616, w: 995, h: 20.3)
+                    .placed(x: 0, y: mac(628, 616), w: 995, h: 20.3)
                 choice(["Small", "Medium", "Large"],
                        selected: TVDisplayPreferences.ArtworkSize.allCases.firstIndex(of: displayPreferences.artworkSize) ?? 1,
-                       widths: [331.7, 331.7, 331.7], y: 652.5) { index in
+                       y: mac(664, 652.5)) { index in
                     displayPreferences.artworkSize = TVDisplayPreferences.ArtworkSize.allCases[index]
                 }
             }
-            .frame(width: 995, height: 760, alignment: .topLeading) // real height: controls outside a 1-pt frame cannot take focus
+            .frame(width: mac(1042, 995), height: 760, alignment: .topLeading) // real height: controls outside a 1-pt frame cannot take focus
         case 4:
             Text("Playarr Server")
                 .font(.system(size: 22, weight: .semibold))
@@ -186,9 +200,35 @@ struct TVSettingsView: View {
         }
     }
 
-    /// Web `.theme-choice`: a bordered segmented control of 48-50px buttons; each is a real, focusable choice.
-    private func choice(_ labels: [String], selected: Int, widths: [CGFloat], y: CGFloat, onSelect: ((Int) -> Void)? = nil) -> some View {
-        HStack(spacing: 0) {
+    /// Web `.theme-choice`. macOS: equal columns across the 1042 pt panel, 8 pt apart, 56 pt tall, 6 pt corners; the chosen
+    /// one is white and grows 2.5 %. tvOS: the compact bordered segmented control. Each is a real, focusable choice.
+    private func choice(_ labels: [String], selected: Int, y: CGFloat, onSelect: ((Int) -> Void)? = nil) -> some View {
+        #if os(macOS)
+        let width = (1042 - 8 * CGFloat(labels.count - 1)) / CGFloat(labels.count)
+        return HStack(spacing: 8) {
+            ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
+                let on = index == selected
+                Button { onSelect?(index) } label: {
+                    Text(label)
+                        .font(TVTheme.font(size: 11.52, weight: .bold))
+                        .foregroundStyle(on ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
+                        .frame(width: width, height: 56)
+                        .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(on ? DesignTokens.Color.textPrimary : DesignTokens.Color.textPrimary.opacity(0.04)))
+                        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(DesignTokens.Color.borderDefault.opacity(on ? 0 : 0.35), lineWidth: 1))
+                        .scaleEffect(on ? 1.025 : 1)
+                }
+                .buttonStyle(TVRingButtonStyle(cornerRadius: 6))
+                .focusEffectDisabled()
+                .disabled(onSelect == nil || TVParityLaunch.frozen)
+            }
+        }
+        .pinned(x: 0, y: y, h: 56)
+        #else
+        let widths: [CGFloat] = labels.count == 3 && labels[0] == "System" ? [80.4, 67.6, 68.1]
+            : labels.count == 2 ? [110.5, 78] : [331.7, 331.7, 331.7]
+        return HStack(spacing: 0) {
             ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
                 Button { onSelect?(index) } label: {
                     Text(label)
@@ -204,6 +244,7 @@ struct TVSettingsView: View {
         }
         .overlay(Rectangle().stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
         .pinned(x: 0, y: y, h: 50)
+        #endif
     }
 
     private func themeChip(_ label: String, selected: Bool) -> some View {

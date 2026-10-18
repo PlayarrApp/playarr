@@ -220,6 +220,36 @@ final class TVWorkDetailViewModel {
         self.apiClient = apiClient
     }
 
+    /// Web `WorkDetail` fallback when the server has no similar list: library titles ranked by shared genres, then kind and year.
+    static func rankSimilar(target: Work, candidates: [Work], limit: Int = 20) -> [Work] {
+        func year(_ w: Work) -> Int? { w.releaseDate.flatMap { Int($0.prefix(4)) }.flatMap { $0 > 0 ? $0 : nil } }
+        let genres = Set(target.genres.map { $0.trimmingCharacters(in: .whitespaces).lowercased() })
+        func score(_ c: Work) -> Double {
+            let shared = c.genres.filter { genres.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) }.count
+            let proximity = year(target).flatMap { a in year(c).map { max(0, 5 - Double(abs(a - $0)) / 5) } } ?? 0
+            return Double(shared) * 100 + (c.kind == target.kind ? 10 : 0) + proximity
+        }
+        var seen = Set<UUID>()
+        let unique = candidates.filter { $0.id != target.id && ($0.kind == .movie || $0.kind == .series) && seen.insert($0.id).inserted }
+        return Array(unique.sorted {
+            let (a, b) = (score($0), score($1))
+            return a != b ? a > b : $0.sortTitle.localizedCompare($1.sortTitle) == .orderedAscending
+        }.prefix(limit))
+    }
+
+    private func genreRankedSimilar(to target: Work) async -> [Work] {
+        let genres = Array(target.genres.prefix(3))
+        var pool: [Work] = []
+        if genres.isEmpty {
+            pool = (try? await apiClient.browseCatalog(kind: target.kind, genre: nil, tag: nil, sort: "date_added", limit: 100, offset: 0).items) ?? []
+        } else {
+            for genre in genres {
+                pool += (try? await apiClient.browseCatalog(kind: nil, genre: genre, tag: nil, sort: nil, limit: 100, offset: 0).items) ?? []
+            }
+        }
+        return Self.rankSimilar(target: target, candidates: pool)
+    }
+
     func load() async {
         state = .loading
         // Parity detail screens use deterministic fixtures (UUIDs are not on
@@ -249,6 +279,7 @@ final class TVWorkDetailViewModel {
             detail = loaded
             state = .loaded
             similar = (try? await apiClient.fetchSimilarWorks(id: workID, limit: 12)) ?? []
+            if similar.isEmpty { similar = await genreRankedSimilar(to: loaded.work) }
             cast = (try? await apiClient.fetchWorkCredits(id: workID).cast) ?? []
             if loaded.work.kind == .series {
                 availabilityLag = (try? await apiClient.fetchAvailabilityLag(id: workID)) ?? nil
