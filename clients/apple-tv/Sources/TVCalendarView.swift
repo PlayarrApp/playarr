@@ -12,6 +12,7 @@ struct TVCalendarView: View {
 
     private enum Panel { case link, filters }
     private static let todayFocus = "calendar-today"
+    private static let filtersFocus = "calendar-filters"
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -174,6 +175,10 @@ struct TVCalendarView: View {
         .environment(\.macDownTo, label == "Today" ? "calendar-filters" : nil)
         #else
         .focused($focusedEntry, equals: label == "Today" ? Self.todayFocus : "calendar-control-\(label)")
+        // Web: Down from Today goes to Filters.
+        #if os(tvOS)
+        .onMoveCommand { if label == "Today", $0 == .down { focusedEntry = Self.filtersFocus } }
+        #endif
         #endif
         .placed(x: x, y: 56.2, w: width, h: 50)
     }
@@ -677,6 +682,9 @@ struct TVCalendarView: View {
         .disabled(TVParityLaunch.frozen)
         #if os(macOS)
         .environment(\.macFocusName, label == "Filters" ? "calendar-filters" : nil)
+        #endif
+        #if !os(macOS)
+        .focused($focusedEntry, equals: label == "Filters" ? Self.filtersFocus : "calendar-pill-\(label)")
         #endif
         .placed(x: TVShellActionColumn.x, y: TVShellActionColumn.y(slot: slot), w: TVShellActionColumn.width, h: TVHeaderPill.height)
     }
