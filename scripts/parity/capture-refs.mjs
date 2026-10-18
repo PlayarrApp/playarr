@@ -4,6 +4,7 @@
 //   The capture clock is always FIXTURE_CLOCK (PARITY_FIXED_NOW is ignored).
 //   --dry prints the plan (groups, viewports, dirs, Downloads hidden or not, live screens) and the web build sha check, then exits without capturing.
 //   The web build served at PLAYARR_WEB_URL must contain origin/main's web client (no clients/tv-web change between its sha and origin/main), else the run stops (--allow-stale-web overrides).
+//   A group with "noFocusRing": true gets its Home focus dropped before the shot.
 // Needs PARITY_CHROME=<chromium path> (or Playwright's own), PARITY_CLIENT, PARITY_LOCK_DIR, and credentials resolved by capture-state.mjs.
 // Steps: snapshot account state, reset watch progress of the pinned files, capture each selected supported screen x dark/light once per viewport group
 // (fresh sign-in, sessionStorage cleared on every document, fixed fixture clock, deterministic animation policy, readiness checks), verify, then back up
@@ -141,6 +142,7 @@ for (const name of groups) {
             await driver.waitReady({ screen: s.id, phase: "capture" });
             await sleep(600); // posters swap to their final source shortly after the first load
             await driver.waitReady({ screen: s.id, phase: "capture" });
+            if (s.id === "home" && g.noFocusRing) await driver.blurFocus(); // touch layouts rest with no On deck focus ring (TV groups keep the first-card focus)
             const imagePath = join(work, name, theme, `${s.id}.png`);
             await driver.screenshot(imagePath);
             const f = await driver.inspect();
