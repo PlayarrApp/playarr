@@ -2109,7 +2109,7 @@ struct Detail {
       ForEach(
         this.rails,
         (rail: DetailRail) => {
-          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
+          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 2) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: web's cards start 2 px higher
             this.railHeading(rail.heading, rail.items.length.toString() + ' episodes', true)
             MediaRail({
               railId: rail.id,
