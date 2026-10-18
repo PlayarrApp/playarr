@@ -3862,7 +3862,7 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
             .size(size)
             // Web `.tv-watch-unseen` box-shadow: `0 2px 9px rgba(31,14,20,.45), 0 0 0 1px brand 35%` (phone only for now).
             .then(if (halo) Modifier
-                .shadow(4.dp, CircleShape, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
+                .shadow(4.dp, CircleShape, clip = false, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
                 .drawBehind { drawCircle(UnwatchedDotColour.copy(alpha = 0.35f), radius = size.toPx() / 2f + 1.dp.toPx() * 0.5f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())) }
             else Modifier)
             .background(UnwatchedDotColour, CircleShape)
@@ -4653,7 +4653,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         modifier = Modifier.align(Alignment.TopEnd)
                             // Landscape: keep the strip clear of a side cutout or a side navigation bar.
                             .windowInsetsPadding(if (parityNoInsets) WindowInsets(0) else WindowInsets.safeDrawing.only(WindowInsetsSides.End))
-                            .padding(top = 88.dp)
+                            .padding(top = 88.8.dp)
                             .width(52.dp).height(675.dp).padding(start = 4.dp, end = 4.dp),
                     ) {
                         (listOf("#") + ('A'..'Z').map(Char::toString)).forEach { letter ->
