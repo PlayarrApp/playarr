@@ -804,6 +804,7 @@ pub async fn test_state_with_probe(
         playlist_repo,
         watchlist_repo,
         resume_dismissals,
+        static_mode: false,
         discovery_requests_allow_all_users: false,
         request_sync: request_sync.clone(),
         work_repo: work_repo.clone(),

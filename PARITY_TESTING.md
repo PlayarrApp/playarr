@@ -121,7 +121,7 @@ calendar and the avatar drifted between runs. The static parity server serves on
   dates, a fixed watchlist, calendar entries around the clock, and a deck of exactly the canonical On deck item. Artwork is
   generated from the title text and a fixed colour pair; there is one 60 s playable clip. It is never a copy of a live DB.
 - **Frozen:** every start copies the pristine DB to a throw-away working directory. `PLAYARR_STATIC=1` stops arr and peer sync,
-  relay registration, ACME, backups, metadata refresh, the folder scanner, the calendar refresher and the Dubarr poller. The
+  relay registration, ACME, backups, metadata refresh, the folder scanner, the calendar refresher and the Dubarr poller. It also makes the writes that would change Home (watch progress, resume answers, Home rail preferences, a progress import) answer success and store nothing. The
   backend runs in a cgroup (`MemoryHigh=8G`, `MemoryMax=12G`, `MemorySwapMax=512M`).
 - **Scripts:** every node capture script loads `parity.env` through `dpad-account.mjs`, and `readSecrets()` then answers the
   Device Test and per-client parity accounts with the static server and account. `PARITY_LIVE=1` switches that off. Shell

@@ -161,9 +161,11 @@ pub async fn get_resume_plan_handler(
 ) -> Result<Json<ResumePlan>, ApiError> {
     let inputs = load(&state, &viewer, id, None).await?;
     // A pick that later play has superseded can never apply again: delete it, so losing that later
-    // progress cannot bring an old pick back.
+    // progress cannot bring an old pick back. (Static mode never writes.)
     for episode_id in
         superseded_choice_episode_ids(&inputs.episodes, &inputs.progress, &inputs.dismissals)
+            .into_iter()
+            .filter(|_| !state.static_mode)
     {
         let _ = state
             .resume_dismissals
@@ -203,6 +205,9 @@ pub async fn record_resume_choice_handler(
         return Err(ApiError::bad_request(
             "the picked option is not offered by the current resume plan",
         ));
+    }
+    if state.static_mode {
+        return Ok(Json(plan));
     }
     let now = Utc::now();
     // Picking anything but the missed episode declines the whole gap run.
@@ -309,6 +314,9 @@ pub async fn clear_resume_choices_handler(
 ) -> Result<Json<ResumeClearResponse>, ApiError> {
     // Resolve the series first so an unknown or hidden id is a 404.
     load(&state, &viewer, id, Some(&[])).await?;
+    if state.static_mode {
+        return Ok(Json(ResumeClearResponse { removed: 0 }));
+    }
     let removed = state
         .resume_dismissals
         .clear_for_series(viewer.user_id, id)

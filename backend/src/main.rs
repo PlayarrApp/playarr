@@ -1854,6 +1854,7 @@ async fn boot_api(
         playlist_repo,
         watchlist_repo,
         resume_dismissals,
+        static_mode: static_mode(),
         discovery_requests_allow_all_users: std::env::var("PLAYARR_REQUESTS_ALLOW_ALL_USERS")
             .is_ok_and(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes")),
         request_sync: request_sync.clone(),

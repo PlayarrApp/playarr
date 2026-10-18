@@ -700,6 +700,9 @@ pub struct AppState {
     /// Whether any signed-in user (not just admins) may request titles from
     /// Radarr/Sonarr through discovery. `PLAYARR_REQUESTS_ALLOW_ALL_USERS`.
     pub discovery_requests_allow_all_users: bool,
+    /// `PLAYARR_STATIC=1` (the frozen parity server): writes that would change Home, On deck or
+    /// Continue watching answer success and persist nothing.
+    pub static_mode: bool,
     /// Unified requests plus the Ombi/Seerr sync engine (TASKS 280-287).
     pub request_sync: Arc<request_sync::RequestSync>,
     /// The real, durable persistence layer for `playarr_model::Work` --
