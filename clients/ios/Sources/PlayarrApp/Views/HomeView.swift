@@ -189,6 +189,12 @@ struct HomeView: View {
         return first && index == 0
     }
 
+    /// Resume fraction for the card's progress bar: only a part-watched title with a known duration has one.
+    private func resumeFraction(_ work: Work) -> Double? {
+        guard let item = viewModel.progressByWorkID[work.id], item.state == .partWatched, item.durationMS > 0 else { return nil }
+        return Double(item.positionMS) / Double(item.durationMS)
+    }
+
     private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool, index railIndex: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(rail.title, 16, 610, lh: 24, ls: -0.48).padding(.horizontal, 16)
@@ -200,7 +206,7 @@ struct HomeView: View {
                                 work: work,
                                 apiClient: apiClient,
                                 unseen: viewModel.progressByWorkID[work.id] == nil,
-                                progress: viewModel.progressByWorkID[work.id].flatMap { $0.state == .partWatched && $0.durationMS > 0 ? Double($0.positionMS) / Double($0.durationMS) : nil },
+                                progress: resumeFraction(work),
                                 focused: keyFocus.map { $0.rail == railIndex && $0.card == index } ?? (focusedWork.map { $0 == work.id } ?? phoneRailFocused(first: first, index: index, count: rail.works.count)),
                                 cover: homeView == "cover"
                             )
