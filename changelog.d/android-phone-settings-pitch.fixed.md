@@ -1,1 +1,0 @@
-- Android phone Settings index: the numbered rows are spread over whole pixels (162, 162 and 163 px) instead of a rounded 162 px, so the list pitch matches the web.
