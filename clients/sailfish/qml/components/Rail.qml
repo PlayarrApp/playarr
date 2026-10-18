@@ -18,7 +18,7 @@ Column {
     // The same card as the library grid (web #924): (viewport - 16 gutter - 52 rail pad - 12 gap) / 2.
     readonly property real cardW: Math.round((width - Tokens.px(16 + 52 + 12)) / 2)
 
-    Label {
+    Label { renderType: Text.NativeRendering;
         x: Tokens.pad
         text: root.title
         color: Tokens.ink

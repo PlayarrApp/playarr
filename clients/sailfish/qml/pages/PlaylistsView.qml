@@ -37,8 +37,8 @@ Item {
             Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line }
             Column {
                 anchors { left: parent.left; leftMargin: 16 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
-                Label { width: parent.width; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u }
-                Label { text: modelData.is_system ? qsTr("Shared playlist") : qsTr("Your playlist"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 12 * Tokens.u }
+                Label { renderType: Text.NativeRendering; width: parent.width; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u }
+                Label { renderType: Text.NativeRendering; text: modelData.is_system ? qsTr("Shared playlist") : qsTr("Your playlist"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 12 * Tokens.u }
             }
         }
         EdgeFade { target: list }
