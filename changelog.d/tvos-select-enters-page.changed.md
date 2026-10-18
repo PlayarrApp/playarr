@@ -1,0 +1,1 @@
+- Apple TV: Select on a sidebar item opens the page and puts focus on its first item, as on the web.
