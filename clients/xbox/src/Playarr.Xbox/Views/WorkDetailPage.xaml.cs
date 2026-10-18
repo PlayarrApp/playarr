@@ -135,6 +135,7 @@ namespace Playarr.Xbox.Views
             if (work != null && !ReferenceEquals(_backdropWork, work))
             {
                 _backdropWork = work;
+                ShellChrome.Instance?.MarkDetailKind(work.Kind);
                 BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
                 Artwork.Load(BackdropImage, work, 999, new[] { ImageKind.Backdrop }, requestWidth: 780, applyKeyArtFilter: true);
             }
