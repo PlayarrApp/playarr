@@ -11,6 +11,7 @@ import {
 import { syncSignedInHint } from "./signedInHint";
 import {
   ApiClient,
+  ApiError,
   type AccessTokenRequest,
   type ApiClientConfig,
   type LoginRequest,
@@ -24,6 +25,7 @@ import {
   getOrCreateDeviceId,
   toStoredSession,
   TokenStore,
+  TransientAuthError,
   type DeviceTokenSuccess,
   type StoredSession,
 } from "@playarr-tv/device-auth";
@@ -155,7 +157,7 @@ function isStoredSession(value: unknown): value is StoredSession {
   );
 }
 
-function readStoredProfileSessions(fallbackApiBaseUrl: string): StoredProfileSession[] {
+export function readStoredProfileSessions(fallbackApiBaseUrl: string): StoredProfileSession[] {
   try {
     const currentRaw = window.localStorage.getItem(SAVED_PROFILE_SESSIONS_STORAGE_KEY);
     const raw =
@@ -204,16 +206,14 @@ function readStoredProfileSessions(fallbackApiBaseUrl: string): StoredProfileSes
         window.localStorage.removeItem(key);
       }
     }
-    // Boot and cross-tab reads re-assert the hint so existing users skip the marketing page.
-    syncSignedInHint(profiles.length > 0);
+    // Saved profiles are not a sign-in: only an active session sets the hint.
     return profiles;
   } catch {
     return [];
   }
 }
 
-function writeStoredProfileSessions(profiles: StoredProfileSession[]): void {
-  syncSignedInHint(profiles.length > 0);
+export function writeStoredProfileSessions(profiles: StoredProfileSession[]): void {
   try {
     window.localStorage.setItem(SAVED_PROFILE_SESSIONS_STORAGE_KEY, JSON.stringify(profiles));
   } catch {
@@ -238,6 +238,20 @@ function freshStoredProfileSessions(
     return fallback;
   }
   return readStoredProfileSessions(fallbackApiBaseUrl);
+}
+
+/** Explicit sign-out: drop matching saved profiles (may be none); `wasActive` also clears the routing hint. */
+export function signOutStoredProfiles(
+  remove: ((profile: StoredProfileSession) => boolean) | undefined,
+  wasActive: boolean,
+  fallback: StoredProfileSession[],
+  fallbackApiBaseUrl: string
+): StoredProfileSession[] {
+  if (wasActive) syncSignedInHint(false);
+  if (!remove) return fallback;
+  const next = freshStoredProfileSessions(fallback, fallbackApiBaseUrl).filter((p) => !remove(p));
+  writeStoredProfileSessions(next);
+  return next;
 }
 
 function readActiveProfileMarker(): ActiveProfileMarker | undefined {
@@ -516,6 +530,8 @@ interface ApiClientContextValue {
    * guard, never a security boundary.
    */
   currentUserId: string | undefined;
+  /** A session is stored. True for an opaque token too, which carries no user id to decode. */
+  hasSession: boolean;
   /**
    * Best display name available for the signed-in viewer. Full-account
    * logins persist their username because access tokens only carry a user
@@ -731,15 +747,22 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
   if (!tokenStoreRef.current) {
     tokenStoreRef.current = new TokenStore();
   }
-  if (!tokenStoreRef.current.get()) {
-    const restoredProfile = selectRestorableProfileSession(
-      initialStoredProfilesRef.current ?? [],
-      apiBaseUrl,
-      readActiveProfileMarker()
-    );
-    if (restoredProfile) {
-      tokenStoreRef.current.set(restoredProfile.session);
-      writeActiveProfileMarker(restoredProfile);
+  // Once per server: a later render with an empty store is a sign-out and must not restore the stale snapshot.
+  // Primary-client token requests still running: a profile switch waits for them (see `activateStoredProfile`).
+  const pendingTokenRequestsRef = useRef(new Set<Promise<unknown>>());
+  const sessionRestoredForRef = useRef<string>();
+  if (sessionRestoredForRef.current !== apiBaseUrl) {
+    sessionRestoredForRef.current = apiBaseUrl;
+    if (!tokenStoreRef.current.get()) {
+      const restoredProfile = selectRestorableProfileSession(
+        readStoredProfileSessions(apiBaseUrl),
+        apiBaseUrl,
+        readActiveProfileMarker()
+      );
+      if (restoredProfile) {
+        tokenStoreRef.current.set(restoredProfile.session);
+        writeActiveProfileMarker(restoredProfile);
+      }
     }
   }
 
@@ -936,9 +959,22 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
       baseUrl: apiBaseUrl,
       fetchImpl: browserFetch,
       defaultHeaders: PLAYARR_PLATFORM_HEADERS,
-      getAccessToken: async (request) => {
+      getAccessToken: (request) => {
+        const pending = acquireToken(request);
+        const done = () => void pendingTokenRequestsRef.current.delete(pending);
+        pendingTokenRequestsRef.current.add(pending);
+        pending.then(done, done);
+        return pending;
+      },
+    });
+    async function acquireToken(request?: AccessTokenRequest): Promise<string | undefined> {
+        const activeProfile = activeProfileRef.current;
         try {
-          const activeProfile = activeProfileRef.current;
+          // Nobody is signed in: answer locally. Reaching `ensureAccessToken` would register a
+          // shared in-flight rejection that a later, real sign-in would pick up.
+          if (!activeProfile && !tokenStore.get()) {
+            throw new ApiError(401, "Unauthorized", { error: "unauthorized" });
+          }
           const token = await ensureAccessToken(
             instance,
             tokenStore,
@@ -948,6 +984,10 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
             },
             {
               ...request,
+              // Sign-in is always the viewer's choice: a credential-less login would pick an
+              // account for them, or answer 400 under full-account auth. With no session
+              // stored, nothing is sent at all.
+              allowTransparentLogin: false,
               // §7.2: a refresh failure against `apiBaseUrl` retries the
               // same refresh token across the rest of the remembered
               // group before falling through to a full login. A no-op
@@ -957,6 +997,11 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
               clientForUrl: buildClientForServerGroupUrl,
             }
           );
+          // The viewer signed out or switched profile while this ran: the token is not theirs to
+          // persist or announce. Transient, so the caller retries under the new session.
+          if (activeProfileRef.current !== activeProfile || tokenStore.get()?.accessToken !== token) {
+            throw new TransientAuthError("the session changed while the token was being obtained");
+          }
           const userId = decodeAccessTokenUserId(token);
           const activeSession = tokenStore.get();
           if (
@@ -1001,11 +1046,22 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
           // a restarting server (5xx/429/408) or a hung request says nothing
           // about the session: keep the stored credentials, stay on the
           // page and let the next request retry.
-          if (!isTransientAuthFailure(err)) setAuthFailed(true);
+          if (!isTransientAuthFailure(err)) {
+            setAuthFailed(true);
+            // The active session is refused: drop only it (the saved entry stays, so
+            // picking that profile re-tries its own token or asks for its credentials).
+            if (activeProfile && activeProfileRef.current === activeProfile) {
+              tokenStore.clear();
+              clearActiveProfileMarker();
+              activeProfileRef.current = undefined;
+              setCurrentUserId(undefined);
+              setCurrentUserName(undefined);
+              syncSignedInHint(false);
+            }
+          }
           throw err;
         }
-      },
-    });
+    }
     return instance;
   }, [apiBaseUrl, applyApiBaseUrl, persistProfileSession]);
 
@@ -1062,7 +1118,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
             ensureAccessToken(instance, store, {
               ...PLAYARR_LOGIN_IDENTITY,
               deviceId: profile.deviceId,
-            }, request),
+            }, { ...request, allowTransparentLogin: false }),
         });
         return {
           url: profile.apiBaseUrl,
@@ -1181,6 +1237,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
           deviceId: profileDeviceId,
         };
         writeActiveProfileMarker(activeProfileRef.current);
+        syncSignedInHint(true);
         persistProfileSession(
           targetApiBaseUrl,
           profileKey,
@@ -1323,6 +1380,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
         deviceId,
       };
       writeActiveProfileMarker(activeProfileRef.current);
+      syncSignedInHint(true);
       persistProfileSession(
         targetApiBaseUrl,
         profileKey,
@@ -1377,6 +1435,9 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
       }
       const userId = target.userId;
       const tokenStore = tokenStoreRef.current as TokenStore;
+      // A token request still running for the profile being left may rotate or drop its session:
+      // let it settle first, so what is read below (and restored on failure) is what is stored.
+      await Promise.allSettled([...pendingTokenRequestsRef.current]);
       const previousSession = tokenStore.get();
       const previousProfile = activeProfileRef.current;
       // Switching away locks the profile being left (TASKS 115): if it has a
@@ -1408,6 +1469,8 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
           {
             serverGroup: readKnownServers(),
             clientForUrl: buildClientForServerGroupUrl,
+            // A refused saved token asks for that profile's credentials; no blank login.
+            allowTransparentLogin: false,
             // Always go to the server on a switch so a PIN-locked profile
             // is checked against its unlock lease, not a cached token.
             forceRefresh: true,
@@ -1435,6 +1498,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
         setCurrentUserName(target.name);
         setAuthFailed(false);
         writeActiveProfileMarker(activeProfileRef.current);
+        syncSignedInHint(true);
         // §7.1/§7.2: switch over to whichever address the retry actually
         // succeeded against -- see the primary client's `getAccessToken`
         // for the identical, more fully-commented check.
@@ -1506,16 +1570,14 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
     tokenStoreRef.current?.clear();
     clearSignedInDeviceState();
     activeProfileRef.current = undefined;
-    if (activeProfile) {
-      setStoredProfileSessions((stale) => {
-        const existing = freshStoredProfileSessions(stale, activeProfile.apiBaseUrl);
-        const next = existing.filter(
-          (profile) => profile.profileKey !== activeProfile.profileKey
-        );
-        writeStoredProfileSessions(next);
-        return next;
-      });
-    }
+    // Cleared even without an active profile (expired session): the hint tracks sign-in, not saved profiles.
+    const next = signOutStoredProfiles(
+      activeProfile && ((profile) => profile.profileKey === activeProfile.profileKey),
+      true,
+      [],
+      activeProfile?.apiBaseUrl ?? ""
+    );
+    if (activeProfile) setStoredProfileSessions(next);
     setAuthFailed(false);
     setCurrentUserId(undefined);
     setCurrentUserName(undefined);
@@ -1536,14 +1598,15 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
         setCurrentUserName(undefined);
       }
 
-      setStoredProfileSessions((stale) => {
-        const existing = freshStoredProfileSessions(stale, apiBaseUrl);
-        const next = existing.filter(
-          (profile) => profile.apiBaseUrl !== apiBaseUrl || profile.userId !== userId
-        );
-        writeStoredProfileSessions(next);
-        return next;
-      });
+      // Written now, not in a state updater: the caller navigates away right after.
+      setStoredProfileSessions(
+        signOutStoredProfiles(
+          (profile) => profile.apiBaseUrl === apiBaseUrl && profile.userId === userId,
+          isActiveProfile,
+          [],
+          apiBaseUrl
+        )
+      );
     },
     [apiBaseUrl]
   );
@@ -1565,6 +1628,7 @@ export function ApiClientProvider({ children }: { children: ReactNode }) {
         apiBaseUrl,
         setApiBaseUrl,
         currentUserId,
+        hasSession: tokenStoreRef.current?.get() !== undefined,
         currentUserName,
         savedProfiles: storedProfileSessions
           .filter((profile) => profile.apiBaseUrl === apiBaseUrl)
@@ -1651,6 +1715,7 @@ export function useCurrentUserId(): string | undefined {
 export function useAuth(): {
   authFailed: boolean;
   currentUserId: string | undefined;
+  hasSession: boolean;
   currentUserName: string | undefined;
   savedProfiles: SavedProfile[];
   connectedServers: ConnectedServer[];
@@ -1671,6 +1736,7 @@ export function useAuth(): {
   const {
     authFailed,
     currentUserId,
+    hasSession,
     currentUserName,
     savedProfiles,
     connectedServers,
@@ -1688,6 +1754,7 @@ export function useAuth(): {
   return {
     authFailed,
     currentUserId,
+    hasSession,
     currentUserName,
     savedProfiles,
     connectedServers,

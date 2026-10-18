@@ -3,14 +3,16 @@
 # hotspots, so PRs add fragment files (changelog.d/, tasks.d/) and the Fold board workflow folds them in
 # (commit subject "chore(board): fold fragments"). Also validates fragment syntax when node exists.
 #
-# Env: BASE_REF (default main). Looks only at the PR's own non-merge commits.
+# Env: BASE_REF (default main). Looks only at the PR's own non-merge commits, skipping any already on main (a main-into-integration sync).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 base="${BASE_REF:-main}"
 git fetch -q --no-tags origin "$base"
+[ "$base" = main ] || git fetch -q --no-tags origin main
 head=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD)
 bad=""
 for c in $(git rev-list --no-merges "origin/$base..$head"); do
+  git merge-base --is-ancestor "$c" origin/main && continue  # already landed on main (e.g. a main-into-integration sync)
   # "chore(scrub):" is reserved for owner-ordered repository-wide scrubs (for example removing media
   # titles) that must rewrite existing CHANGELOG.md/TASKS.md text, which fragments cannot express.
   # "chore(board-format):" is reserved for a repository-wide migration of TASKS.md to the canonical

@@ -1104,7 +1104,7 @@ export const ja: Translations = {
   "pages.clients.tizenPage.installKicker": "Samsung Developer Mode",
   "pages.clients.tizenPage.installTitle": "SamsungテレビにPlayarrをインストール",
   "pages.clients.tizenPage.installDescription":
-    "Tizen 7.0以降を搭載した2023年以降のSamsungテレビを使用し、パソコンと同じローカルネットワークに接続してください。Samsung TV拡張を含むTizen Studio、有効な証明書プロファイル、および上の互換性のある署名済みWGTかソースから署名したWGTが必要です。",
+    "Tizen 6.5以降を搭載した2022年以降のSamsungテレビを使用し、パソコンと同じローカルネットワークに接続してください。Samsung TV拡張を含むTizen Studio、有効な証明書プロファイル、および上の互換性のある署名済みWGTかソースから署名したWGTが必要です。",
   "pages.clients.tizenPage.step1Title": "TV SDKを導入して証明書を作成する",
   "pages.clients.tizenPage.step1Description":
     "Tizen Studioをインストールし、Package ManagerでSamsung TV Extension、Samsung Certificate Extension、Web CLIを追加します。Samsung証明書プロファイルを作成して有効化してください。Tizenは未署名のウィジェットをインストールできません。",
@@ -1277,10 +1277,9 @@ export const ja: Translations = {
   "pages.downloads.sortSize": "サイズ",
   "pages.downloads.noMatchesTitle": "一致するダウンロードはありません",
   "pages.downloads.noMatchesDescription": "フィルターを変更またはクリアすると、ダウンロードが表示されます。",
-  "pages.downloads.notificationsOn": "ダウンロード通知はオンです。",
-  "pages.downloads.notificationsOff": "ダウンロードの進行状況を通知で表示します。",
-  "pages.downloads.notificationsTurnOn": "通知をオンにする",
-  "pages.downloads.notificationsTurnOff": "オフにする",
+  "pages.downloads.notifications": "通知",
+  "pages.downloads.notificationsBlocked": "通知がブロックされています",
+  "pages.downloads.notificationsBlockedHint": "通知がブロックされています。アドレスバーの鍵アイコンから通知を許可し、ページを再読み込みしてください。",
   "lib.downloads.notification.downloadingOne": "{{title}}をダウンロード中",
   "lib.downloads.notification.downloadingMany": "{{count}}件をダウンロード中",
   "lib.downloads.notification.pausedOne": "一時停止中: {{title}}",

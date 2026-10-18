@@ -81,7 +81,7 @@ spec:
       app.kubernetes.io/name: playarr-standalone
       app.kubernetes.io/instance: {{ $name }}
   strategy:
-    type: Recreate
+    type: Recreate # Recreate: public clients and the relay Worker reach the node's public IP:8484 directly via hostPort, and one node cannot bind that port in two Pods
   template:
     metadata:
       labels:

@@ -55,3 +55,25 @@ install the capture tools with `npm ci && npx playwright-core install chromium` 
 | Fixture server | `scripts/fixtures/up.sh --fresh` (`down.sh` to stop) |
 | Web reference captures | `node scripts/parity/capture-web.mjs` (see `docs/parity/README.md`) |
 | Diff native against web | `node scripts/parity/diff.mjs --ref docs/parity/web --cand <dir> --layout tv --theme dark` |
+
+## Parity captures on GitHub-hosted runners (manual)
+
+Xbox, HarmonyOS and Apple parity captures run on GitHub-hosted runners, only when dispatched by hand. They have a
+`workflow_dispatch` trigger and nothing else, so pull request and main-push CI never run or require them.
+
+| Workflow | Inputs |
+| --- | --- |
+| `parity-xbox.yml` | `ref`, `playback`, `screens` |
+| `parity-harmony.yml` | `device`, `parts`, `checks`, `tv_screens`, `skip_player`, `phone_core_only`, `poster`, `motion`, `rail_patch` |
+| `parity-apple.yml` | `devices`, `ref`, `capture`, `stream`, `suite_args`, `theme`, `search_smoke`, `search_query`, `chain`, `length` |
+| `parity-apple-ios.yml` | `devices`, `ref`, `fixed_now`, `screens`, `focus`, `motion`, `poster`, `parts` |
+| `parity-apple-simulator.yml` | `platform`, `source_sha` |
+
+```sh
+gh workflow run parity-xbox.yml -R PlayarrApp/playarr --ref <branch> -f screens=home,movies -f playback=false
+gh run list -R PlayarrApp/playarr --workflow parity-xbox.yml --limit 1
+gh run watch <run-id> -R PlayarrApp/playarr
+gh run download <run-id> -R PlayarrApp/playarr -D <out-dir>
+```
+
+Captures are uploaded as workflow artifacts. They use the existing `PLAYARR_DEVICE_TEST_*` repository secrets.

@@ -49,6 +49,7 @@ import type {
   RefreshRequest,
   RefreshResponse,
 } from "@playarr-tv/api-client";
+import { ApiError } from "@playarr-tv/api-client";
 import { getOrCreateDeviceId } from "./deviceId";
 import { decodeAccessTokenDeviceId, decodeAccessTokenIssuer } from "./jwt";
 import type { StoredSession, TokenStore } from "./tokenStore";
@@ -92,6 +93,12 @@ export interface KnownServerGroupLike {
 export interface EnsureAccessTokenOptions {
   /** Refresh even when the stored access token has not reached its renewal window. */
   forceRefresh?: boolean;
+  /**
+   * False when the viewer has signed-in accounts or has just signed out: a credential-less
+   * login would pick an account for them (or answer 400 under full-account auth), so a missing
+   * or refused session rejects with a 401 instead. Defaults to true.
+   */
+  allowTransparentLogin?: boolean;
   /**
    * With `forceRefresh`: the access token the server just rejected. When the
    * store already holds a different, still-usable one (another caller or tab
@@ -444,6 +451,10 @@ export async function ensureAccessToken(
         }
       }
 
+      if (options.allowTransparentLogin === false) {
+        throw transient ?? new ApiError(401, "Unauthorized", { error: "unauthorized" });
+      }
+
       const cooldown = loginCooldowns.get(store);
       if (cooldown && cooldown.until > Date.now()) throw transient ?? cooldown.error;
 
@@ -488,6 +499,14 @@ function buildLoginBody(identity: EnsureAccessTokenIdentity): LoginRequest {
     client_platform: identity.clientPlatform,
     client_version: identity.clientVersion,
   };
+}
+
+/**
+ * False once the session a refresh started from is gone or replaced (signed out, or another
+ * profile signed in) while the request was in flight: its result must not overwrite the store.
+ */
+function storeStillHolds(store: TokenStore, started: StoredSession): boolean {
+  return store.get()?.refreshToken === started.refreshToken;
 }
 
 /**
@@ -541,6 +560,7 @@ async function refreshExistingSession(
     };
     try {
       const refreshed = await client.refresh(refreshBody);
+      if (!storeStillHolds(store, latest)) return undefined;
       store.set(toStoredSession(refreshed));
       return refreshed.access_token;
     } catch (err) {
@@ -561,6 +581,7 @@ async function refreshExistingSession(
             options.clientForUrl
           );
           if (refreshed) {
+            if (!storeStillHolds(store, latest)) return undefined;
             store.set(toStoredSession(refreshed));
             return refreshed.access_token;
           }

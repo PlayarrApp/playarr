@@ -15,10 +15,10 @@ downloads).
 
 ## Supported runtime
 
-- **Developer-package floor:** Tizen 7.0 (2023 Samsung TVs), declared by
-  `required_version="7.0"` in the widget manifest. The Vite bundle targets
-  ES2018, and shared runtime and CSS code stay within Tizen 7's Chromium 94
-  floor. The vendor-only CSS transform expands `inset` plus emits theme-colour
+- **Developer-package floor:** Tizen 6.5 (2022 Samsung TVs), declared by
+  `required_version="6.5"` in the widget manifest. The Vite bundle targets
+  ES2018, and shared runtime and CSS code stay within Tizen 6.5's Chromium 85
+  floor (inline styles use `top/right/bottom/left` rather than `inset`). The vendor-only CSS transform expands `inset` plus emits theme-colour
   fallbacks before `color-mix()` values. Older generations are not supported
   until the complete application and native player are proven on
   representative TVs.
@@ -114,7 +114,7 @@ physical Tizen TV even when unit tests cover call order and state transitions.
 
 ## Package contract
 
-`tizen-manifest.xml` declares the TV profile, Tizen 7.0 floor, full-HD
+`tizen-manifest.xml` declares the TV profile, Tizen 6.5 floor, full-HD
 viewport, network/input/filesystem privileges, cross-origin access, and
 application ID `StrmarrTV1.Playarr Server`. `scripts/prepare-package.mjs` copies it
 to the required package-root `config.xml`, adds the launcher icon and runtime

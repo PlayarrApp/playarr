@@ -1108,7 +1108,7 @@ export const th: Translations = {
   "pages.clients.tizenPage.installKicker": "โหมดนักพัฒนา Samsung",
   "pages.clients.tizenPage.installTitle": "ติดตั้ง Playarr บนทีวี Samsung",
   "pages.clients.tizenPage.installDescription":
-    "ใช้ทีวี Samsung รุ่นปี 2023 หรือใหม่กว่าที่ทำงานบน Tizen 7.0 ขึ้นไป และให้อยู่ในเครือข่ายภายในเดียวกับคอมพิวเตอร์ คุณต้องมี Tizen Studio พร้อมส่วนขยาย Samsung TV, โปรไฟล์ใบรับรองที่ถูกต้อง และ WGT ที่ลงลายเซ็นและรองรับจากด้านบนหรือที่ลงลายเซ็นจากซอร์สเอง",
+    "ใช้ทีวี Samsung รุ่นปี 2022 หรือใหม่กว่าที่ทำงานบน Tizen 6.5 ขึ้นไป และให้อยู่ในเครือข่ายภายในเดียวกับคอมพิวเตอร์ คุณต้องมี Tizen Studio พร้อมส่วนขยาย Samsung TV, โปรไฟล์ใบรับรองที่ถูกต้อง และ WGT ที่ลงลายเซ็นและรองรับจากด้านบนหรือที่ลงลายเซ็นจากซอร์สเอง",
   "pages.clients.tizenPage.step1Title": "ติดตั้ง TV SDK และสร้างใบรับรอง",
   "pages.clients.tizenPage.step1Description":
     "ติดตั้ง Tizen Studio แล้วเพิ่ม Samsung TV Extension, Samsung Certificate Extension และ Web CLI จาก Package Manager สร้างและเปิดใช้โปรไฟล์ใบรับรอง Samsung เพราะ Tizen จะไม่ติดตั้งวิดเจ็ตที่ไม่ได้ลงลายเซ็น",
@@ -1281,10 +1281,9 @@ export const th: Translations = {
   "pages.downloads.sortSize": "ขนาด",
   "pages.downloads.noMatchesTitle": "ไม่มีดาวน์โหลดที่ตรงกัน",
   "pages.downloads.noMatchesDescription": "เปลี่ยนหรือล้างตัวกรองเพื่อดูการดาวน์โหลดของคุณ",
-  "pages.downloads.notificationsOn": "เปิดการแจ้งเตือนการดาวน์โหลดอยู่",
-  "pages.downloads.notificationsOff": "แสดงความคืบหน้าการดาวน์โหลดในการแจ้งเตือน",
-  "pages.downloads.notificationsTurnOn": "เปิดการแจ้งเตือน",
-  "pages.downloads.notificationsTurnOff": "ปิด",
+  "pages.downloads.notifications": "การแจ้งเตือน",
+  "pages.downloads.notificationsBlocked": "การแจ้งเตือนถูกบล็อก",
+  "pages.downloads.notificationsBlockedHint": "การแจ้งเตือนถูกบล็อก คลิกไอคอนแม่กุญแจในแถบที่อยู่ อนุญาตการแจ้งเตือน แล้วรีโหลดหน้า",
   "lib.downloads.notification.downloadingOne": "กำลังดาวน์โหลด {{title}}",
   "lib.downloads.notification.downloadingMany": "กำลังดาวน์โหลด {{count}} รายการ",
   "lib.downloads.notification.pausedOne": "หยุดชั่วคราว: {{title}}",
