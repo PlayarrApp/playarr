@@ -545,7 +545,8 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
               y: GRID_Y + rowIndex * rowPitch,
               baseUrl,
               token: accessToken,
-              selected: index === focusIndex,
+              // The title actions drawer takes the ring: web drops the card's while it is open.
+              selected: index === focusIndex && !actionsWork,
               first: index === 0,
               progress: progressByWork.get(work.id),
               progressReady: progressRows !== null,

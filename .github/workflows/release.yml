@@ -4,15 +4,35 @@
 #
 # Actions > Release > Run workflow on `main` with `version` (X.Y.Z); the run creates the `vX.Y.Z`
 # tag with the release. (The signing environments only admit `main`, so there is no tag trigger.)
-# It builds every app by calling the per-platform workflows (which keep working on their own tags):
+# Three stages, each gated on the one before:
+#
+#   1 tests    fast checks only (lint, typecheck, unit); nothing needing a device, capture or E2E
+#   2 builds   signed, repeatable builds of every client, then ONE GitHub Release with the artefacts
+#   3 stores   Google Play, TestFlight, playarr.app, then the stores below
+#
+# Stage 2 builds every app by calling the per-platform workflows (which keep working on their own tags):
 #
 #   server    backend-release.yml   tarballs, latest.json, ghcr.io/<owner>/playarr:<version>
 #   regional  regional-image.yml    ghcr.io/<owner>/playarr:<sha8>
 #   android   android-ci.yml        signed sideload APK and its update manifest
 #   tv        tv-web-ci.yml         LG webOS IPK, unsigned Samsung Tizen package root
 #   roku      (below)               Roku sideload channel zip
-#   xbox      xbox-ci.yml           unsigned x64 sideload package (.appx)
+#   xbox      xbox-ci.yml           unsigned x64 sideload package (.msix)
 #   harmony   harmony-ci.yml        unsigned HarmonyOS HAP
+#   linux     (below)               Linux phone client binary tarball
+#   macos     (below)               unsigned macOS app zip
+#   tizen-native (below)            Samsung Tizen native tpk (test-signed)
+#
+# Not built here: Fire TV (Vega) needs Amazon's Docker-based SDK image and an Amazon developer account,
+# which release runners do not use; its typecheck and jest run in stage 1. Sailfish needs the 3 GB SDK
+# target in a bubblewrap namespace, unproven on a hosted runner. Both are listed as "pending" in
+# clients.json. VIDAA is a hosted web app (no package). Signed macOS needs a Developer ID that does not
+# exist yet.
+#
+# Every release also carries clients.json (scripts/release/variants.json filled with the version and the
+# asset names; a dry run keeps it as a workflow artefact). Each variant has a playarr-<variant>-<version>
+# asset name; the older names stay beside the new ones because the downloads Worker and the Android
+# updater read them.
 #
 # then creates ONE GitHub Release `v<version>` with every artefact, a combined SHA256SUMS and notes
 # a short summary body with the full changelog attached, and only then publishes to the stores:
@@ -21,10 +41,12 @@
 #   apple     ios-release.yml             iOS and tvOS to TestFlight
 #   web       web-ci.yml                  playarr.app (Cloudflare Worker) from the release commit;
 #                                         a failed deploy fails the release, the summary reports the version
+#   stores    (below)                     Roku, Samsung, LG, Huawei AppGallery, Microsoft Partner Center,
+#                                         Amazon Appstore: no accounts yet, each logs "store pending" and succeeds
 #
 # The server and Android APK are required (playarr.app/downloads serves them from the release); any
 # other platform that fails is left out of the release and reported in the summary. `dry_run` builds
-# and signs everything but pushes no image, creates no release and uploads nothing to a store.
+# and signs everything but pushes no image, creates no release, publishes nothing and runs no store upload.
 #
 # Versions: backend/Cargo.toml and clients/android/version.properties must already carry the
 # release version (bump them in a PR first, with the Play notes in
@@ -58,7 +80,7 @@ permissions:
 jobs:
   prepare:
     name: Resolve and check the version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -120,12 +142,132 @@ jobs:
             echo "play_code=$(( (major * 10000 + minor * 100 + patch) * 100000 + count ))"
           } | tee -a "$GITHUB_OUTPUT"
 
-      - name: Test the release notes generator
-        run: node --test scripts/release-notes.test.mjs
+      - name: Test the release notes and clients.json generators
+        run: node --test scripts/release-notes.test.mjs scripts/release/build-clients-json.test.mjs
+
+  # ---------------------------------------------------------------------------
+  # Stage 1: fast tests. ci.yml has no workflow_call, so the minimal commands are repeated here.
+  # ---------------------------------------------------------------------------
+  test-backend:
+    name: Test backend (fmt, clippy, unit)
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend -> target
+          shared-key: backend-check
+          save-if: false
+          cache-directories: ~/.cache/ort.pyke.io
+          prefix-key: v1-rust
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo nextest run --workspace --all-features --no-fail-fast
+
+  test-linux-phone:
+    name: Test Linux phone client (fmt, clippy, unit)
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: clients/linux-mobile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GTK, libadwaita and GStreamer development packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clients/linux-mobile
+          shared-key: linux-mobile-check
+          save-if: false
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  test-fire-tv:
+    name: Test Fire TV (typecheck, jest)
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: clients/fire-tv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: clients/fire-tv/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --ci
+
+  test-tv-web:
+    name: Test tv-web (lint, typecheck)
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: clients/tv-web
+    steps:
+      - uses: actions/checkout@v4
+      # pnpm 11 needs Node >= 22.13: install Node before pnpm/action-setup runs.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: clients/tv-web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter './packages/**' run build
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+
+  # Every stage 2 build waits on this one job. Android, Xbox, Harmony, webOS/Tizen and Roku run their own
+  # unit tests inside their build jobs (they need the same toolchains), and those jobs gate the release.
+  tests:
+    name: Stage 1 fast tests passed
+    needs: [prepare, test-backend, test-linux-phone, test-fire-tv, test-tv-web]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: echo "Fast tests passed for ${{ needs.prepare.outputs.version }}"
+
+  # ---------------------------------------------------------------------------
+  # Stage 2: signed, repeatable builds of every client.
+  # ---------------------------------------------------------------------------
 
   server:
     name: Server
-    needs: prepare
+    needs: [prepare, tests]
     uses: ./.github/workflows/backend-release.yml
     # Its standalone `publish` job (skipped here) declares contents: write, and a caller must grant
     # every permission a called job declares, or the run fails to start.
@@ -138,7 +280,7 @@ jobs:
 
   regional:
     name: Regional image
-    needs: prepare
+    needs: [prepare, tests]
     uses: ./.github/workflows/regional-image.yml
     permissions:
       contents: read
@@ -148,7 +290,7 @@ jobs:
 
   android:
     name: Android APK
-    needs: prepare
+    needs: [prepare, tests]
     uses: ./.github/workflows/android-ci.yml
     permissions:
       contents: write
@@ -158,14 +300,14 @@ jobs:
 
   tv:
     name: TV packages
-    needs: prepare
+    needs: [prepare, tests]
     uses: ./.github/workflows/tv-web-ci.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
 
   xbox:
     name: Xbox
-    needs: prepare
+    needs: [prepare, tests]
     uses: ./.github/workflows/xbox-ci.yml
     secrets: inherit
     with:
@@ -173,7 +315,7 @@ jobs:
 
   harmony:
     name: HarmonyOS
-    needs: prepare
+    needs: [prepare, tests]
     uses: ./.github/workflows/harmony-ci.yml
     secrets: inherit
     with:
@@ -181,14 +323,17 @@ jobs:
 
   roku:
     name: Roku
-    needs: prepare
-    runs-on: ubuntu-latest
+    needs: [prepare, tests]
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
         working-directory: clients/roku
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Pillow (the channel's image validation imports it)
+        run: python -m pip install --quiet pillow==11.3.0
 
       - name: Stamp the version and package the channel
         env:
@@ -207,14 +352,133 @@ jobs:
           path: clients/roku/build/playarr-roku-*.zip
           if-no-files-found: error
 
+  linux:
+    name: Linux phone
+    needs: [prepare, tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: clients/linux-mobile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GTK, libadwaita and GStreamer development packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - name: Build and package
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Stamp the release version into the manifest and the crate's own lock entry (no network, deps stay locked).
+          sed -i -E "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
+          sed -i -E "/^name = \"playarr-linux-mobile\"/{n;s/^version = \".*\"/version = \"$VERSION\"/}" Cargo.lock
+          cargo build --release --locked
+          mkdir -p "$RUNNER_TEMP/linux"
+          tar --sort=name --mtime="@$(git log -1 --format=%ct)" --owner=0 --group=0 --numeric-owner \
+            -cf - -C target/release playarr-mobile -C ../../data . | gzip -n > "$RUNNER_TEMP/linux/playarr-linux-$VERSION-x86_64.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playarr-linux-package
+          path: ${{ runner.temp }}/linux/*
+          if-no-files-found: error
+
+  macos:
+    name: macOS
+    needs: [prepare, tests]
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the unsigned Release app (no Developer ID yet)
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD: ${{ needs.prepare.outputs.apple_build }}
+        run: |
+          set -euo pipefail
+          xcodebuild build -project clients/apple-tv/PlayarrTV.xcodeproj -scheme PlayarrMac -configuration Release \
+            -destination 'platform=macOS' -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" | tail -n 3
+          app="$(find "$RUNNER_TEMP/dd/Build/Products" -maxdepth 2 -name PlayarrMac.app | head -n 1)"
+          [[ -n "$app" ]] || { echo '::error::no Release PlayarrMac.app'; exit 1; }
+          bad=0
+          while IFS= read -r f; do
+            for arg in -PlayarrAccessToken -PlayarrRefreshToken; do
+              if strings -a "$f" | grep -q -- "$arg"; then echo "::error::found $arg in ${f#"$app"/}"; bad=1; fi
+            done
+          done < <(find "$app" -type f \( -perm -u+x -o -name '*.dylib' \))
+          (( bad == 0 ))
+          mkdir -p "$RUNNER_TEMP/macos"
+          ditto -c -k --keepParent "$app" "$RUNNER_TEMP/macos/playarr-macos-$VERSION-unsigned.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playarr-macos-package
+          path: ${{ runner.temp }}/macos/*
+          if-no-files-found: error
+
+  tizen-native:
+    name: Samsung Tizen native
+    needs: [prepare, tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: clients/tizen-native
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          # Same pin as ci.yml (8.0.426 fails to create .NET's NuGet-Migrations mutex on the runners).
+          dotnet-version: '8.0.425'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-tizen-${{ runner.os }}-${{ hashFiles('clients/tizen-native/**/*.csproj') }}
+          restore-keys: nuget-tizen-${{ runner.os }}-
+
+      - name: Install the Samsung Tizen workload (pinned)
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/Samsung/Tizen.NET/6ab8cb41e7ccab90a3ba838e7f6d6b38a9c4ec08/workload/scripts/workload-install.sh -o "$RUNNER_TEMP/wi.sh"
+          echo "b6a8bbd3aefbcca452e05abce8272c82362c83da2cfaca2470cbb7fd07ac5158  $RUNNER_TEMP/wi.sh" | sha256sum -c -
+          dotnet --version
+          for attempt in 1 2 3; do
+            sudo bash "$RUNNER_TEMP/wi.sh" -v 10.0.126 -t 8.0.400 --dotnet-install-dir "$(dirname "$(readlink -f "$(command -v dotnet)")")" && break
+            [ "$attempt" = 3 ] && exit 1
+            echo "workload install failed (attempt $attempt), retrying"; sleep $((attempt * 15))
+          done
+
+      # No Samsung signing secrets exist in any environment, so this is the SDK's test-signed tpk.
+      - name: Build the tpk
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          sed -i -E "/<manifest /s/ version=\"[0-9.]+\"/ version=\"$VERSION\"/" src/Playarr.Tizen/tizen-manifest.xml
+          grep -o '<manifest [^>]*' src/Playarr.Tizen/tizen-manifest.xml
+          dotnet build src/Playarr.Tizen/Playarr.Tizen.csproj -c Release
+          mkdir -p "$RUNNER_TEMP/tizen-native"
+          tpk="$(find src/Playarr.Tizen/bin/Release -name '*.tpk' -print -quit)"
+          [[ -n "$tpk" ]] || { echo '::error::no tpk built'; exit 1; }
+          cp "$tpk" "$RUNNER_TEMP/tizen-native/playarr-samsung-tizen-native-$VERSION.tpk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playarr-tizen-native-package
+          path: ${{ runner.temp }}/tizen-native/*
+          if-no-files-found: error
+
   release:
     name: GitHub Release
-    needs: [prepare, server, regional, android, tv, roku, xbox, harmony]
+    needs: [prepare, server, regional, android, tv, roku, xbox, harmony, linux, macos, tizen-native]
     # The server and the Android APK are required; other platforms are optional.
     if: >-
       always() && needs.prepare.result == 'success' &&
       needs.server.result == 'success' && needs.android.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: write
@@ -246,10 +510,23 @@ jobs:
           [[ -d "$a/playarr-tv-packages" ]] && cp "$a/playarr-tv-packages"/* assets/
           [[ -d "$a/playarr-roku-package" ]] && cp "$a/playarr-roku-package"/*.zip assets/
           [[ -d "$a/playarr-xbox-package" ]] && cp "$a/playarr-xbox-package"/* assets/
+          [[ -d "$a/playarr-linux-package" ]] && cp "$a/playarr-linux-package"/* assets/
+          [[ -d "$a/playarr-macos-package" ]] && cp "$a/playarr-macos-package"/* assets/
+          [[ -d "$a/playarr-tizen-native-package" ]] && cp "$a/playarr-tizen-native-package"/* assets/
           if [[ -d "$a/playarr-harmony-package" ]]; then
-            hap="$(find "$a/playarr-harmony-package" -name '*.hap' -print -quit)"
-            [[ -n "$hap" ]] && cp "$hap" "assets/playarr-harmony-$VERSION-unsigned.hap"
+            # The artefact holds two HAPs (outputs/default/entry-default-unsigned.hap and app/entry-default.hap);
+            # the release ships the unsigned module HAP, picked by name.
+            hap="$a/playarr-harmony-package/entry-default-unsigned.hap"
+            [[ -f "$hap" ]] || { echo "::error::entry-default-unsigned.hap is missing from the HarmonyOS package"; exit 1; }
+            cp "$hap" "assets/playarr-harmony-$VERSION-unsigned.hap"
           fi
+          # Variant-specific names beside the older ones (the downloads Worker and the Android updater read those).
+          copy_as() { if [[ -f "assets/$1" ]]; then cp "assets/$1" "assets/$2"; fi; }
+          copy_as "playarr-tizen-$VERSION-unsigned.zip" "playarr-samsung-tizen-web-$VERSION-unsigned.zip"
+          copy_as "playarr-webos-$VERSION.ipk" "playarr-lg-webos-$VERSION.ipk"
+          copy_as playarr-android.apk "playarr-android-$VERSION.apk"
+          copy_as "playarr-linux-$VERSION-x86_64.tar.gz" "playarr-linux-phone-$VERSION-x86_64.tar.gz"
+          node scripts/release/build-clients-json.mjs "$VERSION" assets "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           (cd assets && sha256sum -c "playarr-server-$VERSION-SHA256SUMS")
           (cd assets && sha256sum -- * > "$RUNNER_TEMP/SHA256SUMS" && mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS)
           ls -l assets
@@ -271,13 +548,18 @@ jobs:
             echo "|---|---|"
             echo "| Playarr Server | \`ghcr.io/$owner/playarr:$VERSION\` (\`${SERVER_DIGEST}\`), Linux tarballs below, https://playarr.app/clients/server |"
             echo "| Regional server image | \`ghcr.io/$owner/playarr:${GITHUB_SHA:0:8}\` |"
-            echo "| Android | \`playarr-android.apk\` (sideload), Google Play closed testing |"
+            echo "| Android | \`playarr-android-$VERSION.apk\` and \`playarr-android.apk\` (sideload), Google Play closed testing |"
             echo "| iOS and tvOS | TestFlight |"
-            echo "| LG webOS | \`playarr-webos-$VERSION.ipk\` |"
-            echo "| Samsung Tizen | \`playarr-tizen-$VERSION-unsigned.zip\` (sign with your Samsung certificate profile) |"
+            echo "| LG webOS | \`playarr-lg-webos-$VERSION.ipk\` |"
+            echo "| Samsung Tizen | \`playarr-samsung-tizen-web-$VERSION-unsigned.zip\` (sign with your Samsung certificate profile) |"
+            echo "| Samsung Tizen native | \`playarr-samsung-tizen-native-$VERSION.tpk\` (test-signed) |"
             echo "| Roku | \`playarr-roku-$VERSION.zip\` (sideload) |"
-            echo "| Xbox | \`playarr-xbox-$VERSION-x64-unsigned.appx\` (unsigned; sign before sideloading) |"
+            echo "| Xbox | \`playarr-xbox-$VERSION-x64-unsigned.msix\` (unsigned; sign before sideloading) |"
             echo "| HarmonyOS | \`playarr-harmony-$VERSION-unsigned.hap\` |"
+            echo "| Linux phone | \`playarr-linux-phone-$VERSION-x86_64.tar.gz\` |"
+            echo "| Fire TV (Vega), Sailfish | pending, see \`clients.json\` |"
+            echo "| VIDAA | hosted Web App |"
+            echo "| macOS | \`playarr-macos-$VERSION-unsigned.zip\` (unsigned) |"
             echo
             echo "A platform whose package is missing below did not build for this release; see the run summary."
             echo "Verify downloads against \`SHA256SUMS\`."
@@ -289,6 +571,14 @@ jobs:
           printf '\nThe full changelog for this release is attached as `playarr-%s-CHANGELOG.md`.\n' "$VERSION" >> "$RUNNER_TEMP/notes.md"
           wc -c "$RUNNER_TEMP/notes.md"
 
+      - name: Keep clients.json (dry run)
+        if: needs.prepare.outputs.dry_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clients-json
+          path: assets/clients.json
+          if-no-files-found: error
+
       - name: Create the GitHub Release
         id: publish
         if: needs.prepare.outputs.dry_run != 'true'
@@ -298,45 +588,6 @@ jobs:
           gh release create "$TAG" assets/* --target "$GITHUB_SHA" --title "Playarr $VERSION" \
             --notes-file "$RUNNER_TEMP/notes.md" --latest
           echo "url=$(gh release view "$TAG" --json url -q .url)" >> "$GITHUB_OUTPUT"
-
-      # Event-driven trigger for the cluster release gate; its hourly cron is only a backstop.
-      # Mints a downscoped GitHub App token (contents: write on the deployment repository only). Needs
-      # variable OPS_APP_ID and secret OPS_APP_PRIVATE_KEY; without them the steps
-      # log a notice and skip, and the backstop applies. Failures never fail the release.
-      - name: Check dispatch credentials
-        id: dispatch_creds
-        if: steps.publish.outcome == 'success'
-        continue-on-error: true
-        env:
-          APP_ID: ${{ vars.OPS_APP_ID }}
-          APP_KEY: ${{ secrets.OPS_APP_PRIVATE_KEY }}
-        run: |
-          if [ -n "$APP_ID" ] && [ -n "$APP_KEY" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::OPS_APP_ID or OPS_APP_PRIVATE_KEY is not set; relying on the hourly backstop."
-          fi
-      - name: Mint cluster dispatch token
-        id: dispatch_token
-        if: steps.dispatch_creds.outputs.enabled == 'true'
-        continue-on-error: true
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ vars.OPS_APP_ID }}
-          private-key: ${{ secrets.OPS_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: deployment-repo
-          permission-contents: write
-      - name: Notify cluster release gate
-        if: steps.dispatch_token.outputs.token != ''
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ steps.dispatch_token.outputs.token }}
-          RELEASE_TAG: ${{ env.TAG }}
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY_OWNER}/deployment-repo/dispatches" \
-            -f event_type=playarr-released \
-            -f "client_payload[tag]=$RELEASE_TAG"
 
   play:
     name: Google Play closed testing
@@ -361,6 +612,37 @@ jobs:
       platform: both
       dry_run: ${{ needs.prepare.outputs.dry_run == 'true' }}
 
+  # ---------------------------------------------------------------------------
+  # Stage 3 (continued): stores with no account yet. Each logs "store pending" and succeeds. When a store
+  # is wired, add its release-<store> environment, its credential secret and its upload step together.
+  # Skipped in a dry run.
+  # ---------------------------------------------------------------------------
+  stores:
+    name: Store ${{ matrix.name }}
+    needs: [prepare, release]
+    if: always() && needs.release.result == 'success' && needs.prepare.outputs.dry_run != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Roku Channel Store, board: 59.10065 }
+          - { name: Samsung Seller Office, board: 59.10066 }
+          - { name: LG Seller Lounge, board: 59.10067 }
+          - { name: Huawei AppGallery, board: 59.10070 }
+          - { name: Microsoft Partner Center, board: 59.10069 }
+          - { name: Amazon Appstore, board: 59.10061 }
+    steps:
+      - name: Report pending
+        env:
+          STORE_NAME: ${{ matrix.name }}
+          BOARD: ${{ matrix.board }}
+        run: |
+          msg="$STORE_NAME: store pending: no account yet (board $BOARD)"
+          echo "$msg"
+          echo "- $msg" >> "$GITHUB_STEP_SUMMARY"
+
   web:
     name: Deploy playarr.app
     needs: [prepare, release]
@@ -376,9 +658,9 @@ jobs:
 
   summary:
     name: Summary
-    needs: [prepare, server, regional, android, tv, roku, xbox, harmony, release, play, apple, web]
+    needs: [prepare, tests, server, regional, android, tv, roku, xbox, harmony, linux, macos, tizen-native, release, play, apple, web, stores]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Write the summary
@@ -414,8 +696,12 @@ jobs:
             echo "| iOS and tvOS | $(mark "$(result apple)") | TestFlight | build $APPLE_BUILD |"
             echo "| webOS and Tizen | $(mark "$(result tv)") | GitHub Release | Tizen is unsigned (no Samsung certificate in CI) |"
             echo "| Roku | $(mark "$(result roku)") | GitHub Release | sideload zip |"
-            echo "| Xbox | $(mark "$(result xbox)") | GitHub Release | unsigned .appx (no signing certificate) |"
+            echo "| Xbox | $(mark "$(result xbox)") | GitHub Release | unsigned .msix (no signing certificate) |"
             echo "| HarmonyOS | $(mark "$(result harmony)") | GitHub Release | unsigned HAP (no AppGallery signing material) |"
+            echo "| Samsung Tizen native | $(mark "$(result tizen-native)") | GitHub Release | test-signed tpk (no Samsung certificate in CI) |"
+            echo "| Linux phone | $(mark "$(result linux)") | GitHub Release | binary tarball |"
+            echo "| macOS | $(mark "$(result macos)") | GitHub Release | unsigned app zip (no Developer ID) |"
+            echo "| Roku, Samsung, LG, Huawei, Microsoft, Amazon stores | $(mark "$(result stores)") | see the store job summaries | a store without an account logs \"store pending\"; skipped in a dry run |"
             echo "| playarr.app (web) | $(mark "$(result web)") | https://playarr.app | version $VERSION, commit ${WEB_SHA:0:8}, deployed: ${WEB_DEPLOYED:-n/a} (false: a newer commit was already live, or dry run) |"
             echo "| GitHub Release | $(mark "$(result release)") | ${RELEASE_URL:-} | |"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -429,8 +715,12 @@ jobs:
           fi
           cat "$GITHUB_STEP_SUMMARY"
           # Fail the run if anything required or any store publish failed, so it is visible.
-          for job in prepare server android release play apple web; do
+          for job in prepare tests server android release play apple web; do
             r="$(result "$job")"
             if [[ "$r" != success ]]; then echo "::error::$job: $r"; failed=1; fi
           done
+          if [[ "$DRY_RUN" != "true" ]]; then
+            r="$(result stores)"
+            if [[ "$r" != success ]]; then echo "::error::stores: $r"; failed=1; fi
+          fi
           exit "${failed:-0}"

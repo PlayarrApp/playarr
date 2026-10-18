@@ -16,12 +16,36 @@ namespace Playarr.Xbox.Views
             new TextBlock { Text = text, FontSize = size, FontWeight = weight, Foreground = Res(brushKey), Margin = margin };
 
         /// <summary>The web page header: round Back button, title and an optional pink count line, at the shell content edge.</summary>
-        public static void PageHeader(Panel host, string title, string? subtitle, Action back)
+        public static PageHeaderParts PageHeader(Panel host, string title, string? subtitle, Action back)
         {
-            host.Children.Add(BackButton(back));
+            var backButton = BackButton(back);
+            host.Children.Add(backButton);
             var titles = new StackPanel { Margin = new Thickness(228, 57, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-            LayoutHeader(titles, new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"] }, new TextBlock { Text = subtitle ?? string.Empty });
+            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"] };
+            var subtitleText = new TextBlock { Text = subtitle ?? string.Empty };
+            LayoutHeader(titles, titleText, subtitleText);
             host.Children.Add(titles);
+            return new PageHeaderParts(backButton, titles, titleText, subtitleText);
+        }
+
+        /// <summary>The header's live parts: pages that change the title or subtitle later call <see cref="LayoutHeader"/> again.</summary>
+        internal sealed class PageHeaderParts
+        {
+            public PageHeaderParts(Button back, StackPanel titles, TextBlock title, TextBlock subtitle)
+            {
+                Back = back;
+                Titles = titles;
+                Title = title;
+                Subtitle = subtitle;
+            }
+
+            public Button Back { get; }
+
+            public StackPanel Titles { get; }
+
+            public TextBlock Title { get; }
+
+            public TextBlock Subtitle { get; }
         }
 
         /// <summary>
@@ -40,7 +64,7 @@ namespace Playarr.Xbox.Views
 
             titles.Children.Clear();
             subtitle.Text = subtitle.Text.ToUpperInvariant();
-            subtitle.FontSize = 11;
+            subtitle.FontSize = 11.1; // web: clamp(0.62rem, 0.58vw, 0.72rem) at 1920
             subtitle.FontWeight = FontWeights.Bold;
             subtitle.CharacterSpacing = 45; // web: 0.045em
             subtitle.Foreground = Res("PlayarrInk");
@@ -52,13 +76,13 @@ namespace Playarr.Xbox.Views
 
             title.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
             subtitle.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
-            if (title.DesiredSize.Width + 25 + subtitle.DesiredSize.Width <= 250)
+            if (title.DesiredSize.Width + 47 + subtitle.DesiredSize.Width <= 250)
             {
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 subtitle.VerticalAlignment = VerticalAlignment.Center;
                 subtitle.Margin = new Thickness(0, 6, 0, 0);
                 row.Children.Add(title);
-                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(12, 8, 12, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(23, 8, 23, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
                 row.Children.Add(subtitle);
                 titles.Children.Add(row);
             }
@@ -118,6 +142,52 @@ namespace Playarr.Xbox.Views
                 FocusVisualPrimaryBrush = Theme.FocusRing,
                 FocusVisualPrimaryThickness = new Thickness(3),
                 FocusVisualSecondaryThickness = new Thickness(0),
+            };
+            button.Click += (s, e) => onClick();
+            return button;
+        }
+
+        /// <summary>The web's three-slider Filters icon (one drawing for every page's Filters tile).</summary>
+        public static FrameworkElement FiltersIcon()
+        {
+            var ink = Res("PlayarrInk");
+            var icon = new Windows.UI.Xaml.Controls.Canvas { Width = 16, Height = 16, HorizontalAlignment = HorizontalAlignment.Center };
+            icon.Children.Add(new Windows.UI.Xaml.Shapes.Path { Stroke = ink, StrokeThickness = 1.4, Data = Rails() });
+            foreach (var (x, y) in new[] { (2, 1), (10, 6), (5, 11) })
+            {
+                var dot = new Windows.UI.Xaml.Shapes.Ellipse { Width = 4, Height = 4, Fill = ink };
+                Windows.UI.Xaml.Controls.Canvas.SetLeft(dot, x);
+                Windows.UI.Xaml.Controls.Canvas.SetTop(dot, y);
+                icon.Children.Add(dot);
+            }
+
+            return icon;
+        }
+
+        private static Geometry Rails()
+        {
+            var group = new GeometryGroup();
+            foreach (var y in new[] { 3.0, 8.0, 13.0 })
+            {
+                group.Children.Add(new LineGeometry { StartPoint = new Windows.Foundation.Point(1, y), EndPoint = new Windows.Foundation.Point(15, y) });
+            }
+
+            return group;
+        }
+
+        /// <summary>Shell action column tile (web .tv-filter-launcher look): 58x70 at the right edge, icon over a 9 px label.</summary>
+        public static Button ActionTile(FrameworkElement icon, string label, double top, Action onClick)
+        {
+            var tile = new StackPanel { Spacing = 8 };
+            tile.Children.Add(icon);
+            tile.Children.Add(new TextBlock { Text = label, FontSize = 9, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center });
+            var button = new Button
+            {
+                Width = 58, Height = 70, Margin = new Thickness(0, top, 14, 0), Padding = new Thickness(0), CornerRadius = new CornerRadius(12),
+                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+                Background = Res("PlayarrSurface"), BorderBrush = Res("PlayarrLine"), BorderThickness = new Thickness(1),
+                Content = tile,
+                FocusVisualPrimaryBrush = Theme.FocusRing, FocusVisualPrimaryThickness = new Thickness(3), FocusVisualSecondaryThickness = new Thickness(0),
             };
             button.Click += (s, e) => onClick();
             return button;

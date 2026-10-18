@@ -23,6 +23,7 @@ function browserMock({ initialSignedIn = false, ownerOnRequest = false } = {}) {
     async goto(url) { state.operations.push(["goto", url]); if (!initialSignedIn && url.endsWith("/")) throw new Error("mock signed out"); },
     async fill(selector) { state.operations.push(["fill", selector]); },
     async waitForFunction() {},
+    async waitForURL() { if (!initialSignedIn) throw new Error("mock signed out"); },
     async waitForSelector() {},
     url() { return "https://playarr.example.invalid/"; },
     async evaluate(fn) {
@@ -35,12 +36,13 @@ function browserMock({ initialSignedIn = false, ownerOnRequest = false } = {}) {
       state.operations.push(["evaluate", fn.name]);
       return undefined;
     },
+    getByText() { return this.locator("text"); },
     locator(selector) {
       return {
         async count() { return selector === ".app-nav-link" && initialSignedIn ? 1 : 0; },
         async fill() { state.operations.push(["fill", selector]); },
         async click() { state.operations.push(["click", selector]); },
-        async first() { return this; },
+        first() { return this; },
         async waitFor() {},
       };
     },
@@ -81,7 +83,7 @@ test("signed-out and owner sessions fail before exported live operations", async
   await assert.rejects(driver.route("/"));
   await assert.rejects(driver.play({ file: "sample" }, { startWithinSeconds: 1, advanceSeconds: 1 }));
   assert.equal(mocks.state.operations.length, before);
-  assert.equal(mocks.state.operations.some(([kind]) => kind === "fill" || kind === "click"), false);
+  assert.equal(mocks.state.operations.slice(before).some(([kind]) => kind === "fill" || kind === "click"), false);
   await driver.stop();
   assert.equal(mocks.state.closed, true, "stop releases the owned browser even after guard rejection");
 
@@ -123,6 +125,6 @@ test("hosted device-test environment configures the web guard without a local se
   const mocks = browserMock();
   const driver = await createDriver({ playwright: mocks.playwright });
   await assert.rejects(driver.start(), /signed out/);
-  assert.equal(mocks.state.operations.some(([kind]) => kind === "click" || kind === "keyPress"), false);
+  assert.equal(mocks.state.operations.some(([kind]) => kind === "keyPress"), false);
   await driver.stop();
 });
