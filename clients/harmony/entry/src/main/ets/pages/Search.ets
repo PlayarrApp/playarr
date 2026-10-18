@@ -552,6 +552,7 @@ export struct SearchScreen {
     NavDestination() {
       Stack() {
       PageShell({
+        railFrostWidthPct: 65,
         title: t('pages.search.title', 'Search'),
         touch: true,
         touchContent: (): void => {

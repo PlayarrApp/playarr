@@ -1,1 +1,0 @@
-- Android tablet parity capture guards now require the app session to use the configured trusted server URL.

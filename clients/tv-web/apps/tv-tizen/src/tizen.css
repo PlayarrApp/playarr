@@ -116,3 +116,38 @@ html[data-platform="tv-tizen"] .home-feature-art::before {
   height: 0;
   padding-bottom: 78%;
 }
+
+/* Chromium 85 floors a fractional computed line-height to whole pixels (25.92px lays out as 25px), so single lines run short and every row below drifts up to a pixel per line against the live web. A min-height of the unrounded line box (font-size x line-height factor) restores it. Only block-level boxes are affected; inline text keeps its parent's line box. */
+html[data-platform="tv-tizen"] .app-clock-time,
+html[data-platform="tv-tizen"] .app-clock-time > span,
+html[data-platform="tv-tizen"] .page-header-detail,
+html[data-platform="tv-tizen"] .tv-provider,
+html[data-platform="tv-tizen"] .tv-preview-meta > span,
+html[data-platform="tv-tizen"] .tv-media-track-heading h2,
+html[data-platform="tv-tizen"] .tv-title-card-copy strong,
+html[data-platform="tv-tizen"] .tv-home-card strong,
+html[data-platform="tv-tizen"] .tv-episode-copy strong,
+html[data-platform="tv-tizen"] .calendar-entry-title,
+html[data-platform="tv-tizen"] .calendar-entry-subtitle,
+html[data-platform="tv-tizen"] .calendar-edge-scroller time,
+html[data-platform="tv-tizen"] .settings-option-copy strong,
+html[data-platform="tv-tizen"] .appearance-setting-heading h3,
+html[data-platform="tv-tizen"] .appearance-setting-heading p,
+html[data-platform="tv-tizen"] .profile-choice strong {
+  min-height: 1.5em;
+}
+
+html[data-platform="tv-tizen"] .app-nav-label,
+html[data-platform="tv-tizen"] .app-user-name,
+html[data-platform="tv-tizen"] .app-user-version {
+  min-height: 1em;
+}
+
+html[data-platform="tv-tizen"] .calendar-line-text {
+  min-height: 1.2em;
+}
+
+/* Status pill: the same flooring hits its 1.4 line box; border-box min-height of the unrounded line, vertical padding (0.18rem x 2) and 2px of border. */
+html[data-platform="tv-tizen"] .status-pill {
+  min-height: calc(1.4em + 0.36rem + 2px);
+}

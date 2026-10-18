@@ -58,7 +58,7 @@ namespace Playarr.Xbox.Views
             _viewModel = new LibraryViewModel(App.Environment);
             WorksGridView.ItemContainerStyle = Appearance.LibraryCover ? CatalogTileFactory.CoverGridCardContainerStyle : CatalogTileFactory.GridCardContainerStyle;
             WorksGridView.GotFocus += WorksGridView_GotFocus;
-            CardFocus.Attach(WorksGridView);
+            CardFocus.Attach(WorksGridView, true, 4);
             EdgeFade.AttachVertical(Root, WorksGridView);
             CardActions.Attach(WorksGridView, id => _worksById.TryGetValue(id, out var work) ? work : null);
             Root.GotFocus += Root_GotFocus;

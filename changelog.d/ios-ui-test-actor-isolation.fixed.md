@@ -1,1 +1,0 @@
-- Mark the keyboard-focus screenshot helper as main-actor isolated so it can safely call the capture-readiness guard.

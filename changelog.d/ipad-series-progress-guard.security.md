@@ -1,1 +1,0 @@
-- The iPad series-detail UI test now skips unless its workflow explicitly grants an exclusive fixture window, verifies the app identity before progress changes, checks the current profile before every progress write, and awaits guarded cleanup.
