@@ -56,6 +56,7 @@
       ],
       "dpr": 2,
       "mobile": false,
+      "noFocusRing": true,
       "pixels": [
         2732,
         2048
@@ -75,6 +76,7 @@
       ],
       "dpr": 2,
       "mobile": false,
+      "noFocusRing": true,
       "pixels": [
         2560,
         1600
@@ -94,6 +96,7 @@
       ],
       "dpr": 3,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         1179,
         2556
@@ -109,6 +112,7 @@
       ],
       "dpr": 1.8436,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         719,
         1558
@@ -124,6 +128,7 @@
       ],
       "dpr": 3,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         1080,
         2340
@@ -139,6 +144,7 @@
       ],
       "dpr": 1.9692,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         768,
         1344
@@ -158,6 +164,7 @@
       ],
       "dpr": 2,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         720,
         1346
