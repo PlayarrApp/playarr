@@ -128,7 +128,7 @@ export struct TouchNavBar {
     .width(`calc(100% - ${atLeast(BAR_SIDE, this.safeLeft) + atLeast(BAR_SIDE, this.safeRight)}vp)`)
     .height(BAR_HEIGHT)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.88))
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
     .borderRadius(BAR_RADIUS)
     .shadow({ radius: 20, color: 'rgba(31, 14, 20, 0.2)', offsetY: 14 })
     .margin({ left: atLeast(BAR_SIDE, this.safeLeft), right: atLeast(BAR_SIDE, this.safeRight), bottom: atLeast(BAR_BOTTOM, this.safeBottom), top: 4 })
