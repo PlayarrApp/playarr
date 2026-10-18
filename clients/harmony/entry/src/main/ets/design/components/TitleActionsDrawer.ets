@@ -26,11 +26,12 @@ import { downloadOptionLabel, keepPresets, keepUntilFromPreset, validQuality } f
 import type { DownloadOption, KeepPreset } from '../../core/DownloadEngine';
 import { playlistsForKind } from '../../core/Playlists';
 import type { PlaylistResponse } from '../../core/Types/Playlists';
+import { t } from '../../core/Language';
 
 const TITLE_ACTIONS: ActionItem[] = [
-  { id: 'play', glyph: '▶\uFE0E', label: 'Play' },
-  { id: 'download', glyph: '⇩', label: 'Download' },
-  { id: 'playlist', glyph: '＋', label: 'Add to Playlist' },
+  { id: 'play', glyph: '▶\uFE0E', label: t('pages.workDetail.play', 'Play') },
+  { id: 'download', glyph: '⇩', label: t('settings.yourData.exportDownload', 'Download') },
+  { id: 'playlist', glyph: '＋', label: t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist') },
   { id: 'watched', glyph: '✓', label: 'Mark as watched' },
   { id: 'unwatched', glyph: '○', label: 'Mark as unwatched' },
 ];
@@ -202,7 +203,7 @@ export struct TitleActionsDrawer {
   private body(): void {
     Column({ space: tv(SECTION_GAP) }) {
       if (this.view === 'quality') {
-        Text(this.targets.length > 1 ? 'Download ' + String(this.targets.length) + ' items' : 'Download').fontFamily(nunito(400))
+        Text(this.targets.length > 1 ? 'Download ' + String(this.targets.length) + ' items' : t('settings.yourData.exportDownload', 'Download')).fontFamily(nunito(400))
           .fontSize(tv(TEXT_SIZE))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width(tv(SECTION_WIDTH))
@@ -222,10 +223,10 @@ export struct TitleActionsDrawer {
             this.keepChoice = value;
           },
         })
-        this.pill('Download', (): void => {
+        this.pill(t('settings.yourData.exportDownload', 'Download'), (): void => {
           this.confirmDownload();
         })
-        this.pill('Back', (): void => {
+        this.pill(t('remote.pad.back', 'Back'), (): void => {
           this.view = 'actions';
         })
       } else if (this.view === 'playlists') {
@@ -236,7 +237,7 @@ export struct TitleActionsDrawer {
             this.addTo(id);
           },
         })
-        this.pill('Back', (): void => {
+        this.pill(t('remote.pad.back', 'Back'), (): void => {
           this.view = 'actions';
           this.notice = '';
         })
@@ -256,7 +257,7 @@ export struct TitleActionsDrawer {
 
   build() {
     Drawer({
-      kicker: this.view === 'quality' ? 'Download' : (this.view === 'playlists' ? 'Add to Playlist' : 'Title actions'),
+      kicker: this.view === 'quality' ? t('settings.yourData.exportDownload', 'Download') : (this.view === 'playlists' ? t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist') : t('components.mediaContextMenu.titleActionsHeading', 'Title actions')),
       title: this.workTitle,
       onClose: (): void => {
         this.onClose();
