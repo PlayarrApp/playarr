@@ -335,8 +335,6 @@ export const en = {
   "pages.downloads.noMatchesTitle": "No downloads match",
   "pages.downloads.noMatchesDescription": "Change or clear the filters to see your downloads.",
   "pages.downloads.notifications": "Notifications",
-  "pages.downloads.notificationsBlocked": "Notifications blocked",
-  "pages.downloads.notificationsBlockedHint": "Notifications are blocked. Click the lock icon in the address bar, allow Notifications, then reload.",
   "lib.downloads.notification.downloadingOne": "Downloading {{title}}",
   "lib.downloads.notification.downloadingMany": "Downloading {{count}} items",
   "lib.downloads.notification.pausedOne": "Paused: {{title}}",

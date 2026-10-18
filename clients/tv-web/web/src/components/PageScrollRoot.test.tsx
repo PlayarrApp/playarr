@@ -1,17 +1,14 @@
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { PageScrollRoot } from "./PageScrollRoot";
 
 describe("PageScrollRoot", () => {
   it("marks the shared page viewport as a native vertical scroll container", () => {
     const markup = renderToStaticMarkup(
-      <MemoryRouter>
-        <PageScrollRoot scrollKey="page:/settings">
-          <div>Settings</div>
-        </PageScrollRoot>
-      </MemoryRouter>
+      <PageScrollRoot scrollKey="page:/settings">
+        <div>Settings</div>
+      </PageScrollRoot>
     );
 
     expect(markup).toContain('class="app-main"');

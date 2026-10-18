@@ -23,8 +23,7 @@ export interface PageLayoutProps {
   children?: ReactNode;
   /**
    * Layers that must survive the page's loading, empty and error states without remounting (the Filters drawer:
-   * changing a filter reloads the list, and the open panel must keep its focus and scroll). Rendered as the last child of the page
-   * section in both bodies, so a page that switches body (Calendar agenda to week) keeps the open panel mounted.
+   * changing a filter reloads the list, and the open panel must keep its focus and scroll). Panel body only.
    */
   overlay?: ReactNode;
   ariaLabel?: string;
@@ -70,21 +69,20 @@ export function PageLayout({ pageId, header, body = "panel", backdrop, state, ch
     return (
       <section className={`page-shell${className ? ` ${className}` : ""}`} aria-label={ariaLabel} data-page-id={pageId} data-page-body="bleed">
         {backdrop?.art !== undefined ? (
-          <div className="tv-key-art" data-nav-behind key={backdrop.artKey}>
+          <div className="tv-key-art" key={backdrop.artKey}>
             {backdrop.art}
           </div>
         ) : null}
         {backdrop?.art !== undefined && backdrop.wash !== false ? <div className="tv-stage-wash" /> : null}
         {headerNode}
         <div className={`page-shell-body${bodyClassName ? ` ${bodyClassName}` : ""}`}>{content}</div>
-        {overlay}
       </section>
     );
   }
   return (
     <section className={className} aria-label={ariaLabel} data-page-id={pageId} data-page-body="panel">
       {backdrop?.art !== undefined ? (
-        <div className="tv-key-art" data-nav-behind key={backdrop.artKey}>
+        <div className="tv-key-art" key={backdrop.artKey}>
           {backdrop.art}
         </div>
       ) : null}

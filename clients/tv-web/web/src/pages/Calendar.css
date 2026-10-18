@@ -612,8 +612,6 @@
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
-  touch-action: pan-x pan-y;
-  overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-color: var(--line-strong) transparent;
   padding-bottom: 0.75rem;
@@ -783,9 +781,7 @@
 .calendar-week-scroll .calendar-day {
   height: 100%;
   overflow-y: auto;
-  /* Vertical stays contained; horizontal must chain to the week scroller or a swipe over a column does nothing. */
-  overscroll-behavior: auto contain;
-  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 

@@ -111,7 +111,7 @@ function renderAction(action: PageAction): ReactNode {
       return <ActionPill key={action.id} kind="link" icon={action.icon} label={action.label} to={action.to} buttonProps={action.buttonProps} />;
     case "status":
       return (
-        <span key={action.id} className="page-actions-status" role="status" data-action-kind="status" data-action-id={action.id}>
+        <span key={action.id} className="page-actions-status" role="status" data-action-kind="status">
           {action.label}
         </span>
       );

@@ -115,16 +115,3 @@ export const IS_TV =
   PLAYARR_CLIENT_PLATFORM === "tv-vidaa" ||
   PLAYARR_CLIENT_PLATFORM === "android-tv" ||
   IS_XBOX;
-
-/**
- * The URL for a full page load after sign-out, or Back on a directly opened page. A plain browser gets "/" (the
- * marketing site for signed-out visitors); an installed app never does, so it goes to the login route and keeps its
- * `platform` marker (the playarr.app Worker also treats that marker as "serve the app").
- */
-export function signedOutEntryUrl(
-  platform: PlayarrWebPlatform = PLAYARR_CLIENT_PLATFORM,
-  packaged: boolean = IS_PACKAGED_TV
-): string {
-  if (packaged) return "#/login";
-  return platform === "web" ? "/" : `/login?platform=${platform}`;
-}

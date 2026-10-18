@@ -677,20 +677,6 @@ describe("marketing site routing", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-cache");
   });
 
-  it.each([
-    ["/?platform=tv-vidaa", {}],
-    ["/?platform=tv-webos", {}],
-    ["/?platform=web", {}],
-    ["/", { "User-Agent": "Mozilla/5.0 (Linux; VIDAA 6.0)" }],
-    ["/", { Cookie: "playarr_app=1" }],
-  ])("sends signed-out %s %j to the app, never the marketing site", async (path, headers) => {
-    const env = siteEnv();
-    const response = await worker.fetch(get(path, headers), env);
-    expect(await response.text()).toBe("asset");
-    expect(env.SITE.fetch).not.toHaveBeenCalled();
-    expect(response.headers.get("Vary")).toContain("User-Agent");
-  });
-
   it("falls back to the app assets for / when no SITE binding exists", async () => {
     const env = environment();
     const response = await worker.fetch(get("/"), env);

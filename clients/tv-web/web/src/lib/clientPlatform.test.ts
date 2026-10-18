@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   resolveClientPlatform,
   shouldStartTvLink,
-  signedOutEntryUrl,
 } from "./clientPlatform";
 
 function createMemoryStorage(): Storage {
@@ -114,17 +113,5 @@ describe("shouldStartTvLink", () => {
     expect(shouldStartTvLink(true, "viewer-id", 0)).toBe(false);
     expect(shouldStartTvLink(true, undefined, 1)).toBe(false);
     expect(shouldStartTvLink(false, undefined, 0)).toBe(false);
-  });
-});
-
-describe("signedOutEntryUrl", () => {
-  it("sends a plain browser to / and an installed app to its login route, keeping the platform", () => {
-    expect(signedOutEntryUrl("web", false)).toBe("/");
-    expect(signedOutEntryUrl("tv-vidaa", false)).toBe("/login?platform=tv-vidaa");
-    expect(signedOutEntryUrl("xbox", false)).toBe("/login?platform=xbox");
-  });
-
-  it("stays inside the packaged hash router", () => {
-    expect(signedOutEntryUrl("tv-webos", true)).toBe("#/login");
   });
 });

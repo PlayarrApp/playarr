@@ -1,5 +1,4 @@
 import type { KeyboardEvent, ReactNode } from "react";
-import { signedOutEntryUrl } from "../lib/clientPlatform";
 import { useNativeScrollRoot, useTvDirectionalNavigation } from "../lib/useTvNavigation";
 import { TvStageChrome } from "./tv/TvStage";
 
@@ -24,7 +23,7 @@ export function authFocusBridgeDestination(
 export function defaultAuthBack(): void {
   if (typeof window === "undefined") return;
   if (window.history.length > 1) window.history.back();
-  else window.location.assign(signedOutEntryUrl());
+  else window.location.assign("/");
 }
 
 interface ProfileAuthLayoutProps {

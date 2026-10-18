@@ -1282,8 +1282,6 @@ export const th: Translations = {
   "pages.downloads.noMatchesTitle": "ไม่มีดาวน์โหลดที่ตรงกัน",
   "pages.downloads.noMatchesDescription": "เปลี่ยนหรือล้างตัวกรองเพื่อดูการดาวน์โหลดของคุณ",
   "pages.downloads.notifications": "การแจ้งเตือน",
-  "pages.downloads.notificationsBlocked": "การแจ้งเตือนถูกบล็อก",
-  "pages.downloads.notificationsBlockedHint": "การแจ้งเตือนถูกบล็อก คลิกไอคอนแม่กุญแจในแถบที่อยู่ อนุญาตการแจ้งเตือน แล้วรีโหลดหน้า",
   "lib.downloads.notification.downloadingOne": "กำลังดาวน์โหลด {{title}}",
   "lib.downloads.notification.downloadingMany": "กำลังดาวน์โหลด {{count}} รายการ",
   "lib.downloads.notification.pausedOne": "หยุดชั่วคราว: {{title}}",

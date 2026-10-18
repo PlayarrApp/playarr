@@ -8,7 +8,6 @@ import { useApiBaseUrl, usePrimaryApiClient } from "../../lib/ApiClientProvider"
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { useToast } from "../../lib/toast";
 import { QrCode } from "../../components/QrCode";
-import { requestNotificationPermission, useNotificationPermission } from "../../lib/downloadNotifications";
 import { enableApprovalPushNotifications } from "../../lib/pushNotifications";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
 import { SettingsSectionLayout } from "./SettingsSectionLayout";
@@ -38,8 +37,6 @@ export function SettingsInvitePage() {
   const [requestMessage, setRequestMessage] = useState("");
   const [pushState, setPushState] = useState<PushState>("idle");
   const [pushError, setPushError] = useState<string | null>(null);
-  const notifications = useNotificationPermission();
-  const pushBlocked = notifications.permission === "denied";
 
   useEffect(() => {
     let cancelled = false;
@@ -169,13 +166,6 @@ export function SettingsInvitePage() {
   }
 
   async function handleEnablePush() {
-    if (pushBlocked) {
-      // Ask once; a browser that still answers denied needs the unblock hint, a granted answer continues below.
-      const { permission, showHint } = await requestNotificationPermission(() => undefined);
-      notifications.refresh();
-      notifications.setBlockedHint(showHint);
-      if (permission !== "granted") return;
-    }
     setPushState("enabling");
     setPushError(null);
     try {
@@ -184,8 +174,7 @@ export function SettingsInvitePage() {
       showToast(t("settings.invite.toastPushEnabled"));
     } catch (error) {
       setPushState("error");
-      // A denied prompt now reads as blocked; show that instead of the error text.
-      setPushError(notifications.refresh() === "denied" ? null : error instanceof Error ? error.message : String(error));
+      setPushError(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -254,11 +243,8 @@ export function SettingsInvitePage() {
                   ? t("settings.invite.pushEnabled")
                   : pushState === "enabling"
                     ? t("settings.invite.pushEnabling")
-                    : pushBlocked
-                      ? t("pages.downloads.notificationsBlocked")
-                      : t("settings.invite.enablePush")}
+                    : t("settings.invite.enablePush")}
               </Button>
-              {notifications.blockedHint ? <p role="status">{t("pages.downloads.notificationsBlockedHint")}</p> : null}
               {pushError ? <p className="error-text" role="alert">{pushError}</p> : null}
             </div>
           </>

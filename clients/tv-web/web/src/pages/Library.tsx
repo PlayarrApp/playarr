@@ -1,5 +1,5 @@
 import { ensureLibraryIndex, registerEnsureLibraryIndex } from "../lib/libraryIndexRegistry";
-import { setScrollInstant, smoothScrollIntoView, smoothScrollTo } from "../lib/smoothScroll";
+import { smoothScrollIntoView, smoothScrollTo } from "../lib/smoothScroll";
 import { useScrollEdges } from "../lib/useScrollEdges";
 import { useRemoteMarkerFollow } from "../lib/remoteMarkerFollow";
 import {
@@ -118,7 +118,6 @@ function AlphabetRail({
   symbolsLabel,
   refreshKey,
   onJump,
-  onEnterGrid,
 }: {
   alphabet: readonly string[];
   activeLetter: string;
@@ -127,7 +126,6 @@ function AlphabetRail({
   symbolsLabel: string;
   refreshKey: string;
   onJump: (letter: string) => void;
-  onEnterGrid: () => void;
 }) {
   const ref = useRef<HTMLElement>(null);
   useScrollEdges(ref, "vertical", refreshKey);
@@ -151,17 +149,6 @@ function AlphabetRail({
       ref={ref}
       className="tv-alphabet"
       aria-label={label}
-      onKeyDown={(event) => {
-        // Only the key pointing toward the grid enters it; the key pointing away does nothing (no wrap). The side comes
-        // from layout (rail rect vs grid rect), not the platform. A jump never moves focus (owner 2026-10-18).
-        if ((event.key !== "ArrowRight" && event.key !== "ArrowLeft") || event.defaultPrevented) return;
-        const grid = document.querySelector<HTMLElement>(".tv-title-grid");
-        const rail = ref.current;
-        if (!grid || !rail) return;
-        const railLeftOfGrid = rail.getBoundingClientRect().left < grid.getBoundingClientRect().left;
-        event.preventDefault();
-        if ((event.key === "ArrowRight") === railLeftOfGrid) onEnterGrid();
-      }}
       onPointerMove={scrub}
       onPointerUp={() => { scrubbed.current = null; }}
       onPointerCancel={() => { scrubbed.current = null; }}
@@ -784,7 +771,9 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
     };
   }, []);
 
-  const updateActiveLetterNow = useCallback(() => {
+  const updateActiveLetter = useCallback(() => {
+    // Alphabet chrome re-renders the filter strip — skip mid remote hold.
+    if (document.body.dataset.inputMode === "remote") return;
     const grid = gridRef.current;
     if (!grid) return;
 
@@ -819,23 +808,6 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
     const card = grid.querySelector<HTMLElement>(`[data-library-index="${Math.min(lastIndex, row * cols)}"]`);
     const visibleLetter = card?.dataset.libraryLetter;
     if (visibleLetter) setActiveLetter(visibleLetter);
-  }, [view]);
-
-  // Set while a letter jump scrolls the grid: scroll tracking must not flip the circle to a neighbour letter.
-  const jumpLockRef = useRef(false);
-  const jumpSeqRef = useRef(0);
-  const remoteLetterTimerRef = useRef(0);
-  const updateActiveLetter = useCallback(() => {
-    if (jumpLockRef.current) return;
-    // Alphabet chrome re-renders the filter strip: mid remote hold, wait until the focus settles.
-    if (document.body.dataset.inputMode === "remote") {
-      window.clearTimeout(remoteLetterTimerRef.current);
-      remoteLetterTimerRef.current = window.setTimeout(() => {
-        if (!jumpLockRef.current) updateActiveLetterNow();
-      }, 150);
-      return;
-    }
-    updateActiveLetterNow();
   }, [view]);
 
   useEffect(() => {
@@ -1005,23 +977,8 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
     setMountedEnd((current) => Math.max(current, index + PREMOUNT_AHEAD_ROWS * 3));
   }, [restoreWorkId, items, view]);
 
-  /** Right from the rail: focus the first card of the active section (explicit only; a jump never moves focus). */
-  function enterGridFromRail() {
-    const list = itemsRef.current;
-    const index = list.findIndex((work) => workLetter(work) === activeLetter);
-    const grid = gridRef.current;
-    if (index < 0 || !grid) return;
-    ensureLibraryIndex(grid, index);
-    void afterTwoFrames().then(() => grid.querySelector<HTMLElement>(`[data-library-index="${index}"]`)?.focus());
-  }
-
   async function jumpToLetter(letter: string) {
-    // A newer jump (a touch scrub crosses many letters) supersedes this one: stale jumps never scroll or release the lock.
-    const seq = (jumpSeqRef.current += 1);
-    const stale = () => seq !== jumpSeqRef.current;
     setJumpingLetter(letter);
-    jumpLockRef.current = true;
-    setActiveLetter(letter);
     try {
       const letters = order === "desc" ? [...ALPHABET].reverse() : [...ALPHABET];
       const targetPosition = letters.indexOf(letter as (typeof ALPHABET)[number]);
@@ -1053,7 +1010,7 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
         index = findIndex();
       }
       if (index < 0) index = itemsRef.current.length - 1;
-      if (index < 0 || stale()) return;
+      if (index < 0) return;
 
       const grid = gridRef.current;
       // Rows are mounted on demand; make sure the destination exists first.
@@ -1062,27 +1019,12 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
       const destination = grid?.querySelector<HTMLElement>(
         `[data-library-index="${index}"]`
       );
-      if (!grid || !destination || stale()) return;
-      // Focus stays on the pressed letter; the circle moves at once (to the next letter that has titles when this one has none).
-      setActiveLetter(destination.dataset.libraryLetter ?? letter);
-      // A jump can cross hundreds of unmounted rows: scroll instantly, top-aligned so the section's first card leads.
-      if (view === "cover-flow") smoothScrollIntoView(destination, { block: "center", inline: "center", instant: true });
-      else {
-        // Mounting rows shifts the layout under the target: re-align until it sits at the top.
-        for (let pass = 0; pass < 4; pass += 1) {
-          if (stale()) return;
-          const delta = destination.getBoundingClientRect().top - grid.getBoundingClientRect().top;
-          if (pass > 0 && Math.abs(delta) < 1) break;
-          setScrollInstant(grid, { top: grid.scrollTop + delta });
-          await afterTwoFrames();
-        }
-      }
-      await afterTwoFrames();
+      if (!grid || !destination) return;
+      destination.focus({ preventScroll: true });
+      // A jump can cross hundreds of unmounted rows: scroll instantly.
+      smoothScrollIntoView(destination, { block: "center", instant: true });
     } finally {
-      if (!stale()) {
-        jumpLockRef.current = false;
-        setJumpingLetter(null);
-      }
+      setJumpingLetter(null);
     }
   }
 
@@ -1493,7 +1435,6 @@ export function LibraryPage({ kind }: { kind: LibraryKind }) {
           symbolsLabel={t("pages.library.numbersAndSymbols")}
           refreshKey={order}
           onJump={(letter) => void jumpToLetter(letter)}
-          onEnterGrid={enterGridFromRail}
         />
       ) : null}
       {mediaContext.contextMenu}

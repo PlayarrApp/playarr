@@ -122,15 +122,6 @@ export function WatchlistIcon({ className }: IconProps) {
   );
 }
 
-export function RequestsIcon({ className }: IconProps) {
-  return (
-    <svg {...ICON_PROPS} className={className}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 8v8M8 12h8" />
-    </svg>
-  );
-}
-
 export function SettingsIcon({ className }: IconProps) {
   return (
     <svg {...ICON_PROPS} className={className}>

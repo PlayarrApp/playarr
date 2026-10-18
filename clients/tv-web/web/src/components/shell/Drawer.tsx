@@ -4,7 +4,6 @@ import { browserDrawerCloseEnv, playDrawerClose, restoreOpenerFocus, snapshotDra
 import { isBackKey } from "../../lib/backKey";
 import { smoothScrollIntoView } from "../../lib/smoothScroll";
 import { useScrollEdges } from "../../lib/useScrollEdges";
-import { lockPageScroll } from "../../lib/scrollLock";
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -79,9 +78,6 @@ function DrawerPanel({
   useScrollEdges(bodyRef, "vertical", "drawer-body");
 
   const openerRef = useRef<HTMLElement | null>(null);
-
-  // The page behind a modal panel must not scroll (touch, wheel, keys); only the panel body does.
-  useEffect(() => (modal ? lockPageScroll() : undefined), [modal]);
 
   // Closing: whatever removes the drawer (Close button, Back or Escape, the scrim, the launcher toggle, a
   // route change), a frozen copy slides back out; focus returns to the launcher when it has gone.

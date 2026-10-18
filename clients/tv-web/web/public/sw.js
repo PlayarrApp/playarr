@@ -34,12 +34,7 @@ async function precacheNewBundle() {
   // pulled in lazily by the fetch handler below (cache-as-you-go) rather
   // than needing a full precache asset list generated at build time.
   try {
-    // Precache the shell through /login: a bare "/" or "/index.html" is the marketing site for a signed-out visitor.
-    const shell = await fetch("/login", { cache: "no-store" });
-    if (shell.ok) {
-      await cache.put("/index.html", shell.clone());
-      await cache.put("/", shell);
-    }
+    await cache.addAll(["/", "/index.html"]);
   } catch {
     // A precache miss (e.g. offline during install) isn't fatal -- the
     // fetch handler below still falls through to the network per-request.

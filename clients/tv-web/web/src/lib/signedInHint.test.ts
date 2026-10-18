@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { syncInstalledAppHint, syncSignedInHint } from "./signedInHint";
+import { syncSignedInHint } from "./signedInHint";
 
 describe("syncSignedInHint", () => {
   it("sets the hint cookie for an active session", () => {
@@ -16,16 +16,5 @@ describe("syncSignedInHint", () => {
 
   it("does nothing without a document", () => {
     expect(() => syncSignedInHint(true, undefined)).not.toThrow();
-  });
-});
-
-describe("syncInstalledAppHint", () => {
-  it("sets the installed-app cookie only for an installed app", () => {
-    const installed = { cookie: "" };
-    syncInstalledAppHint(true, installed);
-    expect(installed.cookie).toBe("playarr_app=1; Path=/; Max-Age=31536000; SameSite=Lax; Secure");
-    const browser = { cookie: "" };
-    syncInstalledAppHint(false, browser);
-    expect(browser.cookie).toBe("");
   });
 });

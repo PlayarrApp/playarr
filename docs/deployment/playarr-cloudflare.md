@@ -16,19 +16,14 @@ routes paths as follows (`run_worker_first` in `clients/tv-web/web/wrangler.json
 
 | Path | Served by |
 |---|---|
-| `/` for a browser visitor with no app signal | `playarr-site` (via `SITE`) |
-| `/` with an app signal: a `?platform=<client>` query, the `playarr_signed_in=1` or `playarr_app=1` cookie, or an app user agent (VIDAA, Hisense, Xbox, `PlayarrAndroidMobile/`, `PlayarrAndroidTV/`) | the app (static assets) |
+| `/` for a visitor without the `playarr_signed_in=1` cookie | `playarr-site` (via `SITE`) |
+| `/` with the `playarr_signed_in=1` cookie | the app (static assets) |
 | `/docs`, `/docs/*`, `/legal`, `/legal/*`, `/features`, `/features/*`, `/faq`, `/faq/*`, `/apps`, `/apps/*`, `/integrations`, `/integrations/*`, `/clients`, `/clients/*`, `/_site/*`, `/robots.txt`, `/sitemap-*` | `playarr-site` (via `SITE`) |
 | `/download`, `/install` | 301 redirect to `/clients` |
 | `/api/*`, `/cast/*`, `/downloads/*`, `/storybook/*` | `playarr-web` Worker code |
 | everything else (`/library`, `/login` and so on) | the app (single-page fallback) |
 
-Installed apps never show the marketing site, signed in or not (`clients/tv-web/web/appSignal.js` decides). The
-hosted VIDAA app is registered as `https://playarr.app/?platform=tv-vidaa`. The app sets `playarr_app=1` when it runs
-as anything but plain web, its sign-out and Back full loads go to `/login?platform=<client>` instead of `/`, the PWA
-`start_url` is `/?platform=web`, and the Profiles page hides its public Clients link.
-
-The response for `/` always carries `Vary: Cookie, User-Agent` and `Cache-Control: no-cache`. The app sets the
+The response for `/` always carries `Vary: Cookie` and `Cache-Control: no-cache`. The app sets the
 `playarr_signed_in=1` cookie (`Path=/`, one year, `SameSite=Lax`, `Secure`) whenever at least one profile session is
 saved, re-asserts it on boot, and expires it when none remain. It is a routing hint only, never a credential. If the
 `SITE` binding is absent (local development) the Worker serves the app for every path. Self-hosted servers serve the

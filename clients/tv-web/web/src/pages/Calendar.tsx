@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
-import { setScrollInstant } from "../lib/smoothScroll";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type {
   CalendarEntry,
@@ -453,14 +452,6 @@ export function DaySections({
 
 /** Week view: one wide column per day on a horizontally scrolling, snapping track. */
 function WeekTrack(props: Parameters<typeof DaySections>[0]) {
-  const first = props.days[0]?.day;
-  // Open on today's column (or the week's first day); the phone track is narrower than the week.
-  useLayoutEffect(() => {
-    if (props.loading || !window.matchMedia("(max-width: 760px)").matches) return;
-    const track = document.querySelector<HTMLElement>(".calendar-week-scroll");
-    const col = track?.querySelector<HTMLElement>(".calendar-day.is-today")?.closest<HTMLElement>(".calendar-day-window");
-    if (track) setScrollInstant(track, { left: col ? col.getBoundingClientRect().left - track.getBoundingClientRect().left + track.scrollLeft : 0 });
-  }, [first, props.loading]);
   return (
     <EdgeScroller
       axis="horizontal"
@@ -1290,7 +1281,6 @@ export function CalendarPage() {
         ariaLabel={t("pages.calendar.title")}
         backdrop={agendaArt ?? { artKey: "calendar-agenda" }}
         header={pageHeader}
-        overlay={drawers}
       >
         {loading ? (
           <DetailsSkeleton />
@@ -1327,6 +1317,7 @@ export function CalendarPage() {
           )}
         </ListPanel>
         {isPhoneWidth ? null : periodPicker}
+        {drawers}
         {selectedItem && isPhoneWidth && urlState.selected ? (
           <DetailSheet closeLabel={t("pages.calendar.sheetClose")} onClose={clearSelectionCb}>
             <ItemDetails
@@ -1352,7 +1343,6 @@ export function CalendarPage() {
       className={`calendar-page calendar-view-${view}`}
       ariaLabel={t("pages.calendar.title")}
       header={pageHeader}
-      overlay={drawers}
     >
       <div className="calendar-header">
         {periodPicker}
@@ -1370,6 +1360,8 @@ export function CalendarPage() {
       >
         {body}
       </div>
+
+      {drawers}
 
       {selectedItem ? (
         <DetailSheet closeLabel={t("pages.calendar.sheetClose")} onClose={clearSelectionCb}>

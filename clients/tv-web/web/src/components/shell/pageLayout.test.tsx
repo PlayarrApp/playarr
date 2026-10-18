@@ -51,7 +51,7 @@ describe("Downloads notifications entry", () => {
 
   it("is declared in the Downloads header actions, not as a button inside the content panel", () => {
     const source = readFileSync(new URL("../../pages/Downloads.tsx", import.meta.url), "utf8");
-    expect(source).toMatch(/id: "notifications"[\s\S]*?"bell"/);
+    expect(source).toMatch(/id: "notifications"[\s\S]*?icon: "bell"/);
     expect(source).not.toContain("tv-downloads-notify");
   });
 });
