@@ -1278,6 +1278,8 @@ export const ja: Translations = {
   "pages.downloads.noMatchesTitle": "一致するダウンロードはありません",
   "pages.downloads.noMatchesDescription": "フィルターを変更またはクリアすると、ダウンロードが表示されます。",
   "pages.downloads.notifications": "通知",
+  "pages.downloads.notificationsBlocked": "通知がブロックされています",
+  "pages.downloads.notificationsBlockedHint": "通知がブロックされています。アドレスバーの鍵アイコンから通知を許可し、ページを再読み込みしてください。",
   "lib.downloads.notification.downloadingOne": "{{title}}をダウンロード中",
   "lib.downloads.notification.downloadingMany": "{{count}}件をダウンロード中",
   "lib.downloads.notification.pausedOne": "一時停止中: {{title}}",

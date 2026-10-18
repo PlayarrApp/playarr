@@ -23,7 +23,8 @@ export interface PageLayoutProps {
   children?: ReactNode;
   /**
    * Layers that must survive the page's loading, empty and error states without remounting (the Filters drawer:
-   * changing a filter reloads the list, and the open panel must keep its focus and scroll). Panel body only.
+   * changing a filter reloads the list, and the open panel must keep its focus and scroll). Rendered as the last child of the page
+   * section in both bodies, so a page that switches body (Calendar agenda to week) keeps the open panel mounted.
    */
   overlay?: ReactNode;
   ariaLabel?: string;
@@ -76,6 +77,7 @@ export function PageLayout({ pageId, header, body = "panel", backdrop, state, ch
         {backdrop?.art !== undefined && backdrop.wash !== false ? <div className="tv-stage-wash" /> : null}
         {headerNode}
         <div className={`page-shell-body${bodyClassName ? ` ${bodyClassName}` : ""}`}>{content}</div>
+        {overlay}
       </section>
     );
   }
