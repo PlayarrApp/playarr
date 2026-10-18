@@ -429,7 +429,7 @@ function kindLabel(kind: WorkKind): string {
     return t('pages.home.workKind.series', 'Series');
   }
   if (kind === 'site') {
-    return 'Site';
+    return t('pages.workDetail.kindSite', 'Site');
   }
   if (kind === 'artist') {
     return t('pages.home.workKind.artist', 'Artist');
@@ -439,7 +439,7 @@ function kindLabel(kind: WorkKind): string {
 
 function humanizeAvailability(availability: Availability): string {
   if (availability === 'available') {
-    return 'Available';
+    return t('pages.requests.status.available', 'Available');
   }
   if (availability === 'partially_available') {
     return 'Partially available';
@@ -621,7 +621,7 @@ function buildBooksRail(books: BookDetail[]): DetailRail {
   for (const book of books) {
     items.push(buildBookRow(book));
   }
-  const rail: DetailRail = { id: 'books', heading: 'Books', items: items };
+  const rail: DetailRail = { id: 'books', heading: t('pages.calendar.typeBooks', 'Books'), items: items };
   return rail;
 }
 
@@ -1798,9 +1798,9 @@ struct Detail {
       return t('pages.home.workKind.series', 'Series');
     }
     if (kind === 'artist') {
-      return 'Music';
+      return t('shell.nav.music', 'Music');
     }
-    return 'Movies';
+    return t('shell.nav.movies', 'Movies');
   }
 
   /** The nav tile that stays marked on this page: the title's own kind (`movie`, `series`, `artist`). */
@@ -1956,7 +1956,7 @@ struct Detail {
     if (this.resumeMs > 0) {
       return tf('pages.workDetail.resumeFrom', 'Resume from {{position}}', { position: chapterTimeLabel(this.resumeMs) });
     }
-    return 'Play';
+    return t('pages.workDetail.play', 'Play');
   }
 
   /** Web's cast circle: the person's initials (their headshot over them when there is one) and their name under it. */
@@ -2061,7 +2061,7 @@ struct Detail {
       }
       if (this.cast.length > 0) {
         Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
-          this.railHeading('Cast', this.cast.length.toString() + ' people')
+          this.railHeading(t('pages.workDetail.cast', 'Cast'), this.cast.length.toString() + ' people')
           MediaRail({
             railId: 'cast',
             headingGap: 0,
@@ -2627,7 +2627,7 @@ struct Detail {
       AsyncState({
         kind: AsyncStateKind.Error,
         message: this.errorMessage,
-        retryLabel: 'Retry',
+        retryLabel: t('pages.downloads.retry', 'Retry'),
         retry: () => {
           this.loadDetail();
         },

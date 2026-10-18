@@ -176,11 +176,13 @@ const STATUS_CHOICES: Choice[] = CALENDAR_STATUSES.map((value: string): Choice =
   const choice: Choice = { value: value, label: calendarStatusLabel(value) };
   return choice;
 });
-const VIEW_CHOICES: Choice[] = [
-  { value: 'agenda', label: 'Agenda' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
-];
+function VIEW_CHOICES(): Choice[] {
+  return [
+    { value: 'agenda', label: t('pages.calendar.viewAgenda', 'Agenda') },
+    { value: 'week', label: t('pages.calendar.viewWeek', 'Week') },
+    { value: 'month', label: t('pages.calendar.viewMonth', 'Month') },
+  ];
+}
 
 /** ForEach key: the day plus its entries, so a cell is rebuilt when its entries change. */
 function cellKey(cell: CalendarCell): string {
@@ -626,15 +628,15 @@ export struct ReleaseCalendar {
   private filtersBody(): void {
     Column({ space: tv(FILTER_SECTION_GAP) }) {
       ChoiceSegments({
-        heading: 'View',
-        choices: VIEW_CHOICES,
+        heading: t('pages.library.view', 'View'),
+        choices: VIEW_CHOICES(),
         selected: this.view,
         onChoose: (value: string): void => {
           this.changeView(value);
         },
       })
       MultiSelect({
-        heading: 'Type',
+        heading: t('pages.calendar.filterType', 'Type'),
         options: TYPE_CHOICES,
         selected: this.filters.types,
         noneLabel: t('pages.calendar.anyType', 'Any type'),
@@ -732,7 +734,7 @@ export struct ReleaseCalendar {
     if (this.plan() !== undefined) {
       Row({ space: tv(PANEL_BUTTON_GAP) }) {
         if (this.plan()!.play !== null) {
-          this.panelButton(this.plan()!.play!.resume ? 'Resume' : 'Play', true, (): void => {
+          this.panelButton(this.plan()!.play!.resume ? t('pages.workDetail.resumeSeries', 'Resume') : t('pages.workDetail.play', 'Play'), true, (): void => {
             this.playSelected();
           })
         }

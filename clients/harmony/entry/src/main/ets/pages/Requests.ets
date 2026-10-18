@@ -17,6 +17,7 @@ import { requestMetaParts } from '../core/Requests';
 import type { RequestView } from '../core/Types/Requests';
 
 import { REQUESTS_NAV_ID } from '../navigation/NavItems';
+import { t } from '../core/Language';
 
 // Rows start where Search's results do: (826, 173), 1042 wide.
 const LIST_LEFT: number = 826;
@@ -98,7 +99,7 @@ export struct RequestsScreen {
       AsyncState({
         kind: AsyncStateKind.Error,
         message: "Couldn't load your requests",
-        retryLabel: 'Try again',
+        retryLabel: t('components.states.retry', 'Try again'),
         retry: (): void => {
           this.load();
         },
@@ -136,7 +137,7 @@ export struct RequestsScreen {
   build() {
     NavDestination() {
       PageShell({
-        title: 'Requests',
+        title: t('pages.requests.title', 'Requests'),
         selectedId: REQUESTS_NAV_ID,
         content: (): void => {
           this.pageContent();
