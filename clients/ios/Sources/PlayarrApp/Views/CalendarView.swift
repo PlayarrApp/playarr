@@ -209,6 +209,13 @@ struct CalendarView: View {
             return formatter.string(from: anchor)
         }
         let sameYear = utc.component(.year, from: start) == utc.component(.year, from: end)
+        if sameYear, utc.component(.month, from: start) == utc.component(.month, from: end) {
+            // Inside one month the web drops the repeated month: "5 \u{2013} 11 Oct".
+            formatter.dateFormat = "d"
+            let first = formatter.string(from: start)
+            formatter.dateFormat = "d MMM"
+            return "\(first) \u{2013} \(formatter.string(from: end))"
+        }
         formatter.dateFormat = sameYear ? "d MMM" : "d MMM yyyy"
         let first = formatter.string(from: start)
         if sameYear {
@@ -265,6 +272,8 @@ struct CalendarView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             if case .loaded = viewModel.loadState, !viewModel.dayGroups.isEmpty, viewModel.mode == .agenda {
+                // The web agenda sits on the first release's backdrop, like the other pages.
+                WMKeyArt(work: nil, apiClient: apiClient, backdropWorkID: viewModel.dayGroups.first?.items.first?.entries.first?.workID)
                 phoneAgenda(groups: viewModel.dayGroups)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
@@ -484,14 +493,14 @@ struct CalendarView: View {
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .offset(x: 16, y: 15)
-                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: 9)
+                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: 7.7)
                 if let entry {
                     WMText(
                         [entry.episodeCode, entry.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} "),
                         16, 400, color: WM.inkSoft, lh: 24
                     )
                     .frame(width: 220, alignment: .leading)
-                    .offset(x: 70, y: 35)
+                    .offset(x: 70, y: 33.7)
                     HStack(spacing: 12) {
                         let time = calendarTimeLabel24(entry)
                         WMText(time.isEmpty || time == "00:00" ? "All day" : time, 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
@@ -705,6 +714,7 @@ struct CalendarView: View {
                         .frame(width: laneWidth, height: proxy.size.height, alignment: .topLeading)
                     }
                 }
+                .padding(.trailing, 16)  // the web track ends 16 pt short of the edge when the last lane is today
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.viewAligned)
