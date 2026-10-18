@@ -90,6 +90,11 @@ if (!args.includes("--no-reset")) {
   for (const file of new Set(pinned)) if (file !== deck?.deckFile) await captureState.writeProgress(file, { position_ms: 0, duration_ms: captureState.snapshot.files[file]?.duration_ms ?? 0, completed: false });
   await captureState.clearResumeChoices();
 }
+// Library state behind the Home rails (ids of the first items per rail): live rails drift as the library changes, so a Home score
+// that fell between two builds can be checked against this fingerprint in build.json.
+const homeRails = (await (await fetch(`${srv}/api/v1/home/rails?lang=en`, { headers: auth })).json()).rails ?? [];
+const library = { rails: homeRails.map((r) => ({ id: r.id, title_key: r.title_key, total: r.total, items: (r.items ?? []).slice(0, 12).map((i) => i.id) })) };
+library.hash = createHash("sha256").update(JSON.stringify(library.rails)).digest("hex").slice(0, 16);
 const captureSnapshot = await captureState.snapshotNow();
 const stateHash = captureSnapshot.hash;
 
@@ -192,7 +197,7 @@ if (copy) {
         cpSync(join(work, name, "dark", `${id}.png`), join(web, `${id}.png`));
         cpSync(join(work, name, "light", `${id}.png`), join(web, "light", `${id}.png`));
       }
-      if (shouldStampReferenceBuild({ partial, liveScreens: g.liveScreens ?? [] })) writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha: webBuild.sha, repoSha, webBuiltAt: webBuild.builtAt, pr: null, captured_at: startedAt, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
+      if (shouldStampReferenceBuild({ partial, liveScreens: g.liveScreens ?? [] })) writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha: webBuild.sha, repoSha, webBuiltAt: webBuild.builtAt, pr: null, captured_at: startedAt, library, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
       console.log(`published ${name} -> ${d}/web`);
     }
   }

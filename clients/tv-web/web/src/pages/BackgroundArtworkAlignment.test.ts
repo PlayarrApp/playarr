@@ -14,7 +14,9 @@ describe("background artwork alignment", () => {
       /\.tv-stage-wash\s*\{(?<declarations>[^}]*)\}/
     )?.groups?.declarations;
 
-    expect(artworkRule).toContain("width: 52%");
+    // The art starts at the nav clearance (nothing under the rail) and ends where the old 52% art ended.
+    expect(css).toMatch(/\.tv-key-art \{[^}]*inset: 0 0 0 var\(--tv-nav-clearance\)/);
+    expect(artworkRule).toContain("width: calc(52 * var(--vw) - var(--tv-nav-clearance))");
     expect(artworkRule).toContain("height: 106%");
     expect(artworkRule).toContain("margin-left: 0");
     expect(artworkRule).toContain("opacity: 0.24");
