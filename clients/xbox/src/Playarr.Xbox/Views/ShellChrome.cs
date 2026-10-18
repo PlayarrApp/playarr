@@ -31,8 +31,8 @@ namespace Playarr.Xbox.Views
         private readonly Frame _frame;
         private readonly Grid _chrome = new Grid { IsHitTestVisible = true };
         private readonly List<(Button Button, Type Page, WorkKind? Kind)> _items = new List<(Button, Type, WorkKind?)>();
-        private readonly TextBlock _time = new TextBlock { FontSize = 18, FontWeight = FontWeights.Bold };
-        private readonly TextBlock _date = new TextBlock { FontSize = 12.5, FontWeight = FontWeights.SemiBold, CharacterSpacing = 60, VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _time = new TextBlock { FontSize = 16, FontWeight = FontWeights.Bold };
+        private readonly TextBlock _date = new TextBlock { FontSize = 11.5, FontWeight = FontWeights.SemiBold, CharacterSpacing = 60, VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _profileName = new TextBlock { FontSize = 10, FontWeight = FontWeights.Medium, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
         private readonly List<(TextBlock Label, string Key)> _labels = new List<(TextBlock, string)>();
         private Border _avatar = null!;
@@ -194,7 +194,7 @@ namespace Playarr.Xbox.Views
                 Spacing = 11,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(478, 67, 0, 0),
+                Margin = new Thickness(483, 67, 0, 0),
                 IsHitTestVisible = false,
             };
             clock.Children.Add(_time);

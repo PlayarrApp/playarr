@@ -76,13 +76,13 @@ namespace Playarr.Xbox.Views
 
             title.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
             subtitle.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
-            if (title.DesiredSize.Width + 25 + subtitle.DesiredSize.Width <= 250)
+            if (title.DesiredSize.Width + 45 + subtitle.DesiredSize.Width <= 250)
             {
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 subtitle.VerticalAlignment = VerticalAlignment.Center;
                 subtitle.Margin = new Thickness(0, 6, 0, 0);
                 row.Children.Add(title);
-                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(12, 8, 12, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(22, 8, 22, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
                 row.Children.Add(subtitle);
                 titles.Children.Add(row);
             }
