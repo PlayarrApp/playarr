@@ -65,7 +65,9 @@ const COPY_TEXT_FONT_WEIGHT: number = 600;
 const SYNOPSIS_FONT_WEIGHT: number = 400;
 const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
-const SYNOPSIS_MAX_WIDTH: number = 328;
+const SYNOPSIS_MAX_WIDTH: number = 324;
+// Nunito renders ~2% wider than web's at this size, so lines break one word earlier; trim the tracking, not the column.
+const SYNOPSIS_LETTER_SPACING: number = -0.12;
 const SYNOPSIS_MAX_LINES: number = 5;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
@@ -215,6 +217,7 @@ export struct FeatureCopy {
           .fontSize(tv(COPY_TEXT_FONT_SIZE))
           .fontWeight(SYNOPSIS_FONT_WEIGHT)
           .lineHeight(tv(SYNOPSIS_LINE_HEIGHT))
+          .letterSpacing(tv(SYNOPSIS_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().inkMuted))
           .constraintSize({ maxWidth: tv(SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)
