@@ -42,7 +42,7 @@ ICONS = {
     "player-audio": '<path d="M5 9.5v5h4l4.5 3.5V6L9 9.5z" fill="white" stroke="none"/><path d="M16.5 9a4.5 4.5 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/>',
     "player-minimise": '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>',
     "player-close": '<path d="M6 6l12 12M18 6 6 18"/>',
-    "tile-filters": '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+    "tile-filters": '<path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/>',
     "tile-bell": '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
     "arrow-left": '<path d="M19 12H5M11 6l-6 6 6 6"/>',
     "arrow-right": '<path d="M5 12h14M13 6l6 6-6 6"/>',

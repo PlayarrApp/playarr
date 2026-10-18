@@ -5395,6 +5395,7 @@ end function
 
 sub layoutDetailRails()
     y = 0
+    if m.detailFadeBottom <> invalid then m.detailFadeBottom.visible = m.detailSimilar.visible
     hideDetailRailHeads()
     m.detailRailBase = -15
     showLabels = false

@@ -1,0 +1,61 @@
+{
+ "suite": 1,
+ "dpad": {
+  "home-right": {
+   "label": "the 5th wavemovie \u00b7 2016",
+   "position": {
+    "rail": 0,
+    "index": 0
+   }
+  },
+  "home-down": {
+   "label": "brothersmovie \u00b7 2024",
+   "position": {
+    "rail": 1,
+    "index": 0
+   }
+  },
+  "home-down-right": {
+   "label": "brothersmovie \u00b7 2009",
+   "position": {
+    "rail": 1,
+    "index": 1
+   }
+  },
+  "home-left-nav": {
+   "label": "home",
+   "position": {
+    "rail": "nav",
+    "index": 2
+   }
+  },
+  "nav-down": "calendar",
+  "movies-grid-right": "open amber thicket 3",
+  "movies-grid-down": "open crimson thicket 29",
+  "movies-grid-left-nav": "open 7 distant harbour 30",
+  "series-grid-down": "open electric station 8",
+  "detail-back": "open 7 distant harbour 30",
+  "long-press-actions": "\u25b6play",
+  "player-initial-focus": "play-pause",
+  "player-right": "audio: english \u00b7 eng \u00b7 truehd atmos 7.1 \u00b7 truehd atmos \u00b7 7.1",
+  "player-right-3": "playlist: 1 item",
+  "player-right-end": "play on another device",
+  "player-left-edge": "play-pause",
+  "player-up-seek": "seek",
+  "player-up-down": "play-pause",
+  "player-ok-toggle": "play-pause",
+  "player-panel-open": "panel:open",
+  "player-panel-close": "panel:closed",
+  "player-back": "player/:id",
+  "player-back-back": "movies/:id",
+  "nav-right-stage": {
+   "label": "first Home card",
+   "position": {
+    "rail": 0,
+    "index": 0
+   }
+  }
+ },
+ "performance": {},
+ "note": "Web reference for the pinned Device Test state (12 Oct 2026). The home-left-nav position alone was refreshed from hosted run 38951433111 at web SHA 59b9e3a4ab4a19a6cd86628ea3603be4c4e52d80; the frozen Home screenshot and score legend remain from the older layout, so compare Home only with a paired current web capture. Home positions depend on the account: On deck currently holds one card, so home-right stays on 0:0. Regenerate with: node suite-run.mjs --driver drivers/web.mjs --reference --only dpad --out <dir>, then copy <dir>/expected.json here."
+}

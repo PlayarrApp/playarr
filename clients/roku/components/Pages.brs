@@ -2516,6 +2516,10 @@ sub edgeFadesInit()
     home = m.top.findNode("homeGroup")
     m.homeFadeLeft = pgFade(home, "l", 729.6, 170, 53.76, 670)
     m.homeFadeRight = pgFade(home, "r", 1824, 170, 96, 670)
+    ' Web Home and title pages fade out at the bottom edge where the rails continue; the Roku draws it while a rail shows there.
+    m.homeFadeBottom = pgFade(home, "b", 740, 1020.6, 1110, 59.4)
+    m.homeFadeBottom.visible = true
+    m.detailFadeBottom = pgFade(m.top.findNode("detailGroup"), "b", 740, 1020.6, 1110, 59.4)
     browse = m.top.findNode("browseGroup")
     m.browseFadeTop = pgFade(browse, "t", 740, 128, 1110, 40)
     m.browseFadeBottom = pgFade(browse, "b", 740, 1020.6, 1110, 59.4)
